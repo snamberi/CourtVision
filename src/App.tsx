@@ -44,6 +44,7 @@ import { followsRealDevelopment } from './simulation/realDevelopmentGate';
 import { applyHistoricalRosters } from './history/realRollover';
 import { enforceSticky } from './simulation/sticky';
 import { collectPress } from './simulation/press';
+import { pendingDecisions } from './simulation/medical';
 import { crowdFill } from './simulation/business';
 import { useBackgroundJobs } from './workers/useBackgroundJobs';
 import { ToastStack, type ToastData } from './components/ToastStack';
@@ -101,6 +102,7 @@ const PlayerProfile = lazy(() => import('./components/PlayerProfile').then(m => 
 const SimulationLab = lazy(() => import('./components/SimulationLab').then(m => ({ default: m.SimulationLab })));
 const PlayerDatabase = lazy(() => import('./components/PlayerDatabase').then(m => ({ default: m.PlayerDatabase })));
 const StandingsPage = lazy(() => import('./components/StandingsPage').then(m => ({ default: m.StandingsPage })));
+const MedicalRoomPage = lazy(() => import('./components/MedicalRoomPage').then(m => ({ default: m.MedicalRoomPage })));
 const PressRoomPage = lazy(() => import('./components/PressRoomPage').then(m => ({ default: m.PressRoomPage })));
 const SchedulePage = lazy(() => import('./components/SchedulePage').then(m => ({ default: m.SchedulePage })));
 const BulkEditor = lazy(() => import('./components/BulkEditor').then(m => ({ default: m.BulkEditor })));
@@ -579,6 +581,14 @@ function App() {
     setCoachSession(cs => cs && cs.committed === league ? { ...cs, committed: next } : cs);
     setLeague(next);
   };
+  // The doctors want a decision when one of your players gets hurt.
+  const injuryDecisions = pendingDecisions(league, controlledTeamId).length;
+  const lastDecisions = useRef(injuryDecisions);
+  useEffect(() => {
+    if (injuryDecisions > lastDecisions.current) pushToast(`Injury: the doctors need your call in the Medical Room (${injuryDecisions} waiting).`, 'error');
+    lastDecisions.current = injuryDecisions;
+  }, [injuryDecisions]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Reporters line up after big results, streaks, trade requests and playoff series.
   const pressWaiting = league.press?.pending.length ?? 0;
   useEffect(() => {
@@ -1435,6 +1445,7 @@ function App() {
             : <InjuryReportPage sandboxMode={sandboxMode} league={league} controlledTeamId={controlledTeamId} onChange={setLeague} onSelectPlayer={selectPlayer} />
         )}
 
+        {tab === 'medical' && <MedicalRoomPage league={league} controlledTeamId={controlledTeamId} onChange={setLeague} onSelectPlayer={selectPlayer} />}
         {tab === 'press' && <PressRoomPage league={league} extras={extras} controlledTeamId={controlledTeamId} onChange={setLeague} />}
         {tab === 'yearInReview' && <YearInReviewPage league={league} extras={extras} controlledTeamId={controlledTeamId} awardOptions={awardOptions(awardSettings)}
           onOpenAwards={() => setTab('awards')} onSelectPlayer={selectPlayer}

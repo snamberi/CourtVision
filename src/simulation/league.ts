@@ -1,6 +1,7 @@
 import { prepareCoachingForGame, finishCoachingGame, type GameEvidence } from './playerDevelopment';
 import { advanceCup } from './cup';
 import { isDeadlineDayBlocking } from './deadlineDay';
+import { restsTonight, withMedicalRisk, afterGame, afterHealing } from './medical';
 import { gameStaffCoach } from './staffManagement';
 import { reviewTeamRotation, type RotationReview } from './rotationReview';
 import type { GameSettings, PlayerSeason } from './types';
@@ -201,6 +202,8 @@ export interface League {
   playoffBracket?: import('./playoffs').PlayoffBracket;
   /** Press conferences, fan mood and what you've said this season (see press.ts). */
   press?: import('./press').PressState;
+  /** Fragile returning players and load management (see medical.ts). */
+  medical?: import('./medical').MedicalState;
 
   rosterLimits?: { minRosterSize: number; maxRosterSize: number };
   teams: LeagueTeam[];
@@ -313,6 +316,8 @@ export interface InjuryRecord {
   severity: 'minor' | 'moderate' | 'severe';
   gamesRemaining: number; // games left before this player is available again
   totalGames: number; // the original recovery estimate, kept for "X of Y games" progress display
+  /** The treatment chosen in the medical room (unset = not decided yet; AI teams and undecided injuries heal on the standard timeline). */
+  treatment?: import('./medical').Treatment;
 }
 
 /**
@@ -605,9 +610,11 @@ function prepareGame(league: League, idx: number, seedBase: number, injuries: Re
   const home = league.teams.find((t) => t.teamId === g.homeTeamId)!;
   const away = league.teams.find((t) => t.teamId === g.awayTeamId)!;
 
-  const isOut = (playerId: string) => (injuries[playerId]?.gamesRemaining ?? 0) > 0;
-  let homeAvailable = home.seasons.filter((s) => !isOut(s.playerId));
-  let awayAvailable = away.seasons.filter((s) => !isOut(s.playerId));
+  // Out: injured, or rested tonight by load management. Fragile returning players carry a raised injury risk.
+  const gameNumber = (teamId: string) => league.schedule.filter(x => x.played && (x.homeTeamId === teamId || x.awayTeamId === teamId)).length + 1;
+  const isOut = (playerId: string, teamId: string) => (injuries[playerId]?.gamesRemaining ?? 0) > 0 || restsTonight(league.medical, playerId, gameNumber(teamId), league.seasonPhase);
+  let homeAvailable = home.seasons.filter((s) => !isOut(s.playerId, home.teamId)).map(s => withMedicalRisk(league.medical, s));
+  let awayAvailable = away.seasons.filter((s) => !isOut(s.playerId, away.teamId)).map(s => withMedicalRisk(league.medical, s));
   homeAvailable = ensureMinimumAvailable(home.seasons, homeAvailable, injuries);
   awayAvailable = ensureMinimumAvailable(away.seasons, awayAvailable, injuries);
 
@@ -632,6 +639,10 @@ function commitGame(league: League, prepared: PreparedGame, result: GameResult, 
 
   let nextInjuries = tickInjuriesForTeam(injuries, home.teamId);
   nextInjuries = tickInjuriesForTeam(nextInjuries, away.teamId);
+  // Healed tonight: the treatment decides how fragile he comes back. Everyone who played wears fragility off.
+  const healed = Object.values(injuries).filter(r => (r.teamId === home.teamId || r.teamId === away.teamId) && !nextInjuries[r.playerId]);
+  const playedIds = [...Object.values(result.homeBox.players), ...Object.values(result.awayBox.players)].filter(l => l.minutes > 0).map(l => l.playerId);
+  const medical = league.medical ? afterGame(afterHealing(league.medical, healed), playedIds) : healed.length ? afterHealing({ fragile: {}, rest: {} }, healed) : undefined;
   const homeIds = new Set(prepared.homeAvailableIds);
   const recoveryMult = (league.rulesSettings?.recoveryTimeMultiplier ?? 100) / 100;
   const injuredThisGame = new Map<string, { teamId: string; severity: InjuryRecord['severity']; recoveryGames: number }>();
@@ -685,7 +696,7 @@ function commitGame(league: League, prepared: PreparedGame, result: GameResult, 
     calendarRound = g.round;
   }
 
-  const updated = applyGameResultToLeague({ ...league, teams, schedule, injuries: nextInjuries, calendarDate, calendarRound }, result);
+  const updated = applyGameResultToLeague({ ...league, teams, schedule, injuries: nextInjuries, calendarDate, calendarRound, ...(medical ? { medical } : {}) }, result);
   // The last game of a game day moves the award races along (weekly ladder, Players of the Week/Month).
   // The same night decides the Cup: once the last group game is in, the knockout rounds are played (see cup.ts).
   const dayDone = (l: League) => l.schedule.some((x) => !x.played && x.round === g.round) ? l : advanceCup(advanceAwardRace(l, g.round));

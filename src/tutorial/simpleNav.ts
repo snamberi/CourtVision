@@ -46,6 +46,7 @@ export const SIMPLE_HUBS: SimpleHub[] = [
       { label: 'Coaching', tab: 'coaching' },
       { label: 'Development', tab: 'development' },
       { label: 'Injuries', tab: 'injuries' },
+      { label: 'Medical room', tab: 'medical' },
       { label: 'Staff', tab: 'staff' },
       { label: 'Finances', tab: 'finances' },
       { label: 'Team history', tab: 'teamHistory' },

@@ -497,3 +497,15 @@ button { border-radius: 0; }
 .reaction-reach, .reaction-slight-reach { color:var(--cv-red, #e85d5d); border-color:var(--cv-red, #e85d5d); }
 .reaction-best-available { color:var(--cv-gold, #ffd166); }
 .draft-reaction { padding:6px 10px; border-left:4px solid currentColor; background:var(--cv-surface, #121926); }
+
+/* ---- Medical room ---- */
+.medical-room { display:grid; gap:16px; }
+.medical-room h2 { display:flex; gap:8px; align-items:center; margin:0; }
+.medical-card { padding:10px 12px; margin-bottom:8px; background:var(--cv-surface, #121926); border:1px solid var(--cv-border, #2a3546); border-left:4px solid var(--cv-red, #e85d5d); }
+.medical-card p { margin:0 0 8px; }
+.medical-options { display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:8px; }
+.medical-options button { display:grid; gap:3px; text-align:left; white-space:normal; font-family:var(--font-data); text-transform:none; letter-spacing:0; }
+.medical-options button b { font-family:var(--font-pixel); font-size:10px; color:var(--cv-orange-bright, #ff9d3d); }
+.medical-options small { color:var(--cv-text-muted, #94a0b2); font-size:11px; }
+.medical-room table { width:100%; }
+@media (max-width:700px) { .medical-room section { overflow-x:auto; } }
