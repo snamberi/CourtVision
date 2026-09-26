@@ -7,6 +7,7 @@ import { TradePage } from '../components/TradePage';
 import { PlayerProfile } from '../components/PlayerProfile';
 import { FullPlayerEditor } from '../components/FullPlayerEditor';
 import { AdBanner } from '../components/AdBanner';
+import { AD_CONFIG } from '../ads/adConfig';
 import { saveConsent, resetConsent } from '../consent/consent';
 import { unloadAdsense, ADSENSE_SRC } from '../ads/adsense';
 
@@ -47,7 +48,10 @@ describe('player presentation and trading privacy', () => {
 });
 
 describe('ad lifecycle', () => {
-  beforeEach(() => { localStorage.clear(); resetConsent(); unloadAdsense(); vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(800); });
+  // These cases switch consent on and off, which is the in-app banner mode.
+  const shippedCmp = AD_CONFIG.googleCmp;
+  beforeEach(() => { AD_CONFIG.googleCmp = false; localStorage.clear(); resetConsent(); unloadAdsense(); vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(800); });
+  afterEach(() => { AD_CONFIG.googleCmp = shippedCmp; });
   it('waits for the script and a measurable slot, then submits each slot once under Strict Mode', async () => {
     act(() => saveConsent(true));
     const push = vi.fn(); window.adsbygoogle = { push } as unknown as unknown[];

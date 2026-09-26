@@ -47,6 +47,10 @@ export interface TurnoverOutcome {
  * an average one — regardless of position or usage. Usage/touches change the
  * NUMBER of opportunities, never the underlying per-opportunity rate directly.
  */
+export const TURNOVER_CALIBRATION = 1.7;
+/** Loose-ball turnovers the defense recovers are credited as steals, as official scorers do. */
+export const LOST_BALL_STEAL_SHARE = 0.55;
+
 export function computeTurnoverProbability(
   offense: Attributes,
   ctx: TurnoverContext,
@@ -90,6 +94,9 @@ export function computeTurnoverProbability(
   };
   base *= actionDifficulty[ctx.action];
 
+  // Calibrated so a league lands near the NBA's ~13-14 turnovers per team game (it sat near 8 without it).
+  base *= TURNOVER_CALIBRATION;
+
   base *= ctx.turnoverFrequencyMultiplier;
 
   return Math.max(0.002, Math.min(0.6, base));
@@ -110,7 +117,8 @@ export function resolveTurnover(
   const stealMult = ctx.stealFrequencyMultiplier ?? 1;
   const chargeMult = ctx.chargeFrequencyMultiplier ?? 1;
   if (ctx.isPass) {
-    const stealChance = (ctx.defenderPassingLaneSteal * stealMult) / (ctx.defenderPassingLaneSteal * stealMult + 60);
+    // About 55-60% of NBA bad-pass turnovers are picked off; more by defenders who read the lanes.
+    const stealChance = (ctx.defenderPassingLaneSteal * stealMult) / (ctx.defenderPassingLaneSteal * stealMult + 38);
     if (rng.chance(stealChance)) {
       return { occurred: true, type: 'PASSING_LANE_STEAL', probability, causedBySteal: true, stealerCredit: 'PASSING_LANE' };
     }
@@ -118,9 +126,9 @@ export function resolveTurnover(
   }
 
   const weights: [TurnoverType, number][] = [
-    ['BAD_HANDLE', 3],
+    ['BAD_HANDLE', 2],
     ['LOST_BALL', 2],
-    ['ON_BALL_STEAL', (ctx.defenderOnBallSteal / 20) * stealMult],
+    ['ON_BALL_STEAL', (ctx.defenderOnBallSteal / 10) * stealMult],
     ['OFFENSIVE_FOUL', 1 * chargeMult],
     ['TRAVELING', 1],
     ['OUT_OF_BOUNDS', 1],
@@ -133,12 +141,14 @@ export function resolveTurnover(
   for (const [type, w] of weights) {
     r -= w;
     if (r <= 0) {
+      const lostBallSteal = type === 'LOST_BALL' && rng.chance(Math.min(0.9, LOST_BALL_STEAL_SHARE * stealMult));
+      const steal = type === 'ON_BALL_STEAL' || lostBallSteal;
       return {
         occurred: true,
         type,
         probability,
-        causedBySteal: type === 'ON_BALL_STEAL',
-        stealerCredit: type === 'ON_BALL_STEAL' ? 'ON_BALL' : undefined,
+        causedBySteal: steal,
+        stealerCredit: steal ? 'ON_BALL' : undefined,
       };
     }
   }

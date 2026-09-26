@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useConsent, saveConsent, openPreferences, closePreferences } from './consent';
 import { unloadAdsense, showGoogleConsentChoices } from '../ads/adsense';
 import { AD_CONFIG } from '../ads/adConfig';
+import { advertisingPermitted } from '../ads/adPolicy';
 import { IS_DESKTOP_BUILD } from '../appMode';
 import { PRIVACY_HASH } from '../components/PrivacyPolicyPage';
 
@@ -22,7 +23,8 @@ export function ConsentBanner() {
   const [draftAdvertising, setDraftAdvertising] = useState(consent.record?.advertising ?? false);
 
   useEffect(() => { if (consent.preferencesOpen) setDraftAdvertising(consent.record?.advertising ?? false); }, [consent.preferencesOpen, consent.record?.advertising]);
-  useEffect(() => { if (!consent.advertisingAllowed) unloadAdsense(); }, [consent.advertisingAllowed]);
+  const permitted = advertisingPermitted(consent);
+  useEffect(() => { if (!permitted) unloadAdsense(); }, [permitted]);
 
   if (IS_DESKTOP_BUILD || !AD_CONFIG.enabled || AD_CONFIG.googleCmp) return null;
   if (!consent.needsDecision && !consent.preferencesOpen) return null;

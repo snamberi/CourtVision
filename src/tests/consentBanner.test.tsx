@@ -7,14 +7,16 @@ import { CONSENT_STORAGE_KEY, resetConsent } from '../consent/consent';
 import { AD_CONFIG } from '../ads/adConfig';
 import { ADSENSE_SRC } from '../ads/adsense';
 
+const shippedCmp = AD_CONFIG.googleCmp;
 beforeEach(() => {
   localStorage.clear();
   resetConsent();
   document.querySelectorAll(`script[src^="${ADSENSE_SRC}"]`).forEach((el) => el.remove());
 });
-afterEach(cleanup);
+afterEach(() => { cleanup(); AD_CONFIG.googleCmp = shippedCmp; });
 
-describe('AdBanner + ConsentBanner: no Google request before consent', () => {
+describe('in-app banner mode (googleCmp off): no Google request before consent', () => {
+  beforeEach(() => { AD_CONFIG.googleCmp = false; });
   it('never loads the AdSense script before the visitor decides', () => {
     render(<AdBanner slot="top" />);
     expect(document.querySelector(`script[src^="${ADSENSE_SRC}"]`)).toBeNull();
@@ -56,5 +58,36 @@ describe('AdBanner + ConsentBanner: no Google request before consent', () => {
   it('every bundled default sponsor is flagged as a dev-only placeholder (AdBanner hides these under import.meta.env.PROD - see AdBanner.tsx)', () => {
     expect(AD_CONFIG.sponsors.length).toBeGreaterThan(0);
     for (const sp of AD_CONFIG.sponsors) expect(sp.placeholder).toBe(true);
+  });
+});
+
+describe("Google's consent tool mode (googleCmp on, as shipped)", () => {
+  beforeEach(() => { AD_CONFIG.googleCmp = true; });
+
+  it('ships in this mode so visitors outside consent regions get ads without an opt-in click', () => {
+    expect(shippedCmp).toBe(true);
+  });
+
+  it('shows no in-app banner and requests ads right away', () => {
+    render(<>
+      <AdBanner slot="top" />
+      <ConsentBanner />
+    </>);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(document.querySelector(`script[src^="${ADSENSE_SRC}"]`)).not.toBeNull();
+    expect(document.querySelector('ins.adsbygoogle')).not.toBeNull();
+  });
+
+  it('still makes no ad request when the browser sends Global Privacy Control', () => {
+    Object.defineProperty(navigator, 'globalPrivacyControl', { value: true, configurable: true });
+    resetConsent();
+    render(<>
+      <AdBanner slot="top" />
+      <ConsentBanner />
+    </>);
+    expect(document.querySelector('ins.adsbygoogle')).toBeNull();
+    expect(document.querySelector(`script[src^="${ADSENSE_SRC}"]`)).toBeNull();
+    Object.defineProperty(navigator, 'globalPrivacyControl', { value: undefined, configurable: true });
+    resetConsent();
   });
 });

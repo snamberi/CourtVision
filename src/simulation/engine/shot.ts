@@ -86,6 +86,7 @@ const CONTEST_DELTA: Record<ShotCategory, Record<ContestLevel, number>> = {
 // The pivot sits near the average *effective* (post-fatigue) ability players actually shoot with,
 // so a league of average shooters lands near the base rates above rather than systematically under them.
 const ABILITY_SLOPE = 0.006;
+export const RIM_FINISH_CALIBRATION = 0.06;
 const ABILITY_PIVOT = 58;
 
 function shotTypeWeightMultiplier(type: ShotType, mods: ShotTypeWeightMods): number {
@@ -196,6 +197,10 @@ export function computeMakeProbability(
     p *= mods.offensiveEfficiency;
     p /= mods.defensiveEfficiency;
   }
+
+  // Blocks are rolled separately and are now at NBA levels (about 5 a game); this keeps finishing at the rim near
+  // the NBA's ~65% so overall field-goal percentage stays around 47%.
+  if (category === 'rim') p -= RIM_FINISH_CALIBRATION;
 
   const floor = category === 'rim' ? 0.12 : 0.06;
   return Math.max(floor, Math.min(0.98, p));

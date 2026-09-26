@@ -1,7 +1,7 @@
 {
   "title": "Privacy Policy",
   "product": "CourtVision",
-  "lastUpdated": "September 25, 2026",
+  "lastUpdated": "September 26, 2026",
   "contactEmail": "",
   "intro": [
     "This Privacy Policy explains what information CourtVision (\"CourtVision\", \"we\", \"us\", \"our\") handles when you use the CourtVision basketball simulator, both the web version and the downloadable Windows edition. We wrote it to be read, so it is plain and specific about what the app actually does.",
@@ -125,7 +125,7 @@
       "blocks": [
         {
           "type": "p",
-          "text": "The CourtVision **web version** displays advertising banners to help keep the game free, and only after you make a choice in the cookie banner described in Section 6 - Google's advertising script is not loaded until you allow it (or, in regions where consent isn't legally required, until you accept or the banner times out per your choice). Ads can come from two sources."
+          "text": "The CourtVision **web version** displays advertising banners to help keep the game free. In the European Economic Area, the United Kingdom, and Switzerland, Google's certified consent message asks for your choice first, and Google does not serve ads there until you have answered. Elsewhere, ads load with the page. If your browser sends a Global Privacy Control signal, CourtVision does not request ads at all. Ads can come from two sources."
         },
         {
           "type": "p",
@@ -179,7 +179,7 @@
       "blocks": [
         {
           "type": "p",
-          "text": "This section explains every cookie-like technology CourtVision uses, and how the consent banner controls them."
+          "text": "This section explains every cookie-like technology CourtVision uses, and how consent choices control them."
         },
         {
           "type": "table",
@@ -206,15 +206,15 @@
         },
         {
           "type": "p",
-          "text": "**The banner.** The first time you open the web version, a banner asks you to Accept all, Reject non-essential, or Manage preferences. Nothing from Google loads before you choose. If you choose Reject, or close the banner without choosing, advertising stays off. Cookie-free web traffic statistics are described in Section 7. You can change your mind at any time using the “Cookie Settings” link in the footer of every page, which reopens the same choices."
+          "text": "**Consent choices.** Visitors in the EEA, UK, and Switzerland see Google's consent message (Google's certified consent management platform, configured in Google AdSense's Privacy & messaging settings) the first time they open the web version; it offers to accept, refuse, or manage the purposes and vendors involved. Visitors elsewhere are not asked, and ads load with the page. You can review or change your choice at any time using the “Cookie Settings” link in the footer of every page, which reopens Google's consent choices where they apply. Cookie-free web traffic statistics are described in Section 7."
         },
         {
           "type": "p",
-          "text": "**What “Allow” does.** Turning Advertising on loads Google AdSense's script for the rest of your visit and lets ad slots request and show ads, which may involve the cookies and identifiers described in Section 5. Turning it off removes the script and any ad slots already on the page, and stops new requests to Google. Cookies Google already placed before you turned it off are not retroactively deleted by this control; clear them in your browser, or use the Google opt-outs in Section 5, if you want them gone immediately."
+          "text": "**Turning advertising off.** Refuse in Google's consent message (where it applies), use the Google opt-outs in Section 5, or turn on Global Privacy Control in your browser: with Global Privacy Control on, CourtVision does not request ads. Cookies Google already placed are not retroactively deleted by these controls; clear them in your browser if you want them gone immediately. The Strictly necessary storage described in Section 4 is never affected."
         },
         {
           "type": "p",
-          "text": "**Global Privacy Control.** If your browser or an extension sends a Global Privacy Control (GPC) signal, and you haven't already made a choice, we treat that as “reject non-essential” automatically and the banner does not appear. You can still open “Cookie Settings” yourself and choose Accept if you want ads."
+          "text": "**Global Privacy Control.** If your browser or an extension sends a Global Privacy Control (GPC) signal, CourtVision treats it as an opt-out: no ad requests are made to Google while the signal is on."
         },
         {
           "type": "p",
@@ -222,7 +222,7 @@
         },
         {
           "type": "p",
-          "text": "**Certified consent tool.** In regions where the law requires it, ads on CourtVision are gated through a consent mechanism before Google will serve them: either the in-app banner above, or - where CourtVision is configured to use it - Google's own certified consent message (managed in Google AdSense's Privacy & messaging settings), which then replaces the in-app banner so you are only asked once. Either way, Google does not serve personalized or non-personalized ads to visitors in the EEA, UK, or Switzerland until consent has been given through that mechanism."
+          "text": "**Certified consent tool.** CourtVision uses Google's own certified consent message, managed in Google AdSense's Privacy & messaging settings, in place of an in-app banner, so you are only asked once. Google does not serve personalized or non-personalized ads to visitors in the EEA, UK, or Switzerland until consent has been given through that message."
         },
         {
           "type": "p",

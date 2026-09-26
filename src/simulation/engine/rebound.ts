@@ -25,7 +25,8 @@ export function resolveRebound(
     const heightBonus = Math.max(0, (c.attributes.physical.heightInches - 78)) * 0.4;
     const vertical = c.attributes.physical.vertical * 0.05;
     const threeBonus = missWasThree && !c.isOffense ? 2 : 0; // long rebounds skew slightly toward defense
-    let w = 1 + reb * 0.6 + heightBonus + vertical + threeBonus;
+    // Squared so strong rebounders (usually bigs) clearly out-rebound guards, as in real box scores.
+    let w = 1 + Math.pow(Math.max(0, reb), 2) / 70 + heightBonus + vertical + threeBonus;
     w *= c.flags.reboundMultiplier;
     // Defenders start between their man and the rim (box-out position): real offenses win only ~1 in 4 misses.
     if (!c.isOffense) w *= DEFENSIVE_POSITION_EDGE;

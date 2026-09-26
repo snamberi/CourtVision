@@ -30,19 +30,24 @@ export function computeBlockProbability(
   rimProtectionMult = 1, // League Rules: Defense "Rim Protection" - scales specifically the rimProtection attribute's contribution
 ): number {
   if (flags.unblockableShot) return 0;
-  if (!RIM_TYPES.includes(shotType) && shotType !== 'postShot' && shotType !== 'hook') return 0.01;
-
   if (flags.perfectBlocker) return 1;
 
   const block = defense.defense.block;
   const blockIQ = defense.defense.blockIQ;
   const timing = defense.defense.blockTiming;
-  const rimProtection = defense.defense.rimProtection;
+  const rimProtection = defense.defense.rimProtection * rimProtectionMult;
   const vertical = defense.physical.vertical * (flags.verticalMultiplier ?? 1);
+  // 0-100 shot-blocking skill; the curve keeps ordinary defenders modest and lets true rim protectors stand out.
+  const skill = Math.max(0, Math.min(100, block * 0.35 + rimProtection * 0.2 + blockIQ * 0.15 + timing * 0.15 + vertical * 0.15));
+  const talent = Math.pow(skill / 100, 1.8);
 
-  let p = 0.02 + (block * 0.0025 + blockIQ * 0.0012 + timing * 0.0012 + rimProtection * 0.0015 * rimProtectionMult + vertical * 0.0008);
-  p -= shooterFinishing * 0.0012;
+  // Jump shots are rarely blocked (NBA: about 1-2% of jumpers).
+  if (!RIM_TYPES.includes(shotType) && shotType !== 'postShot' && shotType !== 'hook') {
+    return Math.max(0, Math.min(0.06, (0.004 + talent * 0.02) * blockFrequencyMult));
+  }
+  // Around the rim: about 8% for an average defender, 15-18% for an elite rim protector (NBA teams block about
+  // 5 shots a game). Good finishers get their shot off more often.
+  let p = 0.02 + talent * 0.215 - (shooterFinishing - 50) * 0.0007;
   p *= blockFrequencyMult;
-
-  return Math.max(0, Math.min(0.5, p));
+  return Math.max(0.005, Math.min(0.35, p));
 }

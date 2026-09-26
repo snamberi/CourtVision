@@ -51,7 +51,9 @@ export const AD_CONFIG: AdConfig = {
   enabled: true,
   adsenseClient: 'ca-pub-4282337217431581',
   adsenseSlots: { top: '2123231841', inline: '3516204563', menu: '7672353250' },
-  googleCmp: false,
+  // Google's consent message handles the EEA, UK and Switzerland; everyone else sees ads without an opt-in click.
+  // Publish the message in AdSense > Privacy & messaging (European regulations, and US state regulations).
+  googleCmp: true,
   rotateEveryMs: 12_000,
   sponsors: [
     {

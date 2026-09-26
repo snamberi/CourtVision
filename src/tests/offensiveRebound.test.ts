@@ -34,8 +34,11 @@ describe('offensive rebounds keep possession', () => {
     for (const g of games) {
       for (const [box, teamId] of [[g.homeBox, g.homeTeamId], [g.awayBox, g.awayTeamId]] as const) {
         const oreb = Object.values(box.players).reduce((n, l) => n + l.oreb, 0);
-        const boards = g.possessionLog.filter(p => p.offenseTeamId === teamId && p.debug?.offensiveRebound === true).length;
-        expect(oreb).toBe(boards);
+        const offensiveBoards = g.possessionLog.filter(p => p.offenseTeamId === teamId && p.debug?.offensiveRebound === true);
+        // Team rebounds (out of bounds, tipped around) keep possession but credit no player, as in official stats.
+        const credited = offensiveBoards.filter(p => !p.events.includes('Team rebound')).length;
+        expect(oreb).toBe(credited);
+        expect(credited).toBeGreaterThanOrEqual(Math.floor(offensiveBoards.length * 0.7));
       }
     }
     const all = games.flatMap(g => [g.homeBox, g.awayBox]).flatMap(b => Object.values(b.players));

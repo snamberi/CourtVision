@@ -2,7 +2,7 @@ import type { Attributes, PlayerId, PositionSuitability, RoleTendencies, Passing
 import type { AggregatedFlags } from './effective';
 import type { RNG } from './rng';
 import { chooseBallHandler, computeBlockProbability, type BallHandlerCandidate } from './ballHandler';
-import { chooseShotType, rollContestLevel, resolveShot, resolveFreeThrow, foulDrawProbability, andOneProbability, THREE_POINT_TYPES, type ShotType } from './shot';
+import { chooseShotType, rollContestLevel, resolveShot, resolveFreeThrow, foulDrawProbability, andOneProbability, THREE_POINT_TYPES, RIM_TYPES, type ShotType } from './shot';
 import { resolveTurnover, type TurnoverContext } from './turnover';
 import { resolveRebound, type RebounderCandidate } from './rebound';
 import type { PlayerStatLine } from '../boxscore';
@@ -147,7 +147,9 @@ export function simulatePossession(input: PossessionInput): PossessionResult {
     events.push(`Turnover: ${tov.type}`);
     addDelta(statDeltas, bh.playerId, { tov: 1, [`turnoverBreakdown.${tov.type}` as any]: 1 });
     if (tov.causedBySteal) {
-      const stealer = tov.stealerCredit === 'ON_BALL' ? primaryDefender : defense[rng.nextInt(defense.length)];
+      // Passing-lane steals go mostly to the defenders who read the lanes best.
+      const stealer = tov.stealerCredit === 'ON_BALL' ? primaryDefender
+        : defense[rng.weightedPick(defense.map(d => 4 + Math.pow(Math.max(1, d.attributes.defense.passingLaneSteal + d.attributes.defense.stealIQ) / 20, 2)))];
       addDelta(statDeltas, stealer.playerId, { stl: 1 });
       events.push(`${stealer.playerId} STEAL`);
     }
@@ -182,15 +184,19 @@ export function simulatePossession(input: PossessionInput): PossessionResult {
     mods.shot.contestEffectiveness, mods.shot.closeoutEffectiveness, mods.shot.heavilyContestedShotFrequency,
   );
 
-  // Block check happens before the make/miss roll for rim-area shots.
+  // Block check happens before the make/miss roll. At the rim, the defense's best shot-blocker often rotates over
+  // to challenge (weak-side help), which is why real blocks concentrate on centers.
+  const isRimShot = RIM_TYPES.includes(shotType) || shotType === 'postShot' || shotType === 'hook';
+  const helper = isRimShot ? defense.reduce((best, d) => blockSkill(d) > blockSkill(best) ? d : best, defense[0]) : shooterDefender;
+  const blocker = helper && helper !== shooterDefender && rng.chance(HELP_BLOCK_SHARE) ? helper : shooterDefender;
   const blockProb = computeBlockProbability(
-    shooterDefender.attributes, shotType, shooter.attributes.offense.finishing, shooterDefender.flags,
+    blocker.attributes, shotType, shooter.attributes.offense.finishing, blocker.flags,
     mods.blockFrequency * mods.blockSuccess, mods.rimProtection,
   );
-  addDelta(statDeltas, shooterDefender.playerId, { blkAtt: 1 });
+  addDelta(statDeltas, blocker.playerId, { blkAtt: 1 });
   if (rng.chance(blockProb)) {
-    events.push(`${shooterDefender.playerId} BLOCK`);
-    addDelta(statDeltas, shooterDefender.playerId, { blk: 1 });
+    events.push(`${blocker.playerId} BLOCK`);
+    addDelta(statDeltas, blocker.playerId, { blk: 1 });
     addDelta(statDeltas, shooter.playerId, {
       fga: 1,
       tpa: isThree ? 1 : 0,
@@ -198,10 +204,10 @@ export function simulatePossession(input: PossessionInput): PossessionResult {
       possessionsUsed: 1,
       ba: 1,
     });
-    const reboundWinner = resolveReboundStep(offense, defense, isThree, rng, statDeltas, mods);
+    const { winnerId: reboundWinner, credited } = resolveReboundStep(offense, defense, isThree, rng, statDeltas, mods);
     const offensiveRebound = offense.some(p => p.playerId === reboundWinner);
-    events.push(`Rebound: ${reboundWinner}`);
-    if (offensiveRebound) events.push(`Offensive rebound: ${reboundWinner} keeps it alive`);
+    events.push(credited ? `Rebound: ${reboundWinner}` : 'Team rebound');
+    if (offensiveRebound) events.push(`Offensive rebound: ${credited ? reboundWinner : 'the offense'} keeps it alive`);
     return { ballHandlerId: bh.playerId, events, result: 'MISS', statDeltas, pointsScored: 0, debug: { blockProbability: blockProb, shotType, offensiveRebound } };
   }
 
@@ -276,12 +282,22 @@ export function simulatePossession(input: PossessionInput): PossessionResult {
   }
 
   events.push(`${shooter.playerId} ${shotType} MISS`);
-  const reboundWinner = resolveReboundStep(offense, defense, isThree, rng, statDeltas, mods);
+  const { winnerId: reboundWinner, credited } = resolveReboundStep(offense, defense, isThree, rng, statDeltas, mods);
   const offensiveRebound = offense.some(p => p.playerId === reboundWinner);
-  events.push(`Rebound: ${reboundWinner}`);
-  if (offensiveRebound) events.push(`Offensive rebound: ${reboundWinner} keeps it alive`);
+  events.push(credited ? `Rebound: ${reboundWinner}` : 'Team rebound');
+  if (offensiveRebound) events.push(`Offensive rebound: ${credited ? reboundWinner : 'the offense'} keeps it alive`);
   return { ballHandlerId: bh.playerId, events, result: 'MISS', statDeltas, pointsScored: 0, debug: { makeProbability: shotResult.probability, shotType, contest, offensiveRebound } };
 }
+
+/** How often a rim attempt is challenged by the best shot-blocker on the floor instead of the shooter's own man. */
+export const HELP_BLOCK_SHARE = 0.38;
+function blockSkill(p: OnCourtPlayer): number {
+  const d = p.attributes.defense;
+  return d.block * 0.35 + d.rimProtection * 0.2 + d.blockIQ * 0.15 + d.blockTiming * 0.15 + p.attributes.physical.vertical * 0.15;
+}
+
+/** Share of missed shots that end as uncredited team rebounds (NBA: roughly one in ten). */
+export const TEAM_REBOUND_SHARE = 0.07;
 
 function resolveReboundStep(
   offense: OnCourtPlayer[],
@@ -290,13 +306,15 @@ function resolveReboundStep(
   rng: RNG,
   statDeltas: Record<PlayerId, Partial<PlayerStatLine>>,
   mods: RuleMods,
-): PlayerId {
+): { winnerId: PlayerId; credited: boolean } {
   const candidates: RebounderCandidate[] = [
     ...offense.map((p) => ({ playerId: p.playerId, attributes: p.attributes, flags: p.flags, isOffense: true })),
     ...defense.map((p) => ({ playerId: p.playerId, attributes: p.attributes, flags: p.flags, isOffense: false })),
   ];
   const winnerId = resolveRebound(candidates, wasThree, rng, mods.reboundOffense, mods.reboundDefense);
   const winnerIsOffense = offense.some((p) => p.playerId === winnerId);
-  addDelta(statDeltas, winnerId, winnerIsOffense ? { oreb: 1 } : { dreb: 1 });
-  return winnerId;
+  // Some misses go out of bounds or are tipped around: official stats credit those to the team, not a player.
+  const credited = !rng.chance(TEAM_REBOUND_SHARE);
+  if (credited) addDelta(statDeltas, winnerId, winnerIsOffense ? { oreb: 1 } : { dreb: 1 });
+  return { winnerId, credited };
 }

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AD_CONFIG, type AdSlot, type Sponsor } from '../ads/adConfig';
-import { IS_DESKTOP_BUILD } from '../appMode';
 import { loadAdsenseScript } from '../ads/adsense';
 import { useConsent } from '../consent/consent';
+import { advertisingPermitted } from '../ads/adPolicy';
 import { mayRetryAd, noteAdRequest, noteAdRetry } from '../ads/adRetry';
 
 /** How long to wait for Google to mark a unit filled before trusting a rendered ad frame instead. */
@@ -88,7 +88,7 @@ export function AdBanner({ slot, refreshKey }: { slot: AdSlot; refreshKey?: stri
 
   const adsenseSlotId = AD_CONFIG.adsenseSlots[slot];
   // Google ads load only with the visitor's permission - or, when Google's own consent tool is in use, once that tool allows it.
-  const adsAllowed = AD_CONFIG.enabled && !IS_DESKTOP_BUILD && (AD_CONFIG.googleCmp || consent.advertisingAllowed);
+  const adsAllowed = advertisingPermitted(consent);
   const useAdsense = !unavailable && adsAllowed && !!AD_CONFIG.adsenseClient && !!adsenseSlotId;
 
   // After an unfilled answer, the next navigation may ask once more (rate-limited, see ads/adRetry.ts).
