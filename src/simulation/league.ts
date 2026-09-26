@@ -351,8 +351,33 @@ export function generateRoundRobinSchedule(teamIds: string[], gamesPerMatchup = 
  * extra games per team — no team ends up short or over.
  */
 export function generateSeasonSchedule(teamIds: string[], gamesPerTeam: number): ScheduledGame[] {
+  return balanceHomeAway(teamIds.length % 2 !== 0 ? oddTeamSeasonSchedule(teamIds, gamesPerTeam) : evenTeamSeasonSchedule(teamIds, gamesPerTeam));
+}
+
+/**
+ * Hands out home court so every team gets about half its games at home (the circle method alone gave some teams 53
+ * of 82). The second, fourth… meeting of two teams swaps venue from the one before; every other meeting goes to the
+ * team with fewer home games so far.
+ */
+function balanceHomeAway(games: ScheduledGame[]): ScheduledGame[] {
+  const balance = new Map<string, number>(); // home games minus away games so far
+  const meetings = new Map<string, { count: number; lastHome: string }>();
+  return games.map((g) => {
+    const a = g.homeTeamId, b = g.awayTeamId;
+    const key = a < b ? `${a}|${b}` : `${b}|${a}`;
+    const met = meetings.get(key);
+    const home = met && met.count % 2 === 1 ? (met.lastHome === a ? b : a)
+      : (balance.get(b) ?? 0) < (balance.get(a) ?? 0) ? b : a;
+    const away = home === a ? b : a;
+    meetings.set(key, { count: (met?.count ?? 0) + 1, lastHome: home });
+    balance.set(home, (balance.get(home) ?? 0) + 1);
+    balance.set(away, (balance.get(away) ?? 0) - 1);
+    return home === a ? g : { ...g, homeTeamId: home, awayTeamId: away };
+  });
+}
+
+function evenTeamSeasonSchedule(teamIds: string[], gamesPerTeam: number): ScheduledGame[] {
   const ids = [...teamIds];
-  if (ids.length % 2 !== 0) ids.push('__BYE__');
   const n = ids.length;
   const roundsPerCycle = n - 1;
   const fullCycles = Math.floor(gamesPerTeam / roundsPerCycle);
@@ -383,6 +408,44 @@ export function generateSeasonSchedule(teamIds: string[], gamesPerTeam: number):
     }
   }
   return games;
+}
+
+/**
+ * Odd team counts: one team sits out each round, so a round-robin cycle gives every team N−1 games, and a partial
+ * cycle would leave the teams whose rest day fell inside it a game short. Full cycles come first; the remaining games
+ * pair each team with its nearest neighbours around a circle (every team gets the same number, half at home), packed
+ * into game days where no team plays twice. When the team count and the game count are both odd, an even total is
+ * impossible and exactly one team plays one game fewer.
+ */
+function oddTeamSeasonSchedule(teamIds: string[], gamesPerTeam: number): ScheduledGame[] {
+  const n = teamIds.length;
+  if (n < 2 || gamesPerTeam <= 0) return [];
+  const fullCycles = Math.floor(gamesPerTeam / (n - 1));
+  const rest = gamesPerTeam - fullCycles * (n - 1);
+  const games = fullCycles ? generateRoundRobinSchedule(teamIds, fullCycles) : [];
+  const pairs: [string, string][] = [];
+  for (let d = 1; d <= Math.floor(rest / 2); d++) {
+    for (let i = 0; i < n; i++) pairs.push([teamIds[i], teamIds[(i + d) % n]]);
+  }
+  if (rest % 2 === 1) {
+    // Every other edge of the cycle 0 → d → 2d → … (d = (n−1)/2 is coprime with n and unused above): one more game for all but one team.
+    const d = (n - 1) / 2;
+    for (let j = 0; j + 1 < n; j += 2) {
+      const a = teamIds[(j * d) % n], b = teamIds[((j + 1) * d) % n];
+      pairs.push(j % 4 === 0 ? [a, b] : [b, a]);
+    }
+  }
+  const start = games.length ? games[games.length - 1].round + 1 : 0;
+  const busy: Set<string>[] = [];
+  const extra: ScheduledGame[] = [];
+  for (const [homeTeamId, awayTeamId] of pairs) {
+    let r = 0;
+    while (busy[r]?.has(homeTeamId) || busy[r]?.has(awayTeamId)) r++;
+    (busy[r] ??= new Set()).add(homeTeamId).add(awayTeamId);
+    extra.push({ id: '', round: start + r, homeTeamId, awayTeamId, played: false });
+  }
+  extra.sort((a, b) => a.round - b.round);
+  return [...games, ...extra].map((g, i) => ({ ...g, id: `s${i}` }));
 }
 
 export interface StandingsRow {
