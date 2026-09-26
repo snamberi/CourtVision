@@ -177,15 +177,15 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
           {historical ? <div className="difficulty-picker">
             <h4>Starting Season</h4>
             <select className="year-input" value={historyYear} onChange={(e) => setHistoryYear(e.target.value)} aria-label="Starting season">
-              {HISTORY_START_YEARS.map((y) => <option key={y} value={y}>{y}–{String(y + 1).slice(2)}</option>)}
+              {HISTORY_START_YEARS.map((y) => <option key={y} value={y}>{y + 1} ({y}–{String(y + 1).slice(2)})</option>)}
             </select>
             <p className="hint-text">Starting {historyYear}–{String(Number(historyYear) + 1).slice(2)} loads every completed season from 1946–47 through {Number(historyYear) - 1}–{String(Number(historyYear)).slice(2)}. The new season starts unplayed; from then on your league writes its own history.</p>
           </div> : <div className="difficulty-picker">
             <h4>Starting Season</h4>
             <select className="year-input" value={year} onChange={(e) => setYear(e.target.value)}>
-              {yearOptions.map((y) => <option key={y} value={y}>{y}</option>)}
+              {yearOptions.map((y) => <option key={y} value={y}>{y + 1}</option>)}
             </select>
-            <p className="hint-text">Pick any season from the NBA's founding ({yearOptions[yearOptions.length - 1]}) through today.</p>
+            <p className="hint-text">Seasons are named for the year they end. Pick any season from the NBA's founding ({yearOptions[yearOptions.length - 1] + 1}) through today.</p>
           </div>}
           {historical && <div className="difficulty-picker">
             <h4>Real Player Development</h4>

@@ -26,6 +26,7 @@ import {
   rollFutureDraftPicksForward, FUTURE_PICK_WINDOW_YEARS, priorTeamId, type GMLeagueExtras, type Contract,
 } from './gm';
 import { appendHistoryEvent } from './playerHistory';
+import { resignVerdict } from './freeAgentDecision';
 import { collectPlayerIds } from './playerIds';
 import { computeSeasonAwards, type SeasonAwards, type SeasonAwardsOptions, type AwardWinner } from './awards';
 import type { LeagueRulesSettings } from './leagueRules';
@@ -120,6 +121,25 @@ function shouldRetire(next: PlayerSeason, rng: RNG, rules?: LeagueRulesSettings)
 }
 
 /**
+ * An AI team re-signs an expiring player it builds around: one of its best five, or anyone 70+, while he is still
+ * worth a long look (not old and fading). The player has to be willing (unhappy players and grudges refuse, see
+ * resignVerdict) and gets his asking price; the hard cap still applies. Stars stay far more often than role players.
+ */
+function aiResign(team: LeagueTeam, player: PlayerSeason, rank: number, extras: GMLeagueExtras, contracts: Record<string, Contract>, rng: RNG): Contract | null {
+  const overall = calculateOverall(player);
+  const core = rank < 5 || overall >= 70;
+  if (!core || (player.age >= 34 && overall < 72) || player.age >= 37) return null;
+  const verdict = resignVerdict(extras, player, team.teamId);
+  if (verdict.refuses) return null;
+  const chance = (rank < 2 || overall >= 75 ? 0.9 : rank < 5 ? 0.7 : 0.6) * (0.55 + verdict.interest / 160);
+  if (rng.next() >= chance) return null;
+  const payroll = team.seasons.reduce((n, s) => n + (s.playerId === player.playerId ? 0 : contracts[s.playerId]?.annualSalary ?? 0), 0);
+  if (extras.capSettings.hardCapEnabled && payroll + verdict.required > extras.capSettings.salaryCap) return null;
+  const years = Math.max(1, Math.min(5, (player.age <= 26 ? 4 : player.age <= 29 ? 3 : player.age <= 32 ? 2 : 1) + (rng.next() < 0.3 ? 1 : 0)));
+  return { playerId: player.playerId, teamId: team.teamId, annualSalary: verdict.required, yearsRemaining: years, playerOption: false, teamOption: false };
+}
+
+/**
  * Decides what happens to a contract that just hit 0 years remaining:
  *  - a team option is exercised (1-year extension at the same salary) unless the
  *    player has become poor value (low overall, or old and mediocre) - in which
@@ -201,10 +221,13 @@ export function beginNewSeasonRoster(
   const freeAgentsFromExpiry: PlayerSeason[] = [];
   const newlyRetired: RetiredPlayerRecord[] = [];
   const contracts = { ...extras.contracts };
+  const userTeamId = league.frontOffice?.teamId ?? league.coachingUserTeamId ?? null;
+  const resignedIds: string[] = [];
 
   const teams: LeagueTeam[] = league.teams.map((team) => {
     const keptSeasons: PlayerSeason[] = [];
     const fullOverallsBeforeAging: number[] = [];
+    const rank = new Map([...team.seasons].sort((a, b) => calculateOverall(b) - calculateOverall(a)).map((s, i) => [s.playerId, i] as const));
 
     for (const season of team.seasons) {
       const overallBeforeAging = calculateOverall(season);
@@ -261,6 +284,14 @@ export function beginNewSeasonRoster(
             contracts[withHistory.playerId] = resolution.extended;
             retainedViaOptionIds.push(withHistory.playerId);
             keptSeasons.push(withHistory);
+            continue;
+          }
+          // AI teams keep the players they build around (your own team decides in the re-sign phase).
+          const extension = team.teamId !== userTeamId ? aiResign(team, withHistory, rank.get(season.playerId) ?? 99, extras, contracts, rng) : null;
+          if (extension) {
+            contracts[withHistory.playerId] = extension;
+            resignedIds.push(withHistory.playerId);
+            keptSeasons.push(appendHistoryEvent(withHistory, 'resigned', `Re-signed with ${team.name}: ${extension.yearsRemaining} year${extension.yearsRemaining === 1 ? '' : 's'}, $${(extension.annualSalary / 1e6).toFixed(1)}M a year`, team.teamId));
             continue;
           }
           expiredToFreeAgencyIds.push(withHistory.playerId);

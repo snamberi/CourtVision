@@ -1,3 +1,4 @@
+import { formatSeasonYear } from './calendar';
 import { withGrudge } from './personality';
 import { recordRivalryTrade } from './rivalry';
 import { closeStint } from './stints';
@@ -777,7 +778,7 @@ export function draftProspect(
       draftTeamId: teamId,
     },
     'drafted',
-    `Drafted by ${teamName} — Round ${round}, Pick ${pickNumber + 1} (${league.season})`,
+    `Drafted by ${teamName} — Round ${round}, Pick ${pickNumber + 1} (${formatSeasonYear(league.season)})`,
     teamId,
   );
   const teams = league.teams.map((t) => (t.teamId === teamId ? { ...t, seasons: [...t.seasons, drafted] } : t));

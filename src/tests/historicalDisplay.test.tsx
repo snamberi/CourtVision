@@ -72,7 +72,7 @@ describe('historical data on screen', () => {
     const votes = awardVote(rec.fullAwards!.ballots!.mvp!, '2015|mvp');
     expect(votes[0]).toMatchObject({ playerId: 'Stephen Curry', share: 1, first: 131, real: true });
     const { container } = render(<AlmanacPage league={l2016.league} extras={l2016.extras} awardSettings={DEFAULT_AWARD_SETTINGS} onSelectPlayer={() => {}} />);
-    expect(container.textContent).toMatch(/2015 Season/);
+    expect(container.textContent).toMatch(/2016 Season/) // seasons are named for the year they end;
     expect(container.textContent).toMatch(/100\.0% share · 131 first-place \(real voting\)/);
     expect(container.textContent).not.toMatch(/NaN/);
   });
@@ -88,7 +88,7 @@ describe('historical data on screen', () => {
     const text = container.textContent ?? '';
     expect(text).not.toMatch(/NaN/);
     expect(text).not.toMatch(/SuperSonics|Thunder/);
-    expect(text).toMatch(/1978 Seattle[^—]*Champion/);
+    expect(text).toMatch(/1979 Seattle[^—]*Champion/);
     expect(text).not.toMatch(/1966/); // the franchise began in 1967-68: no empty rows before it
     expect(container.querySelector('.history-summary')?.textContent).toMatch(/TITLES1/);
   });

@@ -25,13 +25,15 @@ export function seasonStartDate(seasonLabel: string | undefined): string {
 }
 
 /**
- * Normalizes any season label to the single-year display format the app now uses everywhere
- * (e.g. "2026" instead of "2026-27"). Accepts both the current plain-year labels and the older
+ * Normalizes any season label to the single-year display format the app uses everywhere: the year the season
+ * ends ("2027" for the season stored as "2026" or "2026-27"). Accepts both the current plain-year labels and the older
  * "YYYY-YY" range labels (from earlier saves or imports) so old data still displays cleanly.
  */
 export function formatSeasonYear(seasonLabel: string | undefined): string {
+  // A season is named for the year it ends, like the NBA: the season that tips off in October 2015 is "2016".
+  // Stored labels keep the starting year ("2015" or "2015-16"); only the display changes.
   const match = (seasonLabel ?? '').match(/^(\d{4})/);
-  return match ? match[1] : (seasonLabel ?? '—');
+  return match ? String(parseInt(match[1], 10) + 1) : (seasonLabel ?? '—');
 }
 
 /** The real NBA's first season (as the Basketball Association of America) through the current calendar year — the full valid range for a "Starting Season" picker. */

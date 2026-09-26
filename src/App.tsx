@@ -61,6 +61,7 @@ import { rivalryBadge } from './simulation/rivalry';
 import type { NbaHistory } from './history/nbaHistoryData';
 import { HistoricalSettingsCard } from './components/HistoricalSettingsCard';
 import { migrateHistoricalLeague } from './history/migrateHistorical';
+import { stripNameYears } from './history/nameYears';
 import { DEFAULT_CAP_SETTINGS, DEFAULT_TRADE_SETTINGS, DEFAULT_GM_FLAGS, generateDraftClass, pickDraftClassSize, buildTwoRoundDraftOrder, generateFutureDraftPicks, isTradeDeadlinePassed, simulateUntilTradeDeadline, waiveToFreeAgency, toggleTradeBlock, type GMLeagueExtras, type Contract, type TradeDifficulty } from './simulation/gm';
 import { RNG } from './simulation/engine/rng';
 import { beginNewSeasonRoster, finalizeNewSeasonSchedule, type SeasonTransitionSummary } from './simulation/seasonTransition';
@@ -321,7 +322,9 @@ function App() {
   const enterApp = (rawLeague: League, rawExtras: GMLeagueExtras, teamId: string | null, saveName?: string, existingSaveId?: string) => {
     // Heal any universe that has several players sharing one id (older builds could generate them), so no one is lost.
     // Leagues made with the first NBA history data: convert ratings to Court Vision's scale and team names to city names.
-    const converted = migrateHistoricalLeague(rawLeague, rawExtras);
+    const migrated = migrateHistoricalLeague(rawLeague, rawExtras);
+    // Real players who share a name: "Patrick Ewing II" rather than "Patrick Ewing (2011)" (older historical saves).
+    const converted = stripNameYears(migrated.league, migrated.extras);
     const repaired = repairDuplicatePlayerIds(converted.league, converted.extras);
     const { repairs } = repaired;
     const rostered = normalizeRosterRules(repaired.league, repaired.extras);
@@ -433,7 +436,8 @@ function App() {
   const handleImportFile = async (file: File) => {
     try {
       const snapshot = await readUniverseFromFile(file);
-      const converted = migrateHistoricalLeague(snapshot.league, snapshot.extras);
+      const migrated = migrateHistoricalLeague(snapshot.league, snapshot.extras);
+      const converted = stripNameYears(migrated.league, migrated.extras);
       const fixed = repairDuplicatePlayerIds(converted.league, converted.extras);
       jobs.resetAll();
       const normalized = normalizeRosterRules(fixed.league, fixed.extras);
@@ -1149,7 +1153,7 @@ function App() {
       {importMessage && <div className="import-toast">{importMessage} <button onClick={() => setImportMessage(null)} aria-label="Dismiss">×</button></div>}
       {seasonSummary && (
         <div className="import-toast">
-          {seasonSummary.previousSeason} → {seasonSummary.newSeason}: {seasonSummary.retiredPlayerIds.length} retired,{' '}
+          {formatSeasonYear(seasonSummary.previousSeason)} → {formatSeasonYear(seasonSummary.newSeason)}: {seasonSummary.retiredPlayerIds.length} retired,{' '}
           {seasonSummary.expiredToFreeAgencyIds.length} hit free agency, {seasonSummary.newDraftClassSize} new draft prospects.
           {seasonSummary.seasonAwards.mvp && <> MVP: {seasonSummary.seasonAwards.mvp.playerId}.</>}
           {seasonSummary.pickProtectionsTriggered.length > 0 && (

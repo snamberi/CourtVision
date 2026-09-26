@@ -1,4 +1,5 @@
 import { gunzipSync, strFromU8 } from 'fflate';
+import { yearFreeNames } from './nameYears';
 
 /* Built-in NBA history reference data (public/data/nba-history.v1.bin, gzipped JSON, produced by
  * scripts/nba-history/build_nba_history.py). Loaded lazily — only when a historical league is created or the
@@ -87,6 +88,8 @@ export function parseNbaHistory(bytes: Uint8Array): NbaHistory {
     return { idx, id, displayName, name, aliases, pos, heightIn, weightLb, birthDate, college, firstSeason, lastSeason, debutDate, hallOfFame: hof === 1,
       draft: draft ? { year: draft[0], round: draft[1], pick: draft[2], team: draft[3] } : null };
   });
+  // Shared names are told apart with "Jr." / "II" instead of a debut year in the name (see nameYears.ts).
+  yearFreeNames(players).forEach((n, i) => { players[i].displayName = n; });
   const seasons: HistSeasonRow[] = raw.seasons.map(r => {
     const [player, season, league, team, agg, stintIndex, age, pos, st, adv, exp] = r as [number, number, 'BAA' | 'NBA' | 'ABA', string, number, number, number | null, string | null,
       (number | null)[], (number | null)[] | null, number | null];
