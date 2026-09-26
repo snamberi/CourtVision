@@ -13,7 +13,7 @@ import { RNG } from './engine/rng';
 import {
   type GMLeagueExtras, type TradeProposal, type DraftProspect,
   computeTradeValue, validateTrade, executeTrade, evaluateTradeSides, signFreeAgent, draftProspect, currentDraftOrder,
-  isTradeDeadlinePassed, capSpaceRemaining, finalizeDraftDay, tradeableFuturePicks, computeFutureDraftPickValue,
+  isTradeDeadlinePassed, capSpaceRemaining, finalizeDraftDay, tradeableFuturePicks, computeFutureDraftPickValue, waiveToFreeAgency,
 } from './gm';
 import { computeTeamFinances } from './finances';
 
@@ -134,7 +134,93 @@ export function runFreeAgencyAI(
     signings.push({ teamId, teamName: team.name, playerId: pick.playerId });
   }
 
-  return { league: currentLeague, extras: currentExtras, signings };
+  // Stars don't sit in free agency: teams with a clear upgrade go after them even with a full roster.
+  const chase = runStarChaseAI(currentLeague, currentExtras, controlledTeamId, seed + 7, Math.max(0, maxSigningsTotal - signings.length));
+  return { league: chase.league, extras: chase.extras, signings: [...signings, ...chase.signings] };
+}
+
+/** Free agents at or above this share of the league's best ratings are "stars" every team will call about. */
+const STAR_PERCENTILE = 0.85;
+/** A free agent must be this much more valuable than the player a team would cut before it makes the swap. */
+const UPGRADE_MARGIN = 6;
+
+/**
+ * How much a team wants to keep a player, for deciding whom to cut: value, minus underperformance (a player
+ * producing far below his rating over a real sample), with long or big contracts protected (cutting them is costly).
+ */
+export function keepScore(p: PlayerSeason, salary = 0): number {
+  const s = p.seasonStats;
+  let score = computeTradeValue(p);
+  if (s && s.minutes >= 150) {
+    // Production per 36 minutes against what his rating should produce in them.
+    const per36 = ((s.points + (s.oreb + s.dreb) * 1.2 + s.ast * 1.5 + s.stl * 2 + s.blk * 2 - s.tov) / s.minutes) * 36;
+    const expected = Math.max(0, calculateOverall(p) - 40) * 1.3;
+    score -= Math.max(0, expected - per36) * 0.5;
+  }
+  return score + Math.max(0, salary - 4_000_000) / 1_000_000;
+}
+
+/**
+ * AI teams pursue the best free agents: for each star (and any free agent who is a clear upgrade), the teams that
+ * can afford him and would get better make offers; the best fit that he accepts signs him, and if its roster is
+ * full it waives its weakest, cheapest-to-cut player (usually one underperforming his rating) to make room.
+ */
+export function runStarChaseAI(league: League, extras: GMLeagueExtras, controlledTeamId: string | null, seed = 1, maxMoves = 4): { league: League; extras: GMLeagueExtras; signings: FreeAgencySigning[] } {
+  if (!extras.freeAgencyOpen || maxMoves <= 0 || !extras.freeAgents.length) return { league, extras, signings: [] };
+  const rng = new RNG(seed);
+  const ratings = league.teams.flatMap(t => t.seasons.map(calculateOverall)).sort((a, b) => a - b);
+  const starLine = ratings[Math.floor(ratings.length * STAR_PERCENTILE)] ?? 70;
+  const maxRoster = league.rosterLimits?.maxRosterSize ?? 15;
+  const standings = new Map(computeStandings(league).map(r => [r.teamId, r.winPct]));
+  const ranking = strengthRanking(league);
+  let current = { league, extras };
+  const signings: FreeAgencySigning[] = [];
+  const targets = [...extras.freeAgents].sort((a, b) => computeTradeValue(b) - computeTradeValue(a)).slice(0, 8);
+
+  for (const fa of targets) {
+    if (signings.length >= maxMoves) break;
+    if (!current.extras.freeAgents.some(f => f.playerId === fa.playerId)) continue;
+    const star = calculateOverall(fa) >= starLine;
+    const value = computeTradeValue(fa);
+    type Bid = { teamId: string; salary: number; years: number; cut?: string; score: number };
+    const bids: Bid[] = [];
+    for (const teamId of aiTeamIds(current.league, controlledTeamId)) {
+      const team = current.league.teams.find(t => t.teamId === teamId)!;
+      const full = team.seasons.length >= maxRoster;
+      // Who would go: the lowest keep score among players outside the top eight of the rotation.
+      const top8 = new Set([...team.seasons].sort((a, b) => calculateOverall(b) - calculateOverall(a)).slice(0, 8).map(p => p.playerId));
+      const cut = team.seasons.filter(p => !top8.has(p.playerId))
+        .map(p => ({ p, k: keepScore(p, current.extras.contracts[p.playerId]?.annualSalary) }))
+        .sort((a, b) => a.k - b.k)[0];
+      const worst = team.seasons.map(p => computeTradeValue(p)).sort((a, b) => a - b)[Math.min(7, team.seasons.length - 1)] ?? 0;
+      // Only a real upgrade on the rotation's back end (or a star) is worth the chase.
+      if (!star && value < worst + UPGRADE_MARGIN) continue;
+      if (full && (!cut || value < cut.k + UPGRADE_MARGIN)) continue;
+      const personality = personalityOf(current.extras, teamId);
+      const years = star ? 2 + rng.nextInt(3) : 1 + rng.nextInt(2);
+      const offerBase = Math.round(value * 250_000 * (personality === 'aggressive' ? 1.2 : personality === 'conservative' ? 0.95 : 1.08) * (star ? 1.15 : 1));
+      const quote = signingDecision(current.league, current.extras, fa, teamId, undefined, { ranking });
+      if (quote.refuses) continue;
+      const salary = Math.max(offerBase, quote.required);
+      if (!signingDecision(current.league, current.extras, fa, teamId, { annualSalary: salary, yearsRemaining: years }, { ranking }).accepted) continue;
+      const winPct = standings.get(teamId) ?? 0.5;
+      const need = weakestPositions(team).includes(primaryPosition(fa)) ? NEED_BONUS : 0;
+      bids.push({ teamId, salary, years, cut: full ? cut!.p.playerId : undefined, score: winPct * 30 + need + (value - worst) + rng.next() * 4 });
+    }
+    const best = bids.sort((a, b) => b.score - a.score)[0];
+    if (!best) continue;
+    let next = current;
+    if (best.cut) {
+      const waived = waiveToFreeAgency(next.league, next.extras, best.cut, best.teamId);
+      if (waived.league === next.league) continue;
+      next = waived;
+    }
+    const signed = signFreeAgent(next.league, next.extras, fa.playerId, best.teamId, { annualSalary: best.salary, yearsRemaining: best.years, playerOption: false, teamOption: false });
+    if (signed.league === next.league) continue;
+    current = signed;
+    signings.push({ teamId: best.teamId, teamName: current.league.teams.find(t => t.teamId === best.teamId)?.name ?? best.teamId, playerId: fa.playerId });
+  }
+  return { ...current, signings };
 }
 
 /** Maps a 0-100 league-rules slider to a 0.5x-1.5x multiplier, centered on 1.0x at the default of 50 —

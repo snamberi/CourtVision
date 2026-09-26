@@ -11,6 +11,7 @@ export interface RebounderCandidate {
 
 /** Calibrated so league-wide offensive rebound rate lands near the NBA's ~25% (it sat at ~47% without it). */
 export const DEFENSIVE_POSITION_EDGE = 2.7;
+const HEIGHT_PIVOT = 79, HEIGHT_POWER = 9;
 
 /** Returns the playerId who secures the rebound. Missed-shot location subtly shifts weights. */
 export function resolveRebound(
@@ -22,11 +23,12 @@ export function resolveRebound(
 ): string {
   const weights = candidates.map((c) => {
     const reb = c.isOffense ? c.attributes.offense.offensiveRebounding : c.attributes.defense.defensiveRebounding;
-    const heightBonus = Math.max(0, (c.attributes.physical.heightInches - 78)) * 0.4;
+    // Size wins rebounds: weight scales with height to the 9th power around 6'7" (a 7-footer ~1.8x, a 6'2" guard ~0.6x).
+    const height = Math.pow(Math.max(66, Math.min(92, c.attributes.physical.heightInches || HEIGHT_PIVOT)) / HEIGHT_PIVOT, HEIGHT_POWER);
     const vertical = c.attributes.physical.vertical * 0.05;
     const threeBonus = missWasThree && !c.isOffense ? 2 : 0; // long rebounds skew slightly toward defense
     // Squared so strong rebounders (usually bigs) clearly out-rebound guards, as in real box scores.
-    let w = 1 + Math.pow(Math.max(0, reb), 2) / 70 + heightBonus + vertical + threeBonus;
+    let w = (1 + Math.pow(Math.max(0, reb), 2) / 70 + vertical + threeBonus) * height;
     w *= c.flags.reboundMultiplier;
     // Defenders start between their man and the rim (box-out position): real offenses win only ~1 in 4 misses.
     if (!c.isOffense) w *= DEFENSIVE_POSITION_EDGE;
