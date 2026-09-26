@@ -1,6 +1,7 @@
 import { rollBusinessSeason } from './business';
 import { enforceSticky, isStuck } from './sticky';
 import { lotteryResult, consensusBoard } from './draftNight';
+import { extensionTakesOver, markContractYears } from './extensions';
 import { archiveRivalries } from './rivalry';
 import { setupCup, cupArchive } from './cup';
 import { reviewSeason, ensureSeasonGoals, type OwnerReview } from './frontOffice';
@@ -284,6 +285,13 @@ export function beginNewSeasonRoster(
       const contract = contracts[withHistory.playerId];
       if (contract) {
         const yearsRemaining = contract.yearsRemaining - 1;
+        const extended = yearsRemaining <= 0 ? extensionTakesOver(contract) : null;
+        if (extended) {
+          // An in-season extension starts now.
+          contracts[withHistory.playerId] = extended;
+          keptSeasons.push(appendHistoryEvent(withHistory, 'resigned', `Extension begins with ${team.name}: ${extended.yearsRemaining} years, $${(extended.annualSalary / 1e6).toFixed(1)}M a year`, team.teamId));
+          continue;
+        }
         if (yearsRemaining <= 0 && isStuck(withHistory)) {
           // Stuck players (Sandbox) never hit free agency: the deal rolls over.
           contracts[withHistory.playerId] = { ...contract, yearsRemaining: 2 };
@@ -408,10 +416,12 @@ export function beginNewSeasonRoster(
     lottery,
     pendingTradeOffers: [],
     negotiations: {},
+    extensionTalks: {},
   };
 
-  // Stuck players (Sandbox) settle where their rule puts them.
-  const settled = enforceSticky(nextLeague, nextExtras);
+  // Stuck players (Sandbox) settle where their rule puts them; last-year players are in a contract year.
+  const stuck = enforceSticky(nextLeague, nextExtras);
+  const settled = { ...stuck, league: markContractYears(stuck.league, stuck.extras.contracts) };
   return {
     // Coaches age and contracts run out, then AI owners review their head coaches (the coaching carousel).
     league: offseasonCarousel(advanceStaffSeason(settled.league, previousSeason, championship?.teamId ?? undefined, seasonAwards.coy?.coachName ?? undefined), previousSeason, userTeamId,

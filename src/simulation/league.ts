@@ -2,6 +2,7 @@ import { prepareCoachingForGame, finishCoachingGame, type GameEvidence } from '.
 import { advanceCup } from './cup';
 import { isDeadlineDayBlocking } from './deadlineDay';
 import { restsTonight, withMedicalRisk, afterGame, afterHealing } from './medical';
+import { withContractYear } from './extensions';
 import { gameStaffCoach } from './staffManagement';
 import { reviewTeamRotation, type RotationReview } from './rotationReview';
 import type { GameSettings, PlayerSeason } from './types';
@@ -613,8 +614,8 @@ function prepareGame(league: League, idx: number, seedBase: number, injuries: Re
   // Out: injured, or rested tonight by load management. Fragile returning players carry a raised injury risk.
   const gameNumber = (teamId: string) => league.schedule.filter(x => x.played && (x.homeTeamId === teamId || x.awayTeamId === teamId)).length + 1;
   const isOut = (playerId: string, teamId: string) => (injuries[playerId]?.gamesRemaining ?? 0) > 0 || restsTonight(league.medical, playerId, gameNumber(teamId), league.seasonPhase);
-  let homeAvailable = home.seasons.filter((s) => !isOut(s.playerId, home.teamId)).map(s => withMedicalRisk(league.medical, s));
-  let awayAvailable = away.seasons.filter((s) => !isOut(s.playerId, away.teamId)).map(s => withMedicalRisk(league.medical, s));
+  let homeAvailable = home.seasons.filter((s) => !isOut(s.playerId, home.teamId)).map(s => withContractYear(withMedicalRisk(league.medical, s)));
+  let awayAvailable = away.seasons.filter((s) => !isOut(s.playerId, away.teamId)).map(s => withContractYear(withMedicalRisk(league.medical, s)));
   homeAvailable = ensureMinimumAvailable(home.seasons, homeAvailable, injuries);
   awayAvailable = ensureMinimumAvailable(away.seasons, awayAvailable, injuries);
 

@@ -26,6 +26,8 @@ export interface Contract {
   yearsRemaining: number;
   playerOption: boolean;
   teamOption: boolean;
+  /** An agreed in-season extension: it becomes the contract when this one runs out (see extensions.ts). */
+  extension?: import('./extensions').ExtensionDeal;
 }
 
 export interface SalaryCapSettings {
@@ -113,6 +115,8 @@ export interface GMLeagueExtras {
   pendingTradeOffers: TradeProposal[]; // AI-generated offers targeting the controlled team, awaiting accept/decline
   /** Trade talks with AI front offices this season: rounds of counters and when talks broke off (see tradeTalks.ts). */
   tradeTalks?: Record<string, import('./tradeTalks').TradeTalkState>;
+  /** In-season extension talks, by player (see extensions.ts). */
+  extensionTalks?: Record<string, import('./agents').Negotiation>;
   freeAgencyDaysRemaining: number; // counts down during the 30-day free agency window in the season-flow lifecycle; 0 when not in that window
   teamPersonalities?: Record<TeamId, 'aggressive' | 'conservative' | 'balanced'>; // AI front-office archetype per team; absent teams default to 'balanced'
   draftOrder?: TeamId[]; // this draft's determined pick order (post-lottery), set once when the draft class is generated

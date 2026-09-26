@@ -300,6 +300,8 @@ export interface PlayerSeason {
   stick?: import('./sticky').StickRule;
   /** Brought in from NBA history by the sandbox importer, as he was in this season (END year). He keeps his own career from here. */
   importedFrom?: { season: number; realId: string };
+  /** Playing for his next contract: last year of his deal, no extension (see extensions.ts). */
+  contractYear?: boolean;
   /** Honours won in real NBA history before this league's start (imported, never simulated). */
   historicalAwards?: HistoricalAward[];
 

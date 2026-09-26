@@ -509,3 +509,6 @@ button { border-radius: 0; }
 .medical-options small { color:var(--cv-text-muted, #94a0b2); font-size:11px; }
 .medical-room table { width:100%; }
 @media (max-width:700px) { .medical-room section { overflow-x:auto; } }
+.contract-year-tag { margin-left:6px; font:9px var(--font-pixel, monospace); color:var(--cv-gold, #ffd166); border:1px solid var(--cv-gold, #ffd166); padding:1px 4px; }
+.extensions-page { display:grid; gap:14px; } .extensions-page h2 { margin:0; }
+@media (max-width:700px) { .extensions-page { overflow-x:auto; } }
