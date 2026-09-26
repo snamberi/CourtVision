@@ -197,6 +197,8 @@ export interface League {
   /** Present when this league was started from real NBA history (see history/historicalLeague.ts). */
   historical?: import('../history/historicalLeague').HistoricalLeagueMeta; // past seasons' rivalry history, decayed each rollover (see rivalry.ts)
   playoffBracket?: import('./playoffs').PlayoffBracket;
+  /** Press conferences, fan mood and what you've said this season (see press.ts). */
+  press?: import('./press').PressState;
 
   rosterLimits?: { minRosterSize: number; maxRosterSize: number };
   teams: LeagueTeam[];

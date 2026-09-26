@@ -43,6 +43,7 @@ import { developOffseasonLeague } from './simulation/engine/development';
 import { followsRealDevelopment } from './simulation/realDevelopmentGate';
 import { applyHistoricalRosters } from './history/realRollover';
 import { enforceSticky } from './simulation/sticky';
+import { collectPress } from './simulation/press';
 import { useBackgroundJobs } from './workers/useBackgroundJobs';
 import { ToastStack, type ToastData } from './components/ToastStack';
 import { PrivacyPolicyPage, PrivacyLink } from './components/PrivacyPolicyPage';
@@ -99,6 +100,7 @@ const PlayerProfile = lazy(() => import('./components/PlayerProfile').then(m => 
 const SimulationLab = lazy(() => import('./components/SimulationLab').then(m => ({ default: m.SimulationLab })));
 const PlayerDatabase = lazy(() => import('./components/PlayerDatabase').then(m => ({ default: m.PlayerDatabase })));
 const StandingsPage = lazy(() => import('./components/StandingsPage').then(m => ({ default: m.StandingsPage })));
+const PressRoomPage = lazy(() => import('./components/PressRoomPage').then(m => ({ default: m.PressRoomPage })));
 const SchedulePage = lazy(() => import('./components/SchedulePage').then(m => ({ default: m.SchedulePage })));
 const BulkEditor = lazy(() => import('./components/BulkEditor').then(m => ({ default: m.BulkEditor })));
 const FinancesPage = lazy(() => import('./components/FinancesPage').then(m => ({ default: m.FinancesPage })));
@@ -571,6 +573,18 @@ function App() {
   });
 
   // Historical leagues keep the next ten real draft classes loaded; top up after each rollover (background, non-blocking).
+  // Reporters line up after big results, streaks, trade requests and playoff series.
+  const pressWaiting = league.press?.pending.length ?? 0;
+  useEffect(() => {
+    const next = collectPress(league, controlledTeamId);
+    if (next !== league) setLeague(next);
+  }, [league.schedule, league.playoffBracket, league.teams, controlledTeamId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const lastPressCount = useRef(pressWaiting);
+  useEffect(() => {
+    if (pressWaiting > lastPressCount.current) pushToast('Reporters want a word. Answer them in the Press Room.', 'info');
+    lastPressCount.current = pressWaiting;
+  }, [pressWaiting]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Sandbox sticks: whatever just moved a player, stuck players end up where their rule says (a no-op otherwise).
   useEffect(() => {
     const settled = enforceSticky(league, extras);
@@ -1411,6 +1425,7 @@ function App() {
             : <InjuryReportPage sandboxMode={sandboxMode} league={league} controlledTeamId={controlledTeamId} onChange={setLeague} onSelectPlayer={selectPlayer} />
         )}
 
+        {tab === 'press' && <PressRoomPage league={league} extras={extras} controlledTeamId={controlledTeamId} onChange={setLeague} />}
         {tab === 'yearInReview' && <YearInReviewPage league={league} extras={extras} controlledTeamId={controlledTeamId} awardOptions={awardOptions(awardSettings)}
           onOpenAwards={() => setTab('awards')} onSelectPlayer={selectPlayer}
           onOpenGame={(id) => { setViewedGameId(id); setBoxscoreSource('league'); setTab('boxscore'); }} />}

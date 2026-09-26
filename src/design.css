@@ -411,3 +411,25 @@ button { border-radius: 0; }
 .trade-counter p { margin:0; }
 .trade-counter-actions { display:flex; flex-wrap:wrap; gap:8px; }
 .trade-offer-note { color:var(--cv-gold, #ffd166); font-weight:600; }
+
+/* ---- Press room ---- */
+.press-room { display:grid; gap:16px; }
+.press-head { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:flex-end; gap:12px; }
+.press-head h2 { margin:0; display:flex; gap:8px; align-items:center; }
+.press-fans { display:grid; gap:3px; min-width:200px; }
+.press-fans small { color:var(--cv-text-muted, #94a0b2); font-size:11px; }
+.press-meter { display:block; height:8px; background:#0b1018; border:1px solid var(--cv-border, #2a3546); }
+.press-meter i { display:block; height:100%; background:linear-gradient(90deg, var(--cv-red, #e85d5d), var(--cv-gold, #ffd166) 50%, var(--cv-green, #55c878)); }
+.press-card { padding:12px 14px; margin-bottom:10px; background:var(--cv-surface, #121926); border:1px solid var(--cv-border, #2a3546); border-left:4px solid var(--cv-orange, #f47b20); box-shadow:2px 2px 0 #060a11; }
+.press-question { margin:0 0 10px; font-size:15px; }
+.press-answers { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:8px; }
+.press-answers button { display:grid; gap:4px; text-align:left; padding:8px 10px; white-space:normal; font-family:var(--font-data); text-transform:none; letter-spacing:0; line-height:1.4; }
+.press-answers button b { font-family:var(--font-pixel); font-size:10px; color:var(--cv-orange-bright, #ff9d3d); }
+.press-answers small { color:var(--cv-text-muted, #94a0b2); font-size:11px; }
+.press-log ol { margin:6px 0 0; padding-left:18px; display:grid; gap:4px; font-size:13px; }
+.press-log small { color:var(--cv-orange-bright, #ff9d3d); margin-right:6px; }
+.press-around ul { list-style:none; margin:0; padding:0; display:grid; gap:6px; }
+.press-around li { display:grid; grid-template-columns:150px 1fr; gap:10px; padding:8px 10px; background:var(--cv-surface, #121926); border:1px solid var(--cv-border, #2a3546); }
+.press-around li b { color:var(--cv-gold, #ffd166); font-size:12px; text-transform:uppercase; letter-spacing:.05em; }
+.press-around li.tone-down b { color:var(--cv-red, #e85d5d); } .press-around li.tone-up b { color:var(--cv-green, #55c878); }
+@media (max-width:700px) { .press-around li { grid-template-columns:1fr; gap:2px; } }
