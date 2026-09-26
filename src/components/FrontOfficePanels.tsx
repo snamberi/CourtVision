@@ -1,9 +1,10 @@
-import { useEffect, useId, useRef } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
+import { LEGACY_EVENT, legacyTotals, readLegacy, type GmLegacy } from '../storage/gmLegacy';
 import type { League } from '../simulation/league';
 import type { GMLeagueExtras } from '../simulation/gm';
 import { formatSeasonYear } from '../simulation/calendar';
 import {
-  ACHIEVEMENTS, ACHIEVEMENT_BY_ID, OWNER_STYLE_BLURB, OWNER_STYLE_LABEL, goalProgress, projectedSecurity, securityLabel,
+  ACHIEVEMENTS, ACHIEVEMENT_BY_ID, isOfficialLeague, OWNER_STYLE_BLURB, OWNER_STYLE_LABEL, goalProgress, projectedSecurity, securityLabel,
   type GoalStatus, type OwnerReview, type ReviewOutcome,
 } from '../simulation/frontOffice';
 import { PixelTrophy } from './PixelTrophy';
@@ -65,19 +66,20 @@ export function OwnerOfficeCard({ league, extras, onOpen }: { league: League; ex
 export function GmOfficePage({ league, extras, onAcceptOffer, onSpectate, onToggleFiring }: {
   league: League; extras: GMLeagueExtras; onAcceptOffer: (teamId: string) => void; onSpectate: () => void; onToggleFiring: (on: boolean) => void;
 }) {
+  const legacy = useLegacy();
   const fo = league.frontOffice;
   if (!fo) return <div className="gm-office"><p className="hint-text">The front office opens when a league is loaded.</p></div>;
   const team = fo.teamId ? league.teams.find(t => t.teamId === fo.teamId) : null;
   const owner = fo.teamId ? fo.owners[fo.teamId] : null;
   const sandbox = league.settings.sandboxMode === true;
-  const career = fo.reviews;
-  const titles = career.filter(r => r.finish === 'Champion').length;
-  const wins = career.reduce((n, r) => n + r.wins, 0), losses = career.reduce((n, r) => n + r.losses, 0);
   const unlocked = ACHIEVEMENTS.filter(a => fo.achievements[a.id]);
   const events = [...fo.events].reverse().slice(0, 12);
+  const official = isOfficialLeague(league);
+  const totals = legacyTotals(legacy);
 
   return <div className="gm-office">
     <div className="stats-section-header"><h4>GM Office</h4></div>
+    {!official && <p className="fo-unofficial-banner" role="note"><b>Sandbox was used in this league.</b> Achievements are turned off here, and this GM career is unofficial: it does not count toward your all-leagues record, even if Sandbox is turned off again.</p>}
 
     {fo.status === 'unemployed' && fo.offers.length > 0 && <JobOffersPanel league={league} onAccept={onAcceptOffer} onSpectate={onSpectate} />}
 
@@ -102,32 +104,26 @@ export function GmOfficePage({ league, extras, onAcceptOffer, onSpectate, onTogg
 
     <section className="dashboard-panel">
       <h5>GM career</h5>
-      {career.length ? <>
-        <p className="fo-career-line"><b>{wins}–{losses}</b> <span className="hint-text">({(wins / Math.max(1, wins + losses)).toFixed(3).replace(/^0/, '')}) · {career.length} season{career.length === 1 ? '' : 's'} · {titles} title{titles === 1 ? '' : 's'} · {new Set(career.map(r => r.teamId)).size} team{new Set(career.map(r => r.teamId)).size === 1 ? '' : 's'}</span></p>
-        <div className="finances-table-wrap"><table className="db-table stat-line-table fo-career">
-          <thead><tr><th>Season</th><th>Team</th><th>W</th><th>L</th><th>Finish</th><th>Goals</th><th>Security</th><th>Review</th></tr></thead>
-          <tbody>{[...career].reverse().map(r => <tr key={`${r.season}-${r.teamId}`}>
-            <td>{formatSeasonYear(r.season)}</td><td>{r.teamName}</td><td>{r.wins}</td><td>{r.losses}</td><td>{r.finish}</td>
-            <td>{r.goals.filter(g => g.met).length}/{r.goals.length}</td>
-            <td>{r.securityBefore} → {r.securityAfter}</td>
-            <td><span className={`fo-outcome fo-outcome--${r.outcome}`}>{OUTCOME_TEXT[r.outcome]}</span></td>
-          </tr>)}</tbody>
-        </table></div>
-      </> : <p className="hint-text">Your record starts after your first full season.</p>}
+      <GmCareerTable league={league} />
     </section>
 
     <section className="dashboard-panel">
-      <h5>Achievements <span className="hint-text">{unlocked.length} / {ACHIEVEMENTS.length}</span></h5>
+      <h5>Achievements <span className="hint-text">{unlocked.length} / {ACHIEVEMENTS.length} in this league · {totals.achievements} in all leagues</span></h5>
+      {!official && <p className="hint-text">Achievements are off in this league because Sandbox was used.</p>}
       <ul className="fo-achievements">{ACHIEVEMENTS.map(a => {
         const got = fo.achievements[a.id];
-        const hidden = !got && a.secret;
-        return <li key={a.id} className={got ? 'got' : 'locked'} title={got ? `Unlocked ${formatSeasonYear(got.season)}${got.teamName ? ` with ${got.teamName}` : ''}` : 'Locked'}>
-          <PixelTrophy award={a.icon} size={28} dim={!got} />
+        const elsewhere = !got ? legacy.achievements[a.id] : undefined;
+        const hidden = !got && !elsewhere && a.secret;
+        return <li key={a.id} className={got ? (official ? 'got' : 'got void') : elsewhere ? 'elsewhere' : 'locked'} title={got ? `Unlocked ${formatSeasonYear(got.season)}${got.teamName ? ` with ${got.teamName}` : ''}` : elsewhere ? `Earned in ${elsewhere.leagueName}` : 'Locked'}>
+          <PixelTrophy award={a.icon} size={28} dim={!got && !elsewhere} />
           <div><b>{hidden ? '???' : a.name}</b><small>{hidden ? 'A secret achievement.' : a.description}</small>
-            {got && <small className="fo-ach-when">{formatSeasonYear(got.season)}{got.teamName ? ` · ${got.teamName}` : ''}</small>}</div>
+            {got && <small className="fo-ach-when">{formatSeasonYear(got.season)}{got.teamName ? ` · ${got.teamName}` : ''}{official ? '' : ' · not counted (Sandbox)'}</small>}
+            {elsewhere && <small className="fo-ach-elsewhere">Earned in another league: {elsewhere.leagueName}</small>}</div>
         </li>;
       })}</ul>
     </section>
+
+    <LegacyPanel legacy={legacy} />
 
     {events.length > 0 && <section className="dashboard-panel">
       <h5>Front office news</h5>
@@ -189,4 +185,72 @@ export function OwnerReviewDialog({ review, newAchievements, onClose }: { review
     </div>
     <div className="pixel-confirm-actions"><button ref={ok} className="primary" onClick={onClose}>{review.outcome === 'fired' ? 'See job offers' : 'Back to work'}</button></div>
   </dialog>;
+}
+
+/** The all-leagues record, live-updated when any league writes to it. */
+export function useLegacy(): GmLegacy {
+  const [legacy, setLegacy] = useState(readLegacy);
+  useEffect(() => {
+    const refresh = () => setLegacy(readLegacy());
+    window.addEventListener(LEGACY_EVENT, refresh);
+    window.addEventListener('storage', refresh);
+    return () => { window.removeEventListener(LEGACY_EVENT, refresh); window.removeEventListener('storage', refresh); };
+  }, []);
+  return legacy;
+}
+
+/** Career totals across every league played in this browser (leagues where Sandbox was used never count). */
+export function LegacyPanel({ legacy, compact }: { legacy: GmLegacy; compact?: boolean }) {
+  const t = legacyTotals(legacy);
+  const leagues = Object.values(legacy.leagues).sort((a, b) => b.updatedAt - a.updatedAt);
+  if (compact) {
+    if (!t.leagues && !t.achievements) return null;
+    return <div className="fo-legacy-strip" aria-label="Your GM legacy">
+      <span className="pixel-eyebrow">YOUR GM LEGACY</span>
+      <span><b>{t.wins}–{t.losses}</b> in {t.seasons} season{t.seasons === 1 ? '' : 's'}</span>
+      <span><b>{t.titles}</b> title{t.titles === 1 ? '' : 's'}</span>
+      <span><b>{t.achievements}</b> / {ACHIEVEMENTS.length} achievements</span>
+      <span><b>{t.leagues}</b> league{t.leagues === 1 ? '' : 's'}</span>
+    </div>;
+  }
+  return <section className="dashboard-panel">
+    <h5>All leagues <span className="hint-text">this browser · Sandbox leagues never count</span></h5>
+    {leagues.length ? <>
+      <p className="fo-career-line"><b>{t.wins}–{t.losses}</b> <span className="hint-text">{t.seasons} season{t.seasons === 1 ? '' : 's'} · {t.titles} title{t.titles === 1 ? '' : 's'} · {t.leagues} league{t.leagues === 1 ? '' : 's'} · {t.achievements} / {ACHIEVEMENTS.length} achievements</span></p>
+      <div className="finances-table-wrap"><table className="db-table stat-line-table">
+        <thead><tr><th>League</th><th>Teams</th><th>Seasons</th><th>W</th><th>L</th><th>Titles</th><th>Last season</th></tr></thead>
+        <tbody>{leagues.map(l => <tr key={l.saveId}><td>{l.name}</td><td>{l.teams.join(', ')}</td><td>{l.seasons}</td><td>{l.wins}</td><td>{l.losses}</td><td>{l.titles}</td><td>{formatSeasonYear(l.lastSeason)}</td></tr>)}</tbody>
+      </table></div>
+    </> : <p className="hint-text">Finish a season in a league without Sandbox to start your all-leagues record.</p>}
+  </section>;
+}
+
+/** Your record as GM in this league: summary line and a season-by-season table. Used by the GM Office and History. */
+export function GmCareerTable({ league }: { league: League }) {
+  const career = league.frontOffice?.reviews ?? [];
+  if (!career.length) return <p className="hint-text">Your record starts after your first full season.</p>;
+  const titles = career.filter(r => r.finish === 'Champion').length;
+  const wins = career.reduce((n, r) => n + r.wins, 0), losses = career.reduce((n, r) => n + r.losses, 0);
+  const teams = new Set(career.map(r => r.teamId)).size;
+  return <>
+    <p className="fo-career-line"><b>{wins}–{losses}</b> <span className="hint-text">({(wins / Math.max(1, wins + losses)).toFixed(3).replace(/^0/, '')}) · {career.length} season{career.length === 1 ? '' : 's'} · {titles} title{titles === 1 ? '' : 's'} · {teams} team{teams === 1 ? '' : 's'}</span></p>
+    <div className="finances-table-wrap"><table className="db-table stat-line-table fo-career">
+      <thead><tr><th>Season</th><th>Team</th><th>W</th><th>L</th><th>Finish</th><th>Goals</th><th>Security</th><th>Review</th></tr></thead>
+      <tbody>{[...career].reverse().map(r => <tr key={`${r.season}-${r.teamId}`}>
+        <td>{formatSeasonYear(r.season)}</td><td>{r.teamName}</td><td>{r.wins}</td><td>{r.losses}</td><td>{r.finish}</td>
+        <td>{r.goals.filter(g => g.met).length}/{r.goals.length}</td>
+        <td>{r.securityBefore} → {r.securityAfter}</td>
+        <td><span className={`fo-outcome fo-outcome--${r.outcome}`}>{OUTCOME_TEXT[r.outcome]}</span>{r.unofficial && <span className="fo-unofficial-tag" title="Sandbox was used: not counted">Unofficial</span>}</td>
+      </tr>)}</tbody>
+    </table></div>
+  </>;
+}
+
+/** One line for a season page: how your front office did that year. */
+export function GmSeasonLine({ league, season }: { league: League; season: string }) {
+  const r = league.frontOffice?.reviews.find(x => x.season === season);
+  if (!r) return null;
+  return <p className="fo-season-line"><span className="pixel-eyebrow">YOUR FRONT OFFICE</span>
+    {r.teamName}: {r.wins}–{r.losses}, {r.finish} · goals {r.goals.filter(g => g.met).length}/{r.goals.length} · <span className={`fo-outcome fo-outcome--${r.outcome}`}>{OUTCOME_TEXT[r.outcome]}</span>
+    {r.unofficial && <span className="fo-unofficial-tag">Unofficial</span>}</p>;
 }

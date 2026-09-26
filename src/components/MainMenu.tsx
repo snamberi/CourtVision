@@ -1,4 +1,5 @@
 import { PrivacyLink } from './PrivacyPolicyPage';
+import { LegacyPanel, useLegacy } from './FrontOfficePanels';
 import { DiscordLink, DISCORD_URL } from './DiscordLink';
 import { CookieSettingsLink } from '../consent/ConsentBanner';
 import { ConsentBanner } from '../consent/ConsentBanner';
@@ -131,6 +132,8 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
         </div>
       </div>
 
+      <MenuLegacy />
+
       <div className="menu-section-heading"><h2>Choose your game</h2><span>THREE WAYS TO MAKE HISTORY</span></div>
 
       <SavedLeaguesList saves={saves} onContinue={onContinue} onDeleteSave={onDeleteSave} onRenameSave={onRenameSave} />
@@ -222,4 +225,9 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
       <ConsentBanner />
     </div>
   );
+}
+
+function MenuLegacy() {
+  const legacy = useLegacy();
+  return <LegacyPanel legacy={legacy} compact />;
 }

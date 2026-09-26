@@ -57,6 +57,7 @@ export const GROUPS: NavGroup[] = [
     title: 'Front Office',
     items: [
       { label: 'GM Office', tab: 'gmOffice' },
+      { label: 'Summer League', tab: 'summerLeague' },
       { label: 'Free Agents', tab: 'freeAgency' },
       { label: 'Trade', tab: 'trade' },
       { label: 'Trading Block', tab: 'tradeBlock' },
@@ -106,7 +107,7 @@ export const GROUPS: NavGroup[] = [
 ];
 
 export const NAV_ICONS: Record<string, string> = {
-  gmOffice: 'star', coaching: 'list', allStarWeekend: 'trophy', dashboard: 'court', standings: 'chart', playoffs: 'trophy', schedule: 'calendar',
+  gmOffice: 'star', summerLeague: 'play', coaching: 'list', allStarWeekend: 'trophy', dashboard: 'court', standings: 'chart', playoffs: 'trophy', schedule: 'calendar',
   dailySchedule: 'calendar', finances: 'chart', history: 'list', powerRankings: 'chart',
   transactions: 'trade', news: 'list', yourTeam: 'team', roster: 'team', freeAgency: 'team',
   trade: 'trade', tradeBlock: 'trade', tradeOffers: 'trade', draft: 'team', compare: 'chart',

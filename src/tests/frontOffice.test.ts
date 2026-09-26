@@ -7,7 +7,7 @@ import { computeFinalsMVP } from '../simulation/awards';
 import type { GMLeagueExtras } from '../simulation/gm';
 import { generateNewsFeed } from '../simulation/news';
 import {
-  ACHIEVEMENTS, acceptJobOffer, becomeSpectator, ensureFrontOffice, generateGoals, goalProgress, makeOwner, projectedSecurity, strengthRank,
+  ACHIEVEMENTS, acceptJobOffer, becomeSpectator, ensureFrontOffice, isOfficialLeague, markSandboxUse, generateGoals, goalProgress, makeOwner, projectedSecurity, strengthRank,
 } from '../simulation/frontOffice';
 
 function playSeason(league: League, extras: GMLeagueExtras, seed: number) {
@@ -125,6 +125,22 @@ describe('front office', () => {
     const moved = ensureFrontOffice({ ...league, frontOffice: { ...league.frontOffice!, achievements: { title: { season: '2025' } } } }, other);
     expect(moved.frontOffice!.teamId).toBe(other);
     expect(moved.frontOffice!.achievements.title).toBeDefined();
+  });
+
+  it('a league that ever used Sandbox unlocks no achievements, even after Sandbox is turned off', () => {
+    const league = ensureFrontOffice(base, userTeam);
+    expect(isOfficialLeague(league)).toBe(true);
+    const tainted = markSandboxUse({ ...league, settings: { ...league.settings, sandboxMode: true } });
+    expect(tainted.frontOffice!.sandboxUsed).toBe(true);
+    const off = { ...tainted, settings: { ...tainted.settings, sandboxMode: false } };
+    expect(isOfficialLeague(off)).toBe(false);
+    expect(markSandboxUse(off).frontOffice!.sandboxUsed).toBe(true); // never cleared
+    const next = playSeason(off, extras, 51);
+    expect(next.summary.ownerReview!.unofficial).toBe(true);
+    expect(next.summary.newAchievements).toEqual([]);
+    expect(next.league.frontOffice!.achievements).toEqual({});
+    // Loading a league saved with Sandbox on marks it too.
+    expect(ensureFrontOffice({ ...base, settings: { ...base.settings, sandboxMode: true } }, userTeam).frontOffice!.sandboxUsed).toBe(true);
   });
 
   it('defines unique achievement ids', () => {

@@ -31,6 +31,8 @@ export interface GoalOutcome extends OwnerGoal { met: boolean; value: string }
 
 export type ReviewOutcome = 'extended' | 'retained' | 'warned' | 'fired';
 export interface OwnerReview {
+  /** Played in a league where Sandbox was used: shown, but not counted anywhere. */
+  unofficial?: boolean;
   season: string; teamId: string; teamName: string; wins: number; losses: number; finish: PlayoffFinish;
   goals: GoalOutcome[]; securityBefore: number; securityAfter: number; outcome: ReviewOutcome; note: string;
 }
@@ -61,6 +63,9 @@ export interface FrontOfficeState {
   /** AI general managers' job security, by team. */
   aiSecurity: Record<string, number>;
   firingEnabled: boolean;
+  /** Sandbox (God Mode) was switched on at some point in this league: achievements stop unlocking and the career
+   * is unofficial, left out of the all-leagues record. Never cleared. */
+  sandboxUsed?: boolean;
 }
 
 export const OWNER_STYLE_LABEL: Record<OwnerStyle, string> = { win_now: 'Win-Now', patient: 'Patient Builder', money: 'Money-First' };
@@ -114,6 +119,16 @@ function gamesPerTeam(league: League): number {
   return scheduled || league.settings.gamesPerSeason || 82;
 }
 
+/** Sandbox mode is on now or was ever on: the league's GM record no longer counts. */
+export const isOfficialLeague = (league: League) => !league.settings.sandboxMode && !league.frontOffice?.sandboxUsed;
+
+/** Permanently records that Sandbox (God Mode) has been used in this league. Idempotent. */
+export function markSandboxUse(league: League): League {
+  const fo = league.frontOffice;
+  if (!league.settings.sandboxMode || !fo || fo.sandboxUsed) return league;
+  return { ...league, frontOffice: { ...fo, sandboxUsed: true } };
+}
+
 /** Creates the front office for a league that has none, or repairs a partial one. Idempotent. */
 export function ensureFrontOffice(league: League, userTeamId: string | null): League {
   const existing = league.frontOffice;
@@ -131,7 +146,7 @@ export function ensureFrontOffice(league: League, userTeamId: string | null): Le
     changed = true;
   }
   const withState = changed ? { ...league, frontOffice: state } : league;
-  return ensureSeasonGoals(withState);
+  return ensureSeasonGoals(markSandboxUse(withState));
 }
 
 /** Goals are set for the season being played. During the offseason the last review stands until the new season starts. */
@@ -287,9 +302,10 @@ export function projectedSecurity(league: League, extras: GMLeagueExtras): numbe
 }
 
 export function securityLabel(security: number): { label: string; tone: 'good' | 'ok' | 'warn' | 'danger' } {
+  // Same cutoffs as the owner's review: extended at 75+, hot seat under 45, fired under 25.
   if (security >= 75) return { label: 'Untouchable', tone: 'good' };
-  if (security >= 55) return { label: 'Secure', tone: 'ok' };
-  if (security >= 40) return { label: 'Hot seat', tone: 'warn' };
+  if (security >= 45) return { label: 'Secure', tone: 'ok' };
+  if (security >= 25) return { label: 'Hot seat', tone: 'warn' };
   return { label: 'On the brink', tone: 'danger' };
 }
 
@@ -333,6 +349,8 @@ export function reviewSeason(ctx: ReviewContext): ReviewResult | null {
   if (!base) return null;
   let state: FrontOfficeState = reopenJobMarket({ ...base, events: [...base.events] });
   const sandbox = ctx.league.settings.sandboxMode === true;
+  if (sandbox) state.sandboxUsed = true;
+  const official = !state.sandboxUsed;
   const addEvent = (e: Omit<FrontOfficeEvent, 'order' | 'season'>) => state.events.push({ ...e, season: ctx.season, order: state.events.length });
 
   // AI general managers: a season well below what the roster should do costs them; two in a row can end it.
@@ -382,15 +400,15 @@ export function reviewSeason(ctx: ReviewContext): ReviewResult | null {
       : outcome === 'warned' ? `${owner.name} is losing patience. "Next season has to be different."`
       : outcome === 'extended' ? `${owner.name} is thrilled and extends your contract. "This is the GM we wanted."`
       : `${owner.name} is satisfied. ${met} of ${goals.length} goals met.`;
-    review = { season: ctx.season, teamId: state.teamId, teamName: row.teamName, wins: row.wins, losses: row.losses, finish: row.playoffFinish, goals, securityBefore: before, securityAfter: after, outcome, note };
+    review = { ...(official ? {} : { unofficial: true }), season: ctx.season, teamId: state.teamId, teamName: row.teamName, wins: row.wins, losses: row.losses, finish: row.playoffFinish, goals, securityBefore: before, securityAfter: after, outcome, note };
     state = { ...state, security: after, seasonsWithTeam: state.seasonsWithTeam + 1, warned: outcome === 'warned', reviews: [...state.reviews, review], goals: [], goalsSeason: undefined };
     const draftees = (ctx.extras.draftPicksMade ?? []).filter(p => p.teamId === review!.teamId).map(p => p.playerId);
     state.draftees = [...new Set([...state.draftees, ...draftees])];
-    unlocked.push(...seasonAchievements(state, ctx, review, fin?.financialHealth ?? null));
+    if (official) unlocked.push(...seasonAchievements(state, ctx, review, fin?.financialHealth ?? null));
     if (outcome === 'fired') {
       addEvent({ kind: 'fired', teamId: review.teamId, teamName: review.teamName, headline: `${review.teamName} fire their general manager — you.`, detail: note });
       state = { ...state, status: 'unemployed', teamId: null, warned: false };
-      unlocked.push('pink_slip');
+      if (official) unlocked.push('pink_slip');
     } else if (outcome === 'extended') addEvent({ kind: 'extended', teamId: review.teamId, teamName: review.teamName, headline: `${review.teamName} extend their general manager.`, detail: note });
     else if (outcome === 'warned') addEvent({ kind: 'warned', teamId: review.teamId, teamName: review.teamName, headline: `Hot seat: ${review.teamName}'s GM is under pressure.`, detail: note });
   }
@@ -424,7 +442,7 @@ export function acceptJobOffer(league: League, teamId: string): League {
   const events = [...fo.events, { season: league.season ?? '', kind: 'hired' as const, teamId, teamName: name, headline: `${name} hire a new general manager — you.`,
     detail: `${fo.owners[teamId]?.name ?? 'Ownership'} hands you the keys.`, order: fo.events.length }].slice(-MAX_EVENTS);
   const achievements = { ...fo.achievements };
-  if (!firstJob && changedTeams && !achievements.second_chance) achievements.second_chance = { season: league.season ?? '', teamName: name };
+  if (!firstJob && changedTeams && !achievements.second_chance && isOfficialLeague(league)) achievements.second_chance = { season: league.season ?? '', teamName: name };
   // Mid-season (Auto Play opens the next schedule before you choose), the new owner's goals are set right away.
   return ensureSeasonGoals({ ...league, coachingUserTeamId: teamId, frontOffice: { ...fo, status: 'employed', teamId, security: NEW_JOB_SECURITY, seasonsWithTeam: 0, warned: false, offers: [], goals: [], goalsSeason: undefined, events, achievements } });
 }

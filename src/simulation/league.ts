@@ -217,6 +217,8 @@ export interface League {
   awardRace?: import('./awardRace').AwardRaceState;
   /** Owners, goals, your job security, reviews and achievements (see frontOffice.ts); absent on older leagues until loaded. */
   frontOffice?: import('./frontOffice').FrontOfficeState;
+  /** The latest offseason's Summer League (see draftSeason.ts); replaced each year. */
+  summerLeague?: import('./draftSeason').SummerLeagueRecord;
 }
 
 /** This season's All-Star Weekend results, once played - checked against `league.season` so a fresh season always requires a fresh weekend. */

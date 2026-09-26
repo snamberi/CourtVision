@@ -87,3 +87,51 @@
   .fo-offer { grid-template-columns: auto 1fr; }
   .fo-offer button { grid-column: 1 / -1; }
 }
+
+/* Sandbox leagues and the all-leagues legacy */
+.fo-unofficial-banner { margin: 0; padding: 10px 14px; background: #2a1414; border: 1px solid #a8453c; border-left: 4px solid var(--miss); color: #ffd9d4; box-shadow: 2px 2px 0 #000; }
+.fo-unofficial-tag { display: inline-block; margin-left: 6px; padding: 1px 5px; border: 1px dashed #a8453c; color: #ffb3aa; font: 7px/1.5 var(--font-pixel); text-transform: uppercase; }
+.fo-achievements li.elsewhere { border-color: #6b5a2a; border-style: dashed; opacity: .9; }
+.fo-ach-elsewhere { color: #cdb46e !important; }
+.fo-legacy-strip {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 22px; margin: 0 0 18px; padding: 12px 16px;
+  background: linear-gradient(90deg, rgba(255, 209, 102, .12), rgba(255, 209, 102, 0) 70%), #0c1628; border: 1px solid #6b5a2a; border-left: 4px solid var(--gold); box-shadow: 3px 3px 0 #000;
+}
+.fo-legacy-strip .pixel-eyebrow { color: var(--gold); flex-basis: 100%; }
+.fo-legacy-strip b { color: var(--court); font: 22px/1 var(--font-ui); }
+
+/* History and Almanac */
+.franchise-gm-career { margin-top: 24px; }
+.fo-season-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 0 0 16px; padding: 10px 14px; background: #0c1628; border: 1px solid #3a5883; border-left: 4px solid var(--amber); box-shadow: 2px 2px 0 #000; }
+.fo-season-line .pixel-eyebrow { flex-basis: 100%; color: var(--amber-bright); }
+
+/* ---- Draft Season: college stats, mock draft, rookie scale, Summer League ---- */
+.scout-college { margin: 4px 0; padding: 6px 8px; background: #0a1426; border-left: 3px solid var(--blue); }
+.college-table td small { font-size: 10px; }
+.mock-draft-table td:first-child { white-space: nowrap; color: var(--amber-bright); font-variant-numeric: tabular-nums; }
+.rookie-scale { margin: 18px 0; padding: 10px 14px; background: #0c1628; border: 1px solid #3a5883; box-shadow: 2px 2px 0 #000; }
+.rookie-scale summary { cursor: pointer; color: var(--court); font: 9px/1.8 var(--font-pixel); text-transform: uppercase; }
+.rookie-scale-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.rookie-scale-grid .db-table { max-height: 360px; }
+.summer-cta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin: 12px 0; padding: 12px 14px;
+  background: linear-gradient(90deg, rgba(255, 154, 58, .18), rgba(255, 154, 58, .03)), #0c1628; border: 1px solid var(--amber); box-shadow: 3px 3px 0 #000; }
+.summer-league { display: flex; flex-direction: column; gap: 16px; }
+.summer-intro p { max-width: 70ch; }
+.summer-banner { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 36px; padding: 16px 18px;
+  background: radial-gradient(500px 160px at 90% 0%, rgba(255, 209, 102, .16), transparent 70%), linear-gradient(135deg, #1f3a60, #0f1c33 70%); border: 1px solid #4a6f9e; box-shadow: 4px 4px 0 #000; }
+.summer-banner > div { display: flex; align-items: center; gap: 12px; }
+.summer-banner > div > div { display: flex; flex-direction: column; gap: 3px; }
+.summer-banner small { color: var(--gold); font: 8px/1.6 var(--font-pixel); }
+.summer-banner b { font: 20px/1.1 var(--font-ui); color: var(--court); }
+.summer-banner > button { margin-left: auto; }
+.summer-list, .summer-games { list-style: none; margin: 0; padding: 0; }
+.summer-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 6px 0; border-bottom: 1px solid #1f3254; }
+.summer-game { padding: 8px 0; border-bottom: 1px solid #1f3254; }
+.summer-game-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.summer-game-line .won { color: var(--court); font-weight: 600; }
+.summer-game-line button { margin-left: auto; padding: 4px 10px; font-size: 16px; }
+.summer-game-day { min-width: 56px; color: var(--amber-bright); font: 8px/1.6 var(--font-pixel); }
+.summer-game--final .summer-game-day { color: var(--gold); }
+.summer-box { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 12px; margin-top: 10px; overflow-x: auto; }
+@media (max-width: 640px) { .summer-box { grid-template-columns: 1fr; } }
+.fo-achievements li.got.void { filter: grayscale(.85); opacity: .7; border-style: dashed; }

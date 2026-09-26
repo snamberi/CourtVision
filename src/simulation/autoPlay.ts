@@ -1,4 +1,5 @@
 import { signingDecision } from './freeAgentDecision';
+import { ensureUpcomingDraftClass } from './draftSeason';
 import { rosterComplianceIssues } from './rosterRequirements';
 import { manageCoachRosters } from './coachRosters';
 import { lockAllStarVoting, currentAllStarWeekend } from './allStarVoting';
@@ -242,6 +243,8 @@ function finishAutoSeason(
   const prepared = manageCoachRosters(currentLeague, currentExtras);
   currentLeague = prepared.league;
   currentExtras = prepared.extras;
+  // Next summer's class goes on the board for the new season.
+  currentExtras = ensureUpcomingDraftClass(currentLeague, currentExtras);
 
   return {
     league: currentLeague,

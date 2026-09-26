@@ -59,6 +59,7 @@ export const SIMPLE_HUBS: SimpleHub[] = [
       { label: 'Free agents', tab: 'freeAgency' },
       { label: 'Re-sign / waive', tab: 'resignWaive', onlyDuringPhase: 'resign_waive' },
       { label: 'Draft', tab: 'draft' },
+      { label: 'Summer League', tab: 'summerLeague' },
       { label: 'Watch list', tab: 'watchList' },
       { label: 'Compare players', tab: 'compare' },
       { label: 'GM Office', tab: 'gmOffice' },

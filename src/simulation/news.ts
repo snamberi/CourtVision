@@ -180,6 +180,10 @@ export function generateNewsFeed(league: League, extras: GMLeagueExtras, maxItem
       if (playerId) add({ id: `award:${award}`, season: record.season, category: 'Awards', teamId: null, teamName: null, headline: `${playerId} takes home ${award} for ${record.season}.`, playerId, order: 290_000 });
     }
   }
+  // Summer League: the champion and the MVP (see draftSeason.ts).
+  const sl = league.summerLeague;
+  if (sl?.championTeamId) add({ id: 'summer:champion', season: sl.season, category: 'Draft', teamId: sl.championTeamId, teamName: name(sl.championTeamId),
+    headline: `${name(sl.championTeamId)} win the Summer League title.`, detail: sl.mvpId ? `${sl.mvpId} was named Summer League MVP.` : undefined, playerId: sl.mvpId ?? undefined, order: 305_000 });
   // Front office: hirings, firings, extensions and hot seats around the league (see frontOffice.ts).
   for (const e of league.frontOffice?.events ?? []) {
     add({ id: `fo:${e.kind}:${e.teamId}:${e.order}`, season: e.season, category: 'Teams', teamId: e.teamId, teamName: e.teamName,

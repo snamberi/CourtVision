@@ -728,11 +728,14 @@ export function computeDraftPickValue(pickNumber: number, order: TeamId[], leagu
   return Math.round(pickNumber < n ? 35 + 90 * Math.pow(1 - rank, 1.8) : 8 + 23 * Math.pow(1 - rank, 1.4));
 }
 
-export function rookieContract(pickNumber: number, teamCount: number, cap: SalaryCapSettings): Omit<Contract, 'playerId' | 'teamId'> {
+/** The rookie scale: salary by draft slot. First-round length follows League Rules (default 4 years, 1–5);
+ * second-rounders sign two-year deals near the minimum. */
+export function rookieContract(pickNumber: number, teamCount: number, cap: SalaryCapSettings, firstRoundYears = 4): Omit<Contract, 'playerId' | 'teamId'> {
   const firstRound = pickNumber < teamCount;
   const rank = (pickNumber % Math.max(1, teamCount)) / Math.max(1, teamCount - 1);
   const salary = firstRound ? cap.salaryCap * (0.018 + 0.062 * Math.pow(1 - rank, 1.6)) : cap.minSalary * (1.05 + 0.45 * (1 - rank));
-  return { annualSalary: Math.max(cap.minSalary, Math.round(salary / 10_000) * 10_000), yearsRemaining: firstRound ? 4 : 2, playerOption: false, teamOption: true };
+  const years = firstRound ? Math.max(1, Math.min(5, Math.round(firstRoundYears) || 4)) : 2;
+  return { annualSalary: Math.max(cap.minSalary, Math.round(salary / 10_000) * 10_000), yearsRemaining: years, playerOption: false, teamOption: true };
 }
 
 export function draftProspect(
@@ -773,7 +776,7 @@ export function draftProspect(
   const draftClass = extras.draftClass.filter((p) => p.playerId !== prospectId);
   const contracts = {
     ...extras.contracts,
-    [draftedId]: { playerId: draftedId, teamId, ...rookieContract(pickNumber, teamCount, extras.capSettings) },
+    [draftedId]: { playerId: draftedId, teamId, ...rookieContract(pickNumber, teamCount, extras.capSettings, league.rulesSettings?.rookieContractLengthYears) },
   };
   const draftPicksMade = [...(extras.draftPicksMade ?? []), { pickNumber: extras.draftPickIndex, teamId, playerId: draftedId }];
 

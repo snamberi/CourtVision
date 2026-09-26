@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { GmSeasonLine } from './FrontOfficePanels';
 import { UnanimousTag } from './UnanimousTag';
 import type { League } from '../simulation/league';
 import { hasConferenceStructure } from '../simulation/league';
@@ -66,6 +67,8 @@ export function AlmanacPage({ league, extras, awardSettings, onSelectPlayer }: {
         {entry.awards && <button className="primary" onClick={() => setNight(true)}>{entry.inProgress ? 'Preview Awards Night' : 'Replay Awards Night'}</button>}
       </div>
     </section>
+
+    <GmSeasonLine league={league} season={entry.season} />
 
     {entry.awards && <section className="almanac-section"><h4>Awards{entry.inProgress && <small className="hint-text"> · current race</small>}</h4>
       <div className="almanac-awards">{CEREMONY_ORDER.slice().reverse().map(a => {

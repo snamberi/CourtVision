@@ -1,4 +1,5 @@
 import { TeamLink, TeamText } from './TeamLink';
+import { rookieScale } from '../simulation/draftSeason';
 import { useState } from 'react';
 import type { League } from '../simulation/league';
 import type { GMLeagueExtras, TradeProposal } from '../simulation/gm';
@@ -16,9 +17,13 @@ interface Props {
   controlledTeamId: string | null;
   onChange: (league: League, extras: GMLeagueExtras) => void;
   onSelectPlayer: (id: string) => void;
+  /** The draft is done and Summer League hasn't been played yet this offseason. */
+  summerLeagueReady?: boolean;
+  onOpenSummerLeague?: () => void;
 }
 
-export function DraftPage({ league, extras, controlledTeamId, onChange, onSelectPlayer }: Props) {
+export function DraftPage({ league, extras, controlledTeamId, onChange, onSelectPlayer, summerLeagueReady, onOpenSummerLeague }: Props) {
+  const scale = rookieScale(league, extras.capSettings);
   const order = currentDraftOrder(league, extras);
   const [message, setMessage] = useState<string | null>(null);
   const [target, setTarget] = useState<number | null>(null);
@@ -85,6 +90,7 @@ export function DraftPage({ league, extras, controlledTeamId, onChange, onSelect
       {order[extras.draftPickIndex + 1] && <div className="draft-clock-card"><span className="hint-text">Up next · {pickLabel(extras.draftPickIndex + 1)}</span><strong><TeamLink name={teamName(order[extras.draftPickIndex + 1])} /></strong></div>}
       {myTurn && <div className="draft-clock-card draft-youre-up">Your selection</div>}
     </div>}
+    {summerLeagueReady && onOpenSummerLeague && <div className="summer-cta"><div><b>Summer League is next.</b> <span className="hint-text">See your rookies play four games against the league's other young players before re-signing opens.</span></div><button className="primary" onClick={onOpenSummerLeague}>Go to Summer League</button></div>}
     {message && <p className="hint-text" role="status"><TeamText text={message} /></p>}
 
     {extras.draftDayOpen && extras.draftPickIndex < 5 && shortlist.length > 0 && <section className="prospect-spotlight" aria-label="Top prospect comparison">
@@ -115,6 +121,13 @@ export function DraftPage({ league, extras, controlledTeamId, onChange, onSelect
         {order.map((owner, slot) => { const selection = made.get(slot); return <tr key={slot} className={extras.draftDayOpen && slot === extras.draftPickIndex ? 'draft-current-pick-row' : ''}><td>{pickLabel(slot)}</td><td><TeamLink name={teamName(selection?.teamId ?? owner)} /></td>{showValues && <td>{computeDraftPickValue(slot, order, league)}</td>}<td>{selection ? <button className="prospect-name" onClick={() => onSelectPlayer(selection.playerId)}><PlayerNameTag playerId={selection.playerId} teamId={selection.teamId} size={22} /></button> : extras.draftDayOpen && slot >= extras.draftPickIndex && controlledTeamId && owner !== controlledTeamId ? <button onClick={() => { setTarget(slot); setOfferedPicks([]); setOfferedPlayers([]); }}>Propose trade</button> : '—'}</td></tr>; })}
       </tbody></table></div></div>
     </div>
+    <details className="rookie-scale"><summary>Rookie scale · salary by pick</summary>
+      <p className="hint-text">Every drafted player signs the slot's contract. First-rounders: {scale[0]?.years ?? 4} years (set in League Rules), last year a team option. Second-rounders: 2 years near the minimum.</p>
+      <div className="rookie-scale-grid">{[1, 2].map(round => <div key={round} className="finances-table-wrap"><table className="db-table stat-line-table">
+        <thead><tr><th>Round {round}</th><th>Salary</th><th>Years</th></tr></thead>
+        <tbody>{scale.filter(r => r.round === round).map(r => <tr key={r.pick}><td>#{r.round === 1 ? r.pick : r.pick - n}</td><td>${(r.salary / 1e6).toFixed(2)}M</td><td>{r.years}</td></tr>)}</tbody>
+      </table></div>)}</div>
+    </details>
     <h4>Future draft picks</h4><div className="finances-table-wrap"><table className="db-table"><thead><tr><th>Team</th><th>Round 1</th><th>Round 2</th></tr></thead><tbody>{league.teams.map(t => {
       const owned = (extras.futurePicks ?? []).filter(p => p.currentOwnerTeamId === t.teamId).sort((a, b) => a.year - b.year);
       const list = (round: number) => owned.filter(p => p.round === round).map(p => `${p.year}${p.originalTeamId !== t.teamId ? ` via ${teamName(p.originalTeamId)}` : ''}${p.protection ? ` (${p.protection.label})` : ''}`).join(', ') || '—';

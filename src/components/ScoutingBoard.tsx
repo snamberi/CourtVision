@@ -5,9 +5,12 @@ import { calculateOverall } from '../simulation/engine/overall';
 import { primaryPosition } from '../simulation/teamStatus';
 import { combineResults, perceivedPotential, scoutingAccuracy, scoutingLevel, scoutingReport, toggleWorkout, workoutSlots, workoutsFor, type CombineResults } from '../simulation/scouting';
 import { PlayerNameTag } from './PlayerAvatar';
+import { TeamLink } from './TeamLink';
+import { classHonors, collegeSeason, collegeSeasonToDate, type CollegeSeason } from '../simulation/collegeSeason';
+import { mockDraft, seasonProgress } from '../simulation/draftSeason';
 
 const ftIn = (inches: number) => `${Math.floor(inches / 12)}′ ${(inches % 12).toFixed(inches % 1 ? 2 : 0).replace(/\.?0+$/, '')}″`;
-type View = 'board' | 'combine' | 'workouts';
+type View = 'board' | 'college' | 'mock' | 'combine' | 'workouts';
 type CombineKey = keyof CombineResults;
 const COMBINE_COLS: { key: CombineKey; label: string; fmt: (v: number) => string; lowerIsBetter?: boolean }[] = [
   { key: 'heightNoShoes', label: 'Ht (no shoes)', fmt: ftIn }, { key: 'wingspan', label: 'Wingspan', fmt: ftIn },
@@ -45,6 +48,11 @@ export function ScoutingBoard({ league, extras, controlledTeamId, myTurn, onDraf
     setNote(r.error ?? null);
     if (!r.error) onChange(league, r.extras);
   };
+  const progress = seasonProgress(league);
+  const college = useMemo(() => new Map(extras.draftClass.map(p => [p.playerId, collegeSeasonToDate(collegeSeason(p.trueSeason), progress)])), [extras.draftClass, progress]);
+  const honors = useMemo(() => progress >= 1 ? classHonors(extras.draftClass) : new Map<string, string[]>(), [extras.draftClass, progress]);
+  const mock = useMemo(() => view === 'mock' ? mockDraft(league, extras) : [], [view, league, extras]);
+  const teamName = (id: string) => league.teams.find(t => t.teamId === id)?.name ?? id;
   const rows = view === 'workouts' ? board.filter(b => workouts.includes(b.p.playerId)) : board;
   const combineRows = [...board].sort((a, b) => (a.combine[sort.key] - b.combine[sort.key]) * sort.dir);
 
@@ -59,11 +67,21 @@ export function ScoutingBoard({ league, extras, controlledTeamId, myTurn, onDraf
     </header>
     <p className="hint-text">Potential shows as your scouts' range. A bigger scouting budget narrows it and adds workout slots; a workout nearly removes the guesswork and reveals character. Other front offices draft from their own reads.</p>
     <div className="stats-view-toggle" role="tablist" aria-label="Scouting views">
-      {(['board', 'combine', 'workouts'] as View[]).map(v => <button key={v} role="tab" aria-selected={view === v} className={view === v ? 'active' : ''} onClick={() => setView(v)}>{v === 'board' ? 'Big Board' : v === 'combine' ? 'Draft Combine' : `Workouts (${workouts.length})`}</button>)}
+      {(['board', 'college', 'mock', 'combine', 'workouts'] as View[]).map(v => <button key={v} role="tab" aria-selected={view === v} className={view === v ? 'active' : ''} onClick={() => setView(v)}>{v === 'board' ? 'Big Board' : v === 'college' ? 'College Stats' : v === 'mock' ? 'Mock Draft' : v === 'combine' ? 'Draft Combine' : `Workouts (${workouts.length})`}</button>)}
     </div>
     {note && <p className="hint-text" role="status">{note}</p>}
 
-    {view !== 'combine' ? <div className="finances-table-wrap"><table className="db-table scouting-table">
+    {view === 'college' ? <CollegeTable board={board} college={college} honors={honors} progress={progress} onSelectPlayer={onSelectPlayer} />
+      : view === 'mock' ? <div className="finances-table-wrap"><table className="db-table mock-draft-table">
+        <thead><tr><th>Pick</th><th>Team</th><th>Player</th><th>Pos</th><th>School / club</th><th>Why</th><th>Slot salary</th></tr></thead>
+        <tbody>{mock.map(m => <tr key={m.pick} className={m.teamId === team ? 'current-season-row' : undefined}>
+          <td>{m.pick <= league.teams.length ? `R1 · #${m.pick}` : `R2 · #${m.pick - league.teams.length}`}</td>
+          <td><TeamLink name={teamName(m.teamId)} /></td>
+          <td><button className="prospect-name" onClick={() => onSelectPlayer(m.prospectId)}><PlayerNameTag playerId={m.prospectId} size={22} /></button></td>
+          <td>{m.position}</td><td>{m.school}</td><td className="hint-text">{m.note}</td><td>${(m.salary / 1e6).toFixed(2)}M</td>
+        </tr>)}</tbody>
+      </table><p className="hint-text">{league.seasonPhase === 'draft' ? 'Remaining picks in the real order.' : 'Order if the season ended today, without lottery luck.'} A consensus mock from public scouting and each team's thinnest position; every front office drafts from its own private reads, so expect surprises. Your picks are highlighted.</p></div>
+      : view !== 'combine' ? <div className="finances-table-wrap"><table className="db-table scouting-table">
       <thead><tr><th>#</th><th>Player</th><th>Pos</th><th>Age</th><th>OVR</th><th>POT (scouted)</th><th>Read</th><th>Best tool</th><th>Flags</th><th></th><th></th></tr></thead>
       <tbody>{rows.map((b, i) => {
         const { p, report: r } = b, isOpen = open === p.playerId, worked = workouts.includes(p.playerId);
@@ -83,7 +101,7 @@ export function ScoutingBoard({ league, extras, controlledTeamId, myTurn, onDraf
             </td>
             <td><button disabled={!myTurn} onClick={() => onDraft(p.playerId)}>Draft</button></td>
           </tr>
-          {isOpen && <tr className="scouting-report-row"><td colSpan={11}><ReportCard b={b} /></td></tr>}
+          {isOpen && <tr className="scouting-report-row"><td colSpan={11}><ReportCard b={b} season={college.get(p.playerId)} honors={honors.get(p.playerId)} /></td></tr>}
         </Fragment>;
       })}</tbody>
     </table>{rows.length === 0 && <p className="empty-state">{view === 'workouts' ? 'No workouts scheduled. Invite prospects from the Big Board.' : 'No prospects remaining.'}</p>}</div>
@@ -106,7 +124,7 @@ function PotBar({ low, high }: { low: number; high: number }) {
   return <span className="pot-bar" aria-hidden="true"><span style={{ left: `${x(low)}%`, width: `${Math.max(3, x(high) - x(low))}%` }} /></span>;
 }
 
-function ReportCard({ b }: { b: { p: DraftProspect; report: ReturnType<typeof scoutingReport>; combine: CombineResults } }) {
+function ReportCard({ b, season, honors }: { b: { p: DraftProspect; report: ReturnType<typeof scoutingReport>; combine: CombineResults }; season?: CollegeSeason; honors?: string[] }) {
   const { report: r, combine: c, p } = b;
   return <div className="scouting-report">
     <div className="scouting-report-grades">
@@ -117,7 +135,37 @@ function ReportCard({ b }: { b: { p: DraftProspect; report: ReturnType<typeof sc
       <p className="scout-plus">+ {r.strengths.join(' · ')}</p>
       <p className="scout-minus">− {r.weaknesses.join(' · ')}</p>
       {r.flags.length > 0 && <p className="scout-flags">{r.flags.join(' · ')}</p>}
+      {season && <p className="scout-college"><b>{season.team}</b> ({season.level === 'college' ? `${season.year}, ${season.circuit}` : season.circuit}): {season.gp ? `${season.ppg} PTS · ${season.rpg} REB · ${season.apg} AST · ${pct(season.fgPct)} FG · ${pct(season.tpPct)} 3P in ${season.gp} games` : 'season not started'}{honors?.length ? ` · ${honors.join(', ')}` : ''}</p>}
       <p className="hint-text">Combine: {ftIn(c.heightNoShoes)} without shoes · {ftIn(c.wingspan)} wingspan · {c.maxVertical.toFixed(1)}″ max vertical · {c.laneAgility.toFixed(2)}s lane agility</p>
     </div>
   </div>;
+}
+
+const pct = (v: number) => `${(v * 100).toFixed(1)}%`;
+
+type CollegeKey = 'gp' | 'mpg' | 'ppg' | 'rpg' | 'apg' | 'spg' | 'bpg' | 'fgPct' | 'tpPct' | 'ftPct';
+const COLLEGE_COLS: { key: CollegeKey; label: string; fmt: (v: number) => string }[] = [
+  { key: 'gp', label: 'GP', fmt: v => `${v}` }, { key: 'mpg', label: 'MIN', fmt: v => v.toFixed(1) }, { key: 'ppg', label: 'PTS', fmt: v => v.toFixed(1) },
+  { key: 'rpg', label: 'REB', fmt: v => v.toFixed(1) }, { key: 'apg', label: 'AST', fmt: v => v.toFixed(1) }, { key: 'spg', label: 'STL', fmt: v => v.toFixed(1) },
+  { key: 'bpg', label: 'BLK', fmt: v => v.toFixed(1) }, { key: 'fgPct', label: 'FG%', fmt: pct }, { key: 'tpPct', label: '3P%', fmt: pct }, { key: 'ftPct', label: 'FT%', fmt: pct },
+];
+
+/** Every prospect's pre-draft season, sortable. Games played follow the league calendar. */
+function CollegeTable({ board, college, honors, progress, onSelectPlayer }: {
+  board: { p: DraftProspect }[]; college: Map<string, CollegeSeason>; honors: Map<string, string[]>; progress: number; onSelectPlayer: (id: string) => void;
+}) {
+  const [sort, setSort] = useState<{ key: CollegeKey; dir: 1 | -1 }>({ key: 'ppg', dir: -1 });
+  const rows = board.map(b => ({ p: b.p, s: college.get(b.p.playerId)! })).filter(r => r.s)
+    .sort((a, b) => (a.s[sort.key] - b.s[sort.key]) * sort.dir || a.p.playerId.localeCompare(b.p.playerId));
+  const started = rows.some(r => r.s.gp > 0);
+  return <div className="finances-table-wrap"><table className="db-table college-table">
+    <thead><tr><th>Player</th><th>School / club</th><th>Yr</th>{COLLEGE_COLS.map(c => <th key={c.key} aria-sort={sort.key === c.key ? (sort.dir === 1 ? 'ascending' : 'descending') : 'none'}>
+      <button className="th-sort" onClick={() => setSort(s => ({ key: c.key, dir: s.key === c.key ? (s.dir === 1 ? -1 : 1) : -1 }))}>{c.label}{sort.key === c.key ? (sort.dir === 1 ? ' ▲' : ' ▼') : ''}</button></th>)}<th>Honors</th></tr></thead>
+    <tbody>{rows.map(({ p, s }) => <tr key={p.playerId}>
+      <td><button className="prospect-name" onClick={() => onSelectPlayer(p.playerId)}><PlayerNameTag playerId={p.playerId} size={22} /></button></td>
+      <td>{s.team}<small className="hint-text"> · {s.circuit}</small></td><td>{s.level === 'college' ? s.year.slice(0, 2) : 'Pro'}</td>
+      {COLLEGE_COLS.map(c => <td key={c.key}>{s.gp ? c.fmt(s[c.key]) : '—'}</td>)}
+      <td className="hint-text">{honors.get(p.playerId)?.join(', ') ?? ''}</td>
+    </tr>)}</tbody>
+  </table><p className="hint-text">{!started ? 'The college season tips off with yours: lines fill in as your season is played.' : progress < 1 ? `College seasons are ${Math.round(progress * 100)}% complete, in step with yours. Honors are voted when they finish.` : 'Final college and overseas lines. Box scores flatter some prospects and hide others; pro players overseas post smaller numbers against grown men.'}</p></div>;
 }

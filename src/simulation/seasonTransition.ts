@@ -300,8 +300,11 @@ export function beginNewSeasonRoster(
     debutants.push(...debuts.players);
     historical = debuts.meta;
   } else {
-    draftClass = generateClass();
+    // The class on the board all season (see draftSeason.ts) is the one that gets drafted; generate only if none.
+    const scouted = extras.draftClass.length > 0 && extras.draftClass.every(p => p.trueSeason.season === newSeason);
+    draftClass = scouted ? extras.draftClass : generateClass();
   }
+  const keepWorkouts = !historical && draftClass === extras.draftClass;
   const standingsDraftOrder = buildTwoRoundDraftOrder(league, Math.floor(rng.next() * 1_000_000));
   const draftYear = parseInt(newSeason.slice(0, 4), 10);
   const { order: draftOrder, protectionsTriggered } = resolveTradedPicksIntoOrder(standingsDraftOrder, draftYear, extras.futurePicks ?? []);
@@ -345,7 +348,7 @@ export function beginNewSeasonRoster(
     contracts,
     freeAgents: [...faResult.freeAgents, ...freeAgentsFromExpiry, ...debutants],
     draftClass,
-    draftWorkouts: {},
+    draftWorkouts: keepWorkouts ? extras.draftWorkouts ?? {} : {},
     draftOrder,
     futurePicks,
     draftDayOpen: true,

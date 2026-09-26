@@ -61,8 +61,10 @@ import { migrateHistoricalLeague } from './history/migrateHistorical';
 import { DEFAULT_CAP_SETTINGS, DEFAULT_TRADE_SETTINGS, DEFAULT_GM_FLAGS, generateDraftClass, pickDraftClassSize, buildTwoRoundDraftOrder, generateFutureDraftPicks, isTradeDeadlinePassed, simulateUntilTradeDeadline, waiveToFreeAgency, toggleTradeBlock, type GMLeagueExtras, type Contract, type TradeDifficulty } from './simulation/gm';
 import { RNG } from './simulation/engine/rng';
 import { beginNewSeasonRoster, finalizeNewSeasonSchedule, type SeasonTransitionSummary } from './simulation/seasonTransition';
-import { acceptJobOffer, becomeSpectator, ensureFrontOffice, ACHIEVEMENT_BY_ID, type OwnerReview } from './simulation/frontOffice';
+import { acceptJobOffer, becomeSpectator, ensureFrontOffice, markSandboxUse, ACHIEVEMENT_BY_ID, type OwnerReview } from './simulation/frontOffice';
 import { JobOffersDialog, OwnerReviewDialog } from './components/FrontOfficePanels';
+import { recordLeagueLegacy } from './storage/gmLegacy';
+import { canPlaySummerLeague, ensureUpcomingDraftClass, simulateSummerLeague } from './simulation/draftSeason';
 import { runLeagueAIPass, autoDraftAIPicksUntilUserTurn, simEntireDraft, runFreeAgencyAI } from './simulation/aiGM';
 import { autoRunAllStarWeekend } from './simulation/autoPlay';
 import { autoGeneratePlayoffBracket, simulateFullPlayoffs, type PlayoffBracket } from './simulation/playoffs';
@@ -123,6 +125,7 @@ const RecordsPage = lazy(() => import('./components/RecordsPage').then(m => ({ d
 const AlmanacPage = lazy(() => import('./components/AlmanacPage').then(m => ({ default: m.AlmanacPage })));
 const ResignWaivePage = lazy(() => import('./components/ResignWaivePage').then(m => ({ default: m.ResignWaivePage })));
 const PreseasonPage = lazy(() => import('./components/PreseasonPage').then(m => ({ default: m.PreseasonPage })));
+const SummerLeaguePage = lazy(() => import('./components/SummerLeaguePage').then(m => ({ default: m.SummerLeaguePage })));
 const GmOfficePage = lazy(() => import('./components/FrontOfficePanels').then(m => ({ default: m.GmOfficePage })));
 const DashboardPage = lazy(() => import('./components/DashboardPage').then(m => ({ default: m.DashboardPage })));
 const PlayerStatsPage = lazy(() => import('./components/PlayerStatsPage').then(m => ({ default: m.PlayerStatsPage })));
@@ -187,7 +190,8 @@ function App() {
   const [pendingExtras, setPendingExtras] = useState<GMLeagueExtras | null>(null);
   const [controlledTeamId, setControlledTeamId] = useState<string | null>(null);
   const sandboxMode = league.settings.sandboxMode === true;
-  const setSandboxMode = (enabled: boolean) => setLeague(l => ({ ...l, settings: { ...l.settings, sandboxMode: enabled } }));
+  // Turning Sandbox on marks the league for good: its GM record and achievements stop counting.
+  const setSandboxMode = (enabled: boolean) => setLeague(l => markSandboxUse({ ...l, settings: { ...l.settings, sandboxMode: enabled } }));
   const [confirmation, setConfirmation] = useState<'sandbox' | 'exit' | null>(null);
   const [viewedTeamId, setViewedTeamId] = useState<string>('');
   const managerId = sandboxMode ? null : controlledTeamId ?? '__spectator__';
@@ -329,7 +333,8 @@ function App() {
     // game that has no slot of its own would keep writing over the previously opened save.
     setActiveSaveId(existingSaveId ?? null);
     setLeague(l);
-    setExtras(e);
+    // Next summer's draft class is on the board all season (older saves get theirs here).
+    setExtras(ensureUpcomingDraftClass(l, e));
     setControlledTeamId(teamId);
     setSelectedPlayerId(l.teams[0]?.seasons[0]?.playerId ?? '');
     setExhibitionHomeId(teamId ?? l.teams[0]?.teamId ?? '');
@@ -731,7 +736,7 @@ function App() {
     setPlayoffBracket(null);
     const ready = manageCoachRosters(finalizeNewSeasonSchedule(league), extras);
     setLeague(ready.league);
-    setExtras(ready.extras);
+    setExtras(ensureUpcomingDraftClass(ready.league, ready.extras));
     setTab('standings');
   };
 
@@ -770,6 +775,25 @@ function App() {
     setLeague(becomeSpectator(league));
     setControlledTeamId(null);
     pushToast('You are spectating. Teams will call again next offseason.', 'info');
+  };
+  // Your all-leagues GM legacy follows this league's front office (clean leagues only; see storage/gmLegacy.ts).
+  const saveName = saveSummaries.find(sv => sv.id === activeSaveId)?.name ?? 'League';
+  useEffect(() => {
+    if (screen === 'app' && activeSaveId && frontOffice) recordLeagueLegacy(activeSaveId, saveName, league);
+  }, [screen, activeSaveId, saveName, frontOffice, league.settings.sandboxMode]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Summer League: played once, after the draft and before re-signing. Runs a few seconds on the real engine.
+  const [summerBusy, setSummerBusy] = useState(false);
+  const playSummerLeague = () => {
+    if (!canPlaySummerLeague(league, extras) || summerBusy) return;
+    setSummerBusy(true);
+    window.setTimeout(() => {
+      try {
+        const sl = simulateSummerLeague(league, extras, controlledTeamId, seed + 4242);
+        setLeague(l => ({ ...l, summerLeague: sl }));
+        const champ = league.teams.find(t => t.teamId === sl.championTeamId)?.name;
+        pushToast(`Summer League is done${champ ? `: ${champ} win the title` : ''}${sl.mvpId ? `, ${sl.mvpId} is MVP` : ''}.`, 'success');
+      } finally { setSummerBusy(false); }
+    }, 30);
   };
   const setFiringEnabled = (on: boolean) => setLeague(l => l.frontOffice ? { ...l, frontOffice: { ...l.frontOffice, firingEnabled: on } } : l);
   useEffect(() => {
@@ -1117,7 +1141,7 @@ function App() {
           if (confirmation === 'sandbox') { setSandboxMode(true); setConfirmation(null); }
           else { await returnToMenu(); setConfirmation(null); }
         }}>
-          {confirmation === 'sandbox' ? <><p>This makes the entire league controllable. You can edit players and badges, manage any team, import league data, and unlock the sandbox editing tools.</p><p>Changes are saved to this league. Turning Sandbox off later will not undo them. Create a backup first if you want to keep an untouched version.</p></> : <p>Your current league will be saved before leaving. Any running Auto Play or season simulation will stop. You can continue this league from the main menu.</p>}
+          {confirmation === 'sandbox' ? <><p>This makes the entire league controllable. You can edit players and badges, manage any team, import league data, and unlock the sandbox editing tools.</p><p>Changes are saved to this league. Turning Sandbox off later will not undo them. Create a backup first if you want to keep an untouched version.</p><p><b>Achievements turn off for this league permanently</b>, and its GM career will not count toward your all-leagues record, even if you turn Sandbox off again.</p></> : <p>Your current league will be saved before leaving. Any running Auto Play or season simulation will stop. You can continue this league from the main menu.</p>}
         </ConfirmationDialog>}
         {tab === 'database' && (
           league.teams.length === 0
@@ -1252,6 +1276,7 @@ function App() {
               />
         )}
 
+
         {tab === 'tradeOffers' && (
           league.teams.length === 0
             ? <p className="empty-state">No teams yet.</p>
@@ -1276,8 +1301,12 @@ function App() {
             : <DraftPage
                 league={league} extras={extras} controlledTeamId={managerId}
                 onChange={(l, e) => { setLeague(l); setExtras(e); }} onSelectPlayer={selectPlayer}
+                summerLeagueReady={canPlaySummerLeague(league, extras)} onOpenSummerLeague={() => setTab('summerLeague')}
               />
         )}
+        {tab === 'summerLeague' && <SummerLeaguePage league={league} controlledTeamId={controlledTeamId} canPlay={canPlaySummerLeague(league, extras)} busy={summerBusy}
+          onPlay={playSummerLeague} onSelectPlayer={selectPlayer}
+          onContinue={seasonPhase === 'draft' && !extras.draftDayOpen && extras.draftPickIndex > 0 ? beginResignWaivePhase : undefined} />}
 
         {tab === 'staff' && <StaffPage league={league} controlledTeamId={controlledTeamId} sandboxMode={sandboxMode} onChange={setLeague} />}
         {tab === 'development' && <DevelopmentCenterPage league={league} controlledTeamId={controlledTeamId} sandboxMode={sandboxMode} onChange={setLeague} onSelectPlayer={id => { selectPlayer(id); setTab('playerDevelopment'); }} />}
