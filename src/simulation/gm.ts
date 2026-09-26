@@ -13,6 +13,7 @@ import { calculateOverall } from './engine/overall';
 import { generatePlayerOrigin } from './names';
 import { collectPlayerIds, withUniquePlayerId } from './playerIds';
 import { appendHistoryEvent } from './playerHistory';
+import { isDeadlineDayClosed, logDeadlineTrade, tradeDeadlineEnabled } from './deadlineDay';
 
 // ---- Contracts ----
 export interface Contract {
@@ -262,9 +263,14 @@ export interface TradeValidation {
   reasons: string[];
 }
 
-/** Roughly proportional to season completion; defaults to true once ~65% of the schedule has been played, tunable via league.settings.tradeDeadlinePct. */
+/**
+ * Roughly proportional to season completion; defaults to true once ~65% of the schedule has been played, tunable via
+ * league.settings.tradeDeadlinePct. Also true once this season's Deadline Day clock has hit 3 PM, and never when the
+ * league rules turn the deadline off.
+ */
 export function isTradeDeadlinePassed(league: League): boolean {
-  if ((league.seasonPhase ?? 'regular_season') !== 'regular_season' || league.schedule.length === 0) return false;
+  if ((league.seasonPhase ?? 'regular_season') !== 'regular_season' || league.schedule.length === 0 || !tradeDeadlineEnabled(league)) return false;
+  if (isDeadlineDayClosed(league)) return true;
   const threshold = league.settings.tradeDeadlinePct ?? 0.65;
   const played = league.schedule.filter((g) => g.played).length;
   return played / league.schedule.length >= threshold;
@@ -409,8 +415,10 @@ export function executeTrade(league: League, extras: GMLeagueExtras, proposal: T
   const draftOrder = currentDraftOrder(league, extras).map((owner, slot) =>
     proposal.currentPicksFromA?.includes(slot) ? proposal.teamBId : proposal.currentPicksFromB?.includes(slot) ? proposal.teamAId : owner);
   const movedPlayers = new Set([...proposal.playersFromA, ...proposal.playersFromB]);
-  const notable = league.teams.some(t => t.seasons.some(s => movedPlayers.has(s.playerId) && calculateOverall(s) >= 72));
-  return { league: recordRivalryTrade({ ...league, teams }, proposal.teamAId, proposal.teamBId, notable), extras: { ...extras, contracts, futurePicks, picksOnBlock,
+  const topOverall = Math.max(0, ...league.teams.flatMap(t => t.seasons.filter(s => movedPlayers.has(s.playerId)).map(calculateOverall)));
+  const notable = topOverall >= 72;
+  const logged = logDeadlineTrade({ ...league, teams }, proposal, topOverall);
+  return { league: recordRivalryTrade(logged, proposal.teamAId, proposal.teamBId, notable), extras: { ...extras, contracts, futurePicks, picksOnBlock,
     draftOrder: extras.draftDayOpen ? draftOrder : extras.draftOrder,
     tradeBlock: extras.tradeBlock.filter(id => !movedPlayers.has(id)),
   } };

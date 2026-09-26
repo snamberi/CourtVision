@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { TeamLogo } from './TeamLogo';
 import { useTeamIdentity } from '../visuals/TeamIdentityContext';
 import { CupCard } from './CupPage';
+import { DeadlineCard } from './DeadlineDayPage';
 import { OwnerOfficeCard } from './FrontOfficePanels';
 import { TeamLink, TeamText } from './TeamLink';
 import type { League, SeasonPhase } from '../simulation/league';
@@ -129,6 +130,7 @@ export function DashboardPage({ league, extras, controlledTeamId, seasonPhase, o
       <div className="dashboard-duo">
         <OwnerOfficeCard league={league} extras={extras} onOpen={() => onGoTo('gmOffice')} />
         <CupCard league={league} controlledTeamId={controlledTeamId} onOpen={() => onGoTo('cup')} />
+        <DeadlineCard league={league} controlledTeamId={controlledTeamId} onOpen={() => onGoTo('deadline')} />
       </div>
 
       <div className="dashboard-columns">

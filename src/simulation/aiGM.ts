@@ -167,23 +167,30 @@ export function classifyBuyerSeller(league: League, extras: GMLeagueExtras, team
  * (rough valuation - see computeFutureDraftPickValue) rather than the offer
  * simply failing outright.
  */
-export function findAITrade(league: League, extras: GMLeagueExtras, teamAId: string, teamBId: string): TradeProposal | null {
+export function findAITrade(league: League, extras: GMLeagueExtras, teamAId: string, teamBId: string, sellerId?: string, targetPlayerId?: string): TradeProposal | null {
   const teamA = league.teams.find((t) => t.teamId === teamAId);
   const teamB = league.teams.find((t) => t.teamId === teamBId);
   if (!teamA || !teamB || teamA.seasons.length <= MIN_ROSTER_SIZE || teamB.seasons.length <= MIN_ROSTER_SIZE) return null;
 
-  const classA = classifyBuyerSeller(league, extras, teamAId);
-  const classB = classifyBuyerSeller(league, extras, teamBId);
   let seller = teamA, buyer = teamB;
-  if (classA === 'seller' && classB === 'buyer') { seller = teamA; buyer = teamB; }
-  else if (classB === 'seller' && classA === 'buyer') { seller = teamB; buyer = teamA; }
-  else return null; // no clear buyer/seller relationship between this pair right now
+  if (sellerId === teamAId || sellerId === teamBId) {
+    // The caller already knows who is selling (Deadline Day calls to a team that could go either way).
+    seller = sellerId === teamAId ? teamA : teamB;
+    buyer = sellerId === teamAId ? teamB : teamA;
+  } else {
+    const classA = classifyBuyerSeller(league, extras, teamAId);
+    const classB = classifyBuyerSeller(league, extras, teamBId);
+    if (classA === 'seller' && classB === 'buyer') { seller = teamA; buyer = teamB; }
+    else if (classB === 'seller' && classA === 'buyer') { seller = teamB; buyer = teamA; }
+    else return null; // no clear buyer/seller relationship between this pair right now
+  }
 
   // Values are seen through each front office's own situation (tradeValue.ts): the buyer wants help now,
   // the seller wants youth and picks. A deal is proposed only if both can come out ahead.
   const buyerNeed = weakestPositions(buyer);
   const needBoost = (p: PlayerSeason, need: string[]) => need.includes(primaryPosition(p)) ? 1.15 : 1;
-  const sellerVet = [...seller.seasons]
+  // A named target (a Deadline Day rumor) is shopped whatever his age; otherwise the seller moves a veteran.
+  const sellerVet = targetPlayerId ? seller.seasons.find((s) => s.playerId === targetPlayerId) : [...seller.seasons]
     .filter((s) => s.age >= 29)
     .sort((a, b) => tradeAssetValue(b, league, extras, buyer.teamId) * needBoost(b, buyerNeed) - tradeAssetValue(a, league, extras, buyer.teamId) * needBoost(a, buyerNeed))[0];
   if (!sellerVet) return null;

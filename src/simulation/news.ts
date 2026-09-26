@@ -5,6 +5,7 @@ import { isRookieEligible } from './rookieEligibility';
 import { calculateOverall } from './engine/overall';
 import { dynasties, rivalryKey, rivalryLevel } from './rivalry';
 import { formatGameClock, HIGHLIGHT_LABEL, type HighlightKind } from './highlights';
+import { deadlineNews } from './deadlineDay';
 
 /** Game days that get a "Play of the Night" story; older nights roll off like any other news. */
 const HIGHLIGHT_NIGHTS = 12;
@@ -189,6 +190,13 @@ export function generateNewsFeed(league: League, extras: GMLeagueExtras, maxItem
       detail: cup.mvpId ? `${cup.mvpId} is the Cup MVP.` : undefined, playerId: cup.mvpId ?? undefined, order: 250_000 });
     if (cup.qualifiers?.length) add({ id: 'cup:knockouts', season: cup.season, category: 'League', teamId: null, teamName: null,
       headline: `The In-Season Cup knockout field is set: ${cup.qualifiers.map(name).join(', ')}.`, order: 249_000 });
+  }
+  // Trade Deadline Day: each deal as it broke, then the recap (see deadlineDay.ts). Placed just before that night's games.
+  const deadline = league.deadlineDay;
+  if (deadline) {
+    const before = league.schedule.filter(g => g.played && g.result && g.round < deadline.round).length;
+    for (const item of deadlineNews(league)) add({ id: item.id, season: deadline.season, category: 'Transactions', teamId: item.teamId,
+      teamName: item.teamId ? name(item.teamId) : null, headline: item.headline, detail: item.detail, order: 1000 + before - 0.5 + item.order });
   }
   // Summer League: the champion and the MVP (see draftSeason.ts).
   const sl = league.summerLeague;

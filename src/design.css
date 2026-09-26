@@ -140,3 +140,57 @@ button { border-radius: 0; }
   .play-button-root { right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
   .toast-stack { bottom: calc(82px + env(safe-area-inset-bottom, 0px)); }
 }
+
+/* ---- Trade Deadline Day ---- */
+.deadline-page { display: flex; flex-direction: column; gap: 18px; }
+.deadline-hero {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 18px 26px; padding: 22px 24px;
+  background: radial-gradient(520px 200px at 10% 0%, rgba(232, 93, 93, .26), transparent 70%), linear-gradient(135deg, #3a1822, #0c1830 62%);
+  border: 1px solid #8d4452; border-left: 6px solid #e85d5d; box-shadow: inset 0 2px 0 rgba(255, 255, 255, .08), 4px 4px 0 #000;
+}
+.deadline-hero.closed { background: linear-gradient(135deg, #1b2537, #0c1830 62%); border-color: #3e5577; border-left-color: #5a7aa8; }
+.deadline-hero-copy { flex: 1 1 380px; display: flex; flex-direction: column; gap: 8px; }
+.deadline-hero h2 { margin: 2px 0 0; font-size: 32px; }
+.deadline-hero p { margin: 0; max-width: 72ch; color: #d6e2f1; }
+.deadline-clock { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-width: 150px; padding: 14px 18px; background: #070d18; border: 2px solid #e85d5d; box-shadow: 3px 3px 0 #000; }
+.deadline-hero.closed .deadline-clock { border-color: #5a7aa8; }
+.deadline-clock--idle { min-width: 0; color: var(--amber-bright); border-color: var(--amber); }
+.deadline-clock-time { font: 26px/1 var(--font-pixel); color: #ffd7d7; letter-spacing: .02em; }
+.deadline-hero.closed .deadline-clock-time { color: #d6e2f1; }
+.deadline-clock-left { font: 8px/1.6 var(--font-pixel); color: #ff9d9d; text-transform: uppercase; }
+.deadline-hero.closed .deadline-clock-left { color: var(--text-dim); }
+.deadline-hours { display: flex; gap: 4px; margin: 6px 0 0; padding: 0; list-style: none; }
+.deadline-hours li { flex: 1; padding: 4px 0; text-align: center; background: #0a1426; border: 1px solid #36547e; color: var(--text-dim); font: 600 11px/1.2 var(--font-display); letter-spacing: .04em; }
+.deadline-hours li.past { background: #3a1822; border-color: #8d4452; color: #ffb3b3; }
+.deadline-hours li.now { background: #e85d5d; border-color: #ffb3b3; color: #1a0508; }
+.deadline-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.deadline-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.deadline-side { display: flex; flex-direction: column; gap: 16px; }
+.deadline-side > .dashboard-panel, .deadline-grid > .dashboard-panel { margin: 0; }
+.deadline-ticker ul, .deadline-rumors ul { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.deadline-deal { display: grid; grid-template-columns: auto auto 1fr; align-items: baseline; gap: 4px 10px; padding: 10px 12px; background: #0a1426; border: 1px solid #36547e; border-left: 3px solid #5a7aa8; }
+.deadline-deal.big { border-left-color: var(--gold); background: linear-gradient(90deg, rgba(255, 209, 102, .1), #0a1426 60%); }
+.deadline-deal.mine { border-left-color: var(--amber); }
+.deadline-deal-time { font: 600 12px/1.3 var(--font-display); color: var(--text-dim); letter-spacing: .04em; white-space: nowrap; }
+.deadline-deal-tag { padding: 1px 6px; border: 1px solid #5a7aa8; color: #9fcbff; font: 600 10px/1.4 var(--font-display); letter-spacing: .08em; white-space: nowrap; }
+.deadline-deal.big .deadline-deal-tag { border-color: var(--gold); color: var(--gold); }
+.deadline-deal.mine .deadline-deal-tag { border-color: var(--amber); color: var(--amber-bright); }
+.deadline-deal-text { line-height: 1.45; }
+.deadline-rumors li { display: flex; gap: 10px; align-items: baseline; line-height: 1.45; }
+.deadline-rumors li.came-true { opacity: .92; }
+.deadline-heat { flex: none; min-width: 58px; padding: 1px 5px; text-align: center; font: 600 10px/1.4 var(--font-display); letter-spacing: .08em; border: 1px solid; }
+.deadline-heat.hot { color: #ffb3b3; border-color: #e85d5d; background: rgba(232, 93, 93, .15); }
+.deadline-heat.warm { color: var(--amber-bright); border-color: var(--amber); }
+.deadline-heat.cool { color: var(--text-dim); border-color: #36547e; }
+.deadline-done { color: #7fe0a0; font-weight: 600; }
+.deadline-offer { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; margin-bottom: 10px; background: #0a1426; border: 1px solid #36547e; border-left: 3px solid var(--amber); }
+.deadline-offer p { margin: 0; }
+.deadline-offer .hint-text { display: inline-block; min-width: 62px; }
+.deadline-offer-from { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-weight: 600; }
+.deadline-offer .trade-actions { margin-top: 6px; }
+.deadline-call-log { margin: 6px 0 0; }
+.deadline-card.live { border-color: #e85d5d; box-shadow: inset 3px 0 0 #e85d5d, 4px 4px 0 #000; }
+.deadline-card-count { margin: 4px 0; }
+.deadline-card-count b { font: 700 30px/1 var(--font-display); color: var(--amber-bright); margin-right: 6px; }
+@media (max-width: 860px) { .deadline-grid { grid-template-columns: 1fr; } }
+@media (max-width: 560px) { .deadline-clock { min-width: 0; width: 100%; } .deadline-hours li { font-size: 10px; } .deadline-deal { grid-template-columns: auto 1fr; } .deadline-deal-text { grid-column: 1 / -1; } }

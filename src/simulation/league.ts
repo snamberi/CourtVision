@@ -1,5 +1,6 @@
 import { prepareCoachingForGame, finishCoachingGame, type GameEvidence } from './playerDevelopment';
 import { advanceCup } from './cup';
+import { isDeadlineDayBlocking } from './deadlineDay';
 import { gameStaffCoach } from './staffManagement';
 import { reviewTeamRotation, type RotationReview } from './rotationReview';
 import type { GameSettings, PlayerSeason } from './types';
@@ -222,6 +223,8 @@ export interface League {
   frontOffice?: import('./frontOffice').FrontOfficeState;
   /** This season's In-Season Cup: groups, knockout results and honors (see cup.ts). */
   cup?: import('./cup').CupState;
+  /** This season's Trade Deadline Day: the clock, rumors, calls and every deal made (see deadlineDay.ts). */
+  deadlineDay?: import('./deadlineDay').DeadlineDayState;
   /** The latest offseason's Summer League (see draftSeason.ts); replaced each year. */
   summerLeague?: import('./draftSeason').SummerLeagueRecord;
 }
@@ -570,9 +573,10 @@ export interface PreparedGame {
   homeAvailableIds: string[];
 }
 
-/** True when no regular-season game can be played yet: a roster outside the limits, or the All-Star break is due. */
+/** True when no regular-season game can be played yet: a roster outside the limits, the All-Star break or Trade Deadline Day is due. */
 function gameBlocked(league: League, idx: number): boolean {
   if ((league.seasonPhase ?? 'regular_season') === 'regular_season' && league.rosterLimits && league.teams.some(t => t.seasons.length < league.rosterLimits!.minRosterSize || t.seasons.length > league.rosterLimits!.maxRosterSize)) return true;
+  if (league.deadlineDay && league.schedule[idx].round >= league.deadlineDay.round && isDeadlineDayBlocking(league)) return true;
   const breakRound = allStarBreakRound(league);
   return breakRound != null && league.schedule[idx].round >= breakRound && isAllStarBreakPending(league);
 }

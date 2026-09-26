@@ -29,6 +29,9 @@ export interface PlayButtonProps {
   onToggleAutoAllStar?: (on: boolean) => void;
   onSimulateGames: (count: number) => void; // simulates up to `count` scheduled rounds
   onSimulateToDeadline: () => void;
+  /** The Deadline Day clock ("11:00 AM") while the day is under way. */
+  deadlineClockLabel?: string | null;
+  onOpenDeadline?: () => void;
   seasonSimJob: { running: boolean; progress: ProgressStore<SeasonSimProgress>; start: () => void; cancel: () => void };
   autoPlayJob: { running: boolean; progress: AutoPlayProgress | null; start: (years: number) => void; cancel: () => void };
 
@@ -134,6 +137,13 @@ export function PlayButton(props: PlayButtonProps) {
                   <button onClick={autoPlayJob.cancel}>Cancel</button>
                 </>
               )}
+            </div>
+          )}
+
+          {!blocked && !anyJobRunning && seasonPhase === 'regular_season' && props.deadlineClockLabel && props.onOpenDeadline && (
+            <div className="play-menu-section">
+              <p>Trade Deadline Day · {props.deadlineClockLabel}. Playing on runs the clock to the 3 PM deadline.</p>
+              <button className="primary" onClick={() => doAndClose(props.onOpenDeadline!)}>Open Deadline Day</button>
             </div>
           )}
 

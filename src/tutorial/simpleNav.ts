@@ -56,6 +56,7 @@ export const SIMPLE_HUBS: SimpleHub[] = [
       { label: 'Trade', tab: 'trade' },
       { label: 'Trade offers', tab: 'tradeOffers' },
       { label: 'Trading block', tab: 'tradeBlock' },
+      { label: 'Deadline Day', tab: 'deadline' },
       { label: 'Free agents', tab: 'freeAgency' },
       { label: 'Re-sign / waive', tab: 'resignWaive', onlyDuringPhase: 'resign_waive' },
       { label: 'Draft', tab: 'draft' },

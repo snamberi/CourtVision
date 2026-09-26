@@ -1,5 +1,6 @@
 import { initializeCoaching } from './simulation/staffManagement';
 import { setupCup } from './simulation/cup';
+import { advanceDeadlineHour, deadlineClock, describeDeadlineTrade, isBlockbuster, isDeadlineDayDue, isDeadlineDayOpen, openDeadlineDay, runToDeadline, scheduleDeadlineDay, tradeDeadlineEnabled, type DeadlineHourResult } from './simulation/deadlineDay';
 import { TeamLinksProvider, TeamLink } from './components/TeamLink';
 import { ConfirmationDialog } from './components/ConfirmationDialog';
 import { SANDBOX_TABS, canEditTeam } from './navigation/permissions';
@@ -128,6 +129,7 @@ const AlmanacPage = lazy(() => import('./components/AlmanacPage').then(m => ({ d
 const ResignWaivePage = lazy(() => import('./components/ResignWaivePage').then(m => ({ default: m.ResignWaivePage })));
 const PreseasonPage = lazy(() => import('./components/PreseasonPage').then(m => ({ default: m.PreseasonPage })));
 const CupPage = lazy(() => import('./components/CupPage').then(m => ({ default: m.CupPage })));
+const DeadlineDayPage = lazy(() => import('./components/DeadlineDayPage').then(m => ({ default: m.DeadlineDayPage })));
 const SummerLeaguePage = lazy(() => import('./components/SummerLeaguePage').then(m => ({ default: m.SummerLeaguePage })));
 const GmOfficePage = lazy(() => import('./components/FrontOfficePanels').then(m => ({ default: m.GmOfficePage })));
 const DashboardPage = lazy(() => import('./components/DashboardPage').then(m => ({ default: m.DashboardPage })));
@@ -524,17 +526,25 @@ function App() {
     }
     const aiSeed = seed + 500 + nextLeague.schedule.filter((g) => g.played).length;
     const aiResult = runLeagueAIPass(nextLeague, nextExtras, controlledTeamId, aiSeed);
-    setLeague(withCurrentTutorial(aiResult.league));
-    setExtras(aiResult.extras);
-    if (resume) { const r = resume; setTimeout(() => continueSimRef.current?.(r.rounds, r.seedBase, aiResult.league), 0); }
-    if (silent) return aiResult.league;
+    // The season stopped on the morning of the trade deadline: Deadline Day opens (see deadlineDay.ts).
+    const deadline = !silent && isDeadlineDayDue(aiResult.league) ? openDeadlineDay(aiResult.league, aiResult.extras, controlledTeamId, deadlineSeed(aiResult.league)) : null;
+    const finalLeague = deadline?.league ?? aiResult.league;
+    setLeague(withCurrentTutorial(finalLeague));
+    setExtras(deadline?.extras ?? aiResult.extras);
+    if (resume && !deadline) { const r = resume; setTimeout(() => continueSimRef.current?.(r.rounds, r.seedBase, aiResult.league), 0); }
+    if (deadline) {
+      setTab('deadline');
+      pushToast("It's Trade Deadline Day. Trading locks at 3 PM; the season resumes after that.", 'info');
+      announceDeadline(deadline);
+    }
+    if (silent) return finalLeague;
     const parts: string[] = [];
     if (aiResult.signings.length > 0) parts.push(`${aiResult.signings.length} free-agent signing${aiResult.signings.length === 1 ? '' : 's'} around the league`);
     if (aiResult.trades.length > 0) parts.push(`${aiResult.trades.length} trade${aiResult.trades.length === 1 ? '' : 's'} completed around the league`);
     if (aiResult.newOfferGenerated) parts.push('a new trade offer is waiting for you in Front Office › Trade Offers');
     if (parts.length > 0) pushToast(`${parts.join('; ')}.`);
     for (const ev of aiResult.moraleEvents.filter(e => e.teamId === controlledTeamId)) pushToast(ev.text, ev.kind === 'trade_request' ? 'error' : 'success');
-    return aiResult.league;
+    return finalLeague;
   };
 
   // Auto Play and "Simulate Remaining Season" run in background workers owned HERE (not by the pages that
@@ -571,8 +581,27 @@ function App() {
     return () => { cancelled = true; };
   }, [historicalSeason, jobs.busy, league.historical?.classesLoadedThrough, league.historical?.lastDataStartYear, extras]);
 
-  const prepareRegularSeason = () => {
-    const ready = manageCoachRosters(league, extras);
+  /**
+   * Gets the league ready to play. Trade Deadline Day: playing on during the day runs the clock to the 3 PM deadline;
+   * reaching the deadline's morning opens the day instead of playing (`holdDeadline`; Auto Play plays straight through).
+   */
+  const prepareRegularSeason = (holdDeadline = true) => {
+    const coached = manageCoachRosters(league, extras);
+    let ready = { league: holdDeadline ? scheduleDeadlineDay(coached.league, controlledTeamId) : coached.league, extras: coached.extras };
+    if (isDeadlineDayOpen(ready.league)) {
+      const closed = runToDeadline(ready.league, ready.extras, controlledTeamId, deadlineSeed(ready.league));
+      ready = { league: closed.league, extras: closed.extras };
+      pushToast(deadlineRecap(closed.league), 'success');
+    }
+    if (holdDeadline && isDeadlineDayDue(ready.league)) {
+      const opened = openDeadlineDay(ready.league, ready.extras, controlledTeamId, deadlineSeed(ready.league));
+      setLeague(opened.league);
+      setExtras(opened.extras);
+      setTab('deadline');
+      pushToast("It's Trade Deadline Day. Trading locks at 3 PM; the season resumes after that.", 'info');
+      announceDeadline(opened);
+      return null;
+    }
     setLeague(ready.league);
     setExtras(ready.extras);
     if ((ready.league.seasonPhase ?? 'regular_season') === 'regular_season' && rosterComplianceIssues(ready.league, ready.extras.capSettings).length) {
@@ -580,6 +609,30 @@ function App() {
       return null;
     }
     return ready;
+  };
+  const deadlineSeed = (l: League) => seed + 700_000 + (l.deadlineDay?.round ?? 0);
+  const deadlineRecap = (l: League) => {
+    const trades = l.deadlineDay?.trades ?? [];
+    return `3:00 PM: the trade deadline has passed. ${trades.length} deal${trades.length === 1 ? '' : 's'} on Deadline Day${trades.some(isBlockbuster) ? ', including a blockbuster' : ''}.`;
+  };
+  /** Toasts for one hour of Deadline Day: blockbusters and calls to your phone (every deal is on the Deadline Day ticker). */
+  const announceDeadline = (r: DeadlineHourResult) => {
+    const name = (id: string) => r.league.teams.find(t => t.teamId === id)?.name ?? id;
+    for (const t of r.trades.filter(isBlockbuster)) pushToast(`BLOCKBUSTER (${deadlineClock(t.hour)}): ${describeDeadlineTrade(t, name)}.`, 'info');
+    if (r.call) pushToast(`${name(r.call)} are on the phone with an offer.`, 'info');
+  };
+  const advanceDeadline = () => {
+    const r = advanceDeadlineHour(league, extras, controlledTeamId, deadlineSeed(league));
+    setLeague(r.league);
+    setExtras(r.extras);
+    announceDeadline(r);
+    if (!isDeadlineDayOpen(r.league)) pushToast(deadlineRecap(r.league), 'success');
+  };
+  const skipDeadline = () => {
+    const r = runToDeadline(league, extras, controlledTeamId, deadlineSeed(league));
+    setLeague(r.league);
+    setExtras(r.extras);
+    pushToast(deadlineRecap(r.league), 'success');
   };
 
   const playNextGame = (watch = false, coach = false) => {
@@ -1054,7 +1107,7 @@ function App() {
         seasonPhase={seasonPhase}
         rosterIssues={rosterIssues}
         leagueUnplayedCount={leagueUnplayedCount}
-        tradeDeadlinePassed={tradeDeadlinePassed}
+        tradeDeadlinePassed={tradeDeadlinePassed || !tradeDeadlineEnabled(league) || isDeadlineDayOpen(league)}
         onWatchNext={() => playNextGame(true)}
         onCoachNext={controlledTeamId ? () => playNextGame(true, true) : undefined}
         onPlayAllStar={playAllStarWeekend}
@@ -1063,6 +1116,8 @@ function App() {
         onToggleAutoAllStar={toggleAutoAllStar}
         onSimulateGames={simulateGamesCount}
         onSimulateToDeadline={simulateToTradeDeadline}
+        deadlineClockLabel={isDeadlineDayOpen(league) ? deadlineClock(league.deadlineDay!.hour) : null}
+        onOpenDeadline={() => setTab('deadline')}
         seasonSimJob={{
           running: jobs.seasonSim.running,
           progress: jobs.seasonSim.progress,
@@ -1072,7 +1127,7 @@ function App() {
         autoPlayJob={{
           running: jobs.autoPlay.running,
           progress: jobs.autoPlay.progress,
-          start: (years) => { const ready = prepareRegularSeason(); if (ready) jobs.autoPlay.start({ league: ready.league, extras: ready.extras, controlledTeamId, awardSettings, years, seedBase: seed + 555_000 }); },
+          start: (years) => { const ready = prepareRegularSeason(false); if (ready) jobs.autoPlay.start({ league: ready.league, extras: ready.extras, controlledTeamId, awardSettings, years, seedBase: seed + 555_000 }); },
           cancel: jobs.autoPlay.cancel,
         }}
         seasonComplete={seasonComplete}
@@ -1588,6 +1643,9 @@ function App() {
         {tab === 'powerRankings' && <PowerRankingsPage league={league} />}
 
         {tab === 'cup' && <CupPage league={league} controlledTeamId={controlledTeamId} onSelectPlayer={selectPlayer} />}
+
+        {tab === 'deadline' && <DeadlineDayPage league={league} extras={extras} controlledTeamId={controlledTeamId}
+          onChange={(l, e) => { setLeague(l); setExtras(e); }} onAdvanceHour={advanceDeadline} onSkipToDeadline={skipDeadline} onGoTo={(t) => setTab(t as Tab)} />}
 
         {tab === 'gmOffice' && <GmOfficePage league={league} extras={extras} onAcceptOffer={acceptOffer} onSpectate={spectate} onToggleFiring={setFiringEnabled} />}
 

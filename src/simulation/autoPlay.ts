@@ -141,7 +141,7 @@ export function autoPlayOneSeason(
   league: League, extras: GMLeagueExtras, controlledTeamId: string | null, awardSettings: AwardSettings, seed: number,
 ): { league: League; extras: GMLeagueExtras; summary: AutoPlaySeasonSummary } {
   const weekend: AllStarOutcome = { allStarGameMVPPlayerId: null, threePointChampionId: null, dunkChampionId: null };
-  let currentLeague = league;
+  let currentLeague = withoutDeadlineStop(league);
   // 1. Regular season, auto-completing the forced All-Star break as many times as it's hit (once, in practice).
   for (let guard = 0; guard < 5; guard++) {
     currentLeague = simulateRemainingSeason(currentLeague, seed);
@@ -160,7 +160,7 @@ export async function autoPlayOneSeasonAsync(
   simulateRound: (league: League, seedBase: number) => Promise<League>,
 ): Promise<{ league: League; extras: GMLeagueExtras; summary: AutoPlaySeasonSummary }> {
   const weekend: AllStarOutcome = { allStarGameMVPPlayerId: null, threePointChampionId: null, dunkChampionId: null };
-  let currentLeague = league;
+  let currentLeague = withoutDeadlineStop(league);
   for (let guard = 0; guard < 5; guard++) {
     while (currentLeague.schedule.some((g) => !g.played)) {
       const next = await simulateRound(currentLeague, seed);
@@ -171,6 +171,13 @@ export async function autoPlayOneSeasonAsync(
     currentLeague = playAllStarBreak(currentLeague, awardSettings, seed, guard, weekend);
   }
   return finishAutoSeason(currentLeague, extras, controlledTeamId, awardSettings, seed, weekend);
+}
+
+/** Auto Play doesn't stop for Trade Deadline Day: a day that hasn't finished is dropped and the deadline passes on the calendar. */
+function withoutDeadlineStop(league: League): League {
+  if (!league.deadlineDay || league.deadlineDay.status === 'closed') return league;
+  const { deadlineDay: _skipped, ...rest } = league;
+  return rest;
 }
 
 interface AllStarOutcome { allStarGameMVPPlayerId: string | null; threePointChampionId: string | null; dunkChampionId: string | null }
