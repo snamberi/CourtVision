@@ -145,7 +145,9 @@ export function simulatePossession(input: PossessionInput): PossessionResult {
   const tov = resolveTurnover(bh.attributes, turnoverCtx, bh.flags, rng);
   if (tov.occurred) {
     events.push(`Turnover: ${tov.type}`);
-    addDelta(statDeltas, bh.playerId, { tov: 1, [`turnoverBreakdown.${tov.type}` as any]: 1 });
+    // Charges, offensive fouls and illegal screens are personal fouls as well as turnovers.
+    const offensiveFoul = tov.type === 'OFFENSIVE_FOUL' || tov.type === 'CHARGE' || tov.type === 'ILLEGAL_SCREEN';
+    addDelta(statDeltas, bh.playerId, { tov: 1, [`turnoverBreakdown.${tov.type}` as any]: 1, ...(offensiveFoul ? { pf: 1 } : {}) });
     if (tov.causedBySteal) {
       // Passing-lane steals go mostly to the defenders who read the lanes best.
       const stealer = tov.stealerCredit === 'ON_BALL' ? primaryDefender
@@ -154,6 +156,27 @@ export function simulatePossession(input: PossessionInput): PossessionResult {
       events.push(`${stealer.playerId} STEAL`);
     }
     return { ballHandlerId: bh.playerId, events, result: 'TURNOVER', statDeltas, pointsScored: 0, debug: { turnoverProbability: tov.probability, action } };
+  }
+
+  // Non-shooting fouls: reach-ins, holds and loose-ball fouls (about 6-7 a team game in the NBA). In the bonus the
+  // ball handler shoots two; otherwise the offense simply keeps the ball and the possession goes on.
+  const nsFoulProb = Math.max(0, (NON_SHOOTING_FOUL_BASE + (50 - primaryDefender.attributes.mental.discipline) * 0.0006) * input.foulFrequencyMultiplier);
+  if (rng.chance(nsFoulProb)) {
+    const fouler = rng.chance(0.65) ? primaryDefender : defense[rng.nextInt(defense.length)];
+    addDelta(statDeltas, fouler.playerId, { pf: 1 });
+    if (rng.chance(BONUS_SHARE)) {
+      const freeThrowOutcomes: boolean[] = [];
+      let ftMakes = 0;
+      for (let i = 0; i < 2; i++) {
+        const made = resolveFreeThrow(bh.attributes.offense.freeThrow, rng, mods.shot.freeThrowDifficulty);
+        freeThrowOutcomes.push(made);
+        if (made) ftMakes++;
+      }
+      addDelta(statDeltas, bh.playerId, { fta: 2, ftm: ftMakes, points: ftMakes, possessionsUsed: 1, clutchPoints: input.isClutch ? ftMakes : 0 });
+      events.push(`${fouler.playerId} foul on ${bh.playerId}, in the bonus (${ftMakes}/2 FT)`);
+      return { ballHandlerId: bh.playerId, events, result: 'FOUL', statDeltas, pointsScored: ftMakes, debug: { foulProbability: nsFoulProb, freeThrowOutcomes } };
+    }
+    events.push(`${fouler.playerId} non-shooting foul on ${bh.playerId}`);
   }
 
   // Determine who actually shoots (could be a teammate if a pass went out).
@@ -272,7 +295,7 @@ export function simulatePossession(input: PossessionInput): PossessionResult {
     }
 
     if (assistCandidate) {
-      const assistChance = Math.min(0.92, (0.55 + assistCandidate.attributes.offense.passingIQ * 0.005 + assistCandidate.role.primaryBallHandler * 0.0012) * mods.assistFrequency);
+      const assistChance = Math.min(0.94, (0.63 + assistCandidate.attributes.offense.passingIQ * 0.005 + assistCandidate.role.primaryBallHandler * 0.0012) * mods.assistFrequency);
       if (assistCandidate.flags.automaticAssist || rng.chance(assistChance)) {
         addDelta(statDeltas, assistCandidate.playerId, { ast: 1 });
         events.push(`${assistCandidate.playerId} AST`);
@@ -288,6 +311,10 @@ export function simulatePossession(input: PossessionInput): PossessionResult {
   if (offensiveRebound) events.push(`Offensive rebound: ${credited ? reboundWinner : 'the offense'} keeps it alive`);
   return { ballHandlerId: bh.playerId, events, result: 'MISS', statDeltas, pointsScored: 0, debug: { makeProbability: shotResult.probability, shotType, contest, offensiveRebound } };
 }
+
+/** Chance per possession of a non-shooting defensive foul (average discipline), and how often one comes in the bonus. */
+export const NON_SHOOTING_FOUL_BASE = 0.088;
+export const BONUS_SHARE = 0.28;
 
 /** How often a rim attempt is challenged by the best shot-blocker on the floor instead of the shooter's own man. */
 export const HELP_BLOCK_SHARE = 0.38;

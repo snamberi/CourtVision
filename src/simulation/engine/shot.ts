@@ -61,11 +61,11 @@ const BASE_MAKE_BY_TYPE: Record<ShotType, number> = {
   midrange: 0.59,
   longMidrange: 0.55,
   fadeaway: 0.52,
-  corner3: 0.43,
-  catchAndShoot3: 0.42,
-  aboveBreak3: 0.40,
-  pullUp3: 0.37,
-  stepback: 0.36,
+  corner3: 0.41,
+  catchAndShoot3: 0.40,
+  aboveBreak3: 0.38,
+  pullUp3: 0.35,
+  stepback: 0.34,
 };
 
 /** How hard defensive contest bites, by shot category — contests hurt jumpers far more than finishes at the rim. */
@@ -87,6 +87,7 @@ const CONTEST_DELTA: Record<ShotCategory, Record<ContestLevel, number>> = {
 // so a league of average shooters lands near the base rates above rather than systematically under them.
 const ABILITY_SLOPE = 0.006;
 export const RIM_FINISH_CALIBRATION = 0.06;
+export const THREE_POINT_VOLUME = 1.12;
 const ABILITY_PIVOT = 58;
 
 function shotTypeWeightMultiplier(type: ShotType, mods: ShotTypeWeightMods): number {
@@ -109,7 +110,9 @@ export function chooseShotType(tendencies: ShotTendencies, offense: Attributes['
     const ability = abilityForType(offense, type);
     const qualityFactor = Math.max(0.15, Math.min(1.9, Math.pow(Math.max(1, ability) / 50, 1.5)));
     const frequencyMult = weightMods ? shotTypeWeightMultiplier(type, weightMods) : 1;
-    return Math.max(0, w) * qualityFactor * frequencyMult;
+    // Modern shot diets: about 40% of attempts are threes (NBA ~35 of 89 a game).
+    const era = THREE_POINT_TYPES.includes(type) ? THREE_POINT_VOLUME : 1;
+    return Math.max(0, w) * qualityFactor * frequencyMult * era;
   });
   const idx = rng.weightedPick(weights);
   return entries[idx][0];
@@ -244,7 +247,8 @@ export function foulDrawProbability(
   foulFrequencyMultiplier: number,
   freeThrowFrequencyMultiplier = 1,
 ): number {
-  const base: Record<ShotCategory, number> = { rim: 0.21, mid: 0.06, three: 0.045 };
+  // Shooting fouls only; non-shooting and bonus fouls are rolled in the possession (see possession.ts).
+  const base: Record<ShotCategory, number> = { rim: 0.165, mid: 0.048, three: 0.034 };
   const contestBoost: Record<ContestLevel, number> = { open: 0.4, light: 0.8, contested: 1.15, heavy: 1.4 };
   const disciplineFactor = 1 - Math.min(0.4, Math.max(-0.3, (defenderDiscipline - 50) / 150));
   return Math.max(0, base[categoryOf(type)] * contestBoost[contest] * disciplineFactor * foulFrequencyMultiplier * freeThrowFrequencyMultiplier);
@@ -259,6 +263,7 @@ export function andOneProbability(type: ShotType, contest: ContestLevel): number
 }
 
 export function resolveFreeThrow(freeThrowRating: number, rng: RNG, difficultyMultiplier = 1): boolean {
-  const p = Math.max(0.45, Math.min(0.97, 0.42 + freeThrowRating * 0.0056 * (2 - difficultyMultiplier)));
+  // An average rating lands near the NBA's ~78%; poor shooters sit in the 60s, specialists near 90%.
+  const p = Math.max(0.45, Math.min(0.97, 0.48 + freeThrowRating * 0.0056 * (2 - difficultyMultiplier)));
   return rng.chance(p);
 }

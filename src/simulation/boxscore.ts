@@ -75,6 +75,8 @@ export interface PossessionPlayback {
   blockerId?: PlayerId;
   assistId?: PlayerId; // recorded for the live box score; absent in older saves
   foulerId?: PlayerId;
+  /** Every player charged with a foul on this possession (a reach-in and a shooting foul can share one). */
+  foulerIds?: PlayerId[];
   shotType?: string;
   shotMade?: boolean;
   freeThrows?: { made: number; attempted: number; outcomes?: boolean[] };

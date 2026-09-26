@@ -54,7 +54,7 @@ function possessionsPerQuarter(quarterLengthMinutes: number, pacePreset: GameSet
   // (i.e. the standard basketball "pace" cycle: my possession -> opponent's possession -> my next one).
   // Real NBA pace is ~96-102 team-possessions per 48 minutes, i.e. roughly 28-30 seconds per cycle.
   const paceSecondsPerPossession: Record<GameSettings['pacePreset'], number> = {
-    realistic: 29,
+    realistic: 28,
     balanced: 27,
     arcade: 21,
     chaos: 16,
