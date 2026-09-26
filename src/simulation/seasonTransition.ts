@@ -27,6 +27,7 @@ import {
 } from './gm';
 import { appendHistoryEvent } from './playerHistory';
 import { resignVerdict } from './freeAgentDecision';
+import { retireLegendJerseys } from './jerseyRetirement';
 import { collectPlayerIds } from './playerIds';
 import { computeSeasonAwards, type SeasonAwards, type SeasonAwardsOptions, type AwardWinner } from './awards';
 import type { LeagueRulesSettings } from './leagueRules';
@@ -362,9 +363,10 @@ export function beginNewSeasonRoster(
     ...(league.playoffBracket ? { bracket: compactBracket(league.playoffBracket), seeds: conferenceSeeds(league) } : {}),
   };
 
+  const legendLeague = retireLegendJerseys({ ...league, teams, franchiseHistory: [...(league.franchiseHistory ?? []), historyRecord] }, newlyRetired, userTeamId, previousSeason).league;
   const nextLeague: League = {
     ...league,
-    teams,
+    teams: legendLeague.teams,
     season: newSeason,
     seasonPhase: 'draft',
     playoffBracket: undefined,

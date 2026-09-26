@@ -199,6 +199,11 @@ export function generateNewsFeed(league: League, extras: GMLeagueExtras, maxItem
     for (const item of deadlineNews(league)) add({ id: item.id, season: deadline.season, category: 'Transactions', teamId: item.teamId,
       teamName: item.teamId ? name(item.teamId) : null, headline: item.headline, detail: item.detail, order: 1000 + before - 0.5 + item.order });
   }
+  // Numbers raised to the rafters (AI legends at retirement, or your own choice).
+  for (const t of league.teams) for (const j of t.retiredJerseys ?? []) {
+    add({ id: `jersey:${t.teamId}:${j.number}`, season: j.season, category: 'Teams', teamId: t.teamId, teamName: t.name,
+      headline: `${t.name} retire #${j.number} for ${j.playerId}.`, detail: 'No one on the team will wear it again. The banner goes up in the rafters.', playerId: j.playerId, order: 296_000 });
+  }
   // Summer League: the champion and the MVP (see draftSeason.ts).
   const sl = league.summerLeague;
   if (sl?.championTeamId) add({ id: 'summer:champion', season: sl.season, category: 'Draft', teamId: sl.championTeamId, teamName: name(sl.championTeamId),
