@@ -40,6 +40,8 @@ interface Props {
   rivalry?: { level: string; seriesText?: string } | null;
   /** Playoff or Cup stakes, shown as a broadcast banner and passed to the watch view. */
   occasion?: Occasion | null;
+  /** Share of seats filled for the home team (see business.ts). */
+  crowdFill?: number;
 }
 
 /** Simple deterministic accent color per team so two badges always read as different teams. */
@@ -223,7 +225,7 @@ function teamLeaders(box: TeamBoxScore) {
 
 export function GameBoxScorePage({
   game: storedGame, home, away, homeRoster, awayRoster, onSelectPlayer, initialWatch = false, watchStart, coaching,
-  onPrev, onNext, canPrev, canNext, onSimNext, canSimNext, gamesLabel, rivalry, occasion,
+  onPrev, onNext, canPrev, canNext, onSimNext, canSimNext, gamesLabel, rivalry, occasion, crowdFill,
 }: Props) {
   // Older games keep their replay log compressed; expand it only when this game is opened.
   const game = useMemo(() => withGameLog(storedGame), [storedGame]);
@@ -237,7 +239,7 @@ export function GameBoxScorePage({
   const awayLeaders = teamLeaders(game.awayBox);
   const homeWon = game.homeScore > game.awayScore;
 
-  if (watching) return <WatchGame key={`${game.homeTeamId}-${game.awayTeamId}-${game.seed}`} game={game} home={home} away={away} homeRoster={homeRoster} awayRoster={awayRoster} onBoxScore={() => setWatching(false)} startAt={watchStart} coaching={coaching} rivalry={rivalry} occasion={occasion} />;
+  if (watching) return <WatchGame key={`${game.homeTeamId}-${game.awayTeamId}-${game.seed}`} game={game} home={home} away={away} homeRoster={homeRoster} awayRoster={awayRoster} onBoxScore={() => setWatching(false)} startAt={watchStart} coaching={coaching} rivalry={rivalry} occasion={occasion} crowdFill={crowdFill} />;
   return (
     <div className="game-box-score">
       {occasion && <OccasionBanner occasion={occasion} />}

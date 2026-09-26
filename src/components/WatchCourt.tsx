@@ -65,13 +65,14 @@ function Fan({x,y,n,primary,secondary,stand,scale=1}:{x:number;y:number;n:number
  </g>;
 }
 /** Side stands: stepped rows of fans in two sections either side of the tunnel. */
-function SideStand({x0,dir,primary,secondary,hype}:{x0:number;dir:1|-1;primary:string;secondary:string;hype:number}){
+function SideStand({x0,dir,primary,secondary,hype,fill=1}:{x0:number;dir:1|-1;primary:string;secondary:string;hype:number;fill?:number}){
  const cols=4;
  return <g shapeRendering="crispEdges">{[[40,270],[350,580]].map(([y0,y1],sec)=><g key={sec}>
   <rect x={dir>0?x0:x0-cols*17-4} y={y0-6} width={cols*17+4} height={y1-y0+6} fill="#0a121f" stroke="#1f2c3f"/>
   {Array.from({length:cols},(_,c)=>Array.from({length:Math.floor((y1-y0)/22)},(_,r)=>{const n=(c*7+r*5+sec*3)%13,fx=dir>0?x0+2+c*17:x0-2-(c+1)*17;return <g key={`${c}-${r}`}>
    <rect x={fx-1} y={y0+r*22+12} width="17" height="6" fill={c%2?'#223247':'#1b293b'}/>
-   <Fan x={fx} y={y0+r*22-2} n={n} primary={primary} secondary={secondary} stand={hype>0&&(c+r)%3!==0}/>
+   {/* Empty seats when the building isn't full (attendance, see business.ts). */}
+   {((c*37+r*61+sec*17+(dir>0?0:29))%100)/100<fill?<Fan x={fx} y={y0+r*22-2} n={n} primary={primary} secondary={secondary} stand={hype>0&&(c+r)%3!==0}/>:<rect x={fx+2} y={y0+r*22+4} width="11" height="8" fill="#2a3a50"/>}
   </g>;}))}
  </g>)}</g>;
 }
@@ -108,7 +109,7 @@ function DiscordBoard({x,y}:{x:number;y:number}){
   </g>
  </a>;
 }
-const Arena=memo(function Arena({home,away,identity,awayKit,id,hype,homeBench,awayBench}:{home:Team;away:Team;identity:TeamIdentity;awayKit:TeamIdentity;id:string;hype:number;homeBench:PlayerSeason[];awayBench:PlayerSeason[]}){
+const Arena=memo(function Arena({home,away,identity,awayKit,id,hype,homeBench,awayBench,fill=1}:{home:Team;away:Team;identity:TeamIdentity;awayKit:TeamIdentity;id:string;hype:number;homeBench:PlayerSeason[];awayBench:PlayerSeason[];fill?:number}){
  const apron=shade(identity.primary,-.18),apronDark=shade(identity.primary,-.45),paint=identity.courtPaint,style=floorStyle(home.teamId);
  const cream='#f6ecd2';
  return <>
@@ -130,8 +131,8 @@ const Arena=memo(function Arena({home,away,identity,awayKit,id,hype,homeBench,aw
   {/* The whole building in the home team's colour, darker toward the stands. */}
   <rect x={SCENE.x} y="0" width={SCENE.w} height="600" fill={`url(#${id}-apron)`}/>
   <rect x={SCENE.x} y="0" width={SCENE.w} height="600" fill="#000" opacity=".12"/>
-  <SideStand x0={SCENE.x+2} dir={1} primary={identity.primary} secondary={identity.secondary} hype={hype}/>
-  <SideStand x0={SCENE.x+SCENE.w-2} dir={-1} primary={identity.primary} secondary={identity.secondary} hype={hype}/>
+  <SideStand x0={SCENE.x+2} dir={1} primary={identity.primary} secondary={identity.secondary} hype={hype} fill={fill}/>
+  <SideStand x0={SCENE.x+SCENE.w-2} dir={-1} primary={identity.primary} secondary={identity.secondary} hype={hype} fill={fill}/>
   {/* Top sideline: the visitors' bench, the table officials' chairs and the community board. */}
   <rect x="100" y="8" width="332" height="44" fill={apronDark} opacity=".55"/>
   <Bench x={112} y={24} players={awayBench} kit={awayKit} teamId={away.teamId} count={11}/>
@@ -273,7 +274,7 @@ function cameraBox(frame:CourtFrame,camera:CourtCamera):string{
  const fx=ball.x*.7+cx*.3,fy=ball.y*.7+cy*.3;
  return `${Math.max(SCENE.x,Math.min(SCENE.x+SCENE.w-560,fx-280)).toFixed(1)} ${Math.max(0,Math.min(600-276,fy-150)).toFixed(1)} 560 276`;
 }
-export function WatchCourt({frame,home,away,rosters,hotId,labels=true,trail=false,camera='full',ghosts=[],shots=[],bug}:{frame:CourtFrame;home:Team;away:Team;rosters:PlayerSeason[];hotId?:string;labels?:boolean;trail?:boolean;camera?:CourtCamera;ghosts?:CourtBall[];shots?:CourtShot[];bug?:CourtBug}){
+export function WatchCourt({frame,home,away,rosters,hotId,labels=true,trail=false,camera='full',ghosts=[],shots=[],bug,crowdFill=1}:{frame:CourtFrame;home:Team;away:Team;rosters:PlayerSeason[];hotId?:string;labels?:boolean;trail?:boolean;camera?:CourtCamera;ghosts?:CourtBall[];shots?:CourtShot[];bug?:CourtBug;crowdFill?:number}){
  const homeIdentity=useTeamIdentity(home.teamId),awayIdentity=useTeamIdentity(away.teamId),id=useId().replace(/:/g,'');
  const hi=homeIdentity??resolveTeamIdentity(home),ai=awayIdentity??resolveTeamIdentity(away);
  const awayKit={...ai,primary:'#f2e8d2',secondary:ai.primary};
@@ -286,7 +287,7 @@ export function WatchCourt({frame,home,away,rosters,hotId,labels=true,trail=fals
  const flash=frame.net>0?frame.net:0;
  const athlete=(a:CourtActor)=>{const homeSide=a.teamId===home.teamId;return <Athlete key={a.id} id={`${id}-${frame.players.indexOf(a)}`} actor={a} player={rosters.find(p=>p.playerId===a.id)} identity={homeSide?hi:awayKit} ring={homeSide?hi.primary:ai.primary} hot={a.id===hotId} carrier={a.id===frame.carrier} labels={labels&&(a.teamId===frame.offenseTeamId||!frame.offenseTeamId||a.id===frame.carrier)} above={a.teamId!==frame.offenseTeamId&&!!frame.offenseTeamId}/>;};
  return <div className="watch-arena"><svg className="watch-court" viewBox={cameraBox(frame,camera)} role="img" aria-label={`${home.name} home court. ${frame.phase}.`}>
-  <Arena home={home} away={away} identity={hi} awayKit={awayKit} id={id} hype={hype} homeBench={homeBench} awayBench={awayBench}/>
+  <Arena home={home} away={away} identity={hi} awayKit={awayKit} id={id} hype={hype} homeBench={homeBench} awayBench={awayBench} fill={crowdFill}/>
   <Photographers flash={flash}/>
   <Referee x={Math.max(180,Math.min(820,300+ball.x*.4))} y={82} facing={ball.x>500?1:-1}/>
   <Referee x={Math.max(180,Math.min(820,700-(1000-ball.x)*.35))} y={556} facing={ball.x>500?1:-1}/>

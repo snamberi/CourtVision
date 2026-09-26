@@ -1,3 +1,4 @@
+import { rollBusinessSeason } from './business';
 import { enforceSticky, isStuck } from './sticky';
 import { archiveRivalries } from './rivalry';
 import { setupCup, cupArchive } from './cup';
@@ -248,7 +249,8 @@ export function beginNewSeasonRoster(
       };
 
       const coachDevelopment = coachPerformanceModifiers(team.coachIdentity, team.seasons).development;
-      const developmentMultiplier = expenseEffects(team.expenseLevels).developmentMultiplier * (1 + (coachDevelopment - 1) * (league.rulesSettings?.coachingImpact ?? 100) / 100);
+      const developmentMultiplier = expenseEffects(team.expenseLevels).developmentMultiplier * (1 + (coachDevelopment - 1) * (league.rulesSettings?.coachingImpact ?? 100) / 100)
+        * (1 + (team.business?.arena.practice ?? 0) * 0.02); // a better practice facility
       const realStep = realDevelopmentOn(league) && season.real ? applyRealDevelopment(season, newSeason) : null;
       let developed = realStep ?? developOffseasonPlayer(season, rng, league.rulesSettings, developmentMultiplier * (1 + (teachingQuality(team, season.training?.plan.coachId) - 1) * (league.rulesSettings?.coachingImpact ?? 100) / 100), team.coach?.trainingFocus, league.settings.sandboxMode ? 200 : 100);
       if (!realStep && realDevelopmentOn(league) && season.real) developed = markRealFallback(developed, newSeason);
@@ -374,7 +376,7 @@ export function beginNewSeasonRoster(
   const legendLeague = retireLegendJerseys({ ...league, teams, franchiseHistory: [...(league.franchiseHistory ?? []), historyRecord] }, newlyRetired, userTeamId, previousSeason).league;
   const nextLeague: League = {
     ...league,
-    teams: legendLeague.teams,
+    teams: legendLeague.teams.map(rollBusinessSeason), // one payment made on every arena upgrade
     season: newSeason,
     seasonPhase: 'draft',
     playoffBracket: undefined,

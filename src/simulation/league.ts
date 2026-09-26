@@ -71,6 +71,8 @@ export function defaultCoachTendencies(): CoachTendencies {
 }
 
 export interface LeagueTeam {
+  /** Ticket price, arena upgrades and their loans (see business.ts); set once the team's business is managed. */
+  business?: import('./business').BusinessPlan;
   staff?: import('./coachingModel').AssistantStaff;
   coachingControl?: import('./coachingModel').CoachingControl;
   identity?: import('./teamIdentity').TeamIdentity;

@@ -5,6 +5,7 @@ import { calculateOverall } from './engine/overall';
 import { lockerRoom } from './personality';
 import { rivalryTable } from './rivalry';
 import { hotSeats } from './coachingCarousel';
+import { priceMoodDrift } from './business';
 
 /*
  * The press room. After big wins, bad losses, streaks, huge scoring nights, trade requests and playoff series, the
@@ -119,12 +120,16 @@ export function collectPress(league: League, userTeamId: string | null): League 
 
   // New games since last look.
   let streak = 0;
+  let fans = state.fans;
+  const usWinPct = standings.get(userTeamId)?.winPct ?? 0.5;
   const results = games.map(g => { const home = g.homeTeamId === userTeamId, r = g.result!; const us = home ? r.homeScore : r.awayScore, them = home ? r.awayScore : r.homeScore; return { g, home, us, them, won: us > them, opp: home ? g.awayTeamId : g.homeTeamId }; });
   for (let i = state.gamesSeen; i < results.length; i++) {
     const x = results[i];
     streak = 0;
     for (let j = i; j >= 0 && results[j].won === x.won; j--) streak++;
     for (const k of Object.keys(mood)) { mood[k] *= 0.94; if (Math.abs(mood[k]) < 0.3) delete mood[k]; }
+    // Fans warm to winning and sour on losing; ticket prices move them too at home games.
+    fans = clamp(fans + (x.won ? 0.35 : -0.35) + (x.home ? priceMoodDrift(team, usWinPct) : 0));
     const margin = x.us - x.them;
     const box = x.home ? x.g.result!.homeBox : x.g.result!.awayBox;
     const star = Object.values(box?.players ?? {}).sort((a, b) => b.points - a.points)[0];
@@ -148,7 +153,7 @@ export function collectPress(league: League, userTeamId: string | null): League 
   }
   if (!found.length && state.gamesSeen === results.length && league.press === state) return league;
   const pending = [...state.pending, ...found.filter(f => !state.pending.some(p => p.id === f.id) && !state.log.some(l => l.id === f.id))].slice(-MAX_PENDING);
-  return { ...league, press: { ...state, pending, playerMood: mood, gamesSeen: results.length, asked: [...asked] } };
+  return { ...league, press: { ...state, fans, pending, playerMood: mood, gamesSeen: results.length, asked: [...asked] } };
 }
 
 /** Answer a press conference: applies its effects and files it in the log. */

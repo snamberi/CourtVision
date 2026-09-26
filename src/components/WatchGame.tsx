@@ -84,13 +84,14 @@ interface Props {
   rivalry?: { level: string; seriesText?: string } | null;
   /** A big game (playoffs, Game 7, the Cup final): the broadcast and the crowd rise to it. */
   occasion?: import('../simulation/bigGames').Occasion | null;
+  crowdFill?: number;
 }
 const SOUND_KEY='cv-watch-sound';
 const readSound=()=>{try{return localStorage.getItem(SOUND_KEY)==='on';}catch{return false;}};
 const writeSound=(on:boolean)=>{try{localStorage.setItem(SOUND_KEY,on?'on':'off');}catch{/* private mode: keep the in-memory choice */}};
 type Tab='box'|'coach'|'highlights';
 
-export function WatchGame({game,home,away,homeRoster=[],awayRoster=[],onBoxScore,startAt,coaching,rivalry,occasion}:Props) {
+export function WatchGame({game,home,away,homeRoster=[],awayRoster=[],onBoxScore,startAt,coaching,rivalry,occasion,crowdFill}:Props) {
   const occasionBoost=occasion?({game7:.4,final:.32,cupFinal:.28,elimination:.25,playoff:.15,cup:.12} as const)[occasion.stakes]:0;
   const rivalryBoost=Math.min(.45,(rivalry?(rivalry.level==='Bitter rivals'?.3:rivalry.level==='Rivals'?.2:.12):0)+occasionBoost);
   const total=game.possessionLog.length;
@@ -238,7 +239,7 @@ export function WatchGame({game,home,away,homeRoster=[],awayRoster=[],onBoxScore
     <details className="watch-options"><summary>Camera & display</summary><div><label>Camera<select aria-label="Court camera" value={camera} onChange={e=>setCamera(e.target.value as CourtCamera)}><option value="full">Full court</option><option value="broadcast">Broadcast (TV)</option><option value="follow">Follow the ball</option></select></label><label><input type="checkbox" checked={shotChart} onChange={e=>setShotChart(e.target.checked)}/> Shot chart</label><label><input type="checkbox" checked={labels} onChange={e=>setLabels(e.target.checked)}/> Player names</label><label><input type="checkbox" checked={trail} onChange={e=>setTrail(e.target.checked)}/> Ball trail</label><button onClick={async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else if(screen.current?.requestFullscreen)await screen.current.requestFullscreen();else setScreenMessage('Fullscreen is unavailable in this browser.');}catch{setScreenMessage('Your browser could not enter fullscreen.');}}}>Toggle Fullscreen</button></div>{screenMessage&&<p role="status">{screenMessage}</p>}</details>
     <div ref={arena} className="watch-stage">
       {reelNow&&<div className="watch-reel-banner" role="status"><b>HIGHLIGHT {reel!.pos+1}/{reel!.plays.length}</b><span>{HIGHLIGHT_LABEL[reelNow.kind]} · {reelNow.text}</span><button onClick={()=>{setReel(null);setPlaying(false);if(recording.current)void stopRecording();}}>{isRecording?'Stop recording':'Exit reel'}</button></div>}
-      {frame?<WatchCourt frame={frame} home={home} away={away} rosters={rosters} hotId={hot?.playerId} labels={labels} trail={trail} camera={camera} ghosts={ghosts} shots={shots} bug={{homeScore:score.home,awayScore:score.away,clock:finished?'FINAL':clockLabel.replace(' · ',' '),shotClock}}/>:<p className="empty-state">This saved game has no possession log. Its final box score is still available.</p>}
+      {frame?<WatchCourt frame={frame} home={home} away={away} rosters={rosters} crowdFill={occasion?1:crowdFill} hotId={hot?.playerId} labels={labels} trail={trail} camera={camera} ghosts={ghosts} shots={shots} bug={{homeScore:score.home,awayScore:score.away,clock:finished?'FINAL':clockLabel.replace(' · ',' '),shotClock}}/>:<p className="empty-state">This saved game has no possession log. Its final box score is still available.</p>}
     </div>
     <div className="watch-call" aria-live="polite" aria-atomic="true"><span className="pixel-eyebrow">COURTSIDE CALL</span><p><TeamText text={commentary ?? ''} /></p>{run&&<strong className="watch-run">{run.home?home.name:away.name} · {run.points}–0 RUN</strong>}{hot&&<strong className="hot-hand">ON FIRE · {hot.playerId} — {hot.threes} straight made threes</strong>}{finished&&!reel&&reelPlays.length>0&&<button className="primary watch-final-reel" onClick={startReel}>▶ Watch the {reelPlays.length}-play highlight reel</button>}</div>
 

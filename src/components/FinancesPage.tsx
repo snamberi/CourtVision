@@ -6,6 +6,8 @@ import { computeTeamFinances } from '../simulation/finances';
 import type { GMLeagueExtras } from '../simulation/gm';
 import { teamPayroll, capSpaceRemaining } from '../simulation/gm';
 import { ExpenseLevelsPanel } from './ExpenseLevelsPanel';
+import { BusinessPanel } from './BusinessPanel';
+import { gate } from '../simulation/business';
 import { hashRating } from './gmShared';
 
 interface Props {
@@ -23,6 +25,7 @@ export function FinancesPage({ league, extras, controlledTeamId, onChange, sandb
   return (
     <div className="league-finances-page">
       {sandboxMode && <label>Manage finances for<select value={selectedTeamId} onChange={e => setSelectedTeamId(e.target.value)}>{league.teams.map(t => <option key={t.teamId} value={t.teamId}>{t.name}</option>)}</select></label>}
+      {myTeam && <BusinessPanel key={myTeam.teamId} league={league} team={myTeam} onChange={team => onChange({ ...league, teams: league.teams.map(t => t.teamId === team.teamId ? team : t) }, extras)} />}
       {myTeam && (
         <ExpenseLevelsPanel
           team={myTeam}
@@ -51,10 +54,12 @@ export function FinancesPage({ league, extras, controlledTeamId, onChange, sandb
               const payroll = teamPayroll(extras.contracts, t);
               const space = capSpaceRemaining(extras.contracts, t, extras.capSettings);
               const winPct = standings.find((r) => r.teamId === t.teamId)?.winPct ?? 0.5;
-              const finances = computeTeamFinances(t, extras.contracts, extras.capSettings, league.rulesSettings, winPct);
+              const fans = t.teamId === controlledTeamId ? league.press?.fans ?? 55 : 55;
+              const finances = computeTeamFinances(t, extras.contracts, extras.capSettings, league.rulesSettings, winPct, fans);
               const pop = 0.5 + finances.marketSize * 0.2; // millions, a rough population proxy from market size
-              const avgAttendance = Math.round(12000 + finances.marketSize * 130 + winPct * 4000);
-              const ticketPrice = Math.round(15 + finances.marketSize * 0.5 + winPct * 20);
+              const tickets = gate(t, winPct, fans);
+              const avgAttendance = tickets.attendance;
+              const ticketPrice = tickets.price;
               const openSpots = Math.max(0, 15 - t.seasons.length);
               const activeInjuries = Object.values(league.injuries ?? {}).filter((r) => r.teamId === t.teamId).length;
               const healthRating = Math.max(20, 100 - activeInjuries * 18);

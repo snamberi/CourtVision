@@ -44,6 +44,7 @@ import { followsRealDevelopment } from './simulation/realDevelopmentGate';
 import { applyHistoricalRosters } from './history/realRollover';
 import { enforceSticky } from './simulation/sticky';
 import { collectPress } from './simulation/press';
+import { crowdFill } from './simulation/business';
 import { useBackgroundJobs } from './workers/useBackgroundJobs';
 import { ToastStack, type ToastData } from './components/ToastStack';
 import { PrivacyPolicyPage, PrivacyLink } from './components/PrivacyPolicyPage';
@@ -1606,6 +1607,7 @@ function App() {
           return (
             <GameBoxScorePage
               key={`${scheduled?.id ?? activeResult.seed}-${watchNextResult}-${watchStart ?? ''}`}
+              crowdFill={homeTeam ? crowdFill(league, homeTeam.teamId) : undefined}
               initialWatch={watchNextResult}
               watchStart={watchNextResult ? watchStart : undefined}
               coaching={boxscoreSource === 'league' && coachSession && scheduled?.id === coachSession.gameId && league === coachSession.committed && homeTeam && awayTeam ? {
