@@ -127,3 +127,35 @@ export function applyHistoricalRosters(league: League, extras: GMLeagueExtras, u
 
 /** True when AI teams should leave rosters alone during the season (they follow the real ones). */
 export const rostersLocked = (league: Pick<League, 'historical'>) => !!league.historical?.forceRosters;
+
+/**
+ * Historical rosters, after the trade deadline: AI players who really changed teams mid-season move to the team
+ * they finished that season with. Your players, stuck and imported players stay put. Applied once per season.
+ */
+export function applyHistoricalDeadline(league: League, extras: GMLeagueExtras, userTeamId: string | null): { league: League; extras: GMLeagueExtras; moved: string[] } {
+  const meta = league.historical;
+  const season = league.season ?? '';
+  const moves = meta?.forceRosters ? meta.realMoves?.[season] : undefined;
+  if (!meta || !moves?.length || meta.movesApplied?.includes(season)) return { league, extras, moved: [] };
+  let teams = league.teams;
+  const contracts = { ...extras.contracts };
+  let freeAgents = extras.freeAgents;
+  const moved: string[] = [];
+  for (const m of moves) {
+    if (m.to === userTeamId || !teams.some(t => t.teamId === m.to)) continue;
+    const from = teams.find(t => t.seasons.some(p => p.real?.id === m.id && !p.importedFrom));
+    const fa = freeAgents.find(p => p.real?.id === m.id && !p.importedFrom);
+    const player = from?.seasons.find(p => p.real?.id === m.id) ?? fa;
+    if (!player || player.stick || from?.teamId === m.to || from?.teamId === userTeamId) continue;
+    const toName = teams.find(t => t.teamId === m.to)!.name;
+    const arriving = appendHistoryEvent({ ...player, teamId: m.to }, from ? 'traded' : 'signed', from ? `Traded from ${from.name} to ${toName} (real mid-season move)` : `Signed with ${toName} (real mid-season move)`, m.to);
+    teams = teams.map(t => t.teamId === from?.teamId ? { ...t, seasons: t.seasons.filter(p => p.playerId !== player.playerId) } : t.teamId === m.to ? { ...t, seasons: [...t.seasons, arriving] } : t);
+    if (fa) freeAgents = freeAgents.filter(p => p.playerId !== player.playerId);
+    contracts[player.playerId] = contracts[player.playerId] ? { ...contracts[player.playerId], teamId: m.to }
+      : { playerId: player.playerId, teamId: m.to, annualSalary: computeAskingSalary(calculateOverall(player), extras.capSettings), yearsRemaining: 1, playerOption: false, teamOption: false };
+    moved.push(player.playerId);
+  }
+  const historical = { ...meta, movesApplied: [...(meta.movesApplied ?? []), season] };
+  const settled = enforceSticky({ ...league, teams, historical }, { ...extras, contracts, freeAgents });
+  return { league: settled.league, extras: settled.extras, moved };
+}

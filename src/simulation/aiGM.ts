@@ -1,5 +1,6 @@
 import { midseasonCarousel } from './coachingCarousel';
 import { enforceSticky } from './sticky';
+import { applyHistoricalDeadline } from '../history/realRollover';
 import type { PlayerSeason } from './types';
 import type { League, LeagueTeam } from './league';
 import { signingDecision, strengthRanking } from './freeAgentDecision';
@@ -420,6 +421,13 @@ export function teamOnTheClock(league: League, extras: GMLeagueExtras): string |
  * blindly stacking the position they already have quality depth at (this was the one place that didn't). */
 function bestAvailableProspect(league: League, extras: GMLeagueExtras, team?: LeagueTeam | null): DraftProspect | null {
   if (extras.draftClass.length === 0) return null;
+  // Historical rosters: a team takes the player it really drafted, else the next real pick still on the board.
+  if (league.historical?.forceRosters) {
+    const real = extras.draftClass.filter(p => p.trueSeason.draftPick != null && p.trueSeason.draftYear === league.season);
+    const ours = real.filter(p => team && p.trueSeason.draftTeamId === team.teamId).sort((a, b) => a.trueSeason.draftPick! - b.trueSeason.draftPick!)[0];
+    const next = [...real].sort((a, b) => a.trueSeason.draftPick! - b.trueSeason.draftPick!)[0];
+    if (ours ?? next) return (ours ?? next)!;
+  }
   const need = team ? weakestPositions(team) : [];
   // Each front office drafts from its own scouting read, so a bigger scouting budget finds the real gems.
   const score = (p: DraftProspect) => perceivedPotential(p, league, extras, team?.teamId ?? null) * 0.8 + calculateOverall(p.trueSeason) * 0.2
@@ -541,6 +549,8 @@ export function runLeagueAIPass(
     }
   }
 
-  const settled = enforceSticky(trade.league, finalExtras);
+  // Historical rosters: once the deadline passes, the real mid-season moves happen.
+  const real = isTradeDeadlinePassed(trade.league) ? applyHistoricalDeadline(trade.league, finalExtras, controlledTeamId) : { league: trade.league, extras: finalExtras };
+  const settled = enforceSticky(real.league, real.extras);
   return { league: settled.league, extras: settled.extras, signings: fa.signings, trades: trade.trades, newOfferGenerated, moraleEvents: mood.events };
 }
