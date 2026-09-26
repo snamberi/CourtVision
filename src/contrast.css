@@ -1,0 +1,138 @@
+/* Contrast layer: loaded last. Deeper floor, brighter panels and text, crisper edges, so every surface reads at a glance.
+   Retunes the tokens in pixel.css/polish.css rather than adding new colors page by page. */
+:root {
+  --bg: #060a12;
+  --panel: #13213a;
+  --panel-2: #1a2c49;
+  --panel-3: #243a5c;
+  --panel-top: #1b3050;
+  --panel-bottom: #111e34;
+  --line: #2f4666;
+  --line-strong: #4a6891;
+  --line-bright: #6788b4;
+  --court: #fff6e2;
+  --text: #f3f6fb;
+  --text-dim: #b6c4d6;
+  --amber: #ff9a3a;
+  --amber-bright: #ffb766;
+  --gold: #ffd166;
+  --make: #6fe39a;
+  --miss: #ff7a70;
+  --blue: #74b8ff;
+  --edge-light: rgba(255, 246, 226, .09);
+  --shadow-hard: 4px 4px 0 #000;
+  --shadow: 4px 4px 0 #000;
+}
+
+body { background: var(--bg); }
+.hint-text { color: var(--text-dim); }
+.pixel-eyebrow { color: #c4d1e2; }
+h1, h2, h3, h4 { text-shadow: 2px 2px 0 #000; }
+
+/* ---- Floor: darker, with a stronger arena light so panels lift off it ---- */
+.app-body main {
+  background:
+    radial-gradient(1000px 460px at 20% -10%, rgba(255, 154, 58, .11), transparent 62%),
+    radial-gradient(800px 420px at 100% 0%, rgba(116, 184, 255, .08), transparent 60%),
+    linear-gradient(rgba(255, 255, 255, .022) 1px, transparent 1px) 0 0 / 32px 32px,
+    linear-gradient(90deg, rgba(255, 255, 255, .022) 1px, transparent 1px) 0 0 / 32px 32px,
+    var(--bg);
+}
+
+/* ---- Header ---- */
+.topbar { background: linear-gradient(180deg, #16294a 0%, #0c1830 100%); border-bottom: 2px solid var(--amber); box-shadow: 0 3px 0 #000; }
+.topbar-team { background: #050912; border-color: var(--line-strong); }
+.topbar-record, .topbar .calendar-date-tag { background: #000; border-color: #7a4a1c; color: var(--amber-bright); }
+
+/* ---- Sidebar: darkest surface, so the page is the brightest thing on screen ---- */
+.sidebar, .sidebar-scroll { background-color: #081120; }
+.sidebar-scroll {
+  background:
+    linear-gradient(#081120 30%, rgba(8, 17, 32, 0)) center top / 100% 26px no-repeat local,
+    linear-gradient(rgba(8, 17, 32, 0), #081120 70%) center bottom / 100% 26px no-repeat local,
+    linear-gradient(rgba(0, 0, 0, .95), rgba(0, 0, 0, 0)) center top / 100% 12px no-repeat scroll,
+    linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, .95)) center bottom / 100% 12px no-repeat scroll;
+  background-color: #081120;
+}
+.app-body .sidebar { border-right: 2px solid #22375a; }
+.sidebar-head, .sidebar-foot { background: #060d19; }
+.sidebar-brand { background: linear-gradient(180deg, #172b4b, #0c1a30); }
+.sidebar-item { color: #c3cfde; }
+.sidebar-item .pixel-icon { opacity: 1; color: #8fb0d6; }
+.sidebar-item:hover:not(:disabled) { background: #15284a; color: #fff; }
+.sidebar-item.active, .sidebar-item.active:hover:not(:disabled) {
+  background: linear-gradient(90deg, rgba(255, 154, 58, .34), rgba(255, 154, 58, .06) 90%), #1a2b48;
+  color: #fff; border-left-color: var(--amber);
+  box-shadow: inset 0 1px 0 rgba(255, 183, 102, .35), inset 0 -1px 0 #000;
+}
+.sidebar-item.active .pixel-icon { color: var(--amber-bright); }
+.sidebar-simple .simple-hub-button .pixel-icon { background: #050b16; border-color: #34507a; }
+.sidebar-simple .simple-sub-item.active { background: #1a2b48; color: var(--amber-bright); }
+.sidebar-group-title { color: var(--amber-bright); border-bottom-color: #2a4166; }
+
+/* ---- Surfaces: lit top edge, blue rim, black pixel shadow ---- */
+.editor-panel, .sim-lab, .code-mode-main, .code-docs, .quality-report,
+.settings-page section, .award-card, .bracket-series-card,
+.dashboard-card, .dashboard-panel, .profile-header, .yt-header, .card, .panel,
+.expense-levels-panel, .retired-jerseys-panel, .compare-player-card, .team-pick-list, .saved-leagues, .mode-card,
+.lineup-showcase, .road-map, .first-season-checklist, .scouting-board {
+  background: linear-gradient(180deg, var(--panel-top) 0, var(--panel-bottom) 160px, var(--panel-bottom) 100%);
+  border: 1px solid #3a5883;
+  box-shadow: inset 0 2px 0 rgba(116, 184, 255, .16), var(--shadow-hard);
+}
+.dashboard-panel > h5, .lineup-showcase-header { background: #0a1426; border-color: #3a5883; }
+.dashboard-hero { border-color: #4a6f9e; background: radial-gradient(600px 220px at 85% 0%, rgba(255, 154, 58, .22), transparent 70%), linear-gradient(135deg, #1f3a60, #0f1c33 70%); }
+.mode-card:hover:not(:disabled) { border-color: var(--line-bright); }
+.mode-card.selected { border-color: var(--amber); box-shadow: inset 0 2px 0 rgba(255, 183, 102, .35), 4px 4px 0 #7a3c0d; }
+
+/* ---- Dense tables: ink header, clear zebra, bright numbers ---- */
+.db-table, .standings-table, .compare-table, .fast-edit-table, .box-score table, .sim-lab-results, .stat-line-table {
+  background: #0b1528; border-color: #3a5883; color: var(--text);
+}
+.db-table th, .standings-table th, .compare-table th, .fast-edit-table th, .box-score th, .sim-lab-results th, .stat-line-table th {
+  background: linear-gradient(180deg, #223c62, #1a3050); color: #e6eef8;
+  border-bottom: 2px solid var(--amber); text-shadow: 1px 1px 0 #000;
+}
+.db-table td, .standings-table td, .compare-table td, .fast-edit-table td, .box-score td, .stat-line-table td { border-bottom-color: #203454; font-variant-numeric: tabular-nums; }
+.db-table tbody tr:nth-child(even), .standings-table tbody tr:nth-child(even), .stat-line-table tbody tr:nth-child(even) { background: #122140; }
+.db-table tbody tr:hover, .standings-table tbody tr:hover, .stat-line-table tbody tr:hover { background: #20395f; box-shadow: inset 3px 0 0 var(--blue); }
+.db-table tr.selected, .db-table .current-season-row, .stat-line-table .current-season-row { background: #3a2a1a; box-shadow: inset 3px 0 0 var(--amber); }
+
+/* ---- Links and controls ---- */
+.team-link { color: #eaf1fa; text-decoration-color: #4f6f99; }
+.team-link:hover { color: var(--amber-bright); }
+button, .tabs button { border-color: var(--line-strong); box-shadow: 2px 2px 0 #000; }
+button:not(.primary):not(.play-button):hover:not(:disabled) { border-color: var(--line-bright); color: #fff; }
+button.primary, .menu-start { box-shadow: inset 0 2px 0 rgba(255, 255, 255, .35), 3px 3px 0 #000; }
+.stats-view-toggle button.active, .subtabs button.active, .tabs button.active { background: var(--amber); color: #140c02; border-color: #ffd29c; text-shadow: none; }
+input, select, textarea { border-color: var(--line-strong); background: #070e1b; color: var(--text); }
+
+/* ---- Main menu ---- */
+.main-menu { background: radial-gradient(900px 420px at 50% -8%, rgba(255, 154, 58, .12), transparent 65%), var(--bg); }
+.menu-masthead { border-bottom: 2px solid var(--amber); box-shadow: 0 2px 0 #000; }
+
+/* ---- Discord ---- */
+.pixel-discord { flex-shrink: 0; image-rendering: pixelated; }
+.discord-link { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; }
+.menu-discord {
+  margin-left: 14px; padding: 6px 12px 6px 8px; background: #5865f2; border: 1px solid #9aa2ff; border-bottom-width: 3px; border-bottom-color: #3c45a5;
+  color: #fff; font: 18px/1 var(--font-ui); letter-spacing: .02em; box-shadow: 2px 2px 0 #000; transition: background 100ms;
+}
+.menu-discord:hover { background: #6d78ff; }
+.menu-discord:active { transform: translate(1px, 2px); box-shadow: none; }
+.menu-discord .pixel-discord path:first-child, .menu-discord .pixel-discord path:nth-child(2), .menu-discord .pixel-discord path:nth-child(3) { fill: transparent; }
+.sidebar-discord { color: #c3cfde; }
+.sidebar-discord:hover { background: #1c2358 !important; color: #fff; border-left-color: #5865f2; }
+@media (max-width: 680px) { .menu-discord span { display: none; } .menu-discord { padding: 6px; } }
+
+@media (prefers-reduced-motion: reduce) { .menu-discord { transition: none; } }
+
+/* ---- Trade builder: chips read as cards; picked players and picks light up ---- */
+.trade-view .badge-chip { background: linear-gradient(180deg, #1b2f4f, #13223b); border-color: #3f5f8c; color: var(--text); cursor: pointer; transition: border-color 100ms, background 100ms; }
+.trade-view .badge-chip:hover { border-color: var(--line-bright); background: linear-gradient(180deg, #223a60, #182a47); }
+.trade-view .badge-chip:has(input:checked) {
+  background: linear-gradient(180deg, #4a2e10, #2c1a08); border-color: var(--amber); color: #fff;
+  box-shadow: inset 0 2px 0 rgba(255, 183, 102, .3), 2px 2px 0 #000;
+}
+.trade-view .badge-chip input { accent-color: var(--amber); }
+@media (prefers-reduced-motion: reduce) { .trade-view .badge-chip { transition: none; } }
