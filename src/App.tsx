@@ -41,6 +41,7 @@ import { generateRoundRobinSchedule, simulateFullRound, simulateRounds, gamesRem
 import { generateFullLeague } from './simulation/leagueGenerator';
 import { developOffseasonLeague } from './simulation/engine/development';
 import { followsRealDevelopment } from './simulation/realDevelopmentGate';
+import { applyHistoricalRosters } from './history/realRollover';
 import { useBackgroundJobs } from './workers/useBackgroundJobs';
 import { ToastStack, type ToastData } from './components/ToastStack';
 import { PrivacyPolicyPage, PrivacyLink } from './components/PrivacyPolicyPage';
@@ -364,7 +365,7 @@ function App() {
       historyTools().then(({ h, buildHistoricalLeague }) => {
         setMenuBusy('Building the league…');
         return new Promise<void>(resolve => setTimeout(() => {
-          const built = buildHistoricalLeague(h, parseInt(year, 10), { realDevelopment: real.realDevelopment, difficulty, seed: Math.floor(Math.random() * 1_000_000) });
+          const built = buildHistoricalLeague(h, parseInt(year, 10), { realDevelopment: real.realDevelopment, forceRosters: real.forceRosters, difficulty, seed: Math.floor(Math.random() * 1_000_000) });
           setPendingLeague(built.league);
           setPendingExtras(built.extras);
           setPendingLeagueName(leagueName || `NBA ${year}–${String(parseInt(year, 10) + 1).slice(2)}`);
@@ -742,9 +743,7 @@ function App() {
       totalSignings += result.signings.length;
       current = { league: result.league, extras: result.extras };
     }
-    setLeague({ ...current.league, calendarDate: addDays(current.league.calendarDate ?? '', extras.freeAgencyDaysRemaining) });
-    setExtras({ ...current.extras, freeAgencyDaysRemaining: 0 });
-    beginPreseasonPhase();
+    beginPreseasonPhase({ league: { ...current.league, calendarDate: addDays(current.league.calendarDate ?? '', extras.freeAgencyDaysRemaining) }, extras: { ...current.extras, freeAgencyDaysRemaining: 0 } });
     pushToast(`Free agency wrapped up — ${totalSignings} AI signings around the league.`, 'success');
   };
 
@@ -789,9 +788,12 @@ function App() {
     setTab('freeAgency');
   };
 
-  const beginPreseasonPhase = () => {
-    setExtras((e) => ({ ...e, freeAgencyOpen: false }));
-    setLeague((l) => ({ ...l, seasonPhase: 'preseason' }));
+  const beginPreseasonPhase = (base: { league: League; extras: GMLeagueExtras } = { league, extras }) => {
+    // Historical rosters: AI teams take the floor with their real rosters for the new season.
+    const real = applyHistoricalRosters(base.league, { ...base.extras, freeAgencyOpen: false }, controlledTeamId);
+    setExtras(real.extras);
+    setLeague({ ...real.league, seasonPhase: 'preseason' });
+    if (real.moved) pushToast(`Historical rosters: ${real.moved} players joined their real ${formatSeasonYear(base.league.season)} teams.`, 'info');
     setTab('preseason');
   };
 

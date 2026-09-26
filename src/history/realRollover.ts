@@ -1,5 +1,9 @@
 import type { PlayerSeason } from '../simulation/types';
-import type { DraftProspect } from '../simulation/gm';
+import type { DraftProspect, GMLeagueExtras } from '../simulation/gm';
+import { computeAskingSalary } from '../simulation/gm';
+import type { League } from '../simulation/league';
+import { calculateOverall } from '../simulation/engine/overall';
+import { assignRosterNumbers } from './jerseyNumbers';
 import type { HistoricalLeagueMeta } from './historicalLeague';
 import { NBA_HISTORY_DATASET } from './datasetInfo';
 import { buildRealPlayer, type RealPlayerSeed } from './realPlayers';
@@ -63,3 +67,58 @@ export function historicalDebuts(meta: HistoricalLeagueMeta, newSeason: string, 
   });
   return { players, meta: { ...meta, futureDebuts } };
 }
+
+/**
+ * Historical rosters: at the start of a season the data covers, every AI team takes the floor with its real roster.
+ * Real players move to the team they actually played for (from other AI teams or free agency; never off your team),
+ * AI players who weren't on that team really are released, and numbers follow the real ones where known.
+ */
+export function applyHistoricalRosters(league: League, extras: GMLeagueExtras, userTeamId: string | null): { league: League; extras: GMLeagueExtras; moved: number } {
+  const meta = league.historical;
+  const plan = meta?.forceRosters ? meta.realRosters?.[league.season ?? ''] : undefined;
+  const endYear = Number(league.season) + 1;
+  if (!plan) {
+    // Any historical league: real numbers where known, stable ones otherwise, no clashes (also fixes older saves).
+    // Your own team keeps whatever numbers you gave it.
+    if (!meta) return { league, extras, moved: 0 };
+    return { league: { ...league, teams: league.teams.map(t => t.teamId === userTeamId ? t : ({ ...t, seasons: assignRosterNumbers(t.seasons, t.teamId, endYear) })) }, extras, moved: 0 };
+  }
+  const target = new Map<string, string>();
+  for (const [teamId, row] of Object.entries(plan)) if (teamId !== userTeamId && league.teams.some(t => t.teamId === teamId)) for (const id of row.ids) target.set(id, teamId);
+  const pool = new Map<string, PlayerSeason>(); // real id → player, from AI teams and free agency
+  for (const t of league.teams) if (t.teamId !== userTeamId) for (const p of t.seasons) if (p.real) pool.set(p.real.id, p);
+  for (const p of extras.freeAgents) if (p.real) pool.set(p.real.id, p);
+
+  const contracts = { ...extras.contracts };
+  const released: PlayerSeason[] = [];
+  const placed = new Set<string>();
+  let moved = 0;
+  const teams = league.teams.map(t => {
+    if (t.teamId === userTeamId || !plan[t.teamId]) return t;
+    const kept: PlayerSeason[] = [];
+    for (const p of t.seasons) {
+      const goes = p.real ? target.get(p.real.id) : undefined;
+      if (goes === t.teamId) { kept.push(p); placed.add(p.playerId); }
+      else if (!goes) { delete contracts[p.playerId]; released.push(appendHistoryEvent({ ...p, teamId: null }, 'waived', `Released by ${t.name} (not on the real ${endYear - 1}-${String(endYear).slice(2)} roster)`, t.teamId)); }
+    }
+    for (const id of plan[t.teamId].ids) {
+      const p = pool.get(id);
+      if (!p || placed.has(p.playerId) || kept.some(k => k.playerId === p.playerId)) continue;
+      const from = p.teamId;
+      const signedFromFA = !from;
+      contracts[p.playerId] = signedFromFA || !contracts[p.playerId]
+        ? { playerId: p.playerId, teamId: t.teamId, annualSalary: computeAskingSalary(calculateOverall(p), extras.capSettings), yearsRemaining: 1 + (p.playerId.length % 3), playerOption: false, teamOption: false }
+        : { ...contracts[p.playerId], teamId: t.teamId };
+      kept.push(appendHistoryEvent({ ...p, teamId: t.teamId }, signedFromFA ? 'signed' : 'moved', signedFromFA ? `Signed with ${t.name} (historical roster)` : `Joined ${t.name} (historical roster)`, t.teamId));
+      placed.add(p.playerId);
+      moved++;
+    }
+    return { ...t, seasons: assignRosterNumbers(kept, plan[t.teamId].abbr, endYear) };
+  });
+  const onTeams = new Set(teams.flatMap(t => t.seasons.map(p => p.playerId)));
+  const freeAgents = [...extras.freeAgents.filter(p => !onTeams.has(p.playerId)), ...released.filter(p => !onTeams.has(p.playerId))];
+  return { league: { ...league, teams }, extras: { ...extras, contracts, freeAgents }, moved };
+}
+
+/** True when AI teams should leave rosters alone during the season (they follow the real ones). */
+export const rostersLocked = (league: Pick<League, 'historical'>) => !!league.historical?.forceRosters;

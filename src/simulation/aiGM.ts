@@ -84,13 +84,16 @@ export function runFreeAgencyAI(
   const signings: FreeAgencySigning[] = [];
 
   const ranking = strengthRanking(league);
+  // Historical rosters: AI teams only sign to reach the league minimum (their real rosters arrive each season).
+  const locked = !!league.historical?.forceRosters;
+  const fillTo = locked ? (league.rosterLimits?.minRosterSize ?? TARGET_ROSTER_SIZE) : TARGET_ROSTER_SIZE;
   const candidateTeamIds = aiTeamIds(league, controlledTeamId)
-    .filter((id) => (currentLeague.teams.find((t) => t.teamId === id)?.seasons.length ?? 0) < TARGET_ROSTER_SIZE);
+    .filter((id) => (currentLeague.teams.find((t) => t.teamId === id)?.seasons.length ?? 0) < fillTo);
 
   for (const teamId of candidateTeamIds) {
     if (signings.length >= maxSigningsTotal) break;
     const team = currentLeague.teams.find((t) => t.teamId === teamId);
-    if (!team || team.seasons.length >= TARGET_ROSTER_SIZE) continue;
+    if (!team || team.seasons.length >= fillTo) continue;
     if (currentExtras.freeAgents.length === 0) break;
 
     const space = capSpaceRemaining(currentExtras.contracts, team, currentExtras.capSettings);
@@ -166,7 +169,7 @@ export function keepScore(p: PlayerSeason, salary = 0): number {
  * full it waives its weakest, cheapest-to-cut player (usually one underperforming his rating) to make room.
  */
 export function runStarChaseAI(league: League, extras: GMLeagueExtras, controlledTeamId: string | null, seed = 1, maxMoves = 4): { league: League; extras: GMLeagueExtras; signings: FreeAgencySigning[] } {
-  if (!extras.freeAgencyOpen || maxMoves <= 0 || !extras.freeAgents.length) return { league, extras, signings: [] };
+  if (!extras.freeAgencyOpen || maxMoves <= 0 || !extras.freeAgents.length || league.historical?.forceRosters) return { league, extras, signings: [] };
   const rng = new RNG(seed);
   const ratings = league.teams.flatMap(t => t.seasons.map(calculateOverall)).sort((a, b) => a - b);
   const starLine = ratings[Math.floor(ratings.length * STAR_PERCENTILE)] ?? 70;
@@ -330,6 +333,8 @@ export function runTradeMarketAI(
   maxTrades = 2,
 ): { league: League; extras: GMLeagueExtras; trades: ExecutedAITrade[] } {
   if (isTradeDeadlinePassed(league)) return { league, extras, trades: [] };
+  // Historical rosters: AI teams keep their real rosters (trades with you still happen through offers).
+  if (league.historical?.forceRosters) return { league, extras, trades: [] };
   const rng = new RNG(seed);
   const ids = aiTeamIds(league, controlledTeamId);
   if (ids.length < 2) return { league, extras, trades: [] };

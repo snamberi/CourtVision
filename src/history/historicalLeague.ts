@@ -7,6 +7,7 @@ import type { CareerSeasonRecord, HistoricalAward, PlayerSeason, SeasonStatTotal
 import { DEFAULT_GAME_SETTINGS, emptySeasonMilestones, emptySeasonStatTotals } from '../simulation/types';
 import type { GMLeagueExtras, Contract, TradeDifficulty } from '../simulation/gm';
 import { prospectsFromSeeds } from './realRollover';
+import { assignRosterNumbers, realJerseyNumber, plausibleJerseyNumber } from './jerseyNumbers';
 export { prospectsFromSeeds };
 import { DEFAULT_CAP_SETTINGS, DEFAULT_GM_FLAGS, computeAskingSalary, generateFutureDraftPicks } from '../simulation/gm';
 import { assignGMPersonalities } from '../simulation/aiGM';
@@ -37,6 +38,10 @@ export interface HistoricalLeagueMeta {
   notes: string[];
   /** Each team's city name at creation, so player-typed team names can be reset. */
   cityNames?: Record<string, string>;
+  /** Historical rosters: AI teams are reset to their real rosters at the start of every season the data covers. */
+  forceRosters?: boolean;
+  /** Real opening rosters by season start year → team → the abbreviation that season and real player ids (top 15 by minutes). */
+  realRosters?: Record<string, Record<string, { abbr: string; ids: string[] }>>;
 }
 
 export function supportedStartYears(h: NbaHistory): number[] {
@@ -132,6 +137,31 @@ function seedFor(h: NbaHistory, p: HistPlayer, end: number, profileEnds: number[
   };
 }
 
+/**
+ * Each later season's real opening rosters (a player's first team that season, the top 15 by minutes), keyed by the
+ * league's team ids (franchises that moved keep their id), for Historical rosters.
+ */
+export function historicalRosterPlan(h: NbaHistory, fromEnd: number, toEnd: number, teamIds: Set<string>, mapTeam: (abbr: string) => string): Record<string, Record<string, { abbr: string; ids: string[] }>> {
+  const plan: Record<string, Record<string, { abbr: string; ids: string[] }>> = {};
+  for (let end = fromEnd; end <= toEnd; end++) {
+    const first = new Map<number, HistSeasonRow>();
+    for (const r of h.seasons) {
+      if (r.season !== end || r.isAggregate || !NBA.has(r.league)) continue;
+      const cur = first.get(r.player);
+      if (!cur || r.stintIndex < cur.stintIndex) first.set(r.player, r);
+    }
+    const byTeam = new Map<string, HistSeasonRow[]>();
+    for (const r of first.values()) { const id = mapTeam(r.team); if (!teamIds.has(id)) continue; (byTeam.get(id) ?? byTeam.set(id, []).get(id)!).push(r); }
+    const season: Record<string, { abbr: string; ids: string[] }> = {};
+    for (const [id, rows] of byTeam) {
+      rows.sort((a, b) => (b.stats.mp ?? (b.stats.g ?? 0) * 20) - (a.stats.mp ?? (a.stats.g ?? 0) * 20));
+      season[id] = { abbr: rows[0].team, ids: rows.slice(0, 15).map(r => h.players[r.player].id) };
+    }
+    if (Object.keys(season).length) plan[String(endToStart(end))] = season;
+  }
+  return plan;
+}
+
 /** Seed for a draft prospect of draft year `draftYear` (debut rating from his first NBA season, or his draft slot if he never played). */
 function prospectSeed(h: NbaHistory, p: HistPlayer | null, name: string, draft: { year: number; round: number | null; pick: number | null; team: string } | null): RealPlayerSeed {
   if (p && (h.seasonsByPlayer.get(p.idx) ?? []).some(r => NBA.has(r.league))) {
@@ -180,7 +210,7 @@ export function realDraftClasses(h: NbaHistory, from: number, to: number, usedId
 export interface HistoricalLeagueResult { league: League; extras: GMLeagueExtras; summary: { teams: number; rostered: number; freeAgents: number; importedSeasons: number; notes: string[] } }
 
 /** Builds a playable league at the opening of `startYear`-(startYear+1). */
-export function buildHistoricalLeague(h: NbaHistory, startYear: number, opts: { realDevelopment: boolean; difficulty: TradeDifficulty; seed?: number }): HistoricalLeagueResult {
+export function buildHistoricalLeague(h: NbaHistory, startYear: number, opts: { realDevelopment: boolean; difficulty: TradeDifficulty; seed?: number; forceRosters?: boolean }): HistoricalLeagueResult {
   const E = startYear + 1; // END-year label of the start season in the data
   const lastEnd = h.manifest.coverage.seasons[1];
   if (startYear < FIRST_START_YEAR || E > lastEnd) throw new Error(`Start year ${startYear} is outside the supported range ${FIRST_START_YEAR}–${lastEnd - 1}.`);
@@ -279,7 +309,7 @@ export function buildHistoricalLeague(h: NbaHistory, startYear: number, opts: { 
   const contracts: Record<string, Contract> = {};
   const usedCoachNames = new Set<string>();
   const teams: LeagueTeam[] = teamRows.map(t => {
-    const seasons = [...rosterIdx.entries()].filter(([, abbr]) => abbr === t.abbr).map(([idx]) => makePlayer(idx, t.abbr));
+    const seasons = assignRosterNumbers([...rosterIdx.entries()].filter(([, abbr]) => abbr === t.abbr).map(([idx]) => makePlayer(idx, t.abbr)), t.abbr, E);
     for (const s of seasons) {
       usedIds.add(s.real!.id);
       contracts[s.playerId] = { playerId: s.playerId, teamId: t.abbr, annualSalary: computeAskingSalary(calculateOverall(s), DEFAULT_CAP_SETTINGS), yearsRemaining: 1 + rng.nextInt(4), playerOption: false, teamOption: false };
@@ -291,7 +321,7 @@ export function buildHistoricalLeague(h: NbaHistory, startYear: number, opts: { 
       expenseLevels: { scouting: 50, coaching: 50, health: 50, facilities: 50 },
     } as LeagueTeam;
   });
-  const freeAgents = [...freeAgentIdx].map(idx => makePlayer(idx, null));
+  const freeAgents = [...freeAgentIdx].map(idx => makePlayer(idx, null)).map(p => ({ ...p, jerseyNumber: realJerseyNumber(p.real!.id, null, E) ?? plausibleJerseyNumber(p.real!.id) }));
   for (const f of freeAgents) usedIds.add(f.real!.id);
 
   // ---- imported league history (every completed season before the start)
@@ -355,6 +385,7 @@ export function buildHistoricalLeague(h: NbaHistory, startYear: number, opts: { 
   }
 
   const teamIds = teams.map(t => t.teamId);
+  const realRosters = opts.forceRosters ? historicalRosterPlan(h, E + 1, lastEnd, new Set(teamIds), mapTeam) : undefined;
   const league: League = {
     teams, schedule: generateSeasonSchedule(teamIds, gamesPerTeam), settings: { ...DEFAULT_GAME_SETTINGS, gamesPerSeason: gamesPerTeam } as League['settings'],
     season, calendarDate: seasonStartDate(season), calendarRound: -1, franchiseHistory,
@@ -362,6 +393,7 @@ export function buildHistoricalLeague(h: NbaHistory, startYear: number, opts: { 
       source: 'nba-history', dataset: NBA_HISTORY_DATASET, startYear, realDevelopment: opts.realDevelopment,
       futureClasses, futureDebuts, classesLoadedThrough: Math.min(firstDraft + 9, lastDraftYear(h)), lastDataStartYear: lastEnd - 1, notes,
       cityNames: Object.fromEntries(teams.map(t => [t.teamId, t.name])),
+      ...(opts.forceRosters ? { forceRosters: true, realRosters } : {}),
     },
   };
   const firstClass = futureClasses[String(firstDraft)] ?? [];

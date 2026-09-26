@@ -14,7 +14,7 @@ import { AdBanner } from './AdBanner';
 import { DataCredits } from './DataCredits';
 
 export type GameMode = 'random' | 'real' | 'legends';
-export interface RealLeagueOptions { source: 'history' | 'csv'; realDevelopment: boolean }
+export interface RealLeagueOptions { source: 'history' | 'csv'; realDevelopment: boolean; forceRosters?: boolean }
 /** Start years the bundled NBA history supports (history through the season before; data ends 2025-26). */
 const HISTORY_START_YEARS: number[] = Array.from({ length: 2025 - 1946 + 1 }, (_, i) => 2025 - i);
 
@@ -115,6 +115,7 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
   const [leagueName, setLeagueName] = useState('My League');
   const [realSource, setRealSource] = useState<'history' | 'csv'>('history');
   const [realDevelopment, setRealDevelopment] = useState(true);
+  const [forceRosters, setForceRosters] = useState(false);
   const [historyYear, setHistoryYear] = useState('2016');
   const historical = selectedMode === 'real' && realSource === 'history';
 
@@ -194,6 +195,13 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
               ? 'On: real players rise and decline along their real rating trajectory at each new season; training can\'t change their base ratings. Results, awards and transactions are still decided by your league. Generated players develop normally.'
               : 'Off: real players develop through Court Vision\'s team, coaching, training, minutes and aging systems, like everyone else.'} You can change this later in League Settings.</p>
           </div>}
+          {historical && <div className="difficulty-picker">
+            <h4>Historical Rosters</h4>
+            <label className="real-dev-toggle"><input type="checkbox" checked={forceRosters} onChange={e => setForceRosters(e.target.checked)} /> Keep every team's real roster, season after season</label>
+            <p className="hint-text">{forceRosters
+              ? 'On: at the start of each season the data covers, every AI team takes the floor with its real roster (players move to the team they really played for). AI teams make no trades and only sign free agents to fill a short roster. Your own team is still yours to run.'
+              : 'Off: rosters start real and then change through your league\'s own trades, signings and drafts.'}</p>
+          </div>}
           <div className="difficulty-picker">
             <h4>Trade Difficulty</h4>
             <div className="difficulty-options">
@@ -214,7 +222,7 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
       )}
 
       {selectedMode && (
-        <button className="primary menu-start" disabled={!!busy} onClick={() => onStart(selectedMode, difficulty, historical ? historyYear : year, leagueName, selectedMode === 'real' ? { source: realSource, realDevelopment } : undefined)}>
+        <button className="primary menu-start" disabled={!!busy} onClick={() => onStart(selectedMode, difficulty, historical ? historyYear : year, leagueName, selectedMode === 'real' ? { source: realSource, realDevelopment, forceRosters } : undefined)}>
           {busy ?? `Start ${historical ? `${historyYear}–${String(Number(historyYear) + 1).slice(2)} NBA` : MODES.find((m) => m.id === selectedMode)?.title}`}
         </button>
       )}

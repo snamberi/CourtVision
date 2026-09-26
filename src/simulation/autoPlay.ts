@@ -1,3 +1,4 @@
+import { applyHistoricalRosters } from '../history/realRollover';
 import { signingDecision } from './freeAgentDecision';
 import { ensureUpcomingDraftClass } from './draftSeason';
 import { rosterComplianceIssues } from './rosterRequirements';
@@ -244,6 +245,9 @@ function finishAutoSeason(
     }
   }
   currentExtras = { ...currentExtras, freeAgencyOpen: false, freeAgencyDaysRemaining: 0 };
+  // Historical rosters: AI teams take the floor with their real rosters for the new season.
+  const real = applyHistoricalRosters(currentLeague, currentExtras, controlledTeamId);
+  currentLeague = real.league; currentExtras = real.extras;
 
   // 6. Preseason -> open the fresh regular-season schedule.
   currentLeague = finalizeNewSeasonSchedule({ ...currentLeague, seasonPhase: 'regular_season' });
