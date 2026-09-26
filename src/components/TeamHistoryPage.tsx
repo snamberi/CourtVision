@@ -95,7 +95,7 @@ export function TeamHistoryPage({ league, extras, initialTeamId, onSelectPlayer,
   const teamName = (id: string) => league.teams.find(t => t.teamId === id)?.name ?? id;
   return <div className="team-history-page">
     <div className="team-history-head">
-      <TeamLogo team={team} size={72} />
+      <TeamLogo team={team} size={110} />
       <div><span className="pixel-eyebrow">FRANCHISE HISTORY</span><h2>{team.name}</h2>
         <label className="team-history-select">Team <select value={teamId} onChange={e => { setTeamId(e.target.value); setOpen(null); }}>{league.teams.map(t => <option key={t.teamId} value={t.teamId}>{t.name}</option>)}</select></label></div>
     </div>

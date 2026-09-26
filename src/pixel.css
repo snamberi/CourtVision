@@ -573,7 +573,7 @@ fieldset.development-controls { border: 1px solid var(--line-strong); padding: 1
 
 /* Branded courtside broadcast, with all motion driven by the replay clock. */
 .watch-arena { border:1px solid #4d637d; background:#09111e; }
-.watch-arena .watch-court { border:0; max-height:none; aspect-ratio:1000 / 600; }
+.watch-arena .watch-court { border:0; max-height:none; aspect-ratio:1220 / 600; }
 .watch-arena .watch-bug { display:block; width:100%; aspect-ratio:1000 / 50; }
 .watch-arena-caption { display:flex; justify-content:space-between; gap:12px; padding:10px 14px; border-top:1px solid #31445b; color:#f4ce96; font:12px var(--font-data); }
 .watch-options { border:1px solid #31445b; padding:10px 14px; margin:0 0 12px; }

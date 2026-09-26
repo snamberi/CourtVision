@@ -1,19 +1,6 @@
+import { CLYDE_PATH } from '../visuals/discordGlyph';
 export const DISCORD_URL = 'https://discord.gg/5uGK5HDS8e';
 
-/** Discord's mascot drawn on a 14x10 pixel grid. */
-const CLYDE = [
-  '00011000011000',
-  '00111111111100',
-  '01111111111110',
-  '01111111111110',
-  '11100111100111',
-  '11100111100111',
-  '11111111111111',
-  '11111111111111',
-  '01110000001110',
-  '00100000000100',
-];
-const CLYDE_PATH = CLYDE.flatMap((row, y) => [...row].flatMap((c, x) => c === '1' ? [`M${x + 1} ${y + 3}h1v1h-1z`] : [])).join('');
 
 /** Pixel-art Discord badge: blurple tile, stepped corners, white mascot. */
 export function PixelDiscordIcon({ size = 20 }: { size?: number }) {

@@ -3,7 +3,7 @@ import { playbackForEntry } from './gamePlayback';
 
 export interface CourtPoint { x:number; y:number }
 export interface CourtBall extends CourtPoint { z:number; spin:number }
-export type CourtPose='run'|'guard'|'shoot'|'reach'|'idle'|'dribble'|'celebrate'|'screen';
+export type CourtPose='run'|'guard'|'shoot'|'reach'|'idle'|'dribble'|'celebrate'|'screen'|'rebound'|'pass';
 export interface CourtActor extends CourtPoint { id:string; teamId:string; jump:number; stride:number; pose:CourtPose; facing:number }
 export interface CourtCallout { text:string; x:number; y:number; t:number; tone:'make'|'defense'|'neutral' }
 export interface CourtFrame {
@@ -264,6 +264,12 @@ function baseFrame(entry:PossessionLogEntry,play:PossessionPlayback,progress:num
   actors.push({...loc,id,teamId:offHome?awayId:homeId,jump:contest?Math.sin((q-.56)/.24*Math.PI)*(id===play.blockerId?25:12):0,stride:running||chasing?Math.sin(q*58+i)*.8:Math.sin(q*30+i)*.25,
    pose:contest?'reach':chasing?(id===play.stealerId?'dribble':'run'):running?'run':ftActive?'idle':'guard',facing:-toward});
  });
+ // Body language: the passer snaps the ball out with both hands; the rebounder goes up for it with both arms.
+ if(!ftActive){
+  for(const ps of passes)if(q>=ps.t0-.01&&q<ps.t0+.035){const a=byId(ps.from);if(a&&a.pose!=='shoot')a.pose='pass';}
+  const board=play.rebounderId&&!play.shotMade&&!turnover?actors.find(a=>a.id===play.rebounderId):undefined;
+  if(board&&q>=.84&&q<.99){board.pose='rebound';board.jump=Math.max(board.jump,Math.sin(window01(q,.84,.99)*Math.PI)*17);}
+ }
  if(ftActive&&p<mainShare+.1){const before=baseFrame(entry,play,mainShare-.000001,homeId,awayId,regulationPeriods,starts,previous);const t=ease((p-mainShare)/.1);for(const a of actors){const old=before.players.find(v=>v.id===a.id);if(old){const point=courtLerp(old,a,t);a.x=point.x;a.y=point.y;}}}
  // Symmetric separation keeps feet apart without frame-rate-dependent integration.
  for(let k=0;k<3;k++)for(let i=0;i<actors.length;i++)for(let j=i+1;j<actors.length;j++){

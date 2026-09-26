@@ -1,8 +1,11 @@
 import { resolveTeamIdentity } from '../simulation/teamIdentity';
 import type { LeagueTeam } from '../simulation/league';
 import { MARKS } from '../visuals/logoMarks';
+import { TeamCrest } from './TeamCrest';
 
 export function TeamLogo({ team, size = 64 }: { team: Pick<LeagueTeam, 'teamId' | 'name' | 'identity'>; size?: number }) {
+  // Big logos (headers, the court) get the full crest with the team's name; small ones stay a compact badge.
+  if (size >= 96) return <TeamCrest team={team} size={size} label={`${team.name} logo`} />;
   const identity = resolveTeamIdentity(team);
   return <svg className="team-logo" width={size} height={size} viewBox="0 0 50 58" shapeRendering="crispEdges" role="img" aria-label={`${team.name} logo`}>
     <path d="M8 1H42V5H48V43H42V49H34V55H16V49H8V43H2V5H8Z" fill={identity.secondary} stroke="#f3e7ca" strokeWidth="2" />
