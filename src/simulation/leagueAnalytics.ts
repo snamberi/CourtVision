@@ -1,3 +1,4 @@
+import { isUnanimous } from './almanac';
 import type { TrophyKey } from './trophies';
 import type { League, RetiredPlayerRecord } from './league';
 import { calculateFullAttributeOverall } from './engine/overall';
@@ -106,6 +107,8 @@ export interface PlayerAwardEntry {
   label: string; // e.g. "MVP", "All-NBA 1st Team", "NBA Champion", "Finals MVP"
   /** Which trophy it is (drives the pixel art and Hall of Fame weight). */
   key: TrophyKey;
+  /** Won with every first-place vote: the label reads "Unanimous MVP". */
+  unanimous?: boolean;
 }
 /**
  * Scans the full franchise history for every award a given player has ever
@@ -133,7 +136,10 @@ export function getPlayerAwardsHistory(league: League, playerId: string): Player
     const headline = [['mvp', 'MVP'], ['dpoy', 'Defensive Player of the Year'], ['roy', 'Rookie of the Year'], ['mip', 'Most Improved Player'], ['smoy', 'Sixth Man of the Year']] as const;
     for (const [key, label] of headline) {
       // The winner, plus anyone who shared it (an exact tie in the vote, or a real shared award in imported history).
-      if (a[key]?.playerId === playerId || a.coWinners?.[key]?.some(w => w.playerId === playerId)) add(season, label, key);
+      if (a[key]?.playerId === playerId || a.coWinners?.[key]?.some(w => w.playerId === playerId)) {
+        if (isUnanimous(a, key, season, playerId)) entries.push({ season, label: `Unanimous ${label}`, key, unanimous: true });
+        else add(season, label, key);
+      }
     }
     const extraAwards = [
       ['cpoy', 'Clutch Player of the Year'], ['hustle', 'Hustle Award'], ['teammate', 'Teammate of the Year'],

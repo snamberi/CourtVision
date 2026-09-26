@@ -451,3 +451,4 @@ button { border-radius: 0; }
 .business-jerseys li b { margin-left:8px; font-variant-numeric:tabular-nums; }
 .business-jerseys small { color:var(--cv-text-muted, #94a0b2); margin-left:6px; }
 @media (max-width:700px) { .business-jerseys { grid-template-columns:1fr; } }
+.badge-chip--unanimous { border-color:var(--cv-gold, #ffd166); }

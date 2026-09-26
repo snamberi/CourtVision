@@ -15,6 +15,7 @@ import { currentSeasonAdvanced } from '../simulation/advancedStats';
 import type { SeasonStatTotals, SeasonMilestones, MissingStat } from '../simulation/types';
 import { fx, fpct, finiteSum, NA } from './statFormat';
 import { RealPlayerFacts, AwardsByOrigin } from './RealPlayerFacts';
+import { UnanimousTag } from './UnanimousTag';
 import { ratingSourceLabel } from '../history/datasetInfo';
 import { NORMAL_BADGES, EXPERIMENTAL_BADGES } from '../simulation/badges';
 import { getPlayerAwardsHistory, getPlayerAwardRaceHistory, type PlayerAwardEntry } from '../simulation/leagueAnalytics';
@@ -523,8 +524,8 @@ function PlayerCard({ season, ratings, badgeNames, awardsHistory, league }: {
           <details className="trophy-list-details"><summary>Every honor, season by season</summary>
             <div className="badge-grid">
               {groupedAwards.map((g) => (
-                <span key={g.label} className="badge-chip" title={g.years.map(formatSeasonYear).join(', ')}>
-                  {g.label}{g.years.length > 1 ? ` ×${g.years.length}` : ''}
+                <span key={g.label} className={`badge-chip${g.label.startsWith('Unanimous ') ? ' badge-chip--unanimous' : ''}`} title={g.years.map(formatSeasonYear).join(', ')}>
+                  {g.label.startsWith('Unanimous ') ? <><UnanimousTag compact /> {g.label.slice('Unanimous '.length)}</> : g.label}{g.years.length > 1 ? ` ×${g.years.length}` : ''}
                 </span>
               ))}
             </div>
