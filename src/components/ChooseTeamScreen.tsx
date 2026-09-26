@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { League } from '../simulation/league';
 import type { GMLeagueExtras } from '../simulation/gm';
-import { runExpansionDraft } from '../simulation/expansionDraft';
+import { ExpansionDraftBoard } from './ExpansionDraftBoard';
 import { calculateOverall } from '../simulation/engine/overall';
 import { PlayerAvatar } from './PlayerAvatar';
 
@@ -14,7 +14,6 @@ interface Props {
 export function ChooseTeamScreen({ league, extras, onConfirm }: Props) {
   const [mode, setMode] = useState<'pick' | 'create'>('pick');
   const [pickedTeamId, setPickedTeamId] = useState(league.teams[0]?.teamId ?? '');
-  const [customName, setCustomName] = useState('Expansion Squad');
 
   const avgOverall = (teamId: string) => {
     const t = league.teams.find((x) => x.teamId === teamId);
@@ -25,12 +24,6 @@ export function ChooseTeamScreen({ league, extras, onConfirm }: Props) {
   const confirmPick = () => onConfirm(league, extras, pickedTeamId);
   const previewPlayers = [...(league.teams.find((team) => team.teamId === pickedTeamId)?.seasons ?? [])]
     .sort((a, b) => calculateOverall(b) - calculateOverall(a)).slice(0, 5);
-
-  const confirmCreate = () => {
-    const result = runExpansionDraft(league, extras, customName, 14, 8, Date.now() % 100000);
-    const newTeamId = result.league.teams[result.league.teams.length - 1].teamId;
-    onConfirm(result.league, result.extras, newTeamId);
-  };
 
   return (
     <div className="main-menu">
@@ -44,7 +37,7 @@ export function ChooseTeamScreen({ league, extras, onConfirm }: Props) {
         </button>
         <button className={`mode-card ${mode === 'create' ? 'selected' : ''}`} onClick={() => setMode('create')}>
           <h3>Create Your Own Team</h3>
-          <p>Runs a real expansion draft: every existing team protects its top 8 players, your new team drafts 14 from what's left.</p>
+          <p>A real expansion draft: every team files a protection list, then you pick your roster from the exposed players.</p>
         </button>
       </div>
 
@@ -62,12 +55,7 @@ export function ChooseTeamScreen({ league, extras, onConfirm }: Props) {
         </div>
       )}
 
-      {mode === 'create' && (
-        <div className="team-pick-list">
-          <input className="year-input" type="text" value={customName} onChange={(e) => setCustomName(e.target.value)} placeholder="Team name" />
-          <button className="primary menu-start" onClick={confirmCreate}>Run Expansion Draft &amp; Start</button>
-        </div>
-      )}
+      {mode === 'create' && <ExpansionDraftBoard league={league} extras={extras} onDone={onConfirm} />}
     </div>
   );
 }
