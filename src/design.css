@@ -133,3 +133,10 @@ button { border-radius: 0; }
 .profile-identity h2, .yt-header h2 { font: 700 34px/1.05 var(--font-display); letter-spacing: .02em; text-transform: uppercase; margin: 6px 0 8px; }
 @media (max-width: 640px) { .profile-identity h2, .yt-header h2 { font-size: 26px; } .dashboard-franchise h2 { font-size: 26px; } .dashboard-hero-wl { font-size: 44px; } }
 .menu-discord span { font: 600 15px/1 var(--font-display); letter-spacing: .06em; text-transform: uppercase; }
+
+/* Phones: the Play button docks at the bottom edge instead of floating over the middle of the page, and toasts
+ * stack just above it (the top belongs to unlock notices). */
+@media (max-width: 560px) {
+  .play-button-root { right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
+  .toast-stack { bottom: calc(82px + env(safe-area-inset-bottom, 0px)); }
+}
