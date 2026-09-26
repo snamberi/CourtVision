@@ -215,6 +215,8 @@ export interface League {
   awardSettings?: import('./awards').AwardSettings;
   /** This season's weekly award ladder and Players of the Week/Month (see awardRace.ts). */
   awardRace?: import('./awardRace').AwardRaceState;
+  /** Owners, goals, your job security, reviews and achievements (see frontOffice.ts); absent on older leagues until loaded. */
+  frontOffice?: import('./frontOffice').FrontOfficeState;
 }
 
 /** This season's All-Star Weekend results, once played - checked against `league.season` so a fresh season always requires a fresh weekend. */

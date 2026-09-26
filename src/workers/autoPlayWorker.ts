@@ -43,6 +43,8 @@ self.onmessage = async (e: MessageEvent<AutoPlayWorkerInMessage>) => {
       (self as unknown as Worker).postMessage({
         type: 'yearComplete', yearIndex: year + 1, totalYears: years, league: compactLeagueLogs(league), extras, summary: result.summary,
       } satisfies AutoPlayWorkerOutMessage);
+      // Fired: stop here so you choose your next job yourself.
+      if (league.frontOffice?.status === 'unemployed') break;
     }
     (self as unknown as Worker).postMessage({ type: 'done', league: compactLeagueLogs(league), extras, summaries } satisfies AutoPlayWorkerOutMessage);
   } catch (err) {

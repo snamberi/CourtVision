@@ -1,4 +1,5 @@
 import { archiveRivalries } from './rivalry';
+import { reviewSeason, ensureSeasonGoals, type OwnerReview } from './frontOffice';
 import { compactBracket, conferenceSeeds } from './almanac';
 import { primaryPosition } from './teamStatus';
 import { seasonAdvancedWithStints, regularSeasonContext, type PlayerAdvanced, type SeasonContext } from './advancedStats';
@@ -152,6 +153,9 @@ export interface SeasonTransitionSummary {
   seasonAwards: SeasonAwards;
   totalPlayersAged: number;
   pickProtectionsTriggered: { originalTeamId: string; round: 1 | 2 }[];
+  /** The owner's end-of-season review of your front office, and achievements it unlocked. */
+  ownerReview?: OwnerReview | null;
+  newAchievements?: string[];
 }
 
 export interface SeasonTransitionResult {
@@ -185,6 +189,9 @@ export function beginNewSeasonRoster(
   const seasonContext = regularSeasonContext(league);
   const { combined: seasonAdvanced, stints: seasonStintSplits } = seasonAdvancedWithStints(league, seasonContext, extras.freeAgents);
   const teamSeasons = buildTeamSeasonSummaries(league, seasonContext, seasonAdvanced, championship?.teamId, extras.freeAgents, seasonStintSplits);
+  // The owner reviews the season as it ended, before aging and retirements change the roster.
+  const foReview = reviewSeason({ league, extras, teamSeasons, awards: seasonAwards, season: previousSeason, nextSeason: newSeason,
+    championTeamId: championship?.teamId ?? null, fmvpId: championship?.fmvp?.playerId ?? null });
   league = offseasonTrainingCamp(league);
 
   const retiredPlayerIds: string[] = [];
@@ -326,7 +333,8 @@ export function beginNewSeasonRoster(
     seasonPhase: 'draft',
     playoffBracket: undefined,
     awardRace: undefined, // its honors are in this season's fullAwards now
-    newsArchive: generateNewsFeed(league, extras, 200),
+    newsArchive: generateNewsFeed(foReview ? { ...league, frontOffice: foReview.state } : league, extras, 200),
+    ...(foReview ? { frontOffice: foReview.state, ...(foReview.state.status !== 'employed' ? { coachingUserTeamId: null } : {}) } : {}),
     rivalries: archiveRivalries(league),
     retiredPlayers: [...(league.retiredPlayers ?? []), ...newlyRetired],
     franchiseHistory: [...(league.franchiseHistory ?? []), historyRecord],
@@ -361,6 +369,8 @@ export function beginNewSeasonRoster(
       seasonAwards,
       totalPlayersAged: league.teams.reduce((sum, t) => sum + t.seasons.length, 0),
       pickProtectionsTriggered: protectionsTriggered,
+      ownerReview: foReview?.review ?? null,
+      newAchievements: foReview?.newAchievements ?? [],
     },
   };
 }
@@ -382,10 +392,10 @@ export function finalizeNewSeasonSchedule(league: League): League {
     const chemistry = driftChemistryForRosterContinuity(t.chemistry, before, t.seasons.map((s) => s.playerId));
     return { ...t, chemistry, offseasonStartRosterIds: undefined };
   });
-  return {
+  return ensureSeasonGoals({
     ...league, teams, schedule, seasonPhase: 'regular_season', injuries: {}, playoffBracket: undefined,
     calendarDate: seasonStartDate(league.season), calendarRound: -1,
-  };
+  });
 }
 
 /**

@@ -61,6 +61,7 @@ export const SIMPLE_HUBS: SimpleHub[] = [
       { label: 'Draft', tab: 'draft' },
       { label: 'Watch list', tab: 'watchList' },
       { label: 'Compare players', tab: 'compare' },
+      { label: 'GM Office', tab: 'gmOffice' },
     ],
   },
   {

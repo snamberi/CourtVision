@@ -209,6 +209,8 @@ function finishAutoSeason(
   const seasonAwards: SeasonAwards = roster.summary.seasonAwards;
   currentLeague = roster.league;
   currentExtras = roster.extras;
+  // A fired GM no longer runs the team's draft and free agency.
+  if (currentLeague.frontOffice && currentLeague.frontOffice.status !== 'employed') controlledTeamId = null;
 
   // 4. Draft - every team, including yours, drafts best-player-available.
   const draftResult = simEntireDraft(currentLeague, currentExtras);

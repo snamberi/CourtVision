@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { OwnerOfficeCard } from './FrontOfficePanels';
 import { TeamLink, TeamText } from './TeamLink';
 import type { League, SeasonPhase } from '../simulation/league';
 import { computeStandings, computeConferenceStandings, hasConferenceStructure, gamesRemainingForTeam, totalGamesForTeam } from '../simulation/league';
@@ -118,6 +119,8 @@ export function DashboardPage({ league, extras, controlledTeamId, seasonPhase, o
           </button>)}
         </div>
       </section>}
+
+      <OwnerOfficeCard league={league} extras={extras} onOpen={() => onGoTo('gmOffice')} />
 
       <div className="dashboard-columns">
         <section className="dashboard-panel">

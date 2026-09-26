@@ -180,6 +180,11 @@ export function generateNewsFeed(league: League, extras: GMLeagueExtras, maxItem
       if (playerId) add({ id: `award:${award}`, season: record.season, category: 'Awards', teamId: null, teamName: null, headline: `${playerId} takes home ${award} for ${record.season}.`, playerId, order: 290_000 });
     }
   }
+  // Front office: hirings, firings, extensions and hot seats around the league (see frontOffice.ts).
+  for (const e of league.frontOffice?.events ?? []) {
+    add({ id: `fo:${e.kind}:${e.teamId}:${e.order}`, season: e.season, category: 'Teams', teamId: e.teamId, teamName: e.teamName,
+      headline: e.headline, detail: e.detail, order: 310_000 + e.order });
+  }
   // Prefer freshly derived versions of the same story; cap storage and feed size for long dynasties.
   const unique = new Map<string, NewsItem>();
   for (const item of [...(league.newsArchive ?? []), ...items]) unique.set(item.id, item);

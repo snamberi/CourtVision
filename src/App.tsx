@@ -15,6 +15,7 @@ import './tutorial.css';
 import './polish.css';
 import './awards.css';
 import './contrast.css';
+import './frontOffice.css';
 import { CoachGuide } from './components/tutorial/CoachGuide';
 import { SeasonRoadMap } from './components/tutorial/SeasonRoadMap';
 import { FirstSeasonChecklist } from './components/tutorial/FirstSeasonChecklist';
@@ -60,6 +61,8 @@ import { migrateHistoricalLeague } from './history/migrateHistorical';
 import { DEFAULT_CAP_SETTINGS, DEFAULT_TRADE_SETTINGS, DEFAULT_GM_FLAGS, generateDraftClass, pickDraftClassSize, buildTwoRoundDraftOrder, generateFutureDraftPicks, isTradeDeadlinePassed, simulateUntilTradeDeadline, waiveToFreeAgency, toggleTradeBlock, type GMLeagueExtras, type Contract, type TradeDifficulty } from './simulation/gm';
 import { RNG } from './simulation/engine/rng';
 import { beginNewSeasonRoster, finalizeNewSeasonSchedule, type SeasonTransitionSummary } from './simulation/seasonTransition';
+import { acceptJobOffer, becomeSpectator, ensureFrontOffice, ACHIEVEMENT_BY_ID, type OwnerReview } from './simulation/frontOffice';
+import { JobOffersDialog, OwnerReviewDialog } from './components/FrontOfficePanels';
 import { runLeagueAIPass, autoDraftAIPicksUntilUserTurn, simEntireDraft, runFreeAgencyAI } from './simulation/aiGM';
 import { autoRunAllStarWeekend } from './simulation/autoPlay';
 import { autoGeneratePlayoffBracket, simulateFullPlayoffs, type PlayoffBracket } from './simulation/playoffs';
@@ -120,6 +123,7 @@ const RecordsPage = lazy(() => import('./components/RecordsPage').then(m => ({ d
 const AlmanacPage = lazy(() => import('./components/AlmanacPage').then(m => ({ default: m.AlmanacPage })));
 const ResignWaivePage = lazy(() => import('./components/ResignWaivePage').then(m => ({ default: m.ResignWaivePage })));
 const PreseasonPage = lazy(() => import('./components/PreseasonPage').then(m => ({ default: m.PreseasonPage })));
+const GmOfficePage = lazy(() => import('./components/FrontOfficePanels').then(m => ({ default: m.GmOfficePage })));
 const DashboardPage = lazy(() => import('./components/DashboardPage').then(m => ({ default: m.DashboardPage })));
 const PlayerStatsPage = lazy(() => import('./components/PlayerStatsPage').then(m => ({ default: m.PlayerStatsPage })));
 const PowerRankingsPage = lazy(() => import('./components/PowerRankingsPage').then(m => ({ default: m.PowerRankingsPage })));
@@ -200,6 +204,7 @@ function App() {
   }, []);
   const tab: Tab = !sandboxMode && SANDBOX_TABS.has(requestedTab) ? 'sandbox' : requestedTab;
   const [seasonSummary, setSeasonSummary] = useState<SeasonTransitionSummary | null>(null);
+  const [ownerVerdict, setOwnerVerdict] = useState<{ review: OwnerReview; newAchievements: string[] } | null>(null);
   const [toasts, setToasts] = useState<ToastData[]>([]);
   const pushToast = useCallback((message: string, tone: 'info' | 'success' | 'error' = 'info') => {
     const id = Date.now() + Math.random();
@@ -314,7 +319,8 @@ function App() {
     // Potential is never below Overall, and equals it once a player reaches (or passes) their prime.
     const { league: normalizedLeague, extras: e } = syncLeaguePotentials(rostered.league, rostered.extras);
     // Older saves: seed the record book from the games still stored this season.
-    const l = backfillRecordBook(initializeCoaching(normalizedLeague, teamId));
+    // Owners, goals and your job security; older leagues gain them here.
+    const l = ensureFrontOffice(backfillRecordBook(initializeCoaching(normalizedLeague, teamId)), teamId);
     if (repairs.length > 0) {
       pushToast(`Fixed ${repairs.length} duplicate player name${repairs.length === 1 ? '' : 's'} so no one gets lost (${repairs.slice(0, 3).map((r) => r.newId).join(', ')}${repairs.length > 3 ? ', ...' : ''}).`, 'info');
     }
@@ -730,6 +736,42 @@ function App() {
   };
 
   const seasonPhase = league.seasonPhase ?? 'regular_season';
+  // --- Front office: a fired or spectating GM controls no team; new achievements get a toast. ---
+  const frontOffice = league.frontOffice;
+  useEffect(() => {
+    if (screen === 'app' && frontOffice && frontOffice.status !== 'employed' && controlledTeamId) setControlledTeamId(null);
+  }, [screen, frontOffice, controlledTeamId]);
+  // A new owner review (guided offseason or Auto Play) opens the verdict dialog with the achievements it unlocked;
+  // achievements earned any other way (taking a new job) get a toast.
+  const knownFrontOffice = useRef<{ saveId: string | null; ids: Set<string>; reviews: number } | null>(null);
+  useEffect(() => {
+    if (screen !== 'app' || !frontOffice) return;
+    const ids = new Set(Object.keys(frontOffice.achievements));
+    const known = knownFrontOffice.current;
+    knownFrontOffice.current = { saveId: activeSaveId, ids, reviews: frontOffice.reviews.length };
+    if (!known || known.saveId !== activeSaveId) return; // a league just opened: nothing is new
+    const fresh = [...ids].filter(id => !known.ids.has(id));
+    const review = frontOffice.reviews.length > known.reviews ? frontOffice.reviews.at(-1) : undefined;
+    if (review) { setOwnerVerdict({ review, newAchievements: fresh }); return; }
+    for (const id of fresh) {
+      const a = ACHIEVEMENT_BY_ID.get(id);
+      if (a) pushToast(`Achievement unlocked: ${a.name}. ${a.description}`, 'success');
+    }
+  }, [screen, frontOffice, activeSaveId, pushToast]);
+  const acceptOffer = (teamId: string) => {
+    const next = acceptJobOffer(league, teamId);
+    setLeague(next);
+    setControlledTeamId(teamId);
+    setViewedTeamId('');
+    pushToast(`Welcome to the ${next.teams.find(t => t.teamId === teamId)?.name ?? 'team'}. ${next.frontOffice?.goals.length ? "Your new owner's goals are in the GM Office." : "Your new owner's goals arrive when the season starts."}`, 'success');
+    setTab('dashboard');
+  };
+  const spectate = () => {
+    setLeague(becomeSpectator(league));
+    setControlledTeamId(null);
+    pushToast('You are spectating. Teams will call again next offseason.', 'info');
+  };
+  const setFiringEnabled = (on: boolean) => setLeague(l => l.frontOffice ? { ...l, frontOffice: { ...l.frontOffice, firingEnabled: on } } : l);
   useEffect(() => {
     if (screen !== 'app' || seasonPhase !== 'regular_season') return;
     const ready = manageCoachRosters(league, extras);
@@ -1023,6 +1065,9 @@ function App() {
         </div>
       )}
 
+      {ownerVerdict && <OwnerReviewDialog review={ownerVerdict.review} newAchievements={ownerVerdict.newAchievements} onClose={() => setOwnerVerdict(null)} />}
+      {!ownerVerdict && frontOffice?.status === 'unemployed' && frontOffice.offers.length > 0 &&
+        <JobOffersDialog league={league} onAccept={acceptOffer} onSpectate={spectate} />}
       <ToastStack toasts={toasts} onDismiss={dismissToast} />
       {celebration && <ChampionshipCelebration league={league} info={celebration} onClose={() => setCelebration(null)} onSelectPlayer={id => { setCelebration(null); selectPlayer(id); }} />}
       {tourActive && tourStep != null && (
@@ -1497,6 +1542,8 @@ function App() {
         )}
 
         {tab === 'powerRankings' && <PowerRankingsPage league={league} />}
+
+        {tab === 'gmOffice' && <GmOfficePage league={league} extras={extras} onAcceptOffer={acceptOffer} onSpectate={spectate} onToggleFiring={setFiringEnabled} />}
 
         {tab === 'transactions' && <TransactionsPage league={league} extras={extras} onSelectPlayer={selectPlayer} />}
 
