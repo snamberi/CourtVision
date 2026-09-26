@@ -147,6 +147,9 @@ const DESIGNS: Record<TrophyKey, Design> = {
   rookieDefender: { shape: 'medal', metal: 'bronze', glyph: 'miniShield', e: '#4da3ff', E: '#0c2744', r: '#55c878', R: '#2c7a47' },
   pom: { shape: 'rosette', metal: 'gold', glyph: 'star', e: '#f47b20', r: '#ffd166', R: '#c0820e' },
   pow: { shape: 'rosette', metal: 'silver', glyph: 'ball', ...ORANGE, r: '#4da3ff', R: '#1f5e9e' },
+  cup: { shape: 'cup', metal: 'cobalt', e: '#ffd166', E: '#8a5a0b' },
+  cupMvp: { shape: 'ballColumn', metal: 'cobalt' },
+  allCup: { shape: 'plaque', metal: 'cobalt', glyph: 'star', e: '#ffd166' },
 };
 
 export interface Rect { x: number; y: number; w: number; fill: string }

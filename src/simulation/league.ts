@@ -1,4 +1,5 @@
 import { prepareCoachingForGame, finishCoachingGame, type GameEvidence } from './playerDevelopment';
+import { advanceCup } from './cup';
 import { gameStaffCoach } from './staffManagement';
 import { reviewTeamRotation, type RotationReview } from './rotationReview';
 import type { GameSettings, PlayerSeason } from './types';
@@ -179,6 +180,8 @@ export interface ScheduledGame {
   awayTeamId: string;
   played: boolean;
   result?: GameResult;
+  /** In-Season Cup group this regular-season game also counts for (see cup.ts). */
+  cupGroupId?: string;
 }
 
 export type SeasonPhase = 'regular_season' | 'all_star' | 'playoffs' | 'awards_recap' | 'draft' | 'resign_waive' | 'free_agency' | 'preseason';
@@ -217,6 +220,8 @@ export interface League {
   awardRace?: import('./awardRace').AwardRaceState;
   /** Owners, goals, your job security, reviews and achievements (see frontOffice.ts); absent on older leagues until loaded. */
   frontOffice?: import('./frontOffice').FrontOfficeState;
+  /** This season's In-Season Cup: groups, knockout results and honors (see cup.ts). */
+  cup?: import('./cup').CupState;
   /** The latest offseason's Summer League (see draftSeason.ts); replaced each year. */
   summerLeague?: import('./draftSeason').SummerLeagueRecord;
 }
@@ -262,6 +267,8 @@ export interface FranchiseHistoryRecord {
   seeds?: Record<string, number>;
   /** Imported from real NBA history before this league's start (not simulated). */
   imported?: boolean;
+  /** The season's In-Season Cup result. */
+  cup?: import('./cup').CupArchive;
 }
 
 export type PlayoffFinish = 'Champion' | 'Finals' | 'Conference Finals' | 'Second Round' | 'First Round' | 'Play-In' | 'Playoffs' | 'Missed Playoffs'; // 'Playoffs' = qualified, round not recorded (imported history)
@@ -507,6 +514,15 @@ function gameBlocked(league: League, idx: number): boolean {
   return breakRound != null && league.schedule[idx].round >= breakRound && isAllStarBreakPending(league);
 }
 
+/** A team as it would take the floor today: healthy players, its coach, chemistry and rotation. Used for games
+ * outside the schedule (Cup knockouts). */
+export function teamGameInput(league: League, teamId: string): PreparedGame['input']['home'] {
+  const team = league.teams.find((t) => t.teamId === teamId)!;
+  const injuries = league.injuries ?? {};
+  const available = ensureMinimumAvailable(team.seasons, team.seasons.filter((s) => !((injuries[s.playerId]?.gamesRemaining ?? 0) > 0)), injuries);
+  return { teamId, seasons: available, coach: team.coach, chemistry: team.chemistry, coachIdentity: gameStaffCoach(team), rotationOrder: team.rotationOrder };
+}
+
 /** Practice up to game day, then pick who is available (`injuries` decides who is out). */
 function prepareGame(league: League, idx: number, seedBase: number, injuries: Record<string, InjuryRecord>, liveCoaching?: LiveCoachingCommand[]): { league: League; prepared: PreparedGame } {
   const scheduled = league.schedule[idx];
@@ -598,7 +614,8 @@ function commitGame(league: League, prepared: PreparedGame, result: GameResult, 
 
   const updated = applyGameResultToLeague({ ...league, teams, schedule, injuries: nextInjuries, calendarDate, calendarRound }, result);
   // The last game of a game day moves the award races along (weekly ladder, Players of the Week/Month).
-  const dayDone = (l: League) => l.schedule.some((x) => !x.played && x.round === g.round) ? l : advanceAwardRace(l, g.round);
+  // The same night decides the Cup: once the last group game is in, the knockout rounds are played (see cup.ts).
+  const dayDone = (l: League) => l.schedule.some((x) => !x.played && x.round === g.round) ? l : advanceCup(advanceAwardRace(l, g.round));
   if ((updated.seasonPhase ?? 'regular_season') !== 'regular_season') return dayDone(updated);
   return dayDone(finishCoachingGame({ ...updated, teams: updated.teams.map(t => t.teamId === home.teamId || t.teamId === away.teamId ? reviewTeamRotation(t, updated) : t) }, result, false, evidence));
 }

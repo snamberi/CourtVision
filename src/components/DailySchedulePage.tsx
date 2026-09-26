@@ -61,6 +61,7 @@ export function DailySchedulePage({ league, onChange }: Props) {
               {teamCard(g.awayTeamId)}
               <div className="daily-schedule-score">
                 {g.played && g.result ? `${g.result.awayScore} - ${g.result.homeScore}` : 'vs'}
+                {g.cupGroupId && <span className="cup-tag" title="Also an In-Season Cup group game">CUP</span>}
               </div>
               {teamCard(g.homeTeamId)}
             </div>

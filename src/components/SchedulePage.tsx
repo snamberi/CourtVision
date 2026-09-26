@@ -19,6 +19,7 @@ export function SchedulePage({ league, onViewGame }: Props) {
             <span><TeamLink teamId={g.homeTeamId} /></span>
             <span className="sched-vs">vs</span>
             <span><TeamLink teamId={g.awayTeamId} /></span>
+            {g.cupGroupId && <span className="cup-tag" title="Also an In-Season Cup group game">CUP</span>}
             {g.played && g.result ? (
               <span className="sched-score">{g.result.homeScore} - {g.result.awayScore}</span>
             ) : (

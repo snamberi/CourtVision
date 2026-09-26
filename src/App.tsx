@@ -1,4 +1,5 @@
 import { initializeCoaching } from './simulation/staffManagement';
+import { setupCup } from './simulation/cup';
 import { TeamLinksProvider, TeamLink } from './components/TeamLink';
 import { ConfirmationDialog } from './components/ConfirmationDialog';
 import { SANDBOX_TABS, canEditTeam } from './navigation/permissions';
@@ -16,6 +17,7 @@ import './polish.css';
 import './awards.css';
 import './contrast.css';
 import './frontOffice.css';
+import './design.css';
 import { CoachGuide } from './components/tutorial/CoachGuide';
 import { SeasonRoadMap } from './components/tutorial/SeasonRoadMap';
 import { FirstSeasonChecklist } from './components/tutorial/FirstSeasonChecklist';
@@ -125,6 +127,7 @@ const RecordsPage = lazy(() => import('./components/RecordsPage').then(m => ({ d
 const AlmanacPage = lazy(() => import('./components/AlmanacPage').then(m => ({ default: m.AlmanacPage })));
 const ResignWaivePage = lazy(() => import('./components/ResignWaivePage').then(m => ({ default: m.ResignWaivePage })));
 const PreseasonPage = lazy(() => import('./components/PreseasonPage').then(m => ({ default: m.PreseasonPage })));
+const CupPage = lazy(() => import('./components/CupPage').then(m => ({ default: m.CupPage })));
 const SummerLeaguePage = lazy(() => import('./components/SummerLeaguePage').then(m => ({ default: m.SummerLeaguePage })));
 const GmOfficePage = lazy(() => import('./components/FrontOfficePanels').then(m => ({ default: m.GmOfficePage })));
 const DashboardPage = lazy(() => import('./components/DashboardPage').then(m => ({ default: m.DashboardPage })));
@@ -324,7 +327,8 @@ function App() {
     const { league: normalizedLeague, extras: e } = syncLeaguePotentials(rostered.league, rostered.extras);
     // Older saves: seed the record book from the games still stored this season.
     // Owners, goals and your job security; older leagues gain them here.
-    const l = ensureFrontOffice(backfillRecordBook(initializeCoaching(normalizedLeague, teamId)), teamId);
+    // This season's In-Season Cup draw, when the league is early enough in the season to hold one.
+    const l = ensureFrontOffice(setupCup(backfillRecordBook(initializeCoaching(normalizedLeague, teamId))), teamId);
     if (repairs.length > 0) {
       pushToast(`Fixed ${repairs.length} duplicate player name${repairs.length === 1 ? '' : 's'} so no one gets lost (${repairs.slice(0, 3).map((r) => r.newId).join(', ')}${repairs.length > 3 ? ', ...' : ''}).`, 'info');
     }
@@ -795,6 +799,17 @@ function App() {
       } finally { setSummerBusy(false); }
     }, 30);
   };
+  // Cup knockout night: the whole bracket is played the night the group stage ends.
+  const cupDoneFor = league.cup?.knockout ? league.cup.season : null;
+  const seenCup = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    if (screen !== 'app') return;
+    if (seenCup.current === undefined || seenCup.current === cupDoneFor || !cupDoneFor) { seenCup.current = cupDoneFor; return; }
+    seenCup.current = cupDoneFor;
+    const cup = league.cup!;
+    const name = (id: string | null) => league.teams.find(t => t.teamId === id)?.name ?? '';
+    pushToast(`Cup knockout night: ${name(cup.championTeamId)} win the In-Season Cup${cup.mvpId ? `, ${cup.mvpId} is Cup MVP` : ''}.${controlledTeamId && cup.qualifiers?.includes(controlledTeamId) ? (cup.championTeamId === controlledTeamId ? ' That\'s your team!' : ' Your team made the knockouts.') : ''}`, 'success');
+  }, [screen, cupDoneFor]); // eslint-disable-line react-hooks/exhaustive-deps
   const setFiringEnabled = (on: boolean) => setLeague(l => l.frontOffice ? { ...l, frontOffice: { ...l.frontOffice, firingEnabled: on } } : l);
   useEffect(() => {
     if (screen !== 'app' || seasonPhase !== 'regular_season') return;
@@ -1571,6 +1586,8 @@ function App() {
         )}
 
         {tab === 'powerRankings' && <PowerRankingsPage league={league} />}
+
+        {tab === 'cup' && <CupPage league={league} controlledTeamId={controlledTeamId} onSelectPlayer={selectPlayer} />}
 
         {tab === 'gmOffice' && <GmOfficePage league={league} extras={extras} onAcceptOffer={acceptOffer} onSpectate={spectate} onToggleFiring={setFiringEnabled} />}
 

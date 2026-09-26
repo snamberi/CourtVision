@@ -70,6 +70,7 @@ export const SIMPLE_HUBS: SimpleHub[] = [
     items: [
       { label: 'Standings', tab: 'standings' },
       { label: 'Playoffs', tab: 'playoffs' },
+      { label: 'Cup', tab: 'cup' },
       { label: 'All-Star', tab: 'allStarWeekend' },
       { label: 'Power rankings', tab: 'powerRankings' },
       { label: 'League leaders', tab: 'analytics' },

@@ -1,4 +1,5 @@
 import type { League, LeagueTeam, PlayoffFinish, TeamSeasonSummary } from './league';
+import { cupGroupTable } from './cup';
 import { computeConferenceStandings, computeStandings } from './league';
 import type { GMLeagueExtras } from './gm';
 import { teamPayroll } from './gm';
@@ -17,7 +18,7 @@ import type { TrophyKey } from './trophies';
 export type OwnerStyle = 'win_now' | 'patient' | 'money';
 export interface OwnerProfile { name: string; style: OwnerStyle }
 
-export type GoalKind = 'wins' | 'improve' | 'playoffs' | 'series' | 'finals' | 'title' | 'develop' | 'profit' | 'under_tax';
+export type GoalKind = 'wins' | 'improve' | 'playoffs' | 'series' | 'finals' | 'title' | 'develop' | 'profit' | 'under_tax' | 'cup';
 export interface OwnerGoal {
   id: string; kind: GoalKind; label: string;
   /** Wins for wins/improve, young players for develop; unused otherwise. */
@@ -199,6 +200,8 @@ export function generateGoals(league: League, teamId: string, extras?: GMLeagueE
     const team = league.teams.find(t => t.teamId === teamId);
     const overTax = extras && team ? teamPayroll(extras.contracts, team) > extras.capSettings.luxuryTaxLine : false;
     add(overTax ? { kind: 'under_tax', label: 'Get under the luxury tax', target: 0, weight: 2 } : { kind: 'profit', label: 'Turn a profit', target: 0, weight: 2 });
+  } else if (owner.style === 'win_now' && league.cup?.season === league.season && league.cup?.groups.some(g => g.teamIds.includes(teamId)) && tier !== 'rebuild') {
+    add({ kind: 'cup', label: 'Reach the In-Season Cup knockouts', target: 0, weight: 1 });
   } else if (owner.style === 'patient' && !goals.some(g => g.kind === 'develop')) {
     const team = league.teams.find(t => t.teamId === teamId);
     const target = Math.min(3, youngCount(team, 65) + 1);
@@ -273,6 +276,19 @@ export function goalProgress(league: League, extras: GMLeagueExtras, teamId: str
       const over = fin.payroll - extras.capSettings.luxuryTaxLine;
       return { status: over <= 0 ? 'on_track' : 'off_track', ratio: over <= 0 ? 1 : 0.3, text: over <= 0 ? `$${(-over / 1e6).toFixed(1)}M under the tax` : `$${(over / 1e6).toFixed(1)}M over the tax` };
     }
+    case 'cup': {
+      const cup = league.cup;
+      if (cup?.qualifiers) return cup.qualifiers.includes(teamId)
+        ? { status: 'met', ratio: 1, text: cup.championTeamId === teamId ? 'Cup champions!' : 'Made the knockouts' }
+        : { status: 'missed', ratio: 0, text: 'Out in the group stage' };
+      const group = cup?.groups.find(g => g.teamIds.includes(teamId));
+      if (!cup || !group) return { status: 'at_risk', ratio: 0, text: 'No Cup this season' };
+      const rows = cupGroupTable(league, group);
+      const pos = rows.findIndex(r => r.teamId === teamId) + 1;
+      const me = rows[pos - 1];
+      return { status: !me.played ? 'on_track' : pos === 1 ? 'on_track' : pos === 2 ? 'at_risk' : 'off_track', ratio: pos === 1 ? 0.8 : 0.4,
+        text: `${group.name}: ${me.w}–${me.l}, ${pos === 1 ? '1st' : pos === 2 ? '2nd' : `${pos}th`}` };
+    }
     default: {
       const need = GOAL_FINISH[goal.kind]!;
       const br = bracketFinish(league, teamId);
@@ -337,6 +353,7 @@ function goalMet(goal: OwnerGoal, row: TeamSeasonSummary, ctx: ReviewContext, te
       if (goal.kind === 'profit') return { ...goal, met: fin.operatingIncome >= 0, value: `${fin.operatingIncome >= 0 ? '+' : '−'}$${(Math.abs(fin.operatingIncome) / 1e6).toFixed(1)}M` };
       return { ...goal, met: fin.payroll <= ctx.extras.capSettings.luxuryTaxLine, value: `Payroll $${(fin.payroll / 1e6).toFixed(1)}M` };
     }
+    case 'cup': { const q = ctx.league.cup?.qualifiers ?? []; return { ...goal, met: q.includes(teamId), value: ctx.league.cup?.championTeamId === teamId ? 'Cup champions' : q.includes(teamId) ? 'Knockouts' : 'Group stage' }; }
     default: return { ...goal, met: finishAtLeast(row.playoffFinish, GOAL_FINISH[goal.kind]!), value: row.playoffFinish };
   }
 }
@@ -500,6 +517,9 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'youth_movement', name: 'Youth Movement', description: 'Have three players aged 23 or under at 70+ Overall.', icon: 'allRookie1' },
   { id: 'money_maker', name: 'Money Maker', description: 'Finish a season with thriving finances.', icon: 'eoy' },
   { id: 'thrifty_title', name: 'Moneyball', description: 'Win the title with a payroll under the luxury tax.', icon: 'champion' },
+  { id: 'cup_champion', name: 'Cup Winners', description: 'Win the In-Season Cup.', icon: 'cup' },
+  { id: 'cup_mvp', name: 'Cup Hero', description: 'Have the In-Season Cup MVP on your roster.', icon: 'cupMvp' },
+  { id: 'cup_double', name: 'The Double', description: 'Win the In-Season Cup and the championship in the same season.', icon: 'cup' },
 ];
 export const ACHIEVEMENT_BY_ID = new Map(ACHIEVEMENTS.map(a => [a.id, a]));
 
@@ -555,5 +575,8 @@ function seasonAchievements(state: FrontOfficeState, ctx: ReviewContext, review:
   const team = ctx.league.teams.find(t => t.teamId === teamId);
   if (team && team.seasons.filter(p => p.age <= 23 && calculateOverall(p) >= 70).length >= 3) out.push('youth_movement');
   if (health === 'Thriving') out.push('money_maker');
+  const cup = ctx.league.cup;
+  if (cup?.season === ctx.season && cup.championTeamId === teamId) { out.push('cup_champion'); if (champ) out.push('cup_double'); }
+  if (cup?.season === ctx.season && mine(cup.mvpId)) out.push('cup_mvp');
   return out;
 }

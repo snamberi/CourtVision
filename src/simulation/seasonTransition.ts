@@ -1,4 +1,5 @@
 import { archiveRivalries } from './rivalry';
+import { setupCup, cupArchive } from './cup';
 import { reviewSeason, ensureSeasonGoals, type OwnerReview } from './frontOffice';
 import { compactBracket, conferenceSeeds } from './almanac';
 import { primaryPosition } from './teamStatus';
@@ -326,6 +327,7 @@ export function beginNewSeasonRoster(
     risingStarsMVPPlayerId: league.allStarWeekend?.season === previousSeason ? league.allStarWeekend.risingStarsMvp?.playerId ?? null : null,
     fullAwards: seasonAwards,
     teamSeasons,
+    ...(league.cup?.season === previousSeason ? { cup: cupArchive(league.cup) } : {}),
     ...(league.playoffBracket ? { bracket: compactBracket(league.playoffBracket), seeds: conferenceSeeds(league) } : {}),
   };
 
@@ -336,6 +338,7 @@ export function beginNewSeasonRoster(
     seasonPhase: 'draft',
     playoffBracket: undefined,
     awardRace: undefined, // its honors are in this season's fullAwards now
+    cup: undefined, // archived with the season's history record
     newsArchive: generateNewsFeed(foReview ? { ...league, frontOffice: foReview.state } : league, extras, 200),
     ...(foReview ? { frontOffice: foReview.state, ...(foReview.state.status !== 'employed' ? { coachingUserTeamId: null } : {}) } : {}),
     rivalries: archiveRivalries(league),
@@ -395,10 +398,11 @@ export function finalizeNewSeasonSchedule(league: League): League {
     const chemistry = driftChemistryForRosterContinuity(t.chemistry, before, t.seasons.map((s) => s.playerId));
     return { ...t, chemistry, offseasonStartRosterIds: undefined };
   });
-  return ensureSeasonGoals({
+  // The In-Season Cup draw happens with the new schedule; owners set goals knowing the season ahead.
+  return ensureSeasonGoals(setupCup({
     ...league, teams, schedule, seasonPhase: 'regular_season', injuries: {}, playoffBracket: undefined,
     calendarDate: seasonStartDate(league.season), calendarRound: -1,
-  });
+  }));
 }
 
 /**

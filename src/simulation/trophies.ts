@@ -7,7 +7,8 @@ export type TrophyKey =
   | 'allStar' | 'allStarMvp' | 'risingStarsMvp' | 'threePoint' | 'dunk'
   | 'scoringChamp' | 'reboundingChamp' | 'assistsChamp' | 'stealsChamp' | 'blocksChamp'
   | 'hustle' | 'teammate' | 'sharpshooter' | 'floorGeneral' | 'paintScorer' | 'ironMan' | 'rookieDefender'
-  | 'pom' | 'pow';
+  | 'pom' | 'pow'
+  | 'cup' | 'cupMvp' | 'allCup';
 
 export interface TrophyInfo {
   key: TrophyKey;
@@ -57,6 +58,9 @@ export const TROPHIES: Record<TrophyKey, TrophyInfo> = {
   rookieDefender: t('rookieDefender', 'Rookie Defender of the Year', 'Rookie D', 0.5),
   pom: t('pom', 'Player of the Month', 'POM', 1),
   pow: t('pow', 'Player of the Week', 'POW', 0.25),
+  cup: t('cup', 'In-Season Cup Champion', 'Cup', 3),
+  cupMvp: t('cupMvp', 'In-Season Cup MVP', 'Cup MVP', 3),
+  allCup: t('allCup', 'All-Cup Team', 'All-Cup', 1),
 };
 
 /** Shelf order: the biggest hardware first. */
@@ -65,4 +69,5 @@ export const TROPHY_ORDER: TrophyKey[] = [
   'allDefense1', 'allDefense2', 'scoringChamp', 'reboundingChamp', 'assistsChamp', 'stealsChamp', 'blocksChamp',
   'allStarMvp', 'coy', 'eoy', 'allRookie1', 'allRookie2', 'risingStarsMvp', 'threePoint', 'dunk',
   'sharpshooter', 'floorGeneral', 'paintScorer', 'ironMan', 'hustle', 'teammate', 'rookieDefender', 'pom', 'pow',
+  'cup', 'cupMvp', 'allCup',
 ];

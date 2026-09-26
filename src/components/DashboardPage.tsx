@@ -1,4 +1,7 @@
 import type { ReactNode } from 'react';
+import { TeamLogo } from './TeamLogo';
+import { useTeamIdentity } from '../visuals/TeamIdentityContext';
+import { CupCard } from './CupPage';
 import { OwnerOfficeCard } from './FrontOfficePanels';
 import { TeamLink, TeamText } from './TeamLink';
 import type { League, SeasonPhase } from '../simulation/league';
@@ -84,6 +87,7 @@ export function DashboardPage({ league, extras, controlledTeamId, seasonPhase, o
   const opponentId = nextGame ? (nextGame.homeTeamId === team?.teamId ? nextGame.awayTeamId : nextGame.homeTeamId) : null;
   const opponent = opponentId ? league.teams.find((t) => t.teamId === opponentId) : null;
 
+  const identity = useTeamIdentity(team?.teamId);
   return (
     <div className="dashboard-page">
       <div className="dashboard-heading">
@@ -91,8 +95,10 @@ export function DashboardPage({ league, extras, controlledTeamId, seasonPhase, o
         <div className="dashboard-heading-actions">{headerExtra}<button onClick={() => onGoTo('roster')}><PixelIcon name="team" size={16} /> Manage roster</button></div>
       </div>
       {(roadMap || checklist) && <div className={`home-top ${checklist ? 'with-checklist' : ''}`}>{roadMap}{checklist}</div>}
-      <div className="dashboard-hero">
-        <div className="dashboard-franchise"><span className="pixel-eyebrow">{controlledTeamId ? 'YOUR FRANCHISE' : 'LEAGUE SPOTLIGHT'}</span><h2><TeamLink name={team?.name ?? 'Court Vision'} /></h2><span className="dashboard-season">{PHASE_LABEL[seasonPhase]} · {total - unplayed} / {total} games</span></div>
+      <div className="dashboard-hero" style={identity ? { ['--team-1' as string]: identity.primary, ['--team-2' as string]: identity.secondary } : undefined}>
+        <div className="dashboard-franchise"><span className="pixel-eyebrow">{controlledTeamId ? 'YOUR FRANCHISE' : 'LEAGUE SPOTLIGHT'}</span>
+          <div className="dashboard-franchise-row">{team && <TeamLogo team={team} size={64} />}<h2><TeamLink name={team?.name ?? 'Court Vision'} /></h2></div>
+          <span className="dashboard-season">{PHASE_LABEL[seasonPhase]} · {total - unplayed} / {total} games</span></div>
         <div className="dashboard-hero-record">
           <span className="dashboard-hero-wl">{record ? `${record.wins}-${record.losses}` : '0-0'}</span>
           <span className="hint-text">
@@ -120,7 +126,10 @@ export function DashboardPage({ league, extras, controlledTeamId, seasonPhase, o
         </div>
       </section>}
 
-      <OwnerOfficeCard league={league} extras={extras} onOpen={() => onGoTo('gmOffice')} />
+      <div className="dashboard-duo">
+        <OwnerOfficeCard league={league} extras={extras} onOpen={() => onGoTo('gmOffice')} />
+        <CupCard league={league} controlledTeamId={controlledTeamId} onOpen={() => onGoTo('cup')} />
+      </div>
 
       <div className="dashboard-columns">
         <section className="dashboard-panel">

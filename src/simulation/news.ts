@@ -180,6 +180,16 @@ export function generateNewsFeed(league: League, extras: GMLeagueExtras, maxItem
       if (playerId) add({ id: `award:${award}`, season: record.season, category: 'Awards', teamId: null, teamName: null, headline: `${playerId} takes home ${award} for ${record.season}.`, playerId, order: 290_000 });
     }
   }
+  // In-Season Cup: the knockout field, the champion and the Cup MVP (see cup.ts).
+  const cup = league.cup;
+  if (cup?.knockout) {
+    const final = cup.knockout.find(g => g.stage === 'final');
+    if (cup.championTeamId) add({ id: 'cup:champion', season: cup.season, category: 'League', teamId: cup.championTeamId, teamName: name(cup.championTeamId),
+      headline: `${name(cup.championTeamId)} win the In-Season Cup${final ? `, ${Math.max(final.homeScore, final.awayScore)}–${Math.min(final.homeScore, final.awayScore)} over ${name(cup.runnerUpTeamId ?? '')}` : ''}.`,
+      detail: cup.mvpId ? `${cup.mvpId} is the Cup MVP.` : undefined, playerId: cup.mvpId ?? undefined, order: 250_000 });
+    if (cup.qualifiers?.length) add({ id: 'cup:knockouts', season: cup.season, category: 'League', teamId: null, teamName: null,
+      headline: `The In-Season Cup knockout field is set: ${cup.qualifiers.map(name).join(', ')}.`, order: 249_000 });
+  }
   // Summer League: the champion and the MVP (see draftSeason.ts).
   const sl = league.summerLeague;
   if (sl?.championTeamId) add({ id: 'summer:champion', season: sl.season, category: 'Draft', teamId: sl.championTeamId, teamName: name(sl.championTeamId),

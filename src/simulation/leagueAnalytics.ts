@@ -125,6 +125,9 @@ export function getPlayerAwardsHistory(league: League, playerId: string): Player
     if (record.risingStarsMVPPlayerId === playerId) add(season, 'Rising Stars MVP', 'risingStarsMvp');
     if (record.threePointChampionId === playerId) add(season, '3-Point Contest Champion', 'threePoint');
     if (record.dunkChampionId === playerId) add(season, 'Slam Dunk Contest Champion', 'dunk');
+    if (record.cup?.championPlayerIds?.includes(playerId)) add(season, 'In-Season Cup Champion', 'cup');
+    if (record.cup?.mvpId === playerId) add(season, 'In-Season Cup MVP', 'cupMvp');
+    if (record.cup?.allCup.includes(playerId)) add(season, 'All-Cup Team', 'allCup');
     const a = record.fullAwards;
     if (!a) continue;
     const headline = [['mvp', 'MVP'], ['dpoy', 'Defensive Player of the Year'], ['roy', 'Rookie of the Year'], ['mip', 'Most Improved Player'], ['smoy', 'Sixth Man of the Year']] as const;
@@ -196,6 +199,7 @@ export function teamTrophyEntries(league: League, teamId: string): TeamTrophyEnt
   for (const r of league.franchiseHistory ?? []) {
     if (r.championTeamId === teamId) out.push({ key: 'champion', season: r.season });
     if (r.championTeamId === teamId && r.fmvpPlayerId) out.push({ key: 'fmvp', season: r.season, who: r.fmvpPlayerId });
+    if (r.cup?.championTeamId === teamId) out.push({ key: 'cup', season: r.season, who: r.cup.mvpId ?? undefined });
     const a = r.fullAwards;
     if (!a) continue;
     if (a.coy?.teamId === teamId) out.push({ key: 'coy', season: r.season, who: a.coy.coachName ?? undefined });

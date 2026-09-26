@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { CupSeasonLine } from './CupPage';
 import { GmSeasonLine } from './FrontOfficePanels';
 import { UnanimousTag } from './UnanimousTag';
 import type { League } from '../simulation/league';
@@ -69,6 +70,7 @@ export function AlmanacPage({ league, extras, awardSettings, onSelectPlayer }: {
     </section>
 
     <GmSeasonLine league={league} season={entry.season} />
+    <CupSeasonLine league={league} season={entry.season} />
 
     {entry.awards && <section className="almanac-section"><h4>Awards{entry.inProgress && <small className="hint-text"> · current race</small>}</h4>
       <div className="almanac-awards">{CEREMONY_ORDER.slice().reverse().map(a => {
