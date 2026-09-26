@@ -1,0 +1,66 @@
+# Source: https://www.nba.com/news/history-coach-of-the-year-winners (retrieved 2026-09-25, transcribed via fetch)
+# SEASON | COACH | TEAM   (coach/league history only — never credited as a player award)
+2025-26 | Joe Mazzulla | Boston Celtics
+2024-25 | Kenny Atkinson | Cleveland Cavaliers
+2023-24 | Mark Daigneault | Oklahoma City Thunder
+2022-23 | Mike Brown | Sacramento Kings
+2021-22 | Monty Williams | Phoenix Suns
+2020-21 | Tom Thibodeau | New York Knicks
+2019-20 | Nick Nurse | Toronto Raptors
+2018-19 | Mike Budenholzer | Milwaukee Bucks
+2017-18 | Dwane Casey | Toronto Raptors
+2016-17 | Mike D'Antoni | Houston Rockets
+2015-16 | Steve Kerr | Golden State Warriors
+2014-15 | Mike Budenholzer | Atlanta Hawks
+2013-14 | Gregg Popovich | San Antonio Spurs
+2012-13 | George Karl | Denver Nuggets
+2011-12 | Gregg Popovich | San Antonio Spurs
+2010-11 | Tom Thibodeau | Chicago Bulls
+2009-10 | Scott Brooks | Oklahoma City Thunder
+2008-09 | Mike Brown | Cleveland Cavaliers
+2007-08 | Byron Scott | New Orleans Hornets
+2006-07 | Sam Mitchell | Toronto Raptors
+2005-06 | Avery Johnson | Dallas Mavericks
+2004-05 | Mike D'Antoni | Phoenix Suns
+2003-04 | Hubie Brown | Memphis Grizzlies
+2002-03 | Gregg Popovich | San Antonio Spurs
+2001-02 | Rick Carlisle | Detroit Pistons
+2000-01 | Larry Brown | Philadelphia 76ers
+1999-00 | Doc Rivers | Orlando Magic
+1998-99 | Mike Dunleavy | Portland Trail Blazers
+1997-98 | Larry Bird | Indiana Pacers
+1996-97 | Pat Riley | Miami Heat
+1995-96 | Phil Jackson | Chicago Bulls
+1994-95 | Del Harris | Los Angeles Lakers
+1993-94 | Lenny Wilkens | Atlanta Hawks
+1992-93 | Pat Riley | New York Knicks
+1991-92 | Don Nelson | Golden State Warriors
+1990-91 | Don Chaney | Houston Rockets
+1989-90 | Pat Riley | Los Angeles Lakers
+1988-89 | Cotton Fitzsimmons | Phoenix Suns
+1987-88 | Doug Moe | Denver Nuggets
+1986-87 | Mike Shuler | Portland Trail Blazers
+1985-86 | Mike Fratello | Atlanta Hawks
+1984-85 | Don Nelson | Milwaukee Bucks
+1983-84 | Frank Layden | Utah Jazz
+1982-83 | Don Nelson | Milwaukee Bucks
+1981-82 | Gene Shue | Washington Bullets
+1980-81 | Jack McKinney | Indiana Pacers
+1979-80 | Bill Fitch | Boston Celtics
+1978-79 | Cotton Fitzsimmons | Kansas City Kings
+1977-78 | Hubie Brown | Atlanta Hawks
+1976-77 | Tom Nissalke | Houston Rockets
+1975-76 | Bill Fitch | Cleveland Cavaliers
+1974-75 | Phil Johnson | Kansas City-Omaha Kings
+1973-74 | Ray Scott | Detroit Pistons
+1972-73 | Tom Heinsohn | Boston Celtics
+1971-72 | Bill Sharman | Los Angeles Lakers
+1970-71 | Dick Motta | Chicago Bulls
+1969-70 | Red Holzman | New York Knicks
+1968-69 | Gene Shue | Baltimore Bullets
+1967-68 | Richie Guerin | St. Louis Hawks
+1966-67 | Johnny Kerr | Chicago Bulls
+1965-66 | Dolph Schayes | Philadelphia 76ers
+1964-65 | Red Auerbach | Boston Celtics
+1963-64 | Alex Hannum | San Francisco Warriors
+1962-63 | Harry Gallatin | St. Louis Hawks
