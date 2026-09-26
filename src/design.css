@@ -289,3 +289,31 @@ button { border-radius: 0; }
 .yir-progress i { display: block; height: 100%; background: var(--amber); transition: width .3s ease; }
 @media (max-width: 640px) { .yir-stage { padding: 18px 14px; } .yir-story li { grid-template-columns: 1fr; } .yir-record { font-size: 54px; } .yir-title h1 { font-size: 30px; } .yir-grade-row li { grid-template-columns: 1fr 34px; } .yir-grade-row li .yir-part-label { grid-column: 1 / -1; } }
 @media (prefers-reduced-motion: reduce) { .yir-stage, .yir-story li, .yir-moment-grid article, .yir-letter, .yir-bar i, .yir-league dl > div { animation: none; } }
+
+/* ---- Big games: stakes banner, your series ---- */
+.occasion-banner { display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 0 0 12px; padding: 14px 18px; text-align: center;
+  background: linear-gradient(135deg, #16325a, #0c1830 70%); border: 1px solid #4f78ad; border-left: 6px solid #5fa6ea; box-shadow: 4px 4px 0 #000; animation: occasion-in .5s ease-out; }
+.occasion-banner b { font: 700 30px/1.05 var(--font-display); letter-spacing: .04em; text-transform: uppercase; color: #fff; text-shadow: 3px 3px 0 #000; }
+.occasion-banner > span:last-child { color: #d6e2f1; }
+.occasion-banner.stakes-elimination { border-left-color: #e85d5d; }
+.occasion-banner.stakes-final, .occasion-banner.stakes-cupFinal { background: linear-gradient(135deg, #3a2a0c, #0c1830 70%); border-color: #c99a2e; border-left-color: var(--gold); }
+.occasion-banner.stakes-game7 { background: radial-gradient(600px 180px at 50% 0%, rgba(255, 209, 102, .28), transparent 70%), linear-gradient(135deg, #3a1822, #0c1830 70%);
+  border: 2px solid var(--gold); border-left-width: 6px; }
+.occasion-banner.stakes-game7 b { font-size: 46px; color: var(--gold); animation: game7-pulse 1.4s ease-in-out infinite; }
+@keyframes occasion-in { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes game7-pulse { 0%, 100% { text-shadow: 3px 3px 0 #000, 0 0 0 rgba(255, 209, 102, 0); } 50% { text-shadow: 3px 3px 0 #000, 0 0 22px rgba(255, 209, 102, .7); } }
+.my-series { display: flex; flex-direction: column; gap: 10px; margin: 0 0 16px; padding: 16px 18px; background: linear-gradient(135deg, #13223b, #0a1426 70%); border: 1px solid #36547e; border-left: 6px solid var(--amber); box-shadow: 4px 4px 0 #000; }
+.my-series.out { border-left-color: #5a7aa8; opacity: .9; }
+.my-series-score { display: flex; align-items: center; gap: 14px; font: 600 20px/1.1 var(--font-display); text-transform: uppercase; }
+.my-series-score b { font-size: 34px; color: #fff; }
+.my-series-score i { color: var(--text-dim); font-style: normal; }
+.my-series-games { display: flex; flex-wrap: wrap; gap: 6px; }
+.series-chip { display: flex; flex-direction: column; align-items: center; min-width: 74px; padding: 5px 8px; font: 600 13px/1.2 var(--font-display); background: #0a1426; border: 1px solid #36547e; color: var(--text-dim); }
+.series-chip small { font: 8px/1.6 var(--font-pixel); color: var(--text-dim); }
+.series-chip.won { color: #b9f5cc; border-color: #3fa66a; }
+.series-chip.lost { color: #ffc4c4; border-color: #b5433b; }
+.series-chip.game7 { border-color: #c99a2e; }
+.series-chip:disabled { opacity: .55; }
+.my-series > .primary { align-self: flex-start; }
+.cup-watch-final { margin: 12px 0 4px; }
+@media (prefers-reduced-motion: reduce) { .occasion-banner, .occasion-banner.stakes-game7 b { animation: none; } }

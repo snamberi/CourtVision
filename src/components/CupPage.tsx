@@ -7,6 +7,8 @@ import { PlayerNameTag } from './PlayerAvatar';
 import { PixelTrophy } from './PixelTrophy';
 import { TeamLogo } from './TeamLogo';
 import { TeamLink } from './TeamLink';
+import { GameBoxScorePage } from './GameBoxScorePage';
+import type { Occasion } from '../simulation/bigGames';
 
 interface Props { league: League; controlledTeamId: string | null; onSelectPlayer: (id: string) => void }
 
@@ -15,10 +17,20 @@ const STAGE_LABEL: Record<CupGame['stage'], string> = { qf: 'Quarterfinals', sf:
 /** The In-Season Cup: groups, the knockout bracket, honors and past winners. */
 export function CupPage({ league, controlledTeamId, onSelectPlayer }: Props) {
   const cup = league.cup?.season === league.season ? league.cup : undefined;
+  const [watching, setWatching] = useState<CupGame | null>(null);
   const past = (league.franchiseHistory ?? []).filter(r => r.cup?.championTeamId).reverse();
   const team = (id: string | null | undefined) => league.teams.find(t => t.teamId === id);
   const name = (id: string | null | undefined) => team(id)?.name ?? id ?? '—';
 
+  if (watching?.replay) {
+    const occasion: Occasion = watching.stage === 'final'
+      ? { eyebrow: `${CUP_NAME.toUpperCase()} · THE FINAL`, title: 'CUP FINAL', subtitle: `${name(watching.homeTeamId)} vs ${name(watching.awayTeamId)}. One game for the Cup.`, stakes: 'cupFinal' }
+      : { eyebrow: `${CUP_NAME.toUpperCase()} · ${STAGE_LABEL[watching.stage].toUpperCase()}`, title: `${name(watching.homeTeamId)} vs ${name(watching.awayTeamId)}`, subtitle: 'Knockout: lose and you are out.', stakes: 'cup' };
+    return <div className="cup-page"><button onClick={() => setWatching(null)}>Back to the Cup</button>
+      <GameBoxScorePage key={watching.id} initialWatch game={watching.replay} occasion={occasion}
+        home={{ teamId: watching.homeTeamId, name: name(watching.homeTeamId) }} away={{ teamId: watching.awayTeamId, name: name(watching.awayTeamId) }}
+        homeRoster={team(watching.homeTeamId)?.seasons} awayRoster={team(watching.awayTeamId)?.seasons} onSelectPlayer={onSelectPlayer} /></div>;
+  }
   return <div className="cup-page">
     <section className="cup-hero">
       <PixelTrophy award="cup" size={64} />
@@ -34,7 +46,7 @@ export function CupPage({ league, controlledTeamId, onSelectPlayer }: Props) {
           {cup.mvpId && <span>Cup MVP: <button className="link-button" onClick={() => onSelectPlayer(cup.mvpId!)}>{cup.mvpId}</button></span>}</div></div>}
     </section>
 
-    {cup?.knockout && <Bracket cup={cup} name={name} onSelectPlayer={onSelectPlayer} controlledTeamId={controlledTeamId} />}
+    {cup?.knockout && <Bracket cup={cup} name={name} onSelectPlayer={onSelectPlayer} controlledTeamId={controlledTeamId} onWatch={setWatching} />}
     {cup && <Groups league={league} cup={cup} controlledTeamId={controlledTeamId} name={name} />}
     {cup && <CupLeaders league={league} cup={cup} controlledTeamId={controlledTeamId} name={name} onSelectPlayer={onSelectPlayer} />}
 
@@ -69,7 +81,7 @@ function Groups({ league, cup, controlledTeamId, name }: { league: League; cup: 
   </section>;
 }
 
-function Bracket({ cup, name, onSelectPlayer, controlledTeamId }: { cup: CupState; name: (id: string) => string; onSelectPlayer: (id: string) => void; controlledTeamId: string | null }) {
+function Bracket({ cup, name, onSelectPlayer, controlledTeamId, onWatch }: { cup: CupState; name: (id: string) => string; onSelectPlayer: (id: string) => void; controlledTeamId: string | null; onWatch: (g: CupGame) => void }) {
   const [open, setOpen] = useState<string | null>(null);
   const stages: CupGame['stage'][] = ['qf', 'sf', 'final'];
   const openGame = cup.knockout!.find(g => g.id === open);
@@ -81,7 +93,9 @@ function Bracket({ cup, name, onSelectPlayer, controlledTeamId }: { cup: CupStat
         {[g.homeTeamId, g.awayTeamId].map(id => <span key={id} className={`cup-side${g.winnerTeamId === id ? ' won' : ''}`}><span>{name(id)}</span><b>{id === g.homeTeamId ? g.homeScore : g.awayScore}</b></span>)}
       </button>)}</div>
     </div>)}</div>
+    {cup.knockout!.find(g => g.stage === 'final')?.replay && <button className="primary cup-watch-final" onClick={() => onWatch(cup.knockout!.find(g => g.stage === 'final')!)}>▶ Watch the Cup Final</button>}
     {openGame && <div className="summer-box">
+      {openGame.replay && <button onClick={() => onWatch(openGame)}>▶ Watch this game</button>}
       <BoxScoreTable box={openGame.awayBox} title={name(openGame.awayTeamId)} onSelectPlayer={onSelectPlayer} />
       <BoxScoreTable box={openGame.homeBox} title={name(openGame.homeTeamId)} onSelectPlayer={onSelectPlayer} />
     </div>}

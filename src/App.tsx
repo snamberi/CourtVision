@@ -1322,7 +1322,7 @@ function App() {
         {tab === 'playoffs' && (
           league.teams.length < 4
             ? <p className="empty-state">Need at least four teams for a playoff bracket.</p>
-            : <PlayoffsPage league={league} onChange={setLeague} bracket={playoffBracket} onBracketChange={setPlayoffBracket} onCelebrate={replayCelebration} />
+            : <PlayoffsPage league={league} onChange={setLeague} bracket={playoffBracket} onBracketChange={setPlayoffBracket} onCelebrate={replayCelebration} controlledTeamId={controlledTeamId} />
         )}
 
         {tab === 'finances' && (

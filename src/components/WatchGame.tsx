@@ -1,3 +1,4 @@
+import { OccasionBanner } from './OccasionBanner';
 import { TeamLink, TeamText } from './TeamLink';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { GameResult } from '../simulation/boxscore';
@@ -80,14 +81,17 @@ interface Props {
   coaching?: CoachingProps;
   /** Rivalry between the two teams, if any: the crowd is louder and the broadcast says so. */
   rivalry?: { level: string; seriesText?: string } | null;
+  /** A big game (playoffs, Game 7, the Cup final): the broadcast and the crowd rise to it. */
+  occasion?: import('../simulation/bigGames').Occasion | null;
 }
 const SOUND_KEY='cv-watch-sound';
 const readSound=()=>{try{return localStorage.getItem(SOUND_KEY)==='on';}catch{return false;}};
 const writeSound=(on:boolean)=>{try{localStorage.setItem(SOUND_KEY,on?'on':'off');}catch{/* private mode: keep the in-memory choice */}};
 type Tab='box'|'coach'|'highlights';
 
-export function WatchGame({game,home,away,homeRoster=[],awayRoster=[],onBoxScore,startAt,coaching,rivalry}:Props) {
-  const rivalryBoost=rivalry?(rivalry.level==='Bitter rivals'?.3:rivalry.level==='Rivals'?.2:.12):0;
+export function WatchGame({game,home,away,homeRoster=[],awayRoster=[],onBoxScore,startAt,coaching,rivalry,occasion}:Props) {
+  const occasionBoost=occasion?({game7:.4,final:.32,cupFinal:.28,elimination:.25,playoff:.15,cup:.12} as const)[occasion.stakes]:0;
+  const rivalryBoost=Math.min(.45,(rivalry?(rivalry.level==='Bitter rivals'?.3:rivalry.level==='Rivals'?.2:.12):0)+occasionBoost);
   const total=game.possessionLog.length;
   const [cursor,setCursor]=useState(()=>startAt!=null?Math.max(0,Math.min(total,startAt)):0);
   const [playing,setPlaying]=useState(()=>!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
@@ -219,7 +223,7 @@ export function WatchGame({game,home,away,homeRoster=[],awayRoster=[],onBoxScore
   const coachAt=finished?total:progress===0?index:index+1;
   const myTeam=coaching?(coaching.teamId===home.teamId?live.home:live.away):null;
   return <section ref={screen} className="watch-game" aria-label="Watch Game" tabIndex={0} onKeyDown={e=>{if(e.target!==e.currentTarget)return;if(e.code==='Space'){e.preventDefault();if(!finished)setPlaying(p=>!p);}if(e.code==='ArrowRight'){e.preventDefault();setPlaying(false);setCursor(c=>Math.min(total,Math.floor(c)+1));}if(e.code==='ArrowLeft'){e.preventDefault();setPlaying(false);setCursor(c=>Math.max(0,Math.floor(c)-1));}}}>
-    <div className="watch-heading"><div><span className="pixel-eyebrow">{coaching?'COURTSIDE / COACHING LIVE':'COURTSIDE / POSSESSION REPLAY'}</span><h2>Watch Game</h2></div>{rivalry&&<span className="watch-rivalry" title={rivalry.seriesText}>🔥 RIVALRY · {rivalry.level.toUpperCase()}</span>}<span className="watch-status">{reel?'HIGHLIGHTS':finished?'FINAL':playing?'PLAYING':'PAUSED'}</span></div>
+    {occasion&&(occasion.stakes==='game7'||occasion.stakes==='final'||occasion.stakes==='cupFinal')&&<OccasionBanner occasion={occasion} />}<div className="watch-heading"><div><span className="pixel-eyebrow">{occasion?occasion.eyebrow:coaching?'COURTSIDE / COACHING LIVE':'COURTSIDE / POSSESSION REPLAY'}</span><h2>{occasion?occasion.title:'Watch Game'}</h2></div>{rivalry&&<span className="watch-rivalry" title={rivalry.seriesText}>🔥 RIVALRY · {rivalry.level.toUpperCase()}</span>}<span className="watch-status">{reel?'HIGHLIGHTS':finished?'FINAL':playing?'PLAYING':'PAUSED'}</span></div>
     <div className="watch-live-header"><div className="watch-controls"><button className="primary" disabled={finished} onClick={()=>setPlaying(p=>!p)}>{playing&&!finished?'Pause':'Play'}</button><label>Speed<select aria-label="Playback speed" value={speed} onChange={e=>setSpeed(+e.target.value)}>{[.5,1,2,4,8].map(v=><option key={v} value={v}>{v}×</option>)}</select></label><button disabled={cursor===0} onClick={()=>{setPlaying(false);setReel(null);setCursor(c=>Math.max(0,Math.floor(c)-1));}}>Previous Possession</button><button disabled={finished} onClick={()=>{setPlaying(false);setReel(null);setCursor(c=>Math.min(total,Math.floor(c)+1));}}>Next Possession</button><button disabled={!nextHighlight} onClick={()=>nextHighlight&&jumpTo(nextHighlight)}>Next Highlight</button><button disabled={finished} onClick={()=>{setCursor(total);setPlaying(false);setReel(null);}}>Sim to End</button><button onClick={()=>{setReel(null);setCursor(0);setPlaying(true);}}>Restart Replay</button><button aria-pressed={sound} className={sound?'sound-on':''} onClick={()=>void toggleSound()}>{sound?'Sound: On':'Sound: Off'}</button><button onClick={onBoxScore}>{finished?'View Box Score':'Skip to Box Score'}</button></div>
     <div className="watch-scoreboard"><div><small>HOME</small><strong><TeamLink name={home.name} /></strong><b data-testid="watch-home-score">{score.home}</b></div><div className="watch-clock"><strong>{clockLabel}</strong><small>POSSESSION {Math.min(total,index+1)} / {total}</small></div><div><small>AWAY</small><strong><TeamLink name={away.name} /></strong><b data-testid="watch-away-score">{score.away}</b></div></div>
     </div>
