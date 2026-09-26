@@ -14,8 +14,10 @@ describe('trade valuation', () => {
 
   it('refuses a star-for-three-role-players package', () => {
     const { league, extras } = generateFullLeague(11, 30, 13, 10, '2026');
-    const [a, b] = league.teams;
-    const star = [...a.seasons].sort((x, y) => calculateOverall(y) - calculateOverall(x))[0];
+    // The league's best player, offered for three of another team's role players.
+    const star = league.teams.flatMap(t => t.seasons).sort((x, y) => calculateOverall(y) - calculateOverall(x))[0];
+    const a = league.teams.find(t => t.seasons.some(p => p.playerId === star.playerId))!;
+    const b = league.teams.find(t => t.teamId !== a.teamId)!;
     const roles = [...b.seasons].sort((x, y) => calculateOverall(x) - calculateOverall(y)).filter(p => calculateOverall(p) < calculateOverall(star) - 12).slice(-3);
     expect(roles).toHaveLength(3);
     const relaxed = { ...extras, capSettings: { ...extras.capSettings, enforceCapOnTrades: false, minRosterSize: 0, maxRosterSize: 99 } };

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { generateFullLeague } from '../simulation/leagueGenerator';
-import { simulateRounds, type League } from '../simulation/league';
+import { simulateRounds, type League, computeStandings } from '../simulation/league';
 import { personalityOf, refreshLeagueMorale, moraleContractAdjustment, withGrudge, lockerRoom } from '../simulation/personality';
 import { freeAgentVerdict } from '../simulation/freeAgentDecision';
 import { calculateOverall } from '../simulation/engine/overall';
@@ -18,6 +18,10 @@ describe('personalities and morale', () => {
   it('a buried, established player on a losing team asks for a trade once, and it makes news in his history', () => {
     const { league: base, extras } = generateFullLeague(32, 30, 13, 30, '2026');
     let league: League = { ...simulateRounds(base, 20, 5), seasonPhase: 'regular_season' };
+    // The worst record among teams whose best player is established (60+ OVR).
+    const best = (id: string) => Math.max(...league.teams.find(t => t.teamId === id)!.seasons.map(calculateOverall));
+    const worst = computeStandings(league).filter(r => best(r.teamId) >= 62).sort((a, b) => a.winPct - b.winPct)[0].teamId;
+    league = { ...league, teams: [league.teams.find(t => t.teamId === worst)!, ...league.teams.filter(t => t.teamId !== worst)] };
     const team = league.teams[0];
     const star = [...team.seasons].sort((a, b) => calculateOverall(b) - calculateOverall(a))[0];
     // Bury the best player: he barely plays on a team that keeps losing, and he's paid far below his worth.

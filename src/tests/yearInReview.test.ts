@@ -28,9 +28,9 @@ describe('Year in Review', () => {
   });
 
   it('grades a champion above a team that missed the playoffs', () => {
-    const missed = league.teams.find(t => !done.bracket.rounds[0].some(s => s.teamAId === t.teamId || s.teamBId === t.teamId))!;
     const a = buildYearInReview(league, extras, champ)!;
-    const b = buildYearInReview(league, extras, missed.teamId)!;
+    // A team outside the bracket and the play-in.
+    const b = league.teams.map(t => buildYearInReview(league, extras, t.teamId)!).find(r => r.finish === 'Missed Playoffs')!;
     expect(b.finish).toBe('Missed Playoffs');
     expect(a.grade.parts[1].score).toBeGreaterThan(b.grade.parts[1].score);
   });

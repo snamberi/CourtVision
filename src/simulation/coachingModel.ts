@@ -70,6 +70,8 @@ export interface PlayerTraining {
   workload:number; practiceDays:number; injuredDays:number; roleFamiliarity:number;
   familiarity:Record<string,number>; teamId:string;
   project?:PlayerProject;
+  /** Training games played when he last earned a badge (badges arrive one at a time). */
+  lastBadgeGame?:number;
   badgeProgress:Record<string,{credit:number; qualifiedGames:number; dryGames:number; stage:'Developing'|'Close to earning'|'Established'; reason:string}>;
   evidence:{ games:number; minutes:number; handling:number; defensiveReps:number; shots:Record<string,{attempts:number;makes:number}> };
   morale:{trust:number;role:number;development:number;discipline:number;promises:number};

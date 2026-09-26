@@ -1,4 +1,6 @@
 import type { Badge } from './types';
+import { BADGE_RULES, badgeCapacity } from './badgeRules';
+import { calculateOverall } from './engine/overall';
 
 // Data-driven: badges are NOT hard-coded into simulation branches wherever avoidable.
 // The engine reads `effect.attributeModifiers` and `effect.flags` generically.
@@ -60,21 +62,24 @@ export function getBadgeById(id: string, customBadges: Badge[] = []): Badge | un
   return ALL_BUILTIN_BADGES.find((b) => b.id === id) ?? customBadges.find((b) => b.id === id);
 }
 
-/** Seeded, unique normal badges favor a player's existing strengths. Older players keep their saved badges. */
+/**
+ * Seeded starting badges for generated players: only badges whose own rating bar he (nearly) clears are possible,
+ * weighted by how far past it he is, and no more than his overall can carry.
+ */
 export function generateNormalBadges(season: import('./types').PlayerSeason, rng: { next: () => number }): string[] {
-  const count = Math.floor(rng.next() * 4);
-  const available = [...NORMAL_BADGES];
+  const value = (path: string) => { const [group, key] = path.split('.'); return Number((season.attributes[group as keyof typeof season.attributes] as unknown as Record<string, number>)[key] ?? 50); };
+  const overall = calculateOverall(season);
+  // Same number of random draws as always (one for the count, one per badge slot), so the rest of player
+  // generation sees an unchanged random sequence; slots beyond what he qualifies for or can carry stay empty.
+  const rolls = Math.floor(rng.next() * 4);
+  const count = Math.min(rolls, badgeCapacity(overall));
+  const available = NORMAL_BADGES.filter(b => { const rule = BADGE_RULES[b.id]; if (!rule) return false; const avg = rule.abilities.reduce((n, k) => n + value(k), 0) / rule.abilities.length; return avg >= rule.min - 3; });
   const selected: string[] = [];
-  for (let i = 0; i < count; i++) {
-    const weights = available.map(b => {
-      const paths = Object.keys(b.effect.attributeModifiers ?? {});
-      const average = paths.reduce((n, path) => {
-        const [group, key] = path.split('.');
-        return n + Number((season.attributes[group as keyof typeof season.attributes] as unknown as Record<string, number>)[key] ?? 50);
-      }, 0) / Math.max(1, paths.length);
-      return Math.max(1, average - 35) ** 2;
-    });
-    let roll = rng.next() * weights.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < rolls; i++) {
+    const r = rng.next();
+    if (i >= count || !available.length) continue;
+    const weights = available.map(b => { const rule = BADGE_RULES[b.id]; const avg = rule.abilities.reduce((n, k) => n + value(k), 0) / rule.abilities.length; return Math.max(1, avg - rule.min + 5) ** 2; });
+    let roll = r * weights.reduce((a, b) => a + b, 0);
     let index = 0;
     while (index < weights.length - 1 && (roll -= weights[index]) > 0) index++;
     selected.push(available.splice(index, 1)[0].id);
