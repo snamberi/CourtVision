@@ -1,4 +1,5 @@
 import { enforceSticky, stickyTradeProblems, isStuck } from './sticky';
+import { consensusBoard, pickReaction } from './draftNight';
 import { formatSeasonYear } from './calendar';
 import { withGrudge } from './personality';
 import { recordRivalryTrade } from './rivalry';
@@ -115,7 +116,11 @@ export interface GMLeagueExtras {
   freeAgencyDaysRemaining: number; // counts down during the 30-day free agency window in the season-flow lifecycle; 0 when not in that window
   teamPersonalities?: Record<TeamId, 'aggressive' | 'conservative' | 'balanced'>; // AI front-office archetype per team; absent teams default to 'balanced'
   draftOrder?: TeamId[]; // this draft's determined pick order (post-lottery), set once when the draft class is generated
-  draftPicksMade?: { pickNumber: number; teamId: string; playerId: string }[]; // history of this draft's picks so far, most recent last
+  draftPicksMade?: { pickNumber: number; teamId: string; playerId: string; reaction?: import('./draftNight').PickReaction; boardRank?: number }[]; // history of this draft's picks so far, most recent last
+  /** This offseason's lottery (who moved up or down), for the live reveal (see draftNight.ts). */
+  lottery?: import('./draftNight').LotteryResult;
+  /** The consensus big board at the start of the draft: prospect id -> rank (0 = best). */
+  draftBoard?: Record<string, number>;
   watchList?: PlayerId[]; // players the user is tracking (trade targets, prospects, rivals), independent of roster
   futurePicks?: FutureDraftPick[]; // tradeable draft-pick futures ledger (this year + several years out), see below
   picksOnBlock?: string[]; // FutureDraftPick ids any team has marked as available for trade discussion
@@ -799,9 +804,15 @@ export function draftProspect(
     ...extras.contracts,
     [draftedId]: { playerId: draftedId, teamId, ...rookieContract(pickNumber, teamCount, extras.capSettings, league.rulesSettings?.rookieContractLengthYears) },
   };
-  const draftPicksMade = [...(extras.draftPicksMade ?? []), { pickNumber: extras.draftPickIndex, teamId, playerId: draftedId }];
+  // The room's reaction: where the consensus board had him against where he went.
+  const board = extras.draftBoard && extras.draftBoard[prospectId] != null ? extras.draftBoard : consensusBoard(extras.draftClass);
+  const offset = extras.draftBoard && extras.draftBoard[prospectId] != null ? 0 : pickNumber;
+  const boardRank = board[prospectId] + offset;
+  const bestRemaining = Math.min(...extras.draftClass.map(p => (board[p.playerId] ?? 999) + offset));
+  const draftPicksMade = [...(extras.draftPicksMade ?? []), { pickNumber: extras.draftPickIndex, teamId, playerId: draftedId, boardRank, reaction: pickReaction(boardRank, pickNumber % Math.max(1, teamCount) + (round - 1) * teamCount, bestRemaining) }];
+  const draftBoard = extras.draftBoard ?? (pickNumber === 0 ? consensusBoard(extras.draftClass) : undefined);
 
-  const result = { league: { ...league, teams }, extras: { ...extras, draftOrder: order, draftClass, contracts, draftPickIndex: pickNumber + 1, draftPicksMade } };
+  const result = { league: { ...league, teams }, extras: { ...extras, draftOrder: order, draftClass, contracts, draftPickIndex: pickNumber + 1, draftPicksMade, ...(draftBoard ? { draftBoard } : {}) } };
   return result.extras.draftPickIndex >= order.length || draftClass.length === 0 ? finalizeDraftDay(result.league, result.extras) : result;
 }
 

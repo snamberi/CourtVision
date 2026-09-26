@@ -1,6 +1,6 @@
 import { TeamLink, TeamText } from './TeamLink';
 import { rookieScale } from '../simulation/draftSeason';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { League } from '../simulation/league';
 import type { GMLeagueExtras, TradeProposal } from '../simulation/gm';
 import { currentDraftOrder, draftProspect, computeDraftPickValue, validateTrade, executeTrade, computeTradeValue, tradePackageValue } from '../simulation/gm';
@@ -10,6 +10,10 @@ import { perceivedPotential } from '../simulation/scouting';
 import { ScoutingBoard } from './ScoutingBoard';
 import { calculateOverall } from '../simulation/engine/overall';
 import { PlayerNameTag } from './PlayerAvatar';
+import { DraftLotteryShow } from './DraftLotteryShow';
+import { tradeDownOffers } from '../simulation/draftNight';
+
+const PICK_CLOCK = 60;
 
 interface Props {
   league: League;
@@ -44,6 +48,32 @@ export function DraftPage({ league, extras, controlledTeamId, onChange, onSelect
     teamAId: controlledTeamId, teamBId: order[target], playersFromA: offeredPlayers, playersFromB: [], currentPicksFromA: offeredPicks, currentPicksFromB: [target],
   } : null;
   const validation = proposal ? validateTrade(league, extras, proposal) : null;
+  // War room: a pick clock when you're up, and teams calling to move into your slot.
+  // The clock belongs to the pick: a new pick starts a fresh minute.
+  const [clockState, setClockState] = useState({ pick: extras.draftPickIndex, left: PICK_CLOCK });
+  const clock = clockState.pick === extras.draftPickIndex ? clockState.left : PICK_CLOCK;
+  const [clockOn, setClockOn] = useState(true);
+  const warRoom = myTurn && extras.draftDayOpen && !!controlledTeamId && onClock === controlledTeamId;
+  const calls = useMemo(() => warRoom ? tradeDownOffers(league, extras, controlledTeamId!) : [], [warRoom, league, extras, controlledTeamId]);
+  useEffect(() => {
+    if (!warRoom || !clockOn) return;
+    const t = setTimeout(() => {
+      if (clock > 1) { setClockState({ pick: extras.draftPickIndex, left: clock - 1 }); return; }
+      // Time's up: the best player on your board.
+      const best = available[0];
+      if (best && onClock) { const r = draftProspect(league, extras, best.playerId, onClock); onChange(r.league, r.extras); setMessage(`The clock ran out. You took the best player on your board: ${best.playerId}.`); }
+    }, 1000);
+    return () => clearTimeout(t);
+  }, [warRoom, clockOn, clock]); // eslint-disable-line react-hooks/exhaustive-deps
+  const takeCall = (offer: TradeProposal) => {
+    const r = executeTrade(league, extras, offer);
+    onChange(r.league, r.extras);
+    setMessage(`Deal: you traded down with ${teamName(offer.teamAId)}.`);
+  };
+  const [lotterySeen, setLotterySeen] = useState(false);
+  const showLottery = !!extras.lottery && !extras.lottery.revealed && !lotterySeen && extras.draftDayOpen && extras.draftPickIndex === 0;
+  const lastPick = extras.draftPicksMade?.at(-1);
+
   const targetAvailable = target != null && extras.draftDayOpen && target >= extras.draftPickIndex && !made.has(target) && order[target] !== controlledTeamId;
 
   const confirmTrade = () => {
@@ -77,6 +107,9 @@ export function DraftPage({ league, extras, controlledTeamId, onChange, onSelect
     setMessage('Suggested offer ready to review. Nothing has been traded yet.');
   };
 
+  if (showLottery) return <div className="draft-view"><DraftLotteryShow league={league} lottery={extras.lottery!} controlledTeamId={controlledTeamId}
+    onDone={() => { setLotterySeen(true); onChange(league, { ...extras, lottery: { ...extras.lottery!, revealed: true } }); }} /></div>;
+
   return <div className="draft-view">
     <div className="draft-night-header" data-tour="draft"><div><span className="eyebrow">DRAFT NIGHT</span><h3>Build the next era</h3><p className="hint-text">2 rounds · {n} picks per round · {Math.min(extras.draftPickIndex, order.length)} / {order.length} selected</p></div>
       <div className="code-mode-actions">
@@ -91,6 +124,15 @@ export function DraftPage({ league, extras, controlledTeamId, onChange, onSelect
       {myTurn && <div className="draft-clock-card draft-youre-up">Your selection</div>}
     </div>}
     {summerLeagueReady && onOpenSummerLeague && <div className="summer-cta"><div><b>Summer League is next.</b> <span className="hint-text">See your rookies play four games against the league's other young players before re-signing opens.</span></div><button className="primary" onClick={onOpenSummerLeague}>Go to Summer League</button></div>}
+    {lastPick?.reaction && <p className={`draft-reaction reaction-${lastPick.reaction.toLowerCase().replace(/ /g, '-')}`} role="status">
+      <b>{lastPick.reaction.toUpperCase()}</b> <TeamText text={`${teamName(lastPick.teamId)} take ${lastPick.playerId} at No. ${lastPick.pickNumber + 1}${lastPick.boardRank != null ? ` (No. ${lastPick.boardRank + 1} on the consensus board)` : ''}.`} /></p>}
+    {warRoom && <section className="war-room" aria-label="War room">
+      <div className="war-room-clock"><span className="pixel-eyebrow">YOU'RE ON THE CLOCK</span><b className={clock <= 10 ? 'urgent' : ''}>0:{String(Math.max(0, clock)).padStart(2, '0')}</b>
+        <button onClick={() => setClockOn(o => !o)}>{clockOn ? 'Pause clock' : 'Resume clock'}</button></div>
+      <div className="war-room-calls"><h4>📞 Calls</h4>{calls.length ? calls.map((c, i) => <div key={i} className="war-room-call"><span><TeamText text={c.note} /></span><button onClick={() => takeCall(c)}>Accept</button></div>)
+        : <p className="hint-text">Nobody's calling to move up right now. You can still call around: use "Propose trade" on any pick below.</p>}</div>
+      <p className="hint-text">Make your pick from the board below before the clock hits zero, or the war room takes the best player on your board.</p>
+    </section>}
     {message && <p className="hint-text" role="status"><TeamText text={message} /></p>}
 
     {extras.draftDayOpen && extras.draftPickIndex < 5 && shortlist.length > 0 && <section className="prospect-spotlight" aria-label="Top prospect comparison">
@@ -117,8 +159,9 @@ export function DraftPage({ league, extras, controlledTeamId, onChange, onSelect
       onDraft={id => { if (!onClock) return; const r = draftProspect(league, extras, id, onClock); onChange(r.league, r.extras); setMessage(`${teamName(onClock)} selected ${id}.`); }} />
 
     <div className="draft-columns draft-columns-single">
-      <div className="draft-column"><h4>Draft results · two rounds</h4><div className="finances-table-wrap"><table className="db-table draft-results"><thead><tr><th>Pick</th><th>Team</th>{showValues && <th>Value</th>}<th>Selection</th></tr></thead><tbody>
-        {order.map((owner, slot) => { const selection = made.get(slot); return <tr key={slot} className={extras.draftDayOpen && slot === extras.draftPickIndex ? 'draft-current-pick-row' : ''}><td>{pickLabel(slot)}</td><td><TeamLink name={teamName(selection?.teamId ?? owner)} /></td>{showValues && <td>{computeDraftPickValue(slot, order, league)}</td>}<td>{selection ? <button className="prospect-name" onClick={() => onSelectPlayer(selection.playerId)}><PlayerNameTag playerId={selection.playerId} teamId={selection.teamId} size={22} /></button> : extras.draftDayOpen && slot >= extras.draftPickIndex && controlledTeamId && owner !== controlledTeamId ? <button onClick={() => { setTarget(slot); setOfferedPicks([]); setOfferedPlayers([]); }}>Propose trade</button> : '—'}</td></tr>; })}
+      <div className="draft-column"><h4>Draft results · two rounds</h4><div className="finances-table-wrap"><table className="db-table draft-results"><thead><tr><th>Pick</th><th>Team</th>{showValues && <th>Value</th>}<th>Selection</th><th>Reaction</th></tr></thead><tbody>
+        {order.map((owner, slot) => { const selection = made.get(slot); return <tr key={slot} className={extras.draftDayOpen && slot === extras.draftPickIndex ? 'draft-current-pick-row' : ''}><td>{pickLabel(slot)}</td><td><TeamLink name={teamName(selection?.teamId ?? owner)} /></td>{showValues && <td>{computeDraftPickValue(slot, order, league)}</td>}<td>{selection ? <button className="prospect-name" onClick={() => onSelectPlayer(selection.playerId)}><PlayerNameTag playerId={selection.playerId} teamId={selection.teamId} size={22} /></button> : extras.draftDayOpen && slot >= extras.draftPickIndex && controlledTeamId && owner !== controlledTeamId ? <button onClick={() => { setTarget(slot); setOfferedPicks([]); setOfferedPlayers([]); }}>Propose trade</button> : '—'}</td>
+          <td>{selection?.reaction ? <span className={`reaction-chip reaction-${selection.reaction.toLowerCase().replace(/ /g, '-')}`}>{selection.reaction}</span> : ''}</td></tr>; })}
       </tbody></table></div></div>
     </div>
     <details className="rookie-scale"><summary>Rookie scale · salary by pick</summary>

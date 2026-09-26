@@ -1,5 +1,6 @@
 import { rollBusinessSeason } from './business';
 import { enforceSticky, isStuck } from './sticky';
+import { lotteryResult, consensusBoard } from './draftNight';
 import { archiveRivalries } from './rivalry';
 import { setupCup, cupArchive } from './cup';
 import { reviewSeason, ensureSeasonGoals, type OwnerReview } from './frontOffice';
@@ -351,6 +352,7 @@ export function beginNewSeasonRoster(
   const standingsDraftOrder = buildTwoRoundDraftOrder(league, Math.floor(rng.next() * 1_000_000));
   const draftYear = parseInt(newSeason.slice(0, 4), 10);
   const { order: draftOrder, protectionsTriggered } = resolveTradedPicksIntoOrder(standingsDraftOrder, draftYear, extras.futurePicks ?? []);
+  const lottery = lotteryResult(league, standingsDraftOrder.slice(0, teams.length), newSeason);
   const futurePicks = rollFutureDraftPicksForward(extras.futurePicks ?? [], teams.map((t) => t.teamId), draftYear, FUTURE_PICK_WINDOW_YEARS);
 
   const historyRecord: FranchiseHistoryRecord = {
@@ -402,6 +404,8 @@ export function beginNewSeasonRoster(
     tradeBlock: [],
     draftPickIndex: 0,
     draftPicksMade: [],
+    draftBoard: consensusBoard(draftClass),
+    lottery,
     pendingTradeOffers: [],
     negotiations: {},
   };
