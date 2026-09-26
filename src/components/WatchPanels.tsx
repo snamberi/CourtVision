@@ -39,6 +39,8 @@ export interface CoachingProps {
   roster: PlayerSeason[];
   commands: LiveCoachingCommand[];
   onCommand: (command: LiveCoachingCommand) => string | null;
+  /** Open on the Coach tab ("Coach Next Game"); otherwise the tab waits until you take over. */
+  openCoach?: boolean;
 }
 const DEFENSES: { id: LiveDefense; label: string }[] = [
   { id: 'man', label: 'Man-to-man' }, { id: 'switch', label: 'Switch everything' }, { id: 'drop', label: 'Drop coverage' },

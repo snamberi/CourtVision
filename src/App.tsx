@@ -265,7 +265,7 @@ function App() {
   const [viewedGameId, setViewedGameId] = useState<string | null>(null);
   const [watchNextResult, setWatchNextResult] = useState(false);
   const [watchStart, setWatchStart] = useState<number | undefined>(undefined);
-  const [coachSession, setCoachSession] = useState<{ base: League; baseExtras: GMLeagueExtras; gameId: string; teamId: string; commands: LiveCoachingCommand[]; committed: League } | null>(null);
+  const [coachSession, setCoachSession] = useState<{ base: League; baseExtras: GMLeagueExtras; gameId: string; teamId: string; commands: LiveCoachingCommand[]; committed: League; openCoach?: boolean } | null>(null);
   const [boxscoreSource, setBoxscoreSource] = useState<'league' | 'exhibition'>('league');
 
   const currentRoute = screen === 'menu' ? '#/menu' : screen === 'chooseTeam' ? '#/choose-team'
@@ -574,11 +574,16 @@ function App() {
   });
 
   // Historical leagues keep the next ten real draft classes loaded; top up after each rollover (background, non-blocking).
+  // Automatic bookkeeping (press, sticks) changes the league object; a live-coaching session carries over to it.
+  const adoptLeague = (next: League) => {
+    setCoachSession(cs => cs && cs.committed === league ? { ...cs, committed: next } : cs);
+    setLeague(next);
+  };
   // Reporters line up after big results, streaks, trade requests and playoff series.
   const pressWaiting = league.press?.pending.length ?? 0;
   useEffect(() => {
     const next = collectPress(league, controlledTeamId);
-    if (next !== league) setLeague(next);
+    if (next !== league) adoptLeague(next);
   }, [league.schedule, league.playoffBracket, league.teams, controlledTeamId]); // eslint-disable-line react-hooks/exhaustive-deps
   const lastPressCount = useRef(pressWaiting);
   useEffect(() => {
@@ -592,7 +597,7 @@ function App() {
   // Sandbox sticks: whatever just moved a player, stuck players end up where their rule says (a no-op otherwise).
   useEffect(() => {
     const settled = enforceSticky(league, extras);
-    if (settled.moved.length) { setLeague(settled.league); setExtras(settled.extras); }
+    if (settled.moved.length) { adoptLeague(settled.league); setExtras(settled.extras); }
   }, [league, extras]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const historicalSeason = league.historical ? league.season : null;
@@ -680,8 +685,9 @@ function App() {
       return;
     }
     const committed = applyLeagueAIPass(played, ready.extras);
-    if (coach && myGame && controlledTeamId) {
-      setCoachSession({ base: ready.league, baseExtras: ready.extras, gameId, teamId: controlledTeamId, commands: [], committed });
+    // Watching your own team's game always lets you take over coaching; "Coach" just opens on the clipboard.
+    if ((coach || watch) && myGame && controlledTeamId) {
+      setCoachSession({ base: ready.league, baseExtras: ready.extras, gameId, teamId: controlledTeamId, commands: [], committed, openCoach: coach });
     } else {
       setCoachSession(null);
       if (coach) pushToast('Your team is off tonight, so there is no game to coach. Watching the league game instead.', 'info');
@@ -1615,6 +1621,7 @@ function App() {
               watchStart={watchNextResult ? watchStart : undefined}
               coaching={boxscoreSource === 'league' && coachSession && scheduled?.id === coachSession.gameId && league === coachSession.committed && homeTeam && awayTeam ? {
                 teamId: coachSession.teamId,
+                openCoach: coachSession.openCoach,
                 teamName: (coachSession.teamId === homeTeam.teamId ? homeTeam : awayTeam).name,
                 roster: (coachSession.teamId === homeTeam.teamId ? homeTeam : awayTeam).seasons,
                 commands: coachSession.commands,

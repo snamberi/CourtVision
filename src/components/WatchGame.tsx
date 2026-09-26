@@ -102,7 +102,7 @@ export function WatchGame({game,home,away,homeRoster=[],awayRoster=[],onBoxScore
   const [shotChart,setShotChart]=useState(true);
   const [camera,setCamera]=useState<CourtCamera>('full');
   const [screenMessage,setScreenMessage]=useState('');
-  const [tab,setTab]=useState<Tab>(coaching?'coach':'box');
+  const [tab,setTab]=useState<Tab>(coaching?.openCoach?'coach':'box');
   const [sound,setSound]=useState(false);
   const [soundNote,setSoundNote]=useState<string|null>(()=>readSound()?'Sound was on last time — press Sound to turn it back on.':null);
   const [isRecording,setIsRecording]=useState(false);
@@ -248,7 +248,7 @@ export function WatchGame({game,home,away,homeRoster=[],awayRoster=[],onBoxScore
     {total>0&&<div className="watch-panels">
       <div className="watch-tabs" role="tablist" aria-label="Game panels">
         <button role="tab" aria-selected={tab==='box'} className={tab==='box'?'active':''} onClick={()=>setTab('box')}>Live Box Score</button>
-        {coaching&&<button role="tab" aria-selected={tab==='coach'} className={tab==='coach'?'active':''} onClick={()=>setTab('coach')}>Coach</button>}
+        {coaching&&<button role="tab" aria-selected={tab==='coach'} className={tab==='coach'?'active':''} onClick={()=>{setTab('coach');setPlaying(false);}}>{coaching.openCoach||coaching.commands.length?'Coach':'Take over (Coach)'}</button>}
         <button role="tab" aria-selected={tab==='highlights'} className={tab==='highlights'?'active':''} onClick={()=>setTab('highlights')}>Highlights{markers.length?` (${markers.length})`:''}</button>
       </div>
       <div role="tabpanel" className="watch-tabpanel">
