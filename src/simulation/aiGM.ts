@@ -1,4 +1,5 @@
 import { midseasonCarousel } from './coachingCarousel';
+import { enforceSticky } from './sticky';
 import type { PlayerSeason } from './types';
 import type { League, LeagueTeam } from './league';
 import { signingDecision, strengthRanking } from './freeAgentDecision';
@@ -531,5 +532,6 @@ export function runLeagueAIPass(
     }
   }
 
-  return { league: trade.league, extras: finalExtras, signings: fa.signings, trades: trade.trades, newOfferGenerated, moraleEvents: mood.events };
+  const settled = enforceSticky(trade.league, finalExtras);
+  return { league: settled.league, extras: settled.extras, signings: fa.signings, trades: trade.trades, newOfferGenerated, moraleEvents: mood.events };
 }

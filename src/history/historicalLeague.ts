@@ -119,7 +119,7 @@ function ageAt(p: HistPlayer, startYear: number, fallback: number | null): numbe
 }
 
 /** Everything the builder needs for one real player at a given season END year. */
-function seedFor(h: NbaHistory, p: HistPlayer, end: number, profileEnds: number[]): RealPlayerSeed {
+export function seedFor(h: NbaHistory, p: HistPlayer, end: number, profileEnds: number[]): RealPlayerSeed {
   const rows = (h.seasonsByPlayer.get(p.idx) ?? []).filter(r => NBA.has(r.league));
   const pick = (e: number) => { const rs = rows.filter(r => r.season === e); return rs.length ? [aggregateRow(rs)] : []; };
   let profileRows: HistSeasonRow[] = [];

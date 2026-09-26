@@ -1,3 +1,4 @@
+import { enforceSticky, stickyTradeProblems, isStuck } from './sticky';
 import { formatSeasonYear } from './calendar';
 import { withGrudge } from './personality';
 import { recordRivalryTrade } from './rivalry';
@@ -331,7 +332,7 @@ export function tradePackageValue(league: League, extras: GMLeagueExtras, teamId
 export function validateTrade(league: League, extras: GMLeagueExtras, proposal: TradeProposal): TradeValidation {
   const assets = validateTradeAssets(league, extras, proposal);
   if (!league.teams.some(t => t.teamId === proposal.teamAId) || !league.teams.some(t => t.teamId === proposal.teamBId) || proposal.teamAId === proposal.teamBId) return assets;
-  const reasons: string[] = [...assets.reasons];
+  const reasons: string[] = [...assets.reasons, ...stickyTradeProblems(league, proposal.playersFromA, proposal.playersFromB)];
   const a = league.teams.find(t => t.teamId === proposal.teamAId)!;
   const b = league.teams.find(t => t.teamId === proposal.teamBId)!;
   if (isTradeDeadlinePassed(league)) reasons.push('The trade deadline has passed for this season.');
@@ -421,10 +422,12 @@ export function executeTrade(league: League, extras: GMLeagueExtras, proposal: T
   const topOverall = Math.max(0, ...league.teams.flatMap(t => t.seasons.filter(s => movedPlayers.has(s.playerId)).map(calculateOverall)));
   const notable = topOverall >= 72;
   const logged = logDeadlineTrade({ ...league, teams }, proposal, topOverall);
-  return { league: recordRivalryTrade(logged, proposal.teamAId, proposal.teamBId, notable), extras: { ...extras, contracts, futurePicks, picksOnBlock,
+  // Players stuck with a traded player go with him (Sandbox).
+  const settled = enforceSticky(recordRivalryTrade(logged, proposal.teamAId, proposal.teamBId, notable), { ...extras, contracts, futurePicks, picksOnBlock,
     draftOrder: extras.draftDayOpen ? draftOrder : extras.draftOrder,
     tradeBlock: extras.tradeBlock.filter(id => !movedPlayers.has(id)),
-  } };
+  });
+  return { league: settled.league, extras: settled.extras };
 }
 
 // ---- Free agency ----
@@ -459,7 +462,9 @@ export function signFreeAgent(
   const freeAgents = extras.freeAgents.filter((s) => s.playerId !== playerId);
   const contracts = { ...extras.contracts, [playerId]: { playerId, teamId, ...contract } };
 
-  return { league: { ...league, teams }, extras: { ...extras, freeAgents, contracts } };
+  // A free agent stuck with the new signing comes along (Sandbox).
+  const settled = enforceSticky({ ...league, teams }, { ...extras, freeAgents, contracts });
+  return { league: settled.league, extras: settled.extras };
 }
 
 /**
@@ -478,6 +483,7 @@ export function waiveToFreeAgency(
   const team = league.teams.find((t) => t.teamId === teamId);
   const player = team?.seasons.find((s) => s.playerId === playerId);
   if (!team || !player) return { league, extras };
+  if (isStuck(player)) return { league, extras }; // stuck players can't be waived (Sandbox): unstick first
   if (!canDropPlayer(team, extras.capSettings)) return { league, extras }; // would drop below the roster minimum
 
   const teams = league.teams.map((t) => (t.teamId === teamId ? { ...t, seasons: t.seasons.filter((s) => s.playerId !== playerId) } : t));

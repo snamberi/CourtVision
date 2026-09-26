@@ -1,3 +1,4 @@
+import { enforceSticky, isStuck } from './sticky';
 import { archiveRivalries } from './rivalry';
 import { setupCup, cupArchive } from './cup';
 import { reviewSeason, ensureSeasonGoals, type OwnerReview } from './frontOffice';
@@ -97,7 +98,7 @@ export function rollFreeAgentsForward(league: League, freeAgents: PlayerSeason[]
     // A real player who really played this season stays in the league while his trajectory continues.
     if (realStep && realCareerContinues(fa, newSeason)) { out.push(next); continue; }
     const leavesLeague = next.age >= 24 && (overall < 45 ? rng.chance(0.5) : overall < 52 ? rng.chance(0.2) : false);
-    if (shouldRetire(next, rng, league.rulesSettings) || leavesLeague) {
+    if (!isStuck(next) && (shouldRetire(next, rng, league.rulesSettings) || leavesLeague)) {
       retired.push({ playerId: next.playerId, finalTeamId: lastTeam ?? '', finalTeamName: teamName(lastTeam), finalSeason: previousSeason,
         finalAge: next.age, finalOverall: overall, finalSeasonData: next });
       continue;
@@ -262,7 +263,7 @@ export function beginNewSeasonRoster(
         careerHistory: [...(season.careerHistory ?? []), archived],
       };
 
-      if (!(realStep && realCareerContinues(season, newSeason)) && shouldRetire(withHistory, rng, league.rulesSettings)) {
+      if (!isStuck(withHistory) && !(realStep && realCareerContinues(season, newSeason)) && shouldRetire(withHistory, rng, league.rulesSettings)) {
         retiredPlayerIds.push(withHistory.playerId);
         delete contracts[withHistory.playerId];
         newlyRetired.push({
@@ -280,6 +281,12 @@ export function beginNewSeasonRoster(
       const contract = contracts[withHistory.playerId];
       if (contract) {
         const yearsRemaining = contract.yearsRemaining - 1;
+        if (yearsRemaining <= 0 && isStuck(withHistory)) {
+          // Stuck players (Sandbox) never hit free agency: the deal rolls over.
+          contracts[withHistory.playerId] = { ...contract, yearsRemaining: 2 };
+          keptSeasons.push(withHistory);
+          continue;
+        }
         if (yearsRemaining <= 0) {
           const resolution = resolveExpiringContract(contract, calculateOverall(withHistory), withHistory.age);
           if (resolution.retained && resolution.extended) {
@@ -397,11 +404,13 @@ export function beginNewSeasonRoster(
     negotiations: {},
   };
 
+  // Stuck players (Sandbox) settle where their rule puts them.
+  const settled = enforceSticky(nextLeague, nextExtras);
   return {
     // Coaches age and contracts run out, then AI owners review their head coaches (the coaching carousel).
-    league: offseasonCarousel(advanceStaffSeason(nextLeague, previousSeason, championship?.teamId ?? undefined, seasonAwards.coy?.coachName ?? undefined), previousSeason, userTeamId,
-      new Map(nextLeague.teams.map(t => [t.teamId, t.coachIdentity?.coachId]))),
-    extras: nextExtras,
+    league: offseasonCarousel(advanceStaffSeason(settled.league, previousSeason, championship?.teamId ?? undefined, seasonAwards.coy?.coachName ?? undefined), previousSeason, userTeamId,
+      new Map(settled.league.teams.map(t => [t.teamId, t.coachIdentity?.coachId]))),
+    extras: settled.extras,
     summary: {
       previousSeason,
       newSeason,

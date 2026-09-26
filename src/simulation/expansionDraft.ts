@@ -50,7 +50,8 @@ export function prepareExpansionDraft(league: League, extras: GMLeagueExtras, ne
     const ranked = t.seasons.map(p => ({ player: p, fromTeamId: t.teamId, overall: calculateOverall(p), value: protectionValue(p, extras.contracts[p.playerId]) }))
       .sort((a, b) => b.value - a.value);
     protectedIds[t.teamId] = ranked.slice(0, protectCount).map(r => r.player.playerId);
-    pool.push(...ranked.slice(protectCount));
+    // Stuck players (Sandbox) can't be drafted away.
+    pool.push(...ranked.slice(protectCount).filter(r => !r.player.stick));
   }
   pool.sort((a, b) => b.value - a.value);
   const perTeamLimit = Math.max(1, Math.ceil(rosterSize / Math.max(1, league.teams.length)));

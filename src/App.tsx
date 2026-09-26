@@ -42,6 +42,7 @@ import { generateFullLeague } from './simulation/leagueGenerator';
 import { developOffseasonLeague } from './simulation/engine/development';
 import { followsRealDevelopment } from './simulation/realDevelopmentGate';
 import { applyHistoricalRosters } from './history/realRollover';
+import { enforceSticky } from './simulation/sticky';
 import { useBackgroundJobs } from './workers/useBackgroundJobs';
 import { ToastStack, type ToastData } from './components/ToastStack';
 import { PrivacyPolicyPage, PrivacyLink } from './components/PrivacyPolicyPage';
@@ -570,6 +571,12 @@ function App() {
   });
 
   // Historical leagues keep the next ten real draft classes loaded; top up after each rollover (background, non-blocking).
+  // Sandbox sticks: whatever just moved a player, stuck players end up where their rule says (a no-op otherwise).
+  useEffect(() => {
+    const settled = enforceSticky(league, extras);
+    if (settled.moved.length) { setLeague(settled.league); setExtras(settled.extras); }
+  }, [league, extras]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const historicalSeason = league.historical ? league.season : null;
   useEffect(() => {
     if (!historicalSeason || jobs.busy) return;
@@ -1215,7 +1222,7 @@ function App() {
         <AdBanner slot="top" refreshKey={tab} />
         <Suspense fallback={<p className="empty-state page-loading" role="status">Loading…</p>}>
         {tab === 'teamProfile' && <TeamProfilePage league={league} extras={extras} teamId={viewedTeamId} onSelectPlayer={selectPlayer} />}
-        {tab === 'sandbox' && <SandboxPage enabled={sandboxMode} onToggle={() => { if (sandboxMode) { setSandboxMode(false); setTab('sandbox'); } else setConfirmation('sandbox'); }} />}
+        {tab === 'sandbox' && <SandboxPage enabled={sandboxMode} league={league} extras={extras} onChange={(l, e) => { setLeague(l); setExtras(e); }} onToast={pushToast} onToggle={() => { if (sandboxMode) { setSandboxMode(false); setTab('sandbox'); } else setConfirmation('sandbox'); }} />}
         {confirmation && <ConfirmationDialog title={confirmation === 'sandbox' ? 'Enable Sandbox Mode?' : 'Return to Main Menu?'} confirmLabel={confirmation === 'sandbox' ? 'Enable Sandbox' : 'Save & Exit'} onCancel={() => setConfirmation(null)} onConfirm={async () => {
           if (confirmation === 'sandbox') { setSandboxMode(true); setConfirmation(null); }
           else { await returnToMenu(); setConfirmation(null); }

@@ -4,6 +4,7 @@ import { computeAskingSalary } from '../simulation/gm';
 import type { League } from '../simulation/league';
 import { calculateOverall } from '../simulation/engine/overall';
 import { assignRosterNumbers } from './jerseyNumbers';
+import { enforceSticky } from '../simulation/sticky';
 import type { HistoricalLeagueMeta } from './historicalLeague';
 import { NBA_HISTORY_DATASET } from './datasetInfo';
 import { buildRealPlayer, type RealPlayerSeed } from './realPlayers';
@@ -86,8 +87,8 @@ export function applyHistoricalRosters(league: League, extras: GMLeagueExtras, u
   const target = new Map<string, string>();
   for (const [teamId, row] of Object.entries(plan)) if (teamId !== userTeamId && league.teams.some(t => t.teamId === teamId)) for (const id of row.ids) target.set(id, teamId);
   const pool = new Map<string, PlayerSeason>(); // real id → player, from AI teams and free agency
-  for (const t of league.teams) if (t.teamId !== userTeamId) for (const p of t.seasons) if (p.real) pool.set(p.real.id, p);
-  for (const p of extras.freeAgents) if (p.real) pool.set(p.real.id, p);
+  for (const t of league.teams) if (t.teamId !== userTeamId) for (const p of t.seasons) if (p.real && !p.importedFrom && !p.stick) pool.set(p.real.id, p);
+  for (const p of extras.freeAgents) if (p.real && !p.importedFrom && !p.stick) pool.set(p.real.id, p);
 
   const contracts = { ...extras.contracts };
   const released: PlayerSeason[] = [];
@@ -97,6 +98,8 @@ export function applyHistoricalRosters(league: League, extras: GMLeagueExtras, u
     if (t.teamId === userTeamId || !plan[t.teamId]) return t;
     const kept: PlayerSeason[] = [];
     for (const p of t.seasons) {
+      // Imported (sandbox) and stuck players are outside the real rosters: they stay where they are.
+      if (p.importedFrom || p.stick) { kept.push(p); placed.add(p.playerId); continue; }
       const goes = p.real ? target.get(p.real.id) : undefined;
       if (goes === t.teamId) { kept.push(p); placed.add(p.playerId); }
       else if (!goes) { delete contracts[p.playerId]; released.push(appendHistoryEvent({ ...p, teamId: null }, 'waived', `Released by ${t.name} (not on the real ${endYear - 1}-${String(endYear).slice(2)} roster)`, t.teamId)); }
@@ -117,7 +120,9 @@ export function applyHistoricalRosters(league: League, extras: GMLeagueExtras, u
   });
   const onTeams = new Set(teams.flatMap(t => t.seasons.map(p => p.playerId)));
   const freeAgents = [...extras.freeAgents.filter(p => !onTeams.has(p.playerId)), ...released.filter(p => !onTeams.has(p.playerId))];
-  return { league: { ...league, teams }, extras: { ...extras, contracts, freeAgents }, moved };
+  // Players stuck with someone (Sandbox) follow him to his real team, even with Historical rosters on.
+  const settled = enforceSticky({ ...league, teams }, { ...extras, contracts, freeAgents });
+  return { league: settled.league, extras: settled.extras, moved: moved + settled.moved.length };
 }
 
 /** True when AI teams should leave rosters alone during the season (they follow the real ones). */

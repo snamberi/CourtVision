@@ -296,6 +296,10 @@ export interface PlayerSeason {
   seasonStints?: SeasonStint[]; // this season's closed stints with teams he has left (see stints.ts); seasonStats stays the full-season total
   /** Real (historical) player link: canonical id, rating provenance and hidden reference trajectory (see history/realPlayers.ts). */
   real?: import('../history/realPlayers').RealPlayerInfo;
+  /** Sandbox stick: never leaves this team, or follows this player wherever he goes; stuck players never retire (see sticky.ts). */
+  stick?: import('./sticky').StickRule;
+  /** Brought in from NBA history by the sandbox importer, as he was in this season (END year). He keeps his own career from here. */
+  importedFrom?: { season: number; realId: string };
   /** Honours won in real NBA history before this league's start (imported, never simulated). */
   historicalAwards?: HistoricalAward[];
 
