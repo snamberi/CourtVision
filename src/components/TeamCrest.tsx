@@ -26,7 +26,7 @@ function Word({ text, cx, y, maxWidth, maxPx, fill, outline = INK, outer = false
 
 /** Pixel letters with a solid outline built from offset copies (a stroke would show seams between pixel runs). */
 function Outlined({ d, o, fill, outline = INK }: { d: string; o: number; fill: string; outline?: string }) {
-  const offsets = [[-o, 0], [o, 0], [0, -o], [0, o], [-o, -o], [o, o], [-o, o], [o, -o], [o * 1.8, o * 1.8]];
+  const offsets = [[-o, 0], [o, 0], [0, -o], [0, o], [-o, -o], [o, o], [-o, o], [o, -o]];
   return <>{offsets.map(([x, y], i) => <path key={i} d={d} fill={outline} transform={`translate(${x.toFixed(2)},${y.toFixed(2)})`} />)}<path d={d} fill={fill} /></>;
 }
 

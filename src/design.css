@@ -452,3 +452,21 @@ button { border-radius: 0; }
 .business-jerseys small { color:var(--cv-text-muted, #94a0b2); margin-left:6px; }
 @media (max-width:700px) { .business-jerseys { grid-template-columns:1fr; } }
 .badge-chip--unanimous { border-color:var(--cv-gold, #ffd166); }
+.expansion-draft > * { min-width:0; }
+.expansion-board .feature-table-scroll { overflow-x:auto; }
+@media (max-width:860px) { .expansion-board .feature-table-scroll { max-height:50vh; } .expansion-actions { justify-content:stretch; } .expansion-actions button { flex:1 1 auto; } }
+
+/* ---- Phone fixes ---- */
+@media (max-width:700px) {
+  /* Toasts: only the newest two, compact, so they never bury the page. */
+  .toast-stack .toast-item:not(:nth-last-child(-n+2)) { display:none; }
+  .toast-stack .toast-item { font-size:12px; padding:6px 10px; }
+  .business-kpis { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+  .business-kpis > div { min-width:0; overflow-wrap:anywhere; }
+  .business-kpis b { font-size:15px; }
+  .business-block { overflow-x:auto; }
+  .business-block table { min-width:520px; }
+  .sched-summary > div b { font-size:15px; }
+  .coach-row { flex-wrap:wrap; }
+  .coach-row label { flex:1 1 140px; }
+}
