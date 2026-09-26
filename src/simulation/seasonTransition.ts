@@ -28,6 +28,7 @@ import {
 import { appendHistoryEvent } from './playerHistory';
 import { resignVerdict } from './freeAgentDecision';
 import { retireLegendJerseys } from './jerseyRetirement';
+import { offseasonCarousel } from './coachingCarousel';
 import { collectPlayerIds } from './playerIds';
 import { computeSeasonAwards, type SeasonAwards, type SeasonAwardsOptions, type AwardWinner } from './awards';
 import type { LeagueRulesSettings } from './leagueRules';
@@ -397,7 +398,9 @@ export function beginNewSeasonRoster(
   };
 
   return {
-    league: advanceStaffSeason(nextLeague, previousSeason, championship?.teamId ?? undefined, seasonAwards.coy?.coachName ?? undefined),
+    // Coaches age and contracts run out, then AI owners review their head coaches (the coaching carousel).
+    league: offseasonCarousel(advanceStaffSeason(nextLeague, previousSeason, championship?.teamId ?? undefined, seasonAwards.coy?.coachName ?? undefined), previousSeason, userTeamId,
+      new Map(nextLeague.teams.map(t => [t.teamId, t.coachIdentity?.coachId]))),
     extras: nextExtras,
     summary: {
       previousSeason,

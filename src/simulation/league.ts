@@ -225,6 +225,8 @@ export interface League {
   cup?: import('./cup').CupState;
   /** This season's Trade Deadline Day: the clock, rumors, calls and every deal made (see deadlineDay.ts). */
   deadlineDay?: import('./deadlineDay').DeadlineDayState;
+  /** Head coaches fired and hired around the league (see coachingCarousel.ts); a few seasons are kept. */
+  coachingCarousel?: import('./coachingCarousel').CoachingCarouselState;
   /** The latest offseason's Summer League (see draftSeason.ts); replaced each year. */
   summerLeague?: import('./draftSeason').SummerLeagueRecord;
 }

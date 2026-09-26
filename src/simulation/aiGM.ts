@@ -1,3 +1,4 @@
+import { midseasonCarousel } from './coachingCarousel';
 import type { PlayerSeason } from './types';
 import type { League, LeagueTeam } from './league';
 import { signingDecision, strengthRanking } from './freeAgentDecision';
@@ -424,7 +425,8 @@ export function runLeagueAIPass(
   controlledTeamId: string | null,
   seed = 1,
 ): LeagueAIPassResult {
-  const mood = refreshLeagueMorale(league, extras);
+  // A struggling AI team may change coaches mid-season (the coaching carousel).
+  const mood = refreshLeagueMorale(midseasonCarousel(league, controlledTeamId, seed + 3), extras);
   const fa = runFreeAgencyAI(mood.league, mood.extras, controlledTeamId, seed);
   const trade = runTradeMarketAI(fa.league, fa.extras, controlledTeamId, seed + 1);
 

@@ -8,6 +8,7 @@ import { dynasties, rivalryKey, rivalryLevel } from './rivalry';
 import { formatGameClock, HIGHLIGHT_LABEL, type HighlightKind } from './highlights';
 import { deadlineNews } from './deadlineDay';
 import { negotiationStories } from './agents';
+import { carouselNews } from './coachingCarousel';
 
 /** Game days that get a "Play of the Night" story; older nights roll off like any other news. */
 const HIGHLIGHT_NIGHTS = 12;
@@ -207,6 +208,8 @@ export function generateNewsFeed(league: League, extras: GMLeagueExtras, maxItem
   }
   // Contract talks with agents: ultimatums, walkouts and deals that went the distance (see agents.ts).
   for (const s of negotiationStories(league, extras)) add({ id: s.id, category: 'Transactions', teamId: s.teamId, teamName: name(s.teamId), headline: s.headline, detail: s.detail, playerId: s.playerId, order: 297_000 });
+  // The coaching carousel: firings and hirings around the league.
+  for (const c of carouselNews(league)) add({ id: c.id, season: c.season, category: 'Teams', teamId: c.teamId, teamName: name(c.teamId), headline: c.headline, detail: c.detail, order: 298_000 + c.order });
   // Summer League: the champion and the MVP (see draftSeason.ts).
   const sl = league.summerLeague;
   if (sl?.championTeamId) add({ id: 'summer:champion', season: sl.season, category: 'Draft', teamId: sl.championTeamId, teamName: name(sl.championTeamId),

@@ -223,3 +223,17 @@ button { border-radius: 0; }
 .negotiation-offer .hint-text { flex-basis: 100%; margin: 0; }
 .fa-ask-years { color: var(--text-dim); }
 @media (max-width: 560px) { .negotiation-offer input[type=range] { width: 140px; } }
+
+/* ---- Coaching carousel ---- */
+.carousel-panel { margin: 18px 0; }
+.carousel-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 18px; }
+.carousel-moves, .carousel-seats { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.carousel-moves li, .carousel-seats li { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; background: #0a1426; border: 1px solid #2a3f5f; }
+.carousel-moves small, .carousel-seats small { display: block; color: var(--text-dim); margin-top: 2px; }
+.carousel-tag { flex: none; min-width: 58px; padding: 1px 5px; text-align: center; font: 600 10px/1.4 var(--font-display); letter-spacing: .08em; border: 1px solid; }
+.carousel-fired .carousel-tag { color: #ffb3b3; border-color: #e85d5d; }
+.carousel-hired .carousel-tag { color: #7fe0a0; border-color: #3fa66a; }
+.carousel-interim .carousel-tag { color: #ffd166; border-color: #c99a2e; }
+.carousel-heat { flex: none; width: 58px; height: 10px; margin-top: 4px; background: #1b2a42; border: 1px solid #36547e; }
+.carousel-heat i { display: block; height: 100%; width: var(--heat); background: linear-gradient(90deg, #f47b20, #e85d5d); }
+@media (max-width: 760px) { .carousel-grid { grid-template-columns: 1fr; } }
