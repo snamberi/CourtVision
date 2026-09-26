@@ -582,7 +582,10 @@ function App() {
   }, [league.schedule, league.playoffBracket, league.teams, controlledTeamId]); // eslint-disable-line react-hooks/exhaustive-deps
   const lastPressCount = useRef(pressWaiting);
   useEffect(() => {
-    if (pressWaiting > lastPressCount.current) pushToast('Reporters want a word. Answer them in the Press Room.', 'info');
+    if (pressWaiting > lastPressCount.current) {
+      const skipped = league.press?.lastSkipped ?? 0;
+      pushToast(`${pressWaiting} reporter${pressWaiting === 1 ? '' : 's'} want a word in the Press Room.${skipped ? ` ${skipped} earlier question${skipped === 1 ? '' : 's'} went unanswered ("no comment"), which the fans noticed.` : ''}`, 'info');
+    }
     lastPressCount.current = pressWaiting;
   }, [pressWaiting]); // eslint-disable-line react-hooks/exhaustive-deps
 

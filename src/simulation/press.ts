@@ -30,10 +30,14 @@ export interface PressState {
   /** How many of your team's games have been looked at, and which one-off topics were already asked about. */
   gamesSeen: number;
   asked: string[];
+  /** Conferences that went unanswered ("no comment") in the latest update, for one summary message. */
+  lastSkipped?: number;
 }
 
 const clamp = (n: number, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, n));
 const MAX_PENDING = 3;
+/** Fan-mood cost of a press conference that went unanswered. */
+export const NO_COMMENT_FANS = 1;
 const short = (id: string) => id.split(' ').slice(-1)[0];
 
 function answersFor(kind: PressKind, subject?: string): PressAnswer[] {
@@ -152,8 +156,13 @@ export function collectPress(league: League, userTeamId: string | null): League 
     found.push(conference(league, s.winnerTeamId === userTeamId ? 'seriesWon' : 'eliminated', key, s.winnerTeamId === userTeamId ? `Series win over ${name(opp)}` : `Eliminated by ${name(opp)}`));
   }
   if (!found.length && state.gamesSeen === results.length && league.press === state) return league;
-  const pending = [...state.pending, ...found.filter(f => !state.pending.some(p => p.id === f.id) && !state.log.some(l => l.id === f.id))].slice(-MAX_PENDING);
-  return { ...league, press: { ...state, fans, pending, playerMood: mood, gamesSeen: results.length, asked: [...asked] } };
+  const queued = [...state.pending, ...found.filter(f => !state.pending.some(p => p.id === f.id) && !state.log.some(l => l.id === f.id))];
+  // More than the podium holds (a long sim): the oldest go unanswered. "No comment" costs a little with the fans.
+  const skipped = queued.slice(0, Math.max(0, queued.length - MAX_PENDING));
+  const pending = queued.slice(-MAX_PENDING);
+  const log = [...state.log, ...skipped.map(c => ({ id: c.id, season: c.season, kind: c.kind, question: c.question, answer: 'No comment.', tone: 'No comment' }))].slice(-40);
+  fans = clamp(fans - skipped.length * NO_COMMENT_FANS);
+  return { ...league, press: { ...state, fans, pending, log, playerMood: mood, gamesSeen: results.length, asked: [...asked], lastSkipped: skipped.length } };
 }
 
 /** Answer a press conference: applies its effects and files it in the log. */

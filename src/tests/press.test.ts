@@ -38,6 +38,18 @@ describe('press room', () => {
     }
   });
 
+  it('overflow from a long sim is logged as "no comment" and costs a little fan mood, never silently lost', () => {
+    const l = collectPress(played, me);
+    const s = pressState(l);
+    const skipped = s.lastSkipped ?? 0;
+    expect(skipped).toBeGreaterThan(0); // 25 game days produce more than three press moments
+    const noComment = s.log.filter(r => r.tone === 'No comment');
+    expect(noComment).toHaveLength(skipped);
+    if (skipped) expect(s.fans).toBeLessThan(55 + 25 * 0.35);
+    const all = new Set([...s.pending.map(p => p.id), ...s.log.map(r => r.id)]);
+    expect(all.size).toBe(s.pending.length + s.log.length);
+  });
+
   it('builds an Around the League segment from what happened', () => {
     const stories = aroundTheLeague(played, extras, me);
     expect(stories.length).toBeGreaterThan(0);
