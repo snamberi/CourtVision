@@ -28,16 +28,28 @@ export interface VoteRow { playerId: string; teamId: string | null; teamName: st
   /** Real NBA voting (imported history): share and first-place votes as recorded, not simulated. */
   real?: boolean;
   /** A season played before the panel's votes were saved: shares reconstructed from the final ballot. */
-  estimated?: boolean }
+  estimated?: boolean;
+  /** Set on the winner's row when every first-place vote went to him (a real NBA share of 1.000). */
+  unanimous?: boolean }
 
 /** The vote for one award: the panel's saved ballots, the real vote for imported seasons, or an estimate for older saves. */
 export function voteRows(awards: SeasonAwards, key: VotedAwardKey | AwardBallotKey, season: string): VoteRow[] {
   const saved = awards.votes?.[key as VotedAwardKey];
-  if (saved && saved.lines.length) return saved.lines.map(l => ({ playerId: l.id, teamId: l.teamId, teamName: l.teamName, first: l.firstVotes, points: l.points, share: l.share }));
+  if (saved && saved.lines.length) return saved.lines.map((l, i) => ({ playerId: l.id, teamId: l.teamId, teamName: l.teamName, first: l.firstVotes, points: l.points, share: l.share,
+    ...(i === 0 && saved.winners.length === 1 && saved.voters > 0 && l.firstVotes === saved.voters ? { unanimous: true } : {}) }));
   const ballot = awards.ballots?.[key as AwardBallotKey] ?? [];
   const winner = (awards as unknown as Record<string, AwardWinner | null | undefined>)[key];
   const field = ballot.length ? ballot : winner && 'playerId' in winner ? [winner] : [];
-  return awardVote(field, `${season}|${key}`).map(r => r.real ? r : { ...r, estimated: true });
+  const rows = awardVote(field, `${season}|${key}`).map(r => r.real ? r : { ...r, estimated: true });
+  const top = rows[0];
+  if (top && (top.real ? top.share >= 0.9995 : top.first >= 100 && rows[1]?.points !== top.points)) rows[0] = { ...top, unanimous: true };
+  return rows;
+}
+
+/** True when the award's winner took every first-place vote. */
+export function isUnanimous(awards: SeasonAwards, key: VotedAwardKey | AwardBallotKey, season: string, winnerId?: string): boolean {
+  const top = voteRows(awards, key, season)[0];
+  return !!top?.unanimous && (winnerId == null || top.playerId === winnerId);
 }
 /**
  * A 100-member media panel votes on a ranked ballot (10-7-5-3-1 points, like MVP voting). Each voter sees the

@@ -188,3 +188,15 @@
 @keyframes cc-flash { 0%, 92% { opacity: 0; } 94% { opacity: 1; } 97% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .cc-dialog *, .cc-dialog *::before { animation: none !important; } .cc-confetti, .cc-flashes { display: none; } }
 @media (max-width: 700px) { .cc-back { display: none; } .cc-player svg { width: 54px; height: auto; } .cc-fmvp .cc-player svg { width: 72px; } .cc-fmvp-trophy { top: -42px; } .cc-side:first-child .cc-player:nth-child(1):nth-last-child(3), .cc-side:last-child .cc-player:nth-child(3) { display: none; } .cc-stage { min-height: 400px; } .cc-banner h2 { font-size: .8rem; } }
+
+/* ---- Unanimous winners: every first-place vote ---- */
+.unanimous-tag {
+  display: inline-flex; align-items: center; gap: 5px; margin-left: 8px; padding: 3px 7px 2px; vertical-align: middle;
+  background: linear-gradient(180deg, #ffe08a, #ffc23d); color: #2a1a00; border: 1px solid #fff1c2; border-bottom: 2px solid #9a6a0c;
+  box-shadow: 2px 2px 0 #000; font: 8px/1.3 var(--font-pixel); letter-spacing: .06em; text-transform: uppercase; text-shadow: none; white-space: nowrap;
+}
+.unanimous-tag--compact { margin-left: 6px; padding: 2px 5px 1px; font-size: 7px; }
+.award-card--unanimous { border-color: #c99a2e !important; box-shadow: inset 0 2px 0 rgba(255, 209, 102, .35), 4px 4px 0 #000 !important; }
+.an-unanimous { margin: 8px 0 0; }
+.an-unanimous .unanimous-tag { margin-left: 0; font-size: 10px; padding: 5px 10px 4px; }
+.almanac-award .unanimous-tag { align-self: flex-start; margin: 2px 0; }

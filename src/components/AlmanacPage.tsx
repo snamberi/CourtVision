@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
+import { UnanimousTag } from './UnanimousTag';
 import type { League } from '../simulation/league';
 import { hasConferenceStructure } from '../simulation/league';
 import type { GMLeagueExtras } from '../simulation/gm';
 import { awardOptions, computeSeasonAwards, type AwardWinner } from '../simulation/awards';
-import { almanacSeason, almanacSeasons, voteRows, CEREMONY_ORDER, type LeaderBoard } from '../simulation/almanac';
+import { almanacSeason, almanacSeasons, voteRows, isUnanimous, CEREMONY_ORDER, type LeaderBoard } from '../simulation/almanac';
 import { finalsMVPLine } from '../simulation/awards';
 import { PixelTrophy } from './PixelTrophy';
 import { ChampionshipCelebration, type CelebrationInfo } from './ChampionshipCelebration';
@@ -72,11 +73,12 @@ export function AlmanacPage({ league, extras, awardSettings, onSelectPlayer }: {
         const vote = voteRows(entry.awards!, a.key, entry.season)[0];
         return <div key={a.key} className="almanac-award"><small><PixelTrophy award={a.key as TrophyKey} size={16} /> {a.label}</small>
           <button className="prospect-name" onClick={() => onSelectPlayer(w.playerId)}><PlayerNameTag playerId={w.playerId} teamId={w.teamId} size={26} /></button>
+          {vote?.unanimous && vote.playerId === w.playerId && <UnanimousTag compact />}
           {vote && vote.playerId === w.playerId && <span className="hint-text">{(vote.share * 100).toFixed(1)}% share · {vote.first} first-place{vote.real ? ' (real voting)' : vote.estimated ? ' (estimated)' : ''}</span>}
           {(entry.awards!.coWinners?.[a.key as keyof NonNullable<typeof entry.awards.coWinners>] ?? []).map(c => <span key={c.playerId} className="hint-text">Shared with <button className="link-button" onClick={() => onSelectPlayer(c.playerId)}>{c.playerId}</button></span>)}</div>;
       })}
-      {entry.awards.coy && <div className="almanac-award"><small><PixelTrophy award="coy" size={16} /> Coach of the Year</small><b>{entry.awards.coy.coachName ?? entry.awards.coy.teamName}</b><span className="hint-text">{entry.awards.coy.teamName}</span></div>}
-      {entry.awards.eoy && <div className="almanac-award"><small><PixelTrophy award="eoy" size={16} /> Executive of the Year</small><b>{entry.awards.eoy.userTeam ? 'Your front office' : `${entry.awards.eoy.teamName}`}</b><span className="hint-text">{entry.awards.eoy.detail ? `${entry.awards.eoy.detail.wins}–${entry.awards.eoy.detail.losses}` : ''}</span></div>}
+      {entry.awards.coy && <div className="almanac-award"><small><PixelTrophy award="coy" size={16} /> Coach of the Year</small><b>{entry.awards.coy.coachName ?? entry.awards.coy.teamName}</b>{isUnanimous(entry.awards, 'coy', entry.season) && <UnanimousTag compact />}<span className="hint-text">{entry.awards.coy.teamName}</span></div>}
+      {entry.awards.eoy && <div className="almanac-award"><small><PixelTrophy award="eoy" size={16} /> Executive of the Year</small><b>{entry.awards.eoy.userTeam ? 'Your front office' : `${entry.awards.eoy.teamName}`}</b>{isUnanimous(entry.awards, 'eoy', entry.season) && <UnanimousTag compact />}<span className="hint-text">{entry.awards.eoy.detail ? `${entry.awards.eoy.detail.wins}–${entry.awards.eoy.detail.losses}` : ''}</span></div>}
       </div>
       {([['All-League', entry.awards.allNBA], ['All-Defensive', entry.awards.allDefense], ['All-Rookie', entry.awards.allRookie]] as const).map(([label, teams]) => teams?.some(t => t.length) ? <div key={label} className="almanac-teams">
         <b>{label}</b>{teams.map((t, i) => <p key={i}><small>{['1st', '2nd', '3rd'][i]}</small>{t.map(w => <button key={w.playerId} className="link-button" onClick={() => onSelectPlayer(w.playerId)}>{w.playerId}</button>)}</p>)}

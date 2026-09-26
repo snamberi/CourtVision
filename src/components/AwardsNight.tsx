@@ -4,6 +4,7 @@ import type { League } from '../simulation/league';
 import type { GMLeagueExtras } from '../simulation/gm';
 import type { AwardBallotKey, AwardWinner, SeasonAwards, StatSnapshot, TeamAwardWinner, VotedAwardKey } from '../simulation/awards';
 import { voteRows, type VoteRow } from '../simulation/almanac';
+import { UnanimousTag } from './UnanimousTag';
 import { formatSeasonYear } from '../simulation/calendar';
 import { TROPHIES, type TrophyKey } from '../simulation/trophies';
 import { PlayerAvatar, PlayerNameTag } from './PlayerAvatar';
@@ -181,7 +182,8 @@ export function AwardsNight({ league, extras, awards, season, fmvp, onSelectPlay
               {teamAward.detail.prevWins != null && <div><dt>LAST YEAR</dt><dd>{teamAward.detail.prevWins}–{teamAward.detail.prevLosses}</dd></div>}
               {teamAward.detail.expectedWins != null && <div><dt>PROJECTED</dt><dd>{teamAward.detail.expectedWins} W</dd></div>}
             </dl>}
-            {top && <p className="an-winner-votes">{top.first === (saved?.voters ?? 100) && !shared ? 'Unanimous · ' : ''}{top.first} first-place vote{top.first === 1 ? '' : 's'} · {(top.share * 100).toFixed(1)}% share{top.real ? ' · real voting' : top.estimated ? ' · estimated' : ''}</p>}
+            {top?.unanimous && !shared && <p className="an-unanimous"><UnanimousTag /></p>}
+            {top && <p className="an-winner-votes">{top.first} first-place vote{top.first === 1 ? '' : 's'} · {(top.share * 100).toFixed(1)}% share{top.real ? ' · real voting' : top.estimated ? ' · estimated' : ''}</p>}
           </div>
         </div>
         {notes.length > 0 && <div className="an-why"><h4>Why {step.team ? 'they' : 'he'} won</h4><ul>{notes.map((n, i) => <li key={i} style={{ animationDelay: `${300 + i * 140}ms` }}>{n}</li>)}</ul></div>}

@@ -4,7 +4,7 @@ import type { League } from '../simulation/league';
 import type { PlayoffBracket, PlayoffSeries } from '../simulation/playoffs';
 import { awardOptions, awardRaceStandings, computeSeasonAwards, finalsMVPLine, RACE_LABELS, type AwardWinner, type RaceKey, type TeamAwardWinner } from '../simulation/awards';
 import { ladderTrend, type PeriodHonor } from '../simulation/awardRace';
-import { isOffseason } from '../simulation/almanac';
+import { isOffseason, isUnanimous } from '../simulation/almanac';
 import { formatSeasonYear } from '../simulation/calendar';
 import { simulateAllStarGame, type AllStarGameResult } from '../simulation/allStarGame';
 import { perGameAverages } from '../simulation/careerStats';
@@ -14,6 +14,7 @@ import type { AwardSettings } from './LeagueSettingsPage';
 import { PlayerNameTag } from './PlayerAvatar';
 import { PixelTrophy } from './PixelTrophy';
 import { AwardsNight } from './AwardsNight';
+import { UnanimousTag } from './UnanimousTag';
 
 interface Props {
   league: League;
@@ -24,12 +25,12 @@ interface Props {
   onCelebrate?: () => void;
 }
 
-function WinnerCard({ trophy, winner, note, onSelectPlayer, co }: { trophy: TrophyKey; winner: AwardWinner | null; note?: ReactNode; onSelectPlayer: (id: string) => void; co?: AwardWinner[] }) {
+function WinnerCard({ trophy, winner, note, onSelectPlayer, co, unanimous }: { trophy: TrophyKey; winner: AwardWinner | null; note?: ReactNode; onSelectPlayer: (id: string) => void; co?: AwardWinner[]; unanimous?: boolean }) {
   return (
-    <div className={`award-card award-card--trophy${winner ? '' : ' award-card--empty'}`}>
+    <div className={`award-card award-card--trophy${winner ? '' : ' award-card--empty'}${unanimous ? ' award-card--unanimous' : ''}`}>
       <PixelTrophy award={trophy} size={34} dim={!winner} />
       <div>
-        <h4>{TROPHIES[trophy].label}</h4>
+        <h4>{TROPHIES[trophy].label}{unanimous && <UnanimousTag compact />}</h4>
         {winner ? <>
           <p className="award-winner" onClick={() => onSelectPlayer(winner.playerId)}><PlayerNameTag playerId={winner.playerId} teamId={winner.teamId} size={26} /></p>
           {co?.map(c => <p key={c.playerId} className="award-winner award-co" onClick={() => onSelectPlayer(c.playerId)}>and <PlayerNameTag playerId={c.playerId} teamId={c.teamId} size={20} /></p>)}
@@ -40,12 +41,12 @@ function WinnerCard({ trophy, winner, note, onSelectPlayer, co }: { trophy: Trop
   );
 }
 
-function TeamWinnerCard({ trophy, winner, who }: { trophy: TrophyKey; winner: TeamAwardWinner | null | undefined; who: string | null }) {
+function TeamWinnerCard({ trophy, winner, who, unanimous }: { trophy: TrophyKey; winner: TeamAwardWinner | null | undefined; who: string | null; unanimous?: boolean }) {
   return (
-    <div className={`award-card award-card--trophy${winner ? '' : ' award-card--empty'}`}>
+    <div className={`award-card award-card--trophy${winner ? '' : ' award-card--empty'}${unanimous ? ' award-card--unanimous' : ''}`}>
       <PixelTrophy award={trophy} size={34} dim={!winner} />
       <div>
-        <h4>{TROPHIES[trophy].label}</h4>
+        <h4>{TROPHIES[trophy].label}{unanimous && <UnanimousTag compact />}</h4>
         {winner ? <>
           <p className="award-winner">{who}</p>
           <p className="hint-text"><TeamLink teamId={winner.teamId} name={winner.teamName} />{winner.detail ? ` · ${winner.detail.wins}–${winner.detail.losses}` : ''}{winner.voteShare != null ? ` · ${(winner.voteShare * 100).toFixed(0)}% share` : ''}</p>
@@ -138,6 +139,9 @@ export function AwardsPage({ league, onSelectPlayer, awardSettings, finalsBracke
   const months = honors.filter(h => h.kind === 'month');
   const board = race[raceKey];
   const note = (w: AwardWinner | null) => w?.voteShare != null ? `${(w.voteShare * 100).toFixed(0)}% share · ${w.firstVotes ?? 0} first-place` : w ? `score ${w.score}` : undefined;
+  // Only a finished vote can be unanimous; the in-season preview is a projection.
+  const unanimous = (key: 'mvp' | 'dpoy' | 'roy' | 'mip' | 'smoy' | 'cpoy' | 'coy' | 'eoy', w: AwardWinner | TeamAwardWinner | null | undefined) =>
+    !!w && recap && isUnanimous(awards, key, awardsSeason, 'playerId' in w ? w.playerId : undefined);
   const confs = awards.allStars.length > 0 && awards.allStars.every(w => w.conference);
   const isStarter = (w: AwardWinner) => w.starter ?? awards.allStars.indexOf(w) < 10;
 
@@ -206,14 +210,14 @@ export function AwardsPage({ league, onSelectPlayer, awardSettings, finalsBracke
         <>
           <h4 className="stats-subheading">{archived ? `The ${formatSeasonYear(awardsSeason)} Winners` : recap ? 'The Winners' : 'If the Vote Were Today'}</h4>
           <div className="awards-grid">
-            <WinnerCard trophy="mvp" winner={awards.mvp} note={note(awards.mvp)} co={awards.coWinners?.mvp} onSelectPlayer={onSelectPlayer} />
-            <WinnerCard trophy="dpoy" winner={awards.dpoy} note={note(awards.dpoy)} co={awards.coWinners?.dpoy} onSelectPlayer={onSelectPlayer} />
-            <WinnerCard trophy="roy" winner={awards.roy} note={note(awards.roy)} co={awards.coWinners?.roy} onSelectPlayer={onSelectPlayer} />
-            <WinnerCard trophy="mip" winner={awards.mip} note={note(awards.mip)} co={awards.coWinners?.mip} onSelectPlayer={onSelectPlayer} />
-            <WinnerCard trophy="smoy" winner={awards.smoy} note={note(awards.smoy)} co={awards.coWinners?.smoy} onSelectPlayer={onSelectPlayer} />
-            <WinnerCard trophy="cpoy" winner={awards.cpoy} note={note(awards.cpoy)} co={awards.coWinners?.cpoy} onSelectPlayer={onSelectPlayer} />
-            <TeamWinnerCard trophy="coy" winner={awards.coy} who={awards.coy ? awards.coy.coachName ?? awards.coy.teamName : null} />
-            <TeamWinnerCard trophy="eoy" winner={awards.eoy} who={awards.eoy ? (awards.eoy.userTeam ? 'You — your front office' : `${awards.eoy.teamName} front office`) : null} />
+            <WinnerCard trophy="mvp" winner={awards.mvp} note={note(awards.mvp)} co={awards.coWinners?.mvp} unanimous={unanimous('mvp', awards.mvp)} onSelectPlayer={onSelectPlayer} />
+            <WinnerCard trophy="dpoy" winner={awards.dpoy} note={note(awards.dpoy)} co={awards.coWinners?.dpoy} unanimous={unanimous('dpoy', awards.dpoy)} onSelectPlayer={onSelectPlayer} />
+            <WinnerCard trophy="roy" winner={awards.roy} note={note(awards.roy)} co={awards.coWinners?.roy} unanimous={unanimous('roy', awards.roy)} onSelectPlayer={onSelectPlayer} />
+            <WinnerCard trophy="mip" winner={awards.mip} note={note(awards.mip)} co={awards.coWinners?.mip} unanimous={unanimous('mip', awards.mip)} onSelectPlayer={onSelectPlayer} />
+            <WinnerCard trophy="smoy" winner={awards.smoy} note={note(awards.smoy)} co={awards.coWinners?.smoy} unanimous={unanimous('smoy', awards.smoy)} onSelectPlayer={onSelectPlayer} />
+            <WinnerCard trophy="cpoy" winner={awards.cpoy} note={note(awards.cpoy)} co={awards.coWinners?.cpoy} unanimous={unanimous('cpoy', awards.cpoy)} onSelectPlayer={onSelectPlayer} />
+            <TeamWinnerCard trophy="coy" winner={awards.coy} who={awards.coy ? awards.coy.coachName ?? awards.coy.teamName : null} unanimous={unanimous('coy', awards.coy)} />
+            <TeamWinnerCard trophy="eoy" winner={awards.eoy} who={awards.eoy ? (awards.eoy.userTeam ? 'You — your front office' : `${awards.eoy.teamName} front office`) : null} unanimous={unanimous('eoy', awards.eoy)} />
             <WinnerCard trophy="pom" winner={awards.playerOfTheMonth} note={months.length ? `${awards.playerOfTheMonth?.score ?? 0}× Player of the Month` : 'best producer so far'} onSelectPlayer={onSelectPlayer} />
           </div>
 

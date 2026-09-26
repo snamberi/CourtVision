@@ -14,6 +14,7 @@ import './pixel.css';
 import './tutorial.css';
 import './polish.css';
 import './awards.css';
+import './contrast.css';
 import { CoachGuide } from './components/tutorial/CoachGuide';
 import { SeasonRoadMap } from './components/tutorial/SeasonRoadMap';
 import { FirstSeasonChecklist } from './components/tutorial/FirstSeasonChecklist';

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { DiscordLink } from './DiscordLink';
 import { SANDBOX_TABS } from '../navigation/permissions';
 import type { SeasonPhase } from '../simulation/league';
 import { GROUPS, NAV_ICONS, type LeagueSettingsSub, type NavItem } from '../navigation/menu';
@@ -72,7 +73,7 @@ export function Sidebar(props: Props) {
     </div>
   );
   const modeSwitch = !collapsed && onNavModeChange ? <ModeSwitch mode={navMode} onChange={onNavModeChange} /> : null;
-  const exit = <div className="sidebar-group sidebar-exit"><button className="sidebar-item" onClick={onMainMenu} aria-label="Main Menu" title="Main Menu"><PixelIcon name="exit" size={18} />{!collapsed && <span className="sidebar-item-label">Main Menu</span>}</button></div>;
+  const exit = <div className="sidebar-group sidebar-exit"><DiscordLink className="sidebar-item sidebar-discord" compact={collapsed} label="Discord" /><button className="sidebar-item" onClick={onMainMenu} aria-label="Main Menu" title="Main Menu"><PixelIcon name="exit" size={18} />{!collapsed && <span className="sidebar-item-label">Main Menu</span>}</button></div>;
   /** Brand and menu switch stay on top and Main Menu stays at the bottom; everything between scrolls. */
   const frame = (className: string, body: ReactNode) => (
     <nav id="game-navigation" className={`sidebar ${className} ${collapsed ? 'collapsed' : ''}`} aria-label="Game navigation">

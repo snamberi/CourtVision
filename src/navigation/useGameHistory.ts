@@ -2,6 +2,14 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 const PRIVACY = '#/privacy';
 export const NAVIGATION_EVENT = 'courtvision:navigation';
+/** The last page shown in this tab. Restores it on reload when the address lost its hash (embeds, some hosts). */
+const LAST_ROUTE_KEY = 'courtvision:lastRoute';
+function readLastRoute(): string | null {
+  try { return sessionStorage.getItem(LAST_ROUTE_KEY); } catch { return null; }
+}
+function writeLastRoute(route: string) {
+  try { sessionStorage.setItem(LAST_ROUTE_KEY, route); } catch { /* storage blocked: the hash alone still works */ }
+}
 
 /** Hash routes work with static hosting and the offline edition, without server rewrites. */
 export function useGameHistory(
@@ -22,6 +30,10 @@ export function useGameHistory(
     let sequence = 0;
     let alive = true;
     const sync = async (initial = false) => {
+      if (initial && !location.hash) {
+        const last = readLastRoute();
+        if (last && last !== '#/menu') history.replaceState({ cvRoute: last }, '', last);
+      }
       const hash = location.hash || '#/menu';
       if (!initial && hash === lastSeen.current) return;
       lastSeen.current = hash;
@@ -68,8 +80,11 @@ export function useGameHistory(
     }
     // A restored/invalid route is canonicalized in place; only user navigation adds history.
     const hash = location.hash;
+    writeLastRoute(currentRoute);
     if (hash !== currentRoute) {
-      const replace = !hash || lastSeen.current !== underlyingWritten.current;
+      // Team selection is a one-time step: once the league opens, Back should not land on a stale picker (which falls to the menu).
+      const leavingPicker = hash === '#/choose-team' && currentRoute.startsWith('#/league/');
+      const replace = !hash || leavingPicker || lastSeen.current !== underlyingWritten.current;
       history[replace ? 'replaceState' : 'pushState']({ cvRoute: currentRoute }, '', currentRoute);
     }
     underlyingWritten.current = currentRoute;
