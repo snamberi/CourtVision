@@ -405,3 +405,9 @@ button { border-radius: 0; }
 .coach-last-shot { display:flex; flex-wrap:wrap; align-items:flex-end; gap:10px; padding:10px 12px; margin:6px 0; border:2px solid var(--cv-gold, #ffd166); background:#2a2412; box-shadow:3px 3px 0 #060a11; }
 .coach-last-shot b { width:100%; color:var(--cv-gold, #ffd166); }
 .coach-last-shot label { display:grid; gap:3px; font-size:12px; color:var(--cv-text-muted, #94a0b2); }
+
+/* ---- Trade talks ---- */
+.trade-counter { margin:10px 0; padding:10px 12px; border:2px solid var(--cv-orange, #f47b20); background:var(--cv-surface-raised, #192333); box-shadow:3px 3px 0 #060a11; display:grid; gap:6px; }
+.trade-counter p { margin:0; }
+.trade-counter-actions { display:flex; flex-wrap:wrap; gap:8px; }
+.trade-offer-note { color:var(--cv-gold, #ffd166); font-weight:600; }

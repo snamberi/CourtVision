@@ -110,6 +110,8 @@ export interface GMLeagueExtras {
   tradeBlock: PlayerId[]; // players any team has marked as available for trade discussion
   draftPickIndex: number; // whose turn it is in the draft order, incremented on every successful pick (by anyone)
   pendingTradeOffers: TradeProposal[]; // AI-generated offers targeting the controlled team, awaiting accept/decline
+  /** Trade talks with AI front offices this season: rounds of counters and when talks broke off (see tradeTalks.ts). */
+  tradeTalks?: Record<string, import('./tradeTalks').TradeTalkState>;
   freeAgencyDaysRemaining: number; // counts down during the 30-day free agency window in the season-flow lifecycle; 0 when not in that window
   teamPersonalities?: Record<TeamId, 'aggressive' | 'conservative' | 'balanced'>; // AI front-office archetype per team; absent teams default to 'balanced'
   draftOrder?: TeamId[]; // this draft's determined pick order (post-lottery), set once when the draft class is generated
@@ -260,6 +262,8 @@ export interface TradeProposal {
   picksFromB?: string[];
   currentPicksFromA?: number[]; // zero-based slots in the open draft
   currentPicksFromB?: number[];
+  /** Why an AI team is calling (shown with incoming offers). */
+  note?: string;
 }
 
 export interface TradeValidation {

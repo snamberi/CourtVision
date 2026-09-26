@@ -388,6 +388,15 @@ export function generateTradeOfferForControlledTeam(
   const rng = new RNG(seed);
   const partners = aiTeamIds(league, controlledTeamId);
   const shuffled = [...partners].sort(() => rng.next() - 0.5);
+  // Players you put on the block get calls first: a team that wants him makes you an offer for him.
+  const mine = league.teams.find(t => t.teamId === controlledTeamId);
+  const onBlock = extras.tradeBlock.filter(id => mine?.seasons.some(p => p.playerId === id && !p.stick));
+  for (const target of onBlock) {
+    for (const partnerId of shuffled) {
+      const proposal = findAITrade(league, extras, controlledTeamId, partnerId, controlledTeamId, target);
+      if (proposal && validateTrade(league, extras, proposal).valid) return { ...proposal, note: `${league.teams.find(t => t.teamId === partnerId)?.name ?? partnerId} are calling about ${target} on your trade block.` };
+    }
+  }
   for (const partnerId of shuffled) {
     const proposal = findAITrade(league, extras, controlledTeamId, partnerId);
     if (!proposal) continue;
