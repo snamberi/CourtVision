@@ -7,6 +7,7 @@ import { calculateOverall } from './engine/overall';
 import { dynasties, rivalryKey, rivalryLevel } from './rivalry';
 import { formatGameClock, HIGHLIGHT_LABEL, type HighlightKind } from './highlights';
 import { deadlineNews } from './deadlineDay';
+import { negotiationStories } from './agents';
 
 /** Game days that get a "Play of the Night" story; older nights roll off like any other news. */
 const HIGHLIGHT_NIGHTS = 12;
@@ -204,6 +205,8 @@ export function generateNewsFeed(league: League, extras: GMLeagueExtras, maxItem
     add({ id: `jersey:${t.teamId}:${j.number}`, season: j.season, category: 'Teams', teamId: t.teamId, teamName: t.name,
       headline: `${t.name} retire #${j.number} for ${j.playerId}.`, detail: 'No one on the team will wear it again. The banner goes up in the rafters.', playerId: j.playerId, order: 296_000 });
   }
+  // Contract talks with agents: ultimatums, walkouts and deals that went the distance (see agents.ts).
+  for (const s of negotiationStories(league, extras)) add({ id: s.id, category: 'Transactions', teamId: s.teamId, teamName: name(s.teamId), headline: s.headline, detail: s.detail, playerId: s.playerId, order: 297_000 });
   // Summer League: the champion and the MVP (see draftSeason.ts).
   const sl = league.summerLeague;
   if (sl?.championTeamId) add({ id: 'summer:champion', season: sl.season, category: 'Draft', teamId: sl.championTeamId, teamName: name(sl.championTeamId),

@@ -117,6 +117,8 @@ export interface GMLeagueExtras {
   futurePicks?: FutureDraftPick[]; // tradeable draft-pick futures ledger (this year + several years out), see below
   picksOnBlock?: string[]; // FutureDraftPick ids any team has marked as available for trade discussion
   draftWorkouts?: Record<TeamId, PlayerId[]>; // pre-draft workout invites per team (see scouting.ts); stale ids are ignored
+  /** This offseason's contract talks with agents, keyed `${teamId}|${playerId}` (see agents.ts). */
+  negotiations?: Record<string, import('./agents').Negotiation>;
 }
 
 // ---- Draft pick trading (futures ledger) ----

@@ -393,6 +393,7 @@ export function beginNewSeasonRoster(
     draftPickIndex: 0,
     draftPicksMade: [],
     pendingTradeOffers: [],
+    negotiations: {},
   };
 
   return {
