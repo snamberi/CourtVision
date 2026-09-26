@@ -79,6 +79,7 @@ export const SIMPLE_HUBS: SimpleHub[] = [
       { label: 'Player ratings', tab: 'database' },
       { label: 'Team stats', tab: 'teamStats' },
       { label: 'Award races', tab: 'awards' },
+      { label: 'Year in review', tab: 'yearInReview' },
       { label: 'Transactions', tab: 'transactions' },
     ],
   },

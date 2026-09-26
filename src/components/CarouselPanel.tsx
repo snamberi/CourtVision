@@ -8,7 +8,7 @@ export function CarouselPanel({ league, controlledTeamId }: { league: League; co
   const events = league.coachingCarousel?.events ?? [];
   const latest = events.length ? events[events.length - 1].season : null;
   const moves = events.filter(e => e.season === latest).slice().reverse();
-  const inSeason = (league.seasonPhase ?? 'regular_season') === 'regular_season' && league.schedule.some(g => g.played);
+  const inSeason = ['regular_season', 'all_star', 'playoffs', 'awards_recap'].includes(league.seasonPhase ?? 'regular_season') && league.schedule.some(g => g.played);
   const seats = inSeason ? hotSeats(league, controlledTeamId).filter(s => s.heat >= 45).slice(0, 6) : [];
   const name = (id: string) => league.teams.find(t => t.teamId === id)?.name ?? id;
   return <section className="carousel-panel" aria-label="Coaching carousel">

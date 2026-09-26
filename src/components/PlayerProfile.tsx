@@ -434,7 +434,7 @@ function PlayerCard({ season, ratings, badgeNames, awardsHistory, league }: {
             <tr>
               <td>Draft</td>
               <td>
-                {season.draftYear ? <>{season.draftYear} — Round {season.draftRound ?? '?'}, Pick {season.draftPick ?? '?'}{season.draftTeamId && <> (<TeamLink teamId={season.draftTeamId} name={league?.teams.find(t => t.teamId === season.draftTeamId)?.name ?? season.draftTeamId} />)</>}</> : 'Undrafted'}
+                {season.draftYear ? <>{formatSeasonYear(season.draftYear)} draft — Round {season.draftRound ?? '?'}, Pick {season.draftPick ?? '?'}{season.draftTeamId && <> (<TeamLink teamId={season.draftTeamId} name={league?.teams.find(t => t.teamId === season.draftTeamId)?.name ?? season.draftTeamId} />)</>}</> : 'Undrafted'}
               </td>
             </tr>
           </tbody>

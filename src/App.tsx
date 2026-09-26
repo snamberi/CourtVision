@@ -130,6 +130,7 @@ const AlmanacPage = lazy(() => import('./components/AlmanacPage').then(m => ({ d
 const ResignWaivePage = lazy(() => import('./components/ResignWaivePage').then(m => ({ default: m.ResignWaivePage })));
 const PreseasonPage = lazy(() => import('./components/PreseasonPage').then(m => ({ default: m.PreseasonPage })));
 const CupPage = lazy(() => import('./components/CupPage').then(m => ({ default: m.CupPage })));
+const YearInReviewPage = lazy(() => import('./components/YearInReviewPage').then(m => ({ default: m.YearInReviewPage })));
 const DeadlineDayPage = lazy(() => import('./components/DeadlineDayPage').then(m => ({ default: m.DeadlineDayPage })));
 const SummerLeaguePage = lazy(() => import('./components/SummerLeaguePage').then(m => ({ default: m.SummerLeaguePage })));
 const GmOfficePage = lazy(() => import('./components/FrontOfficePanels').then(m => ({ default: m.GmOfficePage })));
@@ -756,7 +757,8 @@ function App() {
 
   const beginAwardsRecap = () => {
     setLeague((l) => ({ ...l, seasonPhase: 'awards_recap' }));
-    setTab('awards');
+    // The Year in Review show opens first for the team you run; the awards follow it.
+    setTab(controlledTeamId ? 'yearInReview' : 'awards');
   };
 
   const beginDraftPhase = () => {
@@ -1122,6 +1124,7 @@ function App() {
         onSimulateToDeadline={simulateToTradeDeadline}
         deadlineClockLabel={isDeadlineDayOpen(league) ? deadlineClock(league.deadlineDay!.hour) : null}
         onOpenDeadline={() => setTab('deadline')}
+        onOpenYearInReview={controlledTeamId ? () => setTab('yearInReview') : undefined}
         seasonSimJob={{
           running: jobs.seasonSim.running,
           progress: jobs.seasonSim.progress,
@@ -1398,6 +1401,10 @@ function App() {
             ? <p className="empty-state">No teams yet.</p>
             : <InjuryReportPage sandboxMode={sandboxMode} league={league} controlledTeamId={controlledTeamId} onChange={setLeague} onSelectPlayer={selectPlayer} />
         )}
+
+        {tab === 'yearInReview' && <YearInReviewPage league={league} extras={extras} controlledTeamId={controlledTeamId} awardOptions={awardOptions(awardSettings)}
+          onOpenAwards={() => setTab('awards')} onSelectPlayer={selectPlayer}
+          onOpenGame={(id) => { setViewedGameId(id); setBoxscoreSource('league'); setTab('boxscore'); }} />}
 
         {tab === 'awards' && (
           league.teams.length === 0

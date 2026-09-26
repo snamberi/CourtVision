@@ -32,6 +32,7 @@ export interface PlayButtonProps {
   /** The Deadline Day clock ("11:00 AM") while the day is under way. */
   deadlineClockLabel?: string | null;
   onOpenDeadline?: () => void;
+  onOpenYearInReview?: () => void;
   seasonSimJob: { running: boolean; progress: ProgressStore<SeasonSimProgress>; start: () => void; cancel: () => void };
   autoPlayJob: { running: boolean; progress: AutoPlayProgress | null; start: (years: number) => void; cancel: () => void };
 
@@ -215,7 +216,8 @@ export function PlayButton(props: PlayButtonProps) {
 
           {!blocked && seasonPhase === 'awards_recap' && (
             <div className="play-menu-section">
-              <p>Season recap is ready on the Awards page.</p>
+              <p>The season is over: the Year in Review and the awards are ready.</p>
+              {props.onOpenYearInReview && <button onClick={() => doAndClose(props.onOpenYearInReview!)}>Watch the Year in Review</button>}
               <button className="primary" onClick={() => doAndClose(onContinueToDraft)}>Continue to Draft</button>
             </div>
           )}

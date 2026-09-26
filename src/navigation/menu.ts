@@ -82,6 +82,7 @@ export const GROUPS: NavGroup[] = [
       { label: 'League Stats', tab: 'analytics' },
       { label: 'Injuries', tab: 'injuries' },
       { label: 'Award Races', tab: 'awards' },
+      { label: 'Year in Review', tab: 'yearInReview', requiresControlledTeam: true },
       { label: 'Records', tab: 'records' },
     ],
   },
@@ -109,7 +110,7 @@ export const GROUPS: NavGroup[] = [
 ];
 
 export const NAV_ICONS: Record<string, string> = {
-  cup: 'trophy', deadline: 'clock', gmOffice: 'star', summerLeague: 'play', coaching: 'list', allStarWeekend: 'trophy', dashboard: 'court', standings: 'chart', playoffs: 'trophy', schedule: 'calendar',
+  cup: 'trophy', deadline: 'clock', yearInReview: 'star', gmOffice: 'star', summerLeague: 'play', coaching: 'list', allStarWeekend: 'trophy', dashboard: 'court', standings: 'chart', playoffs: 'trophy', schedule: 'calendar',
   dailySchedule: 'calendar', finances: 'chart', history: 'list', powerRankings: 'chart',
   transactions: 'trade', news: 'list', yourTeam: 'team', roster: 'team', freeAgency: 'team',
   trade: 'trade', tradeBlock: 'trade', tradeOffers: 'trade', draft: 'team', compare: 'chart',

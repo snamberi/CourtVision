@@ -229,7 +229,7 @@ function seedOf(league: League, teamId: string): { seed: number; size: number } 
 }
 
 /** How far the team has gone in the current bracket, when there is one. */
-function bracketFinish(league: League, teamId: string): { finish: PlayoffFinish; alive: boolean } | null {
+export function bracketFinish(league: League, teamId: string): { finish: PlayoffFinish; alive: boolean } | null {
   const b = league.playoffBracket;
   if (!b) return null;
   let reached = -1; let alive = false;
