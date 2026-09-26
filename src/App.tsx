@@ -1316,7 +1316,7 @@ function App() {
         {tab === 'schedule' && (
           league.teams.length < 2
             ? <p className="empty-state">Need at least two teams for a league schedule.</p>
-            : <SchedulePage league={league} onViewGame={viewScheduledGame} />
+            : <SchedulePage league={league} controlledTeamId={controlledTeamId} onViewGame={viewScheduledGame} />
         )}
 
         {tab === 'playoffs' && (

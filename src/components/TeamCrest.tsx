@@ -10,7 +10,7 @@ const CREAM = '#f6ecd2', INK = '#0b1018';
 
 const hash = (s: string) => [...s].reduce((h, c) => (Math.imul(h, 31) + c.charCodeAt(0)) >>> 0, 7);
 /** Each team keeps one crest layout, picked from its id, so the league shows a mix of roundels, wordmarks and shields. */
-export const crestLayout = (teamId: string): CrestLayout => LAYOUTS[hash(teamId) % LAYOUTS.length];
+const crestLayout = (teamId: string): CrestLayout => LAYOUTS[hash(teamId) % LAYOUTS.length];
 
 /** Pixel text centred on (cx, y), sized to fit maxWidth (at most maxPx per font pixel). */
 function Word({ text, cx, y, maxWidth, maxPx, fill, outline = INK, outer = false }: { text: string; cx: number; y: number; maxWidth: number; maxPx: number; fill: string; outline?: string; outer?: boolean }) {

@@ -45,7 +45,7 @@ function CourtLines(){
 }
 
 /* The scene is wider than the court: baseline aprons carry the team name and the side stands hold the crowd. */
-export const SCENE={x:-110,w:1220};
+const SCENE={x:-110,w:1220};
 const shade=(hex:string,amt:number)=>{const n=parseInt(hex.slice(1),16),c=[n>>16,(n>>8)&255,n&255].map(v=>Math.max(0,Math.min(255,Math.round(amt<0?v*(1+amt):v+(255-v)*amt))));return `#${c.map(v=>v.toString(16).padStart(2,'0')).join('')}`;};
 const floorStyle=(teamId:string):'planks'|'parquet'=>/^(BOS|GEN0?4)$/.test(teamId)||[...teamId].reduce((h,c)=>h+c.charCodeAt(0),0)%6===0?'parquet':'planks';
 /** Big pixel letters read along a baseline apron (rotated a quarter turn). */
