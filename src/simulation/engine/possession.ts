@@ -253,13 +253,15 @@ export function simulatePossession(input: PossessionInput): PossessionResult {
   }
 
   const fatigueMult = fatiguePenaltyMultiplier(shooter.fatigue, shooter.flags);
-  const effectiveAttrsForShot: Attributes = JSON.parse(JSON.stringify(shooter.attributes));
-  // apply fatigue multiplicatively to the offensive block only (defense/mental untouched for shot math)
-  (Object.keys(effectiveAttrsForShot.offense) as (keyof typeof effectiveAttrsForShot.offense)[]).forEach((k) => {
-    if (typeof effectiveAttrsForShot.offense[k] === 'number') {
-      (effectiveAttrsForShot.offense as any)[k] = (effectiveAttrsForShot.offense[k] as number) * fatigueMult;
-    }
-  });
+  // Fatigue scales the offensive block only (defense/mental untouched for shot math). A fresh player shoots with
+  // his ratings as they are; otherwise only the offense numbers are copied (this used to deep-copy every rating).
+  let effectiveAttrsForShot: Attributes = shooter.attributes;
+  if (fatigueMult !== 1) {
+    const offense = {} as Attributes['offense'];
+    const source = shooter.attributes.offense as unknown as Record<string, unknown>;
+    for (const k in source) (offense as unknown as Record<string, unknown>)[k] = typeof source[k] === 'number' ? (source[k] as number) * fatigueMult : source[k];
+    effectiveAttrsForShot = { ...shooter.attributes, offense };
+  }
 
   const shotResult = resolveShot(
     effectiveAttrsForShot,

@@ -23,7 +23,7 @@ function fromBase64(text: string): Uint8Array {
 export function packLog(log: PossessionLogEntry[]): string {
   const hit = packedCache.get(log);
   if (hit) return hit;
-  const packed = toBase64(deflateSync(strToU8(JSON.stringify(log)), { level: 6 }));
+  const packed = toBase64(deflateSync(strToU8(JSON.stringify(log)), { level: 3 }));
   packedCache.set(log, packed);
   return packed;
 }

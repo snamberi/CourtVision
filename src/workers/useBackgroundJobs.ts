@@ -81,10 +81,11 @@ export function useBackgroundJobs(handlers: Handlers) {
     const engines = startEngineWorkers();
     autoPlayWorker.current = worker;
     autoPlayEngines.current = engines.stop;
-    const finish = () => {
+    // A clean finish keeps the engine workers warm for the next run; errors shut them down.
+    const finish = (clean = false) => {
       if (autoPlayWorker.current === worker) autoPlayWorker.current = null;
       worker.terminate();
-      engines.stop();
+      if (clean) engines.release(); else engines.stop();
       setAutoPlayRunning(false);
     };
 
@@ -97,7 +98,7 @@ export function useBackgroundJobs(handlers: Handlers) {
       } else if (msg.type === 'done') {
         handlersRef.current.onAutoPlayLeague(msg.league, msg.extras);
         handlersRef.current.onToast(`Auto Play finished — ${msg.summaries.length} season${msg.summaries.length === 1 ? '' : 's'} simulated.`, 'success');
-        finish();
+        finish(true);
       } else if (msg.type === 'error') {
         handlersRef.current.onAutoPlayLeague(msg.league, msg.extras);
         handlersRef.current.onToast(`Auto Play stopped early: ${msg.message}`, 'error');
@@ -138,10 +139,10 @@ export function useBackgroundJobs(handlers: Handlers) {
     const engines = startEngineWorkers();
     seasonWorker.current = worker;
     seasonEngines.current = engines.stop;
-    const finish = () => {
+    const finish = (clean = false) => {
       if (seasonWorker.current === worker) seasonWorker.current = null;
       worker.terminate();
-      engines.stop();
+      if (clean) engines.release(); else engines.stop();
       setSeasonSimRunning(false);
     };
 
@@ -152,10 +153,10 @@ export function useBackgroundJobs(handlers: Handlers) {
       } else if (msg.type === 'done') {
         handlersRef.current.onSeasonSimLeague(msg.league);
         handlersRef.current.onToast(rounds == null ? 'Season simulation finished.' : `Simulated ${total} games.`, 'success');
-        finish();
+        finish(true);
       } else if (msg.type === 'blocked') {
         handlersRef.current.onSeasonSimLeague(msg.league);
-        finish();
+        finish(true);
       } else if (msg.type === 'error') {
         handlersRef.current.onToast(`Season simulation failed: ${msg.message}`, 'error');
         finish();

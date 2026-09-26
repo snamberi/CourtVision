@@ -6,7 +6,11 @@ import type { EngineJob, EngineReply } from './enginePool';
  * One engine worker of the pool. It receives a MessagePort from the page and runs the games the season or Auto Play
  * worker sends over it (see enginePool.ts).
  */
+let current: MessagePort | null = null;
 function serve(port: MessagePort) {
+  // One run at a time: a new run's channel replaces the last one.
+  current?.close();
+  current = port;
   port.onmessage = (e: MessageEvent<EngineJob>) => {
     const { id, input, pack } = e.data;
     try {

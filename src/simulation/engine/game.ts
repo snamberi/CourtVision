@@ -274,11 +274,20 @@ export function simulateGame(opts: SimulateGameOptions): GameResult {
       previousHome = hOnCourtIds;
       previousAway = aOnCourtIds;
 
+      // Direct lookups instead of scanning the on-court lists for every rostered player (the hottest loop in a game).
+      const onCourtIds = new Set<PlayerId>(hOnCourtIds);
+      for (const id of aOnCourtIds) onCourtIds.add(id);
+      const onCourtById = new Map<PlayerId, OnCourtPlayer>();
+      for (const p of offenseOnCourt) onCourtById.set(p.playerId, p);
+      for (const p of defenseOnCourt) if (!onCourtById.has(p.playerId)) onCourtById.set(p.playerId, p);
       for (const s of allSeasons) {
-        const onCourt = hOnCourtIds.includes(s.playerId) || aOnCourtIds.includes(s.playerId);
-        const onCourtPlayer = offenseOnCourt.find((p) => p.playerId === s.playerId) ?? defenseOnCourt.find((p) => p.playerId === s.playerId);
+        const onCourt = onCourtIds.has(s.playerId);
+        const onCourtPlayer = onCourtById.get(s.playerId);
         const flags = onCourtPlayer?.flags;
-        fatigue[s.playerId] = settings.fatigueEnabled ? updateFatigue(fatigue[s.playerId], onCourt, fatigueLoad.get(s.playerId)!, s.attributes.physical.stamina, flags ?? noFlags, secondsPerPossession) : freshFatigue();
+        const current = fatigue[s.playerId];
+        // A rested bench player stays at zero: keep his state rather than allocating a new one.
+        if (!onCourt && current && current.level === 0) { /* unchanged */ }
+        else fatigue[s.playerId] = settings.fatigueEnabled ? updateFatigue(current, onCourt, fatigueLoad.get(s.playerId)!, s.attributes.physical.stamina, flags ?? noFlags, secondsPerPossession) : freshFatigue();
 
         if (settings.injuriesEnabled && onCourt && onCourtPlayer && !injuredPlayers.has(s.playerId)) {
           const outcome = rollInjury(
