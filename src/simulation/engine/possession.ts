@@ -39,6 +39,40 @@ export interface PossessionInput {
   offenseTeamId: string;
   rng: RNG;
   ruleMods?: RuleMods; // League Rules multipliers - omitted entirely => identical to pre-League-Rules behavior
+  /** A coach's play call for this trip (omitted => the offense plays its normal game, draw for draw). */
+  playCall?: PlayCall;
+  /** The defense sends a second defender whenever this player has the ball. */
+  doubleTargetId?: PlayerId;
+}
+
+export type PlayKind = 'pnr' | 'iso' | 'post' | 'threes' | 'lastShot';
+export type LastShotType = 'three' | 'drive' | 'mid' | 'post';
+export interface PlayCall { kind: PlayKind; focusId?: PlayerId; shot?: LastShotType }
+
+/** Which shot types each call looks for, and how much harder. A last-shot call only allows its shot. */
+const CALL_SHOTS: Record<Exclude<PlayKind, 'lastShot'>, [ShotType[], number]> = {
+  pnr: [['rim', 'layup', 'dunk', 'pullUp3', 'midrange'], 1.6],
+  iso: [['stepback', 'midrange', 'fadeaway', 'pullUp3', 'layup'], 1.8],
+  post: [['postShot', 'hook', 'fadeaway', 'close'], 4],
+  threes: [['corner3', 'aboveBreak3', 'catchAndShoot3', 'pullUp3', 'stepback'], 2.5],
+};
+const LAST_SHOTS: Record<LastShotType, ShotType[]> = {
+  three: ['aboveBreak3', 'pullUp3', 'stepback', 'corner3', 'catchAndShoot3'],
+  drive: ['layup', 'dunk', 'rim', 'close'],
+  mid: ['midrange', 'longMidrange', 'fadeaway'],
+  post: ['postShot', 'hook'],
+};
+function calledShotWeights(weights: Record<ShotType, number>, call: PlayCall): Record<ShotType, number> {
+  const out = { ...weights };
+  if (call.kind === 'lastShot') {
+    const allowed = LAST_SHOTS[call.shot ?? 'three'];
+    for (const k of Object.keys(out) as ShotType[]) out[k] = allowed.includes(k) ? Math.max(1, out[k] ?? 0) : 0;
+    for (const k of allowed) out[k] = Math.max(1, out[k] ?? 0);
+    return out;
+  }
+  const [types, boost] = CALL_SHOTS[call.kind];
+  for (const k of types) out[k] = Math.max(1, out[k] ?? 0) * boost;
+  return out;
 }
 
 export interface PossessionResult {
@@ -99,7 +133,10 @@ export function simulatePossession(input: PossessionInput): PossessionResult {
     fatigueLevel: p.fatigue.level,
     onCourt: true,
   }));
-  const ballHandlerId = chooseBallHandler(bhCandidates, rng);
+  const call = input.playCall;
+  const focus = call?.focusId ? offense.find(p => p.playerId === call.focusId) : undefined;
+  // Isolations, post-ups and last shots go to the player the coach named.
+  const ballHandlerId = focus && (call!.kind === 'iso' || call!.kind === 'post' || call!.kind === 'lastShot') ? focus.playerId : chooseBallHandler(bhCandidates, rng);
   const bh = offense.find((p) => p.playerId === ballHandlerId)!;
   const bhIndex = offense.indexOf(bh);
   const primaryDefender = defense[input.matchups[bhIndex]] ?? defense[0];
@@ -107,8 +144,10 @@ export function simulatePossession(input: PossessionInput): PossessionResult {
   addDelta(statDeltas, bh.playerId, { touches: 1 });
   events.push(`${bh.playerId} has the ball`);
 
-  const action = chooseAction(bh, rng, mods);
-  const doubleTeamed = rng.chance(input.doubleTeamProbability * mods.doubleTeamFrequency * (bh.ballDominance / 100));
+  const action: Action = !call || call.kind === 'threes' ? chooseAction(bh, rng, mods)
+    : call.kind === 'pnr' ? 'pnr' : call.kind === 'iso' ? 'isolation' : call.kind === 'post' ? 'postUp'
+    : call.shot === 'post' ? 'postUp' : call.shot === 'drive' ? 'drive' : 'isolation';
+  const doubleTeamed = input.doubleTargetId === bh.playerId || rng.chance(input.doubleTeamProbability * mods.doubleTeamFrequency * (bh.ballDominance / 100));
   if (doubleTeamed) events.push('Double team');
 
   // --- Decision: pass (leading to a teammate's shot) vs shoot-it-yourself vs turn it over on the handle ---
@@ -123,8 +162,11 @@ export function simulatePossession(input: PossessionInput): PossessionResult {
   if (action === 'catchAndShoot') passFrequency -= 6; // they already got theirs off a prior pass; less likely to move it again
   passFrequency -= Math.max(0, bh.ballDominance - 60) * 0.35; // go-to scorers still shoot it themselves more often
   if (doubleTeamed) passFrequency += 20; // giving it up under pressure is the smart read
+  if (call?.kind === 'threes') passFrequency += 10; // swing it for the open three
   passFrequency = Math.max(12, Math.min(90, passFrequency));
-  const willPass = rng.chance(passFrequency / 100) && offense.length > 1;
+  // A called isolation, post-up or last shot stays with the man it was drawn up for (unless he's doubled).
+  const keepIt = !!focus && focus === bh && !doubleTeamed && (call!.kind === 'iso' || call!.kind === 'post' || call!.kind === 'lastShot');
+  const willPass = !keepIt && rng.chance(passFrequency / 100) && offense.length > 1;
 
   const turnoverCtx: TurnoverContext = {
     action: action === 'pnr' ? 'pnrHandle' : action === 'postUp' ? 'postUp' : action === 'catchAndShoot' ? 'catchAndShoot' : action === 'transition' ? 'transition' : willPass ? 'pass' : 'drive',
@@ -198,7 +240,8 @@ export function simulatePossession(input: PossessionInput): PossessionResult {
   const shooterDefender = defense[input.matchups[offense.indexOf(shooter)]] ?? primaryDefender;
 
   const rawShotWeights = shooter.shotTendencies;
-  const adjustedShotWeights = applyThreePointOverride(rawShotWeights, shooter.threePointTarget);
+  const overridden = applyThreePointOverride(rawShotWeights, shooter.threePointTarget);
+  const adjustedShotWeights = call ? calledShotWeights(overridden as Record<ShotType, number>, call) : overridden;
   const shotType = chooseShotType(adjustedShotWeights as any, shooter.attributes.offense, rng, mods.shotTypeWeight);
   const isThree = THREE_POINT_TYPES.includes(shotType);
 

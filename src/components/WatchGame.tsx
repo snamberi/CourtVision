@@ -11,6 +11,7 @@ import { detectHighlights, reelFor, formatGameClock, HIGHLIGHT_LABEL, HIGHLIGHT_
 import { liveBoxScore } from '../simulation/liveBox';
 import { CourtAudio } from '../audio/courtAudio';
 import { CoachPanel, HighlightsPanel, LiveBoxPanel, type CoachingProps } from './WatchPanels';
+import { currentRun, lastShotMoment } from '../simulation/coachMoments';
 import { canRecordReel, startReelRecording, type ReelRecording } from './reelRecorder';
 
 const THREES=['corner3','aboveBreak3','pullUp3','catchAndShoot3','stepback'];
@@ -221,6 +222,12 @@ export function WatchGame({game,home,away,homeRoster=[],awayRoster=[],onBoxScore
   const reelNow=reel?reel.plays[reel.pos]:null;
   const commentary=finished?'Final buzzer. The game is in the books.':progress>=.98?entry?.events.filter(e=>!e.endsWith(' has the ball')&&!e.startsWith('Action:')&&!e.endsWith(' timeout')).join(' · '):frame&&entry?liveCall(frame,play,entry):'Ready';
   const coachAt=finished?total:progress===0?index:index+1;
+  const theirTeam=coaching?(coaching.teamId===home.teamId?live.away:live.home):null;
+  const coachRun=useMemo(()=>currentRun(game.possessionLog,coachAt),[game,coachAt]);
+  const lastShotNow=!!coaching&&!finished&&lastShotMoment(game.possessionLog,coachAt,coaching.teamId,home.teamId,regulation);
+  // Game on the line: stop the tape once and hand the coach the clipboard.
+  const prompted=useRef(-1);
+  useEffect(()=>{if(lastShotNow&&prompted.current!==coachAt){prompted.current=coachAt;setPlaying(false);setReel(null);setTab('coach');}},[lastShotNow,coachAt]);
   const myTeam=coaching?(coaching.teamId===home.teamId?live.home:live.away):null;
   return <section ref={screen} className="watch-game" aria-label="Watch Game" tabIndex={0} onKeyDown={e=>{if(e.target!==e.currentTarget)return;if(e.code==='Space'){e.preventDefault();if(!finished)setPlaying(p=>!p);}if(e.code==='ArrowRight'){e.preventDefault();setPlaying(false);setCursor(c=>Math.min(total,Math.floor(c)+1));}if(e.code==='ArrowLeft'){e.preventDefault();setPlaying(false);setCursor(c=>Math.max(0,Math.floor(c)-1));}}}>
     {occasion&&(occasion.stakes==='game7'||occasion.stakes==='final'||occasion.stakes==='cupFinal')&&<OccasionBanner occasion={occasion} />}<div className="watch-heading"><div><span className="pixel-eyebrow">{occasion?occasion.eyebrow:coaching?'COURTSIDE / COACHING LIVE':'COURTSIDE / POSSESSION REPLAY'}</span><h2>{occasion?occasion.title:'Watch Game'}</h2></div>{rivalry&&<span className="watch-rivalry" title={rivalry.seriesText}>🔥 RIVALRY · {rivalry.level.toUpperCase()}</span>}<span className="watch-status">{reel?'HIGHLIGHTS':finished?'FINAL':playing?'PLAYING':'PAUSED'}</span></div>
@@ -245,7 +252,7 @@ export function WatchGame({game,home,away,homeRoster=[],awayRoster=[],onBoxScore
       </div>
       <div role="tabpanel" className="watch-tabpanel">
         {tab==='box'&&<LiveBoxPanel home={live.home} away={live.away} homeName={home.name} awayName={away.name}/>}
-        {tab==='coach'&&coaching&&myTeam&&<CoachPanel coaching={coaching} team={myTeam} atPossession={coachAt} finished={finished} clockLabel={clockLabel} onDecision={()=>{setPlaying(false);setReel(null);}}/>}
+        {tab==='coach'&&coaching&&myTeam&&<CoachPanel key={lastShotNow?`ls${coachAt}`:'coach'} coaching={coaching} team={myTeam} opponent={theirTeam??undefined} run={coachRun} lastShotNow={lastShotNow} atPossession={coachAt} finished={finished} clockLabel={clockLabel} onDecision={()=>{setPlaying(false);setReel(null);}}/>}
         {tab==='highlights'&&<HighlightsPanel highlights={highlights} completed={completed} finished={finished} regulationPeriods={regulation} onJump={jumpTo} onReel={startReel} reelCount={reelPlays.length} onShare={()=>void share()} shareStatus={shareStatus} onVideo={canRecordReel()?()=>void recordVideo():undefined} videoStatus={videoStatus}/>}
       </div>
     </div>}

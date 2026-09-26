@@ -399,3 +399,9 @@ button { border-radius: 0; }
 .sandbox-import-form, .sandbox-stick-form { display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; }
 .sandbox-import-form label, .sandbox-stick-form label { display:grid; gap:3px; font-size:12px; color:var(--cv-text-muted, #94a0b2); }
 .sandbox-import-form p { margin:0; width:100%; }
+
+/* ---- Sideline coaching ---- */
+.coach-alert { display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding:8px 10px; margin:6px 0; border:2px solid var(--cv-red, #e85d5d); background:#2a1418; color:var(--cv-text, #f4f0e6); font-weight:600; }
+.coach-last-shot { display:flex; flex-wrap:wrap; align-items:flex-end; gap:10px; padding:10px 12px; margin:6px 0; border:2px solid var(--cv-gold, #ffd166); background:#2a2412; box-shadow:3px 3px 0 #060a11; }
+.coach-last-shot b { width:100%; color:var(--cv-gold, #ffd166); }
+.coach-last-shot label { display:grid; gap:3px; font-size:12px; color:var(--cv-text-muted, #94a0b2); }

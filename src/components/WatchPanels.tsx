@@ -2,7 +2,8 @@ import { memo, useMemo, useState } from 'react';
 import type { LiveTeam } from '../simulation/liveBox';
 import type { Highlight } from '../simulation/highlights';
 import { HIGHLIGHT_LABEL, HIGHLIGHT_MIN, formatGameClock } from '../simulation/highlights';
-import { TIMEOUTS_PER_GAME, type LiveCoachingCommand, type LiveDefense, type LivePace } from '../simulation/engine/game';
+import { TIMEOUTS_PER_GAME, MOMENTUM_RUN, type LiveCoachingCommand, type LiveDefense, type LivePace } from '../simulation/engine/game';
+import type { LastShotType } from '../simulation/engine/possession';
 import type { PlayerSeason } from '../simulation/types';
 import { primaryPosition } from '../simulation/teamStatus';
 
@@ -43,7 +44,23 @@ const DEFENSES: { id: LiveDefense; label: string }[] = [
   { id: 'man', label: 'Man-to-man' }, { id: 'switch', label: 'Switch everything' }, { id: 'drop', label: 'Drop coverage' },
   { id: 'zone', label: 'Zone' }, { id: 'pressure', label: 'Full-court pressure' },
 ];
-export function CoachPanel({ coaching, team, atPossession, finished, onDecision, clockLabel }: { coaching: CoachingProps; team: LiveTeam; atPossession: number; finished: boolean; onDecision: () => void; clockLabel: string }) {
+const PLAYS: { id: 'motion' | 'pnr' | 'iso' | 'post' | 'threes'; label: string; focus?: boolean }[] = [
+  { id: 'motion', label: 'Motion (our normal offense)' }, { id: 'pnr', label: 'Pick-and-roll' }, { id: 'iso', label: 'Isolation for…', focus: true },
+  { id: 'post', label: 'Post-up for…', focus: true }, { id: 'threes', label: 'Hunt threes' },
+];
+const SHOTS: { id: LastShotType; label: string }[] = [{ id: 'three', label: 'Three-pointer' }, { id: 'drive', label: 'Drive to the rim' }, { id: 'mid', label: 'Pull-up jumper' }, { id: 'post', label: 'Post-up' }];
+function describeCommand(c: LiveCoachingCommand): string {
+  switch (c.kind) {
+    case 'timeout': return 'Timeout';
+    case 'pace': return `Pace → ${c.pace}`;
+    case 'defense': return `Defense → ${c.defense}`;
+    case 'lineup': return `Lineup → ${c.lineup.map(shortName).join(', ')}`;
+    case 'play': return `Play → ${PLAYS.find(p => p.id === c.play)?.label.replace('…', '')}${c.focusId ? ` ${shortName(c.focusId)}` : ''}`;
+    case 'double': return `Double → ${c.target === 'none' ? 'nobody' : c.target === 'hot' ? 'the hot hand' : shortName(c.target)}`;
+    case 'lastShot': return `Last shot → ${shortName(c.shooterId)}, ${SHOTS.find(s => s.id === c.shot)?.label.toLowerCase()}`;
+  }
+}
+export function CoachPanel({ coaching, team, opponent, run, lastShotNow, atPossession, finished, onDecision, clockLabel }: { coaching: CoachingProps; team: LiveTeam; opponent?: LiveTeam; run?: { teamId: string | null; points: number }; lastShotNow?: boolean; atPossession: number; finished: boolean; onDecision: () => void; clockLabel: string }) {
   const [picked, setPicked] = useState<string[]>(() => team.lines.filter(l => l.onCourt).map(l => l.playerId));
   const [message, setMessage] = useState<string | null>(null);
   const mine = coaching.commands.filter(c => c.teamId === coaching.teamId);
@@ -51,6 +68,13 @@ export function CoachPanel({ coaching, team, atPossession, finished, onDecision,
   const pace = ([...mine].reverse().find(c => c.kind === 'pace') as Extract<LiveCoachingCommand, { kind: 'pace' }> | undefined)?.pace ?? 'normal';
   const defense = ([...mine].reverse().find(c => c.kind === 'defense') as Extract<LiveCoachingCommand, { kind: 'defense' }> | undefined)?.defense ?? 'default';
   const lines = new Map(team.lines.map(l => [l.playerId, l]));
+  const standing = <K extends LiveCoachingCommand['kind']>(kind: K) => [...mine].reverse().find(c => c.kind === kind) as Extract<LiveCoachingCommand, { kind: K }> | undefined;
+  const play = standing('play'), double = standing('double');
+  const onFloorLines = team.lines.filter(l => l.onCourt);
+  const [focus, setFocus] = useState<string>(() => play?.focusId ?? [...onFloorLines].sort((a, b) => b.pts - a.pts)[0]?.playerId ?? '');
+  const [shooter, setShooter] = useState<string>(() => [...onFloorLines].sort((a, b) => b.pts - a.pts)[0]?.playerId ?? '');
+  const [shot, setShot] = useState<LastShotType>('three');
+  const theirRun = run && run.teamId && run.teamId !== coaching.teamId && run.points >= MOMENTUM_RUN ? run.points : 0;
   const available = coaching.roster.filter(p => lines.has(p.playerId));
   const send = (command: LiveCoachingCommand, done: string) => {
     onDecision();
@@ -62,6 +86,14 @@ export function CoachPanel({ coaching, team, atPossession, finished, onDecision,
   return <div className="watch-coach-panel">
     <p className="hint-text">You are coaching {coaching.teamName}. Decisions apply from the next possession; everything already shown stays exactly as it happened, and the rest of the game is re-simulated.</p>
     {finished && <p className="empty-state">The game is final. Coaching decisions are locked in.</p>}
+    {theirRun > 0 && !finished && <div className="coach-alert" role="alert">They're on a {theirRun}-0 run and playing with momentum. A timeout stops it.
+      <button disabled={timeoutsLeft <= 0} onClick={() => send({ kind: 'timeout', atPossession, teamId: coaching.teamId }, 'Timeout called. The run is over; your players catch their breath.')}>Call Timeout</button></div>}
+    {lastShotNow && !finished && <div className="coach-last-shot" role="group" aria-label="Draw up the last shot">
+      <b>🏀 Your ball, game on the line. Draw up the last shot.</b>
+      <label>Shooter<select value={shooter} onChange={e => setShooter(e.target.value)}>{onFloorLines.map(l => <option key={l.playerId} value={l.playerId}>{shortName(l.playerId)} ({l.pts} pts)</option>)}</select></label>
+      <label>Shot<select value={shot} onChange={e => setShot(e.target.value as LastShotType)}>{SHOTS.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}</select></label>
+      <button className="primary" disabled={!shooter} onClick={() => send({ kind: 'lastShot', atPossession, teamId: coaching.teamId, shooterId: shooter, shot }, `Play drawn up: ${shortName(shooter)}, ${SHOTS.find(s => s.id === shot)!.label.toLowerCase()}. Press Play to run it.`)}>Run it</button>
+    </div>}
     <div className="coach-row">
       <button className="primary" disabled={finished || timeoutsLeft <= 0} onClick={() => send({ kind: 'timeout', atPossession, teamId: coaching.teamId }, 'Timeout called. Your players catch their breath.')}>Call Timeout ({timeoutsLeft} left)</button>
       <label>Pace<select aria-label="Pace" disabled={finished} value={pace} onChange={e => send({ kind: 'pace', atPossession, teamId: coaching.teamId, pace: e.target.value as LivePace }, `Pace set to ${e.target.value}.`)}>
@@ -70,6 +102,15 @@ export function CoachPanel({ coaching, team, atPossession, finished, onDecision,
         {defense === 'default' && <option value="default">Coach's game plan</option>}
         {DEFENSES.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}</select></label>
     </div>
+    <div className="coach-row">
+      <label>Play call<select aria-label="Play call" disabled={finished} value={play?.play ?? 'motion'} onChange={e => { const id = e.target.value as typeof PLAYS[number]['id']; const needs = PLAYS.find(p => p.id === id)?.focus; send({ kind: 'play', atPossession, teamId: coaching.teamId, play: id, ...(needs && focus ? { focusId: focus } : {}) }, `Play call: ${PLAYS.find(p => p.id === id)!.label.replace('…', needs ? ` ${shortName(focus)}` : '')}.`); }}>
+        {PLAYS.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}</select></label>
+      <label>Go-to player<select aria-label="Go-to player" disabled={finished} value={focus} onChange={e => { setFocus(e.target.value); if (play && (play.play === 'iso' || play.play === 'post')) send({ kind: 'play', atPossession, teamId: coaching.teamId, play: play.play, focusId: e.target.value }, `Now running it for ${shortName(e.target.value)}.`); }}>
+        {available.map(p => <option key={p.playerId} value={p.playerId}>{shortName(p.playerId)}</option>)}</select></label>
+      <label>Double-team<select aria-label="Double-team" disabled={finished} value={double?.target ?? 'none'} onChange={e => send({ kind: 'double', atPossession, teamId: coaching.teamId, target: e.target.value }, e.target.value === 'none' ? 'No more double teams.' : e.target.value === 'hot' ? 'Doubling their hot hand every time he touches it.' : `Doubling ${shortName(e.target.value)} every time he touches it.`)}>
+        <option value="none">Nobody</option><option value="hot">The hot hand</option>
+        {(opponent?.lines ?? []).map(l => <option key={l.playerId} value={l.playerId}>{shortName(l.playerId)} ({l.pts} pts)</option>)}</select></label>
+    </div>
     <fieldset className="coach-lineup" disabled={finished}><legend>Lineup — pick five ({picked.length}/5)</legend>
       <div className="coach-lineup-grid">{available.map(p => { const l = lines.get(p.playerId)!; const out = l.pf >= 6; return <label key={p.playerId} className={picked.includes(p.playerId) ? 'picked' : ''}>
         <input type="checkbox" checked={picked.includes(p.playerId)} disabled={out || (!picked.includes(p.playerId) && picked.length >= 5)} onChange={() => toggle(p.playerId)} />
@@ -77,7 +118,7 @@ export function CoachPanel({ coaching, team, atPossession, finished, onDecision,
       <button disabled={picked.length !== 5 || [...picked].sort().join() === onFloor} onClick={() => send({ kind: 'lineup', atPossession, teamId: coaching.teamId, lineup: picked }, 'Substitution made. That five stays in for the rest of the period unless someone fouls out.')}>Send In Lineup</button>
     </fieldset>
     {message && <p role="status" className="coach-status">{message}</p>}
-    {mine.length > 0 && <details className="coach-log"><summary>Your decisions ({mine.length})</summary><ol>{mine.map((c, i) => <li key={i}>Possession {c.atPossession + 1}: {c.kind === 'timeout' ? 'Timeout' : c.kind === 'pace' ? `Pace → ${c.pace}` : c.kind === 'defense' ? `Defense → ${c.defense}` : `Lineup → ${c.lineup.map(shortName).join(', ')}`}</li>)}</ol></details>}
+    {mine.length > 0 && <details className="coach-log"><summary>Your decisions ({mine.length})</summary><ol>{mine.map((c, i) => <li key={i}>Possession {c.atPossession + 1}: {describeCommand(c)}</li>)}</ol></details>}
     <p className="hint-text">Now: {clockLabel}.</p>
   </div>;
 }

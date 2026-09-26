@@ -58,7 +58,8 @@ describe('coaching while watching', () => {
     // Box score still reconciles with the recorded possessions after coaching.
     const live = liveBoxScore(coached.possessionLog, coached.possessionLog.length, 'H', 'A', { home: [], away: [] });
     expect(live.home.points).toBe(coached.homeScore); expect(live.away.points).toBe(coached.awayScore);
-    expect(live.home.timeoutsUsed).toBe(1);
+    // Yours, plus any the AI bench called to stop a run before you took over.
+    expect(live.home.timeoutsUsed).toBe(1 + base.possessionLog.slice(0, at).filter(e => e.events.includes('H timeout')).length);
   });
   it('keeps the pinned five for the rest of that quarter only', () => {
     const base = sim(5), at = 12, q = base.possessionLog[at].quarter;

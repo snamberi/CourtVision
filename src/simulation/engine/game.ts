@@ -7,7 +7,7 @@ import type { LeagueRulesSettings } from '../leagueRules';
 import { computeRuleMods } from './ruleMods';
 import { RNG } from './rng';
 import { resolveEffectivePlayer } from './effective';
-import { simulatePossession, type OnCourtPlayer } from './possession';
+import { simulatePossession, type OnCourtPlayer, type PlayCall, type LastShotType } from './possession';
 import { computeMatchups } from './matchups';
 import { LiveRotation } from './liveRotation';
 import { applyCoachingPlan } from './coachingPlan';
@@ -45,8 +45,16 @@ export type LiveCoachingCommand =
   | { kind: 'timeout'; atPossession: number; teamId: string }
   | { kind: 'lineup'; atPossession: number; teamId: string; lineup: PlayerId[] }
   | { kind: 'pace'; atPossession: number; teamId: string; pace: LivePace }
-  | { kind: 'defense'; atPossession: number; teamId: string; defense: LiveDefense };
+  | { kind: 'defense'; atPossession: number; teamId: string; defense: LiveDefense }
+  /** A play call for this team's offense until changed ('motion' = back to the normal offense). */
+  | { kind: 'play'; atPossession: number; teamId: string; play: 'motion' | 'pnr' | 'iso' | 'post' | 'threes'; focusId?: PlayerId }
+  /** Double-team a player whenever he has the ball: 'hot' = the opponent's top scorer on the floor tonight. */
+  | { kind: 'double'; atPossession: number; teamId: string; target: 'none' | 'hot' | PlayerId }
+  /** Draw up the next shot: who takes it and what kind (applies to this team's next trip only). */
+  | { kind: 'lastShot'; atPossession: number; teamId: string; shooterId: PlayerId; shot: LastShotType };
 export const TIMEOUTS_PER_GAME = 7;
+/** A run this long (unanswered points) gives the scoring team momentum; the other bench calls timeout at RUN_TIMEOUT. */
+export const MOMENTUM_RUN = 8, RUN_TIMEOUT = 10;
 const PACE_DURATION: Record<LivePace, number> = { slow: 1.22, normal: 1, fast: 0.8 };
 
 function possessionsPerQuarter(quarterLengthMinutes: number, pacePreset: GameSettings['pacePreset'], paceModifier: number, rulesPaceMultiplier = 1): number {
@@ -142,6 +150,15 @@ export function simulateGame(opts: SimulateGameOptions): GameResult {
   const applied = new Set<LiveCoachingCommand>();
   const livePace: Record<string, LivePace> = {};
   let homeDefenseCoach = homeCoach, awayDefenseCoach = awayCoach;
+  const livePlay: Record<string, PlayCall | undefined> = {};
+  const liveDouble: Record<string, 'none' | 'hot' | PlayerId> = {};
+  const lastShot: Record<string, PlayCall | undefined> = {};
+  const timeoutsUsed: Record<string, number> = { [home.teamId]: 0, [away.teamId]: 0 };
+  // A team a person is coaching gets no automatic timeouts from its first decision on (its earlier ones replay as they were).
+  const humanFrom: Record<string, number> = {};
+  for (const c of commands) humanFrom[c.teamId] = Math.min(humanFrom[c.teamId] ?? Infinity, c.atPossession);
+  // Momentum: unanswered points by one team.
+  let run: { teamId: string | null; points: number } = { teamId: null, points: 0 };
   const staticCache = new Map<PlayerId, StaticOnCourt>();
   const hPerformance = coachPerformanceModifiers(home.coachIdentity, home.seasons);
   const aPerformance = coachPerformanceModifiers(away.coachIdentity, away.seasons);
@@ -214,9 +231,23 @@ export function simulateGame(opts: SimulateGameOptions): GameResult {
           if (isHome) { homeDefenseCoach = { ...homeCoach, defensiveScheme: cmd.defense }; aMods = applyCoachingPlan(ruleMods, awayCoach, homeDefenseCoach, away.coachIdentity, home.coachIdentity, away.seasons, home.seasons, impact, opts.moraleImpact); }
           else { awayDefenseCoach = { ...awayCoach, defensiveScheme: cmd.defense }; hMods = applyCoachingPlan(ruleMods, homeCoach, awayDefenseCoach, home.coachIdentity, away.coachIdentity, home.seasons, away.seasons, impact, opts.moraleImpact); }
         } else if (cmd.kind === 'timeout') {
-          // A timeout is a rest: everyone on the calling team recovers some legs.
+          // A timeout is a rest: everyone on the calling team recovers some legs, and it stops the other side's run.
           for (const s of (isHome ? home : away).seasons) if (settings.fatigueEnabled && fatigue[s.playerId]) fatigue[s.playerId] = { ...fatigue[s.playerId], level: fatigue[s.playerId].level * 0.55 };
           timeoutEvents.push(`${cmd.teamId} timeout`);
+          timeoutsUsed[cmd.teamId]++;
+          if (run.teamId && run.teamId !== cmd.teamId) run = { teamId: run.teamId, points: 0 };
+        } else if (cmd.kind === 'play') livePlay[cmd.teamId] = cmd.play === 'motion' ? undefined : { kind: cmd.play, focusId: cmd.focusId };
+        else if (cmd.kind === 'double') liveDouble[cmd.teamId] = cmd.target;
+        else if (cmd.kind === 'lastShot') lastShot[cmd.teamId] = { kind: 'lastShot', focusId: cmd.shooterId, shot: cmd.shot };
+      }
+      // AI benches call timeout to stop a big run (no random draws, so games stay reproducible).
+      if (!secondChance && run.teamId && run.points >= RUN_TIMEOUT) {
+        const other = run.teamId === home.teamId ? away.teamId : home.teamId;
+        const human = humanFrom[other] != null && possessionLog.length >= humanFrom[other];
+        if (!human && timeoutsUsed[other] < TIMEOUTS_PER_GAME) {
+          timeoutEvents.push(`${other} timeout`);
+          timeoutsUsed[other]++;
+          run = { teamId: run.teamId, points: 0 };
         }
       }
       const margin = homeBox.points - awayBox.points;
@@ -245,6 +276,19 @@ export function simulateGame(opts: SimulateGameOptions): GameResult {
 
       const isClutch = q >= numQuarters - 1 && clock < 300 && Math.abs(homeBox.points - awayBox.points) <= 10;
       const defenseCoach = offenseIsHome ? awayDefenseCoach : homeDefenseCoach;
+      const defenseTeamId = offenseIsHome ? away.teamId : home.teamId;
+      // The coach's call: a drawn-up last shot first (used once), then the standing play call.
+      const drawn = lastShot[offenseTeamId];
+      const playCall = drawn && offenseIds.includes(drawn.focusId!) ? drawn : livePlay[offenseTeamId];
+      if (drawn) lastShot[offenseTeamId] = undefined;
+      const doubling = liveDouble[defenseTeamId];
+      const offenseBox = offenseIsHome ? homeBox : awayBox;
+      const doubleTargetId = !doubling || doubling === 'none' ? undefined
+        : doubling === 'hot' ? [...offenseIds].sort((a, b) => (offenseBox.players[b]?.points ?? 0) - (offenseBox.players[a]?.points ?? 0))[0]
+        : offenseIds.includes(doubling) ? doubling : undefined;
+      // A team on a run plays with a little extra confidence.
+      let possessionMods = offenseIsHome ? hMods : aMods;
+      if (run.teamId === offenseTeamId && run.points >= MOMENTUM_RUN) possessionMods = { ...possessionMods, shot: { ...possessionMods.shot, offensiveEfficiency: possessionMods.shot.offensiveEfficiency * (1 + Math.min(0.03, (run.points - 6) * 0.004)) } };
 
       const result = simulatePossession({
         offense: offenseOnCourt,
@@ -261,8 +305,11 @@ export function simulateGame(opts: SimulateGameOptions): GameResult {
         doubleTeamProbability: (defenseCoach.doubleTeamFrequency / 100) * 0.15,
         offenseTeamId: offenseIsHome ? home.teamId : away.teamId,
         rng,
-        ruleMods: offenseIsHome ? hMods : aMods,
+        ruleMods: possessionMods,
+        ...(playCall ? { playCall } : {}),
+        ...(doubleTargetId ? { doubleTargetId } : {}),
       });
+      if (result.pointsScored > 0) run = run.teamId === offenseTeamId ? { teamId: run.teamId, points: run.points + result.pointsScored } : { teamId: offenseTeamId, points: result.pointsScored };
 
       applyDeltaRouted(result.statDeltas);
 
