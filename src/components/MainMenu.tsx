@@ -13,7 +13,7 @@ import { formatSeasonYear, nbaHistoryYearRange } from '../simulation/calendar';
 import { AdBanner } from './AdBanner';
 import { DataCredits } from './DataCredits';
 
-export type GameMode = 'random' | 'real' | 'legends';
+export type GameMode = 'random' | 'real' | 'legends' | 'career';
 export interface RealLeagueOptions { source: 'history' | 'csv'; realDevelopment: boolean; forceRosters?: boolean; allPlayers?: boolean }
 /** Start years the bundled NBA history supports (history through the season before; data ends 2025-26). */
 const HISTORY_START_YEARS: number[] = Array.from({ length: 2025 - 1946 + 1 }, (_, i) => 2025 - i);
@@ -43,7 +43,12 @@ const MODES: { id: GameMode; title: string; blurb: string }[] = [
   {
     id: 'legends',
     title: 'League Hunt',
-    blurb: 'Draft real players from any season in history and hunt down the great teams of every era, each game under its era\'s rules. Five stops, a boss, three lives.',
+    blurb: 'Spin a six-man squad and a coach from all of history, then win ten best-of-seven series against the great teams of every era. A semi-boss, a boss, three boosts.',
+  },
+  {
+    id: 'career',
+    title: 'Career Mode',
+    blurb: 'Create one player (spin the wheel of NBA history or build him yourself) and live his whole career in today\'s league: draft night, training, free agency, awards, the Hall of Fame and the all-time Top 100.',
   },
 ];
 
@@ -148,14 +153,14 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
             onClick={() => setSelectedMode(m.id)}
             aria-pressed={selectedMode === m.id}
           >
-            <span className="mode-card-kicker"><PixelIcon name={m.id === 'random' ? 'team' : m.id === 'real' ? 'court' : 'trophy'} size={24} /><span>{m.id === 'random' ? '01 / CREATE' : m.id === 'real' ? '02 / IMPORT' : '03 / REIMAGINE'}</span><span className="mode-selection-dot" /></span>
+            <span className="mode-card-kicker"><PixelIcon name={m.id === 'random' ? 'team' : m.id === 'real' ? 'court' : m.id === 'career' ? 'star' : 'trophy'} size={24} /><span>{m.id === 'random' ? '01 / CREATE' : m.id === 'real' ? '02 / IMPORT' : m.id === 'legends' ? '03 / REIMAGINE' : '04 / BECOME'}</span><span className="mode-selection-dot" /></span>
             <h3>{m.title}</h3>
             <p>{m.blurb}</p>
           </button>
         ))}
       </div>
 
-      {selectedMode && selectedMode !== 'legends' && (
+      {selectedMode && selectedMode !== 'legends' && selectedMode !== 'career' && (
         <div className="menu-setup">
           <div className="difficulty-picker">
             <h4>League Name</h4>

@@ -103,7 +103,7 @@ export function rollFreeAgentsForward(league: League, freeAgents: PlayerSeason[]
     // A real player who really played this season stays in the league while his trajectory continues.
     if (realStep && realCareerContinues(fa, newSeason)) { out.push(next); continue; }
     const leavesLeague = next.age >= 24 && (overall < 45 ? rng.chance(0.5) : overall < 52 ? rng.chance(0.2) : false);
-    if (!isStuck(next) && (shouldRetire(next, rng, league.rulesSettings) || leavesLeague)) {
+    if (!isStuck(next) && !next.careerPlayer && (shouldRetire(next, rng, league.rulesSettings) || leavesLeague)) {
       retired.push({ playerId: next.playerId, finalTeamId: lastTeam ?? '', finalTeamName: teamName(lastTeam), finalSeason: previousSeason,
         finalAge: next.age, finalOverall: overall, finalSeasonData: next });
       continue;
@@ -280,7 +280,7 @@ export function beginNewSeasonRoster(
         careerHistory: [...(season.careerHistory ?? []), archived],
       };
 
-      if (!isStuck(withHistory) && !(realStep && realCareerContinues(season, newSeason)) && shouldRetire(withHistory, rng, league.rulesSettings)) {
+      if (!isStuck(withHistory) && !withHistory.careerPlayer && !(realStep && realCareerContinues(season, newSeason)) && shouldRetire(withHistory, rng, league.rulesSettings)) {
         retiredPlayerIds.push(withHistory.playerId);
         delete contracts[withHistory.playerId];
         newlyRetired.push({

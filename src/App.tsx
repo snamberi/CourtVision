@@ -107,6 +107,7 @@ const StandingsPage = lazy(() => import('./components/StandingsPage').then(m => 
 const ThreeTeamTradePage = lazy(() => import('./components/ThreeTeamTradePage').then(m => ({ default: m.ThreeTeamTradePage })));
 const ExtensionsPage = lazy(() => import('./components/ExtensionsPage').then(m => ({ default: m.ExtensionsPage })));
 const LeagueHunt = lazy(() => import('./components/hunt/LeagueHunt').then(m => ({ default: m.LeagueHunt })));
+const CareerMode = lazy(() => import('./components/career/CareerMode').then(m => ({ default: m.CareerMode })));
 const SummerCampPage = lazy(() => import('./components/SummerCampPage').then(m => ({ default: m.SummerCampPage })));
 const MedicalRoomPage = lazy(() => import('./components/MedicalRoomPage').then(m => ({ default: m.MedicalRoomPage })));
 const PressRoomPage = lazy(() => import('./components/PressRoomPage').then(m => ({ default: m.PressRoomPage })));
@@ -196,7 +197,7 @@ function buildInitialExtras(league: League): GMLeagueExtras {
   };
 }
 
-type Screen = 'menu' | 'chooseTeam' | 'app' | 'hunt';
+type Screen = 'menu' | 'chooseTeam' | 'app' | 'hunt' | 'career';
 
 const debouncedSave = createDebouncedSave();
 
@@ -277,7 +278,7 @@ function App() {
   const [coachSession, setCoachSession] = useState<{ base: League; baseExtras: GMLeagueExtras; gameId: string; teamId: string; commands: LiveCoachingCommand[]; committed: League; openCoach?: boolean } | null>(null);
   const [boxscoreSource, setBoxscoreSource] = useState<'league' | 'exhibition'>('league');
 
-  const currentRoute = screen === 'menu' ? '#/menu' : screen === 'chooseTeam' ? '#/choose-team' : screen === 'hunt' ? '#/hunt'
+  const currentRoute = screen === 'menu' ? '#/menu' : screen === 'chooseTeam' ? '#/choose-team' : screen === 'hunt' ? '#/hunt' : screen === 'career' ? '#/career'
     : activeSaveId ? routeHash({ saveId: activeSaveId, tab, player: selectedPlayerId,
       team: viewedTeamId, game: viewedGameId ?? undefined, source: boxscoreSource, sub: leagueSettingsSub }) : null;
   const { restoring, showPrivacy, closePrivacy } = useGameHistory(currentRoute, async (hash, isCurrent) => {
@@ -286,7 +287,7 @@ function App() {
     const route = parseRoute(hash);
     if (!route) {
       jobs.resetAll();
-      setScreen(hash === '#/choose-team' && pendingLeague ? 'chooseTeam' : hash === '#/hunt' ? 'hunt' : 'menu');
+      setScreen(hash === '#/choose-team' && pendingLeague ? 'chooseTeam' : hash === '#/hunt' ? 'hunt' : hash === '#/career' ? 'career' : 'menu');
       refreshSaves();
       return;
     }
@@ -401,6 +402,8 @@ function App() {
       const emptyLeague: League = { teams: [], schedule: [], settings: { ...DEFAULT_GAME_SETTINGS } };
       enterApp(emptyLeague, { contracts: {}, freeAgents: [], capSettings: { ...DEFAULT_CAP_SETTINGS }, draftClass: [], tradeSettings: { difficulty }, ...DEFAULT_GM_FLAGS }, null, leagueName || 'My League');
       setTab('settings');
+    } else if (mode === 'career') {
+      setScreen('career');
     } else {
       setScreen('hunt');
     }
@@ -1126,6 +1129,9 @@ function App() {
   if (restoring) return <main role="status" className="navigation-loading">Opening your league…</main>;
   if (showPrivacy) return <PrivacyPolicyPage onClose={closePrivacy} />;
 
+  if (screen === 'career') {
+    return <Suspense fallback={<main role="status" className="navigation-loading">Opening Career Mode…</main>}><CareerMode onExit={() => setScreen('menu')} /></Suspense>;
+  }
   if (screen === 'hunt') {
     return <Suspense fallback={<main role="status" className="navigation-loading">Opening League Hunt…</main>}><LeagueHunt onExit={() => setScreen('menu')} /></Suspense>;
   }

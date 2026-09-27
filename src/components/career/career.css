@@ -1,0 +1,76 @@
+/* Career Mode: shares League Hunt's screen styles (hunt.css); these are its own pieces. */
+.cv-tools { display: flex; flex-wrap: wrap; gap: 6px; }
+.cv-busy { position: sticky; top: 0; z-index: 5; display: grid; gap: 6px; padding: 10px 14px; margin-bottom: 12px; background: #192333; border: 2px solid #f47b20; }
+.cv-busy span { font-weight: 700; }
+
+.cv-wheels { display: grid; gap: 14px; }
+.cv-wheel { display: grid; gap: 8px; }
+.cv-reel { position: relative; height: 64px; overflow: hidden; background: #03070d; border: 3px solid #2a3546; }
+.cv-reel-marker { position: absolute; z-index: 2; left: calc(50% - 68px); top: 0; bottom: 0; width: 132px; border: 3px solid #f47b20; pointer-events: none; box-shadow: 0 0 0 2000px rgba(3, 7, 13, .35); }
+.cv-reel-strip { position: absolute; left: calc(50% - 462px); top: 0; display: flex; height: 100%; animation: cv-spin 1.9s cubic-bezier(.12, .7, .2, 1) both; transition: transform 320ms ease-out; }
+@keyframes cv-spin { from { transform: translateX(var(--from)); } }
+.cv-slice { flex: none; width: 132px; display: grid; align-content: center; padding: 0 8px; border-right: 1px solid #1e2a3b; font-size: 12px; overflow: hidden; }
+.cv-slice b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cv-slice small { color: #94a0b2; }
+.cv-slice.rarity-rare b { color: #4da3ff; } .cv-slice.rarity-epic b { color: #b983ff; } .cv-slice.rarity-legendary b { color: #ffd166; }
+.cv-landed { padding: 10px 12px; background: #121926; border: 3px solid #2a3546; animation: cv-land 300ms 1.7s both; }
+.cv-landed.rarity-rare { border-color: #4da3ff; } .cv-landed.rarity-epic { border-color: #b983ff; } .cv-landed.rarity-legendary { border-color: #ffd166; }
+.cv-landed.used { opacity: .55; }
+@keyframes cv-land { from { opacity: 0; transform: translateY(6px); } }
+.cv-landed-head { display: flex; align-items: center; gap: 10px; }
+.cv-landed-head div { display: grid; }
+.cv-landed-head small { font-size: 10px; letter-spacing: .08em; color: #94a0b2; }
+.cv-landed-head strong { font: 22px 'Oswald', sans-serif; }
+.cv-landed-head span { font-size: 12px; color: #c9ced8; }
+.cv-cats { list-style: none; padding: 0; margin: 8px 0 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 4px 14px; }
+.cv-cats li { display: flex; align-items: center; gap: 8px; padding: 3px 0; border-bottom: 1px solid #1e2a3b; font-size: 13px; }
+.cv-cats li span { flex: 1; }
+.cv-cats li b { font-variant-numeric: tabular-nums; color: #f47b20; }
+.cv-cats li small { color: #94a0b2; width: 3.6em; text-align: right; }
+.cv-take { padding: 2px 10px; font-size: 12px; }
+.cv-build { max-width: 760px; }
+
+.cv-budget { display: grid; justify-items: end; }
+.cv-budget span { font-size: 10px; letter-spacing: .08em; color: #94a0b2; }
+.cv-budget b { font: 32px 'Oswald', sans-serif; color: #55c878; } .cv-budget b.down { color: #e85d5d; }
+.cv-sliders { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px 18px; }
+.cv-sliders label { display: grid; gap: 4px; font-size: 13px; }
+.cv-sliders label small { color: #94a0b2; }
+.cv-sliders input[type=range] { width: 100%; accent-color: #f47b20; }
+.cv-identity { display: flex; gap: 18px; align-items: flex-start; flex-wrap: wrap; }
+.cv-identity .cv-sliders { flex: 1; min-width: 240px; }
+
+.cv-hero { display: flex; align-items: center; gap: 16px; padding: 12px 16px; background: #192333; border: 2px solid #2a3546; }
+.cv-hero h2 { margin: 2px 0; font: 30px 'Oswald', sans-serif; }
+.cv-hero p { margin: 2px 0; }
+.cv-recap { display: grid; gap: 8px; padding: 12px 16px; background: #121926; border: 2px solid #2a3546; }
+.cv-line { gap: 18px; }
+.cv-line b { font-size: 24px; }
+.cv-awards { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.cv-awards li { padding: 3px 8px; border: 1px solid #4da3ff; color: #c9e2ff; font-size: 12px; background: #121926; }
+.cv-awards li.gold { border-color: #ffd166; color: #ffd166; background: #1f2332; }
+.cv-ratings { list-style: none; padding: 0; margin: 6px 0 0; display: grid; gap: 5px; }
+.cv-ratings li { display: grid; grid-template-columns: 9.5em 1fr 2em 2.6em; align-items: center; gap: 8px; font-size: 13px; }
+.cv-ratings li b { text-align: right; font-variant-numeric: tabular-nums; }
+.cv-ratings li small { color: #94a0b2; }
+.cv-ratings li.training span { color: #55c878; font-weight: 700; }
+.cv-years td, .cv-years th { white-space: nowrap; }
+.cv-award-cell { max-width: 320px; white-space: normal !important; font-size: 12px; }
+.cv-total td { font-weight: 700; border-top: 2px solid #2a3546; }
+.cv-saved { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; max-width: 760px; }
+.cv-saved li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: #121926; border: 2px solid #2a3546; }
+.cv-saved li div { flex: 1; display: grid; min-width: 0; }
+.cv-saved li small { color: #94a0b2; }
+.cv-top { list-style: none; padding: 0; margin: 0; display: grid; gap: 2px; max-width: 520px; }
+.cv-top li { display: grid; grid-template-columns: 3.4em 1fr 4em; gap: 8px; padding: 4px 8px; background: #121926; border: 1px solid #1e2a3b; font-size: 13px; }
+.cv-top li small { text-align: right; color: #94a0b2; font-variant-numeric: tabular-nums; }
+.cv-top li.me { border: 2px solid #f47b20; background: #192333; }
+.cv-top li.me b { color: #f47b20; }
+@media (max-width: 760px) {
+  .cv-hero { flex-direction: column; align-items: flex-start; }
+  .cv-ratings li { grid-template-columns: 7.5em 1fr 2em 2.4em; }
+  .cv-line b { font-size: 20px; }
+}
+@media (prefers-reduced-motion: reduce) { .cv-reel-strip, .cv-landed { animation: none; transition: none; } }
+.cv-build .hunt-squad-ovr { width: auto; min-width: 5.5em; white-space: nowrap; text-align: left; }
+.cv-build .hunt-slot { width: 3.4em; }

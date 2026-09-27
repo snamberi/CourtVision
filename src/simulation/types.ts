@@ -302,6 +302,8 @@ export interface PlayerSeason {
   importedFrom?: { season: number; realId: string };
   /** Playing for his next contract: last year of his deal, no extension (see extensions.ts). */
   contractYear?: boolean;
+  /** Career Mode's player: he retires only when his career says so, never on the league's random rolls. */
+  careerPlayer?: boolean;
   /** Honours won in real NBA history before this league's start (imported, never simulated). */
   historicalAwards?: HistoricalAward[];
 
