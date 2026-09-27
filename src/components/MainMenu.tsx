@@ -42,8 +42,8 @@ const MODES: { id: GameMode; title: string; blurb: string }[] = [
   },
   {
     id: 'legends',
-    title: 'Legends',
-    blurb: 'Era-styled matchups under historical rulesets - 1990s vs 2010s pace and rules, etc. Generated teams, not official ratings.',
+    title: 'League Hunt',
+    blurb: 'Draft real players from any season in history and hunt down the great teams of every era, each game under its era\'s rules. Five stops, a boss, three lives.',
   },
 ];
 
