@@ -70,13 +70,17 @@ import { stripNameYears } from './history/nameYears';
 import { DEFAULT_CAP_SETTINGS, DEFAULT_TRADE_SETTINGS, DEFAULT_GM_FLAGS, generateDraftClass, pickDraftClassSize, buildTwoRoundDraftOrder, generateFutureDraftPicks, isTradeDeadlinePassed, simulateUntilTradeDeadline, waiveToFreeAgency, toggleTradeBlock, type GMLeagueExtras, type Contract, type TradeDifficulty } from './simulation/gm';
 import { RNG } from './simulation/engine/rng';
 import { beginNewSeasonRoster, finalizeNewSeasonSchedule, type SeasonTransitionSummary } from './simulation/seasonTransition';
-import { acceptJobOffer, becomeSpectator, ensureFrontOffice, markSandboxUse, ACHIEVEMENT_BY_ID, type OwnerReview } from './simulation/frontOffice';
+import { acceptJobOffer, becomeSpectator, ensureFrontOffice, markSandboxUse, isOfficialLeague, ACHIEVEMENT_BY_ID, type OwnerReview } from './simulation/frontOffice';
 import { JobOffersDialog, OwnerReviewDialog } from './components/FrontOfficePanels';
 import { recordLeagueLegacy } from './storage/gmLegacy';
 import { challengeProgress, recordRebuild, scenarioById } from './simulation/rebuildChallenge';
-import { weeklyRebuild, recordWeekly } from './retention/weekly';
+import { weeklyRebuild, recordWeekly, TWISTS, type WeeklyRebuild } from './retention/weekly';
+import { decodeLeagueCode, type LeagueOrigin } from './retention/leagueCode';
 import { track, trackOnce } from './analytics/track';
 import { ChallengeBanner } from './components/ChallengeBanner';
+import { DailyGoalsCard } from './components/DailyGoalsCard';
+import { LeagueCodeBox } from './components/LeagueCodeBox';
+import { updateDailyGoals, todayUtc } from './profile/dailyGoals';
 import { BackupPanel } from './components/BackupPanel';
 import { canPlaySummerLeague, ensureUpcomingDraftClass, simulateSummerLeague } from './simulation/draftSeason';
 import { runLeagueAIPass, autoDraftAIPicksUntilUserTurn, simEntireDraft, runFreeAgencyAI } from './simulation/aiGM';
@@ -379,52 +383,75 @@ function App() {
   };
 
   const [menuBusy, setMenuBusy] = useState<string | null>(null);
+  /** Builds a league from its origin (a new game, the weekly challenge, or a league code) and opens it. */
+  const startFromOrigin = (origin: LeagueOrigin, o: { name: string; teamId?: string | null; weekly?: WeeklyRebuild | null }) => {
+    const openWithTeam = (league: League, extras: GMLeagueExtras) => {
+      if (o.teamId && league.teams.some(t => t.teamId === o.teamId)) { enterApp(league, extras, o.teamId, o.name); setTab('dashboard'); return; }
+      setPendingLeague(league);
+      setPendingExtras(extras);
+      setPendingLeagueName(o.name);
+      setScreen('chooseTeam');
+    };
+    if (origin.kind === 'random') {
+      const generated = generateFullLeague(origin.seed, 30, 18, 82, String(origin.year));
+      openWithTeam({ ...generated.league, origin }, { ...generated.extras, tradeSettings: { difficulty: origin.difficulty } });
+      return;
+    }
+    setMenuBusy('Loading NBA history…');
+    historyTools().then(({ h, buildHistoricalLeague }) => new Promise<void>(resolve => setTimeout(() => {
+      setMenuBusy('Building the league…');
+      if (origin.kind === 'history') {
+        const built = buildHistoricalLeague(h, origin.year ?? 2016, { realDevelopment: !!origin.realDevelopment, forceRosters: !!origin.forceRosters, allPlayers: !!origin.allPlayers, difficulty: origin.difficulty, seed: origin.seed });
+        openWithTeam({ ...built.league, origin }, built.extras);
+        resolve();
+        return;
+      }
+      // A Rebuild Challenge: its scenario, and the weekly twist when there is one.
+      const sc = scenarioById(origin.scenario ?? '');
+      if (!sc) throw new Error('Unknown scenario.');
+      const twist = TWISTS.find(t => t.id === origin.twist);
+      const built = buildHistoricalLeague(h, sc.startYear, { realDevelopment: true, difficulty: twist?.hardTrades ? 'hard' : origin.difficulty, seed: origin.seed });
+      if (!built.league.teams.some(t => t.teamId === sc.team)) throw new Error(`${sc.team} is not in the ${sc.startYear} league.`);
+      const seasons = twist ? Math.max(3, sc.seasons + twist.seasonsDelta) : sc.seasons;
+      const league: League = { ...built.league, origin, rebuildChallenge: { id: sc.id, teamId: sc.team, startSeason: built.league.season ?? String(sc.startYear), seasons, ...(o.weekly ? { weekly: { week: o.weekly.week, twist: o.weekly.twist.id } } : {}) } };
+      enterApp(league, built.extras, sc.team, o.name);
+      setTab('dashboard');
+      resolve();
+    }, 20))).catch((err: unknown) => pushToast(`Could not build the league: ${err instanceof Error ? err.message : String(err)}`, 'error'))
+      .finally(() => setMenuBusy(null));
+  };
+
+  /** "Have a league code?": the same starting league a friend played. */
+  const startFromCode = (code: string): string | null => {
+    try {
+      const { origin, teamId } = decodeLeagueCode(code);
+      track('league_code', { action: 'use', kind: origin.kind });
+      startFromOrigin(origin, { name: `Challenge ${code.trim().toUpperCase()}`, teamId });
+      return null;
+    } catch (e) { return e instanceof Error ? e.message : String(e); }
+  };
+
   const startGameMode = (mode: GameMode, difficulty: TradeDifficulty, year: string, leagueName: string, real?: RealLeagueOptions, scenarioId?: string) => {
     if (mode !== 'rebuild') track('mode_start', { mode, variant: mode === 'real' ? real?.source ?? 'settings' : 'menu' });
+    const seed = Math.floor(Math.random() * 1_000_000);
     if (mode === 'rebuild') {
       // The Rebuild of the Week: this week's scenario and twist, from a seed shared by everyone.
       const weekly = scenarioId === 'weekly' ? weeklyRebuild() : null;
       const sc = weekly ? weekly.scenario : scenarioId ? scenarioById(scenarioId) : undefined;
       if (!sc) return;
-      setMenuBusy('Loading NBA history…');
-      historyTools().then(({ h, buildHistoricalLeague }) => new Promise<void>(resolve => setTimeout(() => {
-        setMenuBusy('Building the league…');
-        const built = buildHistoricalLeague(h, sc.startYear, { realDevelopment: true, difficulty: weekly?.twist.hardTrades ? 'hard' : difficulty, seed: weekly ? weekly.seed : Math.floor(Math.random() * 1_000_000) });
-        if (!built.league.teams.some(t => t.teamId === sc.team)) throw new Error(`${sc.team} is not in the ${sc.startYear} league.`);
-        const league = { ...built.league, rebuildChallenge: { id: sc.id, teamId: sc.team, startSeason: built.league.season ?? String(sc.startYear), seasons: weekly ? weekly.seasons : sc.seasons, ...(weekly ? { weekly: { week: weekly.week, twist: weekly.twist.id } } : {}) } };
-        enterApp(league, built.extras, sc.team, weekly ? `Rebuild of the Week ${weekly.week}: ${sc.title}` : `Rebuild: ${sc.title}`);
-        track('mode_start', { mode: 'rebuild', variant: weekly ? 'weekly' : sc.id });
-        setTab('dashboard');
-        resolve();
-      }, 20))).catch((err: unknown) => pushToast(`Could not start the challenge: ${err instanceof Error ? err.message : String(err)}`, 'error'))
-        .finally(() => setMenuBusy(null));
+      track('mode_start', { mode: 'rebuild', variant: weekly ? 'weekly' : sc.id });
+      startFromOrigin({ kind: 'rebuild', scenario: sc.id, seed: weekly ? weekly.seed : seed, difficulty: 'normal', ...(weekly ? { twist: weekly.twist.id } : {}) },
+        { name: weekly ? `Rebuild of the Week ${weekly.week}: ${sc.title}` : `Rebuild: ${sc.title}`, weekly });
       return;
     }
     if (mode === 'real' && real?.source === 'history') {
       // Built-in NBA history: load the reference data on demand, then pick a team like any new league.
-      setMenuBusy('Loading NBA history…');
-      historyTools().then(({ h, buildHistoricalLeague }) => {
-        setMenuBusy('Building the league…');
-        return new Promise<void>(resolve => setTimeout(() => {
-          const built = buildHistoricalLeague(h, parseInt(year, 10), { realDevelopment: real.realDevelopment, forceRosters: real.forceRosters, allPlayers: real.allPlayers, difficulty, seed: Math.floor(Math.random() * 1_000_000) });
-          setPendingLeague(built.league);
-          setPendingExtras(built.extras);
-          setPendingLeagueName(leagueName || `NBA ${year}–${String(parseInt(year, 10) + 1).slice(2)}`);
-          setScreen('chooseTeam');
-          resolve();
-        }, 20));
-      }).catch((err: unknown) => pushToast(`Could not build the historical league: ${err instanceof Error ? err.message : String(err)}`, 'error'))
-        .finally(() => setMenuBusy(null));
+      startFromOrigin({ kind: 'history', year: parseInt(year, 10), seed, difficulty, realDevelopment: real.realDevelopment, forceRosters: !!real.forceRosters, allPlayers: !!real.allPlayers },
+        { name: leagueName || `NBA ${year}–${String(parseInt(year, 10) + 1).slice(2)}` });
       return;
     }
     if (mode === 'random') {
-      const seedValue = Math.floor(Math.random() * 1_000_000);
-      const generated = generateFullLeague(seedValue, 30, 18, 82, year);
-      const nextExtras = { ...generated.extras, tradeSettings: { difficulty } };
-      setPendingLeague(generated.league);
-      setPendingExtras(nextExtras);
-      setPendingLeagueName(leagueName || 'My League');
-      setScreen('chooseTeam');
+      startFromOrigin({ kind: 'random', year: parseInt(year, 10), seed, difficulty }, { name: leagueName || 'My League' });
     } else if (mode === 'real') {
       const emptyLeague: League = { teams: [], schedule: [], settings: { ...DEFAULT_GAME_SETTINGS } };
       enterApp(emptyLeague, { contracts: {}, freeAgents: [], capSettings: { ...DEFAULT_CAP_SETTINGS }, draftClass: [], tradeSettings: { difficulty }, ...DEFAULT_GM_FLAGS }, null, leagueName || 'My League');
@@ -955,6 +982,14 @@ function App() {
       trackOnce(`rebuild-${activeSaveId}`, 'mode_finish', { mode: 'rebuild', result: p.status, stars: p.stars, weekly: !!p.config.weekly });
     }
   }, [screen, activeSaveId, challengeDone]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Daily goals: games your team plays today count toward the day's three goals (official leagues pay out XP).
+  const myPlayed = controlledTeamId ? league.schedule.reduce((n, g) => n + (g.played && (g.homeTeamId === controlledTeamId || g.awayTeamId === controlledTeamId) ? 1 : 0), 0) : 0;
+  useEffect(() => {
+    if (screen !== 'app' || !activeSaveId || !controlledTeamId) return;
+    const done = updateDailyGoals(activeSaveId, league, controlledTeamId, isOfficialLeague(league));
+    for (const g of done) pushToast(`Daily goal done: ${g.text} (+${g.xp} XP)`, 'success');
+    if (done.length) trackOnce(`daily-${todayUtc()}-${done.map(g => g.id).join('-')}`, 'daily_goal', { count: done.length });
+  }, [screen, activeSaveId, controlledTeamId, myPlayed, league.season]); // eslint-disable-line react-hooks/exhaustive-deps
   // Your all-leagues GM legacy follows this league's front office (clean leagues only; see storage/gmLegacy.ts).
   const saveName = saveSummaries.find(sv => sv.id === activeSaveId)?.name ?? 'League';
   useEffect(() => {
@@ -1185,6 +1220,7 @@ function App() {
         <MainMenu
           onStart={startGameMode}
           onLocker={() => setScreen('locker')}
+          onCode={startFromCode}
           busy={menuBusy}
           saves={saveSummaries}
           onContinue={continueSavedUniverse}
@@ -1747,6 +1783,8 @@ function App() {
         })()}
 
         {(tab === 'dashboard' || tab === 'database') && league.rebuildChallenge && <ChallengeBanner league={league} onMenu={() => setConfirmation('exit')} />}
+        {tab === 'dashboard' && controlledTeamId && <DailyGoalsCard official={isOfficialLeague(league)} />}
+        {tab === 'dashboard' && league.origin && <LeagueCodeBox origin={league.origin} teamId={controlledTeamId} teamName={league.teams.find(t => t.teamId === controlledTeamId)?.name} />}
         {tab === 'dashboard' && (
           <DashboardPage
             league={league} extras={extras} controlledTeamId={controlledTeamId} seasonPhase={seasonPhase}

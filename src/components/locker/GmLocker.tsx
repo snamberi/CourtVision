@@ -12,6 +12,8 @@ import { PixelIcon } from '../PixelIcon';
 import { PlayerAvatar } from '../PlayerAvatar';
 import { HallOfFame } from '../career/CareerMode';
 import { BackupPanel } from '../BackupPanel';
+import { ProfilePanel } from '../ProfilePanel';
+import { noteCareers } from '../../profile/profile';
 import '../hunt/hunt.css';
 import '../career/career.css';
 import './locker.css';
@@ -25,7 +27,7 @@ export function GmLocker({ onExit }: { onExit: () => void }) {
   const [rebuild] = useState(() => loadRebuildRecords());
   useEffect(() => {
     let live = true;
-    listCareers().then(c => { if (live) setCareers(c); });
+    listCareers().then(c => { noteCareers(c); if (live) setCareers(c); });
     const onLegacy = () => setLegacy(readLegacy());
     window.addEventListener(LEGACY_EVENT, onLegacy);
     return () => { live = false; window.removeEventListener(LEGACY_EVENT, onLegacy); };
@@ -56,6 +58,8 @@ export function GmLocker({ onExit }: { onExit: () => void }) {
       <div><small>REBUILD STARS</small><b>{rebuildStars}/{SCENARIOS.length * 3}</b></div>
       <div><small>ACHIEVEMENTS</small><b>{earned.length}/{ACHIEVEMENTS.length}</b></div>
     </div>
+
+    <ProfilePanel />
 
     <div className="locker-bay"><BackupPanel compact /></div>
 

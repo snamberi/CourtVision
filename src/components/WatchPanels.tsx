@@ -125,9 +125,10 @@ export function CoachPanel({ coaching, team, opponent, run, lastShotNow, atPosse
   </div>;
 }
 
-export function HighlightsPanel({ highlights, completed, finished, regulationPeriods, onJump, onReel, reelCount, onShare, shareStatus, onVideo, videoStatus }: {
+export function HighlightsPanel({ highlights, completed, finished, regulationPeriods, onJump, onReel, reelCount, onShare, shareStatus, onVideo, videoStatus, onClip, clipStatus }: {
   highlights: Highlight[]; completed: number; finished: boolean; regulationPeriods: number; onJump: (h: Highlight) => void;
   onReel: () => void; reelCount: number; onShare: () => void; shareStatus: string | null; onVideo?: () => void; videoStatus: string | null;
+  /** Makes a GIF of one highlight. */ onClip?: (h: Highlight) => void; clipStatus?: string | null;
 }) {
   const seen = useMemo(() => highlights.filter(h => h.index < completed && h.score >= HIGHLIGHT_MIN).reverse(), [highlights, completed]);
   return <div className="highlights-panel">
@@ -137,9 +138,9 @@ export function HighlightsPanel({ highlights, completed, finished, regulationPer
       {onVideo && <button disabled={!reelCount || !!videoStatus?.startsWith('Recording')} onClick={onVideo}>Save reel as video</button>}
     </div>
     {!finished && <p className="hint-text">The reel covers the whole game, including how it ends.</p>}
-    {(shareStatus || videoStatus) && <p role="status" className="coach-status">{videoStatus ?? shareStatus}</p>}
+    {(shareStatus || videoStatus || clipStatus) && <p role="status" className="coach-status">{clipStatus ?? videoStatus ?? shareStatus}</p>}
     {seen.length ? <ol className="highlight-list">{seen.map(h => <li key={h.index}><button onClick={() => onJump(h)}>
-      <span className={`hl-kind hl-${h.kind}`}>{HIGHLIGHT_LABEL[h.kind]}</span><span>{h.text}</span><small>{formatGameClock(h.quarter, h.clockSeconds, regulationPeriods)} · {h.homeScoreAfter}–{h.awayScoreAfter}</small></button></li>)}</ol>
+      <span className={`hl-kind hl-${h.kind}`}>{HIGHLIGHT_LABEL[h.kind]}</span><span>{h.text}</span><small>{formatGameClock(h.quarter, h.clockSeconds, regulationPeriods)} · {h.homeScoreAfter}–{h.awayScoreAfter}</small></button>{onClip && <button className="hl-clip" disabled={!!clipStatus} onClick={() => onClip(h)} aria-label={`Make a GIF of: ${h.text}`}>GIF</button>}</li>)}</ol>
       : <p className="empty-state">Key moments appear here as they happen.</p>}
   </div>;
 }

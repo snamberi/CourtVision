@@ -1,33 +1,13 @@
-import { SCENARIOS, type RebuildScenario } from '../simulation/rebuildChallenge';
+import { SCENARIOS, type RebuildScenario } from '../simulation/rebuildScenarios';
+import { weekKey, weekEndsAt, weeklySeed } from './week';
+
+export { weekKey, weekEndsAt, weeklySeed };
 
 /*
  * The weekly challenges: every Monday (00:00 UTC) a new Rebuild of the Week and Career of the Week, the same for
  * everyone. Both come from a seed made from the week, so the league (and the Career wheel) start identical in every
  * browser, and results can be compared on Discord. Results are kept per week in this browser.
  */
-
-/** ISO week in UTC, e.g. "2026-W39". Weeks start on Monday. */
-export function weekKey(now = new Date()): string {
-  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-  const day = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - day); // the week's Thursday decides its year
-  const yearStart = Date.UTC(d.getUTCFullYear(), 0, 1);
-  const week = Math.ceil(((d.getTime() - yearStart) / 86_400_000 + 1) / 7);
-  return `${d.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
-}
-
-/** When the current week ends (next Monday 00:00 UTC). */
-export function weekEndsAt(now = new Date()): number {
-  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-  const day = d.getUTCDay() || 7;
-  return d.getTime() + (8 - day) * 86_400_000;
-}
-
-export function weeklySeed(kind: string, week: string): number {
-  let h = 2166136261;
-  for (const ch of `courtvision-weekly|${kind}|${week}`) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
-  return (h >>> 0) % 1_000_000_000;
-}
 
 // ---------------------------------------------------------------- Rebuild of the Week
 

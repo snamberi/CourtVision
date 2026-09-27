@@ -9,6 +9,7 @@ import { CrestArt } from './TeamCrest';
 import { DISCORD_URL } from './DiscordLink';
 import { CLYDE_PATH } from '../visuals/discordGlyph';
 import { pixelTextPath, pixelTextWidth } from '../visuals/pixelFont';
+import { equippedFloor } from '../profile/profile';
 
 type Team={teamId:string;name:string};
 export interface CourtBug { homeScore:number; awayScore:number; clock:string; shotClock?:number }
@@ -110,7 +111,7 @@ function DiscordBoard({x,y}:{x:number;y:number}){
  </a>;
 }
 const Arena=memo(function Arena({home,away,identity,awayKit,id,hype,homeBench,awayBench,fill=1}:{home:Team;away:Team;identity:TeamIdentity;awayKit:TeamIdentity;id:string;hype:number;homeBench:PlayerSeason[];awayBench:PlayerSeason[];fill?:number}){
- const apron=shade(identity.primary,-.18),apronDark=shade(identity.primary,-.45),paint=identity.courtPaint,style=floorStyle(home.teamId);
+ const apron=shade(identity.primary,-.18),apronDark=shade(identity.primary,-.45),paint=identity.courtPaint,picked=equippedFloor(),style=picked==='team'?floorStyle(home.teamId):picked;
  const cream='#f6ecd2';
  return <>
   <defs>
@@ -124,6 +125,19 @@ const Arena=memo(function Arena({home,away,identity,awayKit,id,hype,homeBench,aw
     {[0,1].map(r=>[0,1].map(c=>{const vertical=(r+c)%2===0,ox=c*24,oy=r*24;return <g key={`${r}${c}`}>{[0,1,2].map(k=>vertical
      ?<rect key={k} x={ox+k*8} y={oy} width="8" height="24" fill={k%2?'#c68a55':'#ad6f42'} stroke="#7d4a28" strokeOpacity=".6"/>
      :<rect key={k} x={ox} y={oy+k*8} width="24" height="8" fill={k%2?'#c68a55':'#b27446'} stroke="#7d4a28" strokeOpacity=".6"/>)}</g>;}))}
+   </pattern>
+   <pattern id={`${id}-blonde`} width="120" height="10" patternUnits="userSpaceOnUse" shapeRendering="crispEdges">
+    <rect width="120" height="10" fill="#f0cf97"/><rect y="5" width="120" height="5" fill="#ebc68a"/>
+    <path d="M0 0H120M0 5H120" stroke="#c89a5c" strokeOpacity=".45"/><path d="M28 0V5M86 0V5M14 5V10M60 5V10" stroke="#c89a5c" strokeOpacity=".4"/>
+   </pattern>
+   <pattern id={`${id}-midnight`} width="120" height="10" patternUnits="userSpaceOnUse" shapeRendering="crispEdges">
+    <rect width="120" height="10" fill="#4a2e1d"/><rect y="5" width="120" height="5" fill="#43291a"/>
+    <path d="M0 0H120M0 5H120" stroke="#23150c" strokeOpacity=".7"/><path d="M40 0V5M100 0V5M18 5V10M72 5V10" stroke="#23150c" strokeOpacity=".6"/>
+    <path d="M50 2H84M16 7H44" stroke="#6b4630" strokeOpacity=".5"/>
+   </pattern>
+   <pattern id={`${id}-asphalt`} width="24" height="24" patternUnits="userSpaceOnUse" shapeRendering="crispEdges">
+    <rect width="24" height="24" fill="#4b5058"/>
+    {[[2,3],[9,14],[17,6],[21,19],[5,20],[13,9]].map(([x,y])=><rect key={`${x}-${y}`} x={x} y={y} width="2" height="2" fill={(x+y)%3?'#5b6069':'#3c4047'}/>)}
    </pattern>
    <radialGradient id={`${id}-sheen`} cx="50%" cy="40%" r="65%"><stop offset="0" stopColor="#fff6dc" stopOpacity=".16"/><stop offset=".6" stopColor="#fff6dc" stopOpacity="0"/><stop offset="1" stopColor="#1a0f05" stopOpacity=".22"/></radialGradient>
    <linearGradient id={`${id}-apron`} x1="0" y1="0" x2="1" y2="0"><stop offset="0" stopColor={apronDark}/><stop offset=".12" stopColor={apron}/><stop offset=".88" stopColor={apron}/><stop offset="1" stopColor={apronDark}/></linearGradient>

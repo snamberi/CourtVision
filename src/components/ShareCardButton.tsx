@@ -12,7 +12,8 @@ export function ShareCardButton({ spec, fileName, text, label = 'Share card' }: 
     if (!open) return;
     let live = true, url = '';
     import('../share/shareCard').then(async m => {
-      const blob = await m.cardBlob(await m.renderShareCard(spec));
+      const { equipped } = await import('../profile/profile');
+      const blob = await m.cardBlob(await m.renderShareCard({ ...spec, frame: spec.frame ?? equipped().frame }));
       url = URL.createObjectURL(blob);
       if (live) setImg({ url, blob }); else URL.revokeObjectURL(url);
     }).catch(() => { if (live) setStatus('Could not draw the card in this browser.'); });

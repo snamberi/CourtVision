@@ -1,7 +1,7 @@
 {
   "title": "Privacy Policy",
   "product": "CourtVision",
-  "lastUpdated": "September 27, 2026",
+  "lastUpdated": "September 29, 2026",
   "contactEmail": "",
   "intro": [
     "This Privacy Policy explains what information CourtVision (\"CourtVision\", \"we\", \"us\", \"our\") handles when you use the CourtVision basketball simulator, both the web version and the downloadable Windows edition. We wrote it to be read, so it is plain and specific about what the app actually does.",
@@ -260,6 +260,10 @@
         {
           "type": "p",
           "text": "**Vercel Web Analytics (web version only).** We use aggregate page-view statistics to understand usage and improve the app. Vercel processes request data and reports page categories, referrers, approximate location, browser, operating system, and device type. It uses a short-lived request-derived identifier rather than analytics cookies; visitor session identifiers expire after 24 hours. Our integration removes save IDs, player/game details, URL query strings, and fragments from page-view URLs. No league data or custom gameplay events are sent. Advertising cookie choices do not control this cookie-free service. See [Vercel Analytics privacy information](https://vercel.com/docs/analytics/privacy-policy). Analytics is disabled in the Windows edition."
+        },
+        {
+          "type": "p",
+          "text": "**Online weekly leaderboards (web version only, optional).** Posting a Rebuild of the Week or Career of the Week result sends the name you type, the result (season records or career totals and the created player's name) and a random identifier created in your browser to our leaderboard, which runs on Vercel and stores entries in an Upstash Redis database. Your name and result are shown publicly on that week's board, and entries are deleted automatically after 90 days. To limit spam, your IP address is combined with the current hour into a one-way hash that is kept for one hour; the IP address itself is not stored. Nothing is sent unless you press Post. Contact us to have an entry removed sooner."
         },
         {
           "type": "p",

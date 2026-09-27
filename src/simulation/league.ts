@@ -192,6 +192,8 @@ export interface ScheduledGame {
 export type SeasonPhase = 'regular_season' | 'all_star' | 'playoffs' | 'awards_recap' | 'draft' | 'resign_waive' | 'free_agency' | 'preseason';
 
 export interface League {
+  /** How the league was built (kind, season, options, seed): its league code (see retention/leagueCode.ts). */
+  origin?: import('../retention/leagueCode').LeagueOrigin;
   /** Rebuild Challenge: the scenario this league is playing (see rebuildChallenge.ts). */
   rebuildChallenge?: import('./rebuildChallenge').RebuildChallengeConfig;
   coachingVersion?: 1;

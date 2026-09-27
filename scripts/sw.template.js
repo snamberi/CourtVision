@@ -4,7 +4,7 @@
  * - Hashed build files (/assets/) are cached the first time they load and never change.
  * - The NBA history data is served from the cache and refreshed in the background.
  * - Pages go to the network first and fall back to the cache when offline.
- * Only this site's own files are touched: ads, analytics and other sites always go to the network.
+ * Only this site's own files are touched: the API, ads, analytics and other sites always go to the network.
  */
 const VERSION = '__VERSION__';
 const SHELL = __SHELL__;
@@ -27,7 +27,7 @@ self.addEventListener('fetch', event => {
   const req = event.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
-  if (url.origin !== self.location.origin || url.pathname.startsWith('/_vercel') || url.pathname.startsWith('/downloads/') || url.pathname === '/sw.js') return;
+  if (url.origin !== self.location.origin || url.pathname.startsWith('/_vercel') || url.pathname.startsWith('/api/') || url.pathname.startsWith('/downloads/') || url.pathname === '/sw.js') return;
 
   if (req.mode === 'navigate') {
     event.respondWith(fetch(req).then(res => { put(RUNTIME, req, res.clone()); return res; })

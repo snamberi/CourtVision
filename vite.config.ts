@@ -53,8 +53,12 @@ const siteMaps = (): Plugin => ({
   },
 })
 
+/** The production domain, for share-card footers (a preview deployment's address changes with every deploy). */
+const siteHost = (process.env.SITE_URL || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : '')).replace(/^https?:\/\//, '').replace(/\/$/, '')
+
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => ({
+  define: mode === 'desktop' ? {} : { 'import.meta.env.VITE_SITE_HOST': JSON.stringify(siteHost) },
   plugins: mode === 'desktop' ? [react(), stripAdsense()] : [react(), siteMaps(), serviceWorker()],
   // `--mode desktop` is the offline Windows package: relative asset paths, its own output folder.
   base: mode === 'desktop' ? './' : '/',

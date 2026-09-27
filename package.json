@@ -5,15 +5,16 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && npm run package:windows && vite build",
-    "lint": "oxlint src scripts vite.config.ts",
+    "build": "tsc -b && npm run build:api && npm run package:windows && vite build",
+    "lint": "oxlint src scripts server vite.config.ts",
     "preview": "vite preview",
     "generate:legal": "node scripts/generate-privacy-html.mjs",
     "generate:pages": "node scripts/generate-site-pages.mjs",
     "package:windows": "npm run generate:legal && npm run generate:pages && node scripts/package-windows.mjs",
     "build:desktop": "tsc -b && vite build --mode desktop",
     "bench": "rolldown scripts/bench/engineBench.ts --platform node --file node_modules/.cache/bench/engine.mjs --log-level silent && node node_modules/.cache/bench/engine.mjs",
-    "bench:season": "rolldown scripts/bench/seasonBench.ts --platform node --file node_modules/.cache/bench/season.mjs --log-level silent && node node_modules/.cache/bench/season.mjs"
+    "bench:season": "rolldown scripts/bench/seasonBench.ts --platform node --file node_modules/.cache/bench/season.mjs --log-level silent && node node_modules/.cache/bench/season.mjs",
+    "build:api": "node scripts/build-api.mjs"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.3.0",
@@ -24,6 +25,7 @@
     "@vercel/analytics": "^2.0.1",
     "dexie": "^4.4.5",
     "fflate": "^0.8.3",
+    "gifenc": "^1.0.3",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },

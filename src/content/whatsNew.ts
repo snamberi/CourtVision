@@ -6,6 +6,17 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2026-09-29',
+    title: 'Levels, daily goals and online leaderboards',
+    items: [
+      '**GM Profile:** one level across every mode. Everything you have already won counts. Unlock share-card frames, court floors and titles in the GM Locker.',
+      '**Daily goals:** three small goals a day in any GM league, like a 40-point game or three straight wins, for XP.',
+      '**Online leaderboards:** post your Rebuild and Career of the Week results and see the top 100.',
+      '**League codes:** every new league has a code. Send it to a friend and they start the exact same league.',
+      '**Highlight GIFs:** turn any highlight in Watch Game into a GIF that plays on Discord.',
+    ],
+  },
+  {
     id: '2026-09-28',
     title: 'Weekly challenges and an installable app',
     items: [

@@ -1,4 +1,5 @@
 import { buildPlayerSprite } from '../visuals/playerSprite';
+import type { FrameId } from '../profile/profile';
 
 /*
  * Share cards: a 1200x630 pixel-art image of a result (a career's legacy, a League Hunt, a Rebuild Challenge), sized
@@ -22,7 +23,12 @@ export interface ShareCardSpec {
   /** Star rating shown under the title (0-3). */
   stars?: number;
   accent?: 'orange' | 'gold' | 'red' | 'green';
+  /** GM Profile cosmetic around the card (see profile.ts). */
+  frame?: FrameId;
 }
+
+/** The site's own address for the footer: the production domain when the build knows it, else this page's host. */
+export const siteHost = () => (import.meta.env.VITE_SITE_HOST as string | undefined) || (typeof location !== 'undefined' ? location.host : 'Court Vision');
 
 export const CARD_W = 1200, CARD_H = 630;
 const C = { bg: '#0b1018', panel: '#121926', raised: '#192333', line: '#2a3546', text: '#f4f0e6', muted: '#94a0b2', orange: '#f47b20', gold: '#ffd166', red: '#e85d5d', green: '#55c878' };
@@ -48,7 +54,7 @@ function drawSprite(ctx: CanvasRenderingContext2D, a: NonNullable<ShareCardSpec[
 }
 
 /** Draws the card onto a new canvas (fonts should be loaded first; see renderShareCard). */
-export function drawShareCard(spec: ShareCardSpec, site = typeof location !== 'undefined' ? location.host : 'Court Vision'): HTMLCanvasElement {
+export function drawShareCard(spec: ShareCardSpec, site = siteHost()): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   canvas.width = CARD_W; canvas.height = CARD_H;
   const ctx = canvas.getContext('2d')!;
@@ -63,6 +69,7 @@ export function drawShareCard(spec: ShareCardSpec, site = typeof location !== 'u
   ctx.fillStyle = '#03070d'; ctx.fillRect(34, 34, CARD_W - 60, CARD_H - 60);
   ctx.fillStyle = C.panel; ctx.fillRect(26, 26, CARD_W - 60, CARD_H - 60);
   ctx.strokeStyle = accent; ctx.lineWidth = 4; ctx.strokeRect(28, 28, CARD_W - 64, CARD_H - 64);
+  drawFrame(ctx, spec.frame ?? 'classic');
 
   const left = 64, textMax = spec.avatar ? 760 : CARD_W - 140;
   ctx.textBaseline = 'alphabetic';
@@ -119,6 +126,38 @@ export function drawShareCard(spec: ShareCardSpec, site = typeof location !== 'u
   return canvas;
 }
 
+/** Cosmetic frames unlocked with GM Profile levels. Drawn inside the border, clear of the text and the avatar. */
+function drawFrame(ctx: CanvasRenderingContext2D, frame: FrameId) {
+  const x0 = 28, y0 = 28, w = CARD_W - 64, h = CARD_H - 64;
+  if (frame === 'gold') {
+    ctx.strokeStyle = C.gold; ctx.lineWidth = 4; ctx.strokeRect(x0, y0, w, h);
+    ctx.lineWidth = 2; ctx.strokeRect(x0 + 10, y0 + 10, w - 20, h - 20);
+    ctx.fillStyle = C.gold; for (const [x, y] of [[x0 + 4, y0 + 4], [x0 + w - 16, y0 + 4], [x0 + 4, y0 + h - 16], [x0 + w - 16, y0 + h - 16]]) ctx.fillRect(x, y, 12, 12);
+  } else if (frame === 'hardwood') {
+    for (let i = 0; i < w; i += 60) { ctx.fillStyle = (i / 60) % 2 ? '#dcab6e' : '#e3b479'; ctx.fillRect(x0 + i, y0 + 2, Math.min(60, w - i), 14); ctx.fillStyle = '#a8743f'; ctx.fillRect(x0 + i, y0 + 2, 2, 14); }
+    ctx.fillStyle = '#a8743f'; ctx.fillRect(x0, y0 + 9, w, 1);
+    ctx.strokeStyle = '#e3b479'; ctx.lineWidth = 4; ctx.strokeRect(x0, y0, w, h);
+  } else if (frame === 'neon') {
+    ctx.save(); ctx.shadowColor = '#3ef2ff'; ctx.shadowBlur = 18; ctx.strokeStyle = '#3ef2ff'; ctx.lineWidth = 4; ctx.strokeRect(x0, y0, w, h);
+    ctx.shadowColor = '#ff4fd8'; ctx.strokeStyle = '#ff4fd8'; ctx.lineWidth = 2; ctx.strokeRect(x0 + 10, y0 + 10, w - 20, h - 20); ctx.restore();
+  } else if (frame === 'banner') {
+    for (const [bx, label] of [[CARD_W - 150, 'CV'], [CARD_W - 100, '#1']] as const) {
+      ctx.fillStyle = '#7a1f2b'; ctx.beginPath(); ctx.moveTo(bx, y0); ctx.lineTo(bx + 40, y0); ctx.lineTo(bx + 40, y0 + 90); ctx.lineTo(bx + 20, y0 + 76); ctx.lineTo(bx, y0 + 90); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = C.gold; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = C.gold; ctx.font = `14px ${PIXEL}`; ctx.fillText(label, bx + 20 - ctx.measureText(label).width / 2, y0 + 44);
+    }
+    ctx.strokeStyle = C.gold; ctx.lineWidth = 4; ctx.strokeRect(x0, y0, w, h);
+  } else if (frame === 'fire') {
+    const cols = ['#e85d5d', '#f47b20', '#ffd166'];
+    for (let x = x0; x < x0 + w; x += 12) {
+      const t = (Math.sin(x * 0.37) + Math.sin(x * 0.113) + Math.sin(x * 0.029) + 3) / 6;
+      const hgt = 12 + Math.round(t * 26 / 4) * 4;
+      cols.forEach((c, i) => { const hh = hgt - i * 8; if (hh > 0) { ctx.fillStyle = c; ctx.fillRect(x + i * 2, y0 + 2, 12 - i * 4, hh); } });
+    }
+    ctx.strokeStyle = '#e85d5d'; ctx.lineWidth = 4; ctx.strokeRect(x0, y0, w, h);
+  }
+}
+
 /** Waits for the game's fonts, then draws. */
 export async function renderShareCard(spec: ShareCardSpec): Promise<HTMLCanvasElement> {
   try {
@@ -132,9 +171,9 @@ export const cardBlob = (canvas: HTMLCanvasElement) => new Promise<Blob>((res, r
 
 /** Shares the image natively (phones), or copies it, or downloads it. Returns what happened. */
 export async function shareImage(blob: Blob, fileName: string, text: string, how: 'share' | 'copy' | 'download'): Promise<'shared' | 'copied' | 'downloaded'> {
-  const file = new File([blob], fileName, { type: 'image/png' });
+  const file = new File([blob], fileName, { type: blob.type || 'image/png' });
   if (how === 'share' && navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], text }); return 'shared'; }
-  if (how !== 'download' && typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
+  if (how !== 'download' && blob.type === 'image/png' && typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
     try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); return 'copied'; } catch { /* fall through to download */ }
   }
   const url = URL.createObjectURL(blob);

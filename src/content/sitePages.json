@@ -836,6 +836,28 @@
           ]
         },
         {
+          "h2": "Can I play the same league as a friend?",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "Yes. Every league started in this version has a **league code** on its dashboard. Send it to a friend; when they type it into Have a league code? on the main menu, they get the exact same starting league: the same rosters, generated players, draft classes and schedule, and the same team if you included it. Games are simulated fresh for each of you, so how the season goes is up to you."
+            },
+            {
+              "type": "p",
+              "text": "For a weekly competition, play the Rebuild of the Week or the Career of the Week and post your result to the online leaderboard."
+            }
+          ]
+        },
+        {
+          "h2": "What is my GM level?",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "Your GM Profile level adds up everything you finish in every mode: GM seasons, wins, titles and achievements in official leagues, retired careers and Hall of Famers, League Hunt runs, Rebuild stars, weekly challenges and daily goals. Progress from before levels existed counts too. Levels unlock share-card frames, court floors for Watch Game and titles, which you equip in the GM Locker."
+            }
+          ]
+        },
+        {
           "h2": "I found a bug or have an idea",
           "blocks": [
             {
@@ -854,6 +876,21 @@
       "h1": "Changelog",
       "lead": "The biggest recent additions to Court Vision, newest first.",
       "sections": [
+        {
+          "h2": "End of September 2026: levels, goals and leaderboards",
+          "blocks": [
+            {
+              "type": "ul",
+              "items": [
+                "**GM Profile:** one level across every mode, built from everything you have already done. Levels unlock share-card frames, Watch Game court floors (parquet, blonde maple, midnight, street) and GM titles.",
+                "**Daily goals:** three goals a day in any official GM league, the same for everyone, paying XP.",
+                "**Online weekly leaderboards** for the Rebuild of the Week and the Career of the Week.",
+                "**League codes:** send a code and a friend starts the exact same league (rosters, draft classes, schedule).",
+                "**Highlight GIFs** from Watch Game, ready for Discord."
+              ]
+            }
+          ]
+        },
         {
           "h2": "Late September 2026: weekly challenges and the app",
           "blocks": [

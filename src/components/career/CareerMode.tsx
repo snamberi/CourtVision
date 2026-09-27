@@ -21,6 +21,8 @@ import { TrophyShelf } from '../TrophyShelf';
 import { ShareCardButton } from '../ShareCardButton';
 import { weeklyCareer, loadWeeklyRecords, recordWeekly, weekEndsAt, type WeeklyCareer } from '../../retention/weekly';
 import { track, trackOnce } from '../../analytics/track';
+import { noteCareers } from '../../profile/profile';
+import { PostScore } from '../WeeklyBoard';
 import { WheelBuilder, MyPlayerBuilder, IdentityView, type IdentityChoice } from './CareerCreate';
 import '../hunt/hunt.css';
 import './career.css';
@@ -49,11 +51,11 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
   useEffect(() => {
     let live = true;
     import('../../history/nbaHistoryData').then(m => m.loadNbaHistory()).then(d => { if (live) setH(d); }, e => { if (live) setError(e instanceof Error ? e.message : String(e)); });
-    listCareers().then(c => { if (live) setCareers(c); });
+    listCareers().then(c => { noteCareers(c); if (live) setCareers(c); });
     return () => { live = false; pre.current?.cancel(); cancelRef.current(); };
   }, []);
 
-  const refresh = () => listCareers().then(setCareers);
+  const refresh = () => listCareers().then(c => { noteCareers(c); setCareers(c); });
   const persist = useCallback((meta: CareerMeta, world: CareerWorld | null) => {
     setActive({ meta, world });
     if (meta.status === 'retired') {
@@ -401,5 +403,6 @@ function Legacy({ h, meta, onNew }: { h: NbaHistory; meta: CareerMeta; onNew: ()
       lines: [...shelf.filter(([k]) => r[k] > 0 && !['titles', 'mvp', 'allStar'].includes(k)).map(([k, l]) => `${r[k]}× ${l}`), ...(ret.jerseys?.length ? [`#${meta.identity.jersey} retired by ${ret.jerseys.join(' and ')}`] : [])],
       avatar: { playerId: meta.playerId, jersey: meta.identity.jersey }, accent: ret.hallOfFame !== 'no' ? 'gold' : 'orange',
     }} /><button onClick={() => navigator.clipboard?.writeText(share).then(() => setCopied(true), () => {})}>{copied ? 'Copied!' : 'Copy as text'}</button></div>
+    {meta.weekly && <PostScore board="career" week={meta.weekly} refKey={meta.id} payload={{ career: { player: meta.playerId, legacy: Math.max(0, Math.round(ret.legacy)), seasons: meta.years.length, titles: r.titles, mvps: r.mvp, hof: ret.hallOfFame } }} />}
   </section>;
 }
