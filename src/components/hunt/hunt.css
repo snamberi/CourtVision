@@ -87,3 +87,36 @@ button.hunt-card:disabled .hunt-card-action { background: #2a3546; color: #94a0b
   .hunt-cap { min-width: 0; width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) { button.hunt-card { transition: none; } }
+
+/* Stage 2: coins, items, chemistry, roads, shop */
+.hunt-purse { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px; max-width: 46%; }
+.hunt-coins { color: #ffd166; font-weight: 700; font-variant-numeric: tabular-nums; }
+.hunt-item-chip { font-size: 11px; padding: 2px 6px; border: 1px solid #ffd166; color: #ffd166; background: #1f2332; }
+.hunt-bonus { width: 2.2em; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.hunt-bonus.up { color: #55c878; } .hunt-bonus.down { color: #e85d5d; }
+.hunt-subhead { margin: 10px 0 4px; font: 16px 'Oswald', sans-serif; }
+.hunt-subhead small { color: #94a0b2; font-size: 12px; }
+.hunt-bonds { list-style: none; padding: 0; margin: 0; display: grid; gap: 3px; font-size: 13px; }
+.hunt-bonds b { color: #55c878; display: inline-block; width: 2em; }
+.hunt-bonds li.down b { color: #e85d5d; }
+.hunt-bonds small { color: #94a0b2; }
+.hunt-roads { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 300px)); gap: 12px; }
+.hunt-road { display: grid; gap: 6px; justify-items: start; text-align: left; padding: 14px 16px; background: #121926; border: 3px solid #2a3546; box-shadow: 3px 3px 0 #03070d; color: inherit; font: inherit; cursor: pointer; }
+.hunt-road:hover:not(:disabled) { border-color: #f47b20; }
+.hunt-road:disabled { opacity: .5; cursor: not-allowed; }
+.hunt-road b { font: 20px 'Oswald', sans-serif; }
+.hunt-road span:not(.hunt-road-icon) { font-size: 13px; color: #c9ced8; }
+.hunt-road-icon { font-size: 26px; color: #f47b20; line-height: 1; }
+.road-shop .hunt-road-icon { color: #ffd166; } .road-rest .hunt-road-icon { color: #e85d5d; } .road-event .hunt-road-icon { color: #4da3ff; }
+.hunt-offer-4 { grid-template-columns: repeat(4, minmax(0, 200px)); }
+.hunt-items { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px; }
+.hunt-item { display: grid; gap: 4px; text-align: left; padding: 10px 12px; background: #1f2332; border: 2px solid #ffd166; color: inherit; font: inherit; cursor: pointer; }
+.hunt-item:disabled { opacity: .45; cursor: not-allowed; border-color: #2a3546; }
+.hunt-item span { font-size: 12px; color: #c9ced8; }
+.hunt-item small { color: #ffd166; font-weight: 700; }
+.hunt-note { padding: 8px 12px; border-left: 4px solid #55c878; background: #121926; }
+@media (max-width: 760px) {
+  .hunt-offer-4 { grid-template-columns: 1fr; }
+  .hunt-purse { max-width: none; order: 3; width: 100%; justify-content: flex-start; }
+  .hunt-top { flex-wrap: wrap; }
+}

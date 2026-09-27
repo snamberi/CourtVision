@@ -1,4 +1,4 @@
-import type { HuntRun } from './run';
+import { upgradeRun, type HuntRun } from './run';
 
 /* League Hunt keeps its run in this browser (it is small: card ids and progress). Storage can be blocked in a
  * private window; the run then lasts as long as the page is open. */
@@ -10,7 +10,10 @@ export interface HuntRecords { runs: number; wins: number; bestStop: number; bes
 const EMPTY: HuntRecords = { runs: 0, wins: 0, bestStop: 0 };
 
 export function loadRun(): HuntRun | null {
-  try { const r = JSON.parse(localStorage.getItem(RUN_KEY) ?? 'null') as HuntRun | null; return r?.version === 1 ? r : null; } catch { return null; }
+  try {
+    const r = JSON.parse(localStorage.getItem(RUN_KEY) ?? 'null') as { version?: number } | null;
+    return r && (r.version === 1 || r.version === 2) ? upgradeRun(r as Parameters<typeof upgradeRun>[0]) : null;
+  } catch { return null; }
 }
 export function saveRun(run: HuntRun): void { try { localStorage.setItem(RUN_KEY, JSON.stringify(run)); } catch { /* storage blocked */ } }
 export function clearRun(): void { try { localStorage.removeItem(RUN_KEY); } catch { /* storage blocked */ } }

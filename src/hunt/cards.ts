@@ -25,6 +25,8 @@ export interface HuntCard {
   pos: string;
   team: string;
   teamName: string;
+  /** Franchise key from the data (teams that moved keep it), for chemistry. */
+  franchise: string;
   rarity: Rarity;
   cost: number;
   ppg: number; rpg: number; apg: number;
@@ -48,6 +50,7 @@ export function cardPool(h: NbaHistory): CardPool {
   if (cached) return cached;
   const raw: Omit<HuntCard, 'rarity' | 'cost'>[] = [];
   const teamNames = new Map(h.teams.map(t => [`${t.abbr}|${t.season}`, t.name]));
+  const franchises = new Map(h.teams.map(t => [`${t.abbr}|${t.season}`, t.franchise ?? t.abbr]));
   for (const p of h.players) {
     const rows = (h.seasonsByPlayer.get(p.idx) ?? []).filter(r => NBA.has(r.league));
     const ratings = h.ratingsByPlayer.get(p.idx);
@@ -61,7 +64,7 @@ export function cardPool(h: NbaHistory): CardPool {
       if (g < 25 || !rating) continue;
       const team = rs.filter(r => !r.isAggregate).at(-1)?.team ?? agg.team;
       const per = (v: number | null) => (v == null || !g ? 0 : Math.round(v / g * 10) / 10);
-      raw.push({ id: `${p.id}@${end}`, playerId: p.id, name: p.displayName, end, ovr: rating.ovr, pos: shortPos(agg.pos ?? p.pos), team, teamName: teamNames.get(`${team}|${end}`) ?? team,
+      raw.push({ id: `${p.id}@${end}`, playerId: p.id, name: p.displayName, end, ovr: rating.ovr, pos: shortPos(agg.pos ?? p.pos), team, teamName: teamNames.get(`${team}|${end}`) ?? team, franchise: franchises.get(`${team}|${end}`) ?? team,
         ppg: per(agg.stats.pts), rpg: per(agg.stats.trb), apg: per(agg.stats.ast) });
     }
   }
@@ -85,13 +88,14 @@ function shortPos(pos: string | null): string {
   return ['PG', 'SG', 'SF', 'PF', 'C', 'G', 'F'].includes(first) ? first : 'F';
 }
 
-/** The playable player for a card: his ratings and skills from that season. */
-export function cardPlayer(h: NbaHistory, card: HuntCard, teamId: string): PlayerSeason {
+/** The playable player for a card: his ratings and skills from that season, plus any bonus (chemistry, items). */
+export function cardPlayer(h: NbaHistory, card: HuntCard, teamId: string, bonus = 0): PlayerSeason {
   const p: HistPlayer | undefined = h.byId.get(card.playerId);
   if (!p) throw new Error(`Unknown player ${card.playerId}`);
   const seed = seedFor(h, p, card.end, [card.end]);
   const row: HistSeasonRow | undefined = (h.seasonsByPlayer.get(p.idx) ?? []).find(r => r.season === card.end && NBA.has(r.league));
   const age = row?.age ?? 27;
-  const player = buildRealPlayer({ ...seed, rating: { ...seed.rating, ovr: card.ovr } }, String(card.end - 1), teamId, age, card.ovr, NBA_HISTORY_DATASET);
+  const ovr = Math.max(25, Math.min(99, card.ovr + bonus));
+  const player = buildRealPlayer({ ...seed, rating: { ...seed.rating, ovr } }, String(card.end - 1), teamId, age, ovr, NBA_HISTORY_DATASET);
   return { ...player, playerId: `${card.name} '${String(card.end).slice(2)}`, seasonStats: undefined, careerHistory: [] };
 }
