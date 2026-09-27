@@ -5,7 +5,7 @@ import { huntTeams } from '../hunt/teams';
 import { ERAS, underEra } from '../hunt/eras';
 import {
   newRun, spinPick, chooseFocus, playSeries, takeBoost, leaveShop, buyCard, buyCoach, buyItem, buyLife, train, gameBonuses, squadRating, opponentRating, spinWeights,
-  SPINS, SLOTS, SERIES_COUNT, SEMI_BOSS, START_COINS, MAX_TRAINING, BOOST_CAP, SERIES_START, type HuntRun,
+  SPINS, SLOTS, SERIES_COUNT, SEMI_BOSS, START_COINS, MAX_TRAINING, BOOST_CAP, SERIES_START, MAX_BOOSTS, type HuntRun,
 } from '../hunt/run';
 import { rawStrength, rosterRating, winsToRating } from '../hunt/rating';
 import { COACH_BY_ID } from '../hunt/coaches';
@@ -122,12 +122,23 @@ describe('League Hunt', () => {
     }
     expect(['won', 'lost']).toContain(run.stage);
     expect(boosts).toBe(run.boosts.length);
+    expect(run.boosts.length).toBeLessThanOrEqual(MAX_BOOSTS);
     expect(series).toBe(run.results.length);
     expect(shops).toBeLessThanOrEqual(5);
     // Deterministic: the same seed plays the same series.
     const again = playSeries(h, leaveShop(chooseFocus(h, spinAll(h, newRun(h, 4242)), 'star')))!;
     expect(again.play.games).toEqual(run.results[0].games);
   }, 300_000);
+
+  it('a hunt holds three boosts; after that, wins go straight on', async () => {
+    const h = await loadHistoryForTests();
+    let run = leaveShop(chooseFocus(h, spinAll(h, newRun(h, 4242)), 'star'));
+    run = { ...run, boosts: ['spark', 'closer', 'momentum'], training: Object.fromEntries(run.squad.map(id => [id, 40])) };
+    const r = playSeries(h, run)!;
+    expect(r.play.won).toBe(true);
+    expect(r.run.stage).not.toBe('boost');
+    expect(r.run.seriesIndex).toBe(1);
+  }, 120_000);
 
   it('boosts grow inside a series and are capped per player', async () => {
     const h = await loadHistoryForTests();
@@ -160,9 +171,11 @@ describe('League Hunt', () => {
     const id = run.squad[0];
     for (let i = 0; i < 5; i++) run = train(h, run, id);
     expect(run.training[id]).toBe(MAX_TRAINING);
-    run = buyLife(run);
-    expect(run.lives).toBe(3);
+    // Lives are for sale only on Rookie.
     expect(buyLife(run)).toBe(run);
+    const rookie = buyLife({ ...run, difficulty: 'rookie' });
+    expect(rookie.lives).toBe(3);
+    expect(buyLife(rookie)).toBe(rookie);
     run = chooseFocus(h, run, 'coach');
     expect(run.focus).toBe('coach');
     expect(squadRating(h, run)).toBeGreaterThan(0);

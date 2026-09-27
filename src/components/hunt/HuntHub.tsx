@@ -34,7 +34,7 @@ function NewHunt({ records, onStart }: { records: HuntRecords; onStart: (opts: N
       <li><b>The spins.</b> PG, SG, SF, PF, C, coach, then your sixth man: three cards each, keep one. Every spin is poorer than the last, but every draft has at least one Star and one Great on the table.</li>
       <li><b>Cards are player-seasons.</b> 1996 Jordan and 2003 Jordan are different cards. Ratings are ranked within each season, so every era is fair.</li>
       <li><b>Team rating, 0-100.</b> 60 is a bad team, 70 about 40 wins, 80 about 45, 90 a 55-62 win team, 100 a 68-win all-time great.</li>
-      <li><b>Boosts and shops.</b> Pick a boost after every series win. A shop comes before series 1, 3, 5, 7 and 9: players, coaches, items, training, a life.</li>
+      <li><b>Boosts and shops.</b> Pick a boost after a series win, three per hunt. A shop comes before series 1, 3, 5, 7 and 9: players, coaches, items and training (lives only on Rookie).</li>
       <li><b>Era rules and chemistry.</b> No three-point line before 1979-80, hand-checking in the 90s. Real teammates, franchises and famous rivals play better together.</li>
     </ul>
     <h3 className="hunt-subhead">Starting deck</h3>

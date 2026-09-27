@@ -4,8 +4,8 @@ import { cardPool, seasonLabel, RARITY_LABEL, type HuntCard } from '../../hunt/c
 import { huntTeams, teamLabel, type HuntTeam } from '../../hunt/teams';
 import { ERAS, eraOf } from '../../hunt/eras';
 import {
-  newRun, spinPick, chooseFocus, playSeries, takeBoost, buyCard, buyCoach, buyItem, buyLife, train, leaveShop, gameBonuses, squadRating, baseSquadRating, opponentRating, buffValue, coachBonus,
-  cardPrice, coachPrice, maxLives, spinWeights, slotName, NEUTRAL_GAME, SPINS, SLOTS, FOCUS, FOCUS_IDS, DECKS, DIFFICULTIES, SERIES_COUNT, WINS_NEEDED, LIFE_PRICE, TRAIN_PRICE, TRAIN_STEP, MAX_TRAINING, BOOST_CAP,
+  newRun, spinPick, chooseFocus, playSeries, takeBoost, buyCard, buyCoach, buyItem, buyLife, canBuyLife, train, leaveShop, gameBonuses, squadRating, baseSquadRating, opponentRating, buffValue, coachBonus,
+  cardPrice, coachPrice, maxLives, spinWeights, slotName, NEUTRAL_GAME, SPINS, SLOTS, FOCUS, FOCUS_IDS, DECKS, DIFFICULTIES, SERIES_COUNT, WINS_NEEDED, LIFE_PRICE, TRAIN_PRICE, TRAIN_STEP, MAX_TRAINING, BOOST_CAP, MAX_BOOSTS,
   type HuntRun, type HuntSeries, type SeriesPlay, type Focus,
 } from '../../hunt/run';
 import { ITEMS, MAX_ITEMS } from '../../hunt/items';
@@ -194,8 +194,8 @@ function SeriesPreview({ h, run, onPlay, onAbandon }: { h: NbaHistory; run: Hunt
     <div className="hunt-matchup">
       <SlotBoard h={h} run={run} series={s} />
       <div className="hunt-opponent">
-        <h3>Boosts <small>(up to +{BOOST_CAP} per player per game)</small></h3>
-        {run.boosts.length ? <ul className="hunt-buffs">{run.boosts.map(b => <li key={b}><b>{BOOSTS[b].name}</b> {BOOSTS[b].blurb}</li>)}</ul> : <p className="hint-text">Win a series to pick your first boost.</p>}
+        <h3>Boosts {run.boosts.length}/{MAX_BOOSTS} <small>(up to +{BOOST_CAP} per player per game)</small></h3>
+        {run.boosts.length ? <ul className="hunt-buffs">{run.boosts.map(b => <li key={b}><b>{BOOSTS[b].name}</b> {BOOSTS[b].blurb}</li>)}</ul> : <p className="hint-text">Win a series to pick your first boost. You can hold {MAX_BOOSTS}, so choose well.</p>}
         <h3 className="hunt-subhead">Chemistry for this series</h3>
         <Bonds bonds={bonds} />
         {run.focus && <p className="hint-text">Team focus: <b>{FOCUS[run.focus].name}</b>.</p>}
@@ -258,10 +258,10 @@ function SeriesView({ h, run, play, series, index, onReveal, onContinue }: { h: 
 function BoostPick({ h, run, onTake }: { h: NbaHistory; run: HuntRun; onTake: (b: Parameters<typeof takeBoost>[2]) => void }) {
   void h;
   return <section className="hunt-stage">
-    <div><span className="pixel-eyebrow">SERIES WON · {run.seriesIndex + 1} OF {SERIES_COUNT}</span><h2>Pick a boost</h2></div>
-    <p className="hint-text">Boosts last the whole hunt. Together they add up to +{BOOST_CAP} per player in one game.</p>
+    <div><span className="pixel-eyebrow">SERIES WON · {run.seriesIndex + 1} OF {SERIES_COUNT} · BOOST {run.boosts.length + 1} OF {MAX_BOOSTS}</span><h2>Pick a boost</h2></div>
+    <p className="hint-text">Boosts last the whole hunt, and you only get {MAX_BOOSTS}{run.boosts.length ? ` (${MAX_BOOSTS - run.boosts.length} left, this one included)` : ''}. Together they add up to +{BOOST_CAP} per player in one game.</p>
     <div className="hunt-roads">{(run.boostOffer ?? []).map((b, i) => <button key={b} className="hunt-road hunt-boost hunt-spin-in" style={{ animationDelay: `${i * 140}ms` }} onClick={() => onTake(b)}><b>{BOOSTS[b].name}</b><span>{BOOSTS[b].blurb}</span></button>)}</div>
-    <button className="link-button" onClick={() => onTake(null)}>No boost</button>
+    <button className="link-button" onClick={() => onTake(null)}>Save the slot for later</button>
   </section>;
 }
 
@@ -277,12 +277,12 @@ function Shop({ h, run, onRun }: { h: NbaHistory; run: HuntRun; onRun: (r: HuntR
     <h3 className="hunt-subhead">Players <small>(each one replaces the player in his slot)</small></h3>
     <div className="hunt-offer">{shop.cards.map(({ id, slot }) => { const sold = shop.sold.includes(id), price = cardPrice(h, id), out = pool.byId.get(run.squad[slot])!;
       return <Card key={id} card={pool.byId.get(id)!} disabled={sold || run.coins < price} onClick={() => onRun(buyCard(h, run, id))} action={sold ? 'Signed' : `${price} coins`} note={`New ${slotName(slot)}: replaces ${out.name} (${out.ovr})`} />; })}</div>
-    <h3 className="hunt-subhead">Coach, items and a life <small>{run.items.length}/{MAX_ITEMS} items</small></h3>
+    <h3 className="hunt-subhead">{canBuyLife(run) ? 'Coach, items and a life' : 'Coach and items'} <small>{run.items.length}/{MAX_ITEMS} items</small></h3>
     <div className="hunt-items">
       {coach && <button className="hunt-item" disabled={shop.sold.includes(coach.id) || run.coins < coachPrice(coach)} onClick={() => onRun(buyCoach(run))}><b>Coach {coach.name} ({coach.bonus > 0 ? '+' : ''}{coach.bonus})</b><span>{COACH_STYLE[coach.style]}. Replaces {run.coach ? COACH_BY_ID.get(run.coach)!.name : 'your coach'}.</span><small>{shop.sold.includes(coach.id) ? 'Hired' : `${coachPrice(coach)} coins`}</small></button>}
       {shop.items.map(i => { const it = ITEMS[i], sold = shop.sold.includes(i); return <button key={i} className="hunt-item" disabled={sold || run.coins < it.price || run.items.length >= MAX_ITEMS} onClick={() => onRun(buyItem(run, i))}>
         <b>{it.name}</b><span>{it.blurb}</span><small>{sold ? 'Bought' : `${it.price} coins`}</small></button>; })}
-      <button className="hunt-item" disabled={!!shop.lifeBought || run.lives >= maxLives(run) || run.coins < LIFE_PRICE} onClick={() => onRun(buyLife(run))}><b>♥ A life</b><span>Get back one lost life (once per shop).</span><small>{shop.lifeBought ? 'Bought' : `${LIFE_PRICE} coins`}</small></button>
+      {canBuyLife(run) && <button className="hunt-item" disabled={!!shop.lifeBought || run.lives >= maxLives(run) || run.coins < LIFE_PRICE} onClick={() => onRun(buyLife(run))}><b>♥ A life</b><span>Get back one lost life (once per shop).</span><small>{shop.lifeBought ? 'Bought' : `${LIFE_PRICE} coins`}</small></button>}
     </div>
     <h3 className="hunt-subhead">Training <small>(+{TRAIN_STEP} for one player, up to +{MAX_TRAINING}; {TRAIN_PRICE} coins)</small></h3>
     <div className="hunt-replace">{run.squad.map((id, i) => { const c = pool.byId.get(id)!, t = run.training[id] ?? 0; return <button key={id} disabled={t >= MAX_TRAINING || run.coins < TRAIN_PRICE} onClick={() => onRun(train(h, run, id))}>{slotName(i).toUpperCase()} {c.ovr} {c.name}{t ? <small> (+{t})</small> : null}</button>; })}</div>

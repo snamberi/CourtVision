@@ -43,6 +43,8 @@ export const TRAIN_PRICE = 60;
 export const TRAIN_STEP = 2;
 export const MAX_TRAINING = 2;
 export const MIN_OFFER_OVR = 45;
+/** Boosts a hunt can hold: after three, series wins bring no more picks. */
+export const MAX_BOOSTS = 3;
 export const CARD_PRICE: Record<Rarity, number> = { common: 25, rare: 45, epic: 80, legendary: 130 };
 export const coachPrice = (x: HuntCoach) => Math.max(15, 20 + x.bonus * 15);
 
@@ -108,9 +110,9 @@ export const DECKS: Record<DeckId, HuntDeck> = {
 };
 export interface HuntDifficulty { id: Difficulty; name: string; blurb: string; shift: number; /** Buffs each team brings beyond Pro's. */ buffs: number; lives: number; bossPool: number; bossRating: number; coinShift: number; unlock: string }
 export const DIFFICULTIES: Record<Difficulty, HuntDifficulty> = {
-  rookie: { id: 'rookie', name: 'Rookie', blurb: 'Softer teams with fewer buffs, four lives, and a 96-rated boss.', shift: -3, buffs: -1, lives: 4, bossPool: 12, bossRating: 96, coinShift: 20, unlock: 'Always open.' },
-  pro: { id: 'pro', name: 'Pro', blurb: 'The hunt as it was meant to be.', shift: 0, buffs: 0, lives: 3, bossPool: 8, bossRating: 100, coinShift: 0, unlock: 'Always open.' },
-  legend: { id: 'legend', name: 'Legend', blurb: 'Tougher teams with an extra buff each, two lives, and the boss is one of the four best teams ever.', shift: 4, buffs: 1, lives: 2, bossPool: 4, bossRating: 100, coinShift: -10, unlock: 'Win a hunt.' },
+  rookie: { id: 'rookie', name: 'Rookie', blurb: 'Softer teams with fewer buffs, four lives (and lives in the shop), and a 96-rated boss.', shift: -3, buffs: -1, lives: 4, bossPool: 12, bossRating: 96, coinShift: 20, unlock: 'Always open.' },
+  pro: { id: 'pro', name: 'Pro', blurb: 'The hunt as it was meant to be. No lives for sale.', shift: 2, buffs: 0, lives: 3, bossPool: 8, bossRating: 100, coinShift: 0, unlock: 'Always open.' },
+  legend: { id: 'legend', name: 'Legend', blurb: 'Tougher teams with an extra buff each, two lives, no lives for sale, and the boss is one of the four best teams ever.', shift: 5, buffs: 1, lives: 2, bossPool: 4, bossRating: 100, coinShift: -10, unlock: 'Win a hunt.' },
 };
 
 /** Target ratings of the ten series (Pro); the semi-boss and boss get lifted to theirs. */
@@ -466,6 +468,8 @@ export function playSeries(h: NbaHistory, run: HuntRun): { run: HuntRun; play: S
   if (won) {
     const growth = run.focus ? { ...run.growth, [run.focus]: run.growth[run.focus] + 1 } : run.growth;
     if (s.kind === 'boss') return { run: { ...next, growth, stage: 'won' }, play };
+    // With the boost slots full, the road goes straight on.
+    if (run.boosts.length >= MAX_BOOSTS) return { run: advance(h, { ...next, growth }), play };
     return { run: { ...next, growth, stage: 'boost', attempts: 0, boostOffer: boostOffer(run) }, play };
   }
   if (run.items.includes('insurance')) return { run: { ...next, items: run.items.filter(i => i !== 'insurance'), attempts: run.attempts + 1, note: 'Injury Insurance paid out: no life lost.' }, play };
@@ -483,11 +487,16 @@ function boostOffer(run: HuntRun): BoostId[] {
 /** Shops come before series 1, 3, 5, 7 and 9. */
 export const shopBefore = (index: number) => index % 2 === 0;
 
-/** Takes a boost after a series win (or none), then on to the shop or the next series. */
+/** Takes a boost after a series win (or none), then on to the shop or the next series. A hunt holds three boosts. */
 export function takeBoost(h: NbaHistory, run: HuntRun, boost: BoostId | null): HuntRun {
   if (run.stage !== 'boost') return run;
   if (boost && !run.boostOffer?.includes(boost)) return run;
-  const next: HuntRun = { ...run, boosts: boost ? [...run.boosts, boost] : run.boosts, boostOffer: undefined, seriesIndex: run.seriesIndex + 1, attempts: 0 };
+  return advance(h, { ...run, boosts: boost ? [...run.boosts, boost] : run.boosts, boostOffer: undefined });
+}
+
+/** On to the next series, through a shop when one comes first. */
+function advance(h: NbaHistory, run: HuntRun): HuntRun {
+  const next: HuntRun = { ...run, seriesIndex: run.seriesIndex + 1, attempts: 0 };
   return shopBefore(next.seriesIndex) ? openShop(h, next) : { ...next, stage: 'series' };
 }
 
@@ -544,8 +553,11 @@ export function buyItem(run: HuntRun, item: ItemId): HuntRun {
   return { ...run, coins: run.coins - it.price, items: [...run.items, item], shop: { ...shop, sold: [...shop.sold, item] }, note: `Bought ${it.name}.` };
 }
 
+/** Lives are for sale only on Rookie. */
+export const canBuyLife = (run: HuntRun) => run.difficulty === 'rookie';
+
 export function buyLife(run: HuntRun): HuntRun {
-  if (run.stage !== 'shop' || !run.shop || run.shop.lifeBought || run.lives >= maxLives(run) || run.coins < LIFE_PRICE) return run;
+  if (run.stage !== 'shop' || !canBuyLife(run) || !run.shop || run.shop.lifeBought || run.lives >= maxLives(run) || run.coins < LIFE_PRICE) return run;
   return { ...run, lives: run.lives + 1, coins: run.coins - LIFE_PRICE, shop: { ...run.shop, lifeBought: true }, note: 'A life back.' };
 }
 
