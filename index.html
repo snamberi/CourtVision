@@ -10,9 +10,16 @@
     <!-- AdSense publisher tag (keep in sync with AD_CONFIG.adsenseClient). Removed from the offline Windows build by vite.config.ts. -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4282337217431581"
      crossorigin="anonymous"></script>
+    <!-- AMP auto ads (keep in sync with AD_CONFIG.adsenseClient). Removed from the offline Windows build by vite.config.ts. -->
+    <script async custom-element="amp-auto-ads"
+            src="https://cdn.ampproject.org/v0/amp-auto-ads-0.1.js">
+    </script>
     <title>CourtVision</title>
   </head>
   <body>
+    <!-- AMP auto ads tag --><amp-auto-ads type="adsense"
+            data-ad-client="ca-pub-4282337217431581">
+    </amp-auto-ads><!-- /AMP auto ads tag -->
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
