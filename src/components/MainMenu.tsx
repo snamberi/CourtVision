@@ -1,4 +1,5 @@
 import { PrivacyLink } from './PrivacyPolicyPage';
+import { IS_DESKTOP_BUILD } from '../appMode';
 import { LegacyPanel, useLegacy } from './FrontOfficePanels';
 import { DiscordLink, DISCORD_URL } from './DiscordLink';
 import { CookieSettingsLink } from '../consent/ConsentBanner';
@@ -258,7 +259,7 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
 
       {recovery}
       <AdBanner slot="menu" />
-      <footer className="legal-footer"><PrivacyLink /> · <CookieSettingsLink /> · <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer">Discord</a></footer>
+      <footer className="legal-footer">{!IS_DESKTOP_BUILD && <><a href="/how-to-play.html">How to Play</a> · <a href="/guides/">Guides</a> · <a href="/faq.html">FAQ</a> · <a href="/about.html">About</a> · <a href="/changelog.html">What's new</a> · </>}<PrivacyLink /> · <CookieSettingsLink /> · <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer">Discord</a></footer>
       <ConsentBanner />
     </div>
   );

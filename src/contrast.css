@@ -169,3 +169,15 @@ input, select, textarea { border-color: var(--line-strong); background: #070e1b;
 @media (max-width: 640px) { .rb-banner { grid-template-columns: 1fr; } .rb-score { justify-items: start; } }
 .rb-setup { display: block; }
 .rb-picker { width: 100%; max-width: none; }
+/* ---- Backup everything ---- */
+.backup-panel { display: grid; gap: 8px; }
+.backup-panel h3 { display: flex; align-items: center; gap: 8px; margin: 0; }
+.backup-panel.compact h3 { font: 20px 'Oswald', sans-serif; }
+.backup-confirm { padding: 10px 12px; border: 2px solid #ffd166; background: #1f2332; }
+.backup-confirm p { margin: 4px 0; }
+.backup-msg.ok { color: #55c878; } .backup-msg.err { color: #e85d5d; }
+/* ---- Share cards ---- */
+.share-modal { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 16px; background: rgba(3, 7, 13, .82); }
+.share-box { display: grid; gap: 10px; width: min(640px, 100%); padding: 14px; background: #121926; border: 2px solid #f47b20; box-shadow: 4px 4px 0 #000; }
+.share-box img, .share-loading { width: 100%; height: auto; aspect-ratio: 1200 / 630; image-rendering: pixelated; background: #0b1018; }
+.share-loading { display: grid; place-items: center; color: #94a0b2; }

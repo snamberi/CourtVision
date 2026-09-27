@@ -18,6 +18,7 @@ import { PixelIcon } from '../PixelIcon';
 import { PlayerAvatar } from '../PlayerAvatar';
 import { OverallChart } from './CareerChart';
 import { TrophyShelf } from '../TrophyShelf';
+import { ShareCardButton } from '../ShareCardButton';
 import { WheelBuilder, MyPlayerBuilder, IdentityView, type IdentityChoice } from './CareerCreate';
 import '../hunt/hunt.css';
 import './career.css';
@@ -366,6 +367,13 @@ function Legacy({ h, meta, onNew }: { h: NbaHistory; meta: CareerMeta; onNew: ()
     <OverallChart years={meta.years} />
     <Moments moments={careerMoments(meta)} title="Career moments" />
     <YearsTable years={meta.years} />
-    <div className="contest-actions"><button className="primary" onClick={onNew}>New career</button><button onClick={() => navigator.clipboard?.writeText(share).then(() => setCopied(true), () => {})}>{copied ? 'Copied!' : 'Copy his legacy'}</button></div>
+    <div className="contest-actions"><button className="primary" onClick={onNew}>New career</button><ShareCardButton fileName={`${meta.playerId.replace(/\W+/g, '-')}-legacy.png`} text={share} spec={{
+      kicker: `Career Mode · ${meta.years.length} season${meta.years.length === 1 ? '' : 's'}${meta.draftYear ? ` · ${meta.draftYear} draft class` : ''}`, title: meta.playerId,
+      subtitle: `${per(r.pts, g)} PTS · ${per(r.reb, g)} REB · ${per(r.ast, g)} AST · ${r.pts.toLocaleString()} career points`,
+      badge: ret.hallOfFame === 'first-ballot' ? 'HALL OF FAME · FIRST BALLOT' : ret.hallOfFame === 'yes' ? 'HALL OF FAME' : undefined,
+      stats: [{ label: 'All-time', value: rank ? `#${rank}` : '—' }, { label: 'Titles', value: String(r.titles) }, { label: 'MVPs', value: String(r.mvp) }, { label: 'All-Star', value: String(r.allStar) }],
+      lines: [...shelf.filter(([k]) => r[k] > 0 && !['titles', 'mvp', 'allStar'].includes(k)).map(([k, l]) => `${r[k]}× ${l}`), ...(ret.jerseys?.length ? [`#${meta.identity.jersey} retired by ${ret.jerseys.join(' and ')}`] : [])],
+      avatar: { playerId: meta.playerId, jersey: meta.identity.jersey }, accent: ret.hallOfFame !== 'no' ? 'gold' : 'orange',
+    }} /><button onClick={() => navigator.clipboard?.writeText(share).then(() => setCopied(true), () => {})}>{copied ? 'Copied!' : 'Copy as text'}</button></div>
   </section>;
 }

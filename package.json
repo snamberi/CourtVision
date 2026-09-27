@@ -9,7 +9,8 @@
     "lint": "oxlint src scripts vite.config.ts",
     "preview": "vite preview",
     "generate:legal": "node scripts/generate-privacy-html.mjs",
-    "package:windows": "npm run generate:legal && node scripts/package-windows.mjs",
+    "generate:pages": "node scripts/generate-site-pages.mjs",
+    "package:windows": "npm run generate:legal && npm run generate:pages && node scripts/package-windows.mjs",
     "build:desktop": "tsc -b && vite build --mode desktop",
     "bench": "rolldown scripts/bench/engineBench.ts --platform node --file node_modules/.cache/bench/engine.mjs --log-level silent && node node_modules/.cache/bench/engine.mjs",
     "bench:season": "rolldown scripts/bench/seasonBench.ts --platform node --file node_modules/.cache/bench/season.mjs --log-level silent && node node_modules/.cache/bench/season.mjs"

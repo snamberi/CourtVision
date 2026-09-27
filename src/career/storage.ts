@@ -42,3 +42,15 @@ export async function dropWorld(id: string): Promise<void> { try { await db.worl
 export async function deleteCareer(id: string): Promise<void> {
   try { await db.transaction('rw', db.metas, db.worlds, async () => { await db.metas.delete(id); await db.worlds.delete(id); }); } catch { /* ignore */ }
 }
+
+/** Everything Career Mode keeps, for the all-modes backup (see storage/backup.ts). */
+export async function dumpCareers(): Promise<{ metas: CareerMeta[]; worlds: CareerWorld[] }> {
+  return { metas: await db.metas.toArray(), worlds: await db.worlds.toArray() };
+}
+/** Puts careers back from a backup: adds or replaces by id, never deletes. */
+export async function restoreCareers(data: { metas: CareerMeta[]; worlds: CareerWorld[] }): Promise<void> {
+  await db.transaction('rw', db.metas, db.worlds, async () => {
+    if (data.metas.length) await db.metas.bulkPut(data.metas);
+    if (data.worlds.length) await db.worlds.bulkPut(data.worlds);
+  });
+}

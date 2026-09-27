@@ -75,6 +75,7 @@ import { JobOffersDialog, OwnerReviewDialog } from './components/FrontOfficePane
 import { recordLeagueLegacy } from './storage/gmLegacy';
 import { challengeProgress, recordRebuild, scenarioById } from './simulation/rebuildChallenge';
 import { ChallengeBanner } from './components/ChallengeBanner';
+import { BackupPanel } from './components/BackupPanel';
 import { canPlaySummerLeague, ensureUpcomingDraftClass, simulateSummerLeague } from './simulation/draftSeason';
 import { runLeagueAIPass, autoDraftAIPicksUntilUserTurn, simEntireDraft, runFreeAgencyAI } from './simulation/aiGM';
 import { autoRunAllStarWeekend } from './simulation/autoPlay';
@@ -1178,8 +1179,9 @@ function App() {
           saves={saveSummaries}
           onContinue={continueSavedUniverse}
           onDeleteSave={handleDeleteSave}
-          recovery={<details className="menu-recovery"><summary>Recover a league / manage backups</summary>
+          recovery={<details className="menu-recovery"><summary>Backups: recover a league, or back up everything</summary>
           <SaveRecoveryPanel beforeAction={async () => { await debouncedSave.flush(); }} onOpen={async id => { jobs.resetAll(); await debouncedSave.flush(); await continueSavedUniverse(id); }} />
+          <BackupPanel />
         </details>}
           onRenameSave={handleRenameSave}
         />

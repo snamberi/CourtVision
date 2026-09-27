@@ -17,6 +17,7 @@ import { loadRun, saveRun, clearRun, loadRecords, recordRun, type HuntRecords } 
 import { PlayerAvatar } from '../PlayerAvatar';
 import { PixelIcon } from '../PixelIcon';
 import { HuntHub } from './HuntHub';
+import { ShareCardButton } from '../ShareCardButton';
 import './hunt.css';
 
 /** League Hunt: spin a six-man squad and a coach from all of basketball history, then win ten best-of-seven series. */
@@ -326,6 +327,13 @@ function RunOver({ h, run, records, onNew, onExit }: { h: NbaHistory; run: HuntR
       <tbody>{lines.slice(0, 8).map(l => <tr key={l.name}><td className="col-name">{l.name}</td><td>{l.g}</td><td>{per(l.pts, l.g)}</td><td>{per(l.reb, l.g)}</td><td>{per(l.ast, l.g)}</td></tr>)}</tbody></table></div>}
     <SlotBoard h={h} run={run} />
     <p className="hint-text">Your hunts: {records.runs} · won {records.wins} · furthest series {records.bestStop + 1} of {SERIES_COUNT}</p>
-    <div className="contest-actions"><button className="primary" onClick={onNew}>Start a new hunt</button><button onClick={copy}>{copied ? 'Copied!' : 'Copy the result'}</button><button onClick={onExit}>Main Menu</button></div>
+    <div className="contest-actions"><button className="primary" onClick={onNew}>Start a new hunt</button><ShareCardButton fileName="league-hunt.png" text={share} spec={{
+      kicker: `League Hunt${run.daily ? ` · Daily Legend ${run.daily}` : ` · ${DIFFICULTIES[run.difficulty ?? 'pro'].name}`}`,
+      title: won ? 'Hunt complete' : `Reached series ${run.seriesIndex + 1} of ${SERIES_COUNT}`,
+      subtitle: mvp ? `MVP ${mvp.name}: ${per(mvp.pts, mvp.g)} PTS · ${per(mvp.reb, mvp.g)} REB · ${per(mvp.ast, mvp.g)} AST` : undefined,
+      stats: [{ label: 'Series', value: `${seriesWon}-${seriesLost}` }, { label: 'Games', value: `${gamesWon}-${gamesPlayed - gamesWon}` }, { label: 'Boosts', value: String(run.boosts.length) }],
+      lines: run.results.slice(-6).map(r => `${r.won ? 'W' : 'L'} ${wl(r)} vs ${teamLabel(teams.get(r.teamId)!)}`),
+      avatar: mvp ? { playerId: mvp.name } : undefined, accent: won ? 'gold' : 'red',
+    }} /><button onClick={copy}>{copied ? 'Copied!' : 'Copy as text'}</button><button onClick={onExit}>Main Menu</button></div>
   </section>;
 }

@@ -11,6 +11,7 @@ import { PixelTrophy } from '../PixelTrophy';
 import { PixelIcon } from '../PixelIcon';
 import { PlayerAvatar } from '../PlayerAvatar';
 import { HallOfFame } from '../career/CareerMode';
+import { BackupPanel } from '../BackupPanel';
 import '../hunt/hunt.css';
 import '../career/career.css';
 import './locker.css';
@@ -55,6 +56,8 @@ export function GmLocker({ onExit }: { onExit: () => void }) {
       <div><small>REBUILD STARS</small><b>{rebuildStars}/{SCENARIOS.length * 3}</b></div>
       <div><small>ACHIEVEMENTS</small><b>{earned.length}/{ACHIEVEMENTS.length}</b></div>
     </div>
+
+    <div className="locker-bay"><BackupPanel compact /></div>
 
     <section className="locker-bay">
       <h2><PixelIcon name="star" size={18} /> Career Mode</h2>
