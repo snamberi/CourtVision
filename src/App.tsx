@@ -73,6 +73,8 @@ import { beginNewSeasonRoster, finalizeNewSeasonSchedule, type SeasonTransitionS
 import { acceptJobOffer, becomeSpectator, ensureFrontOffice, markSandboxUse, ACHIEVEMENT_BY_ID, type OwnerReview } from './simulation/frontOffice';
 import { JobOffersDialog, OwnerReviewDialog } from './components/FrontOfficePanels';
 import { recordLeagueLegacy } from './storage/gmLegacy';
+import { challengeProgress, recordRebuild, scenarioById } from './simulation/rebuildChallenge';
+import { ChallengeBanner } from './components/ChallengeBanner';
 import { canPlaySummerLeague, ensureUpcomingDraftClass, simulateSummerLeague } from './simulation/draftSeason';
 import { runLeagueAIPass, autoDraftAIPicksUntilUserTurn, simEntireDraft, runFreeAgencyAI } from './simulation/aiGM';
 import { autoRunAllStarWeekend } from './simulation/autoPlay';
@@ -107,6 +109,7 @@ const StandingsPage = lazy(() => import('./components/StandingsPage').then(m => 
 const ThreeTeamTradePage = lazy(() => import('./components/ThreeTeamTradePage').then(m => ({ default: m.ThreeTeamTradePage })));
 const ExtensionsPage = lazy(() => import('./components/ExtensionsPage').then(m => ({ default: m.ExtensionsPage })));
 const LeagueHunt = lazy(() => import('./components/hunt/LeagueHunt').then(m => ({ default: m.LeagueHunt })));
+const CareerImportPanel = lazy(() => import('./components/career/CareerImportPanel').then(m => ({ default: m.CareerImportPanel })));
 const GmLocker = lazy(() => import('./components/locker/GmLocker').then(m => ({ default: m.GmLocker })));
 const CareerMode = lazy(() => import('./components/career/CareerMode').then(m => ({ default: m.CareerMode })));
 const SummerCampPage = lazy(() => import('./components/SummerCampPage').then(m => ({ default: m.SummerCampPage })));
@@ -373,7 +376,23 @@ function App() {
   };
 
   const [menuBusy, setMenuBusy] = useState<string | null>(null);
-  const startGameMode = (mode: GameMode, difficulty: TradeDifficulty, year: string, leagueName: string, real?: RealLeagueOptions) => {
+  const startGameMode = (mode: GameMode, difficulty: TradeDifficulty, year: string, leagueName: string, real?: RealLeagueOptions, scenarioId?: string) => {
+    if (mode === 'rebuild') {
+      const sc = scenarioId ? scenarioById(scenarioId) : undefined;
+      if (!sc) return;
+      setMenuBusy('Loading NBA history…');
+      historyTools().then(({ h, buildHistoricalLeague }) => new Promise<void>(resolve => setTimeout(() => {
+        setMenuBusy('Building the league…');
+        const built = buildHistoricalLeague(h, sc.startYear, { realDevelopment: true, difficulty, seed: Math.floor(Math.random() * 1_000_000) });
+        if (!built.league.teams.some(t => t.teamId === sc.team)) throw new Error(`${sc.team} is not in the ${sc.startYear} league.`);
+        const league = { ...built.league, rebuildChallenge: { id: sc.id, teamId: sc.team, startSeason: built.league.season ?? String(sc.startYear), seasons: sc.seasons } };
+        enterApp(league, built.extras, sc.team, `Rebuild: ${sc.title}`);
+        setTab('dashboard');
+        resolve();
+      }, 20))).catch((err: unknown) => pushToast(`Could not start the challenge: ${err instanceof Error ? err.message : String(err)}`, 'error'))
+        .finally(() => setMenuBusy(null));
+      return;
+    }
     if (mode === 'real' && real?.source === 'history') {
       // Built-in NBA history: load the reference data on demand, then pick a team like any new league.
       setMenuBusy('Loading NBA history…');
@@ -918,6 +937,13 @@ function App() {
     setControlledTeamId(null);
     pushToast('You are spectating. Teams will call again next offseason.', 'info');
   };
+  // A finished Rebuild Challenge goes on this browser's board (official leagues only, once per save).
+  const challengeDone = league.rebuildChallenge ? challengeProgress(league)?.status : undefined;
+  useEffect(() => {
+    if (screen !== 'app' || !activeSaveId || !challengeDone || challengeDone === 'active') return;
+    const p = challengeProgress(league);
+    if (p) recordRebuild(p, activeSaveId);
+  }, [screen, activeSaveId, challengeDone]); // eslint-disable-line react-hooks/exhaustive-deps
   // Your all-leagues GM legacy follows this league's front office (clean leagues only; see storage/gmLegacy.ts).
   const saveName = saveSummaries.find(sv => sv.id === activeSaveId)?.name ?? 'League';
   useEffect(() => {
@@ -1456,10 +1482,11 @@ function App() {
         {tab === 'freeAgency' && (
           league.teams.length === 0
             ? <p className="empty-state">No teams yet.</p>
-            : <FreeAgencyPage sandboxMode={sandboxMode}
+            : <><FreeAgencyPage sandboxMode={sandboxMode}
                 league={league} extras={extras} controlledTeamId={managerId}
                 onChange={(l, e) => { setLeague(l); setExtras(e); }} onSelectPlayer={selectPlayer}
               />
+              {!league.rebuildChallenge && <Suspense fallback={null}><CareerImportPanel league={league} extras={extras} allowTeams={sandboxMode} onChange={(l, e) => { setLeague(l); setExtras(e); }} onToast={pushToast} /></Suspense>}</>
         )}
 
         {tab === 'draft' && (
@@ -1707,6 +1734,7 @@ function App() {
           );
         })()}
 
+        {(tab === 'dashboard' || tab === 'database') && league.rebuildChallenge && <ChallengeBanner league={league} onMenu={() => setConfirmation('exit')} />}
         {tab === 'dashboard' && (
           <DashboardPage
             league={league} extras={extras} controlledTeamId={controlledTeamId} seasonPhase={seasonPhase}

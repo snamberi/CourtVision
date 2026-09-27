@@ -4,6 +4,7 @@ import { careerShelf, careerResume, type CareerMeta } from '../../career/career'
 import { loadRecords, loadAlbum, type HuntRecords } from '../../hunt/storage';
 import { readLegacy, legacyTotals, LEGACY_EVENT, type GmLegacy } from '../../storage/gmLegacy';
 import { ACHIEVEMENTS } from '../../simulation/frontOffice';
+import { SCENARIOS, loadRebuildRecords } from '../../simulation/rebuildChallenge';
 import { formatSeasonYear } from '../../simulation/calendar';
 import { TrophyShelf } from '../TrophyShelf';
 import { PixelTrophy } from '../PixelTrophy';
@@ -20,6 +21,7 @@ export function GmLocker({ onExit }: { onExit: () => void }) {
   const [hunt] = useState<HuntRecords>(() => loadRecords());
   const [album] = useState(() => loadAlbum().size);
   const [legacy, setLegacy] = useState<GmLegacy>(() => readLegacy());
+  const [rebuild] = useState(() => loadRebuildRecords());
   useEffect(() => {
     let live = true;
     listCareers().then(c => { if (live) setCareers(c); });
@@ -36,7 +38,9 @@ export function GmLocker({ onExit }: { onExit: () => void }) {
   const gm = legacyTotals(legacy);
   const daily = Object.values(hunt.daily ?? {});
   const earned = ACHIEVEMENTS.filter(a => legacy.achievements[a.id]);
-  const trophies = shelf.length + hunt.wins + gm.titles + earned.length;
+  const rebuildStars = Object.values(rebuild).reduce((n, r) => n + r.stars, 0);
+  const rebuildTitles = Object.values(rebuild).filter(r => r.titleIn != null).length;
+  const trophies = shelf.length + hunt.wins + gm.titles + earned.length + rebuildTitles;
 
   return <div className="hunt locker">
     <header className="hunt-top">
@@ -48,6 +52,7 @@ export function GmLocker({ onExit }: { onExit: () => void }) {
       <div><small>HALL OF FAMERS</small><b>{inducted}</b></div>
       <div><small>HUNTS WON</small><b>{hunt.wins}</b></div>
       <div><small>GM TITLES</small><b>{gm.titles}</b></div>
+      <div><small>REBUILD STARS</small><b>{rebuildStars}/{SCENARIOS.length * 3}</b></div>
       <div><small>ACHIEVEMENTS</small><b>{earned.length}/{ACHIEVEMENTS.length}</b></div>
     </div>
 
@@ -75,6 +80,14 @@ export function GmLocker({ onExit }: { onExit: () => void }) {
       </div>
       {hunt.wins > 0 ? <div className="locker-hunt-cups">{Array.from({ length: Math.min(hunt.wins, 20) }, (_, i) => <PixelTrophy key={i} award="champion" size={34} title="League Hunt won" />)}{hunt.wins > 20 && <span>+{hunt.wins - 20}</span>}</div>
         : <p className="hint-text">Beat the boss in League Hunt to put a cup here.</p>}
+    </section>
+
+    <section className="locker-bay">
+      <h2><PixelIcon name="chart" size={18} /> Rebuild Challenge</h2>
+      <ul className="locker-achievements">{SCENARIOS.map(sc => { const r = rebuild[sc.id]; return <li key={sc.id} className={r?.titleIn ? 'got' : ''}>
+        <PixelTrophy award="champion" size={30} dim={!r?.titleIn} />
+        <div><b>{sc.title}</b><small>{sc.team} {sc.startYear}-{String(sc.startYear + 1).slice(2)} · {r ? `${'★'.repeat(r.stars)}${'☆'.repeat(3 - r.stars)} · best ${r.best.toLocaleString()}${r.titleIn ? ` · title in year ${r.titleIn}` : ''}` : 'Not played yet'}</small></div>
+      </li>; })}</ul>
     </section>
 
     <section className="locker-bay">

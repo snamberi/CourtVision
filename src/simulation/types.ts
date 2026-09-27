@@ -304,6 +304,8 @@ export interface PlayerSeason {
   contractYear?: boolean;
   /** Career Mode's player: he retires only when his career says so, never on the league's random rolls. */
   careerPlayer?: boolean;
+  /** Can carry ratings past 99 (up to 120): Career Mode's player, in his career or brought into a league. */
+  highRatings?: boolean;
   /** Honours won in real NBA history before this league's start (imported, never simulated). */
   historicalAwards?: HistoricalAward[];
 

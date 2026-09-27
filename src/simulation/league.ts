@@ -192,6 +192,8 @@ export interface ScheduledGame {
 export type SeasonPhase = 'regular_season' | 'all_star' | 'playoffs' | 'awards_recap' | 'draft' | 'resign_waive' | 'free_agency' | 'preseason';
 
 export interface League {
+  /** Rebuild Challenge: the scenario this league is playing (see rebuildChallenge.ts). */
+  rebuildChallenge?: import('./rebuildChallenge').RebuildChallengeConfig;
   coachingVersion?: 1;
   coachingUserTeamId?: string | null;
   staffMarket?: CoachIdentity[];

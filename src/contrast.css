@@ -145,3 +145,27 @@ input, select, textarea { border-color: var(--line-strong); background: #070e1b;
 .menu-locker:active { transform: translate(1px, 2px); box-shadow: none; }
 .menu-locker + .menu-discord { margin-left: 8px; }
 @media (max-width: 640px) { .menu-locker { margin-left: auto; font-size: 14px; padding: 5px 8px; } }
+/* ---- Rebuild Challenge ---- */
+.rb-banner { display: grid; grid-template-columns: 1fr auto; gap: 10px 18px; margin-bottom: 14px; padding: 12px 16px; background: #192333; border: 2px solid var(--amber, #f47b20); box-shadow: 3px 3px 0 #000; }
+.rb-banner.won { border-color: #ffd166; } .rb-banner.failed { border-color: #e85d5d; }
+.rb-head h2 { margin: 2px 0; font: 24px 'Oswald', sans-serif; }
+.rb-head p { margin: 2px 0; }
+.rb-verdict { font-weight: 700; color: #ffd166; }
+.rb-banner.failed .rb-verdict { color: #e85d5d; }
+.rb-score { display: grid; justify-items: end; align-content: start; }
+.rb-score small { font-size: 10px; letter-spacing: .08em; color: #94a0b2; }
+.rb-score b { font: 30px 'Oswald', sans-serif; color: #f47b20; font-variant-numeric: tabular-nums; }
+.rb-stars span { color: #2a3546; font-size: 20px; } .rb-stars span.on { color: #ffd166; }
+.rb-seasons { grid-column: 1 / -1; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; padding: 0; margin: 0; }
+.rb-seasons li { display: grid; min-width: 96px; padding: 4px 8px; background: #121926; border: 1px solid #2a3546; font-size: 12px; }
+.rb-seasons li small { color: #94a0b2; } .rb-seasons li.won { border-color: #ffd166; }
+.rb-banner .contest-actions { grid-column: 1 / -1; align-items: center; }
+.rb-scenarios { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px; }
+.rb-scenario { display: grid; gap: 4px; text-align: left; padding: 10px 12px; background: #121926; border: 2px solid #2a3546; color: inherit; font: inherit; cursor: pointer; }
+.rb-scenario.selected { border-color: var(--amber, #f47b20); background: #192333; }
+.rb-scenario b { font: 17px 'Oswald', sans-serif; }
+.rb-scenario small { color: #94a0b2; }
+.rb-scenario span { font-size: 12px; color: #c9ced8; }
+@media (max-width: 640px) { .rb-banner { grid-template-columns: 1fr; } .rb-score { justify-items: start; } }
+.rb-setup { display: block; }
+.rb-picker { width: 100%; max-width: none; }

@@ -216,4 +216,25 @@ describe('Career Mode', () => {
     expect(d.season).toBe('1984');
     expect(full.draftPicks.slice(0, 5).map(p => p.playerId)).toContain('Michael Jordan');
   }, 300_000);
+
+  it('a career player can be brought into a GM league (free agency, or a team), ratings past 99 intact', async () => {
+    const h = await loadHistoryForTests();
+    const { importCareerPlayer, careerPlayerAt } = await import('../career/importCareer');
+    const curry = [...eliteRanks(h)].find(([, r]) => r.threePoint === 1)![0];
+    const prime = { ...primeOf(h, 'Stephen Curry'), threePoint: takenValues(h, curry, 'threePoint') };
+    const meta = { ...newCareerMeta('i', 4, 'wheel', { name: 'Splash Import', pos: 'PG' as const, jersey: 30 }, prime, 'balanced' as const, 'Splash Import', '2026', startProgress()), years: [] as CareerYear[] };
+    const atPrime = careerPlayerAt(meta, 'prime', '2030');
+    expect(atPrime.age).toBe(27);
+    expect(atPrime.attributes.offense.threePoint).toBeGreaterThan(99);
+    expect(careerPlayerAt(meta, 'rookie', '2030').age).toBe(19);
+    const { league, extras } = generateFullLeague(9, 4, 10, 8, '2030');
+    const fa = importCareerPlayer(meta, 'prime', league, extras, null);
+    const signed = fa.extras.freeAgents.find(p => p.playerId === fa.playerId)!;
+    expect(signed.highRatings).toBe(true);
+    expect(signed.careerPlayer).toBeFalsy(); // he retires on the league's own rules
+    expect(resolveEffectivePlayer(signed).attributes.offense.threePoint).toBeGreaterThan(99);
+    const onTeam = importCareerPlayer(meta, 'last', league, extras, league.teams[0].teamId);
+    expect(onTeam.league.teams[0].seasons.some(p => p.playerId === onTeam.playerId)).toBe(true);
+    expect(onTeam.extras.contracts[onTeam.playerId].teamId).toBe(league.teams[0].teamId);
+  }, 120_000);
 });

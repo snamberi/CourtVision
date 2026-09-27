@@ -77,7 +77,7 @@ export function resolveEffectivePlayer(
   if (!sandboxMode) {
     // Realistic mode: clamp all numeric ratings to [0, 99], ignore broken flags. Career Mode's player can be one of
     // history's greats at something (up to 120, see career/wheel.ts).
-    clampRealistic(attributes, season.careerPlayer ? CAREER_RATING_MAX : 99);
+    clampRealistic(attributes, season.careerPlayer || season.highRatings ? CAREER_RATING_MAX : 99);
     return { attributes, flags: emptyFlags(), sandboxMode: false };
   }
 

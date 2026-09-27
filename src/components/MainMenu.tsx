@@ -11,16 +11,17 @@ import type { TradeDifficulty } from '../simulation/gm';
 import type { SaveSummary } from '../storage/saves';
 import { formatSeasonYear, nbaHistoryYearRange } from '../simulation/calendar';
 import { AdBanner } from './AdBanner';
+import { SCENARIOS, loadRebuildRecords } from '../simulation/rebuildChallenge';
 import { DataCredits } from './DataCredits';
 
-export type GameMode = 'random' | 'real' | 'legends' | 'career';
+export type GameMode = 'random' | 'real' | 'legends' | 'career' | 'rebuild';
 export interface RealLeagueOptions { source: 'history' | 'csv'; realDevelopment: boolean; forceRosters?: boolean; allPlayers?: boolean }
 /** Start years the bundled NBA history supports (history through the season before; data ends 2025-26). */
 const HISTORY_START_YEARS: number[] = Array.from({ length: 2025 - 1946 + 1 }, (_, i) => 2025 - i);
 
 interface Props {
   recovery?: ReactNode;
-  onStart: (mode: GameMode, difficulty: TradeDifficulty, year: string, leagueName: string, real?: RealLeagueOptions) => void;
+  onStart: (mode: GameMode, difficulty: TradeDifficulty, year: string, leagueName: string, real?: RealLeagueOptions, scenarioId?: string) => void;
   /** Shown while a historical league is being assembled. */
   busy?: string | null;
   saves: SaveSummary[];
@@ -46,6 +47,11 @@ const MODES: { id: GameMode; title: string; blurb: string }[] = [
     id: 'legends',
     title: 'League Hunt',
     blurb: 'Spin a six-man squad and a coach from all of history, then win ten best-of-seven series against the great teams of every era. A semi-boss, a boss, three boosts.',
+  },
+  {
+    id: 'rebuild',
+    title: 'Rebuild Challenge',
+    blurb: 'Take over a real team at its lowest point in NBA history (the Bulls after Jordan, the 7-59 Bobcats) and win a title before the clock runs out. Scored, starred and ranked.',
   },
   {
     id: 'career',
@@ -116,6 +122,8 @@ function SavedLeaguesList({ saves, onContinue, onDeleteSave, onRenameSave }: Pic
 
 export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSave, recovery, busy = null, onLocker }: Props) {
   const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
+  const [scenario, setScenario] = useState(SCENARIOS[0].id);
+  const [rebuildRecords] = useState(() => loadRebuildRecords());
   const [difficulty, setDifficulty] = useState<TradeDifficulty>('normal');
   const yearOptions = nbaHistoryYearRange();
   const [year, setYear] = useState(String(yearOptions[0]));
@@ -143,7 +151,7 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
 
       <MenuLegacy />
 
-      <div className="menu-section-heading"><h2>Choose your game</h2><span>THREE WAYS TO MAKE HISTORY</span></div>
+      <div className="menu-section-heading"><h2>Choose your game</h2><span>FIVE WAYS TO MAKE HISTORY</span></div>
 
       <SavedLeaguesList saves={saves} onContinue={onContinue} onDeleteSave={onDeleteSave} onRenameSave={onRenameSave} />
 
@@ -155,14 +163,20 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
             onClick={() => setSelectedMode(m.id)}
             aria-pressed={selectedMode === m.id}
           >
-            <span className="mode-card-kicker"><PixelIcon name={m.id === 'random' ? 'team' : m.id === 'real' ? 'court' : m.id === 'career' ? 'star' : 'trophy'} size={24} /><span>{m.id === 'random' ? '01 / CREATE' : m.id === 'real' ? '02 / IMPORT' : m.id === 'legends' ? '03 / REIMAGINE' : '04 / BECOME'}</span><span className="mode-selection-dot" /></span>
+            <span className="mode-card-kicker"><PixelIcon name={m.id === 'random' ? 'team' : m.id === 'real' ? 'court' : m.id === 'career' ? 'star' : m.id === 'rebuild' ? 'chart' : 'trophy'} size={24} /><span>{m.id === 'random' ? '01 / CREATE' : m.id === 'real' ? '02 / IMPORT' : m.id === 'legends' ? '03 / REIMAGINE' : m.id === 'rebuild' ? '04 / REBUILD' : '05 / BECOME'}</span><span className="mode-selection-dot" /></span>
             <h3>{m.title}</h3>
             <p>{m.blurb}</p>
           </button>
         ))}
       </div>
 
-      {selectedMode && selectedMode !== 'legends' && selectedMode !== 'career' && (
+      {selectedMode === 'rebuild' && <div className="menu-setup rb-setup"><div className="difficulty-picker rb-picker"><h4>Choose your rebuild</h4>
+        <div className="rb-scenarios" role="radiogroup" aria-label="Rebuild scenarios">{SCENARIOS.map(sc => { const rec = rebuildRecords[sc.id]; return <button key={sc.id} role="radio" aria-checked={scenario === sc.id} className={`rb-scenario ${scenario === sc.id ? 'selected' : ''}`} onClick={() => setScenario(sc.id)}>
+          <small>{sc.startYear}-{String(sc.startYear + 1).slice(2)} · {sc.team} · {sc.seasons} seasons · {sc.difficulty}</small><b>{sc.title}</b><span>{sc.blurb}</span>
+          <small>{rec ? `${'★'.repeat(rec.stars)}${'☆'.repeat(3 - rec.stars)} · best ${rec.best.toLocaleString()}${rec.titleIn ? ` · title in year ${rec.titleIn}` : ''}` : 'Not played yet'}</small></button>; })}</div>
+        <p className="hint-text">Real NBA history from that season: real rosters, real players on their real careers, real draft classes. You run the team with every tool of the game. A title scores 1,000 plus 250 for every season left; wins and playoff runs add up along the way. Sandbox leagues don't count.</p></div></div>}
+
+      {selectedMode && selectedMode !== 'legends' && selectedMode !== 'career' && selectedMode !== 'rebuild' && (
         <div className="menu-setup">
           <div className="difficulty-picker">
             <h4>League Name</h4>
@@ -237,7 +251,7 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
       )}
 
       {selectedMode && (
-        <button className="primary menu-start" disabled={!!busy} onClick={() => onStart(selectedMode, difficulty, historical ? historyYear : year, leagueName, selectedMode === 'real' ? { source: realSource, realDevelopment, forceRosters, allPlayers } : undefined)}>
+        <button className="primary menu-start" disabled={!!busy} onClick={() => onStart(selectedMode, difficulty, historical ? historyYear : year, leagueName, selectedMode === 'real' ? { source: realSource, realDevelopment, forceRosters, allPlayers } : undefined, selectedMode === 'rebuild' ? scenario : undefined)}>
           {busy ?? `Start ${historical ? `${historyYear}–${String(Number(historyYear) + 1).slice(2)} NBA` : MODES.find((m) => m.id === selectedMode)?.title}`}
         </button>
       )}
