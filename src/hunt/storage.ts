@@ -1,4 +1,4 @@
-import { upgradeRun, DECKS, DIFFICULTIES, type HuntRun, type DeckId, type Difficulty } from './run';
+import { DECKS, DIFFICULTIES, type HuntRun, type DeckId, type Difficulty } from './run';
 
 /* League Hunt keeps its run, records and album in this browser (they are small: card ids and progress). Storage can
  * be blocked in a private window; everything then lasts as long as the page is open. */
@@ -13,8 +13,9 @@ const EMPTY: HuntRecords = { runs: 0, wins: 0, bestStop: 0 };
 
 export function loadRun(): HuntRun | null {
   try {
+    // Hunts from before the series rework (versions 1 and 2) can't continue under the new rules; they are dropped.
     const r = JSON.parse(localStorage.getItem(RUN_KEY) ?? 'null') as { version?: number } | null;
-    return r && (r.version === 1 || r.version === 2) ? upgradeRun(r as Parameters<typeof upgradeRun>[0]) : null;
+    return r && r.version === 3 ? r as HuntRun : null;
   } catch { return null; }
 }
 export function saveRun(run: HuntRun): void {
@@ -32,8 +33,8 @@ export function recordRun(run: HuntRun): HuntRecords {
   const r = loadRecords();
   if (r.lastSeed === run.seed) return r;
   const wins = run.results.filter(x => x.won).length;
-  const next: HuntRecords = { ...r, runs: r.runs + 1, wins: r.wins + (run.stage === 'won' ? 1 : 0), bestStop: Math.max(r.bestStop, run.stage === 'won' ? run.stops.length - 1 : run.stopIndex), lastSeed: run.seed,
-    ...(run.daily ? { daily: { ...(r.daily ?? {}), [run.daily]: { won: run.stage === 'won', stop: run.stopIndex, wins, losses: run.results.length - wins } } } : {}) };
+  const next: HuntRecords = { ...r, runs: r.runs + 1, wins: r.wins + (run.stage === 'won' ? 1 : 0), bestStop: Math.max(r.bestStop, run.stage === 'won' ? run.series.length - 1 : run.seriesIndex), lastSeed: run.seed,
+    ...(run.daily ? { daily: { ...(r.daily ?? {}), [run.daily]: { won: run.stage === 'won', stop: run.seriesIndex, wins, losses: run.results.length - wins } } } : {}) };
   try { localStorage.setItem(RECORDS_KEY, JSON.stringify(next)); } catch { /* storage blocked */ }
   return next;
 }

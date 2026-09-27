@@ -11,7 +11,7 @@ import type { PlayerSeason } from '../simulation/types';
  */
 
 export type Rarity = 'common' | 'rare' | 'epic' | 'legendary';
-export const RARITY_LABEL: Record<Rarity, string> = { common: 'Common', rare: 'Rare', epic: 'Epic', legendary: 'Legendary' };
+export const RARITY_LABEL: Record<Rarity, string> = { common: 'Role', rare: 'Good', epic: 'Great', legendary: 'Star' };
 export const RARITY_COST: Record<Rarity, number> = { common: 6, rare: 10, epic: 16, legendary: 25 };
 
 export interface HuntCard {

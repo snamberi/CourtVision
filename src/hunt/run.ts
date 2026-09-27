@@ -1,7 +1,6 @@
 import type { NbaHistory } from '../history/nbaHistoryData';
 import { RNG } from '../simulation/engine/rng';
-import { simulateGame, type LiveCoachingCommand } from '../simulation/engine/game';
-import type { GameResult } from '../simulation/boxscore';
+import { simulateGame } from '../simulation/engine/game';
 import type { PlayerSeason } from '../simulation/types';
 import { DEFAULT_GAME_SETTINGS, ERA_PRESETS } from '../simulation/types';
 import { calculateOverall } from '../simulation/engine/overall';
@@ -10,353 +9,531 @@ import { huntTeams, type HuntTeam } from './teams';
 import { ERAS, eraCoach, eraOf, underEra, type HuntEra } from './eras';
 import { chemistry, chemistryBonus, type ChemistryBond } from './chemistry';
 import { ITEMS, ITEM_IDS, MAX_ITEMS, type ItemId } from './items';
-import { EVENT_IDS, type EventId } from './events';
+import { BOOST_IDS, type BoostId } from './boosts';
+import { BUFFS, BUFF_IDS, type BuffId } from './buffs';
+import { COACHES, COACH_BY_ID, coachRarity, type HuntCoach } from './coaches';
+import { rosterRating, bonusToReach } from './rating';
 
 /*
- * A League Hunt run. Draft a squad of eight player-season cards under a Legacy Points cap, then travel through
- * the eras: five real teams, each tougher than the last and each played under its own era's rules, then a boss,
- * one of the greatest teams ever. Every win raises the cap, pays coins and brings a new card; every loss costs a
- * life. Between games you reach a crossroads: the shop (cards, items, a life), an event (a story with a choice)
- * or a rest stop (a life back, or training). Chemistry between the cards and items lift players during games.
+ * A League Hunt run.
+ *
+ *  1. The spins: seven spins of three cards each, in order PG, SG, SF, PF, C, coach, sixth man. You keep one card from
+ *     every spin. Early spins are richer than late ones, and every draft is guaranteed at least one Star (Legendary)
+ *     and one Great (Epic) player on the table.
+ *  2. The focus: what the team works on during the hunt (the star, the sixth man, chemistry or the coach's system).
+ *  3. The road: ten best-of-seven series against real teams from history, each under its era's rules. Series 5 is a
+ *     semi-boss, series 10 the boss, a 100-rated all-time great. Teams bring buffs from series 3 on.
+ *  4. Between series: after every win you pick a boost; before series 1, 3, 5, 7 and 9 there is a shop. Losing a series
+ *     costs a life and you replay it.
+ *
  * Everything is seeded, so a run replays the same way.
  */
 
-export const SQUAD_SIZE = 8;
-export const SQUAD_MAX = 10;
-export const START_CAP = 72;
-export const CAP_PER_WIN = 8;
-export const START_LIVES = 3;
-export const START_COINS = 30;
+export type Slot = 'PG' | 'SG' | 'SF' | 'PF' | 'C' | '6TH';
+export const SLOTS: Slot[] = ['PG', 'SG', 'SF', 'PF', 'C', '6TH'];
+export type SpinKind = Slot | 'COACH';
+export const SPINS: SpinKind[] = ['PG', 'SG', 'SF', 'PF', 'C', 'COACH', '6TH'];
+export const SQUAD_SIZE = 6;
+export const SERIES_COUNT = 10;
+export const SEMI_BOSS = 4;
+export const WINS_NEEDED = 4;
+export const START_COINS = 40;
+export const LIFE_PRICE = 50;
+export const TRAIN_PRICE = 60;
+export const TRAIN_STEP = 2;
+export const MAX_TRAINING = 2;
 export const MIN_OFFER_OVR = 45;
-export const MAX_TRAINING = 6;
-export const CARD_PRICE: Record<Rarity, number> = { common: 20, rare: 35, epic: 60, legendary: 95 };
-export const LIFE_PRICE = 45;
+export const CARD_PRICE: Record<Rarity, number> = { common: 25, rare: 45, epic: 80, legendary: 130 };
+export const coachPrice = (x: HuntCoach) => Math.max(15, 20 + x.bonus * 15);
 
-export type NodeKind = 'shop' | 'event' | 'rest';
-export interface HuntStop { eraId: string; teamId: string; boss?: boolean }
-export interface HuntStopResult { stop: number; teamId: string; us: number; them: number; won: boolean }
-export type HuntStage = 'draft' | 'stop' | 'reward' | 'crossroads' | 'shop' | 'event' | 'rest' | 'won' | 'lost';
-export interface HuntShop { cards: string[]; items: ItemId[]; sold: string[]; lifeBought?: boolean }
+export type Focus = 'star' | 'sixth' | 'chemistry' | 'coach';
+export const FOCUS: Record<Focus, { name: string; blurb: string }> = {
+  star: { name: 'Develop the star', blurb: 'Your best player gets +1 overall for every series you win (up to +6).' },
+  sixth: { name: 'Develop the sixth man', blurb: 'Your sixth man gets +2 overall for every series you win (up to +10).' },
+  chemistry: { name: 'Team chemistry', blurb: 'Every chemistry bond is worth 1 more, and everyone gets +1 for every 3 series you win.' },
+  coach: { name: "The coach's rules", blurb: 'Your coach is worth 1 more to everyone for every 3 series you win, and his style hits harder.' },
+};
+export const FOCUS_IDS = Object.keys(FOCUS) as Focus[];
+
+export type HuntStage = 'draft' | 'focus' | 'shop' | 'series' | 'boost' | 'won' | 'lost';
+export type SeriesKind = 'normal' | 'semi' | 'boss';
+export interface HuntSeries { teamId: string; eraId: string; kind: SeriesKind; buffs: BuffId[]; /** A flat bonus for all their players (the semi-boss and boss reach their rating). */ lift: number }
+export interface SeriesGame { us: number; them: number; won: boolean; top: string }
+export interface SeriesResult { index: number; teamId: string; games: SeriesGame[]; won: boolean; coins: number }
+export interface HuntShop { cards: { id: string; slot: number }[]; coach?: string; items: ItemId[]; sold: string[]; lifeBought?: boolean }
+
 export interface HuntRun {
-  version: 2;
+  version: 3;
   seed: number;
   stage: HuntStage;
+  /** Card ids by slot: PG, SG, SF, PF, C, sixth man (filled in spin order). */
   squad: string[];
-  cap: number;
+  coach?: string;
+  /** The spin being drawn (index into SPINS) and the three on the table (card ids, or coach ids on the coach spin). */
+  spin: number;
+  offer: string[];
+  /** Which spins are guaranteed a Star and a Great. */
+  guarantees: { star: number; great: number };
   lives: number;
   coins: number;
   items: ItemId[];
-  /** Lasting overall bonuses per card (training, camps, contract moods). */
-  boosts: Record<string, number>;
-  /** A one-game bonus or penalty for a card (the flu game). */
-  nextGame?: { cardId: string; bonus: number };
-  stops: HuntStop[];
-  stopIndex: number;
-  /** Cards on the table: the draft pick or the reward after a win. */
-  offer: string[];
-  draftRound: number;
+  boosts: BoostId[];
+  boostOffer?: BoostId[];
+  focus?: Focus;
+  /** Series won under each focus. */
+  growth: Record<Focus, number>;
+  /** Shop training per card id. */
+  training: Record<string, number>;
+  series: HuntSeries[];
+  seriesIndex: number;
   attempts: number;
-  results: HuntStopResult[];
-  /** The two roads at a crossroads, the shop's shelves, or the event being played. */
-  crossroads?: NodeKind[];
+  results: SeriesResult[];
   shop?: HuntShop;
-  eventId?: EventId;
-  /** What the last event or purchase did, for the screen. */
   note?: string;
   deck?: DeckId;
   difficulty?: Difficulty;
-  /** The Daily Legend date (YYYY-MM-DD) when this is the day's hunt. */
   daily?: string;
-  /** Your players' totals over the hunt (box-score names), for the summary. */
   lines?: Record<string, { g: number; pts: number; reb: number; ast: number }>;
 }
 
-const TIERS = [58.5, 61.5, 64, 66, 67.5];
-
 export type DeckId = 'classic' | 'bigMen' | 'oldSchool' | 'paceSpace' | 'dynasty';
 export type Difficulty = 'rookie' | 'pro' | 'legend';
-export interface HuntDeck { id: DeckId; name: string; blurb: string; capBonus: number; items: ItemId[]; opener?: (c: HuntCard) => boolean; draft?: (c: HuntCard) => boolean; unlock: string }
-/** Starting decks: how the draft opens. All but Classic are unlocked by playing (see unlocks.ts). */
+export interface HuntDeck { id: DeckId; name: string; blurb: string; coins: number; items: ItemId[]; draft?: (c: HuntCard) => boolean; unlock: string }
 export const DECKS: Record<DeckId, HuntDeck> = {
-  classic: { id: 'classic', name: 'Classic', blurb: 'A star to start, then anyone from any era.', capBonus: 0, items: [], unlock: 'Always open.' },
-  bigMen: { id: 'bigMen', name: 'Big Man Era', blurb: 'Your first pick is a star big man, and you start with the Bad Boys Rulebook.', capBonus: 0, items: ['badBoys'], opener: c => c.pos === 'C' || c.pos === 'PF', unlock: 'Reach stop 3 in any hunt.' },
-  oldSchool: { id: 'oldSchool', name: 'Old School', blurb: 'Draft only players from before 1980, with 8 more Legacy Points.', capBonus: 8, items: [], draft: c => c.end < 1980, unlock: 'Play 3 hunts.' },
-  paceSpace: { id: 'paceSpace', name: 'Pace & Space', blurb: 'Draft only players from 2010 on, and start with Seven Seconds or Less.', capBonus: 0, items: ['sevenSeconds'], draft: c => c.end >= 2010, unlock: 'Reach stop 5 in any hunt.' },
-  dynasty: { id: 'dynasty', name: 'Dynasty', blurb: 'Start with two real teammates from a champion, then draft the rest.', capBonus: 0, items: [], unlock: 'Win a hunt.' },
+  classic: { id: 'classic', name: 'Classic', blurb: 'Anyone from any era.', coins: 0, items: [], unlock: 'Always open.' },
+  bigMen: { id: 'bigMen', name: 'Big Man Era', blurb: 'Your PF and C spins always show a Great or better, and you start with the Bad Boys Rulebook.', coins: 0, items: ['badBoys'], unlock: 'Reach series 3 in any hunt.' },
+  oldSchool: { id: 'oldSchool', name: 'Old School', blurb: 'Only players from before 1980, and 50 more coins to start.', coins: 50, items: [], draft: c => c.end < 1980, unlock: 'Play 3 hunts.' },
+  paceSpace: { id: 'paceSpace', name: 'Pace & Space', blurb: 'Only players from 2010 on, and you start with Seven Seconds or Less.', coins: 0, items: ['sevenSeconds'], draft: c => c.end >= 2010, unlock: 'Reach series 5 in any hunt.' },
+  dynasty: { id: 'dynasty', name: 'Dynasty', blurb: 'Every spin after the first shows a real teammate of someone you drafted.', coins: 0, items: [], unlock: 'Win a hunt.' },
 };
-export interface HuntDifficulty { id: Difficulty; name: string; blurb: string; tierShift: number; lives: number; bossPool: number; coinShift: number; unlock: string }
+export interface HuntDifficulty { id: Difficulty; name: string; blurb: string; shift: number; /** Buffs each team brings beyond Pro's. */ buffs: number; lives: number; bossPool: number; bossRating: number; coinShift: number; unlock: string }
 export const DIFFICULTIES: Record<Difficulty, HuntDifficulty> = {
-  rookie: { id: 'rookie', name: 'Rookie', blurb: 'Softer opponents and four lives.', tierShift: -2, lives: 4, bossPool: 12, coinShift: 10, unlock: 'Always open.' },
-  pro: { id: 'pro', name: 'Pro', blurb: 'The hunt as it was meant to be.', tierShift: 0, lives: 3, bossPool: 8, coinShift: 0, unlock: 'Always open.' },
-  legend: { id: 'legend', name: 'Legend', blurb: 'Tougher teams, two lives, and the boss is one of the four best teams ever.', tierShift: 2, lives: 2, bossPool: 4, coinShift: -10, unlock: 'Win a hunt.' },
+  rookie: { id: 'rookie', name: 'Rookie', blurb: 'Softer teams with fewer buffs, four lives, and a 96-rated boss.', shift: -3, buffs: -1, lives: 4, bossPool: 12, bossRating: 96, coinShift: 20, unlock: 'Always open.' },
+  pro: { id: 'pro', name: 'Pro', blurb: 'The hunt as it was meant to be.', shift: 0, buffs: 0, lives: 3, bossPool: 8, bossRating: 100, coinShift: 0, unlock: 'Always open.' },
+  legend: { id: 'legend', name: 'Legend', blurb: 'Tougher teams with an extra buff each, two lives, and the boss is one of the four best teams ever.', shift: 4, buffs: 1, lives: 2, bossPool: 4, bossRating: 100, coinShift: -10, unlock: 'Win a hunt.' },
 };
 
-function pickTeam(teams: HuntTeam[], era: HuntEra, target: number, rng: RNG, used: Set<string>): HuntTeam {
-  const inEra = teams.filter(t => t.end >= era.from && t.end <= era.to && !used.has(t.id));
-  const pool = (inEra.length ? inEra : teams).filter(t => !used.has(t.id));
-  // Any team within a couple of points of the target, so the same stop rarely repeats from run to run.
-  const close = pool.filter(t => Math.abs(t.strength - target) <= 2);
-  const near = close.length >= 3 ? close : [...pool].sort((a, b) => Math.abs(a.strength - target) - Math.abs(b.strength - target)).slice(0, 8);
-  return near[rng.nextInt(near.length)];
+/** Target ratings of the ten series (Pro); the semi-boss and boss get lifted to theirs. */
+const TARGETS = [72, 77, 82, 87, 97, 91, 94, 96, 98, 100];
+
+export const maxLives = (run: HuntRun) => DIFFICULTIES[run.difficulty ?? 'pro'].lives;
+const rngFor = (run: HuntRun, salt: number) => new RNG(run.seed * 31 + run.seriesIndex * 977 + run.attempts * 13 + salt);
+const card = (h: NbaHistory, id: string) => cardPool(h).byId.get(id)!;
+
+// ---------------------------------------------------------------- team ratings
+
+const baseRatings = new WeakMap<NbaHistory, Map<string, number>>();
+/** A real team's rating without buffs. */
+export function teamBaseRating(h: NbaHistory, t: HuntTeam): number {
+  let m = baseRatings.get(h);
+  if (!m) { m = new Map(); baseRatings.set(h, m); }
+  let r = m.get(t.id);
+  if (r == null) { r = rosterRating(h, t.roster.map(id => card(h, id).ovr)); m.set(t.id, r); }
+  return r;
 }
 
-/** A new run: five stops in five different eras, then the boss. */
+/** A buff's strength: the semi-boss's are 1.25 times as strong, the boss's 1.5 times; the scout takes a point off. */
+export const buffValue = (run: HuntRun, b: BuffId, kind: SeriesKind = 'normal') =>
+  Math.max(0, Math.round(BUFFS[b].value * (kind === 'boss' ? 1.5 : kind === 'semi' ? 1.25 : 1)) - (run.items.includes('scout') ? 1 : 0));
+
+/** Their players' overalls with the buffs that hold every game (for the rating shown). */
+function theirStaticOvrs(h: NbaHistory, run: HuntRun, s: HuntSeries, liftOverride?: number): number[] {
+  const team = huntTeams(h).find(t => t.id === s.teamId)!;
+  const cards = team.roster.map(id => card(h, id));
+  const lift = liftOverride ?? s.lift;
+  return cards.map((c, i) => {
+    let v = c.ovr + lift;
+    for (const b of s.buffs) {
+      const bv = buffValue(run, b, s.kind);
+      if (b === 'swagger' || b === 'runGun') v += bv;
+      if (b === 'superstar' && i === 0) v += bv;
+      if (b === 'depth' && i === 5) v += bv;
+    }
+    return v;
+  });
+}
+
+/** The rating of a series' opponent, buffs included. */
+export const opponentRating = (h: NbaHistory, run: HuntRun, s: HuntSeries) => rosterRating(h, theirStaticOvrs(h, run, s));
+
+// ---------------------------------------------------------------- a new run
+
 export interface NewRunOptions { deck?: DeckId; difficulty?: Difficulty; daily?: string }
 
+function pickTeam(h: NbaHistory, teams: HuntTeam[], era: HuntEra, target: number, rng: RNG, used: Set<string>): HuntTeam {
+  const free = teams.filter(t => !used.has(t.id));
+  const inEra = free.filter(t => t.end >= era.from && t.end <= era.to);
+  const near = (pool: HuntTeam[], d: number) => pool.filter(t => Math.abs(teamBaseRating(h, t) - target) <= d);
+  const choices = [near(inEra, 2), near(inEra, 4), near(free, 2)].find(l => l.length >= 2)
+    ?? [...free].sort((a, b) => Math.abs(teamBaseRating(h, a) - target) - Math.abs(teamBaseRating(h, b) - target)).slice(0, 6);
+  return choices[rng.nextInt(choices.length)];
+}
+
+/** A new run: the spins, then ten series (the fifth a semi-boss, the tenth the boss). */
 export function newRun(h: NbaHistory, seed: number, opts: NewRunOptions = {}): HuntRun {
   const deck = DECKS[opts.deck ?? 'classic'], diff = DIFFICULTIES[opts.difficulty ?? 'pro'];
   const rng = new RNG(seed);
   const teams = huntTeams(h);
-  const eras = [...ERAS].sort(() => rng.next() - 0.5).slice(0, TIERS.length).sort((a, b) => a.from - b.from);
   const used = new Set<string>();
-  const stops: HuntStop[] = eras.map((era, i) => { const t = pickTeam(teams, era, TIERS[i] + diff.tierShift, rng, used); used.add(t.id); return { eraId: era.id, teamId: t.id }; });
-  // The boss: one of the best champions ever, played under its own era's rules.
-  const greats = teams.filter(t => t.champion && !used.has(t.id)).sort((a, b) => b.strength - a.strength).slice(0, diff.bossPool);
-  const boss = greats[rng.nextInt(greats.length)];
-  stops.push({ eraId: eraOf(boss.end).id, teamId: boss.id, boss: true });
-  let run: HuntRun = { version: 2, seed, stage: 'draft', squad: [], cap: START_CAP + deck.capBonus, lives: diff.lives, coins: START_COINS + diff.coinShift, items: [...deck.items], boosts: {}, stops, stopIndex: 0, offer: [], draftRound: 0, attempts: 0, results: [],
-    deck: opts.deck ?? 'classic', difficulty: opts.difficulty ?? 'pro', ...(opts.daily ? { daily: opts.daily } : {}) };
-  // Dynasty: two real teammates from one great team-season start the squad.
-  if (deck.id === 'dynasty') {
-    const pool = cardPool(h);
-    const champs = teams.filter(t => t.champion && t.id !== boss.id && !used.has(t.id));
-    const t = champs[rng.nextInt(champs.length)];
-    const pair = t.roster.map(id => pool.byId.get(id)!).filter(c => c.cost <= 16).slice(0, 2);
-    if (pair.length === 2) run = { ...run, squad: pair.map(c => c.id), draftRound: 2 };
+  // The boss first (so no earlier series takes it): one of the best teams ever.
+  const greats = teams.filter(t => t.champion).sort((a, b) => b.w / (b.w + b.l) - a.w / (a.w + a.l)).slice(0, diff.bossPool);
+  const bossTeam = greats[rng.nextInt(greats.length)];
+  used.add(bossTeam.id);
+  // Eras cycle so the road visits all of history.
+  const eraOrder = [...ERAS].sort(() => rng.next() - 0.5);
+  const series: HuntSeries[] = [];
+  const buffPool = (n: number) => [...BUFF_IDS].sort(() => rng.next() - 0.5).slice(0, Math.max(0, n + diff.buffs));
+  for (let i = 0; i < SERIES_COUNT - 1; i++) {
+    const semi = i === SEMI_BOSS;
+    const target = TARGETS[i] + diff.shift;
+    let t: HuntTeam;
+    if (semi) {
+      const strong = teams.filter(x => !used.has(x.id) && (x.champion || x.w / (x.w + x.l) >= 0.68)).sort((a, b) => teamBaseRating(h, b) - teamBaseRating(h, a)).slice(0, 40);
+      t = strong[rng.nextInt(strong.length)];
+    } else t = pickTeam(h, teams, eraOrder[i % eraOrder.length], target - (i >= 2 ? 2 : 0), rng, used);
+    used.add(t.id);
+    series.push({ teamId: t.id, eraId: eraOf(t.end).id, kind: semi ? 'semi' : 'normal', buffs: buffPool(semi || i >= 5 ? 2 : i >= 1 ? 1 : 0), lift: 0 });
   }
-  return { ...run, offer: offer(h, run, 'draft') };
+  series.push({ teamId: bossTeam.id, eraId: eraOf(bossTeam.end).id, kind: 'boss', buffs: buffPool(3), lift: 0 });
+  let run: HuntRun = { version: 3, seed, stage: 'draft', squad: [], spin: 0, offer: [], guarantees: { star: 0, great: 1 },
+    lives: diff.lives, coins: START_COINS + diff.coinShift + deck.coins, items: [...deck.items], boosts: [], growth: { star: 0, sixth: 0, chemistry: 0, coach: 0 }, training: {},
+    series, seriesIndex: 0, attempts: 0, results: [], deck: deck.id, difficulty: diff.id, ...(opts.daily ? { daily: opts.daily } : {}) };
+  // Lift every team that falls short of its series' rating (buffs count, so the lift is what is left).
+  run = { ...run, series: run.series.map((s, i) => {
+    const target = s.kind === 'boss' ? diff.bossRating : Math.min(99, TARGETS[i] + diff.shift);
+    // Bosses land on their rating exactly (a lift can be negative when their buffs already carry them past it).
+    const exact = s.kind !== 'normal';
+    return { ...s, lift: bonusToReach(h, theirStaticOvrs(h, run, s, 0), target, exact) };
+  }) };
+  // Guaranteed Star and Great: the Star on a starter spin, the Great on another player spin.
+  const playerSpins = [0, 1, 2, 3, 4, 6];
+  const star = rng.nextInt(5);
+  const rest = playerSpins.filter(i => i !== star);
+  run = { ...run, guarantees: { star, great: rest[rng.nextInt(rest.length)] } };
+  return { ...run, offer: spinOffer(h, run) };
 }
 
-export const maxLives = (run: HuntRun) => DIFFICULTIES[run.difficulty ?? 'pro'].lives;
+// ---------------------------------------------------------------- the spins
 
-/** Older saved runs (stage 1) continue with the new fields at their defaults. */
-export function upgradeRun(run: HuntRun | (Omit<HuntRun, 'version' | 'coins' | 'items' | 'boosts'> & { version: 1 })): HuntRun {
-  if (run.version === 2) return run;
-  return { ...run, version: 2, coins: START_COINS, items: [], boosts: {} } as HuntRun;
+const fitsSlot = (c: HuntCard, s: SpinKind) => s === '6TH' || c.pos === s || (c.pos === 'G' && (s === 'PG' || s === 'SG')) || (c.pos === 'F' && (s === 'SF' || s === 'PF'));
+
+/** Rarity odds for spin `i`: every spin is a little poorer than the one before. */
+export function spinWeights(i: number): Record<Rarity, number> {
+  const legendary = Math.max(0.2, 1.5 - 0.2 * i), epic = Math.max(1.5, 6 - 0.8 * i), rare = Math.max(10, 20 - 1.8 * i);
+  return { legendary, epic, rare, common: Math.max(10, 100 - legendary - epic - rare) };
 }
 
-export const spent = (h: NbaHistory, ids: string[]) => ids.reduce((n, id) => n + (cardPool(h).byId.get(id)?.cost ?? 0), 0);
-const rngFor = (run: HuntRun, salt: number) => new RNG(run.seed * 31 + run.stopIndex * 977 + run.attempts * 13 + salt);
+const ORDER: Rarity[] = ['common', 'rare', 'epic', 'legendary'];
 
-/** Rarity odds for an offer: the draft opens with one star, rewards and the shop get better as the run goes on. */
-function rarityWeights(run: HuntRun, kind: 'draft' | 'reward' | 'shop'): Record<Rarity, number> {
-  if (kind === 'draft') return run.draftRound === 0 ? { common: 0, rare: 0, epic: 6, legendary: 4 } : { common: 55, rare: 32, epic: 11, legendary: 2 };
-  const s = run.stopIndex;
-  return { common: Math.max(10, 45 - s * 8), rare: 35, epic: 15 + s * 4, legendary: 5 + s * 3 };
-}
-
-function drawCards(h: NbaHistory, run: HuntRun, rng: RNG, weights: Record<Rarity, number>, count: number, exclude: string[] = [], fits: (c: HuntCard) => boolean = () => true): string[] {
+function drawPlayers(h: NbaHistory, taken: Set<string>, rng: RNG, count: number, fits: (c: HuntCard) => boolean, rarityFor: (k: number) => Rarity): string[] {
   const pool = cardPool(h);
-  const order: Rarity[] = ['common', 'rare', 'epic', 'legendary'];
-  const taken = new Set([...run.squad, ...exclude].map(id => pool.byId.get(id)?.playerId));
   const out: HuntCard[] = [];
-  for (let tries = 0; out.length < count && tries < 3000; tries++) {
-    const rarity = order[rng.weightedPick(order.map(r => weights[r]))];
-    const list = pool.byRarity[rarity];
-    const c = list[rng.nextInt(list.length)];
-    if (c.ovr < MIN_OFFER_OVR || taken.has(c.playerId) || out.some(o => o.playerId === c.playerId) || !fits(c)) continue;
-    out.push(c);
+  for (let k = 0; out.length < count && k < count + 2; k++) {
+    const want = rarityFor(out.length);
+    let got: HuntCard | undefined;
+    // Try the rarity asked for, then step down (a deck filter can empty a bucket), then anything that fits.
+    for (const r of [want, ...[...ORDER].reverse().filter(x => x !== want)]) {
+      const list = pool.byRarity[r];
+      for (let tries = 0; tries < 2500 && !got; tries++) {
+        const c = list[rng.nextInt(list.length)];
+        if (c.ovr >= MIN_OFFER_OVR && fits(c) && !taken.has(c.playerId) && !out.some(o => o.playerId === c.playerId)) got = c;
+      }
+      if (got) break;
+    }
+    if (got) out.push(got);
   }
   return out.map(c => c.id);
 }
 
-function offer(h: NbaHistory, run: HuntRun, kind: 'draft' | 'reward'): string[] {
-  const rng = new RNG(run.seed * 31 + (kind === 'draft' ? run.draftRound : 100 + run.stopIndex * 7 + run.attempts));
-  const deck = DECKS[run.deck ?? 'classic'];
-  const fits = kind !== 'draft' ? undefined : run.draftRound === 0 && deck.opener ? deck.opener : deck.draft;
-  return drawCards(h, run, rng, rarityWeights(run, kind), 3, [], fits);
-}
-
-/** Whether a card fits the cap (leaving room to fill the squad with the cheapest cards), optionally replacing one. */
-export function affordable(h: NbaHistory, run: HuntRun, cardId: string, replacing?: string): boolean {
-  const pool = cardPool(h);
-  const card = pool.byId.get(cardId);
-  if (!card) return false;
-  const squad = run.squad.filter(id => id !== replacing);
-  const openAfter = run.stage === 'draft' ? Math.max(0, SQUAD_SIZE - squad.length - 1) : 0;
-  return spent(h, squad) + card.cost + openAfter * 6 <= run.cap;
-}
-
-export function draftPick(h: NbaHistory, run: HuntRun, cardId: string): HuntRun {
-  if (run.stage !== 'draft' || !run.offer.includes(cardId) || !affordable(h, run, cardId)) return run;
-  const next: HuntRun = { ...run, squad: [...run.squad, cardId], draftRound: run.draftRound + 1 };
-  if (next.squad.length >= SQUAD_SIZE) return { ...next, stage: 'stop', offer: [] };
-  const o = offer(h, next, 'draft');
-  // Nothing affordable on the table: swap in the cheapest commons that fit.
-  if (!o.some(id => affordable(h, next, id))) {
-    const fits = DECKS[run.deck ?? 'classic'].draft ?? (() => true);
-    const cheap = cardPool(h).byRarity.common.filter(c => c.ovr >= MIN_OFFER_OVR && fits(c) && !next.squad.some(s => cardPool(h).byId.get(s)?.playerId === c.playerId));
-    const rng = new RNG(run.seed + next.draftRound * 13);
-    return { ...next, offer: [0, 1, 2].map(() => cheap[rng.nextInt(cheap.length)].id) };
+/** The three cards (or coaches) on the table for the current spin. */
+function spinOffer(h: NbaHistory, run: HuntRun): string[] {
+  const kind = SPINS[run.spin];
+  const rng = new RNG(run.seed * 31 + run.spin * 7717 + 3);
+  const weights = spinWeights(run.spin);
+  const pick = () => ORDER[rng.weightedPick(ORDER.map(r => weights[r]))];
+  if (kind === 'COACH') {
+    const out: string[] = [];
+    for (let tries = 0; out.length < 3 && tries < 500; tries++) {
+      const r = pick();
+      const list = COACHES.filter(x => coachRarity(x) === r && !out.includes(x.id));
+      if (list.length) out.push(list[rng.nextInt(list.length)].id);
+    }
+    return out;
   }
-  return { ...next, offer: o };
-}
-
-// ---------------------------------------------------------------- strength, chemistry and items in games
-
-/** Squad strength on the same scale as a team's: its best eight, starters weighted more. */
-export function strengthOf(cards: { ovr: number }[]): number {
-  const best = [...cards].sort((a, b) => b.ovr - a.ovr).slice(0, 8);
-  const w = best.reduce((n, _, i) => n + (i < 5 ? 1.2 : 0.7), 0);
-  return w ? Math.round(best.reduce((n, c, i) => n + c.ovr * (i < 5 ? 1.2 : 0.7), 0) / w * 10) / 10 : 0;
-}
-
-export interface CardBonus { card: HuntCard; bonus: number; parts: string[] }
-
-/** Every card's overall bonus for a game in `era`: chemistry, training, items and one-game effects. */
-export function squadBonuses(h: NbaHistory, run: HuntRun, era?: HuntEra): { cards: CardBonus[]; bonds: ChemistryBond[] } {
+  const deck = DECKS[run.deck ?? 'classic'];
   const pool = cardPool(h);
-  const cards = run.squad.map(id => pool.byId.get(id)!).filter(Boolean);
+  const taken = new Set(run.squad.map(id => pool.byId.get(id)!.playerId));
+  const fits = (c: HuntCard) => fitsSlot(c, kind) && (deck.draft?.(c) ?? true);
+  const forced: Rarity | null = run.spin === run.guarantees.star ? 'legendary' : run.spin === run.guarantees.great ? 'epic' : (deck.id === 'bigMen' && (kind === 'PF' || kind === 'C')) ? 'epic' : null;
+  const ids = drawPlayers(h, taken, rng, 3, fits, k => (k === 0 && forced ? forced : pick()));
+  // Dynasty: one of the three is a real teammate of someone already drafted, when there is one at this position.
+  if (deck.id === 'dynasty' && run.squad.length) {
+    const mates = huntTeams(h).filter(t => t.roster.some(id => run.squad.includes(id))).flatMap(t => t.roster)
+      .map(id => pool.byId.get(id)!).filter(c => fits(c) && !taken.has(c.playerId) && c.ovr >= MIN_OFFER_OVR && !ids.includes(c.id));
+    if (mates.length) ids[ids.length - 1] = mates[rng.nextInt(mates.length)].id;
+  }
+  // Shuffle, so the guaranteed card is not always first.
+  return ids.sort(() => rng.next() - 0.5);
+}
+
+/** Keeps one of the three from the current spin. */
+export function spinPick(h: NbaHistory, run: HuntRun, id: string): HuntRun {
+  if (run.stage !== 'draft' || !run.offer.includes(id)) return run;
+  const kind = SPINS[run.spin];
+  const next: HuntRun = kind === 'COACH' ? { ...run, coach: id } : { ...run, squad: [...run.squad, id] };
+  if (run.spin + 1 >= SPINS.length) return { ...next, spin: SPINS.length, offer: [], stage: 'focus' };
+  const moved = { ...next, spin: run.spin + 1 };
+  return { ...moved, offer: spinOffer(h, moved) };
+}
+
+/** Sets (or changes, in the shop) what the team works on. */
+export function chooseFocus(h: NbaHistory, run: HuntRun, focus: Focus): HuntRun {
+  if (run.stage === 'focus') return openShop(h, { ...run, focus });
+  if (run.stage === 'shop') return { ...run, focus, note: `The team now works on: ${FOCUS[focus].name.toLowerCase()}.` };
+  return run;
+}
+
+// ---------------------------------------------------------------- bonuses in a game
+
+export interface SeriesState { game: number; ourWins: number; theirWins: number; streak: number; lostLast: boolean }
+export const SERIES_START: SeriesState = { game: 1, ourWins: 0, theirWins: 0, streak: 0, lostLast: false };
+/** A game with nothing special about it (game 3 at 0-0): the state ratings are shown for. */
+export const NEUTRAL_GAME: SeriesState = { game: 3, ourWins: 0, theirWins: 0, streak: 0, lostLast: false };
+/** Boosts add at most this much to one player in one game. */
+export const BOOST_CAP = 6;
+export interface CardBonus { card: HuntCard; slot: number; bonus: number; parts: string[]; defense: number }
+
+export const bestSlot = (h: NbaHistory, run: HuntRun) => run.squad.reduce((b, id, i) => (card(h, id).ovr > card(h, run.squad[b]).ovr ? i : b), 0);
+
+/** The coach's overall bonus to everyone, with trust and the coach focus. */
+export function coachBonus(run: HuntRun): number {
+  const x = run.coach ? COACH_BY_ID.get(run.coach) : undefined;
+  if (!x) return 0;
+  return x.bonus + (run.boosts.includes('coachTrust') ? 2 : 0) + Math.floor(run.growth.coach / 3);
+}
+
+/** Every card's overall bonus for one game of a series. */
+export function gameBonuses(h: NbaHistory, run: HuntRun, era: HuntEra | undefined, st: SeriesState, series?: HuntSeries): { cards: CardBonus[]; bonds: ChemistryBond[] } {
+  const cards = run.squad.map(id => card(h, id));
   const bonds = chemistry(cards, era);
+  if (run.focus === 'chemistry') for (const b of bonds) if (b.bonus > 0) b.bonus += 1;
   const chem = chemistryBonus(bonds);
-  const ranked = [...cards].sort((a, b) => b.ovr - a.ovr);
-  const has = (i: ItemId) => run.items.includes(i);
-  return { bonds, cards: cards.map(card => {
-    const rank = ranked.indexOf(card), parts: string[] = [];
-    let bonus = 0;
+  const best = bestSlot(h, run);
+  const coach = run.coach ? COACH_BY_ID.get(run.coach) : undefined;
+  const coachAll = coachBonus(run);
+  const has = (i: ItemId) => run.items.includes(i), boost = (b: BoostId) => run.boosts.includes(b);
+  const bigGame = series && series.kind !== 'normal';
+  return { bonds, cards: cards.map((c, slot) => {
+    const parts: string[] = [];
+    let bonus = 0, defense = 0;
     const add = (v: number, label: string) => { if (v) { bonus += v; parts.push(`${v > 0 ? '+' : ''}${v} ${label}`); } };
-    add(chem.get(card.id) ?? 0, 'chemistry');
-    add(run.boosts[card.id] ?? 0, 'training & morale');
+    // Boosts stack up to BOOST_CAP per player per game.
+    let fromBoosts = 0;
+    const addBoost = (v: number, label: string) => { const room = Math.max(0, BOOST_CAP - fromBoosts), got = Math.min(v, room); fromBoosts += got; add(got, label); };
+    const sixth = slot === 5, starter = slot < 5;
+    add(chem.get(c.id) ?? 0, 'chemistry');
+    add(coachAll, 'coach');
+    if (coach?.franchises.includes(c.franchise) || coach?.franchises.includes(c.team)) add(1, 'coach\'s old team');
+    add(run.training[c.id] ?? 0, 'training');
+    if (slot === best) add(Math.min(6, run.growth.star), 'star development');
+    if (sixth) add(Math.min(10, run.growth.sixth * 2), 'sixth man development');
+    add(Math.floor(run.growth.chemistry / 3), 'team growth');
     if (has('triangle')) add(1, 'Triangle');
-    if (has('homeCourt') && rank < 5) add(2, 'home court');
-    if (has('sixthMan') && rank >= 5) add(3, 'Sixth Man');
-    if (has('clutch') && rank === 0) add(3, 'Clutch Gene');
-    if (run.nextGame?.cardId === card.id) add(run.nextGame.bonus, 'this game');
-    return { card, bonus, parts };
+    if (has('sixthMan') && sixth) add(4, 'Sixth Man Trophy');
+    if (has('homeCourt') && [1, 2, 5, 7].includes(st.game)) add(3, 'home court');
+    if (has('clutch') && slot === best && st.game >= 5) add(6, 'Clutch Gene');
+    if (has('filmRoom') && st.lostLast) add(2, 'Film Room');
+    if (boost('spark') && sixth) addBoost(3 * st.ourWins, 'Sixth Man Spark');
+    if (boost('microwave') && sixth) addBoost(5, 'Microwave');
+    if (boost('franchise') && slot === best) addBoost(4, 'Franchise Player');
+    if (boost('closer') && st.game >= 5) addBoost(4, 'Closer');
+    if (boost('backToWall') && st.theirWins > st.ourWins) addBoost(4, 'Back to the Wall');
+    if (boost('momentum') && st.streak > 0) addBoost(2 * st.streak, 'Momentum');
+    if (boost('fastStart') && st.game <= 2) addBoost(4, 'Fast Start');
+    if (boost('backcourt') && slot <= 1) addBoost(4, 'Backcourt Bond');
+    if (boost('twinTowers') && (slot === 3 || slot === 4)) addBoost(4, 'Twin Towers');
+    if (boost('ironFive') && starter) addBoost(2, 'Iron Five');
+    if (boost('giantKiller') && bigGame) addBoost(5, 'Giant Killer');
+    if (boost('elimination') && st.theirWins === WINS_NEEDED - 1) addBoost(6, 'Elimination Mode');
+    if (boost('wings') && (slot === 1 || slot === 2)) { addBoost(3, 'Wing Stoppers'); defense += 5; }
+    if (boost('lockdown')) defense += 5;
+    if (has('badBoys')) defense += 5;
+    if (coach?.style === 'defense') defense += run.focus === 'coach' ? 6 : 4;
+    return { card: c, slot, bonus, parts, defense };
   }) };
 }
 
-/** Squad strength with every bonus for the next game. */
-export function effectiveStrength(h: NbaHistory, run: HuntRun, era?: HuntEra): number {
-  return strengthOf(squadBonuses(h, run, era).cards.map(c => ({ ovr: c.card.ovr + c.bonus })));
+/** Your rating for an ordinary game of a series (boosts that depend on the game or the series score not counted). */
+export function squadRating(h: NbaHistory, run: HuntRun, series?: HuntSeries): number {
+  if (!run.squad.length) return 0;
+  const era = series ? ERAS.find(e => e.id === series.eraId) : undefined;
+  return rosterRating(h, gameBonuses(h, run, era, NEUTRAL_GAME, series).cards.map(c => c.card.ovr + c.bonus));
+}
+export const baseSquadRating = (h: NbaHistory, run: HuntRun) => rosterRating(h, run.squad.map(id => card(h, id).ovr));
+
+/** Their overall bonus per roster spot for one game. */
+function theirBonuses(run: HuntRun, s: HuntSeries, st: SeriesState, n: number): { bonus: number[]; defense: number } {
+  const bonus = Array.from({ length: n }, () => s.lift);
+  let defense = 0;
+  for (const b of s.buffs) {
+    const v = buffValue(run, b, s.kind);
+    for (let i = 0; i < n; i++) {
+      if (b === 'swagger' || b === 'runGun') bonus[i] += v;
+      if (b === 'superstar' && i === 0) bonus[i] += v;
+      if (b === 'depth' && i === 5) bonus[i] += v;
+      if (b === 'crowd' && [3, 4, 6].includes(st.game)) bonus[i] += v;
+      if (b === 'veterans' && st.game >= 5) bonus[i] += v;
+    }
+    if (b === 'lockdown') defense += v;
+  }
+  return { bonus, defense };
 }
 
-/** Minutes by rank: the starters play most of the game. */
+// ---------------------------------------------------------------- playing a series
+
+/** Minutes by rank for a full rotation: the starters play most of the game. */
 export function withRotation(players: PlayerSeason[]): PlayerSeason[] {
   const mins = [34, 33, 32, 31, 29, 21, 18, 15, 14, 13];
   return [...players].sort((a, b) => calculateOverall(b) - calculateOverall(a)).map((p, i) => ({ ...p, rotationRole: i < 5 ? 'starter' as const : 'bench' as const, minutes: { mode: 'TARGET' as const, target: mins[i] ?? 8 } }));
 }
 
-const defended = (p: PlayerSeason): PlayerSeason => {
-  const d = p.attributes.defense, up = (v: number) => Math.min(99, v + 5);
+/** Six-man rotations (yours and theirs): five starters and the sixth man. */
+const SIX_MINUTES = [38, 37, 37, 37, 37, 34];
+const sixRotation = (players: PlayerSeason[]) => players.map((p, i) => ({ ...p, rotationRole: i < 5 ? 'starter' as const : 'bench' as const, minutes: { mode: 'TARGET' as const, target: SIX_MINUTES[i] } }));
+
+const defended = (p: PlayerSeason, v: number): PlayerSeason => {
+  if (!v) return p;
+  const d = p.attributes.defense, up = (x: number) => Math.min(99, x + v);
   return { ...p, attributes: { ...p.attributes, defense: { ...d, perimeterDefense: up(d.perimeterDefense), interiorDefense: up(d.interiorDefense), helpDefense: up(d.helpDefense), contest: up(d.contest) } } };
 };
 
-export interface HuntGame { result: GameResult; home: { teamId: string; name: string; seasons: PlayerSeason[] }; away: { teamId: string; name: string; seasons: PlayerSeason[] }; won: boolean; era: HuntEra; coins: number; commands: LiveCoachingCommand[] }
+export interface SeriesPlay { games: SeriesGame[]; won: boolean; coins: number; teamName: string; era: HuntEra; mvp?: { name: string; pts: number; reb: number; ast: number; g: number } }
 
-/** Coins for a result: a win pays by the margin; a loss pays a little for the lesson. */
-export function coinsFor(run: HuntRun, won: boolean, margin: number): number {
-  if (!won) return 5;
-  return 20 + Math.min(20, Math.floor(margin / 2)) + (run.items.includes('cigar') ? 15 : 0);
+/** Coins for a series: 3 per game won, 18 for the series (more with the cigar and bankroll), 5 for a loss. */
+export function seriesCoins(run: HuntRun, won: boolean, gamesWon: number): number {
+  return gamesWon * 3 + (won ? 18 + (run.items.includes('cigar') ? 20 : 0) + (run.boosts.includes('bankroll') ? 30 : 0) : 5);
 }
 
-/** Coaching calls per game (timeouts, play calls, defenses, lineups); the clipboard adds two. */
-export const COACH_CARDS = 3;
-export const coachCards = (run: HuntRun) => COACH_CARDS + (run.items.includes('clipboard') ? 2 : 0);
-
-/**
- * The current stop's game, with any live coaching calls (each applies from its possession on, so everything before
- * it replays exactly the same). Nothing is recorded until the game is committed.
- */
-export function stopGame(h: NbaHistory, run: HuntRun, commands: LiveCoachingCommand[] = []): HuntGame | null {
-  if (run.stage !== 'stop') return null;
-  const stop = run.stops[run.stopIndex];
-  const team = huntTeams(h).find(t => t.id === stop.teamId)!;
-  const era = ERAS.find(e => e.id === stop.eraId) ?? eraOf(team.end);
+/** Plays the current best-of-seven, game by game (bonuses change with the series score), and records it. */
+export function playSeries(h: NbaHistory, run: HuntRun): { run: HuntRun; play: SeriesPlay } | null {
+  if (run.stage !== 'series') return null;
+  const s = run.series[run.seriesIndex];
+  const team = huntTeams(h).find(t => t.id === s.teamId)!;
+  const era = ERAS.find(e => e.id === s.eraId) ?? eraOf(team.end);
   const pool = cardPool(h);
-  const { cards } = squadBonuses(h, run, era);
-  const mineIds = new Set(cards.map(c => c.card.playerId));
-  const theirs = team.roster.map(id => pool.byId.get(id)!).filter(c => c && !mineIds.has(c.playerId));
-  const mine = cards.map(({ card, bonus }) => {
-    const p = underEra(cardPlayer(h, card, 'HUNT', bonus), era);
-    return run.items.includes('badBoys') ? defended(p) : p;
-  });
-  const coach = run.items.includes('sevenSeconds') ? { ...eraCoach(era), paceTendency: 92, threePointFrequency: era.threes === 'none' ? 2 : 80 } : eraCoach(era);
-  const home = { teamId: 'HUNT', name: 'Your squad', seasons: withRotation(mine), coach, chemistry: 70 };
-  const away = { teamId: team.abbr === 'HUNT' ? 'OPP' : team.abbr, name: team.name, seasons: withRotation(theirs.map(c => underEra(cardPlayer(h, c, team.abbr), era))), coach: eraCoach(era), chemistry: 75 };
+  const mineIds = new Set(run.squad.map(id => pool.byId.get(id)!.playerId));
+  const theirCards = team.roster.map(id => pool.byId.get(id)!).filter(c => c && !mineIds.has(c.playerId)).slice(0, SQUAD_SIZE);
+  const coach = run.coach ? COACH_BY_ID.get(run.coach) : undefined;
+  const base = eraCoach(era);
+  const strong = run.focus === 'coach';
+  let ourCoach = base;
+  if (coach?.style === 'pace' || run.items.includes('sevenSeconds')) ourCoach = { ...ourCoach, paceTendency: Math.min(99, base.paceTendency + (strong ? 30 : 22)), threePointFrequency: era.threes === 'none' ? 2 : Math.max(base.threePointFrequency, 60) };
+  if (coach?.style === 'threes' && era.threes !== 'none') ourCoach = { ...ourCoach, threePointFrequency: Math.min(95, base.threePointFrequency + (strong ? 30 : 20)) };
+  if (coach?.style === 'triangle') ourCoach = { ...ourCoach, offensiveSystem: 'motion', starUsage: strong ? 30 : 38 };
+  ourCoach = { ...ourCoach, rotationDepth: SQUAD_SIZE };
+  const theirCoach = s.buffs.includes('runGun') ? { ...base, paceTendency: Math.min(99, base.paceTendency + 20) } : base;
   const decade = `${Math.floor(Math.min(2020, Math.max(1960, team.end - 1)) / 10) * 10}s` as keyof typeof ERA_PRESETS;
-  const result = simulateGame({ home, away, liveCoaching: commands.length ? commands : undefined,
-    settings: { ...DEFAULT_GAME_SETTINGS, era: ERA_PRESETS[decade] ?? DEFAULT_GAME_SETTINGS.era, seed: run.seed * 101 + run.stopIndex * 7919 + run.attempts * 17, injuriesEnabled: false, teamChemistryEnabled: false } });
-  const won = result.homeScore > result.awayScore;
-  return { result, home, away, won, era, coins: coinsFor(run, won, Math.abs(result.homeScore - result.awayScore)), commands };
-}
-
-/** Records a finished game: coins, the player lines, then the reward, a lost life, or the end of the hunt. */
-export function commitGame(h: NbaHistory, run: HuntRun, game: HuntGame): HuntRun {
-  if (run.stage !== 'stop') return run;
-  const stop = run.stops[run.stopIndex];
-  const { result, won, coins } = game;
+  const games: SeriesGame[] = [];
   const lines = { ...(run.lines ?? {}) };
-  for (const [name, l] of Object.entries(result.homeBox.players)) {
-    if (!l.minutes) continue;
-    const cur = lines[name] ?? { g: 0, pts: 0, reb: 0, ast: 0 };
-    lines[name] = { g: cur.g + 1, pts: cur.pts + l.points, reb: cur.reb + l.oreb + l.dreb, ast: cur.ast + l.ast };
+  const seriesLines: Record<string, { g: number; pts: number; reb: number; ast: number }> = {};
+  let st: SeriesState = { ...SERIES_START };
+  while (st.ourWins < WINS_NEEDED && st.theirWins < WINS_NEEDED) {
+    const { cards } = gameBonuses(h, run, era, st, s);
+    const mine = sixRotation(cards.map(({ card: c, bonus, defense }) => defended(underEra(cardPlayer(h, c, 'HUNT', bonus), era), defense)));
+    const tb = theirBonuses(run, s, st, theirCards.length);
+    const theirs = sixRotation(theirCards.map((c, i) => defended(underEra(cardPlayer(h, c, team.abbr === 'HUNT' ? 'OPP' : team.abbr, tb.bonus[i]), era), tb.defense)));
+    const result = simulateGame({ home: { teamId: 'HUNT', seasons: mine, coach: ourCoach, chemistry: 70 }, away: { teamId: team.abbr === 'HUNT' ? 'OPP' : team.abbr, seasons: theirs, coach: theirCoach, chemistry: 75 },
+      settings: { ...DEFAULT_GAME_SETTINGS, era: ERA_PRESETS[decade] ?? DEFAULT_GAME_SETTINGS.era, seed: run.seed * 101 + run.seriesIndex * 7919 + run.attempts * 104729 + st.game * 17, injuriesEnabled: false, teamChemistryEnabled: false } });
+    const won = result.homeScore > result.awayScore;
+    let top = { name: '', pts: -1 };
+    for (const [name, l] of Object.entries(result.homeBox.players)) {
+      if (!l.minutes) continue;
+      if (l.points > top.pts) top = { name, pts: l.points };
+      for (const bag of [lines, seriesLines]) {
+        const cur = bag[name] ?? { g: 0, pts: 0, reb: 0, ast: 0 };
+        bag[name] = { g: cur.g + 1, pts: cur.pts + l.points, reb: cur.reb + l.oreb + l.dreb, ast: cur.ast + l.ast };
+      }
+    }
+    games.push({ us: result.homeScore, them: result.awayScore, won, top: `${top.name} ${top.pts}` });
+    st = { game: st.game + 1, ourWins: st.ourWins + (won ? 1 : 0), theirWins: st.theirWins + (won ? 0 : 1), streak: won ? st.streak + 1 : 0, lostLast: !won };
   }
-  const results = [...run.results, { stop: run.stopIndex, teamId: stop.teamId, us: result.homeScore, them: result.awayScore, won }];
-  const base: HuntRun = { ...run, results, lines, coins: run.coins + coins, nextGame: undefined, note: undefined };
-  if (won && stop.boss) return { ...base, stage: 'won', offer: [] };
-  if (won) { const r = { ...base, stage: 'reward' as const, cap: run.cap + CAP_PER_WIN, attempts: 0 }; return { ...r, offer: offer(h, r, 'reward') }; }
-  return run.lives - 1 <= 0 ? { ...base, lives: 0, stage: 'lost', offer: [] } : { ...base, lives: run.lives - 1, attempts: run.attempts + 1, nextGame: run.nextGame };
-}
-
-/** Plays and records the current stop in one step (a simulated game with no coaching). */
-export function playStop(h: NbaHistory, run: HuntRun): { run: HuntRun; game: HuntGame } | null {
-  const game = stopGame(h, run);
-  return game ? { run: commitGame(h, run, game), game } : null;
-}
-
-// ---------------------------------------------------------------- after a win: reward, crossroads, nodes
-
-/** The two roads after a win (the last one before the boss always offers the shop). */
-function crossroadsFor(run: HuntRun): NodeKind[] {
-  const rng = rngFor(run, 555);
-  const kinds: NodeKind[] = ['shop', 'event', 'rest'];
-  const first = run.stopIndex === run.stops.length - 2 ? 'shop' : kinds[rng.nextInt(3)];
-  const rest = kinds.filter(k => k !== first);
-  return [first, rest[rng.nextInt(2)]];
-}
-
-/** After a win: take the new card (into an open spot, or replacing one), or pass; then on to the crossroads. */
-export function takeReward(h: NbaHistory, run: HuntRun, cardId: string | null, replacing?: string): HuntRun {
-  if (run.stage !== 'reward') return run;
-  const onward = (squad: string[]): HuntRun => ({ ...run, squad, offer: [], stage: 'crossroads', crossroads: crossroadsFor(run) });
-  if (!cardId) return onward(run.squad);
-  if (!run.offer.includes(cardId) || !affordable(h, run, cardId, replacing)) return run;
-  if (!replacing && run.squad.length >= SQUAD_MAX) return run;
-  return onward(replacing ? run.squad.map(id => (id === replacing ? cardId : id)) : [...run.squad, cardId]);
-}
-
-/** Leaves the crossroads or a node for the next stop. */
-export function moveOn(run: HuntRun): HuntRun {
-  if (!['crossroads', 'shop', 'event', 'rest'].includes(run.stage)) return run;
-  return { ...run, stage: 'stop', stopIndex: run.stopIndex + 1, attempts: 0, crossroads: undefined, shop: undefined, eventId: undefined };
-}
-
-/** Takes one road at the crossroads. */
-export function chooseRoad(h: NbaHistory, run: HuntRun, kind: NodeKind): HuntRun {
-  if (run.stage !== 'crossroads' || !run.crossroads?.includes(kind)) return run;
-  const base = { ...run, note: undefined };
-  if (kind === 'shop') {
-    const rng = rngFor(run, 777);
-    const items = ITEM_IDS.filter(i => !run.items.includes(i)).sort(() => rng.next() - 0.5).slice(0, 3);
-    return { ...base, stage: 'shop', shop: { cards: drawCards(h, run, rng, rarityWeights(run, 'shop'), 4), items, sold: [] } };
+  const won = st.ourWins === WINS_NEEDED;
+  const coins = seriesCoins(run, won, st.ourWins);
+  const mvp = Object.entries(seriesLines).map(([name, l]) => ({ name, ...l, score: l.pts + l.reb * 1.2 + l.ast * 1.5 })).sort((a, b) => b.score - a.score)[0];
+  const play: SeriesPlay = { games, won, coins, teamName: team.name, era, mvp };
+  const results = [...run.results, { index: run.seriesIndex, teamId: s.teamId, games, won, coins }];
+  const next: HuntRun = { ...run, results, lines, coins: run.coins + coins, note: undefined };
+  if (won) {
+    const growth = run.focus ? { ...run.growth, [run.focus]: run.growth[run.focus] + 1 } : run.growth;
+    if (s.kind === 'boss') return { run: { ...next, growth, stage: 'won' }, play };
+    return { run: { ...next, growth, stage: 'boost', attempts: 0, boostOffer: boostOffer(run) }, play };
   }
-  if (kind === 'event') return { ...base, stage: 'event', eventId: EVENT_IDS[rngFor(run, 999).nextInt(EVENT_IDS.length)] };
-  return { ...base, stage: 'rest' };
+  if (run.items.includes('insurance')) return { run: { ...next, items: run.items.filter(i => i !== 'insurance'), attempts: run.attempts + 1, note: 'Injury Insurance paid out: no life lost.' }, play };
+  if (run.lives - 1 <= 0) return { run: { ...next, lives: 0, stage: 'lost' }, play };
+  return { run: { ...next, lives: run.lives - 1, attempts: run.attempts + 1 }, play };
+}
+
+// ---------------------------------------------------------------- boosts and the shop
+
+function boostOffer(run: HuntRun): BoostId[] {
+  const rng = rngFor(run, 4242);
+  return BOOST_IDS.filter(b => !run.boosts.includes(b)).sort(() => rng.next() - 0.5).slice(0, 3);
+}
+
+/** Shops come before series 1, 3, 5, 7 and 9. */
+export const shopBefore = (index: number) => index % 2 === 0;
+
+/** Takes a boost after a series win (or none), then on to the shop or the next series. */
+export function takeBoost(h: NbaHistory, run: HuntRun, boost: BoostId | null): HuntRun {
+  if (run.stage !== 'boost') return run;
+  if (boost && !run.boostOffer?.includes(boost)) return run;
+  const next: HuntRun = { ...run, boosts: boost ? [...run.boosts, boost] : run.boosts, boostOffer: undefined, seriesIndex: run.seriesIndex + 1, attempts: 0 };
+  return shopBefore(next.seriesIndex) ? openShop(h, next) : { ...next, stage: 'series' };
+}
+
+function openShop(h: NbaHistory, run: HuntRun): HuntRun {
+  const rng = rngFor(run, 777);
+  const items = ITEM_IDS.filter(i => !run.items.includes(i)).sort(() => rng.next() - 0.5).slice(0, 3);
+  // Players get better as the hunt goes on.
+  const late = run.seriesIndex / SERIES_COUNT;
+  const w: Record<Rarity, number> = { common: Math.max(8, 40 - late * 40), rare: 38, epic: 16 + late * 20, legendary: 6 + late * 14 };
+  const slots = [0, 1, 2, 3, 4, 5].sort(() => rng.next() - 0.5).slice(0, 3);
+  return { ...run, stage: 'shop', note: undefined, shop: { items, sold: [], coach: shopCoach(run, rng), cards: slots.map(slot => ({ slot, id: shopCard(h, run, slot, rng, w) })).filter(c => c.id) as { id: string; slot: number }[] } };
+}
+
+function shopCard(h: NbaHistory, run: HuntRun, slot: number, rng: RNG, w: Record<Rarity, number>): string | undefined {
+  const pool = cardPool(h);
+  const taken = new Set(run.squad.map(id => pool.byId.get(id)!.playerId));
+  const deck = DECKS[run.deck ?? 'classic'];
+  const fits = (c: HuntCard) => fitsSlot(c, SLOTS[slot]) && (deck.draft?.(c) ?? true);
+  return drawPlayers(h, taken, rng, 1, fits, () => ORDER[rng.weightedPick(ORDER.map(r => w[r]))])[0];
+}
+
+function shopCoach(run: HuntRun, rng: RNG): string | undefined {
+  const better = COACHES.filter(x => x.id !== run.coach && x.bonus >= 1);
+  return better[rng.nextInt(better.length)]?.id;
 }
 
 export const cardPrice = (h: NbaHistory, id: string) => CARD_PRICE[cardPool(h).byId.get(id)?.rarity ?? 'common'];
 
-/** Buys a card from the shop (into an open spot or replacing one; it must fit the cap). */
-export function buyCard(h: NbaHistory, run: HuntRun, cardId: string, replacing?: string): HuntRun {
+/** Buys a player from the shop into his slot (the player there leaves). */
+export function buyCard(h: NbaHistory, run: HuntRun, id: string): HuntRun {
   const shop = run.shop;
-  if (run.stage !== 'shop' || !shop || !shop.cards.includes(cardId) || shop.sold.includes(cardId)) return run;
-  const price = cardPrice(h, cardId);
-  if (run.coins < price || !affordable(h, run, cardId, replacing) || (!replacing && run.squad.length >= SQUAD_MAX)) return run;
-  const squad = replacing ? run.squad.map(id => (id === replacing ? cardId : id)) : [...run.squad, cardId];
-  const boosts = { ...run.boosts };
-  if (replacing) delete boosts[replacing];
-  return { ...run, squad, boosts, coins: run.coins - price, shop: { ...shop, sold: [...shop.sold, cardId] }, note: `Signed ${cardPool(h).byId.get(cardId)!.name}.` };
+  const offer = shop?.cards.find(c => c.id === id);
+  if (run.stage !== 'shop' || !shop || !offer || shop.sold.includes(id)) return run;
+  const price = cardPrice(h, id);
+  if (run.coins < price) return run;
+  const out = run.squad[offer.slot];
+  const training = { ...run.training }; delete training[out];
+  return { ...run, squad: run.squad.map((x, i) => (i === offer.slot ? id : x)), training, coins: run.coins - price, shop: { ...shop, sold: [...shop.sold, id] },
+    note: `Signed ${card(h, id).name} as your ${slotName(offer.slot)}; ${card(h, out).name} leaves.` };
+}
+
+export function buyCoach(run: HuntRun): HuntRun {
+  const shop = run.shop;
+  const x = shop?.coach ? COACH_BY_ID.get(shop.coach) : undefined;
+  if (run.stage !== 'shop' || !shop || !x || shop.sold.includes(x.id) || run.coins < coachPrice(x)) return run;
+  return { ...run, coach: x.id, coins: run.coins - coachPrice(x), shop: { ...shop, sold: [...shop.sold, x.id] }, note: `Hired ${x.name}.` };
 }
 
 export function buyItem(run: HuntRun, item: ItemId): HuntRun {
@@ -364,7 +541,7 @@ export function buyItem(run: HuntRun, item: ItemId): HuntRun {
   if (run.stage !== 'shop' || !shop || !shop.items.includes(item) || shop.sold.includes(item) || run.items.includes(item) || run.items.length >= MAX_ITEMS) return run;
   const it = ITEMS[item];
   if (run.coins < it.price) return run;
-  return { ...run, coins: run.coins - it.price, items: [...run.items, item], cap: run.cap + (item === 'legacyFund' ? 12 : 0), shop: { ...shop, sold: [...shop.sold, item] }, note: `Bought ${it.name}.` };
+  return { ...run, coins: run.coins - it.price, items: [...run.items, item], shop: { ...shop, sold: [...shop.sold, item] }, note: `Bought ${it.name}.` };
 }
 
 export function buyLife(run: HuntRun): HuntRun {
@@ -372,65 +549,16 @@ export function buyLife(run: HuntRun): HuntRun {
   return { ...run, lives: run.lives + 1, coins: run.coins - LIFE_PRICE, shop: { ...run.shop, lifeBought: true }, note: 'A life back.' };
 }
 
-/** Rest stop: a life back, or two points of training for one card (up to +6 per card); then on the road. */
-export function rest(run: HuntRun, choice: { heal: true } | { train: string }): HuntRun {
-  if (run.stage !== 'rest') return run;
-  if ('heal' in choice) return run.lives >= maxLives(run) ? run : moveOn({ ...run, lives: run.lives + 1 });
-  const id = choice.train;
-  if (!run.squad.includes(id) || (run.boosts[id] ?? 0) >= MAX_TRAINING) return run;
-  return moveOn({ ...run, boosts: { ...run.boosts, [id]: Math.min(MAX_TRAINING, (run.boosts[id] ?? 0) + 2) } });
+/** Training in the shop: +2 overall for one player, up to +6. */
+export function train(h: NbaHistory, run: HuntRun, id: string): HuntRun {
+  if (run.stage !== 'shop' || !run.squad.includes(id) || (run.training[id] ?? 0) >= MAX_TRAINING || run.coins < TRAIN_PRICE) return run;
+  return { ...run, coins: run.coins - TRAIN_PRICE, training: { ...run.training, [id]: (run.training[id] ?? 0) + TRAIN_STEP }, note: `${card(h, id).name} trained: +${TRAIN_STEP}.` };
 }
 
-/** An event choice. Returns the run with what happened in `note`; the player then moves on. */
-export function resolveEvent(h: NbaHistory, run: HuntRun, optionId: string): HuntRun {
-  if (run.stage !== 'event' || !run.eventId) return run;
-  const pool = cardPool(h);
-  const ranked = run.squad.map(id => pool.byId.get(id)!).sort((a, b) => b.ovr - a.ovr);
-  const rng = rngFor(run, 1234);
-  const done = (patch: Partial<HuntRun>, note: string): HuntRun => ({ ...run, ...patch, stage: 'event', eventId: undefined, note });
-  const boost = (id: string, v: number) => ({ ...run.boosts, [id]: (run.boosts[id] ?? 0) + v });
-  switch (run.eventId) {
-    case 'flu': return optionId === 'play'
-      ? done({ coins: run.coins + 40, nextGame: { cardId: ranked[0].id, bonus: -4 } }, `${ranked[0].name} will play through it (−4 next game). +40 coins.`)
-      : done({}, `${ranked[0].name} rests. He'll be fine.`);
-    case 'holdout': {
-      const who = ranked[1] ?? ranked[0];
-      if (optionId === 'pay') return run.coins < 35 ? run : done({ coins: run.coins - 35, boosts: boost(who.id, 1) }, `${who.name} got paid: +1 for the rest of the hunt.`);
-      return done({ boosts: boost(who.id, -2) }, `${who.name} is sulking: −2 for the rest of the hunt.`);
-    }
-    case 'tradeMachine': {
-      if (optionId !== 'swap') return done({}, 'You hang up. The squad stays together.');
-      const weakest = [...ranked].reverse()[0];
-      const up: Rarity = weakest.rarity === 'common' ? 'rare' : weakest.rarity === 'rare' ? 'epic' : 'legendary';
-      const tryCards = (r: Rarity) => pool.byRarity[r].filter(c => c.ovr >= MIN_OFFER_OVR && !run.squad.some(s => pool.byId.get(s)!.playerId === c.playerId));
-      let candidates = tryCards(up).filter(c => spent(h, run.squad) - weakest.cost + c.cost <= run.cap);
-      if (!candidates.length) candidates = tryCards(weakest.rarity);
-      const got = candidates[rng.nextInt(candidates.length)];
-      const boosts = { ...run.boosts }; delete boosts[weakest.id];
-      return done({ squad: run.squad.map(id => (id === weakest.id ? got.id : id)), boosts }, `${weakest.name} goes back in time; ${got.name} (${got.end - 1}-${String(got.end).slice(2)}) arrives.`);
-    }
-    case 'camp': {
-      if (optionId !== 'send' || run.coins < 30) return optionId === 'send' ? run : done({}, 'You keep your coins.');
-      const starter = ranked.slice(0, 5).reverse()[0];
-      return done({ coins: run.coins - 30, boosts: boost(starter.id, 3) }, `${starter.name} comes back from camp +3.`);
-    }
-    case 'envelope': {
-      if (optionId === 'sell') return done({ coins: run.coins + 25 }, 'Sold unopened: +25 coins.');
-      const [id] = drawCards(h, run, rng, { common: 0, rare: 60, epic: 30, legendary: 10 }, 1);
-      const card = pool.byId.get(id);
-      if (card && run.squad.length < SQUAD_MAX && spent(h, run.squad) + card.cost <= run.cap) return done({ squad: [...run.squad, id] }, `Inside: ${card.name} (${card.end - 1}-${String(card.end).slice(2)}) joins your squad!`);
-      return done({ coins: run.coins + 50 }, `Inside: ${card?.name ?? 'a card'}, but there's no room. You sell it: +50 coins.`);
-    }
-    case 'charity':
-      if (optionId === 'play') return run.lives < maxLives(run) ? done({ lives: run.lives + 1 }, 'The kids loved it. A life back.') : done({ coins: run.coins + 30 }, 'The kids loved it: +30 coins.');
-      return done({ coins: run.coins + 10 }, 'Rest day: +10 coins.');
-  }
-  return run;
+export function leaveShop(run: HuntRun): HuntRun {
+  return run.stage === 'shop' ? { ...run, stage: 'series', shop: undefined, note: undefined } : run;
 }
 
-/** Between stops you can release a card to free Legacy Points (the squad never drops below five). */
-export function releaseCard(run: HuntRun, cardId: string): HuntRun {
-  if (!['stop', 'reward', 'crossroads', 'shop', 'rest'].includes(run.stage) || run.squad.length <= 5 || !run.squad.includes(cardId)) return run;
-  const boosts = { ...run.boosts }; delete boosts[cardId];
-  return { ...run, squad: run.squad.filter(id => id !== cardId), boosts };
-}
+export const slotName = (slot: number) => (slot === 5 ? 'sixth man' : SLOTS[slot]);
+
+export type { ChemistryBond };

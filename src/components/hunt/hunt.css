@@ -170,3 +170,63 @@ button.hunt-card:disabled .hunt-card-action { background: #2a3546; color: #94a0b
 .hunt-dream-side label, .hunt-dream-era { display: grid; gap: 4px; font-size: 13px; }
 .hunt-dream-side select, .hunt-dream-era select { max-width: 100%; }
 @media (max-width: 760px) { .hunt-dream-pickers { grid-template-columns: 1fr; } }
+
+/* The series rework: spins, slots, ratings, the best-of-seven scoreboard */
+.hunt-spin-in { animation: hunt-spin-in 420ms cubic-bezier(.2, .9, .3, 1.2) both; }
+@keyframes hunt-spin-in { 0% { transform: rotateY(90deg) translateY(-12px); opacity: 0; } 60% { opacity: 1; } 100% { transform: none; opacity: 1; } }
+.hunt-spin-track { list-style: none; display: flex; gap: 4px; padding: 0; margin: 0; }
+.hunt-spin-track li { min-width: 34px; padding: 3px 6px; text-align: center; font-size: 11px; font-weight: 700; letter-spacing: .06em; border: 2px solid #2a3546; color: #94a0b2; background: #121926; }
+.hunt-spin-track li.done { border-color: #55c878; color: #55c878; }
+.hunt-spin-track li.current { border-color: #f47b20; color: #f4f0e6; background: #192333; }
+.hunt-guarantee { color: #ffd166; }
+.hunt-card-note { font-size: 11px; color: #94a0b2; }
+.hunt-card-ovr b.down { color: #e85d5d; }
+.hunt-coach-badge { display: grid; place-items: center; width: 64px; height: 64px; background: #192333; border: 2px solid #f47b20; font: 26px 'Oswald', sans-serif; color: #f47b20; }
+.hunt-slot { width: 3.6em; flex: none; font-size: 11px; font-weight: 700; letter-spacing: .06em; color: #94a0b2; }
+.hunt-squad li.empty { opacity: .55; }
+.hunt-rating { font: 22px 'Oswald', sans-serif; color: #f47b20; font-variant-numeric: tabular-nums; }
+.hunt-versus { display: flex; align-items: center; gap: 18px; margin: 8px 0; }
+.hunt-versus div { display: grid; justify-items: center; padding: 6px 16px; background: #121926; border: 2px solid #2a3546; }
+.hunt-versus small { font-size: 10px; letter-spacing: .08em; color: #94a0b2; }
+.hunt-versus .hunt-rating { font-size: 34px; }
+.hunt-versus > span { color: #94a0b2; }
+.hunt-buffs { list-style: none; padding: 0; margin: 0; display: grid; gap: 4px; font-size: 13px; }
+.hunt-buffs b { color: #ffd166; margin-right: 4px; }
+.hunt-play { font-size: 20px; padding: 12px 40px; margin-top: 10px; }
+.hunt-era-semi { border-color: #b983ff; }
+.hunt-era-boss { border-color: #ffd166; box-shadow: 0 0 0 2px #3a2f12 inset; }
+.hunt-trail-10 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.hunt-trail li.semi { border-color: #b983ff; }
+.hunt-road.on { border-color: #f47b20; background: #192333; }
+.hunt-boost b { color: #55c878; }
+.hunt-replace button.active { border-color: #f47b20; color: #f47b20; }
+
+.hunt-series { justify-items: center; text-align: center; }
+.hunt-series-head h2 { margin: 2px 0 0; font: 24px 'Oswald', sans-serif; }
+.hunt-series-count { display: flex; align-items: center; gap: 22px; }
+.hunt-series-count div { display: grid; justify-items: center; min-width: 96px; padding: 6px 18px; background: #121926; border: 3px solid #2a3546; box-shadow: 3px 3px 0 #03070d; }
+.hunt-series-count small { font-size: 10px; letter-spacing: .1em; color: #94a0b2; }
+.hunt-series-count b { font: 56px 'Oswald', sans-serif; line-height: 1; color: #f47b20; font-variant-numeric: tabular-nums; }
+.hunt-series-count > span { font: 40px 'Oswald', sans-serif; color: #94a0b2; }
+.hunt-scoreboard { display: grid; gap: 6px; width: min(460px, 100%); padding: 14px 18px; background: #03070d; border: 3px solid #2a3546; }
+.hunt-scoreboard.won { border-color: #55c878; } .hunt-scoreboard.lost { border-color: #e85d5d; }
+.hunt-scoreboard .hunt-score { color: #ffd166; font-size: 52px; }
+.hunt-games { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; width: min(760px, 100%); }
+.hunt-games li { display: grid; gap: 2px; padding: 6px 4px; background: #121926; border: 2px solid #2a3546; font-size: 12px; min-width: 0; }
+.hunt-games li small { font-size: 10px; color: #94a0b2; }
+.hunt-games li span { font-size: 10px; color: #c9ced8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hunt-games li.won { border-color: #55c878; } .hunt-games li.won b { color: #55c878; }
+.hunt-games li.lost { border-color: #e85d5d; } .hunt-games li.lost b { color: #e85d5d; }
+.hunt-series .hunt-result { width: min(560px, 100%); }
+.era-60s .hunt-scoreboard { filter: grayscale(1) contrast(1.1); }
+.era-70s .hunt-scoreboard { filter: sepia(.5) saturate(1.2); }
+.era-80s .hunt-scoreboard { filter: saturate(1.5); }
+@media (max-width: 760px) {
+  .hunt-trail-10 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .hunt-games { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .hunt-series-count b { font-size: 44px; }
+  .hunt-scoreboard .hunt-score { font-size: 40px; }
+  .hunt-spin-track { flex-wrap: wrap; }
+}
+@media (prefers-reduced-motion: reduce) { .hunt-spin-in { animation: none; } }
+.hunt-games li.unneeded { opacity: .35; }

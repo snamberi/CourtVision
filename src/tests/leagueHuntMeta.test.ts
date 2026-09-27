@@ -4,7 +4,8 @@ import { loadHistoryForTests } from './helpers/nbaHistoryFixture';
 import { cardPool } from '../hunt/cards';
 import { huntTeams } from '../hunt/teams';
 import { ERAS } from '../hunt/eras';
-import { newRun, draftPick, affordable, maxLives, type HuntRun } from '../hunt/run';
+import { newRun, spinPick, maxLives, opponentRating, SPINS, type HuntRun } from '../hunt/run';
+import { COACH_BY_ID } from '../hunt/coaches';
 import { deckUnlocked, difficultyUnlocked, loadAlbum, saveRun, recordRun, loadRecords, dailySeed, todayUtc } from '../hunt/storage';
 import { dreamGame, teamsIn } from '../hunt/matchup';
 
@@ -12,7 +13,10 @@ type H = Awaited<ReturnType<typeof loadHistoryForTests>>;
 const draftAll = (h: H, run: HuntRun) => {
   const pool = cardPool(h);
   let r = run;
-  while (r.stage === 'draft') r = draftPick(h, r, r.offer.filter(id => affordable(h, r, id)).sort((a, b) => pool.byId.get(b)!.ovr - pool.byId.get(a)!.ovr)[0]);
+  while (r.stage === 'draft') {
+    const coach = SPINS[r.spin] === 'COACH';
+    r = spinPick(h, r, [...r.offer].sort((a, b) => (coach ? COACH_BY_ID.get(b)!.bonus - COACH_BY_ID.get(a)!.bonus : pool.byId.get(b)!.ovr - pool.byId.get(a)!.ovr))[0]);
+  }
   return r;
 };
 
@@ -23,22 +27,27 @@ describe('League Hunt: decks, difficulty, daily, album, dream matchup', () => {
     const h = await loadHistoryForTests(); const pool = cardPool(h);
     const old = draftAll(h, newRun(h, 11, { deck: 'oldSchool' }));
     expect(old.squad.every(id => pool.byId.get(id)!.end < 1980)).toBe(true);
-    expect(old.cap).toBe(80);
+    expect(old.coins).toBe(newRun(h, 11).coins + 50);
     const pace = draftAll(h, newRun(h, 12, { deck: 'paceSpace' }));
     expect(pace.squad.every(id => pool.byId.get(id)!.end >= 2010)).toBe(true);
     expect(pace.items).toContain('sevenSeconds');
-    const big = newRun(h, 13, { deck: 'bigMen' });
-    expect(big.offer.every(id => ['C', 'PF'].includes(pool.byId.get(id)!.pos))).toBe(true);
-    const dyn = newRun(h, 14, { deck: 'dynasty' });
-    expect(dyn.squad).toHaveLength(2);
-    const [x, y] = dyn.squad.map(id => pool.byId.get(id)!);
-    expect(`${x.team}@${x.end}`).toBe(`${y.team}@${y.end}`);
+    // Big Man Era: the PF and C spins always show a Great or better.
+    let big = newRun(h, 13, { deck: 'bigMen' });
+    expect(big.items).toContain('badBoys');
+    while (big.stage === 'draft') {
+      if (SPINS[big.spin] === 'PF' || SPINS[big.spin] === 'C') expect(big.offer.some(id => ['epic', 'legendary'].includes(pool.byId.get(id)!.rarity))).toBe(true);
+      big = spinPick(h, big, big.offer[0]);
+    }
+    // Dynasty: after the first spin, one card is a real teammate of someone drafted.
+    let dyn = newRun(h, 14, { deck: 'dynasty' });
+    dyn = spinPick(h, dyn, dyn.offer[0]);
+    const mates = new Set(huntTeams(h).filter(t => t.roster.includes(dyn.squad[0])).flatMap(t => t.roster));
+    expect(dyn.offer.some(id => mates.has(id))).toBe(true);
   }, 120_000);
 
   it('difficulty changes lives and opponents', async () => {
     const h = await loadHistoryForTests();
-    const teams = new Map(huntTeams(h).map(t => [t.id, t]));
-    const str = (r: HuntRun) => r.stops.slice(0, 5).reduce((n, s) => n + teams.get(s.teamId)!.strength, 0) / 5;
+    const str = (r: HuntRun) => r.series.slice(0, 4).reduce((n, s) => n + opponentRating(h, r, s), 0) / 4;
     const rookie = newRun(h, 21, { difficulty: 'rookie' }), legend = newRun(h, 21, { difficulty: 'legend' });
     expect(maxLives(rookie)).toBe(4);
     expect(maxLives(legend)).toBe(2);
@@ -56,9 +65,9 @@ describe('League Hunt: decks, difficulty, daily, album, dream matchup', () => {
     expect(dailySeed(date)).toBe(dailySeed(date));
     expect(dailySeed(date)).not.toBe(dailySeed('2026-09-28'));
     const a = newRun(h, dailySeed(date), { daily: date }), b = newRun(h, dailySeed(date), { daily: date });
-    expect(a.stops).toEqual(b.stops);
+    expect(a.series).toEqual(b.series);
     expect(a.offer).toEqual(b.offer);
-    const done: HuntRun = { ...a, stage: 'lost', stopIndex: 2, results: [{ stop: 0, teamId: a.stops[0].teamId, us: 100, them: 90, won: true }] };
+    const done: HuntRun = { ...a, stage: 'lost', seriesIndex: 2, results: [{ index: 0, teamId: a.series[0].teamId, games: [], won: true, coins: 0 }] };
     const rec = recordRun(done);
     expect(rec.daily?.[date]).toEqual({ won: false, stop: 2, wins: 1, losses: 0 });
     expect(todayUtc(new Date('2026-09-27T23:30:00Z'))).toBe('2026-09-27');

@@ -3,12 +3,25 @@ import { loadHistoryForTests } from './helpers/nbaHistoryFixture';
 import { cardPool, cardPlayer } from '../hunt/cards';
 import { huntTeams } from '../hunt/teams';
 import { ERAS, underEra } from '../hunt/eras';
-import { stopGame, commitGame, coachCards, COACH_CARDS, newRun, draftPick, playStop, takeReward, releaseCard, affordable, spent, moveOn, chooseRoad, buyCard, buyItem, buyLife, rest, resolveEvent, squadBonuses, upgradeRun, SQUAD_SIZE, START_LIVES, CAP_PER_WIN, START_COINS, type HuntRun } from '../hunt/run';
+import {
+  newRun, spinPick, chooseFocus, playSeries, takeBoost, leaveShop, buyCard, buyCoach, buyItem, buyLife, train, gameBonuses, squadRating, opponentRating, spinWeights,
+  SPINS, SLOTS, SERIES_COUNT, SEMI_BOSS, START_COINS, MAX_TRAINING, BOOST_CAP, SERIES_START, type HuntRun,
+} from '../hunt/run';
+import { rawStrength, rosterRating, winsToRating } from '../hunt/rating';
+import { COACH_BY_ID } from '../hunt/coaches';
 import { chemistry } from '../hunt/chemistry';
-import { EVENT_IDS } from '../hunt/events';
 
-const bestAffordable = (h: Awaited<ReturnType<typeof loadHistoryForTests>>, run: HuntRun) =>
-  run.offer.filter(id => affordable(h, run, id)).sort((a, b) => cardPool(h).byId.get(b)!.ovr - cardPool(h).byId.get(a)!.ovr)[0];
+type H = Awaited<ReturnType<typeof loadHistoryForTests>>;
+/** Keeps the best card (or coach) of every spin. */
+const spinAll = (h: H, run: HuntRun) => {
+  const pool = cardPool(h);
+  let r = run;
+  while (r.stage === 'draft') {
+    const coach = SPINS[r.spin] === 'COACH';
+    r = spinPick(h, r, [...r.offer].sort((a, b) => (coach ? COACH_BY_ID.get(b)!.bonus - COACH_BY_ID.get(a)!.bonus : pool.byId.get(b)!.ovr - pool.byId.get(a)!.ovr))[0]);
+  }
+  return r;
+};
 
 describe('League Hunt', () => {
   it('cards are real player-seasons with rarity by rating', async () => {
@@ -33,134 +46,136 @@ describe('League Hunt', () => {
     expect(tens.tendencies.shot.catchAndShoot3).toBeGreaterThanOrEqual(p.tendencies.shot.catchAndShoot3);
   }, 120_000);
 
-  it('a run: draft under the cap, six stops ending with a boss, wins raise the cap, losses cost lives', async () => {
+  it('team ratings run 0-100 on real results, top-heavy', async () => {
     const h = await loadHistoryForTests();
-    let run = newRun(h, 4242);
-    expect(run.stops).toHaveLength(6);
-    expect(run.stops[5].boss).toBe(true);
-    expect(huntTeams(h).find(t => t.id === run.stops[5].teamId)!.champion).toBe(true);
-    expect(run.offer.every(id => ['epic', 'legendary'].includes(cardPool(h).byId.get(id)!.rarity))).toBe(true); // the star pick
-    while (run.stage === 'draft') run = draftPick(h, run, bestAffordable(h, run));
-    expect(run.squad).toHaveLength(SQUAD_SIZE);
-    expect(spent(h, run.squad)).toBeLessThanOrEqual(run.cap);
-    run = { ...run, stops: run.stops.map((s, i) => (i === 0 ? { ...s, eraId: '60s' } : s)) }; // the first stop under 1960s rules
-    expect(new Set(run.squad.map(id => cardPool(h).byId.get(id)!.playerId)).size).toBe(SQUAD_SIZE);
-    let wins = 0, losses = 0, noLineGames = 0;
-    for (let i = 0; i < 40 && (run.stage === 'stop' || run.stage === 'reward'); i++) {
-      if (run.stage === 'reward') { const cap = run.cap; expect(cap).toBe(72 + CAP_PER_WIN * wins); run = takeReward(h, run, null); expect(run.stage).toBe('crossroads'); run = moveOn(run); continue; }
-      const r = playStop(h, run)!;
-      // Nobody plays for both sides.
-      const mine = new Set(r.game.home.seasons.map(p => p.real!.id));
-      expect(r.game.away.seasons.some(p => mine.has(p.real!.id))).toBe(false);
-      if (r.game.won) wins++; else { losses++; expect(r.run.lives).toBe(START_LIVES - losses); }
-      const tpa = (box: typeof r.game.result.homeBox) => Object.values(box.players).reduce((n, l) => n + l.tpa, 0);
-      if (r.game.era.threes === 'none') { noLineGames++; expect(tpa(r.game.result.homeBox) + tpa(r.game.result.awayBox)).toBeLessThanOrEqual(6); }
+    expect(winsToRating(25)).toBe(60);
+    expect(winsToRating(40)).toBe(70);
+    expect(winsToRating(45)).toBe(80);
+    expect(winsToRating(58)).toBe(90);
+    expect(winsToRating(68)).toBe(100);
+    // One star beats the same total spread evenly.
+    expect(rawStrength([90, 60, 60, 60, 60, 60])).toBeGreaterThan(rawStrength([65, 65, 65, 65, 65, 65]));
+    const teams = huntTeams(h);
+    const rate = (id: string) => rosterRating(h, teams.find(t => t.id === id)!.roster.map(c => cardPool(h).byId.get(c)!.ovr));
+    expect(rate('GSW@2017')).toBeGreaterThanOrEqual(95);
+    const bad = teams.filter(t => t.w / (t.w + t.l) < 0.25).slice(0, 20).map(t => rate(t.id));
+    expect(bad.reduce((a, b) => a + b, 0) / bad.length).toBeLessThan(68);
+  }, 120_000);
+
+  it('the spins: PG, SG, SF, PF, C, coach, sixth man; a guaranteed Star and Great; later spins are poorer', async () => {
+    const h = await loadHistoryForTests();
+    const pool = cardPool(h);
+    expect(SPINS).toEqual(['PG', 'SG', 'SF', 'PF', 'C', 'COACH', '6TH']);
+    expect(spinWeights(0).legendary).toBeGreaterThan(spinWeights(6).legendary);
+    expect(spinWeights(0).epic).toBeGreaterThan(spinWeights(6).epic);
+    for (const seed of [1, 2, 3, 4, 5]) {
+      let run = newRun(h, seed);
+      const seen: string[] = [];
+      while (run.stage === 'draft') {
+        const kind = SPINS[run.spin];
+        expect(run.offer).toHaveLength(3);
+        if (kind === 'COACH') expect(run.offer.every(id => COACH_BY_ID.has(id))).toBe(true);
+        else {
+          const cards = run.offer.map(id => pool.byId.get(id)!);
+          if (kind !== '6TH') expect(cards.every(c => c.pos === kind || (c.pos === 'G' && (kind === 'PG' || kind === 'SG')) || (c.pos === 'F' && (kind === 'SF' || kind === 'PF')))).toBe(true);
+          seen.push(...cards.map(c => c.rarity));
+        }
+        run = spinPick(h, run, run.offer[0]);
+      }
+      expect(seen).toContain('legendary');
+      expect(seen).toContain('epic');
+      expect(run.squad).toHaveLength(SLOTS.length);
+      expect(run.coach).toBeTruthy();
+      expect(run.stage).toBe('focus');
+    }
+  }, 120_000);
+
+  it('a run: ten best-of-seven series, a semi-boss and a 100-rated boss, boosts after wins, shops every two series', async () => {
+    const h = await loadHistoryForTests();
+    let run = spinAll(h, newRun(h, 4242));
+    expect(run.series).toHaveLength(SERIES_COUNT);
+    expect(run.series[SEMI_BOSS].kind).toBe('semi');
+    expect(run.series[SERIES_COUNT - 1].kind).toBe('boss');
+    expect(opponentRating(h, run, run.series[SERIES_COUNT - 1])).toBe(100);
+    expect(new Set(run.series.map(s => s.teamId)).size).toBe(SERIES_COUNT);
+    run = chooseFocus(h, run, 'star');
+    expect(run.stage).toBe('shop');
+    expect(run.coins).toBe(START_COINS);
+    let shops = 1, boosts = 0, series = 0;
+    for (let i = 0; i < 40 && !['won', 'lost'].includes(run.stage); i++) {
+      if (run.stage === 'shop') { run = leaveShop(run); continue; }
+      if (run.stage === 'boost') {
+        expect(run.boostOffer).toHaveLength(3);
+        run = takeBoost(h, run, run.boostOffer![0]); boosts++;
+        if (run.stage === 'shop') { shops++; expect(run.seriesIndex % 2).toBe(0); }
+        continue;
+      }
+      const lives = run.lives, index = run.seriesIndex;
+      const r = playSeries(h, run)!;
+      series++;
+      const w = r.play.games.filter(g => g.won).length, l = r.play.games.length - w;
+      expect(Math.max(w, l)).toBe(4);
+      expect(Math.min(w, l)).toBeLessThan(4);
+      expect(r.play.games.every(g => g.won === g.us > g.them)).toBe(true);
+      if (!r.play.won) { expect(r.run.lives).toBe(lives - 1); if (r.run.stage !== 'lost') expect(r.run.seriesIndex).toBe(index); }
       run = r.run;
     }
     expect(['won', 'lost']).toContain(run.stage);
-    expect(noLineGames).toBeGreaterThan(0);
-    expect(run.results).toHaveLength(wins + losses);
+    expect(boosts).toBe(run.boosts.length);
+    expect(series).toBe(run.results.length);
+    expect(shops).toBeLessThanOrEqual(5);
+    // Deterministic: the same seed plays the same series.
+    const again = playSeries(h, leaveShop(chooseFocus(h, spinAll(h, newRun(h, 4242)), 'star')))!;
+    expect(again.play.games).toEqual(run.results[0].games);
   }, 300_000);
 
-  it('rewards: take a card into an open spot or in place of one; release frees points', async () => {
+  it('boosts grow inside a series and are capped per player', async () => {
     const h = await loadHistoryForTests();
-    let run = newRun(h, 99);
-    while (run.stage === 'draft') run = draftPick(h, run, bestAffordable(h, run));
-    const reward: HuntRun = { ...run, stage: 'reward', offer: run.offer.length ? run.offer : [cardPool(h).byRarity.common.find(c => c.ovr >= 50 && !run.squad.some(s => cardPool(h).byId.get(s)!.playerId === c.playerId))!.id], cap: run.cap + 30 };
-    const card = reward.offer[0];
-    const added = takeReward(h, reward, card);
-    expect(added.squad).toContain(card);
-    expect(added.stage).toBe('crossroads');
-    expect(moveOn(added).stopIndex).toBe(1);
-    const replaced = takeReward(h, reward, card, reward.squad[3]);
-    expect(replaced.squad).toHaveLength(SQUAD_SIZE);
-    expect(replaced.squad).not.toContain(reward.squad[3]);
-    const released = releaseCard(added, added.squad[0]);
-    expect(released.squad).toHaveLength(SQUAD_SIZE);
-    expect(spent(h, released.squad)).toBeLessThan(spent(h, added.squad));
+    const run = { ...leaveShop(chooseFocus(h, spinAll(h, newRun(h, 7)), 'sixth')), boosts: ['spark' as const] };
+    const sixth = (st: typeof SERIES_START) => gameBonuses(h, run, undefined, st).cards[5];
+    const g1 = sixth(SERIES_START), up2 = sixth({ ...SERIES_START, game: 3, ourWins: 2 });
+    expect(up2.bonus - g1.bonus).toBe(6);
+    const stacked = { ...run, boosts: ['spark', 'microwave', 'closer', 'fastStart', 'backToWall'] as HuntRun['boosts'] };
+    const all = gameBonuses(h, stacked, undefined, { game: 6, ourWins: 3, theirWins: 3, streak: 0, lostLast: true }).cards[5];
+    const base = gameBonuses(h, { ...stacked, boosts: [] }, undefined, { game: 6, ourWins: 3, theirWins: 3, streak: 0, lostLast: true }).cards[5];
+    expect(all.bonus - base.bonus).toBe(BOOST_CAP);
+    // Growth: the sixth-man focus adds +2 per series won.
+    const grown = gameBonuses(h, { ...run, boosts: [], growth: { ...run.growth, sixth: 3 } }, undefined, SERIES_START).cards[5];
+    expect(grown.bonus - gameBonuses(h, { ...run, boosts: [] }, undefined, SERIES_START).cards[5].bonus).toBe(6);
   }, 120_000);
 
-  it('chemistry: real teammates, franchise, home era and rivals', async () => {
+  it('the shop: slot-for-slot signings, a coach, items, training, a life and the focus', async () => {
+    const h = await loadHistoryForTests();
+    const pool = cardPool(h);
+    let run = chooseFocus(h, spinAll(h, newRun(h, 99)), 'chemistry');
+    run = { ...run, coins: 1000, lives: 2 };
+    const offer = run.shop!.cards[0];
+    run = buyCard(h, run, offer.id);
+    expect(run.squad[offer.slot]).toBe(offer.id);
+    expect(run.squad).toHaveLength(SLOTS.length);
+    expect(buyCard(h, run, offer.id)).toBe(run); // sold
+    if (run.shop!.coach) { run = buyCoach(run); expect(run.coach).toBe(run.shop!.coach); }
+    run = buyItem(run, run.shop!.items[0]);
+    expect(run.items).toHaveLength(1);
+    const id = run.squad[0];
+    for (let i = 0; i < 5; i++) run = train(h, run, id);
+    expect(run.training[id]).toBe(MAX_TRAINING);
+    run = buyLife(run);
+    expect(run.lives).toBe(3);
+    expect(buyLife(run)).toBe(run);
+    run = chooseFocus(h, run, 'coach');
+    expect(run.focus).toBe('coach');
+    expect(squadRating(h, run)).toBeGreaterThan(0);
+    expect(pool.byId.has(run.squad[5])).toBe(true);
+    expect(leaveShop(run).stage).toBe('series');
+  }, 120_000);
+
+  it('chemistry: real teammates and rivals', async () => {
     const h = await loadHistoryForTests();
     const pool = cardPool(h);
     const id = (name: string, end: number) => `${h.players.find(p => p.displayName === name)!.id}@${end}`;
-    const cards = [id('Michael Jordan', 1996), id('Scottie Pippen', 1996), id('Larry Bird', 1986), id('Magic Johnson', 1987), id('Derrick Rose', 2011)].map(i => pool.byId.get(i)!);
-    const bonds = chemistry(cards, ERAS.find(e => e.id === '80s'));
-    const kinds = bonds.map(b => b.kind);
-    expect(bonds.find(b => b.kind === 'teammates')!.cards).toHaveLength(2);
-    expect(kinds).toContain('rivals');
-    expect(kinds).toContain('franchise'); // Jordan, Pippen and Rose: the Bulls in two seasons
-    const run = { ...newRun(h, 5), stage: 'stop' as const, squad: cards.map(c => c.id) };
-    const jordan = squadBonuses(h, run, ERAS.find(e => e.id === '90s')).cards.find(c => c.card.name === 'Michael Jordan')!;
-    expect(jordan.bonus).toBeGreaterThanOrEqual(3);
-  }, 120_000);
-
-  it('the road: shop, events and rest', async () => {
-    const h = await loadHistoryForTests();
-    let run = newRun(h, 777);
-    while (run.stage === 'draft') run = draftPick(h, run, bestAffordable(h, run));
-    expect(run.coins).toBe(START_COINS);
-    const at: HuntRun = { ...run, stage: 'crossroads', crossroads: ['shop', 'event'], coins: 500, cap: run.cap + 40 };
-    // Shop: a card, an item and a life.
-    const shop = chooseRoad(h, at, 'shop');
-    expect(shop.stage).toBe('shop');
-    expect(shop.shop!.cards).toHaveLength(4);
-    const signed = buyCard(h, shop, shop.shop!.cards[0], shop.squad[0]);
-    expect(signed.squad).toContain(shop.shop!.cards[0]);
-    expect(signed.coins).toBeLessThan(500);
-    const item = shop.shop!.items[0];
-    const withItem = buyItem(signed, item);
-    expect(withItem.items).toContain(item);
-    expect(buyItem(withItem, item)).toBe(withItem); // sold out
-    const healed = buyLife({ ...withItem, lives: 1 });
-    expect(healed.lives).toBe(2);
-    expect(moveOn(healed).stage).toBe('stop');
-    // Events: every one resolves with a note for every option.
-    for (const ev of EVENT_IDS) {
-      const e: HuntRun = { ...at, stage: 'event', eventId: ev };
-      for (const opt of ['play', 'rest', 'pay', 'refuse', 'swap', 'pass', 'send', 'skip', 'open', 'sell', 'decline']) {
-        const r = resolveEvent(h, e, opt);
-        if (r !== e) { expect(r.note).toBeTruthy(); expect(r.eventId).toBeUndefined(); }
-      }
-    }
-    // Rest: a life back, or training.
-    const restAt: HuntRun = { ...at, stage: 'rest', lives: 2 };
-    expect(rest(restAt, { heal: true }).lives).toBe(3);
-    const trained = rest(restAt, { train: restAt.squad[0] });
-    expect(trained.boosts[restAt.squad[0]]).toBe(2);
-    expect(trained.stage).toBe('stop');
-  }, 120_000);
-
-  it('an older saved run continues', async () => {
-    const h = await loadHistoryForTests();
-    const { coins: _c, items: _i, boosts: _b, ...old } = newRun(h, 3);
-    void _c; void _i; void _b;
-    const up = upgradeRun({ ...old, version: 1 });
-    expect(up.version).toBe(2);
-    expect(up.coins).toBe(START_COINS);
-    expect(up.items).toEqual([]);
-  }, 120_000);
-
-  it('live coaching: calls change the game from that possession on; the result counts when committed', async () => {
-    const h = await loadHistoryForTests();
-    let run = newRun(h, 31337);
-    while (run.stage === 'draft') run = draftPick(h, run, bestAffordable(h, run));
-    const plain = stopGame(h, run)!;
-    expect(plain.commands).toEqual([]);
-    expect(stopGame(h, run)!.result.homeScore).toBe(plain.result.homeScore); // same game every time
-    const at = Math.floor(plain.result.possessionLog.length / 2);
-    const star = plain.home.seasons[0].playerId;
-    const coached = stopGame(h, run, [{ kind: 'play', atPossession: at, teamId: 'HUNT', play: 'iso', focusId: star }, { kind: 'pace', atPossession: at, teamId: 'HUNT', pace: 'fast' }])!;
-    // Everything before the call replays exactly.
-    expect(coached.result.possessionLog.slice(0, at - 1).map(e => e.homeScoreAfter)).toEqual(plain.result.possessionLog.slice(0, at - 1).map(e => e.homeScoreAfter));
-    expect(coached.commands).toHaveLength(2);
-    expect(run.stage).toBe('stop'); // nothing recorded yet
-    const after = commitGame(h, run, coached);
-    expect(after.results).toHaveLength(1);
-    expect(after.results[0].us).toBe(coached.result.homeScore);
-    const lines = Object.values(after.lines ?? {});
-    expect(lines.reduce((n, l) => n + l.pts, 0)).toBe(coached.result.homeScore);
-    expect(coachCards(run)).toBe(COACH_CARDS);
-    expect(coachCards({ ...run, items: ['clipboard'] })).toBe(COACH_CARDS + 2);
+    const bonds = chemistry([pool.byId.get(id('Michael Jordan', 1996))!, pool.byId.get(id('Scottie Pippen', 1996))!, pool.byId.get(id('Larry Bird', 1986))!, pool.byId.get(id('Magic Johnson', 1987))!]);
+    expect(bonds.some(b => b.kind === 'teammates' && b.bonus === 2)).toBe(true);
+    expect(bonds.some(b => b.kind === 'rivals')).toBe(true);
   }, 120_000);
 });

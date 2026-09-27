@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import type { NbaHistory } from '../../history/nbaHistoryData';
 import { cardPool, seasonLabel, RARITY_LABEL, type HuntCard } from '../../hunt/cards';
 import { ERAS, eraOf } from '../../hunt/eras';
-import { DECKS, DIFFICULTIES, SQUAD_SIZE, type DeckId, type Difficulty, type NewRunOptions } from '../../hunt/run';
+import { DECKS, DIFFICULTIES, SQUAD_SIZE, SERIES_COUNT, type DeckId, type Difficulty, type NewRunOptions } from '../../hunt/run';
 import { DECK_IDS, DIFFICULTY_IDS, deckUnlocked, difficultyUnlocked, loadAlbum, todayUtc, dailySeed, type HuntRecords } from '../../hunt/storage';
 import { dreamGame, teamsIn, seasonEnds, type DreamGame } from '../../hunt/matchup';
 import { BoxScoreTable } from '../BoxScoreTable';
@@ -29,13 +29,13 @@ function NewHunt({ records, onStart }: { records: HuntRecords; onStart: (opts: N
   const [deck, setDeck] = useState<DeckId>('classic');
   const [difficulty, setDifficulty] = useState<Difficulty>('pro');
   return <div className="hunt-intro">
-    <p className="hunt-lede">Draft real players from any season in NBA history, then travel through the eras and take on the great teams of their time, each game under the rules of its era. Beat five teams and the boss, one of the best teams ever, before you run out of lives.</p>
+    <p className="hunt-lede">Spin a {SQUAD_SIZE}-man squad and a coach from all of NBA history, then win ten best-of-seven series against real teams, each under the rules of its era. Series 5 is a semi-boss; series 10 is the boss, a 100-rated all-time great.</p>
     <ul className="hunt-rules">
+      <li><b>The spins.</b> PG, SG, SF, PF, C, coach, then your sixth man: three cards each, keep one. Every spin is poorer than the last, but every draft has at least one Star and one Great on the table.</li>
       <li><b>Cards are player-seasons.</b> 1996 Jordan and 2003 Jordan are different cards. Ratings are ranked within each season, so every era is fair.</li>
-      <li><b>Legacy Points.</b> Better cards cost more. Draft {SQUAD_SIZE} under the cap; each win raises it.</li>
-      <li><b>Era rules.</b> No three-point line before 1979-80, hand-checking in the 90s, the pace of the time.</li>
-      <li><b>Chemistry.</b> Real teammates, the same franchise, players from the stop's era and famous rivals play better together.</li>
-      <li><b>The road.</b> Wins pay coins. After each win: the shop, a story with a choice, or a rest stop. Coach games live with a few calls.</li>
+      <li><b>Team rating, 0-100.</b> 60 is a bad team, 70 about 40 wins, 80 about 45, 90 a 55-62 win team, 100 a 68-win all-time great.</li>
+      <li><b>Boosts and shops.</b> Pick a boost after every series win. A shop comes before series 1, 3, 5, 7 and 9: players, coaches, items, training, a life.</li>
+      <li><b>Era rules and chemistry.</b> No three-point line before 1979-80, hand-checking in the 90s. Real teammates, franchises and famous rivals play better together.</li>
     </ul>
     <h3 className="hunt-subhead">Starting deck</h3>
     <div className="hunt-choices">{DECK_IDS.map(id => { const d = DECKS[id], open = deckUnlocked(records, id); return <button key={id} className={`hunt-choice ${deck === id ? 'on' : ''}`} disabled={!open} aria-pressed={deck === id} onClick={() => setDeck(id)}>
@@ -44,7 +44,7 @@ function NewHunt({ records, onStart }: { records: HuntRecords; onStart: (opts: N
     <div className="hunt-choices">{DIFFICULTY_IDS.map(id => { const d = DIFFICULTIES[id], open = difficultyUnlocked(records, id); return <button key={id} className={`hunt-choice ${difficulty === id ? 'on' : ''}`} disabled={!open} aria-pressed={difficulty === id} onClick={() => setDifficulty(id)}>
       <b>{d.name}</b><span>{open ? d.blurb : `Locked: ${d.unlock}`}</span></button>; })}</div>
     <button className="primary hunt-start" onClick={() => onStart({ deck, difficulty })}>Start a new hunt</button>
-    {records.runs > 0 && <p className="hint-text">Your hunts: {records.runs} · won {records.wins} · furthest stop {records.bestStop + 1} of 6</p>}
+    {records.runs > 0 && <p className="hint-text">Your hunts: {records.runs} · won {records.wins} · furthest series {records.bestStop + 1} of {SERIES_COUNT}</p>}
   </div>;
 }
 
@@ -56,10 +56,10 @@ function Daily({ records, onStart }: { records: HuntRecords; onStart: (seed: num
   return <div className="hunt-intro">
     <p className="hunt-lede">One hunt a day, the same for everyone: the same stops, the same boss and the same cards on the table. Classic deck, Pro difficulty, one try.</p>
     <p><b>{today}</b> (UTC){streak > 1 ? ` · ${streak}-day streak` : ''}</p>
-    {done ? <p className="hunt-note">Today's hunt is done: {done.won ? 'you beat the boss' : `you reached stop ${done.stop + 1} of 6`} ({done.wins}-{done.losses}). A new one arrives at midnight UTC.</p>
+    {done ? <p className="hunt-note">Today's hunt is done: {done.won ? 'you beat the boss' : `you reached series ${done.stop + 1} of ${SERIES_COUNT}`} ({done.wins}-{done.losses}). A new one arrives at midnight UTC.</p>
       : <button className="primary hunt-start" onClick={() => onStart(dailySeed(today), { deck: 'classic', difficulty: 'pro', daily: today })}>Play today's Daily Legend</button>}
     {past.length > 0 && <><h3 className="hunt-subhead">Your recent days</h3>
-      <ol className="hunt-log">{past.map(([date, r]) => <li key={date} className={r.won ? 'won' : 'lost'}>{date} · {r.won ? 'Beat the boss' : `Stop ${r.stop + 1}`} · {r.wins}-{r.losses}</li>)}</ol></>}
+      <ol className="hunt-log">{past.map(([date, r]) => <li key={date} className={r.won ? 'won' : 'lost'}>{date} · {r.won ? 'Beat the boss' : `Series ${r.stop + 1}`} · {r.wins}-{r.losses}</li>)}</ol></>}
   </div>;
 }
 
@@ -75,7 +75,7 @@ function Album({ h }: { h: NbaHistory }) {
   const starsHave = stars.filter(c => album.has(c.id)).length;
   const legendaryHave = mine.filter(c => c.rarity === 'legendary').length;
   return <div className="hunt-album">
-    <p className="hunt-lede">Every card you have had on a squad. Complete an era by collecting its stars (Epic and Legendary cards).</p>
+    <p className="hunt-lede">Every card you have had on a squad. Complete an era by collecting its Great and Star cards.</p>
     <div className="hunt-over-stats"><div><small>CARDS</small><b>{mine.length}</b></div><div><small>LEGENDARY</small><b>{legendaryHave}</b></div><div><small>ERAS STARTED</small><b>{ERAS.filter(e => mine.some(c => eraOf(c.end).id === e.id)).length} / {ERAS.length}</b></div></div>
     <div className="stats-view-toggle" role="tablist" aria-label="Eras">{ERAS.map(e => { const n = mine.filter(c => eraOf(c.end).id === e.id).length; return <button key={e.id} role="tab" aria-selected={e.id === eraId} className={e.id === eraId ? 'active' : ''} onClick={() => setEraId(e.id)}>{e.label} ({n})</button>; })}</div>
     <div className="hunt-album-progress"><span>{era.label}: {starsHave} of {stars.length} stars</span><div className="hunt-cap-bar"><i style={{ width: `${stars.length ? starsHave / stars.length * 100 : 0}%` }} /></div></div>
@@ -84,7 +84,7 @@ function Album({ h }: { h: NbaHistory }) {
   </div>;
 }
 
-/** Any two real team-seasons, under any era's rules. Also the "Legend Teams" page in the main game. */
+/** Any two real team-seasons, under any era's rules. Also the "Dream Matchup" page in the main game. */
 export function DreamMatchup({ h }: { h: NbaHistory }) {
   const ends = useMemo(() => seasonEnds(h), [h]);
   const [endA, setEndA] = useState(1996), [endB, setEndB] = useState(2017);
