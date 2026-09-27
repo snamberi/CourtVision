@@ -146,3 +146,27 @@ button.hunt-card:disabled .hunt-card-action { background: #2a3546; color: #94a0b
 .hunt-mvp strong { font: 22px 'Oswald', sans-serif; }
 .hunt-mvp span:last-child { font-size: 13px; color: #c9ced8; }
 .hunt-lines { max-width: 560px; }
+
+/* Stage 4: hub, decks, album, dream matchup */
+.hunt-hub { display: grid; gap: 16px; }
+.hunt-hub-tabs button { font-size: .85rem; padding: 6px 14px; }
+.hunt-choices { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+.hunt-choice { display: grid; gap: 4px; text-align: left; padding: 10px 12px; background: #121926; border: 2px solid #2a3546; color: inherit; font: inherit; cursor: pointer; }
+.hunt-choice.on { border-color: #f47b20; background: #192333; }
+.hunt-choice:disabled { opacity: .5; cursor: not-allowed; }
+.hunt-choice span { font-size: 12px; color: #c9ced8; }
+.hunt-mode { display: block; color: #94a0b2; font-size: 12px; margin-top: 2px; }
+.hunt-album { display: grid; gap: 12px; }
+.hunt-album-progress { display: flex; align-items: center; gap: 10px; max-width: 560px; font-size: 13px; }
+.hunt-album-progress .hunt-cap-bar { flex: 1; }
+.hunt-album-grid { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px; }
+.hunt-album-grid li { display: grid; grid-template-columns: 2.4em 1fr; column-gap: 8px; padding: 6px 8px; background: #121926; border-left: 4px solid #2a3546; }
+.hunt-album-grid li b { grid-row: span 2; font: 20px 'Oswald', sans-serif; color: #f47b20; }
+.hunt-album-grid li small { color: #94a0b2; font-size: 11px; }
+.hunt-album-grid li.rarity-rare { border-color: #4da3ff; } .hunt-album-grid li.rarity-epic { border-color: #b983ff; } .hunt-album-grid li.rarity-legendary { border-color: #ffd166; }
+.hunt-dream { display: grid; gap: 12px; }
+.hunt-dream-pickers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.hunt-dream-side { display: grid; gap: 8px; border: 2px solid #2a3546; padding: 10px 12px; margin: 0; min-width: 0; }
+.hunt-dream-side label, .hunt-dream-era { display: grid; gap: 4px; font-size: 13px; }
+.hunt-dream-side select, .hunt-dream-era select { max-width: 100%; }
+@media (max-width: 760px) { .hunt-dream-pickers { grid-template-columns: 1fr; } }

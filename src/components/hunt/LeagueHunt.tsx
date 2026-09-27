@@ -3,7 +3,7 @@ import type { NbaHistory } from '../../history/nbaHistoryData';
 import { cardPool, seasonLabel, RARITY_LABEL, type HuntCard } from '../../hunt/cards';
 import { huntTeams, teamLabel, type HuntTeam } from '../../hunt/teams';
 import { ERAS, eraOf } from '../../hunt/eras';
-import { stopGame, commitGame, coachCards, newRun, draftPick, playStop, takeReward, releaseCard, affordable, spent, strengthOf, squadBonuses, effectiveStrength, chooseRoad, moveOn, buyCard, buyItem, buyLife, rest, resolveEvent, cardPrice, SQUAD_SIZE, SQUAD_MAX, START_LIVES, LIFE_PRICE, MAX_TRAINING, type HuntRun, type HuntGame, type NodeKind } from '../../hunt/run';
+import { stopGame, commitGame, coachCards, maxLives, DECKS, DIFFICULTIES, newRun, draftPick, playStop, takeReward, releaseCard, affordable, spent, strengthOf, squadBonuses, effectiveStrength, chooseRoad, moveOn, buyCard, buyItem, buyLife, rest, resolveEvent, cardPrice, SQUAD_SIZE, SQUAD_MAX, LIFE_PRICE, MAX_TRAINING, type HuntRun, type HuntGame, type NodeKind } from '../../hunt/run';
 import { ITEMS, MAX_ITEMS } from '../../hunt/items';
 import { EVENTS } from '../../hunt/events';
 import type { ChemistryBond } from '../../hunt/chemistry';
@@ -12,6 +12,7 @@ import { PlayerAvatar } from '../PlayerAvatar';
 import { BoxScoreTable } from '../BoxScoreTable';
 import { WatchGame } from '../WatchGame';
 import { PixelIcon } from '../PixelIcon';
+import { HuntHub } from './HuntHub';
 import './hunt.css';
 
 /** League Hunt: a run through basketball history with a squad of real player-season cards. */
@@ -41,7 +42,7 @@ export function LeagueHunt({ onExit }: { onExit: () => void }) {
     <div className="hunt-title"><span className="pixel-eyebrow">A RUN THROUGH BASKETBALL HISTORY</span><h1>League Hunt</h1></div>
     {run && run.stage !== 'won' && run.stage !== 'lost' && run.stage !== 'draft' && <div className="hunt-purse"><span className="hunt-coins" title="Coins">● {run.coins}</span>
       {run.items.map(i => <span key={i} className="hunt-item-chip" title={ITEMS[i].blurb}>{ITEMS[i].name}</span>)}</div>}
-    {run && run.stage !== 'won' && run.stage !== 'lost' && <div className="hunt-lives" aria-label={`${run.lives} lives left`}>{Array.from({ length: START_LIVES }, (_, i) => <span key={i} className={i < run.lives ? 'on' : ''}>♥</span>)}</div>}
+    {run && run.stage !== 'won' && run.stage !== 'lost' && <div className="hunt-lives" aria-label={`${run.lives} lives left`}>{Array.from({ length: maxLives(run) }, (_, i) => <span key={i} className={i < run.lives ? 'on' : ''}>♥</span>)}</div>}
   </header>;
 
   if (error) return <div className="hunt">{header}<p className="empty-state">Could not load the NBA history data: {error}</p></div>;
@@ -59,7 +60,7 @@ export function LeagueHunt({ onExit }: { onExit: () => void }) {
 
   return <div className="hunt">
     {header}
-    {!run ? <Intro records={records} onStart={() => { setGame(null); setRun(newRun(h, Math.floor(Math.random() * 1_000_000_000))); }} />
+    {!run ? <HuntHub h={h} records={records} onStart={(seed, opts) => { setGame(null); setRun(newRun(h, seed, opts)); }} />
       : run.stage === 'draft' ? <Draft h={h} run={run} onPick={id => setRun(draftPick(h, run, id))} onAbandon={() => setRun(null)} />
       : game ? <GameResultView h={h} run={run} game={game} onWatch={() => setWatching(true)} onContinue={() => setGame(null)} />
       : run.stage === 'reward' ? <Reward h={h} run={run} onTake={(id, replacing) => setRun(takeReward(h, run, id, replacing))} onRelease={id => setRun(releaseCard(run, id))} />
@@ -67,25 +68,9 @@ export function LeagueHunt({ onExit }: { onExit: () => void }) {
       : run.stage === 'shop' ? <Shop h={h} run={run} onRun={setRun} />
       : run.stage === 'event' ? <EventView run={run} onChoose={o => setRun(resolveEvent(h, run, o))} onLeave={() => setRun(moveOn(run))} />
       : run.stage === 'rest' ? <RestView h={h} run={run} onRun={setRun} />
-      : run.stage === 'won' || run.stage === 'lost' ? <RunOver h={h} run={run} records={records} onNew={() => { setGame(null); setRun(newRun(h, Math.floor(Math.random() * 1_000_000_000))); }} onExit={() => { setRun(null); onExit(); }} />
+      : run.stage === 'won' || run.stage === 'lost' ? <RunOver h={h} run={run} records={records} onNew={() => { setGame(null); setRun(newRun(h, Math.floor(Math.random() * 1_000_000_000), { deck: run.deck, difficulty: run.difficulty })); }} onExit={() => { setRun(null); onExit(); }} />
       : <MapView h={h} run={run} onCoach={() => setLive(stopGame(h, run))} onPlay={watch => { const r = playStop(h, run); if (!r) return; setGame(r.game); setRun(r.run); if (watch) setWatching(true); }} onRelease={id => setRun(releaseCard(run, id))} onAbandon={() => setRun(null)} />}
   </div>;
-}
-
-function Intro({ records, onStart }: { records: HuntRecords; onStart: () => void }) {
-  return <section className="hunt-intro">
-    <p className="hunt-lede">Draft real players from any season in NBA history, then travel through the eras and take on the great teams of their time, each game under the rules of its era. Beat five teams and the boss, one of the best teams ever, before you run out of lives.</p>
-    <ul className="hunt-rules">
-      <li><b>Cards are player-seasons.</b> 1996 Jordan and 2003 Jordan are different cards. Ratings are ranked within each season, so every era is fair.</li>
-      <li><b>Legacy Points.</b> Better cards cost more. Draft {SQUAD_SIZE} under the cap; each win raises it.</li>
-      <li><b>Era rules.</b> No three-point line before 1979-80, hand-checking in the 90s, the pace of the time. Shooters shine in 2016 and fade in 1970.</li>
-      <li><b>Chemistry.</b> Real teammates (Jordan + Pippen '96), the same franchise, players from the stop's era and famous rivals all play better together.</li>
-      <li><b>The road.</b> Wins pay coins. After each win choose a road: the shop (players, items that last the hunt, a life), a story with a choice, or a rest stop.</li>
-      <li><b>{START_LIVES} lives.</b> Lose a game and you replay it; lose them all and the hunt is over.</li>
-    </ul>
-    <button className="primary hunt-start" onClick={onStart}>Start a new hunt</button>
-    {records.runs > 0 && <p className="hint-text">Your hunts: {records.runs} · won {records.wins} · furthest stop {records.bestStop + 1} of 6</p>}
-  </section>;
 }
 
 const posColor: Record<string, string> = { PG: '#4da3ff', SG: '#55c878', SF: '#ffd166', PF: '#f47b20', C: '#e85d5d', G: '#4da3ff', F: '#f47b20' };
@@ -165,6 +150,7 @@ function MapView({ h, run, onPlay, onCoach, onRelease, onAbandon }: { h: NbaHist
     <StopTrail h={h} run={run} />
     <div className="hunt-matchup">
       <div className="hunt-era"><span className="pixel-eyebrow">{stop.boss ? 'THE BOSS' : `STOP ${run.stopIndex + 1} OF ${run.stops.length}`} · {era.label.toUpperCase()}</span>
+        <small className="hunt-mode">{run.daily ? `Daily Legend ${run.daily}` : `${DECKS[run.deck ?? 'classic'].name} deck · ${DIFFICULTIES[run.difficulty ?? 'pro'].name}`}</small>
         <h2>{teamLabel(team)}</h2>
         <p>{team.w}-{team.l}{team.champion ? ' · Champions' : ''} · Strength <b>{team.strength}</b> vs your <b>{mineStrength}</b></p>
         <p className="hunt-era-rules">Era rules: {era.blurb}</p>
@@ -288,7 +274,7 @@ function Shop({ h, run, onRun }: { h: NbaHistory; run: HuntRun; onRun: (r: HuntR
     <h3 className="hunt-subhead">Items <small>{run.items.length}/{MAX_ITEMS}</small></h3>
     <div className="hunt-items">{shop.items.map(i => { const it = ITEMS[i], sold = shop.sold.includes(i); return <button key={i} className="hunt-item" disabled={sold || run.coins < it.price || run.items.length >= MAX_ITEMS} onClick={() => onRun(buyItem(run, i))}>
       <b>{it.name}</b><span>{it.blurb}</span><small>{sold ? 'Bought' : `${it.price} coins`}</small></button>; })}
-      <button className="hunt-item" disabled={!!shop.lifeBought || run.lives >= START_LIVES || run.coins < LIFE_PRICE} onClick={() => onRun(buyLife(run))}><b>♥ A life</b><span>Get back one lost life (once per shop).</span><small>{shop.lifeBought ? 'Bought' : `${LIFE_PRICE} coins`}</small></button>
+      <button className="hunt-item" disabled={!!shop.lifeBought || run.lives >= maxLives(run) || run.coins < LIFE_PRICE} onClick={() => onRun(buyLife(run))}><b>♥ A life</b><span>Get back one lost life (once per shop).</span><small>{shop.lifeBought ? 'Bought' : `${LIFE_PRICE} coins`}</small></button>
     </div>
     <button className="primary" onClick={() => onRun(moveOn(run))}>Leave the shop</button>
     <SquadList h={h} run={run} onRelease={id => onRun(releaseCard(run, id))} />
@@ -311,7 +297,7 @@ function RestView({ h, run, onRun }: { h: NbaHistory; run: HuntRun; onRun: (r: H
   return <section className="hunt-stage">
     <div><span className="pixel-eyebrow">REST STOP</span><h2>Recover or train</h2></div>
     <div className="hunt-roads">
-      <button className="hunt-road road-rest" disabled={run.lives >= START_LIVES} onClick={() => onRun(rest(run, { heal: true }))}><span className="hunt-road-icon">♥</span><b>Recover</b><span>{run.lives >= START_LIVES ? 'All your lives are full.' : 'Win back one life.'}</span></button>
+      <button className="hunt-road road-rest" disabled={run.lives >= maxLives(run)} onClick={() => onRun(rest(run, { heal: true }))}><span className="hunt-road-icon">♥</span><b>Recover</b><span>{run.lives >= maxLives(run) ? 'All your lives are full.' : 'Win back one life.'}</span></button>
     </div>
     <h3 className="hunt-subhead">Or train one player (+2, up to +{MAX_TRAINING})</h3>
     <div className="hunt-replace">{cards.map(c => { const t = run.boosts[c.id] ?? 0; return <button key={c.id} disabled={t >= MAX_TRAINING} onClick={() => onRun(rest(run, { train: c.id }))}>{c.ovr} {c.name} '{String(c.end).slice(2)}{t ? <small> (+{t})</small> : null}</button>; })}</div>

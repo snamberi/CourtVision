@@ -73,7 +73,7 @@ export const GROUPS: NavGroup[] = [
       { label: 'Compare Players', tab: 'compare' },
       { label: 'Watch List', tab: 'watchList' },
       { label: 'Hall of Fame', tab: 'hallOfFame' },
-      { label: 'Legend Teams', tab: 'legends' },
+      { label: 'Dream Matchup', tab: 'legends' },
     ],
   },
   {

@@ -63,11 +63,33 @@ export interface HuntRun {
   eventId?: EventId;
   /** What the last event or purchase did, for the screen. */
   note?: string;
+  deck?: DeckId;
+  difficulty?: Difficulty;
+  /** The Daily Legend date (YYYY-MM-DD) when this is the day's hunt. */
+  daily?: string;
   /** Your players' totals over the hunt (box-score names), for the summary. */
   lines?: Record<string, { g: number; pts: number; reb: number; ast: number }>;
 }
 
 const TIERS = [58.5, 61.5, 64, 66, 67.5];
+
+export type DeckId = 'classic' | 'bigMen' | 'oldSchool' | 'paceSpace' | 'dynasty';
+export type Difficulty = 'rookie' | 'pro' | 'legend';
+export interface HuntDeck { id: DeckId; name: string; blurb: string; capBonus: number; items: ItemId[]; opener?: (c: HuntCard) => boolean; draft?: (c: HuntCard) => boolean; unlock: string }
+/** Starting decks: how the draft opens. All but Classic are unlocked by playing (see unlocks.ts). */
+export const DECKS: Record<DeckId, HuntDeck> = {
+  classic: { id: 'classic', name: 'Classic', blurb: 'A star to start, then anyone from any era.', capBonus: 0, items: [], unlock: 'Always open.' },
+  bigMen: { id: 'bigMen', name: 'Big Man Era', blurb: 'Your first pick is a star big man, and you start with the Bad Boys Rulebook.', capBonus: 0, items: ['badBoys'], opener: c => c.pos === 'C' || c.pos === 'PF', unlock: 'Reach stop 3 in any hunt.' },
+  oldSchool: { id: 'oldSchool', name: 'Old School', blurb: 'Draft only players from before 1980, with 8 more Legacy Points.', capBonus: 8, items: [], draft: c => c.end < 1980, unlock: 'Play 3 hunts.' },
+  paceSpace: { id: 'paceSpace', name: 'Pace & Space', blurb: 'Draft only players from 2010 on, and start with Seven Seconds or Less.', capBonus: 0, items: ['sevenSeconds'], draft: c => c.end >= 2010, unlock: 'Reach stop 5 in any hunt.' },
+  dynasty: { id: 'dynasty', name: 'Dynasty', blurb: 'Start with two real teammates from a champion, then draft the rest.', capBonus: 0, items: [], unlock: 'Win a hunt.' },
+};
+export interface HuntDifficulty { id: Difficulty; name: string; blurb: string; tierShift: number; lives: number; bossPool: number; coinShift: number; unlock: string }
+export const DIFFICULTIES: Record<Difficulty, HuntDifficulty> = {
+  rookie: { id: 'rookie', name: 'Rookie', blurb: 'Softer opponents and four lives.', tierShift: -2, lives: 4, bossPool: 12, coinShift: 10, unlock: 'Always open.' },
+  pro: { id: 'pro', name: 'Pro', blurb: 'The hunt as it was meant to be.', tierShift: 0, lives: 3, bossPool: 8, coinShift: 0, unlock: 'Always open.' },
+  legend: { id: 'legend', name: 'Legend', blurb: 'Tougher teams, two lives, and the boss is one of the four best teams ever.', tierShift: 2, lives: 2, bossPool: 4, coinShift: -10, unlock: 'Win a hunt.' },
+};
 
 function pickTeam(teams: HuntTeam[], era: HuntEra, target: number, rng: RNG, used: Set<string>): HuntTeam {
   const inEra = teams.filter(t => t.end >= era.from && t.end <= era.to && !used.has(t.id));
@@ -79,19 +101,33 @@ function pickTeam(teams: HuntTeam[], era: HuntEra, target: number, rng: RNG, use
 }
 
 /** A new run: five stops in five different eras, then the boss. */
-export function newRun(h: NbaHistory, seed: number): HuntRun {
+export interface NewRunOptions { deck?: DeckId; difficulty?: Difficulty; daily?: string }
+
+export function newRun(h: NbaHistory, seed: number, opts: NewRunOptions = {}): HuntRun {
+  const deck = DECKS[opts.deck ?? 'classic'], diff = DIFFICULTIES[opts.difficulty ?? 'pro'];
   const rng = new RNG(seed);
   const teams = huntTeams(h);
   const eras = [...ERAS].sort(() => rng.next() - 0.5).slice(0, TIERS.length).sort((a, b) => a.from - b.from);
   const used = new Set<string>();
-  const stops: HuntStop[] = eras.map((era, i) => { const t = pickTeam(teams, era, TIERS[i], rng, used); used.add(t.id); return { eraId: era.id, teamId: t.id }; });
+  const stops: HuntStop[] = eras.map((era, i) => { const t = pickTeam(teams, era, TIERS[i] + diff.tierShift, rng, used); used.add(t.id); return { eraId: era.id, teamId: t.id }; });
   // The boss: one of the best champions ever, played under its own era's rules.
-  const greats = teams.filter(t => t.champion && !used.has(t.id)).sort((a, b) => b.strength - a.strength).slice(0, 8);
+  const greats = teams.filter(t => t.champion && !used.has(t.id)).sort((a, b) => b.strength - a.strength).slice(0, diff.bossPool);
   const boss = greats[rng.nextInt(greats.length)];
   stops.push({ eraId: eraOf(boss.end).id, teamId: boss.id, boss: true });
-  const run: HuntRun = { version: 2, seed, stage: 'draft', squad: [], cap: START_CAP, lives: START_LIVES, coins: START_COINS, items: [], boosts: {}, stops, stopIndex: 0, offer: [], draftRound: 0, attempts: 0, results: [] };
+  let run: HuntRun = { version: 2, seed, stage: 'draft', squad: [], cap: START_CAP + deck.capBonus, lives: diff.lives, coins: START_COINS + diff.coinShift, items: [...deck.items], boosts: {}, stops, stopIndex: 0, offer: [], draftRound: 0, attempts: 0, results: [],
+    deck: opts.deck ?? 'classic', difficulty: opts.difficulty ?? 'pro', ...(opts.daily ? { daily: opts.daily } : {}) };
+  // Dynasty: two real teammates from one great team-season start the squad.
+  if (deck.id === 'dynasty') {
+    const pool = cardPool(h);
+    const champs = teams.filter(t => t.champion && t.id !== boss.id && !used.has(t.id));
+    const t = champs[rng.nextInt(champs.length)];
+    const pair = t.roster.map(id => pool.byId.get(id)!).filter(c => c.cost <= 16).slice(0, 2);
+    if (pair.length === 2) run = { ...run, squad: pair.map(c => c.id), draftRound: 2 };
+  }
   return { ...run, offer: offer(h, run, 'draft') };
 }
+
+export const maxLives = (run: HuntRun) => DIFFICULTIES[run.difficulty ?? 'pro'].lives;
 
 /** Older saved runs (stage 1) continue with the new fields at their defaults. */
 export function upgradeRun(run: HuntRun | (Omit<HuntRun, 'version' | 'coins' | 'items' | 'boosts'> & { version: 1 })): HuntRun {
@@ -109,16 +145,16 @@ function rarityWeights(run: HuntRun, kind: 'draft' | 'reward' | 'shop'): Record<
   return { common: Math.max(10, 45 - s * 8), rare: 35, epic: 15 + s * 4, legendary: 5 + s * 3 };
 }
 
-function drawCards(h: NbaHistory, run: HuntRun, rng: RNG, weights: Record<Rarity, number>, count: number, exclude: string[] = []): string[] {
+function drawCards(h: NbaHistory, run: HuntRun, rng: RNG, weights: Record<Rarity, number>, count: number, exclude: string[] = [], fits: (c: HuntCard) => boolean = () => true): string[] {
   const pool = cardPool(h);
   const order: Rarity[] = ['common', 'rare', 'epic', 'legendary'];
   const taken = new Set([...run.squad, ...exclude].map(id => pool.byId.get(id)?.playerId));
   const out: HuntCard[] = [];
-  for (let tries = 0; out.length < count && tries < 300; tries++) {
+  for (let tries = 0; out.length < count && tries < 3000; tries++) {
     const rarity = order[rng.weightedPick(order.map(r => weights[r]))];
     const list = pool.byRarity[rarity];
     const c = list[rng.nextInt(list.length)];
-    if (c.ovr < MIN_OFFER_OVR || taken.has(c.playerId) || out.some(o => o.playerId === c.playerId)) continue;
+    if (c.ovr < MIN_OFFER_OVR || taken.has(c.playerId) || out.some(o => o.playerId === c.playerId) || !fits(c)) continue;
     out.push(c);
   }
   return out.map(c => c.id);
@@ -126,7 +162,9 @@ function drawCards(h: NbaHistory, run: HuntRun, rng: RNG, weights: Record<Rarity
 
 function offer(h: NbaHistory, run: HuntRun, kind: 'draft' | 'reward'): string[] {
   const rng = new RNG(run.seed * 31 + (kind === 'draft' ? run.draftRound : 100 + run.stopIndex * 7 + run.attempts));
-  return drawCards(h, run, rng, rarityWeights(run, kind), 3);
+  const deck = DECKS[run.deck ?? 'classic'];
+  const fits = kind !== 'draft' ? undefined : run.draftRound === 0 && deck.opener ? deck.opener : deck.draft;
+  return drawCards(h, run, rng, rarityWeights(run, kind), 3, [], fits);
 }
 
 /** Whether a card fits the cap (leaving room to fill the squad with the cheapest cards), optionally replacing one. */
@@ -146,7 +184,8 @@ export function draftPick(h: NbaHistory, run: HuntRun, cardId: string): HuntRun 
   const o = offer(h, next, 'draft');
   // Nothing affordable on the table: swap in the cheapest commons that fit.
   if (!o.some(id => affordable(h, next, id))) {
-    const cheap = cardPool(h).byRarity.common.filter(c => c.ovr >= MIN_OFFER_OVR && !next.squad.some(s => cardPool(h).byId.get(s)?.playerId === c.playerId));
+    const fits = DECKS[run.deck ?? 'classic'].draft ?? (() => true);
+    const cheap = cardPool(h).byRarity.common.filter(c => c.ovr >= MIN_OFFER_OVR && fits(c) && !next.squad.some(s => cardPool(h).byId.get(s)?.playerId === c.playerId));
     const rng = new RNG(run.seed + next.draftRound * 13);
     return { ...next, offer: [0, 1, 2].map(() => cheap[rng.nextInt(cheap.length)].id) };
   }
@@ -193,7 +232,7 @@ export function effectiveStrength(h: NbaHistory, run: HuntRun, era?: HuntEra): n
 }
 
 /** Minutes by rank: the starters play most of the game. */
-function withRotation(players: PlayerSeason[]): PlayerSeason[] {
+export function withRotation(players: PlayerSeason[]): PlayerSeason[] {
   const mins = [34, 33, 32, 31, 29, 21, 18, 15, 14, 13];
   return [...players].sort((a, b) => calculateOverall(b) - calculateOverall(a)).map((p, i) => ({ ...p, rotationRole: i < 5 ? 'starter' as const : 'bench' as const, minutes: { mode: 'TARGET' as const, target: mins[i] ?? 8 } }));
 }
@@ -329,14 +368,14 @@ export function buyItem(run: HuntRun, item: ItemId): HuntRun {
 }
 
 export function buyLife(run: HuntRun): HuntRun {
-  if (run.stage !== 'shop' || !run.shop || run.shop.lifeBought || run.lives >= START_LIVES || run.coins < LIFE_PRICE) return run;
+  if (run.stage !== 'shop' || !run.shop || run.shop.lifeBought || run.lives >= maxLives(run) || run.coins < LIFE_PRICE) return run;
   return { ...run, lives: run.lives + 1, coins: run.coins - LIFE_PRICE, shop: { ...run.shop, lifeBought: true }, note: 'A life back.' };
 }
 
 /** Rest stop: a life back, or two points of training for one card (up to +6 per card); then on the road. */
 export function rest(run: HuntRun, choice: { heal: true } | { train: string }): HuntRun {
   if (run.stage !== 'rest') return run;
-  if ('heal' in choice) return run.lives >= START_LIVES ? run : moveOn({ ...run, lives: run.lives + 1 });
+  if ('heal' in choice) return run.lives >= maxLives(run) ? run : moveOn({ ...run, lives: run.lives + 1 });
   const id = choice.train;
   if (!run.squad.includes(id) || (run.boosts[id] ?? 0) >= MAX_TRAINING) return run;
   return moveOn({ ...run, boosts: { ...run.boosts, [id]: Math.min(MAX_TRAINING, (run.boosts[id] ?? 0) + 2) } });
@@ -383,7 +422,7 @@ export function resolveEvent(h: NbaHistory, run: HuntRun, optionId: string): Hun
       return done({ coins: run.coins + 50 }, `Inside: ${card?.name ?? 'a card'}, but there's no room. You sell it: +50 coins.`);
     }
     case 'charity':
-      if (optionId === 'play') return run.lives < START_LIVES ? done({ lives: run.lives + 1 }, 'The kids loved it. A life back.') : done({ coins: run.coins + 30 }, 'The kids loved it: +30 coins.');
+      if (optionId === 'play') return run.lives < maxLives(run) ? done({ lives: run.lives + 1 }, 'The kids loved it. A life back.') : done({ coins: run.coins + 30 }, 'The kids loved it: +30 coins.');
       return done({ coins: run.coins + 10 }, 'Rest day: +10 coins.');
   }
   return run;
