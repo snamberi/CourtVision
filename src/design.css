@@ -512,3 +512,16 @@ button { border-radius: 0; }
 .contract-year-tag { margin-left:6px; font:9px var(--font-pixel, monospace); color:var(--cv-gold, #ffd166); border:1px solid var(--cv-gold, #ffd166); padding:1px 4px; }
 .extensions-page { display:grid; gap:14px; } .extensions-page h2 { margin:0; }
 @media (max-width:700px) { .extensions-page { overflow-x:auto; } }
+
+/* ---- Three-team trade ---- */
+.three-team-page { display:grid; gap:12px; } .three-team-page h2 { margin:0; }
+.three-team-grid { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10px; }
+.three-team-col { border:1px solid var(--cv-border, #2a3546); background:var(--cv-surface, #121926); padding:8px 10px; min-width:0; }
+.three-team-col header { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+.three-team-col header select { min-width:0; flex:1; }
+.three-team-col ul { list-style:none; margin:0; padding:0; display:grid; gap:4px; max-height:420px; overflow:auto; }
+.three-team-col li { display:flex; justify-content:space-between; align-items:center; gap:6px; font-size:12px; }
+.three-team-col li small { color:var(--cv-text-muted, #94a0b2); }
+.three-team-col li select { max-width:48%; font-size:11px; }
+.three-team-verdict { margin:0 0 6px; font-size:12px; } .three-team-verdict.ok { color:var(--cv-green, #55c878); } .three-team-verdict.no { color:var(--cv-red, #e85d5d); }
+@media (max-width:860px) { .three-team-grid { grid-template-columns:1fr; } }

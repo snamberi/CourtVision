@@ -17,7 +17,7 @@ export interface Feature {
 
 export const FEATURES: Feature[] = [
   {
-    id: 'trades', label: 'Trades & free agents', tabs: ['trade', 'tradeOffers', 'tradeBlock', 'freeAgency', 'deadline'], home: 'trade',
+    id: 'trades', label: 'Trades & free agents', tabs: ['trade', 'tradeOffers', 'tradeBlock', 'freeAgency', 'deadline', 'threeTeam', 'extensions'], home: 'trade',
     notice: 'You can now trade with the other teams and sign free agents from Front Office. Trades stay open until the trade deadline.',
   },
   {
