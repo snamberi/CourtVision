@@ -120,6 +120,7 @@ const ExtensionsPage = lazy(() => import('./components/ExtensionsPage').then(m =
 const LeagueHunt = lazy(() => import('./components/hunt/LeagueHunt').then(m => ({ default: m.LeagueHunt })));
 const CareerImportPanel = lazy(() => import('./components/career/CareerImportPanel').then(m => ({ default: m.CareerImportPanel })));
 const GmLocker = lazy(() => import('./components/locker/GmLocker').then(m => ({ default: m.GmLocker })));
+const AllTimeDraft = lazy(() => import('./components/draft/AllTimeDraft').then(m => ({ default: m.AllTimeDraft })));
 const Community = lazy(() => import('./components/cloud/Community').then(m => ({ default: m.Community })));
 const CareerMode = lazy(() => import('./components/career/CareerMode').then(m => ({ default: m.CareerMode })));
 const SummerCampPage = lazy(() => import('./components/SummerCampPage').then(m => ({ default: m.SummerCampPage })));
@@ -211,7 +212,7 @@ function buildInitialExtras(league: League): GMLeagueExtras {
   };
 }
 
-type Screen = 'menu' | 'chooseTeam' | 'app' | 'hunt' | 'career' | 'locker' | 'community';
+type Screen = 'menu' | 'chooseTeam' | 'app' | 'hunt' | 'career' | 'locker' | 'community' | 'draft';
 
 const debouncedSave = createDebouncedSave();
 
@@ -293,7 +294,7 @@ function App() {
   const [communityUser, setCommunityUser] = useState<string | null>(null);
   const [boxscoreSource, setBoxscoreSource] = useState<'league' | 'exhibition'>('league');
 
-  const currentRoute = screen === 'menu' ? '#/menu' : screen === 'chooseTeam' ? '#/choose-team' : screen === 'hunt' ? '#/hunt' : screen === 'career' ? '#/career' : screen === 'locker' ? '#/locker' : screen === 'community' ? (communityUser ? `#/u/${encodeURIComponent(communityUser)}` : '#/community')
+  const currentRoute = screen === 'menu' ? '#/menu' : screen === 'chooseTeam' ? '#/choose-team' : screen === 'hunt' ? '#/hunt' : screen === 'career' ? '#/career' : screen === 'locker' ? '#/locker' : screen === 'draft' ? '#/draft' : screen === 'community' ? (communityUser ? `#/u/${encodeURIComponent(communityUser)}` : '#/community')
     : activeSaveId ? routeHash({ saveId: activeSaveId, tab, player: selectedPlayerId,
       team: viewedTeamId, game: viewedGameId ?? undefined, source: boxscoreSource, sub: leagueSettingsSub }) : null;
   const { restoring, showPrivacy, closePrivacy } = useGameHistory(currentRoute, async (hash, isCurrent) => {
@@ -304,7 +305,7 @@ function App() {
       jobs.resetAll();
       const profileMatch = hash.match(/^#\/u\/(.+)$/);
       setCommunityUser(profileMatch ? decodeURIComponent(profileMatch[1]) : null);
-      setScreen(hash === '#/choose-team' && pendingLeague ? 'chooseTeam' : hash === '#/hunt' ? 'hunt' : hash === '#/career' ? 'career' : hash === '#/locker' ? 'locker' : hash === '#/community' || profileMatch ? 'community' : 'menu');
+      setScreen(hash === '#/choose-team' && pendingLeague ? 'chooseTeam' : hash === '#/hunt' ? 'hunt' : hash === '#/career' ? 'career' : hash === '#/locker' ? 'locker' : hash === '#/community' || profileMatch ? 'community' : hash === '#/draft' ? 'draft' : 'menu');
       refreshSaves();
       return;
     }
@@ -462,6 +463,8 @@ function App() {
       const emptyLeague: League = { teams: [], schedule: [], settings: { ...DEFAULT_GAME_SETTINGS } };
       enterApp(emptyLeague, { contracts: {}, freeAgents: [], capSettings: { ...DEFAULT_CAP_SETTINGS }, draftClass: [], tradeSettings: { difficulty }, ...DEFAULT_GM_FLAGS }, null, leagueName || 'My League');
       setTab('settings');
+    } else if (mode === 'draft') {
+      setScreen('draft');
     } else if (mode === 'career') {
       setScreen('career');
     } else {
@@ -1219,6 +1222,9 @@ function App() {
   if (restoring) return <main role="status" className="navigation-loading">Opening your league…</main>;
   if (showPrivacy) return <PrivacyPolicyPage onClose={closePrivacy} />;
 
+  if (screen === 'draft') {
+    return <Suspense fallback={<main role="status" className="navigation-loading">Opening the draft room…</main>}><AllTimeDraft onExit={() => setScreen('menu')} onStart={(l, e, teamId, name) => { enterApp(l, e, teamId, name); setTab('dashboard'); }} /></Suspense>;
+  }
   if (screen === 'community') {
     return <Suspense fallback={<main role="status" className="navigation-loading">Opening Community…</main>}><Community onExit={() => { setCommunityUser(null); setScreen('menu'); }} user={communityUser} onUser={u => setCommunityUser(u || null)} /></Suspense>;
   }

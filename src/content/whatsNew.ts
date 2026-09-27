@@ -6,6 +6,15 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2026-10-01',
+    title: 'The All-Time Draft',
+    items: [
+      '**06 / DRAFT:** thirty teams, thirteen rounds, every player in history at his best. Out-draft the AI GMs, then play the season under any era\'s rules.',
+      '**All-Time Draft of the Week:** the same draft order and era for everyone.',
+      '**Sign in** from the main menu to keep your progress on every device (as soon as accounts switch on).',
+    ],
+  },
+  {
     id: '2026-09-30',
     title: 'Accounts, leaderboards, ranked and PvP',
     items: [

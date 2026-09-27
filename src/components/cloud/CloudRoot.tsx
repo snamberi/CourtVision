@@ -79,11 +79,22 @@ function UsernameDialog() {
   </Modal>;
 }
 
+/** Shown until the site's accounts service is connected (see docs/ACCOUNTS_SETUP.md). */
+function NotReadyDialog() {
+  return <Modal label="Sign in" onClose={closeSignIn}>
+    <span className="pixel-eyebrow">COURT VISION ACCOUNT</span>
+    <h2>Accounts are almost here</h2>
+    <p className="hint-text">Sign-in with Discord, Google or an email link is switching on soon. Your progress is safe in this browser in the meantime, and it will move to your account the first time you sign in.</p>
+    <p className="hint-text signin-fine">Site owner: connect Supabase and redeploy to turn accounts on (docs/ACCOUNTS_SETUP.md).</p>
+    <div className="contest-actions"><button className="primary" onClick={closeSignIn}>OK</button></div>
+  </Modal>;
+}
+
 export function CloudRoot() {
   const isOpen = useSignInOpen();
   const acct = useAccount();
   useEffect(() => { if (acct.status === 'signedIn' && isOpen) closeSignIn(); }, [acct.status, isOpen]);
-  if (!cloudEnabled) return null;
+  if (!cloudEnabled) return isOpen ? <NotReadyDialog /> : null;
   if (acct.status === 'signedIn' && acct.profile && !acct.profile.username) return <UsernameDialog />;
   return isOpen && acct.status !== 'signedIn' ? <SignInDialog /> : null;
 }

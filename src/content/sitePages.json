@@ -164,6 +164,19 @@
               ]
             }
           ]
+        },
+        {
+          "h2": "The All-Time Draft",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "Pick **All-Time Draft** on the main menu, choose your franchise, your draft slot (or a random one) and the era whose rules the season is played under. Thirty teams then draft in snake order for thirteen rounds from every player in NBA history, each at his best season. The table shows every player's rating, best season and, for the all-time greats, their place in the all-time Top 100; filter by guards, forwards or bigs, or search a name."
+            },
+            {
+              "type": "p",
+              "text": "AI GMs take the best player left for what their roster still needs, so bigs and guards run out as the rounds go on. **Best fit** suggests your pick, and **Auto-draft the rest** finishes for you. When the draft is done you see where your team ranks on paper; then the season starts in a normal GM league: trades, free agency, the draft, and as many seasons as you like, with players aging and developing from their best years."
+            }
+          ]
         }
       ]
     },
@@ -897,6 +910,19 @@
       "h1": "Changelog",
       "lead": "The biggest recent additions to Court Vision, newest first.",
       "sections": [
+        {
+          "h2": "All-Time Draft",
+          "blocks": [
+            {
+              "type": "ul",
+              "items": [
+                "**06 / DRAFT, the All-Time Draft:** thirty teams, thirteen rounds, every player in history at his best season. AI GMs draft for need; your team then plays under any era's rules with the full GM game.",
+                "**All-Time Draft of the Week:** the same order, era and AI GMs for everyone.",
+                "**Sign in** is now on the main menu."
+              ]
+            }
+          ]
+        },
         {
           "h2": "Accounts, leaderboards, ranked and PvP",
           "blocks": [

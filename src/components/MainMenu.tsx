@@ -19,12 +19,12 @@ import { InstallAppButton } from './InstallAppButton';
 import { WhatsNew } from './WhatsNew';
 import { WeeklyBoardDialog } from './WeeklyBoard';
 import { cloudEnabled } from '../cloud/account';
-import { AccountButton } from './cloud/AccountButton';
+import { AccountButton, MenuAccountCard } from './cloud/AccountButton';
 import { ProfileChip } from './ProfilePanel';
 import { totalXp, levelFor, takeLevelUp, unlocksBetween } from '../profile/profile';
 import { liteMode, performanceSetting, setPerformanceSetting, type PerformanceSetting } from '../lib/performanceMode';
 
-export type GameMode = 'random' | 'real' | 'legends' | 'career' | 'rebuild';
+export type GameMode = 'random' | 'real' | 'legends' | 'career' | 'rebuild' | 'draft';
 export interface RealLeagueOptions { source: 'history' | 'csv'; realDevelopment: boolean; forceRosters?: boolean; allPlayers?: boolean }
 /** Start years the bundled NBA history supports (history through the season before; data ends 2025-26). */
 const HISTORY_START_YEARS: number[] = Array.from({ length: 2025 - 1946 + 1 }, (_, i) => 2025 - i);
@@ -71,6 +71,11 @@ const MODES: { id: GameMode; title: string; blurb: string }[] = [
     id: 'career',
     title: 'Career Mode',
     blurb: 'Create one player (spin the wheel of NBA history or build him yourself) and live his whole career in today\'s league: draft night, training, free agency, awards, the Hall of Fame and the all-time Top 100.',
+  },
+  {
+    id: 'draft',
+    title: 'All-Time Draft',
+    blurb: 'Thirty teams, thirteen rounds, every player in history at his best. Draft against AI GMs who build for need, then play the season under any era\'s rules with the full GM game.',
   },
 ];
 
@@ -165,10 +170,11 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
 
       <MenuLegacy />
       <LevelUpNote onLocker={onLocker} />
+      {onCommunity && <MenuAccountCard onCommunity={onCommunity} />}
 
       <ThisWeek onCommunity={onCommunity} busy={busy} onRebuild={() => onStart('rebuild', 'normal', '', '', undefined, 'weekly')} onCareer={() => onStart('career', 'normal', '', '')} onHunt={() => onStart('legends', 'normal', '', '')} />
 
-      <div className="menu-section-heading"><h2>Choose your game</h2><span>FIVE WAYS TO MAKE HISTORY</span></div>
+      <div className="menu-section-heading"><h2>Choose your game</h2><span>SIX WAYS TO MAKE HISTORY</span></div>
 
       {onCode && <CodeEntry busy={busy} onCode={onCode} />}
 
@@ -182,7 +188,7 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
             onClick={() => setSelectedMode(m.id)}
             aria-pressed={selectedMode === m.id}
           >
-            <span className="mode-card-kicker"><PixelIcon name={m.id === 'random' ? 'team' : m.id === 'real' ? 'court' : m.id === 'career' ? 'star' : m.id === 'rebuild' ? 'chart' : 'trophy'} size={24} /><span>{m.id === 'random' ? '01 / CREATE' : m.id === 'real' ? '02 / IMPORT' : m.id === 'legends' ? '03 / REIMAGINE' : m.id === 'rebuild' ? '04 / REBUILD' : '05 / BECOME'}</span><span className="mode-selection-dot" /></span>
+            <span className="mode-card-kicker"><PixelIcon name={m.id === 'random' ? 'team' : m.id === 'real' ? 'court' : m.id === 'career' ? 'star' : m.id === 'rebuild' ? 'chart' : m.id === 'draft' ? 'team' : 'trophy'} size={24} /><span>{m.id === 'random' ? '01 / CREATE' : m.id === 'real' ? '02 / IMPORT' : m.id === 'legends' ? '03 / REIMAGINE' : m.id === 'rebuild' ? '04 / REBUILD' : m.id === 'draft' ? '06 / DRAFT' : '05 / BECOME'}</span><span className="mode-selection-dot" /></span>
             <h3>{m.title}</h3>
             <p>{m.blurb}</p>
           </button>
@@ -195,7 +201,7 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
           <small>{rec ? `${'★'.repeat(rec.stars)}${'☆'.repeat(3 - rec.stars)} · best ${rec.best.toLocaleString()}${rec.titleIn ? ` · title in year ${rec.titleIn}` : ''}` : 'Not played yet'}</small></button>; })}</div>
         <p className="hint-text">Real NBA history from that season: real rosters, real players on their real careers, real draft classes. You run the team with every tool of the game. A title scores 1,000 plus 250 for every season left; wins and playoff runs add up along the way. Sandbox leagues don't count.</p></div></div>}
 
-      {selectedMode && selectedMode !== 'legends' && selectedMode !== 'career' && selectedMode !== 'rebuild' && (
+      {selectedMode && selectedMode !== 'legends' && selectedMode !== 'career' && selectedMode !== 'rebuild' && selectedMode !== 'draft' && (
         <div className="menu-setup">
           <div className="difficulty-picker">
             <h4>League Name</h4>
