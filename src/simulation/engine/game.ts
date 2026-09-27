@@ -87,7 +87,7 @@ function buildOnCourtPlayer(season: PlayerSeason, fatigueMap: Record<PlayerId, F
 }
 function buildStaticOnCourt(season: PlayerSeason, customBadges: Badge[], sandboxMode: boolean, chemistryModifier: number): StaticOnCourt {
   const eff = resolveEffectivePlayer(season, customBadges, sandboxMode);
-  const clamp = (v: number) => Math.max(0, Math.min(sandboxMode ? 200 : 99, v));
+  const clamp = (v: number) => Math.max(0, Math.min(sandboxMode ? 200 : season.careerPlayer ? 120 : 99, v));
   // Team chemistry nudges communication/decision-making attributes without overpowering raw ability.
   if (chemistryModifier !== 0) {
     eff.attributes.offense.passingIQ = clamp(eff.attributes.offense.passingIQ + chemistryModifier);

@@ -5,9 +5,13 @@ import { cardPool, cardPlayer, type HuntCard } from '../hunt/cards';
 import { CATEGORIES, categoryValues, type CategoryId, type CategoryValues } from './categories';
 
 /*
- * The Career Mode wheel. Every real player in NBA history is on it once, at his best season, and every one is equally
- * likely: most spins land on role players, and a LeBron is as rare as he was. When it stops you may take one of that
- * player's ten categories for your player (his exact ratings), once per category.
+ * The Career Mode wheel. Every real player in NBA history is on it once, at his best season. Most spins land on role
+ * players; the odds lean a little toward good ones (a Star about 7% of the time, a Great about 18%). When it stops you
+ * may take one of that player's ten categories for your player (his exact ratings), once per category.
+ *
+ * The best ever at something go past 99: the top 60 in a skill, ranked by what they really did that season (threes
+ * made, assists, steals, boards and blocks, scoring efficiency), get up to +21, so the very best reaches 120 (Curry's
+ * shooting, Stockton's passing).
  *
  * Tools: Move Left and Move Right (once each) shift a stopped wheel one slice; two Respins spin again without taking
  * anything; one Triple Spin spins three wheels at once, and you may take one category from each of them (at least one
@@ -62,8 +66,68 @@ export function donor(h: NbaHistory, cardId: string): PlayerSeason {
   return p;
 }
 
+// ---------------------------------------------------------------- the best ever at something
+
+export const ELITE_MAX = 120;
+export const ELITE_RANKS = 60;
+type EliteCat = 'threePoint' | 'midRange' | 'finishing' | 'playmaking' | 'perimeterD' | 'interiorD' | 'iq';
+const ELITE_CATS: EliteCat[] = ['threePoint', 'midRange', 'finishing', 'playmaking', 'perimeterD', 'interiorD', 'iq'];
+
+const elites = new WeakMap<NbaHistory, Map<string, Partial<Record<CategoryId, number>>>>();
+/** Each wheel player's all-time rank (1 = the best) in the skills he is among the top 60 at, from that season's real stats. */
+export function eliteRanks(h: NbaHistory): Map<string, Partial<Record<CategoryId, number>>> {
+  const hit = elites.get(h);
+  if (hit) return hit;
+  const pool = wheelPool(h);
+  const metrics: Record<EliteCat, { id: string; v: number }[]> = { threePoint: [], midRange: [], finishing: [], playmaking: [], perimeterD: [], interiorD: [], iq: [] };
+  for (const c of pool) {
+    const p = h.byId.get(c.playerId);
+    const rows = p ? (h.seasonsByPlayer.get(p.idx) ?? []).filter(r => r.season === c.end && (r.league === 'NBA' || r.league === 'BAA')) : [];
+    const r = rows.find(x => x.isAggregate) ?? rows[0];
+    if (!r) continue;
+    const g = r.stats.g ?? 0;
+    if (g < 40) continue;
+    const pg = (v: number | null) => (v ?? 0) / g;
+    const pct = (m: number | null, a: number | null) => (a ? (m ?? 0) / a : 0);
+    const tp = pct(r.stats.x3p, r.stats.x3pa), ft = pct(r.stats.ft, r.stats.fta), fg = pct(r.stats.fg, r.stats.fga), pts = pg(r.stats.pts);
+    if (pg(r.stats.x3pa) >= 1 && tp >= 0.33) metrics.threePoint.push({ id: c.id, v: pg(r.stats.x3p) * (0.5 + tp) });
+    if (pg(r.stats.fta) >= 3 && ft >= 0.8) metrics.midRange.push({ id: c.id, v: ft * Math.min(1, pts / 30) });
+    if (fg >= 0.45) metrics.finishing.push({ id: c.id, v: pts * fg });
+    metrics.playmaking.push({ id: c.id, v: pg(r.stats.ast) });
+    if (r.stats.stl != null) metrics.perimeterD.push({ id: c.id, v: pg(r.stats.stl) });
+    metrics.interiorD.push({ id: c.id, v: pg(r.stats.trb) + 2 * pg(r.stats.blk) });
+    metrics.iq.push({ id: c.id, v: c.ovr });
+  }
+  const out = new Map<string, Partial<Record<CategoryId, number>>>();
+  for (const cat of ELITE_CATS) {
+    metrics[cat].sort((a, b) => b.v - a.v).slice(0, ELITE_RANKS).forEach((m, i) => {
+      const e = out.get(m.id) ?? {};
+      e[cat] = i + 1;
+      out.set(m.id, e);
+    });
+  }
+  elites.set(h, out);
+  return out;
+}
+
+/** How far past 99 an all-time rank goes: +21 for the best ever, fading to nothing at 60th. */
+export const eliteBonus = (rank: number) => Math.max(0, Math.round((ELITE_MAX - 99) * (1 - Math.log(rank) / Math.log(ELITE_RANKS + 1))));
+
+/** A category as it would be taken: his ratings, raised past 99 when he is one of the best ever at it. */
+export function takenValues(h: NbaHistory, cardId: string, cat: CategoryId): CategoryValues {
+  const base = categoryValues(donor(h, cardId), cat);
+  const rank = eliteRanks(h).get(cardId)?.[cat];
+  if (!rank) return base;
+  const bonus = eliteBonus(rank);
+  const out: CategoryValues = {};
+  // The skills he was great at carry the whole bonus; the rest of the category comes up part of the way.
+  for (const [k, v] of Object.entries(base)) out[k] = MEASURE.has(k) ? v : Math.min(ELITE_MAX, Math.round(v + bonus * (v >= 85 ? 1 : 0.5)));
+  return out;
+}
+const MEASURE = new Set(['physical.heightInches', 'physical.wingspanInches', 'physical.standingReachInches', 'physical.weightLbs']);
+
 /** A player's ten categories as they would be taken. */
-export const donorCategories = (h: NbaHistory, cardId: string) => Object.fromEntries(CATEGORIES.map(c => [c.id, categoryValues(donor(h, cardId), c.id)])) as Record<CategoryId, CategoryValues>;
+export const donorCategories = (h: NbaHistory, cardId: string) => Object.fromEntries(CATEGORIES.map(c => [c.id, takenValues(h, cardId, c.id)])) as Record<CategoryId, CategoryValues>;
 
 const complete = (s: WheelState) => CATEGORIES.every(c => s.picks[c.id]);
 export const isComplete = complete;
@@ -71,10 +135,22 @@ export const isComplete = complete;
 export const mustTake = (s: WheelState) => !!s.current && s.takenFrom.length === 0;
 export const canSpin = (s: WheelState) => !complete(s) && !mustTake(s);
 
-function makeWheels(h: NbaHistory, s: WheelState, count: number): Wheel[] {
+/** Odds by rarity: a little kinder than history (Stars about 7%, Greats about 18%). */
+export const RARITY_WEIGHT: Record<HuntCard['rarity'], number> = { legendary: 1.6, epic: 1.35, rare: 1, common: 0.9 };
+const cumulative = new WeakMap<NbaHistory, number[]>();
+function pickCard(h: NbaHistory, rng: RNG): HuntCard {
   const pool = wheelPool(h);
+  let cum = cumulative.get(h);
+  if (!cum) { let t = 0; cum = pool.map(c => (t += RARITY_WEIGHT[c.rarity])); cumulative.set(h, cum); }
+  const x = rng.next() * cum[cum.length - 1];
+  let lo = 0, hi = cum.length - 1;
+  while (lo < hi) { const mid = (lo + hi) >> 1; if (cum[mid] > x) hi = mid; else lo = mid + 1; }
+  return pool[lo];
+}
+
+function makeWheels(h: NbaHistory, s: WheelState, count: number): Wheel[] {
   const rng = new RNG(s.seed * 7919 + s.spinCount * 104_729 + 17);
-  return Array.from({ length: count }, () => ({ reel: Array.from({ length: REEL_LENGTH }, () => pool[rng.nextInt(pool.length)].id), stop: rng.nextInt(REEL_LENGTH) }));
+  return Array.from({ length: count }, () => ({ reel: Array.from({ length: REEL_LENGTH }, () => pickCard(h, rng).id), stop: rng.nextInt(REEL_LENGTH) }));
 }
 
 /** Spins the wheel (or, with `triple`, the triple spin). */
@@ -106,7 +182,7 @@ export const neighbour = (w: Wheel, dir: 'left' | 'right') => w.reel[(w.stop + (
 export function take(h: NbaHistory, s: WheelState, wheel: number, cat: CategoryId): WheelState {
   if (!s.current || s.picks[cat] || s.takenFrom.includes(wheel) || !s.current[wheel]) return s;
   const cardId = landed(s.current[wheel]);
-  const picks = { ...s.picks, [cat]: { cardId, values: categoryValues(donor(h, cardId), cat) } };
+  const picks = { ...s.picks, [cat]: { cardId, values: takenValues(h, cardId, cat) } };
   const takenFrom = [...s.takenFrom, wheel];
   const done = CATEGORIES.every(c => picks[c.id]);
   // The spin stays on the table (a triple spin's other wheels can still be taken from) until the next spin.

@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { loadHistoryForTests } from './helpers/nbaHistoryFixture';
 import { cardPool } from '../hunt/cards';
 import { top100, top100Rank, legacyScore, emptyResume } from '../career/legacy';
-import { newWheel, spin, respin, move, take, landed, neighbour, mustTake, canSpin, isComplete, donor, RESPINS } from '../career/wheel';
+import { newWheel, spin, respin, move, take, landed, neighbour, mustTake, canSpin, isComplete, donor, RESPINS, eliteRanks, takenValues, eliteBonus, wheelPool, ELITE_MAX } from '../career/wheel';
+import { resolveEffectivePlayer } from '../simulation/engine/effective';
 import { CATEGORIES, categoryValues } from '../career/categories';
 import { buildPlayer, startProgress, primeOverall, primeFromBuild, capFor, suggestPosition, type Prime } from '../career/create';
 import { newCareerMeta, joinDraft, draftResult, landSeason, autopilotOffseason, findPlayer, uniqueName, freeAgentOffers, requestTrade, growth } from '../career/career';
@@ -64,6 +65,32 @@ describe('Career Mode', () => {
     // Curry's three is Curry's three.
     const curry = donor(h, best(h, 'Stephen Curry').id);
     expect(curry.attributes.offense.threePoint).toBeGreaterThanOrEqual(95);
+  }, 120_000);
+
+  it('the best ever at a skill go past 99 (up to 120); the wheel leans a little toward good players', async () => {
+    const h = await loadHistoryForTests();
+    const pool = cardPool(h), ranks = eliteRanks(h);
+    const first = (cat: 'threePoint' | 'playmaking') => pool.byId.get([...ranks].find(([, r]) => r[cat] === 1)![0])!.name;
+    expect(first('threePoint')).toBe('Stephen Curry');
+    expect(eliteBonus(1)).toBe(ELITE_MAX - 99);
+    expect(eliteBonus(60)).toBe(0);
+    const curry = [...ranks].find(([, r]) => r.threePoint === 1)![0];
+    const three = takenValues(h, curry, 'threePoint');
+    expect(Math.max(...Object.values(three))).toBe(ELITE_MAX);
+    // Nobody outside the top 60 of a skill goes past 99.
+    const plain = wheelPool(h).find(c => !ranks.has(c.id))!;
+    expect(Math.max(...CATEGORIES.filter(c => c.id !== 'size' && c.id !== 'body').flatMap(c => Object.values(takenValues(h, plain.id, c.id))))).toBeLessThanOrEqual(99);
+    // Odds: Stars about 7%, Greats about 18%.
+    const count: Record<string, number> = {}; let n = 0, s = newWheel(3);
+    for (let i = 0; i < 300; i++) { s = spin(h, { ...s, current: null, takenFrom: [] }); for (const id of s.current![0].reel) { const r = pool.byId.get(id)!.rarity; count[r] = (count[r] ?? 0) + 1; n++; } }
+    expect(count.legendary / n).toBeGreaterThan(0.055);
+    expect(count.legendary / n).toBeLessThan(0.09);
+    expect(count.epic / n).toBeGreaterThan(0.15);
+    // On the court, past 99 counts half, and only for Career Mode's player.
+    const p = structuredClone(donor(h, curry));
+    p.attributes.offense.threePoint = 120;
+    expect(resolveEffectivePlayer(p).attributes.offense.threePoint).toBe(99);
+    expect(resolveEffectivePlayer({ ...p, careerPlayer: true }).attributes.offense.threePoint).toBe(109.5);
   }, 120_000);
 
   it('the player: his picks are his prime; rookies start below it; MyPlayer respects height', async () => {

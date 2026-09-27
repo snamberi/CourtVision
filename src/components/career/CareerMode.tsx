@@ -216,7 +216,7 @@ function YearsTable({ years }: { years: CareerYear[] }) {
 function Ratings({ meta }: { meta: CareerMeta }) {
   const now = valuesAt(meta.prime, meta.progress, meta.readiness);
   return <ul className="cv-ratings">{CATEGORIES.filter(c => c.id !== 'size').map(c => { const v = categoryScore(now[c.id]), top = categoryScore(meta.prime[c.id]); return <li key={c.id} className={meta.training.includes(c.id) ? 'training' : ''}>
-    <span>{c.name}</span><div className="hunt-cap-bar"><i style={{ width: `${v}%` }} /></div><b>{v}</b><small>/ {top}</small></li>; })}</ul>;
+    <span>{c.name}</span><div className="hunt-cap-bar"><i className={v > 99 ? 'elite' : ''} style={{ width: `${Math.min(100, v)}%` }} /></div><b className={v > 99 ? 'cv-elite' : ''}>{v}</b><small>/ {top}</small></li>; })}</ul>;
 }
 
 function CareerView({ h, a, busy, tradeAsked, onPlay, onAutopilot, onTraining, onSign, onTrade, onRetire, onNew }: {

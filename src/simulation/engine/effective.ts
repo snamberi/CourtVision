@@ -75,8 +75,9 @@ export function resolveEffectivePlayer(
   }
 
   if (!sandboxMode) {
-    // Realistic mode: clamp all numeric ratings to [0, 99], ignore broken flags.
-    clampRealistic(attributes);
+    // Realistic mode: clamp all numeric ratings to [0, 99], ignore broken flags. Career Mode's player can be one of
+    // history's greats at something (up to 120, see career/wheel.ts).
+    clampRealistic(attributes, season.careerPlayer ? CAREER_RATING_MAX : 99);
     return { attributes, flags: emptyFlags(), sandboxMode: false };
   }
 
@@ -111,10 +112,16 @@ function applyEffect(attributes: Attributes, flags: AggregatedFlags, effect: Bad
   }
 }
 
-function clampRealistic(attributes: Attributes) {
+/** The highest rating Career Mode's player can carry (the best ever at something). */
+export const CAREER_RATING_MAX = 120;
+
+/** Past 99 a rating counts half on the court: a 120 shooter is the best ever, not a 70% three-point shooter. */
+const pastNinetyNine = (v: number, max: number) => (v > 99 && max > 99 ? 99 + (Math.min(max, v) - 99) / 2 : Math.min(max, v));
+
+function clampRealistic(attributes: Attributes, max = 99) {
   const clampGroup = (group: Record<string, number>) => {
     for (const k of Object.keys(group)) {
-      if (typeof group[k] === 'number') group[k] = Math.max(0, Math.min(99, group[k]));
+      if (typeof group[k] === 'number') group[k] = Math.max(0, pastNinetyNine(group[k], max));
     }
   };
   clampGroup(attributes.offense as any);
@@ -123,7 +130,7 @@ function clampRealistic(attributes: Attributes) {
   // physical has non-rating fields (height/weight in real units) — only clamp the rating-like ones
   const p: any = attributes.physical;
   for (const k of ['vertical', 'speed', 'acceleration', 'strength', 'agility', 'balance', 'stamina', 'durability']) {
-    p[k] = Math.max(0, Math.min(99, p[k]));
+    p[k] = Math.max(0, pastNinetyNine(p[k], max));
   }
 }
 

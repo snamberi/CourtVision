@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import type { NbaHistory } from '../../history/nbaHistoryData';
 import { cardPool, seasonLabel, RARITY_LABEL } from '../../hunt/cards';
-import { CATEGORIES, categoryLabel, feetInches, type CategoryId } from '../../career/categories';
-import { newWheel, spin, respin, move, take, landed, neighbour, donorCategories, mustTake, canSpin, isComplete, openWheels, REEL_LENGTH, type WheelState, type Wheel } from '../../career/wheel';
+import { CATEGORIES, categoryLabel, categoryScore, feetInches, type CategoryId } from '../../career/categories';
+import { eliteRanks, newWheel, spin, respin, move, take, landed, neighbour, donorCategories, mustTake, canSpin, isComplete, openWheels, REEL_LENGTH, type WheelState, type Wheel } from '../../career/wheel';
 import {
   READINESS, suggestPosition, primeOverall, buildPlayer, startProgress, primeFromBuild, capFor, buildSpent, RATING_CATEGORIES, BUILD_BUDGET, BUILD_MIN, START_AGE,
   type Prime, type Readiness, type Position, type Build,
@@ -32,12 +32,13 @@ function Landed({ h, s, wheel, index, onTake }: { h: NbaHistory; s: WheelState; 
   const pool = cardPool(h);
   const id = landed(wheel), c = pool.byId.get(id)!;
   const cats = donorCategories(h, id);
+  const elite = eliteRanks(h).get(id);
   const used = s.takenFrom.includes(index);
   return <div className={`cv-landed rarity-${c.rarity} ${used ? 'used' : ''}`}>
     <div className="cv-landed-head"><PlayerAvatar playerId={c.name} primaryColor="#f47b20" secondaryColor="#f4f0e6" size={48} />
       <div><small>{RARITY_LABEL[c.rarity].toUpperCase()} · {c.pos}</small><strong>{c.name}</strong><span>{seasonLabel(c.end)} {c.teamName} · {c.ovr} OVR</span></div></div>
     <ul className="cv-cats">{CATEGORIES.map(cat => { const taken = s.picks[cat.id]; return <li key={cat.id}>
-      <span>{cat.name}</span><b>{categoryLabel(cat.id, cats[cat.id])}</b>
+      <span>{cat.name}{elite?.[cat.id] ? <small className="cv-elite-tag"> #{elite[cat.id]} ever</small> : null}</span><b className={categoryScore(cats[cat.id]) > 99 ? 'cv-elite' : ''}>{categoryLabel(cat.id, cats[cat.id])}</b>
       {taken ? <small>{taken.cardId === id ? 'Taken' : 'Filled'}</small> : <button className="cv-take" disabled={used} onClick={() => onTake(cat.id)}>Take</button>}
     </li>; })}</ul>
   </div>;
@@ -70,7 +71,7 @@ export function WheelBuilder({ h, seed, onDone, onBack }: { h: NbaHistory; seed:
         <button disabled={!mustTake(s) || !single || !s.moves.left} onClick={() => setS(move(s, 'left'))} title={w0 ? `Move to ${pool.byId.get(neighbour(w0, 'left'))?.name}` : ''}>← Move left</button>
         <button disabled={!mustTake(s) || !single || !s.moves.right} onClick={() => setS(move(s, 'right'))} title={w0 ? `Move to ${pool.byId.get(neighbour(w0, 'right'))?.name}` : ''}>Move right →</button>
       </div></div>
-    <p className="hint-text">Every player in NBA history is on the wheel once, at his best season, all equally likely. Take one category from the player it stops on: you get his exact ratings as your player's prime. Move Left and Move Right work once each; two respins; one triple spin, where you can take one category from each of the three.</p>
+    <p className="hint-text">Every player in NBA history is on the wheel once, at his best season; the odds lean a little toward good players (Star about 7%, Great about 18%). The best ever at a skill go past 99, up to 120. Take one category from the player it stops on: you get his exact ratings as your player's prime. Move Left and Move Right work once each; two respins; one triple spin, where you can take one category from each of the three.</p>
     {s.current ? <div className="cv-wheels">{s.current.map((w, i) => <div key={i} className="cv-wheel">
       <Reel h={h} wheel={w} spinKey={s.spinCount * 10 + i} />
       <Landed h={h} s={s} wheel={w} index={i} onTake={cat => setS(take(h, s, i, cat))} />

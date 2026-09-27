@@ -43,7 +43,8 @@ export function valuesAt(prime: Prime, progress: Progress, readiness: Readiness)
         continue;
       }
       const top = target + r.primeBonus;
-      vals[path] = clamp(top * (r.start + (1 - r.start) * p));
+      // Ratings top out at 120 (the best ever at something, see wheel.ts).
+      vals[path] = clamp(top * (r.start + (1 - r.start) * p), 20, 120);
     }
     out[c.id] = vals;
   }
