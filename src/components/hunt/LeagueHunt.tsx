@@ -3,7 +3,7 @@ import type { NbaHistory } from '../../history/nbaHistoryData';
 import { cardPool, seasonLabel, RARITY_LABEL, type HuntCard } from '../../hunt/cards';
 import { huntTeams, teamLabel, type HuntTeam } from '../../hunt/teams';
 import { ERAS, eraOf } from '../../hunt/eras';
-import { newRun, draftPick, playStop, takeReward, releaseCard, affordable, spent, strengthOf, squadBonuses, effectiveStrength, chooseRoad, moveOn, buyCard, buyItem, buyLife, rest, resolveEvent, cardPrice, SQUAD_SIZE, SQUAD_MAX, START_LIVES, LIFE_PRICE, MAX_TRAINING, type HuntRun, type HuntGame, type NodeKind } from '../../hunt/run';
+import { stopGame, commitGame, coachCards, newRun, draftPick, playStop, takeReward, releaseCard, affordable, spent, strengthOf, squadBonuses, effectiveStrength, chooseRoad, moveOn, buyCard, buyItem, buyLife, rest, resolveEvent, cardPrice, SQUAD_SIZE, SQUAD_MAX, START_LIVES, LIFE_PRICE, MAX_TRAINING, type HuntRun, type HuntGame, type NodeKind } from '../../hunt/run';
 import { ITEMS, MAX_ITEMS } from '../../hunt/items';
 import { EVENTS } from '../../hunt/events';
 import type { ChemistryBond } from '../../hunt/chemistry';
@@ -22,6 +22,8 @@ export function LeagueHunt({ onExit }: { onExit: () => void }) {
   const [records, setRecords] = useState<HuntRecords>(() => loadRecords());
   const [game, setGame] = useState<HuntGame | null>(null);
   const [watching, setWatching] = useState(false);
+  /** A game being coached live: not recorded until the final buzzer (or the box score). */
+  const [live, setLive] = useState<HuntGame | null>(null);
   useEffect(() => {
     let live = true;
     import('../../history/nbaHistoryData').then(m => m.loadNbaHistory()).then(d => { if (live) setH(d); }, e => { if (live) setError(e instanceof Error ? e.message : String(e)); });
@@ -44,7 +46,16 @@ export function LeagueHunt({ onExit }: { onExit: () => void }) {
 
   if (error) return <div className="hunt">{header}<p className="empty-state">Could not load the NBA history data: {error}</p></div>;
   if (!h) return <div className="hunt">{header}<p className="empty-state">Loading 80 years of basketball…</p></div>;
-  if (watching && game) return <div className="hunt hunt-watch">{header}<WatchGame game={game.result} home={game.home} away={game.away} homeRoster={game.home.seasons} awayRoster={game.away.seasons} onBoxScore={() => setWatching(false)} /></div>;
+  if (live && run) {
+    const left = coachCards(run) - live.commands.length;
+    return <div className={`hunt hunt-watch era-${live.era.id}`}>{header}
+      <p className="hunt-coach-note">{live.era.label} rules · <b>{left}</b> coaching call{left === 1 ? '' : 's'} left · the result counts when the game ends or you go to the box score.</p>
+      <WatchGame game={live.result} home={live.home} away={live.away} homeRoster={live.home.seasons} awayRoster={live.away.seasons}
+        coaching={{ teamId: 'HUNT', teamName: 'Your squad', roster: live.home.seasons, commands: live.commands, openCoach: true,
+          onCommand: cmd => { if (live.commands.length >= coachCards(run)) return `No coaching calls left (${coachCards(run)} per game).`; const g = stopGame(h, run, [...live.commands, cmd]); if (!g) return 'This game is over.'; setLive(g); return null; } }}
+        onBoxScore={() => { setRun(commitGame(h, run, live)); setGame(live); setLive(null); }} /></div>;
+  }
+  if (watching && game) return <div className={`hunt hunt-watch era-${game.era.id}`}>{header}<WatchGame game={game.result} home={game.home} away={game.away} homeRoster={game.home.seasons} awayRoster={game.away.seasons} onBoxScore={() => setWatching(false)} /></div>;
 
   return <div className="hunt">
     {header}
@@ -57,7 +68,7 @@ export function LeagueHunt({ onExit }: { onExit: () => void }) {
       : run.stage === 'event' ? <EventView run={run} onChoose={o => setRun(resolveEvent(h, run, o))} onLeave={() => setRun(moveOn(run))} />
       : run.stage === 'rest' ? <RestView h={h} run={run} onRun={setRun} />
       : run.stage === 'won' || run.stage === 'lost' ? <RunOver h={h} run={run} records={records} onNew={() => { setGame(null); setRun(newRun(h, Math.floor(Math.random() * 1_000_000_000))); }} onExit={() => { setRun(null); onExit(); }} />
-      : <MapView h={h} run={run} onPlay={watch => { const r = playStop(h, run); if (!r) return; setGame(r.game); setRun(r.run); if (watch) setWatching(true); }} onRelease={id => setRun(releaseCard(run, id))} onAbandon={() => setRun(null)} />}
+      : <MapView h={h} run={run} onCoach={() => setLive(stopGame(h, run))} onPlay={watch => { const r = playStop(h, run); if (!r) return; setGame(r.game); setRun(r.run); if (watch) setWatching(true); }} onRelease={id => setRun(releaseCard(run, id))} onAbandon={() => setRun(null)} />}
   </div>;
 }
 
@@ -141,7 +152,7 @@ function StopTrail({ h, run }: { h: NbaHistory; run: HuntRun }) {
     </li>; })}</ol>;
 }
 
-function MapView({ h, run, onPlay, onRelease, onAbandon }: { h: NbaHistory; run: HuntRun; onPlay: (watch: boolean) => void; onRelease: (id: string) => void; onAbandon: () => void }) {
+function MapView({ h, run, onPlay, onCoach, onRelease, onAbandon }: { h: NbaHistory; run: HuntRun; onPlay: (watch: boolean) => void; onCoach: () => void; onRelease: (id: string) => void; onAbandon: () => void }) {
   const stop = run.stops[run.stopIndex];
   const team = huntTeams(h).find(t => t.id === stop.teamId)!;
   const era = ERAS.find(e => e.id === stop.eraId) ?? eraOf(team.end);
@@ -157,7 +168,7 @@ function MapView({ h, run, onPlay, onRelease, onAbandon }: { h: NbaHistory; run:
         <h2>{teamLabel(team)}</h2>
         <p>{team.w}-{team.l}{team.champion ? ' · Champions' : ''} · Strength <b>{team.strength}</b> vs your <b>{mineStrength}</b></p>
         <p className="hunt-era-rules">Era rules: {era.blurb}</p>
-        <div className="contest-actions"><button className="primary" onClick={() => onPlay(true)}>Watch the game</button><button onClick={() => onPlay(false)}>Sim it</button></div>
+        <div className="contest-actions"><button className="primary" onClick={onCoach} title={`${coachCards(run)} coaching calls: timeouts, plays, defenses, lineups`}>Coach it live</button><button onClick={() => onPlay(true)}>Watch</button><button onClick={() => onPlay(false)}>Sim it</button></div>
         {run.attempts > 0 && <p className="hint-text">Rematch {run.attempts + 1}. {run.lives} {run.lives === 1 ? 'life' : 'lives'} left.</p>}
         <h3 className="hunt-subhead">Chemistry for this game</h3>
         <Bonds bonds={bonds} />
@@ -207,13 +218,39 @@ function Reward({ h, run, onTake, onRelease }: { h: NbaHistory; run: HuntRun; on
 
 function RunOver({ h, run, records, onNew, onExit }: { h: NbaHistory; run: HuntRun; records: HuntRecords; onNew: () => void; onExit: () => void }) {
   const teams = new Map(huntTeams(h).map((t: HuntTeam) => [t.id, t]));
-  return <section className="hunt-stage hunt-over">
-    <span className="pixel-eyebrow">{run.stage === 'won' ? 'HUNT COMPLETE' : 'HUNT OVER'}</span>
-    <h2>{run.stage === 'won' ? 'You conquered basketball history' : `You reached stop ${run.stopIndex + 1} of ${run.stops.length}`}</h2>
-    <ol className="hunt-log">{run.results.map((r, i) => { const t = teams.get(r.teamId)!; return <li key={i} className={r.won ? 'won' : 'lost'}>{r.won ? 'W' : 'L'} {r.us}-{r.them} vs {teamLabel(t)}</li>; })}</ol>
+  const [copied, setCopied] = useState(false);
+  const won = run.stage === 'won';
+  const lines = Object.entries(run.lines ?? {}).map(([name, l]) => ({ name, ...l, score: l.pts + l.reb * 1.2 + l.ast * 1.5 })).sort((a, b) => b.score - a.score);
+  const mvp = lines[0];
+  const wins = run.results.filter(r => r.won).length, losses = run.results.length - wins;
+  const beaten = run.results.filter(r => r.won).map(r => teams.get(r.teamId)!).filter(Boolean);
+  const eras = [...new Set(beaten.map(t => eraOf(t.end).label))];
+  const per = (v: number, g: number) => (g ? (v / g).toFixed(1) : '0.0');
+  const share = [
+    `League Hunt · ${won ? 'HUNT COMPLETE 🏆' : `reached stop ${run.stopIndex + 1} of ${run.stops.length}`} · ${wins}-${losses}`,
+    ...run.results.map(r => `${r.won ? '✅' : '❌'} ${r.us}-${r.them} ${teamLabel(teams.get(r.teamId)!)}`),
+    mvp ? `MVP: ${mvp.name} (${per(mvp.pts, mvp.g)} PPG)` : '',
+  ].filter(Boolean).join('\n');
+  const copy = () => { navigator.clipboard?.writeText(share).then(() => setCopied(true), () => setCopied(false)); };
+  return <section className={`hunt-stage hunt-over ${won ? 'won' : 'lost'}`}>
+    <div className="hunt-over-banner">
+      <span className="pixel-eyebrow">{won ? 'HUNT COMPLETE' : 'HUNT OVER'}</span>
+      <h2>{won ? 'You conquered basketball history' : `You reached stop ${run.stopIndex + 1} of ${run.stops.length}`}</h2>
+      <div className="hunt-over-stats">
+        <div><small>RECORD</small><b>{wins}-{losses}</b></div>
+        <div><small>ERAS CONQUERED</small><b>{eras.length}</b></div>
+        <div><small>COINS LEFT</small><b>{run.coins}</b></div>
+        <div><small>ITEMS</small><b>{run.items.length}</b></div>
+      </div>
+    </div>
+    {mvp && <div className="hunt-mvp"><PlayerAvatar playerId={mvp.name} primaryColor="#f47b20" secondaryColor="#f4f0e6" size={72} />
+      <div><span className="pixel-eyebrow">HUNT MVP</span><strong>{mvp.name}</strong><span>{per(mvp.pts, mvp.g)} PTS · {per(mvp.reb, mvp.g)} REB · {per(mvp.ast, mvp.g)} AST in {mvp.g} game{mvp.g === 1 ? '' : 's'}</span></div></div>}
+    <ol className="hunt-log">{run.results.map((r, i) => { const t = teams.get(r.teamId)!; return <li key={i} className={r.won ? 'won' : 'lost'}>{r.won ? 'W' : 'L'} {r.us}-{r.them} vs {teamLabel(t)} <small>· {eraOf(t.end).label}</small></li>; })}</ol>
+    {lines.length > 0 && <div className="feature-table-scroll"><table className="db-table hunt-lines"><thead><tr><th className="col-name">Player</th><th>G</th><th>PTS</th><th>REB</th><th>AST</th></tr></thead>
+      <tbody>{lines.slice(0, 10).map(l => <tr key={l.name}><td className="col-name">{l.name}</td><td>{l.g}</td><td>{per(l.pts, l.g)}</td><td>{per(l.reb, l.g)}</td><td>{per(l.ast, l.g)}</td></tr>)}</tbody></table></div>}
     <SquadList h={h} run={run} />
-    <p className="hint-text">Your hunts: {records.runs} · won {records.wins}</p>
-    <div className="contest-actions"><button className="primary" onClick={onNew}>Start a new hunt</button><button onClick={onExit}>Main Menu</button></div>
+    <p className="hint-text">Your hunts: {records.runs} · won {records.wins} · furthest stop {records.bestStop + 1} of 6</p>
+    <div className="contest-actions"><button className="primary" onClick={onNew}>Start a new hunt</button><button onClick={copy}>{copied ? 'Copied!' : 'Copy the result'}</button><button onClick={onExit}>Main Menu</button></div>
   </section>;
 }
 

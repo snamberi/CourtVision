@@ -3,7 +3,7 @@
  * run.ts when a game is played (overall bonuses, defense, pace) or when coins are paid out.
  */
 
-export type ItemId = 'triangle' | 'cigar' | 'sevenSeconds' | 'badBoys' | 'sixthMan' | 'homeCourt' | 'scout' | 'legacyFund' | 'clutch';
+export type ItemId = 'triangle' | 'cigar' | 'sevenSeconds' | 'badBoys' | 'sixthMan' | 'homeCourt' | 'scout' | 'legacyFund' | 'clutch' | 'clipboard';
 export interface HuntItem { id: ItemId; name: string; blurb: string; price: number }
 
 export const ITEMS: Record<ItemId, HuntItem> = {
@@ -16,6 +16,7 @@ export const ITEMS: Record<ItemId, HuntItem> = {
   scout: { id: 'scout', name: 'Advance Scout', blurb: 'See every opponent on the road ahead.', price: 30 },
   legacyFund: { id: 'legacyFund', name: 'Legacy Fund', blurb: '+12 Legacy Points on your cap, right away.', price: 55 },
   clutch: { id: 'clutch', name: 'Clutch Gene', blurb: 'Your best player takes over: +3 overall for him.', price: 50 },
+  clipboard: { id: 'clipboard', name: "Hall of Famer's Clipboard", blurb: 'Two more coaching calls in every game you coach live.', price: 40 },
 };
 export const ITEM_IDS = Object.keys(ITEMS) as ItemId[];
 export const MAX_ITEMS = 4;

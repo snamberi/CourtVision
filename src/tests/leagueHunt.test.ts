@@ -3,7 +3,7 @@ import { loadHistoryForTests } from './helpers/nbaHistoryFixture';
 import { cardPool, cardPlayer } from '../hunt/cards';
 import { huntTeams } from '../hunt/teams';
 import { ERAS, underEra } from '../hunt/eras';
-import { newRun, draftPick, playStop, takeReward, releaseCard, affordable, spent, moveOn, chooseRoad, buyCard, buyItem, buyLife, rest, resolveEvent, squadBonuses, upgradeRun, SQUAD_SIZE, START_LIVES, CAP_PER_WIN, START_COINS, type HuntRun } from '../hunt/run';
+import { stopGame, commitGame, coachCards, COACH_CARDS, newRun, draftPick, playStop, takeReward, releaseCard, affordable, spent, moveOn, chooseRoad, buyCard, buyItem, buyLife, rest, resolveEvent, squadBonuses, upgradeRun, SQUAD_SIZE, START_LIVES, CAP_PER_WIN, START_COINS, type HuntRun } from '../hunt/run';
 import { chemistry } from '../hunt/chemistry';
 import { EVENT_IDS } from '../hunt/events';
 
@@ -139,5 +139,28 @@ describe('League Hunt', () => {
     expect(up.version).toBe(2);
     expect(up.coins).toBe(START_COINS);
     expect(up.items).toEqual([]);
+  }, 120_000);
+
+  it('live coaching: calls change the game from that possession on; the result counts when committed', async () => {
+    const h = await loadHistoryForTests();
+    let run = newRun(h, 31337);
+    while (run.stage === 'draft') run = draftPick(h, run, bestAffordable(h, run));
+    const plain = stopGame(h, run)!;
+    expect(plain.commands).toEqual([]);
+    expect(stopGame(h, run)!.result.homeScore).toBe(plain.result.homeScore); // same game every time
+    const at = Math.floor(plain.result.possessionLog.length / 2);
+    const star = plain.home.seasons[0].playerId;
+    const coached = stopGame(h, run, [{ kind: 'play', atPossession: at, teamId: 'HUNT', play: 'iso', focusId: star }, { kind: 'pace', atPossession: at, teamId: 'HUNT', pace: 'fast' }])!;
+    // Everything before the call replays exactly.
+    expect(coached.result.possessionLog.slice(0, at - 1).map(e => e.homeScoreAfter)).toEqual(plain.result.possessionLog.slice(0, at - 1).map(e => e.homeScoreAfter));
+    expect(coached.commands).toHaveLength(2);
+    expect(run.stage).toBe('stop'); // nothing recorded yet
+    const after = commitGame(h, run, coached);
+    expect(after.results).toHaveLength(1);
+    expect(after.results[0].us).toBe(coached.result.homeScore);
+    const lines = Object.values(after.lines ?? {});
+    expect(lines.reduce((n, l) => n + l.pts, 0)).toBe(coached.result.homeScore);
+    expect(coachCards(run)).toBe(COACH_CARDS);
+    expect(coachCards({ ...run, items: ['clipboard'] })).toBe(COACH_CARDS + 2);
   }, 120_000);
 });

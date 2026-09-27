@@ -120,3 +120,29 @@ button.hunt-card:disabled .hunt-card-action { background: #2a3546; color: #94a0b
   .hunt-purse { max-width: none; order: 3; width: 100%; justify-content: flex-start; }
   .hunt-top { flex-wrap: wrap; }
 }
+
+/* Stage 3: era-styled courts, live coaching, the end of a hunt */
+.hunt-coach-note { margin: 0 0 8px; padding: 6px 10px; background: #192333; border-left: 4px solid #f47b20; font-size: 13px; }
+.hunt-coach-note b { color: #ffd166; }
+/* Each era's broadcast: grainy black and white in the 60s, warm film in the 70s, loud color in the 80s. */
+.hunt-watch .watch-arena { position: relative; }
+.era-60s .watch-arena { filter: grayscale(1) contrast(1.15) brightness(.95); }
+.era-60s .watch-arena::after, .era-70s .watch-arena::after { content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .12) 0 1px, transparent 1px 3px); mix-blend-mode: multiply; }
+.era-70s .watch-arena { filter: sepia(.45) saturate(1.2) contrast(1.05); }
+.era-80s .watch-arena { filter: saturate(1.45) contrast(1.05); }
+.era-90s .watch-arena { filter: saturate(1.1); }
+.era-00s .watch-arena { filter: saturate(.95) brightness(1.02); }
+@media (prefers-reduced-motion: reduce) { .era-60s .watch-arena::after, .era-70s .watch-arena::after { display: none; } }
+.hunt-over-banner { padding: 16px 18px; background: #121926; border: 3px solid #2a3546; }
+.hunt-over.won .hunt-over-banner { border-color: #ffd166; background: linear-gradient(#232033, #121926); }
+.hunt-over.lost .hunt-over-banner { border-color: #e85d5d; }
+.hunt-over-stats { display: flex; flex-wrap: wrap; gap: 20px; margin-top: 10px; }
+.hunt-over-stats div { display: grid; }
+.hunt-over-stats small { font-size: 10px; letter-spacing: .08em; color: #94a0b2; }
+.hunt-over-stats b { font: 28px 'Oswald', sans-serif; color: #f47b20; }
+.hunt-mvp { display: flex; align-items: center; gap: 14px; padding: 10px 14px; background: #192333; border: 2px solid #ffd166; max-width: 560px; }
+.hunt-mvp div { display: grid; gap: 2px; }
+.hunt-mvp strong { font: 22px 'Oswald', sans-serif; }
+.hunt-mvp span:last-child { font-size: 13px; color: #c9ced8; }
+.hunt-lines { max-width: 560px; }

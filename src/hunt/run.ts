@@ -1,6 +1,6 @@
 import type { NbaHistory } from '../history/nbaHistoryData';
 import { RNG } from '../simulation/engine/rng';
-import { simulateGame } from '../simulation/engine/game';
+import { simulateGame, type LiveCoachingCommand } from '../simulation/engine/game';
 import type { GameResult } from '../simulation/boxscore';
 import type { PlayerSeason } from '../simulation/types';
 import { DEFAULT_GAME_SETTINGS, ERA_PRESETS } from '../simulation/types';
@@ -63,6 +63,8 @@ export interface HuntRun {
   eventId?: EventId;
   /** What the last event or purchase did, for the screen. */
   note?: string;
+  /** Your players' totals over the hunt (box-score names), for the summary. */
+  lines?: Record<string, { g: number; pts: number; reb: number; ast: number }>;
 }
 
 const TIERS = [58.5, 61.5, 64, 66, 67.5];
@@ -201,7 +203,7 @@ const defended = (p: PlayerSeason): PlayerSeason => {
   return { ...p, attributes: { ...p.attributes, defense: { ...d, perimeterDefense: up(d.perimeterDefense), interiorDefense: up(d.interiorDefense), helpDefense: up(d.helpDefense), contest: up(d.contest) } } };
 };
 
-export interface HuntGame { result: GameResult; home: { teamId: string; name: string; seasons: PlayerSeason[] }; away: { teamId: string; name: string; seasons: PlayerSeason[] }; won: boolean; era: HuntEra; coins: number }
+export interface HuntGame { result: GameResult; home: { teamId: string; name: string; seasons: PlayerSeason[] }; away: { teamId: string; name: string; seasons: PlayerSeason[] }; won: boolean; era: HuntEra; coins: number; commands: LiveCoachingCommand[] }
 
 /** Coins for a result: a win pays by the margin; a loss pays a little for the lesson. */
 export function coinsFor(run: HuntRun, won: boolean, margin: number): number {
@@ -209,8 +211,15 @@ export function coinsFor(run: HuntRun, won: boolean, margin: number): number {
   return 20 + Math.min(20, Math.floor(margin / 2)) + (run.items.includes('cigar') ? 15 : 0);
 }
 
-/** Plays the current stop. Your squad is the home team; the opponent plays without anyone who is on your squad. */
-export function playStop(h: NbaHistory, run: HuntRun): { run: HuntRun; game: HuntGame } | null {
+/** Coaching calls per game (timeouts, play calls, defenses, lineups); the clipboard adds two. */
+export const COACH_CARDS = 3;
+export const coachCards = (run: HuntRun) => COACH_CARDS + (run.items.includes('clipboard') ? 2 : 0);
+
+/**
+ * The current stop's game, with any live coaching calls (each applies from its possession on, so everything before
+ * it replays exactly the same). Nothing is recorded until the game is committed.
+ */
+export function stopGame(h: NbaHistory, run: HuntRun, commands: LiveCoachingCommand[] = []): HuntGame | null {
   if (run.stage !== 'stop') return null;
   const stop = run.stops[run.stopIndex];
   const team = huntTeams(h).find(t => t.id === stop.teamId)!;
@@ -227,16 +236,34 @@ export function playStop(h: NbaHistory, run: HuntRun): { run: HuntRun; game: Hun
   const home = { teamId: 'HUNT', name: 'Your squad', seasons: withRotation(mine), coach, chemistry: 70 };
   const away = { teamId: team.abbr === 'HUNT' ? 'OPP' : team.abbr, name: team.name, seasons: withRotation(theirs.map(c => underEra(cardPlayer(h, c, team.abbr), era))), coach: eraCoach(era), chemistry: 75 };
   const decade = `${Math.floor(Math.min(2020, Math.max(1960, team.end - 1)) / 10) * 10}s` as keyof typeof ERA_PRESETS;
-  const result = simulateGame({ home, away, settings: { ...DEFAULT_GAME_SETTINGS, era: ERA_PRESETS[decade] ?? DEFAULT_GAME_SETTINGS.era, seed: run.seed * 101 + run.stopIndex * 7919 + run.attempts * 17, injuriesEnabled: false, teamChemistryEnabled: false } });
+  const result = simulateGame({ home, away, liveCoaching: commands.length ? commands : undefined,
+    settings: { ...DEFAULT_GAME_SETTINGS, era: ERA_PRESETS[decade] ?? DEFAULT_GAME_SETTINGS.era, seed: run.seed * 101 + run.stopIndex * 7919 + run.attempts * 17, injuriesEnabled: false, teamChemistryEnabled: false } });
   const won = result.homeScore > result.awayScore;
-  const coins = coinsFor(run, won, Math.abs(result.homeScore - result.awayScore));
-  const results = [...run.results, { stop: run.stopIndex, teamId: team.id, us: result.homeScore, them: result.awayScore, won }];
-  const base: HuntRun = { ...run, results, coins: run.coins + coins, nextGame: undefined, note: undefined };
-  let next: HuntRun;
-  if (won && stop.boss) next = { ...base, stage: 'won', offer: [] };
-  else if (won) { const r = { ...base, stage: 'reward' as const, cap: run.cap + CAP_PER_WIN, attempts: 0 }; next = { ...r, offer: offer(h, r, 'reward') }; }
-  else next = run.lives - 1 <= 0 ? { ...base, lives: 0, stage: 'lost', offer: [] } : { ...base, lives: run.lives - 1, attempts: run.attempts + 1, nextGame: run.nextGame };
-  return { run: next, game: { result, home, away, won, era, coins } };
+  return { result, home, away, won, era, coins: coinsFor(run, won, Math.abs(result.homeScore - result.awayScore)), commands };
+}
+
+/** Records a finished game: coins, the player lines, then the reward, a lost life, or the end of the hunt. */
+export function commitGame(h: NbaHistory, run: HuntRun, game: HuntGame): HuntRun {
+  if (run.stage !== 'stop') return run;
+  const stop = run.stops[run.stopIndex];
+  const { result, won, coins } = game;
+  const lines = { ...(run.lines ?? {}) };
+  for (const [name, l] of Object.entries(result.homeBox.players)) {
+    if (!l.minutes) continue;
+    const cur = lines[name] ?? { g: 0, pts: 0, reb: 0, ast: 0 };
+    lines[name] = { g: cur.g + 1, pts: cur.pts + l.points, reb: cur.reb + l.oreb + l.dreb, ast: cur.ast + l.ast };
+  }
+  const results = [...run.results, { stop: run.stopIndex, teamId: stop.teamId, us: result.homeScore, them: result.awayScore, won }];
+  const base: HuntRun = { ...run, results, lines, coins: run.coins + coins, nextGame: undefined, note: undefined };
+  if (won && stop.boss) return { ...base, stage: 'won', offer: [] };
+  if (won) { const r = { ...base, stage: 'reward' as const, cap: run.cap + CAP_PER_WIN, attempts: 0 }; return { ...r, offer: offer(h, r, 'reward') }; }
+  return run.lives - 1 <= 0 ? { ...base, lives: 0, stage: 'lost', offer: [] } : { ...base, lives: run.lives - 1, attempts: run.attempts + 1, nextGame: run.nextGame };
+}
+
+/** Plays and records the current stop in one step (a simulated game with no coaching). */
+export function playStop(h: NbaHistory, run: HuntRun): { run: HuntRun; game: HuntGame } | null {
+  const game = stopGame(h, run);
+  return game ? { run: commitGame(h, run, game), game } : null;
 }
 
 // ---------------------------------------------------------------- after a win: reward, crossroads, nodes
