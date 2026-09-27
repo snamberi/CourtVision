@@ -6,6 +6,16 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2026-09-30',
+    title: 'Accounts, leaderboards, ranked and PvP',
+    items: [
+      '**Accounts (optional):** sign in with Discord, Google or an email link. Your level, trophies, records and retired careers follow you to every device.',
+      '**Community:** leaderboards for GMs, created players, the weekly challenges, the Daily Legend and every Rebuild, plus public profiles and friends.',
+      '**Ranked seasons:** one a month, from Bronze to Legend. Reach Gold or higher to unlock that title.',
+      '**League Hunt PvP:** your finished hunt squad against other GMs\' squads, best of seven, Elo-rated.',
+    ],
+  },
+  {
     id: '2026-09-29',
     title: 'Levels, daily goals and online leaderboards',
     items: [

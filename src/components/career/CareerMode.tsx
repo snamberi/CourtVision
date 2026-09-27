@@ -403,6 +403,6 @@ function Legacy({ h, meta, onNew }: { h: NbaHistory; meta: CareerMeta; onNew: ()
       lines: [...shelf.filter(([k]) => r[k] > 0 && !['titles', 'mvp', 'allStar'].includes(k)).map(([k, l]) => `${r[k]}× ${l}`), ...(ret.jerseys?.length ? [`#${meta.identity.jersey} retired by ${ret.jerseys.join(' and ')}`] : [])],
       avatar: { playerId: meta.playerId, jersey: meta.identity.jersey }, accent: ret.hallOfFame !== 'no' ? 'gold' : 'orange',
     }} /><button onClick={() => navigator.clipboard?.writeText(share).then(() => setCopied(true), () => {})}>{copied ? 'Copied!' : 'Copy as text'}</button></div>
-    {meta.weekly && <PostScore board="career" week={meta.weekly} refKey={meta.id} payload={{ career: { player: meta.playerId, legacy: Math.max(0, Math.round(ret.legacy)), seasons: meta.years.length, titles: r.titles, mvps: r.mvp, hof: ret.hallOfFame } }} />}
+    {meta.weekly && <PostScore board="career" week={meta.weekly} />}
   </section>;
 }

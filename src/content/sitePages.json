@@ -764,7 +764,11 @@
           "blocks": [
             {
               "type": "p",
-              "text": "No. There are no accounts. Your leagues, careers and records are saved in your browser on your device."
+              "text": "No. Everything works without an account, exactly as before. An account is free and optional: sign in with **Discord**, **Google** or an **email link** (no password) from the main menu."
+            },
+            {
+              "type": "p",
+              "text": "With an account, your GM level, achievements, trophies, League Hunt, Rebuild and weekly results, daily goals and retired Career Mode players follow you to every device, and you appear on the online leaderboards, ranked seasons and League Hunt PvP. GM leagues and careers still in progress stay on the device where you play them: they are several megabytes each, so use **Backup everything** to move those."
             }
           ]
         },
@@ -774,6 +778,10 @@
             {
               "type": "p",
               "text": "Saves live in your browser's storage. Clearing your browsing data, using a private window, or switching browsers or devices means you won't see them. To keep them safe, download a backup of everything from the GM Locker or from Backups on the main menu. One file holds every league, career, League Hunt record and achievement."
+            },
+            {
+              "type": "p",
+              "text": "Signed in, your progress (not your GM leagues) is also kept with your account, so clearing this browser no longer loses your level, trophies, records or retired careers."
             }
           ]
         },
@@ -858,6 +866,19 @@
           ]
         },
         {
+          "h2": "How do ranked seasons and PvP work?",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "**Ranked** runs one season per calendar month. The Daily Legend, the Rebuild of the Week, the Career of the Week and your daily goals earn rank points, your best result per event counting, and the total places you in a tier: Bronze, Silver, Gold, Platinum, Diamond or Legend. Reaching Gold or higher unlocks that GM title for good."
+            },
+            {
+              "type": "p",
+              "text": "**League Hunt PvP**: when you finish a League Hunt, that squad (with its coach, training, boosts and items) becomes your PvP team. Challenge other GMs' teams in a best-of-seven under a random era's rules; ratings move by Elo, and your team defends your rating while you are away."
+            }
+          ]
+        },
+        {
           "h2": "I found a bug or have an idea",
           "blocks": [
             {
@@ -876,6 +897,22 @@
       "h1": "Changelog",
       "lead": "The biggest recent additions to Court Vision, newest first.",
       "sections": [
+        {
+          "h2": "Accounts, leaderboards, ranked and PvP",
+          "blocks": [
+            {
+              "type": "ul",
+              "items": [
+                "**Accounts (optional):** sign in with Discord, Google or an email link; your progress follows you to every device.",
+                "**Community:** leaderboards for GMs, created players (all-time and weekly), the Rebuild and Career of the Week, the Daily Legend, every Rebuild scenario, and your friends.",
+                "**Public profiles** with trophies, best created players, achievements (with how rare each one is) and a follow button.",
+                "**Ranked seasons:** monthly, with tiers from Bronze to Legend and titles to unlock.",
+                "**League Hunt PvP:** your finished hunt squad against other GMs' squads, best of seven, Elo-rated.",
+                "**League-code boards:** everyone who played the same league code, and how their first season went."
+              ]
+            }
+          ]
+        },
         {
           "h2": "End of September 2026: levels, goals and leaderboards",
           "blocks": [

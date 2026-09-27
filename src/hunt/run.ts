@@ -401,9 +401,9 @@ export function withRotation(players: PlayerSeason[]): PlayerSeason[] {
 
 /** Six-man rotations (yours and theirs): five starters and the sixth man. */
 const SIX_MINUTES = [38, 37, 37, 37, 37, 34];
-const sixRotation = (players: PlayerSeason[]) => players.map((p, i) => ({ ...p, rotationRole: i < 5 ? 'starter' as const : 'bench' as const, minutes: { mode: 'TARGET' as const, target: SIX_MINUTES[i] } }));
+export const sixRotation = (players: PlayerSeason[]) => players.map((p, i) => ({ ...p, rotationRole: i < 5 ? 'starter' as const : 'bench' as const, minutes: { mode: 'TARGET' as const, target: SIX_MINUTES[i] } }));
 
-const defended = (p: PlayerSeason, v: number): PlayerSeason => {
+export const defended = (p: PlayerSeason, v: number): PlayerSeason => {
   if (!v) return p;
   const d = p.attributes.defense, up = (x: number) => Math.min(99, x + v);
   return { ...p, attributes: { ...p.attributes, defense: { ...d, perimeterDefense: up(d.perimeterDefense), interiorDefense: up(d.interiorDefense), helpDefense: up(d.helpDefense), contest: up(d.contest) } } };

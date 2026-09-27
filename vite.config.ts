@@ -58,7 +58,12 @@ const siteHost = (process.env.SITE_URL || (process.env.VERCEL_PROJECT_PRODUCTION
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => ({
-  define: mode === 'desktop' ? {} : { 'import.meta.env.VITE_SITE_HOST': JSON.stringify(siteHost) },
+  define: mode === 'desktop' ? {} : {
+    'import.meta.env.VITE_SITE_HOST': JSON.stringify(siteHost),
+    // Accounts: the Supabase address and public key (safe to ship; row level security guards the data).
+    'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || ''),
+    'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || ''),
+  },
   plugins: mode === 'desktop' ? [react(), stripAdsense()] : [react(), siteMaps(), serviceWorker()],
   // `--mode desktop` is the offline Windows package: relative asset paths, its own output folder.
   base: mode === 'desktop' ? './' : '/',

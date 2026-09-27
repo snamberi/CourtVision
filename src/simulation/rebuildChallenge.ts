@@ -1,5 +1,6 @@
 import type { League, PlayoffFinish } from './league';
 import { isOfficialLeague } from './frontOffice';
+import { localRead, type Read } from '../lib/kv';
 import { SCENARIOS, scenarioById, scoreResults, type RebuildScenario } from './rebuildScenarios';
 
 export { SCENARIOS, scenarioById, type RebuildScenario };
@@ -48,8 +49,8 @@ export function challengeProgress(league: League): ChallengeProgress | null {
 
 export interface RebuildRecord { best: number; stars: number; titleIn: number | null; attempts: number; completedAt?: number }
 const KEY = 'cv-rebuild-records';
-export function loadRebuildRecords(): Record<string, RebuildRecord> {
-  try { return JSON.parse(localStorage.getItem(KEY) ?? '{}') as Record<string, RebuildRecord>; } catch { return {}; }
+export function loadRebuildRecords(read: Read = localRead): Record<string, RebuildRecord> {
+  try { return JSON.parse(read(KEY) ?? '{}') as Record<string, RebuildRecord>; } catch { return {}; }
 }
 /** Records a finished, official challenge once per save (keyed by save id so reopening it doesn't count twice). */
 export function recordRebuild(p: ChallengeProgress, saveId: string): Record<string, RebuildRecord> {

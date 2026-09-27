@@ -75,7 +75,9 @@ import { JobOffersDialog, OwnerReviewDialog } from './components/FrontOfficePane
 import { recordLeagueLegacy } from './storage/gmLegacy';
 import { challengeProgress, recordRebuild, scenarioById } from './simulation/rebuildChallenge';
 import { weeklyRebuild, recordWeekly, TWISTS, type WeeklyRebuild } from './retention/weekly';
-import { decodeLeagueCode, type LeagueOrigin } from './retention/leagueCode';
+import { decodeLeagueCode, encodeLeagueCode, type LeagueOrigin } from './retention/leagueCode';
+import { recordCodeResult } from './retention/codeResults';
+import { syncSoon } from './cloud/sync';
 import { track, trackOnce } from './analytics/track';
 import { ChallengeBanner } from './components/ChallengeBanner';
 import { DailyGoalsCard } from './components/DailyGoalsCard';
@@ -118,6 +120,7 @@ const ExtensionsPage = lazy(() => import('./components/ExtensionsPage').then(m =
 const LeagueHunt = lazy(() => import('./components/hunt/LeagueHunt').then(m => ({ default: m.LeagueHunt })));
 const CareerImportPanel = lazy(() => import('./components/career/CareerImportPanel').then(m => ({ default: m.CareerImportPanel })));
 const GmLocker = lazy(() => import('./components/locker/GmLocker').then(m => ({ default: m.GmLocker })));
+const Community = lazy(() => import('./components/cloud/Community').then(m => ({ default: m.Community })));
 const CareerMode = lazy(() => import('./components/career/CareerMode').then(m => ({ default: m.CareerMode })));
 const SummerCampPage = lazy(() => import('./components/SummerCampPage').then(m => ({ default: m.SummerCampPage })));
 const MedicalRoomPage = lazy(() => import('./components/MedicalRoomPage').then(m => ({ default: m.MedicalRoomPage })));
@@ -208,7 +211,7 @@ function buildInitialExtras(league: League): GMLeagueExtras {
   };
 }
 
-type Screen = 'menu' | 'chooseTeam' | 'app' | 'hunt' | 'career' | 'locker';
+type Screen = 'menu' | 'chooseTeam' | 'app' | 'hunt' | 'career' | 'locker' | 'community';
 
 const debouncedSave = createDebouncedSave();
 
@@ -287,9 +290,10 @@ function App() {
   const [watchNextResult, setWatchNextResult] = useState(false);
   const [watchStart, setWatchStart] = useState<number | undefined>(undefined);
   const [coachSession, setCoachSession] = useState<{ base: League; baseExtras: GMLeagueExtras; gameId: string; teamId: string; commands: LiveCoachingCommand[]; committed: League; openCoach?: boolean } | null>(null);
+  const [communityUser, setCommunityUser] = useState<string | null>(null);
   const [boxscoreSource, setBoxscoreSource] = useState<'league' | 'exhibition'>('league');
 
-  const currentRoute = screen === 'menu' ? '#/menu' : screen === 'chooseTeam' ? '#/choose-team' : screen === 'hunt' ? '#/hunt' : screen === 'career' ? '#/career' : screen === 'locker' ? '#/locker'
+  const currentRoute = screen === 'menu' ? '#/menu' : screen === 'chooseTeam' ? '#/choose-team' : screen === 'hunt' ? '#/hunt' : screen === 'career' ? '#/career' : screen === 'locker' ? '#/locker' : screen === 'community' ? (communityUser ? `#/u/${encodeURIComponent(communityUser)}` : '#/community')
     : activeSaveId ? routeHash({ saveId: activeSaveId, tab, player: selectedPlayerId,
       team: viewedTeamId, game: viewedGameId ?? undefined, source: boxscoreSource, sub: leagueSettingsSub }) : null;
   const { restoring, showPrivacy, closePrivacy } = useGameHistory(currentRoute, async (hash, isCurrent) => {
@@ -298,7 +302,9 @@ function App() {
     const route = parseRoute(hash);
     if (!route) {
       jobs.resetAll();
-      setScreen(hash === '#/choose-team' && pendingLeague ? 'chooseTeam' : hash === '#/hunt' ? 'hunt' : hash === '#/career' ? 'career' : hash === '#/locker' ? 'locker' : 'menu');
+      const profileMatch = hash.match(/^#\/u\/(.+)$/);
+      setCommunityUser(profileMatch ? decodeURIComponent(profileMatch[1]) : null);
+      setScreen(hash === '#/choose-team' && pendingLeague ? 'chooseTeam' : hash === '#/hunt' ? 'hunt' : hash === '#/career' ? 'career' : hash === '#/locker' ? 'locker' : hash === '#/community' || profileMatch ? 'community' : 'menu');
       refreshSaves();
       return;
     }
@@ -978,7 +984,7 @@ function App() {
     const p = challengeProgress(league);
     if (p) {
       recordRebuild(p, activeSaveId);
-      if (p.config.weekly && p.official) recordWeekly('rebuild', p.config.weekly.week, { best: p.score, stars: p.stars, label: p.scenario.title });
+      if (p.config.weekly && p.official) recordWeekly('rebuild', p.config.weekly.week, { best: p.score, stars: p.stars, label: p.scenario.title, results: p.results.map(r => ({ wins: r.wins, losses: r.losses, finish: r.finish })) });
       trackOnce(`rebuild-${activeSaveId}`, 'mode_finish', { mode: 'rebuild', result: p.status, stars: p.stars, weekly: !!p.config.weekly });
     }
   }, [screen, activeSaveId, challengeDone]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -990,6 +996,17 @@ function App() {
     for (const g of done) pushToast(`Daily goal done: ${g.text} (+${g.xp} XP)`, 'success');
     if (done.length) trackOnce(`daily-${todayUtc()}-${done.map(g => g.id).join('-')}`, 'daily_goal', { count: done.length });
   }, [screen, activeSaveId, controlledTeamId, myPlayed, league.season]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Signed-in players sync when they come back to the menu.
+  useEffect(() => { if (screen === 'menu') syncSoon(1500); }, [screen]);
+  // League codes: your first season in a coded league goes on that code's board (the code without a team, so
+  // everyone who played the same league compares, whichever team they ran).
+  const playedSeasons = league.origin ? (league.franchiseHistory ?? []).filter(r => !r.imported).length : 0;
+  useEffect(() => {
+    if (screen !== 'app' || !league.origin || !controlledTeamId || playedSeasons < 1 || !isOfficialLeague(league)) return;
+    const first = (league.franchiseHistory ?? []).filter(r => !r.imported)[0];
+    const ts = first?.teamSeasons?.find(t => t.teamId === controlledTeamId);
+    if (ts) recordCodeResult(encodeLeagueCode(league.origin), { team: league.teams.find(t => t.teamId === controlledTeamId)?.name ?? controlledTeamId, wins: ts.wins, losses: ts.losses, finish: ts.playoffFinish, season: first.season });
+  }, [screen, playedSeasons, controlledTeamId]); // eslint-disable-line react-hooks/exhaustive-deps
   // Your all-leagues GM legacy follows this league's front office (clean leagues only; see storage/gmLegacy.ts).
   const saveName = saveSummaries.find(sv => sv.id === activeSaveId)?.name ?? 'League';
   useEffect(() => {
@@ -1202,6 +1219,9 @@ function App() {
   if (restoring) return <main role="status" className="navigation-loading">Opening your league…</main>;
   if (showPrivacy) return <PrivacyPolicyPage onClose={closePrivacy} />;
 
+  if (screen === 'community') {
+    return <Suspense fallback={<main role="status" className="navigation-loading">Opening Community…</main>}><Community onExit={() => { setCommunityUser(null); setScreen('menu'); }} user={communityUser} onUser={u => setCommunityUser(u || null)} /></Suspense>;
+  }
   if (screen === 'locker') {
     return <Suspense fallback={<main role="status" className="navigation-loading">Opening the locker…</main>}><GmLocker onExit={() => setScreen('menu')} /></Suspense>;
   }
@@ -1220,6 +1240,7 @@ function App() {
         <MainMenu
           onStart={startGameMode}
           onLocker={() => setScreen('locker')}
+          onCommunity={() => { setCommunityUser(null); setScreen('community'); }}
           onCode={startFromCode}
           busy={menuBusy}
           saves={saveSummaries}

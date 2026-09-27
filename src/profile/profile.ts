@@ -3,6 +3,7 @@ import { loadRecords } from '../hunt/storage';
 import { loadRebuildRecords } from '../simulation/rebuildChallenge';
 import { loadWeeklyRecords } from '../retention/weekly';
 import { dailyGoalXp } from './dailyGoals';
+import { localRead, type Read } from '../lib/kv';
 
 /*
  * The GM Profile: one level across every mode. XP is worked out from the records each mode already keeps (GM
@@ -21,8 +22,8 @@ export function noteCareers(metas: { retired?: { legacy: number; hallOfFame: str
   const cache: CareerXpCache = { careers: metas.length, retired: retired.length, legacy: retired.reduce((n, m) => n + Math.max(0, m.retired!.legacy), 0), hallOfFame: retired.filter(m => m.retired!.hallOfFame !== 'no').length };
   try { localStorage.setItem(CAREER_KEY, JSON.stringify(cache)); } catch { /* storage blocked */ }
 }
-function careerCache(): CareerXpCache {
-  try { return { careers: 0, retired: 0, legacy: 0, hallOfFame: 0, ...(JSON.parse(localStorage.getItem(CAREER_KEY) ?? '{}') as Partial<CareerXpCache>) }; } catch { return { careers: 0, retired: 0, legacy: 0, hallOfFame: 0 }; }
+function careerCache(read: Read): CareerXpCache {
+  try { return { careers: 0, retired: 0, legacy: 0, hallOfFame: 0, ...(JSON.parse(read(CAREER_KEY) ?? '{}') as Partial<CareerXpCache>) }; } catch { return { careers: 0, retired: 0, legacy: 0, hallOfFame: 0 }; }
 }
 
 export const XP = {
@@ -33,15 +34,15 @@ export const XP = {
   weekly: 150,
 } as const;
 
-export function xpParts(): XpPart[] {
-  const gm = legacyTotals(readLegacy());
-  const hunt = loadRecords();
+export function xpParts(read: Read = localRead): XpPart[] {
+  const gm = legacyTotals(readLegacy(read));
+  const hunt = loadRecords(read);
   const daily = Object.keys(hunt.daily ?? {}).length;
-  const rebuild = Object.values(loadRebuildRecords());
+  const rebuild = Object.values(loadRebuildRecords(read));
   const rbAttempts = rebuild.reduce((n, r) => n + r.attempts, 0), rbStars = rebuild.reduce((n, r) => n + r.stars, 0), rbTitles = rebuild.filter(r => r.titleIn != null).length;
-  const c = careerCache();
-  const weeks = Object.values(loadWeeklyRecords()).reduce((n, w) => n + (w.rebuild ? 1 : 0) + (w.career ? 1 : 0), 0);
-  const goals = dailyGoalXp();
+  const c = careerCache(read);
+  const weeks = Object.values(loadWeeklyRecords(read)).reduce((n, w) => n + (w.rebuild ? 1 : 0) + (w.career ? 1 : 0), 0);
+  const goals = dailyGoalXp(read);
   return [
     { id: 'gm', label: 'GM leagues', xp: gm.seasons * XP.gmSeason + gm.wins * XP.gmWin + gm.titles * XP.gmTitle + gm.achievements * XP.achievement, detail: `${gm.seasons} season${gm.seasons === 1 ? '' : 's'} · ${gm.wins} wins · ${gm.titles} title${gm.titles === 1 ? '' : 's'} · ${gm.achievements} achievement${gm.achievements === 1 ? '' : 's'}` },
     { id: 'career', label: 'Career Mode', xp: c.retired * XP.careerRetired + c.legacy + c.hallOfFame * XP.careerHof, detail: `${c.retired} retired · ${c.hallOfFame} Hall of Famer${c.hallOfFame === 1 ? '' : 's'} · Legacy ${c.legacy} in all` },
@@ -97,6 +98,17 @@ export const TITLES: Unlock<string>[] = [
   { id: 'Legend', name: 'Legend', level: 50, blurb: '' },
 ];
 
+/** Titles earned in ranked seasons (the best tier you have reached; kept in this browser after each sync). */
+export const RANK_TITLES: { id: string; tier: string; order: number }[] = [
+  { id: 'Gold GM', tier: 'gold', order: 2 }, { id: 'Platinum GM', tier: 'platinum', order: 3 }, { id: 'Diamond GM', tier: 'diamond', order: 4 }, { id: 'Legend GM', tier: 'legend', order: 5 },
+];
+const TIER_ORDER = ['bronze', 'silver', 'gold', 'platinum', 'diamond', 'legend'];
+export const RANKED_BEST_KEY = 'cv-ranked-best';
+export function rankTitles(read: Read = localRead): string[] {
+  const best = TIER_ORDER.indexOf(read(RANKED_BEST_KEY) ?? '');
+  return RANK_TITLES.filter(t => best >= t.order).map(t => t.id);
+}
+
 export interface Equipped { frame: FrameId; floor: FloorId; title: string }
 const EQUIP_KEY = 'cv-profile-equip';
 export const PROFILE_EVENT = 'courtvision:profile';
@@ -107,7 +119,8 @@ export function equipped(level = levelFor(totalXp()).level): Equipped {
   try { raw = JSON.parse(localStorage.getItem(EQUIP_KEY) ?? '{}') as Partial<Equipped>; } catch { /* default */ }
   const ok = <T extends string>(list: Unlock<T>[], v: T | undefined, fallback: T): T => { const u = list.find(x => x.id === v); return u && u.level <= level ? u.id : fallback; };
   const openTitles = TITLES.filter(t => t.level <= level);
-  return { frame: ok(FRAMES, raw.frame, 'classic'), floor: ok(FLOORS, raw.floor, 'team'), title: ok(TITLES, raw.title, openTitles[openTitles.length - 1].id) };
+  const title = raw.title && rankTitles().includes(raw.title) ? raw.title : ok(TITLES, raw.title, openTitles[openTitles.length - 1].id);
+  return { frame: ok(FRAMES, raw.frame, 'classic'), floor: ok(FLOORS, raw.floor, 'team'), title };
 }
 export function equip(patch: Partial<Equipped>): void {
   let raw: Partial<Equipped> = {};

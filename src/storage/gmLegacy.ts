@@ -1,5 +1,6 @@
 import type { League } from '../simulation/league';
 import { isOfficialLeague } from '../simulation/frontOffice';
+import { localRead, type Read } from '../lib/kv';
 
 /* Your GM legacy across every league played in this browser: achievements earned anywhere and career totals per
  * league. Kept in localStorage (small, per-browser, like the save list). Leagues where Sandbox was ever used never
@@ -16,9 +17,9 @@ const KEY = 'courtvision:gmLegacy';
 export const LEGACY_EVENT = 'courtvision:gm-legacy';
 const empty = (): GmLegacy => ({ version: 1, achievements: {}, leagues: {} });
 
-export function readLegacy(): GmLegacy {
+export function readLegacy(read: Read = localRead): GmLegacy {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = read(KEY);
     const parsed = raw ? JSON.parse(raw) as GmLegacy : null;
     return parsed?.version === 1 && parsed.achievements && parsed.leagues ? parsed : empty();
   } catch { return empty(); }

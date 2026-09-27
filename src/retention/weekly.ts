@@ -1,5 +1,6 @@
 import { SCENARIOS, type RebuildScenario } from '../simulation/rebuildScenarios';
 import { weekKey, weekEndsAt, weeklySeed } from './week';
+import { localRead, type Read } from '../lib/kv';
 
 export { weekKey, weekEndsAt, weeklySeed };
 
@@ -39,12 +40,14 @@ export function weeklyCareer(week = weekKey()): WeeklyCareer {
 
 // ---------------------------------------------------------------- results (this browser)
 
-export interface WeeklyResult { best: number; label: string; stars?: number; at: number }
+export interface WeeklyResult { best: number; label: string; stars?: number; at: number;
+  /** Rebuild of the Week: the season records, so the online board can score it again. */
+  results?: { wins: number; losses: number; finish: string }[] }
 export interface WeeklyRecords { [week: string]: { rebuild?: WeeklyResult; career?: WeeklyResult } }
 const KEY = 'cv-weekly-records';
 
-export function loadWeeklyRecords(): WeeklyRecords {
-  try { return JSON.parse(localStorage.getItem(KEY) ?? '{}') as WeeklyRecords; } catch { return {}; }
+export function loadWeeklyRecords(read: Read = localRead): WeeklyRecords {
+  try { return JSON.parse(read(KEY) ?? '{}') as WeeklyRecords; } catch { return {}; }
 }
 
 /** Keeps the best result of the week for a mode; the last 26 weeks are kept. Returns true if it is a new best. */

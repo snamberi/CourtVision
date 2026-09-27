@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { xpParts, totalXp, levelFor, equipped, equip, FRAMES, FLOORS, TITLES, PROFILE_EVENT, type Unlock } from '../profile/profile';
+import { xpParts, totalXp, levelFor, equipped, equip, rankTitles, FRAMES, FLOORS, TITLES, PROFILE_EVENT, type Unlock } from '../profile/profile';
 import { DAILY_EVENT } from '../profile/dailyGoals';
 import { LEGACY_EVENT } from '../storage/gmLegacy';
 import { PixelIcon } from './PixelIcon';
@@ -47,6 +47,6 @@ export function ProfilePanel() {
     <p className="hint-text">XP comes from everything you finish: GM seasons, wins, titles and achievements (official leagues), careers, hunts, rebuilds, weekly challenges and daily goals.</p>
     <Picker label="Share-card frame" list={FRAMES} level={p.level} value={eq.frame} onPick={v => equip({ frame: v })} />
     <Picker label="Court floor (Watch Game)" list={FLOORS} level={p.level} value={eq.floor} onPick={v => equip({ floor: v })} />
-    <Picker label="Title" list={TITLES} level={p.level} value={eq.title} onPick={v => equip({ title: v })} />
+    <Picker label="Title" list={[...TITLES, ...rankTitles().map(id => ({ id, name: id, level: 1, blurb: 'Ranked reward' }))]} level={p.level} value={eq.title} onPick={v => equip({ title: v })} />
   </section>;
 }

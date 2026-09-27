@@ -18,7 +18,8 @@ import { weeklyRebuild, weeklyCareer, loadWeeklyRecords, weeklyStreak, weekEndsA
 import { InstallAppButton } from './InstallAppButton';
 import { WhatsNew } from './WhatsNew';
 import { WeeklyBoardDialog } from './WeeklyBoard';
-import { ONLINE_BOARDS } from '../online/leaderboard';
+import { cloudEnabled } from '../cloud/account';
+import { AccountButton } from './cloud/AccountButton';
 import { ProfileChip } from './ProfilePanel';
 import { totalXp, levelFor, takeLevelUp, unlocksBetween } from '../profile/profile';
 import { liteMode, performanceSetting, setPerformanceSetting, type PerformanceSetting } from '../lib/performanceMode';
@@ -41,6 +42,8 @@ interface Props {
   onLocker?: () => void;
   /** Starts the league a code describes; returns an error message, or null. */
   onCode?: (code: string) => string | null;
+  /** Opens Community (online boards, ranked, PvP, profiles). */
+  onCommunity?: () => void;
 }
 
 const MODES: { id: GameMode; title: string; blurb: string }[] = [
@@ -131,7 +134,7 @@ function SavedLeaguesList({ saves, onContinue, onDeleteSave, onRenameSave }: Pic
   );
 }
 
-export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSave, recovery, busy = null, onLocker, onCode }: Props) {
+export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSave, recovery, busy = null, onLocker, onCode, onCommunity }: Props) {
   const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
   const [scenario, setScenario] = useState(SCENARIOS[0].id);
   const [rebuildRecords] = useState(() => loadRebuildRecords());
@@ -148,7 +151,7 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
 
   return (
     <div className="main-menu">
-      <div className="menu-masthead"><img src={logoIcon} alt="" /><span>COURT VISION<small>BASKETBALL MANAGEMENT</small></span><span className="menu-edition">THE PIXEL COURT</span>{onLocker && <ProfileChip onOpen={onLocker} />}{onLocker && <button className="menu-locker" onClick={onLocker}><PixelIcon name="trophy" size={16} /> GM Locker</button>}<InstallAppButton /><DiscordLink className="menu-discord" /></div>
+      <div className="menu-masthead"><img src={logoIcon} alt="" /><span>COURT VISION<small>BASKETBALL MANAGEMENT</small></span><span className="menu-edition">THE PIXEL COURT</span>{onLocker && <ProfileChip onOpen={onLocker} />}{onLocker && <button className="menu-locker" onClick={onLocker}><PixelIcon name="trophy" size={16} /> GM Locker</button>}{onCommunity && <AccountButton onCommunity={onCommunity} />}<InstallAppButton /><DiscordLink className="menu-discord" /></div>
       <div className="menu-hero">
         <div className="menu-hero-copy"><span className="pixel-eyebrow">BUILD A TEAM. WRITE ITS HISTORY.</span><h1>Your league.<br /><span>Your legacy.</span></h1><p>Scout the next great. Build your starting five.<br />Turn one season into a dynasty.</p></div>
         <div className="menu-player-scene" aria-hidden="true">
@@ -163,7 +166,7 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
       <MenuLegacy />
       <LevelUpNote onLocker={onLocker} />
 
-      <ThisWeek busy={busy} onRebuild={() => onStart('rebuild', 'normal', '', '', undefined, 'weekly')} onCareer={() => onStart('career', 'normal', '', '')} onHunt={() => onStart('legends', 'normal', '', '')} />
+      <ThisWeek onCommunity={onCommunity} busy={busy} onRebuild={() => onStart('rebuild', 'normal', '', '', undefined, 'weekly')} onCareer={() => onStart('career', 'normal', '', '')} onHunt={() => onStart('legends', 'normal', '', '')} />
 
       <div className="menu-section-heading"><h2>Choose your game</h2><span>FIVE WAYS TO MAKE HISTORY</span></div>
 
@@ -287,7 +290,7 @@ function MenuLegacy() {
 }
 
 /** This week: the Rebuild and Career of the Week (same seed for everyone until Monday) and the Daily Legend. */
-function ThisWeek({ busy, onRebuild, onCareer, onHunt }: { busy: string | null; onRebuild: () => void; onCareer: () => void; onHunt: () => void }) {
+function ThisWeek({ busy, onRebuild, onCareer, onHunt, onCommunity }: { busy: string | null; onRebuild: () => void; onCareer: () => void; onHunt: () => void; onCommunity?: () => void }) {
   const [now] = useState(() => new Date());
   const [board, setBoard] = useState(false);
   const rb = weeklyRebuild(), cw = weeklyCareer();
@@ -295,8 +298,8 @@ function ThisWeek({ busy, onRebuild, onCareer, onHunt }: { busy: string | null; 
   const streak = weeklyStreak();
   const days = Math.max(1, Math.ceil((weekEndsAt(now) - now.getTime()) / 86_400_000));
   return <section className="this-week" aria-label="This week's challenges">
-    <div className="this-week-head"><h2>This week</h2><span>{rb.week} · new challenges in {days} day{days === 1 ? '' : 's'}{streak > 1 ? ` · ${streak}-week streak` : ''}</span>{ONLINE_BOARDS && <button className="link-button" onClick={() => setBoard(true)}>Leaderboard</button>}</div>
-    {board && <WeeklyBoardDialog onClose={() => setBoard(false)} />}
+    <div className="this-week-head"><h2>This week</h2><span>{rb.week} · new challenges in {days} day{days === 1 ? '' : 's'}{streak > 1 ? ` · ${streak}-week streak` : ''}</span>{cloudEnabled && <button className="link-button" onClick={() => setBoard(true)}>Leaderboard</button>}</div>
+    {board && <WeeklyBoardDialog onClose={() => setBoard(false)} onCommunity={onCommunity} />}
     <div className="this-week-grid">
       <article><span className="pixel-eyebrow">REBUILD OF THE WEEK</span><b>{rb.scenario.title}</b>
         <p>{rb.scenario.startYear}-{String(rb.scenario.startYear + 1).slice(2)} {rb.scenario.team} · {rb.seasons} seasons · <em>{rb.twist.label}</em>. {rb.twist.id === 'standard' ? 'The same league for everyone.' : `${rb.twist.blurb} The same league for everyone.`}</p>

@@ -13,6 +13,7 @@ import { PlayerAvatar } from '../PlayerAvatar';
 import { HallOfFame } from '../career/CareerMode';
 import { BackupPanel } from '../BackupPanel';
 import { ProfilePanel } from '../ProfilePanel';
+import { cloudEnabled } from '../../cloud/account';
 import { noteCareers } from '../../profile/profile';
 import '../hunt/hunt.css';
 import '../career/career.css';
@@ -25,9 +26,11 @@ export function GmLocker({ onExit }: { onExit: () => void }) {
   const [album] = useState(() => loadAlbum().size);
   const [legacy, setLegacy] = useState<GmLegacy>(() => readLegacy());
   const [rebuild] = useState(() => loadRebuildRecords());
+  const [rarity, setRarity] = useState<Record<string, number>>({});
   useEffect(() => {
     let live = true;
     listCareers().then(c => { noteCareers(c); if (live) setCareers(c); });
+    if (cloudEnabled) void import('../../cloud/boards').then(m => m.achievementRarity()).then(r => { if (live) setRarity(r); }, () => {});
     const onLegacy = () => setLegacy(readLegacy());
     window.addEventListener(LEGACY_EVENT, onLegacy);
     return () => { live = false; window.removeEventListener(LEGACY_EVENT, onLegacy); };
@@ -104,7 +107,7 @@ export function GmLocker({ onExit }: { onExit: () => void }) {
       </div>
       <ul className="locker-achievements">{ACHIEVEMENTS.filter(a => !a.secret || legacy.achievements[a.id]).map(a => { const got = legacy.achievements[a.id]; return <li key={a.id} className={got ? 'got' : ''}>
         <PixelTrophy award={a.icon} size={30} dim={!got} />
-        <div><b>{a.name}</b><small>{a.description}</small>{got && <small className="locker-when">{formatSeasonYear(got.season)} · {got.leagueName}</small>}</div>
+        <div><b>{a.name}</b><small>{a.description}</small>{got && <small className="locker-when">{formatSeasonYear(got.season)} · {got.leagueName}</small>}{rarity[a.id] != null && <small className="locker-rarity">{rarity[a.id]}% of GMs have this</small>}</div>
       </li>; })}</ul>
       <p className="hint-text">Front-office achievements count in official leagues (Sandbox and God Mode leagues don't).</p>
     </section>

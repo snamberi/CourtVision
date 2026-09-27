@@ -281,3 +281,75 @@ html.lite *, html.lite *::before, html.lite *::after { backdrop-filter: none !im
 .post-score form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; }
 .post-score label { display: grid; gap: 4px; font-size: .8rem; }
 .post-score small { flex-basis: 100%; }
+
+/* ---- Accounts */
+.account-chip { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.account-chip b { font-weight: 600; }
+.sync-dot { width: 8px; height: 8px; background: var(--cv-text-muted, #94a0b2); display: inline-block; }
+.sync-dot.ok { background: var(--cv-green, #55c878); }
+.sync-dot.syncing { background: var(--cv-gold, #ffd166); }
+.sync-dot.error { background: var(--cv-red, #e85d5d); }
+.cloud-modal .share-box { width: min(460px, 100%); text-align: left; }
+.cloud-modal h2 { margin: 6px 0 6px; }
+.signin-options { display: grid; gap: 8px; margin: 14px 0; }
+.signin-options button { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 10px 14px; font-weight: 600; }
+.signin-discord { background: #5865f2 !important; border-color: #3c45a5 !important; color: #fff !important; }
+.signin-google { background: #fff !important; border-color: #c9ced6 !important; color: #1f1f1f !important; }
+.signin-email { display: grid; gap: 6px; margin: 6px 0; }
+.signin-email label { font-size: .82rem; color: var(--cv-text-muted, #94a0b2); }
+.signin-email > div { display: flex; gap: 8px; flex-wrap: wrap; }
+.signin-email input { flex: 1 1 200px; }
+.signin-fine { font-size: .75rem; }
+.signin-strip { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin: 10px 0; padding: 10px 14px; background: var(--cv-surface-raised, #192333); border: 2px solid var(--cv-orange, #f47b20); font-size: .88rem; }
+
+/* ---- Community */
+.community-tabs { flex-wrap: wrap; margin-bottom: 12px; }
+.board-picker { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.board-options { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 6px 0; }
+.board-options select { max-width: 100%; }
+.wb-title { color: var(--cv-text-muted, #94a0b2); font-size: .72rem; }
+.ranked-me, .pvp-me { display: flex; gap: 14px; align-items: center; margin: 8px 0 12px; }
+.ranked-tier { display: grid; place-items: center; min-width: 92px; padding: 8px 10px; background: var(--cv-bg, #0b1018); border: 2px solid var(--cv-gold, #ffd166); color: var(--cv-gold, #ffd166); }
+.ranked-tier small { font-size: .6rem; color: var(--cv-text-muted, #94a0b2); }
+.ranked-tier b { font-family: 'Oswald', sans-serif; font-size: 1.5rem; line-height: 1.1; }
+.tier-ladder { list-style: none; margin: 8px 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 6px; }
+.tier-ladder li { display: grid; gap: 2px; padding: 6px 8px; background: var(--cv-surface, #121926); border: 2px solid; font-size: .8rem; }
+.tier-ladder li.current { box-shadow: inset 0 0 0 2px currentColor; }
+.tier-ladder small { color: var(--cv-text-muted, #94a0b2); font-variant-numeric: tabular-nums; }
+.ranked-history { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.ranked-history li { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; font-size: .88rem; }
+.ranked-history small { font-variant-numeric: tabular-nums; color: var(--cv-text-muted, #94a0b2); }
+.pvp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; margin: 10px 0; }
+.pvp-squad { padding: 10px 12px; background: var(--cv-surface, #121926); border: 2px solid var(--cv-border, #2a3546); }
+.pvp-squad h4 { margin: 0 0 6px; }
+.pvp-squad ol { list-style: none; margin: 0 0 6px; padding: 0; display: grid; gap: 3px; }
+.pvp-squad li { display: grid; grid-template-columns: 34px 1fr auto; gap: 8px; font-size: .86rem; }
+.pvp-squad li small { color: var(--cv-text-muted, #94a0b2); font-family: 'Press Start 2P', monospace; font-size: .5rem; align-self: center; }
+.pvp-squad li span { color: var(--cv-text-muted, #94a0b2); font-variant-numeric: tabular-nums; }
+.pvp-squad > small { color: var(--cv-text-muted, #94a0b2); font-size: .75rem; }
+.pvp-games { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 2px; font-size: .85rem; font-variant-numeric: tabular-nums; }
+.pvp-games li.won { color: var(--cv-green, #55c878); }
+.achievement-chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.achievement-chips li { display: grid; padding: 6px 10px; background: var(--cv-surface, #121926); border: 1px solid var(--cv-border, #2a3546); font-size: .82rem; }
+.achievement-chips small, .locker-rarity { color: var(--cv-gold, #ffd166); font-size: .72rem; }
+.cv-inline-avatar { display: inline-block; vertical-align: middle; margin-right: 6px; }
+.account-danger { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--cv-border, #2a3546); }
+.sync-line.error { color: var(--cv-red, #e85d5d); }
+.league-code-board { flex-basis: 100%; }
+.profile-rebuilds { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.profile-rebuilds li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: baseline; font-size: .9rem; }
+.profile-rebuilds .rb-stars { color: var(--cv-gold, #ffd166); }
+.profile-rebuilds small { color: var(--cv-text-muted, #94a0b2); font-variant-numeric: tabular-nums; }
+
+/* Masthead with the account controls: wraps onto a second row on narrow screens. */
+.menu-masthead { flex-wrap: wrap; row-gap: 10px; }
+.menu-masthead .account-chip { font-size: 13px; padding: 6px 10px; }
+@media (max-width: 760px) {
+  .menu-masthead { padding-right: 44px; }
+  .menu-masthead > span:first-of-type { flex: 1 1 auto; }
+  .menu-masthead .profile-chip span { display: none; }
+  .menu-masthead .profile-chip, .menu-masthead .menu-locker { margin-left: 0; }
+}
+@media (max-width: 480px) {
+  .menu-masthead .menu-locker, .menu-masthead .account-chip, .menu-masthead .profile-chip { font-size: 12px; padding: 5px 7px; }
+}

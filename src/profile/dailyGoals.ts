@@ -1,5 +1,6 @@
 import type { League } from '../simulation/league';
 import type { TeamBoxScore } from '../simulation/boxscore';
+import { localRead, type Read } from '../lib/kv';
 
 /*
  * Daily goals for the GM game: three small goals a day (the same three for everyone, new at 00:00 UTC), met by games
@@ -63,9 +64,9 @@ function saveDaily(s: DailyState): void {
   } catch { /* storage blocked */ }
 }
 
-export function dailyGoalXp(): { xp: number; done: number; days: number } {
+export function dailyGoalXp(read: Read = localRead): { xp: number; done: number; days: number } {
   try {
-    const hist = Object.values(JSON.parse(localStorage.getItem(HISTORY_KEY) ?? '{}') as Record<string, { done: number; xp: number }>);
+    const hist = Object.values(JSON.parse(read(HISTORY_KEY) ?? '{}') as Record<string, { done: number; xp: number }>);
     return { xp: hist.reduce((n, h) => n + h.xp, 0), done: hist.reduce((n, h) => n + h.done, 0), days: hist.filter(h => h.done).length };
   } catch { return { xp: 0, done: 0, days: 0 }; }
 }

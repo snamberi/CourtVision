@@ -31,6 +31,8 @@ export function routeHash(route: GameRoute): string {
 export function analyticsPath(hash: string): string {
   if (hash.startsWith('#/privacy')) return '/privacy';
   if (hash === '#/choose-team') return '/choose-team';
+  if (hash === '#/community') return '/community';
+  if (hash.startsWith('#/u/')) return '/profile'; // never the username
   const route = parseRoute(hash);
   return route ? `/game/${route.tab}` : '/menu';
 }

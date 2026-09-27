@@ -1,11 +1,11 @@
 {
   "title": "Privacy Policy",
   "product": "CourtVision",
-  "lastUpdated": "September 29, 2026",
+  "lastUpdated": "September 27, 2026",
   "contactEmail": "",
   "intro": [
     "This Privacy Policy explains what information CourtVision (\"CourtVision\", \"we\", \"us\", \"our\") handles when you use the CourtVision basketball simulator, both the web version and the downloadable Windows edition. We wrote it to be read, so it is plain and specific about what the app actually does.",
-    "**The short version:** CourtVision has no accounts and no server-side saves. Your leagues stay in your own browser. The web version uses Vercel Web Analytics and Umami Cloud for aggregate traffic statistics and Google AdSense for advertising when allowed. The offline Windows edition loads neither service."
+    "**The short version:** Playing needs no account, and your GM leagues stay in your own browser. If you choose to create an optional account (web version only), we store your GM name, the sign-in details your provider gives us, and your game progress so it follows you across devices and appears on public leaderboards. The web version uses Vercel Web Analytics and Umami Cloud for aggregate traffic statistics and Google AdSense for advertising when allowed. The offline Windows edition loads none of these services."
   ],
   "sections": [
     {
@@ -50,9 +50,9 @@
         {
           "type": "ul",
           "items": [
-            "your name, email address, postal address, phone number, or any account credentials (there are no accounts);",
+            "your name, postal address or phone number, and any password (sign-in uses Discord, Google or an email link, so we never see or store a password);",
             "payment information (CourtVision is free and has no purchases);",
-            "your leagues, rosters, trades, notes, custom players, or any other content you create in the game;",
+            "your GM leagues, rosters, trades, notes, custom players, or careers still in progress (they stay in your browser even with an account);",
             "your precise location, contacts, photos, microphone, or camera data;",
             "government identifiers, health information, or other sensitive personal information."
           ]
@@ -113,6 +113,11 @@
               "Cache storage",
               "cv-*",
               "Web version: a copy of the game's own files (the page, scripts, styles, icons and NBA history data), so the game opens faster and works offline. It holds no personal data and can be cleared with the site's data"
+            ],
+            [
+              "localStorage",
+              "courtvision-auth",
+              "Only if you sign in (web version): your sign-in session, so you stay signed in. Signing out removes it. It is never included in backup files"
             ]
           ]
         },
@@ -263,7 +268,7 @@
         },
         {
           "type": "p",
-          "text": "**Online weekly leaderboards (web version only, optional).** Posting a Rebuild of the Week or Career of the Week result sends the name you type, the result (season records or career totals and the created player's name) and a random identifier created in your browser to our leaderboard, which runs on Vercel and stores entries in an Upstash Redis database. Your name and result are shown publicly on that week's board, and entries are deleted automatically after 90 days. To limit spam, your IP address is combined with the current hour into a one-way hash that is kept for one hour; the IP address itself is not stored. Nothing is sent unless you press Post. Contact us to have an entry removed sooner."
+          "text": "**Accounts, cloud progress and leaderboards (web version only, optional).** If you create an account, sign-in is handled by Supabase Auth using Discord, Google or a one-time email link. We receive and store your email address, the provider you used and its account identifier, and the GM name you choose. While you are signed in, your game progress is synced to our database hosted by Supabase: your GM Profile level and cosmetics, achievements, League Hunt, Rebuild and weekly results, daily goals, retired Career Mode players, league-code results and your League Hunt PvP squad and matches. GM leagues and careers still in progress are not uploaded. Your GM name, title, level, public statistics, retired created players, leaderboard results, PvP rating and the GMs you follow are shown publicly on leaderboards and your profile page. Reports you file about a name are seen only by us. Your data is kept while your account exists. You can delete your account at any time in Community → Your account; this permanently deletes your account, profile, cloud progress and every leaderboard entry (progress stored on your device is not affected). See [Supabase's privacy policy](https://supabase.com/privacy)."
         },
         {
           "type": "p",

@@ -1,3 +1,4 @@
+import { localRead, type Read } from '../lib/kv';
 import { DECKS, DIFFICULTIES, type HuntRun, type DeckId, type Difficulty } from './run';
 
 /* League Hunt keeps its run, records and album in this browser (they are small: card ids and progress). Storage can
@@ -24,8 +25,8 @@ export function saveRun(run: HuntRun): void {
 }
 export function clearRun(): void { try { localStorage.removeItem(RUN_KEY); } catch { /* storage blocked */ } }
 
-export function loadRecords(): HuntRecords {
-  try { return { ...EMPTY, ...(JSON.parse(localStorage.getItem(RECORDS_KEY) ?? '{}') as Partial<HuntRecords>) }; } catch { return { ...EMPTY }; }
+export function loadRecords(read: Read = localRead): HuntRecords {
+  try { return { ...EMPTY, ...(JSON.parse(read(RECORDS_KEY) ?? '{}') as Partial<HuntRecords>) }; } catch { return { ...EMPTY }; }
 }
 
 /** Counts a finished run once (by its seed); a Daily Legend also records the day's result. */
