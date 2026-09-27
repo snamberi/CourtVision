@@ -74,6 +74,8 @@ import { acceptJobOffer, becomeSpectator, ensureFrontOffice, markSandboxUse, ACH
 import { JobOffersDialog, OwnerReviewDialog } from './components/FrontOfficePanels';
 import { recordLeagueLegacy } from './storage/gmLegacy';
 import { challengeProgress, recordRebuild, scenarioById } from './simulation/rebuildChallenge';
+import { weeklyRebuild, recordWeekly } from './retention/weekly';
+import { track, trackOnce } from './analytics/track';
 import { ChallengeBanner } from './components/ChallengeBanner';
 import { BackupPanel } from './components/BackupPanel';
 import { canPlaySummerLeague, ensureUpcomingDraftClass, simulateSummerLeague } from './simulation/draftSeason';
@@ -378,16 +380,20 @@ function App() {
 
   const [menuBusy, setMenuBusy] = useState<string | null>(null);
   const startGameMode = (mode: GameMode, difficulty: TradeDifficulty, year: string, leagueName: string, real?: RealLeagueOptions, scenarioId?: string) => {
+    if (mode !== 'rebuild') track('mode_start', { mode, variant: mode === 'real' ? real?.source ?? 'settings' : 'menu' });
     if (mode === 'rebuild') {
-      const sc = scenarioId ? scenarioById(scenarioId) : undefined;
+      // The Rebuild of the Week: this week's scenario and twist, from a seed shared by everyone.
+      const weekly = scenarioId === 'weekly' ? weeklyRebuild() : null;
+      const sc = weekly ? weekly.scenario : scenarioId ? scenarioById(scenarioId) : undefined;
       if (!sc) return;
       setMenuBusy('Loading NBA history…');
       historyTools().then(({ h, buildHistoricalLeague }) => new Promise<void>(resolve => setTimeout(() => {
         setMenuBusy('Building the league…');
-        const built = buildHistoricalLeague(h, sc.startYear, { realDevelopment: true, difficulty, seed: Math.floor(Math.random() * 1_000_000) });
+        const built = buildHistoricalLeague(h, sc.startYear, { realDevelopment: true, difficulty: weekly?.twist.hardTrades ? 'hard' : difficulty, seed: weekly ? weekly.seed : Math.floor(Math.random() * 1_000_000) });
         if (!built.league.teams.some(t => t.teamId === sc.team)) throw new Error(`${sc.team} is not in the ${sc.startYear} league.`);
-        const league = { ...built.league, rebuildChallenge: { id: sc.id, teamId: sc.team, startSeason: built.league.season ?? String(sc.startYear), seasons: sc.seasons } };
-        enterApp(league, built.extras, sc.team, `Rebuild: ${sc.title}`);
+        const league = { ...built.league, rebuildChallenge: { id: sc.id, teamId: sc.team, startSeason: built.league.season ?? String(sc.startYear), seasons: weekly ? weekly.seasons : sc.seasons, ...(weekly ? { weekly: { week: weekly.week, twist: weekly.twist.id } } : {}) } };
+        enterApp(league, built.extras, sc.team, weekly ? `Rebuild of the Week ${weekly.week}: ${sc.title}` : `Rebuild: ${sc.title}`);
+        track('mode_start', { mode: 'rebuild', variant: weekly ? 'weekly' : sc.id });
         setTab('dashboard');
         resolve();
       }, 20))).catch((err: unknown) => pushToast(`Could not start the challenge: ${err instanceof Error ? err.message : String(err)}`, 'error'))
@@ -943,7 +949,11 @@ function App() {
   useEffect(() => {
     if (screen !== 'app' || !activeSaveId || !challengeDone || challengeDone === 'active') return;
     const p = challengeProgress(league);
-    if (p) recordRebuild(p, activeSaveId);
+    if (p) {
+      recordRebuild(p, activeSaveId);
+      if (p.config.weekly && p.official) recordWeekly('rebuild', p.config.weekly.week, { best: p.score, stars: p.stars, label: p.scenario.title });
+      trackOnce(`rebuild-${activeSaveId}`, 'mode_finish', { mode: 'rebuild', result: p.status, stars: p.stars, weekly: !!p.config.weekly });
+    }
   }, [screen, activeSaveId, challengeDone]); // eslint-disable-line react-hooks/exhaustive-deps
   // Your all-leagues GM legacy follows this league's front office (clean leagues only; see storage/gmLegacy.ts).
   const saveName = saveSummaries.find(sv => sv.id === activeSaveId)?.name ?? 'League';

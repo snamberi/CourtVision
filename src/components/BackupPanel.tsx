@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import type { Backup, BackupSummary } from '../storage/backup';
 import { PixelIcon } from './PixelIcon';
+import { track } from '../analytics/track';
 
 const describe = (s: BackupSummary) => `${s.leagues} GM league${s.leagues === 1 ? '' : 's'} · ${s.careers} career${s.careers === 1 ? '' : 's'}${s.hunts ? ' · League Hunt' : ''} · ${s.achievements} achievement${s.achievements === 1 ? '' : 's'}`;
 
@@ -22,6 +23,7 @@ export function BackupPanel({ compact = false }: { compact?: boolean }) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a'); a.href = url; a.download = name; a.click();
       setTimeout(() => URL.revokeObjectURL(url), 5000);
+      track('backup', { action: 'download', leagues: summary.leagues, careers: summary.careers });
       setMsg({ text: `Saved ${name} (${summary.sizeKb.toLocaleString()} KB): ${describe(summary)}.`, tone: 'ok' });
     } catch (e) { setMsg({ text: `Could not make the backup: ${e instanceof Error ? e.message : String(e)}`, tone: 'err' }); }
     setBusy(null);
@@ -42,6 +44,7 @@ export function BackupPanel({ compact = false }: { compact?: boolean }) {
     setBusy('Restoring…');
     try {
       await (await mod()).restoreBackup(pending.backup);
+      track('backup', { action: 'restore' });
       setMsg({ text: 'Restored. Reloading…', tone: 'ok' });
       setTimeout(() => window.location.reload(), 600);
     } catch (e) { setMsg({ text: `Could not restore: ${e instanceof Error ? e.message : String(e)}`, tone: 'err' }); setBusy(null); }

@@ -23,12 +23,21 @@ export const SCENARIOS: RebuildScenario[] = [
   { id: 'knicks15', title: 'Garden of Despair', team: 'NYK', startYear: 2014, seasons: 6, difficulty: 'Very hard', blurb: '17-65 in the Mecca. Every free agent says no. Make them say yes.' },
   { id: 'lakers17', title: 'The Post-Kobe Lakers', team: 'LAL', startYear: 2016, seasons: 5, difficulty: 'Hard', blurb: 'Kobe said Mamba out. Five years to bring a ring back to Los Angeles.' },
   { id: 'kings17', title: 'The Longest Drought', team: 'SAC', startYear: 2016, seasons: 7, difficulty: 'Brutal', blurb: 'Ten straight years without the playoffs, and counting. Break it, then win it all.' },
+  { id: 'mavs94', title: 'Eleven and Seventy-One', team: 'DAL', startYear: 1993, seasons: 7, difficulty: 'Brutal', blurb: 'The worst team in basketball, two years running. Jim Jackson and Jamal Mashburn are a start. Finish it.' },
+  { id: 'nuggets99', title: 'Mile-High Misery', team: 'DEN', startYear: 1998, seasons: 6, difficulty: 'Brutal', blurb: '11-71 and a 23-game losing streak. McDyess, Van Exel and a young Billups. Make Denver matter.' },
+  { id: 'heat09', title: 'Wade Alone', team: 'MIA', startYear: 2008, seasons: 5, difficulty: 'Hard', blurb: 'Two years after the title, 15-67. Wade is healthy again and the second pick is in. Get him help, fast.' },
+  { id: 'hawks06', title: 'Up From 13-69', team: 'ATL', startYear: 2005, seasons: 6, difficulty: 'Very hard', blurb: 'Joe Johnson just arrived, Josh Smith can fly, and the arena is empty. Fill it with a banner.' },
+  { id: 'orlando05', title: 'Orlando After T-Mac', team: 'ORL', startYear: 2004, seasons: 6, difficulty: 'Very hard', blurb: '21-61, McGrady traded, and an 18-year-old Dwight Howard in the middle. Build around him.' },
+  { id: 'nets11', title: 'Twelve and Seventy', team: 'NJN', startYear: 2010, seasons: 6, difficulty: 'Brutal', blurb: 'A 0-18 start, a 12-70 finish, and a move to Brooklyn coming. Arrive with a contender.' },
+  { id: 'bucks15', title: 'The Greek Freak Project', team: 'MIL', startYear: 2014, seasons: 6, difficulty: 'Hard', blurb: '15-67 last year, but a skinny 19-year-old named Giannis is on the roster. Speed up history.' },
   { id: 'pistons21', title: 'Motor City Reset', team: 'DET', startYear: 2020, seasons: 5, difficulty: 'Very hard', blurb: 'Twenty wins and a blank slate. Five seasons to bring back the Bad Boys.' },
 ];
 export const scenarioById = (id: string) => SCENARIOS.find(s => s.id === id);
 
 /** Stored on the league when a challenge starts; everything else is worked out from the league's history. */
-export interface RebuildChallengeConfig { id: string; teamId: string; startSeason: string; seasons: number }
+export interface RebuildChallengeConfig { id: string; teamId: string; startSeason: string; seasons: number;
+  /** Set for the Rebuild of the Week: the week (e.g. "2026-W39") and its twist. */
+  weekly?: { week: string; twist: string } }
 export interface ChallengeSeason { season: string; wins: number; losses: number; finish: PlayoffFinish }
 export type ChallengeStatus = 'active' | 'won' | 'failed';
 export interface ChallengeProgress {

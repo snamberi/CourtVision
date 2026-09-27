@@ -13,6 +13,7 @@ import { BOOSTS } from '../../hunt/boosts';
 import { BUFFS } from '../../hunt/buffs';
 import { COACH_BY_ID, COACH_STYLE, coachRarity, type HuntCoach } from '../../hunt/coaches';
 import type { ChemistryBond } from '../../hunt/chemistry';
+import { track, trackOnce } from '../../analytics/track';
 import { loadRun, saveRun, clearRun, loadRecords, recordRun, type HuntRecords } from '../../hunt/storage';
 import { PlayerAvatar } from '../PlayerAvatar';
 import { PixelIcon } from '../PixelIcon';
@@ -37,7 +38,11 @@ export function LeagueHunt({ onExit }: { onExit: () => void }) {
     setRunState(r);
     if (!r) clearRun();
     else saveRun(r);
-    if (r && (r.stage === 'won' || r.stage === 'lost') && run?.stage !== r.stage) setRecords(recordRun(r));
+    if (r && (r.stage === 'won' || r.stage === 'lost') && run?.stage !== r.stage) {
+      setRecords(recordRun(r));
+      trackOnce(`hunt-${r.seed}`, 'mode_finish', { mode: 'hunt', result: r.stage, reached: r.seriesIndex + 1, difficulty: r.difficulty ?? 'pro', deck: r.deck ?? 'classic', daily: !!r.daily });
+    }
+    if (r && r.stage === 'draft' && r.seed !== run?.seed) track('mode_start', { mode: 'hunt', variant: r.daily ? 'daily' : 'run', difficulty: r.difficulty ?? 'pro', deck: r.deck ?? 'classic' });
   };
 
   // While the scoreboard runs, the header still shows the lives and coins from before the series (no spoilers).

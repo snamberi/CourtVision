@@ -1,7 +1,7 @@
 {
   "title": "Privacy Policy",
   "product": "CourtVision",
-  "lastUpdated": "September 26, 2026",
+  "lastUpdated": "September 27, 2026",
   "contactEmail": "",
   "intro": [
     "This Privacy Policy explains what information CourtVision (\"CourtVision\", \"we\", \"us\", \"our\") handles when you use the CourtVision basketball simulator, both the web version and the downloadable Windows edition. We wrote it to be read, so it is plain and specific about what the app actually does.",
@@ -17,7 +17,7 @@
           "items": [
             "**No account, no sign-up.** We never ask for your name, email address, phone number, or password to play.",
             "**Your leagues stay on your device.** Saved leagues, rosters, settings, and history are stored in your browser (IndexedDB and localStorage) and are not uploaded to us.",
-            "**Web traffic statistics.** The web version uses Vercel Web Analytics and Umami Cloud, neither of which sets analytics cookies. We send page categories such as Coaching or Dashboard, not league contents, save identifiers, player names, or game identifiers. See Section 7.",
+            "**Web traffic statistics.** The web version uses Vercel Web Analytics and Umami Cloud, neither of which sets analytics cookies. We send page categories such as Coaching or Dashboard, and to Umami a few anonymous gameplay events (for example that a game mode was started or finished), not league contents, save identifiers, player names, or game identifiers. See Section 7.",
             "**The web version shows ads.** Ads are served by Google AdSense, which may use cookies and similar technologies. See Section 5.",
             "**The Windows edition makes no network requests of its own.** It runs from a local server on your own computer, shows no Google ads, and keeps everything on your machine.",
             "**Not for children under 13.** See Section 11."
@@ -98,6 +98,21 @@
               "localStorage",
               "courtvision:lastActiveSaveId",
               "The identifier of the save you had open last, so the game can reopen it"
+            ],
+            [
+              "IndexedDB",
+              "courtvision-careers",
+              "Your Career Mode players and their leagues"
+            ],
+            [
+              "localStorage",
+              "cv-* and courtvision:* keys",
+              "Progress and preferences for the game modes, such as League Hunt runs, challenge records, weekly results, achievements, the graphics setting and which update notes you have seen"
+            ],
+            [
+              "Cache storage",
+              "cv-*",
+              "Web version: a copy of the game's own files (the page, scripts, styles, icons and NBA history data), so the game opens faster and works offline. It holds no personal data and can be cleared with the site's data"
             ]
           ]
         },
@@ -248,7 +263,7 @@
         },
         {
           "type": "p",
-          "text": "**Umami Cloud analytics (web version only).** We also use Umami, a cookie-free analytics service, to count page views. It receives the same page categories as Vercel (for example /game/standings), plus the referrer, browser, operating system, device type, screen size, language and approximate location (country, region and city) derived from your IP address. Umami does not use cookies or store your IP address; it counts visitors with a salted hash that rotates periodically. Our integration turns off automatic tracking and strips save IDs, player or game details, query strings and fragments from every page view. No league data or gameplay events are sent. See [Umami's privacy information](https://umami.is/privacy). It is not loaded in the Windows edition."
+          "text": "**Umami Cloud analytics (web version only).** We also use Umami, a cookie-free analytics service, to count page views. It receives the same page categories as Vercel (for example /game/standings), plus the referrer, browser, operating system, device type, screen size, language and approximate location (country, region and city) derived from your IP address. Umami does not use cookies or store your IP address; it counts visitors with a salted hash that rotates periodically. Our integration turns off automatic tracking and strips save IDs, player or game details, query strings and fragments from every page view. We also send a small set of anonymous gameplay events so we know which parts of the game are played: which mode was started or finished and its broad outcome (for example \"career, retired, Hall of Fame\" or \"League Hunt, lost at series 6\"), share-card and backup use, and app installs. Events carry only fixed labels and whole numbers, never names you typed, league contents, save or player identifiers, or free text. No events are sent when your browser sends a Do Not Track or Global Privacy Control signal. See [Umami's privacy information](https://umami.is/privacy). It is not loaded in the Windows edition."
         },
         {
           "type": "p",

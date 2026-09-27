@@ -36,6 +36,8 @@ export interface CareerMeta {
   playerId: string; startSeason: string;
   /** A past draft he entered (the league is NBA history from that year); absent for today's league. */
   draftYear?: number;
+  /** Career of the Week (e.g. "2026-W39"): the wheel and the league came from that week's shared seed. */
+  weekly?: string;
   status: 'active' | 'retired';
   draft?: { pick: number | null; teamId: string | null; teamName: string; season: string };
   years: CareerYear[];

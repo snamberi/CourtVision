@@ -3,6 +3,7 @@ import type { GameResult } from '../simulation/boxscore';
 import type { GameEvidence } from '../simulation/playerDevelopment';
 import type { PlayerSeason } from '../simulation/types';
 import { runEngineJob } from './engineJob';
+import { liteMode, LITE_ENGINE_WORKERS } from '../lib/performanceMode';
 
 export interface EngineJob { id: number; input: PreparedGame['input']; pack: boolean }
 export type EngineReply = { id: number; result: GameResult; evidence: GameEvidence } | { id: number; error: string };
@@ -104,7 +105,7 @@ export interface EngineWorkers {
  */
 export function startEngineWorkers(): EngineWorkers {
   const cores = typeof navigator !== 'undefined' ? navigator.hardwareConcurrency ?? 2 : 2;
-  let count = Math.min(8, cores - 1);
+  let count = Math.min(liteMode() ? LITE_ENGINE_WORKERS : 8, cores - 1);
   try {
     const setting = localStorage.getItem('cv-engine-workers');
     if (setting != null && setting.trim() !== '' && Number.isFinite(Number(setting))) count = Math.max(0, Math.min(16, Math.round(Number(setting))));

@@ -27,6 +27,11 @@ import '@fontsource/inter/latin-ext-700.css'
 import './index.css'
 import App from './App.tsx'
 import { WebAnalytics } from './components/WebAnalytics'
+import { startPwa } from './pwa/pwa'
+import { applyPerformanceMode } from './lib/performanceMode'
+
+applyPerformanceMode()
+startPwa()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { ShareCardSpec } from '../share/shareCard';
 import { PixelIcon } from './PixelIcon';
+import { track } from '../analytics/track';
 
 /** "Share card": opens a preview of the result as an image, with Download, Copy and (on phones) Share. */
 export function ShareCardButton({ spec, fileName, text, label = 'Share card' }: { spec: ShareCardSpec; fileName: string; text: string; label?: string }) {
@@ -24,6 +25,7 @@ export function ShareCardButton({ spec, fileName, text, label = 'Share card' }: 
     const m = await import('../share/shareCard');
     try {
       const r = await m.shareImage(img.blob, fileName, text, how);
+      track('share_card', { kind: fileName.split(/[-.]/)[0], how: r });
       setStatus(r === 'shared' ? 'Shared!' : r === 'copied' ? 'Image copied: paste it into Discord or anywhere.' : 'Image saved.');
     } catch { setStatus('Sharing was cancelled.'); }
   };

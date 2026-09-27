@@ -10,30 +10,69 @@
       "h1": "About Court Vision",
       "lead": "Court Vision is a free basketball management and simulation game that runs in your browser. You run a franchise (drafting, trading, signing, coaching) and every game is played out possession by possession by a full simulation engine, not decided by a coin flip.",
       "sections": [
-        { "h2": "What you can do", "blocks": [
-          { "type": "ul", "items": [
-            "**Run a franchise (GM mode).** Draft, trade, negotiate contracts with agents, hire coaches, handle injuries, set rotations and play through the regular season, the In-Season Cup, the trade deadline, the playoffs and the offseason. See [How to Play](how-to-play.html).",
-            "**Play real NBA history.** Start a league in any season from 1946-47 to today with real players, real rosters and their real careers, awards and champions. See [Real NBA history](guides/real-nba-history.html).",
-            "**League Hunt.** Spin a six-man squad from all of basketball history and win ten best-of-seven series against the great teams of every era. See the [League Hunt guide](guides/league-hunt.html).",
-            "**Career Mode.** Create one player and live his entire career, from draft night to the Hall of Fame and the all-time Top 100. See the [Career Mode guide](guides/career-mode.html).",
-            "**Rebuild Challenge.** Take over a real team at its lowest point and win a title before time runs out. See the [Rebuild Challenge guide](guides/rebuild-challenge.html)."
-          ] }
-        ] },
-        { "h2": "How the simulation works", "blocks": [
-          { "type": "p", "text": "Every game is simulated play by play. Players have more than seventy ratings (shooting from every zone, finishing, passing, defense, rebounding, athleticism, basketball IQ and more) and tendencies that decide what they try to do. Coaches set pace, three-point frequency, defensive schemes and rotations. The engine is calibrated against real NBA league averages for pace, shooting, fouls and assists, so box scores look like real box scores." },
-          { "type": "p", "text": "You can watch any game on a pixel-art court, coach it live from the sideline (timeouts, play calls, double teams, last-shot plays), or simulate whole seasons in seconds. Simulation runs in background workers, so the game stays responsive while a season plays out." }
-        ] },
-        { "h2": "Your saves stay with you", "blocks": [
-          { "type": "p", "text": "Court Vision has no accounts. Everything you play is saved in your own browser. You can export a single backup file with every league, career and record from the GM Locker or the main menu, and restore it on any device. The [Privacy Policy](privacy.html) explains exactly what is stored and how advertising works on the web version." },
-          { "type": "p", "text": "There is also an offline Windows edition that runs without an internet connection and contains no ads." }
-        ] },
-        { "h2": "Data and credits", "blocks": [
-          { "type": "p", "text": "The built-in NBA history (statistics, awards and drafts) comes from [Basketball-Reference.com](https://www.basketball-reference.com/), compiled by Sumitro Datta in the [bball-reference-datasets](https://github.com/sumitrodatta/bball-reference-datasets) project. Champions, Finals MVPs, All-Star Game MVPs and Coaches of the Year come from [NBA.com](https://www.nba.com/news/history-all-time-awards). Player ratings, skill attributes and team names are Court Vision's own, computed from the statistics." },
-          { "type": "p", "text": "Court Vision is an independent fan project. It is not affiliated with or endorsed by the NBA, its teams, its players or these data sources." }
-        ] },
-        { "h2": "Community", "blocks": [
-          { "type": "p", "text": "Share your leagues and careers, report bugs and suggest features on our [Discord server](https://discord.gg/5uGK5HDS8e). New features ship regularly; see the [changelog](changelog.html)." }
-        ] }
+        {
+          "h2": "What you can do",
+          "blocks": [
+            {
+              "type": "ul",
+              "items": [
+                "**Run a franchise (GM mode).** Draft, trade, negotiate contracts with agents, hire coaches, handle injuries, set rotations and play through the regular season, the In-Season Cup, the trade deadline, the playoffs and the offseason. See [How to Play](how-to-play.html).",
+                "**Play real NBA history.** Start a league in any season from 1946-47 to today with real players, real rosters and their real careers, awards and champions. See [Real NBA history](guides/real-nba-history.html).",
+                "**League Hunt.** Spin a six-man squad from all of basketball history and win ten best-of-seven series against the great teams of every era. See the [League Hunt guide](guides/league-hunt.html).",
+                "**Career Mode.** Create one player and live his entire career, from draft night to the Hall of Fame and the all-time Top 100. See the [Career Mode guide](guides/career-mode.html).",
+                "**Rebuild Challenge.** Take over a real team at its lowest point and win a title before time runs out. See the [Rebuild Challenge guide](guides/rebuild-challenge.html)."
+              ]
+            }
+          ]
+        },
+        {
+          "h2": "How the simulation works",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "Every game is simulated play by play. Players have more than seventy ratings (shooting from every zone, finishing, passing, defense, rebounding, athleticism, basketball IQ and more) and tendencies that decide what they try to do. Coaches set pace, three-point frequency, defensive schemes and rotations. The engine is calibrated against real NBA league averages for pace, shooting, fouls and assists, so box scores look like real box scores."
+            },
+            {
+              "type": "p",
+              "text": "You can watch any game on a pixel-art court, coach it live from the sideline (timeouts, play calls, double teams, last-shot plays), or simulate whole seasons in seconds. Simulation runs in background workers, so the game stays responsive while a season plays out."
+            }
+          ]
+        },
+        {
+          "h2": "Your saves stay with you",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "Court Vision has no accounts. Everything you play is saved in your own browser. You can export a single backup file with every league, career and record from the GM Locker or the main menu, and restore it on any device. The [Privacy Policy](privacy.html) explains exactly what is stored and how advertising works on the web version."
+            },
+            {
+              "type": "p",
+              "text": "There is also an offline Windows edition that runs without an internet connection and contains no ads."
+            }
+          ]
+        },
+        {
+          "h2": "Data and credits",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "The built-in NBA history (statistics, awards and drafts) comes from [Basketball-Reference.com](https://www.basketball-reference.com/), compiled by Sumitro Datta in the [bball-reference-datasets](https://github.com/sumitrodatta/bball-reference-datasets) project. Champions, Finals MVPs, All-Star Game MVPs and Coaches of the Year come from [NBA.com](https://www.nba.com/news/history-all-time-awards). Player ratings, skill attributes and team names are Court Vision's own, computed from the statistics."
+            },
+            {
+              "type": "p",
+              "text": "Court Vision is an independent fan project. It is not affiliated with or endorsed by the NBA, its teams, its players or these data sources."
+            }
+          ]
+        },
+        {
+          "h2": "Community",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "Share your leagues and careers, report bugs and suggest features on our [Discord server](https://discord.gg/5uGK5HDS8e). New features ship regularly; see the [changelog](changelog.html)."
+            }
+          ]
+        }
       ]
     },
     {
@@ -44,46 +83,88 @@
       "h1": "How to Play",
       "lead": "This guide walks you through your first season as general manager, from picking a team to your first offseason. Everything here applies to both random leagues and real NBA history leagues.",
       "sections": [
-        { "h2": "1. Start a league", "blocks": [
-          { "type": "ol", "items": [
-            "On the main menu, choose **Random Players** (a freshly generated 30-team league) or **Real League** (real NBA history from any season since 1946-47).",
-            "Pick a trade difficulty. **Normal** means trades need roughly matched value; **Hard** puts a premium on young high-potential players.",
-            "Choose a team to run, or create an expansion team through a real expansion draft where every club files a protection list first.",
-            "Pick **Simple** navigation for a guided sidebar, or **Full** to see every page. You can switch any time."
-          ] }
-        ] },
-        { "h2": "2. Set your rotation", "blocks": [
-          { "type": "p", "text": "Open **Roster** to order your depth chart: the first five are starters. Minutes targets decide who plays how much. Players who get fewer minutes than they expect lose morale and some ask to be traded, so give your best players the minutes they have earned." },
-          { "type": "p", "text": "Your head coach's system (pace, three-point frequency, defensive scheme) shapes how the team plays. The **Coaching** page lets you adjust tendencies; the coaching staff also affects player development." }
-        ] },
-        { "h2": "3. Play the season", "blocks": [
-          { "type": "p", "text": "Use the **Play** button to simulate a day, a week, to the next event or the rest of the season. The season stops for the big moments:" },
-          { "type": "ul", "items": [
-            "**In-Season Cup:** group games, a knockout bracket and a final you can watch.",
-            "**All-Star Weekend:** captains draft their teams, plus the three-point contest, dunk contest and Rising Stars.",
-            "**Trade Deadline Day:** a 9 AM to 3 PM clock, a rumor mill, AI teams calling with offers, and deals breaking all day.",
-            "**Playoffs:** a play-in, four rounds, and your series live if you want to watch."
-          ] }
-        ] },
-        { "h2": "4. Make moves", "blocks": [
-          { "type": "ul", "items": [
-            "**Trades.** Build an offer and the AI front office answers, often with a counteroffer instead of a flat no. Three-team trades are possible too.",
-            "**Free agency.** Players weigh money, role, winning and loyalty. Negotiate through their agents; a player who walks away will not sign with you that offseason.",
-            "**Contracts.** Extend players during the season before they reach free agency. Watch the salary cap and the luxury tax on the Finances page.",
-            "**Medical room.** When a player is hurt, the doctors ask for a call: rest him longer or bring him back early at a risk."
-          ] }
-        ] },
-        { "h2": "5. The offseason", "blocks": [
-          { "type": "p", "text": "After the Finals come the awards, the Draft Lottery and Draft Night, where you can trade picks in the war room. Summer League follows, then re-signings, then free agency. Players age and develop over the summer: young players with minutes and good coaching grow the most. Your owner reviews your season against the goals set before it, and your job security depends on it." }
-        ] },
-        { "h2": "Tips for your first season", "blocks": [
-          { "type": "ul", "items": [
-            "Check **Power Rankings** and **Standings** before trading: know whether you are a contender or a seller.",
-            "A young player's **Potential** is his ceiling; minutes and coaching decide how close he gets.",
-            "Use **Auto Play** to simulate several seasons at once when you want to see a rebuild through.",
-            "Back up your progress now and then from the main menu (Backups) or the GM Locker."
-          ] }
-        ] }
+        {
+          "h2": "1. Start a league",
+          "blocks": [
+            {
+              "type": "ol",
+              "items": [
+                "On the main menu, choose **Random Players** (a freshly generated 30-team league) or **Real League** (real NBA history from any season since 1946-47).",
+                "Pick a trade difficulty. **Normal** means trades need roughly matched value; **Hard** puts a premium on young high-potential players.",
+                "Choose a team to run, or create an expansion team through a real expansion draft where every club files a protection list first.",
+                "Pick **Simple** navigation for a guided sidebar, or **Full** to see every page. You can switch any time."
+              ]
+            }
+          ]
+        },
+        {
+          "h2": "2. Set your rotation",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "Open **Roster** to order your depth chart: the first five are starters. Minutes targets decide who plays how much. Players who get fewer minutes than they expect lose morale and some ask to be traded, so give your best players the minutes they have earned."
+            },
+            {
+              "type": "p",
+              "text": "Your head coach's system (pace, three-point frequency, defensive scheme) shapes how the team plays. The **Coaching** page lets you adjust tendencies; the coaching staff also affects player development."
+            }
+          ]
+        },
+        {
+          "h2": "3. Play the season",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "Use the **Play** button to simulate a day, a week, to the next event or the rest of the season. The season stops for the big moments:"
+            },
+            {
+              "type": "ul",
+              "items": [
+                "**In-Season Cup:** group games, a knockout bracket and a final you can watch.",
+                "**All-Star Weekend:** captains draft their teams, plus the three-point contest, dunk contest and Rising Stars.",
+                "**Trade Deadline Day:** a 9 AM to 3 PM clock, a rumor mill, AI teams calling with offers, and deals breaking all day.",
+                "**Playoffs:** a play-in, four rounds, and your series live if you want to watch."
+              ]
+            }
+          ]
+        },
+        {
+          "h2": "4. Make moves",
+          "blocks": [
+            {
+              "type": "ul",
+              "items": [
+                "**Trades.** Build an offer and the AI front office answers, often with a counteroffer instead of a flat no. Three-team trades are possible too.",
+                "**Free agency.** Players weigh money, role, winning and loyalty. Negotiate through their agents; a player who walks away will not sign with you that offseason.",
+                "**Contracts.** Extend players during the season before they reach free agency. Watch the salary cap and the luxury tax on the Finances page.",
+                "**Medical room.** When a player is hurt, the doctors ask for a call: rest him longer or bring him back early at a risk."
+              ]
+            }
+          ]
+        },
+        {
+          "h2": "5. The offseason",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "After the Finals come the awards, the Draft Lottery and Draft Night, where you can trade picks in the war room. Summer League follows, then re-signings, then free agency. Players age and develop over the summer: young players with minutes and good coaching grow the most. Your owner reviews your season against the goals set before it, and your job security depends on it."
+            }
+          ]
+        },
+        {
+          "h2": "Tips for your first season",
+          "blocks": [
+            {
+              "type": "ul",
+              "items": [
+                "Check **Power Rankings** and **Standings** before trading: know whether you are a contender or a seller.",
+                "A young player's **Potential** is his ceiling; minutes and coaching decide how close he gets.",
+                "Use **Auto Play** to simulate several seasons at once when you want to see a rebuild through.",
+                "Back up your progress now and then from the main menu (Backups) or the GM Locker."
+              ]
+            }
+          ]
+        }
       ]
     },
     {
@@ -94,43 +175,122 @@
       "h1": "Career Mode guide",
       "lead": "In Career Mode you create one player and live his whole career, season by season, in a real league played by the full simulation engine. At the end you see where he ranks among the greatest players of all time.",
       "sections": [
-        { "h2": "Choose when he enters the league", "blocks": [
-          { "type": "p", "text": "Start in today's league (the 2026 draft) or pick any past draft from 1947 to 2025. In a past draft the league is real NBA history from the season before: real rosters, real players on their real careers, and the real draft class. Enter the 1984 draft and you share the stage with Michael Jordan, Hakeem Olajuwon and Charles Barkley." }
-        ] },
-        { "h2": "Random mode: the wheel", "blocks": [
-          { "type": "p", "text": "Every real player in NBA history sits on the wheel once, at his best season. The odds lean a little toward good players: a Star comes up about 7% of the time and a Great about 18%. When the wheel stops you take one of that player's ten categories, and your player gets his exact ratings in it." },
-          { "type": "table", "columns": ["Category", "What it copies"], "rows": [
-            ["Height & Length", "height, wingspan and standing reach"],
-            ["Body", "weight, strength, balance, stamina and durability"],
-            ["Athleticism", "speed, acceleration, vertical and agility"],
-            ["Finishing", "layups, dunks, touch and the post"],
-            ["Mid-Range", "mid-range, long twos and free throws"],
-            ["Three-Point", "every kind of three"],
-            ["Playmaking", "handles, passing and decisions"],
-            ["Perimeter D", "on-ball defense, closeouts and steals"],
-            ["Interior D & Boards", "rim protection, blocks and rebounding"],
-            ["IQ & Clutch", "basketball IQ, clutch, composure and consistency"]
-          ] },
-          { "type": "p", "text": "Tools: **Move Left** and **Move Right** shift a stopped wheel by one slice (once each), two **Respins** spin again without taking anything, and one **Triple Spin** spins three wheels at once so you can take a category from each." },
-          { "type": "p", "text": "The best ever at a skill go past 99. The top 60 in each skill, ranked by what they actually did that season (threes made, assists, steals, rebounds and blocks, efficient scoring), carry up to +21, so the very best reach 120. Take Stephen Curry's shooting and your player shoots like the best shooter ever. On the court, points above 99 count half, so a 120 shooter is the greatest ever, not a 70% three-point shooter." }
-        ] },
-        { "h2": "MyPlayer: build him yourself", "blocks": [
-          { "type": "p", "text": "Set height, weight and wingspan, then spend a budget of points across nine skills. Height sets the limits: a seven-footer cannot handle like a point guard and a small guard cannot protect the rim like a center. You also choose how ready he is: a late bloomer starts further from his prime but peaks higher; an NBA-ready rookie starts close to it." }
-        ] },
-        { "h2": "Every season", "blocks": [
-          { "type": "ul", "items": [
-            "**Draft night.** Where he goes depends on his rating and potential against the rest of the class.",
-            "**Training focus.** Each summer pick two categories. They grow faster, and training can carry them past his prime. Everything grows quickly when he is young and declines with age, athleticism first.",
-            "**Free agency.** When his contract runs out he gets offers: the biggest contract, a title contender, the biggest role, or his old team.",
-            "**Trade requests.** Ask out to a contender, for a bigger role, or anywhere but here.",
-            "**Autopilot.** Let the game make sensible choices for the rest of his career; take control back whenever you like."
-          ] },
-          { "type": "p", "text": "Each season shows his stats, his team's record and playoff run, every award, and the moments of his year: his first 40-point game, his first triple-double, 20,000 career points." }
-        ] },
-        { "h2": "Legacy, the Hall of Fame and the Top 100", "blocks": [
-          { "type": "p", "text": "When he retires you get his full career: totals, per-game averages, a pixel trophy shelf, his Overall by age, and any team that retires his number (five seasons there plus three All-Star years, a title or an MVP). His **Legacy Score** decides the Hall of Fame (45 gets him in, 90 makes him a first-ballot pick) and his place on the all-time Top 100. The [Ratings explained](guides/ratings-explained.html) guide shows how the score is built." },
-          { "type": "p", "text": "Your Hall of Famers get plaques in the Career Mode Hall of Fame and in the GM Locker. A retired or active player can also be brought into any GM league from the Free Agency page." }
-        ] }
+        {
+          "h2": "Choose when he enters the league",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "Start in today's league (the 2026 draft) or pick any past draft from 1947 to 2025. In a past draft the league is real NBA history from the season before: real rosters, real players on their real careers, and the real draft class. Enter the 1984 draft and you share the stage with Michael Jordan, Hakeem Olajuwon and Charles Barkley."
+            }
+          ]
+        },
+        {
+          "h2": "Random mode: the wheel",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "Every real player in NBA history sits on the wheel once, at his best season. The odds lean a little toward good players: a Star comes up about 7% of the time and a Great about 18%. When the wheel stops you take one of that player's ten categories, and your player gets his exact ratings in it."
+            },
+            {
+              "type": "table",
+              "columns": [
+                "Category",
+                "What it copies"
+              ],
+              "rows": [
+                [
+                  "Height & Length",
+                  "height, wingspan and standing reach"
+                ],
+                [
+                  "Body",
+                  "weight, strength, balance, stamina and durability"
+                ],
+                [
+                  "Athleticism",
+                  "speed, acceleration, vertical and agility"
+                ],
+                [
+                  "Finishing",
+                  "layups, dunks, touch and the post"
+                ],
+                [
+                  "Mid-Range",
+                  "mid-range, long twos and free throws"
+                ],
+                [
+                  "Three-Point",
+                  "every kind of three"
+                ],
+                [
+                  "Playmaking",
+                  "handles, passing and decisions"
+                ],
+                [
+                  "Perimeter D",
+                  "on-ball defense, closeouts and steals"
+                ],
+                [
+                  "Interior D & Boards",
+                  "rim protection, blocks and rebounding"
+                ],
+                [
+                  "IQ & Clutch",
+                  "basketball IQ, clutch, composure and consistency"
+                ]
+              ]
+            },
+            {
+              "type": "p",
+              "text": "Tools: **Move Left** and **Move Right** shift a stopped wheel by one slice (once each), two **Respins** spin again without taking anything, and one **Triple Spin** spins three wheels at once so you can take a category from each."
+            },
+            {
+              "type": "p",
+              "text": "The best ever at a skill go past 99. The top 60 in each skill, ranked by what they actually did that season (threes made, assists, steals, rebounds and blocks, efficient scoring), carry up to +21, so the very best reach 120. Take Stephen Curry's shooting and your player shoots like the best shooter ever. On the court, points above 99 count half, so a 120 shooter is the greatest ever, not a 70% three-point shooter."
+            }
+          ]
+        },
+        {
+          "h2": "MyPlayer: build him yourself",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "Set height, weight and wingspan, then spend a budget of points across nine skills. Height sets the limits: a seven-footer cannot handle like a point guard and a small guard cannot protect the rim like a center. You also choose how ready he is: a late bloomer starts further from his prime but peaks higher; an NBA-ready rookie starts close to it."
+            }
+          ]
+        },
+        {
+          "h2": "Every season",
+          "blocks": [
+            {
+              "type": "ul",
+              "items": [
+                "**Draft night.** Where he goes depends on his rating and potential against the rest of the class.",
+                "**Training focus.** Each summer pick two categories. They grow faster, and training can carry them past his prime. Everything grows quickly when he is young and declines with age, athleticism first.",
+                "**Free agency.** When his contract runs out he gets offers: the biggest contract, a title contender, the biggest role, or his old team.",
+                "**Trade requests.** Ask out to a contender, for a bigger role, or anywhere but here.",
+                "**Autopilot.** Let the game make sensible choices for the rest of his career; take control back whenever you like."
+              ]
+            },
+            {
+              "type": "p",
+              "text": "Each season shows his stats, his team's record and playoff run, every award, and the moments of his year: his first 40-point game, his first triple-double, 20,000 career points."
+            }
+          ]
+        },
+        {
+          "h2": "Legacy, the Hall of Fame and the Top 100",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "When he retires you get his full career: totals, per-game averages, a pixel trophy shelf, his Overall by age, and any team that retires his number (five seasons there plus three All-Star years, a title or an MVP). His **Legacy Score** decides the Hall of Fame (45 gets him in, 90 makes him a first-ballot pick) and his place on the all-time Top 100. The [Ratings explained](guides/ratings-explained.html) guide shows how the score is built."
+            },
+            {
+              "type": "p",
+              "text": "Your Hall of Famers get plaques in the Career Mode Hall of Fame and in the GM Locker. A retired or active player can also be brought into any GM league from the Free Agency page."
+            }
+          ]
+        }
       ]
     },
     {
@@ -141,34 +301,70 @@
       "h1": "League Hunt guide",
       "lead": "League Hunt is a quick run through basketball history. Build a six-man squad and a coach from any era, then win ten best-of-seven series against real teams, each played under the rules of its time.",
       "sections": [
-        { "h2": "The spins", "blocks": [
-          { "type": "p", "text": "You get seven spins in a fixed order: point guard, shooting guard, small forward, power forward, center, coach, and sixth man (any position). Each spin shows three cards and you keep one. Cards are player-seasons, so 1996 Michael Jordan and 2003 Michael Jordan are different cards. Early spins are richer than late ones, and every draft is guaranteed at least one Star and one Great on the table." },
-          { "type": "p", "text": "Coaches add from -2 to +5 overall to everyone and bring a style: defense, pace, threes or ball movement. A coach also adds a point of chemistry for players from a franchise he won with." }
-        ] },
-        { "h2": "Team rating, 0 to 100", "blocks": [
-          { "type": "p", "text": "Every team, yours included, has a rating from its best six players with the star weighted most. The scale follows real results: 60 is a bad team, 70 about 40 wins, 80 about 45, 90 a 55 to 62 win team, and 100 a 68-win all-time great. More in [Ratings explained](guides/ratings-explained.html)." }
-        ] },
-        { "h2": "The road", "blocks": [
-          { "type": "ul", "items": [
-            "Ten best-of-seven series against real teams, each played under its era's rules: no three-point line before 1979-80, hand-checking in the 1990s, the pace of the time.",
-            "Series 5 is a semi-boss and series 10 is the boss, one of the best teams ever, rated 100.",
-            "From series 2 on, teams bring buffs such as Superstar Takeover, Hostile Crowd or Playoff Veterans. Bosses bring more, and stronger ones.",
-            "Losing a series costs a life, and you replay it."
-          ] }
-        ] },
-        { "h2": "Boosts, the shop and your focus", "blocks": [
-          { "type": "p", "text": "After a series win you pick one of three boosts; a hunt holds three. Many grow inside a series: the Sixth Man Spark adds +3 to your sixth man for every game you have won in it. Boosts add at most +6 to one player in one game." },
-          { "type": "p", "text": "A shop comes before series 1, 3, 5, 7 and 9: players for a specific slot, a better coach, items that last the whole hunt, and training. Lives are for sale only on Rookie. You also pick what the team works on: developing the star, developing the sixth man, team chemistry, or the coach's system." }
-        ] },
-        { "h2": "Decks, difficulty and the Daily Legend", "blocks": [
-          { "type": "ul", "items": [
-            "**Decks** change how the draft opens: Big Man Era, Old School (pre-1980 players only), Pace & Space (2010 on) and Dynasty. They unlock as you play.",
-            "**Difficulty:** Rookie (softer teams, four lives), Pro, and Legend (tougher teams, two lives, a top-four all-time boss).",
-            "**Daily Legend:** one hunt a day, the same for everyone. Keep your streak going.",
-            "**Album:** every card you have had on a squad, with progress toward each era's stars.",
-            "**Dream Matchup:** play any two real team-seasons against each other under any era's rules."
-          ] }
-        ] }
+        {
+          "h2": "The spins",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "You get seven spins in a fixed order: point guard, shooting guard, small forward, power forward, center, coach, and sixth man (any position). Each spin shows three cards and you keep one. Cards are player-seasons, so 1996 Michael Jordan and 2003 Michael Jordan are different cards. Early spins are richer than late ones, and every draft is guaranteed at least one Star and one Great on the table."
+            },
+            {
+              "type": "p",
+              "text": "Coaches add from -2 to +5 overall to everyone and bring a style: defense, pace, threes or ball movement. A coach also adds a point of chemistry for players from a franchise he won with."
+            }
+          ]
+        },
+        {
+          "h2": "Team rating, 0 to 100",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "Every team, yours included, has a rating from its best six players with the star weighted most. The scale follows real results: 60 is a bad team, 70 about 40 wins, 80 about 45, 90 a 55 to 62 win team, and 100 a 68-win all-time great. More in [Ratings explained](guides/ratings-explained.html)."
+            }
+          ]
+        },
+        {
+          "h2": "The road",
+          "blocks": [
+            {
+              "type": "ul",
+              "items": [
+                "Ten best-of-seven series against real teams, each played under its era's rules: no three-point line before 1979-80, hand-checking in the 1990s, the pace of the time.",
+                "Series 5 is a semi-boss and series 10 is the boss, one of the best teams ever, rated 100.",
+                "From series 2 on, teams bring buffs such as Superstar Takeover, Hostile Crowd or Playoff Veterans. Bosses bring more, and stronger ones.",
+                "Losing a series costs a life, and you replay it."
+              ]
+            }
+          ]
+        },
+        {
+          "h2": "Boosts, the shop and your focus",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "After a series win you pick one of three boosts; a hunt holds three. Many grow inside a series: the Sixth Man Spark adds +3 to your sixth man for every game you have won in it. Boosts add at most +6 to one player in one game."
+            },
+            {
+              "type": "p",
+              "text": "A shop comes before series 1, 3, 5, 7 and 9: players for a specific slot, a better coach, items that last the whole hunt, and training. Lives are for sale only on Rookie. You also pick what the team works on: developing the star, developing the sixth man, team chemistry, or the coach's system."
+            }
+          ]
+        },
+        {
+          "h2": "Decks, difficulty and the Daily Legend",
+          "blocks": [
+            {
+              "type": "ul",
+              "items": [
+                "**Decks** change how the draft opens: Big Man Era, Old School (pre-1980 players only), Pace & Space (2010 on) and Dynasty. They unlock as you play.",
+                "**Difficulty:** Rookie (softer teams, four lives), Pro, and Legend (tougher teams, two lives, a top-four all-time boss).",
+                "**Daily Legend:** one hunt a day, the same for everyone. Keep your streak going.",
+                "**Album:** every card you have had on a squad, with progress toward each era's stars.",
+                "**Dream Matchup:** play any two real team-seasons against each other under any era's rules."
+              ]
+            }
+          ]
+        }
       ]
     },
     {
@@ -179,41 +375,174 @@
       "h1": "Rebuild Challenge guide",
       "lead": "Take over a real team at the lowest point in its history and win a championship before time runs out. The league is real NBA history from that season, and you run the team with every tool of the full game.",
       "sections": [
-        { "h2": "The scenarios", "blocks": [
-          { "type": "table", "columns": ["Scenario", "Team and first season", "Seasons"], "rows": [
-            ["Life After Michael", "Chicago, 1998-99", "6"],
-            ["Celtics in Ruins", "Boston, 1996-97", "6"],
-            ["The Clipper Curse", "LA Clippers, 1998-99", "8"],
-            ["Before the Dynasty", "Golden State, 2000-01", "8"],
-            ["Wolves in the Wilderness", "Minnesota, 2009-10", "7"],
-            ["The Decision, Undone", "Cleveland, 2010-11", "5"],
-            ["After 7-59", "Charlotte, 2012-13", "7"],
-            ["Trust the Process", "Philadelphia, 2013-14", "6"],
-            ["Garden of Despair", "New York, 2014-15", "6"],
-            ["The Post-Kobe Lakers", "LA Lakers, 2016-17", "5"],
-            ["The Longest Drought", "Sacramento, 2016-17", "7"],
-            ["Motor City Reset", "Detroit, 2020-21", "5"]
-          ] }
-        ] },
-        { "h2": "How it plays", "blocks": [
-          { "type": "p", "text": "You start with the real roster of that season. Around you, real players follow their real careers and real draft classes arrive each year, so the 2003 class still holds LeBron James and the 1984 class Michael Jordan, but where they land depends on the lottery and on you. Trades, free agency, the draft and coaching all work as in the main game." }
-        ] },
-        { "h2": "Scoring and stars", "blocks": [
-          { "type": "ul", "items": [
-            "Every season scores 2 points per win plus a playoff bonus: 20 for the first round, 40 for the second, 70 for the conference finals, 120 for the Finals.",
-            "A title scores 1,000 plus 250 for every season you had left.",
-            "Stars: one for making the playoffs, two for reaching the Finals, three for winning it all.",
-            "If you are fired, the challenge ends. Leagues where Sandbox or God Mode was used do not go on the board."
-          ] },
-          { "type": "p", "text": "Your best score, stars and fastest title for each scenario show in the scenario picker and in the GM Locker." }
-        ] },
-        { "h2": "Strategy notes", "blocks": [
-          { "type": "ul", "items": [
-            "Short scenarios reward buying veterans early; long ones reward stacking picks and young players.",
-            "Cap space is the fastest route to a star, but free agents weigh winning: a team with no hope rarely lands the best ones.",
-            "Keep your owner happy: missing the season goals badly can cost you the job before the clock runs out."
-          ] }
-        ] }
+        {
+          "h2": "The scenarios",
+          "blocks": [
+            {
+              "type": "table",
+              "columns": [
+                "Scenario",
+                "Team and first season",
+                "Seasons"
+              ],
+              "rows": [
+                [
+                  "Life After Michael",
+                  "Chicago, 1998-99",
+                  "6"
+                ],
+                [
+                  "Celtics in Ruins",
+                  "Boston, 1996-97",
+                  "6"
+                ],
+                [
+                  "The Clipper Curse",
+                  "LA Clippers, 1998-99",
+                  "8"
+                ],
+                [
+                  "Before the Dynasty",
+                  "Golden State, 2000-01",
+                  "8"
+                ],
+                [
+                  "Wolves in the Wilderness",
+                  "Minnesota, 2009-10",
+                  "7"
+                ],
+                [
+                  "The Decision, Undone",
+                  "Cleveland, 2010-11",
+                  "5"
+                ],
+                [
+                  "After 7-59",
+                  "Charlotte, 2012-13",
+                  "7"
+                ],
+                [
+                  "Trust the Process",
+                  "Philadelphia, 2013-14",
+                  "6"
+                ],
+                [
+                  "Garden of Despair",
+                  "New York, 2014-15",
+                  "6"
+                ],
+                [
+                  "The Post-Kobe Lakers",
+                  "LA Lakers, 2016-17",
+                  "5"
+                ],
+                [
+                  "The Longest Drought",
+                  "Sacramento, 2016-17",
+                  "7"
+                ],
+                [
+                  "Motor City Reset",
+                  "Detroit, 2020-21",
+                  "5"
+                ],
+                [
+                  "Eleven and Seventy-One",
+                  "Dallas, 1993-94",
+                  "7"
+                ],
+                [
+                  "Mile-High Misery",
+                  "Denver, 1998-99",
+                  "6"
+                ],
+                [
+                  "Wade Alone",
+                  "Miami, 2008-09",
+                  "5"
+                ],
+                [
+                  "Up From 13-69",
+                  "Atlanta, 2005-06",
+                  "6"
+                ],
+                [
+                  "Orlando After T-Mac",
+                  "Orlando, 2004-05",
+                  "6"
+                ],
+                [
+                  "Twelve and Seventy",
+                  "New Jersey, 2010-11",
+                  "6"
+                ],
+                [
+                  "The Greek Freak Project",
+                  "Milwaukee, 2014-15",
+                  "6"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "h2": "How it plays",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "You start with the real roster of that season. Around you, real players follow their real careers and real draft classes arrive each year, so the 2003 class still holds LeBron James and the 1984 class Michael Jordan, but where they land depends on the lottery and on you. Trades, free agency, the draft and coaching all work as in the main game."
+            }
+          ]
+        },
+        {
+          "h2": "Rebuild of the Week",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "Every Monday at 00:00 UTC a new Rebuild of the Week starts on the main menu. It picks one scenario and one twist, and builds the league from a seed shared by everyone, so every player starts from the same rosters, the same draft classes and the same generated players. Your best score of the week is kept in this browser; post your share card on Discord to compare."
+            },
+            {
+              "type": "ul",
+              "items": [
+                "**Standard rules:** the scenario as written.",
+                "**Short clock:** one season less than usual.",
+                "**Tough GMs:** trades need tightly matched value.",
+                "**Short clock, tough GMs:** both at once."
+              ]
+            }
+          ]
+        },
+        {
+          "h2": "Scoring and stars",
+          "blocks": [
+            {
+              "type": "ul",
+              "items": [
+                "Every season scores 2 points per win plus a playoff bonus: 20 for the first round, 40 for the second, 70 for the conference finals, 120 for the Finals.",
+                "A title scores 1,000 plus 250 for every season you had left.",
+                "Stars: one for making the playoffs, two for reaching the Finals, three for winning it all.",
+                "If you are fired, the challenge ends. Leagues where Sandbox or God Mode was used do not go on the board."
+              ]
+            },
+            {
+              "type": "p",
+              "text": "Your best score, stars and fastest title for each scenario show in the scenario picker and in the GM Locker."
+            }
+          ]
+        },
+        {
+          "h2": "Strategy notes",
+          "blocks": [
+            {
+              "type": "ul",
+              "items": [
+                "Short scenarios reward buying veterans early; long ones reward stacking picks and young players.",
+                "Cap space is the fastest route to a star, but free agents weigh winning: a team with no hope rarely lands the best ones.",
+                "Keep your owner happy: missing the season goals badly can cost you the job before the clock runs out."
+              ]
+            }
+          ]
+        }
       ]
     },
     {
@@ -224,28 +553,52 @@
       "h1": "Real NBA history",
       "lead": "Real League starts from actual NBA history: pick any season from 1946-47 to today and take over a real team with its real roster, in a league that already holds every past season's stats, awards and champions.",
       "sections": [
-        { "h2": "What is included", "blocks": [
-          { "type": "ul", "items": [
-            "Every player's year-by-year statistics, awards, All-Star selections and draft position up to your starting season.",
-            "Rosters reconstructed from that season's real participation, with real jersey numbers.",
-            "Real mid-season trades and the real draft classes of the coming years (optional).",
-            "An option to load every real player, so players who retired before your start still have their careers and profiles."
-          ] }
-        ] },
-        { "h2": "Ratings from statistics", "blocks": [
-          { "type": "p", "text": "Court Vision computes every player's ratings from his statistics: each season's players are ranked by production and given the Overall spread of a generated league, and skill attributes are estimated from his shooting, rebounding, passing and defensive numbers. The ratings are Court Vision's own; they are not official and not taken from any other game." }
-        ] },
-        { "h2": "Real Player Development", "blocks": [
-          { "type": "p", "text": "With Real Player Development on, real players follow their real careers: a rookie Jordan becomes the Jordan of 1991 on schedule, and players decline and retire when they really did. Players you create, draft from generated classes or import grow through Court Vision's own development. Turn it off to let every career go its own way." }
-        ] },
-        { "h2": "Good starting points", "blocks": [
-          { "type": "ul", "items": [
-            "**1984-85:** the Jordan, Hakeem and Barkley rookie class.",
-            "**1996-97:** Kobe, Iverson and Nash arrive; the Bulls are at their peak.",
-            "**2003-04:** LeBron, Wade, Melo and Bosh enter the league.",
-            "**2014-15:** the Warriors' first title season and the dawn of the three-point era."
-          ] }
-        ] }
+        {
+          "h2": "What is included",
+          "blocks": [
+            {
+              "type": "ul",
+              "items": [
+                "Every player's year-by-year statistics, awards, All-Star selections and draft position up to your starting season.",
+                "Rosters reconstructed from that season's real participation, with real jersey numbers.",
+                "Real mid-season trades and the real draft classes of the coming years (optional).",
+                "An option to load every real player, so players who retired before your start still have their careers and profiles."
+              ]
+            }
+          ]
+        },
+        {
+          "h2": "Ratings from statistics",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "Court Vision computes every player's ratings from his statistics: each season's players are ranked by production and given the Overall spread of a generated league, and skill attributes are estimated from his shooting, rebounding, passing and defensive numbers. The ratings are Court Vision's own; they are not official and not taken from any other game."
+            }
+          ]
+        },
+        {
+          "h2": "Real Player Development",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "With Real Player Development on, real players follow their real careers: a rookie Jordan becomes the Jordan of 1991 on schedule, and players decline and retire when they really did. Players you create, draft from generated classes or import grow through Court Vision's own development. Turn it off to let every career go its own way."
+            }
+          ]
+        },
+        {
+          "h2": "Good starting points",
+          "blocks": [
+            {
+              "type": "ul",
+              "items": [
+                "**1984-85:** the Jordan, Hakeem and Barkley rookie class.",
+                "**1996-97:** Kobe, Iverson and Nash arrive; the Bulls are at their peak.",
+                "**2003-04:** LeBron, Wade, Melo and Bosh enter the league.",
+                "**2014-15:** the Warriors' first title season and the dawn of the three-point era."
+              ]
+            }
+          ]
+        }
       ]
     },
     {
@@ -256,42 +609,137 @@
       "h1": "Ratings explained",
       "lead": "Court Vision uses a few different numbers. This page explains what each one means and how it is built.",
       "sections": [
-        { "h2": "Player Overall", "blocks": [
-          { "type": "p", "text": "Overall is a weighted summary of a player's most important ratings for his position: shooting, finishing, playmaking, defense, rebounding and athleticism. It is a quick guide, not the whole story: the engine uses every individual rating and tendency, so two 75-rated players can play very differently." }
-        ] },
-        { "h2": "Team rating, 0 to 100", "blocks": [
-          { "type": "p", "text": "League Hunt rates teams from their best six players, weighted from the top (25%, 21%, 18%, 15%, 12%, 9%), because one great player is worth more than two good ones. That weighted strength is lined up against the real distribution of win totals across every team-season in NBA history, then turned into a rating:" },
-          { "type": "table", "columns": ["Rating", "Real-world meaning"], "rows": [
-            ["60", "a bad team, about 25 wins"],
-            ["70", "about 40 wins"],
-            ["80", "about 45 wins"],
-            ["90", "a 55 to 62 win team"],
-            ["100", "a 68-win all-time great"]
-          ] },
-          { "type": "p", "text": "No real team goes past 100, but a squad built in League Hunt can." }
-        ] },
-        { "h2": "Ratings past 99", "blocks": [
-          { "type": "p", "text": "In Career Mode, the top 60 players ever at a skill carry ratings past 99, up to 120, ranked by what they really did: threes made (Stephen Curry), assists (John Stockton, Steve Nash), steals, rebounds and blocks (Wilt Chamberlain, Dikembe Mutombo). In games, every point past 99 counts half." }
-        ] },
-        { "h2": "Legacy Score", "blocks": [
-          { "type": "p", "text": "The Legacy Score measures a whole career. It is computed the same way for real players (from the NBA history data) and for players you create:" },
-          { "type": "table", "columns": ["Achievement", "Points"], "rows": [
-            ["MVP", "10 each"],
-            ["Finals MVP", "6 each"],
-            ["Championship", "5 each"],
-            ["All-NBA First / Second / Third Team", "5 / 3 / 1.5 each"],
-            ["Defensive Player of the Year", "3 each"],
-            ["All-Star selection", "1.5 each"],
-            ["All-Defensive First / Second Team", "1.2 / 0.6 each"],
-            ["Rookie of the Year", "1"],
-            ["Career points / rebounds / assists", "1.6 / 0.9 / 1.2 per 1,000"],
-            ["Career steals + blocks", "0.8 per 1,000"]
-          ] },
-          { "type": "p", "text": "A Legacy Score of 45 puts a player in the Hall of Fame; 90 makes him a first-ballot pick." }
-        ] },
-        { "h2": "The all-time Top 100", "blocks": [
-          { "type": "p", "text": "The Top 100 is a fixed, hand-ordered list: LeBron James is 1, Michael Jordan 2, Kareem Abdul-Jabbar 3, Tim Duncan 4, Stephen Curry 7 and Kobe Bryant 12. A created player's place on it is one plus the number of listed players whose Legacy Score is higher than his." }
-        ] }
+        {
+          "h2": "Player Overall",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "Overall is a weighted summary of a player's most important ratings for his position: shooting, finishing, playmaking, defense, rebounding and athleticism. It is a quick guide, not the whole story: the engine uses every individual rating and tendency, so two 75-rated players can play very differently."
+            }
+          ]
+        },
+        {
+          "h2": "Team rating, 0 to 100",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "League Hunt rates teams from their best six players, weighted from the top (25%, 21%, 18%, 15%, 12%, 9%), because one great player is worth more than two good ones. That weighted strength is lined up against the real distribution of win totals across every team-season in NBA history, then turned into a rating:"
+            },
+            {
+              "type": "table",
+              "columns": [
+                "Rating",
+                "Real-world meaning"
+              ],
+              "rows": [
+                [
+                  "60",
+                  "a bad team, about 25 wins"
+                ],
+                [
+                  "70",
+                  "about 40 wins"
+                ],
+                [
+                  "80",
+                  "about 45 wins"
+                ],
+                [
+                  "90",
+                  "a 55 to 62 win team"
+                ],
+                [
+                  "100",
+                  "a 68-win all-time great"
+                ]
+              ]
+            },
+            {
+              "type": "p",
+              "text": "No real team goes past 100, but a squad built in League Hunt can."
+            }
+          ]
+        },
+        {
+          "h2": "Ratings past 99",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "In Career Mode, the top 60 players ever at a skill carry ratings past 99, up to 120, ranked by what they really did: threes made (Stephen Curry), assists (John Stockton, Steve Nash), steals, rebounds and blocks (Wilt Chamberlain, Dikembe Mutombo). In games, every point past 99 counts half."
+            }
+          ]
+        },
+        {
+          "h2": "Legacy Score",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "The Legacy Score measures a whole career. It is computed the same way for real players (from the NBA history data) and for players you create:"
+            },
+            {
+              "type": "table",
+              "columns": [
+                "Achievement",
+                "Points"
+              ],
+              "rows": [
+                [
+                  "MVP",
+                  "10 each"
+                ],
+                [
+                  "Finals MVP",
+                  "6 each"
+                ],
+                [
+                  "Championship",
+                  "5 each"
+                ],
+                [
+                  "All-NBA First / Second / Third Team",
+                  "5 / 3 / 1.5 each"
+                ],
+                [
+                  "Defensive Player of the Year",
+                  "3 each"
+                ],
+                [
+                  "All-Star selection",
+                  "1.5 each"
+                ],
+                [
+                  "All-Defensive First / Second Team",
+                  "1.2 / 0.6 each"
+                ],
+                [
+                  "Rookie of the Year",
+                  "1"
+                ],
+                [
+                  "Career points / rebounds / assists",
+                  "1.6 / 0.9 / 1.2 per 1,000"
+                ],
+                [
+                  "Career steals + blocks",
+                  "0.8 per 1,000"
+                ]
+              ]
+            },
+            {
+              "type": "p",
+              "text": "A Legacy Score of 45 puts a player in the Hall of Fame; 90 makes him a first-ballot pick."
+            }
+          ]
+        },
+        {
+          "h2": "The all-time Top 100",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "The Top 100 is a fixed, hand-ordered list: LeBron James is 1, Michael Jordan 2, Kareem Abdul-Jabbar 3, Tim Duncan 4, Stephen Curry 7 and Kobe Bryant 12. A created player's place on it is one plus the number of listed players whose Legacy Score is higher than his."
+            }
+          ]
+        }
       ]
     },
     {
@@ -302,20 +750,100 @@
       "h1": "Frequently asked questions",
       "lead": "Quick answers to the questions players ask most. Anything missing? Ask on our [Discord](https://discord.gg/5uGK5HDS8e).",
       "sections": [
-        { "h2": "Is Court Vision free?", "blocks": [ { "type": "p", "text": "Yes. The web version is free and supported by ads. The offline Windows edition is free and has no ads." } ] },
-        { "h2": "Do I need an account?", "blocks": [ { "type": "p", "text": "No. There are no accounts. Your leagues, careers and records are saved in your browser on your device." } ] },
-        { "h2": "Where are my saves? Can I lose them?", "blocks": [
-          { "type": "p", "text": "Saves live in your browser's storage. Clearing your browsing data, using a private window, or switching browsers or devices means you won't see them. To keep them safe, download a backup of everything from the GM Locker or from Backups on the main menu. One file holds every league, career, League Hunt record and achievement." }
-        ] },
-        { "h2": "How do I move my progress to another device?", "blocks": [ { "type": "p", "text": "Download a backup on the old device, open Court Vision on the new one, and choose Restore from a file. Restoring adds and replaces; it never deletes anything already there." } ] },
-        { "h2": "Can I play offline?", "blocks": [ { "type": "p", "text": "Yes: [download the Windows edition](downloads/CourtVision-Windows.zip) (also the download button in the top-right corner of the game). It runs entirely offline and has no ads." } ] },
-        { "h2": "Are the players and ratings real?", "blocks": [
-          { "type": "p", "text": "Real League, League Hunt, Career Mode and Rebuild Challenge use real NBA players and their real statistics. The ratings are Court Vision's own, computed from those statistics. Random leagues use generated players. See [Real NBA history](guides/real-nba-history.html)." }
-        ] },
-        { "h2": "Why does a simulated season take a few seconds?", "blocks": [ { "type": "p", "text": "Every game is simulated possession by possession by a full engine, around 1,230 games a season plus the playoffs. It runs in background workers so the game stays responsive." } ] },
-        { "h2": "What is Sandbox mode?", "blocks": [ { "type": "p", "text": "Sandbox unlocks tools such as editing any player, God Mode, importing any real player from any era, and sticking players to teams. Leagues where Sandbox has been used no longer count toward GM achievements or the Rebuild Challenge board." } ] },
-        { "h2": "How do ads and privacy work?", "blocks": [ { "type": "p", "text": "The web version shows ads through Google AdSense when your consent choices allow it, and uses aggregate analytics. The [Privacy Policy](privacy.html) explains what is stored and your choices." } ] },
-        { "h2": "I found a bug or have an idea", "blocks": [ { "type": "p", "text": "Tell us on [Discord](https://discord.gg/5uGK5HDS8e). A backup file helps us reproduce bugs in a league." } ] }
+        {
+          "h2": "Is Court Vision free?",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "Yes. The web version is free and supported by ads. The offline Windows edition is free and has no ads."
+            }
+          ]
+        },
+        {
+          "h2": "Do I need an account?",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "No. There are no accounts. Your leagues, careers and records are saved in your browser on your device."
+            }
+          ]
+        },
+        {
+          "h2": "Where are my saves? Can I lose them?",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "Saves live in your browser's storage. Clearing your browsing data, using a private window, or switching browsers or devices means you won't see them. To keep them safe, download a backup of everything from the GM Locker or from Backups on the main menu. One file holds every league, career, League Hunt record and achievement."
+            }
+          ]
+        },
+        {
+          "h2": "How do I move my progress to another device?",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "Download a backup on the old device, open Court Vision on the new one, and choose Restore from a file. Restoring adds and replaces; it never deletes anything already there."
+            }
+          ]
+        },
+        {
+          "h2": "Can I play offline?",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "Yes, two ways. **Install the app:** on Chrome, Edge or Android, use the Install app button on the main menu (on iPhone, tap Share, then Add to Home Screen). After your first visit it opens without a connection, and any mode you have played once keeps working offline."
+            },
+            {
+              "type": "p",
+              "text": "Or [download the Windows edition](downloads/CourtVision-Windows.zip) (also the download button in the top-right corner of the game). It runs entirely offline and has no ads."
+            }
+          ]
+        },
+        {
+          "h2": "Are the players and ratings real?",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "Real League, League Hunt, Career Mode and Rebuild Challenge use real NBA players and their real statistics. The ratings are Court Vision's own, computed from those statistics. Random leagues use generated players. See [Real NBA history](guides/real-nba-history.html)."
+            }
+          ]
+        },
+        {
+          "h2": "Why does a simulated season take a few seconds?",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "Every game is simulated possession by possession by a full engine, around 1,230 games a season plus the playoffs. It runs in background workers so the game stays responsive."
+            }
+          ]
+        },
+        {
+          "h2": "What is Sandbox mode?",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "Sandbox unlocks tools such as editing any player, God Mode, importing any real player from any era, and sticking players to teams. Leagues where Sandbox has been used no longer count toward GM achievements or the Rebuild Challenge board."
+            }
+          ]
+        },
+        {
+          "h2": "How do ads and privacy work?",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "The web version shows ads through Google AdSense when your consent choices allow it, and uses cookie-free aggregate analytics, including anonymous counts of which modes are started and finished (never names, save contents or identifiers; nothing is sent when your browser sends Do Not Track or Global Privacy Control). The [Privacy Policy](privacy.html) explains what is stored and your choices."
+            }
+          ]
+        },
+        {
+          "h2": "I found a bug or have an idea",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "Tell us on [Discord](https://discord.gg/5uGK5HDS8e). A backup file helps us reproduce bugs in a league."
+            }
+          ]
+        }
       ]
     },
     {
@@ -326,29 +854,56 @@
       "h1": "Changelog",
       "lead": "The biggest recent additions to Court Vision, newest first.",
       "sections": [
-        { "h2": "September 2026: new ways to play", "blocks": [
-          { "type": "ul", "items": [
-            "**Rebuild Challenge:** 12 real rock-bottom teams, a season limit, scores, stars and a board.",
-            "**Career Mode:** create a player on the wheel of NBA history or in MyPlayer and live his whole career, in today's league or any past draft. Hall of Fame, all-time Top 100, career moments, jersey retirements.",
-            "**League Hunt:** spin a six-man squad from all of history and win ten best-of-seven series against the great teams of every era. Daily Legend, decks, difficulty, Album and Dream Matchup.",
-            "**GM Locker:** every trophy you have won, across every mode.",
-            "**Backup everything:** one file with all your progress; restore on any device.",
-            "**Share cards:** pixel-art images of your results to post anywhere."
-          ] }
-        ] },
-        { "h2": "September 2026: the GM game", "blocks": [
-          { "type": "ul", "items": [
-            "Trade Deadline Day, trade talks with counteroffers, three-team trades.",
-            "Agent negotiations, in-season extensions and contract years.",
-            "Draft Lottery and Draft Night war room; scouting department; Summer League.",
-            "Coaching carousel, staff roles and poaching, summer development camps.",
-            "Medical room with treatment decisions and load management.",
-            "Sideline coaching while you watch; your playoff series and Game 7s live.",
-            "Press conferences, storylines, franchise business (tickets, arena, merchandise) and the Year in Review show.",
-            "Real history: mid-season trades, real draft picks, real jersey numbers and every real player's career.",
-            "New arena and court look, team colors and logos, and a faster simulation engine."
-          ] }
-        ] }
+        {
+          "h2": "Late September 2026: weekly challenges and the app",
+          "blocks": [
+            {
+              "type": "ul",
+              "items": [
+                "**Rebuild of the Week and Career of the Week:** a new shared challenge every Monday, the same league and the same wheel for everyone.",
+                "**Seven new Rebuild scenarios** (19 in all): the 11-71 Mavericks and Nuggets, the 12-70 Nets, Wade alone in Miami, Orlando after T-Mac, the 13-69 Hawks and the young Giannis Bucks.",
+                "**Install Court Vision** as an app on phones and computers. After the first visit it opens offline.",
+                "**Graphics setting** in the menu footer: Lite mode for older phones stops looping animations and blur and uses fewer simulation workers.",
+                "**What's new** popup once after each update."
+              ]
+            }
+          ]
+        },
+        {
+          "h2": "September 2026: new ways to play",
+          "blocks": [
+            {
+              "type": "ul",
+              "items": [
+                "**Rebuild Challenge:** 12 real rock-bottom teams (19 since the late-September update), a season limit, scores, stars and a board.",
+                "**Career Mode:** create a player on the wheel of NBA history or in MyPlayer and live his whole career, in today's league or any past draft. Hall of Fame, all-time Top 100, career moments, jersey retirements.",
+                "**League Hunt:** spin a six-man squad from all of history and win ten best-of-seven series against the great teams of every era. Daily Legend, decks, difficulty, Album and Dream Matchup.",
+                "**GM Locker:** every trophy you have won, across every mode.",
+                "**Backup everything:** one file with all your progress; restore on any device.",
+                "**Share cards:** pixel-art images of your results to post anywhere."
+              ]
+            }
+          ]
+        },
+        {
+          "h2": "September 2026: the GM game",
+          "blocks": [
+            {
+              "type": "ul",
+              "items": [
+                "Trade Deadline Day, trade talks with counteroffers, three-team trades.",
+                "Agent negotiations, in-season extensions and contract years.",
+                "Draft Lottery and Draft Night war room; scouting department; Summer League.",
+                "Coaching carousel, staff roles and poaching, summer development camps.",
+                "Medical room with treatment decisions and load management.",
+                "Sideline coaching while you watch; your playoff series and Game 7s live.",
+                "Press conferences, storylines, franchise business (tickets, arena, merchandise) and the Year in Review show.",
+                "Real history: mid-season trades, real draft picks, real jersey numbers and every real player's career.",
+                "New arena and court look, team colors and logos, and a faster simulation engine."
+              ]
+            }
+          ]
+        }
       ]
     }
   ]

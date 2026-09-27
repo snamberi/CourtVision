@@ -181,3 +181,38 @@ input, select, textarea { border-color: var(--line-strong); background: #070e1b;
 .share-box { display: grid; gap: 10px; width: min(640px, 100%); padding: 14px; background: #121926; border: 2px solid #f47b20; box-shadow: 4px 4px 0 #000; }
 .share-box img, .share-loading { width: 100%; height: auto; aspect-ratio: 1200 / 630; image-rendering: pixelated; background: #0b1018; }
 .share-loading { display: grid; place-items: center; color: #94a0b2; }
+
+/* ---- This week (main menu) */
+.this-week { margin: 18px 0 8px; }
+.this-week-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.this-week-head h2 { margin: 0; font-family: var(--font-display, 'Oswald', sans-serif); font-size: 1.3rem; text-transform: uppercase; letter-spacing: .02em; }
+.this-week-head span { color: var(--cv-text-muted, #94a0b2); font-size: .8rem; font-variant-numeric: tabular-nums; }
+.this-week-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); gap: 10px; }
+.this-week-grid article { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; background: var(--cv-surface, #121926); border: 2px solid var(--cv-border, #2a3546); box-shadow: 2px 2px 0 #03070d; }
+.this-week-grid article:first-child { border-color: var(--cv-orange, #f47b20); }
+.this-week-grid b { font-size: 1.05rem; }
+.this-week-grid p { margin: 0; font-size: .85rem; color: var(--cv-text-muted, #94a0b2); line-height: 1.4; }
+.this-week-grid em { font-style: normal; color: var(--cv-gold, #ffd166); }
+.this-week-grid small { font-size: .75rem; color: var(--cv-text-muted, #94a0b2); }
+.this-week-grid button { margin-top: auto; align-self: flex-start; }
+
+/* ---- Career of the Week */
+.weekly-card { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin: 12px 0; padding: 12px 14px; background: var(--cv-surface-raised, #192333); border: 2px solid var(--cv-orange, #f47b20); box-shadow: 2px 2px 0 #03070d; }
+.weekly-card > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1 1 280px; }
+.weekly-card p { margin: 0; font-size: .85rem; color: var(--cv-text-muted, #94a0b2); }
+.weekly-card small { font-size: .75rem; color: var(--cv-gold, #ffd166); }
+
+/* ---- What's new */
+.whats-new .share-box { max-width: 560px; text-align: left; }
+.whats-new h2 { margin: 6px 0 8px; font-size: 1.3rem; }
+.whats-new h3 { margin: 14px 0 6px; font-size: 1rem; color: var(--cv-text-muted, #94a0b2); }
+.whats-new ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: .9rem; line-height: 1.45; }
+.whats-new .contest-actions { margin-top: 14px; align-items: center; }
+
+/* ---- Install app */
+.menu-install { position: relative; display: inline-flex; }
+.menu-install > button { white-space: nowrap; }
+.menu-install-hint { position: absolute; top: calc(100% + 6px); right: 0; z-index: 20; width: 240px; padding: 10px 12px; background: var(--cv-surface-raised, #192333); border: 2px solid var(--cv-border, #2a3546); font-size: .8rem; line-height: 1.4; box-shadow: 2px 2px 0 #03070d; }
+
+/* ---- Lite mode (low-end devices): no background blur, looping animations play once */
+html.lite *, html.lite *::before, html.lite *::after { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; animation-iteration-count: 1 !important; }

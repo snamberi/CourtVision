@@ -14,6 +14,10 @@ import { formatSeasonYear, nbaHistoryYearRange } from '../simulation/calendar';
 import { AdBanner } from './AdBanner';
 import { SCENARIOS, loadRebuildRecords } from '../simulation/rebuildChallenge';
 import { DataCredits } from './DataCredits';
+import { weeklyRebuild, weeklyCareer, loadWeeklyRecords, weeklyStreak, weekEndsAt } from '../retention/weekly';
+import { InstallAppButton } from './InstallAppButton';
+import { WhatsNew } from './WhatsNew';
+import { liteMode, performanceSetting, setPerformanceSetting, type PerformanceSetting } from '../lib/performanceMode';
 
 export type GameMode = 'random' | 'real' | 'legends' | 'career' | 'rebuild';
 export interface RealLeagueOptions { source: 'history' | 'csv'; realDevelopment: boolean; forceRosters?: boolean; allPlayers?: boolean }
@@ -138,7 +142,7 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
 
   return (
     <div className="main-menu">
-      <div className="menu-masthead"><img src={logoIcon} alt="" /><span>COURT VISION<small>BASKETBALL MANAGEMENT</small></span><span className="menu-edition">THE PIXEL COURT</span>{onLocker && <button className="menu-locker" onClick={onLocker}><PixelIcon name="trophy" size={16} /> GM Locker</button>}<DiscordLink className="menu-discord" /></div>
+      <div className="menu-masthead"><img src={logoIcon} alt="" /><span>COURT VISION<small>BASKETBALL MANAGEMENT</small></span><span className="menu-edition">THE PIXEL COURT</span>{onLocker && <button className="menu-locker" onClick={onLocker}><PixelIcon name="trophy" size={16} /> GM Locker</button>}<InstallAppButton /><DiscordLink className="menu-discord" /></div>
       <div className="menu-hero">
         <div className="menu-hero-copy"><span className="pixel-eyebrow">BUILD A TEAM. WRITE ITS HISTORY.</span><h1>Your league.<br /><span>Your legacy.</span></h1><p>Scout the next great. Build your starting five.<br />Turn one season into a dynasty.</p></div>
         <div className="menu-player-scene" aria-hidden="true">
@@ -151,6 +155,8 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
       </div>
 
       <MenuLegacy />
+
+      <ThisWeek busy={busy} onRebuild={() => onStart('rebuild', 'normal', '', '', undefined, 'weekly')} onCareer={() => onStart('career', 'normal', '', '')} onHunt={() => onStart('legends', 'normal', '', '')} />
 
       <div className="menu-section-heading"><h2>Choose your game</h2><span>FIVE WAYS TO MAKE HISTORY</span></div>
 
@@ -259,8 +265,9 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
 
       {recovery}
       <AdBanner slot="menu" />
-      <footer className="legal-footer">{!IS_DESKTOP_BUILD && <><a href="/how-to-play.html">How to Play</a> · <a href="/guides/">Guides</a> · <a href="/faq.html">FAQ</a> · <a href="/about.html">About</a> · <a href="/changelog.html">What's new</a> · </>}<PrivacyLink /> · <CookieSettingsLink /> · <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer">Discord</a></footer>
+      <footer className="legal-footer">{!IS_DESKTOP_BUILD && <><a href="/how-to-play.html">How to Play</a> · <a href="/guides/">Guides</a> · <a href="/faq.html">FAQ</a> · <a href="/about.html">About</a> · <a href="/changelog.html">What's new</a> · </>}<PrivacyLink /> · <CookieSettingsLink /> · <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer">Discord</a> · <PerformanceToggle /></footer>
       <ConsentBanner />
+      <WhatsNew />
     </div>
   );
 }
@@ -268,4 +275,38 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
 function MenuLegacy() {
   const legacy = useLegacy();
   return <LegacyPanel legacy={legacy} compact />;
+}
+
+/** This week: the Rebuild and Career of the Week (same seed for everyone until Monday) and the Daily Legend. */
+function ThisWeek({ busy, onRebuild, onCareer, onHunt }: { busy: string | null; onRebuild: () => void; onCareer: () => void; onHunt: () => void }) {
+  const [now] = useState(() => new Date());
+  const rb = weeklyRebuild(), cw = weeklyCareer();
+  const rec = loadWeeklyRecords()[rb.week];
+  const streak = weeklyStreak();
+  const days = Math.max(1, Math.ceil((weekEndsAt(now) - now.getTime()) / 86_400_000));
+  return <section className="this-week" aria-label="This week's challenges">
+    <div className="this-week-head"><h2>This week</h2><span>{rb.week} · new challenges in {days} day{days === 1 ? '' : 's'}{streak > 1 ? ` · ${streak}-week streak` : ''}</span></div>
+    <div className="this-week-grid">
+      <article><span className="pixel-eyebrow">REBUILD OF THE WEEK</span><b>{rb.scenario.title}</b>
+        <p>{rb.scenario.startYear}-{String(rb.scenario.startYear + 1).slice(2)} {rb.scenario.team} · {rb.seasons} seasons · <em>{rb.twist.label}</em>. {rb.twist.id === 'standard' ? 'The same league for everyone.' : `${rb.twist.blurb} The same league for everyone.`}</p>
+        <small>{rec?.rebuild ? `Your best: ${rec.rebuild.best.toLocaleString()} ${'★'.repeat(rec.rebuild.stars ?? 0)}` : 'Not played yet'}</small>
+        <button className="primary" disabled={!!busy} onClick={onRebuild}>{busy ?? 'Take the job'}</button></article>
+      <article><span className="pixel-eyebrow">CAREER OF THE WEEK</span><b>{cw.draftYear ? `The ${cw.draftYear} draft` : 'The 2026 draft'}</b>
+        <p>Everyone spins the same wheel in the same league. Chase the best Legacy Score.</p>
+        <small>{rec?.career ? `Your best: Legacy ${rec.career.best}` : 'Not played yet'}</small>
+        <button onClick={onCareer}>Career Mode</button></article>
+      <article><span className="pixel-eyebrow">DAILY LEGEND</span><b>One hunt, every day</b>
+        <p>A League Hunt with a shared draft and road, new at midnight UTC.</p>
+        <button onClick={onHunt}>League Hunt</button></article>
+    </div>
+  </section>;
+}
+
+/** Graphics: Auto (lite on low-end devices), Lite or Full. */
+function PerformanceToggle() {
+  const [setting, setSetting] = useState<PerformanceSetting>(() => performanceSetting());
+  const next: Record<PerformanceSetting, PerformanceSetting> = { auto: 'lite', lite: 'full', full: 'auto' };
+  const label = setting === 'auto' ? `Auto (${liteMode('auto') ? 'lite' : 'full'})` : setting === 'lite' ? 'Lite' : 'Full';
+  return <button className="link-button" title="Lite mode stops looping animations and blur, and uses fewer simulation workers. Auto turns it on for low-memory devices."
+    onClick={() => { const v = next[setting]; setPerformanceSetting(v); setSetting(v); }}>Graphics: {label}</button>;
 }

@@ -1,10 +1,39 @@
 import react from '@vitejs/plugin-react'
+import { readFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
 import { defineConfig, type Plugin } from 'vite'
 
 /** The offline Windows edition shows no network ads, so its page drops the AdSense tag. */
 const stripAdsense = (): Plugin => ({
   name: 'strip-adsense',
-  transformIndexHtml: html => html.replace(/\s*<!-- AdSense publisher tag[\s\S]*?<\/script>/, '').replace(/\s*<!-- AMP auto ads \(keep[\s\S]*?<\/script>/, '').replace(/\s*<!-- AMP auto ads tag -->[\s\S]*?<!-- \/AMP auto ads tag -->/, ''),
+  transformIndexHtml: html => html.replace(/\s*<!-- AdSense publisher tag[\s\S]*?<\/script>/, '').replace(/\s*<!-- AMP auto ads \(keep[\s\S]*?<\/script>/, '').replace(/\s*<!-- AMP auto ads tag -->[\s\S]*?<!-- \/AMP auto ads tag -->/, '')
+    .replace(/\s*<!-- PWA -->[\s\S]*?<!-- \/PWA -->/, ''),
+})
+
+/**
+ * The service worker for the web build (installable app, plays offline): scripts/sw.template.js with the app shell
+ * (the page, its entry script, the chunks it imports and their styles) and a version that changes with every build.
+ */
+const serviceWorker = (): Plugin => ({
+  name: 'service-worker',
+  apply: 'build',
+  generateBundle(_options, bundle) {
+    const shell = new Set<string>(['/', '/manifest.webmanifest', '/icons/icon-192.png', '/favicon.png'])
+    const add = (file: string) => {
+      const item = bundle[file]
+      if (!item || shell.has(`/${file}`)) return
+      shell.add(`/${file}`)
+      if (item.type === 'chunk') {
+        for (const css of item.viteMetadata?.importedCss ?? []) shell.add(`/${css}`)
+        item.imports.forEach(add)
+      }
+    }
+    for (const [file, item] of Object.entries(bundle)) if (item.type === 'chunk' && item.isEntry) add(file)
+    const version = createHash('sha256').update(Object.keys(bundle).sort().join('|')).digest('hex').slice(0, 12)
+    const source = readFileSync(new URL('./scripts/sw.template.js', import.meta.url), 'utf8')
+      .replace('__VERSION__', version).replace('__SHELL__', JSON.stringify([...shell], null, 2))
+    this.emitFile({ type: 'asset', fileName: 'sw.js', source })
+  },
 })
 
 /**
@@ -26,7 +55,7 @@ const siteMaps = (): Plugin => ({
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => ({
-  plugins: mode === 'desktop' ? [react(), stripAdsense()] : [react(), siteMaps()],
+  plugins: mode === 'desktop' ? [react(), stripAdsense()] : [react(), siteMaps(), serviceWorker()],
   // `--mode desktop` is the offline Windows package: relative asset paths, its own output folder.
   base: mode === 'desktop' ? './' : '/',
   build: {

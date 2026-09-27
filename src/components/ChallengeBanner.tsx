@@ -3,6 +3,7 @@ import { challengeProgress, loadRebuildRecords } from '../simulation/rebuildChal
 import { formatSeasonYear } from '../simulation/calendar';
 import { PixelIcon } from './PixelIcon';
 import { ShareCardButton } from './ShareCardButton';
+import { TWISTS } from '../retention/weekly';
 
 const Stars = ({ n }: { n: number }) => <span className="rb-stars" aria-label={`${n} of 3 stars`}>{[1, 2, 3].map(i => <span key={i} className={i <= n ? 'on' : ''}>★</span>)}</span>;
 
@@ -13,9 +14,10 @@ export function ChallengeBanner({ league, onMenu }: { league: League; onMenu: ()
   const best = loadRebuildRecords()[p.scenario.id];
   const left = p.config.seasons - p.results.length;
   const over = p.status !== 'active';
+  const twist = p.config.weekly ? TWISTS.find(t => t.id === p.config.weekly!.twist) : undefined;
   return <section className={`rb-banner ${p.status}`} aria-live="polite">
     <div className="rb-head">
-      <span className="pixel-eyebrow"><PixelIcon name="trophy" size={14} /> REBUILD CHALLENGE · {p.scenario.difficulty.toUpperCase()}</span>
+      <span className="pixel-eyebrow"><PixelIcon name="trophy" size={14} /> {p.config.weekly ? `REBUILD OF THE WEEK ${p.config.weekly.week}` : 'REBUILD CHALLENGE'} · {p.scenario.difficulty.toUpperCase()}{twist && twist.id !== 'standard' ? ` · ${twist.label.toUpperCase()}` : ''}</span>
       <h2>{p.scenario.title}</h2>
       {!over && <p>Season <b>{p.seasonNumber}</b> of {p.config.seasons} · win a championship before the clock runs out{left === 1 ? ': this is the last season' : ''}.</p>}
       {p.status === 'won' && <p className="rb-verdict">Champions in season {p.titleIn}! The rebuild is complete.</p>}
@@ -26,7 +28,7 @@ export function ChallengeBanner({ league, onMenu }: { league: League; onMenu: ()
     {!p.official && <p className="hint-text">Sandbox was used in this league: the score does not go on the board.</p>}
     {over && <div className="contest-actions"><button className="primary" onClick={onMenu}>Back to the menu</button>
       <ShareCardButton fileName={`rebuild-${p.scenario.id}.png`} text={`Rebuild Challenge: ${p.scenario.title} · ${'★'.repeat(p.stars)}${'☆'.repeat(3 - p.stars)} · ${p.score.toLocaleString()} points`} spec={{
-        kicker: `Rebuild Challenge · ${p.scenario.difficulty}`, title: p.scenario.title, stars: p.stars,
+        kicker: `${p.config.weekly ? `Rebuild of the Week ${p.config.weekly.week}` : 'Rebuild Challenge'} · ${p.scenario.difficulty}`, title: p.scenario.title, stars: p.stars,
         subtitle: p.status === 'won' ? `Champions in season ${p.titleIn} of ${p.config.seasons}` : p.fired ? 'Fired before the job was done' : `No title in ${p.config.seasons} seasons`,
         stats: [{ label: 'Score', value: p.score.toLocaleString() }, { label: 'Seasons', value: String(p.results.length) }, { label: 'Best record', value: (() => { const b = [...p.results].sort((x, y) => y.wins - x.wins)[0]; return b ? `${b.wins}-${b.losses}` : '—'; })() }],
         lines: p.results.map((r, i) => `Year ${i + 1}: ${r.wins}-${r.losses} · ${r.finish}`), accent: p.status === 'won' ? 'gold' : 'red',

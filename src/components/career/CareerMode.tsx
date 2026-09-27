@@ -19,6 +19,8 @@ import { PlayerAvatar } from '../PlayerAvatar';
 import { OverallChart } from './CareerChart';
 import { TrophyShelf } from '../TrophyShelf';
 import { ShareCardButton } from '../ShareCardButton';
+import { weeklyCareer, loadWeeklyRecords, recordWeekly, weekEndsAt, type WeeklyCareer } from '../../retention/weekly';
+import { track, trackOnce } from '../../analytics/track';
 import { WheelBuilder, MyPlayerBuilder, IdentityView, type IdentityChoice } from './CareerCreate';
 import '../hunt/hunt.css';
 import './career.css';
@@ -42,6 +44,7 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
   const cancelRef = useRef<() => void>(() => {});
   const [tradeAsked, setTradeAsked] = useState<string | null>(null);
   const [draftYear, setDraftYear] = useState<number | null>(null);
+  const [weekly, setWeekly] = useState<string | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -53,15 +56,20 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
   const refresh = () => listCareers().then(setCareers);
   const persist = useCallback((meta: CareerMeta, world: CareerWorld | null) => {
     setActive({ meta, world });
-    if (meta.status === 'retired') { saveCareer(meta).then(() => dropWorld(meta.id)).then(refresh); return; }
+    if (meta.status === 'retired') {
+      if (meta.weekly && meta.retired) recordWeekly('career', meta.weekly, { best: meta.retired.legacy, label: meta.playerId });
+      trackOnce(`career-${meta.id}`, 'mode_finish', { mode: 'career', variant: meta.weekly ? 'weekly' : meta.mode, seasons: meta.years.length, legacy: meta.retired?.legacy ?? 0, hall: meta.retired?.hallOfFame ?? 'no', past_draft: !!meta.draftYear });
+      saveCareer(meta).then(() => dropWorld(meta.id)).then(refresh); return;
+    }
     saveCareer(meta, world ?? undefined).then(refresh);
   }, []);
 
   /** Starts a new career: builds today's league and plays the season before his draft in the background. */
   /** `draftYear`: null for today's league, or a past draft (the league starts the season before it, real players on real careers). */
-  const startNew = async (mode: Mode, draftYear: number | null = null) => {
+  const startNew = async (mode: Mode, draftYear: number | null = null, weekly: WeeklyCareer | null = null) => {
     if (!h) return;
-    const seed = newSeed();
+    const seed = weekly ? weekly.seed : newSeed();
+    setWeekly(weekly?.week ?? null);
     setView(mode === 'wheel' ? { k: 'wheel', seed } : { k: 'myplayer', seed });
     pre.current?.cancel();
     setPreReady(false); setPrePct(0);
@@ -87,7 +95,8 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
       const w = await pre.current.done;
       const id = `career-${Date.now()}`;
       const playerId = uniqueName(w.league, w.extras, c.name);
-      let meta = { ...newCareerMeta(id, v.seed, v.mode, { name: c.name, pos: c.pos, jersey: c.jersey }, v.prime, c.readiness, playerId, w.league.season ?? '', startProgress()), ...(draftYear ? { draftYear } : {}) };
+      let meta = { ...newCareerMeta(id, v.seed, v.mode, { name: c.name, pos: c.pos, jersey: c.jersey }, v.prime, c.readiness, playerId, w.league.season ?? '', startProgress()), ...(draftYear ? { draftYear } : {}), ...(weekly ? { weekly } : {}) };
+      track('mode_start', { mode: 'career', variant: weekly ? 'weekly' : v.mode, past_draft: !!draftYear });
       const joined = joinDraft(w.league, w.extras, meta);
       setBusy({ label: 'Draft night…', pct: null });
       const step = runCareerStep({ type: 'fromDraft', league: joined.league, extras: joined.extras, seed: v.seed + 7, partial: w.partial, awardSettings: DEFAULT_AWARD_SETTINGS }, () => {});
@@ -178,7 +187,7 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
 const PAST_DRAFTS = Array.from({ length: 2025 - 1947 + 1 }, (_, i) => 2025 - i);
 const FAMOUS: Record<number, string> = { 1984: 'Jordan, Hakeem, Barkley', 1996: 'Kobe, Iverson, Nash, Allen', 2003: 'LeBron, Wade, Melo, Bosh', 1979: 'Magic', 1978: 'Bird', 1969: 'Kareem', 1992: 'Shaq', 1997: 'Duncan', 2009: 'Curry, Harden', 2007: 'Durant', 2014: 'Jokić, Embiid', 2018: 'Luka, Trae, SGA', 1985: 'Ewing, Karl Malone', 1987: 'Pippen, Robinson', 1998: 'Dirk, Pierce, Carter' };
 
-function Hub({ careers, onNew, onOpen, onDelete }: { careers: CareerMeta[]; onNew: (m: Mode, draftYear: number | null) => void; onOpen: (m: CareerMeta) => void; onDelete: (id: string) => void }) {
+function Hub({ careers, onNew, onOpen, onDelete }: { careers: CareerMeta[]; onNew: (m: Mode, draftYear: number | null, weekly?: WeeklyCareer | null) => void; onOpen: (m: CareerMeta) => void; onDelete: (id: string) => void }) {
   const [confirm, setConfirm] = useState<string | null>(null);
   const [era, setEra] = useState<number | null>(null);
   const [tab, setTab] = useState<'careers' | 'hof'>('careers');
@@ -195,6 +204,7 @@ function Hub({ careers, onNew, onOpen, onDelete }: { careers: CareerMeta[]; onNe
       <div className="hunt-replace"><button className={era == null ? 'active' : ''} aria-pressed={era == null} onClick={() => setEra(null)}>Today (the 2026 draft)</button>
         <label className="cv-era-pick"><span>A past draft</span><select value={era ?? ''} onChange={e => setEra(e.target.value ? Number(e.target.value) : null)}><option value="">Choose a year…</option>{PAST_DRAFTS.map(y => <option key={y} value={y}>{y}{FAMOUS[y] ? ` · ${FAMOUS[y]}` : ''}</option>)}</select></label></div>
       <p className="hint-text">{era ? `The ${era - 1}-${String(era).slice(2)} season is played first, then the ${era} draft, with the real class${FAMOUS[era] ? ` (${FAMOUS[era]})` : ''}. Real players follow their real careers around him.` : 'Today\'s league with real rosters: the 2025-26 season plays out first, then your draft.'}</p></div>
+    <WeeklyCareerCard careers={careers} onPlay={w => onNew('wheel', w.draftYear, w)} />
     <div className="hunt-roads">
       <button className="hunt-road" onClick={() => onNew('wheel', era)}><span className="hunt-road-icon">⟳</span><b>Random mode</b><span>Spin the wheel of NBA history. Take Curry's three-point shot, Shaq's size, LeBron's playmaking… if the wheel lets you.</span></button>
       <button className="hunt-road" onClick={() => onNew('myplayer', era)}><span className="hunt-road-icon">✎</span><b>MyPlayer</b><span>Build him yourself: height, weight, wingspan and a budget of points across nine skills.</span></button>
@@ -207,6 +217,22 @@ function Hub({ careers, onNew, onOpen, onDelete }: { careers: CareerMeta[]; onNe
         {confirm === m.id ? <button className="danger" onClick={() => { onDelete(m.id); setConfirm(null); }}>Delete for good</button> : <button className="link-button" onClick={() => setConfirm(m.id)}>Delete</button>}
       </li>; })}</ul></>}
   </section>;
+}
+
+/** Career of the Week: the same wheel and the same league for everyone until Monday. */
+function WeeklyCareerCard({ careers, onPlay }: { careers: CareerMeta[]; onPlay: (w: WeeklyCareer) => void }) {
+  const w = weeklyCareer();
+  const best = loadWeeklyRecords()[w.week]?.career;
+  const mine = careers.filter(m => m.weekly === w.week);
+  const [now] = useState(() => new Date());
+  const days = Math.max(1, Math.ceil((weekEndsAt(now) - now.getTime()) / 86_400_000));
+  return <div className="weekly-card">
+    <div><span className="pixel-eyebrow">CAREER OF THE WEEK · {w.week}</span>
+      <b>{w.draftYear ? `The ${w.draftYear} draft${FAMOUS[w.draftYear] ? ` (${FAMOUS[w.draftYear]})` : ''}` : 'Today\'s league, the 2026 draft'}</b>
+      <p>Everyone spins the same wheel in the same league this week. Build the best career you can and compare Legacy Scores on Discord. New one in {days} day{days === 1 ? '' : 's'}.</p>
+      <small>{best ? `Your best this week: Legacy ${best.best} (${best.label})` : mine.length ? `${mine.length} in progress` : 'Not played yet this week'}</small></div>
+    <button className="primary" onClick={() => onPlay(w)}>Spin this week's wheel</button>
+  </div>;
 }
 
 // ---------------------------------------------------------------- the Hall of Fame
@@ -368,7 +394,7 @@ function Legacy({ h, meta, onNew }: { h: NbaHistory; meta: CareerMeta; onNew: ()
     <Moments moments={careerMoments(meta)} title="Career moments" />
     <YearsTable years={meta.years} />
     <div className="contest-actions"><button className="primary" onClick={onNew}>New career</button><ShareCardButton fileName={`${meta.playerId.replace(/\W+/g, '-')}-legacy.png`} text={share} spec={{
-      kicker: `Career Mode · ${meta.years.length} season${meta.years.length === 1 ? '' : 's'}${meta.draftYear ? ` · ${meta.draftYear} draft class` : ''}`, title: meta.playerId,
+      kicker: `${meta.weekly ? `Career of the Week ${meta.weekly}` : 'Career Mode'} · ${meta.years.length} season${meta.years.length === 1 ? '' : 's'}${meta.draftYear ? ` · ${meta.draftYear} draft class` : ''}`, title: meta.playerId,
       subtitle: `${per(r.pts, g)} PTS · ${per(r.reb, g)} REB · ${per(r.ast, g)} AST · ${r.pts.toLocaleString()} career points`,
       badge: ret.hallOfFame === 'first-ballot' ? 'HALL OF FAME · FIRST BALLOT' : ret.hallOfFame === 'yes' ? 'HALL OF FAME' : undefined,
       stats: [{ label: 'All-time', value: rank ? `#${rank}` : '—' }, { label: 'Titles', value: String(r.titles) }, { label: 'MVPs', value: String(r.mvp) }, { label: 'All-Star', value: String(r.allStar) }],
