@@ -207,3 +207,15 @@ button.primary:hover:not(:disabled), .menu-start:hover:not(:disabled) { box-shad
   content: ''; display: block; width: 36px; height: 4px; margin-top: 8px; background: var(--amber); box-shadow: 2px 2px 0 #04080f;
 }
 .stats-section-header > h4:first-child { margin-bottom: 0; }
+
+/* --- Sidebar scrollbar drawn by the game (always visible; browser scrollbars hide on macOS, phones and Firefox) --- */
+.sidebar-scroll-wrap { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.sidebar-scroll-wrap > .sidebar-scroll { scrollbar-width: none; scrollbar-gutter: auto; padding-right: 13px; }
+.sidebar-scroll-wrap > .sidebar-scroll::-webkit-scrollbar { display: none; width: 0; }
+.scroll-rail { position: absolute; top: 2px; right: 1px; bottom: 2px; width: 10px; background: #0a1422; border: 1px solid var(--line); cursor: pointer; touch-action: none; z-index: 2; }
+.scroll-rail-thumb { position: absolute; left: 0; right: 0; top: 0; background: var(--line-bright); border: 1px solid #0a1422; cursor: grab; transition: background 120ms; }
+.scroll-rail:hover .scroll-rail-thumb { background: #8aa6cc; }
+.scroll-rail-thumb:active { background: var(--amber); cursor: grabbing; }
+.sidebar.collapsed .scroll-rail { width: 5px; right: 1px; }
+.sidebar.collapsed .sidebar-scroll-wrap > .sidebar-scroll { padding-right: 6px; }
+@media (prefers-reduced-motion: reduce) { .scroll-rail-thumb { transition: none; } }
