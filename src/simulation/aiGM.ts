@@ -14,7 +14,7 @@ import { refreshLeagueMorale, type MoraleEvent } from './personality';
 import { RNG } from './engine/rng';
 import {
   type GMLeagueExtras, type TradeProposal, type DraftProspect,
-  computeTradeValue, validateTrade, executeTrade, evaluateTradeSides, signFreeAgent, draftProspect, currentDraftOrder,
+  computeTradeValue, tradePackageValue, validateTrade, executeTrade, evaluateTradeSides, signFreeAgent, draftProspect, currentDraftOrder,
   isTradeDeadlinePassed, capSpaceRemaining, finalizeDraftDay, tradeableFuturePicks, computeFutureDraftPickValue, waiveToFreeAgency,
 } from './gm';
 import { computeTeamFinances } from './finances';
@@ -327,6 +327,14 @@ export interface ExecutedAITrade {
 }
 
 /** Runs a handful of AI-vs-AI trade attempts (never involving the controlled team) and executes any that pass validateTrade. The league-wide tradeAIAggressiveness slider scales how many attempts/completions happen per call — higher means a livelier trade market. */
+/** The least an AI team gets back in neutral value, as a share of what it gives up, in AI-to-AI trades. */
+export const AI_TRADE_NEUTRAL_FLOOR = 0.6;
+/** Whether a player has already been traded this season (from his own history). */
+function tradedThisSeason(league: League, playerId: string): boolean {
+  const p = league.teams.flatMap(t => t.seasons).find(s => s.playerId === playerId);
+  return !!p?.history?.some(e => e.type === 'traded' && e.season === league.season);
+}
+
 export function runTradeMarketAI(
   league: League,
   extras: GMLeagueExtras,
@@ -357,6 +365,12 @@ export function runTradeMarketAI(
     if (!proposal) continue;
     const validation = validateTrade(currentLeague, currentExtras, proposal);
     if (!validation.valid) continue;
+    // Sanity floor: each side values the deal from its own situation, but no AI-to-AI deal may be lopsided on neutral
+    // value (a star for spare parts), and nobody is flipped twice in a season.
+    const give = (team: string, players: string[], picks?: string[]) => tradePackageValue(currentLeague, currentExtras, team, players, picks ?? []);
+    const va = give(proposal.teamAId, proposal.playersFromA, proposal.picksFromA), vb = give(proposal.teamBId, proposal.playersFromB, proposal.picksFromB);
+    if (Math.min(va, vb) < Math.max(va, vb) * AI_TRADE_NEUTRAL_FLOOR) continue;
+    if ([...proposal.playersFromA, ...proposal.playersFromB].some(id => tradedThisSeason(currentLeague, id))) continue;
 
     const teamAName = currentLeague.teams.find((t) => t.teamId === proposal.teamAId)!.name;
     const teamBName = currentLeague.teams.find((t) => t.teamId === proposal.teamBId)!.name;

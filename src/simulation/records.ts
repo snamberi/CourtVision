@@ -203,7 +203,25 @@ export function seasonRows(league: League, extras?: GMLeagueExtras): { rows: Sea
 
 interface Candidate { value: number; entry: Omit<RecordEntry, 'value'> }
 function top(cands: Candidate[], lower = false): RecordEntry[] {
-  return cands.filter(c => Number.isFinite(c.value)).sort((a, b) => lower ? a.value - b.value : b.value - a.value).slice(0, 5).map(c => ({ ...c.entry, value: c.value }));
+  return topBy(cands, c => c.value, c => c.entry, lower);
+}
+/**
+ * The best five by `value` in one pass (ties keep their original order, like a stable sort). Entries are built only
+ * for the five: with every real player loaded there are tens of thousands of rows per record.
+ */
+function topBy<T>(items: readonly T[], value: (x: T) => number | null, entry: (x: T) => Omit<RecordEntry, 'value'>, lower = false): RecordEntry[] {
+  const best: { v: number; x: T }[] = [];
+  const better = (a: number, b: number) => (lower ? a < b : a > b);
+  for (const x of items) {
+    const v = value(x) ?? NaN;
+    if (!Number.isFinite(v)) continue;
+    if (best.length === 5 && !better(v, best[4].v)) continue;
+    let i = best.length;
+    while (i > 0 && better(v, best[i - 1].v)) i--;
+    best.splice(i, 0, { v, x });
+    if (best.length > 5) best.pop();
+  }
+  return best.map(b => ({ ...entry(b.x), value: b.v }));
 }
 const per = (n: number, d: number) => d > 0 ? n / d : 0;
 
@@ -216,14 +234,17 @@ export function computeRecords(league: League, extras?: GMLeagueExtras): RecordR
     for (const cat of TEAM_GAME) out.push({ def: { id: `game:t:${scope}:${cat.id}`, group: 'Single Game', section: `Team · ${label}`, title: `${cat.title} in a game`, format: cat.format ?? 'int', lowerIsBetter: cat.lower }, entries: (book[`t:${scope}:${cat.id}`] ?? []).slice(0, 5) });
   }
   const { rows, careers } = seasonRows(league, extras);
+  const played = rows.filter(r => r.stats.gamesPlayed > 0);
   const qualAvg = (r: SeasonRow) => r.stats.gamesPlayed >= 40 || (r.season === league.season && r.stats.gamesPlayed >= 10);
   const qualMin = (r: SeasonRow) => r.stats.minutes >= 1000 || (r.season === league.season && r.stats.minutes >= 300);
   const seasonEntry = (r: SeasonRow) => ({ playerId: r.playerId, teamId: r.teamId ?? undefined, season: r.season, detail: `${r.stats.gamesPlayed} GP · age ${r.age}` });
   const add = (group: RecordGroup, section: string, id: string, title: string, format: RecordFormat, entries: RecordEntry[], qualifier?: string, lowerIsBetter?: boolean) =>
     out.push({ def: { id, group, section, title, format, qualifier, lowerIsBetter }, entries });
-  const recorded = (r: { missing?: MissingStat[] }, id: string) => !r.missing || !needsOf(id).some(f => r.missing!.includes(f));
-  const seasonRec = (section: string, id: string, title: string, format: RecordFormat, value: (r: SeasonRow) => number | null, qualify: (r: SeasonRow) => boolean = () => true, qualifier?: string, lower?: boolean) =>
-    add('Season', section, `season:${id}`, title, format, top(rows.filter(r => r.stats.gamesPlayed > 0 && recorded(r, id) && qualify(r)).map(r => ({ value: value(r) ?? NaN, entry: seasonEntry(r) })), lower), qualifier, lower);
+  const recorded = (r: { missing?: MissingStat[] }, needs: MissingStat[]) => !r.missing || !needs.some(f => r.missing!.includes(f));
+  const seasonRec = (section: string, id: string, title: string, format: RecordFormat, value: (r: SeasonRow) => number | null, qualify: (r: SeasonRow) => boolean = () => true, qualifier?: string, lower?: boolean) => {
+    const needs = needsOf(id);
+    add('Season', section, `season:${id}`, title, format, topBy(played.filter(r => recorded(r, needs) && qualify(r)), value, seasonEntry, lower), qualifier, lower);
+  };
   const T = (k: keyof SeasonStatTotals) => (r: SeasonRow) => r.stats[k];
   const totals: [string, string, (r: SeasonRow) => number][] = [
     ['pts', 'Points', T('points')], ['reb', 'Rebounds', r => r.stats.oreb + r.stats.dreb], ['oreb', 'Offensive rebounds', T('oreb')], ['dreb', 'Defensive rebounds', T('dreb')],
@@ -270,7 +291,7 @@ export function computeRecords(league: League, extras?: GMLeagueExtras): RecordR
   // Career
   const careerEntry = (c: CareerRow) => ({ playerId: c.playerId, teamId: c.lastTeam ?? undefined, season: `${c.seasons} season${c.seasons === 1 ? '' : 's'}`, detail: `${c.totals.gamesPlayed} GP` });
   const careerRec = (section: string, id: string, title: string, format: RecordFormat, value: (c: CareerRow) => number | null, qualify: (c: CareerRow) => boolean = () => true, qualifier?: string) =>
-    add('Career', section, `career:${id}`, title, format, top(careers.filter(qualify).map(c => ({ value: value(c) ?? NaN, entry: careerEntry(c) }))), qualifier);
+    add('Career', section, `career:${id}`, title, format, topBy(careers.filter(qualify), value, careerEntry), qualifier);
   const careerTotals: [string, string, (c: CareerRow) => number][] = [
     ['pts', 'Points', c => c.totals.points], ['reb', 'Rebounds', c => c.totals.oreb + c.totals.dreb], ['oreb', 'Offensive rebounds', c => c.totals.oreb], ['dreb', 'Defensive rebounds', c => c.totals.dreb],
     ['ast', 'Assists', c => c.totals.ast], ['stl', 'Steals', c => c.totals.stl], ['blk', 'Blocks', c => c.totals.blk], ['tpm', 'Three-pointers made', c => c.totals.tpm], ['tpa', 'Three-pointers attempted', c => c.totals.tpa],
@@ -308,7 +329,7 @@ export function computeRecords(league: League, extras?: GMLeagueExtras): RecordR
     ['pts', 'Points', s => s.points], ['reb', 'Rebounds', s => s.oreb + s.dreb], ['ast', 'Assists', s => s.ast], ['stl', 'Steals', s => s.stl], ['blk', 'Blocks', s => s.blk],
     ['tpm', 'Three-pointers made', s => s.tpm], ['ftm', 'Free throws made', s => s.ftm], ['min', 'Minutes played', s => s.minutes],
   ];
-  for (const [id, title, v] of poSeason) add('Playoffs', 'Single postseason', `po:season:${id}`, `${title} in one postseason`, 'int', top(po.map(r => ({ value: v(r.playoff!), entry: poEntry(r) }))));
+  for (const [id, title, v] of poSeason) add('Playoffs', 'Single postseason', `po:season:${id}`, `${title} in one postseason`, 'int', topBy(po, r => v(r.playoff!), poEntry));
   for (const [id, title, v] of [['ppg', 'Points per game', (s: SeasonStatTotals) => s.points], ['rpg', 'Rebounds per game', (s: SeasonStatTotals) => s.oreb + s.dreb], ['apg', 'Assists per game', (s: SeasonStatTotals) => s.ast]] as const)
     add('Playoffs', 'Single postseason', `po:season:${id}`, `${title} in one postseason`, 'dec1', top(po.filter(r => r.playoff!.gamesPlayed >= 8).map(r => ({ value: per(v(r.playoff!), r.playoff!.gamesPlayed), entry: poEntry(r) }))), '8+ games');
   const poCareer = careers.filter(c => c.playoff.gamesPlayed > 0);
@@ -362,7 +383,8 @@ export function computeRecords(league: League, extras?: GMLeagueExtras): RecordR
   awardRec('smoy', 'Most Sixth Man awards', h => [h.fullAwards?.smoy?.playerId]);
   awardRec('mip', 'Most Improved Player awards', h => [h.fullAwards?.mip?.playerId]);
   awardRec('scoring', 'Most scoring titles', h => [h.fullAwards?.scoringChamp?.playerId]);
-  const ageAt = (playerId: string, season: string) => rows.find(r => r.playerId === playerId && r.season === season)?.age;
+  const ages = new Map(rows.map(r => [`${r.playerId}|${r.season}`, r.age]));
+  const ageAt = (playerId: string, season: string) => ages.get(`${playerId}|${season}`);
   const mvpAges = history.filter(h => h.mvpPlayerId).map(h => ({ age: ageAt(h.mvpPlayerId!, h.season), h })).filter(x => x.age != null);
   add('Awards', 'Players', 'award:youngMvp', 'Youngest MVP', 'int', top(mvpAges.map(x => ({ value: x.age!, entry: { playerId: x.h.mvpPlayerId!, season: x.h.season } })), true), undefined, true);
   add('Awards', 'Players', 'award:oldMvp', 'Oldest MVP', 'int', top(mvpAges.map(x => ({ value: x.age!, entry: { playerId: x.h.mvpPlayerId!, season: x.h.season } }))));

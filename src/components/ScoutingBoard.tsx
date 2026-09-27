@@ -8,9 +8,10 @@ import { PlayerNameTag } from './PlayerAvatar';
 import { TeamLink } from './TeamLink';
 import { classHonors, collegeSeason, collegeSeasonToDate, type CollegeSeason } from '../simulation/collegeSeason';
 import { mockDraft, seasonProgress } from '../simulation/draftSeason';
+import { assignScout, scoutDept, prospectRegion, EYE_LABEL, scoutVerdict } from '../simulation/scoutDept';
 
 const ftIn = (inches: number) => `${Math.floor(inches / 12)}′ ${(inches % 12).toFixed(inches % 1 ? 2 : 0).replace(/\.?0+$/, '')}″`;
-type View = 'board' | 'college' | 'mock' | 'combine' | 'workouts';
+type View = 'board' | 'scouts' | 'college' | 'mock' | 'combine' | 'workouts';
 type CombineKey = keyof CombineResults;
 const COMBINE_COLS: { key: CombineKey; label: string; fmt: (v: number) => string; lowerIsBetter?: boolean }[] = [
   { key: 'heightNoShoes', label: 'Ht (no shoes)', fmt: ftIn }, { key: 'wingspan', label: 'Wingspan', fmt: ftIn },
@@ -67,11 +68,12 @@ export function ScoutingBoard({ league, extras, controlledTeamId, myTurn, onDraf
     </header>
     <p className="hint-text">Potential shows as your scouts' range. A bigger scouting budget narrows it and adds workout slots; a workout nearly removes the guesswork and reveals character. Other front offices draft from their own reads.</p>
     <div className="stats-view-toggle" role="tablist" aria-label="Scouting views">
-      {(['board', 'college', 'mock', 'combine', 'workouts'] as View[]).map(v => <button key={v} role="tab" aria-selected={view === v} className={view === v ? 'active' : ''} onClick={() => setView(v)}>{v === 'board' ? 'Big Board' : v === 'college' ? 'College Stats' : v === 'mock' ? 'Mock Draft' : v === 'combine' ? 'Draft Combine' : `Workouts (${workouts.length})`}</button>)}
+      {(['board', ...(team ? ['scouts' as View] : []), 'college', 'mock', 'combine', 'workouts'] as View[]).map(v => <button key={v} role="tab" aria-selected={view === v} className={view === v ? 'active' : ''} onClick={() => setView(v)}>{v === 'board' ? 'Big Board' : v === 'scouts' ? 'Scouts' : v === 'college' ? 'College Stats' : v === 'mock' ? 'Mock Draft' : v === 'combine' ? 'Draft Combine' : `Workouts (${workouts.length})`}</button>)}
     </div>
     {note && <p className="hint-text" role="status">{note}</p>}
 
-    {view === 'college' ? <CollegeTable board={board} college={college} honors={honors} progress={progress} onSelectPlayer={onSelectPlayer} />
+    {view === 'scouts' && team ? <ScoutsPanel league={league} extras={extras} team={team} board={board} onChange={onChange} onSelectPlayer={onSelectPlayer} />
+      : view === 'college' ? <CollegeTable board={board} college={college} honors={honors} progress={progress} onSelectPlayer={onSelectPlayer} />
       : view === 'mock' ? <div className="finances-table-wrap"><table className="db-table mock-draft-table">
         <thead><tr><th>Pick</th><th>Team</th><th>Player</th><th>Pos</th><th>School / club</th><th>Why</th><th>Slot salary</th></tr></thead>
         <tbody>{mock.map(m => <tr key={m.pick} className={m.teamId === team ? 'current-season-row' : undefined}>
@@ -82,7 +84,7 @@ export function ScoutingBoard({ league, extras, controlledTeamId, myTurn, onDraf
         </tr>)}</tbody>
       </table><p className="hint-text">{league.seasonPhase === 'draft' ? 'Remaining picks in the real order.' : 'Order if the season ended today, without lottery luck.'} A consensus mock from public scouting and each team's thinnest position; every front office drafts from its own private reads, so expect surprises. Your picks are highlighted.</p></div>
       : view !== 'combine' ? <div className="finances-table-wrap"><table className="db-table scouting-table">
-      <thead><tr><th>#</th><th>Player</th><th>Pos</th><th>Age</th><th>OVR</th><th>POT (scouted)</th><th>Read</th><th>Best tool</th><th>Flags</th><th></th><th></th></tr></thead>
+      <thead><tr><th>#</th><th>Player</th><th>Pos</th><th>Age</th><th>OVR</th><th>POT (scouted)</th><th>Read</th><th title="Looks your scouts have filed on him">Looks</th><th>Best tool</th><th>Flags</th><th></th><th></th></tr></thead>
       <tbody>{rows.map((b, i) => {
         const { p, report: r } = b, isOpen = open === p.playerId, worked = workouts.includes(p.playerId);
         const topGrade = Object.entries(r.grades).sort((x, y) => gradeRank(y[1]) - gradeRank(x[1]))[0];
@@ -93,6 +95,7 @@ export function ScoutingBoard({ league, extras, controlledTeamId, myTurn, onDraf
             <td>{primaryPosition(p.trueSeason)}</td><td>{p.trueSeason.age}</td><td>{b.ovr}</td>
             <td className="scouting-pot"><PotBar low={r.potLow} high={r.potHigh} />{r.potLow === r.potHigh ? r.potLow : `${r.potLow}–${r.potHigh}`}</td>
             <td><span className={`scout-conf scout-conf-${r.confidence.toLowerCase()}`}>{r.confidence}</span></td>
+            <td>{r.looks >= 0.5 ? r.looks.toFixed(1) : '—'}</td>
             <td>{topGrade ? `${topGrade[0]} ${topGrade[1]}` : '—'}</td>
             <td className="scouting-flags">{r.flags.length ? r.flags.map(f => <span key={f} title={f} className={f.startsWith('Medical') || f.startsWith('Interview') || f.startsWith('Raw') ? 'flag-risk' : 'flag-good'}>{f.startsWith('Medical') ? '✚' : f.startsWith('Interview') ? '?' : f.startsWith('Raw') ? '◆' : f.startsWith('Older') ? '⌛' : '★'}</span>) : '—'}</td>
             <td className="scouting-actions">
@@ -101,7 +104,7 @@ export function ScoutingBoard({ league, extras, controlledTeamId, myTurn, onDraf
             </td>
             <td><button disabled={!myTurn} onClick={() => onDraft(p.playerId)}>Draft</button></td>
           </tr>
-          {isOpen && <tr className="scouting-report-row"><td colSpan={11}><ReportCard b={b} season={college.get(p.playerId)} honors={honors.get(p.playerId)} /></td></tr>}
+          {isOpen && <tr className="scouting-report-row"><td colSpan={12}><ReportCard b={b} season={college.get(p.playerId)} honors={honors.get(p.playerId)} /></td></tr>}
         </Fragment>;
       })}</tbody>
     </table>{rows.length === 0 && <p className="empty-state">{view === 'workouts' ? 'No workouts scheduled. Invite prospects from the Big Board.' : 'No prospects remaining.'}</p>}</div>
@@ -132,6 +135,7 @@ function ReportCard({ b, season, honors }: { b: { p: DraftProspect; report: Retu
     </div>
     <div className="scouting-report-text">
       <p><b>Projects as:</b> {p.trueSeason.archetypeLabel ?? primaryPosition(p.trueSeason)} · potential {r.potLow === r.potHigh ? r.potLow : `${r.potLow}–${r.potHigh}`} ({r.confidence === 'Workout' ? 'seen in a private workout' : `${r.confidence.toLowerCase()} confidence`})</p>
+      <p><b>Scouts' verdict:</b> "{scoutVerdict(r.potMid)}"{r.looks >= 0.5 ? ` (${r.looks.toFixed(1)} looks)` : ' (no scout has seen him in person)'}</p>
       <p className="scout-plus">+ {r.strengths.join(' · ')}</p>
       <p className="scout-minus">− {r.weaknesses.join(' · ')}</p>
       {r.flags.length > 0 && <p className="scout-flags">{r.flags.join(' · ')}</p>}
@@ -168,4 +172,27 @@ function CollegeTable({ board, college, honors, progress, onSelectPlayer }: {
       <td className="hint-text">{honors.get(p.playerId)?.join(', ') ?? ''}</td>
     </tr>)}</tbody>
   </table><p className="hint-text">{!started ? 'The college season tips off with yours: lines fill in as your season is played.' : progress < 1 ? `College seasons are ${Math.round(progress * 100)}% complete, in step with yours. Honors are voted when they finish.` : 'Final college and overseas lines. Box scores flatter some prospects and hide others; pro players overseas post smaller numbers against grown men.'}</p></div>;
+}
+
+/** Your scouts: send each one to watch a prospect; looks pile up as your season is played. */
+function ScoutsPanel({ league, extras, team, board, onChange, onSelectPlayer }: {
+  league: League; extras: GMLeagueExtras; team: string; board: { p: DraftProspect; report: ReturnType<typeof scoutingReport> }[];
+  onChange: (league: League, extras: GMLeagueExtras) => void; onSelectPlayer: (id: string) => void;
+}) {
+  const dept = scoutDept(league, extras, team);
+  const offseason = league.schedule.length > 0 && league.schedule.every(g => g.played);
+  return <div className="scouts-panel">
+    <p className="hint-text">Each scout files a look every few days of your season on the prospect he is watching, more often in his own region. Looks narrow your read on potential; a scout's specialty adds what only he notices. The scouting budget sets how many scouts you have.{offseason ? ' The season is over: no new looks until next season.' : ''}</p>
+    <div className="finances-table-wrap"><table className="db-table scouts-table">
+      <thead><tr><th className="col-name">Scout</th><th>Region</th><th>Eye</th><th>Skill</th><th>Watching</th></tr></thead>
+      <tbody>{dept.scouts.map(sc => { const a = dept.assignments[sc.id]; return <tr key={sc.id}>
+        <td className="col-name">{sc.name}</td><td>{sc.region}</td><td>{EYE_LABEL[sc.eye]}</td><td>{sc.skill}</td>
+        <td><select aria-label={`Assignment for ${sc.name}`} value={a?.prospectId ?? ''} onChange={e => onChange(league, assignScout(league, extras, team, sc.id, e.target.value || null))}>
+          <option value="">— home office —</option>
+          {board.map(b => { const reg = prospectRegion(b.p); return <option key={b.p.playerId} value={b.p.playerId}>{b.p.playerId} · {reg}{reg === sc.region ? ' ★' : ''}</option>; })}
+        </select>{a && <button className="link-button" onClick={() => onSelectPlayer(a.prospectId)}>Profile</button>}</td>
+      </tr>; })}</tbody>
+    </table></div>
+    <p className="hint-text">★ = in the scout's own region (looks come 50% faster).</p>
+  </div>;
 }

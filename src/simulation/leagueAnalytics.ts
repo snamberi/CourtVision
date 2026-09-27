@@ -1,6 +1,7 @@
 import { isUnanimous } from './almanac';
 import type { TrophyKey } from './trophies';
-import type { League, RetiredPlayerRecord } from './league';
+import type { League, RetiredPlayerRecord, FranchiseHistoryRecord } from './league';
+import type { PlayerSeason } from './types';
 import { calculateFullAttributeOverall } from './engine/overall';
 import { perGameAverages } from './careerStats';
 import { placementsForPlayer, type AwardPlacement } from './awards';
@@ -97,7 +98,7 @@ export function computeLeagueAnalytics(league: League, opts: { topN?: number } =
   const improvedTeams = [...teamEntriesWithDelta].filter((t) => (t.delta ?? 0) > 0).sort((a, b) => (b.delta ?? 0) - (a.delta ?? 0)).slice(0, 5);
   const declinedTeams = [...teamEntriesWithDelta].filter((t) => (t.delta ?? 0) < 0).sort((a, b) => (a.delta ?? 0) - (b.delta ?? 0)).slice(0, 5);
 
-  const retiredPlayers = [...(league.retiredPlayers ?? [])].reverse(); // most recent retirements first
+  const retiredPlayers = (league.retiredPlayers ?? []).filter(r => !r.preStart).reverse(); // most recent retirements first (not the pre-start real players)
 
   return { bestPlayers, mostImprovedPlayers, mostDeclinedPlayers, bestTeams, worstTeams, improvedTeams, declinedTeams, retiredPlayers, bestRookies };
 }
@@ -117,10 +118,10 @@ export interface PlayerAwardEntry {
  * viewable on a player's profile instead of only existing for the season
  * they were computed in.
  */
-export function getPlayerAwardsHistory(league: League, playerId: string): PlayerAwardEntry[] {
+export function getPlayerAwardsHistory(league: League, playerId: string, knownSeason?: PlayerSeason): PlayerAwardEntry[] {
   const entries: PlayerAwardEntry[] = [];
   const add = (season: string, label: string, key: TrophyKey) => entries.push({ season, label, key });
-  for (const record of league.franchiseHistory ?? []) {
+  for (const record of recordsMentioning(league.franchiseHistory, playerId)) {
     const { season } = record;
     if (record.championPlayerIds?.includes(playerId)) add(season, 'NBA Champion', 'champion');
     if (record.fmvpPlayerId === playerId) add(season, 'Finals MVP', 'fmvp');
@@ -160,7 +161,7 @@ export function getPlayerAwardsHistory(league: League, playerId: string): Player
   // Credit championships by matching the player's own known (season, team) history against each
   // franchise record's champion - not the team's CURRENT roster, which would be wrong for anyone
   // since traded/waived/re-signed elsewhere.
-  const playerSeason = league.teams.flatMap((t) => t.seasons).find((s) => s.playerId === playerId) ?? league.retiredPlayers?.find(p => p.playerId === playerId)?.finalSeasonData;
+  const playerSeason = knownSeason ?? league.teams.flatMap((t) => t.seasons).find((s) => s.playerId === playerId) ?? league.retiredPlayers?.find(p => p.playerId === playerId)?.finalSeasonData;
   if (playerSeason) {
     const affiliations = new Map<string, string>(); // season -> teamId
     affiliations.set(playerSeason.season, playerSeason.teamId ?? '');
@@ -173,6 +174,33 @@ export function getPlayerAwardsHistory(league: League, playerId: string): Player
   }
 
   return entries;
+}
+
+/**
+ * The history records that mention a player anywhere (a superset of the ones he won something in), indexed once
+ * per history array: with thousands of real retirees, scanning every season for every player was quadratic.
+ */
+const mentionIndex = new WeakMap<FranchiseHistoryRecord[], Map<string, FranchiseHistoryRecord[]>>();
+function recordsMentioning(history: FranchiseHistoryRecord[] | undefined, playerId: string): FranchiseHistoryRecord[] {
+  if (!history?.length) return [];
+  let index = mentionIndex.get(history);
+  if (!index) {
+    index = new Map();
+    for (const record of history) {
+      const seen = new Set<string>();
+      const walk = (v: unknown) => {
+        if (typeof v === 'string') seen.add(v);
+        else if (Array.isArray(v)) v.forEach(walk);
+        else if (v && typeof v === 'object') for (const x of Object.values(v)) walk(x);
+      };
+      const { teamSeasons: _teams, ...rest } = record; // team summaries never name award winners
+      void _teams;
+      walk(rest);
+      for (const id of seen) (index.get(id) ?? index.set(id, []).get(id)!).push(record);
+    }
+    mentionIndex.set(history, index);
+  }
+  return index.get(playerId) ?? [];
 }
 
 export interface PlayerAwardRacePlacement extends AwardPlacement {

@@ -14,7 +14,7 @@ import { AdBanner } from './AdBanner';
 import { DataCredits } from './DataCredits';
 
 export type GameMode = 'random' | 'real' | 'legends';
-export interface RealLeagueOptions { source: 'history' | 'csv'; realDevelopment: boolean; forceRosters?: boolean }
+export interface RealLeagueOptions { source: 'history' | 'csv'; realDevelopment: boolean; forceRosters?: boolean; allPlayers?: boolean }
 /** Start years the bundled NBA history supports (history through the season before; data ends 2025-26). */
 const HISTORY_START_YEARS: number[] = Array.from({ length: 2025 - 1946 + 1 }, (_, i) => 2025 - i);
 
@@ -116,6 +116,7 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
   const [realSource, setRealSource] = useState<'history' | 'csv'>('history');
   const [realDevelopment, setRealDevelopment] = useState(true);
   const [forceRosters, setForceRosters] = useState(false);
+  const [allPlayers, setAllPlayers] = useState(true);
   const [historyYear, setHistoryYear] = useState('2016');
   const historical = selectedMode === 'real' && realSource === 'history';
 
@@ -202,6 +203,13 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
               ? 'On: at the start of each season the data covers, every AI team takes the floor with its real roster (players move to the team they really played for). AI teams make no trades and only sign free agents to fill a short roster. Your own team is still yours to run.'
               : 'Off: rosters start real and then change through your league\'s own trades, signings and drafts.'}</p>
           </div>}
+          {historical && <div className="difficulty-picker">
+            <h4>Every Real Player</h4>
+            <label className="real-dev-toggle"><input type="checkbox" checked={allPlayers} onChange={e => setAllPlayers(e.target.checked)} /> Load players who retired before {historyYear} too</label>
+            <p className="hint-text">{allPlayers
+              ? 'On: every NBA and BAA player whose career ended before the start is in the league as a retired player, with his real career statistics, awards and profile. They count in all-time records and the Hall of Fame.'
+              : 'Off: only players active at the start (and those still to come) are in the league. Retired players stay in the NBA History archive, and you can load them later from there.'}</p>
+          </div>}
           <div className="difficulty-picker">
             <h4>Trade Difficulty</h4>
             <div className="difficulty-options">
@@ -222,7 +230,7 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
       )}
 
       {selectedMode && (
-        <button className="primary menu-start" disabled={!!busy} onClick={() => onStart(selectedMode, difficulty, historical ? historyYear : year, leagueName, selectedMode === 'real' ? { source: realSource, realDevelopment, forceRosters } : undefined)}>
+        <button className="primary menu-start" disabled={!!busy} onClick={() => onStart(selectedMode, difficulty, historical ? historyYear : year, leagueName, selectedMode === 'real' ? { source: realSource, realDevelopment, forceRosters, allPlayers } : undefined)}>
           {busy ?? `Start ${historical ? `${historyYear}–${String(Number(historyYear) + 1).slice(2)} NBA` : MODES.find((m) => m.id === selectedMode)?.title}`}
         </button>
       )}

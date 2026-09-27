@@ -45,7 +45,7 @@ export function ExtensionsPage({ league, extras, controlledTeamId, onChange, onS
   return <div className="extensions-page">
     <header><span className="pixel-eyebrow">FRONT OFFICE</span><h2>Contract extensions</h2>
       <p className="hint-text">Players in the last two years of their deals can be extended during the season. The new deal starts when the current one ends. A player in his final year without an extension is in a contract year: he plays a little harder, and he'll hit free agency in the summer.</p></header>
-    <table className="db-table"><thead><tr><th className="col-name">Player</th><th>OVR</th><th>Age</th><th>Contract</th><th>Status</th><th /></tr></thead><tbody>
+    <div className="finances-table-wrap"><table className="db-table extensions-table"><thead><tr><th className="col-name">Player</th><th>OVR</th><th>Age</th><th>Contract</th><th>Status</th><th /></tr></thead><tbody>
       {eligible.map(p => { const c = extras.contracts[p.playerId]; const s = extensionStance(league, extras, p); const t = extras.extensionTalks?.[p.playerId]; const walked = !!t && t.season === league.season && t.status === 'walked';
         return <tr key={p.playerId}>
           <td className="col-name"><button className="link-button" onClick={() => onSelectPlayer(p.playerId)}>{p.playerId}</button>{p.contractYear && <span className="contract-year-tag" title="Playing for his next contract">CONTRACT YEAR</span>}</td>
@@ -55,7 +55,7 @@ export function ExtensionsPage({ league, extras, controlledTeamId, onChange, onS
           <td>{s.open && !walked && <button onClick={() => start(p.playerId)}>{t && t.season === league.season && t.status === 'open' ? 'Continue talks' : 'Open talks'}</button>}</td>
         </tr>; })}
       {eligible.length === 0 && <tr><td colSpan={6} className="hint-text">Nobody on your roster is in the last two years of his deal.</td></tr>}
-    </tbody></table>
+    </tbody></table></div>
 
     {player && talks && <section className="negotiation-panel">
       {(() => { const agent = AGENTS.find(a => a.id === talks.agentId)!; return <p className="hint-text"><b>{agent.name}</b>, {agent.agency} · {agent.style}: {STYLE_BLURB[agent.style]}</p>; })()}

@@ -94,6 +94,8 @@ import {
 } from './storage/saves';
 
 // Pages load on demand (code-split): the first paint only needs the shell, sidebar and Play button.
+import { needsRetireeData } from './history/retirees';
+import { pendingOffers } from './simulation/staffPoaching';
 const StaffPage = lazy(() => import('./components/StaffPage').then(m => ({ default: m.StaffPage })));
 const TeamProfilePage = lazy(() => import('./components/TeamProfilePage').then(m => ({ default: m.TeamProfilePage })));
 const SandboxPage = lazy(() => import('./components/SandboxPage').then(m => ({ default: m.SandboxPage })));
@@ -104,6 +106,7 @@ const PlayerDatabase = lazy(() => import('./components/PlayerDatabase').then(m =
 const StandingsPage = lazy(() => import('./components/StandingsPage').then(m => ({ default: m.StandingsPage })));
 const ThreeTeamTradePage = lazy(() => import('./components/ThreeTeamTradePage').then(m => ({ default: m.ThreeTeamTradePage })));
 const ExtensionsPage = lazy(() => import('./components/ExtensionsPage').then(m => ({ default: m.ExtensionsPage })));
+const SummerCampPage = lazy(() => import('./components/SummerCampPage').then(m => ({ default: m.SummerCampPage })));
 const MedicalRoomPage = lazy(() => import('./components/MedicalRoomPage').then(m => ({ default: m.MedicalRoomPage })));
 const PressRoomPage = lazy(() => import('./components/PressRoomPage').then(m => ({ default: m.PressRoomPage })));
 const SchedulePage = lazy(() => import('./components/SchedulePage').then(m => ({ default: m.SchedulePage })));
@@ -150,6 +153,7 @@ const TransactionsPage = lazy(() => import('./components/TransactionsPage').then
 const WatchListPage = lazy(() => import('./components/WatchListPage').then(m => ({ default: m.WatchListPage })));
 const TeamStatsPage = lazy(() => import('./components/TeamStatsPage').then(m => ({ default: m.TeamStatsPage })));
 const DailySchedulePage = lazy(() => import('./components/DailySchedulePage').then(m => ({ default: m.DailySchedulePage })));
+const StorylinesPage = lazy(() => import('./components/StorylinesPage').then(m => ({ default: m.StorylinesPage })));
 const NewsFeedPage = lazy(() => import('./components/NewsFeedPage').then(m => ({ default: m.NewsFeedPage })));
 const HallOfFamePage = lazy(() => import('./components/HallOfFamePage').then(m => ({ default: m.HallOfFamePage })));
 const GameBoxScorePage = lazy(() => import('./components/GameBoxScorePage').then(m => ({ default: m.GameBoxScorePage })));
@@ -373,7 +377,7 @@ function App() {
       historyTools().then(({ h, buildHistoricalLeague }) => {
         setMenuBusy('Building the league…');
         return new Promise<void>(resolve => setTimeout(() => {
-          const built = buildHistoricalLeague(h, parseInt(year, 10), { realDevelopment: real.realDevelopment, forceRosters: real.forceRosters, difficulty, seed: Math.floor(Math.random() * 1_000_000) });
+          const built = buildHistoricalLeague(h, parseInt(year, 10), { realDevelopment: real.realDevelopment, forceRosters: real.forceRosters, allPlayers: real.allPlayers, difficulty, seed: Math.floor(Math.random() * 1_000_000) });
           setPendingLeague(built.league);
           setPendingExtras(built.extras);
           setPendingLeagueName(leagueName || `NBA ${year}–${String(parseInt(year, 10) + 1).slice(2)}`);
@@ -628,6 +632,32 @@ function App() {
     }).catch(() => { /* retried on the next rollover; the rollover falls back to a labelled generated class */ });
     return () => { cancelled = true; };
   }, [historicalSeason, jobs.busy, league.historical?.classesLoadedThrough, league.historical?.lastDataStartYear, extras]);
+
+  const poachCalls = pendingOffers(league, controlledTeamId).length;
+  useEffect(() => {
+    if (poachCalls) pushToast(`Another team wants one of your assistants as their head coach. Answer on the Staff page.`, 'info');
+  }, [poachCalls, pushToast]);
+  const campReady = league.campReport && !league.campReport.seen && league.campReport.season === league.season && league.campReport.teamId === controlledTeamId ? league.campReport.season : null;
+  useEffect(() => {
+    if (campReady) pushToast('Training Camp Report is in: see how your players came back from the summer (Summer Camp).', 'info');
+  }, [campReady, pushToast]);
+
+  // Real players who retired before the start are saved without their careers; rebuild them from NBA history on load.
+  const retireesMissing = needsRetireeData(league);
+  useEffect(() => {
+    if (!retireesMissing) return;
+    let cancelled = false;
+    historyTools().then(({ h, hydrateRetirees }) => { if (!cancelled) setLeague(l => hydrateRetirees(h, l)); })
+      .catch(() => { /* the archive still has them; retried the next time the league loads */ });
+    return () => { cancelled = true; };
+  }, [retireesMissing]);
+
+  const loadRetirees = () => historyTools().then(({ h, retiredBeforeStart, realIdsInLeague }) => {
+    if (!league.historical) return;
+    const added = retiredBeforeStart(h, league.historical.startYear, realIdsInLeague(league, extras));
+    setLeague(l => ({ ...l, retiredPlayers: [...added, ...(l.retiredPlayers ?? [])] }));
+    pushToast(added.length ? `Loaded ${added.length.toLocaleString()} retired players from NBA history.` : 'Every retired player is already in this league.', 'success');
+  }).catch((err: unknown) => pushToast(`Could not load NBA history: ${err instanceof Error ? err.message : String(err)}`, 'error'));
 
   /**
    * Gets the league ready to play. Trade Deadline Day: playing on during the day runs the clock to the 3 PM deadline;
@@ -975,7 +1005,7 @@ function App() {
     } else if (retiredRecord) {
       setLeague((l) => ({
         ...l,
-        retiredPlayers: (l.retiredPlayers ?? []).map((r) => (r.playerId === next.playerId ? { ...r, finalSeasonData: next } : r)),
+        retiredPlayers: (l.retiredPlayers ?? []).map((r) => (r.playerId === next.playerId ? { ...r, finalSeasonData: next, ...(r.preStart ? { keepData: true } : {}) } : r)),
       }));
     }
   };
@@ -1436,7 +1466,7 @@ function App() {
 
         {tab === 'allStarWeekend' && (
           <AllStarWeekendPage
-            league={league} awardSettings={awardSettings} seed={seed} onSelectPlayer={selectPlayer} onChange={setLeague}
+            league={league} awardSettings={awardSettings} seed={seed} onSelectPlayer={selectPlayer} onChange={setLeague} controlledTeamId={controlledTeamId}
             onComplete={(nextLeague) => { setLeague(nextLeague); setTab('standings'); pushToast('All-Star Weekend complete — the regular season continues.', 'success'); }}
           />
         )}
@@ -1449,6 +1479,8 @@ function App() {
 
         {tab === 'threeTeam' && <ThreeTeamTradePage league={league} extras={extras} controlledTeamId={controlledTeamId} onChange={(l, e) => { setLeague(l); setExtras(e); }} />}
         {tab === 'extensions' && <ExtensionsPage league={league} extras={extras} controlledTeamId={controlledTeamId} onChange={(l, e) => { setLeague(l); setExtras(e); }} onSelectPlayer={selectPlayer} />}
+        {tab === 'storylines' && <StorylinesPage league={league} extras={extras} controlledTeamId={controlledTeamId} onSelectPlayer={selectPlayer} />}
+        {tab === 'summerCamp' && <SummerCampPage league={league} controlledTeamId={controlledTeamId} onChange={setLeague} onSelectPlayer={selectPlayer} />}
         {tab === 'medical' && <MedicalRoomPage league={league} controlledTeamId={controlledTeamId} onChange={setLeague} onSelectPlayer={selectPlayer} />}
         {tab === 'press' && <PressRoomPage league={league} extras={extras} controlledTeamId={controlledTeamId} onChange={setLeague} />}
         {tab === 'yearInReview' && <YearInReviewPage league={league} extras={extras} controlledTeamId={controlledTeamId} awardOptions={awardOptions(awardSettings)}
@@ -1473,7 +1505,7 @@ function App() {
         {tab === 'teamHistory' && <TeamHistoryPage key={viewedTeamId || controlledTeamId || 'team'} league={league} extras={extras} initialTeamId={viewedTeamId || controlledTeamId} onSelectPlayer={selectPlayer} onOpenArchive={league.historical ? () => setTab('nbaArchive') : undefined} />}
         {tab === 'records' && <RecordsPage league={league} extras={extras} onSelectPlayer={selectPlayer} />}
         {tab === 'almanac' && <AlmanacPage league={league} extras={extras} awardSettings={awardSettings} onSelectPlayer={selectPlayer} />}
-        {tab === 'nbaArchive' && <NbaArchivePage key={archiveQuery} league={league} extras={extras} onSelectPlayer={selectPlayer} initialQuery={archiveQuery} />}
+        {tab === 'nbaArchive' && <NbaArchivePage key={archiveQuery} league={league} extras={extras} onSelectPlayer={selectPlayer} initialQuery={archiveQuery} onLoadRetirees={loadRetirees} />}
 
         {tab === 'resignWaive' && (
           <ResignWaivePage

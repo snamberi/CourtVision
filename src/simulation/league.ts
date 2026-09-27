@@ -213,6 +213,12 @@ export interface League {
   season?: string; // current season label, e.g. "2026-27"; absent on older/imported saves
   injuries?: Record<string, InjuryRecord>; // keyed by playerId; absent/undefined players are fully healthy
   retiredPlayers?: RetiredPlayerRecord[]; // everyone who has ever retired in this league, most recent last
+  /** Your summer development plans for the coming offseason (see summerCamp.ts). */
+  summerCamp?: import('./summerCamp').SummerCampState;
+  /** Other teams' calls about your assistants (and past answers). */
+  staffOffers?: import('./staffPoaching').PoachOffer[];
+  /** The latest Training Camp Report: how your players came back from the summer. */
+  campReport?: import('./summerCamp').CampReport;
   /** Single-game bests, updated after every game (see simulation/records.ts). */
   recordBook?: import('./records').RecordBook;
   franchiseHistory?: FranchiseHistoryRecord[]; // one entry per completed season, most recent last
@@ -254,6 +260,12 @@ export interface AllStarWeekendRecord {
   /** Rising Stars game (first- and second-year players), played before the All-Star Game. */
   risingStars?: import('./allStarGame').AllStarGameResult;
   risingStarsMvp?: AwardWinner;
+  /** All-Star Game format: conference vs conference (default) or a captains draft. */
+  format?: 'conference' | 'captains';
+  draft?: import('./allStarEvents').CaptainsDraft;
+  /** The contests shot by shot and dunk by dunk (the summaries above stay for history). */
+  threePointShow?: import('./allStarEvents').ThreePointShow;
+  dunkShow?: import('./allStarEvents').DunkShow;
 }
 
 /** Archived per-season headline results — the backbone of a franchise history page. */
@@ -308,6 +320,14 @@ export interface RetiredPlayerRecord {
   /** The player's complete final-season record, including careerHistory — kept so the Hall of Fame can
    * recompute a full career case from real data rather than a lossy snapshot. */
   finalSeasonData?: PlayerSeason;
+  /**
+   * A real player whose career ended before this historical league began (loaded from NBA history, not retired here).
+   * His finalSeasonData is not saved: it is rebuilt from the NBA history data by `realId` when the league loads,
+   * unless `keepData` is set (edited in Sandbox).
+   */
+  preStart?: boolean;
+  realId?: string;
+  keepData?: boolean;
 }
 
 /** A currently-active injury being tracked across games (not just within one boxscore). */

@@ -12,6 +12,7 @@ import { seasonStintsFor } from './stints';
 import type { PlayoffFinish, TeamSeasonRosterLine, TeamSeasonSummary } from './league';
 import { initializeCoaching, teachingQuality, advanceStaffSeason } from './staffManagement';
 import { recordOffseasonDevelopment, offseasonTrainingCamp } from './playerDevelopment';
+import { applySummerCamp, reportRow, type CampReportRow } from './summerCamp';
 import { calculateOverall as staffOverall } from './engine/overall';
 import { generateNewsFeed } from './news';
 import { coachPerformanceModifiers } from './coaching';
@@ -33,6 +34,7 @@ import { appendHistoryEvent } from './playerHistory';
 import { resignVerdict } from './freeAgentDecision';
 import { retireLegendJerseys } from './jerseyRetirement';
 import { offseasonCarousel } from './coachingCarousel';
+import { settleStaffOffers } from './staffPoaching';
 import { collectPlayerIds } from './playerIds';
 import { computeSeasonAwards, type SeasonAwards, type SeasonAwardsOptions, type AwardWinner } from './awards';
 import type { LeagueRulesSettings } from './leagueRules';
@@ -229,6 +231,8 @@ export function beginNewSeasonRoster(
   const contracts = { ...extras.contracts };
   const userTeamId = league.frontOffice?.teamId ?? league.coachingUserTeamId ?? null;
   const resignedIds: string[] = [];
+  const camp = userTeamId && league.summerCamp?.teamId === userTeamId && league.summerCamp.season === previousSeason ? league.summerCamp : null;
+  const campRows: CampReportRow[] = [];
 
   const teams: LeagueTeam[] = league.teams.map((team) => {
     const keptSeasons: PlayerSeason[] = [];
@@ -256,6 +260,15 @@ export function beginNewSeasonRoster(
       const realStep = realDevelopmentOn(league) && season.real ? applyRealDevelopment(season, newSeason) : null;
       let developed = realStep ?? developOffseasonPlayer(season, rng, league.rulesSettings, developmentMultiplier * (1 + (teachingQuality(team, season.training?.plan.coachId) - 1) * (league.rulesSettings?.coachingImpact ?? 100) / 100), team.coach?.trainingFocus, league.settings.sandboxMode ? 200 : 100);
       if (!realStep && realDevelopmentOn(league) && season.real) developed = markRealFallback(developed, newSeason);
+      if (team.teamId === userTeamId) {
+        // Your summer camp, on top of normal development (real players on Real Player Development follow their real careers).
+        const plan = camp?.plans[season.playerId];
+        const locked = realDevelopmentOn(league) && !!season.real;
+        const ran = plan && !locked ? applySummerCamp(developed, plan, `${season.playerId}|${newSeason}`, teachingQuality(team)) : null;
+        const campGain = ran ? calculateOverall(ran.player) - calculateOverall(developed) : 0;
+        if (ran) developed = ran.player;
+        campRows.push(reportRow(season, developed, campGain, plan, ran?.note ?? (plan ? '' : 'No summer plan.'), plan && locked ? 'Real Player Development: his ratings follow his real career.' : undefined));
+      }
       const aged = recordOffseasonDevelopment(season, developed, team, league.calendarDate ?? previousSeason, realDevelopmentOn(league) && season.real ? realDevelopmentNote(developed, !!realStep) : undefined);
       const withHistory: PlayerSeason = {
         ...aged,
@@ -396,6 +409,8 @@ export function beginNewSeasonRoster(
     ...(foReview ? { frontOffice: foReview.state, ...(foReview.state.status !== 'employed' ? { coachingUserTeamId: null } : {}) } : {}),
     rivalries: archiveRivalries(league),
     retiredPlayers: [...(league.retiredPlayers ?? []), ...newlyRetired],
+    summerCamp: undefined,
+    ...(userTeamId && campRows.length ? { campReport: { season: newSeason, teamId: userTeamId, rows: campRows.filter(r => !retiredPlayerIds.includes(r.playerId) && !expiredToFreeAgencyIds.includes(r.playerId)).sort((a, b) => (b.after - b.before) - (a.after - a.before)) } } : {}),
     franchiseHistory: [...(league.franchiseHistory ?? []), historyRecord],
     ...(historical ? { historical } : {}),
   };
@@ -462,7 +477,7 @@ export function finalizeNewSeasonSchedule(league: League): League {
   });
   // The In-Season Cup draw happens with the new schedule; owners set goals knowing the season ahead.
   return ensureSeasonGoals(setupCup({
-    ...league, teams, schedule, seasonPhase: 'regular_season', injuries: {}, playoffBracket: undefined,
+    ...settleStaffOffers(league), teams, schedule, seasonPhase: 'regular_season', injuries: {}, playoffBracket: undefined,
     calendarDate: seasonStartDate(league.season), calendarRound: -1,
   }));
 }

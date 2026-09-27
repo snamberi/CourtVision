@@ -128,6 +128,8 @@ export interface GMLeagueExtras {
   watchList?: PlayerId[]; // players the user is tracking (trade targets, prospects, rivals), independent of roster
   futurePicks?: FutureDraftPick[]; // tradeable draft-pick futures ledger (this year + several years out), see below
   picksOnBlock?: string[]; // FutureDraftPick ids any team has marked as available for trade discussion
+  /** Your scouting department's scouts, assignments and looks for the class on the board (see scoutDept.ts). */
+  scoutDept?: import('./scoutDept').ScoutDept;
   draftWorkouts?: Record<TeamId, PlayerId[]>; // pre-draft workout invites per team (see scouting.ts); stale ids are ignored
   /** This offseason's contract talks with agents, keyed `${teamId}|${playerId}` (see agents.ts). */
   negotiations?: Record<string, import('./agents').Negotiation>;

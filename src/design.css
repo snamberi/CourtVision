@@ -525,3 +525,81 @@ button { border-radius: 0; }
 .three-team-col li select { max-width:48%; font-size:11px; }
 .three-team-verdict { margin:0 0 6px; font-size:12px; } .three-team-verdict.ok { color:var(--cv-green, #55c878); } .three-team-verdict.no { color:var(--cv-red, #e85d5d); }
 @media (max-width:860px) { .three-team-grid { grid-template-columns:1fr; } }
+
+/* ---------------------------------------------------------------- All-Star events */
+.all-star-format .difficulty-options { margin: 8px 0; }
+.captains-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 10px 0; }
+.captains-team { border: 2px solid #2a3546; background: #121926; padding: 10px 12px; min-width: 0; }
+.captains-team.yours { border-color: #f47b20; }
+.captains-team h4 { margin: 0 0 6px; font: 18px 'Oswald', sans-serif; }
+.captains-team h4 small { color: #f47b20; font-size: 12px; }
+.captains-team ol { list-style: none; padding: 0; margin: 0; }
+.captains-team li { display: flex; justify-content: space-between; gap: 8px; padding: 3px 0; border-bottom: 1px solid #1e2a3b; }
+.captains-team li small { color: #94a0b2; font-size: 11px; }
+.captains-pool { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px; margin: 8px 0 10px; }
+.captains-pool button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; }
+.captains-pool button small { color: #94a0b2; }
+.contest-field { margin: 0 0 8px; }
+.contest-choice { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 6px 0; font-size: 13px; }
+.contest-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
+.contest-actions p { width: 100%; margin: 0 0 2px; }
+.contest-actions button small { display: block; color: #94a0b2; font-size: 11px; font-weight: normal; }
+.contest-tag { display: inline-block; margin-right: 6px; padding: 0 4px; background: #ffd166; color: #0b1018; font-size: 10px; font-weight: 700; }
+.contest-row { display: grid; grid-template-columns: minmax(0, 1fr) auto 2.5em; gap: 8px; align-items: center; padding: 4px 0; border-bottom: 1px solid #263a52; }
+.contest-row strong { text-align: right; font-variant-numeric: tabular-nums; }
+.three-racks { display: flex; gap: 4px; }
+.three-rack { display: flex; gap: 1px; padding: 2px; border: 1px solid #2a3546; }
+.three-rack.money { border-color: #ffd166; }
+.three-rack i { width: 7px; height: 7px; display: block; background: #2a3546; }
+.three-rack i.made { background: #55c878; }
+.three-rack i.miss { background: #4a2a2a; }
+.three-rack i.made:last-child, .three-rack.money i.made { background: #ffd166; }
+.three-rack i:not(.pending) { animation: rack-pop 140ms steps(2) both; }
+.three-rack i:nth-child(2) { animation-delay: 40ms; } .three-rack i:nth-child(3) { animation-delay: 80ms; } .three-rack i:nth-child(4) { animation-delay: 120ms; } .three-rack i:nth-child(5) { animation-delay: 160ms; }
+@keyframes rack-pop { from { transform: scale(0); } to { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .three-rack i { animation: none !important; } }
+.dunk-round ol { list-style: none; padding: 0; margin: 4px 0; }
+.dunk-round li { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
+.dunk-round li.miss { color: #e85d5d; }
+@media (max-width: 640px) {
+  .captains-grid { grid-template-columns: 1fr; }
+  .contest-row { grid-template-columns: minmax(0, 1fr) 2.5em; }
+  .contest-row .three-racks { grid-column: 1 / -1; grid-row: 2; }
+}
+
+/* ---------------------------------------------------------------- Summer camp */
+.summer-camp-page section { margin: 18px 0; }
+.summer-trainers { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin: 8px 0; }
+.summer-table select { max-width: 150px; }
+.camp-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; margin: 10px 0; }
+.camp-card { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-height: 104px; padding: 10px; text-align: left; border: 2px solid #2a3546; background: #121926; animation: camp-flip 160ms steps(3) both; }
+.camp-card small { font-size: 10px; letter-spacing: .08em; color: #94a0b2; }
+.camp-card .camp-ovr { font-variant-numeric: tabular-nums; }
+.camp-card .camp-ovr em { font-style: normal; font-weight: 700; }
+.camp-card .hint-text { font-size: 12px; }
+.camp-breakout { border-color: #ffd166; } .camp-breakout small, .camp-breakout em { color: #ffd166; }
+.camp-leap { border-color: #55c878; } .camp-leap em { color: #55c878; }
+.camp-dip em { color: #e8a05d; }
+.camp-regression { border-color: #e85d5d; } .camp-regression small, .camp-regression em { color: #e85d5d; }
+.camp-hidden { align-items: center; justify-content: center; animation: none; color: #2a3546; }
+.camp-hidden b { font-size: 34px; }
+@keyframes camp-flip { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@media (prefers-reduced-motion: reduce) { .camp-card { animation: none; } }
+.scouts-table select { max-width: 260px; }
+
+/* ---------------------------------------------------------------- Storylines */
+.storyline-list { list-style: none; padding: 0; margin: 12px 0; display: grid; gap: 6px; }
+.storyline { display: grid; gap: 2px; padding: 8px 12px; border-left: 4px solid #2a3546; background: #121926; }
+.storyline small { font-size: 10px; letter-spacing: .08em; color: #94a0b2; }
+.storyline b .link-button { font-weight: 700; text-align: left; }
+.storyline.mine { background: #192333; }
+.storyline-chase { border-left-color: #ffd166; } .storyline-revenge { border-left-color: #e85d5d; } .storyline-rivalry { border-left-color: #f47b20; }
+.storyline-streak { border-left-color: #55c878; } .storyline-race { border-left-color: #4da3ff; }
+.poach-offer { margin: 10px 0; padding: 10px 12px; border: 2px solid #f47b20; background: #192333; }
+.poach-offer p { margin: 4px 0; }
+/* Phone: long tab rows scroll instead of clipping; extension status reads as a sentence */
+@media (max-width: 640px) {
+  .stats-view-toggle { overflow-x: auto; max-width: 100%; scrollbar-width: none; }
+  .stats-view-toggle button { flex: 0 0 auto; white-space: nowrap; }
+  .extensions-table td.hint-text { min-width: 190px; }
+}

@@ -4,6 +4,7 @@ import { autoManageStaff, fireStaff, enrichCoach } from './staffManagement';
 import { calculateOverall } from './engine/overall';
 import { RNG } from './engine/rng';
 import { stableSeed } from './coachingModel';
+import { poachAssistants } from './staffPoaching';
 
 /*
  * The coaching carousel: AI owners judge their head coach against what the roster should do, and fire the ones
@@ -140,7 +141,11 @@ export function offseasonCarousel(league: League, previousSeason: string, userTe
     next = fired.league;
     events.push({ season: league.season ?? '', kind: 'fired', teamId: team.teamId, coachId: coach.coachId, detail: seat.reason, order: events.length });
   }
-  const filled = fillVacancies(next, league.season ?? '', events.length, false, userTeamId, events.map(e => e.coachId));
+  // Before the market: teams without a head coach go after the league's best assistants.
+  const poached = poachAssistants(next, userTeamId, league.season ?? '');
+  next = poached.league;
+  for (const m of poached.moves) events.push({ season: league.season ?? '', kind: 'hired', teamId: m.teamId, coachId: m.coachId, detail: m.detail, order: events.length });
+  const filled = fillVacancies(next, league.season ?? '', events.length, false, userTeamId, events.filter(e => e.kind === 'fired').map(e => e.coachId));
   // Benches that changed earlier in the offseason (a contract ran out and the team hired from the market).
   const logged = new Set([...events, ...filled.events].map(e => e.teamId));
   const extra: CarouselEvent[] = [];

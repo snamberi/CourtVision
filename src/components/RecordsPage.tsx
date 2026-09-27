@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { preStartCount } from '../history/retirees';
 import type { League } from '../simulation/league';
 import type { GMLeagueExtras } from '../simulation/gm';
 import { computeRecords, type RecordEntry, type RecordFormat, type RecordGroup, type RecordResult } from '../simulation/records';
@@ -44,7 +45,7 @@ export function RecordsPage({ league, extras, onSelectPlayer }: { league: League
   return <div className="records-page">
     <span className="pixel-eyebrow">THE RECORD BOOK</span><h2>League Records</h2>
     <p className="hint-text">{records.length} records, {held} set so far. Single-game records are tracked from every game played since this update; season, career, playoff and award records use every archived season, including retired players.</p>
-    {league.historical && <p className="hint-text">Historical league: season and career records include the imported real seasons of players who are in this league. Players who retired before it started are not in the record book — see NBA History. Seasons that did not record a stat (e.g. steals before 1973–74) never count toward that stat's records.</p>}
+    {league.historical && <p className="hint-text">Historical league: season and career records include the imported real seasons of players who are in this league. {preStartCount(league) > 0 ? `That includes the ${preStartCount(league).toLocaleString()} players who retired before it started.` : 'Players who retired before it started are not in the record book — load them from NBA History.'} Seasons that did not record a stat (e.g. steals before 1973–74) never count toward that stat's records.</p>}
     <div className="records-controls">
       <div className="stats-view-toggle" role="tablist" aria-label="Record groups">{GROUPS.map(g => <button key={g} role="tab" aria-selected={!q && group === g} className={!q && group === g ? 'active' : ''} onClick={() => { setGroup(g); setQuery(''); }}>{g} <small>{records.filter(r => r.def.group === g).length}</small></button>)}</div>
       <input className="db-search" type="search" placeholder="Search records or players…" value={query} onChange={e => setQuery(e.target.value)} aria-label="Search records" />

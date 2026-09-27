@@ -39,6 +39,7 @@ export const GROUPS: NavGroup[] = [
       { label: 'Power Rankings', tab: 'powerRankings' },
       { label: 'Transactions', tab: 'transactions' },
       { label: 'News Feed', tab: 'news' },
+      { label: 'Storylines', tab: 'storylines' },
       { label: 'Press Room', tab: 'press', requiresControlledTeam: true },
     ],
   },
@@ -50,6 +51,7 @@ export const GROUPS: NavGroup[] = [
       { label: 'Coaching', tab: 'coaching' },
       { label: 'Staff Market', tab: 'staff' },
       { label: 'Development', tab: 'development' },
+      { label: 'Summer Camp', tab: 'summerCamp', requiresControlledTeam: true },
       { label: 'Schedule', tab: 'schedule' },
       { label: 'Finances', tab: 'finances' },
       { label: 'Team History', tab: 'teamHistory' },
@@ -114,7 +116,7 @@ export const GROUPS: NavGroup[] = [
 ];
 
 export const NAV_ICONS: Record<string, string> = {
-  cup: 'trophy', deadline: 'clock', yearInReview: 'star', press: 'list', medical: 'warning', extensions: 'list', threeTeam: 'trade', gmOffice: 'star', summerLeague: 'play', coaching: 'list', allStarWeekend: 'trophy', dashboard: 'court', standings: 'chart', playoffs: 'trophy', schedule: 'calendar',
+  cup: 'trophy', deadline: 'clock', yearInReview: 'star', press: 'list', medical: 'warning', extensions: 'list', threeTeam: 'trade', summerCamp: 'star', storylines: 'list', gmOffice: 'star', summerLeague: 'play', coaching: 'list', allStarWeekend: 'trophy', dashboard: 'court', standings: 'chart', playoffs: 'trophy', schedule: 'calendar',
   dailySchedule: 'calendar', finances: 'chart', history: 'list', powerRankings: 'chart',
   transactions: 'trade', news: 'list', yourTeam: 'team', roster: 'team', freeAgency: 'team',
   trade: 'trade', tradeBlock: 'trade', tradeOffers: 'trade', draft: 'team', compare: 'chart',

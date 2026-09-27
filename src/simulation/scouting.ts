@@ -4,6 +4,7 @@ import type { DraftProspect, GMLeagueExtras } from './gm';
 import type { PlayerSeason } from './types';
 import { calculateOverall } from './engine/overall';
 import { prospectComparison } from './draftScouting';
+import { eyeOn, lookFactor, looksOn, specialtyNotes } from './scoutDept';
 
 /* Scouting and the draft combine.
  *  - Combine measurements are public: everyone sees the same tape measure and stopwatch.
@@ -48,11 +49,17 @@ function fogFor(accuracy: number, workedOut: boolean): number {
   return workedOut ? 1 : 3 + (1 - accuracy) * 22; // 50 budget -> ±8.5, 100 -> ±3, 0 -> ±14
 }
 
+/** How much your scouts' looks shrink the fog on a prospect (1 = no looks); a scout with the matching eye helps more. */
+function scoutFactor(league: League, extras: GMLeagueExtras, teamId: string | null, prospectId: string, eye: 'upside' | 'skills'): number {
+  const looks = teamId ? looksOn(league, extras, teamId, prospectId) : 0;
+  return looks ? lookFactor(looks) * (eyeOn(extras, teamId, prospectId, eye) ? 0.8 : 1) : 1;
+}
+
 /** The potential a team believes a prospect has. Deterministic per team + prospect. */
 export function perceivedPotential(prospect: DraftProspect, league: League, extras: GMLeagueExtras, teamId: string | null): number {
   if (!teamId) return prospect.scoutedPotential;
   const workedOut = workoutsFor(extras, teamId).includes(prospect.playerId);
-  const fog = fogFor(scoutingAccuracy(league, teamId), workedOut);
+  const fog = fogFor(scoutingAccuracy(league, teamId), workedOut) * scoutFactor(league, extras, teamId, prospect.playerId, 'upside');
   const truth = prospect.trueSeason.development.potential;
   return Math.max(35, Math.min(99, Math.round(truth + hashUnit(`${prospect.playerId}|${teamId}|pot`) * fog)));
 }
@@ -79,18 +86,22 @@ export interface ScoutingReport {
   strengths: string[]; weaknesses: string[];
   flags: string[];
   workedOut: boolean;
+  /** Looks your scouts have filed on him this season. */
+  looks: number;
 }
 
 export function scoutingReport(prospect: DraftProspect, league: League, extras: GMLeagueExtras, teamId: string | null): ScoutingReport {
   const workedOut = workoutsFor(extras, teamId).includes(prospect.playerId);
   const accuracy = scoutingAccuracy(league, teamId);
-  const fog = fogFor(accuracy, workedOut);
+  const fog = fogFor(accuracy, workedOut) * scoutFactor(league, extras, teamId, prospect.playerId, 'upside');
+  const gradeFog = fogFor(accuracy, workedOut) * scoutFactor(league, extras, teamId, prospect.playerId, 'skills');
+  const looks = teamId ? looksOn(league, extras, teamId, prospect.playerId) : 0;
   const mid = perceivedPotential(prospect, league, extras, teamId);
   const spread = Math.round(workedOut ? 1 : 1 + fog * 0.55);
   const p = prospect.trueSeason;
   const overall = calculateOverall(p);
   const raw = prospectComparison(p);
-  const perceived = Object.fromEntries(CATEGORIES.map(c => [c, raw[c] + hashUnit(`${prospect.playerId}|${teamId}|${c}`) * fog * 0.7])) as Record<GradeCategory, number>;
+  const perceived = Object.fromEntries(CATEGORIES.map(c => [c, raw[c] + hashUnit(`${prospect.playerId}|${teamId}|${c}`) * gradeFog * 0.7])) as Record<GradeCategory, number>;
   const ordered = [...CATEGORIES].sort((a, b) => perceived[b] - perceived[a]);
   const flags: string[] = [];
   if (p.attributes.physical.durability < 45 || p.development.injuryRisk >= 65) flags.push('Medical: durability concerns');
@@ -100,13 +111,14 @@ export function scoutingReport(prospect: DraftProspect, league: League, extras: 
   // Character reads are what workouts are for: only a team that brought him in knows about his work ethic.
   if (workedOut && p.development.workEthic >= 75) flags.push('Gym rat: elite work ethic');
   if (workedOut && p.development.workEthic <= 35) flags.push('Interview: questions about work ethic');
+  for (const note of specialtyNotes(league, extras, teamId, prospect)) if (!flags.some(f => f.split(':')[0] === note.split(':')[0])) flags.push(note);
   return {
     potLow: Math.max(overall, mid - spread), potHigh: Math.min(99, mid + spread), potMid: mid,
-    confidence: workedOut ? 'Workout' : accuracy >= 0.85 ? 'High' : accuracy >= 0.65 ? 'Medium' : 'Low',
+    confidence: workedOut ? 'Workout' : accuracy >= 0.85 || looks >= 6 ? 'High' : accuracy >= 0.65 || looks >= 2.5 ? 'Medium' : 'Low',
     grades: Object.fromEntries(CATEGORIES.map(c => [c, letterGrade(perceived[c])])) as Record<GradeCategory, string>,
     strengths: ordered.slice(0, 2).map(c => STRENGTH_TEXT[c]),
     weaknesses: ordered.slice(-2).reverse().map(c => WEAKNESS_TEXT[c]),
-    flags, workedOut,
+    flags, workedOut, looks,
   };
 }
 

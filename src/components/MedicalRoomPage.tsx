@@ -36,21 +36,21 @@ export function MedicalRoomPage({ league, controlledTeamId, onChange, onSelectPl
     <section>
       <h3>Injury report</h3>
       {out.length === 0 ? <p className="hint-text">Nobody else is out.</p>
-        : <table className="db-table"><thead><tr><th className="col-name">Player</th><th>Injury</th><th>Treatment</th><th>Games left</th></tr></thead><tbody>
-          {out.map(r => <tr key={r.playerId}><td className="col-name">{r.playerId}</td><td>{r.severity}</td><td>{r.treatment}</td><td>{r.gamesRemaining} of {r.totalGames}</td></tr>)}</tbody></table>}
+        : <div className="finances-table-wrap"><table className="db-table"><thead><tr><th className="col-name">Player</th><th>Injury</th><th>Treatment</th><th>Games left</th></tr></thead><tbody>
+          {out.map(r => <tr key={r.playerId}><td className="col-name">{r.playerId}</td><td>{r.severity}</td><td>{r.treatment}</td><td>{r.gamesRemaining} of {r.totalGames}</td></tr>)}</tbody></table></div>}
       {fragile.length > 0 && <p className="hint-text">Back but fragile: {fragile.map(p => `${p.playerId} (${med.fragile[p.playerId].gamesLeft} more games at ${med.fragile[p.playerId].mult}× risk)`).join(' · ')}</p>}
     </section>
 
     <section>
       <h3>Load management</h3>
       <p className="hint-text">Resting a player keeps his workload down, and with it his fatigue and injury risk. Rested games are regular-season only; everyone plays in the playoffs.</p>
-      <table className="db-table"><thead><tr><th className="col-name">Player</th><th>OVR</th><th>Age</th><th>Workload</th><th>Plan</th></tr></thead><tbody>
+      <div className="finances-table-wrap"><table className="db-table"><thead><tr><th className="col-name">Player</th><th>OVR</th><th>Age</th><th>Workload</th><th>Plan</th></tr></thead><tbody>
         {rotation.map(p => { const load = Math.round(p.training?.workload ?? 0); return <tr key={p.playerId}>
           <td className="col-name">{p.playerId}</td><td>{calculateOverall(p)}</td><td>{p.age}</td>
           <td className={load >= 70 ? 'minus' : undefined}>{load}{load >= 70 ? ' (heavy)' : ''}</td>
           <td><select aria-label={`Rest plan for ${p.playerId}`} value={med.rest[p.playerId] ?? 'none'} onChange={e => onChange(setRestPlan(league, p.playerId, e.target.value as RestPlan))}>
             {(Object.keys(REST_LABEL) as RestPlan[]).map(k => <option key={k} value={k}>{REST_LABEL[k]}</option>)}</select></td></tr>; })}
-      </tbody></table>
+      </tbody></table></div>
     </section>
   </div>;
 }
