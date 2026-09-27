@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 
 /**
  * An always-visible scrollbar drawn by the game for a scroll area. Browser scrollbars can't be relied on here:
@@ -9,20 +9,17 @@ export function ScrollRail({ target }: { target: RefObject<HTMLElement | null> }
   const [box, setBox] = useState({ top: 0, height: 0, visible: false });
   const drag = useRef<{ startY: number; startScroll: number } | null>(null);
 
-  const measure = useCallback(() => {
-    const el = target.current;
-    if (!el) return;
-    const { scrollHeight, clientHeight, scrollTop } = el;
-    const visible = scrollHeight > clientHeight + 1;
-    const height = visible ? Math.max(32, (clientHeight / scrollHeight) * clientHeight) : 0;
-    const top = visible ? (scrollTop / (scrollHeight - clientHeight)) * (clientHeight - height) : 0;
-    setBox(b => (b.top === top && b.height === height && b.visible === visible ? b : { top, height, visible }));
-  }, [target]);
-
   useEffect(() => {
     const el = target.current;
     if (!el) return;
-    measure();
+    const measure = () => {
+      const { scrollHeight, clientHeight, scrollTop } = el;
+      const visible = scrollHeight > clientHeight + 1;
+      const height = visible ? Math.max(32, (clientHeight / scrollHeight) * clientHeight) : 0;
+      const top = visible ? (scrollTop / (scrollHeight - clientHeight)) * (clientHeight - height) : 0;
+      setBox(b => (b.top === top && b.height === height && b.visible === visible ? b : { top, height, visible }));
+    };
+    const frame = requestAnimationFrame(measure);
     el.addEventListener('scroll', measure, { passive: true });
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
     ro?.observe(el);
@@ -30,8 +27,8 @@ export function ScrollRail({ target }: { target: RefObject<HTMLElement | null> }
     const mo = typeof MutationObserver !== 'undefined' ? new MutationObserver(measure) : null;
     mo?.observe(el, { childList: true, subtree: true });
     window.addEventListener('resize', measure);
-    return () => { el.removeEventListener('scroll', measure); ro?.disconnect(); mo?.disconnect(); window.removeEventListener('resize', measure); };
-  }, [target, measure]);
+    return () => { cancelAnimationFrame(frame); el.removeEventListener('scroll', measure); ro?.disconnect(); mo?.disconnect(); window.removeEventListener('resize', measure); };
+  }, [target]);
 
   const onThumbDown = (e: React.PointerEvent) => {
     const el = target.current;
@@ -44,7 +41,7 @@ export function ScrollRail({ target }: { target: RefObject<HTMLElement | null> }
     const el = target.current, d = drag.current;
     if (!el || !d) return;
     const ratio = (el.scrollHeight - el.clientHeight) / Math.max(1, el.clientHeight - box.height);
-    el.scrollTop = d.startScroll + (e.clientY - d.startY) * ratio;
+    el.scrollTo({ top: d.startScroll + (e.clientY - d.startY) * ratio });
   };
   const onThumbUp = () => { drag.current = null; };
   const onTrackDown = (e: React.PointerEvent) => {
