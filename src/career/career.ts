@@ -1,7 +1,7 @@
 import type { League } from '../simulation/league';
 import type { GMLeagueExtras, DraftProspect } from '../simulation/gm';
 import { capSpaceRemaining, hasRosterRoom, movePlayerToTeam, signFreeAgent, computeAskingSalary } from '../simulation/gm';
-import type { PlayerSeason, SeasonStatTotals } from '../simulation/types';
+import type { PlayerSeason, SeasonStatTotals, SeasonMilestones } from '../simulation/types';
 import { calculateOverall } from '../simulation/engine/overall';
 import { RNG } from '../simulation/engine/rng';
 import { getPlayerAwardsHistory } from '../simulation/leagueAnalytics';
@@ -27,11 +27,15 @@ export interface CareerYear {
   stats: SeasonStatTotals; playoffs?: SeasonStatTotals;
   record?: { w: number; l: number }; finish?: string;
   awards: CareerAward[]; training: CategoryId[]; note?: string;
+  /** Single-game highs and double/triple-double counts that season. */
+  highs?: SeasonMilestones;
 }
 export interface CareerMeta {
   version: 1; id: string; createdAt: number; updatedAt: number; seed: number;
   mode: CareerMode; identity: Identity; prime: Prime; readiness: Readiness; progress: Progress;
   playerId: string; startSeason: string;
+  /** A past draft he entered (the league is NBA history from that year); absent for today's league. */
+  draftYear?: number;
   status: 'active' | 'retired';
   draft?: { pick: number | null; teamId: string | null; teamName: string; season: string };
   years: CareerYear[];
@@ -40,7 +44,7 @@ export interface CareerMeta {
   autopilot: boolean;
   /** Things that happened this offseason (signings, trades), shown with the next season. */
   notes: string[];
-  retired?: { age: number; season: string; legacy: number; rank: number | null; hallOfFame: 'first-ballot' | 'yes' | 'no' };
+  retired?: { age: number; season: string; legacy: number; rank: number | null; hallOfFame: 'first-ballot' | 'yes' | 'no'; jerseys?: string[] };
 }
 
 export const newCareerMeta = (id: string, seed: number, mode: CareerMode, identity: Identity, prime: Prime, readiness: Readiness, playerId: string, startSeason: string, progress: Progress): CareerMeta => ({
@@ -149,7 +153,7 @@ export function seasonRecord(league: League, extras: GMLeagueExtras, meta: Caree
   const awards = getPlayerAwardsHistory(league, meta.playerId).filter(a => a.season === season && AWARD_KEYS.has(a.key)).map(a => ({ key: a.key, label: a.label }));
   return {
     season, age: rec.age, teamId, teamName: teamId ? league.teams.find(t => t.teamId === teamId)?.name ?? teamId : 'Free agent', overall: rec.overall,
-    stats: rec.stats, ...(rec.playoffStats?.gamesPlayed ? { playoffs: rec.playoffStats } : {}),
+    stats: rec.stats, ...(rec.playoffStats?.gamesPlayed ? { playoffs: rec.playoffStats } : {}), ...(rec.milestones ? { highs: rec.milestones } : {}),
     ...(ts ? { record: { w: ts.wins, l: ts.losses }, finish: ts.playoffFinish } : {}),
     awards, training: meta.training,
   };
@@ -245,7 +249,59 @@ export const hallOfFame = (legacy: number): 'first-ballot' | 'yes' | 'no' => (le
 
 export function retire(meta: CareerMeta, h: NbaHistory, season: string, age: number): CareerMeta {
   const legacy = legacyScore(careerResume(meta));
-  return { ...meta, status: 'retired', updatedAt: Date.now(), retired: { age, season, legacy, rank: top100Rank(top100(h), legacy), hallOfFame: hallOfFame(legacy) } };
+  return { ...meta, status: 'retired', updatedAt: Date.now(), retired: { age, season, legacy, rank: top100Rank(top100(h), legacy), hallOfFame: hallOfFame(legacy), jerseys: retiredJerseys(meta) } };
+}
+
+/** Teams that retire his number: five seasons there, and three All-Star years, a title or an MVP with them. */
+export function retiredJerseys(meta: CareerMeta): string[] {
+  const byTeam = new Map<string, CareerYear[]>();
+  for (const y of meta.years) if (y.teamId) (byTeam.get(y.teamName) ?? byTeam.set(y.teamName, []).get(y.teamName)!).push(y);
+  const has = (ys: CareerYear[], k: TrophyKey) => ys.filter(y => y.awards.some(a => a.key === k)).length;
+  return [...byTeam].filter(([, ys]) => ys.length >= 5 && (has(ys, 'allStar') >= 3 || has(ys, 'champion') >= 1 || has(ys, 'mvp') >= 1)).map(([name]) => name);
+}
+
+// ---------------------------------------------------------------- moments
+
+export interface Moment { season: string; age: number; text: string; big: boolean }
+const ordinal = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`;
+const AWARD_MOMENT: Partial<Record<TrophyKey, [string, boolean]>> = {
+  champion: ['NBA champion', true], fmvp: ['Finals MVP', true], mvp: ['MVP', true], dpoy: ['Defensive Player of the Year', true], roy: ['Rookie of the Year', true],
+  allStar: ['All-Star', false], allLeague1: ['All-NBA First Team', false], scoringChamp: ['scoring title', false],
+};
+const TOTAL_MARKS: [keyof Pick<SeasonStatTotals, 'points' | 'ast' | 'gamesPlayed'> | 'reb', number[], string][] = [
+  ['points', [10_000, 20_000, 25_000, 30_000, 35_000, 40_000], 'career points'], ['reb', [10_000, 15_000], 'career rebounds'],
+  ['ast', [5_000, 10_000], 'career assists'], ['gamesPlayed', [1_000, 1_500], 'career games'],
+];
+
+/** The moments of his career, season by season: firsts, big nights, round-number milestones, trophies. */
+export function careerMoments(meta: CareerMeta): Moment[] {
+  const out: Moment[] = [];
+  let bestPts = 0, triples = 0;
+  const counts = new Map<TrophyKey, number>();
+  const tot = { points: 0, reb: 0, ast: 0, gamesPlayed: 0 };
+  for (const y of meta.years) {
+    const add = (text: string, big = false) => out.push({ season: y.season, age: y.age, text, big });
+    const hi = y.highs;
+    if (hi) {
+      for (const mark of [60, 50, 40, 30]) if (hi.gameHighPoints >= mark && bestPts < mark) { add(mark >= 50 ? `${hi.gameHighPoints}-point game!` : `First ${mark}-point game (${hi.gameHighPoints})`, mark >= 50); break; }
+      if (hi.gameHighPoints > bestPts && bestPts >= 40) add(`New career high: ${hi.gameHighPoints} points`);
+      bestPts = Math.max(bestPts, hi.gameHighPoints);
+      if (hi.tripleDoubles > 0 && triples === 0) add('First triple-double');
+      if (hi.tripleDoubles >= 10) add(`${hi.tripleDoubles} triple-doubles in a season`);
+      triples += hi.tripleDoubles;
+    }
+    for (const a of y.awards) {
+      const m = AWARD_MOMENT[a.key];
+      if (!m) continue;
+      const n = (counts.get(a.key) ?? 0) + 1;
+      counts.set(a.key, n);
+      add(n === 1 ? `First ${m[0]}` : `${ordinal(n)} ${m[0]}`, m[1]);
+    }
+    const before = { ...tot };
+    tot.points += y.stats.points; tot.reb += y.stats.oreb + y.stats.dreb; tot.ast += y.stats.ast; tot.gamesPlayed += y.stats.gamesPlayed;
+    for (const [k, marks, label] of TOTAL_MARKS) for (const m of marks) if (before[k] < m && tot[k] >= m) add(`${m.toLocaleString()} ${label}`, m >= 30_000);
+  }
+  return out;
 }
 
 /** Removes him from the league (so a later look at the league doesn't show a retired player still playing). */
@@ -292,3 +348,6 @@ export function autopilotOffseason(meta: CareerMeta, league: League, extras: GML
   }
   return { meta: next, league, extras };
 }
+
+/** Every trophy of one career, for the pixel trophy shelf. */
+export const careerShelf = (m: CareerMeta): { key: TrophyKey; season: string; who: string }[] => m.years.flatMap(y => y.awards.map(a => ({ key: a.key, season: y.season, who: m.playerId })));

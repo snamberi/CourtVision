@@ -6,7 +6,10 @@ import { newWheel, spin, respin, move, take, landed, neighbour, mustTake, canSpi
 import { resolveEffectivePlayer } from '../simulation/engine/effective';
 import { CATEGORIES, categoryValues } from '../career/categories';
 import { buildPlayer, startProgress, primeOverall, primeFromBuild, capFor, suggestPosition, type Prime } from '../career/create';
-import { newCareerMeta, joinDraft, draftResult, landSeason, autopilotOffseason, findPlayer, uniqueName, freeAgentOffers, requestTrade, growth } from '../career/career';
+import { newCareerMeta, joinDraft, draftResult, landSeason, autopilotOffseason, findPlayer, uniqueName, freeAgentOffers, requestTrade, growth, careerMoments, retiredJerseys, hallOfFame, careerShelf, type CareerYear } from '../career/career';
+import { buildHistoricalLeague, topUpHistoricalClasses } from '../history/historicalLeague';
+import { initializeCoaching } from '../simulation/staffManagement';
+import { emptySeasonStatTotals, emptySeasonMilestones } from '../simulation/types';
 import { generateFullLeague } from '../simulation/leagueGenerator';
 import { autoPlayToDraft, autoPlayFromDraft, autoPlayOneSeason } from '../simulation/autoPlay';
 import { DEFAULT_AWARD_SETTINGS } from '../simulation/awards';
@@ -166,5 +169,51 @@ describe('Career Mode', () => {
     const onTeam = { ...league, teams: league.teams.map(t => (t.teamId === team.teamId ? { ...t, seasons: [...t.seasons, { ...p, teamId: team.teamId }] } : t)) };
     const traded = requestTrade(onTeam, extras, meta, 'anywhere');
     expect(findPlayer(traded.league, traded.extras, name)!.teamId).not.toBe(team.teamId);
+  }, 300_000);
+
+  it('moments, jersey retirement and the Hall of Fame line', async () => {
+    const h = await loadHistoryForTests();
+    const meta0 = newCareerMeta('m', 1, 'wheel', { name: 'Moment Man', pos: 'SG', jersey: 24 }, primeOf(h, 'Kobe Bryant'), 'balanced', 'Moment Man', '2026', startProgress());
+    const year = (i: number, pts: number, high: number, awards: CareerYear['awards'], team = 'Los Angeles'): CareerYear => ({
+      season: String(2026 + i), age: 19 + i, teamId: team, teamName: team, overall: 70 + i, awards, training: [],
+      stats: { ...emptySeasonStatTotals(), gamesPlayed: 80, points: pts }, highs: { ...emptySeasonMilestones(), gameHighPoints: high, tripleDoubles: i === 2 ? 1 : 0 },
+    });
+    const allStar = { key: 'allStar' as const, label: 'All-Star' }, ring = { key: 'champion' as const, label: 'NBA Champion' };
+    const years = [year(0, 1200, 28, []), year(1, 1900, 34, [allStar]), year(2, 2400, 52, [allStar, ring]), year(3, 2300, 44, [allStar]), year(4, 2600, 61, [allStar, { key: 'mvp', label: 'MVP' }])];
+    const meta = { ...meta0, years };
+    const text = careerMoments(meta).map(m => m.text);
+    expect(text).toContain('First 30-point game (34)');
+    expect(text).toContain('52-point game!');
+    expect(text).toContain('61-point game!');
+    expect(text).toContain('First triple-double');
+    expect(text).toContain('First All-Star');
+    expect(text).toContain('4th All-Star');
+    expect(text).toContain('First NBA champion');
+    expect(text).toContain('10,000 career points');
+    expect(retiredJerseys(meta)).toEqual(['Los Angeles']);
+    expect(retiredJerseys({ ...meta, years: years.slice(0, 4) })).toEqual([]); // four seasons are not enough
+    expect(careerShelf(meta).filter(e => e.key === 'allStar')).toHaveLength(4);
+    expect(hallOfFame(30)).toBe('no');
+    expect(hallOfFame(60)).toBe('yes');
+    expect(hallOfFame(120)).toBe('first-ballot');
+  }, 120_000);
+
+  it('a past draft: the 1984 class is real, and he is in it', async () => {
+    const h = await loadHistoryForTests();
+    const built = buildHistoricalLeague(h, 1983, { realDevelopment: true, difficulty: 'normal', seed: 3 });
+    let league = initializeCoaching(built.league, null);
+    const classes = topUpHistoricalClasses(h, league, built.extras, 2009);
+    if (classes) league = { ...league, historical: classes };
+    const half = autoPlayToDraft(league, built.extras, null, DEFAULT_AWARD_SETTINGS, 1);
+    expect(half.league.season).toBe('1984');
+    expect(half.extras.draftClass.some(d => d.playerId === 'Michael Jordan')).toBe(true);
+    const name = uniqueName(half.league, half.extras, 'Time Traveler');
+    const meta = { ...newCareerMeta('y', 1, 'wheel', { name, pos: 'SF', jersey: 33 }, primeOf(h, 'Larry Bird'), 'balanced', name, half.league.season!, startProgress()), draftYear: 1984 };
+    const joined = joinDraft(half.league, half.extras, meta);
+    const full = autoPlayFromDraft(joined.league, joined.extras, null, 2, half.partial);
+    const d = draftResult(full.league, meta, full.draftPicks)!;
+    expect(d.pick).not.toBeNull();
+    expect(d.season).toBe('1984');
+    expect(full.draftPicks.slice(0, 5).map(p => p.playerId)).toContain('Michael Jordan');
   }, 300_000);
 });

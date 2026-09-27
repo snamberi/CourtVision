@@ -1,0 +1,20 @@
+/* The GM Locker: League Hunt's screen frame with lockers (bays) of trophies. */
+.locker-totals { margin: 0 0 16px; padding: 12px 16px; background: #192333; border: 2px solid #ffd166; }
+.locker-bay { display: grid; gap: 10px; margin-bottom: 18px; padding: 12px 16px; background: #121926; border: 2px solid #2a3546; box-shadow: 3px 3px 0 #03070d; }
+.locker-bay h2 { display: flex; align-items: center; gap: 8px; margin: 0; font: 22px 'Oswald', sans-serif; }
+.locker-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.locker-row div { display: grid; min-width: 104px; padding: 6px 10px; background: #0b1018; border: 1px solid #2a3546; }
+.locker-row small { font-size: 10px; letter-spacing: .08em; color: #94a0b2; }
+.locker-row b { font: 22px 'Oswald', sans-serif; color: #f47b20; font-variant-numeric: tabular-nums; }
+.locker-row div.gold b { color: #ffd166; }
+.locker-best { display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: #192333; border: 2px solid #f47b20; max-width: 560px; }
+.locker-best div { display: grid; }
+.locker-best strong { font: 20px 'Oswald', sans-serif; }
+.locker-best small { color: #c9ced8; }
+.locker-hunt-cups { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 4px; }
+.locker-achievements { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 6px; }
+.locker-achievements li { display: flex; gap: 10px; align-items: center; padding: 6px 8px; border: 1px solid #1e2a3b; background: #0b1018; opacity: .6; }
+.locker-achievements li.got { opacity: 1; border-color: #ffd166; }
+.locker-achievements li div { display: grid; min-width: 0; }
+.locker-achievements li small { color: #94a0b2; font-size: 11px; }
+.locker-achievements .locker-when { color: #ffd166; }

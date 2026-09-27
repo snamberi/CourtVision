@@ -136,3 +136,12 @@ input, select, textarea { border-color: var(--line-strong); background: #070e1b;
 }
 .trade-view .badge-chip input { accent-color: var(--amber); }
 @media (prefers-reduced-motion: reduce) { .trade-view .badge-chip { transition: none; } }
+/* ---- GM Locker (main menu) ---- */
+.menu-locker {
+  margin-left: 14px; display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; background: #2a2210; border: 1px solid #ffd166; border-bottom-width: 3px;
+  border-bottom-color: #8a6a1c; color: #ffd166; font: 18px/1 var(--font-ui); box-shadow: 2px 2px 0 #000; cursor: pointer;
+}
+.menu-locker:hover { background: #3a2f12; }
+.menu-locker:active { transform: translate(1px, 2px); box-shadow: none; }
+.menu-locker + .menu-discord { margin-left: 8px; }
+@media (max-width: 640px) { .menu-locker { margin-left: auto; font-size: 14px; padding: 5px 8px; } }
