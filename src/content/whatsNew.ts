@@ -10,10 +10,9 @@ export const RELEASES: Release[] = [
     title: 'The Player Profile, the Level Road and the Prime Boost',
     items: [
       '**Game modes first:** the main menu opens on the six modes; the weekly challenges and your records sit below them.',
-      '**Player Profile:** the GM Locker now lives in your profile, with tabs for your card, the Level Road, the trophy room, achievements, passes and backups.',
+      '**Player Profile:** the GM Locker now lives in your profile, with tabs for your card, the Level Road, the trophy room, achievements and backups.',
       '**Level Road to 250:** a reward every five levels: 30 new pixel icons, new name colours, titles, card frames and court floors. Level-up notes now appear in the bottom-left corner.',
       '**Career Mode:** the wheel builds your player on the same pixel body board as MyPlayer (click a callout to take it). One **Prime Boost** per player, for a Lucky Spin, puts the player you landed on in his absolute prime, or raises six of his skills 10-20% if he is already there. Never his height, never past 120.',
-      '**Passes (optional):** a one-time No-Ads Pass and a monthly Supporter Pass with supporter icons, colours and a title. Nothing that makes a team or player better is for sale.',
       '**Fixed:** Auto Play in historical leagues no longer stalls when a player is stuck to a team or another player.',
     ],
   },

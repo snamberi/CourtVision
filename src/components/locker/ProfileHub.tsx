@@ -21,15 +21,17 @@ import { DAILY_EVENT } from '../../profile/dailyGoals';
 import { ModeAchievements } from './ModeAchievements';
 import { LevelRoad } from './LevelRoad';
 import { PassesPanel } from './PassesPanel';
+import { passesOnSale } from '../../billing/billing';
 import '../hunt/hunt.css';
 import '../career/career.css';
 import './locker.css';
 
 export type ProfileTab = 'profile' | 'road' | 'trophies' | 'achievements' | 'passes' | 'backup';
-const TABS: { id: ProfileTab; label: string }[] = [
+const TABS: { id: ProfileTab; label: string }[] = ([
   { id: 'profile', label: 'Profile' }, { id: 'road', label: 'Level road' }, { id: 'trophies', label: 'Trophy room' },
   { id: 'achievements', label: 'Achievements' }, { id: 'passes', label: 'Passes' }, { id: 'backup', label: 'Backup' },
-];
+// The Passes tab appears only once checkout links are configured (docs/BILLING_SETUP.md).
+] satisfies { id: ProfileTab; label: string }[]).filter(t => t.id !== 'passes' || passesOnSale());
 
 /**
  * Your player profile: your card and cosmetics, the level road, and everything you have won in this browser (what the

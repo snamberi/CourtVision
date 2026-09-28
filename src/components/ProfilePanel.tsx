@@ -6,6 +6,7 @@ import { LEGACY_EVENT } from '../storage/gmLegacy';
 import { PixelIcon } from './PixelIcon';
 import { ProfileIcon, NameTag } from './ProfileIcon';
 import { useAccount } from '../cloud/account';
+import { passesOnSale } from '../billing/billing';
 
 function useProfile() {
   const [tick, setTick] = useState(0);
@@ -36,6 +37,10 @@ function Picker<T extends string>({ label, list, level, value, onPick }: { label
       <b>{u.name}</b><small>{open ? u.blurb || 'Unlocked' : `Level ${u.level}`}</small></button>; })}</div></div>;
 }
 
+/** Supporter cosmetics are listed only while the pass is on sale (or already owned). */
+const showSupporter = (c: UnlockContext) => c.supporter || passesOnSale();
+const listed = <T extends { rule: object }>(list: T[], c: UnlockContext) => list.filter(x => !('supporter' in x.rule) || showSupporter(c));
+
 /** Every title and where it comes from: levels, ranked seasons, leaderboards and the modes. */
 function titleGroups(c: UnlockContext) {
   const ranked = rankTitles();
@@ -45,7 +50,7 @@ function titleGroups(c: UnlockContext) {
     { label: 'Leaderboards', items: HONORS.map(h => ({ title: h.title, open: c.honors.includes(h.id), how: h.how })) },
     { label: 'Achievements', items: MODE_TITLES.map(m => ({ title: m.title, open: c.modes.includes(m.mode), how: m.how })) },
     { label: 'Supporter', items: [{ title: SUPPORTER_TITLE, open: c.supporter, how: 'Supporter pass' }] },
-  ];
+  ].filter(g => g.label !== 'Supporter' || showSupporter(c));
 }
 
 /** Your card (the Profile tab of the Player Profile): the card others see, your level and XP, and everything to equip. */
@@ -71,12 +76,12 @@ export function ProfilePanel() {
     </div>
 
     <div className="profile-picker"><h3 className="hunt-subhead">Profile icon</h3>
-      <div className="profile-icons" role="radiogroup" aria-label="Profile icon">{ICONS.map(i => { const open = isOpen(i.rule, ctx); return <button key={i.id} role="radio" aria-checked={eq.icon === i.id} disabled={!open} title={`${i.name}${open ? '' : ` · ${i.how}`}`}
+      <div className="profile-icons" role="radiogroup" aria-label="Profile icon">{listed(ICONS, ctx).map(i => { const open = isOpen(i.rule, ctx); return <button key={i.id} role="radio" aria-checked={eq.icon === i.id} disabled={!open} title={`${i.name}${open ? '' : ` · ${i.how}`}`}
         className={`profile-icon-pick ${eq.icon === i.id ? 'selected' : ''} ${open ? '' : 'locked'}`} onClick={() => equip({ icon: i.id })}>
         <ProfileIcon id={i.id} size={36} title={i.name} /><small>{open ? i.name : i.how}</small></button>; })}</div></div>
 
     <div className="profile-picker"><h3 className="hunt-subhead">Name colour</h3>
-      <div className="profile-colors" role="radiogroup" aria-label="Name colour">{NAME_COLORS.map(c => { const open = isOpen(c.rule, ctx); return <button key={c.id} role="radio" aria-checked={eq.color === c.id} disabled={!open}
+      <div className="profile-colors" role="radiogroup" aria-label="Name colour">{listed(NAME_COLORS, ctx).map(c => { const open = isOpen(c.rule, ctx); return <button key={c.id} role="radio" aria-checked={eq.color === c.id} disabled={!open}
         className={`profile-color-pick ${eq.color === c.id ? 'selected' : ''} ${open ? '' : 'locked'}`} onClick={() => equip({ color: c.id })}>
         <i style={{ background: c.css }} aria-hidden="true" /><b>{c.name}</b><small>{open ? 'Unlocked' : c.how}</small></button>; })}</div></div>
 
