@@ -1,4 +1,8 @@
 import type { League } from '../simulation/league';
+import { computeStandings } from '../simulation/league';
+import type { Contract } from '../simulation/gm';
+import { rebuildSnapshot, type RebuildSnapshot } from '../simulation/rebuildSnapshot';
+import { PlayerAvatar } from './PlayerAvatar';
 import { challengeProgress, loadRebuildRecords } from '../simulation/rebuildChallenge';
 import { formatSeasonYear } from '../simulation/calendar';
 import { PixelIcon } from './PixelIcon';
@@ -8,8 +12,55 @@ import { PostScore } from './WeeklyBoard';
 
 const Stars = ({ n }: { n: number }) => <span className="rb-stars" aria-label={`${n} of 3 stars`}>{[1, 2, 3].map(i => <span key={i} className={i <= n ? 'on' : ''}>★</span>)}</span>;
 
+const money = (n: number) => `$${(n / 1_000_000).toFixed(1)}M`;
+const recordText = (r?: RebuildSnapshot['record']) => (r ? `${r.wins}-${r.losses}` : '—');
+const signed = (n: number, unit = '') => `${n > 0 ? '+' : ''}${n}${unit}`;
+
+/** One side of the split: the record, the payroll and the best three, with arrows against the other side when given. */
+function Side({ label, when, snap, vs }: { label: string; when: string; snap: RebuildSnapshot; vs?: RebuildSnapshot }) {
+  const winPct = (r?: RebuildSnapshot['record']) => (r && r.wins + r.losses ? r.wins / (r.wins + r.losses) : null);
+  const now = winPct(snap.record), then = winPct(vs?.record);
+  const pctDelta = now != null && then != null ? Math.round((now - then) * 1000) / 10 : null;
+  const top = snap.stars[0]?.ovr, topThen = vs?.stars[0]?.ovr;
+  return <div className={`rb-side ${vs ? 'now' : 'then'}`}>
+    <small className="rb-side-label">{label} <em>{when}</em></small>
+    <dl>
+      <div><dt>Record</dt><dd>{recordText(snap.record)}{pctDelta != null && pctDelta !== 0 && <i className={pctDelta > 0 ? 'up' : 'down'}>{pctDelta > 0 ? '▲' : '▼'} {signed(pctDelta, '%')}</i>}</dd></div>
+      <div><dt>Payroll</dt><dd>{money(snap.payroll)}{vs && vs.payroll !== snap.payroll && <i className="flat">{signed(Math.round((snap.payroll - vs.payroll) / 100_000) / 10, 'M')}</i>}</dd></div>
+      <div><dt>Best player</dt><dd>{top ?? '—'}{top != null && topThen != null && top !== topThen && <i className={top > topThen ? 'up' : 'down'}>{top > topThen ? '▲' : '▼'} {signed(top - topThen)}</i>}</dd></div>
+    </dl>
+    <ul className="rb-stars-row" aria-label="Best three players">{snap.stars.map(p => <li key={p.id} title={`${p.id}: ${p.ovr} overall`}>
+      <PlayerAvatar playerId={p.id} mode="portrait" size={26} primaryColor="#f47b20" secondaryColor="#f4f0e6" /><span>{p.id.split(' ').slice(-1)[0]}</span><b>{p.ovr}</b></li>)}</ul>
+  </div>;
+}
+
+/** The before-and-after: the team as it was handed over against the team now, and the seasons left on the clock. */
+function BeforeAfter({ league, contracts, p }: { league: League; contracts: Record<string, Contract>; p: NonNullable<ReturnType<typeof challengeProgress>> }) {
+  const team = league.teams.find(t => t.teamId === p.config.teamId);
+  const start = p.config.start;
+  if (!team) return null;
+  const row = computeStandings(league).find(r => r.teamId === team.teamId);
+  const last = p.results.at(-1);
+  const record = row && row.wins + row.losses > 0 ? { wins: row.wins, losses: row.losses, season: league.season ?? '' } : last ? { wins: last.wins, losses: last.losses, season: last.season } : undefined;
+  const now = rebuildSnapshot(team, contracts, record);
+  const first = Number(p.config.startSeason);
+  const deadline = formatSeasonYear(String(first + p.config.seasons - 1));
+  const left = p.config.seasons - p.results.length;
+  return <div className="rb-split">
+    {start && <Side label="HANDED OVER" when={start.record ? formatSeasonYear(start.record.season) : formatSeasonYear(p.config.startSeason)} snap={start} />}
+    {start && <span className="rb-arrow" aria-hidden="true">➜</span>}
+    <Side label={p.status === 'active' ? 'NOW' : 'FINAL'} when={record ? formatSeasonYear(record.season) : ''} snap={now} vs={start} />
+    <div className="rb-clock" aria-label={`${left} season${left === 1 ? '' : 's'} left, deadline ${deadline}`}>
+      <small>TITLE DEADLINE · {deadline}</small>
+      <b>{p.status === 'won' ? 'DONE' : Math.max(0, left)}</b><span>{p.status === 'won' ? 'banner raised' : `season${left === 1 ? '' : 's'} left`}</span>
+      <ol>{Array.from({ length: p.config.seasons }, (_, i) => { const r = p.results[i];
+        return <li key={i} className={r ? (r.finish === 'Champion' ? 'won' : 'done') : i === p.results.length && p.status === 'active' ? 'here' : ''} title={r ? `Y${i + 1}: ${r.wins}-${r.losses} · ${r.finish}` : `Y${i + 1}: ${formatSeasonYear(String(first + i))}`} />; })}</ol>
+    </div>
+  </div>;
+}
+
 /** The Rebuild Challenge on the dashboard: the clock, the goal, the score so far, and the verdict when it ends. */
-export function ChallengeBanner({ league, onMenu }: { league: League; onMenu: () => void }) {
+export function ChallengeBanner({ league, contracts, onMenu }: { league: League; contracts?: Record<string, Contract>; onMenu: () => void }) {
   const p = challengeProgress(league);
   if (!p) return null;
   const best = loadRebuildRecords()[p.scenario.id];
@@ -25,6 +76,7 @@ export function ChallengeBanner({ league, onMenu }: { league: League; onMenu: ()
       {p.status === 'failed' && <p className="rb-verdict">{p.fired ? 'You were fired: the challenge is over.' : `Time is up: no title in ${p.config.seasons} seasons.`}</p>}
     </div>
     <div className="rb-score"><small>SCORE</small><b>{p.score.toLocaleString()}</b><Stars n={p.stars} />{best && <small>Best {best.best.toLocaleString()}</small>}</div>
+    {contracts && <BeforeAfter league={league} contracts={contracts} p={p} />}
     {p.results.length > 0 && <ol className="rb-seasons">{p.results.map((r, i) => <li key={r.season} className={r.finish === 'Champion' ? 'won' : ''}><small>Y{i + 1} · {formatSeasonYear(r.season)}</small><b>{r.wins}-{r.losses}</b><span>{r.finish}</span></li>)}</ol>}
     {!p.official && <p className="hint-text">Sandbox was used in this league: the score does not go on the board.</p>}
     {over && <div className="contest-actions"><button className="primary" onClick={onMenu}>Back to the menu</button>

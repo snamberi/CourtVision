@@ -17,6 +17,7 @@ import { runCareerStep } from '../../career/runner';
 import { PixelIcon } from '../PixelIcon';
 import { PlayerAvatar } from '../PlayerAvatar';
 import { OverallChart } from './CareerChart';
+import { CareerCard } from './CareerCard';
 import { TrophyShelf } from '../TrophyShelf';
 import { ShareCardButton } from '../ShareCardButton';
 import { weeklyCareer, loadWeeklyRecords, recordWeekly, weekEndsAt, type WeeklyCareer } from '../../retention/weekly';
@@ -313,8 +314,8 @@ function CareerView({ h, a, busy, tradeAsked, onPlay, onAutopilot, onTraining, o
   const toggle = (id: CategoryId) => onTraining(meta.training.includes(id) ? meta.training.filter(x => x !== id) : [...meta.training, id].slice(-2));
   const rookieYear = meta.years.length === 0;
   return <section className="hunt-stage">
-    <div className="cv-hero">
-      <PlayerAvatar playerId={meta.playerId} primaryColor="#f47b20" secondaryColor="#f4f0e6" size={88} />
+    <div className="cv-hero cv-hero-card">
+      <CareerCard meta={meta} overall={p ? calculateOverall(p) : null} age={p?.age} teamName={team ? team.name : 'Free agent'} prime={primeOverall(meta.prime, meta.readiness, meta.identity.pos)} />
       <div><span className="pixel-eyebrow">#{meta.identity.jersey} · {meta.identity.pos} · AGE {p?.age ?? ''}{meta.draftYear ? ` · ${meta.draftYear} DRAFT CLASS` : ''}</span><h2>{meta.playerId}</h2>
         <p>{team ? team.name : 'Free agent'} · <b className="hunt-rating">{p ? calculateOverall(p) : '—'}</b> OVR · prime {primeOverall(meta.prime, meta.readiness, meta.identity.pos)}</p>
         {meta.draft && <p className="hint-text">{meta.draft.pick ? `Drafted #${meta.draft.pick} overall by ${meta.draft.teamName} (${meta.draft.season} draft)` : `Undrafted (${meta.draft.season} draft)`}</p>}</div>
@@ -374,6 +375,7 @@ function Legacy({ h, meta, onNew }: { h: NbaHistory; meta: CareerMeta; onNew: ()
     shelf.filter(([k]) => r[k] > 0).map(([k, l]) => `${r[k]}x ${l}`).join(', '),
     `Hall of Fame: ${ret.hallOfFame === 'first-ballot' ? 'first ballot' : ret.hallOfFame === 'yes' ? 'yes' : 'no'} · ${rank ? `#${rank} all time` : 'outside the all-time Top 100'} (Court Vision Career Mode)`].filter(Boolean).join('\n');
   return <section className="hunt-stage hunt-over won">
+    <div className="cv-legacy-card"><CareerCard meta={meta} overall={meta.years.reduce((m, y) => Math.max(m, y.overall), 0)} teamName={meta.years.at(-1)?.teamName ?? ''} /></div>
     <div className="hunt-over-banner"><span className="pixel-eyebrow">RETIRED AT {ret.age} · {fy(ret.season)}</span><h2>The legacy of {meta.playerId}</h2>
       <div className="hunt-over-stats">
         <div><small>ALL-TIME RANK</small><b>{rank ? `#${rank}` : '—'}</b></div>

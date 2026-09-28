@@ -17,7 +17,9 @@ export { SCENARIOS, scenarioById, type RebuildScenario };
 /** Stored on the league when a challenge starts; everything else is worked out from the league's history. */
 export interface RebuildChallengeConfig { id: string; teamId: string; startSeason: string; seasons: number;
   /** Set for the Rebuild of the Week: the week (e.g. "2026-W39") and its twist. */
-  weekly?: { week: string; twist: string } }
+  weekly?: { week: string; twist: string };
+  /** The team as it was handed over (record the season before, payroll, best three), for the before-and-after view. Missing on older saves. */
+  start?: import('./rebuildSnapshot').RebuildSnapshot }
 export interface ChallengeSeason { season: string; wins: number; losses: number; finish: PlayoffFinish }
 export type ChallengeStatus = 'active' | 'won' | 'failed';
 export interface ChallengeProgress {

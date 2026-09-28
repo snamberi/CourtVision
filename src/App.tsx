@@ -82,6 +82,7 @@ import { recordCodeResult } from './retention/codeResults';
 import { syncSoon } from './cloud/sync';
 import { track, trackOnce } from './analytics/track';
 import { ChallengeBanner } from './components/ChallengeBanner';
+import { rebuildSnapshot } from './simulation/rebuildSnapshot';
 import { DailyGoalsCard } from './components/DailyGoalsCard';
 import { LeagueCodeBox } from './components/LeagueCodeBox';
 import { updateDailyGoals, todayUtc } from './profile/dailyGoals';
@@ -425,7 +426,12 @@ function App() {
       const built = buildHistoricalLeague(h, sc.startYear, { realDevelopment: true, difficulty: twist?.hardTrades ? 'hard' : origin.difficulty, seed: origin.seed });
       if (!built.league.teams.some(t => t.teamId === sc.team)) throw new Error(`${sc.team} is not in the ${sc.startYear} league.`);
       const seasons = twist ? Math.max(3, sc.seasons + twist.seasonsDelta) : sc.seasons;
-      const league: League = { ...built.league, origin, rebuildChallenge: { id: sc.id, teamId: sc.team, startSeason: built.league.season ?? String(sc.startYear), seasons, ...(o.weekly ? { weekly: { week: o.weekly.week, twist: o.weekly.twist.id } } : {}) } };
+      // The team as it was handed over, for the before-and-after view: last season's real record, payroll and best three.
+      const franchise = h.teams.find(t => t.season === sc.startYear + 1 && t.abbr === sc.team)?.franchise;
+      const prior = h.teams.find(t => t.season === sc.startYear && (franchise ? t.franchise === franchise : t.abbr === sc.team));
+      const start = rebuildSnapshot(built.league.teams.find(t => t.teamId === sc.team)!, built.extras.contracts,
+        prior?.w != null && prior.l != null ? { wins: prior.w, losses: prior.l, season: String(sc.startYear - 1) } : undefined);
+      const league: League = { ...built.league, origin, rebuildChallenge: { id: sc.id, teamId: sc.team, startSeason: built.league.season ?? String(sc.startYear), seasons, start, ...(o.weekly ? { weekly: { week: o.weekly.week, twist: o.weekly.twist.id } } : {}) } };
       enterApp(league, built.extras, sc.team, o.name);
       setTab('dashboard');
       resolve();
@@ -1836,7 +1842,7 @@ function App() {
           );
         })()}
 
-        {(tab === 'dashboard' || tab === 'database') && league.rebuildChallenge && <ChallengeBanner league={league} onMenu={() => setConfirmation('exit')} />}
+        {(tab === 'dashboard' || tab === 'database') && league.rebuildChallenge && <ChallengeBanner league={league} contracts={extras.contracts} onMenu={() => setConfirmation('exit')} />}
         {tab === 'dashboard' && controlledTeamId && <DailyGoalsCard official={isOfficialLeague(league)} />}
         {tab === 'dashboard' && league.origin && <LeagueCodeBox origin={league.origin} teamId={controlledTeamId} teamName={league.teams.find(t => t.teamId === controlledTeamId)?.name} />}
         {tab === 'dashboard' && (

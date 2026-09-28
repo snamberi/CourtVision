@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { NbaHistory } from '../../history/nbaHistoryData';
 import { cardPool, seasonLabel, RARITY_LABEL, type HuntCard } from '../../hunt/cards';
 import { huntTeams, teamLabel, type HuntTeam } from '../../hunt/teams';
@@ -20,6 +20,7 @@ import { loadRun, saveRun, clearRun, loadRecords, recordRun, type HuntRecords } 
 import { PlayerAvatar } from '../PlayerAvatar';
 import { PixelIcon } from '../PixelIcon';
 import { HuntHub } from './HuntHub';
+import { HuntMap } from './HuntMap';
 import { ShareCardButton } from '../ShareCardButton';
 import './hunt.css';
 
@@ -164,17 +165,6 @@ function Bonds({ bonds }: { bonds: ChemistryBond[] }) {
 
 const kindLabel = (s: HuntSeries, i: number) => (s.kind === 'boss' ? 'BOSS' : s.kind === 'semi' ? 'SEMI-BOSS' : `SERIES ${i + 1}`);
 
-function SeriesTrail({ h, run }: { h: NbaHistory; run: HuntRun }) {
-  const teams = useMemo(() => new Map(huntTeams(h).map(t => [t.id, t])), [h]);
-  return <ol className="hunt-trail hunt-trail-10">{run.series.map((s, i) => { const t = teams.get(s.teamId)!; const res = run.results.filter(r => r.index === i).at(-1);
-    const seen = i <= run.seriesIndex || s.kind !== 'normal' || run.items.includes('scout');
-    const w = res ? res.games.filter(g => g.won).length : 0;
-    return <li key={s.teamId} className={`${i === run.seriesIndex ? 'current' : ''} ${i < run.seriesIndex ? 'done' : ''} ${s.kind}`}>
-      <small>{kindLabel(s, i)}{i % 2 === 0 ? ' · SHOP' : ''}</small><b>{seen ? `'${String(t.end).slice(2)} ${t.name}` : '???'}</b>
-      <span>{res ? `${res.won ? 'W' : 'L'} ${w}-${res.games.length - w}` : seen ? `Rating ${opponentRating(h, run, s)}` : ''}</span>
-    </li>; })}</ol>;
-}
-
 function SeriesPreview({ h, run, onPlay, onAbandon }: { h: NbaHistory; run: HuntRun; onPlay: () => void; onAbandon: () => void }) {
   const s = run.series[run.seriesIndex];
   const team = huntTeams(h).find(t => t.id === s.teamId)!;
@@ -185,7 +175,7 @@ function SeriesPreview({ h, run, onPlay, onAbandon }: { h: NbaHistory; run: Hunt
   const ours = squadRating(h, run, s), them = opponentRating(h, run, s);
   const { bonds } = gameBonuses(h, run, era, NEUTRAL_GAME, s);
   return <section className="hunt-stage">
-    <SeriesTrail h={h} run={run} />
+    <HuntMap h={h} run={run} />
     {run.note && <p className="hunt-note" role="status">{run.note}</p>}
     <div className="hunt-matchup">
       <div className={`hunt-era ${s.kind !== 'normal' ? `hunt-era-${s.kind}` : ''}`}>

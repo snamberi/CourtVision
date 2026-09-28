@@ -6,6 +6,17 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2026-10-04',
+    title: 'New screens in every game mode',
+    items: [
+      '**League Hunt map:** the ten series now sit on a winding trail through the eras, with your lives as hearts, the semi-boss and boss marked, and your point guard standing where you are.',
+      '**Career card:** your player gets a trading card that changes every season: bronze, silver, gold and holo by overall, a rating ring, last season\'s stats, award badges, and a Hall of Fame foil at the end.',
+      '**All-Time Draft wall:** a big board of every team by all 13 rounds, filling in pick by pick with portraits, steals and reaches marked. Turn on the 60-second pick clock if you want the pressure.',
+      '**Rebuild before and after:** the challenge banner shows the team you were handed next to the team you have now (record, payroll, best three) and a countdown to the title deadline.',
+      '**Leaderboard podium:** the top three stand on a pixel podium, your own rank stays pinned at the bottom, and arrows show who moved since last week.',
+    ],
+  },
+  {
     id: '2026-10-03',
     title: 'Ten new looks on the Level Road',
     items: [

@@ -9,6 +9,9 @@ import { draftPool, legendRank, newDraft, runAi, autoPick, makePick, onClock, is
 import { weekKey, weeklySeed } from '../../retention/week';
 import { PixelIcon } from '../PixelIcon';
 import { PlayerAvatar } from '../PlayerAvatar';
+import { DraftWall } from './DraftWall';
+import { usePickClock } from './usePickClock';
+import { readPickClock, writePickClock, PICK_CLOCK_SECONDS } from '../../draft/wall';
 import { track } from '../../analytics/track';
 import '../hunt/hunt.css';
 import './draft.css';
@@ -131,6 +134,8 @@ function Board({ h, s, onPick, onAutoRest }: { h: NbaHistory; s: DraftState; onP
   const [pos, setPos] = useState<'ALL' | 'G' | 'F' | 'C'>('ALL');
   const [q, setQ] = useState('');
   const [limit, setLimit] = useState(60);
+  const [view, setView] = useState<'players' | 'wall'>('players');
+  const [timed, setTimed] = useState(readPickClock);
   const clock = onClock(s)!;
   const me = s.config.userTeam;
   const teamName = (id: string) => s.config.teams.find(t => t.id === id)?.name ?? id;
@@ -141,12 +146,23 @@ function Board({ h, s, onPick, onAutoRest }: { h: NbaHistory; s: DraftState; onP
   const recent = s.picks.slice(-8).reverse();
   const byId = (id: string): HuntCard | undefined => draftPool(h).find(c => c.id === id);
   const counts = (['G', 'F', 'C'] as const).map(g => `${g} ${mine.filter(c => groupOf(c.pos) === g).length}`).join(' · ');
+  // The optional pick clock: it runs only while you are on the clock, and drafts the best fit when it hits zero.
+  const left = usePickClock(timed && !!suggestion, PICK_CLOCK_SECONDS, () => { if (suggestion) onPick(suggestion.id); }, s.picks.length);
   return <section className="hunt-stage draft-board">
     <div className="draft-clock">
       <div><span className="pixel-eyebrow">ROUND {clock.round} OF {ROUNDS} · PICK {clock.pick} · #{clock.overall} OVERALL</span><h2>{clock.teamId === me ? 'You are on the clock' : `${teamName(clock.teamId)} is picking…`}</h2>
         <small>{eraById(s.config.eraId).label} rules · you draft for {teamName(me)}{s.config.weekly ? ` · Draft of the Week ${s.config.weekly}` : ''}</small></div>
-      {suggestion && <div className="draft-suggest"><small>BEST FIT</small><button className="primary" onClick={() => onPick(suggestion.id)}>Draft {suggestion.name}</button></div>}
+      <div className="draft-clock-side">
+        {suggestion && timed && <div className={`draft-timer ${left <= 10 ? 'low' : ''}`} role="timer" aria-label={`${left} seconds to pick`}>0:{String(left).padStart(2, '0')}</div>}
+        {suggestion && <div className="draft-suggest"><small>BEST FIT</small><button className="primary" onClick={() => onPick(suggestion.id)}>Draft {suggestion.name}</button></div>}
+        <label className="draft-timer-toggle"><input type="checkbox" checked={timed} onChange={e => { setTimed(e.target.checked); writePickClock(e.target.checked); }} /> Pick clock ({PICK_CLOCK_SECONDS}s, then best fit)</label>
+      </div>
     </div>
+    <div className="board-picker draft-views" role="tablist" aria-label="Draft view">
+      <button role="tab" aria-selected={view === 'players'} className={`difficulty-chip ${view === 'players' ? 'selected' : ''}`} onClick={() => setView('players')}>Players</button>
+      <button role="tab" aria-selected={view === 'wall'} className={`difficulty-chip ${view === 'wall' ? 'selected' : ''}`} onClick={() => setView('wall')}>Draft wall</button>
+    </div>
+    {view === 'wall' ? <DraftWall h={h} s={s} /> : <>
     <div className="draft-grid">
       <div>
         <div className="board-options">
@@ -171,7 +187,7 @@ function Board({ h, s, onPick, onAutoRest }: { h: NbaHistory; s: DraftState; onP
         <h3 className="hunt-subhead">Latest picks</h3>
         <ol className="draft-log">{recent.map(p => { const c = byId(p.cardId); return <li key={p.overall} className={p.teamId === me ? 'mine' : ''}><small>#{p.overall}</small><span>{teamName(p.teamId)}</span><b>{c?.name}</b></li>; })}</ol>
       </aside>
-    </div>
+    </div></>}
   </section>;
 }
 
@@ -193,5 +209,7 @@ function Results({ h, s, onStart, onRedo }: { h: NbaHistory; s: DraftState; onSt
       <div><h3 className="hunt-subhead">Power rankings after the draft</h3>
         <ol className="draft-log">{ranked.map((t, i) => <li key={t.id} className={t.id === me ? 'mine' : ''}><small>{i + 1}</small><span>{t.name}</span><b>{t.strength}</b><small>{t.roster[0]?.name}</small></li>)}</ol></div>
     </div>
+    <h3 className="hunt-subhead">The draft wall</h3>
+    <DraftWall h={h} s={s} />
   </section>;
 }
