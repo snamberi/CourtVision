@@ -5,6 +5,7 @@ import { generateFullLeague } from '../simulation/leagueGenerator';
 describe('league codes', () => {
   const origins: LeagueOrigin[] = [
     { kind: 'random', year: 2025, seed: 987_654, difficulty: 'hard' },
+    { kind: 'random', year: 2026, seed: 4_242, difficulty: 'normal', balanced: true },
     { kind: 'history', year: 1996, seed: 0, difficulty: 'easy', realDevelopment: true, forceRosters: false, allPlayers: true },
     { kind: 'history', year: 2016, seed: 999_999_999, difficulty: 'normal', realDevelopment: false, forceRosters: true, allPlayers: false },
     { kind: 'rebuild', scenario: 'bulls99', seed: 123_456_789, difficulty: 'normal', twist: 'hardTrades' },

@@ -208,8 +208,8 @@ function Hub({ careers, onNew, onOpen, onDelete }: { careers: CareerMeta[]; onNe
       <p className="hint-text">{era ? `The ${era - 1}-${String(era).slice(2)} season is played first, then the ${era} draft, with the real class${FAMOUS[era] ? ` (${FAMOUS[era]})` : ''}. Real players follow their real careers around him.` : 'Today\'s league with real rosters: the 2025-26 season plays out first, then your draft.'}</p></div>
     <WeeklyCareerCard careers={careers} onPlay={w => onNew('wheel', w.draftYear, w)} />
     <div className="hunt-roads">
-      <button className="hunt-road" onClick={() => onNew('wheel', era)}><span className="hunt-road-icon">⟳</span><b>Random mode</b><span>Spin the wheel of NBA history. Take Curry's three-point shot, Shaq's size, LeBron's playmaking… if the wheel lets you.</span></button>
-      <button className="hunt-road" onClick={() => onNew('myplayer', era)}><span className="hunt-road-icon">✎</span><b>MyPlayer</b><span>Build him yourself: height, weight, wingspan and a budget of points across nine skills.</span></button>
+      <button className="hunt-road" onClick={() => onNew('wheel', era)}><span className="hunt-road-icon">⟳</span><b>Random mode</b><span>Spin the wheel of NBA history. Take Curry's three-point shot, Shaq's size, LeBron's playmaking… if the wheel lets you. Two lucky spins included.</span></button>
+      <button className="hunt-road" onClick={() => onNew('myplayer', era)}><span className="hunt-road-icon">✎</span><b>MyPlayer</b><span>Build him yourself, part by part. Your draft stock is rolled: a Starter, an All-Star, or once in a while a Generational talent.</span></button>
     </div>
     {careers.length > 0 && <><h3 className="hunt-subhead">Your careers</h3>
       <ul className="cv-saved">{careers.map(m => { const last = m.years.at(-1); return <li key={m.id}>

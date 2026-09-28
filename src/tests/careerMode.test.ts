@@ -2,10 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { loadHistoryForTests } from './helpers/nbaHistoryFixture';
 import { cardPool } from '../hunt/cards';
 import { top100, top100Rank, legacyScore, emptyResume } from '../career/legacy';
-import { newWheel, spin, respin, move, take, landed, neighbour, mustTake, canSpin, isComplete, donor, RESPINS, eliteRanks, takenValues, eliteBonus, wheelPool, ELITE_MAX } from '../career/wheel';
+import { newWheel, spin, respin, move, take, landed, neighbour, mustTake, canSpin, isComplete, donor, RESPINS, eliteRanks, takenValues, eliteBonus, wheelPool, ELITE_MAX, luckyLeft, sliceWeight, LUCKY_SPINS, STAR_BONUS } from '../career/wheel';
+import { legendRank } from '../draft/allTimeDraft';
 import { resolveEffectivePlayer } from '../simulation/engine/effective';
 import { CATEGORIES, categoryValues } from '../career/categories';
-import { buildPlayer, startProgress, primeOverall, primeFromBuild, capFor, suggestPosition, type Prime } from '../career/create';
+import { buildPlayer, startProgress, primeOverall, primeFromBuild, capFor, suggestPosition, rollPotential, type Prime } from '../career/create';
 import { newCareerMeta, joinDraft, draftResult, landSeason, autopilotOffseason, findPlayer, uniqueName, freeAgentOffers, requestTrade, growth, careerMoments, retiredJerseys, hallOfFame, careerShelf, type CareerYear } from '../career/career';
 import { buildHistoricalLeague, topUpHistoricalClasses } from '../history/historicalLeague';
 import { initializeCoaching } from '../simulation/staffManagement';
@@ -53,7 +54,10 @@ describe('Career Mode', () => {
     expect(respin(h, s)).toBe(s);
     const id = landed(s.current![0]);
     s = take(h, s, 0, 'threePoint');
-    expect(s.picks.threePoint!.values).toEqual(categoryValues(donor(h, id), 'threePoint'));
+    const exact = categoryValues(donor(h, id), 'threePoint');
+    const star = cardPool(h).byId.get(id)!.rarity === 'legendary';
+    expect(s.picks.threePoint!.values).toEqual(takenValues(h, id, 'threePoint'));
+    if (!star && !eliteRanks(h).get(id)?.threePoint) expect(s.picks.threePoint!.values).toEqual(exact);
     expect(take(h, s, 0, 'size')).toBe(s); // one category per wheel
     // Triple spin: take from all three, then it is gone.
     s = spin(h, s, true);
@@ -95,6 +99,48 @@ describe('Career Mode', () => {
     expect(resolveEffectivePlayer(p).attributes.offense.threePoint).toBe(99);
     expect(resolveEffectivePlayer({ ...p, careerPlayer: true }).attributes.offense.threePoint).toBe(109.5);
   }, 120_000);
+
+  it('lucky spins, famous Stars and the Star bonus', async () => {
+    const h = await loadHistoryForTests();
+    const pool = cardPool(h);
+    // Two lucky spins, then no more.
+    let s = newWheel(9);
+    expect(luckyLeft(s)).toBe(LUCKY_SPINS);
+    s = spin(h, s, false, true);
+    expect(s.current![0].lucky).toBe(true);
+    s = take(h, s, 0, 'size');
+    s = spin(h, s, false, true); s = take(h, s, 0, 'body');
+    expect(luckyLeft(s)).toBe(0);
+    expect(spin(h, s, false, true)).toBe(s);
+    // Builds started before lucky spins existed get the full count.
+    const { lucky: _gone, ...old } = newWheel(9);
+    expect(luckyLeft(old)).toBe(LUCKY_SPINS);
+    // Lucky odds: Stars and Greats about 2.5x as common.
+    const share = (lucky: boolean) => { let n = 0, rare = 0, w = newWheel(4); for (let i = 0; i < 200; i++) { w = spin(h, { ...w, current: null, takenFrom: [], lucky: 2 }, false, lucky); for (const id of w.current![0].reel) { n++; if (['legendary', 'epic'].includes(pool.byId.get(id)!.rarity)) rare++; } } return rare / n; };
+    expect(share(true) / share(false)).toBeGreaterThan(1.7);
+    // Among Stars, the all-time greats come up most: Curry weighs more than an unranked Star.
+    const stars = wheelPool(h).filter(c => c.rarity === 'legendary');
+    const curry = stars.find(c => c.name === 'Stephen Curry')!;
+    const unranked = stars.find(c => !legendRank(h, c.playerId))!;
+    expect(sliceWeight(h, curry)).toBeGreaterThan(sliceWeight(h, unranked) * 2);
+    // A Star's ratings come in 3 higher (measurements unchanged).
+    const plainStar = stars.find(c => !eliteRanks(h).get(c.id)?.playmaking)!;
+    const raw = categoryValues(donor(h, plainStar.id), 'playmaking'), taken = takenValues(h, plainStar.id, 'playmaking');
+    for (const [k, v] of Object.entries(raw)) expect(taken[k]).toBe(Math.min(ELITE_MAX, v + STAR_BONUS));
+    expect(takenValues(h, plainStar.id, 'size')['physical.heightInches']).toBe(categoryValues(donor(h, plainStar.id), 'size')['physical.heightInches']);
+  }, 120_000);
+
+  it('MyPlayer draft stock is rolled: most are starters, a few are generational', () => {
+    const tiers: Record<string, number> = {};
+    for (let seed = 1; seed <= 2000; seed++) { const r = rollPotential(seed, 0); tiers[r.tier.id] = (tiers[r.tier.id] ?? 0) + 1; expect(Math.abs(r.budget - r.tier.budget)).toBeLessThanOrEqual(10); }
+    expect(tiers.generational / 2000).toBeGreaterThan(0.03);
+    expect(tiers.generational / 2000).toBeLessThan(0.1);
+    expect(tiers.starter).toBeGreaterThan(tiers.superstar);
+    expect(rollPotential(5, 1)).toEqual(rollPotential(5, 1)); // the same roll every time for the same player
+    // A generational budget builds a far better prime than the old fixed 640 ever could.
+    const even = (pts: number) => ({ heightIn: 78, weightLbs: 210, wingspanIn: 82, ratings: Object.fromEntries(['body', 'athleticism', 'finishing', 'midRange', 'threePoint', 'playmaking', 'perimeterD', 'interiorD', 'iq'].map(k => [k, Math.round(pts / 9)])) as never });
+    expect(primeOverall(primeFromBuild(even(790), 1), 'balanced', 'SG')).toBeGreaterThan(primeOverall(primeFromBuild(even(640), 1), 'balanced', 'SG') + 10);
+  });
 
   it('the player: his picks are his prime; rookies start below it; MyPlayer respects height', async () => {
     const h = await loadHistoryForTests();

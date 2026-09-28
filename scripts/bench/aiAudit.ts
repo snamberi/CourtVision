@@ -20,7 +20,8 @@ import { signingDecision } from '../../src/simulation/freeAgentDecision';
 import { capSpaceRemaining, computeTradeValue } from '../../src/simulation/gm';
 
 const SEASONS = Number(process.argv[2] ?? 4), SEED = Number(process.argv[3] ?? 21);
-const gen = generateFullLeague(SEED, 30, 14, 82, '2026');
+// New random leagues in the game are dealt out balanced; UNBALANCED=1 audits the original random rosters.
+const gen = generateFullLeague(SEED, 30, 14, 82, '2026', { balanced: !process.env.UNBALANCED });
 const firstTeam = gen.league.teams[0].teamId;
 let league: League = ensureFrontOffice(setupCup(initializeCoaching(gen.league, firstTeam)), firstTeam);
 let extras: GMLeagueExtras = gen.extras;

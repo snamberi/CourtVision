@@ -19,6 +19,8 @@ export interface LeagueOrigin {
   year?: number;
   /** History options. */
   realDevelopment?: boolean; forceRosters?: boolean; allPlayers?: boolean;
+  /** Random: players dealt out like a draft (newer leagues); codes without it build the original random rosters. */
+  balanced?: boolean;
   /** Rebuild: the scenario, and the weekly twist if it was the Rebuild of the Week. */
   scenario?: string; twist?: string;
 }
@@ -37,7 +39,7 @@ export function encodeLeagueCode(o: LeagueOrigin, teamId?: string | null): strin
     opts = d + 3 * (o.twist ? Math.max(0, TWISTS.findIndex(t => t.id === o.twist)) + 1 : 0);
   } else {
     head = `${o.kind === 'random' ? 'G' : 'H'}${o.year ?? ''}`;
-    opts = d + 3 * ((o.realDevelopment ? 1 : 0) + (o.forceRosters ? 2 : 0) + (o.allPlayers ? 4 : 0));
+    opts = d + 3 * ((o.realDevelopment ? 1 : 0) + (o.forceRosters ? 2 : 0) + (o.allPlayers ? 4 : 0) + (o.kind === 'random' && o.balanced ? 8 : 0));
   }
   const body = [head, toB32(opts), toB32(o.seed), ...(teamId ? [teamId.toUpperCase().replace(/[^A-Z0-9]/g, '')] : [])].join('-');
   return `${body}-${check(body)}`;
@@ -69,7 +71,7 @@ export function decodeLeagueCode(raw: string): DecodedCode {
   const kind: LeagueKind | null = head[0] === 'G' ? 'random' : head[0] === 'H' ? 'history' : null;
   const year = Number(head.slice(1));
   if (!kind || !Number.isInteger(year) || year < 1946 || year > 2100) throw new Error('That is not a Court Vision league code.');
-  return { origin: { kind, seed, difficulty, year, ...(kind === 'history' ? { realDevelopment: !!(rest & 1), forceRosters: !!(rest & 2), allPlayers: !!(rest & 4) } : {}) }, teamId };
+  return { origin: { kind, seed, difficulty, year, ...(kind === 'history' ? { realDevelopment: !!(rest & 1), forceRosters: !!(rest & 2), allPlayers: !!(rest & 4) } : rest & 8 ? { balanced: true } : {}) }, teamId };
 }
 
 /** One line describing what a code starts. */

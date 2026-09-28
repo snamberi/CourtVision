@@ -156,6 +156,8 @@ export function runFreeAgencyAI(
 
 /** Free agents at or above this share of the league's best ratings are "stars" every team will call about. */
 const STAR_PERCENTILE = 0.85;
+/** A payroll below this share of the cap is under the salary floor: that team has to spend (like the NBA's 90%). */
+export const SALARY_FLOOR = 0.9;
 /** A free agent must be this much more valuable than the player a team would cut before it makes the swap. */
 const UPGRADE_MARGIN = 6;
 
@@ -213,14 +215,19 @@ export function runStarChaseAI(league: League, extras: GMLeagueExtras, controlle
       if (full && (!cut || value < cut.k + UPGRADE_MARGIN)) continue;
       const personality = personalityOf(current.extras, teamId);
       const years = star ? 2 + rng.nextInt(3) : 1 + rng.nextInt(2);
-      const offerBase = Math.round(value * 250_000 * (personality === 'aggressive' ? 1.2 : personality === 'conservative' ? 0.95 : 1.08) * (star ? 1.15 : 1));
+      // Teams under the salary floor have money they must spend: they bid harder, up to their cap room.
+      const cap = current.extras.capSettings;
+      const room = capSpaceRemaining(current.extras.contracts, team, cap);
+      const underFloor = cap.salaryCap - room < cap.salaryCap * SALARY_FLOOR;
+      const offerBase = Math.round(value * 250_000 * (personality === 'aggressive' ? 1.2 : personality === 'conservative' ? 0.95 : 1.08) * (star ? 1.15 : 1) * (underFloor ? 1.2 : 1));
       const quote = signingDecision(current.league, current.extras, fa, teamId, undefined, { ranking });
       if (quote.refuses) continue;
-      const salary = Math.max(offerBase, quote.required);
+      const salary = Math.max(quote.required, underFloor ? Math.min(offerBase, Math.max(quote.required, room)) : offerBase);
       if (!signingDecision(current.league, current.extras, fa, teamId, { annualSalary: salary, yearsRemaining: years }, { ranking }).accepted) continue;
       const winPct = standings.get(teamId) ?? 0.5;
       const need = weakestPositions(team).includes(primaryPosition(fa)) ? NEED_BONUS : 0;
-      bids.push({ teamId, salary, years, cut: full ? cut!.p.playerId : undefined, score: winPct * 30 + need + (value - worst) + rng.next() * 4 });
+      // The player chooses: the money first, then a winner and a role (he doesn't just join the best team every time).
+      bids.push({ teamId, salary, years, cut: full ? cut!.p.playerId : undefined, score: salary / 1_000_000 + winPct * 12 + need * 0.5 + (value - worst) * 0.5 + rng.next() * 4 });
     }
     const best = bids.sort((a, b) => b.score - a.score)[0];
     if (!best) continue;
@@ -360,6 +367,13 @@ function tradedThisSeason(league: League, playerId: string): boolean {
   return !!p?.history?.some(e => e.type === 'traded' && e.season === league.season);
 }
 
+export const MAX_AI_TRADE_ARRIVALS = 2;
+/** How many players a team has taken in by trade this season (from their own history). */
+function tradeArrivals(league: League, teamId: string): number {
+  const team = league.teams.find(t => t.teamId === teamId);
+  return team?.seasons.filter(p => p.history?.some(e => e.type === 'traded' && e.season === league.season && e.teamId === teamId)).length ?? 0;
+}
+
 export function runTradeMarketAI(
   league: League,
   extras: GMLeagueExtras,
@@ -396,6 +410,8 @@ export function runTradeMarketAI(
     const va = give(proposal.teamAId, proposal.playersFromA, proposal.picksFromA), vb = give(proposal.teamBId, proposal.playersFromB, proposal.picksFromB);
     if (Math.min(va, vb) < Math.max(va, vb) * AI_TRADE_NEUTRAL_FLOOR) continue;
     if ([...proposal.playersFromA, ...proposal.playersFromB].some(id => tradedThisSeason(currentLeague, id))) continue;
+    // Two trade arrivals a season is plenty for any AI front office (no contender stacks deal after deal).
+    if ([proposal.teamAId, proposal.teamBId].some(id => tradeArrivals(currentLeague, id) >= MAX_AI_TRADE_ARRIVALS)) continue;
 
     const teamAName = currentLeague.teams.find((t) => t.teamId === proposal.teamAId)!.name;
     const teamBName = currentLeague.teams.find((t) => t.teamId === proposal.teamBId)!.name;

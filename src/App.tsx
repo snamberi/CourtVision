@@ -403,7 +403,7 @@ function App() {
       setScreen('chooseTeam');
     };
     if (origin.kind === 'random') {
-      const generated = generateFullLeague(origin.seed, 30, 18, 82, String(origin.year));
+      const generated = generateFullLeague(origin.seed, 30, 18, 82, String(origin.year), { balanced: !!origin.balanced });
       openWithTeam({ ...generated.league, origin }, { ...generated.extras, tradeSettings: { difficulty: origin.difficulty } });
       return;
     }
@@ -461,7 +461,7 @@ function App() {
       return;
     }
     if (mode === 'random') {
-      startFromOrigin({ kind: 'random', year: parseInt(year, 10), seed, difficulty }, { name: leagueName || 'My League' });
+      startFromOrigin({ kind: 'random', year: parseInt(year, 10), seed, difficulty, balanced: true }, { name: leagueName || 'My League' });
     } else if (mode === 'real') {
       const emptyLeague: League = { teams: [], schedule: [], settings: { ...DEFAULT_GAME_SETTINGS } };
       enterApp(emptyLeague, { contracts: {}, freeAgents: [], capSettings: { ...DEFAULT_CAP_SETTINGS }, draftClass: [], tradeSettings: { difficulty }, ...DEFAULT_GM_FLAGS }, null, leagueName || 'My League');

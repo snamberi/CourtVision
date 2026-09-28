@@ -152,3 +152,24 @@ export function primeFromBuild(b: Build, seed: number): Prime {
   return prime;
 }
 export const buildSpent = (b: Build) => RATING_CATEGORIES.reduce((n, id) => n + b.ratings[id], 0);
+
+/**
+ * MyPlayer's draft stock: how high he can go is rolled, not fixed. The tier sets the points to spend on his prime
+ * (a Starter's 630 builds a prime around 70; a Generational talent's 790 around 88), with a little spread inside
+ * each tier. Two rerolls.
+ */
+export interface PotentialTier { id: 'role' | 'starter' | 'allStar' | 'superstar' | 'generational'; name: string; blurb: string; budget: number; odds: number }
+export const POTENTIAL_TIERS: PotentialTier[] = [
+  { id: 'role', name: 'Role player', blurb: 'A rotation piece with a skill or two.', budget: 580, odds: 0.22 },
+  { id: 'starter', name: 'Starter', blurb: 'A solid starter for years.', budget: 630, odds: 0.33 },
+  { id: 'allStar', name: 'All-Star', blurb: 'An All-Star if it all comes together.', budget: 680, odds: 0.25 },
+  { id: 'superstar', name: 'Superstar', blurb: 'A franchise player in the making.', budget: 730, odds: 0.14 },
+  { id: 'generational', name: 'Generational', blurb: 'Once a decade. MVPs are on the table.', budget: 790, odds: 0.06 },
+];
+export const POTENTIAL_REROLLS = 2;
+export function rollPotential(seed: number, roll: number): { tier: PotentialTier; budget: number } {
+  const rng = new RNG(seed * 31 + roll * 977 + 5);
+  let x = rng.next(), tier = POTENTIAL_TIERS[0];
+  for (const t of POTENTIAL_TIERS) { tier = t; if ((x -= t.odds) < 0) break; }
+  return { tier, budget: tier.budget + rng.nextInt(21) - 10 };
+}

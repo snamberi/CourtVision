@@ -3,6 +3,7 @@ import type { PlayerSeason } from '../simulation/types';
 import { RNG } from '../simulation/engine/rng';
 import { cardPool, cardPlayer, type HuntCard } from '../hunt/cards';
 import { CATEGORIES, categoryValues, type CategoryId, type CategoryValues } from './categories';
+import { legendRank } from '../draft/allTimeDraft';
 
 /*
  * The Career Mode wheel. Every real player in NBA history is on it once, at his best season. Most spins land on role
@@ -13,15 +14,22 @@ import { CATEGORIES, categoryValues, type CategoryId, type CategoryValues } from
  * made, assists, steals, boards and blocks, scoring efficiency), get up to +21, so the very best reaches 120 (Curry's
  * shooting, Stockton's passing).
  *
- * Tools: Move Left and Move Right (once each) shift a stopped wheel one slice; two Respins spin again without taking
- * anything; one Triple Spin spins three wheels at once, and you may take one category from each of them (at least one
- * before the next spin).
+ * Among Stars the all-time greats come up most (weighted by their Top 100 rank), and a Star's ratings come in 3 higher.
+ *
+ * Tools: two Lucky Spins (Stars and Greats 2.5x as likely); Move Left and Move Right (once each) shift a stopped wheel
+ * one slice; two Respins spin again without taking anything; one Triple Spin spins three wheels at once, and you may
+ * take one category from each of them (at least one before the next spin).
  */
 
 export const REEL_LENGTH = 24;
 export const RESPINS = 2;
+/** Lucky spins per player: Stars and Greats come up this many times as often. */
+export const LUCKY_SPINS = 2;
+export const LUCK = 2.5;
+/** Every rating taken from a Star (not his measurements) comes in this much higher. */
+export const STAR_BONUS = 3;
 
-export interface Wheel { reel: string[]; stop: number }
+export interface Wheel { reel: string[]; stop: number; lucky?: boolean }
 export interface WheelPick { cardId: string; values: CategoryValues }
 export interface WheelState {
   seed: number;
@@ -34,9 +42,12 @@ export interface WheelState {
   moves: { left: boolean; right: boolean };
   respins: number;
   triple: boolean;
+  /** Lucky spins left (absent in builds started before they existed: they get the full count). */
+  lucky?: number;
 }
 
-export const newWheel = (seed: number): WheelState => ({ seed, spinCount: 0, current: null, takenFrom: [], picks: {}, moves: { left: true, right: true }, respins: RESPINS, triple: true });
+export const newWheel = (seed: number): WheelState => ({ seed, spinCount: 0, current: null, takenFrom: [], picks: {}, moves: { left: true, right: true }, respins: RESPINS, triple: true, lucky: LUCKY_SPINS });
+export const luckyLeft = (s: WheelState) => s.lucky ?? LUCKY_SPINS;
 
 const pools = new WeakMap<NbaHistory, HuntCard[]>();
 /** Every player at his best season (players with at least two real seasons). */
@@ -115,7 +126,9 @@ export const eliteBonus = (rank: number) => Math.max(0, Math.round((ELITE_MAX - 
 
 /** A category as it would be taken: his ratings, raised past 99 when he is one of the best ever at it. */
 export function takenValues(h: NbaHistory, cardId: string, cat: CategoryId): CategoryValues {
-  const base = categoryValues(donor(h, cardId), cat);
+  let base = categoryValues(donor(h, cardId), cat);
+  // A Star's ratings come in a little higher.
+  if (cardPool(h).byId.get(cardId)?.rarity === 'legendary') base = Object.fromEntries(Object.entries(base).map(([k, v]) => [k, MEASURE.has(k) ? v : Math.min(ELITE_MAX, v + STAR_BONUS)]));
   const rank = eliteRanks(h).get(cardId)?.[cat];
   if (!rank) return base;
   const bonus = eliteBonus(rank);
@@ -137,34 +150,60 @@ export const canSpin = (s: WheelState) => !complete(s) && !mustTake(s);
 
 /** Odds by rarity: a little kinder than history (Stars about 7%, Greats about 18%). */
 export const RARITY_WEIGHT: Record<HuntCard['rarity'], number> = { legendary: 1.6, epic: 1.35, rare: 1, common: 0.9 };
-const cumulative = new WeakMap<NbaHistory, number[]>();
-function pickCard(h: NbaHistory, rng: RNG): HuntCard {
+
+/**
+ * Among Stars, the famous ones come up more: an all-time Top 100 player is weighted by his rank (the very top about
+ * four times as often as an unranked Star). Stars as a whole keep the same share of the wheel.
+ */
+const fame = new WeakMap<NbaHistory, Map<string, number>>();
+function fameWeight(h: NbaHistory, c: HuntCard): number {
+  let m = fame.get(h);
+  if (!m) {
+    const stars = wheelPool(h).filter(x => x.rarity === 'legendary');
+    const raw = new Map(stars.map(x => { const r = legendRank(h, x.playerId); return [x.id, r ? 1 + (101 - r) / 33 : 1] as const; }));
+    const mean = [...raw.values()].reduce((a, b) => a + b, 0) / Math.max(1, raw.size);
+    m = new Map([...raw].map(([id, w]) => [id, w / mean]));
+    fame.set(h, m);
+  }
+  return m.get(c.id) ?? 1;
+}
+/** A slice's weight on the wheel; `luck` multiplies the Stars and Greats (lucky spins). */
+export function sliceWeight(h: NbaHistory, c: HuntCard, luck = 1): number {
+  const rare = c.rarity === 'legendary' || c.rarity === 'epic';
+  return RARITY_WEIGHT[c.rarity] * (rare ? luck : 1) * (c.rarity === 'legendary' ? fameWeight(h, c) : 1);
+}
+const cumulative = new WeakMap<NbaHistory, Map<number, number[]>>();
+function pickCard(h: NbaHistory, rng: RNG, luck = 1): HuntCard {
   const pool = wheelPool(h);
-  let cum = cumulative.get(h);
-  if (!cum) { let t = 0; cum = pool.map(c => (t += RARITY_WEIGHT[c.rarity])); cumulative.set(h, cum); }
+  let byLuck = cumulative.get(h);
+  if (!byLuck) { byLuck = new Map(); cumulative.set(h, byLuck); }
+  let cum = byLuck.get(luck);
+  if (!cum) { let t = 0; cum = pool.map(c => (t += sliceWeight(h, c, luck))); byLuck.set(luck, cum); }
   const x = rng.next() * cum[cum.length - 1];
   let lo = 0, hi = cum.length - 1;
   while (lo < hi) { const mid = (lo + hi) >> 1; if (cum[mid] > x) hi = mid; else lo = mid + 1; }
   return pool[lo];
 }
 
-function makeWheels(h: NbaHistory, s: WheelState, count: number): Wheel[] {
+function makeWheels(h: NbaHistory, s: WheelState, count: number, lucky = false): Wheel[] {
   const rng = new RNG(s.seed * 7919 + s.spinCount * 104_729 + 17);
-  return Array.from({ length: count }, () => ({ reel: Array.from({ length: REEL_LENGTH }, () => pickCard(h, rng).id), stop: rng.nextInt(REEL_LENGTH) }));
+  const luck = lucky ? LUCK : 1;
+  return Array.from({ length: count }, () => ({ reel: Array.from({ length: REEL_LENGTH }, () => pickCard(h, rng, luck).id), stop: rng.nextInt(REEL_LENGTH), ...(lucky ? { lucky: true } : {}) }));
 }
 
-/** Spins the wheel (or, with `triple`, the triple spin). */
-export function spin(h: NbaHistory, s: WheelState, triple = false): WheelState {
-  if (!canSpin(s) || (triple && !s.triple)) return s;
-  const next = { ...s, spinCount: s.spinCount + 1, takenFrom: [], triple: triple ? false : s.triple };
-  return { ...next, current: makeWheels(h, next, triple ? 3 : 1) };
+/** Spins the wheel (or, with `triple`, the triple spin; with `lucky`, one of the lucky spins). */
+export function spin(h: NbaHistory, s: WheelState, triple = false, lucky = false): WheelState {
+  if (!canSpin(s) || (triple && !s.triple) || (lucky && luckyLeft(s) <= 0)) return s;
+  const next = { ...s, spinCount: s.spinCount + 1, takenFrom: [], triple: triple ? false : s.triple, ...(lucky ? { lucky: luckyLeft(s) - 1 } : {}) };
+  return { ...next, current: makeWheels(h, next, triple ? 3 : 1, lucky) };
 }
 
 /** Spins again without taking anything from this spin. */
 export function respin(h: NbaHistory, s: WheelState): WheelState {
   if (!mustTake(s) || s.respins <= 0) return s;
   const next = { ...s, spinCount: s.spinCount + 1, respins: s.respins - 1, takenFrom: [] };
-  return { ...next, current: makeWheels(h, next, s.current!.length) };
+  // A respin of a lucky spin stays lucky.
+  return { ...next, current: makeWheels(h, next, s.current!.length, !!s.current![0]?.lucky) };
 }
 
 /** Shifts a stopped single wheel one slice left or right (each direction once). */

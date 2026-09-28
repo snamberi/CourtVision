@@ -14,6 +14,7 @@ import { generatePlayerOrigin, type PlayerOrigin } from './names';
 import { pickArchetype } from './archetypes';
 import { compressElitePotential, syncPotential } from './engine/potential';
 import { calculateOverall } from './engine/overall';
+import { primaryPosition } from './teamStatus';
 import { generatePriorSeasons } from './seasonZero';
 
 /**
@@ -210,10 +211,43 @@ function applyHistoricalDraftInfo(player: PlayerSeason, seasonLabel: string, tea
   return { ...player, draftYear, draftRound: round, draftPick: pick, draftTeamId };
 }
 
+/**
+ * Re-deals every generated player like a snake draft (best first), so no team starts stacked or hopeless: each team
+ * takes one of the three best left, leaning toward the position group it is shortest at. The random pick among three
+ * keeps real contenders and real strugglers, at about the spread of an NBA season rather than 2-93%. Contracts follow
+ * their players.
+ */
+function balanceRosters(teams: LeagueTeam[], contracts: Record<string, Contract>, rng: RNG): void {
+  const group = (p: PlayerSeason) => { const pos = primaryPosition(p); return pos === 'C' || pos === 'PF' ? 'big' : pos === 'SF' ? 'wing' : 'guard'; };
+  const pool = teams.flatMap(t => t.seasons).map(p => ({ p, ovr: calculateOverall(p) })).sort((a, b) => b.ovr - a.ovr);
+  const order = teams.map((_, i) => i).sort(() => rng.next() - 0.5);
+  const dealt: PlayerSeason[][] = teams.map(() => []);
+  for (let round = 0; pool.length; round++) {
+    for (const t of round % 2 === 0 ? order : [...order].reverse()) {
+      if (!pool.length) break;
+      const counts = { guard: 0, wing: 0, big: 0 };
+      for (const p of dealt[t]) counts[group(p)]++;
+      const choices = pool.slice(0, 3);
+      const fit = (x: { p: PlayerSeason; ovr: number }) => x.ovr - counts[group(x.p)] * 1.5 + rng.next() * 3;
+      const best = choices.reduce((a, b) => (fit(b) > fit(a) ? b : a));
+      pool.splice(pool.indexOf(best), 1);
+      dealt[t].push({ ...best.p, teamId: teams[t].teamId });
+    }
+  }
+  teams.forEach((t, i) => {
+    t.seasons = dealt[i];
+    for (const p of dealt[i]) if (contracts[p.playerId]) contracts[p.playerId] = { ...contracts[p.playerId], teamId: t.teamId };
+  });
+}
+
 export function generateFullLeague(
   seed = 1, teamCount = 30, rosterSize = 18, gamesPerTeam = 82, seasonLabel = '2026',
   /** Set `priorSeasons: false` to skip the synthetic "season zero" history and start every player with a blank career. */
-  opts: { priorSeasons?: boolean } = {},
+  opts: {
+    priorSeasons?: boolean;
+    /** Deal the generated players out like a draft (see balanceRosters) instead of leaving each team with its random roll. */
+    balanced?: boolean;
+  } = {},
 ): GeneratedLeague {
   const rng = new RNG(seed);
   const teams: LeagueTeam[] = [];
@@ -258,6 +292,8 @@ export function generateFullLeague(
 
     teams.push({ teamId, name, seasons, coach: { ...defaultCoachTendencies(), paceTendency: jitter(rng, 50, 20) }, chemistry: jitter(rng, 65, 20), coachIdentity: generateCoachIdentity(rng, seasonLabel, usedCoachNames), expenseLevels: { scouting: jitter(rng, 50, 25), coaching: jitter(rng, 50, 25), health: jitter(rng, 50, 25), facilities: jitter(rng, 50, 25) } });
   }
+
+  if (opts.balanced) balanceRosters(teams, contracts, new RNG(seed + 4_441));
 
   // "Season zero": give players who've plausibly already played a few seasons a synthetic stat history, so
   // a brand-new league doesn't open with every career table blank. Uses its own RNG stream (derived from the
