@@ -26,7 +26,7 @@ describe('getPlayerAwardsHistory', () => {
     const { league: next } = beginNewSeasonRoster(played, extras, 2, { minGames: 1 });
     if (awards.mvp) {
       const history = getPlayerAwardsHistory(next, awards.mvp.playerId);
-      expect(history.some((h) => h.label === 'MVP')).toBe(true);
+      expect(history.some((h) => h.key === 'mvp')).toBe(true);
     }
   });
 

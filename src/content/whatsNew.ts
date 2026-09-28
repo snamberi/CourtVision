@@ -6,6 +6,18 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2026-10-14',
+    title: 'Rivalry Week, chemistry and Legend Challenges',
+    items: [
+      '**Rivalry Week:** twice a season your game against your biggest rival gets the build-up: a trash-talk press conference, a hype meter on the dashboard, and on the night a striped rivalry court with a crowd on its feet. Win it for bragging rights and a morale boost; lose it and the fans let you know. Talk trash and the swing gets bigger.',
+      '**Chemistry web:** on the roster page, lines between teammates grow the longer they play together; burying one on the bench weakens a bond and a trade breaks it. Strong duos play a little better together and get their own "DUO" callout when one sets up the other.',
+      '**Combine drills:** before the draft, run up to three prospects a year through a shooting drill, a sprint and a vertical jump. Each drill reveals the hidden skills it tests (Scouting → Combine Drills).',
+      '**Arena upgrades you can see:** a bigger video board, arena lights, a loud crowd section and a mascot (Finances → Business). Each shows up on your court and helps attendance and your home-court edge.',
+      '**Legend Challenges:** short scenarios from NBA history, like the \'98 Finals as the Jazz or stopping the 73-win Warriors from 3-1 down. Pick a game plan before each game and chase three stars (League Hunt → Legend Challenges).',
+      '**On the court:** players move at a more natural speed, the ball bounces and rolls, some misses go out of bounds, and league rebound totals are back to NBA levels. Better floors, team logos and crests.',
+    ],
+  },
+  {
     id: '2026-10-07',
     title: 'Your players, animated, and real plays',
     items: [

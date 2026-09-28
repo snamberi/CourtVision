@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { League, LeagueTeam } from '../simulation/league';
 import { computeStandings } from '../simulation/league';
-import { businessOf, gate, jerseySales, referencePrice, buyUpgrade, setTicketPrice, UPGRADES, MAX_LEVEL, loanPayments, baseMerch, type Upgrade } from '../simulation/business';
+import { businessOf, gate, jerseySales, referencePrice, buyUpgrade, setTicketPrice, UPGRADES, MAX_LEVEL, loanPayments, homeCourtEdge, baseMerch, type Upgrade } from '../simulation/business';
 import { fanMoodLabel } from '../simulation/press';
 
 const money = (n: number) => `$${(n / 1_000_000).toFixed(1)}M`;
@@ -39,6 +39,7 @@ export function BusinessPanel({ league, team, onChange }: { league: League; team
 
     <div className="business-block">
       <h4>Arena</h4>
+      <p className="hint-text">Every upgrade shows up on your court during home games. Home-court edge now: <b>+{homeCourtEdge(team).toFixed(1)}</b> decision-making and help defense for your players at home.</p>
       <table className="db-table"><thead><tr><th className="col-name">Upgrade</th><th>Level</th><th>Effect</th><th>Next level</th><th /></tr></thead><tbody>
         {(Object.keys(UPGRADES) as Upgrade[]).map(u => { const lvl = plan.arena[u], cost = lvl < MAX_LEVEL ? UPGRADES[u].cost[lvl] : null; return <tr key={u}>
           <td className="col-name">{UPGRADES[u].label}</td><td>{'■'.repeat(lvl)}{'□'.repeat(MAX_LEVEL - lvl)}</td><td>{UPGRADES[u].effect}</td>

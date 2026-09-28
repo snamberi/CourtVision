@@ -7,19 +7,21 @@ import { DECK_IDS, DIFFICULTY_IDS, deckUnlocked, difficultyUnlocked, loadAlbum, 
 import { dreamGame, teamsIn, seasonEnds, type DreamGame } from '../../hunt/matchup';
 import { BoxScoreTable } from '../BoxScoreTable';
 import { WatchGame } from '../WatchGame';
+import { LegendChallenges } from './LegendChallenges';
 
-type HubTab = 'hunt' | 'daily' | 'album' | 'dream';
+type HubTab = 'hunt' | 'daily' | 'legend' | 'album' | 'dream';
 
 /** The League Hunt home: start a hunt (deck and difficulty), the Daily Legend, the album and Dream Matchup. */
 export function HuntHub({ h, records, onStart }: { h: NbaHistory; records: HuntRecords; onStart: (seed: number, opts: NewRunOptions) => void }) {
   const [tab, setTab] = useState<HubTab>('hunt');
   return <section className="hunt-hub">
     <div className="stats-view-toggle hunt-hub-tabs" role="tablist" aria-label="League Hunt">
-      {([['hunt', 'New Hunt'], ['daily', 'Daily Legend'], ['album', 'Album'], ['dream', 'Dream Matchup']] as const).map(([id, label]) =>
+      {([['hunt', 'New Hunt'], ['daily', 'Daily Legend'], ['legend', 'Legend Challenges'], ['album', 'Album'], ['dream', 'Dream Matchup']] as const).map(([id, label]) =>
         <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}>{label}</button>)}
     </div>
     {tab === 'hunt' ? <NewHunt records={records} onStart={opts => onStart(Math.floor(Math.random() * 1_000_000_000), opts)} />
       : tab === 'daily' ? <Daily records={records} onStart={(seed, opts) => onStart(seed, opts)} />
+      : tab === 'legend' ? <LegendChallenges h={h} />
       : tab === 'album' ? <Album h={h} />
       : <DreamMatchup h={h} />}
   </section>;

@@ -1,0 +1,115 @@
+/* Rivalry Week, the chemistry web, combine drills and Legend Challenges. */
+
+/* ---- Rivalry Week ---- */
+.rivalry-week-card { border-left: 4px solid var(--c-border-e85d5d, #e85d5d); }
+.rivalry-week-card.live { box-shadow: 0 0 0 1px var(--c-shadow-e85d5d, #e85d5d), 2px 2px 0 var(--c-shadow-060a11, #060a11); }
+.rivalry-week-matchup { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
+.rivalry-week-matchup small { display: block; color: var(--c-fg-94a0b2, #94a0b2); }
+.rivalry-week-hype { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+.rivalry-week-hype small { color: var(--c-fg-94a0b2, #94a0b2); }
+.hype-meter { display: inline-flex; gap: 2px; }
+.hype-meter i { width: 9px; height: 12px; background: var(--c-bg-192333, #192333); border: 1px solid var(--c-border-2a3546, #2a3546); }
+.hype-meter i.on.hype-0 { background: var(--c-bg-4da3ff, #4da3ff); }
+.hype-meter i.on.hype-1 { background: var(--c-bg-ffd166, #ffd166); }
+.hype-meter i.on.hype-2 { background: var(--c-bg-f47b20, #f47b20); }
+.hype-meter i.on.hype-3 { background: var(--c-bg-e85d5d, #e85d5d); }
+.press-card-rivalry { border-left-color: var(--c-border-e85d5d, #e85d5d); }
+.press-card-rivalry .pixel-eyebrow { color: var(--c-fg-e85d5d, #e85d5d); display: inline-flex; gap: 4px; align-items: center; }
+.watch-rivalry-week { background: var(--c-bg-e85d5d, #e85d5d); color: var(--c-fg-0b1018, #0b1018); }
+
+/* ---- Chemistry web ---- */
+.chem-web { margin-top: 16px; padding: 12px 14px; background: var(--c-bg-121926, #121926); border: 1px solid var(--c-border-2a3546, #2a3546); }
+.chem-web-body { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; }
+.chem-web-map { position: relative; flex: none; max-width: 100%; }
+.chem-duo-line { filter: drop-shadow(0 0 3px var(--c-shadow-ffd166, #ffd166)); }
+.chem-node { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 2px; background: var(--c-bg-0b1018, #0b1018); border: 1px solid var(--c-border-2a3546, #2a3546); font-size: 10px; line-height: 1.1; color: var(--c-fg-f4f0e6, #f4f0e6); cursor: pointer; }
+.chem-node span { max-width: 64px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chem-node.duo { border-color: var(--c-border-ffd166, #ffd166); }
+.chem-node.active, .chem-node:focus-visible { border-color: var(--c-border-f47b20, #f47b20); outline: 2px solid var(--c-border-f47b20, #f47b20); }
+.chem-web-side { flex: 1 1 220px; min-width: 0; }
+.chem-web-side h5 { margin: 0 0 6px; }
+.chem-list { list-style: none; margin: 0 0 10px; padding: 0; }
+.chem-list li { display: flex; align-items: center; gap: 8px; padding: 3px 0; border-bottom: 1px solid var(--c-border-2a3546, #2a3546); }
+.chem-list li > :first-child { flex: 1; min-width: 0; }
+.chem-list b { font-variant-numeric: tabular-nums; min-width: 2ch; text-align: right; }
+.chem-tag { font-size: 10px; padding: 1px 5px; border: 1px solid currentColor; }
+.chem-duo { color: var(--c-fg-ffd166, #ffd166); }
+.chem-strong { color: var(--c-fg-f47b20, #f47b20); }
+.chem-growing { color: var(--c-fg-4da3ff, #4da3ff); }
+.chem-new { color: var(--c-fg-94a0b2, #94a0b2); }
+.chem-legend { list-style: none; margin: 0 0 8px; padding: 0; font-size: 12px; color: var(--c-fg-94a0b2, #94a0b2); }
+.chem-legend li { margin: 3px 0; }
+.chem-legend i { display: inline-block; width: 14px; height: 4px; margin: 0 4px 2px 0; vertical-align: middle; }
+.linkish { background: none; border: 0; padding: 0; color: var(--c-fg-4da3ff, #4da3ff); cursor: pointer; text-align: left; }
+
+/* ---- Combine drills ---- */
+.combine-panel { margin: 10px 0; padding: 12px; background: var(--c-bg-192333, #192333); border: 1px solid var(--c-border-2a3546, #2a3546); }
+.combine-panel header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.combine-panel header button { margin-left: auto; }
+.combine-game { display: flex; flex-direction: column; gap: 8px; max-width: 520px; }
+.combine-stage { position: relative; height: 150px; background: var(--c-bg-e3b479, #e3b479); border: 2px solid var(--c-border-0b1018, #0b1018); overflow: hidden; }
+.combine-stage-shoot .combine-hoop { position: absolute; right: 30px; top: 30px; width: 34px; height: 6px; border: 3px solid var(--c-border-f2601f, #f2601f); border-top: 0; }
+.combine-stage-shoot .combine-hoop::before { content: ''; position: absolute; right: -10px; top: -30px; width: 6px; height: 40px; background: var(--c-bg-d9ebff, #d9ebff); border: 1px solid var(--c-border-0b1018, #0b1018); }
+.combine-shooter { position: absolute; left: 30px; bottom: 6px; }
+.combine-ball { position: absolute; left: 70px; bottom: 70px; width: 12px; height: 12px; background: var(--c-bg-f99b3d, #f99b3d); border: 2px solid var(--c-border-65351c, #65351c); animation: combine-shot .6s ease-out forwards; }
+.combine-ball.miss { animation-name: combine-miss; }
+@keyframes combine-shot { 50% { transform: translate(190px, -80px); } 100% { transform: translate(380px, -30px); } }
+@keyframes combine-miss { 50% { transform: translate(190px, -80px); } 80% { transform: translate(385px, -40px); } 100% { transform: translate(340px, 40px); } }
+.combine-meter { position: relative; height: 16px; background: var(--c-bg-0b1018, #0b1018); border: 1px solid var(--c-border-2a3546, #2a3546); }
+.combine-zone { position: absolute; top: 0; bottom: 0; background: var(--c-bg-55c878, #55c878); opacity: .75; }
+.combine-marker { position: absolute; top: -3px; width: 4px; height: 20px; margin-left: -2px; background: var(--c-bg-ffd166, #ffd166); }
+.combine-shots { display: flex; gap: 4px; }
+.combine-shots i { width: 14px; height: 14px; border: 1px solid var(--c-border-2a3546, #2a3546); background: var(--c-bg-0b1018, #0b1018); }
+.combine-shots i.make { background: var(--c-bg-55c878, #55c878); }
+.combine-shots i.miss { background: var(--c-bg-e85d5d, #e85d5d); }
+.combine-stage-sprint .combine-lane { position: absolute; left: 0; right: 0; bottom: 20px; border-top: 2px dashed var(--c-border-f6ecd2, #f6ecd2); }
+.combine-stage-sprint::after { content: ''; position: absolute; right: 40px; top: 0; bottom: 0; border-right: 4px solid var(--c-border-f6ecd2, #f6ecd2); }
+.combine-light { position: absolute; left: 12px; top: 12px; width: 18px; height: 18px; border: 2px solid var(--c-border-0b1018, #0b1018); }
+.light-red { background: var(--c-bg-e85d5d, #e85d5d); }
+.light-amber { background: var(--c-bg-ffd166, #ffd166); }
+.light-green { background: var(--c-bg-55c878, #55c878); }
+.combine-runner { position: absolute; left: 20px; bottom: 22px; transition: left linear; }
+.combine-runner.running { left: calc(100% - 100px); }
+.combine-stage-vert .combine-vanes { position: absolute; left: 50%; top: 6px; display: flex; flex-direction: column-reverse; gap: 2px; }
+.combine-vanes i { width: 36px; height: 4px; background: var(--c-bg-f4f0e6, #f4f0e6); border: 1px solid var(--c-border-0b1018, #0b1018); }
+.combine-vanes i.hit { background: var(--c-bg-f47b20, #f47b20); transform: translateX(6px); }
+.combine-jumper { position: absolute; left: calc(50% - 50px); bottom: 4px; transition: transform .35s ease-out; }
+.combine-drill-table td { white-space: nowrap; }
+.combine-score { font-variant-numeric: tabular-nums; margin-right: 6px; }
+.combine-run { font-size: 11px; padding: 2px 6px; }
+.combine-reveal { display: inline-block; margin-right: 8px; color: var(--c-fg-55c878, #55c878); }
+.combine-reveal small { color: var(--c-fg-94a0b2, #94a0b2); }
+
+/* ---- Legend Challenges ---- */
+.legend-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.legend-card { padding: 12px; background: var(--c-bg-121926, #121926); border: 1px solid var(--c-border-2a3546, #2a3546); display: flex; flex-direction: column; gap: 6px; }
+.legend-card header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.legend-card p { margin: 0; }
+.legend-card button { align-self: flex-start; margin-top: auto; }
+.legend-stars i { color: var(--c-fg-2a3546, #2a3546); font-style: normal; }
+.legend-stars i.on { color: var(--c-fg-ffd166, #ffd166); }
+.legend-run-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.legend-run-head h3 { margin: 2px 0; }
+.legend-score { display: flex; align-items: center; justify-content: center; gap: 18px; margin: 12px 0; padding: 10px; background: var(--c-bg-0b1018, #0b1018); border: 1px solid var(--c-border-2a3546, #2a3546); }
+.legend-score > div { display: flex; flex-direction: column; align-items: center; min-width: 0; }
+.legend-score b { font-size: 34px; color: var(--c-fg-ffe7af, #ffe7af); font-variant-numeric: tabular-nums; }
+.legend-score small, .legend-score span { color: var(--c-fg-94a0b2, #94a0b2); font-size: 12px; text-align: center; }
+.legend-score em { font-style: normal; color: var(--c-fg-f47b20, #f47b20); font-size: 11px; }
+.legend-games { list-style: none; padding: 0; margin: 0 0 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+.legend-games li { display: flex; flex-direction: column; padding: 6px 8px; background: var(--c-bg-121926, #121926); border: 1px solid var(--c-border-2a3546, #2a3546); font-size: 12px; }
+.legend-games li.win { border-left: 3px solid var(--c-border-55c878, #55c878); }
+.legend-games li.loss { border-left: 3px solid var(--c-border-e85d5d, #e85d5d); }
+.legend-plans { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.legend-plans button { display: flex; flex-direction: column; align-items: flex-start; text-align: left; }
+.legend-plans button.active { border-color: var(--c-border-f47b20, #f47b20); background: var(--c-bg-192333, #192333); }
+.legend-plans small { color: var(--c-fg-94a0b2, #94a0b2); }
+.legend-final { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 14px; background: var(--c-bg-121926, #121926); border: 1px solid var(--c-border-ffd166, #ffd166); }
+.legend-final b { font-size: 18px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .combine-ball, .combine-runner, .combine-jumper { animation: none; transition: none; }
+}
+@media (max-width: 640px) {
+  .chem-web-map { transform: scale(.85); transform-origin: top left; margin-bottom: -50px; }
+  .legend-run-head { flex-direction: column; }
+}

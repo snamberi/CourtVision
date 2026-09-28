@@ -44,6 +44,31 @@ export function toggleWorkout(league: League, extras: GMLeagueExtras, teamId: st
   return { extras: { ...extras, draftWorkouts: { ...extras.draftWorkouts, [teamId]: [...current, prospectId] } } };
 }
 
+// ---- Combine drills (mini-games): a few prospects a year, each drill clears the fog on the skills it tests ----
+export type Drill = 'shooting' | 'sprint' | 'vertical';
+/** Shooting: makes out of 10. Sprint: 3/4-court seconds. Vertical: max vertical in inches. */
+export interface DrillScores { shooting?: number; sprint?: number; vertical?: number }
+export const COMBINE_TESTS = 3;
+export const DRILL_REVEALS: Record<Drill, GradeCategory[]> = { shooting: ['Shooting'], sprint: ['Athleticism'], vertical: ['Finishing', 'Rebounding'] };
+export function drillsFor(extras: GMLeagueExtras, teamId: string | null): Record<string, DrillScores> {
+  if (!teamId) return {};
+  const ids = new Set(extras.draftClass.map(p => p.playerId));
+  return Object.fromEntries(Object.entries(extras.combineDrills?.[teamId] ?? {}).filter(([id]) => ids.has(id)));
+}
+/** Files a drill result. A new prospect needs a free testing slot (COMBINE_TESTS a year); re-running a drill keeps the best. */
+export function recordDrill(extras: GMLeagueExtras, teamId: string, prospectId: string, drill: Drill, score: number): { extras: GMLeagueExtras; error?: string } {
+  const mine = drillsFor(extras, teamId);
+  if (!extras.draftClass.some(p => p.playerId === prospectId)) return { extras, error: 'That prospect is no longer in the draft class.' };
+  if (!mine[prospectId] && Object.keys(mine).length >= COMBINE_TESTS) return { extras, error: `You only have time to test ${COMBINE_TESTS} prospects a year.` };
+  const prev = mine[prospectId]?.[drill];
+  const better = prev == null ? score : drill === 'sprint' ? Math.min(prev, score) : Math.max(prev, score);
+  return { extras: { ...extras, combineDrills: { ...extras.combineDrills, [teamId]: { ...mine, [prospectId]: { ...mine[prospectId], [drill]: better } } } } };
+}
+function revealedBy(extras: GMLeagueExtras, teamId: string | null, prospectId: string): Set<GradeCategory> {
+  const d = teamId ? extras.combineDrills?.[teamId]?.[prospectId] : undefined;
+  return new Set(d ? (Object.keys(DRILL_REVEALS) as Drill[]).filter(k => d[k] != null).flatMap(k => DRILL_REVEALS[k]) : []);
+}
+
 /** How far off a team's read on a prospect can be, in potential points (a workout narrows it to about 1). */
 function fogFor(accuracy: number, workedOut: boolean): number {
   return workedOut ? 1 : 3 + (1 - accuracy) * 22; // 50 budget -> ±8.5, 100 -> ±3, 0 -> ±14
@@ -59,7 +84,8 @@ function scoutFactor(league: League, extras: GMLeagueExtras, teamId: string | nu
 export function perceivedPotential(prospect: DraftProspect, league: League, extras: GMLeagueExtras, teamId: string | null): number {
   if (!teamId) return prospect.scoutedPotential;
   const workedOut = workoutsFor(extras, teamId).includes(prospect.playerId);
-  const fog = fogFor(scoutingAccuracy(league, teamId), workedOut) * scoutFactor(league, extras, teamId, prospect.playerId, 'upside');
+  const tested = revealedBy(extras, teamId, prospect.playerId).size > 0;
+  const fog = fogFor(scoutingAccuracy(league, teamId), workedOut) * scoutFactor(league, extras, teamId, prospect.playerId, 'upside') * (tested ? 0.7 : 1);
   const truth = prospect.trueSeason.development.potential;
   return Math.max(35, Math.min(99, Math.round(truth + hashUnit(`${prospect.playerId}|${teamId}|pot`) * fog)));
 }
@@ -86,6 +112,8 @@ export interface ScoutingReport {
   strengths: string[]; weaknesses: string[];
   flags: string[];
   workedOut: boolean;
+  /** Skills your combine drills measured exactly (0-100). */
+  revealed: Partial<Record<GradeCategory, number>>;
   /** Looks your scouts have filed on him this season. */
   looks: number;
 }
@@ -93,7 +121,8 @@ export interface ScoutingReport {
 export function scoutingReport(prospect: DraftProspect, league: League, extras: GMLeagueExtras, teamId: string | null): ScoutingReport {
   const workedOut = workoutsFor(extras, teamId).includes(prospect.playerId);
   const accuracy = scoutingAccuracy(league, teamId);
-  const fog = fogFor(accuracy, workedOut) * scoutFactor(league, extras, teamId, prospect.playerId, 'upside');
+  const revealedSet = revealedBy(extras, teamId, prospect.playerId);
+  const fog = fogFor(accuracy, workedOut) * scoutFactor(league, extras, teamId, prospect.playerId, 'upside') * (revealedSet.size ? 0.7 : 1);
   const gradeFog = fogFor(accuracy, workedOut) * scoutFactor(league, extras, teamId, prospect.playerId, 'skills');
   const looks = teamId ? looksOn(league, extras, teamId, prospect.playerId) : 0;
   const mid = perceivedPotential(prospect, league, extras, teamId);
@@ -101,7 +130,8 @@ export function scoutingReport(prospect: DraftProspect, league: League, extras: 
   const p = prospect.trueSeason;
   const overall = calculateOverall(p);
   const raw = prospectComparison(p);
-  const perceived = Object.fromEntries(CATEGORIES.map(c => [c, raw[c] + hashUnit(`${prospect.playerId}|${teamId}|${c}`) * gradeFog * 0.7])) as Record<GradeCategory, number>;
+  const perceived = Object.fromEntries(CATEGORIES.map(c => [c, revealedSet.has(c) ? raw[c] : raw[c] + hashUnit(`${prospect.playerId}|${teamId}|${c}`) * gradeFog * 0.7])) as Record<GradeCategory, number>;
+  const revealed = Object.fromEntries(CATEGORIES.filter(c => revealedSet.has(c)).map(c => [c, raw[c]])) as Partial<Record<GradeCategory, number>>;
   const ordered = [...CATEGORIES].sort((a, b) => perceived[b] - perceived[a]);
   const flags: string[] = [];
   if (p.attributes.physical.durability < 45 || p.development.injuryRisk >= 65) flags.push('Medical: durability concerns');
@@ -118,7 +148,7 @@ export function scoutingReport(prospect: DraftProspect, league: League, extras: 
     grades: Object.fromEntries(CATEGORIES.map(c => [c, letterGrade(perceived[c])])) as Record<GradeCategory, string>,
     strengths: ordered.slice(0, 2).map(c => STRENGTH_TEXT[c]),
     weaknesses: ordered.slice(-2).reverse().map(c => WEAKNESS_TEXT[c]),
-    flags, workedOut, looks,
+    flags, workedOut, looks, revealed,
   };
 }
 

@@ -126,6 +126,8 @@ export interface GMLeagueExtras {
   picksOnBlock?: string[]; // FutureDraftPick ids any team has marked as available for trade discussion
   /** Your scouting department's scouts, assignments and looks for the class on the board (see scoutDept.ts). */
   scoutDept?: import('./scoutDept').ScoutDept;
+  /** Draft combine mini-games your team ran (see scouting.ts): per team, per prospect, each drill's score. */
+  combineDrills?: Record<TeamId, Record<PlayerId, import('./scouting').DrillScores>>;
   draftWorkouts?: Record<TeamId, PlayerId[]>; // pre-draft workout invites per team (see scouting.ts); stale ids are ignored
   /** This offseason's contract talks with agents, keyed `${teamId}|${playerId}` (see agents.ts). */
   negotiations?: Record<string, import('./agents').Negotiation>;

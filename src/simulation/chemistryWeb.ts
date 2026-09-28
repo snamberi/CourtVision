@@ -40,7 +40,7 @@ export function bondsAfterGame(team: LeagueTeam, box: TeamBoxScore): Record<stri
     if (ma >= REAL_MINUTES && mb >= REAL_MINUTES) next = now + 1.2 * Math.min(ma, mb) / 36 * (1 - now / 115);
     else if ((ma >= REAL_MINUTES && mb < BAD_MINUTES) || (mb >= REAL_MINUTES && ma < BAD_MINUTES)) next = now - 0.35;
     next = Math.max(0, Math.min(100, next));
-    if (next < 1) delete bonds[k]; else bonds[k] = round1(next);
+    if (next < 0.1) delete bonds[k]; else bonds[k] = round1(next);
   }
   return bonds;
 }

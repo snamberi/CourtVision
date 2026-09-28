@@ -3,7 +3,8 @@ import type { League } from '../simulation/league';
 import type { DraftProspect, GMLeagueExtras } from '../simulation/gm';
 import { calculateOverall } from '../simulation/engine/overall';
 import { primaryPosition } from '../simulation/teamStatus';
-import { combineResults, perceivedPotential, scoutingAccuracy, scoutingLevel, scoutingReport, toggleWorkout, workoutSlots, workoutsFor, type CombineResults } from '../simulation/scouting';
+import { combineResults, perceivedPotential, scoutingAccuracy, scoutingLevel, scoutingReport, toggleWorkout, workoutSlots, workoutsFor, drillsFor, COMBINE_TESTS, type CombineResults } from '../simulation/scouting';
+import { CombineDrills } from './CombineDrills';
 import { PlayerNameTag } from './PlayerAvatar';
 import { TeamLink } from './TeamLink';
 import { classHonors, collegeSeason, collegeSeasonToDate, type CollegeSeason } from '../simulation/collegeSeason';
@@ -11,7 +12,7 @@ import { mockDraft, seasonProgress } from '../simulation/draftSeason';
 import { assignScout, scoutDept, prospectRegion, EYE_LABEL, scoutVerdict } from '../simulation/scoutDept';
 
 const ftIn = (inches: number) => `${Math.floor(inches / 12)}′ ${(inches % 12).toFixed(inches % 1 ? 2 : 0).replace(/\.?0+$/, '')}″`;
-type View = 'board' | 'scouts' | 'college' | 'mock' | 'combine' | 'workouts';
+type View = 'board' | 'scouts' | 'college' | 'mock' | 'combine' | 'drills' | 'workouts';
 type CombineKey = keyof CombineResults;
 const COMBINE_COLS: { key: CombineKey; label: string; fmt: (v: number) => string; lowerIsBetter?: boolean }[] = [
   { key: 'heightNoShoes', label: 'Ht (no shoes)', fmt: ftIn }, { key: 'wingspan', label: 'Wingspan', fmt: ftIn },
@@ -68,11 +69,12 @@ export function ScoutingBoard({ league, extras, controlledTeamId, myTurn, onDraf
     </header>
     <p className="hint-text">Potential shows as your scouts' range. A bigger scouting budget narrows it and adds workout slots; a workout nearly removes the guesswork and reveals character. Other front offices draft from their own reads.</p>
     <div className="stats-view-toggle" role="tablist" aria-label="Scouting views">
-      {(['board', ...(team ? ['scouts' as View] : []), 'college', 'mock', 'combine', 'workouts'] as View[]).map(v => <button key={v} role="tab" aria-selected={view === v} className={view === v ? 'active' : ''} onClick={() => setView(v)}>{v === 'board' ? 'Big Board' : v === 'scouts' ? 'Scouts' : v === 'college' ? 'College Stats' : v === 'mock' ? 'Mock Draft' : v === 'combine' ? 'Draft Combine' : `Workouts (${workouts.length})`}</button>)}
+      {(['board', ...(team ? ['scouts' as View] : []), 'college', 'mock', 'combine', ...(team ? ['drills' as View] : []), 'workouts'] as View[]).map(v => <button key={v} role="tab" aria-selected={view === v} className={view === v ? 'active' : ''} onClick={() => setView(v)}>{v === 'board' ? 'Big Board' : v === 'scouts' ? 'Scouts' : v === 'college' ? 'College Stats' : v === 'mock' ? 'Mock Draft' : v === 'combine' ? 'Draft Combine' : v === 'drills' ? `Combine Drills (${Object.keys(drillsFor(extras, team)).length}/${COMBINE_TESTS})` : `Workouts (${workouts.length})`}</button>)}
     </div>
     {note && <p className="hint-text" role="status">{note}</p>}
 
-    {view === 'scouts' && team ? <ScoutsPanel league={league} extras={extras} team={team} board={board} onChange={onChange} onSelectPlayer={onSelectPlayer} />
+    {view === 'drills' && team ? <CombineDrills league={league} extras={extras} teamId={team} board={board} onChange={onChange} onSelectPlayer={onSelectPlayer} />
+      : view === 'scouts' && team ? <ScoutsPanel league={league} extras={extras} team={team} board={board} onChange={onChange} onSelectPlayer={onSelectPlayer} />
       : view === 'college' ? <CollegeTable board={board} college={college} honors={honors} progress={progress} onSelectPlayer={onSelectPlayer} />
       : view === 'mock' ? <div className="finances-table-wrap"><table className="db-table mock-draft-table">
         <thead><tr><th>Pick</th><th>Team</th><th>Player</th><th>Pos</th><th>School / club</th><th>Why</th><th>Slot salary</th></tr></thead>
@@ -83,7 +85,7 @@ export function ScoutingBoard({ league, extras, controlledTeamId, myTurn, onDraf
           <td>{m.position}</td><td>{m.school}</td><td className="hint-text">{m.note}</td><td>${(m.salary / 1e6).toFixed(2)}M</td>
         </tr>)}</tbody>
       </table><p className="hint-text">{league.seasonPhase === 'draft' ? 'Remaining picks in the real order.' : 'Order if the season ended today, without lottery luck.'} A consensus mock from public scouting and each team's thinnest position; every front office drafts from its own private reads, so expect surprises. Your picks are highlighted.</p></div>
-      : view !== 'combine' ? <div className="finances-table-wrap"><table className="db-table scouting-table">
+      : view !== 'combine' && view !== 'drills' ? <div className="finances-table-wrap"><table className="db-table scouting-table">
       <thead><tr><th>#</th><th>Player</th><th>Pos</th><th>Age</th><th>OVR</th><th>POT (scouted)</th><th>Read</th><th title="Looks your scouts have filed on him">Looks</th><th>Best tool</th><th>Flags</th><th></th><th></th></tr></thead>
       <tbody>{rows.map((b, i) => {
         const { p, report: r } = b, isOpen = open === p.playerId, worked = workouts.includes(p.playerId);
