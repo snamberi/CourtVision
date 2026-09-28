@@ -39,7 +39,15 @@ export async function rest(env: SupaEnv, method: string, path: string, body?: un
   return text ? JSON.parse(text) : null;
 }
 
-export const upsert = (env: SupaEnv, table: string, rows: Record<string, unknown>[], onConflict: string, f?: Fetch) =>
+/** How many rows match a query (PostgREST's exact count, without the rows). */
+export async function count(env: SupaEnv, path: string, f: Fetch = fetch): Promise<number> {
+  const res = await f(`${env.url}/rest/v1/${path}${path.includes('?') ? '&' : '?'}limit=1`, { method: 'GET', headers: { ...keyHeaders(env.serviceKey), Prefer: 'count=exact' } });
+  if (!res.ok) throw new Error(`count ${path.split('?')[0]}: ${res.status}`);
+  const total = Number(res.headers.get('content-range')?.split('/')[1]);
+  return Number.isFinite(total) ? total : 0;
+}
+
+export const upsert =(env: SupaEnv, table: string, rows: Record<string, unknown>[], onConflict: string, f?: Fetch) =>
   rows.length ? rest(env, 'POST', `${table}?on_conflict=${onConflict}`, rows, 'resolution=merge-duplicates,return=minimal', f) : Promise.resolve(null);
 
 export async function deleteUser(env: SupaEnv, id: string, f: Fetch = fetch): Promise<void> {

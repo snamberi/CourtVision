@@ -4,6 +4,7 @@ import { loadRebuildRecords } from '../simulation/rebuildChallenge';
 import { loadWeeklyRecords } from '../retention/weekly';
 import { dailyGoalXp } from './dailyGoals';
 import { localRead, type Read } from '../lib/kv';
+import { ICONS, NAME_COLORS, unlockContext, isOpen, earnedExtraTitles, type IconId, type ColorId } from './cosmetics';
 
 /*
  * The GM Profile: one level across every mode. XP is worked out from the records each mode already keeps (GM
@@ -128,18 +129,29 @@ export function rankTitles(read: Read = localRead): string[] {
   return RANK_TITLES.filter(t => best >= t.order).map(t => t.id);
 }
 
-export interface Equipped { frame: FrameId; floor: FloorId; title: string }
+export interface Equipped { frame: FrameId; floor: FloorId; title: string; icon: IconId; color: ColorId }
 const EQUIP_KEY = 'cv-profile-equip';
 export const PROFILE_EVENT = 'courtvision:profile';
 
-/** What is equipped, never beyond what the level allows (a lower level after a reset falls back to what is open). */
+/** What is equipped, never beyond what is unlocked (a lower level after a reset falls back to what is open). */
 export function equipped(level = levelFor(totalXp()).level): Equipped {
   let raw: Partial<Equipped> = {};
   try { raw = JSON.parse(localStorage.getItem(EQUIP_KEY) ?? '{}') as Partial<Equipped>; } catch { /* default */ }
   const ok = <T extends string>(list: Unlock<T>[], v: T | undefined, fallback: T): T => { const u = list.find(x => x.id === v); return u && u.level <= level ? u.id : fallback; };
+  const ctx = unlockContext(level);
   const openTitles = TITLES.filter(t => t.level <= level);
-  const title = raw.title && rankTitles().includes(raw.title) ? raw.title : ok(TITLES, raw.title, openTitles[openTitles.length - 1].id);
-  return { frame: ok(FRAMES, raw.frame, 'classic'), floor: ok(FLOORS, raw.floor, 'team'), title };
+  const special = [...rankTitles(), ...earnedExtraTitles(ctx)];
+  const title = raw.title && special.includes(raw.title) ? raw.title : ok(TITLES, raw.title, openTitles[openTitles.length - 1].id);
+  const icon = ICONS.find(i => i.id === raw.icon && isOpen(i.rule, ctx))?.id ?? 'ball';
+  const color = NAME_COLORS.find(c => c.id === raw.color && isOpen(c.rule, ctx))?.id ?? 'cream';
+  return { frame: ok(FRAMES, raw.frame, 'classic'), floor: ok(FLOORS, raw.floor, 'team'), title, icon, color };
+}
+
+/** The name shown on your profile card when you are not signed in (signed in, it is your GM name). */
+const NAME_KEY = 'cv-profile-name';
+export const localName = () => { try { return localStorage.getItem(NAME_KEY) || 'You'; } catch { return 'You'; } };
+export function setLocalName(name: string): void {
+  try { localStorage.setItem(NAME_KEY, name.slice(0, 18)); window.dispatchEvent(new Event(PROFILE_EVENT)); } catch { /* storage blocked */ }
 }
 export function equip(patch: Partial<Equipped>): void {
   let raw: Partial<Equipped> = {};

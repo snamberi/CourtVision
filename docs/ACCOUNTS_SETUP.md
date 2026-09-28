@@ -20,6 +20,9 @@ Time needed: about 15 minutes. You need the Vercel project, and a Discord and a 
 Open the Supabase dashboard (from Vercel: Storage → your database → Open in Supabase) → **SQL Editor** → **New query**
 → paste the whole of [`supabase/schema.sql`](../supabase/schema.sql) → **Run**. It is safe to run again after updates.
 
+**After updating the game, run it again.** New versions add to it (for example profile icons and name colours); the
+game keeps working on an older schema, but the new parts only show up after this re-run.
+
 ## 3. Tell Supabase where the site lives
 
 Supabase → **Authentication** → **URL Configuration**:

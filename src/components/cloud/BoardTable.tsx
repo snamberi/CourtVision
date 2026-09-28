@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { loadBoard, type BoardSpec, type BoardResult } from '../../cloud/boards';
+import { NameTag } from '../ProfileIcon';
 
 /** One online leaderboard: top rows, your row highlighted, and your rank when you are further down. */
 export function BoardTable({ spec, scoreLabel, onUser, empty = 'No one on this board yet.', limit = 100 }: { spec: BoardSpec; scoreLabel: string; onUser?: (username: string) => void; empty?: string; limit?: number }) {
@@ -20,7 +21,7 @@ export function BoardTable({ spec, scoreLabel, onUser, empty = 'No one on this b
       <thead><tr><th>#</th><th className="col-name">GM</th><th>{scoreLabel}</th><th className="col-name">Result</th></tr></thead>
       <tbody>{d.rows.map(r => <tr key={`${r.userId}-${r.rank}`} className={r.you ? 'wb-you' : ''}>
         <td>{r.rank}</td>
-        <td className="col-name">{onUser && r.username ? <button className="link-button" onClick={() => onUser(r.username)}>{r.username}</button> : r.username}{r.you ? ' (you)' : ''}{r.title ? <small className="wb-title"> {r.title}</small> : null}</td>
+        <td className="col-name">{onUser && r.username ? <button className="link-button name-link" onClick={() => onUser(r.username)}><NameTag name={r.username} icon={r.icon} color={r.color} /></button> : <NameTag name={r.username} icon={r.icon} color={r.color} />}{r.you ? ' (you)' : ''}{r.title ? <small className="wb-title"> {r.title}</small> : null}</td>
         <td>{r.score.toLocaleString()}</td><td className="col-name">{r.detail}</td>
       </tr>)}</tbody>
     </table></div>

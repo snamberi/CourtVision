@@ -3,7 +3,7 @@
 --
 -- Who writes what:
 --   * Clients (the game, with the signed-in user's token) can read every public table, choose their username,
---     title and frame, follow people and file reports. Nothing competitive can be written from the browser.
+--     title, frame, icon and name colour, follow people and file reports. Nothing competitive can be written from the browser.
 --   * The Vercel Functions (/api/sync, /api/pvp) write everything else with the service key, after checking it.
 
 create extension if not exists citext;
@@ -23,6 +23,9 @@ create table if not exists public.profiles (
   updated_at timestamptz not null default now()
 );
 create index if not exists profiles_xp on public.profiles (xp desc);
+-- Profile icon and name colour (cosmetic, chosen by the player; earned in game).
+alter table public.profiles add column if not exists icon text not null default 'ball' check (length(icon) <= 20);
+alter table public.profiles add column if not exists color text not null default 'cream' check (length(color) <= 20);
 
 -- A profile row for every new account.
 create or replace function public.handle_new_user() returns trigger language plpgsql security definer set search_path = public as $$
@@ -172,37 +175,37 @@ create index if not exists pvp_matches_challenger on public.pvp_matches (challen
 -- ---------------------------------------------------------------- views for the boards
 
 create or replace view public.lb_users with (security_invoker = on) as
-  select p.id, p.username, p.title, p.frame, p.level, p.xp, p.stats
+  select p.id, p.username, p.title, p.frame, p.level, p.xp, p.stats, p.icon, p.color
   from public.profiles p where p.username is not null and not p.banned;
 
 create or replace view public.lb_players with (security_invoker = on) as
-  select c.*, p.username from public.created_players c join public.profiles p on p.id = c.user_id
+  select c.*, p.username, p.icon, p.color from public.created_players c join public.profiles p on p.id = c.user_id
   where p.username is not null and not p.banned;
 
 create or replace view public.lb_weekly with (security_invoker = on) as
-  select w.*, p.username, p.title from public.weekly_scores w join public.profiles p on p.id = w.user_id
+  select w.*, p.username, p.title, p.icon, p.color from public.weekly_scores w join public.profiles p on p.id = w.user_id
   where p.username is not null and not p.banned;
 
 create or replace view public.lb_daily with (security_invoker = on) as
-  select d.*, p.username, p.title from public.daily_legend d join public.profiles p on p.id = d.user_id
+  select d.*, p.username, p.title, p.icon, p.color from public.daily_legend d join public.profiles p on p.id = d.user_id
   where p.username is not null and not p.banned;
 
 create or replace view public.lb_rebuild with (security_invoker = on) as
-  select r.*, p.username, p.title from public.rebuild_records r join public.profiles p on p.id = r.user_id
+  select r.*, p.username, p.title, p.icon, p.color from public.rebuild_records r join public.profiles p on p.id = r.user_id
   where p.username is not null and not p.banned;
 
 create or replace view public.lb_codes with (security_invoker = on) as
-  select c.*, p.username from public.code_results c join public.profiles p on p.id = c.user_id
+  select c.*, p.username, p.icon, p.color from public.code_results c join public.profiles p on p.id = c.user_id
   where p.username is not null and not p.banned;
 
 create or replace view public.lb_ranked with (security_invoker = on) as
-  select e.season, e.user_id, p.username, p.title, sum(e.points)::int as points, count(*)::int as events
+  select e.season, e.user_id, p.username, p.title, sum(e.points)::int as points, count(*)::int as events, p.icon, p.color
   from public.ranked_events e join public.profiles p on p.id = e.user_id
   where p.username is not null and not p.banned
-  group by e.season, e.user_id, p.username, p.title;
+  group by e.season, e.user_id, p.username, p.title, p.icon, p.color;
 
 create or replace view public.lb_pvp with (security_invoker = on) as
-  select g.user_id, p.username, p.title, g.rating, g.wins, g.losses, g.squad, g.updated_at
+  select g.user_id, p.username, p.title, g.rating, g.wins, g.losses, g.squad, g.updated_at, p.icon, p.color
   from public.hunt_ghosts g join public.profiles p on p.id = g.user_id
   where p.username is not null and not p.banned;
 
@@ -245,7 +248,7 @@ create policy "own progress" on public.progress for select using (auth.uid() = u
 drop policy if exists "own profile" on public.profiles;
 create policy "own profile" on public.profiles for update using (auth.uid() = id) with check (auth.uid() = id);
 revoke update on public.profiles from anon, authenticated;
-grant update (username, title, frame, updated_at) on public.profiles to authenticated;
+grant update (username, title, frame, icon, color, updated_at) on public.profiles to authenticated;
 
 drop policy if exists "follow" on public.follows;
 create policy "follow" on public.follows for insert with check (auth.uid() = user_id);

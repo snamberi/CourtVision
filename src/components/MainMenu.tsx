@@ -44,6 +44,8 @@ interface Props {
   onCode?: (code: string) => string | null;
   /** Opens Community (online boards, ranked, PvP, profiles). */
   onCommunity?: () => void;
+  /** Opens your player profile. */
+  onProfile?: () => void;
 }
 
 const MODES: { id: GameMode; title: string; blurb: string }[] = [
@@ -139,7 +141,7 @@ function SavedLeaguesList({ saves, onContinue, onDeleteSave, onRenameSave }: Pic
   );
 }
 
-export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSave, recovery, busy = null, onLocker, onCode, onCommunity }: Props) {
+export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSave, recovery, busy = null, onLocker, onCode, onCommunity, onProfile }: Props) {
   const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
   const [scenario, setScenario] = useState(SCENARIOS[0].id);
   const [rebuildRecords] = useState(() => loadRebuildRecords());
@@ -156,7 +158,7 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
 
   return (
     <div className="main-menu">
-      <div className="menu-masthead"><img src={logoIcon} alt="" /><span>COURT VISION<small>BASKETBALL MANAGEMENT</small></span><span className="menu-edition">THE PIXEL COURT</span>{onLocker && <ProfileChip onOpen={onLocker} />}{onLocker && <button className="menu-locker" onClick={onLocker}><PixelIcon name="trophy" size={16} /> GM Locker</button>}{onCommunity && <AccountButton onCommunity={onCommunity} />}<InstallAppButton /><DiscordLink className="menu-discord" /></div>
+      <div className="menu-masthead"><img src={logoIcon} alt="" /><span>COURT VISION<small>BASKETBALL MANAGEMENT</small></span><span className="menu-edition">THE PIXEL COURT</span>{onLocker && <ProfileChip onOpen={onProfile ?? onLocker} />}{onLocker && <button className="menu-locker" onClick={onLocker}><PixelIcon name="trophy" size={16} /> GM Locker</button>}{onCommunity && <AccountButton onCommunity={onCommunity} />}<InstallAppButton /><DiscordLink className="menu-discord" /></div>
       <div className="menu-hero">
         <div className="menu-hero-copy"><span className="pixel-eyebrow">BUILD A TEAM. WRITE ITS HISTORY.</span><h1>Your league.<br /><span>Your legacy.</span></h1><p>Scout the next great. Build your starting five.<br />Turn one season into a dynasty.</p></div>
         <div className="menu-player-scene" aria-hidden="true">

@@ -2931,7 +2931,7 @@ function decodeLeagueCode(raw) {
 				realDevelopment: !!(rest & 1),
 				forceRosters: !!(rest & 2),
 				allPlayers: !!(rest & 4)
-			} : {}
+			} : rest & 8 ? { balanced: true } : {}
 		},
 		teamId
 	};
@@ -3472,6 +3472,19 @@ async function rest(env, method, path, body, prefer, f = fetch) {
 	const text = await res.text();
 	return text ? JSON.parse(text) : null;
 }
+/** How many rows match a query (PostgREST's exact count, without the rows). */
+async function count(env, path, f = fetch) {
+	const res = await f(`${env.url}/rest/v1/${path}${path.includes("?") ? "&" : "?"}limit=1`, {
+		method: "GET",
+		headers: {
+			...keyHeaders(env.serviceKey),
+			Prefer: "count=exact"
+		}
+	});
+	if (!res.ok) throw new Error(`count ${path.split("?")[0]}: ${res.status}`);
+	const total = Number(res.headers.get("content-range")?.split("/")[1]);
+	return Number.isFinite(total) ? total : 0;
+}
 const upsert = (env, table, rows, onConflict, f) => rows.length ? rest(env, "POST", `${table}?on_conflict=${onConflict}`, rows, "resolution=merge-duplicates,return=minimal", f) : Promise.resolve(null);
 async function deleteUser(env, id, f = fetch) {
 	const res = await f(`${env.url}/auth/v1/admin/users/${encodeURIComponent(id)}`, {
@@ -3488,6 +3501,47 @@ const json = (body, status = 200) => new Response(JSON.stringify(body), {
 	}
 });
 const bearer = (req) => req.headers.get("authorization")?.match(/^Bearer\s+(.+)$/i)?.[1] ?? null;
+//#endregion
+//#region server/honors.ts
+const MIN_FIELD = {
+	gm: 10,
+	weekly: 3,
+	daily: 3,
+	pvp: 20,
+	ranked: 20
+};
+const enc = encodeURIComponent;
+async function computeHonors(env, userId, d, now, previous, f = fetch) {
+	const honors = new Set(previous);
+	const others = `user_id=neq.${userId}`;
+	if (await count(env, `lb_users?select=id`, f) >= MIN_FIELD.gm) {
+		const rank = await count(env, `lb_users?select=id&xp=gt.${d.profile.xp}&id=neq.${userId}`, f) + 1;
+		if (rank === 1) honors.add("gm-1");
+		if (rank <= 10) honors.add("gm-10");
+		if (rank <= 100) honors.add("gm-100");
+	}
+	const today = now.toISOString().slice(0, 10), thisWeek = weekKey(now);
+	for (const w of d.weekly.filter((x) => x.week < thisWeek).slice(-6)) {
+		const q = `weekly_scores?select=user_id&board=eq.${enc(w.board)}&week=eq.${enc(w.week)}&${others}`;
+		if (await count(env, q, f) + 1 >= MIN_FIELD.weekly && await count(env, `${q}&score=gt.${w.score}`, f) === 0) honors.add("weekly-1");
+	}
+	for (const day of d.daily.filter((x) => x.day < today).slice(-7)) {
+		const q = `daily_legend?select=user_id&day=eq.${enc(day.day)}&${others}`;
+		if (await count(env, q, f) + 1 >= MIN_FIELD.daily && await count(env, `${q}&score=gt.${day.score}`, f) === 0) honors.add("daily-1");
+	}
+	const season = seasonOf(today);
+	const mine = d.ranked.filter((r) => r.season === season).reduce((n, r) => n + r.points, 0);
+	if (mine > 0) {
+		const q = `lb_ranked?select=user_id&season=eq.${enc(season)}&${others}`;
+		if (await count(env, q, f) + 1 >= MIN_FIELD.ranked && await count(env, `${q}&points=gt.${mine}`, f) < 10) honors.add("ranked-10");
+	}
+	return [...honors].sort();
+}
+/** PvP is rated on the server (hunt_ghosts), so its honor is checked there after each result. */
+async function pvpHonor(env, userId, rating, f = fetch) {
+	const q = `hunt_ghosts?select=user_id&user_id=neq.${userId}`;
+	return await count(env, q, f) + 1 >= MIN_FIELD.pvp && await count(env, `${q}&rating=gt.${rating}`, f) < 10;
+}
 const careerRows = (list) => list.filter((c) => typeof c.id === "string" && typeof c.updatedAt === "number");
 async function handleSync(req, env, now = /* @__PURE__ */ new Date(), f = fetch) {
 	if (!env) return json({ error: "Accounts are not set up on this site yet." }, 503);
@@ -3534,11 +3588,22 @@ async function handleSync(req, env, now = /* @__PURE__ */ new Date(), f = fetch)
 			size,
 			updated_at: now.toISOString()
 		}], "user_id", f);
+		const current = (await rest(env, "GET", `profiles?id=eq.${id}&select=stats`, void 0, void 0, f))?.[0];
+		const previous = Array.isArray(current?.stats?.honors) ? current.stats.honors.filter((h) => typeof h === "string") : [];
+		let honors = previous;
+		try {
+			honors = await computeHonors(env, id, d, now, previous, f);
+			const ghost = (await rest(env, "GET", `hunt_ghosts?${eq}&select=rating`, void 0, void 0, f))?.[0];
+			if (ghost && !honors.includes("pvp-10") && await pvpHonor(env, id, ghost.rating, f)) honors = [...honors, "pvp-10"].sort();
+		} catch {}
 		await Promise.all([
 			rest(env, "PATCH", `profiles?id=eq.${id}`, {
 				level: d.profile.level,
 				xp: d.profile.xp,
-				stats: d.profile.stats,
+				stats: {
+					...d.profile.stats,
+					honors
+				},
 				updated_at: now.toISOString()
 			}, "return=minimal", f),
 			rest(env, "DELETE", `user_achievements?${eq}`, void 0, "return=minimal", f).then(() => upsert(env, "user_achievements", own(d.achievements.map((a) => ({ achievement_id: a }))), "user_id,achievement_id", f)),
@@ -3558,7 +3623,8 @@ async function handleSync(req, env, now = /* @__PURE__ */ new Date(), f = fetch)
 		return json({
 			ok: true,
 			level: d.profile.level,
-			xp: d.profile.xp
+			xp: d.profile.xp,
+			honors
 		});
 	} catch {
 		return json({ error: "Cloud sync is having trouble. Your progress is safe on this device; it will sync later." }, 502);
