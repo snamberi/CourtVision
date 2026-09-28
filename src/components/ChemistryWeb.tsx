@@ -4,7 +4,7 @@ import { bondList, bondLevel, strongDuos, DUO_BOND, DUO_BOOST } from '../simulat
 import { calculateOverall } from '../simulation/engine/overall';
 import { PlayerAvatar } from './PlayerAvatar';
 
-const SIZE = 360, R = 138, C = SIZE / 2;
+const SIZE = 440, R = 176, C = SIZE / 2;
 const LINE: Record<ReturnType<typeof bondLevel>, string> = { Duo: '#ffd166', Strong: '#f47b20', Growing: '#4da3ff', New: '#94a0b2' };
 const surname = (id: string) => id.split(' ').slice(-1)[0];
 

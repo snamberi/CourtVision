@@ -110,6 +110,6 @@
   .combine-ball, .combine-runner, .combine-jumper { animation: none; transition: none; }
 }
 @media (max-width: 640px) {
-  .chem-web-map { transform: scale(.85); transform-origin: top left; margin-bottom: -50px; }
+  .chem-web-map { transform: scale(.75); transform-origin: top left; margin-bottom: -110px; }
   .legend-run-head { flex-direction: column; }
 }

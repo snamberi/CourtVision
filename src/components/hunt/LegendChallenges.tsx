@@ -45,7 +45,7 @@ export function LegendChallenges({ h }: { h: NbaHistory }) {
     if (r.done()) setRecords(saveLegendResult(r));
     return out;
   };
-  const top = (s: LegendSide | undefined) => s ? [...s.seasons].sort((a, b) => calculateOverall(b) - calculateOverall(a)).slice(0, 3).map(p => p.playerId.split(' ').slice(-1)[0]).join(', ') : '';
+  const top = (s: LegendSide | undefined) => s ? [...s.seasons].sort((a, b) => calculateOverall(b) - calculateOverall(a)).slice(0, 3).map(p => p.playerId.replace(/ '\d+$/, '').split(' ').slice(-1)[0]).join(', ') : '';
   return <div className="legend-run">
     <header className="legend-run-head">
       <div><span className="pixel-eyebrow">LEGEND CHALLENGE</span><h3>{sc.title}</h3><p className="hint-text">{sc.blurb}</p></div>

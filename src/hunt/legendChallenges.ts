@@ -103,17 +103,20 @@ function planCoach(base: CoachTendencies, plan: GamePlan): CoachTendencies {
   }
 }
 
+/** Rating points your side gets: you're the coach, so the underdog has to be beatable (about 30-60% a game). */
+const YOUR_BONUS = 2;
+
 export interface LegendSide { teamId: string; name: string; seasons: PlayerSeason[] }
-function side(h: NbaHistory, t: HuntTeam, id: string): LegendSide {
+function side(h: NbaHistory, t: HuntTeam, id: string, bonus = 0): LegendSide {
   const pool = cardPool(h), era = eraOf(t.end);
   const cards = t.roster.map(c => pool.byId.get(c)!).filter(Boolean);
-  return { teamId: id, name: `${t.end - 1}-${String(t.end).slice(2)} ${t.name}`, seasons: withRotation(cards.map(c => underEra(cardPlayer(h, c, id), era))) };
+  return { teamId: id, name: `${t.end - 1}-${String(t.end).slice(2)} ${t.name}`, seasons: withRotation(cards.map(c => underEra(cardPlayer(h, c, id, bonus), era))) };
 }
 export function legendTeams(h: NbaHistory, sc: LegendScenario): { you: LegendSide; opp: LegendSide } | null {
   const teams = huntTeams(h);
   const a = teams.find(t => t.id === sc.you), b = teams.find(t => t.id === sc.opp);
   if (!a || !b) return null;
-  return { you: side(h, a, a.abbr), opp: side(h, b, b.abbr === a.abbr ? `${b.abbr}2` : b.abbr) };
+  return { you: side(h, a, a.abbr, YOUR_BONUS), opp: side(h, b, b.abbr === a.abbr ? `${b.abbr}2` : b.abbr) };
 }
 
 /** A small edge for whoever hosts: the crowd. */
@@ -128,9 +131,9 @@ export function playLegendGame(h: NbaHistory, state: LegendRunState, plan: GameP
   const idx = (sc.start ? sc.start[0] + sc.start[1] : 0) + state.games.length;
   const youHost = sc.format === 'game' ? sc.hosts[0] : sc.hosts[idx] ?? false;
   const end = Number(sc.you.split('@')[1]), era = eraOf(end);
-  const boost = (s: LegendSide) => Object.fromEntries(s.seasons.map(p => [p.playerId, HOME_EDGE]));
-  const you = { ...sides.you, coach: planCoach(eraCoach(era), plan), chemistry: 78, ...(youHost ? { boost: boost(sides.you) } : {}) };
-  const opp = { ...sides.opp, coach: eraCoach(era), chemistry: 78, ...(youHost ? {} : { boost: boost(sides.opp) }) };
+  const boost = (s: LegendSide, n: number) => Object.fromEntries(s.seasons.map(p => [p.playerId, n]));
+  const you = { ...sides.you, coach: planCoach(eraCoach(era), plan), chemistry: 78, ...(youHost ? { boost: boost(sides.you, HOME_EDGE) } : {}) };
+  const opp = { ...sides.opp, coach: eraCoach(era), chemistry: 78, ...(youHost ? {} : { boost: boost(sides.opp, HOME_EDGE) }) };
   const decade = `${Math.floor(Math.min(2020, Math.max(1960, end)) / 10) * 10}s` as keyof typeof ERA_PRESETS;
   const result = simulateGame({ home: youHost ? you : opp, away: youHost ? opp : you, isPlayoffs: true,
     settings: { ...DEFAULT_GAME_SETTINGS, era: ERA_PRESETS[decade] ?? DEFAULT_GAME_SETTINGS.era, seed, injuriesEnabled: false } });
