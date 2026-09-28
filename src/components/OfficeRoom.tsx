@@ -1,4 +1,5 @@
 import type { League } from '../simulation/league';
+import { PixelIcon } from './PixelIcon';
 import type { GMLeagueExtras } from '../simulation/gm';
 import { projectedSecurity, securityLabel } from '../simulation/frontOffice';
 import { teamColors } from '../simulation/teamColors';
@@ -45,6 +46,6 @@ export function OfficeRoom({ league, extras, teamId, onGoTo }: { league: League;
       <span>{security == null ? 'League news' : `Owner: ${mood!.label}`}</span>
     </button>
     <button className="or-obj or-board" onClick={() => onGoTo('roster')} title="Rotation and depth chart"><span className="or-xo" aria-hidden="true">X O X<br />O → X</span><span>Rotation</span></button>
-    <button className="or-obj or-desk" onClick={() => onGoTo('tradeOffers')} title="Trade offers"><span className="or-phone" aria-hidden="true">☎</span><span>Phone lines</span></button>
+    <button className="or-obj or-desk" onClick={() => onGoTo('tradeOffers')} title="Trade offers"><span className="or-phone" aria-hidden="true"><PixelIcon name="phone" size={22} /></span><span>Phone lines</span></button>
   </section>;
 }

@@ -51,7 +51,7 @@ export function HuntMap({ h, run }: { h: NbaHistory; run: HuntRun }) {
   return <div className="hunt-map" role="group" aria-label={`The hunt map: series ${run.seriesIndex + 1} of ${SERIES_COUNT}`}>
     <div className="hm-head">
       <span className="pixel-eyebrow">THE ROAD · {won} OF {SERIES_COUNT} WON</span>
-      <span className="hm-status"><span className="hm-lives" aria-label={`${run.lives} of ${maxLives(run)} lives`}>{Array.from({ length: maxLives(run) }, (_, i) => <i key={i} className={i < run.lives ? 'on' : ''}>♥</i>)}</span>
+      <span className="hm-status"><span className="hm-lives" aria-label={`${run.lives} of ${maxLives(run)} lives`}>{Array.from({ length: maxLives(run) }, (_, i) => <i key={i} className={i < run.lives ? 'on' : ''}><PixelIcon name="heart" size={16} /></i>)}</span>
         <span className="hm-coins"><b>{run.coins}</b> coins</span></span>
     </div>
     <div className="hm-board" style={{ height: `${rows * (narrow ? 138 : 128)}px` }}>
@@ -69,7 +69,7 @@ export function HuntMap({ h, run }: { h: NbaHistory; run: HuntRun }) {
         return <div key={s.teamId + i} className={`hm-stop ${s.kind} ${done ? 'done' : ''} ${here ? 'here' : ''} ${res && !res.won ? 'lost' : ''} hm-era-${s.eraId}`}
           style={{ left: `${spots[i].x}%`, top: `${((spots[i].row + 0.5) / rows) * 100}%` }}>
           {here && lead && <span className="hm-pin" aria-label="You are here"><PlayerAvatar playerId={lead.name} mode="portrait" size={30} primaryColor="#f47b20" secondaryColor="#f4f0e6" /></span>}
-          <span className="hm-node" aria-hidden="true">{done && res?.won ? '✓' : <PixelIcon name={s.kind === 'boss' ? 'trophy' : s.kind === 'semi' ? 'star' : 'court'} size={s.kind === 'normal' ? 18 : 22} />}</span>
+          <span className="hm-node" aria-hidden="true">{done && res?.won ? <PixelIcon name="check" size={18} /> : <PixelIcon name={s.kind === 'boss' ? 'trophy' : s.kind === 'semi' ? 'star' : 'court'} size={s.kind === 'normal' ? 18 : 22} />}</span>
           <span className="hm-label">
             <small>{kindName(s, i)}{i % 2 === 0 ? ' · shop first' : ''}</small>
             <b>{seen && t ? `'${String(t.end).slice(2)} ${t.name}` : '???'}</b>

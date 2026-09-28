@@ -10,7 +10,7 @@ import { ShareCardButton } from './ShareCardButton';
 import { TWISTS } from '../retention/weekly';
 import { PostScore } from './WeeklyBoard';
 
-const Stars = ({ n }: { n: number }) => <span className="rb-stars" aria-label={`${n} of 3 stars`}>{[1, 2, 3].map(i => <span key={i} className={i <= n ? 'on' : ''}>★</span>)}</span>;
+const Stars = ({ n }: { n: number }) => <span className="rb-stars" aria-label={`${n} of 3 stars`}>{[1, 2, 3].map(i => <span key={i} className={i <= n ? 'on' : ''}><PixelIcon name="star" size={18} /></span>)}</span>;
 
 const money = (n: number) => `$${(n / 1_000_000).toFixed(1)}M`;
 const recordText = (r?: RebuildSnapshot['record']) => (r ? `${r.wins}-${r.losses}` : '—');
@@ -25,9 +25,9 @@ function Side({ label, when, snap, vs }: { label: string; when: string; snap: Re
   return <div className={`rb-side ${vs ? 'now' : 'then'}`}>
     <small className="rb-side-label">{label} <em>{when}</em></small>
     <dl>
-      <div><dt>Record</dt><dd>{recordText(snap.record)}{pctDelta != null && pctDelta !== 0 && <i className={pctDelta > 0 ? 'up' : 'down'}>{pctDelta > 0 ? '▲' : '▼'} {signed(pctDelta, '%')}</i>}</dd></div>
+      <div><dt>Record</dt><dd>{recordText(snap.record)}{pctDelta != null && pctDelta !== 0 && <i className={pctDelta > 0 ? 'up' : 'down'}><PixelIcon name={pctDelta > 0 ? 'up' : 'down'} size={12} /> {signed(pctDelta, '%')}</i>}</dd></div>
       <div><dt>Payroll</dt><dd>{money(snap.payroll)}{vs && vs.payroll !== snap.payroll && <i className="flat">{signed(Math.round((snap.payroll - vs.payroll) / 100_000) / 10, 'M')}</i>}</dd></div>
-      <div><dt>Best player</dt><dd>{top ?? '—'}{top != null && topThen != null && top !== topThen && <i className={top > topThen ? 'up' : 'down'}>{top > topThen ? '▲' : '▼'} {signed(top - topThen)}</i>}</dd></div>
+      <div><dt>Best player</dt><dd>{top ?? '—'}{top != null && topThen != null && top !== topThen && <i className={top > topThen ? 'up' : 'down'}><PixelIcon name={top > topThen ? 'up' : 'down'} size={12} /> {signed(top - topThen)}</i>}</dd></div>
     </dl>
     <ul className="rb-stars-row" aria-label="Best three players">{snap.stars.map(p => <li key={p.id} title={`${p.id}: ${p.ovr} overall`}>
       <PlayerAvatar playerId={p.id} mode="portrait" size={26} primaryColor="#f47b20" secondaryColor="#f4f0e6" /><span>{p.id.split(' ').slice(-1)[0]}</span><b>{p.ovr}</b></li>)}</ul>

@@ -64,7 +64,8 @@ describe('leaderboard podium', () => {
     expect(document.querySelectorAll('.wb-table tbody tr')).toHaveLength(2);
     const pinned = screen.getByRole('status');
     expect(pinned.textContent).toContain('#42');
-    expect(pinned.querySelector('.wb-move.up')?.textContent).toBe('▲18');
+    expect(pinned.querySelector('.wb-move.up')?.textContent).toBe('18');
+    expect(pinned.querySelector('.wb-move.up svg.pixel-icon')).toBeTruthy();
     expect(podium.querySelector('.p1 .wb-move.up')).toBeTruthy();
     expect(podium.querySelector('.p2 .wb-move.down')).toBeTruthy();
     expect(JSON.parse(localStorage.getItem('cv-rank-history:{"kind":"gms"}')!)).toHaveLength(2);

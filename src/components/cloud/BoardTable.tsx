@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { loadBoard, type BoardSpec, type BoardResult, type BoardRow } from '../../cloud/boards';
 import { baseline, loadRankHistory, rankChange, recordRanks, saveRankHistory, YOU, type RankSnapshot } from '../../cloud/rankHistory';
 import { NameTag } from '../ProfileIcon';
+import { PixelIcon } from '../PixelIcon';
 
 /** Boards that last long enough for rank changes to mean something (not a single day, week or league code). */
 const trackedBoard = (spec: BoardSpec): string | null =>
@@ -25,7 +26,7 @@ function Move({ change, since }: { change: number | 'new' | null; since: string 
   if (change == null) return null;
   if (change === 'new') return <span className="wb-move new" title={`New on the board since ${since}`}>NEW</span>;
   if (change === 0) return <span className="wb-move same" title={`Same rank as ${since}`} aria-label="No change">–</span>;
-  return <span className={`wb-move ${change > 0 ? 'up' : 'down'}`} title={`${change > 0 ? 'Up' : 'Down'} ${Math.abs(change)} since ${since}`}>{change > 0 ? '▲' : '▼'}{Math.abs(change)}</span>;
+  return <span className={`wb-move ${change > 0 ? 'up' : 'down'}`} title={`${change > 0 ? 'Up' : 'Down'} ${Math.abs(change)} since ${since}`}><PixelIcon name={change > 0 ? 'up' : 'down'} size={12} />{Math.abs(change)}</span>;
 }
 
 const MEDAL = ['GOLD', 'SILVER', 'BRONZE'];

@@ -6,6 +6,15 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2026-10-06',
+    title: 'Players that really move',
+    items: [
+      '**Frame-by-frame animation:** players on the court are now drawn side-on pixel athletes with their own skin, hair, beard, headwear, kit and number. They have run cycles, standing and on-the-move dribbles, jump shots (gather, rise, set, release, follow-through, landing), layups with the knee drive, dunks that hang on the rim, free throws, chest passes, defensive slides, contests, rebounds, screens and celebrations.',
+      '**A real hoop:** a padded stanchion in the home colours behind the baseline, a steel post and arm, the glass, an orange rim over the players\' heads and a pixel net that swishes. Shots now arc up to it.',
+      '**Pixel icons everywhere:** the heat check, the office phone, the reel buttons, League Hunt hearts, stars and arrows use the game\'s own pixel icons instead of emoji.',
+    ],
+  },
+  {
     id: '2026-10-05',
     title: 'Blind spins, the season reel and more',
     items: [

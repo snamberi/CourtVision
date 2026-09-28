@@ -29,7 +29,7 @@ export function buildReel(league: League, review: YearInReview, awards: SeasonAw
   const m = review.moments[0];
   if (m) scenes.push({ kind: 'moment', kicker: 'BEST MOMENT', big: clip(m.title, 26), lines: wrap(m.text, 44).slice(0, 3) });
   const aw = awards ? [['MVP', awards.mvp], ['DPOY', awards.dpoy], ['ROOKIE', awards.roy]] as const : [];
-  const awardLines = aw.filter(([, w]) => w).map(([k, w]) => `${k}  ${clip(w!.playerId, 22)}${w!.teamId === review.teamId ? '  ★ OURS' : ''}`);
+  const awardLines = aw.filter(([, w]) => w).map(([k, w]) => `${k}  ${clip(w!.playerId, 22)}${w!.teamId === review.teamId ? '  (OURS)' : ''}`);
   if (awardLines.length) scenes.push({ kind: 'awards', kicker: 'AROUND THE LEAGUE', big: 'THE AWARDS', lines: awardLines });
   scenes.push({ kind: 'finish', kicker: 'HOW IT ENDED', big: review.finish === 'Champion' ? 'CHAMPIONS!' : review.finish.toUpperCase(), lines: [review.finish === 'Champion' ? 'BANNER SEASON' : review.finish === 'Missed Playoffs' ? 'NEXT YEAR.' : 'THE RUN IS OVER'] });
   scenes.push({ kind: 'grade', kicker: 'GM REPORT CARD', big: review.grade.letter, lines: review.grade.parts.slice(0, 3).map(p => `${p.label.toUpperCase()}  ${p.score}`) });

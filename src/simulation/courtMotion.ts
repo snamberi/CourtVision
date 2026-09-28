@@ -4,7 +4,9 @@ import { playbackForEntry } from './gamePlayback';
 export interface CourtPoint { x:number; y:number }
 export interface CourtBall extends CourtPoint { z:number; spin:number }
 export type CourtPose='run'|'guard'|'shoot'|'reach'|'idle'|'dribble'|'celebrate'|'screen'|'rebound'|'pass';
-export interface CourtActor extends CourtPoint { id:string; teamId:string; jump:number; stride:number; pose:CourtPose; facing:number }
+export type CourtAnimKind='jumper'|'layup'|'dunk'|'ft'|'pass'|'rebound'|'celebrate';
+/** Presentation only: which animation a player is in and how far through it (0-1), and where he is in his run cycle. */
+export interface CourtActor extends CourtPoint { id:string; teamId:string; jump:number; stride:number; pose:CourtPose; facing:number; anim?:{kind:CourtAnimKind;t:number}; cycle?:number }
 export interface CourtCallout { text:string; x:number; y:number; t:number; tone:'make'|'defense'|'neutral' }
 export interface CourtFrame {
  players:CourtActor[]; ball:CourtBall; phase:string; carrier?:string; hoop:CourtPoint; net:number; attackRight:boolean; shotAttempt?:number;
@@ -216,7 +218,12 @@ function baseFrame(entry:PossessionLogEntry,play:PossessionPlayback,progress:num
   if(isShooter&&!ftActive&&play.shotMade&&q>.84){pose='celebrate';jump=Math.abs(Math.sin(window01(q,.84,1)*Math.PI*2))*7;}
   if(ftActive)pose='idle';
   if(!moving&&pose==='run')pose='idle';
-  return {...loc,id,teamId:entry.offenseTeamId,jump,stride:moving?Math.sin(q*58+i):0,pose,facing:toward};
+  // The shot as an animation: gather, rise, release, follow-through and landing, by the kind of shot.
+  const shotEnd=dunk?.84:.78;
+  let anim:CourtActor['anim'];
+  if(pose==='celebrate')anim={kind:'celebrate',t:window01(q,.84,1)};
+  else if(isShooter&&play.shooterId&&!onlyFT&&!ftActive&&!turnover&&q>=.47&&q<shotEnd+.08)anim={kind:dunk?'dunk':close?'layup':'jumper',t:window01(q,.47,shotEnd+.08)};
+  return {...loc,id,teamId:entry.offenseTeamId,jump,stride:moving?Math.sin(q*58+i):0,pose,facing:toward,cycle:(q*58+i)/(Math.PI*2),...(anim?{anim}:{})};
  });
  const byId=(id:string|undefined)=>actors.find(a=>a.id===id);
  const hand=(id:string|undefined):CourtPoint=>{const a=byId(id)??mirror({x:720,y:310});return {x:a.x+(right?12:-12),y:a.y-3}};
@@ -262,13 +269,13 @@ function baseFrame(entry:PossessionLogEntry,play:PossessionPlayback,progress:num
   const chasing=turnover&&q>.62;
   const running=q<backBy&&Math.hypot(target.x-start.x,target.y-start.y)>40;
   actors.push({...loc,id,teamId:offHome?awayId:homeId,jump:contest?Math.sin((q-.56)/.24*Math.PI)*(id===play.blockerId?25:12):0,stride:running||chasing?Math.sin(q*58+i)*.8:Math.sin(q*30+i)*.25,
-   pose:contest?'reach':chasing?(id===play.stealerId?'dribble':'run'):running?'run':ftActive?'idle':'guard',facing:-toward});
+   pose:contest?'reach':chasing?(id===play.stealerId?'dribble':'run'):running?'run':ftActive?'idle':'guard',facing:-toward,cycle:(running||chasing?q*58+i:q*30+i)/(Math.PI*2)});
  });
  // Body language: the passer snaps the ball out with both hands; the rebounder goes up for it with both arms.
  if(!ftActive){
-  for(const ps of passes)if(q>=ps.t0-.01&&q<ps.t0+.035){const a=byId(ps.from);if(a&&a.pose!=='shoot')a.pose='pass';}
+  for(const ps of passes)if(q>=ps.t0-.01&&q<ps.t0+.035){const a=byId(ps.from);if(a&&a.pose!=='shoot'){a.pose='pass';a.anim={kind:'pass',t:limit((q-(ps.t0-.01))/.045)};}}
   const board=play.rebounderId&&!play.shotMade&&!turnover?actors.find(a=>a.id===play.rebounderId):undefined;
-  if(board&&q>=.84&&q<.99){board.pose='rebound';board.jump=Math.max(board.jump,Math.sin(window01(q,.84,.99)*Math.PI)*17);}
+  if(board&&q>=.84&&q<.99){board.pose='rebound';board.jump=Math.max(board.jump,Math.sin(window01(q,.84,.99)*Math.PI)*17);board.anim={kind:'rebound',t:window01(q,.84,.99)};}
  }
  if(ftActive&&p<mainShare+.1){const before=baseFrame(entry,play,mainShare-.000001,homeId,awayId,regulationPeriods,starts,previous);const t=ease((p-mainShare)/.1);for(const a of actors){const old=before.players.find(v=>v.id===a.id);if(old){const point=courtLerp(old,a,t);a.x=point.x;a.y=point.y;}}}
  // Symmetric separation keeps feet apart without frame-rate-dependent integration.
@@ -339,7 +346,7 @@ function baseFrame(entry:PossessionLogEntry,play:PossessionPlayback,progress:num
  if(entry.result==='FOUL'&&!ftActive&&q>=T_PASS-.02){phase='Whistle';ball={...hand(shooter),z:26,spin:0};if(q>.5)callout={text:'FOUL',x:hand(shooter).x,y:hand(shooter).y-66,t:window01(q,.5,1),tone:'neutral'};}
  if(ftActive){
   const count=Math.max(1,ftCount),cycle=limit((p-mainShare)/(1-mainShare))*count,attempt=Math.min(count-1,Math.floor(cycle)),t=cycle-attempt;
-  shotAttempt=attempt+1;const shootingActor=byId(shooter);if(shootingActor)shootingActor.pose=t>.15&&t<.75?'shoot':t<.15?'dribble':'idle';const from=hand(shooter);phase=`Free throw ${attempt+1} of ${count}`;carrier=t<.2?shooter:undefined;
+  shotAttempt=attempt+1;const shootingActor=byId(shooter);if(shootingActor){shootingActor.pose=t>.15&&t<.75?'shoot':t<.15?'dribble':'idle';shootingActor.anim={kind:'ft',t};shootingActor.jump=0;}const from=hand(shooter);phase=`Free throw ${attempt+1} of ${count}`;carrier=t<.2?shooter:undefined;
   ball=t<.2?{...from,z:26-(t<.15?18*Math.abs(Math.sin(t/.15*Math.PI*2)):0),spin:0}:ballFlight(from,hoop,limit((t-.2)/.55),40,34,.95);
   // Old logs record FT totals, not attempt order. Reconstruct a sequence with the exact recorded totals.
   if(t>.75){const madeFt=play.freeThrows?.outcomes?.[attempt]??attempt<(play.freeThrows?.made??0),u=limit((t-.75)/.25);ball=madeFt?{...hoop,z:34*(1-u*u),spin:u*360}:ballFlight(hoop,mirror({x:838,y:357}),u,34,6,.38);net=madeFt?Math.sin(u*Math.PI):0;rim=madeFt?0:Math.sin(u*Math.PI)*.6;

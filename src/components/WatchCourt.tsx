@@ -3,7 +3,7 @@ import type { PlayerSeason } from '../simulation/types';
 import type { CourtActor, CourtBall, CourtFrame, CourtShot } from '../simulation/courtMotion';
 import { resolveTeamIdentity, type TeamIdentity } from '../simulation/teamIdentity';
 import { useTeamIdentity } from '../visuals/TeamIdentityContext';
-import { playerTraits } from '../visuals/playerSprite';
+import { actionSprite, pickFrame, ORIGIN_X, ORIGIN_Y } from '../visuals/actionSprites';
 import { PlayerAvatar } from './PlayerAvatar';
 import { CrestArt } from './TeamCrest';
 import { DISCORD_URL } from './DiscordLink';
@@ -178,58 +178,63 @@ function Photographers({flash}:{flash:number}){
   {flash>0&&(i+Math.round(flash*3))%2===0&&<circle cx={i<2?12:-12} cy="1" r={6+flash*6} fill="#fffbe8" opacity={.75*flash}/>}
  </g>)}</g>;
 }
-function Hoop({x,net,rim}:{x:number;net:number;rim:number}){
- const left=x<500,dir=left?-1:1,shake=rim*Math.sin(rim*20)*2;
- return <g transform={`translate(${x},310)`}>
-  {/* stanchion: padded base behind the baseline, arm reaching the backboard */}
-  <rect x={dir*58-(left?0:14)} y="-12" width="14" height="30" fill="#1b2c42" stroke="#0a111c"/>
-  <path d={`M${dir*52} 0V-50H${dir*18}`} fill="none" stroke="#162334" strokeWidth="8"/>
-  <path d={`M${dir*52} 0V-50`} fill="none" stroke={'#2e4460'} strokeWidth="3"/>
-  <g transform={`translate(0,${shake})`}>
-   <path d="M-21 -52H21V-24H-21Z" fill="#e5f2ff" fillOpacity=".22" stroke="#f6ead1" strokeWidth="3"/>
-   <path d="M-9 -42H9V-28H-9Z" fill="none" stroke="#f47b20" strokeWidth="2"/>
-   <path d={`M-9 -31L${-6-net*3} ${-15+net*9}H${6+net*3}L9 -31M-5 -30L${2+net*2} ${-15+net*9}M5 -30L${-2-net*2} ${-15+net*9}M-7 -24H7`} fill="none" stroke="#fff3d2" strokeWidth="1.4"/>
-   <ellipse cy="-33" rx="11" ry="4" fill="none" stroke="#fa743b" strokeWidth="3"/>
+/** Display height of the ball: game heights (0-34 at the rim) stretched above the waist, so the rim sits over the
+ * players' heads and shots arc. Low heights (dribbles, passes, the ball in hand) stay as they are. */
+const RIM_HEIGHT=70;
+const ballHeight=(z:number)=>z<=28?z:z<=34?28+(z-28)*7:z<=42?RIM_HEIGHT+(z-34)*4:RIM_HEIGHT+32+(z-42)*1.5;
+/** The basket from the side, like the players: padded stanchion base in the home colour behind the baseline, steel
+ * post and arm, the glass seen edge-on, an orange rim and a pixel net that swishes on a make. */
+function Hoop({x,net,rim,pad}:{x:number;net:number;rim:number;pad:string}){
+ const left=x<500,shake=rim*Math.sin(rim*20)*2,drop=net*6,sway=net*2.5,R=-RIM_HEIGHT;
+ const padLight=shade(pad,.25),padDark=shade(pad,-.35);
+ const strands=[-9,-5,0,5,9];
+ return <g transform={`translate(${x},310) scale(${left?1:-1},1)`} shapeRendering="crispEdges">
+  <ellipse cx="-44" cy="6" rx="26" ry="6" fill="#1a120c" opacity=".3"/>
+  {/* padded base */}
+  <rect x="-64" y="-28" width="30" height="34" fill="#0a111c"/>
+  <rect x="-62" y="-26" width="26" height="30" fill={pad}/><rect x="-62" y="-26" width="26" height="4" fill={padLight}/>
+  <rect x="-54" y="-22" width="2" height="26" fill={padDark}/><rect x="-44" y="-22" width="2" height="26" fill={padDark}/><rect x="-62" y="0" width="26" height="4" fill={padDark}/>
+  {/* post, arm and brace */}
+  <rect x="-54" y={R-34} width="8" height={RIM_HEIGHT+10} fill="#0a111c"/><rect x="-52" y={R-32} width="5" height={RIM_HEIGHT+8} fill="#3a4b63"/><rect x="-52" y={R-32} width="2" height={RIM_HEIGHT+8} fill="#566a86"/>
+  <path d={`M-54 ${R-36}H-14V${R-28}H-44L-54 ${R-22}Z`} fill="#0a111c"/><path d={`M-52 ${R-34}H-16V${R-30}H-45L-52 ${R-25}Z`} fill="#3a4b63"/>
+  <path d={`M-47 ${R+4}L-20 ${R-27}`} stroke="#0a111c" strokeWidth="4"/><path d={`M-47 ${R+4}L-20 ${R-27}`} stroke="#566a86" strokeWidth="2"/>
+  <g transform={`translate(0,${shake.toFixed(2)})`}>
+   {/* backboard edge-on, padded along the bottom */}
+   <rect x="-19" y={R-40} width="8" height="48" fill="#0a111c"/><rect x="-17" y={R-38} width="4" height="44" fill="#d9ebff"/><rect x="-17" y={R-38} width="1" height="44" fill="#ffffff"/>
+   <rect x="-20" y={R+4} width="10" height="5" fill={pad} stroke="#0a111c"/>
+   {/* rim and bracket */}
+   <rect x="-13" y={R-2} width="4" height="4" fill="#0a111c"/>
+   <ellipse cx="0" cy={R} rx="10.5" ry="3.4" fill="none" stroke="#0a111c" strokeWidth="4.5"/>
+   {/* net: strands and diamond mesh, stretched on a swish */}
+   <g stroke="#f4f0e6" strokeWidth="1.3" fill="none" shapeRendering="auto">
+    {strands.map((v,i)=><path key={i} d={`M${v} ${R+2}L${(v*.62+sway*(i%2?1:-1)).toFixed(1)} ${R+18+drop}`}/>)}
+    {[0,1,2].map(k=>{const y=R+5+k*5+drop*(k/3),w=9-k*1.3;return <path key={k} d={`M${-w} ${y}L${-w/2} ${y+4}L0 ${y}L${w/2} ${y+4}L${w} ${y}`} opacity=".85"/>;})}
+   </g>
+   <ellipse cx="0" cy={R} rx="10.5" ry="3.4" fill="none" stroke="#f2601f" strokeWidth="2.4"/>
+   <path d={`M-10 ${R+1}Q0 ${R+4.6} 10 ${R+1}`} fill="none" stroke="#ff9a52" strokeWidth="1.2" shapeRendering="auto"/>
   </g>
  </g>;
 }
 const lastName=(id:string)=>{const parts=id.split(/[\s-]+/);return (parts[parts.length-1]||id).toUpperCase().slice(0,10);};
-function Athlete({actor,player,identity,ring,hot,carrier,labels,above,id}:{actor:CourtActor;player?:PlayerSeason;identity:TeamIdentity;ring:string;hot:boolean;carrier:boolean;labels:boolean;above:boolean;id:string}){
- const skin=playerTraits(actor.id).skin,pose=actor.pose,stride=actor.stride*5;
- const scale=1.18*Math.max(.9,Math.min(1.1,(player?.attributes.physical.heightInches??79)/79));
- const crouch=pose==='guard'?3:pose==='screen'?1:0,clip=`${id}-body`;
- // Arms: [shoulder, elbow, hand] per side, as simple pixel segments.
- const arm=(side:number):string=>{
-  const s=`${side*10} -26`;
-  if(pose==='shoot'||pose==='reach')return `M${s}L${side*12} -38L${side*7} -48`;
-  if(pose==='rebound')return `M${s}L${side*9} -40L${side*8} -54`;
-  if(pose==='pass')return `M${s}L${side*4+actor.facing*12} -24L${side*3+actor.facing*21} -25`;
-  if(pose==='celebrate')return `M${s}L${side*16} -36L${side*20} -48`;
-  if(pose==='guard')return `M${s}L${side*20} -24L${side*25} -30`;
-  if(pose==='screen')return `M${s}L${side*6} -20L${side*2} -16`;
-  if(pose==='dribble'&&side===actor.facing)return `M${s}L${side*15} -18L${side*16} -10`;
-  return `M${s}L${side*17} ${-23+stride*side*.4}L${side*19} ${-19+stride*side*.5}`;
- };
- const legSpread=pose==='guard'?11:7;
- return <g className="court-player" data-player-id={actor.id} data-pose={pose} transform={`translate(${actor.x.toFixed(2)},${actor.y.toFixed(2)})`}>
-  <ellipse rx={15-actor.jump*.06} ry="5" fill="#2f231c" opacity={.3-actor.jump*.004}/>
+function Athlete({actor,player,identity,ring,hot,carrier,labels,above,ballZ,hoopX}:{actor:CourtActor;player?:PlayerSeason;identity:TeamIdentity;ring:string;hot:boolean;carrier:boolean;labels:boolean;above:boolean;ballZ:number;hoopX:number}){
+ const scale=1.15*Math.max(.9,Math.min(1.1,(player?.attributes.physical.heightInches??79)/79));
+ const moving=actor.stride!==0&&actor.pose!=='guard';
+ const {id:frameId,pose}=useMemo(()=>pickFrame({pose:actor.pose,anim:actor.anim,cycle:actor.cycle,carrier,moving,ballZ}),[actor.pose,actor.anim,actor.cycle,carrier,moving,ballZ]);
+ const paths=actionSprite(frameId,pose,{playerId:actor.id,primary:identity.primary,secondary:identity.secondary,jerseyNumber:player?.jerseyNumber});
+ // On the dunk the body is drawn so the hands meet the rim, whatever the jump.
+ const handTop=-Math.min(pose.nH[1],pose.fH[1])*scale;
+ const lift=actor.anim?.kind==='dunk'&&(frameId==='K2'||frameId==='K3')?Math.min(actor.jump,Math.max(0,RIM_HEIGHT-handTop+4)):actor.jump;
+ const top=-(-pose.head[1]+7)*scale-lift;
+ // On the slam and the hang the dunker (shadow and all) is drawn within reach of the rim.
+ const gap=hoopX-actor.x,toRim=(frameId==='K2'||frameId==='K3')&&Math.abs(gap)>12?Math.sign(gap)*(Math.abs(gap)-12):0;
+ return <g className="court-player" data-player-id={actor.id} data-pose={actor.pose} data-frame={frameId} transform={`translate(${(actor.x+toRim).toFixed(2)},${actor.y.toFixed(2)})`}>
+  <ellipse rx={15-lift*.06} ry="5" fill="#2f231c" opacity={.3-lift*.004}/>
   <ellipse rx="14" ry="4.5" fill="none" stroke={ring} strokeWidth="2" opacity=".75"/>
   {carrier&&<ellipse rx="19" ry="7" fill="none" stroke="#fff3a5" strokeWidth="2" opacity=".9"/>}
-  <g transform={`translate(0,${-actor.jump+crouch}) scale(${scale})`} shapeRendering="crispEdges">
-   <defs><clipPath id={clip}><rect x="0" y="0" width="40" height="24"/><rect x="12" y="24" width="16" height="16"/></clipPath></defs>
-   {[-1,1].map(side=><g key={side}>
-    <path d={`M${side*7} -14L${side*legSpread+stride*side} -5V0`} stroke="#080d19" strokeWidth="8" fill="none"/>
-    <path d={`M${side*7} -14L${side*legSpread+stride*side} -5`} stroke={skin} strokeWidth="5"/>
-    <path d={`M${side*legSpread+stride*side-3} -1H${side*legSpread+stride*side+5}`} stroke="#f5e8cc" strokeWidth="4"/>
-    <path d={arm(side)} fill="none" stroke="#080d19" strokeWidth="7"/>
-    <path d={arm(side)} fill="none" stroke={skin} strokeWidth="4"/>
-   </g>)}
-   {/* Shorts in the kit colour with a side stripe */}
-   <path d="M-10 -19H10V-11H2V-13H-2V-11H-10Z" fill={identity.primary} stroke="#080d19" strokeWidth="1.5" paintOrder="stroke"/>
-   <path d="M-10 -19V-11M10 -19V-11" stroke={identity.secondary} strokeWidth="2"/>
-   <g transform={`translate(-20,${-50+Math.abs(actor.stride)*1.5})`}><g clipPath={`url(#${clip})`}><PlayerAvatar playerId={actor.id} teamId={actor.teamId} size={40} jerseyNumber={player?.jerseyNumber} age={player?.age} primaryColor={identity.primary} secondaryColor={identity.secondary} jerseyStyle={identity.jerseyStyle}/></g></g>
-   {hot&&<path d="M-11 -54L-5 -66L0 -58L5 -70L12 -54Z" fill="#ffb347"/>}
+  <g transform={`translate(0,${(-lift).toFixed(2)}) scale(${(actor.facing<0?-scale:scale).toFixed(3)},${scale.toFixed(3)}) translate(${-ORIGIN_X},${-ORIGIN_Y})`} shapeRendering="crispEdges">
+   {paths.map(({fill,d})=><path key={fill} fill={fill} d={d}/>)}
   </g>
+  {hot&&<g transform={`translate(-7,${(top-12).toFixed(1)})`} shapeRendering="crispEdges"><path d="M4 0h2v2h2v2h2v4h2v4h-2v2H2v-2H0V8h2V4h2z" fill="#f47b20"/><path d="M5 5h2v2h2v4H3V7h2z" fill="#ffd166"/></g>}
   {labels&&<g transform="translate(0,19)" opacity={above?.8:1}>
    <text textAnchor="middle" fill="#fff7e4" stroke="#152031" strokeWidth="3" paintOrder="stroke" fontFamily="monospace" fontSize="9.5" fontWeight="bold">{player?.jerseyNumber!=null?`${player.jerseyNumber} `:''}{lastName(actor.id)}</text>
   </g>}
@@ -237,7 +242,7 @@ function Athlete({actor,player,identity,ring,hot,carrier,labels,above,id}:{actor
 }
 function Ball({ball}:{ball:CourtBall}){
  const size=1+Math.min(.45,ball.z*.006);
- return <g data-testid="court-ball" data-height={ball.z.toFixed(2)} transform={`translate(${ball.x.toFixed(2)},${(ball.y-ball.z).toFixed(2)}) scale(${size.toFixed(3)})`}>
+ return <g data-testid="court-ball" data-height={ball.z.toFixed(2)} transform={`translate(${ball.x.toFixed(2)},${(ball.y-ballHeight(ball.z)).toFixed(2)}) scale(${size.toFixed(3)})`}>
   <g transform={`rotate(${ball.spin.toFixed(1)})`}><path d="M-4 -7H4L7 -4V4L4 7H-4L-7 4V-4Z" fill="#f99b3d" stroke="#65351c" strokeWidth="1.5"/><path d="M0 -7V7M-7 0H7M-4 -6Q2 0-4 6" fill="none" stroke="#7b4020" strokeWidth="1.2"/><path d="M-3 -5H1" stroke="#ffce7f" strokeWidth="2"/></g>
  </g>;
 }
@@ -249,7 +254,7 @@ function ShotChart({shots,home,homeColor,awayColor}:{shots:CourtShot[];home:stri
 function Burst({x,y,t,color}:{x:number;y:number;t:number;color:string}){
  if(t<=0||t>=1)return null;
  const r=10+t*34,o=1-t;
- return <g transform={`translate(${x},${y-33})`} opacity={o} shapeRendering="crispEdges">{Array.from({length:10},(_,i)=>{const a=i/10*Math.PI*2;return <rect key={i} x={Math.cos(a)*r-2} y={Math.sin(a)*r*.7-2} width="4" height="4" fill={i%2?color:'#fff3c4'}/>;})}</g>;
+ return <g transform={`translate(${x},${y-RIM_HEIGHT})`} opacity={o} shapeRendering="crispEdges">{Array.from({length:10},(_,i)=>{const a=i/10*Math.PI*2;return <rect key={i} x={Math.cos(a)*r-2} y={Math.sin(a)*r*.7-2} width="4" height="4" fill={i%2?color:'#fff3c4'}/>;})}</g>;
 }
 function Callout({text,x,y,t,tone}:{text:string;x:number;y:number;t:number;tone:'make'|'defense'|'neutral'}){
  if(t<=0||t>=1)return null;
@@ -299,17 +304,17 @@ export function WatchCourt({frame,home,away,rosters,hotId,labels=true,trail=fals
  const homeMoment=frame.callout?.tone==='make'&&frame.offenseTeamId===home.teamId?Math.sin(frame.callout.t*Math.PI):frame.callout?.tone==='defense'&&frame.offenseTeamId===away.teamId?Math.sin(frame.callout.t*Math.PI)*.7:0;
  const hype=Math.round(homeMoment*6)/6;
  const flash=frame.net>0?frame.net:0;
- const athlete=(a:CourtActor)=>{const homeSide=a.teamId===home.teamId;return <Athlete key={a.id} id={`${id}-${frame.players.indexOf(a)}`} actor={a} player={rosters.find(p=>p.playerId===a.id)} identity={homeSide?hi:awayKit} ring={homeSide?hi.primary:ai.primary} hot={a.id===hotId} carrier={a.id===frame.carrier} labels={labels&&(a.teamId===frame.offenseTeamId||!frame.offenseTeamId||a.id===frame.carrier)} above={a.teamId!==frame.offenseTeamId&&!!frame.offenseTeamId}/>;};
+ const athlete=(a:CourtActor)=>{const homeSide=a.teamId===home.teamId;return <Athlete key={a.id} ballZ={ball.z} hoopX={frame.hoop.x} actor={a} player={rosters.find(p=>p.playerId===a.id)} identity={homeSide?hi:awayKit} ring={homeSide?hi.primary:ai.primary} hot={a.id===hotId} carrier={a.id===frame.carrier} labels={labels&&(a.teamId===frame.offenseTeamId||!frame.offenseTeamId||a.id===frame.carrier)} above={a.teamId!==frame.offenseTeamId&&!!frame.offenseTeamId}/>;};
  return <div className="watch-arena"><svg className="watch-court" viewBox={cameraBox(frame,camera)} role="img" aria-label={`${home.name} home court. ${frame.phase}.`}>
   <Arena home={home} away={away} identity={hi} awayKit={awayKit} id={id} hype={hype} homeBench={homeBench} awayBench={awayBench} fill={crowdFill}/>
   <Photographers flash={flash}/>
   <Referee x={Math.max(180,Math.min(820,300+ball.x*.4))} y={82} facing={ball.x>500?1:-1}/>
   <Referee x={Math.max(180,Math.min(820,700-(1000-ball.x)*.35))} y={556} facing={ball.x>500?1:-1}/>
   {shots.length>0&&<ShotChart shots={shots} home={home.teamId} homeColor={hi.primary} awayColor={ai.primary==='#f2e8d2'?'#94a0b2':ai.primary}/>}
-  {trail&&ghosts.map((g,i)=><ellipse key={i} cx={g.x} cy={g.y-g.z} rx={5-i*.8} ry={5-i*.8} fill="#ffcf8a" opacity={.4-i*.08}/>)}
+  {trail&&ghosts.map((g,i)=><ellipse key={i} cx={g.x} cy={g.y-ballHeight(g.z)} rx={5-i*.8} ry={5-i*.8} fill="#ffcf8a" opacity={.4-i*.08}/>)}
   <ellipse cx={ball.x} cy={ball.y} rx={Math.max(3,7-ball.z*.025)} ry="2.5" fill="#3e2919" opacity={Math.max(.08,.3-ball.z*.002)}/>
   {players.filter(a=>a.y<310).map(athlete)}
-  <Hoop x={100} net={frame.hoop.x===100?frame.net:0} rim={frame.hoop.x===100?frame.rim??0:0}/><Hoop x={900} net={frame.hoop.x===900?frame.net:0} rim={frame.hoop.x===900?frame.rim??0:0}/>
+  <Hoop x={100} pad={hi.primary} net={frame.hoop.x===100?frame.net:0} rim={frame.hoop.x===100?frame.rim??0:0}/><Hoop x={900} pad={hi.primary} net={frame.hoop.x===900?frame.net:0} rim={frame.hoop.x===900?frame.rim??0:0}/>
   {players.filter(a=>a.y>=310).map(athlete)}
   <Ball ball={ball}/>
   {frame.callout?.tone==='make'&&<Burst x={frame.hoop.x} y={frame.hoop.y} t={frame.callout.t} color={frame.offenseTeamId===home.teamId?hi.primary:ai.primary}/>}

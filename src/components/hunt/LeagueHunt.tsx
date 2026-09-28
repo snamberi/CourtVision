@@ -61,7 +61,7 @@ export function LeagueHunt({ onExit }: { onExit: () => void }) {
     <div className="hunt-title"><span className="pixel-eyebrow">A RUN THROUGH BASKETBALL HISTORY</span><h1>League Hunt</h1></div>
     {shown && shown.stage !== 'won' && shown.stage !== 'lost' && shown.stage !== 'draft' && <div className="hunt-purse"><span className="hunt-coins" title="Coins">{shown.coins} coins</span>
       {shown.items.map(i => <span key={i} className="hunt-item-chip" title={ITEMS[i].blurb}>{ITEMS[i].name}</span>)}</div>}
-    {shown && shown.stage !== 'won' && shown.stage !== 'lost' && <div className="hunt-lives" aria-label={`${shown.lives} lives left`}>{Array.from({ length: maxLives(shown) }, (_, i) => <span key={i} className={i < shown.lives ? 'on' : ''}>♥</span>)}</div>}
+    {shown && shown.stage !== 'won' && shown.stage !== 'lost' && <div className="hunt-lives" aria-label={`${shown.lives} lives left`}>{Array.from({ length: maxLives(shown) }, (_, i) => <span key={i} className={i < shown.lives ? 'on' : ''}><PixelIcon name="heart" size={18} /></span>)}</div>}
   </header>;
 
   if (error) return <div className="hunt">{header}<p className="empty-state">Could not load the NBA history data: {error}</p></div>;
@@ -332,7 +332,7 @@ function Shop({ h, run, onRun }: { h: NbaHistory; run: HuntRun; onRun: (r: HuntR
       {coach && <button className="hunt-item" disabled={shop.sold.includes(coach.id) || run.coins < coachPrice(coach)} onClick={() => onRun(buyCoach(run))}><b>Coach {coach.name} ({coach.bonus > 0 ? '+' : ''}{coach.bonus})</b><span>{COACH_STYLE[coach.style]}. Replaces {run.coach ? COACH_BY_ID.get(run.coach)!.name : 'your coach'}.</span><small>{shop.sold.includes(coach.id) ? 'Hired' : `${coachPrice(coach)} coins`}</small></button>}
       {shop.items.map(i => { const it = ITEMS[i], sold = shop.sold.includes(i); return <button key={i} className="hunt-item" disabled={sold || run.coins < it.price || run.items.length >= MAX_ITEMS} onClick={() => onRun(buyItem(run, i))}>
         <b>{it.name}</b><span>{it.blurb}</span><small>{sold ? 'Bought' : `${it.price} coins`}</small></button>; })}
-      {canBuyLife(run) && <button className="hunt-item" disabled={!!shop.lifeBought || run.lives >= maxLives(run) || run.coins < LIFE_PRICE} onClick={() => onRun(buyLife(run))}><b>♥ A life</b><span>Get back one lost life (once per shop).</span><small>{shop.lifeBought ? 'Bought' : `${LIFE_PRICE} coins`}</small></button>}
+      {canBuyLife(run) && <button className="hunt-item" disabled={!!shop.lifeBought || run.lives >= maxLives(run) || run.coins < LIFE_PRICE} onClick={() => onRun(buyLife(run))}><b><PixelIcon name="heart" size={14} /> A life</b><span>Get back one lost life (once per shop).</span><small>{shop.lifeBought ? 'Bought' : `${LIFE_PRICE} coins`}</small></button>}
     </div>
     <h3 className="hunt-subhead">Training <small>(+{TRAIN_STEP} for one player, up to +{MAX_TRAINING}; {TRAIN_PRICE} coins)</small></h3>
     <div className="hunt-replace">{run.squad.map((id, i) => { const c = pool.byId.get(id)!, t = run.training[id] ?? 0; return <button key={id} disabled={t >= MAX_TRAINING || run.coins < TRAIN_PRICE} onClick={() => onRun(train(h, run, id))}>{slotName(i).toUpperCase()} {c.ovr} {c.name}{t ? <small> (+{t})</small> : null}</button>; })}</div>

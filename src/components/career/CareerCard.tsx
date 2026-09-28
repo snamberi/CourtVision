@@ -32,7 +32,7 @@ export function CareerCard({ meta, overall, age, teamName, prime }: { meta: Care
     r.titles && { k: 'ring', t: `${r.titles}× Champion`, s: `${r.titles}× RING${r.titles === 1 ? '' : 'S'}` },
     r.mvp && { k: 'mvp', t: `${r.mvp}× MVP`, s: 'MVP' },
     r.fmvp && { k: 'fmvp', t: `${r.fmvp}× Finals MVP`, s: 'FMVP' },
-    r.allStar && { k: 'star', t: `${r.allStar}× All-Star`, s: `${r.allStar}★` },
+    r.allStar && { k: 'star', t: `${r.allStar}× All-Star`, s: `${r.allStar}× AS` },
     r.dpoy && { k: 'dpoy', t: `${r.dpoy}× Defensive Player of the Year`, s: 'DPOY' },
     r.roy && { k: 'roy', t: 'Rookie of the Year', s: 'ROY' },
   ].filter(Boolean) as { k: string; t: string; s: string }[];

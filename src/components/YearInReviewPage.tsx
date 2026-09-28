@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { PixelIcon } from './PixelIcon';
 import type { League } from '../simulation/league';
 import type { GMLeagueExtras } from '../simulation/gm';
 import { buildYearInReview } from '../simulation/yearInReview';
@@ -56,7 +57,7 @@ export function YearInReviewPage({ league, extras, controlledTeamId, awardOption
         <h1>{review.teamName}</h1>
         <p className="yir-record">{review.wins}-{review.losses}</p>
         <p className="yir-finish">{review.finish === 'Champion' ? 'CHAMPIONS' : review.finish.toUpperCase()}</p>
-        <button className="primary yir-reel-btn" onClick={() => setReelOpen(true)}>▶ Watch the 20-second reel</button>
+        <button className="primary yir-reel-btn" onClick={() => setReelOpen(true)}><PixelIcon name="play" size={14} /> Watch the 20-second reel</button>
         <p className="hint-text">Use the arrows (or ← →) to step through the season.</p>
       </div>}
       {chapter === 1 && <div className="yir-story">
@@ -101,7 +102,7 @@ export function YearInReviewPage({ league, extras, controlledTeamId, awardOption
     <div className="yir-controls">
       <button disabled={chapter === 0} onClick={() => setChapter(c => c - 1)}>◀ Back</button>
       <span className="yir-progress"><i style={{ width: `${((chapter + 1) / CHAPTERS.length) * 100}%` }} /></span>
-      {last ? <button className="primary" onClick={onOpenAwards}>On to the awards ▶</button> : <button className="primary" onClick={() => setChapter(c => c + 1)}>Next ▶</button>}
+      {last ? <button className="primary" onClick={onOpenAwards}>On to the awards <PixelIcon name="play" size={14} /></button> : <button className="primary" onClick={() => setChapter(c => c + 1)}>Next <PixelIcon name="play" size={14} /></button>}
     </div>
   </div>;
 }

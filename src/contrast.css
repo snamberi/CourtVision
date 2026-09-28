@@ -485,3 +485,5 @@ html.lite *, html.lite *::before, html.lite *::after { backdrop-filter: none !im
 .form-cell svg { image-rendering: pixelated; }
 .fc-bar { fill: var(--c-bg-4da3ff, #4da3ff); } .fc-last { fill: var(--c-bg-f47b20, #f47b20); } .fc-dnp { fill: var(--c-bg-4a5568, #4a5568); }
 .fc-heat { font-size: 12px; line-height: 1; } .fc-heat.cold { color: var(--c-fg-8fd3ff, #8fd3ff); }
+.fc-heat.hot { color: var(--c-fg-f47b20, #f47b20); }
+.pixel-icon { vertical-align: -3px; }
