@@ -4,6 +4,7 @@ import { waiveToFreeAgency, computeTradeValue, computeAskingSalary, teamPayroll 
 import { signFreeAgentChecked, signingDecision } from './freeAgentDecision';
 import { primaryPosition } from './teamStatus';
 import { calculateOverall } from './engine/overall';
+import { isStuck } from './sticky';
 
 export const ROSTER_LIMITS = { minRosterSize: 10, maxRosterSize: 18 };
 
@@ -23,8 +24,13 @@ export function manageCoachRosters(league: League, extras: GMLeagueExtras) {
     while (team.seasons.length > max) {
       const depth = (pos: ReturnType<typeof primaryPosition>) => team.seasons.filter(s => primaryPosition(s) === pos).length;
       const retain = (p: typeof team.seasons[number]) => computeTradeValue(p) + (depth(primaryPosition(p)) <= 2 ? 25 : 0);
-      const cut = [...team.seasons].sort((a, b) => retain(a) - retain(b) || a.playerId.localeCompare(b.playerId))[0];
-      current = waiveToFreeAgency(current.league, current.extras, cut.playerId, team.teamId);
+      // Stuck players (Sandbox) can't be waived: cut from everyone else, and stop if no one can go (an unwaivable
+      // pick used to leave this loop spinning forever, freezing Auto Play).
+      const cut = team.seasons.filter(p => !isStuck(p)).sort((a, b) => retain(a) - retain(b) || a.playerId.localeCompare(b.playerId))[0];
+      if (!cut) break;
+      const waived = waiveToFreeAgency(current.league, current.extras, cut.playerId, team.teamId);
+      if (waived.league === current.league) break;
+      current = waived;
       moves.push({ teamId: team.teamId, playerId: cut.playerId, kind: 'waived' });
       team = current.league.teams.find(t => t.teamId === original.teamId)!;
     }
