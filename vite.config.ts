@@ -38,7 +38,7 @@ const serviceWorker = (): Plugin => ({
 
 /**
  * robots.txt and sitemap.xml for the web build: the game plus the crawlable guide pages (see scripts/generate-site-pages.mjs).
- * The sitemap needs the site's address: SITE_URL, or the production address Vercel provides at build time.
+ * The sitemap needs the site's address: SITE_URL (set it on Cloudflare), or the production address Vercel provides at build time.
  */
 const siteMaps = (): Plugin => ({
   name: 'site-maps',
@@ -60,6 +60,8 @@ const siteHost = (process.env.SITE_URL || (process.env.VERCEL_PROJECT_PRODUCTION
 export default defineConfig(({ mode }) => ({
   define: mode === 'desktop' ? {} : {
     'import.meta.env.VITE_SITE_HOST': JSON.stringify(siteHost),
+    // Which host built this (Vercel sets VERCEL, Cloudflare Pages sets CF_PAGES): Vercel's own analytics only runs there.
+    'import.meta.env.VITE_HOST_PLATFORM': JSON.stringify(process.env.VERCEL ? 'vercel' : process.env.CF_PAGES ? 'cloudflare' : ''),
     // Accounts: the Supabase address and public key (safe to ship; row level security guards the data).
     'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || ''),
     'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || ''),
