@@ -15,5 +15,8 @@
   },
   // Keep the Variables set in the dashboard when deploying (secrets are always kept).
   "keep_vars": true,
+  // Preview builds (branches other than main) run `npx wrangler preview`, which needs this block; it can stay
+  // empty: assets and compatibility settings above apply to Previews too. Production must run `npx wrangler deploy`.
+  "previews": {},
   "observability": { "enabled": true }
 }
