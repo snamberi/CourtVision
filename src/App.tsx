@@ -52,6 +52,7 @@ import { PrivacyPolicyPage, PrivacyLink } from './components/PrivacyPolicyPage';
 import { ConsentBanner, CookieSettingsLink } from './consent/ConsentBanner';
 import { AD_CONFIG } from './ads/adConfig';
 import { loadGoogleConsentTool } from './ads/adsense';
+import { hasEntitlement } from './profile/cosmetics';
 import { IS_DESKTOP_BUILD } from './appMode';
 import { MainMenu, type GameMode, type RealLeagueOptions } from './components/MainMenu';
 import { ChooseTeamScreen } from './components/ChooseTeamScreen';
@@ -1239,7 +1240,7 @@ function App() {
   // Google's own certified consent tool (opt-in via AD_CONFIG.googleCmp) needs its script present on every
   // page, not just where ads render, since it decides consent before any ad slot mounts.
   useEffect(() => {
-    if (!IS_DESKTOP_BUILD && AD_CONFIG.googleCmp && AD_CONFIG.enabled && AD_CONFIG.adsenseClient) loadGoogleConsentTool(AD_CONFIG.adsenseClient);
+    if (!IS_DESKTOP_BUILD && AD_CONFIG.googleCmp && AD_CONFIG.enabled && AD_CONFIG.adsenseClient && !hasEntitlement('noAds')) loadGoogleConsentTool(AD_CONFIG.adsenseClient);
   }, []);
 
   if (restoring) return <main role="status" className="navigation-loading">Opening your league…</main>;

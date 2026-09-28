@@ -2363,6 +2363,527 @@ function dailyGoalXp(read = localRead) {
 	}
 }
 //#endregion
+//#region src/profile/cosmetics.ts
+/** Every 5 levels, one or two rewards (levels 5 to 250). */
+const LEVEL_ROAD = [
+	[
+		5,
+		"icon",
+		"sneaker"
+	],
+	[
+		5,
+		"color",
+		"orange"
+	],
+	[
+		10,
+		"title",
+		"Scout"
+	],
+	[
+		10,
+		"floor",
+		"planks"
+	],
+	[
+		15,
+		"icon",
+		"whistle"
+	],
+	[
+		15,
+		"color",
+		"red"
+	],
+	[
+		20,
+		"title",
+		"Assistant GM"
+	],
+	[
+		20,
+		"frame",
+		"gold"
+	],
+	[
+		25,
+		"icon",
+		"jersey-red"
+	],
+	[
+		25,
+		"color",
+		"sky"
+	],
+	[
+		30,
+		"floor",
+		"parquet"
+	],
+	[
+		30,
+		"icon",
+		"ball-classic"
+	],
+	[
+		35,
+		"title",
+		"Floor General"
+	],
+	[
+		35,
+		"color",
+		"pink"
+	],
+	[
+		40,
+		"icon",
+		"clipboard"
+	],
+	[
+		40,
+		"frame",
+		"hardwood"
+	],
+	[
+		45,
+		"color",
+		"mint"
+	],
+	[
+		45,
+		"icon",
+		"jersey-blue"
+	],
+	[
+		50,
+		"title",
+		"Executive"
+	],
+	[
+		50,
+		"icon",
+		"star"
+	],
+	[
+		55,
+		"color",
+		"teal"
+	],
+	[
+		55,
+		"icon",
+		"sneaker-red"
+	],
+	[
+		60,
+		"floor",
+		"blonde"
+	],
+	[
+		60,
+		"icon",
+		"lightning"
+	],
+	[
+		65,
+		"title",
+		"Draft Guru"
+	],
+	[
+		65,
+		"color",
+		"lime"
+	],
+	[
+		70,
+		"icon",
+		"jersey-green"
+	],
+	[
+		70,
+		"frame",
+		"neon"
+	],
+	[
+		75,
+		"color",
+		"violet"
+	],
+	[
+		75,
+		"icon",
+		"flame"
+	],
+	[
+		80,
+		"title",
+		"Architect"
+	],
+	[
+		80,
+		"icon",
+		"shotclock"
+	],
+	[
+		85,
+		"color",
+		"silver"
+	],
+	[
+		85,
+		"icon",
+		"sneaker-blue"
+	],
+	[
+		90,
+		"floor",
+		"midnight"
+	],
+	[
+		90,
+		"icon",
+		"jersey-purple"
+	],
+	[
+		95,
+		"title",
+		"Trade Machine"
+	],
+	[
+		95,
+		"color",
+		"bronze"
+	],
+	[
+		100,
+		"icon",
+		"trophy"
+	],
+	[
+		100,
+		"frame",
+		"banner"
+	],
+	[
+		100,
+		"title",
+		"Dynasty Builder"
+	],
+	[
+		105,
+		"color",
+		"sand"
+	],
+	[
+		105,
+		"icon",
+		"headband"
+	],
+	[
+		110,
+		"icon",
+		"jersey-teal"
+	],
+	[
+		110,
+		"title",
+		"Cap Wizard"
+	],
+	[
+		115,
+		"color",
+		"coral"
+	],
+	[
+		115,
+		"icon",
+		"ball-aba"
+	],
+	[
+		120,
+		"icon",
+		"rocket"
+	],
+	[
+		120,
+		"floor",
+		"asphalt"
+	],
+	[
+		125,
+		"title",
+		"Basketball Mind"
+	],
+	[
+		125,
+		"color",
+		"gold"
+	],
+	[
+		130,
+		"icon",
+		"jersey-black"
+	],
+	[
+		130,
+		"color",
+		"lavender"
+	],
+	[
+		135,
+		"title",
+		"Tactician"
+	],
+	[
+		135,
+		"icon",
+		"shield"
+	],
+	[
+		140,
+		"icon",
+		"sneaker-gold"
+	],
+	[
+		140,
+		"color",
+		"crimson"
+	],
+	[
+		145,
+		"icon",
+		"megaphone"
+	],
+	[
+		145,
+		"title",
+		"Showrunner"
+	],
+	[
+		150,
+		"icon",
+		"crown"
+	],
+	[
+		150,
+		"frame",
+		"fire"
+	],
+	[
+		155,
+		"color",
+		"emerald"
+	],
+	[
+		155,
+		"icon",
+		"jersey-white"
+	],
+	[
+		160,
+		"title",
+		"Mastermind"
+	],
+	[
+		160,
+		"icon",
+		"sun"
+	],
+	[
+		165,
+		"icon",
+		"snowflake"
+	],
+	[
+		165,
+		"color",
+		"ice"
+	],
+	[
+		170,
+		"icon",
+		"ball-ice"
+	],
+	[
+		170,
+		"title",
+		"Hall of Fame Executive"
+	],
+	[
+		175,
+		"icon",
+		"moon"
+	],
+	[
+		175,
+		"color",
+		"platinum"
+	],
+	[
+		180,
+		"title",
+		"Commissioner"
+	],
+	[
+		180,
+		"icon",
+		"trophy-bronze"
+	],
+	[
+		185,
+		"icon",
+		"ball-neon"
+	],
+	[
+		190,
+		"icon",
+		"trophy-silver"
+	],
+	[
+		190,
+		"title",
+		"Hoops Historian"
+	],
+	[
+		195,
+		"title",
+		"Franchise Savior"
+	],
+	[
+		200,
+		"title",
+		"Legend"
+	],
+	[
+		200,
+		"icon",
+		"crown-ruby"
+	],
+	[
+		205,
+		"title",
+		"Kingmaker"
+	],
+	[
+		210,
+		"color",
+		"obsidian"
+	],
+	[
+		215,
+		"title",
+		"Visionary"
+	],
+	[
+		220,
+		"title",
+		"Dynasty Architect"
+	],
+	[
+		225,
+		"title",
+		"Living Legend"
+	],
+	[
+		230,
+		"title",
+		"Hall of Famer"
+	],
+	[
+		235,
+		"title",
+		"Icon"
+	],
+	[
+		240,
+		"title",
+		"Immortal"
+	],
+	[
+		245,
+		"title",
+		"Court Visionary"
+	],
+	[
+		250,
+		"title",
+		"GOAT GM"
+	],
+	[
+		250,
+		"color",
+		"inferno"
+	]
+];
+/** The level a road reward opens at (undefined when it isn't on the road). */
+const roadLevel = (kind, id) => LEVEL_ROAD.find(([, k, i]) => k === kind && i === id)?.[0];
+const byRoad = (kind, id, fallback = 1) => ({ level: roadLevel(kind, id) ?? fallback });
+const levelHow = (r) => "level" in r ? r.level <= 1 ? "Everyone" : `Level ${r.level}` : "";
+const icon = (id, name, base = id, recolor, rule = byRoad("icon", id)) => ({
+	id,
+	name,
+	base,
+	recolor,
+	rule,
+	how: levelHow(rule)
+});
+const jersey = (id, name, main, dark, trim = "#f4f0e6") => icon(id, name, "jersey", {
+	j: main,
+	J: dark,
+	w: trim
+});
+icon("ball", "Basketball", "ball", void 0, { level: 1 }), icon("hoop", "Hoop", "hoop", void 0, { level: 1 }), icon("sneaker", "Sneaker"), icon("whistle", "Whistle"), icon("clipboard", "Clipboard"), icon("star", "All-Star"), icon("flame", "Heater"), icon("trophy", "Trophy"), icon("crown", "Crown"), jersey("jersey-red", "Red jersey", "#e85d5d", "#a83232"), jersey("jersey-blue", "Blue jersey", "#4da3ff", "#2f6fb8"), jersey("jersey-green", "Green jersey", "#55c878", "#2f8a4f"), jersey("jersey-purple", "Purple jersey", "#b983ff", "#7e4fc9"), jersey("jersey-teal", "Teal jersey", "#3fc1c9", "#23828a"), jersey("jersey-black", "Black jersey", "#2a3546", "#121926"), jersey("jersey-white", "Home whites", "#f4f0e6", "#c9ced8", "#f47b20"), icon("ball-classic", "Leather ball", "ball", {
+	o: "#a0522d",
+	O: "#6b3515"
+}), icon("ball-aba", "ABA ball", "ball", {
+	o: "#e85d5d",
+	O: "#4da3ff"
+}), icon("ball-ice", "Ice ball", "ball", {
+	o: "#bfe6ff",
+	O: "#4da3ff"
+}), icon("ball-neon", "Neon ball", "ball", {
+	o: "#6fdc93",
+	O: "#ff4dd2"
+}), icon("sneaker-red", "Red sneaker", "sneaker", {
+	w: "#e85d5d",
+	o: "#f4f0e6"
+}), icon("sneaker-blue", "Blue sneaker", "sneaker", {
+	w: "#4da3ff",
+	o: "#f4f0e6"
+}), icon("sneaker-gold", "Gold sneaker", "sneaker", {
+	w: "#ffd166",
+	o: "#0b1018"
+}), icon("trophy-silver", "Silver trophy", "trophy", {
+	g: "#d7dde6",
+	G: "#94a0b2"
+}), icon("trophy-bronze", "Bronze trophy", "trophy", {
+	g: "#d08a4a",
+	G: "#8c5a2b"
+}), icon("crown-ruby", "Ruby crown", "crown", {
+	g: "#e85d5d",
+	G: "#a83232",
+	r: "#ffd166"
+}), icon("lightning", "Lightning"), icon("shotclock", "Shot clock"), icon("rocket", "Rocket"), icon("headband", "Headband"), icon("shield", "Shield"), icon("megaphone", "Megaphone"), icon("sun", "Sun"), icon("moon", "Moon"), icon("snowflake", "Snowflake"), { ...icon("diamond", "Diamond", "diamond", void 0, { rank: 4 }) }, { ...icon("ghost", "Ghost", "ghost", void 0, { mode: "pvp-1200" }) }, { ...icon("medal", "Medal", "medal", void 0, { anyHonor: true }) }, { ...icon("ball-gold", "Gold ball", "ball", {
+	o: "#ffd166",
+	O: "#c9971f"
+}, { supporter: true }) }, { ...icon("sneaker-black", "Blackout sneaker", "sneaker", {
+	w: "#2a3546",
+	o: "#ff9d3d",
+	O: "#f4f0e6"
+}, { supporter: true }) }, { ...jersey("jersey-gold", "Gold jersey", "#ffd166", "#c9971f", "#0b1018") }, { ...icon("heart", "Heart", "heart", void 0, { supporter: true }) };
+const color = (id, name, css, rule = byRoad("color", id)) => ({
+	id,
+	name,
+	css,
+	rule,
+	how: levelHow(rule)
+});
+color("cream", "Cream", "#f4f0e6", { level: 1 }), color("orange", "Court orange", "#ff9d3d"), color("red", "Red", "#ff6b6b"), color("sky", "Sky", "#6db8ff"), color("pink", "Pink", "#ff8fc8"), color("mint", "Mint", "#6fdc93"), color("teal", "Teal", "#4fd6d6"), color("lime", "Lime", "#b8e05a"), color("violet", "Violet", "#c79bff"), color("silver", "Silver", "#d7dde6"), color("bronze", "Bronze", "#d99a5c"), color("sand", "Sand", "#e6cf9a"), color("coral", "Coral", "#ff8a6b"), color("gold", "Gold", "#ffd166"), color("lavender", "Lavender", "#b8a8ff"), color("crimson", "Crimson", "#ff4d6a"), color("emerald", "Emerald", "#3fd98a"), color("ice", "Ice", "#bfe6ff"), color("platinum", "Platinum", "linear-gradient(90deg, #e8edf3, #9fb0c4, #e8edf3)"), color("obsidian", "Obsidian", "linear-gradient(90deg, #8a93a6, #f4f0e6, #8a93a6)"), color("inferno", "Inferno", "linear-gradient(90deg, #ff4d2e, #ff9d3d, #ffd166, #ff9d3d, #ff4d2e)"), { ...color("ember", "Ember", "#ff6b3d", { rank: 5 }) }, { ...color("prism", "Prism", "linear-gradient(90deg, #ff9d3d, #ffd166, #6fdc93, #6db8ff, #c79bff)", { honor: "first" }) }, { ...color("aurora", "Aurora", "linear-gradient(90deg, #6fdc93, #4fd6d6, #b8a8ff, #ff8fc8)", { supporter: true }) }, { ...color("supporter", "Supporter pink", "#ff5fa2", { supporter: true }) };
+/** Titles on the level road, in order (Rookie GM is everyone's first). */
+const ROAD_TITLES = ["Rookie GM", ...LEVEL_ROAD.filter(([, k]) => k === "title").map(([, , id]) => id)];
+//#endregion
 //#region src/profile/profile.ts
 const CAREER_KEY = "cv-profile-careers";
 /** The career summary behind XP and the Career achievements (the server builds the same one from synced careers). */
@@ -2464,20 +2985,29 @@ function xpParts(read = localRead) {
 	];
 }
 const totalXp = (parts = xpParts()) => parts.reduce((n, p) => n + p.xp, 0);
-/** XP needed to go from `level` to the next: 200, 300, 400… */
-const levelCost = (level) => 100 + 100 * level;
+/** XP needed to go from `level` to the next: 175, 200, 225… (the level road runs to 250; see cosmetics.ts). */
+const levelCost = (level) => 150 + 25 * level;
 function levelFor(xp) {
 	let level = 1, left = xp;
-	while (level < 50 && left >= levelCost(level)) {
+	while (level < 250 && left >= levelCost(level)) {
 		left -= levelCost(level);
 		level++;
 	}
 	return {
 		level,
 		into: left,
-		need: level >= 50 ? 0 : levelCost(level)
+		need: level >= 250 ? 0 : levelCost(level)
 	};
 }
+const road = (kind, id) => roadLevel(kind, id) ?? 1;
+road("frame", "gold"), road("frame", "hardwood"), road("frame", "neon"), road("frame", "banner"), road("frame", "fire");
+road("floor", "planks"), road("floor", "parquet"), road("floor", "blonde"), road("floor", "midnight"), road("floor", "asphalt");
+ROAD_TITLES.map((id) => ({
+	id,
+	name: id,
+	level: id === "Rookie GM" ? 1 : road("title", id),
+	blurb: ""
+}));
 //#endregion
 //#region src/profile/modeAchievements.ts
 const TIER_NAMES = [

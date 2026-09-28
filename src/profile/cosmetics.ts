@@ -157,7 +157,7 @@ export const MODE_TITLES: { mode: string; title: string; how: string }[] = [
 ];
 
 export const HONORS_KEY = 'cv-board-honors';
-/** Passes bought (written by the billing sync, see src/billing). */
+/** Passes bought (written from the account by src/billing/billing.ts). */
 export const ENTITLEMENTS_KEY = 'cv-entitlements';
 const json = <T>(read: Read, key: string, fallback: T): T => { try { return (JSON.parse(read(key) ?? 'null') as T) ?? fallback; } catch { return fallback; } };
 /** Leaderboard honors kept in this browser (granted by the server at sync). */
@@ -169,8 +169,10 @@ export function noteHonors(honors: unknown): void {
 }
 /** Whether this browser's account has an active pass (`noAds`, `supporter`). */
 export function hasEntitlement(kind: 'noAds' | 'supporter', read: Read = localRead): boolean {
-  const e = json<{ noAds?: boolean; supporter?: boolean }>(read, ENTITLEMENTS_KEY, {});
-  return kind === 'noAds' ? !!(e.noAds || e.supporter) : !!e.supporter;
+  const e = json<{ noAds?: boolean; supporter?: boolean; supporterUntil?: string | null }>(read, ENTITLEMENTS_KEY, {});
+  // A lapsed subscription ends on its date even before the game next hears from the server.
+  const supporter = !!e.supporter && (!e.supporterUntil || Date.parse(e.supporterUntil) > Date.now());
+  return kind === 'noAds' ? !!e.noAds || supporter : supporter;
 }
 
 export interface UnlockContext { level: number; rank: number; honors: string[]; modes: string[]; supporter: boolean }

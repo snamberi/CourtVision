@@ -4,6 +4,7 @@ import { noteFeat } from '../profile/feats';
 import { noteHonors } from '../profile/cosmetics';
 import { TIERS } from './ranked';
 import { IS_DESKTOP_BUILD } from '../appMode';
+import { loadEntitlements, writeEntitlements } from '../billing/billing';
 
 /*
  * Accounts (web only): sign in with Discord, Google or an email link through Supabase Auth. Signing in is optional;
@@ -51,7 +52,8 @@ export function supa(): Promise<SupabaseClient> {
 async function applySession(client: SupabaseClient, s: Session | null) {
   const before = session?.user.id;
   session = s;
-  if (!s) { setAccount({ status: 'signedOut', userId: null, email: null, provider: null, profile: null }); return; }
+  // Passes belong to the account: signed out, this browser forgets them (they come back on sign-in).
+  if (!s) { setAccount({ status: 'signedOut', userId: null, email: null, provider: null, profile: null }); if (before) writeEntitlements(null); return; }
   setAccount({ status: 'signedIn', userId: s.user.id, email: s.user.email ?? null, provider: (s.user.app_metadata?.provider as string | undefined) ?? null });
   if (before !== s.user.id || !state.profile) await refreshProfile(client);
   if (before !== s.user.id) window.dispatchEvent(new Event(SIGNED_IN_EVENT));
@@ -74,6 +76,7 @@ export async function refreshProfile(client?: SupabaseClient): Promise<CloudProf
     noteFeat('rankedTier', TIERS.findIndex(t => t.id === best), 'max');
   }
   setAccount({ profile });
+  await loadEntitlements(c, session.user.id).catch(() => null);
   return profile;
 }
 

@@ -48,3 +48,23 @@
 .road-floor.floor-midnight { background: repeating-linear-gradient(90deg, #4a3322 0 6px, #3b281a 6px 7px); }
 .road-floor.floor-asphalt { background: #3a3f47; }
 .road-check { position: absolute; top: 6px; right: 8px; color: #55c878; font-weight: 700; }
+
+/* Passes */
+.pass-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.pass-card { display: grid; grid-template-rows: auto 1fr auto; gap: 8px; padding: 12px 14px; background: #0b1018; border: 2px solid #2a3546; border-top: 3px solid #4da3ff; }
+.pass-card.supporter { border-top-color: #ff5fa2; }
+.pass-card.owned { border-color: #55c878; }
+.pass-card header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.pass-card header b { font: 20px 'Oswald', sans-serif; }
+.pass-card header span { font-size: 12px; color: #94a0b2; }
+.pass-card ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; align-content: start; }
+.pass-card li.pass-icons { list-style: none; margin-left: -18px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.pass-card li.pass-icons span { font-size: 12px; color: #94a0b2; }
+.pass-card footer { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.pass-status { color: #94a0b2; }
+.pass-status.ok { color: #55c878; }
+.pass-buy { display: inline-block; padding: 8px 14px; border: 2px solid #4a5b75; background: #192333; color: #f4f0e6; font: 600 14px 'Oswald', sans-serif; letter-spacing: .04em; text-decoration: none; box-shadow: 2px 2px 0 #03070d; }
+.pass-buy.primary { background: #f47b20; border-color: #ff9d3d; color: #0b1018; }
+.pass-buy:hover { border-color: #ff9d3d; }
+.pass-buy:focus-visible { outline: 2px solid #ff9d3d; outline-offset: 2px; }
+.pass-fine { font-size: 12px; }

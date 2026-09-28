@@ -23,7 +23,7 @@ export interface Backup {
 }
 export interface BackupSummary { leagues: number; careers: number; hunts: boolean; achievements: number; sizeKb: number }
 
-const KEEP = (key: string) => (key.startsWith('cv-') || key.startsWith('courtvision:')) && key !== 'courtvision:consent' && key !== 'courtvision:lastRoute' && key !== 'courtvision:lastActiveSaveId';
+const KEEP = (key: string) => (key.startsWith('cv-') || key.startsWith('courtvision:')) && key !== 'courtvision:consent' && key !== 'courtvision:lastRoute' && key !== 'courtvision:lastActiveSaveId' && key !== 'cv-entitlements'; // passes belong to the account, not the backup
 
 export async function buildBackup(): Promise<Backup> {
   const ls: Record<string, string> = {};

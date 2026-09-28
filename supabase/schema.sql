@@ -172,6 +172,20 @@ create table if not exists public.pvp_matches (
 );
 create index if not exists pvp_matches_challenger on public.pvp_matches (challenger, created_at desc);
 
+-- Passes bought through Lemon Squeezy (written only by /api/billing with the service key; see docs/BILLING_SETUP.md).
+create table if not exists public.entitlements (
+  user_id uuid primary key references auth.users on delete cascade,
+  no_ads boolean not null default false,
+  no_ads_order text,
+  supporter_until timestamptz,
+  supporter_status text,
+  subscription_id text,
+  subscription_updated_at timestamptz,
+  portal_url text,
+  customer_id text,
+  updated_at timestamptz not null default now()
+);
+
 -- ---------------------------------------------------------------- views for the boards
 
 create or replace view public.lb_users with (security_invoker = on) as
@@ -230,6 +244,7 @@ alter table public.follows enable row level security;
 alter table public.reports enable row level security;
 alter table public.hunt_ghosts enable row level security;
 alter table public.pvp_matches enable row level security;
+alter table public.entitlements enable row level security;
 
 do $$
 declare t text;
@@ -249,6 +264,11 @@ drop policy if exists "own profile" on public.profiles;
 create policy "own profile" on public.profiles for update using (auth.uid() = id) with check (auth.uid() = id);
 revoke update on public.profiles from anon, authenticated;
 grant update (username, title, frame, icon, color, updated_at) on public.profiles to authenticated;
+
+-- Passes: you may read your own row; nobody writes it but the billing webhook (service key).
+drop policy if exists "own entitlements" on public.entitlements;
+create policy "own entitlements" on public.entitlements for select using (auth.uid() = user_id);
+revoke insert, update, delete on public.entitlements from anon, authenticated;
 
 drop policy if exists "follow" on public.follows;
 create policy "follow" on public.follows for insert with check (auth.uid() = user_id);

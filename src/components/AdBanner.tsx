@@ -4,6 +4,8 @@ import { loadAdsenseScript } from '../ads/adsense';
 import { useConsent } from '../consent/consent';
 import { advertisingPermitted } from '../ads/adPolicy';
 import { mayRetryAd, noteAdRequest, noteAdRetry } from '../ads/adRetry';
+import { useEntitlements } from '../billing/billing';
+import { hasEntitlement } from '../profile/cosmetics';
 
 /** How long to wait for Google to mark a unit filled before trusting a rendered ad frame instead. */
 const FILL_FALLBACK_MS = 3000;
@@ -77,6 +79,8 @@ export function AdBanner({ slot, refreshKey }: { slot: AdSlot; refreshKey?: stri
   // Filler sponsors are for development only - a published site shows real ads or nothing.
   const sponsors = AD_CONFIG.sponsors.filter((sp) => !sp.placeholder || import.meta.env.DEV);
   const consent = useConsent();
+  useEntitlements(); // re-render when a pass arrives or ends
+  const noAds = hasEntitlement('noAds');
   const [unavailable, setUnavailable] = useState(false);
   const [filled, setFilled] = useState(false);
   const fail = useCallback(() => setUnavailable(true), []);
@@ -89,7 +93,7 @@ export function AdBanner({ slot, refreshKey }: { slot: AdSlot; refreshKey?: stri
   const adsenseSlotId = AD_CONFIG.adsenseSlots[slot];
   // Google ads load only with the visitor's permission - or, when Google's own consent tool is in use, once that tool allows it.
   const adsAllowed = advertisingPermitted(consent);
-  const useAdsense = !unavailable && adsAllowed && !!AD_CONFIG.adsenseClient && !!adsenseSlotId;
+  const useAdsense = !noAds && !unavailable && adsAllowed && !!AD_CONFIG.adsenseClient && !!adsenseSlotId;
 
   // After an unfilled answer, the next navigation may ask once more (rate-limited, see ads/adRetry.ts).
   const [retry, setRetry] = useState({ key: refreshKey, attempt: 0 });
@@ -108,7 +112,7 @@ export function AdBanner({ slot, refreshKey }: { slot: AdSlot; refreshKey?: stri
     return () => clearInterval(t);
   }, [sponsors.length]);
 
-  if (!AD_CONFIG.enabled) return null;
+  if (!AD_CONFIG.enabled || noAds) return null;
   if (!useAdsense && sponsors.length === 0) return null;
 
   return (

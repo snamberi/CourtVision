@@ -1,7 +1,7 @@
 {
   "title": "Privacy Policy",
   "product": "CourtVision",
-  "lastUpdated": "September 27, 2026",
+  "lastUpdated": "September 28, 2026",
   "contactEmail": "",
   "intro": [
     "This Privacy Policy explains what information CourtVision (\"CourtVision\", \"we\", \"us\", \"our\") handles when you use the CourtVision basketball simulator, both the web version and the downloadable Windows edition. We wrote it to be read, so it is plain and specific about what the app actually does.",
@@ -18,7 +18,7 @@
             "**No account, no sign-up.** We never ask for your name, email address, phone number, or password to play.",
             "**Your leagues stay on your device.** Saved leagues, rosters, settings, and history are stored in your browser (IndexedDB and localStorage) and are not uploaded to us.",
             "**Web traffic statistics.** The web version uses Vercel Web Analytics and Umami Cloud, neither of which sets analytics cookies. We send page categories such as Coaching or Dashboard, and to Umami a few anonymous gameplay events (for example that a game mode was started or finished), not league contents, save identifiers, player names, or game identifiers. See Section 7.",
-            "**The web version shows ads.** Ads are served by Google AdSense, which may use cookies and similar technologies. See Section 5.",
+            "**The web version shows ads** (none with a No-Ads or Supporter Pass). Ads are served by Google AdSense, which may use cookies and similar technologies. See Section 5.",
             "**The Windows edition makes no network requests of its own.** It runs from a local server on your own computer, shows no Google ads, and keeps everything on your machine.",
             "**Not for children under 13.** See Section 11."
           ]
@@ -269,6 +269,10 @@
         {
           "type": "p",
           "text": "**Accounts, cloud progress and leaderboards (web version only, optional).** If you create an account, sign-in is handled by Supabase Auth using Discord, Google or a one-time email link. We receive and store your email address, the provider you used and its account identifier, and the GM name you choose. While you are signed in, your game progress is synced to our database hosted by Supabase: your GM Profile level and cosmetics, achievements, League Hunt, Rebuild and weekly results, daily goals, retired Career Mode players, league-code results and your League Hunt PvP squad and matches. GM leagues and careers still in progress are not uploaded. Your GM name, title, level, public statistics, retired created players, leaderboard results, PvP rating and the GMs you follow are shown publicly on leaderboards and your profile page. Reports you file about a name are seen only by us. Your data is kept while your account exists. You can delete your account at any time in Community → Your account; this permanently deletes your account, profile, cloud progress and every leaderboard entry (progress stored on your device is not affected). See [Supabase's privacy policy](https://supabase.com/privacy)."
+        },
+        {
+          "type": "p",
+          "text": "**Passes (web version only, optional).** The No-Ads Pass and the Supporter Pass are sold by our reseller [Lemon Squeezy](https://www.lemonsqueezy.com/), which acts as the merchant of record: it collects your payment details, billing address and email, handles tax, receipts, subscriptions and refunds, and processes them under [its own privacy policy](https://www.lemonsqueezy.com/privacy). We never see your card details. The checkout link carries your account identifier so that Lemon Squeezy can tell us which account bought the pass; we then store only what the account owns (for example the No-Ads Pass, or the date a Supporter Pass is paid until), Lemon Squeezy's order, subscription and customer numbers, and the link to manage your subscription. A copy of what you own is kept in your browser's local storage so ads stay off offline. Passes are removed when you delete your account; deleting the account does not cancel a Supporter subscription, so cancel it first from the Passes tab."
         },
         {
           "type": "p",
