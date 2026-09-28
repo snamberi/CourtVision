@@ -46,6 +46,12 @@ before merging, set the production branch to `claude/ads-awards-nav-discord-styl
 
 The Worker's name must stay `courtvision`, matching `wrangler.jsonc`, or the build fails.
 
+**Deploy command vs. Preview command.** Production (the `main` branch) must run **`npx wrangler deploy`**. That's the
+only command that updates the live site. **`npx wrangler preview`** belongs in the separate **Preview command** box, for
+other branches. If a production build log says `Executing user deploy command: npx wrangler preview`, the two have been
+swapped. The site then never updates, even though the build itself succeeds. `wrangler.jsonc` has the `"previews": {}`
+block that preview builds need.
+
 ### A2. Settings for the build
 
 Worker → **Settings → Builds → Build variables and secrets**. The build bakes these into the game:
