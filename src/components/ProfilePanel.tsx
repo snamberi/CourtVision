@@ -7,6 +7,7 @@ import { PixelIcon } from './PixelIcon';
 import { ProfileIcon, NameTag } from './ProfileIcon';
 import { useAccount } from '../cloud/account';
 import { passesOnSale } from '../billing/billing';
+import { ThemeSection } from './ThemePicker';
 
 function useProfile() {
   const [tick, setTick] = useState(0);
@@ -74,6 +75,8 @@ export function ProfilePanel() {
       </div>
       {!signedIn && <label className="profile-name-edit"><span>Profile name</span><input className="year-input" value={localName() === 'You' ? '' : localName()} placeholder="You" maxLength={18} onChange={e => setLocalName(e.target.value)} /><small>Sign in to claim a GM name on the boards.</small></label>}
     </div>
+
+    <ThemeSection />
 
     <div className="profile-picker"><h3 className="hunt-subhead">Profile icon</h3>
       <div className="profile-icons" role="radiogroup" aria-label="Profile icon">{listed(ICONS, ctx).map(i => { const open = isOpen(i.rule, ctx); return <button key={i.id} role="radio" aria-checked={eq.icon === i.id} disabled={!open} title={`${i.name}${open ? '' : ` · ${i.how}`}`}

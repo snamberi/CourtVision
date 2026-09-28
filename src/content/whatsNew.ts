@@ -7,8 +7,9 @@ export interface Release { id: string; title: string; items: string[] }
 export const RELEASES: Release[] = [
   {
     id: '2026-10-02',
-    title: 'The Player Profile, the Level Road and the Prime Boost',
+    title: 'Five looks, the Player Profile and the Prime Boost',
     items: [
+      '**Pick your look:** Court Vision, Cartridge (the light theme), Scoreboard, Pro Dark or Stat Terminal. Every screen and every mode changes. Switch any time under Player Profile → App look.',
       '**Game modes first:** the main menu opens on the six modes; the weekly challenges and your records sit below them.',
       '**Player Profile:** the GM Locker now lives in your profile, with tabs for your card, the Level Road, the trophy room, achievements and backups.',
       '**Level Road to 250:** a reward every five levels: 30 new pixel icons, new name colours, titles, card frames and court floors. Level-up notes now appear in the bottom-left corner.',

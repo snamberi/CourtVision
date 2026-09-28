@@ -19,6 +19,7 @@ import './awards.css';
 import './contrast.css';
 import './frontOffice.css';
 import './design.css';
+import './theme/themes.css';
 import { CoachGuide } from './components/tutorial/CoachGuide';
 import { SeasonRoadMap } from './components/tutorial/SeasonRoadMap';
 import { FirstSeasonChecklist } from './components/tutorial/FirstSeasonChecklist';

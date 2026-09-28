@@ -17,6 +17,7 @@ import { DataCredits } from './DataCredits';
 import { weeklyRebuild, weeklyCareer, loadWeeklyRecords, weeklyStreak, weekEndsAt } from '../retention/weekly';
 import { InstallAppButton } from './InstallAppButton';
 import { WhatsNew } from './WhatsNew';
+import { ThemeWelcome, needsThemeChoice } from './ThemePicker';
 import { WeeklyBoardDialog } from './WeeklyBoard';
 import { cloudEnabled } from '../cloud/account';
 import { AccountButton, MenuAccountCard } from './cloud/AccountButton';
@@ -142,6 +143,8 @@ function SavedLeaguesList({ saves, onContinue, onDeleteSave, onRenameSave }: Pic
 }
 
 export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSave, recovery, busy = null, onLocker, onCode, onCommunity, onProfile }: Props) {
+  // First visit: pick a look before anything else; What's New waits until it is picked.
+  const [pickLook, setPickLook] = useState(needsThemeChoice);
   const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
   const [scenario, setScenario] = useState(SCENARIOS[0].id);
   const [rebuildRecords] = useState(() => loadRebuildRecords());
@@ -289,7 +292,7 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
       <footer className="legal-footer">{!IS_DESKTOP_BUILD && <><a href="/how-to-play.html">How to Play</a> · <a href="/guides/">Guides</a> · <a href="/faq.html">FAQ</a> · <a href="/about.html">About</a> · <a href="/changelog.html">What's new</a> · </>}<PrivacyLink /> · <CookieSettingsLink /> · <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer">Discord</a> · <PerformanceToggle /></footer>
       <LevelUpNote onProfile={onProfile ?? onLocker} />
       <ConsentBanner />
-      <WhatsNew />
+      {pickLook ? <ThemeWelcome onDone={() => setPickLook(false)} /> : <WhatsNew />}
     </div>
   );
 }

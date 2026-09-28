@@ -15,12 +15,16 @@
     "bench": "rolldown scripts/bench/engineBench.ts --platform node --file node_modules/.cache/bench/engine.mjs --log-level silent && node node_modules/.cache/bench/engine.mjs",
     "bench:season": "rolldown scripts/bench/seasonBench.ts --platform node --file node_modules/.cache/bench/season.mjs --log-level silent && node node_modules/.cache/bench/season.mjs",
     "build:api": "node scripts/build-api.mjs",
+    "theme:palette": "node scripts/theme-palette.mjs",
     "bench:ai": "rolldown scripts/bench/aiAudit.ts --platform node --file node_modules/.cache/bench/ai.mjs --log-level silent && node node_modules/.cache/bench/ai.mjs"
   },
   "dependencies": {
+    "@fontsource/dotgothic16": "^5.3.0",
     "@fontsource/ibm-plex-mono": "^5.3.0",
+    "@fontsource/ibm-plex-sans": "^5.3.0",
     "@fontsource/inter": "^5.3.0",
     "@fontsource/oswald": "^5.3.0",
+    "@fontsource/pixelify-sans": "^5.3.0",
     "@fontsource/press-start-2p": "^5.3.0",
     "@fontsource/vt323": "^5.3.0",
     "@supabase/supabase-js": "^2.117.2",
