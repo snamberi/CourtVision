@@ -142,7 +142,7 @@ export function TeamRosterPage({
                   Rating {coach.rating} · Age {coach.age} · Career {coach.careerWins}-{coach.careerLosses}
                   {coach.championships > 0 && ` · ${coach.championships}x champion`} ·{' '}
                   ${(coach.contract.annualSalary / 1_000_000).toFixed(1)}M/yr, {coach.contract.yearsRemaining} yr(s) left ·{' '}
-                  Hired {coach.hiredSeason}
+                  Hired {formatSeasonYear(coach.hiredSeason)}
                 </span>
                 <div className="coach-tags">
                   {coachStrengths(coach).map((k) => (

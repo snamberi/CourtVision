@@ -13,6 +13,7 @@ export function playbackFromPossession(result: PossessionResult): PossessionPlay
     blockerId: lines.find(([, s]) => (s.blk ?? 0) > 0)?.[0],
     assistId: lines.find(([, s]) => (s.ast ?? 0) > 0)?.[0],
     foulerId: lines.find(([, s]) => (s.pf ?? 0) > 0)?.[0],
+    foulerIds: lines.flatMap(([id, s]) => Array((s.pf ?? 0) > 0 ? s.pf! : 0).fill(id) as string[]),
     shotType: typeof result.debug.shotType === 'string' ? result.debug.shotType : undefined,
     shotMade: shooter ? (shooter[1].fgm ?? 0) > 0 : undefined,
     freeThrows: shooter && (shooter[1].fta ?? 0) > 0 ? { made: shooter[1].ftm ?? 0, attempted: shooter[1].fta!, outcomes: Array.isArray(result.debug.freeThrowOutcomes) ? result.debug.freeThrowOutcomes.filter((v): v is boolean => typeof v === 'boolean') : undefined } : undefined,

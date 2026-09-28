@@ -1,3 +1,4 @@
+import { formatSeasonYear } from '../simulation/calendar';
 import { TeamLink } from './TeamLink';
 import { useMemo, useState } from 'react';
 import type { League } from '../simulation/league';
@@ -127,7 +128,7 @@ export function AnalyticsPage({ league, onSelectPlayer }: Props) {
                 <tr key={r.playerId + r.finalSeason}>
                   <td>{r.playerId}</td>
                   <td><TeamLink name={r.finalTeamName} /></td>
-                  <td>{r.finalSeason}</td>
+                  <td>{formatSeasonYear(r.finalSeason)}</td>
                   <td>{r.finalAge}</td>
                   <td>{r.finalOverall}</td>
                 </tr>

@@ -1,0 +1,19 @@
+// Court Vision on Cloudflare Workers (Workers Builds: build command `npm run build`, deploy command `npx wrangler deploy`).
+// The name must match the Worker's name in the Cloudflare dashboard. See docs/CLOUDFLARE_SETUP.md.
+{
+  "$schema": "https://unpkg.com/wrangler/config-schema.json",
+  "name": "courtvision",
+  "main": "./worker/index.ts",
+  "compatibility_date": "2026-09-01",
+  "assets": {
+    "directory": "./dist",
+    // The game uses #/ routes; any other unknown path gets the game page.
+    "not_found_handling": "single-page-application",
+    "binding": "ASSETS",
+    // Only the API runs code; everything else is served straight from the static files.
+    "run_worker_first": ["/api/*"]
+  },
+  // Keep the Variables set in the dashboard when deploying (secrets are always kept).
+  "keep_vars": true,
+  "observability": { "enabled": true }
+}

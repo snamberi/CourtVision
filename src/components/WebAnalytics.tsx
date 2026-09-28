@@ -10,7 +10,7 @@ type Umami = { track: (payload?: (props: Record<string, unknown>) => Record<stri
 
 /**
  * Umami (cookie-free) on the web build only. Auto-tracking is off: every page view is sent by hand with the
- * same sanitized page category Vercel receives (e.g. /game/standings), never save IDs, players or games.
+ * sanitized page category (Vercel's analytics gets the same on Vercel) (e.g. /game/standings), never save IDs, players or games.
  */
 function useUmami(path: string) {
   useEffect(() => {
@@ -48,7 +48,9 @@ export function WebAnalytics() {
     };
   }, []);
   useUmami(path);
-  if (IS_DESKTOP_BUILD) return null;
+  // Vercel Web Analytics exists only on Vercel (its script is served by Vercel itself). Elsewhere, such as Cloudflare
+  // Pages, the host's own analytics are switched on in its dashboard instead.
+  if (IS_DESKTOP_BUILD || import.meta.env.VITE_HOST_PLATFORM !== 'vercel') return null;
   return <Analytics route={path} path={path} debug={false} beforeSend={(event) => ({
     ...event, url: new URL(path, location.origin).href,
   })} />;

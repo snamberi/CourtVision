@@ -5,6 +5,7 @@ import type { NbaHistory, HistPlayer, HistSeasonRow } from '../history/nbaHistor
 import { seasonText } from '../history/realDevelopment';
 import { fx, NA } from './statFormat';
 import { DataCredits } from './DataCredits';
+import { preStartCount } from '../history/retirees';
 
 /* NBA History archive: the real league's history up to this league's start, searchable with year filters.
  * Nothing at or after the start season is shown — from then on the simulation owns history. */
@@ -24,11 +25,13 @@ const fold = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/
 
 interface CareerLine { p: HistPlayer; first: number; last: number; seasons: number; g: number; pts: number; trb: number | null; ast: number | null; teams: string[] }
 
-export function NbaArchivePage({ league, extras, onSelectPlayer, initialQuery = '' }: { league: League; extras: GMLeagueExtras; onSelectPlayer: (id: string) => void; initialQuery?: string }) {
+export function NbaArchivePage({ league, extras, onSelectPlayer, initialQuery = '', onLoadRetirees }: { league: League; extras: GMLeagueExtras; onSelectPlayer: (id: string) => void; initialQuery?: string; onLoadRetirees?: () => Promise<void> }) {
   const meta = league.historical;
   const [h, setH] = useState<NbaHistory | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View>('players');
+  const [loading, setLoading] = useState(false);
+  const loaded = preStartCount(league);
   useEffect(() => {
     let live = true;
     import('../history/nbaHistoryData').then(m => m.loadNbaHistory()).then(d => { if (live) setH(d); }, e => { if (live) setError(e instanceof Error ? e.message : String(e)); });
@@ -42,6 +45,12 @@ export function NbaArchivePage({ league, extras, onSelectPlayer, initialQuery = 
       <div className="season-feature-header"><div><span className="pixel-eyebrow">REAL NBA · {lastEnd >= firstEnd ? `${label(firstEnd)} TO ${label(lastEnd)}` : 'NO SEASONS BEFORE THE START'}</span><h2>NBA History</h2></div></div>
       <p className="hint-text">Real NBA/BAA history up to this league's start ({seasonText(meta.startYear)}). From then on this league's own results are its history — see Almanac and History. Teams are listed by city.</p>
       <DataCredits />
+      {onLoadRetirees && <div className="archive-load-all">
+        {loaded > 0
+          ? <p className="hint-text">{loaded.toLocaleString()} players who retired before the start are loaded in this league, with their profiles and careers.</p>
+          : <><p className="hint-text">Players who retired before this league began are only in the archive. Load them to give every one of them a profile, and a place in all-time records and the Hall of Fame.</p>
+            <button disabled={loading} onClick={() => { setLoading(true); void onLoadRetirees().finally(() => setLoading(false)); }}>{loading ? 'Loading…' : 'Load every retired player'}</button></>}
+      </div>}
       <div className="code-mode-actions" role="group" aria-label="Archive sections">
         {(['players', 'teams', 'champions', 'awards', 'coverage'] as View[]).map(v => <button key={v} className={view === v ? 'active' : ''} aria-pressed={view === v} onClick={() => setView(v)}>{v[0].toUpperCase() + v.slice(1)}</button>)}
       </div>
@@ -75,7 +84,7 @@ function PlayersView({ h, cutoff, league, extras, onSelectPlayer, initialQuery }
   const inLeague = useMemo(() => {
     const m = new Map<string, string>();
     const add = (p?: { real?: { id: string }; playerId: string }) => { if (p?.real) m.set(p.real.id, p.playerId); };
-    league.teams.forEach(t => t.seasons.forEach(add)); extras.freeAgents.forEach(add); (league.retiredPlayers ?? []).forEach(r => add(r.finalSeasonData));
+    league.teams.forEach(t => t.seasons.forEach(add)); extras.freeAgents.forEach(add); (league.retiredPlayers ?? []).forEach(r => { if (r.realId) m.set(r.realId, r.playerId); else add(r.finalSeasonData); });
     return m;
   }, [league.teams, league.retiredPlayers, extras.freeAgents]);
   const careers = useMemo(() => {
@@ -108,7 +117,7 @@ function PlayersView({ h, cutoff, league, extras, onSelectPlayer, initialQuery }
     <div className="archive-controls">
       <input className="db-search" type="search" placeholder="Search players (any spelling)…" aria-label="Search players" value={query} onChange={e => { setQuery(e.target.value); reset(); }} />
       <YearRange from={from} to={to} min={1947} max={cutoff - 1} onChange={(f, t) => { setFrom(f); setTo(t); reset(); }} />
-      <label>Show <select value={status} onChange={e => { setStatus(e.target.value as typeof status); reset(); }}><option value="all">All players</option><option value="league">In this league</option><option value="retired">Not in this league (retired)</option></select></label>
+      <label>Show <select value={status} onChange={e => { setStatus(e.target.value as typeof status); reset(); }}><option value="all">All players</option><option value="league">In this league</option><option value="retired">Not in this league</option></select></label>
       <label>Sort <select value={sort} onChange={e => { setSort(e.target.value as typeof sort); reset(); }}><option value="pts">Career points</option><option value="g">Games</option><option value="last">Most recent</option><option value="name">Name</option></select></label>
     </div>
     <p className="hint-text">{filtered.length.toLocaleString()} players · NBA/BAA regular seasons before {label(cutoff)}. Totals count each season once (traded players' team stints are listed inside their profile).</p>

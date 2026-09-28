@@ -9,6 +9,7 @@ import {
 import { computeTeamOverallAverage } from '../simulation/teamStatus';
 import { tradeVerdict, TradePlayerCompareTable, ImprovementMeter } from './gmShared';
 import { PlayerNameTag } from './PlayerAvatar';
+import { counterOffer, aiAccepts, recordTalkRound, talksClosed, talkState, PATIENCE, type Counter } from '../simulation/tradeTalks';
 
 interface Props {
   sandboxMode?: boolean;
@@ -36,6 +37,7 @@ export function TradePage({ league, extras, controlledTeamId, onChange, onToast,
   const [picksFromA, setPicksFromA] = useState<string[]>([]);
   const [picksFromB, setPicksFromB] = useState<string[]>([]);
   const [message, setMessage] = useState<string | null>(null);
+  const [counter, setCounter] = useState<Counter | null>(null);
 
   const teamA = league.teams.find((t) => t.teamId === teamAId)!;
   const teamB = league.teams.find((t) => t.teamId === teamBId)!;
@@ -74,19 +76,47 @@ export function TradePage({ league, extras, controlledTeamId, onChange, onToast,
   const propose = () => {
     if (!canManageA) { setMessage('You can only propose trades involving your own team.'); return; }
     const proposal = { teamAId, teamBId, playersFromA: fromA, playersFromB: fromB, picksFromA, picksFromB };
+    if (respondingTeam && talksClosed(league, extras, respondingTeam.teamId)) { setMessage(`${respondingTeam.name} have broken off talks for now. Try again in a few game days.`); return; }
     const validation = validateTrade(league, extras, proposal);
     if (!validation.valid) {
-      setMessage(respondingTeam
+      // An AI front office answers a lowball with a counter rather than a flat no, when one exists.
+      const answer = respondingTeam && controlledTeamId ? counterOffer(league, extras, proposal, controlledTeamId) : null;
+      setCounter(answer);
+      setMessage(answer ? null : respondingTeam
         ? `${respondingTeam.name} won't make this deal: ${validation.reasons.join(' ')}`
         : `Trade blocked: ${validation.reasons.join(' ')}`);
-      onToast?.('Trade rejected — see the details on the Trade page.', 'error');
+      if (!answer) onToast?.('Trade rejected — see the details on the Trade page.', 'error');
       return;
     }
+    setCounter(null);
     const { league: newLeague, extras: newExtras } = executeTrade(league, extras, proposal);
     onChange(newLeague, newExtras);
     resetSelection();
     setMessage(respondingTeam ? `${respondingTeam.name} accepted the trade.` : 'Trade executed.');
     onToast?.(`Trade executed between ${teamA.name} and ${teamB.name}.`, 'success');
+  };
+
+  const acceptCounter = () => {
+    if (!counter) return;
+    if (!controlledTeamId || !aiAccepts(league, extras, counter.proposal, controlledTeamId)) { setCounter(null); setMessage('That counter is no longer on the table.'); return; }
+    const { league: newLeague, extras: newExtras } = executeTrade(league, extras, counter.proposal);
+    onChange(newLeague, newExtras);
+    resetSelection(); setCounter(null);
+    setMessage('Deal done on their terms.');
+    onToast?.(`Trade executed between ${teamA.name} and ${teamB.name}.`, 'success');
+  };
+  const declineCounter = () => {
+    if (!counter || !respondingTeam) return;
+    const r = recordTalkRound(league, extras, respondingTeam.teamId);
+    onChange(league, r.extras);
+    setCounter(null);
+    setMessage(r.closed ? `${respondingTeam.name} have heard enough and hang up. Talks are off for a few game days.` : `You turned down their counter. ${respondingTeam.name} are still listening.`);
+  };
+  const editCounter = () => {
+    if (!counter) return;
+    const p = counter.proposal;
+    setFromA(p.playersFromA); setFromB(p.playersFromB); setPicksFromA(p.picksFromA ?? []); setPicksFromB(p.picksFromB ?? []);
+    setCounter(null);
   };
 
   const forceThrough = () => {
@@ -206,6 +236,12 @@ export function TradePage({ league, extras, controlledTeamId, onChange, onToast,
         </button>}
       </div>
       {message && <p className="hint-text"><TeamText text={message} /></p>}
+      {counter && respondingTeam && <div className="trade-counter" role="group" aria-label="Counter-offer">
+        <span className="pixel-eyebrow">COUNTER-OFFER · {(extras.teamPersonalities?.[respondingTeam.teamId] ?? 'balanced').toUpperCase()} FRONT OFFICE</span>
+        <p><TeamText text={counter.text} /></p>
+        <p className="hint-text">Their patience: {Math.max(0, PATIENCE[extras.teamPersonalities?.[respondingTeam.teamId] ?? 'balanced'] - talkState(league, extras, respondingTeam.teamId).rounds)} more round(s) before they hang up.</p>
+        <div className="trade-counter-actions"><button className="primary" onClick={acceptCounter}>Accept counter</button><button onClick={editCounter}>Put it in the builder</button><button onClick={declineCounter}>Decline</button></div>
+      </div>}
     </div>
   );
 }

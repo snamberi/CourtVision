@@ -7,6 +7,7 @@ import type { AutoPlayWorkerOutMessage } from './autoPlayWorker';
 import type { SeasonWorkerOutMessage } from './seasonWorker';
 import { startEngineWorkers } from './enginePool';
 import { createProgressStore } from './progressStore';
+import { restoreRetirees, slimRetirees } from '../history/retirees';
 
 export interface AutoPlayLogRow { season: string; summary: AutoPlaySeasonSummary }
 export interface AutoPlayProgress { year: number; total: number }
@@ -78,13 +79,16 @@ export function useBackgroundJobs(handlers: Handlers) {
   const launchAutoPlay = useCallback((args: AutoPlayStartArgs) => {
     if (autoPlayWorker.current || seasonWorker.current) return;
     const worker = new Worker(new URL('./autoPlayWorker.ts', import.meta.url), { type: 'module' });
+    // Retirees loaded from NBA history stay here (thousands of careers the simulation never reads) and are put back after.
+    const full = args.league;
     const engines = startEngineWorkers();
     autoPlayWorker.current = worker;
     autoPlayEngines.current = engines.stop;
-    const finish = () => {
+    // A clean finish keeps the engine workers warm for the next run; errors shut them down.
+    const finish = (clean = false) => {
       if (autoPlayWorker.current === worker) autoPlayWorker.current = null;
       worker.terminate();
-      engines.stop();
+      if (clean) engines.release(); else engines.stop();
       setAutoPlayRunning(false);
     };
 
@@ -93,13 +97,13 @@ export function useBackgroundJobs(handlers: Handlers) {
       if (msg.type === 'yearComplete') {
         setAutoPlayProgress({ year: msg.yearIndex, total: msg.totalYears });
         setAutoPlayLog((l) => [{ season: msg.summary.season, summary: msg.summary }, ...l]);
-        handlersRef.current.onAutoPlayLeague(msg.league, msg.extras);
+        handlersRef.current.onAutoPlayLeague(restoreRetirees(msg.league, full), msg.extras);
       } else if (msg.type === 'done') {
-        handlersRef.current.onAutoPlayLeague(msg.league, msg.extras);
+        handlersRef.current.onAutoPlayLeague(restoreRetirees(msg.league, full), msg.extras);
         handlersRef.current.onToast(`Auto Play finished — ${msg.summaries.length} season${msg.summaries.length === 1 ? '' : 's'} simulated.`, 'success');
-        finish();
+        finish(true);
       } else if (msg.type === 'error') {
-        handlersRef.current.onAutoPlayLeague(msg.league, msg.extras);
+        handlersRef.current.onAutoPlayLeague(restoreRetirees(msg.league, full), msg.extras);
         handlersRef.current.onToast(`Auto Play stopped early: ${msg.message}`, 'error');
         finish();
       }
@@ -110,7 +114,7 @@ export function useBackgroundJobs(handlers: Handlers) {
     };
 
     worker.postMessage({
-      type: 'run', league: args.league, extras: args.extras, controlledTeamId: args.controlledTeamId,
+      type: 'run', league: slimRetirees(args.league), extras: args.extras, controlledTeamId: args.controlledTeamId,
       awardSettings: args.awardSettings, years: args.years, seedBase: args.seedBase, ports: engines.ports,
     }, engines.ports);
   }, []);
@@ -135,13 +139,14 @@ export function useBackgroundJobs(handlers: Handlers) {
     seasonSimProgress.set({ pct: 0, played: 0, total });
 
     const worker = new Worker(new URL('./seasonWorker.ts', import.meta.url), { type: 'module' });
+    const full = league;
     const engines = startEngineWorkers();
     seasonWorker.current = worker;
     seasonEngines.current = engines.stop;
-    const finish = () => {
+    const finish = (clean = false) => {
       if (seasonWorker.current === worker) seasonWorker.current = null;
       worker.terminate();
-      engines.stop();
+      if (clean) engines.release(); else engines.stop();
       setSeasonSimRunning(false);
     };
 
@@ -150,12 +155,12 @@ export function useBackgroundJobs(handlers: Handlers) {
       if (msg.type === 'progress') {
         seasonSimProgress.set({ pct: msg.pct, played: msg.played, total: msg.total });
       } else if (msg.type === 'done') {
-        handlersRef.current.onSeasonSimLeague(msg.league);
+        handlersRef.current.onSeasonSimLeague(restoreRetirees(msg.league, full));
         handlersRef.current.onToast(rounds == null ? 'Season simulation finished.' : `Simulated ${total} games.`, 'success');
-        finish();
+        finish(true);
       } else if (msg.type === 'blocked') {
-        handlersRef.current.onSeasonSimLeague(msg.league);
-        finish();
+        handlersRef.current.onSeasonSimLeague(restoreRetirees(msg.league, full));
+        finish(true);
       } else if (msg.type === 'error') {
         handlersRef.current.onToast(`Season simulation failed: ${msg.message}`, 'error');
         finish();
@@ -166,7 +171,7 @@ export function useBackgroundJobs(handlers: Handlers) {
       finish();
     };
 
-    worker.postMessage({ type: 'run', league, seedBase, rounds, ports: engines.ports }, engines.ports);
+    worker.postMessage({ type: 'run', league: slimRetirees(league), seedBase, rounds, ports: engines.ports }, engines.ports);
   }, [seasonSimProgress]);
 
   /** Stops whatever is running and forgets the Auto Play history — used when a different league is loaded or the app returns to the menu. */

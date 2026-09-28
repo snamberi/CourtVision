@@ -1,12 +1,13 @@
 import type { NbaHistory, HistSeasonRow, HistPlayer } from './nbaHistoryData';
 import { NBA_HISTORY_DATASET } from './datasetInfo';
 import { buildRealPlayer, type RealPlayerSeed, type RealProfile, type RatingFrame } from './realPlayers';
-import type { League, LeagueTeam, FranchiseHistoryRecord, TeamSeasonSummary, PlayoffFinish } from '../simulation/league';
+import type { League, LeagueTeam, FranchiseHistoryRecord, TeamSeasonSummary, PlayoffFinish, RetiredPlayerRecord } from '../simulation/league';
 import { generateSeasonSchedule, defaultCoachTendencies } from '../simulation/league';
 import type { CareerSeasonRecord, HistoricalAward, PlayerSeason, SeasonStatTotals, SeasonStint } from '../simulation/types';
 import { DEFAULT_GAME_SETTINGS, emptySeasonMilestones, emptySeasonStatTotals } from '../simulation/types';
 import type { GMLeagueExtras, Contract, TradeDifficulty } from '../simulation/gm';
 import { prospectsFromSeeds } from './realRollover';
+import { assignRosterNumbers, realJerseyNumber, plausibleJerseyNumber } from './jerseyNumbers';
 export { prospectsFromSeeds };
 import { DEFAULT_CAP_SETTINGS, DEFAULT_GM_FLAGS, computeAskingSalary, generateFutureDraftPicks } from '../simulation/gm';
 import { assignGMPersonalities } from '../simulation/aiGM';
@@ -37,6 +38,14 @@ export interface HistoricalLeagueMeta {
   notes: string[];
   /** Each team's city name at creation, so player-typed team names can be reset. */
   cityNames?: Record<string, string>;
+  /** Historical rosters: AI teams are reset to their real rosters at the start of every season the data covers. */
+  forceRosters?: boolean;
+  /** Real opening rosters by season start year → team → the abbreviation that season and real player ids (top 15 by minutes). */
+  realRosters?: Record<string, Record<string, { abbr: string; ids: string[] }>>;
+  /** Real mid-season moves by season start year: where each traded player finished that season (applied after the deadline). */
+  realMoves?: Record<string, { id: string; to: string }[]>;
+  /** Seasons whose real mid-season moves have been applied. */
+  movesApplied?: string[];
 }
 
 export function supportedStartYears(h: NbaHistory): number[] {
@@ -113,8 +122,117 @@ function ageAt(p: HistPlayer, startYear: number, fallback: number | null): numbe
   return fallback ?? 25;
 }
 
+/** Maps any historical team abbreviation to the league's team id for a league whose start season ends in `E`. */
+export function franchiseMapper(h: NbaHistory, E: number): { mapTeam: (abbr: string) => string; teamName: (abbr: string, end: number) => string } {
+  const franchiseToTeam = new Map<string, string>();
+  for (const t of h.teams) if (t.season === E && NBA.has(t.league) && t.franchise) franchiseToTeam.set(t.franchise, t.abbr);
+  const abbrToFranchise = new Map<string, string>();
+  for (const t of h.teams) if (NBA.has(t.league) && t.franchise) abbrToFranchise.set(t.abbr, t.franchise);
+  const names = new Map(h.teams.map(t => [`${t.abbr}|${t.season}`, t.name]));
+  return {
+    mapTeam: (abbr: string) => { const fr = abbrToFranchise.get(abbr); return (fr && franchiseToTeam.get(fr)) ?? abbr; },
+    teamName: (abbr: string, end: number) => names.get(`${abbr}|${end}`) ?? abbr,
+  };
+}
+
+interface CareerContext { h: NbaHistory; E: number; mapTeam: (abbr: string) => string; teamName: (abbr: string, end: number) => string }
+
+const AWARD_LABELS: Record<string, string> = { mvp: 'MVP', dpoy: 'Defensive Player of the Year', roy: 'Rookie of the Year', smoy: 'Sixth Man of the Year', mip: 'Most Improved Player', clutch: 'Clutch Player of the Year', 'aba-mvp': 'ABA MVP', 'aba-roy': 'ABA Rookie of the Year' };
+const teamAwardLabel = (a: string, rank: number | null, lg: string) => {
+  const nth = rank === 1 ? '1st' : rank === 2 ? '2nd' : rank === 3 ? '3rd' : '';
+  const base = a === 'allLeague' ? (lg === 'BAA' ? 'All-BAA' : 'All-NBA') : a === 'allDefense' ? 'All-Defensive' : a === 'allRookie' ? 'All-Rookie' : 'All-ABA';
+  return `${base}${nth ? ` ${nth} Team` : ''}`;
+};
+
+/** Every honour a player won in the seasons before the start, keyed by player (built once per dataset). */
+type AwardRow = { end: number; award: HistoricalAward; championTeam?: string };
+const awardIndex = new WeakMap<NbaHistory, Map<number, AwardRow[]>>();
+function honoursByPlayer(h: NbaHistory): Map<number, AwardRow[]> {
+  const cached = awardIndex.get(h);
+  if (cached) return cached;
+  const m = new Map<number, AwardRow[]>();
+  const add = (idx: number, row: AwardRow) => (m.get(idx) ?? m.set(idx, []).get(idx)!).push(row);
+  const s = (end: number) => label(endToStart(end));
+  for (const a of h.awards) if (a.winner) add(a.player, { end: a.season, award: { season: s(a.season), label: AWARD_LABELS[a.award] ?? a.award, detail: a.share != null ? `${(a.share * 100).toFixed(1)}% vote share` : undefined } });
+  for (const a of h.teamAwards) add(a.player, { end: a.season, award: { season: s(a.season), label: teamAwardLabel(a.award, a.rank, a.league) } });
+  for (const a of h.allStars) add(a.player, { end: a.season, award: { season: s(a.season), label: a.league === 'ABA' ? 'ABA All-Star' : 'All-Star', detail: a.replaced ? 'injury replacement' : undefined } });
+  for (const a of h.allStarMvp) add(a.player, { end: a.season, award: { season: s(a.season), label: 'All-Star Game MVP' } });
+  for (const c of h.champions) {
+    if (c.finalsMvp != null) add(c.finalsMvp, { end: c.season, award: { season: s(c.season), label: 'Finals MVP' } });
+    for (const idx of c.rosterCredit) add(idx, { end: c.season, award: { season: s(c.season), label: 'NBA Champion' }, championTeam: c.champion });
+  }
+  awardIndex.set(h, m);
+  return m;
+}
+
+function realAwards(ctx: CareerContext, idx: number): HistoricalAward[] {
+  return (honoursByPlayer(ctx.h).get(idx) ?? []).filter(r => r.end < ctx.E)
+    .map(r => r.championTeam ? { ...r.award, detail: `${ctx.teamName(r.championTeam, r.end)} (credit: last regular-season team)` } : r.award)
+    .sort((a, b) => a.season.localeCompare(b.season));
+}
+
+function realCareer(ctx: CareerContext, p: HistPlayer): CareerSeasonRecord[] {
+  const { h, E, mapTeam } = ctx;
+  const rows = (h.seasonsByPlayer.get(p.idx) ?? []).filter(r => NBA.has(r.league) && r.season < E);
+  const ends = [...new Set(rows.map(r => r.season))].sort((a, b) => a - b);
+  return ends.map(end => {
+    const rs = rows.filter(r => r.season === end);
+    const agg = aggregateRow(rs), stints = rs.filter(r => !r.isAggregate);
+    const { totals, missing } = statTotals(agg);
+    const lastTeam = stints[stints.length - 1]?.team ?? agg.team;
+    const rating = h.ratingsByPlayer.get(p.idx)?.get(end);
+    const splits: SeasonStint[] | undefined = stints.length > 1 ? stints.map(st => ({ teamId: mapTeam(st.team), teamLabel: st.team !== mapTeam(st.team) ? st.team : undefined, stats: statTotals(st).totals, advanced: advancedFrom(st) })) : undefined;
+    const milestones = emptySeasonMilestones();
+    if (agg.stats.trp_dbl != null) milestones.tripleDoubles = agg.stats.trp_dbl;
+    return {
+      season: label(endToStart(end)), teamId: mapTeam(lastTeam), ...(lastTeam !== mapTeam(lastTeam) ? { teamLabel: lastTeam } : {}), age: agg.age ?? 0,
+      overall: rating ? rating.ovr : 0, stats: totals, milestones, advanced: advancedFrom(agg), ...(splits ? { stints: splits } : {}),
+      imported: true, missing: [...(missing ?? []), 'doubleDoubles', 'gameHighs', ...(agg.stats.trp_dbl == null ? ['tripleDoubles' as const] : [])],
+      ...(rating ? { rating: { ovr: rating.ovr, source: rating.source } } : {}),
+    } as CareerSeasonRecord;
+  });
+}
+
+/**
+ * Every real player whose NBA/BAA career ended before the league's start, as retired players: his real career
+ * statistics and honours, and ratings from his final season. Players already in the league (by real id) are skipped.
+ */
+export function retiredBeforeStart(h: NbaHistory, startYear: number, skipIds: Set<string>, only?: Set<string>): RetiredPlayerRecord[] {
+  const E = startYear + 1;
+  const { mapTeam, teamName } = franchiseMapper(h, E);
+  const ctx: CareerContext = { h, E, mapTeam, teamName };
+  const out: RetiredPlayerRecord[] = [];
+  for (const p of h.players) {
+    if (skipIds.has(p.id) || (only && !only.has(p.id))) continue;
+    const rows = (h.seasonsByPlayer.get(p.idx) ?? []).filter(r => NBA.has(r.league));
+    if (!rows.length || rows.some(r => r.season >= E)) continue; // still to come: free agent, debut or draft class
+    const last = rows[rows.length - 1].season;
+    const lastRows = rows.filter(r => r.season === last);
+    const lastTeam = lastRows.filter(r => !r.isAggregate).at(-1)?.team ?? lastRows[0].team;
+    const seed = seedFor(h, p, last, [last, last - 1, last - 2]);
+    const age = ageAt(p, endToStart(last), aggregateRow(lastRows).age);
+    const finalSeason = label(endToStart(last));
+    const pl = buildRealPlayer(seed, finalSeason, mapTeam(lastTeam), age, seed.rating.ovr, NBA_HISTORY_DATASET);
+    const data = { ...pl, seasonStats: undefined, careerHistory: realCareer(ctx, p), historicalAwards: realAwards(ctx, p.idx), birthDate: p.birthDate ?? undefined, jerseyNumber: realJerseyNumber(p.id, null, last) ?? pl.jerseyNumber } as PlayerSeason;
+    out.push({ playerId: data.playerId, finalTeamId: mapTeam(lastTeam), finalTeamName: teamName(lastTeam, last), finalSeason, finalAge: age, finalOverall: calculateOverall(data), finalSeasonData: data, preStart: true, realId: p.id });
+  }
+  return out;
+}
+
+/** Rebuilds the saved-without-data pre-start retirees from the NBA history data (keeps each record's own name). */
+export function hydrateRetirees(h: NbaHistory, league: League): League {
+  const meta = league.historical;
+  const missing = (league.retiredPlayers ?? []).filter(r => r.preStart && r.realId && !r.finalSeasonData);
+  if (!meta || !missing.length) return league;
+  const built = new Map(retiredBeforeStart(h, meta.startYear, new Set(), new Set(missing.map(r => r.realId!))).map(r => [r.realId!, r.finalSeasonData!]));
+  return { ...league, retiredPlayers: league.retiredPlayers!.map(r => {
+    const data = r.preStart && r.realId && !r.finalSeasonData ? built.get(r.realId) : undefined;
+    return data ? { ...r, finalSeasonData: { ...data, playerId: r.playerId } } : r;
+  }) };
+}
+
 /** Everything the builder needs for one real player at a given season END year. */
-function seedFor(h: NbaHistory, p: HistPlayer, end: number, profileEnds: number[]): RealPlayerSeed {
+export function seedFor(h: NbaHistory, p: HistPlayer, end: number, profileEnds: number[]): RealPlayerSeed {
   const rows = (h.seasonsByPlayer.get(p.idx) ?? []).filter(r => NBA.has(r.league));
   const pick = (e: number) => { const rs = rows.filter(r => r.season === e); return rs.length ? [aggregateRow(rs)] : []; };
   let profileRows: HistSeasonRow[] = [];
@@ -130,6 +248,51 @@ function seedFor(h: NbaHistory, p: HistPlayer, end: number, profileEnds: number[
     rating: at ? { ovr: at.ovr, source: at.source, startYear: endToStart(end) } : { ovr: 35, source: 'default', startYear: endToStart(end) },
     frames,
   };
+}
+
+/**
+ * Each later season's real opening rosters (a player's first team that season, the top 15 by minutes), keyed by the
+ * league's team ids (franchises that moved keep their id), for Historical rosters.
+ */
+export function historicalRosterPlan(h: NbaHistory, fromEnd: number, toEnd: number, teamIds: Set<string>, mapTeam: (abbr: string) => string): Record<string, Record<string, { abbr: string; ids: string[] }>> {
+  const plan: Record<string, Record<string, { abbr: string; ids: string[] }>> = {};
+  for (let end = fromEnd; end <= toEnd; end++) {
+    const first = new Map<number, HistSeasonRow>();
+    for (const r of h.seasons) {
+      if (r.season !== end || r.isAggregate || !NBA.has(r.league)) continue;
+      const cur = first.get(r.player);
+      if (!cur || r.stintIndex < cur.stintIndex) first.set(r.player, r);
+    }
+    const byTeam = new Map<string, HistSeasonRow[]>();
+    for (const r of first.values()) { const id = mapTeam(r.team); if (!teamIds.has(id)) continue; (byTeam.get(id) ?? byTeam.set(id, []).get(id)!).push(r); }
+    const season: Record<string, { abbr: string; ids: string[] }> = {};
+    for (const [id, rows] of byTeam) {
+      rows.sort((a, b) => (b.stats.mp ?? (b.stats.g ?? 0) * 20) - (a.stats.mp ?? (a.stats.g ?? 0) * 20));
+      season[id] = { abbr: rows[0].team, ids: rows.slice(0, 15).map(r => h.players[r.player].id) };
+    }
+    if (Object.keys(season).length) plan[String(endToStart(end))] = season;
+  }
+  return plan;
+}
+
+/** Real mid-season moves: a player who played for more than one team finished the season with the last of them. */
+export function historicalMidseasonMoves(h: NbaHistory, fromEnd: number, toEnd: number, teamIds: Set<string>, mapTeam: (abbr: string) => string): Record<string, { id: string; to: string }[]> {
+  const out: Record<string, { id: string; to: string }[]> = {};
+  const byKey = new Map<string, HistSeasonRow[]>();
+  for (const r of h.seasons) {
+    if (r.season < fromEnd || r.season > toEnd || r.isAggregate || !NBA.has(r.league)) continue;
+    const k = `${r.season}|${r.player}`;
+    (byKey.get(k) ?? byKey.set(k, []).get(k)!).push(r);
+  }
+  for (const [k, rows] of byKey) {
+    if (rows.length < 2) continue;
+    const last = [...rows].sort((a, b) => b.stintIndex - a.stintIndex)[0];
+    const to = mapTeam(last.team);
+    if (!teamIds.has(to) || mapTeam(rows.sort((a, b) => a.stintIndex - b.stintIndex)[0].team) === to) continue;
+    const season = String(endToStart(Number(k.split('|')[0])));
+    (out[season] ??= []).push({ id: h.players[last.player].id, to });
+  }
+  return out;
 }
 
 /** Seed for a draft prospect of draft year `draftYear` (debut rating from his first NBA season, or his draft slot if he never played). */
@@ -180,7 +343,7 @@ export function realDraftClasses(h: NbaHistory, from: number, to: number, usedId
 export interface HistoricalLeagueResult { league: League; extras: GMLeagueExtras; summary: { teams: number; rostered: number; freeAgents: number; importedSeasons: number; notes: string[] } }
 
 /** Builds a playable league at the opening of `startYear`-(startYear+1). */
-export function buildHistoricalLeague(h: NbaHistory, startYear: number, opts: { realDevelopment: boolean; difficulty: TradeDifficulty; seed?: number }): HistoricalLeagueResult {
+export function buildHistoricalLeague(h: NbaHistory, startYear: number, opts: { realDevelopment: boolean; difficulty: TradeDifficulty; seed?: number; forceRosters?: boolean; allPlayers?: boolean }): HistoricalLeagueResult {
   const E = startYear + 1; // END-year label of the start season in the data
   const lastEnd = h.manifest.coverage.seasons[1];
   if (startYear < FIRST_START_YEAR || E > lastEnd) throw new Error(`Start year ${startYear} is outside the supported range ${FIRST_START_YEAR}–${lastEnd - 1}.`);
@@ -197,12 +360,7 @@ export function buildHistoricalLeague(h: NbaHistory, startYear: number, opts: { 
 
   // ---- teams of the start season
   const teamRows = h.teams.filter(t => t.season === E && NBA.has(t.league));
-  const franchiseToTeam = new Map<string, string>();
-  for (const t of teamRows) if (t.franchise) franchiseToTeam.set(t.franchise, t.abbr);
-  const abbrToFranchise = new Map<string, string>();
-  for (const t of h.teams) if (NBA.has(t.league) && t.franchise) abbrToFranchise.set(t.abbr, t.franchise);
-  const mapTeam = (abbr: string) => { const fr = abbrToFranchise.get(abbr); return (fr && franchiseToTeam.get(fr)) ?? abbr; };
-  const teamName = (abbr: string, end: number) => h.teams.find(t => t.abbr === abbr && t.season === end)?.name ?? abbr;
+  const { mapTeam, teamName } = franchiseMapper(h, E);
   const gamesPerTeam = Math.max(...teamRows.map(t => (t.w ?? 0) + (t.l ?? 0)), 40);
 
   // ---- who is where at the start
@@ -225,46 +383,7 @@ export function buildHistoricalLeague(h: NbaHistory, startYear: number, opts: { 
   }
 
   const importedFranchise = (abbr: string) => mapTeam(abbr);
-  const awardLabels: Record<string, string> = { mvp: 'MVP', dpoy: 'Defensive Player of the Year', roy: 'Rookie of the Year', smoy: 'Sixth Man of the Year', mip: 'Most Improved Player', clutch: 'Clutch Player of the Year', 'aba-mvp': 'ABA MVP', 'aba-roy': 'ABA Rookie of the Year' };
-  const teamAwardLabel = (a: string, rank: number | null, lg: string) => {
-    const nth = rank === 1 ? '1st' : rank === 2 ? '2nd' : rank === 3 ? '3rd' : '';
-    const base = a === 'allLeague' ? (lg === 'BAA' ? 'All-BAA' : 'All-NBA') : a === 'allDefense' ? 'All-Defensive' : a === 'allRookie' ? 'All-Rookie' : 'All-ABA';
-    return `${base}${nth ? ` ${nth} Team` : ''}`;
-  };
-  const awardsFor = (idx: number): HistoricalAward[] => {
-    const out: HistoricalAward[] = [];
-    for (const a of h.awards) if (a.player === idx && a.winner && a.season < E) out.push({ season: label(endToStart(a.season)), label: awardLabels[a.award] ?? a.award, detail: a.share != null ? `${(a.share * 100).toFixed(1)}% vote share` : undefined });
-    for (const a of h.teamAwards) if (a.player === idx && a.season < E) out.push({ season: label(endToStart(a.season)), label: teamAwardLabel(a.award, a.rank, a.league) });
-    for (const a of h.allStars) if (a.player === idx && a.season < E) out.push({ season: label(endToStart(a.season)), label: a.league === 'ABA' ? 'ABA All-Star' : 'All-Star', detail: a.replaced ? 'injury replacement' : undefined });
-    for (const a of h.allStarMvp) if (a.player === idx && a.season < E) out.push({ season: label(endToStart(a.season)), label: 'All-Star Game MVP' });
-    for (const c of h.champions) {
-      if (c.season >= E) continue;
-      if (c.finalsMvp === idx) out.push({ season: label(endToStart(c.season)), label: 'Finals MVP' });
-      if (c.rosterCredit.includes(idx)) out.push({ season: label(endToStart(c.season)), label: 'NBA Champion', detail: `${teamName(c.champion, c.season)} (credit: last regular-season team)` });
-    }
-    return out.sort((a, b) => a.season.localeCompare(b.season));
-  };
-
-  const careerFor = (p: HistPlayer): CareerSeasonRecord[] => {
-    const rows = (h.seasonsByPlayer.get(p.idx) ?? []).filter(r => NBA.has(r.league) && r.season < E);
-    const ends = [...new Set(rows.map(r => r.season))].sort((a, b) => a - b);
-    return ends.map(end => {
-      const rs = rows.filter(r => r.season === end);
-      const agg = aggregateRow(rs), stints = rs.filter(r => !r.isAggregate);
-      const { totals, missing } = statTotals(agg);
-      const lastTeam = stints[stints.length - 1]?.team ?? agg.team;
-      const rating = h.ratingsByPlayer.get(p.idx)?.get(end);
-      const splits: SeasonStint[] | undefined = stints.length > 1 ? stints.map(st => ({ teamId: mapTeam(st.team), teamLabel: st.team !== mapTeam(st.team) ? st.team : undefined, stats: statTotals(st).totals, advanced: advancedFrom(st) })) : undefined;
-      const milestones = emptySeasonMilestones();
-      if (agg.stats.trp_dbl != null) milestones.tripleDoubles = agg.stats.trp_dbl;
-      return {
-        season: label(endToStart(end)), teamId: mapTeam(lastTeam), ...(lastTeam !== mapTeam(lastTeam) ? { teamLabel: lastTeam } : {}), age: agg.age ?? 0,
-        overall: rating ? rating.ovr : 0, stats: totals, milestones, advanced: advancedFrom(agg), ...(splits ? { stints: splits } : {}),
-        imported: true, missing: [...(missing ?? []), 'doubleDoubles', 'gameHighs', ...(agg.stats.trp_dbl == null ? ['tripleDoubles' as const] : [])],
-        ...(rating ? { rating: { ovr: rating.ovr, source: rating.source } } : {}),
-      } as CareerSeasonRecord;
-    });
-  };
+  const ctx: CareerContext = { h, E, mapTeam, teamName };
 
   const makePlayer = (idx: number, teamId: string | null): PlayerSeason => {
     const p = h.players[idx];
@@ -272,14 +391,14 @@ export function buildHistoricalLeague(h: NbaHistory, startYear: number, opts: { 
     const startRow = firstTeam.get(idx);
     const age = ageAt(p, startYear, startRow?.age ?? null);
     const pl = buildRealPlayer(seed, season, teamId, age, seed.rating.ovr, NBA_HISTORY_DATASET);
-    return { ...pl, careerHistory: careerFor(p), historicalAwards: awardsFor(idx), birthDate: p.birthDate ?? undefined } as PlayerSeason;
+    return { ...pl, careerHistory: realCareer(ctx, p), historicalAwards: realAwards(ctx, idx), birthDate: p.birthDate ?? undefined } as PlayerSeason;
   };
 
   const usedIds = new Set<string>();
   const contracts: Record<string, Contract> = {};
   const usedCoachNames = new Set<string>();
   const teams: LeagueTeam[] = teamRows.map(t => {
-    const seasons = [...rosterIdx.entries()].filter(([, abbr]) => abbr === t.abbr).map(([idx]) => makePlayer(idx, t.abbr));
+    const seasons = assignRosterNumbers([...rosterIdx.entries()].filter(([, abbr]) => abbr === t.abbr).map(([idx]) => makePlayer(idx, t.abbr)), t.abbr, E);
     for (const s of seasons) {
       usedIds.add(s.real!.id);
       contracts[s.playerId] = { playerId: s.playerId, teamId: t.abbr, annualSalary: computeAskingSalary(calculateOverall(s), DEFAULT_CAP_SETTINGS), yearsRemaining: 1 + rng.nextInt(4), playerOption: false, teamOption: false };
@@ -291,7 +410,7 @@ export function buildHistoricalLeague(h: NbaHistory, startYear: number, opts: { 
       expenseLevels: { scouting: 50, coaching: 50, health: 50, facilities: 50 },
     } as LeagueTeam;
   });
-  const freeAgents = [...freeAgentIdx].map(idx => makePlayer(idx, null));
+  const freeAgents = [...freeAgentIdx].map(idx => makePlayer(idx, null)).map(p => ({ ...p, jerseyNumber: realJerseyNumber(p.real!.id, null, E) ?? plausibleJerseyNumber(p.real!.id) }));
   for (const f of freeAgents) usedIds.add(f.real!.id);
 
   // ---- imported league history (every completed season before the start)
@@ -354,14 +473,21 @@ export function buildHistoricalLeague(h: NbaHistory, startYear: number, opts: { 
     usedIds.add(p.id);
   }
 
+  // Every player whose career ended before the start: retired, with his real career and honours.
+  const retiredPlayers = opts.allPlayers ? retiredBeforeStart(h, startYear, usedIds) : undefined;
+  if (retiredPlayers) notes.push(`Every real player who retired before ${startYear} is loaded as a retired player (${retiredPlayers.length.toLocaleString()} players), with his real career statistics and honours.`);
+
   const teamIds = teams.map(t => t.teamId);
+  const realRosters = opts.forceRosters ? historicalRosterPlan(h, E + 1, lastEnd, new Set(teamIds), mapTeam) : undefined;
+  const realMoves = opts.forceRosters ? historicalMidseasonMoves(h, E, lastEnd, new Set(teamIds), mapTeam) : undefined;
   const league: League = {
     teams, schedule: generateSeasonSchedule(teamIds, gamesPerTeam), settings: { ...DEFAULT_GAME_SETTINGS, gamesPerSeason: gamesPerTeam } as League['settings'],
-    season, calendarDate: seasonStartDate(season), calendarRound: -1, franchiseHistory,
+    season, calendarDate: seasonStartDate(season), calendarRound: -1, franchiseHistory, ...(retiredPlayers ? { retiredPlayers } : {}),
     historical: {
       source: 'nba-history', dataset: NBA_HISTORY_DATASET, startYear, realDevelopment: opts.realDevelopment,
       futureClasses, futureDebuts, classesLoadedThrough: Math.min(firstDraft + 9, lastDraftYear(h)), lastDataStartYear: lastEnd - 1, notes,
       cityNames: Object.fromEntries(teams.map(t => [t.teamId, t.name])),
+      ...(opts.forceRosters ? { forceRosters: true, realRosters, realMoves } : {}),
     },
   };
   const firstClass = futureClasses[String(firstDraft)] ?? [];
@@ -390,7 +516,7 @@ export function realIdsInLeague(league: League, extras: Pick<GMLeagueExtras, 'fr
   for (const t of league.teams) t.seasons.forEach(add);
   extras.freeAgents.forEach(add);
   for (const d of extras.draftClass) add(d.trueSeason);
-  for (const r of league.retiredPlayers ?? []) add(r.finalSeasonData);
+  for (const r of league.retiredPlayers ?? []) { add(r.finalSeasonData); if (r.realId) ids.add(r.realId); }
   for (const seeds of Object.values(league.historical?.futureClasses ?? {})) for (const s of seeds) ids.add(s.id);
   for (const seeds of Object.values(league.historical?.futureDebuts ?? {})) for (const s of seeds) ids.add(s.id);
   return ids;

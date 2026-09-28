@@ -11,15 +11,16 @@ describe('team chemistry', () => {
 
     const highResult = runBatchSimulation({
       home: homeHighChem, away, settings: { ...DEFAULT_GAME_SETTINGS, teamChemistryEnabled: true },
-      games: 120, focusPlayerId: homeHighChem.seasons[0].playerId, seedBase: 1,
+      games: 400, focusPlayerId: homeHighChem.seasons[0].playerId, seedBase: 1,
     });
     const lowResult = runBatchSimulation({
       home: homeLowChem, away, settings: { ...DEFAULT_GAME_SETTINGS, teamChemistryEnabled: true },
-      games: 120, focusPlayerId: homeLowChem.seasons[0].playerId, seedBase: 1,
+      games: 400, focusPlayerId: homeLowChem.seasons[0].playerId, seedBase: 1,
     });
 
+    // The effect is small next to game-to-game noise, so it needs a large sample.
     expect(highResult.tov).toBeLessThan(lowResult.tov);
-  }, 15000);
+  }, 40000);
 
   it('disabling team chemistry makes high vs low chemistry produce identical results', () => {
     const homeHighChem = { ...buildDemoTeam('HOME', 'Home'), chemistry: 95 };

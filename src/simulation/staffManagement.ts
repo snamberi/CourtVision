@@ -1,3 +1,4 @@
+import { hotSeats } from './coachingCarousel';
 import { defaultCoachTendencies } from './league';
 import type { League, LeagueTeam } from './league';
 import { generateCoachIdentity, type CoachIdentity } from './coaching';
@@ -128,6 +129,9 @@ export function autoManageStaff(league:League,teamIds?:string[]):League{
 }
 export function advanceStaffSeason(league:League,previousSeason:string,champion?:string,coyName?:string):League{
  const pool=[...(league.staffMarket??[])];
+ // AI teams extend head coaches who met expectations instead of letting every expiring deal walk (see coachingCarousel.ts).
+ const last=league.franchiseHistory?.find(r=>r.season===previousSeason)?.teamSeasons;
+ const keep=new Set(last?hotSeats(league,null,last,previousSeason).filter(s=>s.heat<45).map(s=>s.teamId):[]);
  const teams=league.teams.map(t=>{
   const control={...(t.coachingControl??newControl()),payout:0,payoutSeason:league.season,lastStaffReviewGames:0};
   const staff={...t.staff};let head=t.coachIdentity;
@@ -141,6 +145,9 @@ export function advanceStaffSeason(league:League,previousSeason:string,champion?
    const averageGrowth=t.seasons.reduce((n,player)=>n+calculateOverall(player)-(player.previousOverall??calculateOverall(player)),0)/Math.max(1,t.seasons.length);
    if(role==='development'&&averageGrowth>2){next.profile.preferredRole='head';if(next.contract.yearsRemaining===0)next.contract.annualSalary=Math.round(next.contract.annualSalary*1.15);}
 
+   if(next.contract.yearsRemaining===0&&role==='head'&&t.coachingControl?.staffAuto!==false&&keep.has(t.teamId)&&next.age<70){
+    next.contract={annualSalary:Math.round(next.contract.annualSalary*1.08),yearsRemaining:2+(next.championships>0?1:0)};
+   }
    const expired=next.contract.yearsRemaining===0;
    if(expired){next.profile.history=next.profile.history.map(h=>h.to?h:{...h,to:previousSeason});if(next.age<76)pool.push(next);}
    if(role==='head')head=expired?undefined:next;else if(expired)delete staff[role];else staff[role]=next;

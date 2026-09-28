@@ -1,3 +1,4 @@
+import { CupBanner, DynastyBanner, JerseyBanner, TitleBanner } from './Banners';
 import { TeamLink } from './TeamLink';
 import { fx } from './statFormat';
 import { dynasties, teamRivals } from '../simulation/rivalry';
@@ -5,7 +6,7 @@ import { Fragment, useMemo, useState } from 'react';
 import type { League, LeagueTeam, PlayoffFinish, TeamSeasonRosterLine } from '../simulation/league';
 import type { GMLeagueExtras } from '../simulation/gm';
 import type { PlayerSeason, SeasonStatTotals } from '../simulation/types';
-import { resolveTeamIdentity, type TeamIdentity } from '../simulation/teamIdentity';
+import { resolveTeamIdentity } from '../simulation/teamIdentity';
 import { useTeamIdentity } from '../visuals/TeamIdentityContext';
 import { TeamLogo } from './TeamLogo';
 import { formatSeasonYear } from '../simulation/calendar';
@@ -60,34 +61,6 @@ function franchiseSeasons(league: League, team: LeagueTeam, extras?: GMLeagueExt
 }
 
 /** A pixel pennant in the team's colors. */
-function Banner({ identity, top, big, bottom, kind }: { identity: TeamIdentity; top: string; big: string; bottom: string; kind: 'title' | 'jersey' }) {
-  const main = kind === 'title' ? identity.primary : '#0b1018', trim = kind === 'title' ? '#ffd166' : identity.primary;
-  return BannerArt({ main, trim, top, big, bottom, kind });
-}
-/** A wider gold-on-black banner for a dynasty run (three titles in five seasons). */
-function DynastyBanner({ identity, from, to, titles }: { identity: TeamIdentity; from: string; to: string; titles: number }) {
-  return <svg className="history-banner banner-dynasty" viewBox="0 0 92 92" width="92" height="92" shapeRendering="crispEdges" role="img" aria-label={`Dynasty ${from} to ${to}, ${titles} titles`}>
-    <rect x="4" y="0" width="84" height="4" fill="#5d6b7d" /><rect x="2" y="2" width="4" height="4" fill="#94a0b2" /><rect x="86" y="2" width="4" height="4" fill="#94a0b2" />
-    <path d="M6 4H86V74L72 86H20L6 74Z" fill="#ffd166" /><path d="M10 8H82V72L70 82H22L10 72Z" fill="#0b1018" />
-    <path d="M10 8H82V14H10Z" fill={identity.primary} />
-    <text x="46" y="24" textAnchor="middle" fill="#ffd166" fontFamily="'Press Start 2P', monospace" fontSize="6">DYNASTY</text>
-    {Array.from({ length: Math.min(titles, 6) }, (_, i) => { const x = 46 - (Math.min(titles, 6) - 1) * 6 + i * 12; return <path key={i} d={`M${x - 4} 32H${x + 4}V36H${x + 2}V40H${x + 3}V42H${x - 3}V40H${x - 2}V36H${x - 4}Z`} fill="#ffd166" />; })}
-    <text x="46" y="56" textAnchor="middle" fill="#f4f0e6" fontFamily="'Press Start 2P', monospace" fontSize="7">{from.slice(0, 4)}</text>
-    <text x="46" y="67" textAnchor="middle" fill="#94a0b2" fontFamily="'Press Start 2P', monospace" fontSize="5">TO {to.slice(0, 4)}</text>
-    <text x="46" y="78" textAnchor="middle" fill="#ffd166" fontFamily="monospace" fontWeight="bold" fontSize="6">{titles} TITLES</text>
-  </svg>;
-}
-function BannerArt({ main, trim, top, big, bottom, kind }: { main: string; trim: string; top: string; big: string; bottom: string; kind: 'title' | 'jersey' }) {
-  return <svg className={`history-banner banner-${kind}`} viewBox="0 0 60 92" width="60" height="92" shapeRendering="crispEdges" role="img" aria-label={`${top} ${big} ${bottom}`}>
-    <rect x="4" y="0" width="52" height="4" fill="#5d6b7d" /><rect x="2" y="2" width="4" height="4" fill="#94a0b2" /><rect x="54" y="2" width="4" height="4" fill="#94a0b2" />
-    <path d="M6 4H54V74L42 86H18L6 74Z" fill={trim} /><path d="M10 8H50V72L40 82H20L10 72Z" fill={main} />
-    <rect x="10" y="20" width="40" height="2" fill={trim} opacity=".8" />
-    <text x="30" y="17" textAnchor="middle" fill={kind === 'title' ? '#fff4d9' : '#94a0b2'} fontFamily="'Press Start 2P', monospace" fontSize="5">{top}</text>
-    <text x="30" y={kind === 'title' ? 52 : 55} textAnchor="middle" fill={kind === 'title' ? '#ffd166' : '#f4f0e6'} fontFamily="'Press Start 2P', monospace" fontSize={big.length > 2 ? (kind === 'title' ? 9 : 13) : 18}>{big}</text>
-    <text x="30" y="70" textAnchor="middle" fill="#f4f0e6" fontFamily="monospace" fontWeight="bold" fontSize="6">{bottom.slice(0, 11)}</text>
-  </svg>;
-}
-
 export function TeamHistoryPage({ league, extras, initialTeamId, onSelectPlayer, onOpenArchive }: { league: League; extras?: GMLeagueExtras; initialTeamId?: string | null; onSelectPlayer: (id: string) => void; onOpenArchive?: () => void }) {
   const [teamId, setTeamId] = useState(initialTeamId && league.teams.some(t => t.teamId === initialTeamId) ? initialTeamId : league.teams[0]?.teamId ?? '');
   const [open, setOpen] = useState<string | null>(null);
@@ -115,23 +88,24 @@ export function TeamHistoryPage({ league, extras, initialTeamId, onSelectPlayer,
   const playoffs = seasons.filter(s => s.finish && s.finish !== 'Missed Playoffs' && s.finish !== 'Play-In' && s.finish !== 'In progress').length;
   const best = [...known].sort((a, b) => (b.wins! / Math.max(1, b.wins! + b.losses!)) - (a.wins! / Math.max(1, a.wins! + a.losses!)))[0];
   const retired = [...(team.retiredJerseys ?? [])].sort((a, b) => a.number - b.number);
-  const lastName = (id: string) => id.split(' ').slice(-1)[0].toUpperCase();
+  const cups = (league.franchiseHistory ?? []).filter(r => r.cup?.championTeamId === team.teamId).map(r => r.season);
   const teamDynasties = dynasties(league.franchiseHistory ?? []).filter(d => d.teamId === team.teamId);
   const rivals = teamRivals(league, team.teamId, 6);
   const trophies = teamTrophyEntries(league, team.teamId);
   const teamName = (id: string) => league.teams.find(t => t.teamId === id)?.name ?? id;
   return <div className="team-history-page">
     <div className="team-history-head">
-      <TeamLogo team={team} size={72} />
+      <TeamLogo team={team} size={110} />
       <div><span className="pixel-eyebrow">FRANCHISE HISTORY</span><h2>{team.name}</h2>
         <label className="team-history-select">Team <select value={teamId} onChange={e => { setTeamId(e.target.value); setOpen(null); }}>{league.teams.map(t => <option key={t.teamId} value={t.teamId}>{t.name}</option>)}</select></label></div>
     </div>
     <section className="history-rafters" aria-label="Banners">
       <h4>The Rafters</h4>
-      {titles.length === 0 && retired.length === 0 ? <p className="hint-text">No banners yet. Win a title or retire a legend's number to raise one.</p> : <div className="banner-row">
-        {teamDynasties.map(d => <DynastyBanner key={d.from} identity={identity} from={d.from} to={d.to} titles={d.titles.length} />)}
-        {titles.map(s => <Banner key={s.season} identity={identity} kind="title" top="CHAMPIONS" big={formatSeasonYear(s.season).replace(/^(\d{4}).*/, '$1')} bottom={identity.abbreviation} />)}
-        {retired.map(j => <button key={j.number} className="banner-button" onClick={() => onSelectPlayer(j.playerId)} title={`${j.playerId} — retired ${formatSeasonYear(j.season)}`}><Banner identity={identity} kind="jersey" top="RETIRED" big={String(j.number)} bottom={lastName(j.playerId)} /></button>)}
+      {titles.length === 0 && retired.length === 0 && cups.length === 0 ? <p className="hint-text">No banners yet. Win a title or retire a legend's number to raise one.</p> : <div className="banner-row">
+        {teamDynasties.map(d => <DynastyBanner key={d.from} identity={identity} from={formatSeasonYear(d.from)} to={formatSeasonYear(d.to)} titles={d.titles.length} />)}
+        {titles.map(s => <TitleBanner key={s.season} identity={identity} year={formatSeasonYear(s.season)} />)}
+        {cups.map(season => <CupBanner key={`cup-${season}`} identity={identity} year={formatSeasonYear(season)} />)}
+        {retired.map(j => <button key={j.number} className="banner-button" onClick={() => onSelectPlayer(j.playerId)} title={`${j.playerId} — retired ${formatSeasonYear(j.season)}`}><JerseyBanner identity={identity} number={j.number} name={j.playerId} years={formatSeasonYear(j.season)} /></button>)}
       </div>}
     </section>
     <section className="history-trophy-case" aria-label="Trophy case">

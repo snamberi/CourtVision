@@ -39,7 +39,7 @@ describe('team identity', () => {
   it('shows only earned banners and exposes editing only when authorized', () => {
     const { league } = fixture(), team = { ...league.teams[0], retiredJerseys: [{ playerId: 'Legend', number: 30, season: '2025' }] };
     render(<TeamIdentityPanel team={team} currentChampion={team.teamId} currentSeason="2026" />);
-    expect(screen.getByText('CHAMPIONS')).toBeTruthy(); expect(screen.getByText('#30')).toBeTruthy();
+    expect(screen.getByRole('img', { name: 'Champions 2027' })).toBeTruthy(); expect(screen.getByRole('img', { name: 'Retired number 30, Legend' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Edit Team Identity' })).toBeNull();
   });
 });

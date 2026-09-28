@@ -1,3 +1,6 @@
+import { midseasonCarousel } from './coachingCarousel';
+import { enforceSticky } from './sticky';
+import { applyHistoricalDeadline } from '../history/realRollover';
 import type { PlayerSeason } from './types';
 import type { League, LeagueTeam } from './league';
 import { signingDecision, strengthRanking } from './freeAgentDecision';
@@ -11,8 +14,8 @@ import { refreshLeagueMorale, type MoraleEvent } from './personality';
 import { RNG } from './engine/rng';
 import {
   type GMLeagueExtras, type TradeProposal, type DraftProspect,
-  computeTradeValue, validateTrade, executeTrade, evaluateTradeSides, signFreeAgent, draftProspect, currentDraftOrder,
-  isTradeDeadlinePassed, capSpaceRemaining, finalizeDraftDay, tradeableFuturePicks, computeFutureDraftPickValue,
+  computeTradeValue, tradePackageValue, validateTrade, validateTradeAssets, executeTrade, evaluateTradeSides, signFreeAgent, draftProspect, currentDraftOrder,
+  isTradeDeadlinePassed, capSpaceRemaining, finalizeDraftDay, tradeableFuturePicks, computeFutureDraftPickValue, waiveToFreeAgency,
 } from './gm';
 import { computeTeamFinances } from './finances';
 
@@ -33,7 +36,9 @@ function personalityOf(extras: GMLeagueExtras, teamId: string): GMPersonality {
   return extras.teamPersonalities?.[teamId] ?? 'balanced';
 }
 
-const TARGET_ROSTER_SIZE = 12;
+const TARGET_ROSTER_SIZE = 13;
+/** With cap room, a team keeps adding real depth (someone who would crack its top ten) up to this many players. */
+const DEPTH_ROSTER_SIZE = 15;
 const MIN_ROSTER_SIZE = 8;
 const QUALITY_OVERALL_THRESHOLD = 60;
 const POSITIONS: (keyof PositionSuitability)[] = ['PG', 'SG', 'SF', 'PF', 'C'];
@@ -83,16 +88,25 @@ export function runFreeAgencyAI(
   const signings: FreeAgencySigning[] = [];
 
   const ranking = strengthRanking(league);
+  // Historical rosters: AI teams only sign to reach the league minimum (their real rosters arrive each season).
+  const locked = !!league.historical?.forceRosters;
+  const fillTo = locked ? (league.rosterLimits?.minRosterSize ?? TARGET_ROSTER_SIZE) : TARGET_ROSTER_SIZE;
+  // Teams shop in a different order every day, so the same front offices don't always get first call.
   const candidateTeamIds = aiTeamIds(league, controlledTeamId)
-    .filter((id) => (currentLeague.teams.find((t) => t.teamId === id)?.seasons.length ?? 0) < TARGET_ROSTER_SIZE);
+    .filter((id) => (currentLeague.teams.find((t) => t.teamId === id)?.seasons.length ?? 0) < (locked ? fillTo : DEPTH_ROSTER_SIZE))
+    .map((id) => ({ id, r: rng.next() })).sort((a, b) => a.r - b.r).map((x) => x.id);
 
   for (const teamId of candidateTeamIds) {
     if (signings.length >= maxSigningsTotal) break;
     const team = currentLeague.teams.find((t) => t.teamId === teamId);
-    if (!team || team.seasons.length >= TARGET_ROSTER_SIZE) continue;
+    if (!team) continue;
     if (currentExtras.freeAgents.length === 0) break;
 
     const space = capSpaceRemaining(currentExtras.contracts, team, currentExtras.capSettings);
+    // A full-enough roster only adds with real cap room, and only someone who would crack its top ten.
+    const filling = team.seasons.length < fillTo;
+    if (!filling && (locked || space < currentExtras.capSettings.minSalary * 2)) continue;
+    const depthLine = filling ? -Infinity : ([...team.seasons].map(calculateOverall).sort((a, b) => b - a)[9] ?? 0) + 1;
     const personality = personalityOf(currentExtras, teamId);
     const aggressiveness = ruleMultiplier(league.rulesSettings?.aiFreeAgentAggressiveness); // 0.5x-1.5x, 1.0x at the default 50
     const winPct = computeStandings(league).find((r) => r.teamId === teamId)?.winPct ?? 0.5;
@@ -102,7 +116,8 @@ export function runFreeAgencyAI(
     const priceMultiplier = (personality === 'aggressive' ? 1.15 : personality === 'conservative' ? 0.85 : 1) * aggressiveness * marketFactor;
     const need = weakestPositions(team);
     const affordable = currentExtras.freeAgents
-      .filter(() => !currentExtras.capSettings.enforceCapOnTrades || space >= cushion)
+      .filter((p) => calculateOverall(p) > depthLine)
+      .filter(() => !currentExtras.capSettings.enforceCapOnTrades || space >= cushion || filling)
       .sort((a, b) => {
         const scoreA = computeTradeValue(a) + (need.includes(primaryPosition(a)) ? NEED_BONUS : 0);
         const scoreB = computeTradeValue(b) + (need.includes(primaryPosition(b)) ? NEED_BONUS : 0);
@@ -117,7 +132,8 @@ export function runFreeAgencyAI(
       const offer = Math.max(1_500_000, Math.min(Math.round(computeTradeValue(candidate) * 250_000 * priceMultiplier), budget));
       const quote = signingDecision(currentLeague, currentExtras, candidate, teamId, undefined, { ranking });
       if (quote.refuses) continue;
-      const salary = Math.max(offer, quote.required);
+      // Depth signings pay the asking price; filling a thin roster a team pays up to its own valuation.
+      const salary = filling ? Math.max(offer, quote.required) : quote.required;
       if (quote.path === 'market' && salary > budget) continue;
       if (!signingDecision(currentLeague, currentExtras, candidate, teamId, { annualSalary: salary, yearsRemaining }, { ranking }).accepted) continue;
       pick = candidate; annualSalary = salary; break;
@@ -133,7 +149,100 @@ export function runFreeAgencyAI(
     signings.push({ teamId, teamName: team.name, playerId: pick.playerId });
   }
 
-  return { league: currentLeague, extras: currentExtras, signings };
+  // Stars don't sit in free agency: teams with a clear upgrade go after them even with a full roster.
+  const chase = runStarChaseAI(currentLeague, currentExtras, controlledTeamId, seed + 7, Math.max(0, maxSigningsTotal - signings.length));
+  return { league: chase.league, extras: chase.extras, signings: [...signings, ...chase.signings] };
+}
+
+/** Free agents at or above this share of the league's best ratings are "stars" every team will call about. */
+const STAR_PERCENTILE = 0.85;
+/** A payroll below this share of the cap is under the salary floor: that team has to spend (like the NBA's 90%). */
+export const SALARY_FLOOR = 0.9;
+/** A free agent must be this much more valuable than the player a team would cut before it makes the swap. */
+const UPGRADE_MARGIN = 6;
+
+/**
+ * How much a team wants to keep a player, for deciding whom to cut: value, minus underperformance (a player
+ * producing far below his rating over a real sample), with long or big contracts protected (cutting them is costly).
+ */
+export function keepScore(p: PlayerSeason, salary = 0): number {
+  const s = p.seasonStats;
+  let score = computeTradeValue(p);
+  if (s && s.minutes >= 150) {
+    // Production per 36 minutes against what his rating should produce in them.
+    const per36 = ((s.points + (s.oreb + s.dreb) * 1.2 + s.ast * 1.5 + s.stl * 2 + s.blk * 2 - s.tov) / s.minutes) * 36;
+    const expected = Math.max(0, calculateOverall(p) - 40) * 1.3;
+    score -= Math.max(0, expected - per36) * 0.5;
+  }
+  return score + Math.max(0, salary - 4_000_000) / 1_000_000;
+}
+
+/**
+ * AI teams pursue the best free agents: for each star (and any free agent who is a clear upgrade), the teams that
+ * can afford him and would get better make offers; the best fit that he accepts signs him, and if its roster is
+ * full it waives its weakest, cheapest-to-cut player (usually one underperforming his rating) to make room.
+ */
+export function runStarChaseAI(league: League, extras: GMLeagueExtras, controlledTeamId: string | null, seed = 1, maxMoves = 4): { league: League; extras: GMLeagueExtras; signings: FreeAgencySigning[] } {
+  if (!extras.freeAgencyOpen || maxMoves <= 0 || !extras.freeAgents.length || league.historical?.forceRosters) return { league, extras, signings: [] };
+  const rng = new RNG(seed);
+  const ratings = league.teams.flatMap(t => t.seasons.map(calculateOverall)).sort((a, b) => a - b);
+  const starLine = ratings[Math.floor(ratings.length * STAR_PERCENTILE)] ?? 70;
+  const maxRoster = league.rosterLimits?.maxRosterSize ?? 15;
+  const standings = new Map(computeStandings(league).map(r => [r.teamId, r.winPct]));
+  const ranking = strengthRanking(league);
+  let current = { league, extras };
+  const signings: FreeAgencySigning[] = [];
+  const targets = [...extras.freeAgents].sort((a, b) => computeTradeValue(b) - computeTradeValue(a)).slice(0, 8);
+
+  for (const fa of targets) {
+    if (signings.length >= maxMoves) break;
+    if (!current.extras.freeAgents.some(f => f.playerId === fa.playerId)) continue;
+    const star = calculateOverall(fa) >= starLine;
+    const value = computeTradeValue(fa);
+    type Bid = { teamId: string; salary: number; years: number; cut?: string; score: number };
+    const bids: Bid[] = [];
+    for (const teamId of aiTeamIds(current.league, controlledTeamId)) {
+      const team = current.league.teams.find(t => t.teamId === teamId)!;
+      const full = team.seasons.length >= maxRoster;
+      // Who would go: the lowest keep score among players outside the top eight of the rotation.
+      const top8 = new Set([...team.seasons].sort((a, b) => calculateOverall(b) - calculateOverall(a)).slice(0, 8).map(p => p.playerId));
+      const cut = team.seasons.filter(p => !top8.has(p.playerId))
+        .map(p => ({ p, k: keepScore(p, current.extras.contracts[p.playerId]?.annualSalary) }))
+        .sort((a, b) => a.k - b.k)[0];
+      const worst = team.seasons.map(p => computeTradeValue(p)).sort((a, b) => a - b)[Math.min(7, team.seasons.length - 1)] ?? 0;
+      // Only a real upgrade on the rotation's back end (or a star) is worth the chase.
+      if (!star && value < worst + UPGRADE_MARGIN) continue;
+      if (full && (!cut || value < cut.k + UPGRADE_MARGIN)) continue;
+      const personality = personalityOf(current.extras, teamId);
+      const years = star ? 2 + rng.nextInt(3) : 1 + rng.nextInt(2);
+      // Teams under the salary floor have money they must spend: they bid harder, up to their cap room.
+      const cap = current.extras.capSettings;
+      const room = capSpaceRemaining(current.extras.contracts, team, cap);
+      const underFloor = cap.salaryCap - room < cap.salaryCap * SALARY_FLOOR;
+      const offerBase = Math.round(value * 250_000 * (personality === 'aggressive' ? 1.2 : personality === 'conservative' ? 0.95 : 1.08) * (star ? 1.15 : 1) * (underFloor ? 1.2 : 1));
+      const quote = signingDecision(current.league, current.extras, fa, teamId, undefined, { ranking });
+      if (quote.refuses) continue;
+      const salary = Math.max(quote.required, underFloor ? Math.min(offerBase, Math.max(quote.required, room)) : offerBase);
+      if (!signingDecision(current.league, current.extras, fa, teamId, { annualSalary: salary, yearsRemaining: years }, { ranking }).accepted) continue;
+      const winPct = standings.get(teamId) ?? 0.5;
+      const need = weakestPositions(team).includes(primaryPosition(fa)) ? NEED_BONUS : 0;
+      // The player chooses: the money first, then a winner and a role (he doesn't just join the best team every time).
+      bids.push({ teamId, salary, years, cut: full ? cut!.p.playerId : undefined, score: salary / 1_000_000 + winPct * 12 + need * 0.5 + (value - worst) * 0.5 + rng.next() * 4 });
+    }
+    const best = bids.sort((a, b) => b.score - a.score)[0];
+    if (!best) continue;
+    let next = current;
+    if (best.cut) {
+      const waived = waiveToFreeAgency(next.league, next.extras, best.cut, best.teamId);
+      if (waived.league === next.league) continue;
+      next = waived;
+    }
+    const signed = signFreeAgent(next.league, next.extras, fa.playerId, best.teamId, { annualSalary: best.salary, yearsRemaining: best.years, playerOption: false, teamOption: false });
+    if (signed.league === next.league) continue;
+    current = signed;
+    signings.push({ teamId: best.teamId, teamName: current.league.teams.find(t => t.teamId === best.teamId)?.name ?? best.teamId, playerId: fa.playerId });
+  }
+  return { ...current, signings };
 }
 
 /** Maps a 0-100 league-rules slider to a 0.5x-1.5x multiplier, centered on 1.0x at the default of 50 —
@@ -167,58 +276,80 @@ export function classifyBuyerSeller(league: League, extras: GMLeagueExtras, team
  * (rough valuation - see computeFutureDraftPickValue) rather than the offer
  * simply failing outright.
  */
-export function findAITrade(league: League, extras: GMLeagueExtras, teamAId: string, teamBId: string): TradeProposal | null {
+export function findAITrade(league: League, extras: GMLeagueExtras, teamAId: string, teamBId: string, sellerId?: string, targetPlayerId?: string): TradeProposal | null {
   const teamA = league.teams.find((t) => t.teamId === teamAId);
   const teamB = league.teams.find((t) => t.teamId === teamBId);
   if (!teamA || !teamB || teamA.seasons.length <= MIN_ROSTER_SIZE || teamB.seasons.length <= MIN_ROSTER_SIZE) return null;
 
-  const classA = classifyBuyerSeller(league, extras, teamAId);
-  const classB = classifyBuyerSeller(league, extras, teamBId);
   let seller = teamA, buyer = teamB;
-  if (classA === 'seller' && classB === 'buyer') { seller = teamA; buyer = teamB; }
-  else if (classB === 'seller' && classA === 'buyer') { seller = teamB; buyer = teamA; }
-  else return null; // no clear buyer/seller relationship between this pair right now
+  if (sellerId === teamAId || sellerId === teamBId) {
+    // The caller already knows who is selling (Deadline Day calls to a team that could go either way).
+    seller = sellerId === teamAId ? teamA : teamB;
+    buyer = sellerId === teamAId ? teamB : teamA;
+  } else {
+    const classA = classifyBuyerSeller(league, extras, teamAId);
+    const classB = classifyBuyerSeller(league, extras, teamBId);
+    if (classA === 'seller' && classB === 'buyer') { seller = teamA; buyer = teamB; }
+    else if (classB === 'seller' && classA === 'buyer') { seller = teamB; buyer = teamA; }
+    else return null; // no clear buyer/seller relationship between this pair right now
+  }
 
   // Values are seen through each front office's own situation (tradeValue.ts): the buyer wants help now,
   // the seller wants youth and picks. A deal is proposed only if both can come out ahead.
   const buyerNeed = weakestPositions(buyer);
   const needBoost = (p: PlayerSeason, need: string[]) => need.includes(primaryPosition(p)) ? 1.15 : 1;
-  const sellerVet = [...seller.seasons]
-    .filter((s) => s.age >= 29)
-    .sort((a, b) => tradeAssetValue(b, league, extras, buyer.teamId) * needBoost(b, buyerNeed) - tradeAssetValue(a, league, extras, buyer.teamId) * needBoost(a, buyerNeed))[0];
-  if (!sellerVet) return null;
-  const vetToSeller = tradeAssetValue(sellerVet, league, extras, seller.teamId);
-  const gapPosition = primaryPosition(sellerVet);
-  const buyerYoung = [...buyer.seasons]
-    .filter((s) => s.age <= 25)
-    .sort((a, b) => {
-      const distA = Math.abs(tradeAssetValue(a, league, extras, seller.teamId) - vetToSeller) * (primaryPosition(a) === gapPosition ? 0.8 : 1);
-      const distB = Math.abs(tradeAssetValue(b, league, extras, seller.teamId) - vetToSeller) * (primaryPosition(b) === gapPosition ? 0.8 : 1);
-      return distA - distB;
-    })[0];
-  if (!buyerYoung) return null;
-
+  // The buyer only calls about a real upgrade to its rotation, and never gives up its top five for him.
+  const byRating = [...buyer.seasons].sort((a, b) => calculateOverall(b) - calculateOverall(a));
+  const buyerCore = new Set(byRating.slice(0, 5).map(p => p.playerId));
+  const rotationLine = calculateOverall(byRating[Math.min(6, byRating.length - 1)]);
+  // A named target (a Deadline Day rumor, your trade block) is shopped whatever his age; otherwise the seller moves veterans.
+  const named = targetPlayerId ? seller.seasons.find((s) => s.playerId === targetPlayerId) : undefined;
+  const vets = named ? [named] : [...seller.seasons]
+    .filter((s) => s.age >= 28 && calculateOverall(s) >= rotationLine + 3)
+    .sort((a, b) => tradeAssetValue(b, league, extras, buyer.teamId) * needBoost(b, buyerNeed) - tradeAssetValue(a, league, extras, buyer.teamId) * needBoost(a, buyerNeed))
+    .slice(0, 3);
   const currentYear = parseInt((league.season ?? '2026').slice(0, 4), 10);
-  const proposal: TradeProposal = seller.teamId === teamAId
-    ? { teamAId: seller.teamId, teamBId: buyer.teamId, playersFromA: [sellerVet.playerId], playersFromB: [buyerYoung.playerId] }
-    : { teamAId: buyer.teamId, teamBId: seller.teamId, playersFromA: [buyerYoung.playerId], playersFromB: [sellerVet.playerId] };
+  const top8 = (team: LeagueTeam, out: string[], inc: PlayerSeason[]) => [...team.seasons.filter(p => !out.includes(p.playerId)), ...inc]
+    .map(calculateOverall).sort((a, b) => b - a).slice(0, 8).reduce((n, v) => n + v, 0);
 
-  // Close any shortfall with the pick (from the side that owes) whose value best matches it.
-  const sides = evaluateTradeSides(league, extras, proposal);
-  for (const side of [sides.a, sides.b]) {
-    const shortfall = side.give - side.receive;
-    if (shortfall <= side.give * 0.05) continue;
-    const payer = side.teamId === proposal.teamAId ? proposal.teamBId : proposal.teamAId;
-    const options = tradeableFuturePicks(extras, payer).map(pick => ({ pick, value: pickAssetValue(computeFutureDraftPickValue(pick, league, currentYear), league, side.teamId) }));
-    if (!options.length) break;
-    // Closest match that covers most of the gap; otherwise the best pick they have (validation decides if it's enough).
-    const covering = options.filter(o => o.value >= shortfall * 0.6).sort((x, y) => Math.abs(x.value - shortfall) - Math.abs(y.value - shortfall));
-    const choice = covering[0] ?? options.sort((x, y) => y.value - x.value)[0];
-    if (payer === proposal.teamAId) proposal.picksFromA = [...(proposal.picksFromA ?? []), choice.pick.id];
-    else proposal.picksFromB = [...(proposal.picksFromB ?? []), choice.pick.id];
-    break;
+  for (const sellerVet of vets) {
+    if (named && calculateOverall(sellerVet) < rotationLine) return null;
+    const vetToSeller = tradeAssetValue(sellerVet, league, extras, seller.teamId);
+    const gapPosition = primaryPosition(sellerVet);
+    const buyerYoung = [...buyer.seasons]
+      .filter((s) => s.age <= 25 && !buyerCore.has(s.playerId))
+      .sort((a, b) => {
+        const distA = Math.abs(tradeAssetValue(a, league, extras, seller.teamId) - vetToSeller) * (primaryPosition(a) === gapPosition ? 0.8 : 1);
+        const distB = Math.abs(tradeAssetValue(b, league, extras, seller.teamId) - vetToSeller) * (primaryPosition(b) === gapPosition ? 0.8 : 1);
+        return distA - distB;
+      })[0];
+    const fromBuyer = buyerYoung ? [buyerYoung.playerId] : [];
+    const proposal: TradeProposal = seller.teamId === teamAId
+      ? { teamAId: seller.teamId, teamBId: buyer.teamId, playersFromA: [sellerVet.playerId], playersFromB: fromBuyer }
+      : { teamAId: buyer.teamId, teamBId: seller.teamId, playersFromA: fromBuyer, playersFromB: [sellerVet.playerId] };
+
+    // Close any shortfall with the pick (from the side that owes) whose value best matches it.
+    const sides = evaluateTradeSides(league, extras, proposal);
+    for (const side of [sides.a, sides.b]) {
+      const shortfall = side.give - side.receive;
+      if (shortfall <= side.give * 0.05 && (side.give > 0 || side.receive > 0)) continue;
+      const payer = side.teamId === proposal.teamAId ? proposal.teamBId : proposal.teamAId;
+      const options = tradeableFuturePicks(extras, payer).map(pick => ({ pick, value: pickAssetValue(computeFutureDraftPickValue(pick, league, currentYear), league, side.teamId) }));
+      if (!options.length) break;
+      // Closest match that covers most of the gap; otherwise the best pick they have (validation decides if it's enough).
+      const covering = options.filter(o => o.value >= shortfall * 0.6).sort((x, y) => Math.abs(x.value - shortfall) - Math.abs(y.value - shortfall));
+      const choice = covering[0] ?? options.sort((x, y) => y.value - x.value)[0];
+      if (payer === proposal.teamAId) proposal.picksFromA = [...(proposal.picksFromA ?? []), choice.pick.id];
+      else proposal.picksFromB = [...(proposal.picksFromB ?? []), choice.pick.id];
+      break;
+    }
+    if (!proposal.playersFromA.length && !proposal.picksFromA?.length) continue;
+    if (!proposal.playersFromB.length && !proposal.picksFromB?.length) continue;
+    // The buyer has to come out better today: its best eight improve.
+    if (top8(buyer, fromBuyer, [sellerVet]) <= top8(buyer, [], [])) continue;
+    return proposal;
   }
-  return proposal;
+  return null;
 }
 
 export interface ExecutedAITrade {
@@ -228,6 +359,21 @@ export interface ExecutedAITrade {
 }
 
 /** Runs a handful of AI-vs-AI trade attempts (never involving the controlled team) and executes any that pass validateTrade. The league-wide tradeAIAggressiveness slider scales how many attempts/completions happen per call — higher means a livelier trade market. */
+/** The least an AI team gets back in neutral value, as a share of what it gives up, in AI-to-AI trades. */
+export const AI_TRADE_NEUTRAL_FLOOR = 0.6;
+/** Whether a player has already been traded this season (from his own history). */
+function tradedThisSeason(league: League, playerId: string): boolean {
+  const p = league.teams.flatMap(t => t.seasons).find(s => s.playerId === playerId);
+  return !!p?.history?.some(e => e.type === 'traded' && e.season === league.season);
+}
+
+export const MAX_AI_TRADE_ARRIVALS = 2;
+/** How many players a team has taken in by trade this season (from their own history). */
+function tradeArrivals(league: League, teamId: string): number {
+  const team = league.teams.find(t => t.teamId === teamId);
+  return team?.seasons.filter(p => p.history?.some(e => e.type === 'traded' && e.season === league.season && e.teamId === teamId)).length ?? 0;
+}
+
 export function runTradeMarketAI(
   league: League,
   extras: GMLeagueExtras,
@@ -236,6 +382,8 @@ export function runTradeMarketAI(
   maxTrades = 2,
 ): { league: League; extras: GMLeagueExtras; trades: ExecutedAITrade[] } {
   if (isTradeDeadlinePassed(league)) return { league, extras, trades: [] };
+  // Historical rosters: AI teams keep their real rosters (trades with you still happen through offers).
+  if (league.historical?.forceRosters) return { league, extras, trades: [] };
   const rng = new RNG(seed);
   const ids = aiTeamIds(league, controlledTeamId);
   if (ids.length < 2) return { league, extras, trades: [] };
@@ -256,6 +404,14 @@ export function runTradeMarketAI(
     if (!proposal) continue;
     const validation = validateTrade(currentLeague, currentExtras, proposal);
     if (!validation.valid) continue;
+    // Sanity floor: each side values the deal from its own situation, but no AI-to-AI deal may be lopsided on neutral
+    // value (a star for spare parts), and nobody is flipped twice in a season.
+    const give = (team: string, players: string[], picks?: string[]) => tradePackageValue(currentLeague, currentExtras, team, players, picks ?? []);
+    const va = give(proposal.teamAId, proposal.playersFromA, proposal.picksFromA), vb = give(proposal.teamBId, proposal.playersFromB, proposal.picksFromB);
+    if (Math.min(va, vb) < Math.max(va, vb) * AI_TRADE_NEUTRAL_FLOOR) continue;
+    if ([...proposal.playersFromA, ...proposal.playersFromB].some(id => tradedThisSeason(currentLeague, id))) continue;
+    // Two trade arrivals a season is plenty for any AI front office (no contender stacks deal after deal).
+    if ([proposal.teamAId, proposal.teamBId].some(id => tradeArrivals(currentLeague, id) >= MAX_AI_TRADE_ARRIVALS)) continue;
 
     const teamAName = currentLeague.teams.find((t) => t.teamId === proposal.teamAId)!.name;
     const teamBName = currentLeague.teams.find((t) => t.teamId === proposal.teamBId)!.name;
@@ -288,12 +444,35 @@ export function generateTradeOfferForControlledTeam(
   const rng = new RNG(seed);
   const partners = aiTeamIds(league, controlledTeamId);
   const shuffled = [...partners].sort(() => rng.next() - 0.5);
+  const declined = new Set(extras.declinedOffers ?? []);
+  const fresh = (p: TradeProposal | null): p is TradeProposal => !!p && !declined.has(offerKey(league, p)) && validateTrade(league, extras, p).valid;
+  // Players you put on the block get calls first: a team that wants him makes you an offer for him.
+  const mine = league.teams.find(t => t.teamId === controlledTeamId);
+  const onBlock = extras.tradeBlock.filter(id => mine?.seasons.some(p => p.playerId === id && !p.stick));
+  for (const target of onBlock) {
+    for (const partnerId of shuffled) {
+      const proposal = findAITrade(league, extras, controlledTeamId, partnerId, controlledTeamId, target);
+      if (fresh(proposal)) return { ...proposal, note: `${league.teams.find(t => t.teamId === partnerId)?.name ?? partnerId} are calling about ${target} on your trade block.` };
+    }
+  }
+  // Otherwise the phone rings about half the weeks: a contender calls about one of your veterans, or a rebuilding
+  // team offers you one of theirs (whatever your own record, unless you are clearly on the same side).
+  if (rng.next() < 0.45) return null;
+  const mineClass = classifyBuyerSeller(league, extras, controlledTeamId);
   for (const partnerId of shuffled) {
-    const proposal = findAITrade(league, extras, controlledTeamId, partnerId);
-    if (!proposal) continue;
-    if (validateTrade(league, extras, proposal).valid) return proposal;
+    const theirs = classifyBuyerSeller(league, extras, partnerId);
+    const proposal = theirs === 'buyer' && mineClass !== 'buyer' ? findAITrade(league, extras, controlledTeamId, partnerId, controlledTeamId)
+      : theirs === 'seller' && mineClass !== 'seller' ? findAITrade(league, extras, controlledTeamId, partnerId, partnerId)
+      : null;
+    if (fresh(proposal)) return proposal;
   }
   return null;
+}
+
+/** Identifies an offer by the players who move, so a declined deal isn't pitched again this season with a different pick. */
+export function offerKey(league: League, p: TradeProposal): string {
+  const side = (players: string[]) => [...players].sort().join('+');
+  return `${league.season}|${p.teamAId}:${side(p.playersFromA)}|${p.teamBId}:${side(p.playersFromB)}`;
 }
 
 export interface DraftAIPick { teamId: string; teamName: string; playerId: string }
@@ -311,6 +490,13 @@ export function teamOnTheClock(league: League, extras: GMLeagueExtras): string |
  * blindly stacking the position they already have quality depth at (this was the one place that didn't). */
 function bestAvailableProspect(league: League, extras: GMLeagueExtras, team?: LeagueTeam | null): DraftProspect | null {
   if (extras.draftClass.length === 0) return null;
+  // Historical rosters: a team takes the player it really drafted, else the next real pick still on the board.
+  if (league.historical?.forceRosters) {
+    const real = extras.draftClass.filter(p => p.trueSeason.draftPick != null && p.trueSeason.draftYear === league.season);
+    const ours = real.filter(p => team && p.trueSeason.draftTeamId === team.teamId).sort((a, b) => a.trueSeason.draftPick! - b.trueSeason.draftPick!)[0];
+    const next = [...real].sort((a, b) => a.trueSeason.draftPick! - b.trueSeason.draftPick!)[0];
+    if (ours ?? next) return (ours ?? next)!;
+  }
   const need = team ? weakestPositions(team) : [];
   // Each front office drafts from its own scouting read, so a bigger scouting budget finds the real gems.
   const score = (p: DraftProspect) => perceivedPotential(p, league, extras, team?.teamId ?? null) * 0.8 + calculateOverall(p.trueSeason) * 0.2
@@ -417,11 +603,13 @@ export function runLeagueAIPass(
   controlledTeamId: string | null,
   seed = 1,
 ): LeagueAIPassResult {
-  const mood = refreshLeagueMorale(league, extras);
+  // A struggling AI team may change coaches mid-season (the coaching carousel).
+  const mood = refreshLeagueMorale(midseasonCarousel(league, controlledTeamId, seed + 3), extras);
   const fa = runFreeAgencyAI(mood.league, mood.extras, controlledTeamId, seed);
   const trade = runTradeMarketAI(fa.league, fa.extras, controlledTeamId, seed + 1);
 
-  let finalExtras = trade.extras;
+  // An offer whose players or picks have since moved (another trade, a release) is withdrawn.
+  let finalExtras = { ...trade.extras, pendingTradeOffers: trade.extras.pendingTradeOffers.filter(o => validateTradeAssets(trade.league, trade.extras, o).valid) };
   let newOfferGenerated = false;
   if (controlledTeamId && finalExtras.pendingTradeOffers.length === 0) {
     const offer = generateTradeOfferForControlledTeam(trade.league, finalExtras, controlledTeamId, seed + 2);
@@ -431,5 +619,8 @@ export function runLeagueAIPass(
     }
   }
 
-  return { league: trade.league, extras: finalExtras, signings: fa.signings, trades: trade.trades, newOfferGenerated, moraleEvents: mood.events };
+  // Historical rosters: once the deadline passes, the real mid-season moves happen.
+  const real = isTradeDeadlinePassed(trade.league) ? applyHistoricalDeadline(trade.league, finalExtras, controlledTeamId) : { league: trade.league, extras: finalExtras };
+  const settled = enforceSticky(real.league, real.extras);
+  return { league: settled.league, extras: settled.extras, signings: fa.signings, trades: trade.trades, newOfferGenerated, moraleEvents: mood.events };
 }

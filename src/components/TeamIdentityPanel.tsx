@@ -1,3 +1,5 @@
+import { JerseyBanner, TitleBanner } from './Banners';
+import { formatSeasonYear } from '../simulation/calendar';
 import { TeamLink } from './TeamLink';
 import { useState } from 'react';
 import type { FranchiseHistoryRecord, LeagueTeam } from '../simulation/league';
@@ -29,8 +31,8 @@ export function TeamIdentityPanel({ team, history = [], currentChampion, current
       </div>
     </form>}
     <div className="franchise-rafters" aria-label="Franchise banners">
-      {years.map(year => <div className="franchise-banner championship-banner" key={year}><strong>CHAMPIONS</strong><b>{year}</b><span>{identity.abbreviation}</span></div>)}
-      {(team.retiredJerseys ?? []).map(j => <div className="franchise-banner" key={`jersey-${j.number}`}><span>RETIRED</span><b>#{j.number}</b><strong>{j.playerId}</strong><small>{j.season}</small></div>)}
+      {years.map(year => <TitleBanner key={year} identity={identity} year={formatSeasonYear(year)} />)}
+      {(team.retiredJerseys ?? []).map(j => <JerseyBanner key={`jersey-${j.number}`} identity={identity} number={j.number} name={j.playerId} years={formatSeasonYear(j.season)} />)}
       {!years.length && !team.retiredJerseys?.length && <p className="hint-text">The rafters are waiting. Championships and retired numbers will appear here.</p>}
     </div>
   </section>;

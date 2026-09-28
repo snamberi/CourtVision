@@ -5,6 +5,7 @@ import type { GMLeagueExtras, TradeProposal, FutureDraftPick } from '../simulati
 import { validateTrade, executeTrade, evaluateTradeSides, computeFutureDraftPickValue, isTradeDeadlinePassed } from '../simulation/gm';
 import type { PlayerSeason } from '../simulation/types';
 import { tradeVerdict, TradePlayerCompareTable } from './gmShared';
+import { offerKey } from '../simulation/aiGM';
 
 interface Props {
   league: League;
@@ -38,7 +39,9 @@ export function TradeOffersPage({ league, extras, controlledTeamId, onChange }: 
 
   const decline = (offer: TradeProposal) => {
     if (!offers.includes(offer)) return;
-    onChange(league, { ...extras, pendingTradeOffers: extras.pendingTradeOffers.filter((o) => o !== offer) });
+    // Remembered for the season (the last 40), so the same deal isn't pitched again.
+    const declinedOffers = [...(extras.declinedOffers ?? []).filter(k => k.startsWith(`${league.season}|`)), offerKey(league, offer)].slice(-40);
+    onChange(league, { ...extras, pendingTradeOffers: extras.pendingTradeOffers.filter((o) => o !== offer), declinedOffers });
     setMessage('Offer declined.');
   };
 
@@ -92,6 +95,7 @@ export function TradeOffersPage({ league, extras, controlledTeamId, onChange }: 
         return (
           <div key={i} className="trade-comparison-block">
             <p className="hint-text">Offer from <TeamText text={partnerName} /></p>
+            {offer.note && <p className="trade-offer-note">📞 <TeamText text={offer.note} /></p>}
             <div className={`trade-verdict ${verdict.className}`}>{verdict.label}</div>
             <div className="trade-compare-columns">
               <div>

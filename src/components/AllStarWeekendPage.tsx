@@ -6,8 +6,11 @@ import { allStarBreakRound, isAllStarBreakPending } from '../simulation/league';
 import { awardOptions, computeSeasonAwards } from '../simulation/awards';
 import type { AwardSettings } from './LeagueSettingsPage';
 import { allStarVoteStandings, castAllStarBallot, currentAllStarWeekend, lockAllStarVoting } from '../simulation/allStarVoting';
-import { simulateAllStarGame, simulateRisingStars, risingStarsRosters, withoutLog, computeAllStarGameMVP, simulateThreePointContest, simulateDunkContest, pickContestEntrants } from '../simulation/allStarGame';
-import { RNG } from '../simulation/engine/rng';
+import { simulateAllStarGame, simulateRisingStars, risingStarsRosters, withoutLog, computeAllStarGameMVP, pickContestEntrants } from '../simulation/allStarGame';
+import { startCaptainsDraft } from '../simulation/allStarEvents';
+import { CaptainsDraftPanel, ThreePointPanel, DunkPanel } from './AllStarEventsPanels';
+import type { AllStarGameResult } from '../simulation/allStarGame';
+import { WatchGame } from './WatchGame';
 import { PlayerNameTag } from './PlayerAvatar';
 import { BoxScoreTable } from './BoxScoreTable';
 
@@ -18,10 +21,12 @@ interface Props {
   onSelectPlayer: (playerId: string) => void;
   onChange: (league: League) => void;
   onComplete: (league: League) => void;
+  controlledTeamId?: string | null;
 }
 
-export function AllStarWeekendPage({ league, awardSettings, seed, onSelectPlayer, onChange, onComplete }: Props) {
+export function AllStarWeekendPage({ league, awardSettings, seed, onSelectPlayer, onChange, onComplete, controlledTeamId = null }: Props) {
   const [query, setQuery] = useState('');
+  const [live, setLive] = useState<AllStarGameResult | null>(null);
   const [onlyBallot, setOnlyBallot] = useState(false);
   const record = currentAllStarWeekend(league);
   const standings = allStarVoteStandings(league);
@@ -37,29 +42,28 @@ export function AllStarWeekendPage({ league, awardSettings, seed, onSelectPlayer
   const weightTotal = weights.reduce((a, b) => a + b, 0);
   const percentages = (weightTotal ? weights : [50, 25, 25]).map(w => Math.round(w / (weightTotal || 100) * 100));
   const finish = () => onComplete({ ...league, seasonPhase: 'regular_season', allStarWeekend: { ...record, completed: true } });
-  const playGame = () => {
+  // Played games keep only their box score in the save; the replay is watched right away.
+  const playGame = (watch = false) => {
     const result = simulateAllStarGame(league, computeSeasonAwards(league, awardOptions(awardSettings)), seed + 90001);
-    update({ gameResult: result ?? undefined, gameSkipped: !result, mvp: result ? computeAllStarGameMVP(result) ?? undefined : undefined });
+    update({ gameResult: withoutLog(result) ?? undefined, gameSkipped: !result, mvp: result ? computeAllStarGameMVP(result) ?? undefined : undefined });
+    if (watch && result) setLive(result);
   };
   const rising = record.risingStars;
   const risingPossible = useMemo(() => { const r = risingStarsRosters(league); return r.rookies.length >= 5 && r.sophomores.length >= 5; }, [league]);
-  const playRisingStars = () => {
-    const result = withoutLog(simulateRisingStars(league, seed + 90004));
-    update({ risingStars: result ?? undefined, risingStarsMvp: result ? computeAllStarGameMVP(result) ?? undefined : undefined });
+  const playRisingStars = (watch = false) => {
+    const result = simulateRisingStars(league, seed + 90004);
+    update({ risingStars: withoutLog(result) ?? undefined, risingStarsMvp: result ? computeAllStarGameMVP(result) ?? undefined : undefined });
+    if (watch && result) setLive(result);
   };
   const byConference = selected.length > 0 && selected.every(s => s.conference);
-  const contest = (kind: 'threePoint' | 'dunk') => {
-    const rng = new RNG(seed + (kind === 'threePoint' ? 90002 : 90003));
-    const entrants = pickContestEntrants(league, 8, s => kind === 'threePoint' ? s.attributes.offense.threePoint : s.attributes.physical.vertical * 0.4 + s.attributes.physical.agility * 0.3 + s.attributes.offense.finishing * 0.3);
-    if (kind === 'threePoint') {
-      const result = simulateThreePointContest(entrants.map(s => ({ playerId: s.playerId, threePoint: s.attributes.offense.threePoint })), () => rng.next());
-      update({ threePoint: result, threePointChampionId: result.winner });
-    } else {
-      const result = simulateDunkContest(entrants.map(s => ({ playerId: s.playerId, vertical: s.attributes.physical.vertical, agility: s.attributes.physical.agility, finishing: s.attributes.offense.finishing })), () => rng.next());
-      update({ dunk: result, dunkChampionId: result.winner });
-    }
-  };
+  const shooters = useMemo(() => pickContestEntrants(league, 8, x => x.attributes.offense.threePoint), [league]);
+  const dunkers = useMemo(() => pickContestEntrants(league, 4, x => x.attributes.physical.vertical * 0.4 + x.attributes.physical.agility * 0.3 + x.attributes.offense.finishing * 0.3), [league]);
+  const captains = record.format === 'captains';
+  const draftReady = !captains || !!record.draft?.done;
   const filtered = standings.filter(s => (!onlyBallot || ballot.includes(s.playerId)) && `${s.playerId} ${s.teamName}`.toLowerCase().includes(query.toLowerCase()));
+  if (live) return <div className="all-star-weekend-page"><WatchGame game={live.result} home={{ teamId: 'ALLSTAR_A', name: live.squadA.name }} away={{ teamId: 'ALLSTAR_B', name: live.squadB.name }}
+    homeRoster={live.squadA.playerIds.flatMap(id => league.teams.flatMap(t => t.seasons.filter(p => p.playerId === id)))} awayRoster={live.squadB.playerIds.flatMap(id => league.teams.flatMap(t => t.seasons.filter(p => p.playerId === id)))}
+    onBoxScore={() => setLive(null)} occasion={null} /></div>;
   return (
     <div className="all-star-weekend-page">
       <div className="season-feature-header"><div><span className="pixel-eyebrow">THE LEAGUE'S BIGGEST STAGE</span><h2>All-Star Central</h2><p>{league.season} · {record.completed ? 'Weekend complete' : locked ? 'Rosters announced' : atBreak ? 'Voting closed · announce the teams' : 'Voting open'}</p></div><span className="feature-badge"><PixelIcon name="star" /> ALL STAR</span></div>
@@ -83,7 +87,19 @@ export function AllStarWeekendPage({ league, awardSettings, seed, onSelectPlayer
         {!standings.length ? <p className="empty-state">Play some regular-season games to open the leaderboard. Players must appear in at least one game to qualify.</p> : <div className="feature-table-scroll"><table className="db-table vote-table"><thead><tr><th>Rank</th><th>Player</th><th>GP</th><th>PTS / REB / AST</th><th>Fans</th><th>Players</th><th>Coaches</th><th>Vote score</th><th>Your ballot</th></tr></thead><tbody>{filtered.slice(0, 80).map(s => <tr key={s.playerId}><td>{standings.indexOf(s) + 1}</td><td><button className="link-button" onClick={() => onSelectPlayer(s.playerId)}><PlayerNameTag playerId={s.playerId} teamId={s.teamId ?? undefined} size={28} /></button><small className="vote-team"><TeamLink name={s.teamName} /></small></td><td>{s.games}</td><td>{s.ppg.toFixed(1)} / {s.rpg.toFixed(1)} / {s.apg.toFixed(1)}</td><td>{s.fanVotes.toLocaleString()}</td><td>{s.playerVotes.toLocaleString()}</td><td>{s.coachVotes.toLocaleString()}</td><td>{s.score.toFixed(1)}</td><td><button aria-label={`${ballot.includes(s.playerId) ? 'Remove vote for' : 'Vote for'} ${s.playerId}`} aria-pressed={ballot.includes(s.playerId)} disabled={!canVote || (!ballot.includes(s.playerId) && ballot.length >= 10)} onClick={() => onChange(castAllStarBallot(league, ballot.includes(s.playerId) ? ballot.filter(id => id !== s.playerId) : [...ballot, s.playerId]))}><PixelIcon name="star" /> {ballot.includes(s.playerId) ? 'Voted' : 'Vote'}</button></td></tr>)}</tbody></table>{!filtered.length && <p className="empty-state">No players match this filter.</p>}</div>}
         {filtered.length > 80 && <p className="hint-text">Showing the top 80 matches. Search to find any eligible player.</p>}
       </section>
-      {locked && <section><h3>Weekend events</h3><div className="weekend-events"><div className="weekend-event"><span className="pixel-eyebrow">00 / NEXT GENERATION</span><h4>Rising Stars Game</h4>{rising ? <><p>{rising.squadA.name} vs {rising.squadB.name}</p><strong className="all-star-score">{rising.result.homeScore} — {rising.result.awayScore}</strong><p>MVP: {record.risingStarsMvp ? <button className="link-button" onClick={() => onSelectPlayer(record.risingStarsMvp!.playerId)}>{record.risingStarsMvp.playerId}</button> : '—'}</p></> : risingPossible ? <button disabled={record.completed} onClick={playRisingStars}>Play Rising Stars</button> : <p className="hint-text">Not enough first- and second-year players have played this season.</p>}</div>{(['threePoint', 'dunk'] as const).map(kind => { const result = record[kind]; return <div className="weekend-event" key={kind}><span className="pixel-eyebrow">{kind === 'threePoint' ? '01 / SHOOTING' : '02 / ABOVE THE RIM'}</span><h4>{kind === 'threePoint' ? 'Three-Point Contest' : 'Slam Dunk Contest'}</h4>{result ? <><p>Champion: <strong>{result.winner ?? 'No entrants'}</strong></p><ol>{[...result.order].sort((a, b) => result.scores[b] - result.scores[a]).map(id => <li key={id}><button className="link-button" onClick={() => onSelectPlayer(id)}>{id}</button><strong>{result.scores[id]}</strong></li>)}</ol></> : <button disabled={record.completed} onClick={() => contest(kind)}>Run {kind === 'threePoint' ? '3-Point' : 'Dunk'} Contest</button>}</div>; })}<div className="weekend-event"><span className="pixel-eyebrow">03 / THE MAIN EVENT</span><h4>All-Star Game</h4>{game ? <><p>{game.squadA.name} vs {game.squadB.name}</p><strong className="all-star-score">{game.result.homeScore} — {game.result.awayScore}</strong><p>MVP: {record.mvp?.playerId ?? '—'}</p></> : record.gameSkipped ? <p>Exhibition skipped: fewer than 10 eligible players.</p> : <button className="primary" disabled={record.completed} onClick={playGame}>{selected.length < 10 ? 'Skip Unavailable Exhibition' : 'Play All-Star Game'}</button>}</div></div>
+      {locked && !record.gameResult && !record.gameSkipped && selected.length >= 10 && <section className="all-star-format"><h3>Game format</h3>
+        <div className="difficulty-options" role="radiogroup" aria-label="All-Star Game format">
+          <button role="radio" aria-checked={!captains} className={`difficulty-chip ${!captains ? 'selected' : ''}`} disabled={!!record.draft} onClick={() => update({ format: 'conference' })}>{byConference ? 'East vs West' : 'Balanced squads'}</button>
+          <button role="radio" aria-checked={captains} className={`difficulty-chip ${captains ? 'selected' : ''}`} onClick={() => onChange(startCaptainsDraft(league, controlledTeamId))}>Captains draft</button>
+        </div>
+        <p className="hint-text">Captains draft: the leading vote-getters captain the two teams and pick the rest of the All-Stars, starters first. You make the picks for one captain.</p>
+      </section>}
+      {locked && captains && <CaptainsDraftPanel league={league} record={record} onChange={onChange} onSelectPlayer={onSelectPlayer} />}
+      {locked && <section><h3>Weekend events</h3><div className="weekend-events">
+        <div className="weekend-event"><span className="pixel-eyebrow">00 / NEXT GENERATION</span><h4>Rising Stars Game</h4>{rising ? <><p>{rising.squadA.name} vs {rising.squadB.name}</p><strong className="all-star-score">{rising.result.homeScore} — {rising.result.awayScore}</strong><p>MVP: {record.risingStarsMvp ? <button className="link-button" onClick={() => onSelectPlayer(record.risingStarsMvp!.playerId)}>{record.risingStarsMvp.playerId}</button> : '—'}</p></> : risingPossible ? <div className="contest-actions"><button className="primary" disabled={record.completed} onClick={() => playRisingStars(true)}>Watch Rising Stars</button><button disabled={record.completed} onClick={() => playRisingStars()}>Sim it</button></div> : <p className="hint-text">Not enough first- and second-year players have played this season.</p>}</div>
+        <div className="weekend-event"><span className="pixel-eyebrow">01 / SHOOTING</span><h4>Three-Point Contest</h4><ThreePointPanel league={league} record={record} onSelectPlayer={onSelectPlayer} entrants={shooters} seed={seed + 90002} userTeamId={controlledTeamId} update={update} /></div>
+        <div className="weekend-event"><span className="pixel-eyebrow">02 / ABOVE THE RIM</span><h4>Slam Dunk Contest</h4><DunkPanel league={league} record={record} onSelectPlayer={onSelectPlayer} entrants={dunkers} seed={seed + 90003} userTeamId={controlledTeamId} update={update} /></div>
+        <div className="weekend-event"><span className="pixel-eyebrow">03 / THE MAIN EVENT</span><h4>All-Star Game</h4>{game ? <><p>{game.squadA.name} vs {game.squadB.name}</p><strong className="all-star-score">{game.result.homeScore} — {game.result.awayScore}</strong><p>MVP: {record.mvp?.playerId ?? '—'}</p></> : record.gameSkipped ? <p>Exhibition skipped: fewer than 10 eligible players.</p> : selected.length < 10 ? <button className="primary" disabled={record.completed} onClick={() => playGame()}>Skip Unavailable Exhibition</button> : !draftReady ? <p className="hint-text">Finish the captains draft first.</p> : <div className="contest-actions"><button className="primary" disabled={record.completed} onClick={() => playGame(true)}>Watch the All-Star Game</button><button disabled={record.completed} onClick={() => playGame()}>Sim it</button></div>}</div></div>
         {rising && <details><summary>Rising Stars box score</summary><div className="feature-table-scroll"><BoxScoreTable box={rising.result.homeBox} title={rising.squadA.name} onSelectPlayer={onSelectPlayer} /><BoxScoreTable box={rising.result.awayBox} title={rising.squadB.name} onSelectPlayer={onSelectPlayer} /></div></details>}
         {game && <details><summary>Full All-Star box score</summary><div className="feature-table-scroll"><BoxScoreTable box={game.result.homeBox} title={game.squadA.name} onSelectPlayer={onSelectPlayer} /><BoxScoreTable box={game.result.awayBox} title={game.squadB.name} onSelectPlayer={onSelectPlayer} /></div></details>}
         {!record.completed && <button className="primary" disabled={!(record.threePoint && record.dunk && (game || record.gameSkipped) && (rising || !risingPossible))} onClick={finish}>Continue Regular Season →</button>}

@@ -1,3 +1,4 @@
+import { formatSeasonYear } from './calendar';
 import type { League } from './league';
 import type { GMLeagueExtras } from './gm';
 import type { GameResult, PlayerStatLine } from './boxscore';
@@ -5,6 +6,9 @@ import { isRookieEligible } from './rookieEligibility';
 import { calculateOverall } from './engine/overall';
 import { dynasties, rivalryKey, rivalryLevel } from './rivalry';
 import { formatGameClock, HIGHLIGHT_LABEL, type HighlightKind } from './highlights';
+import { deadlineNews } from './deadlineDay';
+import { negotiationStories } from './agents';
+import { carouselNews } from './coachingCarousel';
 
 /** Game days that get a "Play of the Night" story; older nights roll off like any other news. */
 const HIGHLIGHT_NIGHTS = 12;
@@ -155,7 +159,7 @@ export function generateNewsFeed(league: League, extras: GMLeagueExtras, maxItem
     const finals = roundIndex === league.playoffBracket!.rounds.length - 1;
     series.games.forEach((game, i) => addGame(game, `${series.id}:${i}`, 100_000 + roundIndex * 1000 + i, finals, true));
     if (finals && series.winnerTeamId) add({ id: 'championship', category: 'Playoffs', teamId: series.winnerTeamId, teamName: name(series.winnerTeamId),
-      headline: `${name(series.winnerTeamId)} are the ${season} champions.`, detail: `The Finals end ${Math.max(series.teamAWins, series.teamBWins)}–${Math.min(series.teamAWins, series.teamBWins)}. A new banner is headed for the rafters.`, postseason: true, order: 300_000 });
+      headline: `${name(series.winnerTeamId)} are the ${formatSeasonYear(season)} champions.`, detail: `The Finals end ${Math.max(series.teamAWins, series.teamBWins)}–${Math.min(series.teamAWins, series.teamBWins)}. A new banner is headed for the rafters.`, postseason: true, order: 300_000 });
   }));
   // Players of the Week and Month, filed right after the game day that closed the period.
   const race = league.awardRace?.season === season ? league.awardRace : null;
@@ -171,13 +175,13 @@ export function generateNewsFeed(league: League, extras: GMLeagueExtras, maxItem
   for (const record of league.franchiseHistory ?? []) {
     const a = record.fullAwards;
     if (a?.coy) add({ id: 'award:coy', season: record.season, category: 'Awards', teamId: a.coy.teamId, teamName: a.coy.teamName,
-      headline: `${a.coy.coachName ?? a.coy.teamName} is Coach of the Year for ${record.season}.`, detail: a.votes?.coy?.notes?.slice(1).join('. '), order: 289_000 });
+      headline: `${a.coy.coachName ?? a.coy.teamName} is Coach of the Year for ${formatSeasonYear(record.season)}.`, detail: a.votes?.coy?.notes?.slice(1).join('. '), order: 289_000 });
     if (a?.eoy) add({ id: 'award:eoy', season: record.season, category: 'Awards', teamId: a.eoy.teamId, teamName: a.eoy.teamName,
-      headline: `The ${a.eoy.teamName} front office${a.eoy.userTeam ? ' (yours)' : ''} is Executive of the Year for ${record.season}.`, detail: a.votes?.eoy?.notes?.slice(1).join('. '), order: 288_000 });
+      headline: `The ${a.eoy.teamName} front office${a.eoy.userTeam ? ' (yours)' : ''} is Executive of the Year for ${formatSeasonYear(record.season)}.`, detail: a.votes?.eoy?.notes?.slice(1).join('. '), order: 288_000 });
     if (record.championTeamId) add({ id: 'championship', season: record.season, category: 'Playoffs', teamId: record.championTeamId, teamName: record.championTeamName,
-      headline: `${record.championTeamName ?? name(record.championTeamId)} won the ${record.season} championship.`, order: 300_000 });
+      headline: `${record.championTeamName ?? name(record.championTeamId)} won the ${formatSeasonYear(record.season)} championship.`, order: 300_000 });
     for (const [award, playerId] of [['MVP', record.mvpPlayerId], ['Rookie of the Year', record.royPlayerId], ['Finals MVP', record.fmvpPlayerId]] as const) {
-      if (playerId) add({ id: `award:${award}`, season: record.season, category: 'Awards', teamId: null, teamName: null, headline: `${playerId} takes home ${award} for ${record.season}.`, playerId, order: 290_000 });
+      if (playerId) add({ id: `award:${award}`, season: record.season, category: 'Awards', teamId: null, teamName: null, headline: `${playerId} takes home ${award} for ${formatSeasonYear(record.season)}.`, playerId, order: 290_000 });
     }
   }
   // In-Season Cup: the knockout field, the champion and the Cup MVP (see cup.ts).
@@ -190,6 +194,22 @@ export function generateNewsFeed(league: League, extras: GMLeagueExtras, maxItem
     if (cup.qualifiers?.length) add({ id: 'cup:knockouts', season: cup.season, category: 'League', teamId: null, teamName: null,
       headline: `The In-Season Cup knockout field is set: ${cup.qualifiers.map(name).join(', ')}.`, order: 249_000 });
   }
+  // Trade Deadline Day: each deal as it broke, then the recap (see deadlineDay.ts). Placed just before that night's games.
+  const deadline = league.deadlineDay;
+  if (deadline) {
+    const before = league.schedule.filter(g => g.played && g.result && g.round < deadline.round).length;
+    for (const item of deadlineNews(league)) add({ id: item.id, season: deadline.season, category: 'Transactions', teamId: item.teamId,
+      teamName: item.teamId ? name(item.teamId) : null, headline: item.headline, detail: item.detail, order: 1000 + before - 0.5 + item.order });
+  }
+  // Numbers raised to the rafters (AI legends at retirement, or your own choice).
+  for (const t of league.teams) for (const j of t.retiredJerseys ?? []) {
+    add({ id: `jersey:${t.teamId}:${j.number}`, season: j.season, category: 'Teams', teamId: t.teamId, teamName: t.name,
+      headline: `${t.name} retire #${j.number} for ${j.playerId}.`, detail: 'No one on the team will wear it again. The banner goes up in the rafters.', playerId: j.playerId, order: 296_000 });
+  }
+  // Contract talks with agents: ultimatums, walkouts and deals that went the distance (see agents.ts).
+  for (const s of negotiationStories(league, extras)) add({ id: s.id, category: 'Transactions', teamId: s.teamId, teamName: name(s.teamId), headline: s.headline, detail: s.detail, playerId: s.playerId, order: 297_000 });
+  // The coaching carousel: firings and hirings around the league.
+  for (const c of carouselNews(league)) add({ id: c.id, season: c.season, category: 'Teams', teamId: c.teamId, teamName: name(c.teamId), headline: c.headline, detail: c.detail, order: 298_000 + c.order });
   // Summer League: the champion and the MVP (see draftSeason.ts).
   const sl = league.summerLeague;
   if (sl?.championTeamId) add({ id: 'summer:champion', season: sl.season, category: 'Draft', teamId: sl.championTeamId, teamName: name(sl.championTeamId),

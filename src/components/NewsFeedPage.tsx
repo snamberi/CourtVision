@@ -1,3 +1,4 @@
+import { formatSeasonYear } from '../simulation/calendar';
 import { TeamLink, TeamText } from './TeamLink';
 import { TeamLogo } from './TeamLogo';
 import { useMemo, useState } from 'react';
@@ -34,7 +35,7 @@ export function NewsFeedPage({ league, extras, onSelectPlayer, onGame, onPlayoff
       <span className="pixel-eyebrow">THE LEAGUE WIRE</span><h4>News Feed</h4>
       <p className="hint-text">Game nights, emerging stars, familiar faces. Every headline comes from your league’s results and history.</p>
       <div className="news-selectors"><label>Team<select value={teamFilter} onChange={e => setTeamFilter(e.target.value)}><option value="all">All teams</option>{league.teams.map(t => <option key={t.teamId} value={t.teamId}>{t.name}</option>)}</select></label>
-      <label>Season<select value={seasonFilter} onChange={e => setSeasonFilter(e.target.value)}><option value="all">All seasons</option>{[...new Set(items.map(i => i.season).filter(Boolean))].map(s => <option key={s}>{s}</option>)}</select></label></div>
+      <label>Season<select value={seasonFilter} onChange={e => setSeasonFilter(e.target.value)}><option value="all">All seasons</option>{[...new Set(items.map(i => i.season).filter(Boolean))].map(s => <option key={s} value={s}>{formatSeasonYear(s)}</option>)}</select></label></div>
       <div className="news-filter-chips">
         {ALL_CATEGORIES.map((cat) => (
           <button
@@ -60,7 +61,7 @@ export function NewsFeedPage({ league, extras, onSelectPlayer, onGame, onPlayoff
                 <span className="news-card-team team-name-logo">{item.teamId && <TeamLogo team={league.teams.find(t => t.teamId === item.teamId) ?? { teamId: item.teamId, name: item.teamName ?? item.teamId }} size={30} />}<TeamLink name={item.teamName ?? 'League'} /></span>
                 <span className={`news-chip news-chip-${item.category.toLowerCase().replace(/\s/g, '')}`}>{item.category}</span>
               </div>
-              <small className="news-season">{item.season}</small>
+              <small className="news-season">{formatSeasonYear(item.season)}</small>
               <h3 className="news-card-body"><TeamText text={item.headline} /></h3>
               {item.detail && <p className="news-detail"><TeamText text={item.detail} /></p>}
               <div className="news-links">

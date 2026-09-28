@@ -8,6 +8,7 @@ import type { NavMode } from '../tutorial/tutorialState';
 import type { FeatureStatus } from '../tutorial/unlocks';
 import logoIcon from '../assets/brand/logo-icon.png';
 import { PixelIcon } from './PixelIcon';
+import { ScrollRail } from './ScrollRail';
 
 interface Props {
   sandboxMode?: boolean;
@@ -78,7 +79,7 @@ export function Sidebar(props: Props) {
   const frame = (className: string, body: ReactNode) => (
     <nav id="game-navigation" className={`sidebar ${className} ${collapsed ? 'collapsed' : ''}`} aria-label="Game navigation">
       <div className="sidebar-head">{brand}{modeSwitch}</div>
-      <div className="sidebar-scroll" ref={scrollRef}>{body}</div>
+      <div className="sidebar-scroll-wrap"><div className="sidebar-scroll" ref={scrollRef}>{body}</div><ScrollRail target={scrollRef} /></div>
       <div className="sidebar-foot">{exit}</div>
     </nav>
   );

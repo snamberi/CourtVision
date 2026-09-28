@@ -1,3 +1,5 @@
+import type { GameResult } from './boxscore';
+import { packResult } from './logPacking';
 import type { League, ScheduledGame } from './league';
 import { hasConferenceStructure, teamGameInput } from './league';
 import type { PlayerStatLine, TeamBoxScore } from './boxscore';
@@ -19,6 +21,8 @@ export type CupStage = 'qf' | 'sf' | 'final';
 export interface CupGame {
   id: string; stage: CupStage; slot: number; homeTeamId: string; awayTeamId: string;
   homeScore: number; awayScore: number; winnerTeamId: string; homeBox: TeamBoxScore; awayBox: TeamBoxScore;
+  /** The game itself with its replay log packed, so it can be watched on the court (dropped when archived). */
+  replay?: GameResult;
 }
 export interface CupState {
   season: string;
@@ -148,7 +152,7 @@ function play(league: League, stage: CupStage, slot: number, home: string, away:
     settings: { ...league.settings, seed, injuriesEnabled: false }, rules: league.rulesSettings, moraleImpact: league.coachingSettings?.moraleImpact,
   });
   return { id: `cup-${stage}-${slot}`, stage, slot, homeTeamId: home, awayTeamId: away, homeScore: r.homeScore, awayScore: r.awayScore,
-    winnerTeamId: r.homeScore > r.awayScore ? home : away, homeBox: r.homeBox, awayBox: r.awayBox };
+    winnerTeamId: r.homeScore > r.awayScore ? home : away, homeBox: r.homeBox, awayBox: r.awayBox, replay: packResult(r) };
 }
 
 /** Called after every completed game day: plays the knockouts the night the group stage finishes. */

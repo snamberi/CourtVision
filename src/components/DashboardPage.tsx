@@ -1,7 +1,9 @@
+import { formatSeasonYear } from '../simulation/calendar';
 import type { ReactNode } from 'react';
 import { TeamLogo } from './TeamLogo';
 import { useTeamIdentity } from '../visuals/TeamIdentityContext';
 import { CupCard } from './CupPage';
+import { DeadlineCard } from './DeadlineDayPage';
 import { OwnerOfficeCard } from './FrontOfficePanels';
 import { TeamLink, TeamText } from './TeamLink';
 import type { League, SeasonPhase } from '../simulation/league';
@@ -91,7 +93,7 @@ export function DashboardPage({ league, extras, controlledTeamId, seasonPhase, o
   return (
     <div className="dashboard-page">
       <div className="dashboard-heading">
-        <div><span className="pixel-eyebrow">{league.season} / {PHASE_LABEL[seasonPhase]}</span><h1>Franchise HQ</h1></div>
+        <div><span className="pixel-eyebrow">{formatSeasonYear(league.season)} / {PHASE_LABEL[seasonPhase]}</span><h1>Franchise HQ</h1></div>
         <div className="dashboard-heading-actions">{headerExtra}<button onClick={() => onGoTo('roster')}><PixelIcon name="team" size={16} /> Manage roster</button></div>
       </div>
       {(roadMap || checklist) && <div className={`home-top ${checklist ? 'with-checklist' : ''}`}>{roadMap}{checklist}</div>}
@@ -129,6 +131,7 @@ export function DashboardPage({ league, extras, controlledTeamId, seasonPhase, o
       <div className="dashboard-duo">
         <OwnerOfficeCard league={league} extras={extras} onOpen={() => onGoTo('gmOffice')} />
         <CupCard league={league} controlledTeamId={controlledTeamId} onOpen={() => onGoTo('cup')} />
+        <DeadlineCard league={league} controlledTeamId={controlledTeamId} onOpen={() => onGoTo('deadline')} />
       </div>
 
       <div className="dashboard-columns">

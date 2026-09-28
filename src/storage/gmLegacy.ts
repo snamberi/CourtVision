@@ -1,5 +1,6 @@
 import type { League } from '../simulation/league';
 import { isOfficialLeague } from '../simulation/frontOffice';
+import { localRead, type Read } from '../lib/kv';
 
 /* Your GM legacy across every league played in this browser: achievements earned anywhere and career totals per
  * league. Kept in localStorage (small, per-browser, like the save list). Leagues where Sandbox was ever used never
@@ -8,6 +9,8 @@ import { isOfficialLeague } from '../simulation/frontOffice';
 export interface LegacyLeague {
   saveId: string; name: string; seasons: number; wins: number; losses: number; titles: number;
   teams: string[]; lastSeason: string; updatedAt: number;
+  /** 'draft' for an All-Time Draft league. */
+  kind?: 'draft';
 }
 export interface LegacyAchievement { season: string; leagueName: string; at: number; saveIds: string[] }
 export interface GmLegacy { version: 1; achievements: Record<string, LegacyAchievement>; leagues: Record<string, LegacyLeague> }
@@ -16,9 +19,9 @@ const KEY = 'courtvision:gmLegacy';
 export const LEGACY_EVENT = 'courtvision:gm-legacy';
 const empty = (): GmLegacy => ({ version: 1, achievements: {}, leagues: {} });
 
-export function readLegacy(): GmLegacy {
+export function readLegacy(read: Read = localRead): GmLegacy {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = read(KEY);
     const parsed = raw ? JSON.parse(raw) as GmLegacy : null;
     return parsed?.version === 1 && parsed.achievements && parsed.leagues ? parsed : empty();
   } catch { return empty(); }
@@ -51,6 +54,7 @@ export function mergeLeague(legacy: GmLegacy, saveId: string, name: string, leag
     next.leagues[saveId] = {
       saveId, name, seasons: reviews.length, wins: reviews.reduce((n, r) => n + r.wins, 0), losses: reviews.reduce((n, r) => n + r.losses, 0),
       titles: reviews.filter(r => r.finish === 'Champion').length, teams: [...new Set(reviews.map(r => r.teamName))], lastSeason: reviews.at(-1)!.season, updatedAt: now,
+      ...(league.allTimeDraft ? { kind: 'draft' as const } : {}),
     };
   } else delete next.leagues[saveId];
   return next;

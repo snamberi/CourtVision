@@ -1,3 +1,4 @@
+import { OccasionBanner } from './OccasionBanner';
 import { TeamLink, TeamText } from './TeamLink';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { GameResult } from '../simulation/boxscore';
@@ -10,7 +11,12 @@ import { detectHighlights, reelFor, formatGameClock, HIGHLIGHT_LABEL, HIGHLIGHT_
 import { liveBoxScore } from '../simulation/liveBox';
 import { CourtAudio } from '../audio/courtAudio';
 import { CoachPanel, HighlightsPanel, LiveBoxPanel, type CoachingProps } from './WatchPanels';
+import { currentRun, lastShotMoment } from '../simulation/coachMoments';
 import { canRecordReel, startReelRecording, type ReelRecording } from './reelRecorder';
+import type { ClipWriter } from '../share/clipGif';
+import { track } from '../analytics/track';
+
+const CLIP_FPS=12;
 
 const THREES=['corner3','aboveBreak3','pullUp3','catchAndShoot3','stepback'];
 /** Broadcast-style call for the current phase. Names come only from the recorded possession. */
@@ -80,14 +86,18 @@ interface Props {
   coaching?: CoachingProps;
   /** Rivalry between the two teams, if any: the crowd is louder and the broadcast says so. */
   rivalry?: { level: string; seriesText?: string } | null;
+  /** A big game (playoffs, Game 7, the Cup final): the broadcast and the crowd rise to it. */
+  occasion?: import('../simulation/bigGames').Occasion | null;
+  crowdFill?: number;
 }
 const SOUND_KEY='cv-watch-sound';
 const readSound=()=>{try{return localStorage.getItem(SOUND_KEY)==='on';}catch{return false;}};
 const writeSound=(on:boolean)=>{try{localStorage.setItem(SOUND_KEY,on?'on':'off');}catch{/* private mode: keep the in-memory choice */}};
 type Tab='box'|'coach'|'highlights';
 
-export function WatchGame({game,home,away,homeRoster=[],awayRoster=[],onBoxScore,startAt,coaching,rivalry}:Props) {
-  const rivalryBoost=rivalry?(rivalry.level==='Bitter rivals'?.3:rivalry.level==='Rivals'?.2:.12):0;
+export function WatchGame({game,home,away,homeRoster=[],awayRoster=[],onBoxScore,startAt,coaching,rivalry,occasion,crowdFill}:Props) {
+  const occasionBoost=occasion?({game7:.4,final:.32,cupFinal:.28,elimination:.25,playoff:.15,cup:.12} as const)[occasion.stakes]:0;
+  const rivalryBoost=Math.min(.45,(rivalry?(rivalry.level==='Bitter rivals'?.3:rivalry.level==='Rivals'?.2:.12):0)+occasionBoost);
   const total=game.possessionLog.length;
   const [cursor,setCursor]=useState(()=>startAt!=null?Math.max(0,Math.min(total,startAt)):0);
   const [playing,setPlaying]=useState(()=>!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
@@ -96,7 +106,7 @@ export function WatchGame({game,home,away,homeRoster=[],awayRoster=[],onBoxScore
   const [shotChart,setShotChart]=useState(true);
   const [camera,setCamera]=useState<CourtCamera>('full');
   const [screenMessage,setScreenMessage]=useState('');
-  const [tab,setTab]=useState<Tab>(coaching?'coach':'box');
+  const [tab,setTab]=useState<Tab>(coaching?.openCoach?'coach':'box');
   const [sound,setSound]=useState(false);
   const [soundNote,setSoundNote]=useState<string|null>(()=>readSound()?'Sound was on last time — press Sound to turn it back on.':null);
   const [isRecording,setIsRecording]=useState(false);
@@ -104,6 +114,12 @@ export function WatchGame({game,home,away,homeRoster=[],awayRoster=[],onBoxScore
   const [shareStatus,setShareStatus]=useState<string|null>(null);
   const [videoStatus,setVideoStatus]=useState<string|null>(null);
   const recording=useRef<ReelRecording|null>(null);
+  // Highlight clip (GIF): one possession drawn frame by frame on a hidden stage, then encoded.
+  const [clip,setClip]=useState<{h:Highlight;step:number;steps:number}|null>(null);
+  const [clipOut,setClipOut]=useState<{blob:Blob;url:string;name:string;text:string}|null>(null);
+  const [clipStatus,setClipStatus]=useState<string|null>(null);
+  const clipWriter=useRef<ClipWriter|null>(null);
+  const clipStage=useRef<HTMLDivElement>(null);
   const screen=useRef<HTMLElement>(null);
   const arena=useRef<HTMLDivElement>(null);
   const audio=useRef<CourtAudio|null>(null);
@@ -211,23 +227,65 @@ export function WatchGame({game,home,away,homeRoster=[],awayRoster=[],onBoxScore
   const wasFinished=useRef(finished);
   useEffect(()=>{if(finished&&!wasFinished.current&&sound)audio.current?.buzzer();wasFinished.current=finished;},[finished,sound]);
 
+  const makeClip=async(h:Highlight)=>{
+    if(clip)return;
+    setPlaying(false);setReel(null);setClipStatus('Making the clip…');
+    try{const m=await import('../share/clipGif');clipWriter.current=m.startClip();setClip({h,step:0,steps:Math.max(24,Math.ceil(durations[h.index]/1000*CLIP_FPS))});}
+    catch{setClipStatus('This browser could not make a clip.');}
+  };
+  const clipEntry=clip?game.possessionLog[clip.h.index]:undefined;
+  const clipProgress=clip?Math.min(1,clip.step/(clip.steps-1)):0;
+  const clipFrame=useMemo(()=>clip&&clipEntry?courtFrame(clipEntry,clipProgress,home.teamId,away.teamId,regulation,game.possessionLog[clip.h.index-1]):null,[clip,clipEntry,clipProgress,home.teamId,away.teamId,regulation,game]);
+  useEffect(()=>{
+    if(!clip||!clipWriter.current||!clipStage.current)return;
+    let live=true;
+    const holdFrames=Math.round(CLIP_FPS*1.2);
+    clipWriter.current.add(clipStage.current,1000/CLIP_FPS).then(()=>{
+      if(!live)return;
+      if(clip.step+1<clip.steps+holdFrames){setClip({...clip,step:clip.step+1});setClipStatus(`Making the clip… ${Math.round((clip.step+1)/(clip.steps+holdFrames)*100)}%`);return;}
+      const blob=clipWriter.current!.finish();clipWriter.current=null;
+      const h=clip.h,when=formatGameClock(h.quarter,h.clockSeconds,regulation);
+      setClipOut({blob,url:URL.createObjectURL(blob),name:`${home.name}-${away.name}-${h.kind}.gif`.replace(/[^\w.-]+/g,'-').toLowerCase(),text:`${h.text} (${when}, ${home.name} ${h.homeScoreAfter}–${h.awayScoreAfter} ${away.name}) · Court Vision`});
+      setClip(null);setClipStatus(null);
+      track('clip',{kind:h.kind,kb:Math.round(blob.size/1024)});
+    }).catch(()=>{if(live){setClip(null);clipWriter.current=null;setClipStatus('This browser could not make a clip.');}});
+    return()=>{live=false;};
+  },[clip]);// eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(()=>()=>{if(clipOut)URL.revokeObjectURL(clipOut.url);},[clipOut]);
+  const saveClip=async(how:'share'|'download')=>{
+    if(!clipOut)return;
+    const {shareImage}=await import('../share/shareCard');
+    try{const r=await shareImage(clipOut.blob,clipOut.name,clipOut.text,how);setClipStatus(r==='shared'?'Shared!':'Clip saved.');}catch{setClipStatus('Sharing was cancelled.');}
+  };
   const seek=useCallback((v:number)=>{setPlaying(false);setReel(null);setCursor(Math.min(total,v));},[total]);
   const nextHighlight=highlights.find(h=>h.index>index&&h.score>=HIGHLIGHT_MIN);
   const jumpTo=(h:Highlight)=>{setReel(null);setCursor(h.index+.02);setPlaying(true);};
   const reelNow=reel?reel.plays[reel.pos]:null;
   const commentary=finished?'Final buzzer. The game is in the books.':progress>=.98?entry?.events.filter(e=>!e.endsWith(' has the ball')&&!e.startsWith('Action:')&&!e.endsWith(' timeout')).join(' · '):frame&&entry?liveCall(frame,play,entry):'Ready';
   const coachAt=finished?total:progress===0?index:index+1;
+  const theirTeam=coaching?(coaching.teamId===home.teamId?live.away:live.home):null;
+  const coachRun=useMemo(()=>currentRun(game.possessionLog,coachAt),[game,coachAt]);
+  const lastShotNow=!!coaching&&!finished&&lastShotMoment(game.possessionLog,coachAt,coaching.teamId,home.teamId,regulation);
+  // Game on the line: stop the tape once and hand the coach the clipboard.
+  const prompted=useRef(-1);
+  useEffect(()=>{if(lastShotNow&&prompted.current!==coachAt){prompted.current=coachAt;setPlaying(false);setReel(null);setTab('coach');}},[lastShotNow,coachAt]);
   const myTeam=coaching?(coaching.teamId===home.teamId?live.home:live.away):null;
   return <section ref={screen} className="watch-game" aria-label="Watch Game" tabIndex={0} onKeyDown={e=>{if(e.target!==e.currentTarget)return;if(e.code==='Space'){e.preventDefault();if(!finished)setPlaying(p=>!p);}if(e.code==='ArrowRight'){e.preventDefault();setPlaying(false);setCursor(c=>Math.min(total,Math.floor(c)+1));}if(e.code==='ArrowLeft'){e.preventDefault();setPlaying(false);setCursor(c=>Math.max(0,Math.floor(c)-1));}}}>
-    <div className="watch-heading"><div><span className="pixel-eyebrow">{coaching?'COURTSIDE / COACHING LIVE':'COURTSIDE / POSSESSION REPLAY'}</span><h2>Watch Game</h2></div>{rivalry&&<span className="watch-rivalry" title={rivalry.seriesText}>🔥 RIVALRY · {rivalry.level.toUpperCase()}</span>}<span className="watch-status">{reel?'HIGHLIGHTS':finished?'FINAL':playing?'PLAYING':'PAUSED'}</span></div>
+    {occasion&&(occasion.stakes==='game7'||occasion.stakes==='final'||occasion.stakes==='cupFinal')&&<OccasionBanner occasion={occasion} />}<div className="watch-heading"><div><span className="pixel-eyebrow">{occasion?occasion.eyebrow:coaching?'COURTSIDE / COACHING LIVE':'COURTSIDE / POSSESSION REPLAY'}</span><h2>{occasion?occasion.title:'Watch Game'}</h2></div>{rivalry&&<span className="watch-rivalry" title={rivalry.seriesText}>🔥 RIVALRY · {rivalry.level.toUpperCase()}</span>}<span className="watch-status">{reel?'HIGHLIGHTS':finished?'FINAL':playing?'PLAYING':'PAUSED'}</span></div>
     <div className="watch-live-header"><div className="watch-controls"><button className="primary" disabled={finished} onClick={()=>setPlaying(p=>!p)}>{playing&&!finished?'Pause':'Play'}</button><label>Speed<select aria-label="Playback speed" value={speed} onChange={e=>setSpeed(+e.target.value)}>{[.5,1,2,4,8].map(v=><option key={v} value={v}>{v}×</option>)}</select></label><button disabled={cursor===0} onClick={()=>{setPlaying(false);setReel(null);setCursor(c=>Math.max(0,Math.floor(c)-1));}}>Previous Possession</button><button disabled={finished} onClick={()=>{setPlaying(false);setReel(null);setCursor(c=>Math.min(total,Math.floor(c)+1));}}>Next Possession</button><button disabled={!nextHighlight} onClick={()=>nextHighlight&&jumpTo(nextHighlight)}>Next Highlight</button><button disabled={finished} onClick={()=>{setCursor(total);setPlaying(false);setReel(null);}}>Sim to End</button><button onClick={()=>{setReel(null);setCursor(0);setPlaying(true);}}>Restart Replay</button><button aria-pressed={sound} className={sound?'sound-on':''} onClick={()=>void toggleSound()}>{sound?'Sound: On':'Sound: Off'}</button><button onClick={onBoxScore}>{finished?'View Box Score':'Skip to Box Score'}</button></div>
     <div className="watch-scoreboard"><div><small>HOME</small><strong><TeamLink name={home.name} /></strong><b data-testid="watch-home-score">{score.home}</b></div><div className="watch-clock"><strong>{clockLabel}</strong><small>POSSESSION {Math.min(total,index+1)} / {total}</small></div><div><small>AWAY</small><strong><TeamLink name={away.name} /></strong><b data-testid="watch-away-score">{score.away}</b></div></div>
     </div>
     {soundNote&&!sound&&<p className="hint-text watch-sound-note">{soundNote}</p>}
     <details className="watch-options"><summary>Camera & display</summary><div><label>Camera<select aria-label="Court camera" value={camera} onChange={e=>setCamera(e.target.value as CourtCamera)}><option value="full">Full court</option><option value="broadcast">Broadcast (TV)</option><option value="follow">Follow the ball</option></select></label><label><input type="checkbox" checked={shotChart} onChange={e=>setShotChart(e.target.checked)}/> Shot chart</label><label><input type="checkbox" checked={labels} onChange={e=>setLabels(e.target.checked)}/> Player names</label><label><input type="checkbox" checked={trail} onChange={e=>setTrail(e.target.checked)}/> Ball trail</label><button onClick={async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else if(screen.current?.requestFullscreen)await screen.current.requestFullscreen();else setScreenMessage('Fullscreen is unavailable in this browser.');}catch{setScreenMessage('Your browser could not enter fullscreen.');}}}>Toggle Fullscreen</button></div>{screenMessage&&<p role="status">{screenMessage}</p>}</details>
+    {clip&&clipFrame&&<div ref={clipStage} className="clip-stage" aria-hidden="true" inert><WatchCourt frame={clipFrame} home={home} away={away} rosters={rosters} crowdFill={occasion?1:crowdFill} labels camera="full" bug={{homeScore:clipProgress>=.98?clip.h.homeScoreAfter:playbackScore(game,clip.h.index).home,awayScore:clipProgress>=.98?clip.h.awayScoreAfter:playbackScore(game,clip.h.index).away,clock:playbackClock(game,clip.h.index,clipProgress).replace(' · ',' ')}}/></div>}
+    {clipOut&&<div className="share-modal" role="dialog" aria-label="Highlight clip" onClick={e=>{if(e.target===e.currentTarget)setClipOut(null);}}><div className="share-box">
+      <img src={clipOut.url} alt={clipOut.text} width={640} height={416}/>
+      <div className="contest-actions">{typeof navigator.share==='function'&&<button className="primary" onClick={()=>void saveClip('share')}>Share</button>}<button className={typeof navigator.share==='function'?'':'primary'} onClick={()=>void saveClip('download')}>Download GIF</button><button className="link-button" onClick={()=>setClipOut(null)}>Close</button></div>
+      <p className="hint-text">{(clipOut.blob.size/1024/1024).toFixed(1)} MB GIF · plays on Discord, X and in messages.{clipStatus?` ${clipStatus}`:''}</p>
+    </div></div>}
     <div ref={arena} className="watch-stage">
       {reelNow&&<div className="watch-reel-banner" role="status"><b>HIGHLIGHT {reel!.pos+1}/{reel!.plays.length}</b><span>{HIGHLIGHT_LABEL[reelNow.kind]} · {reelNow.text}</span><button onClick={()=>{setReel(null);setPlaying(false);if(recording.current)void stopRecording();}}>{isRecording?'Stop recording':'Exit reel'}</button></div>}
-      {frame?<WatchCourt frame={frame} home={home} away={away} rosters={rosters} hotId={hot?.playerId} labels={labels} trail={trail} camera={camera} ghosts={ghosts} shots={shots} bug={{homeScore:score.home,awayScore:score.away,clock:finished?'FINAL':clockLabel.replace(' · ',' '),shotClock}}/>:<p className="empty-state">This saved game has no possession log. Its final box score is still available.</p>}
+      {frame?<WatchCourt frame={frame} home={home} away={away} rosters={rosters} crowdFill={occasion?1:crowdFill} hotId={hot?.playerId} labels={labels} trail={trail} camera={camera} ghosts={ghosts} shots={shots} bug={{homeScore:score.home,awayScore:score.away,clock:finished?'FINAL':clockLabel.replace(' · ',' '),shotClock}}/>:<p className="empty-state">This saved game has no possession log. Its final box score is still available.</p>}
     </div>
     <div className="watch-call" aria-live="polite" aria-atomic="true"><span className="pixel-eyebrow">COURTSIDE CALL</span><p><TeamText text={commentary ?? ''} /></p>{run&&<strong className="watch-run">{run.home?home.name:away.name} · {run.points}–0 RUN</strong>}{hot&&<strong className="hot-hand">ON FIRE · {hot.playerId} — {hot.threes} straight made threes</strong>}{finished&&!reel&&reelPlays.length>0&&<button className="primary watch-final-reel" onClick={startReel}>▶ Watch the {reelPlays.length}-play highlight reel</button>}</div>
 
@@ -236,13 +294,13 @@ export function WatchGame({game,home,away,homeRoster=[],awayRoster=[],onBoxScore
     {total>0&&<div className="watch-panels">
       <div className="watch-tabs" role="tablist" aria-label="Game panels">
         <button role="tab" aria-selected={tab==='box'} className={tab==='box'?'active':''} onClick={()=>setTab('box')}>Live Box Score</button>
-        {coaching&&<button role="tab" aria-selected={tab==='coach'} className={tab==='coach'?'active':''} onClick={()=>setTab('coach')}>Coach</button>}
+        {coaching&&<button role="tab" aria-selected={tab==='coach'} className={tab==='coach'?'active':''} onClick={()=>{setTab('coach');setPlaying(false);}}>{coaching.openCoach||coaching.commands.length?'Coach':'Take over (Coach)'}</button>}
         <button role="tab" aria-selected={tab==='highlights'} className={tab==='highlights'?'active':''} onClick={()=>setTab('highlights')}>Highlights{markers.length?` (${markers.length})`:''}</button>
       </div>
       <div role="tabpanel" className="watch-tabpanel">
         {tab==='box'&&<LiveBoxPanel home={live.home} away={live.away} homeName={home.name} awayName={away.name}/>}
-        {tab==='coach'&&coaching&&myTeam&&<CoachPanel coaching={coaching} team={myTeam} atPossession={coachAt} finished={finished} clockLabel={clockLabel} onDecision={()=>{setPlaying(false);setReel(null);}}/>}
-        {tab==='highlights'&&<HighlightsPanel highlights={highlights} completed={completed} finished={finished} regulationPeriods={regulation} onJump={jumpTo} onReel={startReel} reelCount={reelPlays.length} onShare={()=>void share()} shareStatus={shareStatus} onVideo={canRecordReel()?()=>void recordVideo():undefined} videoStatus={videoStatus}/>}
+        {tab==='coach'&&coaching&&myTeam&&<CoachPanel key={lastShotNow?`ls${coachAt}`:'coach'} coaching={coaching} team={myTeam} opponent={theirTeam??undefined} run={coachRun} lastShotNow={lastShotNow} atPossession={coachAt} finished={finished} clockLabel={clockLabel} onDecision={()=>{setPlaying(false);setReel(null);}}/>}
+        {tab==='highlights'&&<HighlightsPanel highlights={highlights} completed={completed} finished={finished} regulationPeriods={regulation} onJump={jumpTo} onReel={startReel} reelCount={reelPlays.length} onShare={()=>void share()} shareStatus={shareStatus} onVideo={canRecordReel()?()=>void recordVideo():undefined} videoStatus={videoStatus} onClip={h=>void makeClip(h)} clipStatus={clip?clipStatus:clipOut?null:clipStatus}/>}
       </div>
     </div>}
     <p className="hint-text">Results come from the recorded game; movement and ball physics reconstruct the action. Older saves reconstruct free-throw order from recorded totals. Space pauses; arrow keys step possessions when this viewer is focused. Sim to End counts no extra games.</p>

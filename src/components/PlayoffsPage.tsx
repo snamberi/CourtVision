@@ -7,6 +7,7 @@ import type { League } from '../simulation/league';
 import { autoGeneratePlayoffBracket, simulateNextPlayoffGame, simulateFullPlayoffs, simulateCurrentPlayoffRound, playInPending, type PlayoffBracket, type PlayoffSeries } from '../simulation/playoffs';
 import { PlayoffBracketView } from './PlayoffBracketView';
 import { StarIcon } from './Icons';
+import { playToTeamGame, playoffOccasion, roundName } from '../simulation/bigGames';
 
 interface Props {
   league: League;
@@ -15,9 +16,11 @@ interface Props {
   onBracketChange: (bracket: PlayoffBracket | null) => void;
   /** Replays the championship celebration. */
   onCelebrate?: () => void;
+  /** The team you run: its series gets a panel and "watch your next game live". */
+  controlledTeamId?: string | null;
 }
 
-export function PlayoffsPage({ league, onChange, bracket, onBracketChange, onCelebrate }: Props) {
+export function PlayoffsPage({ league, onChange, bracket, onBracketChange, onCelebrate, controlledTeamId = null }: Props) {
   const [watched, setWatched] = useState<GameResult | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   // The postseason always seeds itself from the real standings the moment you land here — no manual
@@ -42,6 +45,16 @@ export function PlayoffsPage({ league, onChange, bracket, onBracketChange, onCel
       else if (playIn?.result) setWatched(playIn.result);
     }
   };
+  // Plays other series' games as they come until your team's next game is done, then opens it on the court.
+  const watchMine = () => {
+    if (!bracket || !controlledTeamId) return;
+    const step = playToTeamGame(bracket, league, controlledTeamId, 1000);
+    onBracketChange(step.bracket);
+    onChange({ ...step.league, playoffBracket: step.bracket });
+    if (step.game) setWatched(step.game);
+  };
+  const mySeries = bracket && controlledTeamId ? [...bracket.rounds.flat()].reverse().find(s => s.teamAId === controlledTeamId || s.teamBId === controlledTeamId) ?? null : null;
+  const myAlive = !!mySeries && (!mySeries.winnerTeamId || (mySeries.winnerTeamId === controlledTeamId && !bracket?.championTeamId));
   const simRound = () => {
     if (!bracket) return;
     const step = simulateCurrentPlayoffRound(bracket, league, 1000);
@@ -94,9 +107,24 @@ export function PlayoffsPage({ league, onChange, bracket, onBracketChange, onCel
     return ri === total - 1 ? 'Finals' : ri === total - 2 ? 'Semifinals' : `Round ${ri + 1}`;
   };
 
-  if (watched) return <div className="playoffs-page"><button onClick={() => setWatched(null)}>Back to Playoffs</button><GameBoxScorePage key={`${watched.homeTeamId}-${watched.awayTeamId}-${watched.seed}`} initialWatch game={watched} home={{teamId:watched.homeTeamId,name:teamName(watched.homeTeamId)}} away={{teamId:watched.awayTeamId,name:teamName(watched.awayTeamId)}} homeRoster={league.teams.find(t=>t.teamId===watched.homeTeamId)?.seasons} awayRoster={league.teams.find(t=>t.teamId===watched.awayTeamId)?.seasons} rivalry={rivalryBadge(league,watched.homeTeamId,watched.awayTeamId)}/></div>;
+  if (watched) return <div className="playoffs-page"><button onClick={() => setWatched(null)}>Back to Playoffs</button><GameBoxScorePage key={`${watched.homeTeamId}-${watched.awayTeamId}-${watched.seed}`} initialWatch game={watched} occasion={bracket ? playoffOccasion(bracket, watched, teamName) : null} home={{teamId:watched.homeTeamId,name:teamName(watched.homeTeamId)}} away={{teamId:watched.awayTeamId,name:teamName(watched.awayTeamId)}} homeRoster={league.teams.find(t=>t.teamId===watched.homeTeamId)?.seasons} awayRoster={league.teams.find(t=>t.teamId===watched.awayTeamId)?.seasons} rivalry={rivalryBadge(league,watched.homeTeamId,watched.awayTeamId)}/></div>;
   return (
     <div className="playoffs-page">
+      {mySeries && <section className={`my-series${mySeries.winnerTeamId && mySeries.winnerTeamId !== controlledTeamId ? ' out' : ''}`} aria-label="Your series">
+        <span className="pixel-eyebrow">YOUR SERIES · {roundName(bracket!, mySeries.round).toUpperCase()}</span>
+        <div className="my-series-score">
+          <span><TeamLink name={teamName(mySeries.teamAId)} /> <b>{mySeries.teamAWins}</b></span><i>–</i><span><b>{mySeries.teamBWins}</b> <TeamLink name={teamName(mySeries.teamBId)} /></span>
+        </div>
+        <div className="my-series-games">{Array.from({ length: mySeries.gamesToWin * 2 - 1 }, (_, i) => {
+          const g = mySeries.games[i];
+          const won = g && (g.homeScore > g.awayScore ? g.homeTeamId : g.awayTeamId) === controlledTeamId;
+          return <button key={i} className={`series-chip${g ? (won ? ' won' : ' lost') : ''}${i === 6 ? ' game7' : ''}`} disabled={!g} onClick={() => g && setWatched(g)} title={g ? `Game ${i + 1}: ${teamName(g.homeTeamId)} ${g.homeScore}–${g.awayScore} ${teamName(g.awayTeamId)}` : `Game ${i + 1}`}>
+            <small>G{i + 1}</small>{g ? `${won ? 'W' : 'L'} ${Math.max(g.homeScore, g.awayScore)}-${Math.min(g.homeScore, g.awayScore)}` : '—'}
+          </button>;
+        })}</div>
+        {myAlive && !bracket?.championTeamId && <button className="primary" onClick={watchMine}>▶ Watch your next game live</button>}
+      </section>}
+
       {bracket && !bracket.championTeamId && (
         <div className="league-controls">
           <button className="primary" onClick={() => simOne(true)}>Watch Next Game</button>

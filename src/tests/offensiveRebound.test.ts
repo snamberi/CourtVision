@@ -31,6 +31,7 @@ describe('offensive rebounds keep possession', () => {
   });
 
   it('box-score offensive rebounds match the second chances in the log, and the rate is NBA-like', () => {
+    let creditedAll = 0, boardsAll = 0;
     for (const g of games) {
       for (const [box, teamId] of [[g.homeBox, g.homeTeamId], [g.awayBox, g.awayTeamId]] as const) {
         const oreb = Object.values(box.players).reduce((n, l) => n + l.oreb, 0);
@@ -38,9 +39,11 @@ describe('offensive rebounds keep possession', () => {
         // Team rebounds (out of bounds, tipped around) keep possession but credit no player, as in official stats.
         const credited = offensiveBoards.filter(p => !p.events.includes('Team rebound')).length;
         expect(oreb).toBe(credited);
-        expect(credited).toBeGreaterThanOrEqual(Math.floor(offensiveBoards.length * 0.7));
+        creditedAll += credited; boardsAll += offensiveBoards.length;
       }
     }
+    // Team rebounds are a fixed small share, so check it over every game (one game's dozen boards is too noisy).
+    expect(creditedAll).toBeGreaterThanOrEqual(Math.floor(boardsAll * 0.7));
     const all = games.flatMap(g => [g.homeBox, g.awayBox]).flatMap(b => Object.values(b.players));
     const oreb = all.reduce((n, l) => n + l.oreb, 0), dreb = all.reduce((n, l) => n + l.dreb, 0);
     const rate = oreb / (oreb + dreb);

@@ -1,5 +1,8 @@
 import { prepareCoachingForGame, finishCoachingGame, type GameEvidence } from './playerDevelopment';
 import { advanceCup } from './cup';
+import { isDeadlineDayBlocking } from './deadlineDay';
+import { restsTonight, withMedicalRisk, afterGame, afterHealing } from './medical';
+import { withContractYear } from './extensions';
 import { gameStaffCoach } from './staffManagement';
 import { reviewTeamRotation, type RotationReview } from './rotationReview';
 import type { GameSettings, PlayerSeason } from './types';
@@ -70,6 +73,8 @@ export function defaultCoachTendencies(): CoachTendencies {
 }
 
 export interface LeagueTeam {
+  /** Ticket price, arena upgrades and their loans (see business.ts); set once the team's business is managed. */
+  business?: import('./business').BusinessPlan;
   staff?: import('./coachingModel').AssistantStaff;
   coachingControl?: import('./coachingModel').CoachingControl;
   identity?: import('./teamIdentity').TeamIdentity;
@@ -187,6 +192,10 @@ export interface ScheduledGame {
 export type SeasonPhase = 'regular_season' | 'all_star' | 'playoffs' | 'awards_recap' | 'draft' | 'resign_waive' | 'free_agency' | 'preseason';
 
 export interface League {
+  /** How the league was built (kind, season, options, seed): its league code (see retention/leagueCode.ts). */
+  origin?: import('../retention/leagueCode').LeagueOrigin;
+  /** Rebuild Challenge: the scenario this league is playing (see rebuildChallenge.ts). */
+  rebuildChallenge?: import('./rebuildChallenge').RebuildChallengeConfig;
   coachingVersion?: 1;
   coachingUserTeamId?: string | null;
   staffMarket?: CoachIdentity[];
@@ -194,8 +203,14 @@ export interface League {
   newsArchive?: import('./news').NewsItem[];
   rivalries?: Record<string, import('./rivalry').RivalryRecord>;
   /** Present when this league was started from real NBA history (see history/historicalLeague.ts). */
+  /** Set on leagues made by the All-Time Draft. */
+  allTimeDraft?: { seed: number; eraId: string; weekly?: string };
   historical?: import('../history/historicalLeague').HistoricalLeagueMeta; // past seasons' rivalry history, decayed each rollover (see rivalry.ts)
   playoffBracket?: import('./playoffs').PlayoffBracket;
+  /** Press conferences, fan mood and what you've said this season (see press.ts). */
+  press?: import('./press').PressState;
+  /** Fragile returning players and load management (see medical.ts). */
+  medical?: import('./medical').MedicalState;
 
   rosterLimits?: { minRosterSize: number; maxRosterSize: number };
   teams: LeagueTeam[];
@@ -204,6 +219,12 @@ export interface League {
   season?: string; // current season label, e.g. "2026-27"; absent on older/imported saves
   injuries?: Record<string, InjuryRecord>; // keyed by playerId; absent/undefined players are fully healthy
   retiredPlayers?: RetiredPlayerRecord[]; // everyone who has ever retired in this league, most recent last
+  /** Your summer development plans for the coming offseason (see summerCamp.ts). */
+  summerCamp?: import('./summerCamp').SummerCampState;
+  /** Other teams' calls about your assistants (and past answers). */
+  staffOffers?: import('./staffPoaching').PoachOffer[];
+  /** The latest Training Camp Report: how your players came back from the summer. */
+  campReport?: import('./summerCamp').CampReport;
   /** Single-game bests, updated after every game (see simulation/records.ts). */
   recordBook?: import('./records').RecordBook;
   franchiseHistory?: FranchiseHistoryRecord[]; // one entry per completed season, most recent last
@@ -222,6 +243,10 @@ export interface League {
   frontOffice?: import('./frontOffice').FrontOfficeState;
   /** This season's In-Season Cup: groups, knockout results and honors (see cup.ts). */
   cup?: import('./cup').CupState;
+  /** This season's Trade Deadline Day: the clock, rumors, calls and every deal made (see deadlineDay.ts). */
+  deadlineDay?: import('./deadlineDay').DeadlineDayState;
+  /** Head coaches fired and hired around the league (see coachingCarousel.ts); a few seasons are kept. */
+  coachingCarousel?: import('./coachingCarousel').CoachingCarouselState;
   /** The latest offseason's Summer League (see draftSeason.ts); replaced each year. */
   summerLeague?: import('./draftSeason').SummerLeagueRecord;
 }
@@ -241,6 +266,12 @@ export interface AllStarWeekendRecord {
   /** Rising Stars game (first- and second-year players), played before the All-Star Game. */
   risingStars?: import('./allStarGame').AllStarGameResult;
   risingStarsMvp?: AwardWinner;
+  /** All-Star Game format: conference vs conference (default) or a captains draft. */
+  format?: 'conference' | 'captains';
+  draft?: import('./allStarEvents').CaptainsDraft;
+  /** The contests shot by shot and dunk by dunk (the summaries above stay for history). */
+  threePointShow?: import('./allStarEvents').ThreePointShow;
+  dunkShow?: import('./allStarEvents').DunkShow;
 }
 
 /** Archived per-season headline results — the backbone of a franchise history page. */
@@ -295,6 +326,14 @@ export interface RetiredPlayerRecord {
   /** The player's complete final-season record, including careerHistory — kept so the Hall of Fame can
    * recompute a full career case from real data rather than a lossy snapshot. */
   finalSeasonData?: PlayerSeason;
+  /**
+   * A real player whose career ended before this historical league began (loaded from NBA history, not retired here).
+   * His finalSeasonData is not saved: it is rebuilt from the NBA history data by `realId` when the league loads,
+   * unless `keepData` is set (edited in Sandbox).
+   */
+  preStart?: boolean;
+  realId?: string;
+  keepData?: boolean;
 }
 
 /** A currently-active injury being tracked across games (not just within one boxscore). */
@@ -304,6 +343,8 @@ export interface InjuryRecord {
   severity: 'minor' | 'moderate' | 'severe';
   gamesRemaining: number; // games left before this player is available again
   totalGames: number; // the original recovery estimate, kept for "X of Y games" progress display
+  /** The treatment chosen in the medical room (unset = not decided yet; AI teams and undecided injuries heal on the standard timeline). */
+  treatment?: import('./medical').Treatment;
 }
 
 /**
@@ -351,8 +392,33 @@ export function generateRoundRobinSchedule(teamIds: string[], gamesPerMatchup = 
  * extra games per team — no team ends up short or over.
  */
 export function generateSeasonSchedule(teamIds: string[], gamesPerTeam: number): ScheduledGame[] {
+  return balanceHomeAway(teamIds.length % 2 !== 0 ? oddTeamSeasonSchedule(teamIds, gamesPerTeam) : evenTeamSeasonSchedule(teamIds, gamesPerTeam));
+}
+
+/**
+ * Hands out home court so every team gets about half its games at home (the circle method alone gave some teams 53
+ * of 82). The second, fourth… meeting of two teams swaps venue from the one before; every other meeting goes to the
+ * team with fewer home games so far.
+ */
+function balanceHomeAway(games: ScheduledGame[]): ScheduledGame[] {
+  const balance = new Map<string, number>(); // home games minus away games so far
+  const meetings = new Map<string, { count: number; lastHome: string }>();
+  return games.map((g) => {
+    const a = g.homeTeamId, b = g.awayTeamId;
+    const key = a < b ? `${a}|${b}` : `${b}|${a}`;
+    const met = meetings.get(key);
+    const home = met && met.count % 2 === 1 ? (met.lastHome === a ? b : a)
+      : (balance.get(b) ?? 0) < (balance.get(a) ?? 0) ? b : a;
+    const away = home === a ? b : a;
+    meetings.set(key, { count: (met?.count ?? 0) + 1, lastHome: home });
+    balance.set(home, (balance.get(home) ?? 0) + 1);
+    balance.set(away, (balance.get(away) ?? 0) - 1);
+    return home === a ? g : { ...g, homeTeamId: home, awayTeamId: away };
+  });
+}
+
+function evenTeamSeasonSchedule(teamIds: string[], gamesPerTeam: number): ScheduledGame[] {
   const ids = [...teamIds];
-  if (ids.length % 2 !== 0) ids.push('__BYE__');
   const n = ids.length;
   const roundsPerCycle = n - 1;
   const fullCycles = Math.floor(gamesPerTeam / roundsPerCycle);
@@ -383,6 +449,44 @@ export function generateSeasonSchedule(teamIds: string[], gamesPerTeam: number):
     }
   }
   return games;
+}
+
+/**
+ * Odd team counts: one team sits out each round, so a round-robin cycle gives every team N−1 games, and a partial
+ * cycle would leave the teams whose rest day fell inside it a game short. Full cycles come first; the remaining games
+ * pair each team with its nearest neighbours around a circle (every team gets the same number, half at home), packed
+ * into game days where no team plays twice. When the team count and the game count are both odd, an even total is
+ * impossible and exactly one team plays one game fewer.
+ */
+function oddTeamSeasonSchedule(teamIds: string[], gamesPerTeam: number): ScheduledGame[] {
+  const n = teamIds.length;
+  if (n < 2 || gamesPerTeam <= 0) return [];
+  const fullCycles = Math.floor(gamesPerTeam / (n - 1));
+  const rest = gamesPerTeam - fullCycles * (n - 1);
+  const games = fullCycles ? generateRoundRobinSchedule(teamIds, fullCycles) : [];
+  const pairs: [string, string][] = [];
+  for (let d = 1; d <= Math.floor(rest / 2); d++) {
+    for (let i = 0; i < n; i++) pairs.push([teamIds[i], teamIds[(i + d) % n]]);
+  }
+  if (rest % 2 === 1) {
+    // Every other edge of the cycle 0 → d → 2d → … (d = (n−1)/2 is coprime with n and unused above): one more game for all but one team.
+    const d = (n - 1) / 2;
+    for (let j = 0; j + 1 < n; j += 2) {
+      const a = teamIds[(j * d) % n], b = teamIds[((j + 1) * d) % n];
+      pairs.push(j % 4 === 0 ? [a, b] : [b, a]);
+    }
+  }
+  const start = games.length ? games[games.length - 1].round + 1 : 0;
+  const busy: Set<string>[] = [];
+  const extra: ScheduledGame[] = [];
+  for (const [homeTeamId, awayTeamId] of pairs) {
+    let r = 0;
+    while (busy[r]?.has(homeTeamId) || busy[r]?.has(awayTeamId)) r++;
+    (busy[r] ??= new Set()).add(homeTeamId).add(awayTeamId);
+    extra.push({ id: '', round: start + r, homeTeamId, awayTeamId, played: false });
+  }
+  extra.sort((a, b) => a.round - b.round);
+  return [...games, ...extra].map((g, i) => ({ ...g, id: `s${i}` }));
 }
 
 export interface StandingsRow {
@@ -507,9 +611,10 @@ export interface PreparedGame {
   homeAvailableIds: string[];
 }
 
-/** True when no regular-season game can be played yet: a roster outside the limits, or the All-Star break is due. */
+/** True when no regular-season game can be played yet: a roster outside the limits, the All-Star break or Trade Deadline Day is due. */
 function gameBlocked(league: League, idx: number): boolean {
   if ((league.seasonPhase ?? 'regular_season') === 'regular_season' && league.rosterLimits && league.teams.some(t => t.seasons.length < league.rosterLimits!.minRosterSize || t.seasons.length > league.rosterLimits!.maxRosterSize)) return true;
+  if (league.deadlineDay && league.schedule[idx].round >= league.deadlineDay.round && isDeadlineDayBlocking(league)) return true;
   const breakRound = allStarBreakRound(league);
   return breakRound != null && league.schedule[idx].round >= breakRound && isAllStarBreakPending(league);
 }
@@ -532,9 +637,11 @@ function prepareGame(league: League, idx: number, seedBase: number, injuries: Re
   const home = league.teams.find((t) => t.teamId === g.homeTeamId)!;
   const away = league.teams.find((t) => t.teamId === g.awayTeamId)!;
 
-  const isOut = (playerId: string) => (injuries[playerId]?.gamesRemaining ?? 0) > 0;
-  let homeAvailable = home.seasons.filter((s) => !isOut(s.playerId));
-  let awayAvailable = away.seasons.filter((s) => !isOut(s.playerId));
+  // Out: injured, or rested tonight by load management. Fragile returning players carry a raised injury risk.
+  const gameNumber = (teamId: string) => league.schedule.filter(x => x.played && (x.homeTeamId === teamId || x.awayTeamId === teamId)).length + 1;
+  const isOut = (playerId: string, teamId: string) => (injuries[playerId]?.gamesRemaining ?? 0) > 0 || restsTonight(league.medical, playerId, gameNumber(teamId), league.seasonPhase);
+  let homeAvailable = home.seasons.filter((s) => !isOut(s.playerId, home.teamId)).map(s => withContractYear(withMedicalRisk(league.medical, s)));
+  let awayAvailable = away.seasons.filter((s) => !isOut(s.playerId, away.teamId)).map(s => withContractYear(withMedicalRisk(league.medical, s)));
   homeAvailable = ensureMinimumAvailable(home.seasons, homeAvailable, injuries);
   awayAvailable = ensureMinimumAvailable(away.seasons, awayAvailable, injuries);
 
@@ -559,6 +666,10 @@ function commitGame(league: League, prepared: PreparedGame, result: GameResult, 
 
   let nextInjuries = tickInjuriesForTeam(injuries, home.teamId);
   nextInjuries = tickInjuriesForTeam(nextInjuries, away.teamId);
+  // Healed tonight: the treatment decides how fragile he comes back. Everyone who played wears fragility off.
+  const healed = Object.values(injuries).filter(r => (r.teamId === home.teamId || r.teamId === away.teamId) && !nextInjuries[r.playerId]);
+  const playedIds = [...Object.values(result.homeBox.players), ...Object.values(result.awayBox.players)].filter(l => l.minutes > 0).map(l => l.playerId);
+  const medical = league.medical ? afterGame(afterHealing(league.medical, healed), playedIds) : healed.length ? afterHealing({ fragile: {}, rest: {} }, healed) : undefined;
   const homeIds = new Set(prepared.homeAvailableIds);
   const recoveryMult = (league.rulesSettings?.recoveryTimeMultiplier ?? 100) / 100;
   const injuredThisGame = new Map<string, { teamId: string; severity: InjuryRecord['severity']; recoveryGames: number }>();
@@ -612,7 +723,7 @@ function commitGame(league: League, prepared: PreparedGame, result: GameResult, 
     calendarRound = g.round;
   }
 
-  const updated = applyGameResultToLeague({ ...league, teams, schedule, injuries: nextInjuries, calendarDate, calendarRound }, result);
+  const updated = applyGameResultToLeague({ ...league, teams, schedule, injuries: nextInjuries, calendarDate, calendarRound, ...(medical ? { medical } : {}) }, result);
   // The last game of a game day moves the award races along (weekly ladder, Players of the Week/Month).
   // The same night decides the Cup: once the last group game is in, the knockout rounds are played (see cup.ts).
   const dayDone = (l: League) => l.schedule.some((x) => !x.played && x.round === g.round) ? l : advanceCup(advanceAwardRace(l, g.round));

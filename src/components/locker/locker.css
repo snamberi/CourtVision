@@ -1,0 +1,70 @@
+/* The GM Locker: League Hunt's screen frame with lockers (bays) of trophies. */
+.locker-totals { margin: 0 0 16px; padding: 12px 16px; background: var(--c-bg-192333, #192333); border: 2px solid var(--c-border-ffd166, #ffd166); }
+.locker-bay { display: grid; gap: 10px; margin-bottom: 18px; padding: 12px 16px; background: var(--c-bg-121926, #121926); border: 2px solid var(--c-border-2a3546, #2a3546); box-shadow: 3px 3px 0 var(--c-shadow-03070d, #03070d); }
+.locker-bay h2 { display: flex; align-items: center; gap: 8px; margin: 0; font: 22px var(--ff-display, 'Oswald', sans-serif); }
+.locker-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.locker-row div { display: grid; min-width: 104px; padding: 6px 10px; background: var(--c-bg-0b1018, #0b1018); border: 1px solid var(--c-border-2a3546, #2a3546); }
+.locker-row small { font-size: 10px; letter-spacing: .08em; color: var(--c-fg-94a0b2, #94a0b2); }
+.locker-row b { font: 22px var(--ff-display, 'Oswald', sans-serif); color: var(--c-fg-f47b20, #f47b20); font-variant-numeric: tabular-nums; }
+.locker-row div.gold b { color: var(--c-fg-ffd166, #ffd166); }
+.locker-best { display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: var(--c-bg-192333, #192333); border: 2px solid var(--c-border-f47b20, #f47b20); max-width: 560px; }
+.locker-best div { display: grid; }
+.locker-best strong { font: 20px var(--ff-display, 'Oswald', sans-serif); }
+.locker-best small { color: var(--c-fg-c9ced8, #c9ced8); }
+.locker-hunt-cups { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 4px; }
+.locker-achievements { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 6px; }
+.locker-achievements li { display: flex; gap: 10px; align-items: center; padding: 6px 8px; border: 1px solid var(--c-border-1e2a3b, #1e2a3b); background: var(--c-bg-0b1018, #0b1018); opacity: .6; }
+.locker-achievements li.got { opacity: 1; border-color: var(--c-border-ffd166, #ffd166); }
+.locker-achievements li div { display: grid; min-width: 0; }
+.locker-achievements li small { color: var(--c-fg-94a0b2, #94a0b2); font-size: 11px; }
+.locker-achievements .locker-when { color: var(--c-fg-ffd166, #ffd166); }
+.locker-count { margin-left: auto; font: 14px var(--ff-display, 'Oswald', sans-serif); color: var(--c-fg-ffd166, #ffd166); }
+.locker-mode { display: grid; gap: 6px; }
+.locker-mode .hunt-subhead { margin: 4px 0 0; }
+.locker-progress { display: flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
+.locker-bar { flex: 0 0 72px; height: 6px; background: var(--c-bg-1e2a3b, #1e2a3b); border: 1px solid var(--c-border-2a3546, #2a3546); }
+.locker-bar i { display: block; height: 100%; background: var(--c-bg-f47b20, #f47b20); }
+
+/* Player Profile: tabs and the level road. */
+.profile-tabs { margin: 0 0 14px; flex-wrap: wrap; }
+.level-road .road-head { display: flex; gap: 14px; align-items: center; }
+.road-stops { list-style: none; margin: 0; padding: 4px 0 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; }
+.road-stop { position: relative; display: grid; gap: 6px; align-content: start; padding: 8px 10px; background: var(--c-bg-0b1018, #0b1018); border: 1px solid var(--c-border-1e2a3b, #1e2a3b); opacity: .62; }
+.road-stop.got { opacity: 1; border-color: var(--c-border-2a3546, #2a3546); background: var(--c-bg-121926, #121926); }
+.road-stop.next { opacity: 1; border: 2px solid var(--c-border-f47b20, #f47b20); box-shadow: 0 0 0 2px var(--c-shadow-f47b2033, rgba(244, 123, 32, .2)); }
+.road-stop.major { border-top: 3px solid var(--c-border-ffd166, #ffd166); }
+.road-level { font: 10px var(--ff-pixel, 'Press Start 2P', monospace); color: var(--c-fg-ffd166, #ffd166); }
+.road-stop:not(.got) .road-level { color: var(--c-fg-94a0b2, #94a0b2); }
+.road-reward { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.road-reward small { color: var(--c-fg-94a0b2, #94a0b2); font-size: 11px; }
+.road-reward .name-tag > span { font-size: 13px; }
+.road-title { font: 14px var(--ff-display, 'Oswald', sans-serif); color: var(--c-fg-f4f0e6, #f4f0e6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.road-frame, .road-floor { flex: none; width: 30px; height: 30px; border: 3px solid var(--c-border-f47b20, #f47b20); background: var(--c-bg-192333, #192333); }
+.road-frame.frame-gold { border-color: var(--c-border-ffd166, #ffd166); } .road-frame.frame-hardwood { border-color: var(--c-border-c98a4b, #c98a4b); } .road-frame.frame-neon { border-color: var(--c-border-4de0ff, #4de0ff); box-shadow: inset 0 0 0 2px var(--c-shadow-ff4dd2, #ff4dd2); }
+.road-frame.frame-banner { border-color: var(--c-border-b983ff, #b983ff); } .road-frame.frame-fire { border-color: var(--c-border-ff6b3d, #ff6b3d); }
+.road-floor { border: 1px solid var(--c-border-03070d, #03070d); background: repeating-linear-gradient(90deg, var(--c-bg-c98a4b, #c98a4b) 0 6px, var(--c-bg-b8793e, #b8793e) 6px 7px); }
+.road-floor.floor-parquet { background: repeating-conic-gradient(var(--c-bg-b8793e, #b8793e) 0 25%, var(--c-bg-d19a5e, #d19a5e) 0 50%) 0 0 / 10px 10px; }
+.road-floor.floor-blonde { background: repeating-linear-gradient(90deg, var(--c-bg-e8c890, #e8c890) 0 6px, var(--c-bg-d8b57a, #d8b57a) 6px 7px); }
+.road-floor.floor-midnight { background: repeating-linear-gradient(90deg, var(--c-bg-4a3322, #4a3322) 0 6px, var(--c-bg-3b281a, #3b281a) 6px 7px); }
+.road-floor.floor-asphalt { background: var(--c-bg-3a3f47, #3a3f47); }
+.road-check { position: absolute; top: 6px; right: 8px; color: var(--c-fg-55c878, #55c878); font-weight: 700; }
+
+/* Passes */
+.pass-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.pass-card { display: grid; grid-template-rows: auto 1fr auto; gap: 8px; padding: 12px 14px; background: var(--c-bg-0b1018, #0b1018); border: 2px solid var(--c-border-2a3546, #2a3546); border-top: 3px solid var(--c-border-4da3ff, #4da3ff); }
+.pass-card.supporter { border-top-color: var(--c-border-ff5fa2, #ff5fa2); }
+.pass-card.owned { border-color: var(--c-border-55c878, #55c878); }
+.pass-card header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.pass-card header b { font: 20px var(--ff-display, 'Oswald', sans-serif); }
+.pass-card header span { font-size: 12px; color: var(--c-fg-94a0b2, #94a0b2); }
+.pass-card ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; align-content: start; }
+.pass-card li.pass-icons { list-style: none; margin-left: -18px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.pass-card li.pass-icons span { font-size: 12px; color: var(--c-fg-94a0b2, #94a0b2); }
+.pass-card footer { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.pass-status { color: var(--c-fg-94a0b2, #94a0b2); }
+.pass-status.ok { color: var(--c-fg-55c878, #55c878); }
+.pass-buy { display: inline-block; padding: 8px 14px; border: 2px solid var(--c-border-4a5b75, #4a5b75); background: var(--c-bg-192333, #192333); color: var(--c-fg-f4f0e6, #f4f0e6); font: 600 14px var(--ff-display, 'Oswald', sans-serif); letter-spacing: .04em; text-decoration: none; box-shadow: 2px 2px 0 var(--c-shadow-03070d, #03070d); }
+.pass-buy.primary { background: var(--c-bg-f47b20, #f47b20); border-color: var(--c-border-ff9d3d, #ff9d3d); color: var(--c-fg-0b1018, #0b1018); }
+.pass-buy:hover { border-color: var(--c-border-ff9d3d, #ff9d3d); }
+.pass-buy:focus-visible { outline: 2px solid var(--c-border-ff9d3d, #ff9d3d); outline-offset: 2px; }
+.pass-fine { font-size: 12px; }

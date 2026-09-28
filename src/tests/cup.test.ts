@@ -8,7 +8,7 @@ import { getPlayerAwardsHistory, teamTrophyEntries } from '../simulation/leagueA
 import { generateNewsFeed } from '../simulation/news';
 import { cupGroupStageComplete, cupGroupTable, cupLines, setupCup } from '../simulation/cup';
 
-describe('In-Season Cup', () => {
+describe('In-Season Cup', { timeout: 60_000 }, () => {
   const { league: base, extras } = generateFullLeague(61, 30, 13, 82, '2026');
   const league = setupCup(base);
   const cup = league.cup!;

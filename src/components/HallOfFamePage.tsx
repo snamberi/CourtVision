@@ -1,3 +1,4 @@
+import { formatSeasonYear } from '../simulation/calendar';
 import { TeamLink } from './TeamLink';
 import { useMemo, useState } from 'react';
 import type { League } from '../simulation/league';
@@ -47,7 +48,7 @@ export function HallOfFamePage({ league, onSelectPlayer }: Props) {
                 <span className="hof-score">{c.score}</span>
               </div>
               <p className="hint-text hof-sub">
-                Retired {c.finalSeason} · <TeamLink name={c.finalTeamName} />
+                Retired {formatSeasonYear(c.finalSeason)} · <TeamLink name={c.finalTeamName} />
               </p>
               <ul className="hof-resume">
                 {c.resume.map((line, i) => <li key={i}>{line}</li>)}

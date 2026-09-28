@@ -38,7 +38,7 @@ export function buildHallOfFameCase(
   league: League,
 ): HallOfFameCase {
   const summary = careerSummary(season);
-  const awards = getPlayerAwardsHistory(league, season.playerId);
+  const awards = getPlayerAwardsHistory(league, season.playerId, season);
   const t = summary.totals;
   const pg = summary.perGame;
 

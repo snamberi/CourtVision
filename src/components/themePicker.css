@@ -1,0 +1,25 @@
+/* The look picker (first visit and the Player Profile). Its preview cards paint their own theme's colours inline;
+   everything around them follows the current theme. */
+.theme-picker { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 168px), 1fr)); gap: 10px; }
+.theme-card { display: grid; gap: 6px; align-content: start; padding: 8px; text-align: left; background: var(--panel); color: var(--text); border: 2px solid var(--line); cursor: pointer; font-family: var(--font-data); text-transform: none; letter-spacing: 0; }
+.theme-card:hover { border-color: var(--line-bright); }
+.theme-card.selected { border-color: var(--amber); box-shadow: 0 0 0 2px var(--amber); }
+.theme-card:focus-visible { outline: 2px solid var(--amber-bright); outline-offset: 2px; }
+.theme-card > b { font: 600 16px/1.2 var(--font-display); text-transform: uppercase; letter-spacing: .03em; }
+.theme-card > b small { font: 12px var(--font-data); text-transform: none; color: var(--amber); }
+.theme-card > span:last-child { font-size: 12.5px; line-height: 1.45; color: var(--text-dim); }
+.theme-preview { display: grid; gap: 4px; padding: 8px; border: 2px solid; font-size: 12px; line-height: 1.2; }
+.tp-top { display: flex; justify-content: space-between; align-items: center; gap: 6px; font-size: 15px; text-transform: uppercase; white-space: nowrap; overflow: hidden; }
+.tp-top i { font: normal 11px/1 inherit; font-style: normal; border: 1px solid; padding: 2px 5px; }
+.tp-row { display: flex; justify-content: space-between; gap: 8px; padding: 3px 6px; border: 1px solid; }
+.tp-row b { font-weight: 500; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tp-row em { font-style: normal; font-weight: 700; font-variant-numeric: tabular-nums; }
+.tp-btn { justify-self: start; padding: 4px 12px; font-size: 13px; text-transform: uppercase; }
+.theme-welcome .share-box { width: min(980px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow-y: auto; display: grid; gap: 10px; }
+.theme-welcome h2 { margin: 0; }
+.theme-welcome .hint-text { margin: 0; }
+.theme-section { display: grid; gap: 8px; }
+/* On a phone the list scrolls; the button stays in reach. */
+.theme-welcome .contest-actions { position: sticky; bottom: -1px; margin: 0 -4px; padding: 10px 4px 4px; background: var(--c-bg-121926, #121926); border-top: 1px solid var(--line); }
+.tp-top span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.tp-top i { flex-shrink: 0; }

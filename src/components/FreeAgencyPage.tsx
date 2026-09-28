@@ -2,7 +2,7 @@ import { signingDecision, signFreeAgentChecked, strengthRanking } from '../simul
 import { TeamLink, TeamText } from './TeamLink';
 import { useMemo, useState } from 'react';
 import type { League } from '../simulation/league';
-import type { GMLeagueExtras } from '../simulation/gm';
+import type { Contract, GMLeagueExtras } from '../simulation/gm';
 import {
   capSpaceRemaining, signFreeAgent, canManageTeam, hasRosterRoom,
 } from '../simulation/gm';
@@ -59,6 +59,19 @@ export function FreeAgencyPage({ league, extras, controlledTeamId, onChange, onS
     setAiMessage(`Skipped to the end of free agency - ${totalSignings} AI signings happened around the league.`);
   };
 
+  const signPlayer = (playerId: string, contract: Omit<Contract, 'playerId' | 'teamId'>, base: GMLeagueExtras = extras) => {
+    if (!signTeam || (!sandboxMode && signTeamId !== controlledTeamId)) return;
+    // Players decide for themselves outside sandbox mode (the same rules AI teams, Auto Play and re-signing use).
+    const result = sandboxMode ? { ...signFreeAgent(league, base, playerId, signTeamId, contract), decision: null }
+      : signFreeAgentChecked(league, base, playerId, signTeamId, contract, { ranking });
+    if (result.decision && !result.decision.accepted) { setAiMessage(result.decision.reason); return; }
+    if (result.league === league && result.extras === base) {
+      setAiMessage("That signing didn't go through — check that free agency is open, the roster has room, and the player is still a free agent.");
+      return;
+    }
+    onChange(result.league, result.extras);
+    setAiMessage(`Signed ${playerId} to ${signTeam?.name}.`);
+  };
   return (
     <div>
       {!extras.freeAgencyOpen && <p className="calendar-banner">Free agency isn't open right now.</p>}
@@ -111,19 +124,8 @@ export function FreeAgencyPage({ league, extras, controlledTeamId, onChange, onS
               : signTeamRosterFull ? `${signTeam?.name}'s roster is full.`
               : undefined
           }
-          onSign={(playerId, contract) => {
-            if (!signTeam || (!sandboxMode && signTeamId !== controlledTeamId)) return;
-            // Players decide for themselves outside sandbox mode (the same rules AI teams, Auto Play and re-signing use).
-            const result = sandboxMode ? { ...signFreeAgent(league, extras, playerId, signTeamId, contract), decision: null }
-              : signFreeAgentChecked(league, extras, playerId, signTeamId, contract, { ranking });
-            if (result.decision && !result.decision.accepted) { setAiMessage(result.decision.reason); return; }
-            if (result.league === league && result.extras === extras) {
-              setAiMessage("That signing didn't go through — check that free agency is open, the roster has room, and the player is still a free agent.");
-              return;
-            }
-            onChange(result.league, result.extras);
-            setAiMessage(`Signed ${playerId} to ${signTeam?.name}.`);
-          }}
+          onSign={signPlayer}
+          talks={signTeam && !sandboxMode ? { league, extras, teamId: signTeam.teamId, onUpdate: e => onChange(league, e), onAgree: signPlayer } : undefined}
           onSelectPlayer={onSelectPlayer}
           quote={sandboxMode || !signTeam ? undefined : (p) => signingDecision(league, extras, p, signTeamId, undefined, { ranking })}
         />

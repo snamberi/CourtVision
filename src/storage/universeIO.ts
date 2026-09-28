@@ -1,6 +1,7 @@
 import { compactLeagueLogs } from '../simulation/logPacking';
 import type { League } from '../simulation/league';
 import type { GMLeagueExtras } from '../simulation/gm';
+import { slimRetirees } from '../history/retirees';
 
 export interface UniverseSnapshot {
   controlledTeamId?: string | null;
@@ -16,7 +17,7 @@ const GAME_VERSION = 'phase-1-9';
 
 /** Replay logs are stored deflated (see simulation/logPacking), which keeps saves, backups and exports ~10× smaller. */
 export function buildSnapshot(league: League, extras: GMLeagueExtras): UniverseSnapshot {
-  return { schemaVersion: SCHEMA_VERSION, gameVersion: GAME_VERSION, exportedAt: Date.now(), league: compactLeagueLogs(league, 0), extras };
+  return { schemaVersion: SCHEMA_VERSION, gameVersion: GAME_VERSION, exportedAt: Date.now(), league: compactLeagueLogs(slimRetirees(league), 0), extras };
 }
 
 /** Triggers a browser download of the current universe as a portable JSON file. */

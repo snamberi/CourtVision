@@ -1,3 +1,6 @@
+import { enforceSticky, stickyTradeProblems, isStuck } from './sticky';
+import { consensusBoard, pickReaction } from './draftNight';
+import { formatSeasonYear } from './calendar';
 import { withGrudge } from './personality';
 import { recordRivalryTrade } from './rivalry';
 import { closeStint } from './stints';
@@ -9,10 +12,12 @@ import { simulateFullRound } from './league';
 import { RNG } from './engine/rng';
 import { generatePlayer } from './leagueGenerator';
 import { computeStandings } from './league';
+import { expectedGrowth } from './growth';
 import { calculateOverall } from './engine/overall';
 import { generatePlayerOrigin } from './names';
 import { collectPlayerIds, withUniquePlayerId } from './playerIds';
 import { appendHistoryEvent } from './playerHistory';
+import { isDeadlineDayClosed, logDeadlineTrade, tradeDeadlineEnabled } from './deadlineDay';
 
 // ---- Contracts ----
 export interface Contract {
@@ -22,6 +27,8 @@ export interface Contract {
   yearsRemaining: number;
   playerOption: boolean;
   teamOption: boolean;
+  /** An agreed in-season extension: it becomes the contract when this one runs out (see extensions.ts). */
+  extension?: import('./extensions').ExtensionDeal;
 }
 
 export interface SalaryCapSettings {
@@ -83,17 +90,10 @@ export const DEFAULT_GM_FLAGS = {
  * harder than trading for veterans of similar current ability.
  */
 export function computeTradeValue(season: PlayerSeason): number {
+  // Today's rating, plus the growth a player of his age and level can really be expected to add (growth.ts), less
+  // the decline that starts in the thirties.
   const overall = calculateOverall(season);
-  const potentialGap = Math.max(0, season.development.potential - overall);
-
-  let youthMultiplier: number;
-  if (season.age <= 22) youthMultiplier = 1.6;
-  else if (season.age <= 27) youthMultiplier = 1.15;
-  else if (season.age <= 31) youthMultiplier = 0.85;
-  else youthMultiplier = 0.55;
-
-  const upsidePremium = potentialGap * youthMultiplier * 0.8;
-  return overall + upsidePremium;
+  return overall + expectedGrowth(season) * 1.2 - Math.max(0, season.age - 31) * 0.8;
 }
 
 export interface GMLeagueExtras {
@@ -107,14 +107,28 @@ export interface GMLeagueExtras {
   tradeBlock: PlayerId[]; // players any team has marked as available for trade discussion
   draftPickIndex: number; // whose turn it is in the draft order, incremented on every successful pick (by anyone)
   pendingTradeOffers: TradeProposal[]; // AI-generated offers targeting the controlled team, awaiting accept/decline
+  /** Offers you declined this season (see offerKey), so the same deal isn't pitched again. */
+  declinedOffers?: string[];
+  /** Trade talks with AI front offices this season: rounds of counters and when talks broke off (see tradeTalks.ts). */
+  tradeTalks?: Record<string, import('./tradeTalks').TradeTalkState>;
+  /** In-season extension talks, by player (see extensions.ts). */
+  extensionTalks?: Record<string, import('./agents').Negotiation>;
   freeAgencyDaysRemaining: number; // counts down during the 30-day free agency window in the season-flow lifecycle; 0 when not in that window
   teamPersonalities?: Record<TeamId, 'aggressive' | 'conservative' | 'balanced'>; // AI front-office archetype per team; absent teams default to 'balanced'
   draftOrder?: TeamId[]; // this draft's determined pick order (post-lottery), set once when the draft class is generated
-  draftPicksMade?: { pickNumber: number; teamId: string; playerId: string }[]; // history of this draft's picks so far, most recent last
+  draftPicksMade?: { pickNumber: number; teamId: string; playerId: string; reaction?: import('./draftNight').PickReaction; boardRank?: number }[]; // history of this draft's picks so far, most recent last
+  /** This offseason's lottery (who moved up or down), for the live reveal (see draftNight.ts). */
+  lottery?: import('./draftNight').LotteryResult;
+  /** The consensus big board at the start of the draft: prospect id -> rank (0 = best). */
+  draftBoard?: Record<string, number>;
   watchList?: PlayerId[]; // players the user is tracking (trade targets, prospects, rivals), independent of roster
   futurePicks?: FutureDraftPick[]; // tradeable draft-pick futures ledger (this year + several years out), see below
   picksOnBlock?: string[]; // FutureDraftPick ids any team has marked as available for trade discussion
+  /** Your scouting department's scouts, assignments and looks for the class on the board (see scoutDept.ts). */
+  scoutDept?: import('./scoutDept').ScoutDept;
   draftWorkouts?: Record<TeamId, PlayerId[]>; // pre-draft workout invites per team (see scouting.ts); stale ids are ignored
+  /** This offseason's contract talks with agents, keyed `${teamId}|${playerId}` (see agents.ts). */
+  negotiations?: Record<string, import('./agents').Negotiation>;
 }
 
 // ---- Draft pick trading (futures ledger) ----
@@ -255,6 +269,8 @@ export interface TradeProposal {
   picksFromB?: string[];
   currentPicksFromA?: number[]; // zero-based slots in the open draft
   currentPicksFromB?: number[];
+  /** Why an AI team is calling (shown with incoming offers). */
+  note?: string;
 }
 
 export interface TradeValidation {
@@ -262,9 +278,14 @@ export interface TradeValidation {
   reasons: string[];
 }
 
-/** Roughly proportional to season completion; defaults to true once ~65% of the schedule has been played, tunable via league.settings.tradeDeadlinePct. */
+/**
+ * Roughly proportional to season completion; defaults to true once ~65% of the schedule has been played, tunable via
+ * league.settings.tradeDeadlinePct. Also true once this season's Deadline Day clock has hit 3 PM, and never when the
+ * league rules turn the deadline off.
+ */
 export function isTradeDeadlinePassed(league: League): boolean {
-  if ((league.seasonPhase ?? 'regular_season') !== 'regular_season' || league.schedule.length === 0) return false;
+  if ((league.seasonPhase ?? 'regular_season') !== 'regular_season' || league.schedule.length === 0 || !tradeDeadlineEnabled(league)) return false;
+  if (isDeadlineDayClosed(league)) return true;
   const threshold = league.settings.tradeDeadlinePct ?? 0.65;
   const played = league.schedule.filter((g) => g.played).length;
   return played / league.schedule.length >= threshold;
@@ -322,7 +343,7 @@ export function tradePackageValue(league: League, extras: GMLeagueExtras, teamId
 export function validateTrade(league: League, extras: GMLeagueExtras, proposal: TradeProposal): TradeValidation {
   const assets = validateTradeAssets(league, extras, proposal);
   if (!league.teams.some(t => t.teamId === proposal.teamAId) || !league.teams.some(t => t.teamId === proposal.teamBId) || proposal.teamAId === proposal.teamBId) return assets;
-  const reasons: string[] = [...assets.reasons];
+  const reasons: string[] = [...assets.reasons, ...stickyTradeProblems(league, proposal.playersFromA, proposal.playersFromB)];
   const a = league.teams.find(t => t.teamId === proposal.teamAId)!;
   const b = league.teams.find(t => t.teamId === proposal.teamBId)!;
   if (isTradeDeadlinePassed(league)) reasons.push('The trade deadline has passed for this season.');
@@ -409,11 +430,15 @@ export function executeTrade(league: League, extras: GMLeagueExtras, proposal: T
   const draftOrder = currentDraftOrder(league, extras).map((owner, slot) =>
     proposal.currentPicksFromA?.includes(slot) ? proposal.teamBId : proposal.currentPicksFromB?.includes(slot) ? proposal.teamAId : owner);
   const movedPlayers = new Set([...proposal.playersFromA, ...proposal.playersFromB]);
-  const notable = league.teams.some(t => t.seasons.some(s => movedPlayers.has(s.playerId) && calculateOverall(s) >= 72));
-  return { league: recordRivalryTrade({ ...league, teams }, proposal.teamAId, proposal.teamBId, notable), extras: { ...extras, contracts, futurePicks, picksOnBlock,
+  const topOverall = Math.max(0, ...league.teams.flatMap(t => t.seasons.filter(s => movedPlayers.has(s.playerId)).map(calculateOverall)));
+  const notable = topOverall >= 72;
+  const logged = logDeadlineTrade({ ...league, teams }, proposal, topOverall);
+  // Players stuck with a traded player go with him (Sandbox).
+  const settled = enforceSticky(recordRivalryTrade(logged, proposal.teamAId, proposal.teamBId, notable), { ...extras, contracts, futurePicks, picksOnBlock,
     draftOrder: extras.draftDayOpen ? draftOrder : extras.draftOrder,
     tradeBlock: extras.tradeBlock.filter(id => !movedPlayers.has(id)),
-  } };
+  });
+  return { league: settled.league, extras: settled.extras };
 }
 
 // ---- Free agency ----
@@ -448,7 +473,9 @@ export function signFreeAgent(
   const freeAgents = extras.freeAgents.filter((s) => s.playerId !== playerId);
   const contracts = { ...extras.contracts, [playerId]: { playerId, teamId, ...contract } };
 
-  return { league: { ...league, teams }, extras: { ...extras, freeAgents, contracts } };
+  // A free agent stuck with the new signing comes along (Sandbox).
+  const settled = enforceSticky({ ...league, teams }, { ...extras, freeAgents, contracts });
+  return { league: settled.league, extras: settled.extras };
 }
 
 /**
@@ -467,6 +494,7 @@ export function waiveToFreeAgency(
   const team = league.teams.find((t) => t.teamId === teamId);
   const player = team?.seasons.find((s) => s.playerId === playerId);
   if (!team || !player) return { league, extras };
+  if (isStuck(player)) return { league, extras }; // stuck players can't be waived (Sandbox): unstick first
   if (!canDropPlayer(team, extras.capSettings)) return { league, extras }; // would drop below the roster minimum
 
   const teams = league.teams.map((t) => (t.teamId === teamId ? { ...t, seasons: t.seasons.filter((s) => s.playerId !== playerId) } : t));
@@ -769,7 +797,7 @@ export function draftProspect(
       draftTeamId: teamId,
     },
     'drafted',
-    `Drafted by ${teamName} — Round ${round}, Pick ${pickNumber + 1} (${league.season})`,
+    `Drafted by ${teamName} — Round ${round}, Pick ${pickNumber + 1} (${formatSeasonYear(league.season)})`,
     teamId,
   );
   const teams = league.teams.map((t) => (t.teamId === teamId ? { ...t, seasons: [...t.seasons, drafted] } : t));
@@ -778,9 +806,15 @@ export function draftProspect(
     ...extras.contracts,
     [draftedId]: { playerId: draftedId, teamId, ...rookieContract(pickNumber, teamCount, extras.capSettings, league.rulesSettings?.rookieContractLengthYears) },
   };
-  const draftPicksMade = [...(extras.draftPicksMade ?? []), { pickNumber: extras.draftPickIndex, teamId, playerId: draftedId }];
+  // The room's reaction: where the consensus board had him against where he went.
+  const board = extras.draftBoard && extras.draftBoard[prospectId] != null ? extras.draftBoard : consensusBoard(extras.draftClass);
+  const offset = extras.draftBoard && extras.draftBoard[prospectId] != null ? 0 : pickNumber;
+  const boardRank = board[prospectId] + offset;
+  const bestRemaining = Math.min(...extras.draftClass.map(p => (board[p.playerId] ?? 999) + offset));
+  const draftPicksMade = [...(extras.draftPicksMade ?? []), { pickNumber: extras.draftPickIndex, teamId, playerId: draftedId, boardRank, reaction: pickReaction(boardRank, pickNumber % Math.max(1, teamCount) + (round - 1) * teamCount, bestRemaining) }];
+  const draftBoard = extras.draftBoard ?? (pickNumber === 0 ? consensusBoard(extras.draftClass) : undefined);
 
-  const result = { league: { ...league, teams }, extras: { ...extras, draftOrder: order, draftClass, contracts, draftPickIndex: pickNumber + 1, draftPicksMade } };
+  const result = { league: { ...league, teams }, extras: { ...extras, draftOrder: order, draftClass, contracts, draftPickIndex: pickNumber + 1, draftPicksMade, ...(draftBoard ? { draftBoard } : {}) } };
   return result.extras.draftPickIndex >= order.length || draftClass.length === 0 ? finalizeDraftDay(result.league, result.extras) : result;
 }
 

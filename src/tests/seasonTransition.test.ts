@@ -1,3 +1,4 @@
+import { calculateOverall } from '../simulation/engine/overall';
 import { describe, it, expect } from 'vitest';
 import { nextSeasonLabel, advanceToNextSeason } from '../simulation/seasonTransition';
 import { generateFullLeague } from '../simulation/leagueGenerator';
@@ -97,8 +98,9 @@ describe('advanceToNextSeason', () => {
     expect(next.teams[0].seasons.some((s) => s.playerId === oldPlayer.playerId)).toBe(false);
   });
 
-  it('expires a contract with 1 year remaining into free agency', () => {
-    const { league, extras } = generateFullLeague(7, 4, 6, 10, '2026-27');
+  it('expires a contract with 1 year remaining into free agency (your team decides in the re-sign phase)', () => {
+    const { league: generated, extras } = generateFullLeague(7, 4, 6, 10, '2026-27');
+    const league = { ...generated, coachingUserTeamId: generated.teams[0].teamId };
     const targetTeam = league.teams[0];
     const targetPlayerId = targetTeam.seasons[0].playerId;
     const extrasWithExpiringContract = {
@@ -110,5 +112,21 @@ describe('advanceToNextSeason', () => {
     expect(next.teams[0].seasons.some((s) => s.playerId === targetPlayerId)).toBe(false);
     expect(nextExtras.freeAgents.some((s) => s.playerId === targetPlayerId)).toBe(true);
     expect(nextExtras.contracts[targetPlayerId]).toBeUndefined();
+  });
+
+  it('AI teams re-sign most of the core players whose deals run out', () => {
+    const { league: generated, extras } = generateFullLeague(8, 30, 13, 10, '2026');
+    const league = { ...generated, coachingUserTeamId: generated.teams[0].teamId };
+    const core = league.teams.slice(1).map(t => [...t.seasons].sort((a, b) => calculateOverall(b) - calculateOverall(a))[0])
+      .filter(p => p.age <= 31);
+    const expiring = { ...extras, contracts: { ...extras.contracts } };
+    for (const p of core) expiring.contracts[p.playerId] = { ...expiring.contracts[p.playerId], yearsRemaining: 1, playerOption: false, teamOption: false };
+    const { league: next, extras: nextExtras, summary } = advanceToNextSeason(league, expiring, 3);
+    const kept = core.filter(p => next.teams.some(t => t.teamId === p.teamId && t.seasons.some(s => s.playerId === p.playerId)));
+    expect(kept.length / core.length).toBeGreaterThan(0.6);
+    for (const p of kept) {
+      expect(nextExtras.contracts[p.playerId].yearsRemaining).toBeGreaterThanOrEqual(1);
+      expect(summary.expiredToFreeAgencyIds).not.toContain(p.playerId);
+    }
   });
 });

@@ -1,3 +1,7 @@
+import { rollBusinessSeason } from './business';
+import { enforceSticky, isStuck } from './sticky';
+import { lotteryResult, consensusBoard } from './draftNight';
+import { extensionTakesOver, markContractYears } from './extensions';
 import { archiveRivalries } from './rivalry';
 import { setupCup, cupArchive } from './cup';
 import { reviewSeason, ensureSeasonGoals, type OwnerReview } from './frontOffice';
@@ -8,6 +12,7 @@ import { seasonStintsFor } from './stints';
 import type { PlayoffFinish, TeamSeasonRosterLine, TeamSeasonSummary } from './league';
 import { initializeCoaching, teachingQuality, advanceStaffSeason } from './staffManagement';
 import { recordOffseasonDevelopment, offseasonTrainingCamp } from './playerDevelopment';
+import { applySummerCamp, reportRow, type CampReportRow } from './summerCamp';
 import { calculateOverall as staffOverall } from './engine/overall';
 import { generateNewsFeed } from './news';
 import { coachPerformanceModifiers } from './coaching';
@@ -26,6 +31,10 @@ import {
   rollFutureDraftPicksForward, FUTURE_PICK_WINDOW_YEARS, priorTeamId, type GMLeagueExtras, type Contract,
 } from './gm';
 import { appendHistoryEvent } from './playerHistory';
+import { resignVerdict } from './freeAgentDecision';
+import { retireLegendJerseys } from './jerseyRetirement';
+import { offseasonCarousel } from './coachingCarousel';
+import { settleStaffOffers } from './staffPoaching';
 import { collectPlayerIds } from './playerIds';
 import { computeSeasonAwards, type SeasonAwards, type SeasonAwardsOptions, type AwardWinner } from './awards';
 import type { LeagueRulesSettings } from './leagueRules';
@@ -94,7 +103,7 @@ export function rollFreeAgentsForward(league: League, freeAgents: PlayerSeason[]
     // A real player who really played this season stays in the league while his trajectory continues.
     if (realStep && realCareerContinues(fa, newSeason)) { out.push(next); continue; }
     const leavesLeague = next.age >= 24 && (overall < 45 ? rng.chance(0.5) : overall < 52 ? rng.chance(0.2) : false);
-    if (shouldRetire(next, rng, league.rulesSettings) || leavesLeague) {
+    if (!isStuck(next) && !next.careerPlayer && (shouldRetire(next, rng, league.rulesSettings) || leavesLeague)) {
       retired.push({ playerId: next.playerId, finalTeamId: lastTeam ?? '', finalTeamName: teamName(lastTeam), finalSeason: previousSeason,
         finalAge: next.age, finalOverall: overall, finalSeasonData: next });
       continue;
@@ -117,6 +126,26 @@ function shouldRetire(next: PlayerSeason, rng: RNG, rules?: LeagueRulesSettings)
   const forcedRetirementBonus = (rules?.forcedRetirementChance ?? 0) / 100;
   const chance = Math.max(0, Math.min(0.97, baseChance - abilityRelief + earlyRetirementBonus + forcedRetirementBonus));
   return rng.chance(chance);
+}
+
+/**
+ * An AI team re-signs an expiring player it builds around: one of its best five, or anyone 70+, while he is still
+ * worth a long look (not old and fading). Rotation players (sixth to eighth best, under 31) stay some of the time too. The player has to be willing (unhappy players and grudges refuse, see
+ * resignVerdict) and gets his asking price; the hard cap still applies. Stars stay far more often than role players.
+ */
+function aiResign(team: LeagueTeam, player: PlayerSeason, rank: number, extras: GMLeagueExtras, contracts: Record<string, Contract>, rng: RNG): Contract | null {
+  const overall = calculateOverall(player);
+  const core = rank < 5 || overall >= 70;
+  const rotation = !core && rank < 8 && player.age <= 30;
+  if ((!core && !rotation) || (player.age >= 34 && overall < 72) || player.age >= 37) return null;
+  const verdict = resignVerdict(extras, player, team.teamId);
+  if (verdict.refuses) return null;
+  const chance = (rotation ? 0.45 : rank < 2 || overall >= 75 ? 0.9 : rank < 5 ? 0.7 : 0.6) * (0.55 + verdict.interest / 160);
+  if (rng.next() >= chance) return null;
+  const payroll = team.seasons.reduce((n, s) => n + (s.playerId === player.playerId ? 0 : contracts[s.playerId]?.annualSalary ?? 0), 0);
+  if (extras.capSettings.hardCapEnabled && payroll + verdict.required > extras.capSettings.salaryCap) return null;
+  const years = Math.max(1, Math.min(5, (player.age <= 26 ? 4 : player.age <= 29 ? 3 : player.age <= 32 ? 2 : 1) + (rng.next() < 0.3 ? 1 : 0)));
+  return { playerId: player.playerId, teamId: team.teamId, annualSalary: verdict.required, yearsRemaining: years, playerOption: false, teamOption: false };
 }
 
 /**
@@ -201,10 +230,15 @@ export function beginNewSeasonRoster(
   const freeAgentsFromExpiry: PlayerSeason[] = [];
   const newlyRetired: RetiredPlayerRecord[] = [];
   const contracts = { ...extras.contracts };
+  const userTeamId = league.frontOffice?.teamId ?? league.coachingUserTeamId ?? null;
+  const resignedIds: string[] = [];
+  const camp = userTeamId && league.summerCamp?.teamId === userTeamId && league.summerCamp.season === previousSeason ? league.summerCamp : null;
+  const campRows: CampReportRow[] = [];
 
   const teams: LeagueTeam[] = league.teams.map((team) => {
     const keptSeasons: PlayerSeason[] = [];
     const fullOverallsBeforeAging: number[] = [];
+    const rank = new Map([...team.seasons].sort((a, b) => calculateOverall(b) - calculateOverall(a)).map((s, i) => [s.playerId, i] as const));
 
     for (const season of team.seasons) {
       const overallBeforeAging = calculateOverall(season);
@@ -222,10 +256,20 @@ export function beginNewSeasonRoster(
       };
 
       const coachDevelopment = coachPerformanceModifiers(team.coachIdentity, team.seasons).development;
-      const developmentMultiplier = expenseEffects(team.expenseLevels).developmentMultiplier * (1 + (coachDevelopment - 1) * (league.rulesSettings?.coachingImpact ?? 100) / 100);
+      const developmentMultiplier = expenseEffects(team.expenseLevels).developmentMultiplier * (1 + (coachDevelopment - 1) * (league.rulesSettings?.coachingImpact ?? 100) / 100)
+        * (1 + (team.business?.arena.practice ?? 0) * 0.02); // a better practice facility
       const realStep = realDevelopmentOn(league) && season.real ? applyRealDevelopment(season, newSeason) : null;
       let developed = realStep ?? developOffseasonPlayer(season, rng, league.rulesSettings, developmentMultiplier * (1 + (teachingQuality(team, season.training?.plan.coachId) - 1) * (league.rulesSettings?.coachingImpact ?? 100) / 100), team.coach?.trainingFocus, league.settings.sandboxMode ? 200 : 100);
       if (!realStep && realDevelopmentOn(league) && season.real) developed = markRealFallback(developed, newSeason);
+      if (team.teamId === userTeamId) {
+        // Your summer camp, on top of normal development (real players on Real Player Development follow their real careers).
+        const plan = camp?.plans[season.playerId];
+        const locked = realDevelopmentOn(league) && !!season.real;
+        const ran = plan && !locked ? applySummerCamp(developed, plan, `${season.playerId}|${newSeason}`, teachingQuality(team)) : null;
+        const campGain = ran ? calculateOverall(ran.player) - calculateOverall(developed) : 0;
+        if (ran) developed = ran.player;
+        campRows.push(reportRow(season, developed, campGain, plan, ran?.note ?? (plan ? '' : 'No summer plan.'), plan && locked ? 'Real Player Development: his ratings follow his real career.' : undefined));
+      }
       const aged = recordOffseasonDevelopment(season, developed, team, league.calendarDate ?? previousSeason, realDevelopmentOn(league) && season.real ? realDevelopmentNote(developed, !!realStep) : undefined);
       const withHistory: PlayerSeason = {
         ...aged,
@@ -237,7 +281,7 @@ export function beginNewSeasonRoster(
         careerHistory: [...(season.careerHistory ?? []), archived],
       };
 
-      if (!(realStep && realCareerContinues(season, newSeason)) && shouldRetire(withHistory, rng, league.rulesSettings)) {
+      if (!isStuck(withHistory) && !withHistory.careerPlayer && !(realStep && realCareerContinues(season, newSeason)) && shouldRetire(withHistory, rng, league.rulesSettings)) {
         retiredPlayerIds.push(withHistory.playerId);
         delete contracts[withHistory.playerId];
         newlyRetired.push({
@@ -255,12 +299,33 @@ export function beginNewSeasonRoster(
       const contract = contracts[withHistory.playerId];
       if (contract) {
         const yearsRemaining = contract.yearsRemaining - 1;
+        const extended = yearsRemaining <= 0 ? extensionTakesOver(contract) : null;
+        if (extended) {
+          // An in-season extension starts now.
+          contracts[withHistory.playerId] = extended;
+          keptSeasons.push(appendHistoryEvent(withHistory, 'resigned', `Extension begins with ${team.name}: ${extended.yearsRemaining} years, $${(extended.annualSalary / 1e6).toFixed(1)}M a year`, team.teamId));
+          continue;
+        }
+        if (yearsRemaining <= 0 && isStuck(withHistory)) {
+          // Stuck players (Sandbox) never hit free agency: the deal rolls over.
+          contracts[withHistory.playerId] = { ...contract, yearsRemaining: 2 };
+          keptSeasons.push(withHistory);
+          continue;
+        }
         if (yearsRemaining <= 0) {
           const resolution = resolveExpiringContract(contract, calculateOverall(withHistory), withHistory.age);
           if (resolution.retained && resolution.extended) {
             contracts[withHistory.playerId] = resolution.extended;
             retainedViaOptionIds.push(withHistory.playerId);
             keptSeasons.push(withHistory);
+            continue;
+          }
+          // AI teams keep the players they build around (your own team decides in the re-sign phase).
+          const extension = team.teamId !== userTeamId ? aiResign(team, withHistory, rank.get(season.playerId) ?? 99, extras, contracts, rng) : null;
+          if (extension) {
+            contracts[withHistory.playerId] = extension;
+            resignedIds.push(withHistory.playerId);
+            keptSeasons.push(appendHistoryEvent(withHistory, 'resigned', `Re-signed with ${team.name}: ${extension.yearsRemaining} year${extension.yearsRemaining === 1 ? '' : 's'}, $${(extension.annualSalary / 1e6).toFixed(1)}M a year`, team.teamId));
             continue;
           }
           expiredToFreeAgencyIds.push(withHistory.playerId);
@@ -309,6 +374,7 @@ export function beginNewSeasonRoster(
   const standingsDraftOrder = buildTwoRoundDraftOrder(league, Math.floor(rng.next() * 1_000_000));
   const draftYear = parseInt(newSeason.slice(0, 4), 10);
   const { order: draftOrder, protectionsTriggered } = resolveTradedPicksIntoOrder(standingsDraftOrder, draftYear, extras.futurePicks ?? []);
+  const lottery = lotteryResult(league, standingsDraftOrder.slice(0, teams.length), newSeason);
   const futurePicks = rollFutureDraftPicksForward(extras.futurePicks ?? [], teams.map((t) => t.teamId), draftYear, FUTURE_PICK_WINDOW_YEARS);
 
   const historyRecord: FranchiseHistoryRecord = {
@@ -331,9 +397,10 @@ export function beginNewSeasonRoster(
     ...(league.playoffBracket ? { bracket: compactBracket(league.playoffBracket), seeds: conferenceSeeds(league) } : {}),
   };
 
+  const legendLeague = retireLegendJerseys({ ...league, teams, franchiseHistory: [...(league.franchiseHistory ?? []), historyRecord] }, newlyRetired, userTeamId, previousSeason).league;
   const nextLeague: League = {
     ...league,
-    teams,
+    teams: legendLeague.teams.map(rollBusinessSeason), // one payment made on every arena upgrade
     season: newSeason,
     seasonPhase: 'draft',
     playoffBracket: undefined,
@@ -343,6 +410,8 @@ export function beginNewSeasonRoster(
     ...(foReview ? { frontOffice: foReview.state, ...(foReview.state.status !== 'employed' ? { coachingUserTeamId: null } : {}) } : {}),
     rivalries: archiveRivalries(league),
     retiredPlayers: [...(league.retiredPlayers ?? []), ...newlyRetired],
+    summerCamp: undefined,
+    ...(userTeamId && campRows.length ? { campReport: { season: newSeason, teamId: userTeamId, rows: campRows.filter(r => !retiredPlayerIds.includes(r.playerId) && !expiredToFreeAgencyIds.includes(r.playerId)).sort((a, b) => (b.after - b.before) - (a.after - a.before)) } } : {}),
     franchiseHistory: [...(league.franchiseHistory ?? []), historyRecord],
     ...(historical ? { historical } : {}),
   };
@@ -359,12 +428,21 @@ export function beginNewSeasonRoster(
     tradeBlock: [],
     draftPickIndex: 0,
     draftPicksMade: [],
+    draftBoard: consensusBoard(draftClass),
+    lottery,
     pendingTradeOffers: [],
+    negotiations: {},
+    extensionTalks: {},
   };
 
+  // Stuck players (Sandbox) settle where their rule puts them; last-year players are in a contract year.
+  const stuck = enforceSticky(nextLeague, nextExtras);
+  const settled = { ...stuck, league: markContractYears(stuck.league, stuck.extras.contracts) };
   return {
-    league: advanceStaffSeason(nextLeague, previousSeason, championship?.teamId ?? undefined, seasonAwards.coy?.coachName ?? undefined),
-    extras: nextExtras,
+    // Coaches age and contracts run out, then AI owners review their head coaches (the coaching carousel).
+    league: offseasonCarousel(advanceStaffSeason(settled.league, previousSeason, championship?.teamId ?? undefined, seasonAwards.coy?.coachName ?? undefined), previousSeason, userTeamId,
+      new Map(settled.league.teams.map(t => [t.teamId, t.coachIdentity?.coachId]))),
+    extras: settled.extras,
     summary: {
       previousSeason,
       newSeason,
@@ -400,7 +478,7 @@ export function finalizeNewSeasonSchedule(league: League): League {
   });
   // The In-Season Cup draw happens with the new schedule; owners set goals knowing the season ahead.
   return ensureSeasonGoals(setupCup({
-    ...league, teams, schedule, seasonPhase: 'regular_season', injuries: {}, playoffBracket: undefined,
+    ...settleStaffOffers(league), teams, schedule, seasonPhase: 'regular_season', injuries: {}, playoffBracket: undefined,
     calendarDate: seasonStartDate(league.season), calendarRound: -1,
   }));
 }

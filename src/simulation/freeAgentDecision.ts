@@ -2,6 +2,7 @@ import type { League, LeagueTeam } from './league';
 import type { Contract, GMLeagueExtras } from './gm';
 import { capSpaceRemaining, computeAskingSalary, priorTeamId, signFreeAgent } from './gm';
 import { moraleContractAdjustment } from './personality';
+import { currentNegotiation } from './agents';
 import type { PlayerSeason } from './types';
 import { calculateOverall } from './engine/overall';
 import { primaryPosition } from './teamStatus';
@@ -104,6 +105,10 @@ export function resignVerdict(extras: GMLeagueExtras, player: PlayerSeason, team
 export function signingDecision(league: League, extras: GMLeagueExtras, player: PlayerSeason, teamId: string,
   offer?: Pick<Contract, 'annualSalary' | 'yearsRemaining'>, opts: { emergency?: boolean; ranking?: string[] } = {}): SigningDecision {
   const path: SigningPath = priorTeamId(player) === teamId ? 'resign' : opts.emergency ? 'emergency' : 'market';
+  // Talks that collapsed this offseason: he won't sign with that team until next year.
+  if (!opts.emergency && currentNegotiation(league, extras, player.playerId, teamId)?.status === 'walked') {
+    return { accepted: false, required: 0, interest: 0, refuses: true, path, reason: `${player.playerId} walked away from talks with this team. He won't sign here this offseason.` };
+  }
   const base = path === 'resign' ? resignVerdict(extras, player, teamId) : freeAgentVerdict(league, extras, player, teamId, undefined, opts.ranking);
   const quote: SigningDecision = { ...base, path };
   if (base.refuses || !offer) return quote;

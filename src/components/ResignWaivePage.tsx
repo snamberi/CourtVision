@@ -24,11 +24,11 @@ export function ResignWaivePage({ league, extras, controlledTeamId, summary, onC
   const [message, setMessage] = useState<string | null>(null);
   // Your own players (Bird rights: no cap-room limit) only care about how last season went and how they were treated.
   const quote = (p: PlayerSeason) => team ? signingDecision(league, extras, p, team.teamId) : null;
-  const resign = (playerId: string, contract: Omit<Contract, 'playerId' | 'teamId'>) => {
+  const resign = (playerId: string, contract: Omit<Contract, 'playerId' | 'teamId'>, base: GMLeagueExtras = extras) => {
     if (!team) return;
     // signFreeAgentChecked applies the league AND the extras from one operation, so the player moves off the
     // free-agent list and onto the roster together.
-    const result = signFreeAgentChecked(league, extras, playerId, team.teamId, contract);
+    const result = signFreeAgentChecked(league, base, playerId, team.teamId, contract);
     if (!result.decision.accepted) { setMessage(result.decision.reason); return; }
     setMessage(`${playerId} re-signed.`);
     onChange(result.league, result.extras);
@@ -64,6 +64,7 @@ export function ResignWaivePage({ league, extras, controlledTeamId, summary, onC
             onSign={resign}
             quote={quote}
             onSelectPlayer={onSelectPlayer}
+            talks={{ league, extras, teamId: team.teamId, onUpdate: e => onChange(league, e), onAgree: resign }}
           />
         ) : (
           <section><p className="hint-text">None of your own players are free agents this offseason.</p></section>

@@ -110,8 +110,8 @@ export function developOffseasonPlayer(season: PlayerSeason, rng: RNG = new RNG(
     let potential = season.development.potential;
     const potentialRoll = rng.next(), sizeRoll = rng.next();
     // Raises get smaller as the ceiling rises, so a 90+ ceiling has to be earned, not handed out.
-    const eliteDamp = Math.max(0.15, 1 - Math.max(0, potential - 75) / 18);
-    if (gamesPlayedForMinutes >= 30 && mpg >= 24 && potentialRoll < 0.4 * playingTimeMult) {
+    const eliteDamp = Math.max(0.12, 1 - Math.max(0, potential - 70) / 16);
+    if (gamesPlayedForMinutes >= 30 && mpg >= 24 && potentialRoll < 0.3 * playingTimeMult) {
       const bump = (1 + Math.round(sizeRoll * 1.4) + (next.age <= 21 ? 1 : 0)) * eliteDamp;
       potential += bump >= 1 ? Math.round(bump) : sizeRoll < bump ? 1 : 0;
     } else if (gamesPlayedForMinutes >= 30 && mpg >= 16 && potentialRoll < 0.18 * playingTimeMult) {
@@ -131,7 +131,10 @@ export function developOffseasonPlayer(season: PlayerSeason, rng: RNG = new RNG(
     const roll = rng.next();
     const tier = roll < breakoutChance * 0.12 ? 1.9 : roll < breakoutChance * 0.45 ? 1.35 : roll < breakoutChance ? 1 : roll < breakoutChance + 0.3 ? 0.55 : 0.25;
     const share = Math.min(0.8, 1.25 / (yearsLeft + 0.5));
-    const overallGain = Math.min(gap, 9, gap * share * tier * (0.6 + season.development.developmentRate / 250)
+    // Becoming a star takes years: growth slows once a young player is already good, so a draft class produces
+    // one or two stars, not a handful, and they arrive in their mid-20s.
+    const starSlowdown = beforeOverall >= 72 ? 0.5 : beforeOverall >= 67 ? 0.68 : beforeOverall >= 62 ? 0.85 : 1;
+    const overallGain = Math.min(gap, 7, gap * share * tier * starSlowdown * (0.6 + season.development.developmentRate / 250)
       * varianceFactor * minutesFactor * speedMult * workEthic * patternBoost * ageBonus * injuryGrowthPenalty);
     growOverall(overallGain);
   } else if (phase === 'prime') {

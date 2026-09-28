@@ -58,6 +58,16 @@ function findSeason(league: League, playerId: string): PlayerSeason | null {
 export function simulateAllStarGame(league: League, awards: SeasonAwards, seed = Date.now()): AllStarGameResult | null {
   const selection = league.allStarWeekend?.season === (league.season ?? '') ? league.allStarWeekend.voting?.selected ?? awards.allStars : awards.allStars;
   if (selection.length < 10) return null;
+  const draft = league.allStarWeekend?.season === (league.season ?? '') && league.allStarWeekend.format === 'captains' ? league.allStarWeekend.draft : undefined;
+  if (draft?.done) {
+    const a = draft.teamA.map((id) => findSeason(league, id)).filter((s): s is PlayerSeason => s != null);
+    const b = draft.teamB.map((id) => findSeason(league, id)).filter((s): s is PlayerSeason => s != null);
+    if (a.length >= 5 && b.length >= 5) return {
+      squadA: { name: `Team ${draft.captainA.split(' ').slice(-1)[0]}`, playerIds: draft.teamA },
+      squadB: { name: `Team ${draft.captainB.split(' ').slice(-1)[0]}`, playerIds: draft.teamB },
+      result: playShowcase(league, a, b, seed),
+    };
+  }
   const byConference = selection.every((w) => w.conference);
   const [teamAIds, teamBIds] = byConference
     ? [selection.filter((w) => w.conference === 'east').map((w) => w.playerId), selection.filter((w) => w.conference === 'west').map((w) => w.playerId)]

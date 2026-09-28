@@ -1,4 +1,5 @@
 import { defaultCoachTendencies } from './league';
+import { evaluateBadgeRule, badgeContext, badgeCapacity, BADGE_SPACING_GAMES, type BadgeRule } from './badgeRules';
 import type { League, LeagueTeam } from './league';
 import type { PlayerSeason } from './types';
 import type { GameResult } from './boxscore';
@@ -228,32 +229,8 @@ export function prepareCoachingForGame(raw:League,teamIds:string[],date:string):
  });
  return {...league,teams};
 }
-export function badgeRequirements(p:PlayerSeason,id:string):{eligible:boolean;description:string}{
- const badge=NORMAL_BADGES.find(b=>b.id===id);if(!badge)return {eligible:false,description:'Experimental badges are Sandbox-only.'};
- const paths=Object.keys(badge.effect.attributeModifiers??{}),ability=paths.reduce((n,k)=>n+attributeValue(p,k),0)/Math.max(1,paths.length);
- const tr=p.training,stats=p.seasonStats,e=tr?.evidence;
- const base=ability>=70&&(e?.games??0)>=20&&(e?.minutes??0)>=300;
- let performance=false,description='Relevant ability 70+, 20 appearances and 300 minutes, with sustained quality.';
- const shotKeys:Record<string,string[]>={catch_and_shoot:['catchAndShoot3'],corner_specialist:['corner3'],pullup_specialist:['pullUp3'],deep_range:['aboveBreak3'],difficult_shots:['midrange','longMidrange','fadeaway'],contact_finisher:['rim','layup','dunk'],acrobat:['layup'],posterizer:['dunk'],post_craft:['post','hook','fadeaway']};
- if(badge.category==='shooting'||badge.category==='finishing'){
-  const keys=shotKeys[id]??(badge.category==='shooting'?['corner3','aboveBreak3','pullUp3','catchAndShoot3']:['rim','close','layup','dunk','hook']);
-  const shots=keys.reduce((a,k)=>({attempts:a.attempts+(e?.shots[k]?.attempts??0),makes:a.makes+(e?.shots[k]?.makes??0)}),{attempts:0,makes:0});
-  const efficiency=badge.category==='shooting'?(id==='difficult_shots'?.44:.36):.55;
-  performance=shots.attempts>=70&&shots.makes/Math.max(1,shots.attempts)>=efficiency;
-  description+=` At least 70 ${keys.join('/')} attempts at ${Math.round(efficiency*100)}% or better.`;
- }else if(badge.category==='passing'||badge.category==='ballhandling'){
-  performance=(e?.handling??0)>=300&&(stats?.ast??0)>=25&&(stats?.ast??0)/Math.max(1,stats?.tov??0)>=1.5;
-  description+=' 300 handling possessions, 25 assists and AST/TO of at least 1.5.';
- }else{
-  const minutes=Math.max(1,stats?.minutes??0);
-  performance=(e?.defensiveReps??0)>=500&&(stats?.pf??0)*36/minutes<=4.5;
-  if(['rim_protector','chase_down'].includes(id))performance=performance&&(stats?.blk??0)>=15;
-  if(['interceptor','pick_pocket'].includes(id))performance=performance&&(stats?.stl??0)>=20;
-  if(id==='glass_cleaner')performance=performance&&((stats?.oreb??0)+(stats?.dreb??0))*36/minutes>=9;
-  if(id==='iron_man')performance=(e?.minutes??0)>=600&&(tr?.workload??100)<65;
-  description+=' 500 defensive possessions and controlled fouling; specialist badges also require relevant blocks, steals or rebounds. Iron Man needs 600 minutes and manageable workload.';
- }
- return {eligible:base&&performance,description};
+export function badgeRequirements(p:PlayerSeason,id:string):{eligible:boolean;description:string;rule?:BadgeRule}{
+ return evaluateBadgeRule(id,badgeContext(p,attributeValue));
 }
 /** What a game's possessions add to each player's development evidence: ball-handling touches, defensive possessions and shots by type. */
 export interface GameEvidence {shots:Record<string,Record<string,{attempts:number;makes:number}>>;handling:Record<string,number>;defense:Record<string,number>}
@@ -286,10 +263,13 @@ export function finishCoachingGame(league:League,result:GameResult,playoffs=fals
     if(tr.promise){tr.promise.remaining--;if(tr.promise.kind==='rotation'?minutes>=12:minutes<=30)tr.promise.achieved++;
      if(tr.promise.remaining<=0){const met=tr.promise.achieved>=tr.promise.required;tr.morale.promises=clamp(tr.morale.promises+(met?8:-8-tr.brokenPromises*3));tr.morale.trust=clamp(tr.morale.trust+(met?4:-6-tr.brokenPromises*2));if(!met)tr.brokenPromises++;tr.history.push({date,season:p.season,kind:'conversation',text:`${met?'Kept':'Broke'} ${tr.promise.kind} promise: ${tr.promise.achieved}/${tr.promise.required} qualifying games.`});tr.promise=undefined;}}
    }
-   if(minutes>=8){for(const badge of NORMAL_BADGES){const requirement=badgeRequirements(p,badge.id);const old=tr.badgeProgress[badge.id]??{credit:0,qualifiedGames:0,dryGames:0,stage:'Developing' as const,reason:requirement.description};
+   if(minutes>=8){let earnedToday=false;const capacity=badgeCapacity(calculateOverall(p));for(const badge of NORMAL_BADGES){const requirement=badgeRequirements(p,badge.id);const old=tr.badgeProgress[badge.id]??{credit:0,qualifiedGames:0,dryGames:0,stage:'Developing' as const,reason:requirement.description};
      const relevant=Object.keys(badge.effect.attributeModifiers??{}).some(k=>(FOCUS_SKILLS[tr.plan.primary] as readonly string[]).includes(k));
-     if(requirement.eligible){old.qualifiedGames++;old.dryGames=0;old.credit=clamp(old.credit+1.7+(relevant?.5:0)+mentorshipQuality(p,team)*.3);}else if(tr.evidence.games>=25){old.dryGames++;if(old.dryGames>15)old.credit=clamp(old.credit-1);}
-     if(!p.badges.includes(badge.id)&&old.credit>=100&&old.qualifiedGames>=30){p.badges.push(badge.id);tr.history.push({date,season:p.season,kind:'badge',text:`Earned ${badge.name} through sustained ability, quality opportunities and training.`});}
+     const rule=requirement.rule;
+     if(requirement.eligible){old.qualifiedGames++;old.dryGames=0;old.credit=clamp(old.credit+(rule?.rate??1.4)+(relevant?.4:0)+mentorshipQuality(p,team)*.3);}else if(tr.evidence.games>=25){old.dryGames++;if(old.dryGames>15)old.credit=clamp(old.credit-1);}
+     // One badge at a time: a spacing between new badges, and no more badges than his overall can carry.
+     const held=p.badges.filter(id=>NORMAL_BADGES.some(b=>b.id===id)).length,spaced=tr.games-(tr.lastBadgeGame??-999)>=BADGE_SPACING_GAMES;
+     if(!p.badges.includes(badge.id)&&!earnedToday&&spaced&&held<capacity&&old.credit>=100&&old.qualifiedGames>=(rule?.games??30)){p.badges.push(badge.id);earnedToday=true;tr.lastBadgeGame=tr.games;tr.history.push({date,season:p.season,kind:'badge',text:`Earned ${badge.name}: ${rule?.text??'sustained ability and quality opportunities.'}`});}
      if(p.badges.includes(badge.id)&&old.credit<60&&old.dryGames>=40){p.badges=p.badges.filter(id=>id!==badge.id);tr.history.push({date,season:p.season,kind:'badge',text:`${badge.name} regressed after a prolonged drop in supporting ability or role opportunities.`});}
      old.stage=p.badges.includes(badge.id)?'Established':old.credit>=75?'Close to earning':'Developing';old.reason=requirement.description;tr.badgeProgress[badge.id]=old;
    }}

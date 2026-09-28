@@ -1,3 +1,4 @@
+import { pressMood } from './press';
 import type { League, LeagueTeam } from './league';
 import { computeStandings, expenseEffects } from './league';
 import type { GMLeagueExtras } from './gm';
@@ -100,6 +101,8 @@ export function playerMorale(p: PlayerSeason, team: LeagueTeam, league: League, 
   const trust = p.training?.morale?.trust;
   if (trust != null) add(trust >= 50 ? 'Trusts the coach' : "Doesn't trust the coach", (trust - 50) * 0.25);
   add('Facilities', expenseEffects(team.expenseLevels).moodBonus * 1.5);
+  add('What the coach said to the press', pressMood(league, p.playerId));
+  add('Practice facility', (team.business?.arena.practice ?? 0) * 2);
   for (const l of ctx.links.filter(l => l.a === p.playerId || l.b === p.playerId)) {
     const other = l.a === p.playerId ? l.b : l.a;
     add(`${l.kind === 'clash' ? 'Clashes with' : 'Gets along with'} ${other}`, l.kind === 'clash' ? -6 : 4);

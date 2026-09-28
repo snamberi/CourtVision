@@ -9,6 +9,10 @@ import { perGameAverages } from '../simulation/careerStats';
 import { computeAskingSalary } from '../simulation/gm';
 import { PlayerNameTag } from './PlayerAvatar';
 import type { FreeAgentVerdict } from '../simulation/freeAgentDecision';
+import type { League } from '../simulation/league';
+import type { GMLeagueExtras } from '../simulation/gm';
+import { NegotiationPanel } from './NegotiationPanel';
+import { openNegotiation } from '../simulation/agents';
 
 interface Props {
   title: string;
@@ -22,6 +26,9 @@ interface Props {
   onSelectPlayer: (playerId: string) => void;
   /** Team-specific terms: what each player needs from the signing team, or that he refuses it. */
   quote?: (season: PlayerSeason) => FreeAgentVerdict | null;
+  /** Contract talks through the player's agent (see agents.ts); without it, Negotiate is a plain offer form. */
+  talks?: { league: League; extras: GMLeagueExtras; teamId: string; onUpdate: (extras: GMLeagueExtras) => void;
+    onAgree: (playerId: string, contract: Omit<Contract, 'playerId' | 'teamId'>, extras: GMLeagueExtras) => void };
 }
 
 const MOOD_TAGS = ['Eager', 'Open', 'Neutral', 'Guarded', 'Reluctant'];
@@ -36,7 +43,7 @@ function fmtMoney(n: number): string {
   return `$${Math.round(n / 1000)}k`;
 }
 
-export function FreeAgentTable({ title, players, team, contracts, capSettings, canSign, disabledReason, onSign, onSelectPlayer, quote }: Props) {
+export function FreeAgentTable({ title, players, team, contracts, capSettings, canSign, disabledReason, onSign, onSelectPlayer, quote, talks }: Props) {
   const [query, setQuery] = useState('');
   const [affordableOnly, setAffordableOnly] = useState(false);
   const [perPage, setPerPage] = useState(50);
@@ -49,7 +56,14 @@ export function FreeAgentTable({ title, players, team, contracts, capSettings, c
   const openRosterSpots = team ? Math.max(0, capSettings.maxRosterSize - team.seasons.length) : 0;
   const maxSalary = capSettings.salaryCap * capSettings.maxSalaryPctOfCap;
 
-  const rows = useMemo(() => players
+  const rows = useMemo(() => {
+    const asks = new Map<string, { salary: number; years: number; playerOption: boolean } | null>();
+    const ask = (s: PlayerSeason) => {
+      if (!talks) return null;
+      if (!asks.has(s.playerId)) asks.set(s.playerId, openNegotiation(talks.league, talks.extras, s, talks.teamId)?.demand ?? null);
+      return asks.get(s.playerId)!;
+    };
+    return players
     .map((s) => {
       const currentAvg = perGameAverages(s.seasonStats);
       const lastSeason = s.careerHistory && s.careerHistory.length > 0 ? s.careerHistory[s.careerHistory.length - 1] : undefined;
@@ -65,15 +79,17 @@ export function FreeAgentTable({ title, players, team, contracts, capSettings, c
         avg,
         usingLastSeason,
         verdict: quote?.(s) ?? null,
-        asking: quote?.(s)?.required || computeAskingSalary(calculateOverall(s), capSettings),
+        // With an agent involved, the asking price is the camp's current demand (salary, years, option).
+        ask: ask(s),
+        asking: ask(s)?.salary || quote?.(s)?.required || computeAskingSalary(calculateOverall(s), capSettings),
         mood: (() => { const v = quote?.(s); if (!v) return moodFor(s.playerId); if (v.refuses) return "Won't sign"; return v.interest >= 75 ? 'Eager' : v.interest >= 60 ? 'Open' : v.interest >= 45 ? 'Neutral' : v.interest >= 30 ? 'Guarded' : 'Reluctant'; })(),
       };
     })
     .filter((r) => !query || r.season.playerId.toLowerCase().includes(query.toLowerCase()))
     .filter((r) => !affordableOnly || r.asking <= capSpace)
     .sort((a, b) => b.overall - a.overall)
-    .slice(0, perPage),
-    [players, query, affordableOnly, perPage, capSpace, capSettings, quote]);
+    .slice(0, perPage);
+  }, [players, query, affordableOnly, perPage, capSpace, capSettings, quote, talks]);
 
   const startNegotiation = (playerId: string, asking: number) => {
     setNegotiatingId(playerId);
@@ -138,7 +154,7 @@ export function FreeAgentTable({ title, players, team, contracts, capSettings, c
                   <td>{r.avg.apg.toFixed(1)}</td>
                   <td>{r.avg.efficiency.toFixed(1)}</td>
                   <td className={r.verdict?.refuses ? 'fa-refuses' : ''} title={r.verdict?.reason}>{r.mood}</td>
-                  <td>{fmtMoney(r.asking)}</td>
+                  <td title={r.ask ? `${r.ask.years} years${r.ask.playerOption ? ', player option' : ''}` : undefined}>{fmtMoney(r.asking)}{r.ask && <small className="fa-ask-years"> · {r.ask.years}y{r.ask.playerOption ? ' PO' : ''}</small>}</td>
                   <td>{Math.max(0, r.season.age - 19)}</td>
                   <td className="fa-actions">
                     <button disabled={!canSign || !!r.verdict?.refuses} title={r.verdict?.refuses ? r.verdict.reason : undefined} onClick={() => startNegotiation(r.season.playerId, r.asking)}>Negotiate</button>
@@ -146,13 +162,21 @@ export function FreeAgentTable({ title, players, team, contracts, capSettings, c
                       className="primary"
                       disabled={!canSign || !!r.verdict?.refuses}
                       title={r.verdict?.refuses ? r.verdict.reason : r.verdict ? `${r.verdict.reason} Signs for ${fmtMoney(r.asking)} a year.` : undefined}
-                      onClick={() => onSign(r.season.playerId, { annualSalary: r.asking, yearsRemaining: 2, playerOption: false, teamOption: false })}
+                      onClick={() => onSign(r.season.playerId, { annualSalary: r.asking, yearsRemaining: r.ask?.years ?? 2, playerOption: r.ask?.playerOption ?? false, teamOption: false })}
                     >
                       Sign
                     </button>
                   </td>
                 </tr>
-                {negotiatingId === r.season.playerId && (
+                {negotiatingId === r.season.playerId && talks && (
+                  <tr className="fa-negotiate-row">
+                    <td colSpan={14}>
+                      <NegotiationPanel league={talks.league} extras={talks.extras} player={r.season} teamId={talks.teamId} onUpdate={talks.onUpdate}
+                        onAgree={(contract, next) => { talks.onAgree(r.season.playerId, contract, next); setNegotiatingId(null); }} onClose={() => setNegotiatingId(null)} />
+                    </td>
+                  </tr>
+                )}
+                {negotiatingId === r.season.playerId && !talks && (
                   <tr className="fa-negotiate-row">
                     <td colSpan={14}>
                       <div className="identity-grid">

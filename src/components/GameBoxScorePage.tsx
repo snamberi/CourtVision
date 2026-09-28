@@ -1,3 +1,5 @@
+import type { Occasion } from '../simulation/bigGames';
+import { OccasionBanner } from './OccasionBanner';
 import { PixelIcon } from './PixelIcon';
 import { TeamLink } from './TeamLink';
 import { WatchGame } from './WatchGame';
@@ -36,6 +38,10 @@ interface Props {
   canSimNext?: boolean;
   gamesLabel?: string;
   rivalry?: { level: string; seriesText?: string } | null;
+  /** Playoff or Cup stakes, shown as a broadcast banner and passed to the watch view. */
+  occasion?: Occasion | null;
+  /** Share of seats filled for the home team (see business.ts). */
+  crowdFill?: number;
 }
 
 /** Simple deterministic accent color per team so two badges always read as different teams. */
@@ -219,7 +225,7 @@ function teamLeaders(box: TeamBoxScore) {
 
 export function GameBoxScorePage({
   game: storedGame, home, away, homeRoster, awayRoster, onSelectPlayer, initialWatch = false, watchStart, coaching,
-  onPrev, onNext, canPrev, canNext, onSimNext, canSimNext, gamesLabel, rivalry,
+  onPrev, onNext, canPrev, canNext, onSimNext, canSimNext, gamesLabel, rivalry, occasion, crowdFill,
 }: Props) {
   // Older games keep their replay log compressed; expand it only when this game is opened.
   const game = useMemo(() => withGameLog(storedGame), [storedGame]);
@@ -233,9 +239,10 @@ export function GameBoxScorePage({
   const awayLeaders = teamLeaders(game.awayBox);
   const homeWon = game.homeScore > game.awayScore;
 
-  if (watching) return <WatchGame key={`${game.homeTeamId}-${game.awayTeamId}-${game.seed}`} game={game} home={home} away={away} homeRoster={homeRoster} awayRoster={awayRoster} onBoxScore={() => setWatching(false)} startAt={watchStart} coaching={coaching} rivalry={rivalry} />;
+  if (watching) return <WatchGame key={`${game.homeTeamId}-${game.awayTeamId}-${game.seed}`} game={game} home={home} away={away} homeRoster={homeRoster} awayRoster={awayRoster} onBoxScore={() => setWatching(false)} startAt={watchStart} coaching={coaching} rivalry={rivalry} occasion={occasion} crowdFill={crowdFill} />;
   return (
     <div className="game-box-score">
+      {occasion && <OccasionBanner occasion={occasion} />}
       <div className="gbs-watch-action"><button className="primary" onClick={() => setWatching(true)} disabled={!game.possessionLog.length}><PixelIcon name="play" /> Watch Game</button><span className="hint-text">Replay the action on the pixel court.</span></div>
       <div className="gbs-scoreboard">
         <div className={`gbs-team ${homeWon ? 'winner' : ''}`}>

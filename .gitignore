@@ -2,3 +2,4 @@ node_modules
 dist
 dist-desktop
 *.local
+dist-cloudtest

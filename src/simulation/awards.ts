@@ -442,7 +442,7 @@ export function computeSeasonAwards(league: League, opts: SeasonAwardsOptions = 
       story: cfg.story?.(c) ?? 0, fatigue: cfg.fatigueId && cfg.fatigueId === c.season.playerId ? 1 : 0,
     }));
     const vote = panelVote(`${season}|${key}`, candidates, { voters: 100, points: cfg.points, storyWeight: cfg.storyWeight ?? 0, noise: cfg.noise ?? 0.4 });
-    vote.lines = vote.lines.slice(0, 12);
+    // Keep every vote-getter: the saved ballot must add up to all the points the panel cast.
     snapshotTop(vote);
     const winner = vote.lines[0];
     const wc = winner ? byId.get(winner.id) : undefined;
@@ -499,7 +499,6 @@ export function computeSeasonAwards(league: League, opts: SeasonAwardsOptions = 
       ...(d.prevWins != null ? [`${d.wins - d.prevWins >= 0 ? '+' : ''}${d.wins - d.prevWins} wins on last season (${d.prevWins}–${d.prevLosses})`] : []),
     ];
   }
-  coyVote.lines = coyVote.lines.slice(0, 10);
   votes.coy = coyVote;
   const coy: TeamAwardWinner | null = coyEntry && coyTop ? {
     teamId: coyEntry.team.teamId, teamName: coyEntry.team.name, coachName: coyEntry.team.coachIdentity?.coachId ?? null,
@@ -534,7 +533,6 @@ export function computeSeasonAwards(league: League, opts: SeasonAwardsOptions = 
       ...(best.length ? [`Added ${best.map((a) => `${a.playerId} (${a.how}, ${a.ws.toFixed(1)} WS)`).join(' and ')}`] : []),
     ];
   }
-  eoyVote.lines = eoyVote.lines.slice(0, 10);
   votes.eoy = eoyVote;
   const eoy: TeamAwardWinner | null = eoyEntry && eoyTop ? {
     teamId: eoyEntry.team.teamId, teamName: eoyEntry.team.name, score: round1(eoyEntry.score), points: eoyTop.points, voteShare: eoyTop.share,

@@ -4,6 +4,7 @@ import type { Contract, SalaryCapSettings } from './gm';
 import { teamPayroll } from './gm';
 import type { LeagueRulesSettings } from './leagueRules';
 import { expenseAnnualCost, defaultExpenseLevels } from './league';
+import { businessRevenue } from './business';
 
 export interface TeamFinancialProfile {
   marketSize: number; // 0-100
@@ -28,6 +29,7 @@ export function computeTeamFinances(
   capSettings: SalaryCapSettings,
   rules: LeagueRulesSettings | undefined,
   winPct = 0.5,
+  fans = 55,
 ): TeamFinancialProfile {
   const marketSize = team.marketSize ?? 50;
   const marketFactor = 0.4 + (marketSize / 100) * 1.2; // market 0 -> 0.4x, 50 -> 1.0x, 100 -> 1.6x
@@ -41,14 +43,18 @@ export function computeTeamFinances(
   const localFactor = marketFactor * performanceFactor;
   // National TV money is shared far more evenly across the league than local revenue streams.
   const tvFactor = 0.7 + marketFactor * 0.3;
-  const revenue = BASE_REVENUE_AT_MARKET_50 * (ticketW * localFactor + merchW * localFactor + tvW * tvFactor + sponsorW * localFactor);
+  // A team running its own business (ticket price, arena, jerseys) earns tickets and merchandise from that model.
+  const biz = team.business ? businessRevenue(team, winPct, fans) : null;
+  const revenue = biz
+    ? biz.tickets * (ticketW / 0.4) + biz.merch * (merchW / 0.2) + BASE_REVENUE_AT_MARKET_50 * (tvW * tvFactor + sponsorW * localFactor)
+    : BASE_REVENUE_AT_MARKET_50 * (ticketW * localFactor + merchW * localFactor + tvW * tvFactor + sponsorW * localFactor);
 
   const payroll = teamPayroll(contracts, team);
   const luxuryTaxOwed = payroll > capSettings.luxuryTaxLine ? (payroll - capSettings.luxuryTaxLine) * capSettings.luxuryTaxMultiplier : 0;
   const coachSalary = staffSalary(team) + (team.coachingControl?.payout ?? 0);
   const levels = team.expenseLevels ?? defaultExpenseLevels();
   const expenseSpend = expenseAnnualCost(levels.scouting) + expenseAnnualCost(levels.coaching)
-    + expenseAnnualCost(levels.health) + expenseAnnualCost(levels.facilities);
+    + expenseAnnualCost(levels.health) + expenseAnnualCost(levels.facilities) + (biz?.loans ?? 0);
   const operatingIncome = revenue - payroll - luxuryTaxOwed - coachSalary - expenseSpend;
 
   const profitabilityImpact = (rules?.teamProfitabilityImpact ?? 30) / 100;

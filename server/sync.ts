@@ -1,0 +1,65 @@
+import { derive, sanitizeBlob } from './derive';
+import { mergeStorage, mergeCareers } from '../src/cloud/merge';
+import { computeHonors, pvpHonor } from './honors';
+import { getUser, rest, upsert, deleteUser, json, bearer, type SupaEnv, type Fetch } from './supabase';
+
+/*
+ * /api/sync: POST stores the signed-in player's merged progress and rebuilds their public rows from it;
+ * DELETE deletes the account and everything with it.
+ */
+
+export const MAX_BYTES = 800_000;
+/** One push every few seconds per account is plenty (the game batches its own). */
+export const MIN_GAP_MS = 3_000;
+
+type CareerRow = { id: string; updatedAt: number; status: string };
+const careerRows = (list: unknown[]) => list.filter((c): c is CareerRow => typeof (c as CareerRow).id === 'string' && typeof (c as CareerRow).updatedAt === 'number');
+
+export async function handleSync(req: Request, env: SupaEnv | null, now = new Date(), f: Fetch = fetch): Promise<Response> {
+  if (!env) return json({ error: 'Accounts are not set up on this site yet.' }, 503);
+  const token = bearer(req);
+  const user = token ? await getUser(env, token, f).catch(() => null) : null;
+  if (!user) return json({ error: 'Please sign in again.' }, 401);
+  const id = user.id, eq = `user_id=eq.${id}`;
+  try {
+    if (req.method === 'DELETE') { await deleteUser(env, id, f); return json({ ok: true }); }
+    if (req.method !== 'POST') return json({ error: 'Method not allowed.' }, 405);
+    const text = await req.text();
+    if (text.length > MAX_BYTES) return json({ error: 'Your progress is too large to sync.' }, 413);
+    let blob;
+    try { blob = sanitizeBlob(JSON.parse(text)); } catch { blob = null; }
+    if (!blob) return json({ error: 'Bad progress data.' }, 400);
+    // Two devices can push around the same time: merge with what is stored (best of both) instead of overwriting it.
+    const stored = ((await rest(env, 'GET', `progress?${eq}&select=data,updated_at`, undefined, undefined, f)) as { data: unknown; updated_at: string }[] | null)?.[0];
+    if (stored && now.getTime() - Date.parse(stored.updated_at) < MIN_GAP_MS) return json({ error: 'Syncing too often.', retry: true }, 429);
+    const prev = stored ? sanitizeBlob(stored.data) : null;
+    if (prev) blob = { ...blob, storage: mergeStorage(blob.storage, prev.storage), careers: mergeCareers(careerRows(blob.careers), careerRows(prev.careers)) };
+    const size = JSON.stringify(blob).length;
+    if (size > MAX_BYTES) return json({ error: 'Your progress is too large to sync.' }, 413);
+    const d = derive(blob, now);
+    const own = <T extends object>(rows: T[]) => rows.map(r => ({ ...r, user_id: id }));
+    await upsert(env, 'progress', [{ user_id: id, data: blob, size, updated_at: now.toISOString() }], 'user_id', f);
+    // Leaderboard honors: compared with everyone else now; once earned they stay. A failure keeps what was there.
+    const current = ((await rest(env, 'GET', `profiles?id=eq.${id}&select=stats`, undefined, undefined, f)) as { stats?: { honors?: unknown } }[] | null)?.[0];
+    const previous = Array.isArray(current?.stats?.honors) ? (current!.stats!.honors as unknown[]).filter((h): h is string => typeof h === 'string') : [];
+    let honors = previous;
+    try {
+      honors = await computeHonors(env, id, d, now, previous, f);
+      const ghost = ((await rest(env, 'GET', `hunt_ghosts?${eq}&select=rating`, undefined, undefined, f)) as { rating: number }[] | null)?.[0];
+      if (ghost && !honors.includes('pvp-10') && await pvpHonor(env, id, ghost.rating, f)) honors = [...honors, 'pvp-10'].sort();
+    } catch { /* keep the honors already earned */ }
+    await Promise.all([
+      rest(env, 'PATCH', `profiles?id=eq.${id}`, { level: d.profile.level, xp: d.profile.xp, stats: { ...d.profile.stats, honors }, updated_at: now.toISOString() }, 'return=minimal', f),
+      rest(env, 'DELETE', `user_achievements?${eq}`, undefined, 'return=minimal', f).then(() => upsert(env, 'user_achievements', own(d.achievements.map(a => ({ achievement_id: a }))), 'user_id,achievement_id', f)),
+      upsert(env, 'created_players', own(d.players), 'user_id,career_id', f),
+      upsert(env, 'weekly_scores', own(d.weekly.map(w => ({ ...w, updated_at: now.toISOString() }))), 'board,week,user_id', f),
+      upsert(env, 'daily_legend', own(d.daily), 'day,user_id', f),
+      upsert(env, 'rebuild_records', own(d.rebuild), 'scenario,user_id', f),
+      upsert(env, 'code_results', own(d.codes.map(c => ({ ...c, updated_at: now.toISOString() }))), 'code,user_id', f),
+      upsert(env, 'ranked_events', own(d.ranked), 'user_id,event', f),
+    ]);
+    return json({ ok: true, level: d.profile.level, xp: d.profile.xp, honors });
+  } catch {
+    return json({ error: 'Cloud sync is having trouble. Your progress is safe on this device; it will sync later.' }, 502);
+  }
+}

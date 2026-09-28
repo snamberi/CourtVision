@@ -17,11 +17,11 @@ export interface Feature {
 
 export const FEATURES: Feature[] = [
   {
-    id: 'trades', label: 'Trades & free agents', tabs: ['trade', 'tradeOffers', 'tradeBlock', 'freeAgency'], home: 'trade',
+    id: 'trades', label: 'Trades & free agents', tabs: ['trade', 'tradeOffers', 'tradeBlock', 'freeAgency', 'deadline', 'threeTeam', 'extensions'], home: 'trade',
     notice: 'You can now trade with the other teams and sign free agents from Front Office. Trades stay open until the trade deadline.',
   },
   {
-    id: 'development', label: 'Player development', tabs: ['development'], home: 'development',
+    id: 'development', label: 'Player development', tabs: ['development', 'summerCamp'], home: 'development',
     notice: 'Set practice, development plans and long-term projects for your players. Age, potential, minutes and coaching all shape how they grow.',
   },
   {

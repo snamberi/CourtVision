@@ -1,62 +1,19 @@
-import { useState } from 'react';
-import { LEGEND_TEAM_TEMPLATES, buildLegendTeam } from '../simulation/legends';
-import { simulateGame } from '../simulation/engine/game';
-import { DEFAULT_GAME_SETTINGS, ERA_PRESETS } from '../simulation/types';
-import type { GameResult } from '../simulation/boxscore';
-import { BoxScoreTable } from './BoxScoreTable';
-import { PossessionLogView } from './PossessionLogView';
+import { useEffect, useState } from 'react';
+import type { NbaHistory } from '../history/nbaHistoryData';
+import { DreamMatchup } from './hunt/HuntHub';
+import './hunt/hunt.css';
 
-export function LegendsPage({ sandboxMode, seed }: { sandboxMode: boolean; seed: number }) {
-  const [homeIdx, setHomeIdx] = useState(0);
-  const [awayIdx, setAwayIdx] = useState(1);
-  const [eraKey, setEraKey] = useState<keyof typeof ERA_PRESETS>('modern');
-  const [result, setResult] = useState<GameResult | null>(null);
-
-  const run = () => {
-    const home = buildLegendTeam(LEGEND_TEAM_TEMPLATES[homeIdx]);
-    const away = buildLegendTeam(LEGEND_TEAM_TEMPLATES[awayIdx]);
-    const r = simulateGame({
-      home, away,
-      settings: { ...DEFAULT_GAME_SETTINGS, sandboxMode, seed, era: ERA_PRESETS[eraKey] },
-    });
-    setResult(r);
-  };
-
-  return (
-    <div className="legends-page">
-      <p className="hint-text">
-        These are era-styled demo teams generated for this sandbox — not official historical
-        ratings. Swap in a real, legally-sourced historical dataset later without changing any
-        of the engine or UI code below.
-      </p>
-      <div className="legends-controls">
-        <select value={homeIdx} onChange={(e) => setHomeIdx(Number(e.target.value))}>
-          {LEGEND_TEAM_TEMPLATES.map((t, i) => <option key={t.id} value={i}>{t.label}</option>)}
-        </select>
-        <span>vs</span>
-        <select value={awayIdx} onChange={(e) => setAwayIdx(Number(e.target.value))}>
-          {LEGEND_TEAM_TEMPLATES.map((t, i) => <option key={t.id} value={i}>{t.label}</option>)}
-        </select>
-        <select value={eraKey} onChange={(e) => setEraKey(e.target.value as keyof typeof ERA_PRESETS)}>
-          {Object.keys(ERA_PRESETS).map((k) => <option key={k} value={k}>{k} rules</option>)}
-        </select>
-        <button className="primary" onClick={run}>Simulate</button>
-      </div>
-
-      {result && (
-        <>
-          <div className="scoreboard">
-            <span>{result.homeTeamId} {result.homeScore}</span>
-            <span className="dash">–</span>
-            <span>{result.awayScore} {result.awayTeamId}</span>
-          </div>
-          <div className="box-scores">
-            <BoxScoreTable box={result.homeBox} title={result.homeTeamId} />
-            <BoxScoreTable box={result.awayBox} title={result.awayTeamId} />
-          </div>
-          <PossessionLogView log={result.possessionLog} />
-        </>
-      )}
-    </div>
-  );
+/** Legend Teams: Dream Matchup between any two real team-seasons, under any era's rules (the same as in League Hunt). */
+export function LegendsPage(_props: { sandboxMode?: boolean; seed?: number }) {
+  const [h, setH] = useState<NbaHistory | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    import('../history/nbaHistoryData').then(m => m.loadNbaHistory()).then(d => { if (live) setH(d); }, e => { if (live) setError(e instanceof Error ? e.message : String(e)); });
+    return () => { live = false; };
+  }, []);
+  return <div className="legends-page">
+    <div className="season-feature-header"><div><span className="pixel-eyebrow">REAL NBA HISTORY</span><h2>Dream Matchup</h2></div></div>
+    {error ? <p className="empty-state">Could not load the NBA history data: {error}</p> : !h ? <p className="empty-state">Loading NBA history…</p> : <DreamMatchup h={h} />}
+  </div>;
 }

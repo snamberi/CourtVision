@@ -46,8 +46,11 @@ export function liveBoxScore(log: PossessionLogEntry[], completed: number, homeT
     if (p.stealerId) line(p.stealerId).stl++;
     if (p.blockerId) line(p.blockerId).blk++;
     if (e.result === 'TURNOVER') line(e.ballHandlerId).tov++;
-    const fouler = p.foulerId ?? [...e.onCourtHome, ...e.onCourtAway].find(id => e.events.some(ev => ev.startsWith(`${id} shooting foul on `)));
-    if (fouler) { line(fouler).pf++; if (e.quarter === currentQuarter) fouls[e.onCourtHome.includes(fouler) ? 'home' : 'away']++; }
+    const legacyFouler = p.foulerId ?? [...e.onCourtHome, ...e.onCourtAway].find(id => e.events.some(ev => ev.startsWith(`${id} shooting foul on `)));
+    for (const fouler of p.foulerIds ?? (legacyFouler ? [legacyFouler] : [])) {
+      line(fouler).pf++;
+      if (e.quarter === currentQuarter) fouls[e.onCourtHome.includes(fouler) ? 'home' : 'away']++;
+    }
     for (const ev of e.events) { if (ev === `${homeTeamId} timeout`) timeouts.home++; else if (ev === `${awayTeamId} timeout`) timeouts.away++; }
   });
   const current = log[Math.min(log.length - 1, Math.floor(completed))];

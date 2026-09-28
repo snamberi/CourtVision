@@ -1,4 +1,4 @@
-export const TABS = ["staff", "development", "playerDevelopment", "sandbox", "imports", "teamProfile", "database", "editor", "yourTeam", "roster", "code", "bulk", "fastEdit", "compare", "coaching", "standings", "schedule", "playoffs", "finances", "trade", "tradeBlock", "tradeOffers", "freeAgency", "draft", "allStarWeekend", "legends", "awards", "lab", "settings", "leagueSettings", "injuries", "analytics", "resignWaive", "preseason", "history", "boxscore", "dashboard", "powerRankings", "transactions", "news", "watchList", "playerStats", "teamStats", "autoPlay", "dailySchedule", "hallOfFame", "teamHistory", "records", "almanac", "nbaArchive", "gmOffice", "summerLeague", "cup"] as const;
+export const TABS = ["staff", "development", "playerDevelopment", "sandbox", "imports", "teamProfile", "database", "editor", "yourTeam", "roster", "code", "bulk", "fastEdit", "compare", "coaching", "standings", "schedule", "playoffs", "finances", "trade", "tradeBlock", "tradeOffers", "freeAgency", "draft", "allStarWeekend", "legends", "awards", "lab", "settings", "leagueSettings", "injuries", "analytics", "resignWaive", "preseason", "history", "boxscore", "dashboard", "powerRankings", "transactions", "news", "watchList", "playerStats", "teamStats", "autoPlay", "dailySchedule", "hallOfFame", "teamHistory", "records", "almanac", "nbaArchive", "gmOffice", "summerLeague", "cup", "deadline", "yearInReview", "press", "medical", "extensions", "threeTeam", "summerCamp", "storylines"] as const;
 export type Tab = typeof TABS[number];
 export interface GameRoute { saveId: string; tab: Tab; player?: string; team?: string; game?: string; sub?: 'awards' | 'rules'; source?: 'league' | 'exhibition' }
 export function parseRoute(hash: string): GameRoute | null {
@@ -31,6 +31,9 @@ export function routeHash(route: GameRoute): string {
 export function analyticsPath(hash: string): string {
   if (hash.startsWith('#/privacy')) return '/privacy';
   if (hash === '#/choose-team') return '/choose-team';
+  if (hash === '#/community') return '/community';
+  if (hash.startsWith('#/u/')) return '/profile'; // never the username
+  if (hash === '#/profile') return '/my-profile';
   const route = parseRoute(hash);
   return route ? `/game/${route.tab}` : '/menu';
 }

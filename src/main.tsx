@@ -27,10 +27,23 @@ import '@fontsource/inter/latin-ext-700.css'
 import './index.css'
 import App from './App.tsx'
 import { WebAnalytics } from './components/WebAnalytics'
+import { CloudRoot } from './components/cloud/CloudRoot'
+import { startPwa } from './pwa/pwa'
+import { applyPerformanceMode } from './lib/performanceMode'
+import { applyTheme, readTheme } from './theme/themes'
+import { startAccounts } from './cloud/account'
+import { startSync } from './cloud/sync'
+
+applyPerformanceMode()
+applyTheme(readTheme() ?? 'original')
+startPwa()
+startSync()
+void startAccounts()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
     <WebAnalytics />
+    <CloudRoot />
   </StrictMode>,
 )

@@ -1,0 +1,23 @@
+/* What a theme changes beyond its colours and fonts (src/theme/themes.ts sets those). Loaded after every other sheet. */
+
+:root[data-cv-theme="cartridge"] { color-scheme: light; }
+
+/* Cartridge: chunky outlines on the main surfaces, like console plastic. */
+:root[data-cv-theme="cartridge"] :is(.dashboard-panel, .mode-card, .locker-bay, .hunt-stage, .db-table, .menu-card, .modal, .dialog) { border-width: 2px; }
+:root[data-cv-theme="cartridge"] :is(h1, h2, h3, h4, h5) { text-shadow: none; }
+
+/* Pro Dark: soft corners, no pixel shadows or heading shadows. */
+:root[data-cv-theme="prodark"] :is(h1, h2, h3, h4, h5, .pixel-eyebrow) { text-shadow: none; }
+:root[data-cv-theme="prodark"] :is(.dashboard-panel, .mode-card, .locker-bay, .hunt-stage, .menu-card, .profile-chip, .pass-card, .road-stop, .cv-landed, .mp-callout) { border-radius: 6px; }
+:root[data-cv-theme="prodark"] :is(button, .pass-buy, input, select) { border-radius: 5px; }
+
+/* Scoreboard: lit text glows faintly, like bulbs. */
+:root[data-cv-theme="scoreboard"] :is(h1, h2, h3, .brand-word, .sidebar-brand-text, .topbar-record) { text-shadow: 0 0 8px rgba(255, 176, 0, .45); }
+
+/* Stat Terminal: glowing text and scanlines over the whole screen (not in Lite mode). */
+:root[data-cv-theme="terminal"] :is(h1, h2, h3, h4) { text-shadow: 0 0 6px rgba(60, 255, 110, .45); }
+:root[data-cv-theme="terminal"]:not(.lite) body::after {
+  content: ''; position: fixed; inset: 0; z-index: 2147483000; pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .16) 0 1px, transparent 1px 3px);
+}
+@media print { :root[data-cv-theme="terminal"] body::after { display: none; } }

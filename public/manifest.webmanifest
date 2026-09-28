@@ -1,0 +1,18 @@
+{
+  "name": "Court Vision: basketball GM",
+  "short_name": "Court Vision",
+  "description": "A free pixel-art basketball GM and simulation game: real NBA history, League Hunt, Career Mode and the Rebuild Challenge.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0b1018",
+  "theme_color": "#0b1018",
+  "categories": ["games", "sports"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
