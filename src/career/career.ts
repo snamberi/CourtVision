@@ -38,6 +38,8 @@ export interface CareerMeta {
   draftYear?: number;
   /** Career of the Week (e.g. "2026-W39"): the wheel and the league came from that week's shared seed. */
   weekly?: string;
+  /** The account this career has been synced to (a career from another account on a shared device is never uploaded to yours). */
+  cloudOwner?: string;
   status: 'active' | 'retired';
   draft?: { pick: number | null; teamId: string | null; teamName: string; season: string };
   years: CareerYear[];

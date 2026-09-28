@@ -2526,6 +2526,140 @@ const SYNC_KEYS = [
 	"cv-profile-equip",
 	"cv-code-results"
 ];
+const parse = (raw, fallback) => {
+	if (!raw) return fallback;
+	try {
+		return JSON.parse(raw) ?? fallback;
+	} catch {
+		return fallback;
+	}
+};
+const max = (a, b) => Math.max(a ?? 0, b ?? 0);
+function mergeLegacy(a, b) {
+	const out = {
+		version: 1,
+		achievements: { ...b.achievements },
+		leagues: { ...b.leagues }
+	};
+	for (const [id, x] of Object.entries(a.achievements ?? {})) {
+		const y = out.achievements[id];
+		out.achievements[id] = y ? {
+			...x.at <= y.at ? x : y,
+			saveIds: [.../* @__PURE__ */ new Set([...x.saveIds, ...y.saveIds])]
+		} : x;
+	}
+	for (const [id, l] of Object.entries(a.leagues ?? {})) {
+		const y = out.leagues[id];
+		if (!y || l.updatedAt >= y.updatedAt) out.leagues[id] = l;
+	}
+	return out;
+}
+function mergeHunt(a, b) {
+	const daily = { ...b.daily ?? {} };
+	for (const [d, r] of Object.entries(a.daily ?? {})) {
+		const o = daily[d];
+		if (!o || r.won && !o.won || r.won === o.won && r.stop > o.stop) daily[d] = r;
+	}
+	return {
+		runs: max(a.runs, b.runs),
+		wins: max(a.wins, b.wins),
+		bestStop: max(a.bestStop, b.bestStop),
+		...a.lastSeed != null ? { lastSeed: a.lastSeed } : b.lastSeed != null ? { lastSeed: b.lastSeed } : {},
+		daily
+	};
+}
+function mergeRebuild(a, b) {
+	const norm = (r, o = r) => {
+		const done = max(r.completedAt, o.completedAt);
+		return {
+			best: max(r.best, o.best),
+			stars: max(r.stars, o.stars),
+			titleIn: r.titleIn != null && o.titleIn != null ? Math.min(r.titleIn, o.titleIn) : r.titleIn ?? o.titleIn ?? null,
+			attempts: max(r.attempts, o.attempts),
+			...done ? { completedAt: done } : {}
+		};
+	};
+	const out = {};
+	for (const id of [.../* @__PURE__ */ new Set([...Object.keys(b), ...Object.keys(a)])].sort()) out[id] = a[id] && b[id] ? norm(a[id], b[id]) : norm(a[id] ?? b[id]);
+	return out;
+}
+function mergeWeekly(a, b) {
+	const out = JSON.parse(JSON.stringify(b));
+	for (const [w, x] of Object.entries(a)) {
+		const y = out[w] ?? {};
+		out[w] = { ...y };
+		for (const k of ["rebuild", "career"]) {
+			const r = x[k], o = y[k];
+			if (r && (!o || r.best > o.best)) out[w][k] = r;
+		}
+	}
+	return out;
+}
+function mergeDays(a, b) {
+	const out = { ...b };
+	for (const [d, x] of Object.entries(a)) {
+		const y = out[d];
+		if (!y || x.xp > y.xp) out[d] = x;
+	}
+	return out;
+}
+function mergeCodes(a, b) {
+	const out = { ...b };
+	for (const [c, x] of Object.entries(a)) {
+		const y = out[c];
+		if (!y || x.at > y.at) out[c] = x;
+	}
+	return out;
+}
+/** Merges one stored value. `local` wins ties for per-device choices (the frame and floor you just equipped). */
+function mergeValue(key, local, cloud) {
+	if (local == null || local === "") return cloud ?? null;
+	if (cloud == null || cloud === "") return local;
+	switch (key) {
+		case "courtvision:gmLegacy": return JSON.stringify(mergeLegacy(parse(local, {
+			version: 1,
+			achievements: {},
+			leagues: {}
+		}), parse(cloud, {
+			version: 1,
+			achievements: {},
+			leagues: {}
+		})));
+		case "cv-hunt-records": return JSON.stringify(mergeHunt(parse(local, {
+			runs: 0,
+			wins: 0,
+			bestStop: 0
+		}), parse(cloud, {
+			runs: 0,
+			wins: 0,
+			bestStop: 0
+		})));
+		case "cv-hunt-album":
+		case "cv-rebuild-records-done": return JSON.stringify([.../* @__PURE__ */ new Set([...parse(cloud, []), ...parse(local, [])])]);
+		case "cv-rebuild-records": return JSON.stringify(mergeRebuild(parse(local, {}), parse(cloud, {})));
+		case "cv-weekly-records": return JSON.stringify(mergeWeekly(parse(local, {}), parse(cloud, {})));
+		case "cv-daily-history": return JSON.stringify(mergeDays(parse(local, {}), parse(cloud, {})));
+		case "cv-code-results": return JSON.stringify(mergeCodes(parse(local, {}), parse(cloud, {})));
+		case "cv-profile-equip": return local;
+	}
+}
+function mergeStorage(local, cloud) {
+	const out = {};
+	for (const k of SYNC_KEYS) {
+		const v = mergeValue(k, local[k], cloud[k]);
+		if (v != null) out[k] = v;
+	}
+	return out;
+}
+/** Careers: the newer copy of each (a retired one never goes back to active). */
+function mergeCareers(local, cloud) {
+	const byId = new Map(cloud.map((c) => [c.id, c]));
+	for (const c of local) {
+		const o = byId.get(c.id);
+		if (!o || o.status !== "retired" && (c.status === "retired" || c.updatedAt >= o.updatedAt)) byId.set(c.id, c);
+	}
+	return [...byId.values()];
+}
 //#endregion
 //#region src/cloud/ranked.ts
 const seasonOf = (isoDay) => isoDay.slice(0, 7);
@@ -2975,6 +3109,7 @@ const json = (body, status = 200) => new Response(JSON.stringify(body), {
 	}
 });
 const bearer = (req) => req.headers.get("authorization")?.match(/^Bearer\s+(.+)$/i)?.[1] ?? null;
+const careerRows = (list) => list.filter((c) => typeof c.id === "string" && typeof c.updatedAt === "number");
 async function handleSync(req, env, now = /* @__PURE__ */ new Date(), f = fetch) {
 	if (!env) return json({ error: "Accounts are not set up on this site yet." }, 503);
 	const token = bearer(req);
@@ -2996,6 +3131,19 @@ async function handleSync(req, env, now = /* @__PURE__ */ new Date(), f = fetch)
 			blob = null;
 		}
 		if (!blob) return json({ error: "Bad progress data." }, 400);
+		const stored = (await rest(env, "GET", `progress?${eq}&select=data,updated_at`, void 0, void 0, f))?.[0];
+		if (stored && now.getTime() - Date.parse(stored.updated_at) < 3e3) return json({
+			error: "Syncing too often.",
+			retry: true
+		}, 429);
+		const prev = stored ? sanitizeBlob(stored.data) : null;
+		if (prev) blob = {
+			...blob,
+			storage: mergeStorage(blob.storage, prev.storage),
+			careers: mergeCareers(careerRows(blob.careers), careerRows(prev.careers))
+		};
+		const size = JSON.stringify(blob).length;
+		if (size > 8e5) return json({ error: "Your progress is too large to sync." }, 413);
 		const d = derive(blob, now);
 		const own = (rows) => rows.map((r) => ({
 			...r,
@@ -3004,7 +3152,7 @@ async function handleSync(req, env, now = /* @__PURE__ */ new Date(), f = fetch)
 		await upsert(env, "progress", [{
 			user_id: id,
 			data: blob,
-			size: text.length,
+			size,
 			updated_at: now.toISOString()
 		}], "user_id", f);
 		await Promise.all([

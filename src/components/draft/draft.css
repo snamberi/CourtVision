@@ -10,7 +10,8 @@
 .draft-suggest { display: grid; gap: 4px; justify-items: end; }
 .draft-suggest small { font-family: 'Press Start 2P', monospace; font-size: .5rem; color: var(--cv-gold, #ffd166); }
 .draft-grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 14px; align-items: start; }
-@media (max-width: 900px) { .draft-grid { grid-template-columns: 1fr; } }
+@media (max-width: 900px) { .draft-grid { grid-template-columns: minmax(0, 1fr); } }
+.draft-grid > * { min-width: 0; }
 .draft-table td:nth-child(n+5), .draft-table td:nth-child(2) { text-align: right; font-variant-numeric: tabular-nums; }
 .draft-table td:last-child button { padding: 3px 10px; }
 .draft-side { display: grid; gap: 8px; align-content: start; }

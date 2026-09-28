@@ -96,8 +96,10 @@ export async function signInWithEmail(email: string): Promise<void> {
   if (error) throw error;
 }
 
-export async function signOut(): Promise<void> {
+/** Signs out, after one last sync so nothing done on this device is left behind. */
+export async function signOut(opts: { sync?: boolean } = {}): Promise<void> {
   const client = await supa();
+  if (opts.sync !== false) try { const { syncNow } = await import('./sync'); await syncNow(); } catch { /* sign out anyway */ }
   await client.auth.signOut();
 }
 
@@ -117,6 +119,6 @@ export async function deleteAccount(): Promise<string | null> {
   if (!token) return 'Sign in first.';
   const res = await fetch('/api/sync', { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
   if (!res.ok) return ((await res.json().catch(() => null)) as { error?: string } | null)?.error ?? 'Could not delete the account.';
-  await signOut().catch(() => {});
+  await signOut({ sync: false }).catch(() => {});
   return null;
 }

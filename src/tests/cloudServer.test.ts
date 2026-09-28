@@ -41,6 +41,19 @@ describe('cloud endpoints', () => {
     expect(calls).toContain('DELETE /auth/v1/admin/users/u1');
   });
 
+  it('sync: merges with the stored progress and slows down rapid pushes', async () => {
+    const now = new Date('2026-09-28T12:00:00Z');
+    const stored = { version: 1, updatedAt: 1, storage: { 'cv-hunt-album': JSON.stringify(['a']) }, careers: [] };
+    const recent = fakeFetch({ progress: [{ data: stored, updated_at: new Date(now.getTime() - 1000).toISOString() }] });
+    expect((await handleSync(req('POST', { version: 1, updatedAt: 2, storage: {}, careers: [] }), env, now, recent.f)).status).toBe(429);
+    let body = '';
+    const older = fakeFetch({ progress: [{ data: stored, updated_at: new Date(now.getTime() - 60_000).toISOString() }] });
+    const spy = (async (url: string, init?: RequestInit) => { if (String(url).includes('/progress?on_conflict') || (init?.method === 'POST' && String(url).includes('/progress'))) body = String(init?.body); return older.f(url, init); }) as unknown as typeof fetch;
+    const res = await handleSync(req('POST', { version: 1, updatedAt: 2, storage: { 'cv-hunt-album': JSON.stringify(['b']) }, careers: [] }), env, now, spy);
+    expect(res.status).toBe(200);
+    expect(JSON.parse(JSON.parse(body)[0].data.storage['cv-hunt-album']).sort()).toEqual(['a', 'b']);
+  });
+
   it('pvp: needs a team, rejects results that do not add up', async () => {
     const none = fakeFetch();
     expect((await (await handlePvp(req('POST', { action: 'find' }), env, new Date(), none.f)).json()).error).toMatch(/Finish a League Hunt/);

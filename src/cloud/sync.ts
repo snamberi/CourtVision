@@ -39,6 +39,14 @@ async function localCareers(): Promise<CareerMeta[]> {
   try { return (await listCareers()).filter(c => c.status === 'retired'); } catch { return []; }
 }
 
+/**
+ * The account this device's progress belongs to. On a shared computer, when someone else signs in, the progress
+ * here is the previous player's: it is replaced by the new account's instead of being merged into it.
+ */
+const OWNER_KEY = 'cv-cloud-owner';
+const readOwner = () => { try { return localStorage.getItem(OWNER_KEY); } catch { return null; } };
+const writeOwner = (id: string) => { try { localStorage.setItem(OWNER_KEY, id); } catch { /* storage blocked */ } };
+
 export function syncNow(): Promise<void> {
   if (running) return running;
   running = (async () => {
@@ -50,18 +58,24 @@ export function syncNow(): Promise<void> {
       const { data, error } = await client.from('progress').select('data').eq('user_id', userId).maybeSingle();
       if (error) throw new Error(error.message);
       const cloud = (data?.data ?? null) as ProgressBlob | null;
-      const storage = mergeStorage(readLocal(), cloud?.storage ?? {});
+      const owner = readOwner(), foreign = !!owner && owner !== userId;
+      const storage = mergeStorage(foreign ? {} : readLocal(), cloud?.storage ?? {});
+      if (foreign) for (const k of SYNC_KEYS) if (!(k in storage)) { try { localStorage.removeItem(k); } catch { /* storage blocked */ } }
       writeLocal(storage);
-      const mine = await localCareers();
-      const careers = mergeCareers(mine, (cloud?.careers ?? []) as CareerMeta[]);
+      // Careers: yours, plus careers made on this device before any account claimed it.
+      const mine = (await localCareers()).filter(c => c.cloudOwner === userId || (!c.cloudOwner && !foreign));
+      const careers = mergeCareers(mine, (cloud?.careers ?? []) as CareerMeta[]).map(c => (c.cloudOwner === userId ? c : { ...c, cloudOwner: userId }));
       const fresh = careers.filter(c => !mine.some(m => m.id === c.id && m.updatedAt >= c.updatedAt));
-      if (fresh.length) { await restoreCareers({ metas: fresh, worlds: [] }); noteCareers(await listCareers()); window.dispatchEvent(new Event(PROGRESS_EVENT)); }
+      const tag = mine.filter(m => m.cloudOwner !== userId).map(m => ({ ...m, cloudOwner: userId }));
+      if (fresh.length || tag.length) { await restoreCareers({ metas: [...tag.filter(t => !fresh.some(f => f.id === t.id)), ...fresh], worlds: [] }); noteCareers(await listCareers()); window.dispatchEvent(new Event(PROGRESS_EVENT)); }
       const blob: ProgressBlob = { version: 1, updatedAt: Date.now(), storage, careers };
       const body = JSON.stringify(blob);
-      const fingerprint = JSON.stringify({ storage, careers: careers.map(c => [c.id, c.updatedAt]) });
+      const fingerprint = JSON.stringify({ userId, storage, careers: careers.map(c => [c.id, c.updatedAt]) });
       if (fingerprint !== lastPushed) {
         const res = await fetch('/api/sync', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken() ?? token}` }, body });
         const out = await res.json().catch(() => null) as { error?: string } | null;
+        // Another sync (this device or another) just landed: try again shortly with the merged result.
+        if (res.status === 429) { setAccount({ sync: { ...getAccount().sync, state: 'ok' } }); syncSoon(5_000); return; }
         if (!res.ok) throw new Error(out?.error ?? `Sync failed (${res.status}).`);
         lastPushed = fingerprint;
         await refreshProfile(client);
@@ -69,6 +83,7 @@ export function syncNow(): Promise<void> {
       // The title and frame shown on the boards follow what is equipped here.
       const e = equipped(), prof = getAccount().profile;
       if (prof && (prof.title !== e.title || prof.frame !== e.frame)) await updateProfile({ title: e.title, frame: e.frame });
+      writeOwner(userId);
       setAccount({ sync: { state: 'ok', at: Date.now(), message: null } });
     } catch (e) {
       setAccount({ sync: { state: 'error', at: getAccount().sync.at, message: e instanceof Error ? e.message : String(e) } });

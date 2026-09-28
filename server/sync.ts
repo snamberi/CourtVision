@@ -1,4 +1,5 @@
 import { derive, sanitizeBlob } from './derive';
+import { mergeStorage, mergeCareers } from '../src/cloud/merge';
 import { getUser, rest, upsert, deleteUser, json, bearer, type SupaEnv, type Fetch } from './supabase';
 
 /*
@@ -7,6 +8,11 @@ import { getUser, rest, upsert, deleteUser, json, bearer, type SupaEnv, type Fet
  */
 
 export const MAX_BYTES = 800_000;
+/** One push every few seconds per account is plenty (the game batches its own). */
+export const MIN_GAP_MS = 3_000;
+
+type CareerRow = { id: string; updatedAt: number; status: string };
+const careerRows = (list: unknown[]) => list.filter((c): c is CareerRow => typeof (c as CareerRow).id === 'string' && typeof (c as CareerRow).updatedAt === 'number');
 
 export async function handleSync(req: Request, env: SupaEnv | null, now = new Date(), f: Fetch = fetch): Promise<Response> {
   if (!env) return json({ error: 'Accounts are not set up on this site yet.' }, 503);
@@ -22,9 +28,16 @@ export async function handleSync(req: Request, env: SupaEnv | null, now = new Da
     let blob;
     try { blob = sanitizeBlob(JSON.parse(text)); } catch { blob = null; }
     if (!blob) return json({ error: 'Bad progress data.' }, 400);
+    // Two devices can push around the same time: merge with what is stored (best of both) instead of overwriting it.
+    const stored = ((await rest(env, 'GET', `progress?${eq}&select=data,updated_at`, undefined, undefined, f)) as { data: unknown; updated_at: string }[] | null)?.[0];
+    if (stored && now.getTime() - Date.parse(stored.updated_at) < MIN_GAP_MS) return json({ error: 'Syncing too often.', retry: true }, 429);
+    const prev = stored ? sanitizeBlob(stored.data) : null;
+    if (prev) blob = { ...blob, storage: mergeStorage(blob.storage, prev.storage), careers: mergeCareers(careerRows(blob.careers), careerRows(prev.careers)) };
+    const size = JSON.stringify(blob).length;
+    if (size > MAX_BYTES) return json({ error: 'Your progress is too large to sync.' }, 413);
     const d = derive(blob, now);
     const own = <T extends object>(rows: T[]) => rows.map(r => ({ ...r, user_id: id }));
-    await upsert(env, 'progress', [{ user_id: id, data: blob, size: text.length, updated_at: now.toISOString() }], 'user_id', f);
+    await upsert(env, 'progress', [{ user_id: id, data: blob, size, updated_at: now.toISOString() }], 'user_id', f);
     await Promise.all([
       rest(env, 'PATCH', `profiles?id=eq.${id}`, { level: d.profile.level, xp: d.profile.xp, stats: d.profile.stats, updated_at: now.toISOString() }, 'return=minimal', f),
       rest(env, 'DELETE', `user_achievements?${eq}`, undefined, 'return=minimal', f).then(() => upsert(env, 'user_achievements', own(d.achievements.map(a => ({ achievement_id: a }))), 'user_id,achievement_id', f)),
