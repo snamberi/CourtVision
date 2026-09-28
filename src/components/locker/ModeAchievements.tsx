@@ -2,7 +2,7 @@ import { MODE_ACHIEVEMENTS, MODE_LABELS, isEarned, type Mode, type ModeStats } f
 import { PixelTrophy } from '../PixelTrophy';
 import { PixelIcon } from '../PixelIcon';
 
-/** The mode achievements in the Locker: grouped by mode, with progress on the ones still locked. */
+/** The mode achievements in the Player Profile: grouped by mode, with progress on the ones still locked. */
 export function ModeAchievements({ stats, rarity }: { stats: ModeStats; rarity: Record<string, number> }) {
   const modes = Object.keys(MODE_LABELS) as Mode[];
   const earned = MODE_ACHIEVEMENTS.filter(a => isEarned(a, stats)).length;

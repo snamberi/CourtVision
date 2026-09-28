@@ -15,12 +15,12 @@ const game = (id: string, my: number, their: number, mine: PlayerStatLine[] = [l
 const league = (schedule: ScheduledGame[]): League => ({ teams: [], schedule, settings: {} as League['settings'], season: '2026' });
 
 describe('GM Profile', () => {
-  it('levels: each costs 100 more than the last', () => {
+  it('levels: each costs 25 more than the last, up to 250', () => {
     expect(levelFor(0)).toEqual({ level: 1, into: 0, need: levelCost(1) });
-    expect(levelFor(199).level).toBe(1);
-    expect(levelFor(200).level).toBe(2);
-    expect(levelFor(200 + 300 + 400).level).toBe(4);
-    expect(levelFor(10_000_000).level).toBe(50);
+    expect(levelFor(174).level).toBe(1);
+    expect(levelFor(175).level).toBe(2);
+    expect(levelFor(175 + 200 + 225).level).toBe(4);
+    expect(levelFor(10_000_000).level).toBe(250);
   });
 
   it('XP comes from every mode\'s records, including old progress', () => {
@@ -34,11 +34,11 @@ describe('GM Profile', () => {
     expect(totalXp()).toBeGreaterThan(1000);
   });
 
-  it('cosmetics: only unlocked ones can be equipped', () => {
+  it('cosmetics: only unlocked ones can be equipped (levels from the level road)', () => {
     equip({ frame: 'fire', floor: 'parquet' });
     expect(equipped(1)).toMatchObject({ frame: 'classic', floor: 'team', title: 'Rookie GM' });
-    expect(equipped(25)).toMatchObject({ frame: 'fire', floor: 'parquet', title: 'Dynasty Builder' });
-    expect(unlocksBetween(2, 4)).toEqual(['Gold card frame', 'Parquet court', 'the "Scout" title']);
+    expect(equipped(150)).toMatchObject({ frame: 'fire', floor: 'parquet', title: 'Showrunner' });
+    expect(unlocksBetween(15, 20)).toEqual(['the "Assistant GM" title', 'the Gold card frame']);
   });
 
   it('level-up note: not on the first visit, then once per new level', () => {

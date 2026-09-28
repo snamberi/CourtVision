@@ -4,7 +4,7 @@ import { loadRebuildRecords } from '../simulation/rebuildChallenge';
 import { loadWeeklyRecords } from '../retention/weekly';
 import { dailyGoalXp } from './dailyGoals';
 import { localRead, type Read } from '../lib/kv';
-import { ICONS, NAME_COLORS, unlockContext, isOpen, earnedExtraTitles, type IconId, type ColorId } from './cosmetics';
+import { ICONS, NAME_COLORS, LEVEL_ROAD, ROAD_TITLES, roadLevel, unlockContext, isOpen, earnedExtraTitles, iconDef, type IconId, type ColorId, type RewardKind } from './cosmetics';
 
 /*
  * The GM Profile: one level across every mode. XP is worked out from the records each mode already keeps (GM
@@ -75,9 +75,9 @@ export function xpParts(read: Read = localRead): XpPart[] {
 
 export const totalXp = (parts = xpParts()) => parts.reduce((n, p) => n + p.xp, 0);
 
-/** XP needed to go from `level` to the next: 200, 300, 400… */
-export const levelCost = (level: number) => 100 + 100 * level;
-export const MAX_LEVEL = 50;
+/** XP needed to go from `level` to the next: 175, 200, 225… (the level road runs to 250; see cosmetics.ts). */
+export const levelCost = (level: number) => 150 + 25 * level;
+export const MAX_LEVEL = 250;
 export function levelFor(xp: number): { level: number; into: number; need: number } {
   let level = 1, left = xp;
   while (level < MAX_LEVEL && left >= levelCost(level)) { left -= levelCost(level); level++; }
@@ -90,33 +90,25 @@ export type FrameId = 'classic' | 'gold' | 'hardwood' | 'neon' | 'banner' | 'fir
 export type FloorId = 'team' | 'planks' | 'parquet' | 'blonde' | 'midnight' | 'asphalt';
 export interface Unlock<T extends string> { id: T; name: string; level: number; blurb: string }
 
+// Levels come from the level road (cosmetics.ts), so each reward is listed in one place.
+const road = (kind: RewardKind, id: string) => roadLevel(kind, id) ?? 1;
 export const FRAMES: Unlock<FrameId>[] = [
   { id: 'classic', name: 'Classic', level: 1, blurb: 'The orange Court Vision border.' },
-  { id: 'gold', name: 'Gold', level: 3, blurb: 'A double gold border.' },
-  { id: 'hardwood', name: 'Hardwood', level: 6, blurb: 'Maple planks top and bottom.' },
-  { id: 'neon', name: 'Neon', level: 10, blurb: 'Arcade cyan and magenta.' },
-  { id: 'banner', name: 'Banner', level: 15, blurb: 'Championship banners in the rafters.' },
-  { id: 'fire', name: 'On Fire', level: 25, blurb: 'Pixel flames. For the heaters.' },
+  { id: 'gold', name: 'Gold', level: road('frame', 'gold'), blurb: 'A double gold border.' },
+  { id: 'hardwood', name: 'Hardwood', level: road('frame', 'hardwood'), blurb: 'Maple planks top and bottom.' },
+  { id: 'neon', name: 'Neon', level: road('frame', 'neon'), blurb: 'Arcade cyan and magenta.' },
+  { id: 'banner', name: 'Banner', level: road('frame', 'banner'), blurb: 'Championship banners in the rafters.' },
+  { id: 'fire', name: 'On Fire', level: road('frame', 'fire'), blurb: 'Pixel flames. For the heaters.' },
 ];
 export const FLOORS: Unlock<FloorId>[] = [
   { id: 'team', name: "Home team's floor", level: 1, blurb: 'Each arena keeps its own floor.' },
-  { id: 'planks', name: 'Classic maple', level: 2, blurb: 'Long maple planks, every arena.' },
-  { id: 'parquet', name: 'Parquet', level: 4, blurb: 'The old Garden look.' },
-  { id: 'blonde', name: 'Blonde maple', level: 8, blurb: 'Pale, bright 90s wood.' },
-  { id: 'midnight', name: 'Midnight', level: 12, blurb: 'Dark stained wood.' },
-  { id: 'asphalt', name: 'Street court', level: 18, blurb: 'Blacktop, outdoors.' },
+  { id: 'planks', name: 'Classic maple', level: road('floor', 'planks'), blurb: 'Long maple planks, every arena.' },
+  { id: 'parquet', name: 'Parquet', level: road('floor', 'parquet'), blurb: 'The old Garden look.' },
+  { id: 'blonde', name: 'Blonde maple', level: road('floor', 'blonde'), blurb: 'Pale, bright 90s wood.' },
+  { id: 'midnight', name: 'Midnight', level: road('floor', 'midnight'), blurb: 'Dark stained wood.' },
+  { id: 'asphalt', name: 'Street court', level: road('floor', 'asphalt'), blurb: 'Blacktop, outdoors.' },
 ];
-export const TITLES: Unlock<string>[] = [
-  { id: 'Rookie GM', name: 'Rookie GM', level: 1, blurb: '' },
-  { id: 'Scout', name: 'Scout', level: 3, blurb: '' },
-  { id: 'Assistant GM', name: 'Assistant GM', level: 5, blurb: '' },
-  { id: 'Executive', name: 'Executive', level: 10, blurb: '' },
-  { id: 'Architect', name: 'Architect', level: 15, blurb: '' },
-  { id: 'Dynasty Builder', name: 'Dynasty Builder', level: 20, blurb: '' },
-  { id: 'Basketball Mind', name: 'Basketball Mind', level: 30, blurb: '' },
-  { id: 'Hall of Fame Executive', name: 'Hall of Fame Executive', level: 40, blurb: '' },
-  { id: 'Legend', name: 'Legend', level: 50, blurb: '' },
-];
+export const TITLES: Unlock<string>[] = ROAD_TITLES.map(id => ({ id, name: id, level: id === 'Rookie GM' ? 1 : road('title', id), blurb: '' }));
 
 /** Titles earned in ranked seasons (the best tier you have reached; kept in this browser after each sync). */
 export const RANK_TITLES: { id: string; tier: string; order: number }[] = [
@@ -162,10 +154,13 @@ export function equip(patch: Partial<Equipped>): void {
 /** The equipped floor for Watch Game ('team' keeps each arena's own). Cheap: reads storage only. */
 export function equippedFloor(): FloorId { try { return equipped().floor; } catch { return 'team'; } }
 
-/** Unlocks reached between two levels, for the level-up note. */
+/** Unlocks reached between two levels (the level road), for the level-up note. */
 export function unlocksBetween(from: number, to: number): string[] {
-  const within = (l: number) => l > from && l <= to;
-  return [...FRAMES.filter(f => within(f.level)).map(f => `${f.name} card frame`), ...FLOORS.filter(f => within(f.level)).map(f => `${f.name} court`), ...TITLES.filter(t => within(t.level)).map(t => `the "${t.name}" title`)];
+  const name: Record<RewardKind, (id: string) => string> = {
+    icon: id => `the ${iconDef(id).name} icon`, color: id => `the ${NAME_COLORS.find(c => c.id === id)?.name ?? id} name colour`,
+    title: id => `the "${id}" title`, frame: id => `the ${FRAMES.find(f => f.id === id)?.name ?? id} card frame`, floor: id => `the ${FLOORS.find(f => f.id === id)?.name ?? id} court`,
+  };
+  return LEVEL_ROAD.filter(([l]) => l > from && l <= to).map(([, k, id]) => name[k](id));
 }
 
 const SEEN_KEY = 'cv-profile-seen-level';

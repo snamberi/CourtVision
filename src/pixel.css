@@ -926,3 +926,10 @@ ins.adsbygoogle[data-ad-status="unfilled"] { display: none !important; }
 .team-names-paste { display: grid; gap: 4px; margin: 10px 0 6px; font-family: var(--font-data); font-size: 12px; }
 .team-names-paste textarea { width: 100%; font-family: var(--font-data); }
 .data-credits a { color: var(--blue); }
+/* Phones: the game modes come first, so the hero is just its words (the player scene is for wider screens). */
+@media (max-width: 700px) {
+  .menu-hero { min-height: 0; padding: 0 0 6px; gap: 0; }
+  .menu-hero .menu-player-scene { display: none; }
+  .menu-hero h1 { margin: 6px 0; }
+  .menu-hero p { display: none; }
+}

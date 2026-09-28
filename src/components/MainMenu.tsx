@@ -38,7 +38,7 @@ interface Props {
   onContinue: (saveId: string) => void;
   onDeleteSave: (saveId: string) => void;
   onRenameSave: (saveId: string, name: string) => void;
-  /** Opens the GM Locker (every trophy, across modes). */
+  /** Opens the Player Profile at its Trophy room (what the GM Locker was). */
   onLocker?: () => void;
   /** Starts the league a code describes; returns an error message, or null. */
   onCode?: (code: string) => string | null;
@@ -158,7 +158,7 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
 
   return (
     <div className="main-menu">
-      <div className="menu-masthead"><img src={logoIcon} alt="" /><span>COURT VISION<small>BASKETBALL MANAGEMENT</small></span><span className="menu-edition">THE PIXEL COURT</span>{onLocker && <ProfileChip onOpen={onProfile ?? onLocker} />}{onLocker && <button className="menu-locker" onClick={onLocker}><PixelIcon name="trophy" size={16} /> GM Locker</button>}{onCommunity && <AccountButton onCommunity={onCommunity} />}<InstallAppButton /><DiscordLink className="menu-discord" /></div>
+      <div className="menu-masthead"><img src={logoIcon} alt="" /><span>COURT VISION<small>BASKETBALL MANAGEMENT</small></span><span className="menu-edition">THE PIXEL COURT</span>{(onProfile || onLocker) && <ProfileChip onOpen={onProfile ?? onLocker} />}{onCommunity && <AccountButton onCommunity={onCommunity} />}<InstallAppButton /><DiscordLink className="menu-discord" /></div>
       <div className="menu-hero">
         <div className="menu-hero-copy"><span className="pixel-eyebrow">BUILD A TEAM. WRITE ITS HISTORY.</span><h1>Your league.<br /><span>Your legacy.</span></h1><p>Scout the next great. Build your starting five.<br />Turn one season into a dynasty.</p></div>
         <div className="menu-player-scene" aria-hidden="true">
@@ -170,17 +170,7 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
         </div>
       </div>
 
-      <MenuLegacy />
-      <LevelUpNote onLocker={onLocker} />
-      {onCommunity && <MenuAccountCard onCommunity={onCommunity} />}
-
-      <ThisWeek onCommunity={onCommunity} busy={busy} onRebuild={() => onStart('rebuild', 'normal', '', '', undefined, 'weekly')} onCareer={() => onStart('career', 'normal', '', '')} onHunt={() => onStart('legends', 'normal', '', '')} />
-
       <div className="menu-section-heading"><h2>Choose your game</h2><span>SIX WAYS TO MAKE HISTORY</span></div>
-
-      {onCode && <CodeEntry busy={busy} onCode={onCode} />}
-
-      <SavedLeaguesList saves={saves} onContinue={onContinue} onDeleteSave={onDeleteSave} onRenameSave={onRenameSave} />
 
       <div className="mode-grid">
         {MODES.map((m) => (
@@ -283,9 +273,21 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
         </button>
       )}
 
+      <SavedLeaguesList saves={saves} onContinue={onContinue} onDeleteSave={onDeleteSave} onRenameSave={onRenameSave} />
+
+
+      {onCode && <CodeEntry busy={busy} onCode={onCode} />}
+
+
+      <MenuLegacy />
+      {onCommunity && <MenuAccountCard onCommunity={onCommunity} />}
+
+      <ThisWeek onCommunity={onCommunity} busy={busy} onRebuild={() => onStart('rebuild', 'normal', '', '', undefined, 'weekly')} onCareer={() => onStart('career', 'normal', '', '')} onHunt={() => onStart('legends', 'normal', '', '')} />
+
       {recovery}
       <AdBanner slot="menu" />
       <footer className="legal-footer">{!IS_DESKTOP_BUILD && <><a href="/how-to-play.html">How to Play</a> · <a href="/guides/">Guides</a> · <a href="/faq.html">FAQ</a> · <a href="/about.html">About</a> · <a href="/changelog.html">What's new</a> · </>}<PrivacyLink /> · <CookieSettingsLink /> · <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer">Discord</a> · <PerformanceToggle /></footer>
+      <LevelUpNote onProfile={onProfile ?? onLocker} />
       <ConsentBanner />
       <WhatsNew />
     </div>
@@ -334,13 +336,13 @@ function PerformanceToggle() {
 }
 
 /** Level up since the last visit to the menu: what it unlocked. */
-function LevelUpNote({ onLocker }: { onLocker?: () => void }) {
+function LevelUpNote({ onProfile }: { onProfile?: () => void }) {
   const [up] = useState(() => takeLevelUp(levelFor(totalXp()).level));
   const [open, setOpen] = useState(true);
   if (!up || !open) return null;
   const unlocks = unlocksBetween(up.from, up.to);
-  return <div className="level-up" role="status"><b>LEVEL UP · LV {up.to}</b><span>{unlocks.length ? `Unlocked ${unlocks.join(', ')}.` : 'Keep going: new unlocks are on the way.'}</span>
-    {onLocker && unlocks.length > 0 && <button onClick={onLocker}>Equip in the Locker</button>}<button className="link-button" onClick={() => setOpen(false)}>Close</button></div>;
+  return <div className="level-up level-up-corner" role="status"><b>LEVEL UP · LV {up.to}</b><span>{unlocks.length ? `Unlocked ${unlocks.slice(0, 3).join(', ')}${unlocks.length > 3 ? ` and ${unlocks.length - 3} more` : ''}.` : 'Keep going: new unlocks are on the way.'}</span>
+    {onProfile && unlocks.length > 0 && <button onClick={onProfile}>Equip in your profile</button>}<button className="link-button" onClick={() => setOpen(false)}>Close</button></div>;
 }
 
 /** "Have a league code?": a friend's league, same rosters, draft classes and schedule. */

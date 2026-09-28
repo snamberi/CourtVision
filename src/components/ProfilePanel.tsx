@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { xpParts, totalXp, levelFor, equipped, equip, rankTitles, localName, setLocalName, FRAMES, FLOORS, TITLES, PROFILE_EVENT, type Unlock } from '../profile/profile';
-import { ICONS, NAME_COLORS, HONORS, MODE_TITLES, unlockContext, isOpen, earnedExtraTitles, type UnlockContext } from '../profile/cosmetics';
+import { ICONS, NAME_COLORS, HONORS, MODE_TITLES, SUPPORTER_TITLE, unlockContext, isOpen, earnedExtraTitles, type UnlockContext } from '../profile/cosmetics';
 import { DAILY_EVENT } from '../profile/dailyGoals';
 import { LEGACY_EVENT } from '../storage/gmLegacy';
 import { PixelIcon } from './PixelIcon';
@@ -44,10 +44,11 @@ function titleGroups(c: UnlockContext) {
     { label: 'Ranked', items: ['Gold GM', 'Platinum GM', 'Diamond GM', 'Legend GM'].map((t, i) => ({ title: t, open: ranked.includes(t), how: `Reach ${['Gold', 'Platinum', 'Diamond', 'Legend'][i]} in a ranked season` })) },
     { label: 'Leaderboards', items: HONORS.map(h => ({ title: h.title, open: c.honors.includes(h.id), how: h.how })) },
     { label: 'Achievements', items: MODE_TITLES.map(m => ({ title: m.title, open: c.modes.includes(m.mode), how: m.how })) },
+    { label: 'Supporter', items: [{ title: SUPPORTER_TITLE, open: c.supporter, how: 'Supporter pass' }] },
   ];
 }
 
-/** Your player profile in the Locker: the card others see, your level and XP, and everything to equip. */
+/** Your card (the Profile tab of the Player Profile): the card others see, your level and XP, and everything to equip. */
 export function ProfilePanel() {
   const p = useProfile();
   const account = useAccount();
@@ -57,7 +58,7 @@ export function ProfilePanel() {
   const name = signedIn ? account.profile!.username! : localName();
   const extras = earnedExtraTitles(ctx).length + rankTitles().length;
   return <section className="locker-bay profile-panel">
-    <h2><PixelIcon name="star" size={18} /> Player profile</h2>
+    <h2><PixelIcon name="star" size={18} /> Your card</h2>
     <div className={`profile-card-big frame-${eq.frame}`}>
       <ProfileIcon id={eq.icon} size={72} title={`${name}'s icon`} />
       <div className="profile-card-id">

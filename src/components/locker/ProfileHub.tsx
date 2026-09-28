@@ -19,12 +19,24 @@ import { modeStats, MODE_ACHIEVEMENTS, isEarned } from '../../profile/modeAchiev
 import { FEATS_EVENT } from '../../profile/feats';
 import { DAILY_EVENT } from '../../profile/dailyGoals';
 import { ModeAchievements } from './ModeAchievements';
+import { LevelRoad } from './LevelRoad';
+import { PassesPanel } from './PassesPanel';
 import '../hunt/hunt.css';
 import '../career/career.css';
 import './locker.css';
 
-/** Your locker: everything you have won in this browser, across Career Mode, League Hunt and your GM leagues. */
-export function GmLocker({ onExit }: { onExit: () => void }) {
+export type ProfileTab = 'profile' | 'road' | 'trophies' | 'achievements' | 'passes' | 'backup';
+const TABS: { id: ProfileTab; label: string }[] = [
+  { id: 'profile', label: 'Profile' }, { id: 'road', label: 'Level road' }, { id: 'trophies', label: 'Trophy room' },
+  { id: 'achievements', label: 'Achievements' }, { id: 'passes', label: 'Passes' }, { id: 'backup', label: 'Backup' },
+];
+
+/**
+ * Your player profile: your card and cosmetics, the level road, and everything you have won in this browser (what the
+ * GM Locker used to be), across Career Mode, League Hunt, the Rebuild Challenge and your GM leagues.
+ */
+export function ProfileHub({ onExit, initialTab = 'profile' }: { onExit: () => void; initialTab?: ProfileTab }) {
+  const [tab, setTab] = useState<ProfileTab>(initialTab);
   const [careers, setCareers] = useState<CareerMeta[] | null>(null);
   const [hunt] = useState<HuntRecords>(() => loadRecords());
   const [album] = useState(() => loadAlbum().size);
@@ -58,8 +70,17 @@ export function GmLocker({ onExit }: { onExit: () => void }) {
   return <div className="hunt locker">
     <header className="hunt-top">
       <button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button>
-      <div className="hunt-title"><span className="pixel-eyebrow">EVERYTHING YOU HAVE WON</span><h1>GM Locker</h1></div>
+      <div className="hunt-title"><span className="pixel-eyebrow">YOUR CARD, YOUR ROAD, YOUR TROPHIES</span><h1>Player Profile</h1></div>
     </header>
+    <div className="profile-tabs code-mode-actions" role="tablist" aria-label="Profile sections">{TABS.map(t => <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>{t.label}</button>)}</div>
+
+    {tab === 'profile' && <ProfilePanel />}
+    {tab === 'road' && <LevelRoad />}
+    {tab === 'passes' && <PassesPanel />}
+    {tab === 'backup' && <div className="locker-bay"><BackupPanel compact /></div>}
+    {tab === 'achievements' && <ModeAchievements stats={modes} rarity={rarity} />}
+
+    {tab === 'trophies' && <>
     <div className="hunt-over-stats locker-totals">
       <div><small>TROPHIES</small><b>{trophies}</b></div>
       <div><small>HALL OF FAMERS</small><b>{inducted}</b></div>
@@ -68,10 +89,6 @@ export function GmLocker({ onExit }: { onExit: () => void }) {
       <div><small>REBUILD STARS</small><b>{rebuildStars}/{SCENARIOS.length * 3}</b></div>
       <div><small>ACHIEVEMENTS</small><b>{earned.length + modeEarned}/{ACHIEVEMENTS.length + MODE_ACHIEVEMENTS.length}</b></div>
     </div>
-
-    <ProfilePanel />
-
-    <div className="locker-bay"><BackupPanel compact /></div>
 
     <section className="locker-bay">
       <h2><PixelIcon name="star" size={18} /> Career Mode</h2>
@@ -118,8 +135,7 @@ export function GmLocker({ onExit }: { onExit: () => void }) {
       </li>; })}</ul>
       <p className="hint-text">Front-office achievements count in official leagues (Sandbox and God Mode leagues don't).</p>
     </section>
-
-    <ModeAchievements stats={modes} rarity={rarity} />
+    </>}
   </div>;
 }
 

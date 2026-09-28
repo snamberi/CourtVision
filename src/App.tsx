@@ -122,8 +122,7 @@ const ThreeTeamTradePage = lazy(() => import('./components/ThreeTeamTradePage').
 const ExtensionsPage = lazy(() => import('./components/ExtensionsPage').then(m => ({ default: m.ExtensionsPage })));
 const LeagueHunt = lazy(() => import('./components/hunt/LeagueHunt').then(m => ({ default: m.LeagueHunt })));
 const CareerImportPanel = lazy(() => import('./components/career/CareerImportPanel').then(m => ({ default: m.CareerImportPanel })));
-const GmLocker = lazy(() => import('./components/locker/GmLocker').then(m => ({ default: m.GmLocker })));
-const ProfileScreen = lazy(() => import('./components/ProfileScreen').then(m => ({ default: m.ProfileScreen })));
+const ProfileHub = lazy(() => import('./components/locker/ProfileHub').then(m => ({ default: m.ProfileHub })));
 const AllTimeDraft = lazy(() => import('./components/draft/AllTimeDraft').then(m => ({ default: m.AllTimeDraft })));
 const Community = lazy(() => import('./components/cloud/Community').then(m => ({ default: m.Community })));
 const CareerMode = lazy(() => import('./components/career/CareerMode').then(m => ({ default: m.CareerMode })));
@@ -1011,7 +1010,7 @@ function App() {
       check = () => {
         const { fresh, first } = takeModeUnlocks();
         if (!fresh.length || !live) return;
-        if (first || fresh.length > 3) pushToast(`${fresh.length} achievement${fresh.length === 1 ? '' : 's'} unlocked across your modes. See them in the GM Locker.`, 'success');
+        if (first || fresh.length > 3) pushToast(`${fresh.length} achievement${fresh.length === 1 ? '' : 's'} unlocked across your modes. See them in your Player Profile.`, 'success');
         else for (const a of fresh) pushToast(`Achievement unlocked: ${a.name} (${a.description.replace(/\.$/, '')})`, 'success');
       };
       // Careers are summarized from their saves once per visit, so older careers count too.
@@ -1252,11 +1251,9 @@ function App() {
   if (screen === 'community') {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Community…</main>}><Community onExit={() => { setCommunityUser(null); setScreen('menu'); }} user={communityUser} onUser={u => setCommunityUser(u || null)} /></Suspense></>;
   }
-  if (screen === 'profile') {
-    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening your profile…</main>}><ProfileScreen onExit={() => setScreen('menu')} onLocker={() => setScreen('locker')} /></Suspense></>;
-  }
-  if (screen === 'locker') {
-    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening the locker…</main>}><GmLocker onExit={() => setScreen('menu')} /></Suspense></>;
+  // The GM Locker lives in the Player Profile now: an old #/locker link opens its Trophy room.
+  if (screen === 'profile' || screen === 'locker') {
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening your profile…</main>}><ProfileHub key={screen} initialTab={screen === 'locker' ? 'trophies' : 'profile'} onExit={() => setScreen('menu')} /></Suspense></>;
   }
   if (screen === 'career') {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Career Mode…</main>}><CareerMode onExit={() => setScreen('menu')} /></Suspense></>;
