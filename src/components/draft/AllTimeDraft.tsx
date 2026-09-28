@@ -4,6 +4,7 @@ import type { League } from '../../simulation/league';
 import type { GMLeagueExtras } from '../../simulation/gm';
 import type { HuntCard } from '../../hunt/cards';
 import { ERAS } from '../../hunt/eras';
+import { noteFeat } from '../../profile/feats';
 import { draftPool, legendRank, newDraft, runAi, autoPick, makePick, onClock, isDone, rosterOf, groupOf, buildDraftLeague, teamStrength, available, eraById, saveDraft, loadDraft, ROUNDS, type DraftState, type DraftTeam } from '../../draft/allTimeDraft';
 import { weekKey, weeklySeed } from '../../retention/week';
 import { PixelIcon } from '../PixelIcon';
@@ -71,6 +72,9 @@ export function AllTimeDraft({ onExit, onStart }: { onExit: () => void; onStart:
     try {
       const built = buildDraftLeague(h, state, base);
       saveDraft(null);
+      const strengths = state.config.teams.map(t => ({ id: t.id, s: teamStrength(rosterOf(h, state, t.id)) })).sort((a, b) => b.s - a.s);
+      noteFeat('drafts', 1);
+      if (strengths[0]?.id === state.config.userTeam) noteFeat('draftTop', 1);
       const era = eraById(state.config.eraId);
       onStart(built.league, built.extras, state.config.userTeam, state.config.weekly ? `All-Time Draft of the Week ${state.config.weekly}` : `All-Time Draft (${era.label})`);
     } catch (e) { setError(e instanceof Error ? e.message : String(e)); setBusy(null); }

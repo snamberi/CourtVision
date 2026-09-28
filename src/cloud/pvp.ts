@@ -19,7 +19,7 @@ async function call<T>(body: object): Promise<T> {
 
 export const publishGhost = (ghost: Ghost) => (getAccount().status === 'signedIn' ? call<{ ok: true }>({ action: 'publish', ghost }) : Promise.resolve(null));
 export const findMatch = () => call<PvpMatch>({ action: 'find' });
-export const postResult = (matchId: string, won: boolean, games: SeriesGame[]) => call<{ ok: true; delta: number }>({ action: 'result', matchId, won, games });
+export const postResult = (matchId: string, won: boolean, games: SeriesGame[]) => call<{ ok: true; delta: number; rating?: number }>({ action: 'result', matchId, won, games });
 
 /** The last finished hunt's squad, kept on this device until it is published as your PvP ghost. */
 export const LOCAL_GHOST_KEY = 'cv-hunt-ghost';

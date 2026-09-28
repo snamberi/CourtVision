@@ -175,6 +175,7 @@ export function buildDraftLeague(h: NbaHistory, s: DraftState, base: { league: L
   const decade = `${Math.floor(Math.min(2020, Math.max(1960, era.to - 1)) / 10) * 10}s`;
   const league: League = {
     ...base.league, teams, franchiseHistory: [], retiredPlayers: undefined, historical: undefined,
+    allTimeDraft: { seed: s.config.seed, eraId: s.config.eraId, ...(s.config.weekly ? { weekly: s.config.weekly } : {}) },
     settings: { ...base.league.settings, era: ERA_PRESETS[decade] ?? base.league.settings.era },
   };
   const extras: GMLeagueExtras = { ...base.extras, contracts, freeAgents, tradeSettings: { ...base.extras.tradeSettings, difficulty: s.config.difficulty } };

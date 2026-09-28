@@ -15,6 +15,10 @@ import { BackupPanel } from '../BackupPanel';
 import { ProfilePanel } from '../ProfilePanel';
 import { cloudEnabled } from '../../cloud/account';
 import { noteCareers } from '../../profile/profile';
+import { modeStats, MODE_ACHIEVEMENTS, isEarned } from '../../profile/modeAchievements';
+import { FEATS_EVENT } from '../../profile/feats';
+import { DAILY_EVENT } from '../../profile/dailyGoals';
+import { ModeAchievements } from './ModeAchievements';
 import '../hunt/hunt.css';
 import '../career/career.css';
 import './locker.css';
@@ -27,13 +31,15 @@ export function GmLocker({ onExit }: { onExit: () => void }) {
   const [legacy, setLegacy] = useState<GmLegacy>(() => readLegacy());
   const [rebuild] = useState(() => loadRebuildRecords());
   const [rarity, setRarity] = useState<Record<string, number>>({});
+  const [modes, setModes] = useState(() => modeStats());
   useEffect(() => {
     let live = true;
-    listCareers().then(c => { noteCareers(c); if (live) setCareers(c); });
+    listCareers().then(c => { noteCareers(c); if (live) { setCareers(c); setModes(modeStats()); } });
     if (cloudEnabled) void import('../../cloud/boards').then(m => m.achievementRarity()).then(r => { if (live) setRarity(r); }, () => {});
-    const onLegacy = () => setLegacy(readLegacy());
-    window.addEventListener(LEGACY_EVENT, onLegacy);
-    return () => { live = false; window.removeEventListener(LEGACY_EVENT, onLegacy); };
+    const onLegacy = () => { setLegacy(readLegacy()); setModes(modeStats()); };
+    const events = [LEGACY_EVENT, FEATS_EVENT, DAILY_EVENT];
+    for (const e of events) window.addEventListener(e, onLegacy);
+    return () => { live = false; for (const e of events) window.removeEventListener(e, onLegacy); };
   }, []);
 
   const all = careers ?? [];
@@ -46,6 +52,7 @@ export function GmLocker({ onExit }: { onExit: () => void }) {
   const earned = ACHIEVEMENTS.filter(a => legacy.achievements[a.id]);
   const rebuildStars = Object.values(rebuild).reduce((n, r) => n + r.stars, 0);
   const rebuildTitles = Object.values(rebuild).filter(r => r.titleIn != null).length;
+  const modeEarned = MODE_ACHIEVEMENTS.filter(a => isEarned(a, modes)).length;
   const trophies = shelf.length + hunt.wins + gm.titles + earned.length + rebuildTitles;
 
   return <div className="hunt locker">
@@ -59,7 +66,7 @@ export function GmLocker({ onExit }: { onExit: () => void }) {
       <div><small>HUNTS WON</small><b>{hunt.wins}</b></div>
       <div><small>GM TITLES</small><b>{gm.titles}</b></div>
       <div><small>REBUILD STARS</small><b>{rebuildStars}/{SCENARIOS.length * 3}</b></div>
-      <div><small>ACHIEVEMENTS</small><b>{earned.length}/{ACHIEVEMENTS.length}</b></div>
+      <div><small>ACHIEVEMENTS</small><b>{earned.length + modeEarned}/{ACHIEVEMENTS.length + MODE_ACHIEVEMENTS.length}</b></div>
     </div>
 
     <ProfilePanel />
@@ -111,6 +118,8 @@ export function GmLocker({ onExit }: { onExit: () => void }) {
       </li>; })}</ul>
       <p className="hint-text">Front-office achievements count in official leagues (Sandbox and God Mode leagues don't).</p>
     </section>
+
+    <ModeAchievements stats={modes} rarity={rarity} />
   </div>;
 }
 

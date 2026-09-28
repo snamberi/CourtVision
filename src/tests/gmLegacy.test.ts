@@ -33,6 +33,12 @@ describe('GM legacy across leagues', () => {
     expect(mergeLeague(empty(), 'c', 'C', tainted)).toEqual(empty());
   });
 
+  it('marks All-Time Draft leagues so their titles count for the Draft achievements', () => {
+    const drafted = mergeLeague(empty(), 'd', 'Draft', { ...clean, allTimeDraft: { seed: 1, eraId: '90s' } }, 1);
+    expect(drafted.leagues.d).toMatchObject({ kind: 'draft', titles: 1 });
+    expect(mergeLeague(empty(), 'a', 'A', clean, 1).leagues.a.kind).toBeUndefined();
+  });
+
   it('ignores unofficial reviews', () => {
     const l = { ...clean, frontOffice: { ...clean.frontOffice!, reviews: [{ ...review('2026', 70, 'Champion'), unofficial: true }] } };
     expect(mergeLeague(empty(), 'a', 'A', l).leagues.a).toBeUndefined();

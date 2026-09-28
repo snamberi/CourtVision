@@ -1795,7 +1795,10 @@ async function settle(env, m, won, games, f) {
 		wins: them.wins + (won ? 0 : 1),
 		losses: them.losses + (won ? 1 : 0)
 	}, "return=minimal", f);
-	return delta;
+	return {
+		delta,
+		rating: (me?.rating ?? 1e3) + delta
+	};
 }
 async function handlePvp(req, env, now = /* @__PURE__ */ new Date(), f = fetch, random = Math.random) {
 	if (!env) return json({ error: "Accounts are not set up on this site yet." }, 503);
@@ -1866,10 +1869,11 @@ async function handlePvp(req, env, now = /* @__PURE__ */ new Date(), f = fetch, 
 			const games = Array.isArray(body.games) ? body.games.slice(0, 7) : [];
 			const wins = games.filter((g) => g?.won).length, losses = games.length - wins;
 			if (!(games.length >= 4 && (body.won ? wins === 4 && losses <= 3 : losses === 4 && wins <= 3))) return json({ error: "That result does not add up." }, 400);
-			const delta = await settle(env, m, !!body.won, games, f);
+			const { delta, rating } = await settle(env, m, !!body.won, games, f);
 			return json({
 				ok: true,
-				delta
+				delta,
+				rating
 			});
 		}
 		return json({ error: "Unknown action." }, 400);

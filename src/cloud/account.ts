@@ -1,5 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import type { SupabaseClient, Session } from '@supabase/supabase-js';
+import { noteFeat } from '../profile/feats';
+import { TIERS } from './ranked';
 import { IS_DESKTOP_BUILD } from '../appMode';
 
 /*
@@ -62,7 +64,10 @@ export async function refreshProfile(client?: SupabaseClient): Promise<CloudProf
   const { data } = await c.from('profiles').select('id, username, title, frame, level, xp, stats').eq('id', session.user.id).maybeSingle();
   const profile = (data as CloudProfile | null) ?? null;
   const best = profile?.stats?.rankedBest;
-  if (typeof best === 'string') { try { localStorage.setItem('cv-ranked-best', best); } catch { /* storage blocked */ } }
+  if (typeof best === 'string') {
+    try { localStorage.setItem('cv-ranked-best', best); } catch { /* storage blocked */ }
+    noteFeat('rankedTier', TIERS.findIndex(t => t.id === best), 'max');
+  }
   setAccount({ profile });
   return profile;
 }

@@ -15,14 +15,33 @@ import { localRead, type Read } from '../lib/kv';
 export interface XpPart { id: string; label: string; xp: number; detail: string }
 
 /** Career Mode lives in IndexedDB; its totals are cached here whenever careers are listed. */
-export interface CareerXpCache { careers: number; retired: number; legacy: number; hallOfFame: number }
-const CAREER_KEY = 'cv-profile-careers';
-export function noteCareers(metas: { retired?: { legacy: number; hallOfFame: string } }[]): void {
-  const retired = metas.filter(m => m.retired);
-  const cache: CareerXpCache = { careers: metas.length, retired: retired.length, legacy: retired.reduce((n, m) => n + Math.max(0, m.retired!.legacy), 0), hallOfFame: retired.filter(m => m.retired!.hallOfFame !== 'no').length };
-  try { localStorage.setItem(CAREER_KEY, JSON.stringify(cache)); } catch { /* storage blocked */ }
+export interface CareerXpCache {
+  careers: number; retired: number; legacy: number; hallOfFame: number;
+  /** For the Career achievements: first-ballot Hall of Famers, all-time Top 10 finishes, careers with an MVP, and one career's most titles and points. */
+  firstBallot?: number; top10?: number; mvpCareers?: number; mostTitles?: number; mostPoints?: number;
 }
-function careerCache(read: Read): CareerXpCache {
+const CAREER_KEY = 'cv-profile-careers';
+type CareerLike = { retired?: { legacy: number; hallOfFame: string; rank?: number | null }; years?: { stats?: { points?: number }; awards?: { key: string }[] }[] };
+/** The career summary behind XP and the Career achievements (the server builds the same one from synced careers). */
+export function careerCacheOf(metas: CareerLike[]): CareerXpCache {
+  const retired = metas.filter(m => m.retired);
+  const awards = (m: CareerLike, key: string) => (m.years ?? []).reduce((n, y) => n + (y.awards ?? []).filter(a => a.key === key).length, 0);
+  const points = (m: CareerLike) => (m.years ?? []).reduce((n, y) => n + (y.stats?.points ?? 0), 0);
+  return {
+    careers: metas.length, retired: retired.length, legacy: retired.reduce((n, m) => n + Math.max(0, m.retired!.legacy), 0), hallOfFame: retired.filter(m => m.retired!.hallOfFame !== 'no').length,
+    firstBallot: retired.filter(m => m.retired!.hallOfFame === 'first-ballot').length, top10: retired.filter(m => m.retired!.rank != null && m.retired!.rank <= 10).length,
+    mvpCareers: retired.filter(m => awards(m, 'mvp') > 0).length, mostTitles: Math.max(0, ...retired.map(m => awards(m, 'champion'))), mostPoints: Math.max(0, ...retired.map(points)),
+  };
+}
+export function noteCareers(metas: CareerLike[]): void {
+  const next = JSON.stringify(careerCacheOf(metas));
+  try {
+    if (localStorage.getItem(CAREER_KEY) === next) return;
+    localStorage.setItem(CAREER_KEY, next);
+    window.dispatchEvent(new Event('courtvision:progress'));
+  } catch { /* storage blocked */ }
+}
+export function careerCache(read: Read): CareerXpCache {
   try { return { careers: 0, retired: 0, legacy: 0, hallOfFame: 0, ...(JSON.parse(read(CAREER_KEY) ?? '{}') as Partial<CareerXpCache>) }; } catch { return { careers: 0, retired: 0, legacy: 0, hallOfFame: 0 }; }
 }
 

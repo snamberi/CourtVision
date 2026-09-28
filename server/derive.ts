@@ -1,6 +1,8 @@
 import { objectRead } from '../src/lib/kv';
 import { cleanName } from '../src/lib/names';
-import { xpParts, totalXp, levelFor, type CareerXpCache } from '../src/profile/profile';
+import { xpParts, totalXp, levelFor, careerCacheOf, type CareerXpCache } from '../src/profile/profile';
+import { earnedModeAchievements } from '../src/profile/modeAchievements';
+import { TIERS } from '../src/cloud/ranked';
 import { readLegacy, legacyTotals } from '../src/storage/gmLegacy';
 import { loadRecords } from '../src/hunt/storage';
 import { loadRebuildRecords } from '../src/simulation/rebuildChallenge';
@@ -52,6 +54,7 @@ export function derive(blob: ProgressBlob, now = new Date()): Derived {
   // Retired careers: the created-player board and the Career part of XP.
   const players: Derived['players'] = [];
   let legacySum = 0, hof = 0, best: { name: string; legacy: number } | null = null;
+  const counted: CareerMeta[] = [];
   for (const m of blob.careers as CareerMeta[]) {
     const r = m.retired, name = cleanName(m.playerId);
     if (m.status !== 'retired' || !r || !name || !int(Math.round(r.legacy), 0, 400) || !Array.isArray(m.years) || !int(m.years.length, 1, 25)) continue;
@@ -62,9 +65,10 @@ export function derive(blob: ProgressBlob, now = new Date()): Derived {
       hall_of_fame: hall, draft_year: int(m.draftYear, 1946, 2100) ? m.draftYear : null, weekly: typeof m.weekly === 'string' && /^\d{4}-W\d{2}$/.test(m.weekly) ? m.weekly : null,
       ppg: +(res.pts / g).toFixed(1), rpg: +(res.reb / g).toFixed(1), apg: +(res.ast / g).toFixed(1), points: res.pts, retired_at: new Date(m.updatedAt || now).toISOString() });
     legacySum += legacy; if (hall !== 'no') hof++;
+    counted.push(m);
     if (!best || legacy > best.legacy) best = { name, legacy };
   }
-  const careerCache: CareerXpCache = { careers: blob.careers.length, retired: players.length, legacy: legacySum, hallOfFame: hof };
+  const careerCache: CareerXpCache = { ...careerCacheOf(counted), careers: blob.careers.length, retired: players.length, legacy: legacySum, hallOfFame: hof };
   const readWithCareers = (k: string) => (k === 'cv-profile-careers' ? JSON.stringify(careerCache) : read(k));
 
   // Weekly results.
@@ -142,6 +146,8 @@ export function derive(blob: ProgressBlob, now = new Date()): Derived {
     careers: players.length, hallOfFame: hof, bestPlayer: best, xpParts: Object.fromEntries(parts.map(p => [p.id, p.xp])),
     summary: `${plural(gm.titles, 'title')} · ${plural(hof, 'Hall of Famer')} · ${plural(hunt.wins, 'hunt')} won`,
   };
-  return { profile: { level: levelFor(xp).level, xp, stats }, achievements: Object.keys(legacy.achievements).filter(a => /^[\w-]{1,40}$/.test(a)).slice(0, 200),
+  // Mode achievements count for rarity too, as mode-<id>.
+  const modes = earnedModeAchievements(readWithCareers, { rankedTier: TIERS.findIndex(t => t.id === stats.rankedBest) }).map(id => `mode-${id}`);
+  return { profile: { level: levelFor(xp).level, xp, stats: { ...stats, modeAchievements: modes.length } }, achievements: [...Object.keys(legacy.achievements).filter(a => /^[\w-]{1,40}$/.test(a)).slice(0, 200), ...modes],
     players, weekly, daily, rebuild, codes, ranked };
 }

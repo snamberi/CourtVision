@@ -1,4 +1,5 @@
 import { localRead, type Read } from '../lib/kv';
+import { noteFeat } from '../profile/feats';
 import { DECKS, DIFFICULTIES, type HuntRun, type DeckId, type Difficulty } from './run';
 
 /* League Hunt keeps its run, records and album in this browser (they are small: card ids and progress). Storage can
@@ -37,6 +38,7 @@ export function recordRun(run: HuntRun): HuntRecords {
   const next: HuntRecords = { ...r, runs: r.runs + 1, wins: r.wins + (run.stage === 'won' ? 1 : 0), bestStop: Math.max(r.bestStop, run.stage === 'won' ? run.series.length - 1 : run.seriesIndex), lastSeed: run.seed,
     ...(run.daily ? { daily: { ...(r.daily ?? {}), [run.daily]: { won: run.stage === 'won', stop: run.seriesIndex, wins, losses: run.results.length - wins } } } : {}) };
   try { localStorage.setItem(RECORDS_KEY, JSON.stringify(next)); } catch { /* storage blocked */ }
+  if (run.stage === 'won' && run.difficulty === 'legend') noteFeat('huntLegendWins', 1);
   return next;
 }
 

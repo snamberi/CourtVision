@@ -40,6 +40,7 @@ describe('All-Time Draft', () => {
     const built = buildDraftLeague(h, s, base);
     expect(built.league.franchiseHistory).toEqual([]);
     expect(built.league.historical).toBeUndefined();
+    expect(built.league.allTimeDraft).toMatchObject({ seed: s.config.seed, eraId: s.config.eraId });
     expect(built.league.settings.era.threePointLineDistance).toBeGreaterThan(0); // 90s rules
     const ids = built.league.teams.flatMap(t => t.seasons.map(p => p.playerId));
     expect(new Set(ids).size).toBe(ids.length);

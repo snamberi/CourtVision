@@ -26,13 +26,13 @@ async function ghost(env: SupaEnv, id: string, f: Fetch): Promise<GhostRow | nul
   return rows[0] ?? null;
 }
 
-async function settle(env: SupaEnv, m: Match, won: boolean, games: unknown, f: Fetch): Promise<number> {
+async function settle(env: SupaEnv, m: Match, won: boolean, games: unknown, f: Fetch): Promise<{ delta: number; rating: number }> {
   const [me, them] = await Promise.all([ghost(env, m.challenger, f), ghost(env, m.defender, f)]);
   const delta = eloDelta(me?.rating ?? 1000, them?.rating ?? 1000, won);
   await rest(env, 'PATCH', `pvp_matches?id=eq.${m.id}&status=eq.pending`, { status: won ? 'won' : 'lost', games, delta }, 'return=minimal', f);
   if (me) await rest(env, 'PATCH', `hunt_ghosts?user_id=eq.${m.challenger}`, { rating: me.rating + delta, wins: me.wins + (won ? 1 : 0), losses: me.losses + (won ? 0 : 1) }, 'return=minimal', f);
   if (them) await rest(env, 'PATCH', `hunt_ghosts?user_id=eq.${m.defender}`, { rating: them.rating - delta, wins: them.wins + (won ? 0 : 1), losses: them.losses + (won ? 1 : 0) }, 'return=minimal', f);
-  return delta;
+  return { delta, rating: (me?.rating ?? 1000) + delta };
 }
 
 export async function handlePvp(req: Request, env: SupaEnv | null, now = new Date(), f: Fetch = fetch, random = Math.random): Promise<Response> {
@@ -81,8 +81,8 @@ export async function handlePvp(req: Request, env: SupaEnv | null, now = new Dat
       const wins = games.filter(g => g?.won).length, losses = games.length - wins;
       const consistent = games.length >= 4 && (body.won ? wins === 4 && losses <= 3 : losses === 4 && wins <= 3);
       if (!consistent) return json({ error: 'That result does not add up.' }, 400);
-      const delta = await settle(env, m, !!body.won, games, f);
-      return json({ ok: true, delta });
+      const { delta, rating } = await settle(env, m, !!body.won, games, f);
+      return json({ ok: true, delta, rating });
     }
     return json({ error: 'Unknown action.' }, 400);
   } catch {

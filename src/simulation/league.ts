@@ -203,6 +203,8 @@ export interface League {
   newsArchive?: import('./news').NewsItem[];
   rivalries?: Record<string, import('./rivalry').RivalryRecord>;
   /** Present when this league was started from real NBA history (see history/historicalLeague.ts). */
+  /** Set on leagues made by the All-Time Draft. */
+  allTimeDraft?: { seed: number; eraId: string; weekly?: string };
   historical?: import('../history/historicalLeague').HistoricalLeagueMeta; // past seasons' rivalry history, decayed each rollover (see rivalry.ts)
   playoffBracket?: import('./playoffs').PlayoffBracket;
   /** Press conferences, fan mood and what you've said this season (see press.ts). */

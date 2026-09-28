@@ -83,6 +83,9 @@ import { ChallengeBanner } from './components/ChallengeBanner';
 import { DailyGoalsCard } from './components/DailyGoalsCard';
 import { LeagueCodeBox } from './components/LeagueCodeBox';
 import { updateDailyGoals, todayUtc } from './profile/dailyGoals';
+import { FEATS_EVENT } from './profile/feats';
+import { LEGACY_EVENT } from './storage/gmLegacy';
+import { DAILY_EVENT } from './profile/dailyGoals';
 import { BackupPanel } from './components/BackupPanel';
 import { canPlaySummerLeague, ensureUpcomingDraftClass, simulateSummerLeague } from './simulation/draftSeason';
 import { runLeagueAIPass, autoDraftAIPicksUntilUserTurn, simEntireDraft, runFreeAgencyAI } from './simulation/aiGM';
@@ -999,6 +1002,26 @@ function App() {
     for (const g of done) pushToast(`Daily goal done: ${g.text} (+${g.xp} XP)`, 'success');
     if (done.length) trackOnce(`daily-${todayUtc()}-${done.map(g => g.id).join('-')}`, 'daily_goal', { count: done.length });
   }, [screen, activeSaveId, controlledTeamId, myPlayed, league.season]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Mode achievements: announce each new one once (they are read from the records every mode keeps). Loaded after
+  // start so the menu doesn't wait for it.
+  useEffect(() => {
+    let live = true, check = () => {};
+    void Promise.all([import('./profile/modeUnlocks'), import('./career/storage'), import('./profile/profile')]).then(async ([{ takeModeUnlocks }, { listCareers }, { noteCareers }]) => {
+      check = () => {
+        const { fresh, first } = takeModeUnlocks();
+        if (!fresh.length || !live) return;
+        if (first || fresh.length > 3) pushToast(`${fresh.length} achievement${fresh.length === 1 ? '' : 's'} unlocked across your modes. See them in the GM Locker.`, 'success');
+        else for (const a of fresh) pushToast(`Achievement unlocked: ${a.name} (${a.description.replace(/\.$/, '')})`, 'success');
+      };
+      // Careers are summarized from their saves once per visit, so older careers count too.
+      await listCareers().then(noteCareers, () => {});
+      check();
+    });
+    const onChange = () => check();
+    const events = [LEGACY_EVENT, FEATS_EVENT, DAILY_EVENT];
+    for (const e of events) window.addEventListener(e, onChange);
+    return () => { live = false; for (const e of events) window.removeEventListener(e, onChange); };
+  }, [pushToast]);
   // Signed-in players sync when they come back to the menu.
   useEffect(() => { if (screen === 'menu') syncSoon(1500); }, [screen]);
   // League codes: your first season in a coded league goes on that code's board (the code without a team, so
@@ -1223,19 +1246,19 @@ function App() {
   if (showPrivacy) return <PrivacyPolicyPage onClose={closePrivacy} />;
 
   if (screen === 'draft') {
-    return <Suspense fallback={<main role="status" className="navigation-loading">Opening the draft room…</main>}><AllTimeDraft onExit={() => setScreen('menu')} onStart={(l, e, teamId, name) => { enterApp(l, e, teamId, name); setTab('dashboard'); }} /></Suspense>;
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening the draft room…</main>}><AllTimeDraft onExit={() => setScreen('menu')} onStart={(l, e, teamId, name) => { enterApp(l, e, teamId, name); setTab('dashboard'); }} /></Suspense></>;
   }
   if (screen === 'community') {
-    return <Suspense fallback={<main role="status" className="navigation-loading">Opening Community…</main>}><Community onExit={() => { setCommunityUser(null); setScreen('menu'); }} user={communityUser} onUser={u => setCommunityUser(u || null)} /></Suspense>;
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Community…</main>}><Community onExit={() => { setCommunityUser(null); setScreen('menu'); }} user={communityUser} onUser={u => setCommunityUser(u || null)} /></Suspense></>;
   }
   if (screen === 'locker') {
-    return <Suspense fallback={<main role="status" className="navigation-loading">Opening the locker…</main>}><GmLocker onExit={() => setScreen('menu')} /></Suspense>;
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening the locker…</main>}><GmLocker onExit={() => setScreen('menu')} /></Suspense></>;
   }
   if (screen === 'career') {
-    return <Suspense fallback={<main role="status" className="navigation-loading">Opening Career Mode…</main>}><CareerMode onExit={() => setScreen('menu')} /></Suspense>;
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Career Mode…</main>}><CareerMode onExit={() => setScreen('menu')} /></Suspense></>;
   }
   if (screen === 'hunt') {
-    return <Suspense fallback={<main role="status" className="navigation-loading">Opening League Hunt…</main>}><LeagueHunt onExit={() => setScreen('menu')} /></Suspense>;
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening League Hunt…</main>}><LeagueHunt onExit={() => setScreen('menu')} /></Suspense></>;
   }
 
   if (screen === 'menu') {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { NbaHistory } from '../../history/nbaHistoryData';
 import { useAccount, supa } from '../../cloud/account';
+import { noteFeat } from '../../profile/feats';
 import { findMatch, postResult, publishGhost, localGhost, type PvpMatch } from '../../cloud/pvp';
 import { playPvp, validGhost, pvpEra, type Ghost } from '../../hunt/pvp';
 import { cardPool } from '../../hunt/cards';
@@ -64,6 +65,8 @@ export function PvpArena({ onUser }: { onUser: (u: string) => void }) {
       setSeries({ ...r, delta: null });
       const out = await postResult(match.match.id, r.won, r.games);
       setSeries({ ...r, delta: out.delta });
+      if (r.won) noteFeat('pvpWins', 1);
+      if (out.rating) noteFeat('pvpBest', out.rating, 'max');
       track('pvp', { action: 'result', won: r.won });
       setMatch(null);
     } catch (e) { setError(e instanceof Error ? e.message : String(e)); }

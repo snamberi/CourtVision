@@ -9,11 +9,12 @@ import type { GmLegacy } from '../storage/gmLegacy';
 import type { HuntRecords } from '../hunt/storage';
 import type { RebuildRecord } from '../simulation/rebuildChallenge';
 import type { WeeklyRecords } from '../retention/weekly';
+import { readFeats, mergeFeats } from '../profile/feats';
 
 /** The stored values that belong to the account (everything else is per device). */
 export const SYNC_KEYS = [
   'courtvision:gmLegacy', 'cv-hunt-records', 'cv-hunt-album', 'cv-rebuild-records', 'cv-rebuild-records-done',
-  'cv-weekly-records', 'cv-daily-history', 'cv-profile-equip', 'cv-code-results',
+  'cv-weekly-records', 'cv-daily-history', 'cv-profile-equip', 'cv-code-results', 'cv-feats',
 ] as const;
 export type SyncKey = typeof SYNC_KEYS[number];
 
@@ -83,6 +84,7 @@ export function mergeValue(key: SyncKey, local: string | null | undefined, cloud
     case 'cv-weekly-records': return JSON.stringify(mergeWeekly(parse(local, {}), parse(cloud, {})));
     case 'cv-daily-history': return JSON.stringify(mergeDays(parse(local, {}), parse(cloud, {})));
     case 'cv-code-results': return JSON.stringify(mergeCodes(parse(local, {}), parse(cloud, {})));
+    case 'cv-feats': return JSON.stringify(mergeFeats(readFeats(() => local), readFeats(() => cloud)));
     case 'cv-profile-equip': return local;
   }
 }

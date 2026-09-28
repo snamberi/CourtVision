@@ -18,3 +18,9 @@
 .locker-achievements li div { display: grid; min-width: 0; }
 .locker-achievements li small { color: #94a0b2; font-size: 11px; }
 .locker-achievements .locker-when { color: #ffd166; }
+.locker-count { margin-left: auto; font: 14px 'Oswald', sans-serif; color: #ffd166; }
+.locker-mode { display: grid; gap: 6px; }
+.locker-mode .hunt-subhead { margin: 4px 0 0; }
+.locker-progress { display: flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
+.locker-bar { flex: 0 0 72px; height: 6px; background: #1e2a3b; border: 1px solid #2a3546; }
+.locker-bar i { display: block; height: 100%; background: #f47b20; }
