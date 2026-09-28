@@ -21,3 +21,57 @@
   background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .16) 0 1px, transparent 1px 3px);
 }
 @media print { :root[data-cv-theme="terminal"] body::after { display: none; } }
+
+/* ---------------------------------------------------------------- the Level Road looks
+   Textures sit only on the page floor (the menu, the GM page, the modes); panels stay solid so text reads cleanly. */
+:root:is([data-cv-theme="frontoffice"], [data-cv-theme="hardwood"], [data-cv-theme="handheld"], [data-cv-theme="comicpop"]) { color-scheme: light; }
+:root:is([data-cv-theme="frontoffice"], [data-cv-theme="hardwood"], [data-cv-theme="handheld"], [data-cv-theme="comicpop"], [data-cv-theme="neongrid"], [data-cv-theme="playbook"], [data-cv-theme="championship"]) :is(h1, h2, h3, h4, h5) { text-shadow: none; }
+
+/* Front Office: a clean sheet, soft corners. */
+:root[data-cv-theme="frontoffice"] :is(.dashboard-panel, .mode-card, .locker-bay, .hunt-stage, .menu-card, .profile-chip, .road-stop, .cv-landed, .mp-callout) { border-radius: 4px; }
+
+/* Hardwood: maple floorboards under everything. */
+:root[data-cv-theme="hardwood"] :is(.main-menu, .app-body main, .hunt) {
+  background: repeating-linear-gradient(90deg, rgba(120, 72, 30, .10) 0 2px, transparent 2px 96px), repeating-linear-gradient(90deg, rgba(255, 255, 255, .08) 0 46px, transparent 46px 48px), #dcb485;
+}
+
+/* Blacktop: speckled asphalt and chalk-dashed boxes. */
+:root[data-cv-theme="blacktop"] :is(.main-menu, .app-body main, .hunt) {
+  background: radial-gradient(rgba(255, 255, 255, .05) 1px, transparent 1.5px) 0 0 / 7px 7px, radial-gradient(rgba(0, 0, 0, .25) 1px, transparent 1.5px) 3px 4px / 9px 9px, #1c1e21;
+}
+:root[data-cv-theme="blacktop"] :is(.dashboard-panel, .mode-card, .locker-bay, .hunt-stage) { border-style: dashed; }
+
+/* Playbook: a chalk-dusted board. */
+:root[data-cv-theme="playbook"] :is(.main-menu, .app-body main, .hunt) {
+  background: radial-gradient(1200px 500px at 30% 0%, rgba(255, 255, 255, .05), transparent 60%), #16291f;
+}
+
+/* Handheld: chunky pixel edges. */
+:root[data-cv-theme="handheld"] :is(.dashboard-panel, .mode-card, .locker-bay, .hunt-stage) { border-width: 3px; }
+
+/* 90s Broadcast: italic title graphics and glossy panel headers. */
+:root[data-cv-theme="broadcast"] :is(h1, h2) { font-style: italic; }
+:root[data-cv-theme="broadcast"] .dashboard-panel > h5 { background: linear-gradient(180deg, rgba(255, 255, 255, .18), rgba(255, 255, 255, 0) 50%), #16338f; }
+
+/* Neon Grid: a pink perspective grid on the floor. */
+:root[data-cv-theme="neongrid"] :is(.main-menu, .app-body main, .hunt) {
+  background: linear-gradient(180deg, #0d0221 0%, rgba(13, 2, 33, .6) 70%, rgba(13, 2, 33, .2) 100%), repeating-linear-gradient(90deg, rgba(255, 46, 151, .18) 0 1px, transparent 1px 48px), repeating-linear-gradient(0deg, rgba(255, 46, 151, .14) 0 1px, transparent 1px 36px), #0d0221;
+}
+:root[data-cv-theme="neongrid"] :is(h1, h2) { text-shadow: 0 0 10px rgba(255, 46, 151, .55); }
+
+/* 16-bit Arcade: bevelled panels and buttons. */
+:root[data-cv-theme="arcade"] :is(.dashboard-panel, .mode-card, .locker-bay, button.primary, .play-button) {
+  box-shadow: inset 2px 2px 0 rgba(255, 255, 255, .16), inset -2px -2px 0 rgba(0, 0, 0, .45), 3px 3px 0 #070214;
+}
+
+/* Comic Pop: halftone dots and heavy ink. */
+:root[data-cv-theme="comicpop"] :is(.main-menu, .app-body main, .hunt) {
+  background: radial-gradient(rgba(181, 129, 0, .35) 1.3px, transparent 1.7px) 0 0 / 9px 9px, #ffe14d;
+}
+:root[data-cv-theme="comicpop"] :is(.dashboard-panel, .mode-card, .locker-bay, .hunt-stage) { border-width: 3px; }
+
+/* Championship: engraved gold headings. */
+:root[data-cv-theme="championship"] :is(h1, h2) { letter-spacing: .08em; }
+:root[data-cv-theme="championship"] :is(.main-menu, .app-body main, .hunt) {
+  background: radial-gradient(900px 420px at 50% -10%, rgba(212, 175, 55, .10), transparent 65%), #0a0a0b;
+}

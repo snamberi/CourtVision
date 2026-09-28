@@ -10,63 +10,68 @@ import { localRead, type Read } from '../lib/kv';
  * achievements this browser has already announced (modeUnlocks.ts); Supporter items read the entitlements (billing).
  */
 
-export type RewardKind = 'icon' | 'color' | 'title' | 'frame' | 'floor';
+export type RewardKind = 'icon' | 'color' | 'title' | 'frame' | 'floor' | 'look';
 export type Rule = { level: number } | { rank: number } | { honor: string } | { mode: string } | { anyHonor: true } | { supporter: true };
 export interface Cosmetic<T extends string = string> { id: T; name: string; rule: Rule; how: string }
 
-/** Every 5 levels, one or two rewards (levels 5 to 250). */
+/** Every 5 levels, one or two rewards (levels 5 to 250); every 25 levels also an app look (src/theme/themes.ts). */
 export const LEVEL_ROAD: [number, RewardKind, string][] = [
   [5, 'icon', 'sneaker'], [5, 'color', 'orange'],
   [10, 'title', 'Scout'], [10, 'floor', 'planks'],
   [15, 'icon', 'whistle'], [15, 'color', 'red'],
   [20, 'title', 'Assistant GM'], [20, 'frame', 'gold'],
-  [25, 'icon', 'jersey-red'], [25, 'color', 'sky'],
+  [25, 'icon', 'jersey-red'], [25, 'color', 'sky'], [25, 'look', 'frontoffice'],
   [30, 'floor', 'parquet'], [30, 'icon', 'ball-classic'],
   [35, 'title', 'Floor General'], [35, 'color', 'pink'],
   [40, 'icon', 'clipboard'], [40, 'frame', 'hardwood'],
   [45, 'color', 'mint'], [45, 'icon', 'jersey-blue'],
-  [50, 'title', 'Executive'], [50, 'icon', 'star'],
+  [50, 'title', 'Executive'], [50, 'icon', 'star'], [50, 'look', 'hardwood'],
   [55, 'color', 'teal'], [55, 'icon', 'sneaker-red'],
   [60, 'floor', 'blonde'], [60, 'icon', 'lightning'],
   [65, 'title', 'Draft Guru'], [65, 'color', 'lime'],
   [70, 'icon', 'jersey-green'], [70, 'frame', 'neon'],
-  [75, 'color', 'violet'], [75, 'icon', 'flame'],
+  [75, 'color', 'violet'], [75, 'icon', 'flame'], [75, 'look', 'blacktop'],
   [80, 'title', 'Architect'], [80, 'icon', 'shotclock'],
   [85, 'color', 'silver'], [85, 'icon', 'sneaker-blue'],
   [90, 'floor', 'midnight'], [90, 'icon', 'jersey-purple'],
   [95, 'title', 'Trade Machine'], [95, 'color', 'bronze'],
-  [100, 'icon', 'trophy'], [100, 'frame', 'banner'], [100, 'title', 'Dynasty Builder'],
+  [100, 'icon', 'trophy'], [100, 'frame', 'banner'], [100, 'title', 'Dynasty Builder'], [100, 'look', 'playbook'],
   [105, 'color', 'sand'], [105, 'icon', 'headband'],
   [110, 'icon', 'jersey-teal'], [110, 'title', 'Cap Wizard'],
   [115, 'color', 'coral'], [115, 'icon', 'ball-aba'],
   [120, 'icon', 'rocket'], [120, 'floor', 'asphalt'],
-  [125, 'title', 'Basketball Mind'], [125, 'color', 'gold'],
+  [125, 'title', 'Basketball Mind'], [125, 'color', 'gold'], [125, 'look', 'handheld'],
   [130, 'icon', 'jersey-black'], [130, 'color', 'lavender'],
   [135, 'title', 'Tactician'], [135, 'icon', 'shield'],
   [140, 'icon', 'sneaker-gold'], [140, 'color', 'crimson'],
   [145, 'icon', 'megaphone'], [145, 'title', 'Showrunner'],
-  [150, 'icon', 'crown'], [150, 'frame', 'fire'],
+  [150, 'icon', 'crown'], [150, 'frame', 'fire'], [150, 'look', 'broadcast'],
   [155, 'color', 'emerald'], [155, 'icon', 'jersey-white'],
   [160, 'title', 'Mastermind'], [160, 'icon', 'sun'],
   [165, 'icon', 'snowflake'], [165, 'color', 'ice'],
   [170, 'icon', 'ball-ice'], [170, 'title', 'Hall of Fame Executive'],
-  [175, 'icon', 'moon'], [175, 'color', 'platinum'],
+  [175, 'icon', 'moon'], [175, 'color', 'platinum'], [175, 'look', 'neongrid'],
   [180, 'title', 'Commissioner'], [180, 'icon', 'trophy-bronze'],
   [185, 'icon', 'ball-neon'],
   [190, 'icon', 'trophy-silver'], [190, 'title', 'Hoops Historian'],
   [195, 'title', 'Franchise Savior'],
-  [200, 'title', 'Legend'], [200, 'icon', 'crown-ruby'],
+  [200, 'title', 'Legend'], [200, 'icon', 'crown-ruby'], [200, 'look', 'arcade'],
   [205, 'title', 'Kingmaker'],
   [210, 'color', 'obsidian'],
   [215, 'title', 'Visionary'],
   [220, 'title', 'Dynasty Architect'],
-  [225, 'title', 'Living Legend'],
+  [225, 'title', 'Living Legend'], [225, 'look', 'comicpop'],
   [230, 'title', 'Hall of Famer'],
   [235, 'title', 'Icon'],
   [240, 'title', 'Immortal'],
   [245, 'title', 'Court Visionary'],
-  [250, 'title', 'GOAT GM'], [250, 'color', 'inferno'],
+  [250, 'title', 'GOAT GM'], [250, 'color', 'inferno'], [250, 'look', 'championship'],
 ];
+/** The app looks on the road, by id (their colours live in src/theme/themes.ts; a test keeps the names in step). */
+export const ROAD_LOOK_NAMES: Record<string, string> = {
+  frontoffice: 'Front Office', hardwood: 'Hardwood', blacktop: 'Blacktop', playbook: 'Playbook', handheld: 'Handheld',
+  broadcast: '90s Broadcast', neongrid: 'Neon Grid', arcade: '16-bit Arcade', comicpop: 'Comic Pop', championship: 'Championship',
+};
 /** The level a road reward opens at (undefined when it isn't on the road). */
 export const roadLevel = (kind: RewardKind, id: string) => LEVEL_ROAD.find(([, k, i]) => k === kind && i === id)?.[0];
 const byRoad = (kind: RewardKind, id: string, fallback = 1): Rule => ({ level: roadLevel(kind, id) ?? fallback });

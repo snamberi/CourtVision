@@ -2,8 +2,10 @@ import { LockerRoomPanel, MoraleCell } from './MoralePanels';
 import { TeamIdentityPanel } from './TeamIdentityPanel';
 import type { TeamIdentity } from '../simulation/teamIdentity';
 import type { FranchiseHistoryRecord } from '../simulation/league';
-import { useState } from 'react';
-import type { LeagueTeam, InjuryRecord, StandingsRow } from '../simulation/league';
+import { useMemo, useState } from 'react';
+import { recentForm } from '../simulation/form';
+import { FormCell } from './FormCell';
+import type { LeagueTeam, InjuryRecord, StandingsRow, ScheduledGame } from '../simulation/league';
 import { calculateOverall } from '../simulation/engine/overall';
 import { computeTradeValue } from '../simulation/gm';
 import type { Contract, SalaryCapSettings } from '../simulation/gm';
@@ -30,6 +32,8 @@ interface Props {
   standings?: StandingsRow[];
   onRelease?: (teamId: string, playerId: string) => void;
   onTradeAway?: (playerId: string) => void;
+  /** The season's games, for the last-five-games form column. */
+  schedule?: ScheduledGame[];
   onOpenCoachMarket?: (teamId: string) => void;
   onHireCoach?: (teamId: string, candidate: CoachIdentity) => void;
   coachCandidates?: CoachIdentity[] | null;
@@ -40,7 +44,7 @@ interface Props {
 
 export function TeamRosterPage({
   showTradeValues = false, initialTeamId, teams, onRunDevelopmentPass, onSelectPlayer, injuries,
-  contracts, capSettings, standings, onRelease, onTradeAway,
+  contracts, capSettings, standings, onRelease, onTradeAway, schedule,
   onOpenCoachMarket, onHireCoach, coachCandidates,
   retiredPlayers, onRetireJersey, onUnretireJersey, franchiseHistory, currentChampion, currentSeason, canEditIdentity, onIdentityChange,
 }: Props) {
@@ -48,6 +52,7 @@ export function TeamRosterPage({
   const [retirePlayerId, setRetirePlayerId] = useState('');
   const [teamId, setTeamId] = useState(initialTeamId ?? teams[0]?.teamId ?? '');
   const team = teams.find((t) => t.teamId === teamId) ?? teams[0];
+  const form = useMemo(() => schedule && team ? recentForm(schedule, team.teamId, id => perGameAverages(team.seasons.find(p => p.playerId === id)?.seasonStats).ppg) : null, [schedule, team]);
   const canManage = !!team && canEditIdentity?.(team.teamId) === true;
   const leader = team ? teamLeader(team) : null;
   const rotation = team ? effectiveRotation(team) : {};
@@ -211,7 +216,7 @@ export function TeamRosterPage({
             <tr>
               <th>Player</th><th>Role</th><th>Pos</th><th>Age</th><th>OVR</th><th>POT</th><th>Delta</th>
               <th>Contract</th><th>YWT</th>{showTradeValues && <th>Trade Value</th>}
-              <th>PPG</th><th>RPG</th><th>APG</th><th>MPG</th><th>EFF</th><th>Mood</th><th>Status</th>
+              <th>PPG</th>{schedule && <th title="Points in the last five games">Form</th>}<th>RPG</th><th>APG</th><th>MPG</th><th>EFF</th><th>Mood</th><th>Status</th>
               {canManage && (onRelease || onTradeAway) && <th>Actions</th>}
             </tr>
           </thead>
@@ -248,6 +253,7 @@ export function TeamRosterPage({
                     <td>{yearsWithTeam}</td>
                     {showTradeValues && <td>{computeTradeValue(s).toFixed(0)}</td>}
                     <td>{avg.gamesPlayed > 0 ? avg.ppg.toFixed(1) : '—'}</td>
+                    {schedule && <td><FormCell form={form?.get(s.playerId)} /></td>}
                     <td>{avg.gamesPlayed > 0 ? avg.rpg.toFixed(1) : '—'}</td>
                     <td>{avg.gamesPlayed > 0 ? avg.apg.toFixed(1) : '—'}</td>
                     <td>{avg.gamesPlayed > 0 ? avg.mpg.toFixed(1) : '—'}</td>

@@ -82,6 +82,7 @@ import { recordCodeResult } from './retention/codeResults';
 import { syncSoon } from './cloud/sync';
 import { track, trackOnce } from './analytics/track';
 import { ChallengeBanner } from './components/ChallengeBanner';
+import { rebuildSnapshot } from './simulation/rebuildSnapshot';
 import { DailyGoalsCard } from './components/DailyGoalsCard';
 import { LeagueCodeBox } from './components/LeagueCodeBox';
 import { updateDailyGoals, todayUtc } from './profile/dailyGoals';
@@ -425,7 +426,12 @@ function App() {
       const built = buildHistoricalLeague(h, sc.startYear, { realDevelopment: true, difficulty: twist?.hardTrades ? 'hard' : origin.difficulty, seed: origin.seed });
       if (!built.league.teams.some(t => t.teamId === sc.team)) throw new Error(`${sc.team} is not in the ${sc.startYear} league.`);
       const seasons = twist ? Math.max(3, sc.seasons + twist.seasonsDelta) : sc.seasons;
-      const league: League = { ...built.league, origin, rebuildChallenge: { id: sc.id, teamId: sc.team, startSeason: built.league.season ?? String(sc.startYear), seasons, ...(o.weekly ? { weekly: { week: o.weekly.week, twist: o.weekly.twist.id } } : {}) } };
+      // The team as it was handed over, for the before-and-after view: last season's real record, payroll and best three.
+      const franchise = h.teams.find(t => t.season === sc.startYear + 1 && t.abbr === sc.team)?.franchise;
+      const prior = h.teams.find(t => t.season === sc.startYear && (franchise ? t.franchise === franchise : t.abbr === sc.team));
+      const start = rebuildSnapshot(built.league.teams.find(t => t.teamId === sc.team)!, built.extras.contracts,
+        prior?.w != null && prior.l != null ? { wins: prior.w, losses: prior.l, season: String(sc.startYear - 1) } : undefined);
+      const league: League = { ...built.league, origin, rebuildChallenge: { id: sc.id, teamId: sc.team, startSeason: built.league.season ?? String(sc.startYear), seasons, start, ...(o.weekly ? { weekly: { week: o.weekly.week, twist: o.weekly.twist.id } } : {}) } };
       enterApp(league, built.extras, sc.team, o.name);
       setTab('dashboard');
       resolve();
@@ -580,6 +586,10 @@ function App() {
   const [autoAllStar, setAutoAllStar] = useState(() => { try { return localStorage.getItem('cv-auto-allstar') !== 'off'; } catch { return true; } });
   const autoAllStarRef = useRef(autoAllStar);
   autoAllStarRef.current = autoAllStar;
+  const [autoDeadline, setAutoDeadline] = useState(() => { try { return localStorage.getItem('cv-auto-deadline') === 'on'; } catch { return false; } });
+  const autoDeadlineRef = useRef(autoDeadline);
+  autoDeadlineRef.current = autoDeadline;
+  const toggleAutoDeadline = (on: boolean) => { setAutoDeadline(on); try { localStorage.setItem('cv-auto-deadline', on ? 'on' : 'off'); } catch { /* keep the in-memory choice */ } };
   const toggleAutoAllStar = (on: boolean) => { setAutoAllStar(on); try { localStorage.setItem('cv-auto-allstar', on ? 'on' : 'off'); } catch { /* keep the in-memory choice */ } };
   /** What the current multi-day simulation was asked to reach, so it can resume after an automatic All-Star Weekend. */
   const simTargetRef = useRef<{ round: number; seedBase: number } | null>(null);
@@ -616,10 +626,21 @@ function App() {
     const aiSeed = seed + 500 + nextLeague.schedule.filter((g) => g.played).length;
     const aiResult = runLeagueAIPass(nextLeague, nextExtras, controlledTeamId, aiSeed);
     // The season stopped on the morning of the trade deadline: Deadline Day opens (see deadlineDay.ts).
-    const deadline = !silent && isDeadlineDayDue(aiResult.league) ? openDeadlineDay(aiResult.league, aiResult.extras, controlledTeamId, deadlineSeed(aiResult.league)) : null;
+    let deadline = !silent && isDeadlineDayDue(aiResult.league) ? openDeadlineDay(aiResult.league, aiResult.extras, controlledTeamId, deadlineSeed(aiResult.league)) : null;
+    // Auto Deadline Day: the whole day runs to 3 PM at once (like the automatic All-Star Weekend) and the sim goes on.
+    let passedDeadline: League | null = null;
+    if (deadline && autoDeadlineRef.current) {
+      const closed = runToDeadline(deadline.league, deadline.extras, controlledTeamId, deadlineSeed(deadline.league));
+      passedDeadline = closed.league;
+      deadline = null;
+      aiResult.league = closed.league; aiResult.extras = closed.extras;
+      const target = simTargetRef.current, next = closed.league.schedule.find(g => !g.played)?.round;
+      if (target && next != null && next < target.round) resume = { rounds: target.round - next, seedBase: target.seedBase };
+    }
     const finalLeague = deadline?.league ?? aiResult.league;
     setLeague(withCurrentTutorial(finalLeague));
     setExtras(deadline?.extras ?? aiResult.extras);
+    if (passedDeadline) pushToast(`Deadline Day simmed automatically. ${deadlineRecap(passedDeadline)}`, 'success');
     if (resume && !deadline) { const r = resume; setTimeout(() => continueSimRef.current?.(r.rounds, r.seedBase, aiResult.league), 0); }
     if (deadline) {
       setTab('deadline');
@@ -741,6 +762,12 @@ function App() {
       const closed = runToDeadline(ready.league, ready.extras, controlledTeamId, deadlineSeed(ready.league));
       ready = { league: closed.league, extras: closed.extras };
       pushToast(deadlineRecap(closed.league), 'success');
+    }
+    if (holdDeadline && isDeadlineDayDue(ready.league) && autoDeadlineRef.current) {
+      const opened = openDeadlineDay(ready.league, ready.extras, controlledTeamId, deadlineSeed(ready.league));
+      const closed = runToDeadline(opened.league, opened.extras, controlledTeamId, deadlineSeed(opened.league));
+      ready = { league: closed.league, extras: closed.extras };
+      pushToast(`Deadline Day simmed automatically. ${deadlineRecap(closed.league)}`, 'success');
     }
     if (holdDeadline && isDeadlineDayDue(ready.league)) {
       const opened = openDeadlineDay(ready.league, ready.extras, controlledTeamId, deadlineSeed(ready.league));
@@ -1109,6 +1136,17 @@ function App() {
         : retiredRecord ? `${retiredRecord.finalTeamName} (Retired)`
           : 'Unknown');
 
+  /** A player's look (Edit look): cosmetic only, so it works in every league, not just Sandbox, and changes nothing else. */
+  const updatePlayerLook = (playerId: string, appearance: import('./visuals/playerSprite').Appearance | undefined) => {
+    const apply = <T extends { playerId: string; appearance?: import('./visuals/playerSprite').Appearance }>(s: T): T => {
+      if (s.playerId !== playerId) return s;
+      const next = { ...s };
+      if (appearance) next.appearance = appearance; else delete next.appearance;
+      return next;
+    };
+    setLeague(l => ({ ...l, teams: l.teams.map(t => (t.seasons.some(s => s.playerId === playerId) ? { ...t, seasons: t.seasons.map(apply) } : t)) }));
+    setExtras(x => (x.freeAgents.some(s => s.playerId === playerId) ? { ...x, freeAgents: x.freeAgents.map(apply) } : x));
+  };
   const updatePlayer = (next: NonNullable<typeof selectedSeason>) => {
     if (!sandboxMode) return;
     if (rosterTeam) {
@@ -1305,7 +1343,7 @@ function App() {
   }
 
   return (
-    <TeamLinksProvider teams={league.teams} saveId={activeSaveId}><TeamIdentityProvider teams={league.teams}><div className="app-shell">
+    <TeamLinksProvider teams={league.teams} saveId={activeSaveId}><TeamIdentityProvider teams={league.teams} freeAgents={extras.freeAgents}><div className="app-shell">
       <DownloadButton />
       <header className="topbar">
         <button className="sidebar-toggle" onClick={() => setSidebarCollapsed((v) => !v)} aria-label="Toggle navigation" aria-expanded={!sidebarCollapsed} aria-controls="game-navigation" title="Toggle navigation">
@@ -1338,6 +1376,9 @@ function App() {
         onOpenAllStar={() => setTab('allStarWeekend')}
         autoAllStar={autoAllStar}
         onToggleAutoAllStar={toggleAutoAllStar}
+        autoDeadline={autoDeadline}
+        onToggleAutoDeadline={toggleAutoDeadline}
+        onSkipDeadline={skipDeadline}
         onSimulateGames={simulateGamesCount}
         onSimulateToDeadline={simulateToTradeDeadline}
         deadlineClockLabel={isDeadlineDayOpen(league) ? deadlineClock(league.deadlineDay!.hour) : null}
@@ -1446,7 +1487,7 @@ function App() {
 
         {(tab === 'editor' || tab === 'playerDevelopment') && (
           selectedSeason
-            ? <PlayerProfile key={selectedPlayerId} controlledTeamId={controlledTeamId} activeTab={tab === 'playerDevelopment' ? 'development' : 'overview'} onTabChange={view => setTab(view === 'development' ? 'playerDevelopment' : 'editor')}
+            ? <PlayerProfile key={selectedPlayerId} onLookChange={updatePlayerLook} controlledTeamId={controlledTeamId} activeTab={tab === 'playerDevelopment' ? 'development' : 'overview'} onTabChange={view => setTab(view === 'development' ? 'playerDevelopment' : 'editor')}
                 season={selectedSeason} teamName={selectedTeamName} sandboxMode={sandboxMode} onChange={updatePlayer} league={league}
                 extras={extras}
                 onLeagueExtrasChange={(nextLeague, nextExtras, newPlayerId) => {
@@ -1467,7 +1508,7 @@ function App() {
         {tab === 'roster' && (
           league.teams.length === 0
             ? <p className="empty-state">No teams yet.</p>
-            : <TeamRosterPage initialTeamId={controlledTeamId}
+            : <TeamRosterPage initialTeamId={controlledTeamId} schedule={league.schedule}
               showTradeValues={extras.tradeSettings.showValues === true}
                 franchiseHistory={league.franchiseHistory} currentChampion={playoffBracket?.championTeamId} currentSeason={league.season}
                 canEditIdentity={teamId => sandboxMode || teamId === controlledTeamId}
@@ -1836,7 +1877,7 @@ function App() {
           );
         })()}
 
-        {(tab === 'dashboard' || tab === 'database') && league.rebuildChallenge && <ChallengeBanner league={league} onMenu={() => setConfirmation('exit')} />}
+        {(tab === 'dashboard' || tab === 'database') && league.rebuildChallenge && <ChallengeBanner league={league} contracts={extras.contracts} onMenu={() => setConfirmation('exit')} />}
         {tab === 'dashboard' && controlledTeamId && <DailyGoalsCard official={isOfficialLeague(league)} />}
         {tab === 'dashboard' && league.origin && <LeagueCodeBox origin={league.origin} teamId={controlledTeamId} teamName={league.teams.find(t => t.teamId === controlledTeamId)?.name} />}
         {tab === 'dashboard' && (

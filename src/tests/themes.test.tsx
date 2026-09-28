@@ -3,8 +3,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { transform, cssFiles, readCss } from '../../scripts/theme-palette.mjs';
 import { PALETTE } from '../theme/palette.gen';
-import { THEMES, mapColor, parseHex, analyse, family, themeCss, applyTheme, readTheme, setTheme, THEME_KEY } from '../theme/themes';
-import { ThemeWelcome, ThemeSection, needsThemeChoice } from '../components/ThemePicker';
+import { THEMES, THEME_BY_ID, themeLevel, mapColor, parseHex, analyse, family, themeCss, applyTheme, readTheme, setTheme, THEME_KEY, type ThemeId } from '../theme/themes';
+import { ThemeWelcome, ThemeSection, ThemePicker, needsThemeChoice } from '../components/ThemePicker';
+import { LEVEL_ROAD, ROAD_LOOK_NAMES } from '../profile/cosmetics';
+import { unlocksBetween } from '../profile/profile';
 
 /** WCAG contrast ratio of two opaque hex colours. */
 function contrast(a: string, b: string): number {
@@ -63,6 +65,39 @@ describe('themes', () => {
       expect(m(t.id, 'shadow-00000080').length).toBe(9);
     });
   }
+});
+
+describe('looks on the Level Road', () => {
+  it('ten looks, one every 25 levels from 25 to 250, named the same on the road as in the picker', () => {
+    const road = LEVEL_ROAD.filter(([, k]) => k === 'look');
+    expect(road.map(([l]) => l)).toEqual([25, 50, 75, 100, 125, 150, 175, 200, 225, 250]);
+    for (const [l, , id] of road) {
+      const t = THEME_BY_ID.get(id as ThemeId);
+      expect(t, id).toBeTruthy();
+      expect(themeLevel(t!.id)).toBe(l);
+      expect(ROAD_LOOK_NAMES[id]).toBe(t!.name);
+    }
+    expect(Object.keys(ROAD_LOOK_NAMES).sort()).toEqual(road.map(([, , id]) => id).sort());
+    // The first five are free; there are fifteen in all.
+    expect(THEMES.filter(t => themeLevel(t.id) === 1).map(t => t.id)).toEqual(['original', 'cartridge', 'scoreboard', 'prodark', 'terminal']);
+    expect(THEMES).toHaveLength(15);
+    expect(unlocksBetween(20, 25)).toContain('the Front Office app look');
+  });
+
+  it('a road look is locked in the picker until its level, then opens', () => {
+    const picks: string[] = [];
+    const { rerender } = render(<ThemePicker value="original" onPick={id => picks.push(id)} level={30} />);
+    expect(screen.getByRole('radio', { name: /Front Office/ })).not.toHaveProperty('disabled', true);
+    const hardwood = screen.getByRole('radio', { name: /Hardwood/ });
+    expect(hardwood).toHaveProperty('disabled', true);
+    expect(hardwood.textContent).toContain('LV 50');
+    fireEvent.click(hardwood);
+    expect(picks).toEqual([]);
+    rerender(<ThemePicker value="original" onPick={id => picks.push(id)} level={50} />);
+    fireEvent.click(screen.getByRole('radio', { name: /Hardwood/ }));
+    expect(picks).toEqual(['hardwood']);
+    cleanup();
+  });
 });
 
 describe('picking a look', () => {

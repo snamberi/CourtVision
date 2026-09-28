@@ -55,3 +55,26 @@ export function startClip(width = CLIP_WIDTH): ClipWriter {
     finish: () => { gif.finish(); return new Blob([gif.bytes() as BlobPart], { type: 'image/gif' }); },
   };
 }
+
+/** A GIF from a canvas you draw yourself (the season reel): `add` takes the canvas as it is now. */
+export function startCanvasGif(): { add: (canvas: HTMLCanvasElement, delayMs: number) => void; finish: () => Blob } {
+  const gif = GIFEncoder();
+  const CLEAR = 255;
+  let palette: number[][] | null = null, prev: Uint8Array | null = null;
+  return {
+    add: (canvas, delayMs) => {
+      const g = canvas.getContext('2d', { willReadFrequently: true })!;
+      const { data } = g.getImageData(0, 0, canvas.width, canvas.height);
+      if (!palette) { palette = quantize(data, 255); while (palette.length < 255) palette.push([0, 0, 0]); palette.push([0, 0, 0]); }
+      const index = applyPalette(data, palette.slice(0, 255));
+      if (!prev) gif.writeFrame(index, canvas.width, canvas.height, { palette, delay: delayMs, repeat: 0 });
+      else {
+        const out = new Uint8Array(index.length);
+        for (let i = 0; i < index.length; i++) out[i] = index[i] === prev[i] ? CLEAR : index[i];
+        gif.writeFrame(out, canvas.width, canvas.height, { delay: delayMs, transparent: true, transparentIndex: CLEAR, dispose: 1 });
+      }
+      prev = index;
+    },
+    finish: () => { gif.finish(); return new Blob([gif.bytes() as BlobPart], { type: 'image/gif' }); },
+  };
+}

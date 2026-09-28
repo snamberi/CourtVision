@@ -18,6 +18,7 @@ import { calculateOverall } from '../simulation/engine/overall';
 import { primaryPosition, effectiveRotation } from '../simulation/teamStatus';
 import type { PlayerSeason } from '../simulation/types';
 import { PlayerAvatar, PlayerNameTag } from './PlayerAvatar';
+import { OfficeRoom } from './OfficeRoom';
 import { PixelIcon } from './PixelIcon';
 
 interface Props {
@@ -96,6 +97,7 @@ export function DashboardPage({ league, extras, controlledTeamId, seasonPhase, o
         <div><span className="pixel-eyebrow">{formatSeasonYear(league.season)} / {PHASE_LABEL[seasonPhase]}</span><h1>Franchise HQ</h1></div>
         <div className="dashboard-heading-actions">{headerExtra}<button onClick={() => onGoTo('roster')}><PixelIcon name="team" size={16} /> Manage roster</button></div>
       </div>
+      {controlledTeamId && <OfficeRoom league={league} extras={extras} teamId={controlledTeamId} onGoTo={onGoTo} />}
       {(roadMap || checklist) && <div className={`home-top ${checklist ? 'with-checklist' : ''}`}>{roadMap}{checklist}</div>}
       <div className="dashboard-hero" style={identity ? { ['--team-1' as string]: identity.primary, ['--team-2' as string]: identity.secondary } : undefined}>
         <div className="dashboard-franchise"><span className="pixel-eyebrow">{controlledTeamId ? 'YOUR FRANCHISE' : 'LEAGUE SPOTLIGHT'}</span>

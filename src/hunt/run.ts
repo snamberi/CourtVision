@@ -96,6 +96,8 @@ export interface HuntRun {
   difficulty?: Difficulty;
   daily?: string;
   lines?: Record<string, { g: number; pts: number; reb: number; ast: number }>;
+  /** The blind spins: what you took and the best on the table, per spin (overall; the coach's bonus on the coach spin). */
+  picks?: { spin: number; got: number; best: number }[];
 }
 
 export type DeckId = 'classic' | 'bigMen' | 'oldSchool' | 'paceSpace' | 'dynasty';
@@ -282,10 +284,24 @@ function spinOffer(h: NbaHistory, run: HuntRun): string[] {
 export function spinPick(h: NbaHistory, run: HuntRun, id: string): HuntRun {
   if (run.stage !== 'draft' || !run.offer.includes(id)) return run;
   const kind = SPINS[run.spin];
-  const next: HuntRun = kind === 'COACH' ? { ...run, coach: id } : { ...run, squad: [...run.squad, id] };
+  // Ratings are hidden on the spins, so each pick is a read: remember it against the best one offered.
+  const value = (x: string) => (kind === 'COACH' ? COACH_BY_ID.get(x)?.bonus ?? 0 : card(h, x).ovr);
+  const picks = [...(run.picks ?? []), { spin: run.spin, got: value(id), best: Math.max(...run.offer.map(value)) }];
+  const next: HuntRun = kind === 'COACH' ? { ...run, coach: id, picks } : { ...run, squad: [...run.squad, id], picks };
   if (run.spin + 1 >= SPINS.length) return { ...next, spin: SPINS.length, offer: [], stage: 'focus' };
   const moved = { ...next, spin: run.spin + 1 };
   return { ...moved, offer: spinOffer(h, moved) };
+}
+
+export type DraftGrade = 'A+' | 'A' | 'B' | 'C' | 'D' | 'F';
+/** How well you read the blind spins: overall points left on the table (coach bonus points count double). Picking at random
+ * leaves about 55 on the table (a C or a D); the best card every time is an A+. */
+export function draftGrade(run: Pick<HuntRun, 'picks'>): { grade: DraftGrade; missed: number; bestPicks: number; spins: number } | null {
+  const picks = run.picks ?? [];
+  if (!picks.length) return null;
+  const missed = picks.reduce((n, p) => n + (p.best - p.got) * (SPINS[p.spin] === 'COACH' ? 2 : 1), 0);
+  const grade: DraftGrade = missed === 0 ? 'A+' : missed <= 8 ? 'A' : missed <= 20 ? 'B' : missed <= 40 ? 'C' : missed <= 65 ? 'D' : 'F';
+  return { grade, missed, bestPicks: picks.filter(p => p.got >= p.best).length, spins: picks.length };
 }
 
 /** Sets (or changes, in the shop) what the team works on. */

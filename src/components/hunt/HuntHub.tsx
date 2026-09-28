@@ -31,7 +31,7 @@ function NewHunt({ records, onStart }: { records: HuntRecords; onStart: (opts: N
   return <div className="hunt-intro">
     <p className="hunt-lede">Spin a {SQUAD_SIZE}-man squad and a coach from all of NBA history, then win ten best-of-seven series against real teams, each under the rules of its era. Series 5 is a semi-boss; series 10 is the boss, a 100-rated all-time great.</p>
     <ul className="hunt-rules">
-      <li><b>The spins.</b> PG, SG, SF, PF, C, coach, then your sixth man: three cards each, keep one. Every spin is poorer than the last, but every draft has at least one Star and one Great on the table.</li>
+      <li><b>The spins.</b> PG, SG, SF, PF, C, coach, then your sixth man: three cards each, keep one. The spins are <b>blind</b>: you see the player, his season and team, but not his rating or stats until you choose. Every spin is poorer than the last, but every draft has at least one Star and one Great on the table. Your picks earn a draft grade.</li>
       <li><b>Cards are player-seasons.</b> 1996 Jordan and 2003 Jordan are different cards. Ratings are ranked within each season, so every era is fair.</li>
       <li><b>Team rating, 0-100.</b> 60 is a bad team, 70 about 40 wins, 80 about 45, 90 a 55-62 win team, 100 a 68-win all-time great.</li>
       <li><b>Boosts and shops.</b> Pick a boost after a series win, three per hunt. A shop comes before series 1, 3, 5, 7 and 9: players, coaches, items and training (lives only on Rookie).</li>

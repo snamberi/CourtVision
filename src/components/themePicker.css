@@ -1,25 +1,35 @@
 /* The look picker (first visit and the Player Profile). Its preview cards paint their own theme's colours inline;
-   everything around them follows the current theme. */
-.theme-picker { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 168px), 1fr)); gap: 10px; }
-.theme-card { display: grid; gap: 6px; align-content: start; padding: 8px; text-align: left; background: var(--panel); color: var(--text); border: 2px solid var(--line); cursor: pointer; font-family: var(--font-data); text-transform: none; letter-spacing: 0; }
-.theme-card:hover { border-color: var(--line-bright); }
+   everything around them follows the current theme. Every card is the same size whatever its text or font. */
+.theme-picker, .profile-picker > .theme-picker { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr)); gap: 10px; }
+.theme-card { display: grid; grid-template-rows: auto auto 1fr; gap: 6px; min-width: 0; padding: 8px; text-align: left; background: var(--panel); color: var(--text); border: 2px solid var(--line); cursor: pointer; font-family: var(--font-data); text-transform: none; letter-spacing: 0; position: relative; }
+.theme-card:hover:not(:disabled) { border-color: var(--line-bright); }
 .theme-card.selected { border-color: var(--amber); box-shadow: 0 0 0 2px var(--amber); }
 .theme-card:focus-visible { outline: 2px solid var(--amber-bright); outline-offset: 2px; }
-.theme-card > b { font: 600 16px/1.2 var(--font-display); text-transform: uppercase; letter-spacing: .03em; }
-.theme-card > b small { font: 12px var(--font-data); text-transform: none; color: var(--amber); }
-.theme-card > span:last-child { font-size: 12.5px; line-height: 1.45; color: var(--text-dim); }
-.theme-preview { display: grid; gap: 4px; padding: 8px; border: 2px solid; font-size: 12px; line-height: 1.2; }
-.tp-top { display: flex; justify-content: space-between; align-items: center; gap: 6px; font-size: 15px; text-transform: uppercase; white-space: nowrap; overflow: hidden; }
-.tp-top i { font: normal 11px/1 inherit; font-style: normal; border: 1px solid; padding: 2px 5px; }
-.tp-row { display: flex; justify-content: space-between; gap: 8px; padding: 3px 6px; border: 1px solid; }
+.theme-card.locked { cursor: not-allowed; }
+.theme-card.locked .theme-preview { filter: grayscale(.85); opacity: .55; }
+
+/* The name has the whole row; the state (In use, LV 50) sits on the preview's corner. */
+.theme-card-head { display: block; min-width: 0; }
+.theme-card-head b { display: block; font: 600 14px/1.2 var(--font-data); text-transform: uppercase; letter-spacing: .02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.theme-tag { position: absolute; top: 4px; right: 4px; z-index: 1; padding: 1px 6px; background: var(--panel); font: 600 10.5px/1.5 var(--font-data); font-style: normal; letter-spacing: .06em; text-transform: uppercase; color: var(--text-dim); border: 1px solid var(--line); white-space: nowrap; }
+.theme-tag.on { color: var(--c-fg-0b1018, #0b1018); background: var(--amber); border-color: var(--amber); }
+/* Three lines at most, so a row of cards lines up (the full text is the card's tooltip). */
+.theme-card-blurb { font-size: 12.5px; line-height: 1.4; color: var(--text-dim); display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; min-height: 4.2em; }
+
+/* The preview: a fixed box, nothing inside can widen it. */
+.theme-preview-wrap { position: relative; min-width: 0; }
+.theme-preview { display: grid; align-content: space-between; gap: 4px; height: 118px; min-width: 0; padding: 7px 8px; border: 2px solid; font-size: 12px; line-height: 1.25; overflow: hidden; box-sizing: border-box; }
+.tp-top { font-size: 14px; line-height: 1.3; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tp-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-width: 0; padding: 2px 6px; border: 1px solid; }
 .tp-row b { font-weight: 500; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tp-row em { font-style: normal; font-weight: 700; font-variant-numeric: tabular-nums; }
-.tp-btn { justify-self: start; padding: 4px 12px; font-size: 13px; text-transform: uppercase; }
+.tp-row em { flex-shrink: 0; font-style: normal; font-weight: 700; font-variant-numeric: tabular-nums; }
+.tp-btn { justify-self: start; align-self: end; padding: 2px 12px; font-size: 12px; line-height: 1.4; text-transform: uppercase; }
+
 .theme-welcome .share-box { width: min(980px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow-y: auto; display: grid; gap: 10px; }
 .theme-welcome h2 { margin: 0; }
 .theme-welcome .hint-text { margin: 0; }
-.theme-section { display: grid; gap: 8px; }
 /* On a phone the list scrolls; the button stays in reach. */
 .theme-welcome .contest-actions { position: sticky; bottom: -1px; margin: 0 -4px; padding: 10px 4px 4px; background: var(--c-bg-121926, #121926); border-top: 1px solid var(--line); }
-.tp-top span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.tp-top i { flex-shrink: 0; }
+.theme-section { display: grid; gap: 8px; }
+.theme-section h3 small { margin-left: 8px; font: 12px var(--font-data); text-transform: none; letter-spacing: 0; color: var(--text-dim); }
+.tagged .tp-top { padding-right: 58px; }

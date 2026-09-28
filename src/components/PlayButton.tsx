@@ -27,6 +27,10 @@ export interface PlayButtonProps {
   onOpenAllStar?: () => void;
   autoAllStar?: boolean;
   onToggleAutoAllStar?: (on: boolean) => void;
+  autoDeadline?: boolean;
+  onToggleAutoDeadline?: (on: boolean) => void;
+  /** Runs Deadline Day to the 3 PM deadline in one go. */
+  onSkipDeadline?: () => void;
   onSimulateGames: (count: number) => void; // simulates up to `count` scheduled rounds
   onSimulateToDeadline: () => void;
   /** The Deadline Day clock ("11:00 AM") while the day is under way. */
@@ -145,6 +149,7 @@ export function PlayButton(props: PlayButtonProps) {
             <div className="play-menu-section">
               <p>Trade Deadline Day · {props.deadlineClockLabel}. Playing on runs the clock to the 3 PM deadline.</p>
               <button className="primary" onClick={() => doAndClose(props.onOpenDeadline!)}>Open Deadline Day</button>
+              {props.onSkipDeadline && <button onClick={() => doAndClose(props.onSkipDeadline!)}>Sim Deadline Day</button>}
             </div>
           )}
 
@@ -192,6 +197,9 @@ export function PlayButton(props: PlayButtonProps) {
 
           {!anyJobRunning && (seasonPhase === 'regular_season' || seasonPhase === 'all_star') && props.onToggleAutoAllStar && (
             <label className="play-menu-custom play-menu-toggle"><input type="checkbox" checked={!!props.autoAllStar} onChange={e => props.onToggleAutoAllStar!(e.target.checked)} /> Auto-play All-Star Weekend when the break arrives</label>
+          )}
+          {!anyJobRunning && seasonPhase === 'regular_season' && props.onToggleAutoDeadline && (
+            <label className="play-menu-custom play-menu-toggle"><input type="checkbox" checked={!!props.autoDeadline} onChange={e => props.onToggleAutoDeadline!(e.target.checked)} /> Auto-sim Trade Deadline Day when it arrives</label>
           )}
 
           {!blocked && !anyJobRunning && seasonPhase === 'regular_season' && seasonComplete && (

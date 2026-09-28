@@ -68,3 +68,8 @@
 .pass-buy:hover { border-color: var(--c-border-ff9d3d, #ff9d3d); }
 .pass-buy:focus-visible { outline: 2px solid var(--c-border-ff9d3d, #ff9d3d); outline-offset: 2px; }
 .pass-fine { font-size: 12px; }
+/* An app look on the road: its floor, a panel and its action colour. */
+.road-look { display: inline-grid; grid-template-columns: 1fr 10px; gap: 3px; align-items: center; width: 40px; height: 28px; padding: 4px; border: 2px solid; box-sizing: border-box; }
+.road-look i { display: block; height: 100%; }
+.road-look i:first-child { border: 1px solid; }
+.road-look-reward small { font-weight: 600; }

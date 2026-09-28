@@ -108,6 +108,23 @@ turn it on. It's free and cookie-free. Umami keeps working as before.
 
 ---
 
+## When sign-in, leaderboards or cloud saves don't work
+
+Open the game → **Community** (or **Sign in**) → **Online status** → **Run the check**. It goes through each piece in
+order and says what to fix. It shows only yes/no, never a key. The same data is at `https://yourdomain.com/api/health`.
+
+| The check says | Fix |
+|---|---|
+| Not built with the Supabase address and key | A2: add `SUPABASE_URL` and `SUPABASE_ANON_KEY` under **Builds → Build variables and secrets**, then **Retry build**. The Variables on the running Worker alone are not enough, because the game bakes these in when it is built. |
+| The site doesn't answer /api | The deploy command must be `npx wrangler deploy`. |
+| Running site is missing a setting | A3: add the missing one under **Settings → Variables and Secrets** (`SUPABASE_SERVICE_ROLE_KEY` as a Secret). |
+| Tables are missing | Supabase → **SQL Editor** → paste all of `supabase/schema.sql` → **Run**. |
+| Supabase does not answer | Free Supabase projects pause after a week without use. Restore the project in the Supabase dashboard. |
+
+If everything is green but signing in lands on the old Vercel site or shows an error, do A6: Supabase →
+**Authentication → URL Configuration**. Set **Site URL** to `https://courtvisiongame.com` and add
+`https://courtvisiongame.com/**` (and `https://www.courtvisiongame.com/**`) to **Redirect URLs**.
+
 ## B. Cloudflare Pages (alternative)
 
 **Workers & Pages → Create → Pages → Connect to Git** → `snamberi/CourtVision`, with these settings:

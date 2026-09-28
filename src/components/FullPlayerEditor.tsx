@@ -10,6 +10,7 @@ import type { League } from '../simulation/league';
 import type { GMLeagueExtras } from '../simulation/gm';
 import { renamePlayer, movePlayerToTeam, updateContractDirect } from '../simulation/gm';
 import { perGameAverages } from '../simulation/careerStats';
+import { AppearancePanel } from './AppearancePanel';
 import { PlayerAvatar } from './PlayerAvatar';
 import { calculateOverall } from '../simulation/engine/overall';
 import { primaryPosition } from '../simulation/teamStatus';
@@ -24,10 +25,11 @@ interface Props {
   onLeagueExtrasChange?: (league: League, extras: GMLeagueExtras, newPlayerId?: string) => void;
 }
 
-type Category = 'identity' | 'physical' | 'offense' | 'defense' | 'mental' | 'shotTendencies' | 'passingTendencies'
+type Category = 'look' | 'identity' | 'physical' | 'offense' | 'defense' | 'mental' | 'shotTendencies' | 'passingTendencies'
   | 'drivingTendencies' | 'roles' | 'minutes' | 'development' | 'badges' | 'overall';
 
 const CATEGORY_LABELS: Record<Category, string> = {
+  look: 'Look',
   identity: 'Identity & Contract',
   physical: 'Physical',
   offense: 'Offense',
@@ -51,7 +53,7 @@ function inchesToFeetInches(inches: number): string {
 
 export function FullPlayerEditor({ season, onChange, sandboxMode, league, extras, onLeagueExtrasChange }: Props) {
   const [open, setOpen] = useState<Record<Category, boolean>>({
-    identity: true, physical: true, offense: true, defense: false, mental: false, shotTendencies: false,
+    look: false, identity: true, physical: true, offense: true, defense: false, mental: false, shotTendencies: false,
     passingTendencies: false, drivingTendencies: false, roles: false, minutes: true,
     development: false, badges: false, overall: false,
   });
@@ -108,6 +110,10 @@ export function FullPlayerEditor({ season, onChange, sandboxMode, league, extras
           <p className="hint-text">No games played yet this season — stats will appear here once they've taken the floor.</p>
         )}
       </div>
+
+      <Collapsible title={CATEGORY_LABELS.look} isOpen={open.look} onToggle={() => toggle('look')}>
+        <AppearancePanel season={season} onChange={onChange} />
+      </Collapsible>
 
       {league && extras && onLeagueExtrasChange && (
         <Collapsible title={CATEGORY_LABELS.identity} isOpen={open.identity} onToggle={() => toggle('identity')}>

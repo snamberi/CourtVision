@@ -375,6 +375,8 @@ export function validateTrade(league: League, extras: GMLeagueExtras, proposal: 
 }
 
 const TRADE_TOLERANCE_BY_DIFFICULTY: Record<TradeDifficulty, number> = { easy: 0.3, normal: 0.12, hard: 0.04 };
+/** How much less than it gives up a team will still take (by trade difficulty). */
+export const tradeTolerance = (extras: GMLeagueExtras) => TRADE_TOLERANCE_BY_DIFFICULTY[extras.tradeSettings.difficulty] ?? 0.12;
 export interface TradeSideView { teamId: string; direction: TeamDirection; give: number; receive: number }
 /** Both sides' valuations of a proposal, each from its own team's perspective. */
 export function evaluateTradeSides(league: League, extras: GMLeagueExtras, proposal: TradeProposal): { a: TradeSideView; b: TradeSideView } {

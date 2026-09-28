@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
+import { PixelIcon } from './PixelIcon';
 import type { League } from '../simulation/league';
 import type { GMLeagueExtras } from '../simulation/gm';
 import { buildYearInReview } from '../simulation/yearInReview';
 import { computeSeasonAwards, type SeasonAwardsOptions } from '../simulation/awards';
 import { TeamLogo } from './TeamLogo';
 import { TeamText } from './TeamLink';
+import { buildReel } from '../recap/reel';
+import { SeasonReel } from './SeasonReel';
 
 interface Props {
   league: League;
@@ -21,6 +24,7 @@ const CHAPTERS = ['Tip-off', 'The story', 'Best moments', 'GM report card', 'The
 /** The end-of-season show: your year in chapters, with a GM grade and a look at your draft picks. */
 export function YearInReviewPage({ league, extras, controlledTeamId, awardOptions, onOpenAwards, onOpenGame, onSelectPlayer }: Props) {
   const [chapter, setChapter] = useState(0);
+  const [reelOpen, setReelOpen] = useState(false);
   const seasonOver = league.seasonPhase === 'awards_recap' || (league.seasonPhase === 'playoffs' && !!league.playoffBracket?.championTeamId);
   const optionsKey = JSON.stringify(awardOptions);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed by value: the options object is rebuilt every render
@@ -42,6 +46,7 @@ export function YearInReviewPage({ league, extras, controlledTeamId, awardOption
   const last = chapter === CHAPTERS.length - 1;
 
   return <div className="yir-page">
+    {reelOpen && <SeasonReel reel={buildReel(league, review, awards)} onClose={() => setReelOpen(false)} />}
     <nav className="yir-chapters" aria-label="Chapters">
       {CHAPTERS.map((c, i) => <button key={c} className={i === chapter ? 'active' : i < chapter ? 'seen' : ''} onClick={() => setChapter(i)} aria-current={i === chapter}>{c}</button>)}
     </nav>
@@ -52,6 +57,7 @@ export function YearInReviewPage({ league, extras, controlledTeamId, awardOption
         <h1>{review.teamName}</h1>
         <p className="yir-record">{review.wins}-{review.losses}</p>
         <p className="yir-finish">{review.finish === 'Champion' ? 'CHAMPIONS' : review.finish.toUpperCase()}</p>
+        <button className="primary yir-reel-btn" onClick={() => setReelOpen(true)}><PixelIcon name="play" size={14} /> Watch the 20-second reel</button>
         <p className="hint-text">Use the arrows (or ← →) to step through the season.</p>
       </div>}
       {chapter === 1 && <div className="yir-story">
@@ -96,7 +102,7 @@ export function YearInReviewPage({ league, extras, controlledTeamId, awardOption
     <div className="yir-controls">
       <button disabled={chapter === 0} onClick={() => setChapter(c => c - 1)}>◀ Back</button>
       <span className="yir-progress"><i style={{ width: `${((chapter + 1) / CHAPTERS.length) * 100}%` }} /></span>
-      {last ? <button className="primary" onClick={onOpenAwards}>On to the awards ▶</button> : <button className="primary" onClick={() => setChapter(c => c + 1)}>Next ▶</button>}
+      {last ? <button className="primary" onClick={onOpenAwards}>On to the awards <PixelIcon name="play" size={14} /></button> : <button className="primary" onClick={() => setChapter(c => c + 1)}>Next <PixelIcon name="play" size={14} /></button>}
     </div>
   </div>;
 }

@@ -6,6 +6,57 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2026-10-07',
+    title: 'Your players, animated, and real plays',
+    items: [
+      '**The players you know, now animated:** on the court every player looks exactly like his portrait again (same face, hair, beard, headwear and jersey), with frame-by-frame runs, dribbles, jump shots, layups, dunks, passes, defence, rebounds and celebrations.',
+      '**Edit look:** change any player\'s skin tone, hair, hair colour, facial hair and headwear from his profile, in any league (it\'s cosmetic, so it doesn\'t count as Sandbox). It shows everywhere, on the court too.',
+      '**Real plays:** possessions run a set that fits how they end: pick and roll, pick and pop, dribble handoffs, isolation, pin-down screens for shooters, backdoor cuts, screen and roll, post-ups and horns. Off the ball, players space the floor, lift and cut. The broadcast names each set.',
+      '**Skip Deadline Day:** "Sim Deadline Day" in the Play menu runs it to 3 PM in one go, and "Auto-sim Trade Deadline Day" plays straight through it, like All-Star Weekend.',
+    ],
+  },
+  {
+    id: '2026-10-06',
+    title: 'Players that really move',
+    items: [
+      '**Frame-by-frame animation:** players on the court are now drawn side-on pixel athletes with their own skin, hair, beard, headwear, kit and number. They have run cycles, standing and on-the-move dribbles, jump shots (gather, rise, set, release, follow-through, landing), layups with the knee drive, dunks that hang on the rim, free throws, chest passes, defensive slides, contests, rebounds, screens and celebrations.',
+      '**A real hoop:** a padded stanchion in the home colours behind the baseline, a steel post and arm, the glass, an orange rim over the players\' heads and a pixel net that swishes. Shots now arc up to it.',
+      '**Pixel icons everywhere:** the heat check, the office phone, the reel buttons, League Hunt hearts, stars and arrows use the game\'s own pixel icons instead of emoji.',
+    ],
+  },
+  {
+    id: '2026-10-05',
+    title: 'Blind spins, the season reel and more',
+    items: [
+      '**League Hunt blind spins:** ratings and stats are hidden when you spin. You see the player, his season, his team and that year\'s awards, then the cards flip over to show what you took and what you passed on. Your picks earn a **draft grade**, and your best one is kept.',
+      '**Season reel:** the Year in Review opens with a 20-second pixel video of your season. Save it as a GIF to share.',
+      '**Big-moment camera:** in watched games, dunks, blocks, clutch threes and game-winners get a zoom, a crowd flash and a slow-motion replay. Turn it off under Camera & display.',
+      '**Trade scale:** the two packages sit on a balance, weighed the way the other GM sees them, and his face tells you if he would say yes before you send it.',
+      '**Your office:** the dashboard opens on a pixel office with your trophies, retired numbers, the owner on the TV, the whiteboard and the phone. Click anything to go there.',
+      '**Heat check:** the roster table shows each player\'s last five games as a mini chart, with a flame or ice when he is streaking.',
+      '**Online status:** if sign-in or the leaderboards are not working on a site, Community → Online status says exactly which setting is missing.',
+    ],
+  },
+  {
+    id: '2026-10-04',
+    title: 'New screens in every game mode',
+    items: [
+      '**League Hunt map:** the ten series now sit on a winding trail through the eras, with your lives as hearts, the semi-boss and boss marked, and your point guard standing where you are.',
+      '**Career card:** your player gets a trading card that changes every season: bronze, silver, gold and holo by overall, a rating ring, last season\'s stats, award badges, and a Hall of Fame foil at the end.',
+      '**All-Time Draft wall:** a big board of every team by all 13 rounds, filling in pick by pick with portraits, steals and reaches marked. Turn on the 60-second pick clock if you want the pressure.',
+      '**Rebuild before and after:** the challenge banner shows the team you were handed next to the team you have now (record, payroll, best three) and a countdown to the title deadline.',
+      '**Leaderboard podium:** the top three stand on a pixel podium, your own rank stays pinned at the bottom, and arrows show who moved since last week.',
+    ],
+  },
+  {
+    id: '2026-10-03',
+    title: 'Ten new looks on the Level Road',
+    items: [
+      '**Ten more app looks** to earn, one every 25 levels: Front Office, Hardwood, Blacktop, Playbook, Handheld, 90s Broadcast, Neon Grid, 16-bit Arcade, Comic Pop and, at level 250, Championship.',
+      '**Tidier look picker:** every card is the same size, "In use" and the unlock level sit on the preview, and nothing gets cut off.',
+    ],
+  },
+  {
     id: '2026-10-02',
     title: 'Five looks, the Player Profile and the Prime Boost',
     items: [

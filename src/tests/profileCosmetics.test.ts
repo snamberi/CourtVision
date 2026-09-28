@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
-import { ICONS, SPRITES, PALETTE, NAME_COLORS, HONORS, MODE_TITLES, LEVEL_ROAD, ENTITLEMENTS_KEY, isOpen, unlockContext, earnedExtraTitles, noteHonors, readHonors } from '../profile/cosmetics';
+import { ICONS, SPRITES, PALETTE, NAME_COLORS, HONORS, MODE_TITLES, LEVEL_ROAD, ROAD_LOOK_NAMES, ENTITLEMENTS_KEY, isOpen, unlockContext, earnedExtraTitles, noteHonors, readHonors } from '../profile/cosmetics';
 import { equipped, equip, levelFor, levelCost, MAX_LEVEL, FRAMES, FLOORS, TITLES, unlocksBetween } from '../profile/profile';
 import { computeHonors } from '../../server/honors';
 
@@ -22,6 +22,7 @@ describe('profile cosmetics', () => {
     for (let l = 5; l <= 250; l += 5) expect(LEVEL_ROAD.some(([lv]) => lv === l), `level ${l}`).toBe(true);
     for (const [lv, kind, id] of LEVEL_ROAD) {
       expect(lv % 5, `${kind} ${id}`).toBe(0);
+      if (kind === 'look') { expect(ROAD_LOOK_NAMES[id], id).toBeTruthy(); continue; } // checked against the themes in themes.test
       const list = kind === 'icon' ? ICONS : kind === 'color' ? NAME_COLORS : kind === 'frame' ? FRAMES : kind === 'floor' ? FLOORS : TITLES;
       const hit = list.find(x => x.id === id) as { rule?: { level?: number }; level?: number } | undefined;
       expect(hit, `${kind} ${id}`).toBeTruthy();
