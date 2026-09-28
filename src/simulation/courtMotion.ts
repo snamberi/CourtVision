@@ -12,6 +12,8 @@ export interface CourtFrame {
  players:CourtActor[]; ball:CourtBall; phase:string; carrier?:string; hoop:CourtPoint; net:number; attackRight:boolean; shotAttempt?:number;
  /** Presentation-only extras; derived from the recorded log, never from simulation randomness. */
  offenseTeamId?:string; callout?:CourtCallout; rim?:number; shotFrom?:CourtPoint;
+ /** The passer and scorer of an assisted basket (key = the two ids sorted, as in chemistryWeb.ts). */
+ duo?:{key:string;passer:string;shooter:string};
 }
 export interface CourtShot extends CourtPoint { made:boolean; three:boolean; teamId:string; dunk:boolean }
 
@@ -406,7 +408,9 @@ function baseFrame(entry:PossessionLogEntry,play:PossessionPlayback,progress:num
  }
  // The ball carrier dribbles; everyone else faces the ball.
  for(const a of actors){if(a.id===carrier){if(a.pose==='run'||a.pose==='idle')a.pose=ball.z<20?'dribble':'idle';}else if(Math.abs(ball.x-a.x)>4)a.facing=ball.x>a.x?1:-1;}
- return {players:actors,ball,phase,carrier,hoop,net,attackRight:right,shotAttempt,offenseTeamId:entry.offenseTeamId,callout,rim,shotFrom};
+ const passer=play.assistId??(shooter!==creator?creator:undefined);
+ const duo=play.shotMade&&passer&&passer!==shooter?{key:passer<shooter?`${passer}|${shooter}`:`${shooter}|${passer}`,passer,shooter}:undefined;
+ return {players:actors,ball,phase,carrier,hoop,net,attackRight:right,shotAttempt,offenseTeamId:entry.offenseTeamId,callout,rim,shotFrom,duo};
 }
 const SMOOTH=.035,SMOOTH_TAPS=6;
 /** A stateless scene makes pause, seek, high playback speeds and repeat viewing agree exactly. */

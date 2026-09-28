@@ -46,7 +46,7 @@ import { applyHistoricalRosters } from './history/realRollover';
 import { enforceSticky } from './simulation/sticky';
 import { collectPress } from './simulation/press';
 import { pendingDecisions } from './simulation/medical';
-import { crowdFill } from './simulation/business';
+import { crowdFill, arenaLevels } from './simulation/business';
 import { useBackgroundJobs } from './workers/useBackgroundJobs';
 import { ToastStack, type ToastData } from './components/ToastStack';
 import { PrivacyPolicyPage, PrivacyLink } from './components/PrivacyPolicyPage';
@@ -65,6 +65,8 @@ import { backfillRecordBook } from './simulation/records';
 import { LeagueSettingsPage, type AwardSettings } from './components/LeagueSettingsPage';
 import { DEFAULT_LEAGUE_RULES } from './simulation/leagueRules';
 import { rivalryBadge } from './simulation/rivalry';
+import { rivalryWeekGame, rivalryHype } from './simulation/rivalryWeek';
+import { duoKeys } from './simulation/chemistryWeb';
 import type { NbaHistory } from './history/nbaHistoryData';
 import { HistoricalSettingsCard } from './components/HistoricalSettingsCard';
 import { migrateHistoricalLeague } from './history/migrateHistorical';
@@ -1849,6 +1851,10 @@ function App() {
             <GameBoxScorePage
               key={`${scheduled?.id ?? activeResult.seed}-${watchNextResult}-${watchStart ?? ''}`}
               crowdFill={homeTeam ? crowdFill(league, homeTeam.teamId) : undefined}
+              court={boxscoreSource === 'league' ? (() => {
+                const rw = scheduled && controlledTeamId ? rivalryWeekGame(league, scheduled.id) : null;
+                return { arena: arenaLevels(homeTeam), duos: new Set([...duoKeys(homeTeam), ...duoKeys(awayTeam)]), rivalryWeek: rw && controlledTeamId ? { hype: rivalryHype(league, controlledTeamId, rw) } : null };
+              })() : undefined}
               initialWatch={watchNextResult}
               watchStart={watchNextResult ? watchStart : undefined}
               coaching={boxscoreSource === 'league' && coachSession && scheduled?.id === coachSession.gameId && league === coachSession.committed && homeTeam && awayTeam ? {

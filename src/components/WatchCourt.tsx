@@ -66,16 +66,62 @@ function Fan({x,y,n,primary,secondary,stand,scale=1}:{x:number;y:number;n:number
  </g>;
 }
 /** Side stands: stepped rows of fans in two sections either side of the tunnel. */
-function SideStand({x0,dir,primary,secondary,hype,fill=1}:{x0:number;dir:1|-1;primary:string;secondary:string;hype:number;fill?:number}){
+function SideStand({x0,dir,primary,secondary,hype,fill=1,loud=0}:{x0:number;dir:1|-1;primary:string;secondary:string;hype:number;fill?:number;loud?:number}){
  const cols=4;
+ // The loud section (an arena upgrade) is the lower stand behind the home basket: everyone in the colours, on their feet.
+ const loudHere=(sec:number)=>loud>0&&sec===1&&dir>0;
  return <g shapeRendering="crispEdges">{[[40,270],[350,580]].map(([y0,y1],sec)=><g key={sec}>
   <rect x={dir>0?x0:x0-cols*17-4} y={y0-6} width={cols*17+4} height={y1-y0+6} fill="#0a121f" stroke="#1f2c3f"/>
   {Array.from({length:cols},(_,c)=>Array.from({length:Math.floor((y1-y0)/22)},(_,r)=>{const n=(c*7+r*5+sec*3)%13,fx=dir>0?x0+2+c*17:x0-2-(c+1)*17;return <g key={`${c}-${r}`}>
    <rect x={fx-1} y={y0+r*22+12} width="17" height="6" fill={c%2?'#223247':'#1b293b'}/>
    {/* Empty seats when the building isn't full (attendance, see business.ts). */}
-   {((c*37+r*61+sec*17+(dir>0?0:29))%100)/100<fill?<Fan x={fx} y={y0+r*22-2} n={n} primary={primary} secondary={secondary} stand={hype>0&&(c+r)%3!==0}/>:<rect x={fx+2} y={y0+r*22+4} width="11" height="8" fill="#2a3a50"/>}
+   {loudHere(sec)?<>
+    <Fan x={fx} y={y0+r*22-2} n={(c+r)%2?0:4} primary={primary} secondary={secondary} stand={hype>0||loud>=3||(loud>=2&&(c+r)%2===0)}/>
+    {loud>=2&&(c*3+r)%4===0&&<g className="court-foam" style={{animationDelay:`${((c+r)%3)*.2}s`}}><rect x={fx+3} y={y0+r*22-16} width="8" height="7" fill={secondary} stroke="#0b1018"/><rect x={fx+6} y={y0+r*22-20} width="3" height="5" fill={secondary} stroke="#0b1018"/></g>}
+   </>
+   :((c*37+r*61+sec*17+(dir>0?0:29))%100)/100<fill?<Fan x={fx} y={y0+r*22-2} n={n} primary={primary} secondary={secondary} stand={hype>0&&(c+r)%3!==0}/>:<rect x={fx+2} y={y0+r*22+4} width="11" height="8" fill="#2a3a50"/>}
   </g>;}))}
+  {loudHere(sec)&&loud>=3&&<g transform={`translate(${x0+cols*17+10},${(y0+y1)/2}) rotate(-90)`}><rect x="-52" y="-8" width="104" height="16" fill={primary} stroke="#0b1018" strokeWidth="2"/><g transform={`translate(${-pixelTextWidth('LOUD HOUSE')},-4)`}><path d={pixelTextPath('LOUD HOUSE',2)} fill={secondary}/></g></g>}
  </g>)}</g>;
+}
+/** The home video board, hung over the top sideline: bigger and brighter with each upgrade level. */
+function VideoBoard({level,identity,bug,hype}:{level:number;identity:TeamIdentity;bug?:CourtBug;hype:number}){
+ const w=[0,104,136,172][level],x=528-w/2,h=level>=3?44:38,screen=level>=2?'#07101c':'#0b1018';
+ const line=bug?`${bug.homeScore}-${bug.awayScore}`:identity.abbreviation,lw=pixelTextWidth(line),px=level>=3?3:2;
+ return <g data-testid="arena-scoreboard" data-level={level} transform={`translate(${x},4)`} shapeRendering="crispEdges">
+  <rect x="-3" y="-3" width={w+6} height={h+6} fill="#05080e"/><rect width={w} height={h} fill={shade(identity.primary,-.35)}/>
+  <rect x="4" y="4" width={w-8} height={h-12} fill={screen}/>
+  <g transform={`translate(${(w/2-lw*px/2).toFixed(1)},${level>=3?10:9})`}><path d={pixelTextPath(line,px)} fill={level>=2?'#ffe7af':'#f6ab64'}/></g>
+  {/* LED ribbon along the bottom edge, running in the team colours */}
+  {level>=2&&Array.from({length:Math.floor((w-8)/6)},(_,i)=><rect key={i} className="court-led" style={{animationDelay:`${(i%6)*.1}s`}} x={4+i*6} y={h-7} width="4" height="3" fill={i%2?identity.primary:identity.secondary}/>)}
+  {level>=3&&<><rect x="6" y={h-16} width={Math.round((w-12)*Math.min(1,.35+hype*.65))} height="3" fill="#f47b20"/><rect x="-10" y="6" width="7" height="22" fill="#05080e"/><rect x={w+3} y="6" width="7" height="22" fill="#05080e"/></>}
+ </g>;
+}
+/** Light rigs over the corners and their beams on the floor; the top level adds moving team-colour spotlights. */
+function ArenaLights({level,identity}:{level:number;identity:TeamIdentity}){
+ return <g pointerEvents="none" data-testid="arena-lights" data-level={level}>
+  <rect x="62" y="85" width="876" height="450" fill="#fffbe8" opacity={.025*level}/>
+  {[[-40,60],[1040,60],[-40,560],[1040,560]].map(([x,y],i)=><g key={i}>
+   <path d={`M${x} ${y}L${x<500?300:700} ${y<300?250:370}L${x<500?180:820} ${y<300?360:260}Z`} fill="#fff6d6" opacity={.035+level*.015}/>
+   <g transform={`translate(${x},${y})`} shapeRendering="crispEdges"><rect x="-14" y="-8" width="28" height="16" fill="#0b1018"/>{[0,1,2].slice(0,level).map(k=><rect key={k} x={-11+k*8} y="-5" width="6" height="10" fill="#fff4c2"/>)}</g>
+  </g>)}
+  {level>=3&&[0,1].map(i=><ellipse key={i} className={`court-spot court-spot-${i}`} cx={i?660:340} cy="310" rx="70" ry="34" fill={i?identity.secondary:identity.primary} opacity=".12"/>)}
+ </g>;
+}
+/** The home mascot, bouncing on the sideline; a cape at level 2, a T-shirt cannon at level 3. */
+function Mascot({level,identity,hype}:{level:number;identity:TeamIdentity;hype:number}){
+ const fur=identity.primary,trim=identity.secondary,dark=shade(identity.primary,-.4);
+ return <g data-testid="arena-mascot" data-level={level} transform="translate(646,560)"><g className={hype>0?'court-mascot court-mascot-hype':'court-mascot'} shapeRendering="crispEdges">
+  {level>=2&&<path d="M-10 0H10L14 24H-14Z" fill={trim} stroke="#0b1018"/>}
+  <rect x="-6" y="22" width="5" height="10" fill={dark}/><rect x="1" y="22" width="5" height="10" fill={dark}/>
+  <rect x="-9" y="4" width="18" height="20" fill={fur} stroke="#0b1018"/><rect x="-5" y="8" width="10" height="10" fill="#f4f0e6"/>
+  <rect x="-13" y="6" width="4" height="12" fill={fur} stroke="#0b1018"/><rect x="9" y="6" width="4" height="12" fill={fur} stroke="#0b1018"/>
+  <rect x="-11" y="-18" width="22" height="22" fill={fur} stroke="#0b1018"/>
+  <rect x="-12" y="-24" width="7" height="8" fill={fur} stroke="#0b1018"/><rect x="5" y="-24" width="7" height="8" fill={fur} stroke="#0b1018"/>
+  <rect x="-6" y="-11" width="4" height="5" fill="#fff"/><rect x="2" y="-11" width="4" height="5" fill="#fff"/><rect x="-5" y="-9" width="2" height="3" fill="#0b1018"/><rect x="3" y="-9" width="2" height="3" fill="#0b1018"/>
+  <rect x="-4" y="-3" width="8" height="3" fill={trim}/>
+  {level>=3&&<><rect x="11" y="2" width="16" height="6" fill="#3a4b63" stroke="#0b1018"/><rect x="25" y="1" width="4" height="8" fill="#0b1018"/>{hype>0&&<rect className="court-tshirt" x="30" y="-8" width="7" height="6" fill={trim} stroke="#0b1018"/>}</>}
+ </g></g>;
 }
 /** A bench: chairs along the sideline with the team's reserves sitting in them. */
 function Bench({x,y,players,kit,count=9,teamId}:{x:number;y:number;players:PlayerSeason[];kit:TeamIdentity;count?:number;teamId:string}){
@@ -110,7 +156,7 @@ function DiscordBoard({x,y}:{x:number;y:number}){
   </g>
  </a>;
 }
-const Arena=memo(function Arena({home,away,identity,awayKit,id,hype,homeBench,awayBench,fill=1}:{home:Team;away:Team;identity:TeamIdentity;awayKit:TeamIdentity;id:string;hype:number;homeBench:PlayerSeason[];awayBench:PlayerSeason[];fill?:number}){
+const Arena=memo(function Arena({home,away,identity,awayKit,id,hype,homeBench,awayBench,fill=1,loud=0,mascot=0,rivalry=false}:{home:Team;away:Team;identity:TeamIdentity;awayKit:TeamIdentity;id:string;hype:number;homeBench:PlayerSeason[];awayBench:PlayerSeason[];fill?:number;loud?:number;mascot?:number;rivalry?:boolean}){
  const apron=shade(identity.primary,-.18),apronDark=shade(identity.primary,-.45),paint=identity.courtPaint,picked=equippedFloor(),style=picked==='team'?floorStyle(home.teamId):picked;
  const cream='#f6ecd2';
  return <>
@@ -145,7 +191,7 @@ const Arena=memo(function Arena({home,away,identity,awayKit,id,hype,homeBench,aw
   {/* The whole building in the home team's colour, darker toward the stands. */}
   <rect x={SCENE.x} y="0" width={SCENE.w} height="600" fill={`url(#${id}-apron)`}/>
   <rect x={SCENE.x} y="0" width={SCENE.w} height="600" fill="#000" opacity=".12"/>
-  <SideStand x0={SCENE.x+2} dir={1} primary={identity.primary} secondary={identity.secondary} hype={hype} fill={fill}/>
+  <SideStand x0={SCENE.x+2} dir={1} primary={identity.primary} secondary={identity.secondary} hype={hype} fill={fill} loud={loud}/>
   <SideStand x0={SCENE.x+SCENE.w-2} dir={-1} primary={identity.primary} secondary={identity.secondary} hype={hype} fill={fill}/>
   {/* Top sideline: the visitors' bench, the table officials' chairs and the community board. */}
   <rect x="100" y="8" width="332" height="44" fill={apronDark} opacity=".55"/>
@@ -159,6 +205,8 @@ const Arena=memo(function Arena({home,away,identity,awayKit,id,hype,homeBench,aw
   <rect x="40" y="66" width="920" height="488" fill="#0b1018"/>
   <rect x="42" y="68" width="916" height="484" fill={shade(identity.primary,-.12)}/>
   <rect x="52" y="76" width="896" height="468" fill="none" stroke={identity.secondary} strokeWidth="2" opacity=".85"/>
+  {/* Rivalry Week: the border is striped in both teams' colours. */}
+  {rivalry&&<rect data-testid="rivalry-trim" x="47" y="72" width="906" height="476" fill="none" stroke={awayKit.secondary} strokeWidth="6" strokeDasharray="18 18" opacity=".9"/>}
   <rect x="58" y="81" width="884" height="458" fill="#0b1018"/>
   <rect x="62" y="85" width="876" height="450" fill={`url(#${id}-${style})`}/>
   <path d={`M62 ${LANE.top}H${62+LANE.depth}V${LANE.bottom}H62ZM938 ${LANE.top}H${938-LANE.depth}V${LANE.bottom}H938Z`} fill={paint}/>
@@ -166,7 +214,7 @@ const Arena=memo(function Arena({home,away,identity,awayKit,id,hype,homeBench,aw
   <circle cx="500" cy="310" r="56" fill={identity.secondary} opacity=".35"/>
   <CourtLines/>
   {/* The team name painted along both sidelines, between the arcs. */}
-  {[[300,106],[700,106],[300,522],[700,522]].map(([x,y],i)=>{const t=splitTeamName(home.name).nickname.toUpperCase()||identity.abbreviation,w=pixelTextWidth(t),px=Math.max(2,Math.min(3,150/w));return <g key={i} transform={`translate(${(x-w*px/2).toFixed(1)},${(y-3.5*px).toFixed(1)})`} opacity=".5" shapeRendering="crispEdges"><path d={pixelTextPath(t,px)} fill={identity.primary}/></g>;})}
+  {[[300,106],[700,106],[300,522],[700,522]].map(([x,y],i)=>{const t=rivalry&&i<2?(i?'WEEK':'RIVALRY'):splitTeamName(home.name).nickname.toUpperCase()||identity.abbreviation,w=pixelTextWidth(t),px=Math.max(2,Math.min(3,150/w));return <g key={i} transform={`translate(${(x-w*px/2).toFixed(1)},${(y-3.5*px).toFixed(1)})`} opacity=".5" shapeRendering="crispEdges"><path d={pixelTextPath(t,px)} fill={identity.primary}/></g>;})}
   <g data-testid="home-court-logo" transform="translate(405,215) scale(.95)" opacity=".96"><CrestArt team={home} identity={identity}/></g>
   {/* Reflections of the arena lights on the varnish. */}
   {[[240,190],[760,190],[240,430],[760,430],[500,310]].map(([x,y],i)=><ellipse key={i} cx={x} cy={y} rx={i===4?120:80} ry={i===4?46:30} fill="#fffbe8" opacity={i===4?.06:.08} pointerEvents="none"/>)}
@@ -177,7 +225,7 @@ const Arena=memo(function Arena({home,away,identity,awayKit,id,hype,homeBench,aw
    <g transform={`translate(${(500-pixelTextWidth(identity.abbreviation+' COURT VISION'))},575)`}><path d={pixelTextPath(identity.abbreviation+' COURT VISION',2)} fill="#f8bc70"/></g>
   </g>
   <Bench x={96} y={566} players={homeBench} kit={identity} teamId={home.teamId} count={9}/>
-  <g shapeRendering="crispEdges">{Array.from({length:8},(_,i)=><g key={i} transform={`translate(${650+i*34},566)`}><rect width="24" height="20" fill="#1d2a3c" stroke="#0a111c"/><rect x="4" y="-10" width="16" height="12" fill="#2c3e55"/></g>)}</g>
+  <g shapeRendering="crispEdges">{Array.from({length:mascot?7:8},(_,i)=><g key={i} transform={`translate(${(mascot?684:650)+i*34},566)`}><rect width="24" height="20" fill="#1d2a3c" stroke="#0a111c"/><rect x="4" y="-10" width="16" height="12" fill="#2c3e55"/></g>)}</g>
  </>;
 });
 function Photographers({flash}:{flash:number}){
@@ -264,13 +312,13 @@ function Burst({x,y,t,color}:{x:number;y:number;t:number;color:string}){
  const r=10+t*34,o=1-t;
  return <g transform={`translate(${x},${y-RIM_HEIGHT})`} opacity={o} shapeRendering="crispEdges">{Array.from({length:10},(_,i)=>{const a=i/10*Math.PI*2;return <rect key={i} x={Math.cos(a)*r-2} y={Math.sin(a)*r*.7-2} width="4" height="4" fill={i%2?color:'#fff3c4'}/>;})}</g>;
 }
-function Callout({text,x,y,t,tone}:{text:string;x:number;y:number;t:number;tone:'make'|'defense'|'neutral'}){
+function Callout({text,x,y,t,tone,size=17}:{text:string;x:number;y:number;t:number;tone:'make'|'defense'|'neutral';size?:number}){
  if(t<=0||t>=1)return null;
  const pop=t<.15?.6+t/.15*.5:1.1-Math.min(.1,(t-.15)*.3),rise=t*18,fade=t>.75?1-(t-.75)/.25:1;
  const fill=tone==='make'?'#ffd166':tone==='defense'?'#7cc4ff':'#f4f0e6';
  const cx=Math.max(70,Math.min(930,x));
  return <g className="court-callout" transform={`translate(${cx},${y-rise}) scale(${pop.toFixed(3)})`} opacity={fade}>
-  <text textAnchor="middle" fontFamily="'Press Start 2P', monospace" fontSize="17" fill={fill} stroke="#0b1018" strokeWidth="5" paintOrder="stroke">{text}</text>
+  <text textAnchor="middle" fontFamily="'Press Start 2P', monospace" fontSize={size} fill={fill} stroke="#0b1018" strokeWidth="5" paintOrder="stroke">{text}</text>
  </g>;
 }
 function ScoreBug({bug,home,away,hi,ai,frame}:{bug:CourtBug;home:Team;away:Team;hi:TeamIdentity;ai:TeamIdentity;frame:CourtFrame}){
@@ -301,7 +349,13 @@ function cameraBox(frame:CourtFrame,camera:CourtCamera):string{
  const fx=ball.x*.7+cx*.3,fy=ball.y*.7+cy*.3;
  return `${Math.max(SCENE.x,Math.min(SCENE.x+SCENE.w-560,fx-280)).toFixed(1)} ${Math.max(0,Math.min(600-276,fy-150)).toFixed(1)} 560 276`;
 }
-export function WatchCourt({frame,home,away,rosters,hotId,labels=true,trail=false,camera='full',ghosts=[],shots=[],bug,crowdFill=1}:{frame:CourtFrame;home:Team;away:Team;rosters:PlayerSeason[];hotId?:string;labels?:boolean;trail?:boolean;camera?:CourtCamera;ghosts?:CourtBall[];shots?:CourtShot[];bug?:CourtBug;crowdFill?:number}){
+export function WatchCourt({frame,home,away,rosters,hotId,labels=true,trail=false,camera='full',ghosts=[],shots=[],bug,crowdFill=1,arena,rivalry=false,duos}:{frame:CourtFrame;home:Team;away:Team;rosters:PlayerSeason[];hotId?:string;labels?:boolean;trail?:boolean;camera?:CourtCamera;ghosts?:CourtBall[];shots?:CourtShot[];bug?:CourtBug;crowdFill?:number;
+ /** The home arena's upgrade levels (business.ts), drawn on the court. */
+ arena?:Partial<Record<'scoreboard'|'lights'|'crowd'|'mascot',number>>;
+ /** Rivalry Week game: striped border, painted floor and a crowd on its feet. */
+ rivalry?:boolean;
+ /** Strong duos (chemistryWeb.ts): an assisted basket between the two gets its own callout. */
+ duos?:Set<string>}){
  const homeIdentity=useTeamIdentity(home.teamId),awayIdentity=useTeamIdentity(away.teamId),id=useId().replace(/:/g,'');
  const hi=homeIdentity??resolveTeamIdentity(home),ai=awayIdentity??resolveTeamIdentity(away);
  const awayKit={...ai,primary:'#f2e8d2',secondary:ai.primary};
@@ -310,11 +364,16 @@ export function WatchCourt({frame,home,away,rosters,hotId,labels=true,trail=fals
  // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed by who is on the floor, not the frame object
  const [homeBench,awayBench]=useMemo(()=>{const court=new Set(onCourt.split('|'));const side=(t:string)=>rosters.filter(p=>p.teamId===t&&!court.has(p.playerId));return [side(home.teamId),side(away.teamId)];},[rosters,onCourt,home.teamId,away.teamId]);
  const homeMoment=frame.callout?.tone==='make'&&frame.offenseTeamId===home.teamId?Math.sin(frame.callout.t*Math.PI):frame.callout?.tone==='defense'&&frame.offenseTeamId===away.teamId?Math.sin(frame.callout.t*Math.PI)*.7:0;
- const hype=Math.round(homeMoment*6)/6;
+ const hype=Math.max(rivalry?.35:0,Math.round(homeMoment*6)/6);
+ const lv={scoreboard:arena?.scoreboard??0,lights:arena?.lights??0,crowd:arena?.crowd??0,mascot:arena?.mascot??0};
+ const duoCall=frame.callout?.tone==='make'&&duos&&frame.duo&&duos.has(frame.duo.key)?frame.duo:null;
  const flash=frame.net>0?frame.net:0;
  const athlete=(a:CourtActor)=>{const homeSide=a.teamId===home.teamId;return <Athlete key={a.id} ballZ={ball.z} hoopX={frame.hoop.x} actor={a} player={rosters.find(p=>p.playerId===a.id)} identity={homeSide?hi:awayKit} ring={homeSide?hi.primary:ai.primary} hot={a.id===hotId} carrier={a.id===frame.carrier} labels={labels&&(a.teamId===frame.offenseTeamId||!frame.offenseTeamId||a.id===frame.carrier)} above={a.teamId!==frame.offenseTeamId&&!!frame.offenseTeamId}/>;};
  return <div className="watch-arena"><svg className="watch-court" viewBox={cameraBox(frame,camera)} role="img" aria-label={`${home.name} home court. ${frame.phase}.`}>
-  <Arena home={home} away={away} identity={hi} awayKit={awayKit} id={id} hype={hype} homeBench={homeBench} awayBench={awayBench} fill={crowdFill}/>
+  <Arena home={home} away={away} identity={hi} awayKit={awayKit} id={id} hype={hype} homeBench={homeBench} awayBench={awayBench} fill={rivalry?1:crowdFill} loud={lv.crowd} mascot={lv.mascot} rivalry={rivalry}/>
+  {lv.lights>0&&<ArenaLights level={lv.lights} identity={hi}/>}
+  {lv.scoreboard>0&&<VideoBoard level={lv.scoreboard} identity={hi} bug={bug} hype={hype}/>}
+  {lv.mascot>0&&<Mascot level={lv.mascot} identity={hi} hype={hype}/>}
   <Photographers flash={flash}/>
   <Referee x={Math.max(180,Math.min(820,300+ball.x*.4))} y={82} facing={ball.x>500?1:-1}/>
   <Referee x={Math.max(180,Math.min(820,700-(1000-ball.x)*.35))} y={556} facing={ball.x>500?1:-1}/>
@@ -327,6 +386,7 @@ export function WatchCourt({frame,home,away,rosters,hotId,labels=true,trail=fals
   <Ball ball={ball}/>
   {frame.callout?.tone==='make'&&<Burst x={frame.hoop.x} y={frame.hoop.y} t={frame.callout.t} color={frame.offenseTeamId===home.teamId?hi.primary:ai.primary}/>}
   {frame.callout&&<Callout {...frame.callout}/>}
+  {duoCall&&frame.callout&&<Callout text={`DUO: ${lastName(duoCall.passer)} > ${lastName(duoCall.shooter)}`} x={frame.callout.x} y={frame.callout.y+26} t={frame.callout.t} tone="defense" size={11}/>}
 </svg>
   <svg className="watch-bug" viewBox="0 600 1000 50" aria-hidden="true">{bug?<ScoreBug bug={bug} home={home} away={away} hi={hi} ai={ai} frame={frame}/>:<g fill="#d5e1eb" fontFamily="monospace" fontSize="11"><rect x="0" y="600" width="1000" height="50" fill="#0d1726"/><text x="45" y="631">{frame.attackRight?'ATTACK →':'← ATTACK'}</text><text x="955" y="631" textAnchor="end">{frame.phase.toUpperCase()}</text></g>}</svg>
   <div className="watch-arena-caption"><span>{home.name} arena</span><span>{frame.phase}</span></div></div>;

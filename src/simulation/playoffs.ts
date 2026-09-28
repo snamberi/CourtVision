@@ -2,7 +2,8 @@ import { prepareCoachingForGame, finishCoachingGame } from './playerDevelopment'
 import { gameStaffCoach } from './staffManagement';
 import { recordCoachResult, driftRelationships } from './coaching';
 import type { League, InjuryRecord } from './league';
-import { computeStandings, computeConferenceStandings, hasConferenceStructure, tickInjuriesForTeam } from './league';
+import { computeStandings, computeConferenceStandings, hasConferenceStructure, tickInjuriesForTeam, gameBoost } from './league';
+import { applyGameBonds } from './chemistryWeb';
 import type { GameResult } from './boxscore';
 import { simulateGame } from './engine/game';
 import { applyGameResultToLeague } from './careerStats';
@@ -163,10 +164,10 @@ function playPostseasonGame(league: League, teamAId: string, teamBId: string, te
   const availableB = teamB.seasons.filter((s) => !isOut(s.playerId));
   const seasonsA = availableA.length >= 5 ? availableA : teamA.seasons;
   const seasonsB = availableB.length >= 5 ? availableB : teamB.seasons;
-  const side = (t: typeof teamA, seasons: typeof seasonsA) => ({ teamId: t.teamId, seasons, coach: t.coach, chemistry: t.chemistry, coachIdentity: gameStaffCoach(t), rotationOrder: t.rotationOrder });
+  const side = (t: typeof teamA, seasons: typeof seasonsA, home: boolean) => ({ teamId: t.teamId, seasons, coach: t.coach, chemistry: t.chemistry, coachIdentity: gameStaffCoach(t), rotationOrder: t.rotationOrder, ...gameBoost(league, t, seasons.map(s => s.playerId), home) });
   const result = simulateGame({
-    home: teamAHosts ? side(teamA, seasonsA) : side(teamB, seasonsB),
-    away: teamAHosts ? side(teamB, seasonsB) : side(teamA, seasonsA),
+    home: teamAHosts ? side(teamA, seasonsA, true) : side(teamB, seasonsB, true),
+    away: teamAHosts ? side(teamB, seasonsB, false) : side(teamA, seasonsA, false),
     settings: { ...league.settings, seed },
     isPlayoffs: true,
     rules: league.rulesSettings, moraleImpact: league.coachingSettings?.moraleImpact,
@@ -184,7 +185,7 @@ function playPostseasonGame(league: League, teamAId: string, teamBId: string, te
     };
   }
   const calendarDate = addDays(league.calendarDate ?? seasonStartDate(league.season), DAYS_PER_ROUND);
-  const teams = league.teams.map(t => {
+  const teams = applyGameBonds(league.teams, result).map(t => {
     const box = t.teamId === result.homeTeamId ? result.homeBox : t.teamId === result.awayTeamId ? result.awayBox : null;
     if (!box) return t;
     const won = t.teamId === result.homeTeamId ? result.homeScore > result.awayScore : result.awayScore > result.homeScore;

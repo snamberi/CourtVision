@@ -4,6 +4,7 @@ import { TeamLogo } from './TeamLogo';
 import { useTeamIdentity } from '../visuals/TeamIdentityContext';
 import { CupCard } from './CupPage';
 import { DeadlineCard } from './DeadlineDayPage';
+import { RivalryWeekCard } from './RivalryWeekCard';
 import { OwnerOfficeCard } from './FrontOfficePanels';
 import { TeamLink, TeamText } from './TeamLink';
 import type { League, SeasonPhase } from '../simulation/league';
@@ -134,6 +135,7 @@ export function DashboardPage({ league, extras, controlledTeamId, seasonPhase, o
         <OwnerOfficeCard league={league} extras={extras} onOpen={() => onGoTo('gmOffice')} />
         <CupCard league={league} controlledTeamId={controlledTeamId} onOpen={() => onGoTo('cup')} />
         <DeadlineCard league={league} controlledTeamId={controlledTeamId} onOpen={() => onGoTo('deadline')} />
+        <RivalryWeekCard league={league} controlledTeamId={controlledTeamId} onPress={() => onGoTo('press')} />
       </div>
 
       <div className="dashboard-columns">

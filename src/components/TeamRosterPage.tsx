@@ -1,4 +1,5 @@
 import { LockerRoomPanel, MoraleCell } from './MoralePanels';
+import { ChemistryWeb } from './ChemistryWeb';
 import { TeamIdentityPanel } from './TeamIdentityPanel';
 import type { TeamIdentity } from '../simulation/teamIdentity';
 import type { FranchiseHistoryRecord } from '../simulation/league';
@@ -272,6 +273,7 @@ export function TeamRosterPage({
           </tbody>
         </table>
       )}
+      {team && <ChemistryWeb team={team} onSelectPlayer={onSelectPlayer} />}
     </div>
   );
 }

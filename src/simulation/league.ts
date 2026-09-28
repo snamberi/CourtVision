@@ -20,6 +20,8 @@ import type { CoachIdentity } from './coaching';
 import { recordCoachResult, driftRelationships } from './coaching';
 import type { AllStarGameResult, ThreePointContestResult, DunkContestResult } from './allStarGame';
 import type { AllStarVotingRecord } from './allStarVoting';
+import { applyGameBonds, duoBoost } from './chemistryWeb';
+import { homeCourtEdge } from './business';
 
 /** Pulls a playerId -> minutes map out of one team's box score, for coach-relationship drift. */
 function minutesFromBox(box: { players: Record<string, { minutes: number }> }): Record<string, number> {
@@ -75,6 +77,8 @@ export function defaultCoachTendencies(): CoachTendencies {
 export interface LeagueTeam {
   /** Ticket price, arena upgrades and their loans (see business.ts); set once the team's business is managed. */
   business?: import('./business').BusinessPlan;
+  /** Chemistry web: bond strength (0-100) between two teammates, keyed "a|b" with the ids sorted (see chemistryWeb.ts). */
+  bonds?: Record<string, number>;
   staff?: import('./coachingModel').AssistantStaff;
   coachingControl?: import('./coachingModel').CoachingControl;
   identity?: import('./teamIdentity').TeamIdentity;
@@ -209,6 +213,8 @@ export interface League {
   playoffBracket?: import('./playoffs').PlayoffBracket;
   /** Press conferences, fan mood and what you've said this season (see press.ts). */
   press?: import('./press').PressState;
+  /** This season's two Rivalry Week games against your biggest rival, the build-up and the fallout (see rivalryWeek.ts). */
+  rivalryWeek?: import('./rivalryWeek').RivalryWeekState;
   /** Fragile returning players and load management (see medical.ts). */
   medical?: import('./medical').MedicalState;
 
@@ -628,6 +634,14 @@ export function teamGameInput(league: League, teamId: string): PreparedGame['inp
   return { teamId, seasons: available, coach: team.coach, chemistry: team.chemistry, coachIdentity: gameStaffCoach(team), rotationOrder: team.rotationOrder };
 }
 
+/** Tonight's extra edge for a team: a strong duo whose partner dressed, and (at home) the arena's upgrades. */
+export function gameBoost(league: League, team: LeagueTeam, dressedIds: string[], home: boolean): { boost?: Record<string, number> } {
+  const boost = league.settings.teamChemistryEnabled === false ? {} : duoBoost(team, dressedIds);
+  const edge = home ? homeCourtEdge(team) : 0;
+  if (edge > 0) for (const id of dressedIds) boost[id] = (boost[id] ?? 0) + edge;
+  return Object.keys(boost).length ? { boost } : {};
+}
+
 /** Practice up to game day, then pick who is available (`injuries` decides who is out). */
 function prepareGame(league: League, idx: number, seedBase: number, injuries: Record<string, InjuryRecord>, liveCoaching?: LiveCoachingCommand[]): { league: League; prepared: PreparedGame } {
   const scheduled = league.schedule[idx];
@@ -646,8 +660,8 @@ function prepareGame(league: League, idx: number, seedBase: number, injuries: Re
   awayAvailable = ensureMinimumAvailable(away.seasons, awayAvailable, injuries);
 
   const input: PreparedGame['input'] = {
-    home: { teamId: home.teamId, seasons: homeAvailable, coach: home.coach, chemistry: home.chemistry, coachIdentity: gameStaffCoach(home), rotationOrder: home.rotationOrder },
-    away: { teamId: away.teamId, seasons: awayAvailable, coach: away.coach, chemistry: away.chemistry, coachIdentity: gameStaffCoach(away), rotationOrder: away.rotationOrder },
+    home: { teamId: home.teamId, seasons: homeAvailable, coach: home.coach, chemistry: home.chemistry, coachIdentity: gameStaffCoach(home), rotationOrder: home.rotationOrder, ...gameBoost(league, home, homeAvailable.map(s => s.playerId), true) },
+    away: { teamId: away.teamId, seasons: awayAvailable, coach: away.coach, chemistry: away.chemistry, coachIdentity: gameStaffCoach(away), rotationOrder: away.rotationOrder, ...gameBoost(league, away, awayAvailable.map(s => s.playerId), false) },
     settings: { ...league.settings, seed: seedBase + idx },
     rules: league.rulesSettings, moraleImpact: league.coachingSettings?.moraleImpact,
     liveCoaching,
@@ -723,6 +737,7 @@ function commitGame(league: League, prepared: PreparedGame, result: GameResult, 
     calendarRound = g.round;
   }
 
+  teams = applyGameBonds(teams, result);
   const updated = applyGameResultToLeague({ ...league, teams, schedule, injuries: nextInjuries, calendarDate, calendarRound, ...(medical ? { medical } : {}) }, result);
   // The last game of a game day moves the award races along (weekly ladder, Players of the Week/Month).
   // The same night decides the Cup: once the last group game is in, the knockout rounds are played (see cup.ts).

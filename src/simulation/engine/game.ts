@@ -24,6 +24,8 @@ export interface TeamInput {
   coach?: CoachTendencies;
   chemistry?: number;
   coachIdentity?: CoachIdentity; // the named head coach — their traits/relationships modify in-game outcomes
+  /** Extra decision-making/help-defense points per player for this game: a loud home arena, a strong duo (see chemistryWeb.ts). */
+  boost?: Record<PlayerId, number>;
 }
 
 export interface SimulateGameOptions {
@@ -270,8 +272,8 @@ export function simulateGame(opts: SimulateGameOptions): GameResult {
       const defenseSeasons = defenseIds.map((id) => (offenseIsHome ? awayBySeasonId : homeBySeasonId).get(id)!).filter(Boolean);
       if (offenseSeasons.length < 1 || defenseSeasons.length < 1) { clock -= secondsPerPossession; elapsed += secondsPerPossession; poss++; offenseIsHome = !offenseIsHome; secondChance = false; continue; }
 
-      const offenseOnCourt = offenseSeasons.map((s) => buildOnCourtPlayer(s, fatigue, customBadges, settings.sandboxMode, offenseIsHome ? homeChemMod : awayChemMod, staticCache));
-      const defenseOnCourt = defenseSeasons.map((s) => buildOnCourtPlayer(s, fatigue, customBadges, settings.sandboxMode, offenseIsHome ? awayChemMod : homeChemMod, staticCache));
+      const offenseOnCourt = offenseSeasons.map((s) => buildOnCourtPlayer(s, fatigue, customBadges, settings.sandboxMode, (offenseIsHome ? homeChemMod : awayChemMod) + ((offenseIsHome ? home : away).boost?.[s.playerId] ?? 0), staticCache));
+      const defenseOnCourt = defenseSeasons.map((s) => buildOnCourtPlayer(s, fatigue, customBadges, settings.sandboxMode, (offenseIsHome ? awayChemMod : homeChemMod) + ((offenseIsHome ? away : home).boost?.[s.playerId] ?? 0), staticCache));
       const matchups = computeMatchups(offenseOnCourt, defenseOnCourt);
 
       const isClutch = q >= numQuarters - 1 && clock < 300 && Math.abs(homeBox.points - awayBox.points) <= 10;
