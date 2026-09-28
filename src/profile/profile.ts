@@ -4,7 +4,7 @@ import { loadRebuildRecords } from '../simulation/rebuildChallenge';
 import { loadWeeklyRecords } from '../retention/weekly';
 import { dailyGoalXp } from './dailyGoals';
 import { localRead, type Read } from '../lib/kv';
-import { ICONS, NAME_COLORS, LEVEL_ROAD, ROAD_TITLES, roadLevel, unlockContext, isOpen, earnedExtraTitles, iconDef, type IconId, type ColorId, type RewardKind } from './cosmetics';
+import { ICONS, NAME_COLORS, LEVEL_ROAD, ROAD_TITLES, ROAD_LOOK_NAMES, roadLevel, unlockContext, isOpen, earnedExtraTitles, iconDef, type IconId, type ColorId, type RewardKind } from './cosmetics';
 
 /*
  * The GM Profile: one level across every mode. XP is worked out from the records each mode already keeps (GM
@@ -159,6 +159,7 @@ export function unlocksBetween(from: number, to: number): string[] {
   const name: Record<RewardKind, (id: string) => string> = {
     icon: id => `the ${iconDef(id).name} icon`, color: id => `the ${NAME_COLORS.find(c => c.id === id)?.name ?? id} name colour`,
     title: id => `the "${id}" title`, frame: id => `the ${FRAMES.find(f => f.id === id)?.name ?? id} card frame`, floor: id => `the ${FLOORS.find(f => f.id === id)?.name ?? id} court`,
+    look: id => `the ${ROAD_LOOK_NAMES[id] ?? id} app look`,
   };
   return LEVEL_ROAD.filter(([l]) => l > from && l <= to).map(([, k, id]) => name[k](id));
 }

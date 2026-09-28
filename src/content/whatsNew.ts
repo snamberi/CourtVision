@@ -6,6 +6,14 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2026-10-03',
+    title: 'Ten new looks on the Level Road',
+    items: [
+      '**Ten more app looks** to earn, one every 25 levels: Front Office, Hardwood, Blacktop, Playbook, Handheld, 90s Broadcast, Neon Grid, 16-bit Arcade, Comic Pop and, at level 250, Championship.',
+      '**Tidier look picker:** every card is the same size, "In use" and the unlock level sit on the preview, and nothing gets cut off.',
+    ],
+  },
+  {
     id: '2026-10-02',
     title: 'Five looks, the Player Profile and the Prime Boost',
     items: [

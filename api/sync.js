@@ -2364,7 +2364,7 @@ function dailyGoalXp(read = localRead) {
 }
 //#endregion
 //#region src/profile/cosmetics.ts
-/** Every 5 levels, one or two rewards (levels 5 to 250). */
+/** Every 5 levels, one or two rewards (levels 5 to 250); every 25 levels also an app look (src/theme/themes.ts). */
 const LEVEL_ROAD = [
 	[
 		5,
@@ -2417,6 +2417,11 @@ const LEVEL_ROAD = [
 		"sky"
 	],
 	[
+		25,
+		"look",
+		"frontoffice"
+	],
+	[
 		30,
 		"floor",
 		"parquet"
@@ -2467,6 +2472,11 @@ const LEVEL_ROAD = [
 		"star"
 	],
 	[
+		50,
+		"look",
+		"hardwood"
+	],
+	[
 		55,
 		"color",
 		"teal"
@@ -2515,6 +2525,11 @@ const LEVEL_ROAD = [
 		75,
 		"icon",
 		"flame"
+	],
+	[
+		75,
+		"look",
+		"blacktop"
 	],
 	[
 		80,
@@ -2572,6 +2587,11 @@ const LEVEL_ROAD = [
 		"Dynasty Builder"
 	],
 	[
+		100,
+		"look",
+		"playbook"
+	],
+	[
 		105,
 		"color",
 		"sand"
@@ -2620,6 +2640,11 @@ const LEVEL_ROAD = [
 		125,
 		"color",
 		"gold"
+	],
+	[
+		125,
+		"look",
+		"handheld"
 	],
 	[
 		130,
@@ -2672,6 +2697,11 @@ const LEVEL_ROAD = [
 		"fire"
 	],
 	[
+		150,
+		"look",
+		"broadcast"
+	],
+	[
 		155,
 		"color",
 		"emerald"
@@ -2722,6 +2752,11 @@ const LEVEL_ROAD = [
 		"platinum"
 	],
 	[
+		175,
+		"look",
+		"neongrid"
+	],
+	[
 		180,
 		"title",
 		"Commissioner"
@@ -2762,6 +2797,11 @@ const LEVEL_ROAD = [
 		"crown-ruby"
 	],
 	[
+		200,
+		"look",
+		"arcade"
+	],
+	[
 		205,
 		"title",
 		"Kingmaker"
@@ -2785,6 +2825,11 @@ const LEVEL_ROAD = [
 		225,
 		"title",
 		"Living Legend"
+	],
+	[
+		225,
+		"look",
+		"comicpop"
 	],
 	[
 		230,
@@ -2815,6 +2860,11 @@ const LEVEL_ROAD = [
 		250,
 		"color",
 		"inferno"
+	],
+	[
+		250,
+		"look",
+		"championship"
 	]
 ];
 /** The level a road reward opens at (undefined when it isn't on the road). */

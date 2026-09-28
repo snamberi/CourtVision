@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { LEVEL_ROAD, NAME_COLORS, iconDef, type RewardKind } from '../../profile/cosmetics';
+import { THEME_BY_ID, type ThemeId } from '../../theme/themes';
 import { FRAMES, FLOORS, MAX_LEVEL, levelFor, totalXp, PROFILE_EVENT } from '../../profile/profile';
 import { ProfileIcon, NameTag } from '../ProfileIcon';
 import { PixelIcon } from '../PixelIcon';
@@ -9,6 +10,11 @@ function Reward({ kind, id }: { kind: RewardKind; id: string }) {
   if (kind === 'icon') return <span className="road-reward"><ProfileIcon id={id} size={30} /><small>{iconDef(id).name} icon</small></span>;
   if (kind === 'color') return <span className="road-reward"><NameTag name={NAME_COLORS.find(c => c.id === id)?.name ?? id} icon={null} color={id} /><small>Name colour</small></span>;
   if (kind === 'title') return <span className="road-reward"><b className="road-title">{id}</b><small>Title</small></span>;
+  if (kind === 'look') {
+    const t = THEME_BY_ID.get(id as ThemeId);
+    const p = t?.preview;
+    return <span className="road-reward road-look-reward">{p && <i className="road-look" aria-hidden="true" style={{ background: p.bg, borderColor: p.line }}><i style={{ background: p.panel, borderColor: p.line }} /><i style={{ background: p.accent }} /></i>}<small>{t?.name ?? id} app look</small></span>;
+  }
   if (kind === 'frame') return <span className="road-reward"><i className={`road-frame frame-${id}`} aria-hidden="true" /><small>{FRAMES.find(f => f.id === id)?.name ?? id} card frame</small></span>;
   return <span className="road-reward"><i className={`road-floor floor-${id}`} aria-hidden="true" /><small>{FLOORS.find(f => f.id === id)?.name ?? id} court</small></span>;
 }
