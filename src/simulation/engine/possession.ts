@@ -272,7 +272,7 @@ export function simulatePossession(input: PossessionInput): PossessionResult {
     });
     const { winnerId: reboundWinner, credited } = resolveReboundStep(offense, defense, isThree, rng, statDeltas, mods);
     const offensiveRebound = offense.some(p => p.playerId === reboundWinner);
-    events.push(credited ? `Rebound: ${reboundWinner}` : 'Team rebound');
+    events.push(credited ? `Rebound: ${reboundWinner}` : 'Out of bounds: team rebound');
     if (offensiveRebound) events.push(`Offensive rebound: ${credited ? reboundWinner : 'the offense'} keeps it alive`);
     return { ballHandlerId: bh.playerId, events, result: 'MISS', statDeltas, pointsScored: 0, debug: { blockProbability: blockProb, shotType, offensiveRebound } };
   }
@@ -352,7 +352,7 @@ export function simulatePossession(input: PossessionInput): PossessionResult {
   events.push(`${shooter.playerId} ${shotType} MISS`);
   const { winnerId: reboundWinner, credited } = resolveReboundStep(offense, defense, isThree, rng, statDeltas, mods);
   const offensiveRebound = offense.some(p => p.playerId === reboundWinner);
-  events.push(credited ? `Rebound: ${reboundWinner}` : 'Team rebound');
+  events.push(credited ? `Rebound: ${reboundWinner}` : 'Out of bounds: team rebound');
   if (offensiveRebound) events.push(`Offensive rebound: ${credited ? reboundWinner : 'the offense'} keeps it alive`);
   return { ballHandlerId: bh.playerId, events, result: 'MISS', statDeltas, pointsScored: 0, debug: { makeProbability: shotResult.probability, shotType, contest, offensiveRebound } };
 }
@@ -368,8 +368,9 @@ function blockSkill(p: OnCourtPlayer): number {
   return d.block * 0.35 + d.rimProtection * 0.2 + d.blockIQ * 0.15 + d.blockTiming * 0.15 + p.attributes.physical.vertical * 0.15;
 }
 
-/** Share of missed shots that end as uncredited team rebounds (NBA: roughly one in ten). */
-export const TEAM_REBOUND_SHARE = 0.07;
+/** Share of missed shots that end as uncredited team rebounds: out of bounds, tipped loose (NBA: roughly one in ten).
+ * Tuned with the rebound weights so team rebounding lands near 42-43 a game with ~10 offensive. */
+export const TEAM_REBOUND_SHARE = 0.09;
 
 function resolveReboundStep(
   offense: OnCourtPlayer[],

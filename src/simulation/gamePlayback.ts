@@ -16,6 +16,7 @@ export function playbackFromPossession(result: PossessionResult): PossessionPlay
     foulerIds: lines.flatMap(([id, s]) => Array((s.pf ?? 0) > 0 ? s.pf! : 0).fill(id) as string[]),
     shotType: typeof result.debug.shotType === 'string' ? result.debug.shotType : undefined,
     shotMade: shooter ? (shooter[1].fgm ?? 0) > 0 : undefined,
+    ...(result.events.some(e => e.startsWith('Out of bounds') || e === 'Team rebound') ? { outOfBounds: true } : {}),
     freeThrows: shooter && (shooter[1].fta ?? 0) > 0 ? { made: shooter[1].ftm ?? 0, attempted: shooter[1].fta!, outcomes: Array.isArray(result.debug.freeThrowOutcomes) ? result.debug.freeThrowOutcomes.filter((v): v is boolean => typeof v === 'boolean') : undefined } : undefined,
   };
 }
@@ -34,7 +35,7 @@ export function playbackForEntry(entry: PossessionLogEntry): PossessionPlayback 
     rebounderId: ids.find(id => entry.events.includes(`Rebound: ${id}`)),
     stealerId: ids.find(id => entry.events.includes(`${id} STEAL`)), blockerId: ids.find(id => entry.events.includes(`${id} BLOCK`)),
     shotType: typeof entry.debug?.shotType === 'string' ? entry.debug.shotType : entry.action,
-    shotMade: entry.result === 'MAKE' || entry.result === 'AND1', freeThrows: ft ? { made: +ft[1], attempted: +ft[2] } : andOne ? {made:andOne.includes('(made FT)')?1:0,attempted:1} : undefined };
+    shotMade: entry.result === 'MAKE' || entry.result === 'AND1', ...(entry.events.some(e => e.startsWith('Out of bounds') || e === 'Team rebound') ? { outOfBounds: true } : {}), freeThrows: ft ? { made: +ft[1], attempted: +ft[2] } : andOne ? {made:andOne.includes('(made FT)')?1:0,attempted:1} : undefined };
 }
 
 export function playbackScore(game: GameResult, completed: number) {

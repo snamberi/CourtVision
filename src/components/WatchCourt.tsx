@@ -8,7 +8,7 @@ import { PlayerAvatar } from './PlayerAvatar';
 import { CrestArt } from './TeamCrest';
 import { DISCORD_URL } from './DiscordLink';
 import { CLYDE_PATH } from '../visuals/discordGlyph';
-import { pixelTextPath, pixelTextWidth } from '../visuals/pixelFont';
+import { pixelTextPath, pixelTextWidth, splitTeamName } from '../visuals/pixelFont';
 import { equippedFloor } from '../profile/profile';
 
 type Team={teamId:string;name:string};
@@ -155,13 +155,21 @@ const Arena=memo(function Arena({home,away,identity,awayKit,id,hype,homeBench,aw
   <BaselineName text={home.name} x={11} side={1} fill={cream}/>
   <BaselineName text={home.name} x={989} side={-1} fill={cream}/>
   {/* Floor */}
+  {/* Out-of-bounds border in the home colours around the wood, with a thin trim line. */}
+  <rect x="40" y="66" width="920" height="488" fill="#0b1018"/>
+  <rect x="42" y="68" width="916" height="484" fill={shade(identity.primary,-.12)}/>
+  <rect x="52" y="76" width="896" height="468" fill="none" stroke={identity.secondary} strokeWidth="2" opacity=".85"/>
   <rect x="58" y="81" width="884" height="458" fill="#0b1018"/>
   <rect x="62" y="85" width="876" height="450" fill={`url(#${id}-${style})`}/>
   <path d={`M62 ${LANE.top}H${62+LANE.depth}V${LANE.bottom}H62ZM938 ${LANE.top}H${938-LANE.depth}V${LANE.bottom}H938Z`} fill={paint}/>
   {[62+LANE.depth,938-LANE.depth].map((x,i)=><path key={i} d={`M${x} ${310-FT_R}A${FT_R} ${FT_R} 0 0 ${i?0:1} ${x} ${310+FT_R}Z`} fill={identity.secondary} opacity=".85"/>)}
   <circle cx="500" cy="310" r="56" fill={identity.secondary} opacity=".35"/>
   <CourtLines/>
-  <g data-testid="home-court-logo" transform="translate(420,230) scale(.8)" opacity=".96"><CrestArt team={home} identity={identity}/></g>
+  {/* The team name painted along both sidelines, between the arcs. */}
+  {[[300,106],[700,106],[300,522],[700,522]].map(([x,y],i)=>{const t=splitTeamName(home.name).nickname.toUpperCase()||identity.abbreviation,w=pixelTextWidth(t),px=Math.max(2,Math.min(3,150/w));return <g key={i} transform={`translate(${(x-w*px/2).toFixed(1)},${(y-3.5*px).toFixed(1)})`} opacity=".5" shapeRendering="crispEdges"><path d={pixelTextPath(t,px)} fill={identity.primary}/></g>;})}
+  <g data-testid="home-court-logo" transform="translate(405,215) scale(.95)" opacity=".96"><CrestArt team={home} identity={identity}/></g>
+  {/* Reflections of the arena lights on the varnish. */}
+  {[[240,190],[760,190],[240,430],[760,430],[500,310]].map(([x,y],i)=><ellipse key={i} cx={x} cy={y} rx={i===4?120:80} ry={i===4?46:30} fill="#fffbe8" opacity={i===4?.06:.08} pointerEvents="none"/>)}
   <rect x="62" y="85" width="876" height="450" fill={`url(#${id}-sheen)`} pointerEvents="none"/>
   {/* Bottom sideline: the scorer's table between the home bench and the media row. */}
   <g shapeRendering="crispEdges">

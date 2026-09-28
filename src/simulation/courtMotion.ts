@@ -27,12 +27,21 @@ const CLOSE=['rim','close','dunk','layup','hook','postShot'];
  * Outcomes come from the game log; this never calls the simulation RNG or changes a box score. */
 export function ballFlight(a:CourtPoint,b:CourtPoint,t:number,startHeight:number,endHeight:number,seconds:number):CourtBall {
  const u=limit(t),p=courtLerp(a,b,u);
- return {...p,z:Math.max(0,startHeight+(endHeight-startHeight)*u+100*seconds*seconds*u*(1-u)),spin:u*720};
+ // Backspin in proportion to the distance travelled (a lob barely turns, a skip pass spins).
+ return {...p,z:Math.max(0,startHeight+(endHeight-startHeight)*u+100*seconds*seconds*u*(1-u)),spin:u*Math.min(900,240+Math.hypot(b.x-a.x,b.y-a.y)*2.2)};
+}
+/** A dead ball bouncing lower each time (each bounce about 45% of the last), then rolling: height for t in 0-1. */
+export function bouncing(t:number,height:number,count=3):number {
+ const heights=Array.from({length:count},(_,k)=>height*Math.pow(.45,k)),spans=heights.map(h=>Math.sqrt(h)),total=spans.reduce((a,b)=>a+b,0);
+ let at=limit(t)*total;
+ for(let k=0;k<count;k++){if(at<=spans[k]){const u=at/spans[k];return heights[k]*4*u*(1-u);}at-=spans[k];}
+ return 0;
 }
 export function replayDuration(entry:PossessionLogEntry):number {
  const p=playbackForEntry(entry);
  // A full possession: inbound or outlet, the walk-up, ball movement, the action and the finish.
- return 9400+(entry.action==='transition'?-1600:0)+(entry.secondChance?-2800:0)+(p.freeThrows?.attempted??0)*1750;
+ // Paced like a real trip (about 12-13 s at 1x) so nobody looks like he's sprinting everywhere.
+ return 12500+(entry.action==='transition'?-2200:0)+(entry.secondChance?-3600:0)+(p.freeThrows?.attempted??0)*1900;
 }
 
 interface Geometry { right:boolean; mirror:(v:CourtPoint)=>CourtPoint; salt:number; sign:number; close:boolean; three:boolean; onlyFT:boolean; ftCount:number; shooter:string; handler:string }
@@ -104,7 +113,7 @@ const speedOn=(keys:Key[],t:number)=>{const a=track(keys,t-.004),b=track(keys,t+
 const sorted=(keys:Key[])=>keys.filter((k,i)=>i===0||k.t>keys[i-1].t);
 /** Court pixels a player covers per second at a sprint (about 21 ft/s; the court is ~9.3 px per foot). Curves
  * ease in and out, so the peak runs about half again faster. */
-const SPRINT=170;
+const SPRINT=150;
 /** Spaces keys so no leg asks for more than a sprint; later keys wait for the player to get there. */
 function paced(keys:Key[],pxPerQ:number):Key[] {
  const out=keys.map(k=>({...k}));
@@ -356,9 +365,18 @@ function baseFrame(entry:PossessionLogEntry,play:PossessionPlayback,progress:num
   if(play.blockerId&&q>=.66){const contact=ballFlight(from,hoop,.5,dunk?48:42,34,airtime);ball=ballFlight(contact,hand(play.rebounderId??play.blockerId),limit((q-.66)/.24),contact.z,25,.48);phase='Blocked';if(q>.9)carrier=play.rebounderId??play.blockerId;
    callout={text:'BLOCKED!',...contact,t:window01(q,.66,.96),tone:'defense'};}
   else if(q>=.76){
-   if(play.shotMade){const t2=limit((q-.76)/.16);ball={...hoop,z:34*(1-t2*t2),spin:q*900};if(q>.92){const bounce=limit((q-.92)/.08);ball.z=12*4*bounce*(1-bounce);}net=Math.sin(limit((q-.76)/.1)*Math.PI);phase=dunk?'Dunk!':'Basket';
+   if(play.shotMade){const t2=limit((q-.76)/.16);ball={...hoop,z:34*(1-t2*t2),spin:q*900};if(q>.92){const u=limit((q-.92)/.08);ball={...courtLerp(hoop,mirror({x:878,y:310+sign*10}),u),z:bouncing(u,12),spin:q*900};}net=Math.sin(limit((q-.76)/.1)*Math.PI);phase=dunk?'Dunk!':'Basket';
     const and1=entry.result==='AND1'||entry.events.some(e=>e.includes(' AND-1 ('));
     callout={text:and1?'AND-1!':dunk?'SLAM!':three?'+3':'+2',x:hoop.x,y:hoop.y-60,t:window01(q,.76,1),tone:'make'};}
+   else if(play.outOfBounds&&!play.rebounderId){
+    // Off the rim and out: it bounces away past the line and nobody gets it (a team rebound).
+    const pop=mirror({x:900-(10+salt%8),y:310+sign*6}),out=salt%3?mirror({x:958,y:310+sign*(110+salt%60)}):mirror({x:760+salt%80,y:sign>0?556:64});
+    rim=Math.sin(window01(q,.76,.84)*Math.PI);
+    if(q<.82)ball=ballFlight(hoop,pop,limit((q-.76)/.06),34,40,.3);
+    else{const u=limit((q-.82)/.18);ball={...courtLerp(pop,out,1-(1-u)*(1-u)),z:u<.25?40*(1-u/.25):bouncing((u-.25)/.75,14),spin:q*1100};}
+    phase='Out of bounds';
+    if(q>=.86)callout={text:'OUT OF BOUNDS',x:out.x,y:out.y-50,t:window01(q,.86,1),tone:'neutral'};
+   }
    else {
     // Front-rim contact pops the ball up before it caroms toward the rebounder.
     const pop=mirror({x:900-(10+salt%8),y:310+sign*6}),kick=mirror({x:846-(salt%30),y:310+sign*(40+salt%43)});
