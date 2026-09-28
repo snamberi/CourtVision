@@ -6,6 +6,7 @@ import type { PlayerSeason } from './types';
 import { calculateOverall } from './engine/overall';
 import { currentSeasonAdvanced, type PlayerAdvanced } from './advancedStats';
 import { strengthRanking } from './freeAgentDecision';
+import { expectedGrowth } from './growth';
 
 /* How front offices value trade assets. Separate from computeTradeValue (which still drives salaries) so that:
  *  - production matters, not just ratings (PER and win shares per 48 blend into a player's worth),
@@ -61,10 +62,8 @@ export const assetCurve = (score: number) => 100 * Math.pow(Math.max(0, score - 
 export function tradeAssetValue(p: PlayerSeason, league: League, extras: GMLeagueExtras, perspectiveTeamId: string): number {
   const dir = teamDirection(league, perspectiveTeamId);
   let score = playerTradeScore(p, league);
-  const overall = calculateOverall(p);
-  const gap = Math.max(0, p.development.potential - overall);
-  const youth = p.age <= 22 ? 1.6 : p.age <= 25 ? 1.2 : p.age <= 27 ? 0.8 : 0.3;
-  score += gap * youth * 0.6 * (dir === 'rebuilding' ? 1.4 : dir === 'contender' ? 0.6 : 1);
+  // Youth: the growth he can really be expected to add (growth.ts), which rebuilding teams prize and contenders discount.
+  score += expectedGrowth(p) * (dir === 'rebuilding' ? 1.3 : dir === 'contender' ? 0.5 : 0.9);
   if (p.age > 30) score -= (p.age - 30) * (dir === 'contender' ? 0.8 : 1.6);
   if (dir === 'rebuilding' && p.age >= 28) score -= Math.min(10, (p.age - 27) * 2);
   // Contract: salary below a player's fair price is surplus value, above it is a burden.

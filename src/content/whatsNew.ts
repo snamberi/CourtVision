@@ -12,6 +12,7 @@ export const RELEASES: Release[] = [
       '**06 / DRAFT:** thirty teams, thirteen rounds, every player in history at his best. Out-draft the AI GMs, then play the season under any era\'s rules.',
       '**All-Time Draft of the Week:** the same draft order and era for everyone.',
       '**Sign in** from the main menu to keep your progress on every device (as soon as accounts switch on).',
+      '**Smarter AI front offices:** trades make contenders better instead of gifting veterans for bench kids, teams use their cap room on real depth, rotation players re-sign, and Auto Play now has in-season trades. Trade offers to you make sense, and a deal you decline isn\'t pitched again.',
       '**31 new achievements** for Career Mode, League Hunt, Rebuild, the Draft, PvP, Ranked, weekly challenges and daily goals, in the GM Locker. What you already did counts.',
     ],
   },

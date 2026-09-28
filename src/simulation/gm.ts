@@ -12,6 +12,7 @@ import { simulateFullRound } from './league';
 import { RNG } from './engine/rng';
 import { generatePlayer } from './leagueGenerator';
 import { computeStandings } from './league';
+import { expectedGrowth } from './growth';
 import { calculateOverall } from './engine/overall';
 import { generatePlayerOrigin } from './names';
 import { collectPlayerIds, withUniquePlayerId } from './playerIds';
@@ -89,17 +90,10 @@ export const DEFAULT_GM_FLAGS = {
  * harder than trading for veterans of similar current ability.
  */
 export function computeTradeValue(season: PlayerSeason): number {
+  // Today's rating, plus the growth a player of his age and level can really be expected to add (growth.ts), less
+  // the decline that starts in the thirties.
   const overall = calculateOverall(season);
-  const potentialGap = Math.max(0, season.development.potential - overall);
-
-  let youthMultiplier: number;
-  if (season.age <= 22) youthMultiplier = 1.6;
-  else if (season.age <= 27) youthMultiplier = 1.15;
-  else if (season.age <= 31) youthMultiplier = 0.85;
-  else youthMultiplier = 0.55;
-
-  const upsidePremium = potentialGap * youthMultiplier * 0.8;
-  return overall + upsidePremium;
+  return overall + expectedGrowth(season) * 1.2 - Math.max(0, season.age - 31) * 0.8;
 }
 
 export interface GMLeagueExtras {
@@ -113,6 +107,8 @@ export interface GMLeagueExtras {
   tradeBlock: PlayerId[]; // players any team has marked as available for trade discussion
   draftPickIndex: number; // whose turn it is in the draft order, incremented on every successful pick (by anyone)
   pendingTradeOffers: TradeProposal[]; // AI-generated offers targeting the controlled team, awaiting accept/decline
+  /** Offers you declined this season (see offerKey), so the same deal isn't pitched again. */
+  declinedOffers?: string[];
   /** Trade talks with AI front offices this season: rounds of counters and when talks broke off (see tradeTalks.ts). */
   tradeTalks?: Record<string, import('./tradeTalks').TradeTalkState>;
   /** In-season extension talks, by player (see extensions.ts). */

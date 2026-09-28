@@ -189,7 +189,8 @@ describe('positional need weighting', () => {
       ...boost(s), positions: { PG: 0, SG: 0, SF: 0, PF: 0, C: 0, [['PG', 'SG', 'SF', 'PF'][i]]: 90 },
     }));
     const trimmedTeam = { ...aiTeam, seasons: keepers };
-    current.league = { ...current.league, teams: current.league.teams.map((t) => (t.teamId === aiTeamId ? trimmedTeam : t)) };
+    // Only this AI team shops (teams shop in a shuffled order, so another team could take the center first).
+    current.league = { ...current.league, teams: current.league.teams.filter((t) => t.teamId === controlledTeamId || t.teamId === aiTeamId).map((t) => (t.teamId === aiTeamId ? trimmedTeam : t)) };
 
     // Two free agents cloned from the same base player (so trade value is equal) but at different positions:
     // a wing (no positional need) and a center (the team's actual gap).

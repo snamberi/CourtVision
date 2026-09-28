@@ -130,16 +130,17 @@ function shouldRetire(next: PlayerSeason, rng: RNG, rules?: LeagueRulesSettings)
 
 /**
  * An AI team re-signs an expiring player it builds around: one of its best five, or anyone 70+, while he is still
- * worth a long look (not old and fading). The player has to be willing (unhappy players and grudges refuse, see
+ * worth a long look (not old and fading). Rotation players (sixth to eighth best, under 31) stay some of the time too. The player has to be willing (unhappy players and grudges refuse, see
  * resignVerdict) and gets his asking price; the hard cap still applies. Stars stay far more often than role players.
  */
 function aiResign(team: LeagueTeam, player: PlayerSeason, rank: number, extras: GMLeagueExtras, contracts: Record<string, Contract>, rng: RNG): Contract | null {
   const overall = calculateOverall(player);
   const core = rank < 5 || overall >= 70;
-  if (!core || (player.age >= 34 && overall < 72) || player.age >= 37) return null;
+  const rotation = !core && rank < 8 && player.age <= 30;
+  if ((!core && !rotation) || (player.age >= 34 && overall < 72) || player.age >= 37) return null;
   const verdict = resignVerdict(extras, player, team.teamId);
   if (verdict.refuses) return null;
-  const chance = (rank < 2 || overall >= 75 ? 0.9 : rank < 5 ? 0.7 : 0.6) * (0.55 + verdict.interest / 160);
+  const chance = (rotation ? 0.45 : rank < 2 || overall >= 75 ? 0.9 : rank < 5 ? 0.7 : 0.6) * (0.55 + verdict.interest / 160);
   if (rng.next() >= chance) return null;
   const payroll = team.seasons.reduce((n, s) => n + (s.playerId === player.playerId ? 0 : contracts[s.playerId]?.annualSalary ?? 0), 0);
   if (extras.capSettings.hardCapEnabled && payroll + verdict.required > extras.capSettings.salaryCap) return null;

@@ -5,7 +5,7 @@ import { rosterComplianceIssues } from './rosterRequirements';
 import { manageCoachRosters } from './coachRosters';
 import { lockAllStarVoting, currentAllStarWeekend } from './allStarVoting';
 import type { League } from './league';
-import { simulateRemainingSeason, isAllStarBreakPending } from './league';
+import { simulateRemainingSeason, simulateFullRound, isAllStarBreakPending } from './league';
 import { simulateFullPlayoffs, autoGeneratePlayoffBracket } from './playoffs';
 import { awardOptions as optionsFrom, computeFinalsMVP, computeSeasonAwards, type AwardSettings, type SeasonAwards } from './awards';
 import {
@@ -18,7 +18,7 @@ import { RNG } from './engine/rng';
 import {
   type GMLeagueExtras, capSpaceRemaining, signFreeAgent, computeTradeValue, hasRosterRoom,
 } from './gm';
-import { runFreeAgencyAI, simEntireDraft, weakestPositions } from './aiGM';
+import { runFreeAgencyAI, runLeagueAIPass, simEntireDraft, weakestPositions } from './aiGM';
 import { primaryPosition } from './teamStatus';
 
 export interface AutoPlaySeasonSummary {
@@ -143,13 +143,25 @@ export function autoPlayOneSeason(
 ): { league: League; extras: GMLeagueExtras; summary: AutoPlaySeasonSummary } {
   const weekend: AllStarOutcome = { allStarGameMVPPlayerId: null, threePointChampionId: null, dunkChampionId: null };
   let currentLeague = withoutDeadlineStop(league);
-  // 1. Regular season, auto-completing the forced All-Star break as many times as it's hit (once, in practice).
+  let currentExtras = extras;
+  // 1. Regular season, auto-completing the forced All-Star break as many times as it's hit (once, in practice), with
+  // the league's front offices at work between stretches of games.
   for (let guard = 0; guard < 5; guard++) {
-    currentLeague = simulateRemainingSeason(currentLeague, seed);
+    for (;;) {
+      // Up to AI_PASS_EVERY_ROUNDS game days, stopping at the All-Star break or the end of the schedule.
+      let played = 0;
+      while (played < AI_PASS_EVERY_ROUNDS && currentLeague.schedule.some((g) => !g.played)) {
+        const next = simulateFullRound(currentLeague, seed);
+        if (next === currentLeague) break; // blocked (All-Star break pending)
+        currentLeague = next; played++;
+      }
+      if (!played) break;
+      ({ league: currentLeague, extras: currentExtras } = seasonAIPass(currentLeague, currentExtras, controlledTeamId, seed));
+    }
     if (!isAllStarBreakPending(currentLeague)) break;
     currentLeague = playAllStarBreak(currentLeague, awardSettings, seed, guard, weekend);
   }
-  return finishAutoSeason(currentLeague, extras, controlledTeamId, awardSettings, seed, weekend);
+  return finishAutoSeason(currentLeague, currentExtras, controlledTeamId, awardSettings, seed, weekend);
 }
 
 /**
@@ -162,16 +174,35 @@ export async function autoPlayOneSeasonAsync(
 ): Promise<{ league: League; extras: GMLeagueExtras; summary: AutoPlaySeasonSummary }> {
   const weekend: AllStarOutcome = { allStarGameMVPPlayerId: null, threePointChampionId: null, dunkChampionId: null };
   let currentLeague = withoutDeadlineStop(league);
+  let currentExtras = extras;
   for (let guard = 0; guard < 5; guard++) {
-    while (currentLeague.schedule.some((g) => !g.played)) {
-      const next = await simulateRound(currentLeague, seed);
-      if (next === currentLeague) break; // blocked (All-Star break pending)
-      currentLeague = next;
+    for (;;) {
+      // The same stretches as autoPlayOneSeason, so both end the season in exactly the same state.
+      let played = 0;
+      while (played < AI_PASS_EVERY_ROUNDS && currentLeague.schedule.some((g) => !g.played)) {
+        const next = await simulateRound(currentLeague, seed);
+        if (next === currentLeague) break; // blocked (All-Star break pending)
+        currentLeague = next; played++;
+      }
+      if (!played) break;
+      ({ league: currentLeague, extras: currentExtras } = seasonAIPass(currentLeague, currentExtras, controlledTeamId, seed));
     }
     if (!isAllStarBreakPending(currentLeague)) break;
     currentLeague = playAllStarBreak(currentLeague, awardSettings, seed, guard, weekend);
   }
-  return finishAutoSeason(currentLeague, extras, controlledTeamId, awardSettings, seed, weekend);
+  return finishAutoSeason(currentLeague, currentExtras, controlledTeamId, awardSettings, seed, weekend);
+}
+
+/** How often (in game days) Auto Play lets the front offices work, as playing the season week by week does. */
+const AI_PASS_EVERY_ROUNDS = 10;
+/**
+ * The in-season AI pass during Auto Play (trades, the coaching carousel, morale, real deadline moves in historical
+ * leagues). Nobody is at the desk to answer a trade offer, so your inbox is left as it was.
+ */
+function seasonAIPass(league: League, extras: GMLeagueExtras, controlledTeamId: string | null, seed: number): { league: League; extras: GMLeagueExtras } {
+  const played = league.schedule.filter((g) => g.played).length;
+  const pass = runLeagueAIPass(league, extras, controlledTeamId, seed + 500 + played);
+  return { league: pass.league, extras: { ...pass.extras, pendingTradeOffers: extras.pendingTradeOffers } };
 }
 
 /** Auto Play doesn't stop for Trade Deadline Day: a day that hasn't finished is dropped and the deadline passes on the calendar. */
