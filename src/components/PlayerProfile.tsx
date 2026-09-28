@@ -7,6 +7,8 @@ import { Fragment, useState, useMemo } from 'react';
 import type { PlayerSeason } from '../simulation/types';
 import type { League } from '../simulation/league';
 import { FullPlayerEditor } from './FullPlayerEditor';
+import { AppearancePanel } from './AppearancePanel';
+import type { Appearance } from '../visuals/playerSprite';
 import { PlayerAvatar } from './PlayerAvatar';
 import { PixelBall } from './PixelIcon';
 import { calculateRatings } from '../simulation/engine/overall';
@@ -34,6 +36,8 @@ interface Props {
   teamName: string;
   onChange: (next: PlayerSeason) => void;
   sandboxMode: boolean;
+  /** Saves a new look for this player (cosmetic; works outside Sandbox). */
+  onLookChange?: (playerId: string, appearance: Appearance | undefined) => void;
   league?: League;
   extras?: GMLeagueExtras;
   onLeagueExtrasChange?: (league: League, extras: GMLeagueExtras, newPlayerId?: string) => void;
@@ -50,10 +54,11 @@ function topPosition(positions: PlayerSeason['positions']): string {
   return entries.sort((a, b) => b[1] - a[1])[0][0];
 }
 
-export function PlayerProfile({ season, teamName, onChange, sandboxMode, league, extras, onLeagueExtrasChange, controlledTeamId = null, activeTab, onTabChange }: Props) {
+export function PlayerProfile({ season, teamName, onChange, sandboxMode, onLookChange, league, extras, onLeagueExtrasChange, controlledTeamId = null, activeTab, onTabChange }: Props) {
   const [localTab,setLocalTab] = useState<'overview'|'development'>('overview');
   const profileTab = activeTab ?? localTab;
   const [editMode, setEditMode] = useState(false);
+  const [lookMode, setLookMode] = useState(false);
   const ratings = calculateRatings(season);
   const badgeNames = season.badges.map((id) => [...NORMAL_BADGES, ...EXPERIMENTAL_BADGES].find((b) => b.id === id)?.name ?? id);
   const awardsHistory = league ? getPlayerAwardsHistory(league, season.playerId) : [];
@@ -102,12 +107,14 @@ export function PlayerProfile({ season, teamName, onChange, sandboxMode, league,
               <PixelIcon name="star" /> {(extras.watchList ?? []).includes(season.playerId) ? 'Watching' : 'Watch'}
             </button>
           )}
+          {onLookChange && !editMode && <button aria-pressed={lookMode} className={lookMode ? 'active' : ''} onClick={() => setLookMode(v => !v)}>{lookMode ? 'Done' : 'Edit look'}</button>}
           {sandboxMode && <button className="primary edit-toggle" onClick={() => setEditMode((v) => !v)}>
             {editMode ? 'Done Editing' : 'Edit Player'}
           </button>}
         </div>
       </div>
 
+      {lookMode && onLookChange && !editMode && <section className="dashboard-panel"><h5>Look</h5><AppearancePanel season={season} onChange={next => onLookChange(season.playerId, next.appearance)} /></section>}
       {league && <div className="code-mode-actions" role="group" aria-label="Player profile sections">{(['overview','development'] as const).map(view=><button key={view} aria-pressed={profileTab===view} className={profileTab===view?'active':''} onClick={()=>{setLocalTab(view);onTabChange?.(view);setEditMode(false)}}>{view==='overview'?'Overview':'Development'}</button>)}</div>}
       {profileTab === 'development' && league ? <PlayerDevelopmentPanel player={season} league={league} controlledTeamId={controlledTeamId} sandboxMode={sandboxMode} onChange={onLeagueExtrasChange && extras ? l => onLeagueExtrasChange(l,extras) : undefined} /> : sandboxMode && editMode ? (
         <FullPlayerEditor

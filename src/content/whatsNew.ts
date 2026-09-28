@@ -6,6 +6,16 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2026-10-07',
+    title: 'Your players, animated, and real plays',
+    items: [
+      '**The players you know, now animated:** on the court every player looks exactly like his portrait again (same face, hair, beard, headwear and jersey), with frame-by-frame runs, dribbles, jump shots, layups, dunks, passes, defence, rebounds and celebrations.',
+      '**Edit look:** change any player\'s skin tone, hair, hair colour, facial hair and headwear from his profile, in any league (it\'s cosmetic, so it doesn\'t count as Sandbox). It shows everywhere, on the court too.',
+      '**Real plays:** possessions run a set that fits how they end: pick and roll, pick and pop, dribble handoffs, isolation, pin-down screens for shooters, backdoor cuts, screen and roll, post-ups and horns. Off the ball, players space the floor, lift and cut. The broadcast names each set.',
+      '**Skip Deadline Day:** "Sim Deadline Day" in the Play menu runs it to 3 PM in one go, and "Auto-sim Trade Deadline Day" plays straight through it, like All-Star Weekend.',
+    ],
+  },
+  {
     id: '2026-10-06',
     title: 'Players that really move',
     items: [

@@ -51,4 +51,13 @@ describe('court choreography', () => {
       }
     }
   });
+
+  it('runs a playbook: a game shows several different sets, and a screen is set in the ball screens', () => {
+    const labels = new Set<string>();
+    for (let i = 1; i < log.length; i++) for (const k of [.4, .44]) labels.add(courtFrame(log[i], k, 'H', 'A', 4, log[i - 1]).phase);
+    const sets = ['Pick and roll', 'Pick and pop', 'Dribble handoff', 'Isolation', 'Pin-down screen', 'Backdoor cut', 'Screen and roll', 'Post-up', 'Horns'].filter(l => labels.has(l));
+    expect(sets.length).toBeGreaterThanOrEqual(5);
+    const pnr = log.findIndex((e, i) => i > 0 && courtFrame(e, .4, 'H', 'A', 4, log[i - 1]).phase === 'Pick and roll');
+    expect(courtFrame(log[pnr], .39, 'H', 'A', 4, log[pnr - 1]).players.some(a => a.pose === 'screen')).toBe(true);
+  });
 });

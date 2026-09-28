@@ -315,6 +315,8 @@ export interface PlayerSeason {
   archetype?: string;       // machine key of the build this player was generated as
   archetypeLabel?: string;  // human-readable build name, e.g. "Two-Way Star"
   jerseyNumber?: number;
+  /** Look chosen in Edit Player (skin, hair, beard, headwear); unset keeps the look the player's id gives him. */
+  appearance?: import('../visuals/playerSprite').Appearance;
   college?: string;
   nationality?: string;
   birthDate?: string; // ISO date, real players only

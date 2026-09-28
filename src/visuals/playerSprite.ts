@@ -13,17 +13,17 @@ export const HAIR_STYLES = [
   'mohawkFade', 'highTopFlat', 'highTopFade', 'cornrows', 'dreadsShort',
   'dreadsMedium', 'dreadsLong', 'dreadsPiled',
 ] as const;
-const BEARD_STYLES = [
+export const BEARD_STYLES = [
   'none', 'stubbleLight', 'stubbleFull', 'soulPatch', 'goatee', 'goateeWide',
   'vandyke', 'mustache', 'mustacheThick', 'chinstrap', 'chinstrapThick',
   'shortBoxed', 'shortRound', 'fullShort', 'fullMedium', 'fullWide',
   'fullLong', 'fullLongWide', 'lumberjack', 'lumberjackXL', 'circleBeard',
   'balboa', 'mutton', 'anchor', 'thinLine',
 ] as const;
-const HAT_STYLES = ['beanie', 'beanieCuffed', 'skullCap', 'cap', 'capBack', 'bucket', 'headband', 'headbandWide', 'durag', 'visor'] as const;
-const SKIN_TONES = ['#f2c9a0', '#d9a066', '#c68a5a', '#8d5a34', '#5c3a21'];
-const HAIR_COLORS = ['#0b0b0b', '#2b1a10', '#5a3a1a', '#b8860b', '#6b6b6b'];
-const HAT_COLORS = ['#c8102e', '#1d428a', '#007a33', '#f2a900', '#111111', '#6b21a8'];
+export const HAT_STYLES = ['beanie', 'beanieCuffed', 'skullCap', 'cap', 'capBack', 'bucket', 'headband', 'headbandWide', 'durag', 'visor'] as const;
+export const SKIN_TONES = ['#f2c9a0', '#d9a066', '#c68a5a', '#8d5a34', '#5c3a21'];
+export const HAIR_COLORS = ['#0b0b0b', '#2b1a10', '#5a3a1a', '#b8860b', '#6b6b6b'];
+export const HAT_COLORS = ['#c8102e', '#1d428a', '#007a33', '#f2a900', '#111111', '#6b21a8'];
 const OUTLINE = '#080d19';
 const WHITE = '#fff3df';
 const DIGITS: Record<string, string[]> = {
@@ -40,16 +40,33 @@ export function hashPlayerId(value: string): number {
   return hash >>> 0;
 }
 
-export function playerTraits(playerId: string) {
+export type HairStyle = typeof HAIR_STYLES[number];
+export type BeardStyle = typeof BEARD_STYLES[number];
+export type HatStyle = typeof HAT_STYLES[number];
+/** A player's look chosen in Edit Player; anything left out keeps the look his id gives him. Colours are palette indexes. */
+export interface Appearance { skin?: number; hairStyle?: HairStyle; hairColor?: number; beardStyle?: BeardStyle; hatStyle?: HatStyle | 'none'; hatColor?: number }
+
+const pick = <T,>(list: readonly T[], i: number | undefined, fallback: T): T => (i != null && i >= 0 && i < list.length ? list[i] : fallback);
+export function playerTraits(playerId: string, look?: Appearance) {
   const seed = hashPlayerId(playerId);
-  return {
+  const base = {
     seed,
     skin: SKIN_TONES[seed % SKIN_TONES.length],
     hair: HAIR_COLORS[Math.floor(seed / 7) % HAIR_COLORS.length],
-    hairStyle: HAIR_STYLES[Math.floor(seed / 13) % HAIR_STYLES.length],
-    beardStyle: seed % 100 < 40 ? 'none' : BEARD_STYLES[1 + (Math.floor(seed / 17) % (BEARD_STYLES.length - 1))],
-    hatStyle: Math.floor(seed / 100) % 100 < 78 ? null : HAT_STYLES[Math.floor(seed / 19) % HAT_STYLES.length],
+    hairStyle: HAIR_STYLES[Math.floor(seed / 13) % HAIR_STYLES.length] as HairStyle,
+    beardStyle: (seed % 100 < 40 ? 'none' : BEARD_STYLES[1 + (Math.floor(seed / 17) % (BEARD_STYLES.length - 1))]) as BeardStyle,
+    hatStyle: (Math.floor(seed / 100) % 100 < 78 ? null : HAT_STYLES[Math.floor(seed / 19) % HAT_STYLES.length]) as HatStyle | null,
     hatColor: HAT_COLORS[Math.floor(seed / 23) % HAT_COLORS.length],
+  };
+  if (!look) return base;
+  return {
+    ...base,
+    skin: pick(SKIN_TONES, look.skin, base.skin),
+    hair: pick(HAIR_COLORS, look.hairColor, base.hair),
+    hairStyle: look.hairStyle && HAIR_STYLES.includes(look.hairStyle) ? look.hairStyle : base.hairStyle,
+    beardStyle: look.beardStyle && BEARD_STYLES.includes(look.beardStyle) ? look.beardStyle : base.beardStyle,
+    hatStyle: look.hatStyle === 'none' ? null : look.hatStyle && HAT_STYLES.includes(look.hatStyle) ? look.hatStyle : base.hatStyle,
+    hatColor: pick(HAT_COLORS, look.hatColor, base.hatColor),
   };
 }
 
@@ -74,14 +91,23 @@ export interface SpriteOptions {
   secondary: string;
   jerseyNumber?: number | null;
   age?: number;
-  /** 'raise': both arms up (celebrations, holding a trophy overhead). */
-  pose?: 'stand' | 'raise';
+  /** 'raise': both arms up (celebrations, holding a trophy overhead); 'none': no arms (the court animations draw their own). */
+  pose?: 'stand' | 'raise' | 'none';
+  /** false: no legs or shoes (the court animations draw their own). */
+  legs?: boolean;
+  appearance?: Appearance;
 }
 export interface SpritePath { fill: string; d: string }
 
 /** Rasterize the layers, then batch horizontal runs by color into a small SVG path set. */
-export function buildPlayerSprite({ playerId, primary, secondary, jerseyNumber, age, jerseyStyle, pose }: SpriteOptions): SpritePath[] {
-  const t = playerTraits(playerId);
+export function buildPlayerSprite(opts: SpriteOptions): SpritePath[] {
+  return gridToPaths(outlineGrid(buildPlayerGrid(opts)));
+}
+
+export type SpriteGrid = (string | null)[][];
+/** The avatar as a colour grid (no outline yet): the court animations reuse its head, face, hair and jersey. */
+export function buildPlayerGrid({ playerId, primary, secondary, jerseyNumber, age, jerseyStyle, pose, legs = true, appearance }: SpriteOptions): SpriteGrid {
+  const t = playerTraits(playerId, appearance);
   const grid: (string | null)[][] = Array.from({ length: SPRITE_HEIGHT }, () => Array(SPRITE_WIDTH).fill(null));
   const rect = (x: number, y: number, w: number, h: number, color: string) => {
     for (let yy = Math.max(0, y); yy < Math.min(SPRITE_HEIGHT, y + h); yy++)
@@ -102,6 +128,7 @@ export function buildPlayerSprite({ playerId, primary, secondary, jerseyNumber, 
   const trimDark = mix(trim, OUTLINE, 0.3);
 
   // Legs, separate sock cuffs, ankle shading, high-top sneakers and two-tone soles.
+  if (legs) {
   for (const x of [12, 23]) {
     rect(x, 39, 5, 8, skin);
     rect(x + 3, 40, 2, 5, skinDark);
@@ -120,6 +147,7 @@ export function buildPlayerSprite({ playerId, primary, secondary, jerseyNumber, 
   rect(28, 48, 3, 1, trim);
   rect(10, 49, 2, 1, WHITE);
   rect(29, 49, 2, 1, WHITE);
+  }
 
   // Arms have angled, stepped silhouettes. Accessories are stable ID traits.
   if (pose === 'raise') {
@@ -132,7 +160,7 @@ export function buildPlayerSprite({ playerId, primary, secondary, jerseyNumber, 
       rect(x - 1, 4, 6, 1, skinLight);
       rect(x, 15, 4, 2, trim);
     }
-  } else {
+  } else if (pose !== 'none') {
   rect(9, 26, 4, 7, skin);
   rect(7, 29, 4, 5, skin);
   rect(4, 31, 5, 4, skin);
@@ -334,21 +362,32 @@ export function buildPlayerSprite({ playerId, primary, secondary, jerseyNumber, 
   }
   if (t.seed % 6 === 0) { rect(9, 18, 1, 2, '#ffd166'); rect(9, 18, 1, 1, WHITE); }
 
-  // A one-pixel outline follows the final silhouette, including fingers and hair.
+  return grid;
+}
+
+/** A one-pixel outline follows the final silhouette, including fingers and hair. */
+export function outlineGrid(grid: SpriteGrid): SpriteGrid {
+  const H = grid.length, W = grid[0]?.length ?? 0;
   const outlined = grid.map((row) => [...row]);
-  for (let y = 0; y < SPRITE_HEIGHT; y++) for (let x = 0; x < SPRITE_WIDTH; x++) {
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     if (!grid[y][x]) continue;
     for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
       const xx = x + dx, yy = y + dy;
-      if (xx >= 0 && xx < SPRITE_WIDTH && yy >= 0 && yy < SPRITE_HEIGHT && !grid[yy][xx]) outlined[yy][xx] = OUTLINE;
+      if (xx >= 0 && xx < W && yy >= 0 && yy < H && !grid[yy][xx]) outlined[yy][xx] = OUTLINE;
     }
   }
+  return outlined;
+}
+
+/** Batches horizontal runs by colour into a small SVG path set. */
+export function gridToPaths(outlined: SpriteGrid): SpritePath[] {
+  const H = outlined.length, W = outlined[0]?.length ?? 0;
   const paths = new Map<string, string[]>();
-  for (let y = 0; y < SPRITE_HEIGHT; y++) for (let x = 0; x < SPRITE_WIDTH;) {
+  for (let y = 0; y < H; y++) for (let x = 0; x < W;) {
     const fill = outlined[y][x];
     if (!fill) { x++; continue; }
     let end = x + 1;
-    while (end < SPRITE_WIDTH && outlined[y][end] === fill) end++;
+    while (end < W && outlined[y][end] === fill) end++;
     const runs = paths.get(fill) ?? [];
     runs.push(`M${x} ${y}h${end - x}v1h-${end - x}z`);
     paths.set(fill, runs);

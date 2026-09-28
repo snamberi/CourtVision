@@ -3,7 +3,7 @@ import type { PlayerSeason } from '../simulation/types';
 import type { CourtActor, CourtBall, CourtFrame, CourtShot } from '../simulation/courtMotion';
 import { resolveTeamIdentity, type TeamIdentity } from '../simulation/teamIdentity';
 import { useTeamIdentity } from '../visuals/TeamIdentityContext';
-import { actionSprite, pickFrame, ORIGIN_X, ORIGIN_Y } from '../visuals/actionSprites';
+import { actionSprite, pickFrame, handReach, headTop, ORIGIN_X, ORIGIN_Y } from '../visuals/actionSprites';
 import { PlayerAvatar } from './PlayerAvatar';
 import { CrestArt } from './TeamCrest';
 import { DISCORD_URL } from './DiscordLink';
@@ -217,21 +217,21 @@ function Hoop({x,net,rim,pad}:{x:number;net:number;rim:number;pad:string}){
 }
 const lastName=(id:string)=>{const parts=id.split(/[\s-]+/);return (parts[parts.length-1]||id).toUpperCase().slice(0,10);};
 function Athlete({actor,player,identity,ring,hot,carrier,labels,above,ballZ,hoopX}:{actor:CourtActor;player?:PlayerSeason;identity:TeamIdentity;ring:string;hot:boolean;carrier:boolean;labels:boolean;above:boolean;ballZ:number;hoopX:number}){
- const scale=1.15*Math.max(.9,Math.min(1.1,(player?.attributes.physical.heightInches??79)/79));
+ const scale=1.18*Math.max(.9,Math.min(1.1,(player?.attributes.physical.heightInches??79)/79));
  const moving=actor.stride!==0&&actor.pose!=='guard';
  const {id:frameId,pose}=useMemo(()=>pickFrame({pose:actor.pose,anim:actor.anim,cycle:actor.cycle,carrier,moving,ballZ}),[actor.pose,actor.anim,actor.cycle,carrier,moving,ballZ]);
- const paths=actionSprite(frameId,pose,{playerId:actor.id,primary:identity.primary,secondary:identity.secondary,jerseyNumber:player?.jerseyNumber});
+ const paths=actionSprite(frameId,pose,{playerId:actor.id,primary:identity.primary,secondary:identity.secondary,jerseyNumber:player?.jerseyNumber,age:player?.age,jerseyStyle:identity.jerseyStyle,appearance:player?.appearance},actor.facing<0?-1:1);
  // On the dunk the body is drawn so the hands meet the rim, whatever the jump.
- const handTop=-Math.min(pose.nH[1],pose.fH[1])*scale;
+ const handTop=handReach(pose)*scale;
  const lift=actor.anim?.kind==='dunk'&&(frameId==='K2'||frameId==='K3')?Math.min(actor.jump,Math.max(0,RIM_HEIGHT-handTop+4)):actor.jump;
- const top=-(-pose.head[1]+7)*scale-lift;
+ const top=-headTop(pose)*scale-lift;
  // On the slam and the hang the dunker (shadow and all) is drawn within reach of the rim.
  const gap=hoopX-actor.x,toRim=(frameId==='K2'||frameId==='K3')&&Math.abs(gap)>12?Math.sign(gap)*(Math.abs(gap)-12):0;
  return <g className="court-player" data-player-id={actor.id} data-pose={actor.pose} data-frame={frameId} transform={`translate(${(actor.x+toRim).toFixed(2)},${actor.y.toFixed(2)})`}>
   <ellipse rx={15-lift*.06} ry="5" fill="#2f231c" opacity={.3-lift*.004}/>
   <ellipse rx="14" ry="4.5" fill="none" stroke={ring} strokeWidth="2" opacity=".75"/>
   {carrier&&<ellipse rx="19" ry="7" fill="none" stroke="#fff3a5" strokeWidth="2" opacity=".9"/>}
-  <g transform={`translate(0,${(-lift).toFixed(2)}) scale(${(actor.facing<0?-scale:scale).toFixed(3)},${scale.toFixed(3)}) translate(${-ORIGIN_X},${-ORIGIN_Y})`} shapeRendering="crispEdges">
+  <g transform={`translate(0,${(-lift).toFixed(2)}) scale(${scale.toFixed(3)}) translate(${-ORIGIN_X},${-ORIGIN_Y})`} shapeRendering="crispEdges">
    {paths.map(({fill,d})=><path key={fill} fill={fill} d={d}/>)}
   </g>
   {hot&&<g transform={`translate(-7,${(top-12).toFixed(1)})`} shapeRendering="crispEdges"><path d="M4 0h2v2h2v2h2v4h2v4h-2v2H2v-2H0V8h2V4h2z" fill="#f47b20"/><path d="M5 5h2v2h2v4H3V7h2z" fill="#ffd166"/></g>}

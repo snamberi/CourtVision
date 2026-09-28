@@ -82,6 +82,9 @@ const RELOCATE=[2,3,4,1,2,0];
  * Tracks are keyframes joined by Catmull-Rom curves, so players arc through the floor instead of sliding between spots.
  */
 const T_UP=.3,T_ACT=.46,T_PASS=.54;
+type PlaySet='transition'|'pnr'|'pop'|'handoff'|'iso'|'pindown'|'backdoor'|'roll'|'post'|'horns';
+/** What the broadcast calls each set while it's being run. */
+const SET_LABEL:Partial<Record<PlaySet,string>>={pnr:'Pick and roll',pop:'Pick and pop',handoff:'Dribble handoff',iso:'Isolation',pindown:'Pin-down screen',backdoor:'Backdoor cut',roll:'Screen and roll',post:'Post-up',horns:'Horns'};
 
 interface Key { t:number; p:CourtPoint }
 const catmull=(p0:CourtPoint,p1:CourtPoint,p2:CourtPoint,p3:CourtPoint,u:number):CourtPoint=>{
@@ -158,6 +161,14 @@ function baseFrame(entry:PossessionLogEntry,play:PossessionPlayback,progress:num
  for(let k=0;k<n;k++){const slotLen=(w1-w0)/n,t0=w0+slotLen*k+slotLen*.4;passes.push({from:route[k],to:route[k+1],t0,t1:t0+Math.min(.05,slotLen*.5),bounce:(salt+k)%4===0});}
  if(play.passerId&&shooter!==creator)passes.push({from:creator,to:shooter,t0:T_ACT,t1:T_PASS-.02,bounce:salt%3===0});
 
+ // ---- The set: chosen from how the possession really ended (who shot, off whose pass, what kind of shot) ----
+ const type=play.shotType??'',assisted=shooter!==creator;
+ const set:PlaySet=fast||onlyFT?'transition'
+  :assisted&&(type==='postShot'||type==='hook')?'post'
+  :!assisted?(drive?(salt%3===0?'iso':'pnr'):(['pop','handoff','iso'] as const)[salt%3])
+  :close?(salt%2?'roll':'backdoor')
+  :salt%3===0?'horns':'pindown';
+ const screenAt=mirror({x:680,y:310+sign*12});
  // ---- Offense tracks ----
  const tracks=new Map<string,Key[]>();
  const top=mirror({x:652,y:310-sign*26}),probe=mirror({x:706,y:310+sign*40});
@@ -168,29 +179,51 @@ function baseFrame(entry:PossessionLogEntry,play:PossessionPlayback,progress:num
   const keys:Key[]=[{t:0,p:start}];
   if(id===inbounder){keys.push({t:.03,p:mirror({x:80,y:310+sign*44})},{t:.1,p:mirror({x:150,y:310+sign*70})});}
   const slot=mirror(slotOf(id)),alt=mirror(SLOTS[RELOCATE[(offense.indexOf(id)+salt)%SLOTS.length]]);
+  const S=(x:number,y:number)=>mirror({x,y:310+y*sign}); // a spot on the strong (+) or weak (-) side
   if(id===bringer&&id===creator&&id===shooter){
-   // A one-man possession: bring it up, then attack.
+   // A one-man possession: bring it up, then attack (off a ball screen, or one-on-one with the floor cleared).
    keys.push({t:T_UP*.55,p:lane},{t:T_UP,p:top},{t:T_ACT,p:probe});
    keys.push({t:drive?.52:.54,p:drive?mirror({x:760,y:310+sign*60}):shot},{t:.58,p:shot});
   }else if(id===bringer){
    if(outletFrom){keys.push({t:.05,p:mirror({x:230,y:310+sign*150})});}
    keys.push({t:T_UP*.6,p:lane},{t:T_UP,p:top});
    if(id===creator){keys.push({t:.4,p:top},{t:T_ACT,p:probe},{t:.6,p:mirror({x:668,y:310+sign*72})});}
+   // After giving it up: a give-and-go cut to the rim and out to the weak-side corner, or a step to the wing.
+   else if(salt%2&&set!=='post'&&set!=='backdoor')keys.push({t:.37,p:S(690,-70)},{t:.45,p:S(850,-24)},{t:.54,p:S(866,-198)});
    else keys.push({t:.36,p:mirror({x:676,y:310-sign*60})},{t:.5,p:mirror(slotOf(id))});
   }else if(id===shooter){
    const catchAt=drive?mirror({x:740,y:310+sign*70}):shot;
-   keys.push({t:T_UP*.55,p:lane},{t:T_UP,p:slot},{t:.36,p:alt},{t:.46,p:courtLerp(alt,catchAt,.5)},{t:T_PASS,p:catchAt},{t:.58,p:shot});
+   if(set==='pindown')keys.push({t:T_UP*.55,p:lane},{t:T_UP,p:S(866,150)},{t:.4,p:S(850,146)},{t:.47,p:courtLerp(S(760,150),catchAt,.4)},{t:T_PASS,p:catchAt},{t:.58,p:shot});
+   else if(set==='backdoor')keys.push({t:T_UP*.55,p:lane},{t:T_UP,p:S(694,158)},{t:.42,p:S(652,176)},{t:T_PASS,p:S(852,44)},{t:.58,p:shot});
+   else if(set==='roll')keys.push({t:T_UP*.55,p:lane},{t:T_UP,p:slot},{t:.37,p:screenAt},{t:.42,p:screenAt},{t:T_PASS,p:S(846,-36)},{t:.58,p:shot});
+   else if(set==='post')keys.push({t:T_UP*.55,p:lane},{t:T_UP,p:S(850,62)},{t:.4,p:S(844,70)},{t:.46,p:S(852,58)},{t:T_PASS,p:S(848,62)},{t:.58,p:shot});
+   else if(set==='horns')keys.push({t:T_UP*.55,p:lane},{t:T_UP,p:S(742,62)},{t:.41,p:S(742,62)},{t:T_PASS,p:catchAt},{t:.58,p:shot});
+   else keys.push({t:T_UP*.55,p:lane},{t:T_UP,p:slot},{t:.36,p:alt},{t:.46,p:courtLerp(alt,catchAt,.5)},{t:T_PASS,p:catchAt},{t:.58,p:shot});
   }else if(id===creator){
-   keys.push({t:T_UP*.55,p:lane},{t:T_UP,p:slot},{t:.38,p:top},{t:T_ACT,p:probe},{t:.6,p:mirror({x:668,y:310+sign*72})});
-  }else if(id===screener&&!ftActive){
-   // Ball screen for the creator, then roll to the rim (or pop to the top if the shooter is going there).
-   const screenAt=mirror({x:680,y:310+sign*12}),roll=mirror(drive?{x:808,y:310-sign*92}:{x:840,y:310-sign*38});
-   keys.push({t:T_UP*.6,p:lane},{t:T_UP,p:slot},{t:.37,p:screenAt},{t:.42,p:screenAt},{t:.56,p:roll});
-  }else if(id===cutter&&!ftActive){
+   if(set==='post')keys.push({t:T_UP*.55,p:lane},{t:T_UP,p:S(704,172)},{t:.44,p:S(712,166)},{t:.6,p:S(652,120)});
+   else if(set==='handoff')keys.push({t:T_UP*.55,p:lane},{t:T_UP,p:S(640,-70)},{t:.4,p:S(708,104)},{t:T_ACT,p:probe},{t:.6,p:mirror({x:668,y:310+sign*72})});
+   else keys.push({t:T_UP*.55,p:lane},{t:T_UP,p:slot},{t:.38,p:top},{t:T_ACT,p:probe},{t:.6,p:mirror({x:668,y:310+sign*72})});
+  }else if(id===screener&&!ftActive&&set!=='roll'){
+   const roll=mirror(drive?{x:808,y:310-sign*92}:{x:840,y:310-sign*38});
+   if(set==='pnr')keys.push({t:T_UP*.6,p:lane},{t:T_UP,p:slot},{t:.37,p:screenAt},{t:.42,p:screenAt},{t:.56,p:roll});
+   else if(set==='horns')keys.push({t:T_UP*.6,p:lane},{t:T_UP,p:S(742,-62)},{t:.37,p:screenAt},{t:.42,p:screenAt},{t:.56,p:roll});
+   // Pick and pop: screen, then drift out to the three-point line.
+   else if(set==='pop')keys.push({t:T_UP*.6,p:lane},{t:T_UP,p:slot},{t:.37,p:screenAt},{t:.42,p:screenAt},{t:.56,p:S(640,-128)});
+   // Dribble handoff: the big brings the ball-side elbow to the guard, then dives.
+   else if(set==='handoff')keys.push({t:T_UP*.6,p:lane},{t:T_UP,p:S(726,118)},{t:.42,p:S(716,110)},{t:.54,p:S(846,70)});
+   // Pin-down: set the screen on the shooter's man near the block, then seal.
+   else if(set==='pindown')keys.push({t:T_UP*.6,p:lane},{t:T_UP,p:slot},{t:.37,p:S(824,122)},{t:.47,p:S(824,122)},{t:.56,p:S(846,40)});
+   // Isolation: clear out to the weak side.
+   else keys.push({t:T_UP*.6,p:lane},{t:T_UP,p:slot},{t:.38,p:S(846,-82)},{t:.52,p:S(866,-190)});
+  }else if(id===cutter&&!ftActive&&set!=='iso'&&set!=='post'){
+   // A baseline cut through the lane and back out to the corner.
    const cut=mirror({x:872,y:310+sign*30});
    keys.push({t:T_UP*.6,p:lane},{t:T_UP,p:slot},{t:.4,p:alt},{t:.47,p:cut},{t:.58,p:slot});
   }else{
-   keys.push({t:T_UP*.6,p:lane},{t:T_UP,p:slot},{t:.39,p:alt},{t:.5,p:alt});
+   // Spacing: fill a corner or a wing on the weak side, then lift when the ball moves.
+   const spot=(k:number)=>[S(866,-198),S(694,-158),S(866,198),S(640,-40)][k%4];
+   const k=offense.indexOf(id)+salt;
+   keys.push({t:T_UP*.6,p:lane},{t:T_UP,p:spot(k)},{t:.4,p:spot(k)},{t:.5,p:spot(k+1)});
   }
   // The finish: on a miss the bigs crash and the guards get back; on a make everyone heads back up the floor.
   const lastT=keys[keys.length-1].t;
@@ -210,7 +243,8 @@ function baseFrame(entry:PossessionLogEntry,play:PossessionPlayback,progress:num
   if(q>.55&&play.rebounderId===id&&!isShooter&&!ftActive)loc=courtLerp(loc,mirror({x:862,y:310+sign*46}),ease(window01(q,.55,.8)));
   if(ftActive&&!isShooter)loc=mirror(FT_OFF[offense.filter(v=>v!==shooter).indexOf(id)%FT_OFF.length]);
   if(turnover&&q>.8)loc=courtLerp(loc,mirror({x:600-i*28,y:180+i*62}),ease(window01(q,.8,1)));
-  if(id===screener&&q>=.37&&q<.42&&!ftActive)pose='screen';
+  const screens=(set==='roll'?id===shooter:id===screener&&set!=='iso'&&set!=='handoff'&&set!=='transition'&&set!=='post'&&set!=='backdoor');
+  if(screens&&q>=.37&&q<(set==='pindown'?.47:.42)&&!ftActive)pose='screen';
   const jumping=isShooter&&!ftActive&&!turnover&&q>.51&&q<(dunk?.84:.78);
   let jump=jumping?Math.sin(window01(q,.51,dunk?.84:.78)*Math.PI)*(dunk?30:three?15:13):0;
   if(dunk&&isShooter&&q>=.68&&q<.84&&!ftActive)jump=Math.max(jump,26); // hang on the rim
@@ -309,7 +343,7 @@ function baseFrame(entry:PossessionLogEntry,play:PossessionPlayback,progress:num
    // The man with the ball dribbles when he's moving or attacking; a catch on the perimeter is held in triple threat.
    const a=byId(holder),keys=tracks.get(holder),movingNow=keys?speedOn(keys,q)>40:false;
    ball=movingNow||(holder===creator&&q>=.38&&q<T_ACT)||(holder===shooter&&drive&&q>=.5)?dribbleHand(holder):held(holder);
-   if(a&&holder===creator&&screener&&q>=.37&&q<T_ACT)phase='Pick and roll';
+   if(a&&q>=.36&&q<T_ACT&&SET_LABEL[set])phase=SET_LABEL[set]!;
    else if(q>=T_UP&&q<T_ACT)phase='Work the ball';
    if(q>=T_PASS-.02)phase=drive?'Drive & gather':'Set for the shot';
   }
