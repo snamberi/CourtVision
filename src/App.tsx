@@ -1473,7 +1473,7 @@ function App() {
         {tab === 'roster' && (
           league.teams.length === 0
             ? <p className="empty-state">No teams yet.</p>
-            : <TeamRosterPage initialTeamId={controlledTeamId}
+            : <TeamRosterPage initialTeamId={controlledTeamId} schedule={league.schedule}
               showTradeValues={extras.tradeSettings.showValues === true}
                 franchiseHistory={league.franchiseHistory} currentChampion={playoffBracket?.championTeamId} currentSeason={league.season}
                 canEditIdentity={teamId => sandboxMode || teamId === controlledTeamId}

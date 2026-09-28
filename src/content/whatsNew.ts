@@ -6,6 +6,19 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2026-10-05',
+    title: 'Blind spins, the season reel and more',
+    items: [
+      '**League Hunt blind spins:** ratings and stats are hidden when you spin. You see the player, his season, his team and that year\'s awards, then the cards flip over to show what you took and what you passed on. Your picks earn a **draft grade**, and your best one is kept.',
+      '**Season reel:** the Year in Review opens with a 20-second pixel video of your season. Save it as a GIF to share.',
+      '**Big-moment camera:** in watched games, dunks, blocks, clutch threes and game-winners get a zoom, a crowd flash and a slow-motion replay. Turn it off under Camera & display.',
+      '**Trade scale:** the two packages sit on a balance, weighed the way the other GM sees them, and his face tells you if he would say yes before you send it.',
+      '**Your office:** the dashboard opens on a pixel office with your trophies, retired numbers, the owner on the TV, the whiteboard and the phone. Click anything to go there.',
+      '**Heat check:** the roster table shows each player\'s last five games as a mini chart, with a flame or ice when he is streaking.',
+      '**Online status:** if sign-in or the leaderboards are not working on a site, Community → Online status says exactly which setting is missing.',
+    ],
+  },
+  {
     id: '2026-10-04',
     title: 'New screens in every game mode',
     items: [

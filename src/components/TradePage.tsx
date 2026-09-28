@@ -3,12 +3,13 @@ import { useState } from 'react';
 import type { League, LeagueTeam } from '../simulation/league';
 import type { GMLeagueExtras, FutureDraftPick } from '../simulation/gm';
 import {
-  validateTrade, executeTrade, computeTradeValue, evaluateTradeSides, canManageTeam, isTradeDeadlinePassed,
+  validateTrade, executeTrade, computeTradeValue, evaluateTradeSides, tradeTolerance, canManageTeam, isTradeDeadlinePassed,
   tradeableFuturePicks, computeFutureDraftPickValue, canProtectPick, setPickProtection, PICK_PROTECTION_OPTIONS,
 } from '../simulation/gm';
 import { computeTeamOverallAverage } from '../simulation/teamStatus';
 import { tradeVerdict, TradePlayerCompareTable, ImprovementMeter } from './gmShared';
 import { PlayerNameTag } from './PlayerAvatar';
+import { TradeScale } from './trade/TradeScale';
 import { counterOffer, aiAccepts, recordTalkRound, talksClosed, talkState, PATIENCE, type Counter } from '../simulation/tradeTalks';
 
 interface Props {
@@ -201,6 +202,8 @@ export function TradePage({ league, extras, controlledTeamId, onChange, onToast,
         night - the other side gets nothing for it that year. Only your own unresolved pick can be protected.
       </p>
 
+      <TradeScale aName={teamA.name} bName={teamB.name} aiSide={teamAId === controlledTeamId ? 'b' : teamBId === controlledTeamId ? 'a' : 'b'} view={teamAId === controlledTeamId || teamBId !== controlledTeamId ? sides.b : sides.a}
+        tolerance={tradeTolerance(extras)} empty={!fromA.length && !fromB.length && !picksFromA.length && !picksFromB.length} />
       <div className="trade-comparison">
         <div><strong><TeamLink name={teamA.name} /> sends:</strong> ${salaryA.toLocaleString()} <small className="hint-text">· {directionLabel(sides.a.direction)}{showValues && <> · their view: give {sides.a.give.toFixed(0)} / get {sides.a.receive.toFixed(0)}</>}</small></div>
         <div><strong><TeamLink name={teamB.name} /> sends:</strong> ${salaryB.toLocaleString()} <small className="hint-text">· {directionLabel(sides.b.direction)}{showValues && <> · their view: give {sides.b.give.toFixed(0)} / get {sides.b.receive.toFixed(0)}</>}</small></div>

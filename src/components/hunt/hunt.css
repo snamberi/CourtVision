@@ -255,3 +255,25 @@ button.hunt-card:disabled .hunt-card-action { background: var(--c-bg-2a3546, #2a
   @keyframes hm-bob { 0%, 100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, -4px); } }
 }
 @media (max-width: 700px) { .hm-stop { width: 44%; } }
+/* Blind spins and the reveal */
+.hunt-card.blind { border-color: var(--c-border-4a5568, #4a5568); background: repeating-linear-gradient(135deg, var(--c-bg-121926, #121926) 0 8px, var(--c-bg-151d2b, #151d2b) 8px 16px); }
+.hunt-card.blind .hunt-card-top small { color: var(--c-fg-94a0b2, #94a0b2); }
+.hunt-card-q b { color: var(--c-fg-94a0b2, #94a0b2); }
+.hunt-roll { color: var(--c-fg-94a0b2, #94a0b2); font-style: italic; }
+.hunt-blind-note { margin: 4px 0; padding: 6px 10px; border-left: 3px solid var(--c-border-b983ff, #b983ff); background: var(--c-bg-151d2b, #151d2b); font-size: 13px; }
+.hunt-card { position: relative; }
+.hunt-card-tag { position: absolute; top: -10px; right: 8px; padding: 1px 6px; font: 10px var(--ff-pixel, monospace); letter-spacing: .08em; background: var(--c-bg-2a3546, #2a3546); color: var(--c-fg-f4f0e6, #f4f0e6); }
+.hunt-card-tag.mine { background: var(--c-bg-f47b20, #f47b20); color: var(--c-fg-0b1018, #0b1018); }
+.hunt-reveal-good { color: var(--c-fg-ffd166, #ffd166); }
+.hunt-grade { display: grid; grid-template-columns: auto auto 1fr; align-items: center; gap: 4px 14px; margin: 12px 0; padding: 10px 14px; background: var(--c-bg-192333, #192333); border: 2px solid var(--c-border-2a3546, #2a3546); }
+.hunt-grade b { font: 40px var(--ff-display, 'Oswald', sans-serif); line-height: 1; }
+.hunt-grade.g-Aplus b, .hunt-grade.g-A b { color: var(--c-fg-ffd166, #ffd166); } .hunt-grade.g-B b { color: var(--c-fg-55c878, #55c878); } .hunt-grade.g-C b { color: var(--c-fg-4da3ff, #4da3ff); } .hunt-grade.g-D b, .hunt-grade.g-F b { color: var(--c-fg-e85d5d, #e85d5d); }
+.hunt-grade span:last-child { color: var(--c-fg-c9ced8, #c9ced8); font-size: 13px; }
+@media (max-width: 640px) { .hunt-grade { grid-template-columns: auto 1fr; } .hunt-grade span:last-child { grid-column: 1 / -1; } }
+@media (prefers-reduced-motion: no-preference) {
+  .hunt-flip { animation: hunt-flip 520ms cubic-bezier(.3, .8, .3, 1.1) both; }
+  @keyframes hunt-flip { 0% { transform: rotateY(180deg); opacity: .3; } 50% { transform: rotateY(90deg); opacity: .6; } 100% { transform: none; opacity: 1; } }
+}
+.hunt-card-notes { display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; min-height: 20px; }
+.hunt-card-notes i { font-style: normal; font-size: 10px; padding: 1px 5px; background: var(--c-bg-192333, #192333); border: 1px solid var(--c-border-2a3546, #2a3546); color: var(--c-fg-ffd166, #ffd166); }
+.hunt-card-notes i.none { color: var(--c-fg-94a0b2, #94a0b2); }

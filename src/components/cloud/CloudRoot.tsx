@@ -1,23 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { closeSignIn, useSignInOpen } from '../../cloud/signIn';
+import { OnlineStatus } from './OnlineStatus';
+import { Modal } from '../Modal';
 import { cloudEnabled, signInWith, signInWithEmail, updateProfile, useAccount, type Provider } from '../../cloud/account';
 import { usernameProblem } from '../../lib/names';
 import { track } from '../../analytics/track';
 
 /* Sign-in and first-time username dialogs, mounted once at the root so any screen can ask for them. */
-
-function Modal({ label, onClose, children }: { label: string; onClose?: () => void; children: React.ReactNode }) {
-  const box = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    box.current?.querySelector<HTMLElement>('input, button')?.focus();
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose?.(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
-  return <div className="share-modal cloud-modal" role="dialog" aria-modal="true" aria-label={label} onClick={e => { if (e.target === e.currentTarget) onClose?.(); }}>
-    <div className="share-box" ref={box}>{children}</div>
-  </div>;
-}
 
 function SignInDialog() {
   const [email, setEmail] = useState('');
@@ -85,7 +74,7 @@ function NotReadyDialog() {
     <span className="pixel-eyebrow">COURT VISION ACCOUNT</span>
     <h2>Accounts are almost here</h2>
     <p className="hint-text">Sign-in with Discord, Google or an email link is switching on soon. Your progress is safe in this browser in the meantime, and it will move to your account the first time you sign in.</p>
-    <p className="hint-text signin-fine">Site owner: connect Supabase and redeploy to turn accounts on (docs/ACCOUNTS_SETUP.md).</p>
+    <OnlineStatus />
     <div className="contest-actions"><button className="primary" onClick={closeSignIn}>OK</button></div>
   </Modal>;
 }

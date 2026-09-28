@@ -17,6 +17,8 @@ import { loadEntitlements, writeEntitlements } from '../billing/billing';
 const URL_ = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const KEY_ = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 export const cloudEnabled = !IS_DESKTOP_BUILD && !!URL_ && !!KEY_;
+/** What this build was given (yes/no, plus the public project address), for the Online status check. */
+export const cloudBuild = { url: URL_ || null, hasKey: !!KEY_, desktop: IS_DESKTOP_BUILD };
 /** Where the session is kept (outside the "cv-" and "courtvision:" keys, so backups never carry it). */
 export const AUTH_STORAGE_KEY = 'courtvision-auth';
 

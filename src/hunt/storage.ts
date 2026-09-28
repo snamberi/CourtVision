@@ -1,6 +1,6 @@
 import { localRead, type Read } from '../lib/kv';
 import { noteFeat } from '../profile/feats';
-import { DECKS, DIFFICULTIES, type HuntRun, type DeckId, type Difficulty } from './run';
+import { DECKS, DIFFICULTIES, draftGrade, type HuntRun, type DeckId, type Difficulty, type DraftGrade } from './run';
 
 /* League Hunt keeps its run, records and album in this browser (they are small: card ids and progress). Storage can
  * be blocked in a private window; everything then lasts as long as the page is open. */
@@ -10,7 +10,8 @@ const RECORDS_KEY = 'cv-hunt-records';
 const ALBUM_KEY = 'cv-hunt-album';
 
 export interface DailyResult { won: boolean; stop: number; wins: number; losses: number }
-export interface HuntRecords { runs: number; wins: number; bestStop: number; lastSeed?: number; daily?: Record<string, DailyResult> }
+export interface HuntRecords { runs: number; wins: number; bestStop: number; lastSeed?: number; daily?: Record<string, DailyResult>; bestGrade?: DraftGrade }
+const GRADE_ORDER: DraftGrade[] = ['A+', 'A', 'B', 'C', 'D', 'F'];
 const EMPTY: HuntRecords = { runs: 0, wins: 0, bestStop: 0 };
 
 export function loadRun(): HuntRun | null {
@@ -35,7 +36,9 @@ export function recordRun(run: HuntRun): HuntRecords {
   const r = loadRecords();
   if (r.lastSeed === run.seed) return r;
   const wins = run.results.filter(x => x.won).length;
-  const next: HuntRecords = { ...r, runs: r.runs + 1, wins: r.wins + (run.stage === 'won' ? 1 : 0), bestStop: Math.max(r.bestStop, run.stage === 'won' ? run.series.length - 1 : run.seriesIndex), lastSeed: run.seed,
+  const g = draftGrade(run)?.grade;
+  const bestGrade = g && (!r.bestGrade || GRADE_ORDER.indexOf(g) < GRADE_ORDER.indexOf(r.bestGrade)) ? g : r.bestGrade;
+  const next: HuntRecords = { ...r, ...(bestGrade ? { bestGrade } : {}), runs: r.runs + 1, wins: r.wins + (run.stage === 'won' ? 1 : 0), bestStop: Math.max(r.bestStop, run.stage === 'won' ? run.series.length - 1 : run.seriesIndex), lastSeed: run.seed,
     ...(run.daily ? { daily: { ...(r.daily ?? {}), [run.daily]: { won: run.stage === 'won', stop: run.seriesIndex, wins, losses: run.results.length - wins } } } : {}) };
   try { localStorage.setItem(RECORDS_KEY, JSON.stringify(next)); } catch { /* storage blocked */ }
   if (run.stage === 'won' && run.difficulty === 'legend') noteFeat('huntLegendWins', 1);
