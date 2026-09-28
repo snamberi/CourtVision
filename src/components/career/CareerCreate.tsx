@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import type { NbaHistory } from '../../history/nbaHistoryData';
 import { cardPool, seasonLabel, RARITY_LABEL } from '../../hunt/cards';
-import { CATEGORIES, categoryLabel, categoryScore, feetInches, type CategoryId } from '../../career/categories';
-import { eliteRanks, newWheel, spin, respin, move, take, landed, neighbour, donorCategories, mustTake, canSpin, isComplete, openWheels, luckyLeft, REEL_LENGTH, LUCK, STAR_BONUS, type WheelState, type Wheel } from '../../career/wheel';
+import { CATEGORIES, categoryLabel, categoryScore, feetInches, type CategoryId, type CategoryValues } from '../../career/categories';
+import { eliteRanks, newWheel, spin, respin, move, take, landed, neighbour, wheelCategories, primeBoost, mustTake, canSpin, isComplete, openWheels, luckyLeft, boostLeft, REEL_LENGTH, LUCK, STAR_BONUS, ELITE_MAX, SURGE_SKILLS, type WheelState, type Wheel } from '../../career/wheel';
 import {
   READINESS, suggestPosition, primeOverall, buildPlayer, startProgress, primeFromBuild, capFor, buildSpent, rollPotential, RATING_CATEGORIES, BUILD_MIN, START_AGE, POTENTIAL_REROLLS,
   type Prime, type Readiness, type Position, type Build,
 } from '../../career/create';
-import { MyPlayerBoard } from './MyPlayerBoard';
+import { MyPlayerBoard, BodyBoard, type BoardCell } from './MyPlayerBoard';
 import { calculateOverall } from '../../simulation/engine/overall';
 import { PlayerAvatar } from '../PlayerAvatar';
 
@@ -36,34 +36,55 @@ function Reel({ h, wheel, spinKey }: { h: NbaHistory; wheel: Wheel; spinKey: num
 }
 
 /** The player a wheel landed on, with his ten categories to take from. */
-function Landed({ h, s, wheel, index, onTake }: { h: NbaHistory; s: WheelState; wheel: Wheel; index: number; onTake: (cat: CategoryId) => void }) {
+function Landed({ h, s, wheel, index, onTake, onBoost }: { h: NbaHistory; s: WheelState; wheel: Wheel; index: number; onTake: (cat: CategoryId) => void; onBoost: () => void }) {
   const pool = cardPool(h);
   const id = landed(wheel), c = pool.byId.get(id)!;
-  const cats = donorCategories(h, id);
+  const cats = wheelCategories(h, wheel);
   const elite = eliteRanks(h).get(id);
   const used = s.takenFrom.includes(index);
   const star = c.rarity === 'legendary';
+  const boost = wheel.boost;
+  const raised = (cat: CategoryId) => !!boost && Object.keys(cats[cat]).some(k => boost.raised.includes(k));
+  const canBoost = !used && !boost && mustTake(s) && boostLeft(s) > 0 && luckyLeft(s) > 0;
   return <div className={`cv-landed rarity-${c.rarity} ${used ? 'used' : ''}`}>
     {star && !used && <div className="cv-star-burst" aria-hidden="true">STAR!</div>}
     <div className="cv-landed-head"><PlayerAvatar playerId={c.name} primaryColor={SLICE_KIT[c.rarity]} secondaryColor="#f4f0e6" size={56} pose={star ? 'raise' : 'stand'} />
-      <div><small>{RARITY_LABEL[c.rarity].toUpperCase()} · {c.pos}{star ? ` · +${STAR_BONUS} TO EVERY SKILL` : ''}</small><strong>{c.name}</strong><span>{seasonLabel(c.end)} {c.teamName} · {c.ovr} OVR</span></div></div>
+      <div><small>{RARITY_LABEL[c.rarity].toUpperCase()} · {c.pos}{star ? ` · +${STAR_BONUS} TO EVERY SKILL` : ''}</small><strong>{c.name}{boost && <span className="cv-boost-badge">{boost.mode === 'prime' ? 'PRIME' : 'SURGE'}</span>}</strong><span>{seasonLabel(c.end)} {c.teamName} · {c.ovr} OVR</span></div></div>
+    {boost
+      ? <p className="hint-text">{boost.mode === 'prime' ? `In his absolute prime: ${boost.raised.length} skills at the best he ever had them.` : `Already at his peak: ${boost.raised.length} skills up 10-20%.`} Height never changes; nothing passes {ELITE_MAX}.</p>
+      : !used && <button className="cv-boost-btn" disabled={!canBoost} onClick={onBoost}
+        title={boostLeft(s) <= 0 ? 'Prime Boost used' : luckyLeft(s) <= 0 ? 'Needs a Lucky Spin' : `His absolute prime (or ${SURGE_SKILLS} skills up 10-20% if he is already there). Uses a Lucky Spin.`}>
+        Prime Boost {boostLeft(s) > 0 ? '(uses a Lucky Spin)' : '(used)'}</button>}
     <ul className="cv-cats">{CATEGORIES.map(cat => { const taken = s.picks[cat.id]; return <li key={cat.id}>
-      <span>{cat.name}{elite?.[cat.id] ? <small className="cv-elite-tag"> #{elite[cat.id]} ever</small> : null}</span><b className={categoryScore(cats[cat.id]) > 99 ? 'cv-elite' : ''}>{categoryLabel(cat.id, cats[cat.id])}</b>
+      <span>{cat.name}{elite?.[cat.id] ? <small className="cv-elite-tag"> #{elite[cat.id]} ever</small> : null}</span><b className={`${categoryScore(cats[cat.id]) > 99 ? 'cv-elite' : ''} ${raised(cat.id) ? 'cv-raised' : ''}`}>{categoryLabel(cat.id, cats[cat.id])}</b>
       {taken ? <small>{taken.cardId === id ? 'Taken' : 'Filled'}</small> : <button className="cv-take" disabled={used} onClick={() => onTake(cat.id)}>Take</button>}
     </li>; })}</ul>
   </div>;
 }
 
-/** Your build so far: the ten categories and where each came from. */
-function BuildBoard({ h, s }: { h: NbaHistory; s: WheelState }) {
+/**
+ * Your build so far on the same pixel body board as MyPlayer: each category filled from the wheel shows its rating and
+ * who it came from. With one wheel waiting, the open callouts show what you would take and take it when clicked.
+ */
+function WheelBoard({ h, s, onTake }: { h: NbaHistory; s: WheelState; onTake: (cat: CategoryId) => void }) {
   const pool = cardPool(h);
   const filled = CATEGORIES.filter(c => s.picks[c.id]).length;
-  return <div className="hunt-squad cv-build"><div className="hunt-squad-head"><h3>Your player</h3><span>{filled}/10</span></div>
-    <ol>{CATEGORIES.map(cat => { const p = s.picks[cat.id]; return <li key={cat.id} className={p ? '' : 'empty'}>
-      <span className="hunt-slot">{cat.short}</span>
-      {p ? <><span className="hunt-squad-ovr">{categoryLabel(cat.id, p.values)}</span><span className="hunt-squad-name"><small>from</small> {pool.byId.get(p.cardId)?.name} <small>'{String(pool.byId.get(p.cardId)?.end ?? 0).slice(2)}</small></span></>
-        : <span className="hunt-squad-name"><small>{cat.blurb}</small></span>}
-    </li>; })}</ol></div>;
+  const offer = mustTake(s) && s.current!.length === 1 ? s.current![0] : null;
+  const offered = offer ? wheelCategories(h, offer) : null;
+  const heightIn = Math.round(s.picks.size?.values['physical.heightInches'] ?? 79);
+  // The callouts are narrow: height alone for the frame (the list above shows the span).
+  const short = (id: CategoryId, v: CategoryValues) => (id === 'size' ? feetInches(v['physical.heightInches']) : categoryLabel(id, v));
+  const cells = Object.fromEntries(CATEGORIES.map(cat => {
+    const p = s.picks[cat.id];
+    if (p) {
+      const from = pool.byId.get(p.cardId);
+      return [cat.id, { value: short(cat.id, p.values), sub: from ? `${from.name} '${String(from.end).slice(2)}` : undefined, state: 'filled' }];
+    }
+    if (offered) return [cat.id, { value: short(cat.id, offered[cat.id]), sub: 'Click to take', state: 'pickable' }];
+    return [cat.id, { value: '—', state: 'empty' }];
+  })) as Record<CategoryId, BoardCell>;
+  return <div className="cv-board-wrap"><h3><span>Your player</span><span>{filled}/10</span></h3>
+    <BodyBoard heightIn={heightIn} name="" cells={cells} onSelect={offered ? onTake : undefined} label="Your player's build from the wheel" /></div>;
 }
 
 export function WheelBuilder({ h, seed, onDone, onBack }: { h: NbaHistory; seed: number; onDone: (prime: Prime) => void; onBack: () => void }) {
@@ -78,19 +99,19 @@ export function WheelBuilder({ h, seed, onDone, onBack }: { h: NbaHistory; seed:
         <button className="primary" disabled={!canSpin(s)} onClick={() => setS(spin(h, s))}>Spin</button>
         <button className="cv-lucky-btn" disabled={!canSpin(s) || luckyLeft(s) <= 0} onClick={() => setS(spin(h, s, false, true))} title={`Stars and Greats come up ${LUCK}x as often`}>Lucky Spin ({luckyLeft(s)})</button>
         <button disabled={!canSpin(s) || !s.triple} onClick={() => setS(spin(h, s, true))} title="Three wheels at once; take from any of them">Triple Spin {s.triple ? '(1)' : '(used)'}</button>
-        <button disabled={!mustTake(s) || s.respins <= 0} onClick={() => setS(respin(h, s))} title="Spin again without taking anything">Respin ({s.respins})</button>
-        <button disabled={!mustTake(s) || !single || !s.moves.left} onClick={() => setS(move(s, 'left'))} title={w0 ? `Move to ${pool.byId.get(neighbour(w0, 'left'))?.name}` : ''}>← Move left</button>
-        <button disabled={!mustTake(s) || !single || !s.moves.right} onClick={() => setS(move(s, 'right'))} title={w0 ? `Move to ${pool.byId.get(neighbour(w0, 'right'))?.name}` : ''}>Move right →</button>
+        <button disabled={!mustTake(s) || s.respins <= 0 || !!s.current?.some(w => w.boost)}onClick={() => setS(respin(h, s))} title="Spin again without taking anything">Respin ({s.respins})</button>
+        <button disabled={!mustTake(s) || !single || !s.moves.left || !!w0?.boost}onClick={() => setS(move(s, 'left'))} title={w0 ? `Move to ${pool.byId.get(neighbour(w0, 'left'))?.name}` : ''}>← Move left</button>
+        <button disabled={!mustTake(s) || !single || !s.moves.right || !!w0?.boost}onClick={() => setS(move(s, 'right'))} title={w0 ? `Move to ${pool.byId.get(neighbour(w0, 'right'))?.name}` : ''}>Move right →</button>
       </div></div>
-    <p className="hint-text">Every player in NBA history is on the wheel once, at his best season; the odds lean a little toward good players (Star about 7%, Great about 18%), and among Stars the all-time greats come up most. Take one category from the player it stops on: you get his exact ratings as your player's prime, +{STAR_BONUS} on every skill from a Star. The best ever at a skill go past 99, up to 120. Two lucky spins ({LUCK}x the Stars and Greats), Move Left and Move Right once each, two respins, and one triple spin (take one category from each of the three).</p>
+    <p className="hint-text">Every player in NBA history is on the wheel once, at his best season; the odds lean a little toward good players (Star about 7%, Great about 18%), and among Stars the all-time greats come up most. Take one category from the player it stops on: you get his exact ratings as your player's prime, +{STAR_BONUS} on every skill from a Star. The best ever at a skill go past 99, up to 120. Two lucky spins ({LUCK}x the Stars and Greats), Move Left and Move Right once each, two respins, and one triple spin (take one category from each of the three). One Prime Boost (it uses a Lucky Spin) puts the player you landed on in his absolute prime, or raises six of his skills 10-20% if he is already there; never his height, never past {ELITE_MAX}.</p>
     {s.current?.[0]?.lucky && <p className="cv-lucky-note">LUCKY SPIN · Stars and Greats {LUCK}x as likely</p>}
     {s.current ? <div className="cv-wheels">{s.current.map((w, i) => <div key={i} className="cv-wheel">
       <Reel h={h} wheel={w} spinKey={s.spinCount * 10 + i} />
-      <Landed h={h} s={s} wheel={w} index={i} onTake={cat => setS(take(h, s, i, cat))} />
+      <Landed h={h} s={s} wheel={w} index={i} onTake={cat => setS(take(h, s, i, cat))} onBoost={() => setS(primeBoost(h, s, i))} />
     </div>)}</div> : !done && <p className="empty-state">Spin to start. Ten categories to fill.</p>}
     {s.current && openWheels(s).length > 0 && s.takenFrom.length > 0 && !done && <p className="hint-text">You can take from the other wheels too, or spin again.</p>}
     {done && <button className="primary hunt-play" onClick={() => onDone(Object.fromEntries(CATEGORIES.map(c => [c.id, s.picks[c.id]!.values])) as Prime)}>Next: name your player</button>}
-    <BuildBoard h={h} s={s} />
+    <WheelBoard h={h} s={s} onTake={cat => setS(take(h, s, 0, cat))} />
     <button className="link-button" onClick={onBack}>Back</button>
   </section>;
 }

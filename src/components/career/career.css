@@ -158,6 +158,22 @@
 .mp-callout:hover { border-color: #4a5b75; }
 .mp-callout.on { border-color: #f47b20; border-top-color: #f47b20; background: #192333; }
 .mp-callout:focus-visible { outline: 2px solid #ff9d3d; outline-offset: 2px; }
+div.mp-callout { cursor: default; }
+.mp-callout.mp-empty { opacity: .6; }
+.mp-callout.mp-empty em { color: #94a0b2; }
+.mp-callout.mp-filled { border-top-color: #55c878; }
+.mp-callout.mp-filled em { color: #f4f0e6; }
+.mp-callout.mp-pickable { border-top-color: #f47b20; }
+.mp-callout.mp-pickable em { color: #ff9d3d; }
+.mp-callout.mp-pickable:hover { background: #192333; border-color: #f47b20; }
+.mp-callout.mp-boosted { border-top-color: #ffd166; }
+.mp-callout.mp-boosted em { color: #ffd166; }
+.cv-board-wrap { display: grid; gap: 6px; width: 100%; max-width: 560px; justify-self: center; }
+.cv-board-wrap > h3 { margin: 0; font: 18px 'Oswald', sans-serif; display: flex; justify-content: space-between; }
+.cv-boost-btn { border-color: #ffd166; color: #ffd166; }
+.cv-landed .cv-boost-badge { vertical-align: middle; display: inline-block; margin-left: 6px; padding: 1px 6px; background: #ffd166; color: #0b1018 !important; font: 700 11px 'Oswald', sans-serif; letter-spacing: .06em; }
+.cv-cats b.cv-raised { color: #ffd166; }
+.cv-cats b.cv-raised::after { content: ' ▲'; font-size: 10px; }
 .mp-editor { display: grid; gap: 8px; padding: 12px 14px; background: #121926; border: 2px solid #2a3546; }
 .mp-editor h3 { margin: 0; font: 22px 'Oswald', sans-serif; }
 .mp-editor p { margin: 0; }

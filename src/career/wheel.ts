@@ -29,7 +29,11 @@ export const LUCK = 2.5;
 /** Every rating taken from a Star (not his measurements) comes in this much higher. */
 export const STAR_BONUS = 3;
 
-export interface Wheel { reel: string[]; stop: number; lucky?: boolean }
+/** Prime Boosts per player (each also spends a Lucky Spin). */
+export const PRIME_BOOSTS = 1;
+/** A boosted landing: his absolute prime (`prime`) or, already there, six skills raised 10-20% (`surge`). */
+export interface Boost { mode: 'prime' | 'surge'; values: Partial<Record<CategoryId, CategoryValues>>; raised: string[] }
+export interface Wheel { reel: string[]; stop: number; lucky?: boolean; boost?: Boost }
 export interface WheelPick { cardId: string; values: CategoryValues }
 export interface WheelState {
   seed: number;
@@ -44,10 +48,13 @@ export interface WheelState {
   triple: boolean;
   /** Lucky spins left (absent in builds started before they existed: they get the full count). */
   lucky?: number;
+  /** Prime Boosts left (absent: the full count). */
+  boost?: number;
 }
 
 export const newWheel = (seed: number): WheelState => ({ seed, spinCount: 0, current: null, takenFrom: [], picks: {}, moves: { left: true, right: true }, respins: RESPINS, triple: true, lucky: LUCKY_SPINS });
 export const luckyLeft = (s: WheelState) => s.lucky ?? LUCKY_SPINS;
+export const boostLeft = (s: WheelState) => s.boost ?? PRIME_BOOSTS;
 
 const pools = new WeakMap<NbaHistory, HuntCard[]>();
 /** Every player at his best season (players with at least two real seasons). */
@@ -200,7 +207,8 @@ export function spin(h: NbaHistory, s: WheelState, triple = false, lucky = false
 
 /** Spins again without taking anything from this spin. */
 export function respin(h: NbaHistory, s: WheelState): WheelState {
-  if (!mustTake(s) || s.respins <= 0) return s;
+  // A boosted wheel stays: respinning would throw away the Lucky Spin the boost cost.
+  if (!mustTake(s) || s.respins <= 0 || s.current!.some(w => w.boost)) return s;
   const next = { ...s, spinCount: s.spinCount + 1, respins: s.respins - 1, takenFrom: [] };
   // A respin of a lucky spin stays lucky.
   return { ...next, current: makeWheels(h, next, s.current!.length, !!s.current![0]?.lucky) };
@@ -208,7 +216,7 @@ export function respin(h: NbaHistory, s: WheelState): WheelState {
 
 /** Shifts a stopped single wheel one slice left or right (each direction once). */
 export function move(s: WheelState, dir: 'left' | 'right'): WheelState {
-  if (!mustTake(s) || s.current!.length !== 1 || !s.moves[dir]) return s;
+  if (!mustTake(s) || s.current!.length !== 1 || !s.moves[dir] || s.current![0].boost) return s;
   const w = s.current![0];
   const stop = (w.stop + (dir === 'left' ? -1 : 1) + REEL_LENGTH) % REEL_LENGTH;
   return { ...s, current: [{ ...w, stop }], moves: { ...s.moves, [dir]: false } };
@@ -221,12 +229,65 @@ export const neighbour = (w: Wheel, dir: 'left' | 'right') => w.reel[(w.stop + (
 export function take(h: NbaHistory, s: WheelState, wheel: number, cat: CategoryId): WheelState {
   if (!s.current || s.picks[cat] || s.takenFrom.includes(wheel) || !s.current[wheel]) return s;
   const cardId = landed(s.current[wheel]);
-  const picks = { ...s.picks, [cat]: { cardId, values: takenValues(h, cardId, cat) } };
+  const picks = { ...s.picks, [cat]: { cardId, values: s.current[wheel].boost?.values[cat] ?? takenValues(h, cardId, cat) } };
   const takenFrom = [...s.takenFrom, wheel];
   const done = CATEGORIES.every(c => picks[c.id]);
   // The spin stays on the table (a triple spin's other wheels can still be taken from) until the next spin.
   return { ...s, picks, takenFrom, current: done ? null : s.current };
 }
+
+// ---------------------------------------------------------------- the Prime Boost
+
+const careers = new WeakMap<NbaHistory, Map<string, string[]>>();
+/** Every season card of a player (the wheel shows one: his best). */
+function seasonsOf(h: NbaHistory, playerId: string): string[] {
+  let m = careers.get(h);
+  if (!m) { m = new Map(); for (const c of cardPool(h).cards) m.set(c.playerId, [...(m.get(c.playerId) ?? []), c.id]); careers.set(h, m); }
+  return m.get(playerId) ?? [];
+}
+/** Categories a boost can touch: everything but height and length. */
+const BOOSTABLE = CATEGORIES.filter(c => c.id !== 'size').map(c => c.id);
+export const SURGE_SKILLS = 6;
+
+/**
+ * The Prime Boost for the player a wheel stopped on (once per player, and it spends a Lucky Spin). It puts him in his
+ * absolute prime: every skill at the best he ever had it, in any season. If that would raise fewer than six skills
+ * (he is already at his peak), six random skills rise 10-20% instead. Nothing passes 120; height, length and weight
+ * never change.
+ */
+export function primeBoost(h: NbaHistory, s: WheelState, wheel: number): WheelState {
+  const w = s.current?.[wheel];
+  if (!w || !mustTake(s) || s.takenFrom.includes(wheel) || w.boost || boostLeft(s) <= 0 || luckyLeft(s) <= 0) return s;
+  const cardId = landed(w), card = cardPool(h).byId.get(cardId)!;
+  const base = Object.fromEntries(BOOSTABLE.map(c => [c, takenValues(h, cardId, c)])) as Record<CategoryId, CategoryValues>;
+  const peak = structuredClone(base), raised: string[] = [];
+  for (const other of seasonsOf(h, card.playerId)) {
+    if (other === cardId) continue;
+    for (const c of BOOSTABLE) for (const [k, v] of Object.entries(takenValues(h, other, c))) if (!MEASURE.has(k) && v > peak[c][k]) peak[c][k] = v;
+  }
+  for (const c of BOOSTABLE) for (const k of Object.keys(peak[c])) if (peak[c][k] > base[c][k]) raised.push(k);
+  let boost: Boost;
+  if (raised.length >= SURGE_SKILLS) boost = { mode: 'prime', values: peak, raised };
+  else {
+    const rng = new RNG(s.seed * 131 + s.spinCount * 7 + wheel);
+    const fields = BOOSTABLE.flatMap(c => Object.keys(base[c]).filter(k => !MEASURE.has(k)).map(k => [c, k] as const));
+    const values = structuredClone(base), picked: string[] = [];
+    while (picked.length < SURGE_SKILLS && picked.length < fields.length) {
+      const [c, k] = fields[rng.nextInt(fields.length)];
+      if (picked.includes(k)) continue;
+      values[c][k] = Math.min(ELITE_MAX, Math.round(values[c][k] * (1.1 + rng.next() * 0.1)));
+      picked.push(k);
+    }
+    boost = { mode: 'surge', values, raised: picked };
+  }
+  return { ...s, boost: boostLeft(s) - 1, lucky: luckyLeft(s) - 1, current: s.current!.map((x, i) => (i === wheel ? { ...x, boost } : x)) };
+}
+
+/** A wheel's categories as they would be taken (boosted when the Prime Boost was used on it). */
+export const wheelCategories = (h: NbaHistory, w: Wheel) => {
+  const cats = donorCategories(h, landed(w));
+  return w.boost ? { ...cats, ...w.boost.values } as typeof cats : cats;
+};
 
 /** Wheels that can still be taken from in the current spin. */
 export const openWheels = (s: WheelState) => (s.current ?? []).map((_, i) => i).filter(i => !s.takenFrom.includes(i));

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { loadHistoryForTests } from './helpers/nbaHistoryFixture';
 import { cardPool } from '../hunt/cards';
 import { top100, top100Rank, legacyScore, emptyResume } from '../career/legacy';
-import { newWheel, spin, respin, move, take, landed, neighbour, mustTake, canSpin, isComplete, donor, RESPINS, eliteRanks, takenValues, eliteBonus, wheelPool, ELITE_MAX, luckyLeft, sliceWeight, LUCKY_SPINS, STAR_BONUS } from '../career/wheel';
+import { newWheel, spin, respin, move, take, landed, neighbour, mustTake, canSpin, isComplete, donor, RESPINS, eliteRanks, takenValues, eliteBonus, wheelPool, ELITE_MAX, luckyLeft, sliceWeight, LUCKY_SPINS, STAR_BONUS, primeBoost, boostLeft, SURGE_SKILLS, type WheelState } from '../career/wheel';
 import { legendRank } from '../draft/allTimeDraft';
 import { resolveEffectivePlayer } from '../simulation/engine/effective';
 import { CATEGORIES, categoryValues } from '../career/categories';
@@ -128,6 +128,43 @@ describe('Career Mode', () => {
     const raw = categoryValues(donor(h, plainStar.id), 'playmaking'), taken = takenValues(h, plainStar.id, 'playmaking');
     for (const [k, v] of Object.entries(raw)) expect(taken[k]).toBe(Math.min(ELITE_MAX, v + STAR_BONUS));
     expect(takenValues(h, plainStar.id, 'size')['physical.heightInches']).toBe(categoryValues(donor(h, plainStar.id), 'size')['physical.heightInches']);
+  }, 120_000);
+
+  it('Prime Boost: his absolute prime, or six skills up 10-20%; costs a Lucky Spin; never height, never past 120', async () => {
+    const h = await loadHistoryForTests();
+    const at = (id: string, lucky = LUCKY_SPINS): WheelState => ({ ...newWheel(3), spinCount: 1, lucky, current: [{ reel: Array(24).fill(id), stop: 0 }] });
+    const modes = new Set<string>();
+    for (const c of wheelPool(h).filter(x => x.rarity === 'legendary' || x.rarity === 'epic').slice(0, 60)) {
+      const s = at(c.id), b = primeBoost(h, s, 0), boost = b.current![0].boost!;
+      modes.add(boost.mode);
+      expect(luckyLeft(b)).toBe(LUCKY_SPINS - 1);
+      expect(boostLeft(b)).toBe(0);
+      expect(boost.values.size).toBeUndefined(); // height and length never change
+      for (const cat of CATEGORIES.filter(x => x.id !== 'size')) {
+        const base = takenValues(h, c.id, cat.id);
+        for (const [k, v] of Object.entries(boost.values[cat.id]!)) {
+          expect(v).toBeGreaterThanOrEqual(base[k]);
+          expect(v).toBeLessThanOrEqual(Math.max(base[k], ELITE_MAX));
+          if (boost.mode === 'surge') expect(v).toBeLessThanOrEqual(Math.max(base[k], Math.min(ELITE_MAX, Math.round(base[k] * 1.2))));
+          if (v > base[k]) expect(boost.raised).toContain(k);
+        }
+      }
+      if (boost.mode === 'surge') expect(boost.raised).toHaveLength(SURGE_SKILLS);
+      else expect(boost.raised.length).toBeGreaterThanOrEqual(SURGE_SKILLS);
+      // Once per player; the boosted wheel can't be moved or respun; taking gets the boosted ratings.
+      expect(primeBoost(h, b, 0)).toBe(b);
+      expect(move(b, 'left')).toBe(b);
+      expect(respin(h, b)).toBe(b);
+      const cat = CATEGORIES.find(x => x.id !== 'size' && Object.keys(boost.values[x.id]!).some(k => boost.raised.includes(k)))!.id;
+      expect(take(h, b, 0, cat).picks[cat]!.values).toEqual(boost.values[cat]);
+      expect(take(h, b, 0, 'size').picks.size!.values).toEqual(takenValues(h, c.id, 'size'));
+    }
+    expect(modes).toEqual(new Set(['prime', 'surge']));
+    // It needs a Lucky Spin left, and a wheel waiting for a pick.
+    const id = wheelPool(h)[0].id;
+    expect(primeBoost(h, at(id, 0), 0)).toEqual(at(id, 0));
+    const taken = take(h, at(id), 0, 'iq');
+    expect(primeBoost(h, taken, 0)).toBe(taken);
   }, 120_000);
 
   it('MyPlayer draft stock is rolled: most are starters, a few are generational', () => {
