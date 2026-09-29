@@ -6,7 +6,7 @@ import { DEFAULT_GAME_SETTINGS, ERA_PRESETS } from '../simulation/types';
 import type { CoachTendencies } from '../simulation/league';
 import { cardPool, cardPlayer } from './cards';
 import { huntTeams, type HuntTeam } from './teams';
-import { eraCoach, eraOf, underEra } from './eras';
+import { eraCoach, eraOf, eraRules, underEra } from './eras';
 import { withRotation } from './run';
 
 /*
@@ -135,7 +135,7 @@ export function playLegendGame(h: NbaHistory, state: LegendRunState, plan: GameP
   const you = { ...sides.you, coach: planCoach(eraCoach(era), plan), chemistry: 78, ...(youHost ? { boost: boost(sides.you, HOME_EDGE) } : {}) };
   const opp = { ...sides.opp, coach: eraCoach(era), chemistry: 78, ...(youHost ? {} : { boost: boost(sides.opp, HOME_EDGE) }) };
   const decade = `${Math.floor(Math.min(2020, Math.max(1960, end)) / 10) * 10}s` as keyof typeof ERA_PRESETS;
-  const result = simulateGame({ home: youHost ? you : opp, away: youHost ? opp : you, isPlayoffs: true,
+  const result = simulateGame({ home: youHost ? you : opp, away: youHost ? opp : you, isPlayoffs: true, rules: eraRules(era),
     settings: { ...DEFAULT_GAME_SETTINGS, era: ERA_PRESETS[decade] ?? DEFAULT_GAME_SETTINGS.era, seed, injuriesEnabled: false } });
   const us = youHost ? result.homeScore : result.awayScore, them = youHost ? result.awayScore : result.homeScore;
   return { result, home: youHost ? sides.you : sides.opp, away: youHost ? sides.opp : sides.you, state: { ...state, games: [...state.games, { us, them, plan, home: youHost, seed }] } };

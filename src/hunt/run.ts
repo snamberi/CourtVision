@@ -6,7 +6,7 @@ import { DEFAULT_GAME_SETTINGS, ERA_PRESETS } from '../simulation/types';
 import { calculateOverall } from '../simulation/engine/overall';
 import { cardPool, cardPlayer, type HuntCard, type Rarity } from './cards';
 import { huntTeams, type HuntTeam } from './teams';
-import { ERAS, eraCoach, eraOf, underEra, type HuntEra } from './eras';
+import { ERAS, eraCoach, eraOf, eraRules, underEra, type HuntEra } from './eras';
 import { chemistry, chemistryBonus, type ChemistryBond } from './chemistry';
 import { ITEMS, ITEM_IDS, MAX_ITEMS, type ItemId } from './items';
 import { BOOST_IDS, type BoostId } from './boosts';
@@ -460,7 +460,7 @@ export function playSeries(h: NbaHistory, run: HuntRun): { run: HuntRun; play: S
     const mine = sixRotation(cards.map(({ card: c, bonus, defense }) => defended(underEra(cardPlayer(h, c, 'HUNT', bonus), era), defense)));
     const tb = theirBonuses(run, s, st, theirCards.length);
     const theirs = sixRotation(theirCards.map((c, i) => defended(underEra(cardPlayer(h, c, team.abbr === 'HUNT' ? 'OPP' : team.abbr, tb.bonus[i]), era), tb.defense)));
-    const result = simulateGame({ home: { teamId: 'HUNT', seasons: mine, coach: ourCoach, chemistry: 70 }, away: { teamId: team.abbr === 'HUNT' ? 'OPP' : team.abbr, seasons: theirs, coach: theirCoach, chemistry: 75 },
+    const result = simulateGame({ home: { teamId: 'HUNT', seasons: mine, coach: ourCoach, chemistry: 70 }, away: { teamId: team.abbr === 'HUNT' ? 'OPP' : team.abbr, seasons: theirs, coach: theirCoach, chemistry: 75 }, rules: eraRules(era),
       settings: { ...DEFAULT_GAME_SETTINGS, era: ERA_PRESETS[decade] ?? DEFAULT_GAME_SETTINGS.era, seed: run.seed * 101 + run.seriesIndex * 7919 + run.attempts * 104729 + st.game * 17, injuriesEnabled: false, teamChemistryEnabled: false } });
     const won = result.homeScore > result.awayScore;
     let top = { name: '', pts: -1 };
