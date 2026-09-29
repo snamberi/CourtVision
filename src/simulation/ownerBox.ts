@@ -175,30 +175,42 @@ export function fireGm(league: League, extras: GMLeagueExtras): { league: League
 
 /** A season's report card for the GM: record against the roster's expectation, and the goal. */
 export function gmGrade(r: GmSeason): { grade: 'A' | 'B' | 'C' | 'D' | 'F'; note: string } {
-  const beat = r.expectedRank - r.actualRank;
-  const score = beat + (r.goalMet ? 5 : -3) + (r.finish === 'Champion' ? 8 : r.finish === 'Finals' ? 4 : 0);
+  // The regular season against the roster's expectation counts, but a deep playoff run counts most.
+  const beat = Math.max(-8, Math.min(8, r.expectedRank - r.actualRank));
+  const run: Partial<Record<PlayoffFinish, number>> = { Champion: 10, Finals: 7, 'Conference Finals': 4, 'Second Round': 2, 'First Round': 1, 'Missed Playoffs': -2 };
+  const score = beat * 0.6 + (r.goalMet ? 3 : -3) + (run[r.finish] ?? 0);
   const grade = score >= 8 ? 'A' : score >= 3 ? 'B' : score >= -2 ? 'C' : score >= -7 ? 'D' : 'F';
   return { grade, note: beat > 2 ? 'Got more out of the roster than expected.' : beat < -2 ? 'The roster underachieved.' : 'About what the roster should do.' };
 }
 
 // ---------------------------------------------------------------- the head coach
 
+/** The owner pays for his coach himself: the team's staff budget doesn't limit him (the coach still has to want the job). */
+const BUDGET_REASON = 'Staff budget cannot cover this offer and contract payout.';
+const unbudgeted = (league: League): League => ({ ...league, coachingSettings: { ...league.coachingSettings!, staffBudgetRestrictions: false } });
+function ownerOffer(league: League, team: LeagueTeam, c: NonNullable<League['staffMarket']>[number]) {
+  const demand = staffOfferAssessment(team, c, 'head', c.contract.annualSalary, 3, league).demand;
+  const salary = Math.round(demand * 1.1);
+  const a = staffOfferAssessment(team, c, 'head', salary, 3, unbudgeted(league));
+  return { ...a, salary, accepted: a.accepted || a.reason === BUDGET_REASON };
+}
+
 export function headCoachCandidates(league: League) {
   const o = league.owner;
   const team = ownerTeam(league);
   if (!o || !team) return [];
-  return [...(league.staffMarket ?? [])].sort((a, b) => b.rating - a.rating).slice(0, 6)
-    .map(c => ({ coach: c, offer: staffOfferAssessment(team, c, 'head', Math.round(c.contract.annualSalary * 1.1), 3, league) }));
+  return [...(league.staffMarket ?? [])].sort((a, b) => b.rating - a.rating).slice(0, 6).map(c => ({ coach: c, offer: ownerOffer(league, team, c) }));
 }
 
 export function hireHeadCoach(league: League, coachId: string): { league: League; message: string } {
   const o = league.owner, team = ownerTeam(league);
   const c = league.staffMarket?.find(x => x.coachId === coachId);
   if (!o || !team || !c) return { league, message: 'That coach is no longer available.' };
-  const demand = staffOfferAssessment(team, c, 'head', c.contract.annualSalary, 3, league).demand;
-  const r = hireStaff(league, o.teamId, coachId, 'head', Math.round(demand * 1.1), 3, o.teamId);
-  if (r.league === league) return r;
-  return { league: { ...r.league, owner: { ...o, log: addLog(o, league, 'coach_hired', `Hired ${coachId} as head coach.`) } }, message: r.message };
+  const offer = ownerOffer(league, team, c);
+  if (!offer.accepted) return { league, message: offer.reason ?? 'He turned the job down.' };
+  const r = hireStaff(unbudgeted(league), o.teamId, coachId, 'head', offer.salary, 3, o.teamId);
+  if (r.league.teams === league.teams) return { league, message: r.message };
+  return { league: { ...r.league, coachingSettings: league.coachingSettings, owner: { ...o, log: addLog(o, league, 'coach_hired', `Hired ${coachId} as head coach ($${(offer.salary / M).toFixed(1)}M a year, 3 years).`) } }, message: r.message };
 }
 
 export function fireHeadCoach(league: League): { league: League; message: string } {
@@ -234,6 +246,8 @@ export function setTeamColors(league: League, primary: string, secondary: string
 export const ARENA_BASE_COST = 450 * M;
 export const SUITE_COST = 35 * M;
 export const SUITE_INCOME = 9 * M;
+/** Every owner's share of the national TV money each season. */
+export const TV_SHARE = 40 * M;
 export const arenaCost = (suites: number) => ARENA_BASE_COST + suites * SUITE_COST;
 
 /** A new arena: every upgrade at the top level, your name on it, and 0-4 levels of luxury suites. */
@@ -276,7 +290,10 @@ export function openCities(league: League): City[] {
   const seen = new Set<string>();
   return CITIES.filter(c => { const k = `${c.lat},${c.lon}`; if (taken.has(k) || seen.has(k)) return false; seen.add(k); return true; });
 }
-const phaseIsOff = (league: League) => !['regular_season', 'playoffs', 'all_star'].includes(league.seasonPhase ?? 'regular_season');
+/** The owners meet between seasons: from the end of one season until the next one's first game (votes, bids, moves). */
+export const meetingOpen = (league: League) => !['regular_season', 'playoffs', 'all_star'].includes(league.seasonPhase ?? 'regular_season')
+  || ((league.seasonPhase ?? 'regular_season') === 'regular_season' && !league.schedule.some(g => g.played));
+const phaseIsOff = meetingOpen;
 
 /** Renames a team for its new city ("Chicago Comets" becomes "Seattle Comets"; a city-only name becomes the city). */
 function moveTeam(league: League, teamId: string, city: string, nickname?: string): League {
@@ -293,7 +310,7 @@ function moveTeam(league: League, teamId: string, city: string, nickname?: strin
 export function relocate(league: League, city: string, nickname?: string): { league: League; message: string; passed: boolean } {
   const o = league.owner, team = ownerTeam(league);
   if (!o || !team) return { league, message: 'You need to own a team first.', passed: false };
-  if (!phaseIsOff(league)) return { league, message: 'Teams can only move in the offseason.', passed: false };
+  if (!phaseIsOff(league)) return { league, message: 'Teams can only move between seasons (before the first game).', passed: false };
   if (!openCities(league).some(c => c.name === city)) return { league, message: `${city} already has a team.`, passed: false };
   if (o.cash < RELOCATION_FEE) return { league, message: `The relocation fee is $${RELOCATION_FEE / M}M.`, passed: false };
   const oldName = team.name, oldCity = splitTeamName(team.name).city || team.name;
@@ -400,7 +417,7 @@ export function voteOnBid(league: League, bidId: string, yes: boolean): { league
  * Called in the offseason transition. Your season is booked (profit, the GM's report card, the goal), the league
  * office sets a new agenda, a city may bid for a team, and a struggling small-market AI team may pack up and move.
  */
-export function ownerSeasonEnd(league: League, extras: GMLeagueExtras, teamSeasons: { teamId: string; teamName: string; wins: number; losses: number; playoffFinish: PlayoffFinish }[], previousSeason: string): League {
+export function ownerSeasonEnd(league: League, extras: GMLeagueExtras, teamSeasons: { teamId: string; teamName: string; wins: number; losses: number; playoffFinish: PlayoffFinish }[], previousSeason: string, expectedRank?: number): League {
   let next = league;
   const o = league.owner;
   const office0 = league.leagueOffice;
@@ -411,13 +428,17 @@ export function ownerSeasonEnd(league: League, extras: GMLeagueExtras, teamSeaso
     const team = league.teams.find(t => t.teamId === o.teamId);
     if (row && team) {
       const pct = row.wins / Math.max(1, row.wins + row.losses);
-      const fin = computeTeamFinances(team, extras.contracts, extras.capSettings, league.rulesSettings, pct);
+      // Profit against the league's typical team (the finance model's operating income runs low for everyone), plus
+      // the national TV share every owner gets: an ordinary team makes a little, big spending and the tax cost you.
+      const income = (t: LeagueTeam, p: number) => computeTeamFinances(t, extras.contracts, extras.capSettings, league.rulesSettings, p).operatingIncome;
+      const others = teamSeasons.map(r => { const t = league.teams.find(x => x.teamId === r.teamId); return t ? income(t, r.wins / Math.max(1, r.wins + r.losses)) : 0; }).sort((a, b) => a - b);
+      const median = others[Math.floor(others.length / 2)] ?? 0;
       const extra = o.arena.suites * SUITE_INCOME + (o.arena.sponsor?.annual ?? 0) + (o.gm ? -o.gm.salary : 0);
-      const profit = Math.round(fin.operatingIncome * (0.8 + o.fans / 250) + extra);
+      const profit = Math.round(TV_SHARE + (income(team, pct) - median) + (o.fans - 50) * 0.4 * M + extra);
       const made = row.playoffFinish !== 'Missed Playoffs';
       const goalMet = o.goal === 'title' ? row.playoffFinish === 'Champion' : o.goal === 'playoffs' ? made : o.goal === 'profit' ? profit > 0 : row.wins >= 20 || pct >= 0.3;
       const season: OwnerSeason = { season: previousSeason, wins: row.wins, losses: row.losses, finish: row.playoffFinish, profit, goal: o.goal, goalMet };
-      const gmSeason: GmSeason = { season: previousSeason, wins: row.wins, losses: row.losses, finish: row.playoffFinish, expectedRank: strengthRank(league, o.teamId), actualRank: byWins.indexOf(o.teamId) + 1, goalMet };
+      const gmSeason: GmSeason = { season: previousSeason, wins: row.wins, losses: row.losses, finish: row.playoffFinish, expectedRank: expectedRank ?? strengthRank(league, o.teamId), actualRank: byWins.indexOf(o.teamId) + 1, goalMet };
       const gm = o.gm ? { ...o.gm, years: o.gm.years - 1, record: [...o.gm.record, gmSeason] } : null;
       const fans = clamp(o.fans + (pct - 0.5) * 30 + (row.playoffFinish === 'Champion' ? 15 : made ? 4 : -3) + (o.budget === 'lavish' ? 2 : o.budget === 'frugal' ? -2 : 0));
       const sponsor = o.arena.sponsor && o.arena.sponsor.years > 1 ? { ...o.arena.sponsor, years: o.arena.sponsor.years - 1 } : undefined;

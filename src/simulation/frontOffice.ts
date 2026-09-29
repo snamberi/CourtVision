@@ -364,7 +364,8 @@ export interface ReviewResult { state: FrontOfficeState; review: OwnerReview | n
 export function reviewSeason(ctx: ReviewContext): ReviewResult | null {
   const base = ctx.league.frontOffice;
   if (!base) return null;
-  let state: FrontOfficeState = reopenJobMarket({ ...base, events: [...base.events] });
+  // An owner (Owner's Box) isn't looking for a GM job: no offers come.
+  let state: FrontOfficeState = ctx.league.owner ? { ...base, events: [...base.events] } : reopenJobMarket({ ...base, events: [...base.events] });
   const sandbox = ctx.league.settings.sandboxMode === true;
   if (sandbox) state.sandboxUsed = true;
   const official = !state.sandboxUsed;

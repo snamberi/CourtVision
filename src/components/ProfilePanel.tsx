@@ -8,7 +8,7 @@ import { ProfileIcon, NameTag } from './ProfileIcon';
 import { useAccount } from '../cloud/account';
 import { passesOnSale } from '../billing/billing';
 import { ThemeSection } from './ThemePicker';
-import { TITLE_COLORS, TROPHY_TITLES, trophyNeed } from '../profile/trophyRoad';
+import { TITLE_COLORS, TROPHY_TITLES, trophyNeed, titleColorOpen } from '../profile/trophyRoad';
 
 function useProfile() {
   const [tick, setTick] = useState(0);
@@ -91,9 +91,9 @@ export function ProfilePanel() {
         <i className={c.anim ? `anim-${c.anim}` : undefined} style={{ background: c.css, backgroundSize: c.anim ? '200% 100%' : undefined }} aria-hidden="true" /><b>{c.name}</b><small>{open ? 'Unlocked' : c.how}</small></button>; })}</div></div>
 
     <div className="profile-picker"><h3 className="hunt-subhead">Title colour <small>{ctx.trophies.toLocaleString()} trophies</small></h3>
-      <div className="profile-colors" role="radiogroup" aria-label="Title colour">{TITLE_COLORS.map(c => { const need = c.id === 'plain' ? 0 : trophyNeed('titleColor', c.id) ?? Infinity, open = ctx.trophies >= need; return <button key={c.id} role="radio" aria-checked={eq.titleColor === c.id} disabled={!open}
+      <div className="profile-colors" role="radiogroup" aria-label="Title colour">{TITLE_COLORS.map(c => { const open = titleColorOpen(c, ctx); return <button key={c.id} role="radio" aria-checked={eq.titleColor === c.id} disabled={!open}
         className={`profile-color-pick ${eq.titleColor === c.id ? 'selected' : ''} ${open ? '' : 'locked'}`} onClick={() => equip({ titleColor: c.id })}>
-        <NameTag name="" icon={null} title={c.name} titleColor={c.id} /><small>{open ? 'Unlocked' : `${need.toLocaleString()} trophies`}</small></button>; })}</div></div>
+        <NameTag name="" icon={null} title={c.name} titleColor={c.id} /><small>{open ? 'Unlocked' : c.ownerLegacy != null ? `Owner legacy ${c.ownerLegacy}` : `${(trophyNeed('titleColor', c.id) ?? 0).toLocaleString()} trophies`}</small></button>; })}</div></div>
 
     <div className="profile-picker"><h3 className="hunt-subhead">Title</h3>
       {titleGroups(ctx).map(g => <div key={g.label} className="profile-title-group"><small>{g.label.toUpperCase()}</small>

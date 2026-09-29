@@ -6,6 +6,17 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2026-11-04',
+    title: "The Owner's Box",
+    items: [
+      "**Own a team:** pick \"Own a Team\" when you start a league (or open Front Office → Owner's Box). An AI GM you hire runs the roster; you set the goal (title, playoffs, rebuild, profit) and the budget, read his report card and hire, extend or fire him and the head coach.",
+      "**Three GM styles:** the Trade Shark trades and bids hard, the Collector builds through youth, the Old-School GM wants veterans. Their style really changes how your team is run.",
+      "**Your arena and your city:** build a new arena with luxury suites and your name on it (it shows on the court), sell the naming rights, pick the team colours, or move the team to a new city on the map if the other owners approve. The fans you leave behind protest.",
+      "**The league office:** vote with the other owners on a four-point line, the shot clock, the play-in, hand-checking, the three-point line and the season length. Passed rules really change the game engine. Cities bid for expansion teams, and small-market teams sometimes pack up and move.",
+      "**Owner legacy:** titles, deep runs, profit and your arena build an owner legacy and a place in the Owners' Hall of Fame. It feeds the Trophy Road and unlocks the Team Owner and Tycoon titles, the Tycoon gold title colour, a Skybox profile icon and a gold suit for your coach.",
+    ],
+  },
+  {
     id: '2026-10-28',
     title: 'A slot-machine League Hunt and a cleaner Career Mode',
     items: [

@@ -69,6 +69,8 @@ import { rivalryBadge } from './simulation/rivalry';
 import { rivalryWeekGame, rivalryHype } from './simulation/rivalryWeek';
 import { duoKeys } from './simulation/chemistryWeb';
 import { coachLook } from './visuals/coachLook';
+import { ownerBest, OWNER_REWARD } from './profile/cosmetics';
+import { startOwnership, recordOwnerLegacy } from './simulation/ownerBox';
 import { ensureGmRivals } from './simulation/gmRivals';
 import type { Speech } from './simulation/halftime';
 import type { NbaHistory } from './history/nbaHistoryData';
@@ -138,6 +140,7 @@ const CareerMode = lazy(() => import('./components/career/CareerMode').then(m =>
 const SummerCampPage = lazy(() => import('./components/SummerCampPage').then(m => ({ default: m.SummerCampPage })));
 const MedicalRoomPage = lazy(() => import('./components/MedicalRoomPage').then(m => ({ default: m.MedicalRoomPage })));
 const FranchiseTimelinePage = lazy(() => import('./components/FranchiseTimelinePage').then(m => ({ default: m.FranchiseTimelinePage })));
+const OwnerBoxPage = lazy(() => import('./components/OwnerBoxPage').then(m => ({ default: m.OwnerBoxPage })));
 const GmRivalsPage = lazy(() => import('./components/GmRivalsPage').then(m => ({ default: m.GmRivalsPage })));
 const CardAlbumPage = lazy(() => import('./components/CardAlbumPage').then(m => ({ default: m.CardAlbumPage })));
 const RoadTripsPage = lazy(() => import('./components/RoadTripsPage').then(m => ({ default: m.RoadTripsPage })));
@@ -696,6 +699,13 @@ function App() {
     if (injuryDecisions > lastDecisions.current) pushToast(`Injury: the doctors need your call in the Medical Room (${injuryDecisions} waiting).`, 'error');
     lastDecisions.current = injuryDecisions;
   }, [injuryDecisions]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Owner's Box: each booked season updates your owner legacy record (Owners' Hall of Fame, Trophy Road, rewards).
+  const ownerSeasons = league.owner?.seasons.length ?? 0;
+  useEffect(() => {
+    if (screen !== 'app' || !ownerSeasons) return;
+    recordOwnerLegacy(activeSaveId ?? 'unsaved', league);
+  }, [ownerSeasons, activeSaveId, screen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Trading cards: when a season is archived, your roster's cards and the season's packs arrive (once per league).
   const archivedSeasons = league.franchiseHistory?.length ?? 0;
@@ -1360,7 +1370,14 @@ function App() {
         <ChooseTeamScreen
           league={pendingLeague}
           extras={pendingExtras}
-          onConfirm={(l, e, teamId) => enterApp(l.tutorial ? l : { ...l, tutorial: createTutorial(l, { tourSeen: readTourSeen(), navMode: readPreferredNavMode() }) }, e, teamId, pendingLeagueName)}
+          onConfirm={(l, e, teamId, asOwner) => {
+            const withTour = l.tutorial ? l : { ...l, tutorial: createTutorial(l, { tourSeen: readTourSeen(), navMode: readPreferredNavMode() }) };
+            if (!asOwner) { enterApp(withTour, e, teamId, pendingLeagueName); return; }
+            // Owner's Box: you own the team and the AI runs every roster (yours with the GM you hire).
+            const owned = startOwnership(withTour, e, teamId);
+            enterApp(owned.league, owned.extras, null, pendingLeagueName);
+            setTab('ownerBox');
+          }}
         />
         <ConsentBanner />
       </>
@@ -1695,6 +1712,9 @@ function App() {
         {tab === 'press' && <PressRoomPage league={league} extras={extras} controlledTeamId={controlledTeamId} onChange={setLeague} />}
         {tab === 'cards' && <CardAlbumPage />}
         {tab === 'gmRivals' && <GmRivalsPage league={league} extras={extras} />}
+        {tab === 'ownerBox' && <OwnerBoxPage league={league} extras={extras} controlledTeamId={controlledTeamId} onToast={pushToast}
+          onChange={(l, e) => { setLeague(l); if (e) setExtras(e); }}
+          onExpand={(bid, voted) => { void import('./simulation/ownerBox').then(m => m.expandLeague(voted, extras, bid, seed + 4242)).then(r => { setLeague(r.league); setExtras(r.extras); pushToast(`Expansion draft done: the ${bid.city} ${bid.nickname} join the league.`, 'success'); }).catch(() => pushToast('The expansion draft could not run.', 'error')); }} />}
         {tab === 'timeline' && <FranchiseTimelinePage league={league} extras={extras} controlledTeamId={controlledTeamId} onSelectPlayer={selectPlayer} />}
         {tab === 'travel' && <RoadTripsPage league={league} controlledTeamId={controlledTeamId} onChange={setLeague} />}
         {tab === 'yearInReview' && <YearInReviewPage league={league} extras={extras} controlledTeamId={controlledTeamId} awardOptions={awardOptions(awardSettings)}
@@ -1880,9 +1900,12 @@ function App() {
               crowdFill={homeTeam ? crowdFill(league, homeTeam.teamId) : undefined}
               court={boxscoreSource === 'league' ? (() => {
                 const rw = scheduled && controlledTeamId ? rivalryWeekGame(league, scheduled.id) : null;
-                const look = (t?: typeof homeTeam) => t?.coachIdentity ? coachLook(t.coachIdentity.coachId, t.coachIdentity.age) : undefined;
+                // An owner with a big enough legacy dresses his coach in the gold suit (Owner's Box reward).
+                const gold = !!league.owner && ownerBest() >= OWNER_REWARD.goldSuit;
+                const look = (t?: typeof homeTeam) => t?.coachIdentity ? { ...coachLook(t.coachIdentity.coachId, t.coachIdentity.age), ...(gold && t.teamId === league.owner?.teamId ? { outfit: 'suit' as const, suit: '#c9a227' } : {}) } : undefined;
                 return { arena: arenaLevels(homeTeam), duos: new Set([...duoKeys(homeTeam), ...duoKeys(awayTeam)]), rivalryWeek: rw && controlledTeamId ? { hype: rivalryHype(league, controlledTeamId, rw) } : null,
-                  coaches: { home: look(homeTeam), away: look(awayTeam) } };
+                  coaches: { home: look(homeTeam), away: look(awayTeam) },
+                  ...(league.owner && homeTeam?.teamId === league.owner.teamId ? { building: { name: league.owner.arena.name, suites: league.owner.arena.suites } } : {}) };
               })() : undefined}
               initialWatch={watchNextResult}
               watchStart={watchNextResult ? watchStart : undefined}

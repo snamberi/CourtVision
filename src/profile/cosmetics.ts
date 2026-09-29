@@ -21,12 +21,17 @@ function albumCounts(read: Read): { sets: number; legendary: number } {
  */
 
 export type RewardKind = 'icon' | 'color' | 'title' | 'frame' | 'floor' | 'look';
-export type Rule = { level: number } | { rank: number } | { honor: string } | { mode: string } | { anyHonor: true } | { supporter: true } | { trophies: number } | { album: 'sets' | 'legendary'; n: number };
+export type Rule = { level: number } | { rank: number } | { honor: string } | { mode: string } | { anyHonor: true } | { supporter: true } | { trophies: number } | { album: 'sets' | 'legendary'; n: number } | { owner: number };
 /** Animated cosmetics (the Trophy Road): see features.css `.anim-*` and `.icon-anim-*`. */
 export type IconAnim = 'flicker' | 'shine' | 'spin' | 'twinkle' | 'flash' | 'glow' | 'bob';
 export type ColorAnim = 'flow' | 'shimmer' | 'pulse';
 const byTrophies = (kind: 'icon' | 'color', id: string): Rule => ({ trophies: trophyNeed(kind, id) ?? 5_000 });
+/** Owner's Box rewards, by your best owner legacy anywhere (see ownerBox.ts). */
+export const OWNER_REWARD = { title: 15, skybox: 35, goldSuit: 50, tycoon: 60 } as const;
+export const OWNER_TITLES: { title: string; legacy: number }[] = [{ title: 'Team Owner', legacy: OWNER_REWARD.title }, { title: 'Tycoon', legacy: OWNER_REWARD.tycoon }];
+/** Your best owner legacy in this browser (the records ownerBox.ts keeps). */
 const trophyHow = (r: Rule) => ('trophies' in r ? `${r.trophies.toLocaleString()} trophies` : '');
+const ownerHow = (r: Rule) => ('owner' in r ? `Owner legacy ${r.owner}` : '');
 const albumHow = (r: Rule) => ('album' in r ? r.album === 'sets' ? `Complete ${r.n} team card set${r.n === 1 ? '' : 's'}` : `Collect ${r.n} legendary cards` : '');
 export interface Cosmetic<T extends string = string> { id: T; name: string; rule: Rule; how: string }
 
@@ -140,6 +145,8 @@ export const ICONS: IconDef[] = [
   ] as [string, string, string, Record<string, string> | undefined, IconAnim][]).map(([id, name, base, recolor, anim]) => { const rule = byTrophies('icon', id); return { id, name, base, recolor, anim, rule, how: trophyHow(rule) }; }),
   // The card album.
   { id: 'card-holo', name: 'Holo card', base: 'card', anim: 'shine' as IconAnim, rule: { album: 'sets', n: 3 } as Rule, how: albumHow({ album: 'sets', n: 3 }) },
+  // The Owner's Box.
+  { id: 'skybox', name: 'Skybox', base: 'skybox', anim: 'glow' as IconAnim, rule: { owner: OWNER_REWARD.skybox } as Rule, how: ownerHow({ owner: OWNER_REWARD.skybox }) },
   { id: 'card-legend', name: 'Legendary card', base: 'card', recolor: { b: '#ffd166', B: '#c9971f' }, anim: 'glow' as IconAnim, rule: { album: 'legendary', n: 10 } as Rule, how: albumHow({ album: 'legendary', n: 10 }) },
 ];
 export type IconId = string;
@@ -223,10 +230,10 @@ export function hasEntitlement(kind: 'noAds' | 'supporter', read: Read = localRe
   return kind === 'noAds' ? !!e.noAds || supporter : supporter;
 }
 
-export interface UnlockContext { level: number; rank: number; honors: string[]; modes: string[]; supporter: boolean; trophies: number; album?: { sets: number; legendary: number } }
+export interface UnlockContext { level: number; rank: number; honors: string[]; modes: string[]; supporter: boolean; trophies: number; album?: { sets: number; legendary: number }; owner?: number }
 /** What unlocks read: the level is passed in; the rest comes from this browser. */
 export function unlockContext(level: number, read: Read = localRead): UnlockContext {
-  return { level, rank: TIERS.indexOf(read('cv-ranked-best') ?? ''), honors: readHonors(read), modes: json<string[]>(read, 'cv-mode-ach-seen', []), supporter: hasEntitlement('supporter', read), trophies: totalTrophies(read), album: albumCounts(read) };
+  return { level, rank: TIERS.indexOf(read('cv-ranked-best') ?? ''), honors: readHonors(read), modes: json<string[]>(read, 'cv-mode-ach-seen', []), supporter: hasEntitlement('supporter', read), trophies: totalTrophies(read), album: albumCounts(read), owner: ownerBest(read) };
 }
 export function isOpen(rule: Rule, c: UnlockContext): boolean {
   if ('level' in rule) return c.level >= rule.level;
@@ -235,6 +242,7 @@ export function isOpen(rule: Rule, c: UnlockContext): boolean {
   if ('anyHonor' in rule) return c.honors.length > 0;
   if ('supporter' in rule) return c.supporter;
   if ('trophies' in rule) return c.trophies >= rule.trophies;
+  if ('owner' in rule) return (c.owner ?? 0) >= rule.owner;
   if ('album' in rule) return (rule.album === 'sets' ? c.album?.sets ?? 0 : c.album?.legendary ?? 0) >= rule.n;
   return rule.honor === 'first' ? c.honors.some(h => HONORS.find(x => x.id === h)?.first) : c.honors.includes(rule.honor);
 }
@@ -246,7 +254,11 @@ export const earnedExtraTitles = (c: UnlockContext): string[] => [
   ...(c.supporter ? [SUPPORTER_TITLE] : []),
   ...TROPHY_TITLES.filter(t => c.trophies >= t.trophies).map(t => t.id),
   ...ALBUM_TITLES.filter(t => ((t.kind === 'sets' ? c.album?.sets : c.album?.legendary) ?? 0) >= t.n).map(t => t.title),
+  ...OWNER_TITLES.filter(t => (c.owner ?? 0) >= t.legacy).map(t => t.title),
 ];
+export function ownerBest(read: Read = localRead): number {
+  try { return ((JSON.parse(read('cv-owner-records') ?? '[]') as { legacy: number }[]) ?? []).reduce((m, r) => Math.max(m, r.legacy ?? 0), 0); } catch { return 0; }
+}
 /** Titles from the card album. */
 export const ALBUM_TITLES: { title: string; kind: 'sets' | 'legendary'; n: number }[] = [
   { title: 'Collector', kind: 'sets', n: 1 }, { title: 'Set Master', kind: 'sets', n: 10 }, { title: 'Legendary Collector', kind: 'legendary', n: 15 },
@@ -292,6 +304,7 @@ export const SPRITES: Record<string, string[]> = {
   meteor: ['o.........', '.oo.......', '..ooo.....', '...ookkk..', '....kgggk.', '...kgwgGGk', '...kggGGGk', '...kgGGGGk', '....kGGGk.', '.....kkk..'],
   goat: ['k.......k.', 'kk.....kk.', '.kwkkkkwk.', '.kwwwwwwk.', 'kwkwwwwkwk', '.kwwwwwwk.', '..kwwwwk..', '..kwkkwk..', '...kwwk...', '...kssk...'],
   goatcrown: ['.g.g..g.g.', '.gggggggg.', '.kGGGGGGk.', '.kwkkkkwk.', '.kwwwwwwk.', 'kwkwwwwkwk', '.kwwwwwwk.', '..kwwwwk..', '..kwkkwk..', '...kssk...'],
+  skybox: ['kkkkkkkkkk', 'kggggggggk', 'kgbwgbwgGk', 'kgbbgbbgGk', 'kggggggggk', 'kkkkkkkkkk', '.kdddddddk', '.kdwdwdwdk', '.kdddddddk', '.kkkkkkkk.'],
   card: ['.kkkkkkkk.', 'kbbbbbbbbk', 'kbwwwwwwBk', 'kbwoowwwBk', 'kbwoowwwBk', 'kbwwwwwwBk', 'kbwkkkkwBk', 'kbwwwwwwBk', 'kBBBBBBBBk', '.kkkkkkkk.'],
   heart: ['..........', '.kkk..kkk.', 'krrrkkrrrk', 'krwrrrrrrk', 'krrrrrrrrk', '.krrrrrrk.', '..krrrrk..', '...krrk...', '....kk....', '..........'],
 };

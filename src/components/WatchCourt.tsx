@@ -160,7 +160,8 @@ function DiscordBoard({x,y}:{x:number;y:number}){
   </g>
  </a>;
 }
-const Arena=memo(function Arena({home,away,identity,awayKit,id,hype,homeBench,awayBench,fill=1,loud=0,mascot=0,rivalry=false}:{home:Team;away:Team;identity:TeamIdentity;awayKit:TeamIdentity;id:string;hype:number;homeBench:PlayerSeason[];awayBench:PlayerSeason[];fill?:number;loud?:number;mascot?:number;rivalry?:boolean}){
+const Arena=memo(function Arena({home,away,identity,awayKit,id,hype,homeBench,awayBench,fill=1,loud=0,mascot=0,rivalry=false,building}:{home:Team;away:Team;identity:TeamIdentity;awayKit:TeamIdentity;id:string;hype:number;homeBench:PlayerSeason[];awayBench:PlayerSeason[];fill?:number;loud?:number;mascot?:number;rivalry?:boolean;building?:{name:string;suites:number}}){
+ const tableText=building?building.name.toUpperCase().replace(/[^A-Z0-9 ]/g,'').slice(0,22):identity.abbreviation+' COURT VISION';
  const apron=shade(identity.primary,-.18),apronDark=shade(identity.primary,-.45),paint=identity.courtPaint,picked=equippedFloor(),style=picked==='team'?floorStyle(home.teamId):picked;
  const cream='#f6ecd2';
  return <>
@@ -197,6 +198,8 @@ const Arena=memo(function Arena({home,away,identity,awayKit,id,hype,homeBench,aw
   <rect x={SCENE.x} y="0" width={SCENE.w} height="600" fill="#000" opacity=".12"/>
   <SideStand x0={SCENE.x+2} dir={1} primary={identity.primary} secondary={identity.secondary} hype={hype} fill={fill} loud={loud}/>
   <SideStand x0={SCENE.x+SCENE.w-2} dir={-1} primary={identity.primary} secondary={identity.secondary} hype={hype} fill={fill}/>
+  {/* An owner's luxury suites: lit skybox windows along the top of the building (more with each level). */}
+  {building&&building.suites>0&&<g data-testid="arena-suites" shapeRendering="crispEdges">{Array.from({length:building.suites*9},(_,i)=>{const n=building.suites*9,x=60+(i+.5)*(880/n)-7;return <rect key={i} x={x} y="1" width="14" height="5" fill={i%4?'#ffd166':'#fff3c4'} stroke="#0b1018" strokeWidth=".8"/>;})}</g>}
   {/* Top sideline: the visitors' bench, the table officials' chairs and the community board. */}
   <rect x="100" y="8" width="332" height="44" fill={apronDark} opacity=".55"/>
   <Bench x={112} y={24} players={awayBench} kit={awayKit} teamId={away.teamId} count={11}/>
@@ -226,7 +229,7 @@ const Arena=memo(function Arena({home,away,identity,awayKit,id,hype,homeBench,aw
   {/* Bottom sideline: the scorer's table between the home bench and the media row. */}
   <g shapeRendering="crispEdges">
    <rect x="376" y="566" width="248" height="28" fill="#1c2a3b" stroke="#0a111c"/><rect x="386" y="571" width="228" height="16" fill="#0c1725"/>
-   <g transform={`translate(${(500-pixelTextWidth(identity.abbreviation+' COURT VISION'))},575)`}><path d={pixelTextPath(identity.abbreviation+' COURT VISION',2)} fill="#f8bc70"/></g>
+   <g transform={`translate(${(500-pixelTextWidth(tableText))},575)`}><path d={pixelTextPath(tableText,2)} fill="#f8bc70"/></g>
   </g>
   <Bench x={96} y={566} players={homeBench} kit={identity} teamId={home.teamId} count={9}/>
   <g shapeRendering="crispEdges">{Array.from({length:mascot?7:8},(_,i)=><g key={i} transform={`translate(${(mascot?684:650)+i*34},566)`}><rect width="24" height="20" fill="#1d2a3c" stroke="#0a111c"/><rect x="4" y="-10" width="16" height="12" fill="#2c3e55"/></g>)}</g>
@@ -353,7 +356,7 @@ function cameraBox(frame:CourtFrame,camera:CourtCamera):string{
  const fx=ball.x*.7+cx*.3,fy=ball.y*.7+cy*.3;
  return `${Math.max(SCENE.x,Math.min(SCENE.x+SCENE.w-560,fx-280)).toFixed(1)} ${Math.max(0,Math.min(600-276,fy-150)).toFixed(1)} 560 276`;
 }
-export function WatchCourt({frame,home,away,rosters,hotId,labels=true,trail=false,camera='full',ghosts=[],shots=[],bug,crowdFill=1,arena,rivalry=false,duos,coaches,refs,crew}:{frame:CourtFrame;home:Team;away:Team;rosters:PlayerSeason[];hotId?:string;labels?:boolean;trail?:boolean;camera?:CourtCamera;ghosts?:CourtBall[];shots?:CourtShot[];bug?:CourtBug;crowdFill?:number;
+export function WatchCourt({frame,home,away,rosters,hotId,labels=true,trail=false,camera='full',ghosts=[],shots=[],bug,crowdFill=1,arena,building,rivalry=false,duos,coaches,refs,crew}:{building?:{name:string;suites:number};frame:CourtFrame;home:Team;away:Team;rosters:PlayerSeason[];hotId?:string;labels?:boolean;trail?:boolean;camera?:CourtCamera;ghosts?:CourtBall[];shots?:CourtShot[];bug?:CourtBug;crowdFill?:number;
  /** The home arena's upgrade levels (business.ts), drawn on the court. */
  arena?:Partial<Record<'scoreboard'|'lights'|'crowd'|'mascot',number>>;
  /** Rivalry Week game: striped border, painted floor and a crowd on its feet. */
@@ -383,7 +386,7 @@ export function WatchCourt({frame,home,away,rosters,hotId,labels=true,trail=fals
   return frame.offenseTeamId===teamId?(Math.floor(frame.ball.x/120)%2?'point':'down'):'cross';};
  const athlete=(a:CourtActor)=>{const homeSide=a.teamId===home.teamId;return <Athlete key={a.id} ballZ={ball.z} hoopX={frame.hoop.x} actor={a} player={rosters.find(p=>p.playerId===a.id)} identity={homeSide?hi:awayKit} ring={homeSide?hi.primary:ai.primary} hot={a.id===hotId} carrier={a.id===frame.carrier} labels={labels&&(a.teamId===frame.offenseTeamId||!frame.offenseTeamId||a.id===frame.carrier)} above={a.teamId!==frame.offenseTeamId&&!!frame.offenseTeamId}/>;};
  return <div className="watch-arena"><svg className="watch-court" viewBox={cameraBox(frame,camera)} role="img" aria-label={`${home.name} home court. ${frame.phase}.`}>
-  <Arena home={home} away={away} identity={hi} awayKit={awayKit} id={id} hype={hype} homeBench={homeBench} awayBench={awayBench} fill={rivalry?1:crowdFill} loud={lv.crowd} mascot={lv.mascot} rivalry={rivalry}/>
+  <Arena home={home} away={away} identity={hi} awayKit={awayKit} id={id} hype={hype} homeBench={homeBench} awayBench={awayBench} fill={rivalry?1:crowdFill} loud={lv.crowd} mascot={lv.mascot} rivalry={rivalry} building={building}/>
   {lv.lights>0&&<ArenaLights level={lv.lights} identity={hi}/>}
   {lv.scoreboard>0&&<VideoBoard level={lv.scoreboard} identity={hi} bug={bug} hype={hype}/>}
   {lv.mascot>0&&<Mascot level={lv.mascot} identity={hi} hype={hype}/>}

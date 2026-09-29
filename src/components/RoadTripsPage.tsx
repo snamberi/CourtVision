@@ -34,6 +34,20 @@ function TripMap({ cities, home, trip, primary, teamNames }: { cities: [string, 
   </svg>;
 }
 
+/** The same map for moving a team (Owner's Box): cities with a team in grey, open cities to click, the pick in gold. */
+export function RelocationMap({ taken, open, home, pick, primary, onPick }: { taken: City[]; open: City[]; home?: City; pick: string | null; primary: string; onPick: (city: string) => void }) {
+  return <svg className="trip-map" viewBox={`0 0 ${W} ${H}`} role="group" aria-label="Cities without a team">
+    <rect width={W} height={H} fill="#0b1018" />
+    <g shapeRendering="crispEdges">{LAND.map(([c, r]) => <rect key={`${c}-${r}`} x={c * W / COLS} y={r * H / ROWS} width={W / COLS - 1} height={H / ROWS - 1} fill={(c + r) % 7 === 0 ? '#243248' : '#1c2a3d'} />)}</g>
+    {taken.map(c => <rect key={`t-${c.name}`} x={px(c) - 3} y={py(c) - 3} width="6" height="6" fill={home && c.name === home.name ? primary : '#5b6b82'} stroke="#0b1018"><title>{c.name} (has a team)</title></rect>)}
+    {open.filter(c => c.lon > -125.5 && c.lat < 50).map(c => <g key={`o-${c.name}`} transform={`translate(${px(c)},${py(c)})`} className="reloc-city" role="button" tabIndex={0} aria-label={`Move to ${c.name}`} aria-pressed={pick === c.name}
+      onClick={() => onPick(c.name)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPick(c.name); } }}>
+      <rect x="-5" y="-5" width="10" height="10" fill={pick === c.name ? '#ffd166' : '#f4f0e6'} stroke="#0b1018" strokeWidth="2" />
+      {pick === c.name && <text x="0" y="-9" textAnchor="middle" fontFamily="monospace" fontSize="11" fontWeight="bold" fill="#ffd166">{c.name}</text>}
+      <title>{c.name}</title></g>)}
+  </svg>;
+}
+
 const Meter = ({ v }: { v: number }) => <span className="trip-fatigue" aria-label={`Fatigue ${v.toFixed(1)}`}>{Array.from({ length: 6 }, (_, i) => <i key={i} className={i < Math.round(v) ? v >= 4 ? 'hot' : 'on' : ''} />)}</span>;
 
 /** Road trips: your team on the map, every trip of the season, the travel toll, and how you handle it. */

@@ -10,9 +10,10 @@ import { hotSeats } from '../simulation/coachingCarousel';
 import { autoPlayOneSeason } from '../simulation/autoPlay';
 import { DEFAULT_AWARD_SETTINGS } from '../components/LeagueSettingsPage';
 import { franchiseTimeline } from '../simulation/timeline';
+import { initializeCoaching } from '../simulation/staffManagement';
 import {
   startOwnership, gmCandidates, hireGm, fireGm, extendGm, setGoal, setBudget, castVote, voteOnBid, buildArena, arenaCost, relocate, openCities,
-  ownerVotes, ownerLegacy, ownerSpendFactor, expandLeague, namingOffers, signNaming, recordOwnerLegacy, loadOwnerRecords, bestOwnerLegacy, PROPOSALS, BUDGETS,
+  ownerVotes, ownerLegacy, meetingOpen, headCoachCandidates, hireHeadCoach, fireHeadCoach, ownerSpendFactor, expandLeague, namingOffers, signNaming, recordOwnerLegacy, loadOwnerRecords, bestOwnerLegacy, PROPOSALS, BUDGETS,
 } from '../simulation/ownerBox';
 import type { League } from '../simulation/league';
 
@@ -54,6 +55,15 @@ describe("Owner's Box", () => {
     expect(classifyBuyerSeller(title.league, title.extras, me)).toBe('buyer');
     expect(classifyBuyerSeller(rebuild.league, rebuild.extras, me)).toBe('seller');
     expect(hotSeats(played, null).some(s => s.teamId === me)).toBe(false);
+    // Hiring a coach: the owner pays past the staff budget; someone on the market takes the job.
+    const coached = { ...initializeCoaching(league, null), owner: league.owner };
+    const pick = headCoachCandidates(coached).find(c => c.offer.accepted);
+    expect(pick).toBeTruthy();
+    const hired = hireHeadCoach(coached, pick!.coach.coachId);
+    expect(hired.league.teams.find(t => t.teamId === me)!.coachIdentity?.coachId).toBe(pick!.coach.coachId);
+    expect(hired.league.coachingSettings).toEqual(coached.coachingSettings);
+    const fired = fireHeadCoach(hired.league);
+    expect(fired.league.teams.find(t => t.teamId === me)!.coachIdentity).toBeUndefined();
   });
 
   it('league office: owners vote, a passed rule changes the dials; the four-point line is real', () => {
@@ -100,7 +110,10 @@ describe("Owner's Box", () => {
     expect(named.owner!.arena.name.startsWith(offer.name)).toBe(true);
     // Moving: refused during the season, and the owners vote in the offseason.
     const city = openCities(league)[0].name;
-    expect(relocate({ ...rich, seasonPhase: 'regular_season' }, city).passed).toBe(false);
+    const midSeason = { ...rich, seasonPhase: 'regular_season' as const, schedule: rich.schedule.map((g, i) => i === 0 ? { ...g, played: true } : g) };
+    expect(relocate(midSeason, city).passed).toBe(false);
+    expect(meetingOpen({ ...rich, seasonPhase: 'regular_season' })).toBe(true); // before the first game
+    expect(meetingOpen(midSeason)).toBe(false);
     let moved = null;
     for (const c of openCities(league)) { const r = relocate(offseason({ ...league, owner: { ...league.owner!, cash: 1e12 } }), c.name); if (r.passed) { moved = { r, c }; break; } }
     expect(moved).toBeTruthy();
@@ -119,6 +132,8 @@ describe("Owner's Box", () => {
     expect(o.seasons).toHaveLength(1);
     expect(o.gm!.record).toHaveLength(1);
     expect(o.cash).not.toBe(hired.league.owner!.cash);
+    // Profit is measured against the league's typical team plus the TV share: a normal season is tens of millions, not hundreds.
+    expect(Math.abs(o.seasons[0].profit)).toBeLessThan(150_000_000);
     expect(done.league.leagueOffice!.season).toBe(done.league.season);
     expect(done.league.leagueOffice!.proposals.length).toBe(3);
     // Your team was run by the AI: it has a full roster for the new season.
@@ -145,5 +160,24 @@ describe("Owner's Box", () => {
     expect(team.seasons.length).toBeGreaterThanOrEqual(10);
     expect(team.conferenceId).toBeTruthy();
     expect(grown.league.frontOffice?.owners[team.teamId]).toBeTruthy();
+  });
+});
+
+describe("Owner's Box rewards", () => {
+  it('owner legacy opens the skybox icon, the owner titles and the Tycoon title colour; owner seasons feed the Trophy Road', async () => {
+    const { isOpen, earnedExtraTitles, unlockContext, OWNER_REWARD, ICONS } = await import('../profile/cosmetics');
+    const { titleColorOpen, TITLE_COLORS, trophyParts } = await import('../profile/trophyRoad');
+    localStorage.clear();
+    const skybox = ICONS.find(i => i.id === 'skybox')!;
+    expect(isOpen(skybox.rule, { ...unlockContext(1), owner: 0 })).toBe(false);
+    localStorage.setItem('cv-owner-records', JSON.stringify([{ key: 'k', teamName: 'X', since: '2026', seasons: 4, titles: 1, legacy: 70, updated: '2030' }]));
+    const ctx = unlockContext(1);
+    expect(ctx.owner).toBe(70);
+    expect(isOpen(skybox.rule, ctx)).toBe(true);
+    expect(earnedExtraTitles(ctx)).toEqual(expect.arrayContaining(['Team Owner', 'Tycoon']));
+    const tycoon = TITLE_COLORS.find(c => c.id === 'tycoon')!;
+    expect(titleColorOpen(tycoon, ctx)).toBe(true);
+    expect(titleColorOpen(tycoon, { trophies: 1e9, owner: OWNER_REWARD.tycoon - 1 })).toBe(false);
+    expect(trophyParts().find(p => p.id === 'owner')!.trophies).toBeGreaterThan(0);
   });
 });

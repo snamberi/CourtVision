@@ -60,6 +60,7 @@ export const SIMPLE_HUBS: SimpleHub[] = [
   {
     id: 'frontOffice', label: 'Front Office', icon: 'trade', blurb: 'trades, free agents, draft',
     items: [
+      { label: "Owner's Box", tab: 'ownerBox' },
       { label: 'Trade', tab: 'trade' },
       { label: 'Three-team trade', tab: 'threeTeam' },
       { label: 'Trade offers', tab: 'tradeOffers' },

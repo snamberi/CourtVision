@@ -19,7 +19,7 @@ export const TROPHIES = {
   careerRetired: 500, careerLegacy: 2, careerHof: 1_000,
   huntRun: 80, huntWin: 1_800, huntDaily: 120,
   rebuildAttempt: 150, rebuildStar: 450, rebuildTitle: 1_200,
-  weekly: 600, dailyGoal: 40, legendStar: 350, card: 25,
+  weekly: 600, dailyGoal: 40, legendStar: 350, card: 25, ownerSeason: 150, ownerLegacy: 40,
 } as const;
 
 export interface TrophyPart { id: string; label: string; trophies: number }
@@ -33,6 +33,7 @@ export function trophyParts(read: Read = localRead): TrophyPart[] {
   const weeks = Object.values(loadWeeklyRecords(read)).reduce((n, w) => n + (w.rebuild ? 1 : 0) + (w.career ? 1 : 0), 0);
   const legend = Object.values(json<Record<string, { stars: number }>>(read, 'cv-legend-records', {}));
   const cards = Object.keys(json<Record<string, unknown>>(read, 'cv-card-album', {})).length;
+  const owners = json<{ seasons?: number; legacy?: number }[]>(read, 'cv-owner-records', []);
   const T = TROPHIES;
   return [
     { id: 'gm', label: 'GM leagues', trophies: gm.wins * T.gmWin + gm.seasons * T.gmSeason + gm.titles * T.gmTitle + gm.achievements * T.achievement },
@@ -43,6 +44,7 @@ export function trophyParts(read: Read = localRead): TrophyPart[] {
     { id: 'daily', label: 'Daily goals', trophies: dailyGoalXp(read).done * T.dailyGoal },
     { id: 'legend', label: 'Legend Challenges', trophies: legend.reduce((n, r) => n + r.stars, 0) * T.legendStar },
     { id: 'cards', label: 'Card album', trophies: cards * T.card },
+    { id: 'owner', label: "Owner's Box", trophies: owners.reduce((n, r) => n + (r.seasons ?? 0) * T.ownerSeason + Math.max(0, r.legacy ?? 0) * T.ownerLegacy, 0) },
   ];
 }
 export const totalTrophies = (read: Read = localRead) => trophyParts(read).reduce((n, p) => n + p.trophies, 0);
@@ -96,7 +98,7 @@ export const TROPHY_TITLES = TROPHY_ROAD.filter(([, k]) => k === 'title').map(([
 
 // ---------------------------------------------------------------- title colours
 /** A title's colour: flat, a gradient, or animated (flow/shimmer/pulse; see features.css `.anim-*`). */
-export interface TitleColor { id: string; name: string; css: string; anim?: 'flow' | 'shimmer' | 'pulse' }
+export interface TitleColor { id: string; name: string; css: string; anim?: 'flow' | 'shimmer' | 'pulse'; /** Opened by an owner legacy (the Owner's Box) instead of the Trophy Road. */ ownerLegacy?: number }
 export const TITLE_COLORS: TitleColor[] = [
   { id: 'plain', name: 'Plain', css: '#94a0b2' },
   { id: 'amber', name: 'Amber', css: '#ffb347' },
@@ -110,8 +112,12 @@ export const TITLE_COLORS: TitleColor[] = [
   { id: 'bloodmoon', name: 'Blood moon', css: 'linear-gradient(90deg, #5a0010, #ff2d4a, #ffb3b3, #ff2d4a, #5a0010)', anim: 'pulse' },
   { id: 'starlight', name: 'Starlight', css: 'linear-gradient(90deg, #1b1f4a, #ffffff, #8fa8ff, #ffffff, #1b1f4a)', anim: 'shimmer' },
   { id: 'molten', name: 'Molten gold', css: 'linear-gradient(90deg, #7a4a00, #ffd166, #fff3c4, #ffb300, #7a4a00)', anim: 'flow' },
+  { id: 'tycoon', name: 'Tycoon gold', css: 'linear-gradient(90deg, #8a6a12, #ffd166, #fffbe6, #ffd166, #3a9a5b, #ffd166, #8a6a12)', anim: 'shimmer', ownerLegacy: 60 },
   { id: 'immortal', name: 'Immortal', css: 'linear-gradient(90deg, #ff4d2e, #ffd166, #6fdc93, #4fd6d6, #c79bff, #ff4dd2, #ff4d2e)', anim: 'flow' },
 ];
+/** Whether a title colour is open: the Trophy Road's, or an owner legacy for the Owner's Box one. */
+export const titleColorOpen = (c: TitleColor, ctx: { trophies: number; owner?: number }) =>
+  c.id === 'plain' || (c.ownerLegacy != null ? (ctx.owner ?? 0) >= c.ownerLegacy : ctx.trophies >= (trophyNeed('titleColor', c.id) ?? Infinity));
 export const titleColorDef = (id: string | null | undefined) => TITLE_COLORS.find(c => c.id === id) ?? TITLE_COLORS[0];
 
 // ---------------------------------------------------------------- stored as "nameColour|titleColour"

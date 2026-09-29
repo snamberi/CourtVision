@@ -63,6 +63,7 @@ export const GROUPS: NavGroup[] = [
   {
     title: 'Front Office',
     items: [
+      { label: "Owner's Box", tab: 'ownerBox' },
       { label: 'GM Office', tab: 'gmOffice' },
       { label: 'GM Rivals', tab: 'gmRivals' },
       { label: 'Summer League', tab: 'summerLeague' },
@@ -120,7 +121,7 @@ export const GROUPS: NavGroup[] = [
 ];
 
 export const NAV_ICONS: Record<string, string> = {
-  travel: 'calendar', cards: 'star', gmRivals: 'trade', timeline: 'trophy',
+  travel: 'calendar', cards: 'star', gmRivals: 'trade', timeline: 'trophy', ownerBox: 'star',
   cup: 'trophy', deadline: 'clock', yearInReview: 'star', press: 'list', medical: 'warning', extensions: 'list', threeTeam: 'trade', summerCamp: 'star', storylines: 'list', gmOffice: 'star', summerLeague: 'play', coaching: 'list', allStarWeekend: 'trophy', dashboard: 'court', standings: 'chart', playoffs: 'trophy', schedule: 'calendar',
   dailySchedule: 'calendar', finances: 'chart', history: 'list', powerRankings: 'chart',
   transactions: 'trade', news: 'list', yourTeam: 'team', roster: 'team', freeAgency: 'team',
