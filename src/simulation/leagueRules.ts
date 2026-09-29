@@ -1,4 +1,7 @@
 export interface LeagueRulesSettings {
+  /** League office votes (see ownerBox.ts): the deepest threes count four; the play-in can be scrapped. */
+  fourPointLine?: boolean;
+  playInEnabled?: boolean;
   // Clock rotations, coaching and the annual All-Star vote; optional for older saves.
   minutesVariance?: number;
   rotationStintMinutes?: number;

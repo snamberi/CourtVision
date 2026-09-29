@@ -100,7 +100,7 @@ export function generateConferencePlayoffBracket(league: League, gamesToWin = 4)
     id: `r${round}-s${slot}`, round, slot, teamAId, teamBId, teamAWins: 0, teamBWins: 0, gamesToWin, games: [], winnerTeamId: null,
   });
   // With 10+ teams per conference, seeds 7-10 earn the last two spots in a play-in; otherwise the top 8 go straight in.
-  const withPlayIn = east.length >= 10 && west.length >= 10;
+  const withPlayIn = league.rulesSettings?.playInEnabled !== false && east.length >= 10 && west.length >= 10;
   const seeds = (rows: typeof east) => rows.slice(0, 10).map((r) => r.teamId);
   const eastSeeds = seeds(east), westSeeds = seeds(west);
   // Round 0 in NBA bracket order per conference: 1v8, 4v5 (top half) then 3v6, 2v7 (bottom half), so the

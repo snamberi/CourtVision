@@ -295,6 +295,9 @@ export function simulatePossession(input: PossessionInput): PossessionResult {
     return { ballHandlerId: bh.playerId, events, result: 'FOUL', statDeltas, pointsScored: ftMakes, debug: { foulProbability: foulProb, shotType, contest, freeThrowOutcomes } };
   }
 
+  // Four-point line (a league office rule): some of the deepest threes are from behind it, harder and worth four.
+  // The roll only happens under the rule, so games without it replay exactly as before.
+  const deep = mods.fourPointLine && DEEP_TYPES.includes(shotType) && rng.chance(FOUR_POINT_SHARE);
   const fatigueMult = fatiguePenaltyMultiplier(shooter.fatigue, shooter.flags);
   // Fatigue scales the offensive block only (defense/mental untouched for shot math). A fresh player shoots with
   // his ratings as they are; otherwise only the offense numbers are copied (this used to deep-copy every rating).
@@ -311,7 +314,7 @@ export function simulatePossession(input: PossessionInput): PossessionResult {
     {
       type: shotType, contest, fatigueLevel: shooter.fatigue.level, isClutch: input.isClutch, isPlayoffs: input.isPlayoffs,
       shootingVariance: input.shootingVariance, action, wasAssisted: assistCandidate != null,
-      defenderDefensiveIQ: shooterDefender.attributes.defense.defensiveIQ, ruleMods: mods.shot,
+      defenderDefensiveIQ: shooterDefender.attributes.defense.defensiveIQ, ruleMods: deep ? { ...mods.shot, threePointDifficulty: mods.shot.threePointDifficulty + FOUR_POINT_DIFFICULTY } : mods.shot,
     },
     shooter.flags,
     rng,
@@ -324,7 +327,7 @@ export function simulatePossession(input: PossessionInput): PossessionResult {
   });
 
   if (shotResult.made) {
-    let points = isThree ? 3 : 2;
+    let points = deep ? 4 : isThree ? 3 : 2;
     const freeThrowOutcomes: boolean[] = [];
     events.push(`${shooter.playerId} ${shotType} MAKE (+${points})`);
     addDelta(statDeltas, shooter.playerId, { points, fgm: 1, tpm: isThree ? 1 : 0, clutchPoints: input.isClutch ? points : 0 });
@@ -356,6 +359,10 @@ export function simulatePossession(input: PossessionInput): PossessionResult {
   if (offensiveRebound) events.push(`Offensive rebound: ${credited ? reboundWinner : 'the offense'} keeps it alive`);
   return { ballHandlerId: bh.playerId, events, result: 'MISS', statDeltas, pointsScored: 0, debug: { makeProbability: shotResult.probability, shotType, contest, offensiveRebound } };
 }
+
+/** Under the four-point line: the share of pull-up, step-back and above-the-break threes taken from behind it, and how much harder they are. */
+const DEEP_TYPES = ['pullUp3', 'stepback', 'aboveBreak3'];
+export const FOUR_POINT_SHARE = 0.3, FOUR_POINT_DIFFICULTY = 0.16;
 
 /** Chance per possession of a non-shooting defensive foul (average discipline), and how often one comes in the bonus. */
 export const NON_SHOOTING_FOUL_BASE = 0.088;

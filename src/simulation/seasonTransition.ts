@@ -1,3 +1,4 @@
+import { ownerSeasonEnd } from './ownerBox';
 import { rollBusinessSeason } from './business';
 import { withLegacySons } from './family';
 import { enforceSticky, isStuck } from './sticky';
@@ -441,8 +442,9 @@ export function beginNewSeasonRoster(
   const settled = { ...stuck, league: markContractYears(stuck.league, stuck.extras.contracts) };
   return {
     // Coaches age and contracts run out, then AI owners review their head coaches (the coaching carousel).
-    league: offseasonCarousel(advanceStaffSeason(settled.league, previousSeason, championship?.teamId ?? undefined, seasonAwards.coy?.coachName ?? undefined), previousSeason, userTeamId,
-      new Map(settled.league.teams.map(t => [t.teamId, t.coachIdentity?.coachId]))),
+    // The Owner's Box books the season (profit, the GM's report card) and the league office sets its agenda.
+    league: ownerSeasonEnd(offseasonCarousel(advanceStaffSeason(settled.league, previousSeason, championship?.teamId ?? undefined, seasonAwards.coy?.coachName ?? undefined), previousSeason, userTeamId,
+      new Map(settled.league.teams.map(t => [t.teamId, t.coachIdentity?.coachId]))), settled.extras, teamSeasons, previousSeason),
     extras: settled.extras,
     summary: {
       previousSeason,

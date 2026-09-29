@@ -8,7 +8,7 @@ import { UPGRADES, type Upgrade } from './business';
  * players' histories, and when each arena upgrade was built. Everything is derived; nothing new is stored.
  */
 
-export type TimelineEventKind = 'title' | 'finals' | 'series' | 'game7' | 'award' | 'trade' | 'jersey' | 'arena' | 'draft';
+export type TimelineEventKind = 'title' | 'finals' | 'series' | 'game7' | 'award' | 'trade' | 'jersey' | 'arena' | 'draft' | 'owner' | 'move';
 export interface TimelineEvent { kind: TimelineEventKind; text: string }
 export interface TimelineSeason {
   season: string; wins: number; losses: number; finish: string; champion: boolean;
@@ -76,7 +76,13 @@ export function franchiseTimeline(league: League, extras: GMLeagueExtras | undef
     const label = UPGRADES[loan.upgrade as Upgrade]?.label ?? loan.upgrade;
     out[Math.max(0, idx)]?.events.push({ kind: 'arena', text: `Arena: new ${label.toLowerCase()}` });
   }
+  // The league office (moves, protests, expansion) and, for an owned team, the owner's big calls.
+  for (const e of league.leagueOffice?.events ?? []) if (e.teamId === teamId) at(e.season)?.events.push({ kind: e.kind === 'relocation' || e.kind === 'protest' ? 'move' : 'owner', text: e.text });
+  if (league.owner?.teamId === teamId) for (const l of league.owner.log) {
+    if (!['bought', 'gm_hired', 'gm_fired', 'coach_hired', 'coach_fired', 'arena', 'naming'].includes(l.kind)) continue;
+    at(l.season)?.events.push({ kind: l.kind === 'arena' || l.kind === 'naming' ? 'arena' : 'owner', text: l.text });
+  }
   return out;
 }
 
-export const EVENT_ICON: Record<TimelineEventKind, string> = { title: '🏆', finals: '🥈', series: '▲', game7: '7', award: '★', trade: '⇄', jersey: '#', arena: '▦', draft: '✎' };
+export const EVENT_ICON: Record<TimelineEventKind, string> = { title: '🏆', finals: '🥈', series: '▲', game7: '7', award: '★', trade: '⇄', jersey: '#', arena: '▦', draft: '✎', owner: '♛', move: '✈' };
