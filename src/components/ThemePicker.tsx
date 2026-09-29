@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import './themePicker.css';
-import { THEMES, THEME_EVENT, readTheme, setTheme, applyTheme, themeLevel, type ThemeId, type ThemeSpec } from '../theme/themes';
+import { THEMES, THEME_EVENT, readTheme, setTheme, applyTheme, themeLevel, themeTrophies, themeOpen, type ThemeId, type ThemeSpec } from '../theme/themes';
+import { totalTrophies } from '../profile/trophyRoad';
 import { levelFor, totalXp, PROFILE_EVENT } from '../profile/profile';
 
 /** The theme picked in this browser, following changes made anywhere (the picker, another tab). */
@@ -38,15 +39,15 @@ function Preview({ t }: { t: ThemeSpec }) {
 }
 
 /** The looks as radio cards. Picking one applies it to the whole app straight away; road looks open with the level. */
-export function ThemePicker({ value, onPick, level, themes = THEMES }: { value: ThemeId; onPick: (id: ThemeId) => void; level: number; themes?: ThemeSpec[] }) {
+export function ThemePicker({ value, onPick, level, trophies = totalTrophies(), themes = THEMES }: { value: ThemeId; onPick: (id: ThemeId) => void; level: number; trophies?: number; themes?: ThemeSpec[] }) {
   // The previews use each theme's fonts; load them (small, bundled) so the cards look right.
   useEffect(() => { for (const t of themes) void t.loadFonts?.().catch(() => null); }, [themes]);
   return <div className="theme-picker" role="radiogroup" aria-label="App look">
     {themes.map(t => {
-      const need = themeLevel(t.id), locked = level < need, on = value === t.id;
+      const need = themeLevel(t.id), cups = themeTrophies(t.id), locked = !themeOpen(t.id, level, trophies), on = value === t.id;
       return <button key={t.id} type="button" role="radio" aria-checked={on} disabled={locked} title={t.blurb}
         className={`theme-card ${on ? 'selected' : ''} ${locked ? 'locked' : ''}`} onClick={() => onPick(t.id)}>
-        <span className={`theme-preview-wrap ${on || locked ? 'tagged' : ''}`}><Preview t={t} />{on ? <i className="theme-tag on">In use</i> : locked ? <i className="theme-tag">LV {need}</i> : null}</span>
+        <span className={`theme-preview-wrap ${on || locked ? 'tagged' : ''}`}><Preview t={t} />{on ? <i className="theme-tag on">In use</i> : locked ? <i className="theme-tag">{cups ? `${cups / 1000}K TROPHIES` : `LV ${need}`}</i> : null}</span>
         <span className="theme-card-head"><b>{t.name}</b></span>
         <span className="theme-card-blurb">{t.blurb}</span>
       </button>;
@@ -57,10 +58,11 @@ export function ThemePicker({ value, onPick, level, themes = THEMES }: { value: 
 /** The profile's "App look" section: every look, the road ones locked until their level. */
 export function ThemeSection() {
   const id = useTheme(), level = useLevel();
-  const open = THEMES.filter(t => level >= themeLevel(t.id)).length;
+  const trophies = totalTrophies();
+  const open = THEMES.filter(t => themeOpen(t.id, level, trophies)).length;
   return <div className="profile-picker theme-section"><h3 className="hunt-subhead">App look <small>{open} of {THEMES.length} unlocked</small></h3>
-    <ThemePicker value={id} onPick={setTheme} level={level} />
-    <p className="hint-text">Changes the colours and fonts everywhere, in every mode. Kept on this device. A new look unlocks every 25 levels on the Level Road.</p>
+    <ThemePicker value={id} onPick={setTheme} level={level} trophies={trophies} />
+    <p className="hint-text">Changes the colours and fonts everywhere, in every mode. Kept on this device. A new look unlocks every 25 levels on the Level Road, and the legendary ones (with moving backdrops) on the Trophy Road.</p>
   </div>;
 }
 
@@ -79,7 +81,7 @@ export function ThemeWelcome({ onDone }: { onDone: () => void }) {
   // Try a look on the whole app while choosing; it is saved on "Play in this look".
   const pick = (next: ThemeId) => { setId(next); applyTheme(next); };
   // Only the looks open now; the road ones are a teaser line.
-  const open = THEMES.filter(t => level >= themeLevel(t.id));
+  const open = THEMES.filter(t => themeOpen(t.id, level, totalTrophies()));
   const later = THEMES.length - open.length;
   return <div className="share-modal theme-welcome" role="dialog" aria-modal="true" aria-labelledby="theme-welcome-title">
     <div className="share-box">
@@ -87,7 +89,7 @@ export function ThemeWelcome({ onDone }: { onDone: () => void }) {
       <h2 id="theme-welcome-title">Pick your look</h2>
       <p className="hint-text">Tap one to try it on the whole game. You can change it any time in your Player Profile.</p>
       <ThemePicker value={id} onPick={pick} level={level} themes={open} />
-      {later > 0 && <p className="hint-text">{later} more looks unlock on the Level Road as you play.</p>}
+      {later > 0 && <p className="hint-text">{later} more looks unlock on the Level Road and the Trophy Road as you play.</p>}
       <div className="contest-actions"><button ref={keepRef} className="primary" onClick={keep}>Play in this look</button></div>
     </div>
   </div>;

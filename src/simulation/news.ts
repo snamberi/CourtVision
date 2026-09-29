@@ -9,6 +9,8 @@ import { formatGameClock, HIGHLIGHT_LABEL, type HighlightKind } from './highligh
 import { deadlineNews } from './deadlineDay';
 import { negotiationStories } from './agents';
 import { carouselNews } from './coachingCarousel';
+import { rivalryWeekNews } from './rivalryWeek';
+import { rivalNews } from './gmRivals';
 
 /** Game days that get a "Play of the Night" story; older nights roll off like any other news. */
 const HIGHLIGHT_NIGHTS = 12;
@@ -218,6 +220,18 @@ export function generateNewsFeed(league: League, extras: GMLeagueExtras, maxItem
   for (const e of league.frontOffice?.events ?? []) {
     add({ id: `fo:${e.kind}:${e.teamId}:${e.order}`, season: e.season, category: 'Teams', teamId: e.teamId, teamName: e.teamName,
       headline: e.headline, detail: e.detail, order: 310_000 + e.order });
+  }
+  // GM rivals: what they said after trading with you (see gmRivals.ts).
+  for (const r of rivalNews(league)) add({ id: r.id, season: r.season, category: 'Teams', teamId: r.teamId, teamName: name(r.teamId), headline: r.headline, detail: r.detail, order: 295_000 });
+  // Family: a retired player's son in the draft class (see family.ts).
+  for (const p of extras.draftClass ?? []) for (const f of p.trueSeason.family ?? []) if (f.relation === 'father') {
+    add({ id: `family:${p.playerId}`, category: 'Draft', teamId: null, teamName: null, playerId: p.playerId, order: 290_000,
+      headline: `${p.playerId}, son of ${f.playerId}, has entered the draft.`, detail: `A familiar name on the big board: his father played in this league.` });
+  }
+  // Rivalry Week: bragging rights or boos (see rivalryWeek.ts).
+  if (league.rivalryWeek?.season === season) for (const r of rivalryWeekNews(league)) {
+    const played = league.schedule.findIndex(g => g.id === r.gameId);
+    add({ id: r.id, category: 'Rivalries', teamId: r.teamId, teamName: name(r.teamId), headline: r.headline, detail: r.detail, gameId: r.gameId, order: 1000 + played });
   }
   // Prefer freshly derived versions of the same story; cap storage and feed size for long dynasties.
   const unique = new Map<string, NewsItem>();

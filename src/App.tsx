@@ -19,6 +19,7 @@ import './awards.css';
 import './contrast.css';
 import './frontOffice.css';
 import './design.css';
+import './features.css';
 import './theme/themes.css';
 import { CoachGuide } from './components/tutorial/CoachGuide';
 import { SeasonRoadMap } from './components/tutorial/SeasonRoadMap';
@@ -46,7 +47,7 @@ import { applyHistoricalRosters } from './history/realRollover';
 import { enforceSticky } from './simulation/sticky';
 import { collectPress } from './simulation/press';
 import { pendingDecisions } from './simulation/medical';
-import { crowdFill } from './simulation/business';
+import { crowdFill, arenaLevels } from './simulation/business';
 import { useBackgroundJobs } from './workers/useBackgroundJobs';
 import { ToastStack, type ToastData } from './components/ToastStack';
 import { PrivacyPolicyPage, PrivacyLink } from './components/PrivacyPolicyPage';
@@ -65,6 +66,13 @@ import { backfillRecordBook } from './simulation/records';
 import { LeagueSettingsPage, type AwardSettings } from './components/LeagueSettingsPage';
 import { DEFAULT_LEAGUE_RULES } from './simulation/leagueRules';
 import { rivalryBadge } from './simulation/rivalry';
+import { rivalryWeekGame, rivalryHype } from './simulation/rivalryWeek';
+import { duoKeys } from './simulation/chemistryWeb';
+import { coachLook } from './visuals/coachLook';
+import { ownerBest, OWNER_REWARD } from './profile/cosmetics';
+import { startOwnership, recordOwnerLegacy } from './simulation/ownerBox';
+import { ensureGmRivals } from './simulation/gmRivals';
+import type { Speech } from './simulation/halftime';
 import type { NbaHistory } from './history/nbaHistoryData';
 import { HistoricalSettingsCard } from './components/HistoricalSettingsCard';
 import { migrateHistoricalLeague } from './history/migrateHistorical';
@@ -131,6 +139,11 @@ const Community = lazy(() => import('./components/cloud/Community').then(m => ({
 const CareerMode = lazy(() => import('./components/career/CareerMode').then(m => ({ default: m.CareerMode })));
 const SummerCampPage = lazy(() => import('./components/SummerCampPage').then(m => ({ default: m.SummerCampPage })));
 const MedicalRoomPage = lazy(() => import('./components/MedicalRoomPage').then(m => ({ default: m.MedicalRoomPage })));
+const FranchiseTimelinePage = lazy(() => import('./components/FranchiseTimelinePage').then(m => ({ default: m.FranchiseTimelinePage })));
+const OwnerBoxPage = lazy(() => import('./components/OwnerBoxPage').then(m => ({ default: m.OwnerBoxPage })));
+const GmRivalsPage = lazy(() => import('./components/GmRivalsPage').then(m => ({ default: m.GmRivalsPage })));
+const CardAlbumPage = lazy(() => import('./components/CardAlbumPage').then(m => ({ default: m.CardAlbumPage })));
+const RoadTripsPage = lazy(() => import('./components/RoadTripsPage').then(m => ({ default: m.RoadTripsPage })));
 const PressRoomPage = lazy(() => import('./components/PressRoomPage').then(m => ({ default: m.PressRoomPage })));
 const SchedulePage = lazy(() => import('./components/SchedulePage').then(m => ({ default: m.SchedulePage })));
 const BulkEditor = lazy(() => import('./components/BulkEditor').then(m => ({ default: m.BulkEditor })));
@@ -687,10 +700,27 @@ function App() {
     lastDecisions.current = injuryDecisions;
   }, [injuryDecisions]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Owner's Box: each booked season updates your owner legacy record (Owners' Hall of Fame, Trophy Road, rewards).
+  const ownerSeasons = league.owner?.seasons.length ?? 0;
+  useEffect(() => {
+    if (screen !== 'app' || !ownerSeasons) return;
+    recordOwnerLegacy(activeSaveId ?? 'unsaved', league);
+  }, [ownerSeasons, activeSaveId, screen]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Trading cards: when a season is archived, your roster's cards and the season's packs arrive (once per league).
+  const archivedSeasons = league.franchiseHistory?.length ?? 0;
+  useEffect(() => {
+    if (!activeSaveId || screen !== 'app' || !archivedSeasons) return;
+    void import('./cards/cards').then(m => {
+      const got = m.awardSeasonCards(league, activeSaveId, controlledTeamId);
+      if (got && (got.added || got.packs)) pushToast(`Card album: ${got.added} new card${got.added === 1 ? '' : 's'} from your roster and ${got.packs} pack${got.packs === 1 ? '' : 's'} to open.`, 'success');
+    });
+  }, [archivedSeasons, activeSaveId, screen]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Reporters line up after big results, streaks, trade requests and playoff series.
   const pressWaiting = league.press?.pending.length ?? 0;
   useEffect(() => {
-    const next = collectPress(league, controlledTeamId);
+    const next = collectPress(ensureGmRivals(league, controlledTeamId), controlledTeamId);
     if (next !== league) adoptLeague(next);
   }, [league.schedule, league.playoffBracket, league.teams, controlledTeamId]); // eslint-disable-line react-hooks/exhaustive-deps
   const lastPressCount = useRef(pressWaiting);
@@ -848,8 +878,13 @@ function App() {
     if (!session) return 'There is no live game to coach.';
     if (league !== session.committed) return 'This game is locked in — the league has moved on since tip-off.';
     const commands = [...session.commands, command];
-    const played = simulateFullRound(session.base, seed, { [session.gameId]: commands });
-    if (!played.schedule.find(g => g.id === session.gameId)?.result) return 'The game could not be re-simulated.';
+    const simmed = simulateFullRound(session.base, seed, { [session.gameId]: commands });
+    if (!simmed.schedule.find(g => g.id === session.gameId)?.result) return 'The game could not be re-simulated.';
+    // Halftime speeches are remembered for the season reel (this season and last are kept).
+    const speeches = commands.filter((c): c is Extract<LiveCoachingCommand, { kind: 'speech' }> => c.kind === 'speech')
+      .map(c => ({ season: simmed.season ?? '', gameId: session.gameId, teamId: c.teamId, speech: c.speech as Speech, halftimeMargin: c.margin ?? 0 }));
+    const kept = (simmed.halftimeSpeeches ?? []).filter(s => s.gameId !== session.gameId && Number(s.season.slice(0, 4)) >= Number((simmed.season ?? '0').slice(0, 4)) - 1);
+    const played = speeches.length ? { ...simmed, halftimeSpeeches: [...kept, ...speeches].slice(-60) } : simmed;
     const committed = applyLeagueAIPass(played, session.baseExtras, true);
     setCoachSession({ ...session, commands, committed });
     return null;
@@ -1335,7 +1370,14 @@ function App() {
         <ChooseTeamScreen
           league={pendingLeague}
           extras={pendingExtras}
-          onConfirm={(l, e, teamId) => enterApp(l.tutorial ? l : { ...l, tutorial: createTutorial(l, { tourSeen: readTourSeen(), navMode: readPreferredNavMode() }) }, e, teamId, pendingLeagueName)}
+          onConfirm={(l, e, teamId, asOwner) => {
+            const withTour = l.tutorial ? l : { ...l, tutorial: createTutorial(l, { tourSeen: readTourSeen(), navMode: readPreferredNavMode() }) };
+            if (!asOwner) { enterApp(withTour, e, teamId, pendingLeagueName); return; }
+            // Owner's Box: you own the team and the AI runs every roster (yours with the GM you hire).
+            const owned = startOwnership(withTour, e, teamId);
+            enterApp(owned.league, owned.extras, null, pendingLeagueName);
+            setTab('ownerBox');
+          }}
         />
         <ConsentBanner />
       </>
@@ -1668,6 +1710,13 @@ function App() {
         {tab === 'summerCamp' && <SummerCampPage league={league} controlledTeamId={controlledTeamId} onChange={setLeague} onSelectPlayer={selectPlayer} />}
         {tab === 'medical' && <MedicalRoomPage league={league} controlledTeamId={controlledTeamId} onChange={setLeague} onSelectPlayer={selectPlayer} />}
         {tab === 'press' && <PressRoomPage league={league} extras={extras} controlledTeamId={controlledTeamId} onChange={setLeague} />}
+        {tab === 'cards' && <CardAlbumPage />}
+        {tab === 'gmRivals' && <GmRivalsPage league={league} extras={extras} />}
+        {tab === 'ownerBox' && <OwnerBoxPage league={league} extras={extras} controlledTeamId={controlledTeamId} onToast={pushToast}
+          onChange={(l, e) => { setLeague(l); if (e) setExtras(e); }}
+          onExpand={(bid, voted) => { void import('./simulation/ownerBox').then(m => m.expandLeague(voted, extras, bid, seed + 4242)).then(r => { setLeague(r.league); setExtras(r.extras); pushToast(`Expansion draft done: the ${bid.city} ${bid.nickname} join the league.`, 'success'); }).catch(() => pushToast('The expansion draft could not run.', 'error')); }} />}
+        {tab === 'timeline' && <FranchiseTimelinePage league={league} extras={extras} controlledTeamId={controlledTeamId} onSelectPlayer={selectPlayer} />}
+        {tab === 'travel' && <RoadTripsPage league={league} controlledTeamId={controlledTeamId} onChange={setLeague} />}
         {tab === 'yearInReview' && <YearInReviewPage league={league} extras={extras} controlledTeamId={controlledTeamId} awardOptions={awardOptions(awardSettings)}
           onOpenAwards={() => setTab('awards')} onSelectPlayer={selectPlayer}
           onOpenGame={(id) => { setViewedGameId(id); setBoxscoreSource('league'); setTab('boxscore'); }} />}
@@ -1849,6 +1898,15 @@ function App() {
             <GameBoxScorePage
               key={`${scheduled?.id ?? activeResult.seed}-${watchNextResult}-${watchStart ?? ''}`}
               crowdFill={homeTeam ? crowdFill(league, homeTeam.teamId) : undefined}
+              court={boxscoreSource === 'league' ? (() => {
+                const rw = scheduled && controlledTeamId ? rivalryWeekGame(league, scheduled.id) : null;
+                // An owner with a big enough legacy dresses his coach in the gold suit (Owner's Box reward).
+                const gold = !!league.owner && ownerBest() >= OWNER_REWARD.goldSuit;
+                const look = (t?: typeof homeTeam) => t?.coachIdentity ? { ...coachLook(t.coachIdentity.coachId, t.coachIdentity.age), ...(gold && t.teamId === league.owner?.teamId ? { outfit: 'suit' as const, suit: '#c9a227' } : {}) } : undefined;
+                return { arena: arenaLevels(homeTeam), duos: new Set([...duoKeys(homeTeam), ...duoKeys(awayTeam)]), rivalryWeek: rw && controlledTeamId ? { hype: rivalryHype(league, controlledTeamId, rw) } : null,
+                  coaches: { home: look(homeTeam), away: look(awayTeam) },
+                  ...(league.owner && homeTeam?.teamId === league.owner.teamId ? { building: { name: league.owner.arena.name, suites: league.owner.arena.suites } } : {}) };
+              })() : undefined}
               initialWatch={watchNextResult}
               watchStart={watchNextResult ? watchStart : undefined}
               coaching={boxscoreSource === 'league' && coachSession && scheduled?.id === coachSession.gameId && league === coachSession.committed && homeTeam && awayTeam ? {

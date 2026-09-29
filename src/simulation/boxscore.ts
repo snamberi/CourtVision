@@ -79,6 +79,8 @@ export interface PossessionPlayback {
   foulerIds?: PlayerId[];
   shotType?: string;
   shotMade?: boolean;
+  /** The miss went out of bounds (or was tipped loose): a team rebound, no player credited. */
+  outOfBounds?: boolean;
   freeThrows?: { made: number; attempted: number; outcomes?: boolean[] };
 }
 

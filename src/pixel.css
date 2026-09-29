@@ -945,3 +945,20 @@ ins.adsbygoogle[data-ad-status="unfilled"] { display: none !important; }
 .bigmo-tag.replay { top: 4%; left: 12px; transform: none; justify-items: start; border-color: var(--c-border-e85d5d, #e85d5d); }
 .bigmo-tag.replay b { font-size: 12px; color: var(--c-fg-e85d5d, #e85d5d); } .bigmo-tag small { font-size: 11px; color: var(--c-fg-c9ced8, #c9ced8); }
 @media (prefers-reduced-motion: reduce) { .watch-stage .watch-court { transition: none; } .watch-stage.bigmo-hit::after { animation: none; } }
+
+/* Arena upgrades on the court (WatchCourt: video board LEDs, spotlights, mascot, foam fingers). */
+.court-led { animation: court-led 1.2s steps(2) infinite; }
+@keyframes court-led { 50% { opacity: .35; } }
+.court-spot-0 { animation: court-spot 6s ease-in-out infinite alternate; }
+.court-spot-1 { animation: court-spot 7s ease-in-out infinite alternate-reverse; }
+@keyframes court-spot { from { transform: translate(-120px, -90px); } to { transform: translate(120px, 90px); } }
+.court-mascot { animation: court-mascot 1.1s steps(2) infinite; }
+.court-mascot-hype { animation-duration: .45s; }
+@keyframes court-mascot { 50% { transform: translateY(-4px); } }
+.court-tshirt { animation: court-tshirt .9s ease-out infinite; }
+@keyframes court-tshirt { from { transform: translate(0, 0); opacity: 1; } to { transform: translate(30px, -60px); opacity: 0; } }
+.court-foam { animation: court-foam .8s steps(2) infinite; }
+@keyframes court-foam { 50% { transform: translateY(-3px); } }
+@media (prefers-reduced-motion: reduce) {
+  .court-led, .court-spot-0, .court-spot-1, .court-mascot, .court-tshirt, .court-foam { animation: none; }
+}

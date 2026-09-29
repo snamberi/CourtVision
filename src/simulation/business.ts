@@ -10,7 +10,7 @@ import { calculateOverall } from './engine/overall';
  * model for their revenue; everyone else keeps the league's standard revenue.
  */
 
-export type Upgrade = 'seats' | 'scoreboard' | 'practice';
+export type Upgrade = 'seats' | 'scoreboard' | 'practice' | 'lights' | 'crowd' | 'mascot';
 export interface BusinessPlan {
   ticketPrice: number;
   arena: Record<Upgrade, number>; // levels 0-3
@@ -28,15 +28,28 @@ export const UPGRADES: Record<Upgrade, { label: string; cost: [number, number, n
   seats: { label: 'Seating expansion', cost: [30_000_000, 45_000_000, 65_000_000], effect: '+1,000 seats a level' },
   scoreboard: { label: 'Video board & sound', cost: [15_000_000, 25_000_000, 40_000_000], effect: 'Louder building: +4% ticket demand a level; fans warm up faster' },
   practice: { label: 'Practice facility', cost: [25_000_000, 40_000_000, 60_000_000], effect: 'Player morale +2 and development +2% a level' },
+  lights: { label: 'Arena lights', cost: [8_000_000, 14_000_000, 22_000_000], effect: 'Brighter show: +2% ticket demand and a little home-court edge a level' },
+  crowd: { label: 'Loud crowd section', cost: [10_000_000, 18_000_000, 28_000_000], effect: 'A standing fan section behind the basket: the biggest home-court edge' },
+  mascot: { label: 'Mascot', cost: [4_000_000, 8_000_000, 14_000_000], effect: 'A mascot on the sideline (fancier each level): +3% ticket demand a level' },
 };
+const NO_UPGRADES: Record<Upgrade, number> = { seats: 0, scoreboard: 0, practice: 0, lights: 0, crowd: 0, mascot: 0 };
 
 export function referencePrice(team: Pick<LeagueTeam, 'marketSize'>, winPct: number): number {
   return Math.round(45 + (team.marketSize ?? 50) * 0.5 + winPct * 25);
 }
 export function defaultBusiness(team: LeagueTeam, winPct = 0.5): BusinessPlan {
-  return { ticketPrice: referencePrice(team, winPct), arena: { seats: 0, scoreboard: 0, practice: 0 }, loans: [] };
+  return { ticketPrice: referencePrice(team, winPct), arena: { ...NO_UPGRADES }, loans: [] };
 }
-export const businessOf = (team: LeagueTeam, winPct = 0.5): BusinessPlan => team.business ?? defaultBusiness(team, winPct);
+/** Saves from before the lights, crowd section and mascot have no level for them: they read as 0. */
+export const businessOf = (team: LeagueTeam, winPct = 0.5): BusinessPlan => team.business ? { ...team.business, arena: { ...NO_UPGRADES, ...team.business.arena } } : defaultBusiness(team, winPct);
+/** The arena as it looks on game night (every level 0 for a team without a plan). */
+export const arenaLevels = (team: LeagueTeam | undefined): Record<Upgrade, number> => ({ ...NO_UPGRADES, ...team?.business?.arena });
+
+/** Home-court edge from the building, in decision-making/help-defense points for every home player (0 to 3). */
+export function homeCourtEdge(team: LeagueTeam | undefined): number {
+  const a = arenaLevels(team);
+  return Math.round((a.crowd * 0.5 + a.scoreboard * 0.2 + a.lights * 0.2 + a.mascot * 0.1) * 100) / 100;
+}
 export const capacity = (plan: BusinessPlan) => BASE_CAPACITY + plan.arena.seats * 1000;
 
 /** Star power: how much the roster's best players draw (0 = nobody, ~1 = a superstar and a co-star). */
@@ -50,7 +63,7 @@ export interface Gate { price: number; capacity: number; fill: number; attendanc
 export function gate(team: LeagueTeam, winPct: number, fans: number, price = businessOf(team, winPct).ticketPrice): Gate {
   const plan = businessOf(team, winPct);
   const market = ((team.marketSize ?? 50) - 50) / 250;
-  const want = 0.6 + (winPct - 0.5) * 0.7 + (fans - 55) / 220 + starPower(team) * 0.08 + market + plan.arena.scoreboard * 0.04;
+  const want = 0.6 + (winPct - 0.5) * 0.7 + (fans - 55) / 220 + starPower(team) * 0.08 + market + plan.arena.scoreboard * 0.04 + plan.arena.lights * 0.02 + plan.arena.crowd * 0.02 + plan.arena.mascot * 0.03;
   const elasticity = Math.pow(price / referencePrice(team, winPct), -1.25);
   const fill = Math.max(0.3, Math.min(1, want * elasticity));
   const cap = capacity(plan);
@@ -95,7 +108,8 @@ export function rollBusinessSeason(team: LeagueTeam): LeagueTeam {
 export function priceMoodDrift(team: LeagueTeam, winPct: number): number {
   if (!team.business) return 0;
   const ratio = team.business.ticketPrice / referencePrice(team, winPct);
-  return Math.max(-0.6, Math.min(0.3, (1 - ratio) * 0.8)) + team.business.arena.scoreboard * 0.05;
+  const arena = arenaLevels(team);
+  return Math.max(-0.6, Math.min(0.3, (1 - ratio) * 0.8)) + arena.scoreboard * 0.05 + arena.mascot * 0.02 + arena.crowd * 0.02;
 }
 
 /** Share of seats filled for a team's home games, for drawing the crowd. */

@@ -23,6 +23,7 @@ import { cloudEnabled } from '../cloud/account';
 import { AccountButton, MenuAccountCard } from './cloud/AccountButton';
 import { ProfileChip } from './ProfilePanel';
 import { totalXp, levelFor, takeLevelUp, unlocksBetween } from '../profile/profile';
+import { TrophyUnlock } from './locker/TrophyUnlock';
 import { liteMode, performanceSetting, setPerformanceSetting, type PerformanceSetting } from '../lib/performanceMode';
 
 export type GameMode = 'random' | 'real' | 'legends' | 'career' | 'rebuild' | 'draft';
@@ -291,6 +292,7 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
       <AdBanner slot="menu" />
       <footer className="legal-footer">{!IS_DESKTOP_BUILD && <><a href="/how-to-play.html">How to Play</a> · <a href="/guides/">Guides</a> · <a href="/faq.html">FAQ</a> · <a href="/about.html">About</a> · <a href="/changelog.html">What's new</a> · </>}<PrivacyLink /> · <CookieSettingsLink /> · <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer">Discord</a> · <PerformanceToggle /></footer>
       <LevelUpNote onProfile={onProfile ?? onLocker} />
+      <TrophyUnlock onProfile={onProfile ?? onLocker} />
       <ConsentBanner />
       {pickLook ? <ThemeWelcome onDone={() => setPickLook(false)} /> : <WhatsNew />}
     </div>

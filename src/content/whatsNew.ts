@@ -6,6 +6,54 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2026-11-04',
+    title: "The Owner's Box",
+    items: [
+      "**Own a team:** pick \"Own a Team\" when you start a league (or open Front Office → Owner's Box). An AI GM you hire runs the roster; you set the goal (title, playoffs, rebuild, profit) and the budget, read his report card and hire, extend or fire him and the head coach.",
+      "**Three GM styles:** the Trade Shark trades and bids hard, the Collector builds through youth, the Old-School GM wants veterans. Their style really changes how your team is run.",
+      "**Your arena and your city:** build a new arena with luxury suites and your name on it (it shows on the court), sell the naming rights, pick the team colours, or move the team to a new city on the map if the other owners approve. The fans you leave behind protest.",
+      "**The league office:** vote with the other owners on a four-point line, the shot clock, the play-in, hand-checking, the three-point line and the season length. Passed rules really change the game engine. Cities bid for expansion teams, and small-market teams sometimes pack up and move.",
+      "**Owner legacy:** titles, deep runs, profit and your arena build an owner legacy and a place in the Owners' Hall of Fame. It feeds the Trophy Road and unlocks the Team Owner and Tycoon titles, the Tycoon gold title colour, a Skybox profile icon and a gold suit for your coach.",
+    ],
+  },
+  {
+    id: '2026-10-28',
+    title: 'A slot-machine League Hunt and a cleaner Career Mode',
+    items: [
+      '**League Hunt draft is a slot machine:** all seven slots spin at once. Hit STOP, lock one, the rest respin, until your squad and coach are locked.',
+      '**League Hunt is tougher:** every team you face plays 5 above its rating. Shop boosts (two per hunt) are now separate from series-win boosts (three), and your team focus is set once at training camp.',
+      '**Career Mode looks cleaner:** everything is centered, the hub puts Continue first, and your career has tabs (Offseason, Last season, Ratings, Career stats) with Play always on top.',
+      '**The wheel:** nothing about where it lands shows until it stops, and the strip never runs out of players. Lucky Spins now always land on a Star or a Great, and the Prime Boost is one free boost.',
+      '**Your player:** a live prime overall as you build, and the same attribute names everywhere.',
+      '**Faster:** League Hunt games score like real NBA games, the season before your draft starts playing as soon as you open Career Mode, and season sims do less busywork.',
+    ],
+  },
+  {
+    id: '2026-10-21',
+    title: 'The Trophy Road, trading cards and road trips',
+    items: [
+      '**Trophy Road:** wins, titles, stars and cards earn trophies. Every 5,000 up to 200,000 unlocks something legendary: animated name colours and profile icons, title colours, six new app looks with moving backdrops (Aurora, Royal Court, Galaxy, Hallowed Hall, Eclipse, Immortal) and titles. Your title now shows under your name everywhere, leaderboards included.',
+      '**Trading cards:** every player gets a card each season (rookie card, All-Star foil, champion ring, MVP gold, legendary holo). Your roster\'s cards arrive when a season ends, plus packs to open. Complete team sets and share any card as an image (League → Card Album).',
+      '**Road trips:** your team on a pixel map of the US. Long flights, time zones and short rest wear teams down; pick rest days, a team dinner or push through on each trip.',
+      '**Halftime speech:** when you coach a game live, the tape stops at the half. Fiery, calm, call out the star or praise the bench: players react by personality and the score. The best turnaround makes your season reel.',
+      '**GM rivals:** three named GMs (a trade shark, a youth collector and an old-school GM) remember your trades, hold grudges, won\'t take your calls if you fleece them, and bring their own agendas to Deadline Day.',
+      '**Franchise timeline:** any team\'s history as a scrollable timeline of banners, big trades, retired numbers, playoff runs and arena upgrades. Tap a season for its roster and awards; share it as one long image.',
+      '**More character:** coaches work the sideline in their own outfits (suit, quarter-zip, tracksuit…) and react to the game; a named, numbered crew of three refs signals fouls. Player bios show family: brothers, fathers and sons, including real NBA families, and retired stars\' sons entering the draft.',
+    ],
+  },
+  {
+    id: '2026-10-14',
+    title: 'Rivalry Week, chemistry and Legend Challenges',
+    items: [
+      '**Rivalry Week:** twice a season your game against your biggest rival gets the build-up: a trash-talk press conference, a hype meter on the dashboard, and on the night a striped rivalry court with a crowd on its feet. Win it for bragging rights and a morale boost; lose it and the fans let you know. Talk trash and the swing gets bigger.',
+      '**Chemistry web:** on the roster page, lines between teammates grow the longer they play together; burying one on the bench weakens a bond and a trade breaks it. Strong duos play a little better together and get their own "DUO" callout when one sets up the other.',
+      '**Combine drills:** before the draft, run up to three prospects a year through a shooting drill, a sprint and a vertical jump. Each drill reveals the hidden skills it tests (Scouting → Combine Drills).',
+      '**Arena upgrades you can see:** a bigger video board, arena lights, a loud crowd section and a mascot (Finances → Business). Each shows up on your court and helps attendance and your home-court edge.',
+      '**Legend Challenges:** short scenarios from NBA history, like the \'98 Finals as the Jazz or stopping the 73-win Warriors from 3-1 down. Pick a game plan before each game and chase three stars (League Hunt → Legend Challenges).',
+      '**On the court:** players move at a more natural speed, the ball bounces and rolls, some misses go out of bounds, and league rebound totals are back to NBA levels. Better floors, team logos and crests.',
+    ],
+  },
+  {
     id: '2026-10-07',
     title: 'Your players, animated, and real plays',
     items: [

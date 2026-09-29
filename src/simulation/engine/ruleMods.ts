@@ -96,6 +96,8 @@ export interface RuleMods {
   freeThrowFrequency: number;
   doubleTeamFrequency: number; // helpDefense x defensiveRotations, both feed the same double-team dial
   paceMultiplier: number;
+  /** League office vote: the deepest threes count four (see possession.ts). */
+  fourPointLine: boolean;
 }
 
 export function computeRuleMods(rules: LeagueRulesSettings | undefined): RuleMods {
@@ -159,6 +161,7 @@ export function computeRuleMods(rules: LeagueRulesSettings | undefined): RuleMod
     freeThrowFrequency: mult(rules, 'freeThrowFrequency'),
     doubleTeamFrequency: mult(rules, 'helpDefense') * mult(rules, 'defensiveRotations'),
     paceMultiplier: mult(rules, 'possessionsPerGame'),
+    fourPointLine: rules?.fourPointLine === true,
   };
 }
 

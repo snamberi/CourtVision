@@ -6,7 +6,7 @@ import { DEFAULT_GAME_SETTINGS, ERA_PRESETS } from '../simulation/types';
 import { calculateOverall } from '../simulation/engine/overall';
 import { cardPool, cardPlayer, type HuntCard, type Rarity } from './cards';
 import { huntTeams, type HuntTeam } from './teams';
-import { ERAS, eraCoach, eraOf, underEra, type HuntEra } from './eras';
+import { ERAS, eraCoach, eraOf, eraRules, underEra, type HuntEra } from './eras';
 import { chemistry, chemistryBonus, type ChemistryBond } from './chemistry';
 import { ITEMS, ITEM_IDS, MAX_ITEMS, type ItemId } from './items';
 import { BOOST_IDS, type BoostId } from './boosts';
@@ -17,10 +17,11 @@ import { rosterRating, bonusToReach } from './rating';
 /*
  * A League Hunt run.
  *
- *  1. The spins: seven spins of three cards each, in order PG, SG, SF, PF, C, coach, sixth man. You keep one card from
- *     every spin. Early spins are richer than late ones, and every draft is guaranteed at least one Star (Legendary)
- *     and one Great (Epic) player on the table.
+ *  1. The spins: a slot machine. All seven slots (PG, SG, SF, PF, C, sixth man and coach) spin at once; STOP freezes
+ *     them, you lock one, and the rest spin again, until every slot is locked. Early rounds are richer than late ones,
+ *     and one early round is guaranteed a Star (Legendary) on the reels, another a Great (Epic).
  *  2. The focus: what the team works on during the hunt (the star, the sixth man, chemistry or the coach's system).
+ *     It is set once, at training camp, and can't be changed.
  *  3. The road: ten best-of-seven series against real teams from history, each under its era's rules. Series 5 is a
  *     semi-boss, series 10 the boss, a 100-rated all-time great. Teams bring buffs from series 3 on.
  *  4. Between series: after every win you pick a boost; before series 1, 3, 5, 7 and 9 there is a shop. Losing a series
@@ -68,13 +69,15 @@ export interface HuntRun {
   version: 3;
   seed: number;
   stage: HuntStage;
-  /** Card ids by slot: PG, SG, SF, PF, C, sixth man (filled in spin order). */
+  /** Card ids by slot: PG, SG, SF, PF, C, sixth man ('' while a slot is still spinning). */
   squad: string[];
   coach?: string;
-  /** The spin being drawn (index into SPINS) and the three on the table (card ids, or coach ids on the coach spin). */
+  /** The draft round (slots locked so far). `offer` is left over from the old three-card spins and stays empty. */
   spin: number;
   offer: string[];
-  /** Which spins are guaranteed a Star and a Great. */
+  /** The frozen reels waiting for you to lock one (null while everything spins). */
+  reels?: Partial<Record<SpinKind, string>> | null;
+  /** Which rounds are guaranteed a Star and a Great on the reels. */
   guarantees: { star: number; great: number };
   lives: number;
   coins: number;
@@ -199,7 +202,7 @@ export function newRun(h: NbaHistory, seed: number, opts: NewRunOptions = {}): H
     series.push({ teamId: t.id, eraId: eraOf(t.end).id, kind: semi ? 'semi' : 'normal', buffs: buffPool(semi || i >= 5 ? 2 : i >= 1 ? 1 : 0), lift: 0 });
   }
   series.push({ teamId: bossTeam.id, eraId: eraOf(bossTeam.end).id, kind: 'boss', buffs: buffPool(3), lift: 0 });
-  let run: HuntRun = { version: 3, seed, stage: 'draft', squad: [], spin: 0, offer: [], guarantees: { star: 0, great: 1 },
+  let run: HuntRun = { version: 3, seed, stage: 'draft', squad: SLOTS.map(() => ''), spin: 0, offer: [], reels: null, guarantees: { star: 0, great: 1 },
     lives: diff.lives, coins: START_COINS + diff.coinShift + deck.coins, items: [...deck.items], boosts: [], growth: { star: 0, sixth: 0, chemistry: 0, coach: 0 }, training: {},
     series, seriesIndex: 0, attempts: 0, results: [], deck: deck.id, difficulty: diff.id, ...(opts.daily ? { daily: opts.daily } : {}) };
   // Lift every team that falls short of its series' rating (buffs count, so the lift is what is left).
@@ -207,15 +210,17 @@ export function newRun(h: NbaHistory, seed: number, opts: NewRunOptions = {}): H
     const target = s.kind === 'boss' ? diff.bossRating : Math.min(99, TARGETS[i] + diff.shift);
     // Bosses land on their rating exactly (a lift can be negative when their buffs already carry them past it).
     const exact = s.kind !== 'normal';
-    return { ...s, lift: bonusToReach(h, theirStaticOvrs(h, run, s, 0), target, exact) };
+    // Then every team gets ENEMY_EDGE on top: the hunt is meant to be hard.
+    return { ...s, lift: bonusToReach(h, theirStaticOvrs(h, run, s, 0), target, exact) + ENEMY_EDGE };
   }) };
-  // Guaranteed Star and Great: the Star on a starter spin, the Great on another player spin.
-  const playerSpins = [0, 1, 2, 3, 4, 6];
-  const star = rng.nextInt(5);
-  const rest = playerSpins.filter(i => i !== star);
-  run = { ...run, guarantees: { star, great: rest[rng.nextInt(rest.length)] } };
-  return { ...run, offer: spinOffer(h, run) };
+  // Guaranteed Star and Great on the reels of two different early rounds.
+  const star = rng.nextInt(3);
+  const rest = [0, 1, 2, 3].filter(i => i !== star);
+  return { ...run, guarantees: { star, great: rest[rng.nextInt(rest.length)] } };
 }
+
+/** Every team you face plays this much above the rating of its series. */
+export const ENEMY_EDGE = 5;
 
 // ---------------------------------------------------------------- the spins
 
@@ -249,66 +254,98 @@ function drawPlayers(h: NbaHistory, taken: Set<string>, rng: RNG, count: number,
   return out.map(c => c.id);
 }
 
-/** The three cards (or coaches) on the table for the current spin. */
-function spinOffer(h: NbaHistory, run: HuntRun): string[] {
-  const kind = SPINS[run.spin];
-  const rng = new RNG(run.seed * 31 + run.spin * 7717 + 3);
-  const weights = spinWeights(run.spin);
-  const pick = () => ORDER[rng.weightedPick(ORDER.map(r => weights[r]))];
-  if (kind === 'COACH') {
-    const out: string[] = [];
-    for (let tries = 0; out.length < 3 && tries < 500; tries++) {
-      const r = pick();
-      const list = COACHES.filter(x => coachRarity(x) === r && !out.includes(x.id));
-      if (list.length) out.push(list[rng.nextInt(list.length)].id);
-    }
-    return out;
-  }
-  const deck = DECKS[run.deck ?? 'classic'];
-  const pool = cardPool(h);
-  const taken = new Set(run.squad.map(id => pool.byId.get(id)!.playerId));
-  const fits = (c: HuntCard) => fitsSlot(c, kind) && (deck.draft?.(c) ?? true);
-  const forced: Rarity | null = run.spin === run.guarantees.star ? 'legendary' : run.spin === run.guarantees.great ? 'epic' : (deck.id === 'bigMen' && (kind === 'PF' || kind === 'C')) ? 'epic' : null;
-  const ids = drawPlayers(h, taken, rng, 3, fits, k => (k === 0 && forced ? forced : pick()));
-  // Dynasty: one of the three is a real teammate of someone already drafted, when there is one at this position.
-  if (deck.id === 'dynasty' && run.squad.length) {
-    const mates = huntTeams(h).filter(t => t.roster.some(id => run.squad.includes(id))).flatMap(t => t.roster)
-      .map(id => pool.byId.get(id)!).filter(c => fits(c) && !taken.has(c.playerId) && c.ovr >= MIN_OFFER_OVR && !ids.includes(c.id));
-    if (mates.length) ids[ids.length - 1] = mates[rng.nextInt(mates.length)].id;
-  }
-  // Shuffle, so the guaranteed card is not always first.
-  return ids.sort(() => rng.next() - 0.5);
+/** The slots still spinning. */
+export const openSpins = (run: Pick<HuntRun, 'squad' | 'coach'>): SpinKind[] =>
+  SPINS.filter(k => (k === 'COACH' ? !run.coach : !run.squad[SLOTS.indexOf(k)]));
+
+/** A hunt saved mid-draft under the old three-card spins carries on as a slot-machine draft (the squad already fills its slots in order). */
+export function migrateDraft(run: HuntRun): HuntRun {
+  if (run.stage !== 'draft' || run.reels !== undefined) return run;
+  const squad = SLOTS.map((_, i) => run.squad[i] ?? '');
+  return { ...run, squad, offer: [], reels: null, spin: SPINS.length - openSpins({ squad, coach: run.coach }).length };
 }
 
-/** Keeps one of the three from the current spin. */
-export function spinPick(h: NbaHistory, run: HuntRun, id: string): HuntRun {
-  if (run.stage !== 'draft' || !run.offer.includes(id)) return run;
-  const kind = SPINS[run.spin];
-  // Ratings are hidden on the spins, so each pick is a read: remember it against the best one offered.
-  const value = (x: string) => (kind === 'COACH' ? COACH_BY_ID.get(x)?.bonus ?? 0 : card(h, x).ovr);
-  const picks = [...(run.picks ?? []), { spin: run.spin, got: value(id), best: Math.max(...run.offer.map(value)) }];
-  const next: HuntRun = kind === 'COACH' ? { ...run, coach: id, picks } : { ...run, squad: [...run.squad, id], picks };
-  if (run.spin + 1 >= SPINS.length) return { ...next, spin: SPINS.length, offer: [], stage: 'focus' };
-  const moved = { ...next, spin: run.spin + 1 };
-  return { ...moved, offer: spinOffer(h, moved) };
+/** STOP: every slot still spinning lands on a card (a coach on the coach reel). Seeded by the round, so a reload shows the same. */
+export function stopReels(h: NbaHistory, run: HuntRun): HuntRun {
+  if (run.stage !== 'draft' || run.reels) return run;
+  const open = openSpins(run);
+  const round = run.spin;
+  const rng = new RNG(run.seed * 31 + round * 7717 + 3);
+  const weights = spinWeights(round);
+  const pick = () => ORDER[rng.weightedPick(ORDER.map(r => weights[r]))];
+  const deck = DECKS[run.deck ?? 'classic'];
+  const pool = cardPool(h);
+  const locked = run.squad.filter(Boolean);
+  const taken = new Set(locked.map(id => pool.byId.get(id)!.playerId));
+  const playerReels = open.filter(k => k !== 'COACH');
+  const forced: Rarity | null = round === run.guarantees.star ? 'legendary' : round === run.guarantees.great ? 'epic' : null;
+  const forcedAt = forced && playerReels.length ? playerReels[rng.nextInt(playerReels.length)] : null;
+  // Dynasty: after the first lock, one reel shows a real teammate of someone you locked (when one fits there).
+  const mateAt = deck.id === 'dynasty' && locked.length && playerReels.length ? playerReels[rng.nextInt(playerReels.length)] : null;
+  const reels: Partial<Record<SpinKind, string>> = {};
+  for (const k of open) {
+    if (k === 'COACH') {
+      for (let tries = 0; !reels.COACH && tries < 50; tries++) {
+        const list = COACHES.filter(x => coachRarity(x) === pick());
+        if (list.length) reels.COACH = list[rng.nextInt(list.length)].id;
+      }
+      continue;
+    }
+    const fits = (c: HuntCard) => fitsSlot(c, k) && (deck.draft?.(c) ?? true);
+    let id: string | undefined;
+    if (k === mateAt && k !== forcedAt) {
+      const mates = huntTeams(h).filter(t => t.roster.some(x => locked.includes(x))).flatMap(t => t.roster)
+        .map(x => pool.byId.get(x)!).filter(c => c && fits(c) && !taken.has(c.playerId) && c.ovr >= MIN_OFFER_OVR);
+      if (mates.length) id = mates[rng.nextInt(mates.length)].id;
+    }
+    if (!id) {
+      const bigMen = deck.id === 'bigMen' && (k === 'PF' || k === 'C');
+      const want = k === forcedAt ? forced! : bigMen ? (rng.next() < 0.25 ? 'legendary' : 'epic') : pick();
+      id = drawPlayers(h, taken, rng, 1, fits, () => want)[0];
+    }
+    if (id) { reels[k] = id; taken.add(pool.byId.get(id)!.playerId); }
+  }
+  return { ...run, reels };
+}
+
+/** Locks one frozen reel; the others spin again. Once every slot is locked, on to training camp. */
+export function lockReel(h: NbaHistory, run: HuntRun, kind: SpinKind): HuntRun {
+  const id = run.reels?.[kind];
+  if (run.stage !== 'draft' || !id) return run;
+  // Ratings are hidden on the reels, so each lock is a read: a player is remembered against the best player on the reels.
+  const players = Object.entries(run.reels!).filter(([k]) => k !== 'COACH').map(([, x]) => card(h, x!).ovr);
+  const picks = kind === 'COACH' ? run.picks ?? [] : [...(run.picks ?? []), { spin: run.spin, got: card(h, id).ovr, best: Math.max(...players) }];
+  const next: HuntRun = kind === 'COACH' ? { ...run, coach: id, picks, reels: null, spin: run.spin + 1 }
+    : { ...run, squad: run.squad.map((x, i) => (SLOTS[i] === kind ? id : x)), picks, reels: null, spin: run.spin + 1 };
+  return openSpins(next).length ? next : { ...next, reels: undefined, stage: 'focus' };
+}
+
+/** The whole draft in one go, locking the best-rated player (then the best coach) every round (tests and quick sims). */
+export function draftBest(h: NbaHistory, run: HuntRun, worst = false): HuntRun {
+  let r = run;
+  for (let guard = 0; r.stage === 'draft' && guard < 20; guard++) {
+    r = stopReels(h, r);
+    const entries = Object.entries(r.reels ?? {}) as [SpinKind, string][];
+    const players = entries.filter(([k]) => k !== 'COACH').sort((a, b) => (card(h, b[1]).ovr - card(h, a[1]).ovr) * (worst ? -1 : 1));
+    r = lockReel(h, r, (players[0] ?? entries[0])[0]);
+  }
+  return r;
 }
 
 export type DraftGrade = 'A+' | 'A' | 'B' | 'C' | 'D' | 'F';
-/** How well you read the blind spins: overall points left on the table (coach bonus points count double). Picking at random
- * leaves about 55 on the table (a C or a D); the best card every time is an A+. */
+/** How well you read the blind reels: overall points left on the table (each lock against the best player on the reels).
+ * The best card every round is an A+. */
 export function draftGrade(run: Pick<HuntRun, 'picks'>): { grade: DraftGrade; missed: number; bestPicks: number; spins: number } | null {
   const picks = run.picks ?? [];
   if (!picks.length) return null;
-  const missed = picks.reduce((n, p) => n + (p.best - p.got) * (SPINS[p.spin] === 'COACH' ? 2 : 1), 0);
+  const missed = picks.reduce((n, p) => n + (p.best - p.got), 0);
   const grade: DraftGrade = missed === 0 ? 'A+' : missed <= 8 ? 'A' : missed <= 20 ? 'B' : missed <= 40 ? 'C' : missed <= 65 ? 'D' : 'F';
   return { grade, missed, bestPicks: picks.filter(p => p.got >= p.best).length, spins: picks.length };
 }
 
-/** Sets (or changes, in the shop) what the team works on. */
+/** Sets what the team works on, once, at training camp: it can't be changed afterwards. */
 export function chooseFocus(h: NbaHistory, run: HuntRun, focus: Focus): HuntRun {
-  if (run.stage === 'focus') return openShop(h, { ...run, focus });
-  if (run.stage === 'shop') return { ...run, focus, note: `The team now works on: ${FOCUS[focus].name.toLowerCase()}.` };
-  return run;
+  return run.stage === 'focus' && !run.focus ? openShop(h, { ...run, focus }) : run;
 }
 
 // ---------------------------------------------------------------- bonuses in a game
@@ -460,7 +497,7 @@ export function playSeries(h: NbaHistory, run: HuntRun): { run: HuntRun; play: S
     const mine = sixRotation(cards.map(({ card: c, bonus, defense }) => defended(underEra(cardPlayer(h, c, 'HUNT', bonus), era), defense)));
     const tb = theirBonuses(run, s, st, theirCards.length);
     const theirs = sixRotation(theirCards.map((c, i) => defended(underEra(cardPlayer(h, c, team.abbr === 'HUNT' ? 'OPP' : team.abbr, tb.bonus[i]), era), tb.defense)));
-    const result = simulateGame({ home: { teamId: 'HUNT', seasons: mine, coach: ourCoach, chemistry: 70 }, away: { teamId: team.abbr === 'HUNT' ? 'OPP' : team.abbr, seasons: theirs, coach: theirCoach, chemistry: 75 },
+    const result = simulateGame({ home: { teamId: 'HUNT', seasons: mine, coach: ourCoach, chemistry: 70 }, away: { teamId: team.abbr === 'HUNT' ? 'OPP' : team.abbr, seasons: theirs, coach: theirCoach, chemistry: 75 }, rules: eraRules(era),
       settings: { ...DEFAULT_GAME_SETTINGS, era: ERA_PRESETS[decade] ?? DEFAULT_GAME_SETTINGS.era, seed: run.seed * 101 + run.seriesIndex * 7919 + run.attempts * 104729 + st.game * 17, injuriesEnabled: false, teamChemistryEnabled: false } });
     const won = result.homeScore > result.awayScore;
     let top = { name: '', pts: -1 };
@@ -561,9 +598,12 @@ export function buyCoach(run: HuntRun): HuntRun {
   return { ...run, coach: x.id, coins: run.coins - coachPrice(x), shop: { ...shop, sold: [...shop.sold, x.id] }, note: `Hired ${x.name}.` };
 }
 
+/** Shop boosts held (the deck's starting item is a gift and doesn't take a slot). */
+export const shopItems = (run: HuntRun) => run.items.filter(i => !DECKS[run.deck ?? 'classic'].items.includes(i));
+
 export function buyItem(run: HuntRun, item: ItemId): HuntRun {
   const shop = run.shop;
-  if (run.stage !== 'shop' || !shop || !shop.items.includes(item) || shop.sold.includes(item) || run.items.includes(item) || run.items.length >= MAX_ITEMS) return run;
+  if (run.stage !== 'shop' || !shop || !shop.items.includes(item) || shop.sold.includes(item) || run.items.includes(item) || shopItems(run).length >= MAX_ITEMS) return run;
   const it = ITEMS[item];
   if (run.coins < it.price) return run;
   return { ...run, coins: run.coins - it.price, items: [...run.items, item], shop: { ...shop, sold: [...shop.sold, item] }, note: `Bought ${it.name}.` };

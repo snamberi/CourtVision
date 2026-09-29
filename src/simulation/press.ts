@@ -6,6 +6,7 @@ import { lockerRoom } from './personality';
 import { rivalryTable } from './rivalry';
 import { hotSeats } from './coachingCarousel';
 import { priceMoodDrift } from './business';
+import { rivalryWeekTick, recordRivalryTalk } from './rivalryWeek';
 
 /*
  * The press room. After big wins, bad losses, streaks, huge scoring nights, trade requests and playoff series, the
@@ -14,8 +15,9 @@ import { priceMoodDrift } from './business';
  * built from what actually happened in this league.
  */
 
-export type PressKind = 'bigWin' | 'badLoss' | 'winStreak' | 'losingStreak' | 'starGame' | 'tradeRequest' | 'seriesWon' | 'eliminated';
-export interface PressEffects { fans?: number; owner?: number; team?: number; player?: number }
+export type PressKind = 'bigWin' | 'badLoss' | 'winStreak' | 'losingStreak' | 'starGame' | 'tradeRequest' | 'seriesWon' | 'eliminated' | 'rivalry';
+/** hype: Rivalry Week only, added to the rivalry game's hype meter (see rivalryWeek.ts). */
+export interface PressEffects { fans?: number; owner?: number; team?: number; player?: number; hype?: number }
 export interface PressAnswer { id: string; text: string; effects: PressEffects; tone: string }
 export interface PressConference { id: string; season: string; kind: PressKind; question: string; context: string; subjectPlayerId?: string; answers: PressAnswer[] }
 export interface PressRecord { id: string; season: string; kind: PressKind; question: string; answer: string; tone: string }
@@ -83,6 +85,7 @@ function answersFor(kind: PressKind, subject?: string): PressAnswer[] {
       { id: 'notenough', tone: 'Ruthless', text: "Not good enough. This summer, we make changes.", effects: { owner: 3, team: -3, fans: 1 } },
       { id: 'credit', tone: 'Gracious', text: 'Credit to them. They were the better team.', effects: { fans: -1, owner: 1 } },
     ];
+    case 'rivalry': return []; // built with its answers in rivalryWeek.ts
   }
 }
 
@@ -95,6 +98,7 @@ const QUESTIONS: Record<PressKind, (ctx: string, subject?: string) => string> = 
   tradeRequest: (_, s) => `Reports say ${s} has asked for a trade. Will you move him?`,
   seriesWon: ctx => `${ctx}! What does this series win mean?`,
   eliminated: ctx => `${ctx}. What's your message to the fans?`,
+  rivalry: ctx => `${ctx}. What's your message to them?`,
 };
 
 function conference(league: League, kind: PressKind, key: string, context: string, subject?: string): PressConference {
@@ -113,6 +117,7 @@ export function pressState(league: League): PressState {
  */
 export function collectPress(league: League, userTeamId: string | null): League {
   if (!userTeamId || !league.teams.some(t => t.teamId === userTeamId)) return league;
+  league = rivalryWeekTick(league, userTeamId);
   const state = pressState(league);
   const games = league.schedule.filter(g => g.played && g.result && (g.homeTeamId === userTeamId || g.awayTeamId === userTeamId));
   const team = league.teams.find(t => t.teamId === userTeamId)!;
@@ -177,12 +182,13 @@ export function answerPress(league: League, conferenceId: string, answerId: stri
   if (a.effects.player && c.subjectPlayerId) mood[c.subjectPlayerId] = clamp((mood[c.subjectPlayerId] ?? 0) + a.effects.player, -12, 12);
   const fo = league.frontOffice;
   const frontOffice = fo && a.effects.owner && fo.teamId === userTeamId ? { ...fo, security: clamp(fo.security + a.effects.owner) } : fo;
-  return {
+  const answered: League = {
     ...league,
     ...(frontOffice ? { frontOffice } : {}),
     press: { ...state, fans: clamp(state.fans + (a.effects.fans ?? 0)), playerMood: mood, pending: state.pending.filter(p => p.id !== c.id),
       log: [...state.log, { id: c.id, season: c.season, kind: c.kind, question: c.question, answer: a.text, tone: a.tone }].slice(-40) },
   };
+  return c.kind === 'rivalry' ? recordRivalryTalk(answered, c.id, a.tone, a.effects.hype ?? 0, a.id === 'trash') : answered;
 }
 
 /** Morale shift a player carries from what you said about him or the team. */

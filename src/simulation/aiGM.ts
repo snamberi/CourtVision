@@ -18,6 +18,7 @@ import {
   isTradeDeadlinePassed, capSpaceRemaining, finalizeDraftDay, tradeableFuturePicks, computeFutureDraftPickValue, waiveToFreeAgency,
 } from './gm';
 import { computeTeamFinances } from './finances';
+import { ownerLean, ownerSpendFactor } from './ownerDials';
 
 export type GMPersonality = 'aggressive' | 'conservative' | 'balanced';
 
@@ -111,7 +112,8 @@ export function runFreeAgencyAI(
     const aggressiveness = ruleMultiplier(league.rulesSettings?.aiFreeAgentAggressiveness); // 0.5x-1.5x, 1.0x at the default 50
     const winPct = computeStandings(league).find((r) => r.teamId === teamId)?.winPct ?? 0.5;
     const finances = computeTeamFinances(team, currentExtras.contracts, currentExtras.capSettings, league.rulesSettings, winPct);
-    const marketFactor = 0.5 + finances.spendingWillingness / 100; // big-market/thriving teams are more willing to spend; small-market/strained teams are more cautious
+    // An owner's budget (Owner's Box) makes his GM spend more or less than the market alone would.
+    const marketFactor = (0.5 + finances.spendingWillingness / 100) * ownerSpendFactor(league, teamId); // big-market/thriving teams are more willing to spend; small-market/strained teams are more cautious
     const cushion = (personality === 'aggressive' ? 500_000 : personality === 'conservative' ? 6_000_000 : 2_000_000) / (aggressiveness * marketFactor);
     const priceMultiplier = (personality === 'aggressive' ? 1.15 : personality === 'conservative' ? 0.85 : 1) * aggressiveness * marketFactor;
     const need = weakestPositions(team);
@@ -261,6 +263,9 @@ export function classifyBuyerSeller(league: League, extras: GMLeagueExtras, team
   const rules = league.rulesSettings;
   buyerThreshold -= ((rules?.aiWinNowTendency ?? 50) - 50) * 0.0015; // more win-now -> easier to qualify as a buyer
   sellerThreshold += ((rules?.aiRebuildingTendency ?? 50) - 50) * 0.0015; // more rebuild-minded -> easier to qualify as a seller
+  // An owner's goal (Owner's Box) pushes his GM to buy or sell.
+  const lean = ownerLean(league, teamId);
+  buyerThreshold += lean.buyer; sellerThreshold -= lean.seller;
   if (row.winPct >= buyerThreshold) return 'buyer';
   if (row.winPct <= sellerThreshold) return 'seller';
   return 'neutral';

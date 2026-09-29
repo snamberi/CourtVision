@@ -1,5 +1,6 @@
 import { memo } from 'react';
-import { SPRITES, PALETTE, colorCss, iconDef } from '../profile/cosmetics';
+import { SPRITES, PALETTE, colorDef, iconDef } from '../profile/cosmetics';
+import { titleColorDef, unpackColors } from '../profile/trophyRoad';
 
 /** A profile icon: a 10 x 10 pixel sprite on a dark tile (runs of one colour drawn as one rect). */
 export const ProfileIcon = memo(function ProfileIcon({ id, size = 28, title }: { id: string | null | undefined; size?: number; title?: string }) {
@@ -16,18 +17,30 @@ export const ProfileIcon = memo(function ProfileIcon({ id, size = 28, title }: {
       x += w;
     }
   });
-  return <svg className="profile-icon" width={size} height={size} viewBox="-1 -1 12 12" shapeRendering="crispEdges" role="img" aria-label={title ?? def.name}>
+  // Trophy Road icons move: the sprite flickers, spins, twinkles… and 'shine' sweeps a glint across it.
+  return <svg className={`profile-icon${def.anim ? ` icon-anim icon-anim-${def.anim}` : ''}`} width={size} height={size} viewBox="-1 -1 12 12" shapeRendering="crispEdges" role="img" aria-label={title ?? def.name}>
     <rect x={-1} y={-1} width={12} height={12} fill="#121926" />
-    {rects.map((r, i) => <rect key={i} x={r.x} y={r.y} width={r.w} height={1} fill={r.fill} />)}
+    <g className="icon-sprite">{rects.map((r, i) => <rect key={i} x={r.x} y={r.y} width={r.w} height={1} fill={r.fill} />)}</g>
+    {def.anim === 'shine' && <rect className="icon-glint" x={-4} y={-1} width={2} height={12} fill="#ffffff" opacity=".55" transform="skewX(-20)" />}
   </svg>;
 });
 
-/** A GM's name in their chosen colour, with their icon (`icon={null}` leaves the icon out). */
-export function NameTag({ name, icon, color, size = 18, className }: { name: string; icon?: string | null; color?: string | null; size?: number; className?: string }) {
-  const css = colorCss(color);
+/** Text in a cosmetic colour: flat, a gradient, or an animated gradient. */
+function Tinted({ css, anim, className, children }: { css: string; anim?: string; className?: string; children: React.ReactNode }) {
   const gradient = css.startsWith('linear');
-  return <span className={`name-tag${className ? ` ${className}` : ''}`}>
-    {icon !== null && <ProfileIcon id={icon} size={size} title="" />}
-    <span className={gradient ? 'name-prism' : undefined} style={gradient ? { backgroundImage: css } : { color: css }}>{name}</span>
+  return <span className={[className, gradient ? 'name-prism' : '', anim ? `anim-${anim}` : ''].filter(Boolean).join(' ') || undefined} style={gradient ? { backgroundImage: css } : { color: css }}>{children}</span>;
+}
+
+/**
+ * A GM's name in their chosen colour, with their icon (`icon={null}` leaves the icon out) and, when given, their title
+ * underneath in its own colour. `color` may carry the title colour too ("gold|fire", as the boards store it).
+ */
+export function NameTag({ name, icon, color, title, titleColor, size = 18, className }: { name: string; icon?: string | null; color?: string | null; title?: string | null; titleColor?: string | null; size?: number; className?: string }) {
+  const packed = unpackColors(color);
+  const c = colorDef(packed.color), tc = titleColorDef(titleColor ?? packed.titleColor);
+  return <span className={`name-tag${title ? ' name-tag-titled' : ''}${className ? ` ${className}` : ''}`}>
+    {icon !== null && <ProfileIcon id={icon} size={title ? Math.round(size * 1.35) : size} title="" />}
+    {title ? <span className="name-tag-lines"><Tinted css={c.css} anim={c.anim}>{name}</Tinted><Tinted className="name-tag-title" css={tc.css} anim={tc.anim}>{title}</Tinted></span>
+      : <Tinted css={c.css} anim={c.anim}>{name}</Tinted>}
   </span>;
 }

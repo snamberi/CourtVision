@@ -1,5 +1,6 @@
 import { PALETTE } from './palette.gen';
 import { roadLevel } from '../profile/cosmetics';
+import { trophyNeed } from '../profile/trophyRoad';
 
 /*
  * App themes. Every colour in the stylesheets is a variable named by its role and original value
@@ -17,7 +18,9 @@ import { roadLevel } from '../profile/cosmetics';
 
 export type ThemeId = 'original' | 'cartridge' | 'scoreboard' | 'prodark' | 'terminal'
   // Unlocked on the Level Road (LEVEL_ROAD in profile/cosmetics.ts, reward kind 'look').
-  | 'frontoffice' | 'hardwood' | 'blacktop' | 'playbook' | 'handheld' | 'broadcast' | 'neongrid' | 'arcade' | 'comicpop' | 'championship';
+  | 'frontoffice' | 'hardwood' | 'blacktop' | 'playbook' | 'handheld' | 'broadcast' | 'neongrid' | 'arcade' | 'comicpop' | 'championship'
+  // Unlocked on the Trophy Road (profile/trophyRoad.ts).
+  | 'aurora' | 'royalcourt' | 'galaxy' | 'hallowed' | 'eclipse' | 'immortal';
 type Family = 'red' | 'orange' | 'gold' | 'green' | 'blue' | 'purple';
 type Stop = [number, string];
 type Role = 'bg' | 'fg' | 'border' | 'shadow' | 'any';
@@ -222,10 +225,67 @@ THEMES.push(
     loadFonts: fontsOf(() => import('@fontsource/cinzel/latin-600.css'), () => import('@fontsource/cinzel/latin-700.css'), () => import('@fontsource/cinzel/latin-ext-700.css')),
     preview: { bg: '#0a0a0b', panel: '#141311', line: '#6e5a2a', text: '#f5ecd5', dim: '#c4b595', accent: '#d4af37', onAccent: '#1a1405', hi: '#f0d27a', display: "'Cinzel', serif", body: "'Inter', sans-serif" },
   },
+  // ---- The Trophy Road looks (each has a moving backdrop in themes.css) ----
+  {
+    id: 'aurora', name: 'Aurora', blurb: 'Northern lights: green and violet curtains drifting over a polar night.',
+    ramps: darkRamps({ floor: '#04121a', panel: '#0a1f2b', panel2: '#0d2634', panel3: '#112e3e', raised: '#15384b', line: '#1d4a5c', lineMid: '#2f7a86', lineStrong: '#6fd6c2', dim: '#bfe8e0', text: '#effffb', bright: '#ffffff', ink: '#04121a' }),
+    shadow: '#010609',
+    accent: { red: '#ff6b9a', orange: '#6fffb0', gold: '#e8ff8a', green: '#6fffb0', blue: '#6fd3ff', purple: '#c79bff' },
+    preview: { bg: '#04121a', panel: '#0a1f2b', line: '#2f7a86', text: '#effffb', dim: '#bfe8e0', accent: '#6fffb0', onAccent: '#04121a', hi: '#c79bff', display: "'Oswald', sans-serif", body: "'Inter', sans-serif" },
+  },
+  {
+    id: 'royalcourt', name: 'Royal Court', blurb: 'Deep purple velvet and polished gold trim. For basketball royalty.',
+    ramps: darkRamps({ floor: '#12061f', panel: '#1f0c33', panel2: '#26103e', panel3: '#2e144a', raised: '#381a58', line: '#4a2468', lineMid: '#7d4aa6', lineStrong: '#d4af37', dim: '#e6d3f5', text: '#fff6e0', bright: '#ffffff', ink: '#12061f' }),
+    shadow: '#07020d',
+    accent: { red: '#ff5c7a', orange: '#d4af37', gold: '#f0d27a', green: '#7ccf8f', blue: '#8fb8e8', purple: '#c9a0e8' },
+    fonts: { display: "'Cinzel', 'Oswald', serif", pixel: "'Cinzel', serif", vt: "'Cinzel', serif" },
+    loadFonts: fontsOf(() => import('@fontsource/cinzel/latin-600.css'), () => import('@fontsource/cinzel/latin-700.css')),
+    preview: { bg: '#12061f', panel: '#1f0c33', line: '#7d4aa6', text: '#fff6e0', dim: '#e6d3f5', accent: '#d4af37', onAccent: '#12061f', hi: '#c9a0e8', display: "'Cinzel', serif", body: "'Inter', sans-serif" },
+  },
+  {
+    id: 'galaxy', name: 'Galaxy', blurb: 'Deep space: a drifting starfield, nebula pink and comet blue.',
+    ramps: darkRamps({ floor: '#05030f', panel: '#0e0a24', panel2: '#130e2e', panel3: '#19123a', raised: '#211848', line: '#2c2060', lineMid: '#5a44a8', lineStrong: '#9f8cff', dim: '#d2caff', text: '#f5f2ff', bright: '#ffffff', ink: '#05030f' }),
+    shadow: '#020108',
+    accent: { red: '#ff5c93', orange: '#ff7ad9', gold: '#ffe38a', green: '#7dff9b', blue: '#6fd3ff', purple: '#b983ff' },
+    fonts: { display: "'Orbitron', 'Oswald', sans-serif", pixel: "'Orbitron', sans-serif", vt: "'Orbitron', sans-serif" },
+    loadFonts: fontsOf(() => import('@fontsource/orbitron/latin-600.css'), () => import('@fontsource/orbitron/latin-700.css')),
+    preview: { bg: '#05030f', panel: '#0e0a24', line: '#5a44a8', text: '#f5f2ff', dim: '#d2caff', accent: '#ff7ad9', onAccent: '#05030f', hi: '#6fd3ff', display: "'Orbitron', sans-serif", body: "'Inter', sans-serif" },
+  },
+  {
+    id: 'hallowed', name: 'Hallowed Hall', blurb: 'White marble and gold leaf, like the Hall of Fame itself.', light: true,
+    ramps: lightRamps({ floor: '#ece6d8', panel: '#fbf8f1', panel2: '#f5f0e4', panel3: '#ede5d2', mid: '#b9a77a', text: '#1d1706', dim: '#4a3f24', line: '#d8ccb0', lineMid: '#a8925a', lineStrong: '#7a5c14' }),
+    shadow: '#7a5c14',
+    accent: { red: '#a8323a', orange: '#b8860b', gold: '#b8860b', green: '#2f7a4a', blue: '#2f5fa8', purple: '#6b3fa0' },
+    accentText: { red: '#8f242c', orange: '#7a5808', gold: '#7a5808', green: '#1f6038', blue: '#244c8a', purple: '#56308a' },
+    accentAny: { red: '#8f242c', orange: '#8a6408', gold: '#8a6408', green: '#1f6038', blue: '#244c8a', purple: '#56308a' },
+    fonts: { display: "'Cinzel', 'Oswald', serif", pixel: "'Cinzel', serif", vt: "'Cinzel', serif" },
+    loadFonts: fontsOf(() => import('@fontsource/cinzel/latin-600.css'), () => import('@fontsource/cinzel/latin-700.css')),
+    preview: { bg: '#ece6d8', panel: '#fbf8f1', line: '#a8925a', text: '#1d1706', dim: '#4a3f24', accent: '#b8860b', onAccent: '#ffffff', hi: '#6b3fa0', display: "'Cinzel', serif", body: "'Inter', sans-serif" },
+  },
+  {
+    id: 'eclipse', name: 'Eclipse', blurb: 'A black sun with a burning corona: ember red on total darkness.',
+    ramps: darkRamps({ floor: '#050303', panel: '#120808', panel2: '#170a0a', panel3: '#1e0d0c', raised: '#281210', line: '#3a1814', lineMid: '#7a2e1e', lineStrong: '#ff7a3d', dim: '#f0c4a8', text: '#fff1e6', bright: '#ffffff', ink: '#050303' }),
+    shadow: '#000000',
+    accent: { red: '#ff3d3d', orange: '#ff7a3d', gold: '#ffc266', green: '#8fe38f', blue: '#8fb8e8', purple: '#e08fff' },
+    preview: { bg: '#050303', panel: '#120808', line: '#7a2e1e', text: '#fff1e6', dim: '#f0c4a8', accent: '#ff7a3d', onAccent: '#050303', hi: '#ffc266', display: "'Oswald', sans-serif", body: "'Inter', sans-serif" },
+  },
+  {
+    id: 'immortal', name: 'Immortal', blurb: 'The final reward: a living rainbow edge around a night-black arena.',
+    ramps: darkRamps({ floor: '#07070c', panel: '#101018', panel2: '#14141f', panel3: '#191926', raised: '#20202f', line: '#2c2c40', lineMid: '#55557a', lineStrong: '#c8c8ff', dim: '#d8d8ee', text: '#ffffff', bright: '#ffffff', ink: '#07070c' }),
+    shadow: '#000000',
+    accent: { red: '#ff4d6a', orange: '#ffb347', gold: '#ffe066', green: '#6fffb0', blue: '#6fd3ff', purple: '#d38cff' },
+    fonts: { display: "'Bungee', 'Oswald', sans-serif", pixel: "'Bungee', sans-serif" },
+    loadFonts: fontsOf(() => import('@fontsource/bungee/latin-400.css')),
+    preview: { bg: '#07070c', panel: '#101018', line: '#55557a', text: '#ffffff', dim: '#d8d8ee', accent: '#ffb347', onAccent: '#07070c', hi: '#6fd3ff', display: "'Bungee', sans-serif", body: "'Inter', sans-serif" },
+  },
 );
 
 /** The level a look opens at: the Level Road for the ten road looks, everyone for the rest. */
 export const themeLevel = (id: ThemeId) => roadLevel('look', id) ?? 1;
+/** Trophies a look needs (the Trophy Road looks), or 0. */
+export const themeTrophies = (id: ThemeId) => trophyNeed('look', id) ?? 0;
+/** Whether a look is open at this level and trophy count. */
+export const themeOpen = (id: ThemeId, level: number, trophies: number) => level >= themeLevel(id) && trophies >= themeTrophies(id);
 
 export const THEME_BY_ID = new Map(THEMES.map(t => [t.id, t]));
 

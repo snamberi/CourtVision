@@ -1,5 +1,5 @@
 /*
- * League Hunt items: bought in the shop, kept for the rest of the run (up to four). Their effects are applied in
+ * League Hunt items: bought in the shop, kept for the rest of the run (up to two). Their effects are applied in
  * run.ts when a game is played (overall bonuses, defense, pace) or when coins are paid out.
  */
 
@@ -19,4 +19,5 @@ export const ITEMS: Record<ItemId, HuntItem> = {
   filmRoom: { id: 'filmRoom', name: 'Film Room', blurb: 'After a loss in a series, everyone +2 for the next game.', price: 45 },
 };
 export const ITEM_IDS = Object.keys(ITEMS) as ItemId[];
-export const MAX_ITEMS = 4;
+/** Shop boosts a hunt can hold (kept apart from the three boosts won after series; a deck's starting item doesn't count). */
+export const MAX_ITEMS = 2;

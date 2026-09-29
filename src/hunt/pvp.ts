@@ -2,7 +2,7 @@ import type { NbaHistory } from '../history/nbaHistoryData';
 import { simulateGame } from '../simulation/engine/game';
 import { DEFAULT_GAME_SETTINGS, ERA_PRESETS } from '../simulation/types';
 import { cardPool, cardPlayer } from './cards';
-import { ERAS, eraCoach, underEra, type HuntEra } from './eras';
+import { ERAS, eraCoach, eraRules, underEra, type HuntEra } from './eras';
 import { gameBonuses, sixRotation, defended, SERIES_START, WINS_NEEDED, SQUAD_SIZE, type HuntRun, type SeriesState, type SeriesGame, type Focus } from './run';
 import type { ItemId } from './items';
 import type { BoostId } from './boosts';
@@ -65,7 +65,7 @@ export function playPvp(h: NbaHistory, mine: Ghost, theirs: Ghost, seed: number,
     const homeGame = [1, 2, 5, 7].includes(st.game);
     const home = { teamId: homeGame ? 'HOME' : 'AWAY', seasons: sixRotation(homeGame ? ours : theirsP), coach, chemistry: 72 };
     const away = { teamId: homeGame ? 'AWAY' : 'HOME', seasons: sixRotation(homeGame ? theirsP : ours), coach, chemistry: 72 };
-    const r = simulateGame({ home, away, settings: { ...DEFAULT_GAME_SETTINGS, era: ERA_PRESETS[decade] ?? DEFAULT_GAME_SETTINGS.era, seed: seed * 101 + st.game * 17, injuriesEnabled: false, teamChemistryEnabled: false } });
+    const r = simulateGame({ home, away, rules: eraRules(era), settings: { ...DEFAULT_GAME_SETTINGS, era: ERA_PRESETS[decade] ?? DEFAULT_GAME_SETTINGS.era, seed: seed * 101 + st.game * 17, injuriesEnabled: false, teamChemistryEnabled: false } });
     const myScore = homeGame ? r.homeScore : r.awayScore, theirScore = homeGame ? r.awayScore : r.homeScore;
     const myBox = homeGame ? r.homeBox : r.awayBox;
     const top = Object.entries(myBox.players).sort((a, b) => b[1].points - a[1].points)[0];

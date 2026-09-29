@@ -1,4 +1,5 @@
 import type { League } from '../simulation/league';
+import { speechMoments, speechLabel } from '../simulation/halftime';
 import type { YearInReview } from '../simulation/yearInReview';
 import type { SeasonAwards } from '../simulation/awards';
 import { perGameAverages } from '../simulation/careerStats';
@@ -28,6 +29,10 @@ export function buildReel(league: League, review: YearInReview, awards: SeasonAw
   if (leader) scenes.push({ kind: 'leader', kicker: 'LEADING SCORER', big: leader.p.playerId, lines: [`${leader.avg.ppg.toFixed(1)} PTS · ${leader.avg.rpg.toFixed(1)} REB · ${leader.avg.apg.toFixed(1)} AST`, `${leader.avg.gamesPlayed} GAMES`] });
   const m = review.moments[0];
   if (m) scenes.push({ kind: 'moment', kicker: 'BEST MOMENT', big: clip(m.title, 26), lines: wrap(m.text, 44).slice(0, 3) });
+  // The halftime speech that turned a game around (see halftime.ts).
+  const speech = speechMoments(league).find(s => s.teamId === review.teamId && s.won && s.swing > 0);
+  if (speech) scenes.push({ kind: 'moment', kicker: 'HALFTIME SPEECH OF THE YEAR', big: speechLabel(speech.speech).toUpperCase(),
+    lines: [`VS ${speech.opponent.toUpperCase()}`, `${speech.halftimeMargin >= 0 ? 'UP' : 'DOWN'} ${Math.abs(speech.halftimeMargin)} AT THE HALF`, `WON BY ${speech.finalMargin}`] });
   const aw = awards ? [['MVP', awards.mvp], ['DPOY', awards.dpoy], ['ROOKIE', awards.roy]] as const : [];
   const awardLines = aw.filter(([, w]) => w).map(([k, w]) => `${k}  ${clip(w!.playerId, 22)}${w!.teamId === review.teamId ? '  (OURS)' : ''}`);
   if (awardLines.length) scenes.push({ kind: 'awards', kicker: 'AROUND THE LEAGUE', big: 'THE AWARDS', lines: awardLines });

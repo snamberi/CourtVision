@@ -2,7 +2,8 @@ import { prepareCoachingForGame, finishCoachingGame } from './playerDevelopment'
 import { gameStaffCoach } from './staffManagement';
 import { recordCoachResult, driftRelationships } from './coaching';
 import type { League, InjuryRecord } from './league';
-import { computeStandings, computeConferenceStandings, hasConferenceStructure, tickInjuriesForTeam } from './league';
+import { computeStandings, computeConferenceStandings, hasConferenceStructure, tickInjuriesForTeam, gameBoost } from './league';
+import { applyGameBonds } from './chemistryWeb';
 import type { GameResult } from './boxscore';
 import { simulateGame } from './engine/game';
 import { applyGameResultToLeague } from './careerStats';
@@ -99,7 +100,7 @@ export function generateConferencePlayoffBracket(league: League, gamesToWin = 4)
     id: `r${round}-s${slot}`, round, slot, teamAId, teamBId, teamAWins: 0, teamBWins: 0, gamesToWin, games: [], winnerTeamId: null,
   });
   // With 10+ teams per conference, seeds 7-10 earn the last two spots in a play-in; otherwise the top 8 go straight in.
-  const withPlayIn = east.length >= 10 && west.length >= 10;
+  const withPlayIn = league.rulesSettings?.playInEnabled !== false && east.length >= 10 && west.length >= 10;
   const seeds = (rows: typeof east) => rows.slice(0, 10).map((r) => r.teamId);
   const eastSeeds = seeds(east), westSeeds = seeds(west);
   // Round 0 in NBA bracket order per conference: 1v8, 4v5 (top half) then 3v6, 2v7 (bottom half), so the
@@ -163,10 +164,10 @@ function playPostseasonGame(league: League, teamAId: string, teamBId: string, te
   const availableB = teamB.seasons.filter((s) => !isOut(s.playerId));
   const seasonsA = availableA.length >= 5 ? availableA : teamA.seasons;
   const seasonsB = availableB.length >= 5 ? availableB : teamB.seasons;
-  const side = (t: typeof teamA, seasons: typeof seasonsA) => ({ teamId: t.teamId, seasons, coach: t.coach, chemistry: t.chemistry, coachIdentity: gameStaffCoach(t), rotationOrder: t.rotationOrder });
+  const side = (t: typeof teamA, seasons: typeof seasonsA, home: boolean) => ({ teamId: t.teamId, seasons, coach: t.coach, chemistry: t.chemistry, coachIdentity: gameStaffCoach(t), rotationOrder: t.rotationOrder, ...gameBoost(league, t, seasons.map(s => s.playerId), home) });
   const result = simulateGame({
-    home: teamAHosts ? side(teamA, seasonsA) : side(teamB, seasonsB),
-    away: teamAHosts ? side(teamB, seasonsB) : side(teamA, seasonsA),
+    home: teamAHosts ? side(teamA, seasonsA, true) : side(teamB, seasonsB, true),
+    away: teamAHosts ? side(teamB, seasonsB, false) : side(teamA, seasonsA, false),
     settings: { ...league.settings, seed },
     isPlayoffs: true,
     rules: league.rulesSettings, moraleImpact: league.coachingSettings?.moraleImpact,
@@ -184,7 +185,7 @@ function playPostseasonGame(league: League, teamAId: string, teamBId: string, te
     };
   }
   const calendarDate = addDays(league.calendarDate ?? seasonStartDate(league.season), DAYS_PER_ROUND);
-  const teams = league.teams.map(t => {
+  const teams = applyGameBonds(league.teams, result).map(t => {
     const box = t.teamId === result.homeTeamId ? result.homeBox : t.teamId === result.awayTeamId ? result.awayBox : null;
     if (!box) return t;
     const won = t.teamId === result.homeTeamId ? result.homeScore > result.awayScore : result.awayScore > result.homeScore;

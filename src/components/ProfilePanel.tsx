@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { xpParts, totalXp, levelFor, equipped, equip, rankTitles, localName, setLocalName, FRAMES, FLOORS, TITLES, PROFILE_EVENT, type Unlock } from '../profile/profile';
-import { ICONS, NAME_COLORS, HONORS, MODE_TITLES, SUPPORTER_TITLE, unlockContext, isOpen, earnedExtraTitles, type UnlockContext } from '../profile/cosmetics';
+import { ALBUM_TITLES, ICONS, NAME_COLORS, HONORS, MODE_TITLES, SUPPORTER_TITLE, unlockContext, isOpen, earnedExtraTitles, type UnlockContext } from '../profile/cosmetics';
 import { DAILY_EVENT } from '../profile/dailyGoals';
 import { LEGACY_EVENT } from '../storage/gmLegacy';
 import { PixelIcon } from './PixelIcon';
@@ -8,6 +8,7 @@ import { ProfileIcon, NameTag } from './ProfileIcon';
 import { useAccount } from '../cloud/account';
 import { passesOnSale } from '../billing/billing';
 import { ThemeSection } from './ThemePicker';
+import { TITLE_COLORS, TROPHY_TITLES, trophyNeed, titleColorOpen } from '../profile/trophyRoad';
 
 function useProfile() {
   const [tick, setTick] = useState(0);
@@ -27,7 +28,7 @@ export function ProfileChip({ onOpen }: { onOpen?: () => void }) {
   const p = useProfile();
   const eq = equipped(p.level);
   return <button className="profile-chip" onClick={onOpen} title={`${p.xp.toLocaleString()} XP · ${p.need ? `${p.need - p.into} to level ${p.level + 1}` : 'max level'}`}>
-    <ProfileIcon id={eq.icon} size={18} title="" /><b>LV {p.level}</b><span>{eq.title}</span><i style={{ width: `${p.need ? p.into / p.need * 100 : 100}%` }} aria-hidden="true" />
+    <ProfileIcon id={eq.icon} size={18} title="" /><b>LV {p.level}</b><NameTag name="" icon={null} title={eq.title} titleColor={eq.titleColor} className="profile-chip-title" /><i style={{ width: `${p.need ? p.into / p.need * 100 : 100}%` }} aria-hidden="true" />
   </button>;
 }
 
@@ -51,6 +52,8 @@ function titleGroups(c: UnlockContext) {
     { label: 'Leaderboards', items: HONORS.map(h => ({ title: h.title, open: c.honors.includes(h.id), how: h.how })) },
     { label: 'Achievements', items: MODE_TITLES.map(m => ({ title: m.title, open: c.modes.includes(m.mode), how: m.how })) },
     { label: 'Supporter', items: [{ title: SUPPORTER_TITLE, open: c.supporter, how: 'Supporter pass' }] },
+    { label: 'Trophy Road', items: TROPHY_TITLES.map(t => ({ title: t.id, open: c.trophies >= t.trophies, how: `${t.trophies.toLocaleString()} trophies` })) },
+    { label: 'Card album', items: ALBUM_TITLES.map(t => ({ title: t.title, open: ((t.kind === 'sets' ? c.album?.sets : c.album?.legendary) ?? 0) >= t.n, how: t.kind === 'sets' ? `Complete ${t.n} team card set${t.n === 1 ? '' : 's'}` : `Collect ${t.n} legendary cards` })) },
   ].filter(g => g.label !== 'Supporter' || showSupporter(c));
 }
 
@@ -68,8 +71,7 @@ export function ProfilePanel() {
     <div className={`profile-card-big frame-${eq.frame}`}>
       <ProfileIcon id={eq.icon} size={72} title={`${name}'s icon`} />
       <div className="profile-card-id">
-        <NameTag name={signedIn ? `@${name}` : name} icon={null} color={eq.color} className="profile-card-name" />
-        <strong>{eq.title}</strong>
+        <NameTag name={signedIn ? `@${name}` : name} icon={null} color={eq.color} title={eq.title} titleColor={eq.titleColor} className="profile-card-name" />
         <div className="hunt-cap-bar"><i style={{ width: `${p.need ? p.into / p.need * 100 : 100}%` }} /></div>
         <small>Level {p.level} · {p.xp.toLocaleString()} XP{p.need ? ` · ${(p.need - p.into).toLocaleString()} to level ${p.level + 1}` : ' · max level'}{extras ? ` · ${extras} special title${extras === 1 ? '' : 's'}` : ''}</small>
       </div>
@@ -86,7 +88,12 @@ export function ProfilePanel() {
     <div className="profile-picker"><h3 className="hunt-subhead">Name colour</h3>
       <div className="profile-colors" role="radiogroup" aria-label="Name colour">{listed(NAME_COLORS, ctx).map(c => { const open = isOpen(c.rule, ctx); return <button key={c.id} role="radio" aria-checked={eq.color === c.id} disabled={!open}
         className={`profile-color-pick ${eq.color === c.id ? 'selected' : ''} ${open ? '' : 'locked'}`} onClick={() => equip({ color: c.id })}>
-        <i style={{ background: c.css }} aria-hidden="true" /><b>{c.name}</b><small>{open ? 'Unlocked' : c.how}</small></button>; })}</div></div>
+        <i className={c.anim ? `anim-${c.anim}` : undefined} style={{ background: c.css, backgroundSize: c.anim ? '200% 100%' : undefined }} aria-hidden="true" /><b>{c.name}</b><small>{open ? 'Unlocked' : c.how}</small></button>; })}</div></div>
+
+    <div className="profile-picker"><h3 className="hunt-subhead">Title colour <small>{ctx.trophies.toLocaleString()} trophies</small></h3>
+      <div className="profile-colors" role="radiogroup" aria-label="Title colour">{TITLE_COLORS.map(c => { const open = titleColorOpen(c, ctx); return <button key={c.id} role="radio" aria-checked={eq.titleColor === c.id} disabled={!open}
+        className={`profile-color-pick ${eq.titleColor === c.id ? 'selected' : ''} ${open ? '' : 'locked'}`} onClick={() => equip({ titleColor: c.id })}>
+        <NameTag name="" icon={null} title={c.name} titleColor={c.id} /><small>{open ? 'Unlocked' : c.ownerLegacy != null ? `Owner legacy ${c.ownerLegacy}` : `${(trophyNeed('titleColor', c.id) ?? 0).toLocaleString()} trophies`}</small></button>; })}</div></div>
 
     <div className="profile-picker"><h3 className="hunt-subhead">Title</h3>
       {titleGroups(ctx).map(g => <div key={g.label} className="profile-title-group"><small>{g.label.toUpperCase()}</small>

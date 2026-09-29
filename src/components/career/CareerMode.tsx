@@ -41,7 +41,7 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
   const [active, setActive] = useState<Active | null>(null);
   const [busy, setBusy] = useState<{ label: string; pct: number | null } | null>(null);
   /** The season before his draft, played in the background while he is being created. */
-  const pre = useRef<{ done: Promise<CareerWorld>; cancel: () => void } | null>(null);
+  const pre = useRef<{ done: Promise<CareerWorld>; cancel: () => void; seed: number; draftYear: number | null } | null>(null);
   const [prePct, setPrePct] = useState<number | null>(null);
   const [preReady, setPreReady] = useState(false);
   const cancelRef = useRef<() => void>(() => {});
@@ -69,14 +69,11 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
 
   /** Starts a new career: builds today's league and plays the season before his draft in the background. */
   /** `draftYear`: null for today's league, or a past draft (the league starts the season before it, real players on real careers). */
-  const startNew = async (mode: Mode, draftYear: number | null = null, weekly: WeeklyCareer | null = null) => {
+  /** Builds the league and plays the season before the draft in the background. */
+  const launchPre = useCallback(async (seed: number, draftYear: number | null) => {
     if (!h) return;
-    const seed = weekly ? weekly.seed : newSeed();
-    setWeekly(weekly?.week ?? null);
-    setView(mode === 'wheel' ? { k: 'wheel', seed } : { k: 'myplayer', seed });
     pre.current?.cancel();
     setPreReady(false); setPrePct(0);
-    setDraftYear(draftYear);
     const { buildHistoricalLeague, topUpHistoricalClasses } = await import('../../history/historicalLeague');
     const start = draftYear ? draftYear - 1 : h.manifest.coverage.seasons[1] - 1;
     const built = buildHistoricalLeague(h, start, { realDevelopment: !!draftYear, difficulty: 'normal', seed });
@@ -87,7 +84,24 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
     const step = runCareerStep({ type: 'toDraft', league, extras: built.extras, seed, awardSettings: DEFAULT_AWARD_SETTINGS }, setPrePct);
     const done = step.done.then(r => { setPreReady(true); return { id: '', league: r.league, extras: r.extras, phase: 'atDraft' as const, ...(r.type === 'atDraft' ? { partial: r.partial } : {}) }; });
     done.catch(() => {});
-    pre.current = { done, cancel: step.cancel };
+    pre.current = { done, cancel: step.cancel, seed, draftYear };
+  }, [h]);
+
+  // A head start: today's league starts playing its pre-draft season as soon as the hub is open (most careers start
+  // there), so it is well on its way by the time the player is built. Another era or the weekly career replaces it.
+  useEffect(() => {
+    if (!h || view.k !== 'hub' || pre.current) return;
+    void launchPre(newSeed(), null);
+  }, [h, view.k, launchPre]);
+
+  const startNew = async (mode: Mode, draftYear: number | null = null, weekly: WeeklyCareer | null = null) => {
+    if (!h) return;
+    const warm = pre.current && !weekly && draftYear == null && pre.current.draftYear == null ? pre.current : null;
+    const seed = weekly ? weekly.seed : warm ? warm.seed : newSeed();
+    setWeekly(weekly?.week ?? null);
+    setView(mode === 'wheel' ? { k: 'wheel', seed } : { k: 'myplayer', seed });
+    setDraftYear(draftYear);
+    if (!warm) await launchPre(seed, draftYear);
   };
 
   /** Name chosen: into the draft he goes. */
@@ -152,6 +166,8 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
   }, [h, active, busy, persist, playSeason]);
 
   const open = async (m: CareerMeta) => {
+    // An existing career needs the CPU for its own seasons: drop the head start.
+    pre.current?.cancel(); pre.current = null;
     const world = m.status === 'active' ? await loadWorld(m.id) : null;
     setActive({ meta: { ...m, autopilot: false }, world: world ?? null });
     setView({ k: 'career' });
@@ -199,26 +215,33 @@ function Hub({ careers, onNew, onOpen, onDelete }: { careers: CareerMeta[]; onNe
     <button role="tab" aria-selected={tab === 'careers'} className={tab === 'careers' ? 'active' : ''} onClick={() => setTab('careers')}>Careers</button>
     <button role="tab" aria-selected={tab === 'hof'} className={tab === 'hof' ? 'active' : ''} onClick={() => setTab('hof')}>Hall of Fame ({inducted.length})</button>
   </div>;
-  if (tab === 'hof') return <section className="hunt-stage">{tabs}<HallOfFame careers={careers} onOpen={onOpen} /></section>;
-  return <section className="hunt-stage">
+  if (tab === 'hof') return <section className="hunt-stage cv-page">{tabs}<HallOfFame careers={careers} onOpen={onOpen} /></section>;
+  const active = careers.filter(m => m.status !== 'retired'), retired = careers.filter(m => m.status === 'retired');
+  const row = (m: CareerMeta) => { const last = m.years.at(-1); return <li key={m.id}>
+    <PlayerAvatar playerId={m.playerId} primaryColor="#f47b20" secondaryColor="#f4f0e6" size={40} />
+    <div><b>{m.playerId}</b><small>{m.status === 'retired' ? `Retired · Legacy ${m.retired?.legacy} · ${m.retired?.rank ? `#${m.retired.rank} all time` : 'outside the Top 100'}` : `${m.years.length} season${m.years.length === 1 ? '' : 's'}${last ? ` · ${last.teamName} · ${last.overall} OVR` : m.draft ? ` · drafted ${m.draft.pick ? `#${m.draft.pick}` : 'undrafted'}` : ''}`}</small></div>
+    <button className={m.status === 'retired' ? '' : 'primary'} onClick={() => onOpen(m)}>{m.status === 'retired' ? 'Legacy' : 'Continue'}</button>
+    {confirm === m.id ? <button className="danger" onClick={() => { onDelete(m.id); setConfirm(null); }}>Delete for good</button> : <button className="link-button" onClick={() => setConfirm(m.id)}>Delete</button>}
+  </li>; };
+  return <section className="hunt-stage cv-page">
     {tabs}
-    <p className="hunt-lede">Create one player and live his whole career in today's league, with real rosters: draft night, a training focus every summer, free agency, trades, awards, and at the end, the Hall of Fame and his place among the all-time Top 100.</p>
-    <div className="cv-era"><h3 className="hunt-subhead">When does he enter the league?</h3>
-      <div className="hunt-replace"><button className={era == null ? 'active' : ''} aria-pressed={era == null} onClick={() => setEra(null)}>Today (the 2026 draft)</button>
-        <label className="cv-era-pick"><span>A past draft</span><select value={era ?? ''} onChange={e => setEra(e.target.value ? Number(e.target.value) : null)}><option value="">Choose a year…</option>{PAST_DRAFTS.map(y => <option key={y} value={y}>{y}{FAMOUS[y] ? ` · ${FAMOUS[y]}` : ''}</option>)}</select></label></div>
-      <p className="hint-text">{era ? `The ${era - 1}-${String(era).slice(2)} season is played first, then the ${era} draft, with the real class${FAMOUS[era] ? ` (${FAMOUS[era]})` : ''}. Real players follow their real careers around him.` : 'Today\'s league with real rosters: the 2025-26 season plays out first, then your draft.'}</p></div>
-    <WeeklyCareerCard careers={careers} onPlay={w => onNew('wheel', w.draftYear, w)} />
-    <div className="hunt-roads">
-      <button className="hunt-road" onClick={() => onNew('wheel', era)}><span className="hunt-road-icon">⟳</span><b>Random mode</b><span>Spin the wheel of NBA history. Take Curry's three-point shot, Shaq's size, LeBron's playmaking… if the wheel lets you. Two lucky spins included.</span></button>
-      <button className="hunt-road" onClick={() => onNew('myplayer', era)}><span className="hunt-road-icon">✎</span><b>MyPlayer</b><span>Build him yourself, part by part. Your draft stock is rolled: a Starter, an All-Star, or once in a while a Generational talent.</span></button>
+    {active.length > 0 && <div className="cv-panel"><h3 className="hunt-subhead">Continue</h3><ul className="cv-saved">{active.map(row)}</ul></div>}
+    <div className="cv-panel">
+      <h3 className="hunt-subhead">Start a new career</h3>
+      <p className="hint-text">One player, his whole career in a real league: draft night, a training focus every summer, free agency, trades, awards, and at the end the Hall of Fame and his place in the all-time Top 100.</p>
+      <div className="cv-era-row">
+        <span>Enters the league:</span>
+        <div className="hunt-replace"><button className={era == null ? 'active' : ''} aria-pressed={era == null} onClick={() => setEra(null)}>Today (2026 draft)</button>
+          <label className="cv-era-pick"><span className="sr-only">A past draft</span><select value={era ?? ''} onChange={e => setEra(e.target.value ? Number(e.target.value) : null)}><option value="">A past draft…</option>{PAST_DRAFTS.map(y => <option key={y} value={y}>{y}{FAMOUS[y] ? ` · ${FAMOUS[y]}` : ''}</option>)}</select></label></div>
+      </div>
+      <p className="hint-text">{era ? `The ${era - 1}-${String(era).slice(2)} season is played first, then the ${era} draft, with the real class${FAMOUS[era] ? ` (${FAMOUS[era]})` : ''}. Real players follow their real careers around him.` : 'Today\'s league with real rosters: the 2025-26 season plays out first, then your draft.'}</p>
+      <div className="hunt-roads cv-modes">
+        <button className="hunt-road" onClick={() => onNew('wheel', era)}><span className="hunt-road-icon">⟳</span><b>Random mode</b><span>Spin the wheel of NBA history. Take Curry's three-point shot, Shaq's size, LeBron's playmaking… if the wheel lets you. Two lucky spins, each a sure Star or Great.</span></button>
+        <button className="hunt-road" onClick={() => onNew('myplayer', era)}><span className="hunt-road-icon">✎</span><b>MyPlayer</b><span>Build him yourself, part by part. Your draft stock is rolled: a Starter, an All-Star, or once in a while a Generational talent.</span></button>
+      </div>
     </div>
-    {careers.length > 0 && <><h3 className="hunt-subhead">Your careers</h3>
-      <ul className="cv-saved">{careers.map(m => { const last = m.years.at(-1); return <li key={m.id}>
-        <PlayerAvatar playerId={m.playerId} primaryColor="#f47b20" secondaryColor="#f4f0e6" size={40} />
-        <div><b>{m.playerId}</b><small>{m.status === 'retired' ? `Retired · Legacy ${m.retired?.legacy} · ${m.retired?.rank ? `#${m.retired.rank} all time` : 'outside the Top 100'}` : `${m.years.length} season${m.years.length === 1 ? '' : 's'}${last ? ` · ${last.teamName} · ${last.overall} OVR` : m.draft ? ` · drafted ${m.draft.pick ? `#${m.draft.pick}` : 'undrafted'}` : ''}`}</small></div>
-        <button onClick={() => onOpen(m)}>{m.status === 'retired' ? 'Legacy' : 'Continue'}</button>
-        {confirm === m.id ? <button className="danger" onClick={() => { onDelete(m.id); setConfirm(null); }}>Delete for good</button> : <button className="link-button" onClick={() => setConfirm(m.id)}>Delete</button>}
-      </li>; })}</ul></>}
+    <WeeklyCareerCard careers={careers} onPlay={w => onNew('wheel', w.draftYear, w)} />
+    {retired.length > 0 && <div className="cv-panel"><h3 className="hunt-subhead">Retired</h3><ul className="cv-saved">{retired.map(row)}</ul></div>}
   </section>;
 }
 
@@ -304,6 +327,7 @@ function CareerView({ h, a, busy, tradeAsked, onPlay, onAutopilot, onTraining, o
 }) {
   const { meta, world } = a;
   const [sure, setSure] = useState(false);
+  const [tab, setTab] = useState<CareerTab>('season');
   if (meta.status === 'retired') return <Legacy h={h} meta={meta} onNew={onNew} />;
   if (!world) return <p className="empty-state">This career's league could not be loaded from this browser.</p>;
   const found = findPlayer(world.league, world.extras, meta.playerId);
@@ -313,45 +337,52 @@ function CareerView({ h, a, busy, tradeAsked, onPlay, onAutopilot, onTraining, o
   const offers = world.phase === 'atDraft' ? freeAgentOffers(world.league, world.extras, meta) : [];
   const toggle = (id: CategoryId) => onTraining(meta.training.includes(id) ? meta.training.filter(x => x !== id) : [...meta.training, id].slice(-2));
   const rookieYear = meta.years.length === 0;
-  return <section className="hunt-stage">
+  const offseason = world.phase === 'atDraft';
+  const tabList: { id: CareerTab; label: string }[] = [
+    { id: 'plan', label: offseason ? 'Offseason' : 'Before the season' },
+    ...(last && offseason ? [{ id: 'season' as const, label: `Last season (${fy(last.season)})` }] : []),
+    { id: 'ratings', label: 'Ratings' },
+    { id: 'history', label: 'Career stats' },
+  ];
+  const current = tabList.some(t => t.id === tab) ? tab : tabList[0].id;
+  return <section className="hunt-stage cv-page">
     <div className="cv-hero cv-hero-card">
       <CareerCard meta={meta} overall={p ? calculateOverall(p) : null} age={p?.age} teamName={team ? team.name : 'Free agent'} prime={primeOverall(meta.prime, meta.readiness, meta.identity.pos)} />
-      <div><span className="pixel-eyebrow">#{meta.identity.jersey} · {meta.identity.pos} · AGE {p?.age ?? ''}{meta.draftYear ? ` · ${meta.draftYear} DRAFT CLASS` : ''}</span><h2>{meta.playerId}</h2>
+      <div className="cv-hero-info"><span className="pixel-eyebrow">#{meta.identity.jersey} · {meta.identity.pos} · AGE {p?.age ?? ''}{meta.draftYear ? ` · ${meta.draftYear} DRAFT CLASS` : ''}</span><h2>{meta.playerId}</h2>
         <p>{team ? team.name : 'Free agent'} · <b className="hunt-rating">{p ? calculateOverall(p) : '—'}</b> OVR · prime {primeOverall(meta.prime, meta.readiness, meta.identity.pos)}</p>
-        {meta.draft && <p className="hint-text">{meta.draft.pick ? `Drafted #${meta.draft.pick} overall by ${meta.draft.teamName} (${meta.draft.season} draft)` : `Undrafted (${meta.draft.season} draft)`}</p>}</div>
+        {meta.draft && <p className="hint-text">{meta.draft.pick ? `Drafted #${meta.draft.pick} overall by ${meta.draft.teamName} (${meta.draft.season} draft)` : `Undrafted (${meta.draft.season} draft)`}</p>}
+        <div className="contest-actions cv-actions">
+          <button className="primary hunt-play" disabled={busy} onClick={onPlay}>{offseason ? 'Play next season' : rookieYear ? 'Play rookie season' : 'Play the season'}</button>
+          <button disabled={busy} onClick={() => onAutopilot(!meta.autopilot)}>{meta.autopilot ? 'Autopilot: on' : 'Autopilot the rest'}</button>
+          {offseason && (sure ? <button className="danger" disabled={busy} onClick={onRetire}>Yes, retire now</button> : <button className="link-button" disabled={busy} onClick={() => setSure(true)}>Retire…</button>)}
+        </div></div>
     </div>
     {rookieYear && meta.draft && <div className="hunt-result won"><span className="pixel-eyebrow">DRAFT NIGHT</span><h2>{meta.draft.pick ? `#${meta.draft.pick} overall: ${meta.draft.teamName}` : 'Undrafted'}</h2>
       <p>{meta.draft.pick && meta.draft.pick <= 3 ? 'A franchise pick. Everyone is watching.' : meta.draft.pick && meta.draft.pick <= 14 ? 'A lottery pick. Time to prove it.' : meta.draft.pick ? 'Plenty of teams passed. Make them regret it.' : 'Nobody called your name. Go earn it.'}</p></div>}
-    {last && world.phase === 'atDraft' && <div className="cv-recap">
+    {meta.notes.length > 0 && <p className="hunt-note" role="status">{meta.notes.join(' ')}</p>}
+    <div className="stats-view-toggle cv-tabs" role="tablist" aria-label="Your career">{tabList.map(t => <button key={t.id} role="tab" aria-selected={current === t.id} className={current === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>{t.label}</button>)}</div>
+    {current === 'season' && last && <div className="cv-recap">
       <span className="pixel-eyebrow">{fy(last.season)} · {last.teamName}{last.record ? ` · ${last.record.w}-${last.record.l}` : ''}{last.finish ? ` · ${last.finish}` : ''}</span>
       <StatLine s={last.stats} />
       {last.awards.length > 0 ? <ul className="cv-awards">{last.awards.map(x => <li key={x.label} className={['champion', 'mvp', 'fmvp'].includes(x.key) ? 'gold' : ''}>{x.label}</li>)}</ul> : <p className="hint-text">No awards this season.</p>}
       {last.playoffs && <p className="hint-text">Playoffs: {last.playoffs.gamesPlayed} games, {per(last.playoffs.points, last.playoffs.gamesPlayed)} PTS · {per(last.playoffs.oreb + last.playoffs.dreb, last.playoffs.gamesPlayed)} REB · {per(last.playoffs.ast, last.playoffs.gamesPlayed)} AST</p>}
       <Moments moments={careerMoments(meta).filter(m => m.season === last.season)} />
     </div>}
-    <div className="hunt-matchup">
-      <div className="hunt-era">
-        <span className="pixel-eyebrow">{world.phase === 'atDraft' ? 'THE OFFSEASON' : 'BEFORE THE SEASON'}</span>
-        <h3 className="hunt-subhead">Training focus <small>(pick two; they grow faster and can pass his prime)</small></h3>
-        <div className="hunt-replace">{CATEGORIES.filter(c => c.id !== 'size').map(c => <button key={c.id} aria-pressed={meta.training.includes(c.id)} className={meta.training.includes(c.id) ? 'active' : ''} disabled={busy} onClick={() => toggle(c.id)}>{c.name}</button>)}</div>
-        {offers.length > 0 && <><h3 className="hunt-subhead">Free agency: pick your team</h3>
-          <div className="hunt-roads">{offers.map((o, i) => <button key={o.teamId} className="hunt-road" disabled={busy} onClick={() => onSign(i)}><b>{o.teamName}</b><span>{OFFER_LABEL[o.kind]} · {o.years} yrs · ${(o.salary / 1_000_000).toFixed(1)}M/yr · won {o.wins} last season</span></button>)}</div>
-          <p className="hint-text">Or play on and let the market decide.</p></>}
-        {world.phase === 'atDraft' && found?.teamId && !tradeAsked && <><h3 className="hunt-subhead">Ask for a trade?</h3>
-          <div className="hunt-replace"><button disabled={busy} onClick={() => onTrade('contender')}>To a contender</button><button disabled={busy} onClick={() => onTrade('role')}>For a bigger role</button><button disabled={busy} onClick={() => onTrade('anywhere')}>Anywhere but here</button></div></>}
-        {meta.notes.length > 0 && <p className="hunt-note" role="status">{meta.notes.join(' ')}</p>}
-        <div className="contest-actions">
-          <button className="primary hunt-play" disabled={busy} onClick={onPlay}>{world.phase === 'atDraft' ? 'Play next season' : rookieYear ? 'Play rookie season' : 'Play the season'}</button>
-          <button disabled={busy} onClick={() => onAutopilot(!meta.autopilot)}>{meta.autopilot ? 'Autopilot: on' : 'Autopilot the rest'}</button>
-          {world.phase === 'atDraft' && (sure ? <button className="danger" disabled={busy} onClick={onRetire}>Yes, retire now</button> : <button className="link-button" disabled={busy} onClick={() => setSure(true)}>Retire…</button>)}
-        </div>
-      </div>
-      <div className="hunt-opponent"><h3>Ratings <small>(now / prime)</small></h3><Ratings meta={meta} /></div>
-    </div>
-    <OverallChart years={meta.years} />
-    <YearsTable years={meta.years} />
+    {current === 'plan' && <div className="cv-panel">
+      <h3 className="hunt-subhead">Training focus <small>(pick two; they grow faster and can pass his prime)</small></h3>
+      <div className="hunt-replace">{CATEGORIES.filter(c => c.id !== 'size').map(c => <button key={c.id} aria-pressed={meta.training.includes(c.id)} className={meta.training.includes(c.id) ? 'active' : ''} disabled={busy} onClick={() => toggle(c.id)}>{c.name}</button>)}</div>
+      {offers.length > 0 && <><h3 className="hunt-subhead">Free agency: pick your team</h3>
+        <div className="hunt-roads">{offers.map((o, i) => <button key={o.teamId} className="hunt-road" disabled={busy} onClick={() => onSign(i)}><b>{o.teamName}</b><span>{OFFER_LABEL[o.kind]} · {o.years} yrs · ${(o.salary / 1_000_000).toFixed(1)}M/yr · won {o.wins} last season</span></button>)}</div>
+        <p className="hint-text">Or play on and let the market decide.</p></>}
+      {offseason && found?.teamId && !tradeAsked && <><h3 className="hunt-subhead">Ask for a trade?</h3>
+        <div className="hunt-replace"><button disabled={busy} onClick={() => onTrade('contender')}>To a contender</button><button disabled={busy} onClick={() => onTrade('role')}>For a bigger role</button><button disabled={busy} onClick={() => onTrade('anywhere')}>Anywhere but here</button></div></>}
+    </div>}
+    {current === 'ratings' && <div className="cv-panel"><h3 className="hunt-subhead">Ratings <small>(now / prime; green = training focus)</small></h3><Ratings meta={meta} /></div>}
+    {current === 'history' && <><OverallChart years={meta.years} />{meta.years.length ? <YearsTable years={meta.years} /> : <p className="empty-state">No seasons played yet.</p>}</>}
   </section>;
 }
+
+type CareerTab = 'plan' | 'season' | 'ratings' | 'history';
 
 function Moments({ moments, title = 'Moments' }: { moments: Moment[]; title?: string }) {
   if (!moments.length) return null;
@@ -374,7 +405,7 @@ function Legacy({ h, meta, onNew }: { h: NbaHistory; meta: CareerMeta; onNew: ()
   const share = [`${meta.playerId}: ${meta.years.length} seasons, ${per(r.pts, g)} PPG / ${per(r.reb, g)} RPG / ${per(r.ast, g)} APG`,
     shelf.filter(([k]) => r[k] > 0).map(([k, l]) => `${r[k]}x ${l}`).join(', '),
     `Hall of Fame: ${ret.hallOfFame === 'first-ballot' ? 'first ballot' : ret.hallOfFame === 'yes' ? 'yes' : 'no'} · ${rank ? `#${rank} all time` : 'outside the all-time Top 100'} (Court Vision Career Mode)`].filter(Boolean).join('\n');
-  return <section className="hunt-stage hunt-over won">
+  return <section className="hunt-stage hunt-over won cv-page">
     <div className="cv-legacy-card"><CareerCard meta={meta} overall={meta.years.reduce((m, y) => Math.max(m, y.overall), 0)} teamName={meta.years.at(-1)?.teamName ?? ''} /></div>
     <div className="hunt-over-banner"><span className="pixel-eyebrow">RETIRED AT {ret.age} · {fy(ret.season)}</span><h2>The legacy of {meta.playerId}</h2>
       <div className="hunt-over-stats">

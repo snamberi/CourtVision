@@ -11,18 +11,19 @@ import { capFor, type Build } from '../../career/create';
  */
 
 const W = 520, H = 540;
-/** Where each category lives on the 40 x 52 sprite, and which side its callout sits on (top to bottom). */
-const SPOTS: { id: CategoryId; part: string; label: string; x: number; y: number; side: 'left' | 'right' }[] = [
-  { id: 'interiorD', label: 'Rebounding & D', part: 'Core', x: 20, y: 33, side: 'left' },
-  { id: 'body', label: 'Strength', part: 'Chest', x: 15, y: 28, side: 'left' },
-  { id: 'midRange', label: 'Mid-Range', part: 'Forearms', x: 8, y: 30, side: 'left' },
-  { id: 'threePoint', label: '3-Pointer', part: 'Shooting hand', x: 4, y: 34, side: 'left' },
-  { id: 'finishing', label: 'Finishing', part: 'Thighs', x: 15, y: 42, side: 'left' },
-  { id: 'iq', label: 'IQ & Clutch', part: 'Head', x: 18, y: 11, side: 'right' },
-  { id: 'size', label: 'Frame', part: 'Height', x: 24, y: 2, side: 'right' },
-  { id: 'perimeterD', label: 'Defense', part: 'Shoulders', x: 27, y: 26, side: 'right' },
-  { id: 'playmaking', label: 'Playmaking', part: 'Off hand', x: 34, y: 34, side: 'right' },
-  { id: 'athleticism', label: 'Speed & Hops', part: 'Legs', x: 25, y: 45, side: 'right' },
+/** Where each category lives on the 40 x 52 sprite, and which side its callout sits on (top to bottom). Callouts use
+ * the categories' own names, the same everywhere in Career Mode (the wheel, the build, the ratings). */
+const SPOTS: { id: CategoryId; part: string; x: number; y: number; side: 'left' | 'right' }[] = [
+  { id: 'interiorD', part: 'Core', x: 20, y: 33, side: 'left' },
+  { id: 'body', part: 'Chest', x: 15, y: 28, side: 'left' },
+  { id: 'midRange', part: 'Forearms', x: 8, y: 30, side: 'left' },
+  { id: 'threePoint', part: 'Shooting hand', x: 4, y: 34, side: 'left' },
+  { id: 'finishing', part: 'Thighs', x: 15, y: 42, side: 'left' },
+  { id: 'iq', part: 'Head', x: 18, y: 11, side: 'right' },
+  { id: 'size', part: 'Height', x: 24, y: 2, side: 'right' },
+  { id: 'perimeterD', part: 'Shoulders', x: 27, y: 26, side: 'right' },
+  { id: 'playmaking', part: 'Off hand', x: 34, y: 34, side: 'right' },
+  { id: 'athleticism', part: 'Legs', x: 25, y: 45, side: 'right' },
 ];
 const CARD_W = 146, CARD_H = 54, ROW = [36, 132, 228, 324, 420];
 
@@ -67,7 +68,7 @@ export function BodyBoard({ heightIn, name, cells, selected, onSelect, label }: 
     {cards.map(c => {
       const cell = cells[c.id];
       const style = { left: pct(c.left, W), top: pct(c.top, H), width: pct(CARD_W, W) };
-      const body = <><b>{c.label}</b><small>{cell.sub ?? c.part}</small><em>{cell.value}</em></>;
+      const body = <><b>{CATEGORY_BY_ID.get(c.id)!.name}</b><small>{cell.sub ?? c.part}</small><em>{cell.value}</em></>;
       const cls = `mp-callout ${c.side} ${c.id === selected ? 'on' : ''} ${cell.state ? `mp-${cell.state}` : ''}`;
       // Without a handler (or when it can't be picked) a callout is just a label.
       return onSelect && cell.state !== 'filled' && cell.state !== 'empty' && cell.state !== 'boosted'

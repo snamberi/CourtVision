@@ -1,6 +1,7 @@
 import { cloudEnabled, useAccount } from '../../cloud/account';
 import { IS_DESKTOP_BUILD } from '../../appMode';
 import { openSignIn } from '../../cloud/signIn';
+import { NameTag } from '../ProfileIcon';
 
 /** The masthead account control: "Sign in", or your GM name (opens Community). */
 export function AccountButton({ onCommunity }: { onCommunity: () => void }) {
@@ -8,7 +9,7 @@ export function AccountButton({ onCommunity }: { onCommunity: () => void }) {
   if (IS_DESKTOP_BUILD) return null;
   if (!cloudEnabled) return <button className="account-chip primary" onClick={openSignIn}>Sign in</button>;
   if (a.status === 'signedIn') return <button className="account-chip" onClick={onCommunity} title={a.sync.state === 'error' ? `Sync problem: ${a.sync.message}` : a.sync.state === 'syncing' ? 'Syncing…' : 'Your profile and the leaderboards'}>
-    <span className={`sync-dot ${a.sync.state}`} aria-hidden="true" /><b>@{a.profile?.username ?? '…'}</b>
+    <span className={`sync-dot ${a.sync.state}`} aria-hidden="true" /><b><NameTag name={`@${a.profile?.username ?? '…'}`} icon={a.profile?.icon} color={a.profile?.color} title={a.profile?.title} size={14} /></b>
   </button>;
   return <>
     <button className="account-chip" onClick={onCommunity}>Leaderboards</button>
@@ -23,7 +24,7 @@ export function MenuAccountCard({ onCommunity }: { onCommunity: () => void }) {
   if (a.status === 'signedIn') {
     const p = a.profile;
     return <section className="account-card signed-in" aria-label="Your account">
-      <div><span className="pixel-eyebrow">SIGNED IN</span><b>@{p?.username ?? '…'}</b><small>Level {p?.level ?? 1} · {p?.title ?? 'Rookie GM'} · {a.sync.state === 'error' ? 'sync problem, retrying' : a.sync.state === 'syncing' ? 'syncing…' : 'progress saved to your account'}</small></div>
+      <div><span className="pixel-eyebrow">SIGNED IN</span> <b><NameTag name={`@${p?.username ?? '…'}`} icon={p?.icon} color={p?.color} title={p?.title ?? 'Rookie GM'} /></b><small>Level {p?.level ?? 1} · {a.sync.state === 'error' ? 'sync problem, retrying' : a.sync.state === 'syncing' ? 'syncing…' : 'progress saved to your account'}</small></div>
       <button className="primary" onClick={onCommunity}>Leaderboards, ranked & PvP</button>
     </section>;
   }

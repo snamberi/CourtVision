@@ -24,6 +24,8 @@ export interface TeamInput {
   coach?: CoachTendencies;
   chemistry?: number;
   coachIdentity?: CoachIdentity; // the named head coach — their traits/relationships modify in-game outcomes
+  /** Extra decision-making/help-defense points per player for this game: a loud home arena, a strong duo (see chemistryWeb.ts). */
+  boost?: Record<PlayerId, number>;
 }
 
 export interface SimulateGameOptions {
@@ -51,7 +53,9 @@ export type LiveCoachingCommand =
   /** Double-team a player whenever he has the ball: 'hot' = the opponent's top scorer on the floor tonight. */
   | { kind: 'double'; atPossession: number; teamId: string; target: 'none' | 'hot' | PlayerId }
   /** Draw up the next shot: who takes it and what kind (applies to this team's next trip only). */
-  | { kind: 'lastShot'; atPossession: number; teamId: string; shooterId: PlayerId; shot: LastShotType };
+  | { kind: 'lastShot'; atPossession: number; teamId: string; shooterId: PlayerId; shot: LastShotType }
+  /** The halftime speech: each player's reaction, worked out when it was given (see halftime.ts), holds for the rest of the game. */
+  | { kind: 'speech'; atPossession: number; teamId: string; speech: string; boost: Record<PlayerId, number>; margin?: number };
 export const TIMEOUTS_PER_GAME = 7;
 /** A run this long (unanswered points) gives the scoring team momentum; the other bench calls timeout at RUN_TIMEOUT. */
 export const MOMENTUM_RUN = 8, RUN_TIMEOUT = 10;
@@ -160,6 +164,7 @@ export function simulateGame(opts: SimulateGameOptions): GameResult {
   // Momentum: unanswered points by one team.
   let run: { teamId: string | null; points: number } = { teamId: null, points: 0 };
   const staticCache = new Map<PlayerId, StaticOnCourt>();
+  const speechBoost: Record<string, Record<PlayerId, number>> = {};
   const hPerformance = coachPerformanceModifiers(home.coachIdentity, home.seasons);
   const aPerformance = coachPerformanceModifiers(away.coachIdentity, away.seasons);
   const coachingScale = (value: number) => 1 + (value - 1) * impact / 100;
@@ -239,6 +244,11 @@ export function simulateGame(opts: SimulateGameOptions): GameResult {
         } else if (cmd.kind === 'play') livePlay[cmd.teamId] = cmd.play === 'motion' ? undefined : { kind: cmd.play, focusId: cmd.focusId };
         else if (cmd.kind === 'double') liveDouble[cmd.teamId] = cmd.target;
         else if (cmd.kind === 'lastShot') lastShot[cmd.teamId] = { kind: 'lastShot', focusId: cmd.shooterId, shot: cmd.shot };
+        else if (cmd.kind === 'speech') {
+          speechBoost[cmd.teamId] = cmd.boost;
+          // Ratings are cached per game; the speech changes them from here on.
+          for (const s of (isHome ? home : away).seasons) staticCache.delete(s.playerId);
+        }
       }
       // AI benches call timeout to stop a big run (no random draws, so games stay reproducible).
       if (!secondChance && run.teamId && run.points >= RUN_TIMEOUT) {
@@ -270,8 +280,8 @@ export function simulateGame(opts: SimulateGameOptions): GameResult {
       const defenseSeasons = defenseIds.map((id) => (offenseIsHome ? awayBySeasonId : homeBySeasonId).get(id)!).filter(Boolean);
       if (offenseSeasons.length < 1 || defenseSeasons.length < 1) { clock -= secondsPerPossession; elapsed += secondsPerPossession; poss++; offenseIsHome = !offenseIsHome; secondChance = false; continue; }
 
-      const offenseOnCourt = offenseSeasons.map((s) => buildOnCourtPlayer(s, fatigue, customBadges, settings.sandboxMode, offenseIsHome ? homeChemMod : awayChemMod, staticCache));
-      const defenseOnCourt = defenseSeasons.map((s) => buildOnCourtPlayer(s, fatigue, customBadges, settings.sandboxMode, offenseIsHome ? awayChemMod : homeChemMod, staticCache));
+      const offenseOnCourt = offenseSeasons.map((s) => buildOnCourtPlayer(s, fatigue, customBadges, settings.sandboxMode, (offenseIsHome ? homeChemMod : awayChemMod) + ((offenseIsHome ? home : away).boost?.[s.playerId] ?? 0) + (speechBoost[offenseIsHome ? home.teamId : away.teamId]?.[s.playerId] ?? 0), staticCache));
+      const defenseOnCourt = defenseSeasons.map((s) => buildOnCourtPlayer(s, fatigue, customBadges, settings.sandboxMode, (offenseIsHome ? awayChemMod : homeChemMod) + ((offenseIsHome ? away : home).boost?.[s.playerId] ?? 0) + (speechBoost[offenseIsHome ? away.teamId : home.teamId]?.[s.playerId] ?? 0), staticCache));
       const matchups = computeMatchups(offenseOnCourt, defenseOnCourt);
 
       const isClutch = q >= numQuarters - 1 && clock < 300 && Math.abs(homeBox.points - awayBox.points) <= 10;

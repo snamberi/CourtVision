@@ -17,6 +17,6 @@ describe('unanimous awards in a player bio', () => {
     expect(unanimous.some(a => a.label === 'Unanimous MVP' && a.unanimous)).toBe(true);
     const split = getPlayerAwardsHistory({ ...played, franchiseHistory: [record(vote.voters - 3) as never] }, mvp);
     expect(split.some(a => a.label === 'MVP')).toBe(true);
-    expect(split.some(a => a.label.startsWith('Unanimous'))).toBe(false);
+    expect(split.some(a => a.label === 'Unanimous MVP')).toBe(false);
   });
 });

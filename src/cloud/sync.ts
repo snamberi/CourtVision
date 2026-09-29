@@ -1,4 +1,5 @@
 import { SYNC_KEYS, mergeStorage, mergeCareers, type ProgressBlob } from './merge';
+import { packColors } from '../profile/trophyRoad';
 import { supa, accessToken, getAccount, setAccount, refreshProfile, SIGNED_IN_EVENT } from './account';
 import { listCareers, restoreCareers } from '../career/storage';
 import { noteCareers } from '../profile/profile';
@@ -82,7 +83,8 @@ export function syncNow(): Promise<void> {
       }
       // The title and frame shown on the boards follow what is equipped here.
       const e = equipped(), prof = getAccount().profile;
-      if (prof && (prof.title !== e.title || prof.frame !== e.frame || (prof.icon ?? 'ball') !== e.icon || (prof.color ?? 'cream') !== e.color)) await updateProfile({ title: e.title, frame: e.frame, icon: e.icon, color: e.color });
+      const packed = packColors(e.color, e.titleColor);
+      if (prof && (prof.title !== e.title || prof.frame !== e.frame || (prof.icon ?? 'ball') !== e.icon || (prof.color ?? 'cream') !== packed)) await updateProfile({ title: e.title, frame: e.frame, icon: e.icon, color: packed });
       writeOwner(userId);
       setAccount({ sync: { state: 'ok', at: Date.now(), message: null } });
     } catch (e) {
@@ -111,7 +113,8 @@ export function startSync(): void {
     const p = getAccount().profile;
     if (getAccount().status !== 'signedIn' || !p) return;
     const e = equipped();
-    if (e.title !== p.title || e.frame !== p.frame || (p.icon ?? 'ball') !== e.icon || (p.color ?? 'cream') !== e.color) void updateProfile({ title: e.title, frame: e.frame, icon: e.icon, color: e.color });
+    const packed = packColors(e.color, e.titleColor);
+    if (e.title !== p.title || e.frame !== p.frame || (p.icon ?? 'ball') !== e.icon || (p.color ?? 'cream') !== packed) void updateProfile({ title: e.title, frame: e.frame, icon: e.icon, color: packed });
   });
   document.addEventListener('visibilitychange', () => { if (document.hidden && getAccount().status === 'signedIn') void syncNow(); });
 }

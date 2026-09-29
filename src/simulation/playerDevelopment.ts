@@ -62,6 +62,15 @@ function copyControl(c:CoachingControl):CoachingControl{
  return out as unknown as CoachingControl;
 }
 const cloneTraining=(p:PlayerSeason,t:LeagueTeam):PlayerTraining=>copyTraining(p.training??initialTraining(p,t));
+/** A lighter copy for practice and pre-game planning, which never touch badge progress or game evidence: those two are shared. */
+function copyTrainingLight(tr:PlayerTraining):PlayerTraining{
+ const out:PlayerTraining={...tr,plan:{...tr.plan},familiarity:{...tr.familiarity},morale:{...tr.morale},history:tr.history.slice()};
+ if(tr.project)out.project={...tr.project};
+ if(tr.promise)out.promise={...tr.promise};
+ if(tr.pendingChanges)out.pendingChanges={...tr.pendingChanges};
+ return out;
+}
+const cloneTrainingLight=(p:PlayerSeason,t:LeagueTeam):PlayerTraining=>copyTrainingLight(p.training??initialTraining(p,t));
 export function planOpportunity(p:PlayerSeason):string{
  const tr=p.training;if(!tr)return 'Choose a development plan to direct practice.';
  const mpg=tr.evidence.games?tr.evidence.minutes/tr.evidence.games:0;
@@ -151,7 +160,7 @@ function trainDay(team:LeagueTeam,league:League,date:string,gameToday:boolean):L
  const session=practiceForDate(team,date,gameToday,league.seasonPhase==='playoffs');
  const settings={...DEFAULT_COACHING_SETTINGS,...league.coachingSettings};
  const seasons=team.seasons.map(original=>{
-  const p={...original,attributes:copyAttributes(original.attributes)},tr=cloneTraining(original,team);p.training=tr;
+  const p={...original,attributes:copyAttributes(original.attributes)},tr=cloneTrainingLight(original,team);p.training=tr;
   if(tr.teamId!==team.teamId){for(const key of Object.keys(tr.familiarity))tr.familiarity[key]*=.7;tr.teamId=team.teamId;tr.plan.mentorId=undefined;tr.plan.coachId=undefined;tr.roleFamiliarity*=.75;}
   if(tr.plan.mentorId&&!team.seasons.some(s=>s.playerId===tr.plan.mentorId))tr.plan.mentorId=undefined;
   if(tr.plan.coachId&&!staffMembers(team).some(s=>s.coach.coachId===tr.plan.coachId))tr.plan.coachId=undefined;
@@ -208,13 +217,13 @@ export function prepareCoachingForGame(raw:League,teamIds:string[],date:string):
  league=autoManageStaff(league,teamIds);
  const teams=league.teams.map(original=>{
   if(!teamIds.includes(original.teamId))return original;
-  let t={...original,coachingControl:copyControl(original.coachingControl??newControl()),seasons:original.seasons.map(p=>{if(!p.training)return {...p,training:initialTraining(p,original)};if(p.training.teamId===original.teamId)return p;const tr=cloneTraining(p,original);for(const key of Object.keys(tr.familiarity))tr.familiarity[key]*=.7;tr.teamId=original.teamId;tr.plan.mentorId=undefined;tr.plan.coachId=undefined;tr.roleFamiliarity*=.75;return {...p,training:tr};})};
+  let t={...original,coachingControl:copyControl(original.coachingControl??newControl()),seasons:original.seasons.map(p=>{if(!p.training)return {...p,training:initialTraining(p,original)};if(p.training.teamId===original.teamId)return p;const tr=cloneTrainingLight(p,original);for(const key of Object.keys(tr.familiarity))tr.familiarity[key]*=.7;tr.teamId=original.teamId;tr.plan.mentorId=undefined;tr.plan.coachId=undefined;tr.roleFamiliarity*=.75;return {...p,training:tr};})};
   const roster=t.seasons.map(p=>p.playerId).sort().join('|');
   const c=t.coachingControl;
   if(c.developmentAuto&&(c.lastRoster!==roster||c.practiceDays-(c.lastAIReview??-28)>=28)){
-   t={...t,seasons:t.seasons.map(p=>{const tr=cloneTraining(p,t);tr.plan={...recommendedPlan(p,t.coachIdentity?.profile?.attributes.talentEvaluation??50),mentorId:tr.plan.mentorId};if(p.age>=31&&tr.workload>55)tr.plan.intensity='light';return {...p,training:tr}})};
+   t={...t,seasons:t.seasons.map(p=>{const tr=cloneTrainingLight(p,t);tr.plan={...recommendedPlan(p,t.coachIdentity?.profile?.attributes.talentEvaluation??50),mentorId:tr.plan.mentorId};if(p.age>=31&&tr.workload>55)tr.plan.intensity='light';return {...p,training:tr}})};
    const mentorLoads=new Map<string,number>();
-   t={...t,seasons:t.seasons.map(p=>{const tr=cloneTraining(p,t);if(p.age<=24){const mentors=t.seasons.filter(m=>m.age>=27&&m.age>=p.age+4&&(mentorLoads.get(m.playerId)??0)<2).sort((a,b)=>(b.attributes.mental.leadership+b.development.workEthic)-(a.attributes.mental.leadership+a.development.workEthic));const mentor=mentors[0];tr.plan.mentorId=mentor?.playerId;if(mentor)mentorLoads.set(mentor.playerId,(mentorLoads.get(mentor.playerId)??0)+1);
+   t={...t,seasons:t.seasons.map(p=>{const tr=cloneTrainingLight(p,t);if(p.age<=24){const mentors=t.seasons.filter(m=>m.age>=27&&m.age>=p.age+4&&(mentorLoads.get(m.playerId)??0)<2).sort((a,b)=>(b.attributes.mental.leadership+b.development.workEthic)-(a.attributes.mental.leadership+a.development.workEthic));const mentor=mentors[0];tr.plan.mentorId=mentor?.playerId;if(mentor)mentorLoads.set(mentor.playerId,(mentorLoads.get(mentor.playerId)??0)+1);
     if(!tr.project){const key:ProjectKey=tr.plan.targetRole==='movement shooter'?'corner-three':tr.plan.targetRole==='interior anchor'?'interior-strength':tr.plan.targetRole==='lead guard'?'secure-handle':'secondary-playmaker';tr.project={key,progress:0,started:date,days:0,status:'active',obstacle:''};}
    }return {...p,training:tr};})};
    if(t.teamId!==league.coachingUserTeamId){const avgAge=t.seasons.reduce((n,p)=>n+p.age,0)/Math.max(1,t.seasons.length);c.direction=avgAge<26?'rebuild':'contend';t={...t,coach:{...defaultCoachTendencies(),...t.coach,rotationPolicy:{starters:[],closing:[],smallBall:[],defensive:[],allowStarterChanges:true,allowOverrides:true,...t.coach?.rotationPolicy,mode:c.direction==='rebuild'?'development':'playoff'}}};}
@@ -263,7 +272,7 @@ export function finishCoachingGame(league:League,result:GameResult,playoffs=fals
     if(tr.promise){tr.promise.remaining--;if(tr.promise.kind==='rotation'?minutes>=12:minutes<=30)tr.promise.achieved++;
      if(tr.promise.remaining<=0){const met=tr.promise.achieved>=tr.promise.required;tr.morale.promises=clamp(tr.morale.promises+(met?8:-8-tr.brokenPromises*3));tr.morale.trust=clamp(tr.morale.trust+(met?4:-6-tr.brokenPromises*2));if(!met)tr.brokenPromises++;tr.history.push({date,season:p.season,kind:'conversation',text:`${met?'Kept':'Broke'} ${tr.promise.kind} promise: ${tr.promise.achieved}/${tr.promise.required} qualifying games.`});tr.promise=undefined;}}
    }
-   if(minutes>=8){let earnedToday=false;const capacity=badgeCapacity(calculateOverall(p));for(const badge of NORMAL_BADGES){const requirement=badgeRequirements(p,badge.id);const old=tr.badgeProgress[badge.id]??{credit:0,qualifiedGames:0,dryGames:0,stage:'Developing' as const,reason:requirement.description};
+   if(minutes>=8){let earnedToday=false;const capacity=badgeCapacity(calculateOverall(p));const ctx=badgeContext(p,attributeValue);for(const badge of NORMAL_BADGES){const requirement=evaluateBadgeRule(badge.id,ctx);const old=tr.badgeProgress[badge.id]??{credit:0,qualifiedGames:0,dryGames:0,stage:'Developing' as const,reason:requirement.description};
      const relevant=Object.keys(badge.effect.attributeModifiers??{}).some(k=>(FOCUS_SKILLS[tr.plan.primary] as readonly string[]).includes(k));
      const rule=requirement.rule;
      if(requirement.eligible){old.qualifiedGames++;old.dryGames=0;old.credit=clamp(old.credit+(rule?.rate??1.4)+(relevant?.4:0)+mentorshipQuality(p,team)*.3);}else if(tr.evidence.games>=25){old.dryGames++;if(old.dryGames>15)old.credit=clamp(old.credit-1);}

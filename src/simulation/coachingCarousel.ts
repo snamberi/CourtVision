@@ -46,7 +46,8 @@ export function hotSeats(league: League, userTeamId: string | null, lastSeason?:
   const out: HotSeat[] = [];
   for (const t of league.teams) {
     const coach = t.coachIdentity;
-    if (!coach || t.teamId === userTeamId) continue;
+    // An owner hires and fires his own coach (Owner's Box).
+    if (!coach || t.teamId === userTeamId || t.teamId === league.owner?.teamId) continue;
     const row = lastSeason?.find(s => s.teamId === t.teamId) ?? standings.get(t.teamId);
     const games = row ? row.wins + row.losses : 0;
     if (games < 10) continue;

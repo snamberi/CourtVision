@@ -23,7 +23,8 @@ describe('sideline coaching', () => {
 
   it('hunting threes raises the three-point rate', () => {
     let base = 0, hunt = 0, fgaB = 0, fgaH = 0;
-    for (const seed of [7, 8, 9, 10]) {
+    // Sixteen games: over four, shot selection noise can hide the effect.
+    for (let seed = 1; seed <= 16; seed++) {
       const b = sim(seed), h = sim(seed, [{ kind: 'play', atPossession: 0, teamId: 'H', play: 'threes' }]);
       for (const l of Object.values(b.homeBox.players)) { base += l.tpa; fgaB += l.fga; }
       for (const l of Object.values(h.homeBox.players)) { hunt += l.tpa; fgaH += l.fga; }

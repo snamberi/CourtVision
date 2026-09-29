@@ -60,6 +60,7 @@ function describeCommand(c: LiveCoachingCommand): string {
     case 'play': return `Play → ${PLAYS.find(p => p.id === c.play)?.label.replace('…', '')}${c.focusId ? ` ${shortName(c.focusId)}` : ''}`;
     case 'double': return `Double → ${c.target === 'none' ? 'nobody' : c.target === 'hot' ? 'the hot hand' : shortName(c.target)}`;
     case 'lastShot': return `Last shot → ${shortName(c.shooterId)}, ${SHOTS.find(s => s.id === c.shot)?.label.toLowerCase()}`;
+    case 'speech': return `Halftime speech → ${c.speech}`;
   }
 }
 export function CoachPanel({ coaching, team, opponent, run, lastShotNow, atPossession, finished, onDecision, clockLabel }: { coaching: CoachingProps; team: LiveTeam; opponent?: LiveTeam; run?: { teamId: string | null; points: number }; lastShotNow?: boolean; atPossession: number; finished: boolean; onDecision: () => void; clockLabel: string }) {

@@ -11,6 +11,7 @@ import { tradeVerdict, TradePlayerCompareTable, ImprovementMeter } from './gmSha
 import { PlayerNameTag } from './PlayerAvatar';
 import { TradeScale } from './trade/TradeScale';
 import { counterOffer, aiAccepts, recordTalkRound, talksClosed, talkState, PATIENCE, type Counter } from '../simulation/tradeTalks';
+import { rivalOf, rivalRefuses } from '../simulation/gmRivals';
 
 interface Props {
   sandboxMode?: boolean;
@@ -77,7 +78,7 @@ export function TradePage({ league, extras, controlledTeamId, onChange, onToast,
   const propose = () => {
     if (!canManageA) { setMessage('You can only propose trades involving your own team.'); return; }
     const proposal = { teamAId, teamBId, playersFromA: fromA, playersFromB: fromB, picksFromA, picksFromB };
-    if (respondingTeam && talksClosed(league, extras, respondingTeam.teamId)) { setMessage(`${respondingTeam.name} have broken off talks for now. Try again in a few game days.`); return; }
+    if (respondingTeam && talksClosed(league, extras, respondingTeam.teamId)) { const gm = rivalOf(league, respondingTeam.teamId); setMessage(gm && rivalRefuses(league, respondingTeam.teamId) ? `${gm.name}, GM of the ${respondingTeam.name}, won't take your calls. He still hasn't forgotten your last deal (see GM Rivals).` : `${respondingTeam.name} have broken off talks for now. Try again in a few game days.`); return; }
     const validation = validateTrade(league, extras, proposal);
     if (!validation.valid) {
       // An AI front office answers a lowball with a counter rather than a flat no, when one exists.

@@ -15,6 +15,7 @@ interface Props {
 const hints = (e: PressEffects) => [
   e.team ? `Locker room ${e.team > 0 ? '▲' : '▼'}` : '', e.player ? `Player ${e.player > 0 ? '▲' : '▼'}` : '',
   e.owner ? `Owner ${e.owner > 0 ? '▲' : '▼'}` : '', e.fans ? `Fans ${e.fans > 0 ? '▲' : '▼'}` : '',
+  e.hype ? `Hype +${e.hype}${e.hype >= 15 ? ' (bigger swing: win or lose)' : ''}` : '',
 ].filter(Boolean).join(' · ');
 
 /** Press conferences waiting for you, the fans' mood, and this week's Around the League. */
@@ -32,7 +33,8 @@ export function PressRoomPage({ league, extras, controlledTeamId, onChange }: Pr
     {!controlledTeamId ? <p className="empty-state">Press conferences follow the team you run.</p> : <section>
       <h3>Podium</h3>
       {state.pending.length === 0 && <p className="hint-text">No reporters waiting. Big wins, bad losses, streaks, huge nights, trade requests and playoff series bring them out.</p>}
-      {state.pending.map(c => <article key={c.id} className="press-card">
+      {state.pending.map(c => <article key={c.id} className={`press-card${c.kind === 'rivalry' ? ' press-card-rivalry' : ''}`}>
+        {c.kind === 'rivalry' && <span className="pixel-eyebrow"><PixelIcon name="flame" size={12} /> RIVALRY WEEK</span>}
         <p className="press-question">🎤 “<TeamText text={c.question} />”</p>
         <div className="press-answers">{c.answers.map(a => <button key={a.id} onClick={() => onChange(answerPress(league, c.id, a.id, controlledTeamId))}>
           <b>{a.tone}</b><span>“{a.text}”</span><small>{hints(a.effects)}</small></button>)}</div>

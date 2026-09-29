@@ -37,7 +37,7 @@ describe('offensive rebounds keep possession', () => {
         const oreb = Object.values(box.players).reduce((n, l) => n + l.oreb, 0);
         const offensiveBoards = g.possessionLog.filter(p => p.offenseTeamId === teamId && p.debug?.offensiveRebound === true);
         // Team rebounds (out of bounds, tipped around) keep possession but credit no player, as in official stats.
-        const credited = offensiveBoards.filter(p => !p.events.includes('Team rebound')).length;
+        const credited = offensiveBoards.filter(p => !p.events.some(e => e === 'Team rebound' || e.startsWith('Out of bounds'))).length;
         expect(oreb).toBe(credited);
         creditedAll += credited; boardsAll += offensiveBoards.length;
       }

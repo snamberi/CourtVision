@@ -1,10 +1,12 @@
+import { ownerSeasonEnd } from './ownerBox';
 import { rollBusinessSeason } from './business';
+import { withLegacySons } from './family';
 import { enforceSticky, isStuck } from './sticky';
 import { lotteryResult, consensusBoard } from './draftNight';
 import { extensionTakesOver, markContractYears } from './extensions';
 import { archiveRivalries } from './rivalry';
 import { setupCup, cupArchive } from './cup';
-import { reviewSeason, ensureSeasonGoals, type OwnerReview } from './frontOffice';
+import { reviewSeason, ensureSeasonGoals, strengthRank, type OwnerReview } from './frontOffice';
 import { compactBracket, conferenceSeeds } from './almanac';
 import { primaryPosition } from './teamStatus';
 import { seasonAdvancedWithStints, regularSeasonContext, type PlayerAdvanced, type SeasonContext } from './advancedStats';
@@ -222,6 +224,8 @@ export function beginNewSeasonRoster(
   // The owner reviews the season as it ended, before aging and retirements change the roster.
   const foReview = reviewSeason({ league, extras, teamSeasons, awards: seasonAwards, season: previousSeason, nextSeason: newSeason,
     championTeamId: championship?.teamId ?? null, fmvpId: championship?.fmvp?.playerId ?? null });
+  // Where the owner's roster ranked going into the offseason (the GM's report card compares it to the record).
+  const ownerExpected = league.owner ? strengthRank(league, league.owner.teamId) : undefined;
   league = offseasonTrainingCamp(league);
 
   const retiredPlayerIds: string[] = [];
@@ -354,7 +358,7 @@ export function beginNewSeasonRoster(
   retiredPlayerIds.push(...faResult.retired.map(r => r.playerId));
   newlyRetired.push(...faResult.retired);
 
-  const generateClass = () => generateDraftClass(pickDraftClassSize(teams.length, rng), Math.floor(rng.next() * 1_000_000), newSeason, collectPlayerIds(league, extras));
+  const generateClass = () => { const size = pickDraftClassSize(teams.length, rng), seed = Math.floor(rng.next() * 1_000_000); return withLegacySons(generateDraftClass(size, seed, newSeason, collectPlayerIds(league, extras)), { ...league, retiredPlayers: [...(league.retiredPlayers ?? []), ...newlyRetired] }, seed); };
   // Historical leagues: this offseason's real draft class, and real players whose NBA debut is this season.
   let historical = league.historical;
   let draftClass: ReturnType<typeof generateDraftClass>;
@@ -440,8 +444,9 @@ export function beginNewSeasonRoster(
   const settled = { ...stuck, league: markContractYears(stuck.league, stuck.extras.contracts) };
   return {
     // Coaches age and contracts run out, then AI owners review their head coaches (the coaching carousel).
-    league: offseasonCarousel(advanceStaffSeason(settled.league, previousSeason, championship?.teamId ?? undefined, seasonAwards.coy?.coachName ?? undefined), previousSeason, userTeamId,
-      new Map(settled.league.teams.map(t => [t.teamId, t.coachIdentity?.coachId]))),
+    // The Owner's Box books the season (profit, the GM's report card) and the league office sets its agenda.
+    league: ownerSeasonEnd(offseasonCarousel(advanceStaffSeason(settled.league, previousSeason, championship?.teamId ?? undefined, seasonAwards.coy?.coachName ?? undefined), previousSeason, userTeamId,
+      new Map(settled.league.teams.map(t => [t.teamId, t.coachIdentity?.coachId]))), settled.extras, teamSeasons, previousSeason, ownerExpected),
     extras: settled.extras,
     summary: {
       previousSeason,

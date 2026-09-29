@@ -1,4 +1,5 @@
 import { enforceSticky, stickyTradeProblems, isStuck } from './sticky';
+import { rememberRivalTrade } from './gmRivals';
 import { consensusBoard, pickReaction } from './draftNight';
 import { formatSeasonYear } from './calendar';
 import { withGrudge } from './personality';
@@ -126,6 +127,8 @@ export interface GMLeagueExtras {
   picksOnBlock?: string[]; // FutureDraftPick ids any team has marked as available for trade discussion
   /** Your scouting department's scouts, assignments and looks for the class on the board (see scoutDept.ts). */
   scoutDept?: import('./scoutDept').ScoutDept;
+  /** Draft combine mini-games your team ran (see scouting.ts): per team, per prospect, each drill's score. */
+  combineDrills?: Record<TeamId, Record<PlayerId, import('./scouting').DrillScores>>;
   draftWorkouts?: Record<TeamId, PlayerId[]>; // pre-draft workout invites per team (see scouting.ts); stale ids are ignored
   /** This offseason's contract talks with agents, keyed `${teamId}|${playerId}` (see agents.ts). */
   negotiations?: Record<string, import('./agents').Negotiation>;
@@ -400,6 +403,13 @@ export function evaluateTradeSides(league: League, extras: GMLeagueExtras, propo
 /** Executes a trade unconditionally — call validateTrade first unless sandbox mode intentionally allows an invalid trade. */
 export function executeTrade(league: League, extras: GMLeagueExtras, proposal: TradeProposal): { league: League; extras: GMLeagueExtras } {
   if (!validateTradeAssets(league, extras, proposal).valid) return { league, extras };
+  // GM rivals remember deals with you (see gmRivals.ts): what each side took home, valued before the trade.
+  const rivalInvolved = league.gmRivals?.rivals.some(r => r.teamId === proposal.teamAId || r.teamId === proposal.teamBId);
+  const received = rivalInvolved ? {
+    a: tradePackageValue(league, extras, proposal.teamBId, proposal.playersFromB, proposal.picksFromB, proposal.currentPicksFromB),
+    b: tradePackageValue(league, extras, proposal.teamAId, proposal.playersFromA, proposal.picksFromA, proposal.currentPicksFromA),
+  } : null;
+  const traded = rivalInvolved ? new Map(league.teams.flatMap(t => t.seasons).map(s => [s.playerId, s])) : null;
   const teamAName = league.teams.find((t) => t.teamId === proposal.teamAId)?.name ?? proposal.teamAId;
   const teamBName = league.teams.find((t) => t.teamId === proposal.teamBId)?.name ?? proposal.teamBId;
   const teams = league.teams.map((t) => {
@@ -440,7 +450,7 @@ export function executeTrade(league: League, extras: GMLeagueExtras, proposal: T
     draftOrder: extras.draftDayOpen ? draftOrder : extras.draftOrder,
     tradeBlock: extras.tradeBlock.filter(id => !movedPlayers.has(id)),
   });
-  return { league: settled.league, extras: settled.extras };
+  return { league: received && traded ? rememberRivalTrade(settled.league, proposal, received, traded) : settled.league, extras: settled.extras };
 }
 
 // ---- Free agency ----

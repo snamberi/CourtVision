@@ -1,6 +1,7 @@
 import type { PlayerSeason } from '../simulation/types';
 import type { CoachTendencies } from '../simulation/league';
 import { defaultCoachTendencies } from '../simulation/league';
+import { DEFAULT_LEAGUE_RULES, type LeagueRulesSettings } from '../simulation/leagueRules';
 
 /*
  * Era rules for League Hunt games. Both teams play under the rules of the stop's era, so the same squad plays
@@ -35,6 +36,18 @@ export function underEra(p: PlayerSeason, era: HuntEra): PlayerSeason {
   const offense = era.handCheck ? { ...o, ballHandling: clamp(o.ballHandling - 3), speedWithBall: clamp(o.speedWithBall - 2) } : o;
   const defense = era.handCheck ? { ...d, perimeterDefense: clamp(d.perimeterDefense + 4) } : d;
   return { ...p, tendencies: { ...p.tendencies, shot }, attributes: { ...p.attributes, offense, defense } };
+}
+
+/*
+ * Real team-seasons are rosters of stars and starters, so under the main game's scoring they shoot far better than a
+ * whole league does and games ran to ~250 points. Each era's shot-making is scaled so games land near the real
+ * points per team of the time (60s ~115, 70s ~106, 80s ~108, 90s ~100, 00s ~98, 10s ~103, today ~113).
+ */
+const ERA_SCORING: Record<string, number> = { '60s': 0.9, '70s': 0.88, '80s': 0.86, '90s': 0.91, '00s': 0.86, '10s': 0.85, '20s': 0.91 };
+
+/** League rules for a game under an era's rules (League Hunt, Dream Matchup, PvP, Legend Challenges). */
+export function eraRules(era: HuntEra): LeagueRulesSettings {
+  return { ...DEFAULT_LEAGUE_RULES, offensiveEfficiency: DEFAULT_LEAGUE_RULES.offensiveEfficiency * (ERA_SCORING[era.id] ?? 0.88) };
 }
 
 /** The coaching the era played with. */

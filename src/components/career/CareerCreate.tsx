@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { NbaHistory } from '../../history/nbaHistoryData';
 import { cardPool, seasonLabel, RARITY_LABEL } from '../../hunt/cards';
 import { CATEGORIES, categoryLabel, categoryScore, feetInches, type CategoryId, type CategoryValues } from '../../career/categories';
-import { eliteRanks, newWheel, spin, respin, move, take, landed, neighbour, wheelCategories, primeBoost, mustTake, canSpin, isComplete, openWheels, luckyLeft, boostLeft, REEL_LENGTH, LUCK, STAR_BONUS, ELITE_MAX, SURGE_SKILLS, type WheelState, type Wheel } from '../../career/wheel';
+import { eliteRanks, newWheel, spin, respin, move, take, landed, neighbour, wheelCategories, primeBoost, mustTake, canSpin, isComplete, openWheels, luckyLeft, boostLeft, REEL_LENGTH, STAR_BONUS, ELITE_MAX, SURGE_SKILLS, type WheelState, type Wheel } from '../../career/wheel';
 import {
-  READINESS, suggestPosition, primeOverall, buildPlayer, startProgress, primeFromBuild, capFor, buildSpent, rollPotential, RATING_CATEGORIES, BUILD_MIN, START_AGE, POTENTIAL_REROLLS,
+  READINESS, suggestPosition, primeOverall, projectedPrime, buildPlayer, startProgress, primeFromBuild, capFor, buildSpent, rollPotential, RATING_CATEGORIES, BUILD_MIN, START_AGE, POTENTIAL_REROLLS,
   type Prime, type Readiness, type Position, type Build,
 } from '../../career/create';
 import { MyPlayerBoard, BodyBoard, type BoardCell } from './MyPlayerBoard';
@@ -12,21 +12,29 @@ import { calculateOverall } from '../../simulation/engine/overall';
 import { PlayerAvatar } from '../PlayerAvatar';
 
 const SLICE = 132;
+/** Slices the strip travels before it stops, and slices kept after the stop (so the right side is never empty). */
+const LEAD = 40, TAIL = 16, START = 6;
 /** Jersey colour on the wheel by rarity, so a Star stands out as the strip flies past. */
 const SLICE_KIT: Record<string, string> = { common: '#5b6b82', rare: '#2f6fb8', epic: '#7e4fc9', legendary: '#d99a1e' };
+const reducedMotion = () => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
-/** One wheel: a strip of real players that spins to a stop; the slices either side are the Move Left/Right options. */
-function Reel({ h, wheel, spinKey }: { h: NbaHistory; wheel: Wheel; spinKey: number }) {
+/**
+ * One wheel: a strip of real players that spins to a stop; the slices either side are the Move Left/Right options.
+ * The strip is built around where it stops (LEAD slices of travel, TAIL after), so it is full on both sides from the
+ * first frame to the last. It is keyed by the spin, so a Move only slides it one slice. `onSettled` fires when it stops.
+ */
+function Reel({ h, wheel, onSettled }: { h: NbaHistory; wheel: Wheel; onSettled: () => void }) {
   const pool = cardPool(h);
-  // Copies of the reel so it can travel a long way before stopping on the third copy, with a full copy after it so
-  // the wheel never runs out of slices to the right of where it stops.
-  const strip = [...wheel.reel, ...wheel.reel, ...wheel.reel, ...wheel.reel];
-  const target = REEL_LENGTH * 2 + wheel.stop;
-  const to = -(target * SLICE) + SLICE * 3;
+  const [stop0] = useState(wheel.stop);
+  const shift = ((wheel.stop - stop0 + REEL_LENGTH + 12) % REEL_LENGTH) - 12;
+  const at = (i: number) => wheel.reel[(((stop0 - LEAD + i) % REEL_LENGTH) + REEL_LENGTH) % REEL_LENGTH];
+  const strip = Array.from({ length: LEAD + 1 + TAIL }, (_, i) => at(i));
+  const target = LEAD + shift;
   const hit = pool.byId.get(landed(wheel))!;
-  return <div className={`cv-reel ${wheel.lucky ? 'lucky' : ''}`} aria-label={`Stopped on ${hit.name}`}>
-    <div key={`m${spinKey}`} className={`cv-reel-marker rarity-${hit.rarity}`} aria-hidden="true" />
-    <div key={spinKey} className="cv-reel-strip" style={{ transform: `translateX(${to}px)`, ['--from' as string]: `${SLICE * 3}px` }}>
+  useEffect(() => { if (reducedMotion()) onSettled(); }, [onSettled]);
+  return <div className={`cv-reel ${wheel.lucky ? 'lucky' : ''}`} aria-label="The wheel">
+    <div className={`cv-reel-marker rarity-${hit.rarity}`} aria-hidden="true" />
+    <div className="cv-reel-strip" onAnimationEnd={e => { if (e.animationName === 'cv-spin') onSettled(); }} style={{ transform: `translateX(${-(target * SLICE + SLICE / 2)}px)`, ['--from' as string]: `${-(START * SLICE + SLICE / 2)}px` }}>
       {strip.map((id, i) => { const c = pool.byId.get(id)!; return <div key={i} className={`cv-slice rarity-${c.rarity} ${i === target ? 'on' : ''}`}>
         <PlayerAvatar playerId={c.name} mode="portrait" size={30} primaryColor={SLICE_KIT[c.rarity]} secondaryColor="#f4f0e6" />
         <span><b>{c.name}</b><small>'{String(c.end).slice(2)} · {c.ovr}</small></span>
@@ -45,7 +53,7 @@ function Landed({ h, s, wheel, index, onTake, onBoost }: { h: NbaHistory; s: Whe
   const star = c.rarity === 'legendary';
   const boost = wheel.boost;
   const raised = (cat: CategoryId) => !!boost && Object.keys(cats[cat]).some(k => boost.raised.includes(k));
-  const canBoost = !used && !boost && mustTake(s) && boostLeft(s) > 0 && luckyLeft(s) > 0;
+  const canBoost = !used && !boost && mustTake(s) && boostLeft(s) > 0;
   return <div className={`cv-landed rarity-${c.rarity} ${used ? 'used' : ''}`}>
     {star && !used && <div className="cv-star-burst" aria-hidden="true">STAR!</div>}
     <div className="cv-landed-head"><PlayerAvatar playerId={c.name} primaryColor={SLICE_KIT[c.rarity]} secondaryColor="#f4f0e6" size={56} pose={star ? 'raise' : 'stand'} />
@@ -53,8 +61,8 @@ function Landed({ h, s, wheel, index, onTake, onBoost }: { h: NbaHistory; s: Whe
     {boost
       ? <p className="hint-text">{boost.mode === 'prime' ? `In his absolute prime: ${boost.raised.length} skills at the best he ever had them.` : `Already at his peak: ${boost.raised.length} skills up 10-20%.`} Height never changes; nothing passes {ELITE_MAX}.</p>
       : !used && <button className="cv-boost-btn" disabled={!canBoost} onClick={onBoost}
-        title={boostLeft(s) <= 0 ? 'Prime Boost used' : luckyLeft(s) <= 0 ? 'Needs a Lucky Spin' : `His absolute prime (or ${SURGE_SKILLS} skills up 10-20% if he is already there). Uses a Lucky Spin.`}>
-        Prime Boost {boostLeft(s) > 0 ? '(uses a Lucky Spin)' : '(used)'}</button>}
+        title={boostLeft(s) <= 0 ? 'Prime Boost used' : `His absolute prime (or ${SURGE_SKILLS} skills up 10-20% if he is already there). One, free.`}>
+        Prime Boost {boostLeft(s) > 0 ? '(1 free)' : '(used)'}</button>}
     <ul className="cv-cats">{CATEGORIES.map(cat => { const taken = s.picks[cat.id]; return <li key={cat.id}>
       <span>{cat.name}{elite?.[cat.id] ? <small className="cv-elite-tag"> #{elite[cat.id]} ever</small> : null}</span><b className={`${categoryScore(cats[cat.id]) > 99 ? 'cv-elite' : ''} ${raised(cat.id) ? 'cv-raised' : ''}`}>{categoryLabel(cat.id, cats[cat.id])}</b>
       {taken ? <small>{taken.cardId === id ? 'Taken' : 'Filled'}</small> : <button className="cv-take" disabled={used} onClick={() => onTake(cat.id)}>Take</button>}
@@ -66,10 +74,12 @@ function Landed({ h, s, wheel, index, onTake, onBoost }: { h: NbaHistory; s: Whe
  * Your build so far on the same pixel body board as MyPlayer: each category filled from the wheel shows its rating and
  * who it came from. With one wheel waiting, the open callouts show what you would take and take it when clicked.
  */
-function WheelBoard({ h, s, onTake }: { h: NbaHistory; s: WheelState; onTake: (cat: CategoryId) => void }) {
+function WheelBoard({ h, s, settled, onTake }: { h: NbaHistory; s: WheelState; settled: boolean; onTake: (cat: CategoryId) => void }) {
   const pool = cardPool(h);
   const filled = CATEGORIES.filter(c => s.picks[c.id]).length;
-  const offer = mustTake(s) && s.current!.length === 1 ? s.current![0] : null;
+  const offer = settled && mustTake(s) && s.current!.length === 1 ? s.current![0] : null;
+  const partial = Object.fromEntries(CATEGORIES.filter(c => s.picks[c.id]).map(c => [c.id, s.picks[c.id]!.values])) as Partial<Prime>;
+  const est = projectedPrime(partial), estPos = suggestPosition(est), estOvr = primeOverall(est, 'balanced', estPos);
   const offered = offer ? wheelCategories(h, offer) : null;
   const heightIn = Math.round(s.picks.size?.values['physical.heightInches'] ?? 79);
   // The callouts are narrow: height alone for the frame (the list above shows the span).
@@ -84,36 +94,54 @@ function WheelBoard({ h, s, onTake }: { h: NbaHistory; s: WheelState; onTake: (c
     return [cat.id, { value: '—', state: 'empty' }];
   })) as Record<CategoryId, BoardCell>;
   return <div className="cv-board-wrap"><h3><span>Your player</span><span>{filled}/10</span></h3>
+    <div className="cv-prime-calc" aria-live="polite"><div><small>PRIME OVR</small><b>{estOvr}</b></div><div><small>POSITION</small><b>{estPos}</b></div>
+      <span>{filled === CATEGORIES.length ? 'His overall at his prime (balanced readiness).' : `Projected at his prime: the ${CATEGORIES.length - filled} empty categor${CATEGORIES.length - filled === 1 ? 'y counts' : 'ies count'} as plain 65s until you fill ${CATEGORIES.length - filled === 1 ? 'it' : 'them'}.`}</span></div>
     <BodyBoard heightIn={heightIn} name="" cells={cells} onSelect={offered ? onTake : undefined} label="Your player's build from the wheel" /></div>;
 }
 
 export function WheelBuilder({ h, seed, onDone, onBack }: { h: NbaHistory; seed: number; onDone: (prime: Prime) => void; onBack: () => void }) {
   const [s, setS] = useState<WheelState>(() => newWheel(seed));
+  /** The spin whose wheels have stopped: nothing about where they landed shows before that. */
+  const [settledSpin, setSettledSpin] = useState(0);
+  const settle = useCallback((spinCount: number) => setSettledSpin(n => Math.max(n, spinCount)), []);
   const done = isComplete(s);
   const single = s.current?.length === 1;
   const pool = cardPool(h);
   const w0 = s.current?.[0];
-  return <section className="hunt-stage">
-    <div className="hunt-stage-head"><div><span className="pixel-eyebrow">RANDOM MODE · SPIN {s.spinCount}</span><h2>{done ? 'Your player is built' : mustTake(s) ? 'Take one category' : 'Spin the wheel'}</h2></div>
-      <div className="cv-tools">
-        <button className="primary" disabled={!canSpin(s)} onClick={() => setS(spin(h, s))}>Spin</button>
-        <button className="cv-lucky-btn" disabled={!canSpin(s) || luckyLeft(s) <= 0} onClick={() => setS(spin(h, s, false, true))} title={`Stars and Greats come up ${LUCK}x as often`}>Lucky Spin ({luckyLeft(s)})</button>
-        <button disabled={!canSpin(s) || !s.triple} onClick={() => setS(spin(h, s, true))} title="Three wheels at once; take from any of them">Triple Spin {s.triple ? '(1)' : '(used)'}</button>
-        <button disabled={!mustTake(s) || s.respins <= 0 || !!s.current?.some(w => w.boost)}onClick={() => setS(respin(h, s))} title="Spin again without taking anything">Respin ({s.respins})</button>
-        <button disabled={!mustTake(s) || !single || !s.moves.left || !!w0?.boost}onClick={() => setS(move(s, 'left'))} title={w0 ? `Move to ${pool.byId.get(neighbour(w0, 'left'))?.name}` : ''}>← Move left</button>
-        <button disabled={!mustTake(s) || !single || !s.moves.right || !!w0?.boost}onClick={() => setS(move(s, 'right'))} title={w0 ? `Move to ${pool.byId.get(neighbour(w0, 'right'))?.name}` : ''}>Move right →</button>
-      </div></div>
-    <p className="hint-text">Every player in NBA history is on the wheel once, at his best season; the odds lean a little toward good players (Star about 7%, Great about 18%), and among Stars the all-time greats come up most. Take one category from the player it stops on: you get his exact ratings as your player's prime, +{STAR_BONUS} on every skill from a Star. The best ever at a skill go past 99, up to 120. Two lucky spins ({LUCK}x the Stars and Greats), Move Left and Move Right once each, two respins, and one triple spin (take one category from each of the three). One Prime Boost (it uses a Lucky Spin) puts the player you landed on in his absolute prime, or raises six of his skills 10-20% if he is already there; never his height, never past {ELITE_MAX}.</p>
-    {s.current?.[0]?.lucky && <p className="cv-lucky-note">LUCKY SPIN · Stars and Greats {LUCK}x as likely</p>}
-    {s.current ? <div className="cv-wheels">{s.current.map((w, i) => <div key={i} className="cv-wheel">
-      <Reel h={h} wheel={w} spinKey={s.spinCount * 10 + i} />
-      <Landed h={h} s={s} wheel={w} index={i} onTake={cat => setS(take(h, s, i, cat))} onBoost={() => setS(primeBoost(h, s, i))} />
-    </div>)}</div> : !done && <p className="empty-state">Spin to start. Ten categories to fill.</p>}
-    {s.current && openWheels(s).length > 0 && s.takenFrom.length > 0 && !done && <p className="hint-text">You can take from the other wheels too, or spin again.</p>}
+  const settled = !s.current || settledSpin >= s.spinCount;
+  const busy = !settled;
+  return <section className="hunt-stage cv-builder">
+    <CreateSteps step={0} />
+    <div className="cv-builder-head"><span className="pixel-eyebrow">RANDOM MODE · SPIN {s.spinCount}</span><h2>{done ? 'Your player is built' : busy ? 'Spinning…' : mustTake(s) ? 'Take one category' : 'Spin the wheel'}</h2></div>
+    <div className="cv-tools">
+      <button className="primary cv-spin-btn" disabled={!canSpin(s)} onClick={() => setS(spin(h, s))}>Spin</button>
+      <button className="cv-lucky-btn" disabled={!canSpin(s) || luckyLeft(s) <= 0} onClick={() => setS(spin(h, s, false, true))} title="Always lands on a Star or a Great">Lucky Spin ({luckyLeft(s)})</button>
+      <button disabled={!canSpin(s) || !s.triple} onClick={() => setS(spin(h, s, true))} title="Three wheels at once; take from any of them">Triple Spin {s.triple ? '(1)' : '(used)'}</button>
+      <button disabled={busy || !mustTake(s) || s.respins <= 0 || !!s.current?.some(w => w.boost)} onClick={() => setS(respin(h, s))} title="Spin again without taking anything">Respin ({s.respins})</button>
+      <button disabled={busy || !mustTake(s) || !single || !s.moves.left || !!w0?.boost} onClick={() => setS(move(s, 'left'))} title={w0 && !busy ? `Move to ${pool.byId.get(neighbour(w0, 'left'))?.name}` : ''}>← Move left</button>
+      <button disabled={busy || !mustTake(s) || !single || !s.moves.right || !!w0?.boost} onClick={() => setS(move(s, 'right'))} title={w0 && !busy ? `Move to ${pool.byId.get(neighbour(w0, 'right'))?.name}` : ''}>Move right →</button>
+    </div>
+    <details className="cv-howto"><summary>How the wheel works</summary>
+      <p className="hint-text">Every player in NBA history is on the wheel once, at his best season; the odds lean a little toward good players (Star about 7%, Great about 18%), and among Stars the all-time greats come up most. Take one category from the player it stops on: you get his exact ratings as your player's prime, +{STAR_BONUS} on every skill from a Star. The best ever at a skill go past 99, up to {ELITE_MAX}. Two Lucky Spins (each one always lands on a Star or a Great), Move Left and Move Right once each, two respins, one triple spin (take one category from each of the three), and one free Prime Boost: the player you landed on in his absolute prime, or six of his skills up 10-20% if he is already there (never his height, never past {ELITE_MAX}).</p></details>
+    {s.current?.[0]?.lucky && <p className="cv-lucky-note">LUCKY SPIN · a Star or a Great, guaranteed</p>}
+    {s.current ? <div className="cv-wheels">{s.current.map((w, i) => <Reel key={`${s.spinCount}-${i}`} h={h} wheel={w} onSettled={() => settle(s.spinCount)} />)}</div>
+      : !done && <p className="empty-state">Spin to start. Ten categories to fill.</p>}
+    <div className="cv-build-grid">
+      {s.current && <div className="cv-landed-col">{settled
+        ? s.current.map((w, i) => <Landed key={i} h={h} s={s} wheel={w} index={i} onTake={cat => setS(take(h, s, i, cat))} onBoost={() => setS(primeBoost(h, s, i))} />)
+        : <div className="cv-landed cv-landed-wait" aria-live="polite"><strong>The wheel is spinning…</strong><span>Who it lands on shows when it stops.</span></div>}
+        {settled && openWheels(s).length > 0 && s.takenFrom.length > 0 && !done && <p className="hint-text">You can take from the other wheels too, or spin again.</p>}
+      </div>}
+      <WheelBoard h={h} s={s} settled={settled} onTake={cat => setS(take(h, s, 0, cat))} />
+    </div>
     {done && <button className="primary hunt-play" onClick={() => onDone(Object.fromEntries(CATEGORIES.map(c => [c.id, s.picks[c.id]!.values])) as Prime)}>Next: name your player</button>}
-    <WheelBoard h={h} s={s} onTake={cat => setS(take(h, s, 0, cat))} />
     <button className="link-button" onClick={onBack}>Back</button>
   </section>;
+}
+
+/** Where you are in making a player: build him, name him, the draft. */
+export function CreateSteps({ step }: { step: 0 | 1 | 2 }) {
+  return <ol className="cv-steps" aria-label="Create your player">{['Build him', 'Name him', 'The draft'].map((l, i) => <li key={l} className={i < step ? 'done' : i === step ? 'on' : ''} aria-current={i === step ? 'step' : undefined}><b>{i + 1}</b>{l}</li>)}</ol>;
 }
 
 // ---------------------------------------------------------------- MyPlayer
@@ -153,7 +181,8 @@ export function MyPlayerBuilder({ seed, onDone, onBack }: { seed: number; onDone
   const pos = suggestPosition(prime);
   const cat = CATEGORIES.find(c => c.id === selected)!;
   const ratingId = selected === 'size' ? null : selected as (typeof RATING_CATEGORIES)[number];
-  return <section className="hunt-stage">
+  return <section className="hunt-stage cv-builder">
+    <CreateSteps step={0} />
     <div className="hunt-stage-head"><div><span className="pixel-eyebrow">MYPLAYER</span><h2>Build him yourself</h2></div>
       <div className="cv-budget"><span>POINTS LEFT</span><b className={left < 0 ? 'down' : ''}>{left}</b></div></div>
     <div className={`mp-stock tier-${stock.tier.id}`}>
@@ -202,8 +231,9 @@ export function IdentityView({ prime, seed, onDone, onBack, ready, pct }: { prim
   const rookie = calculateOverall(buildPlayer({ name: 'x', pos, jersey }, prime, startProgress(), readiness, '2025-26', START_AGE, seed));
   const primeOvr = primeOverall(prime, readiness, pos);
   const h = prime.size['physical.heightInches'];
-  return <section className="hunt-stage">
-    <div><span className="pixel-eyebrow">WHO IS HE?</span><h2>Name your player</h2></div>
+  return <section className="hunt-stage cv-builder">
+    <CreateSteps step={1} />
+    <div className="cv-builder-head"><span className="pixel-eyebrow">WHO IS HE?</span><h2>Name your player</h2></div>
     <div className="cv-identity">
       <PlayerAvatar playerId={name || 'You'} primaryColor="#f47b20" secondaryColor="#f4f0e6" size={96} />
       <div className="cv-sliders">

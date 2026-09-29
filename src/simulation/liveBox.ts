@@ -37,7 +37,7 @@ export function liveBoxScore(log: PossessionLogEntry[], completed: number, homeT
     const three = THREES.includes(p.shotType ?? '');
     if (p.shooterId && e.result !== 'TURNOVER' && e.result !== 'FOUL') {
       const s = line(p.shooterId); s.fga++; if (three) s.tpa++;
-      if (p.shotMade) { s.fgm++; s.pts += three ? 3 : 2; if (three) s.tpm++; }
+      if (p.shotMade) { s.fgm++; s.pts += three ? (e.events.some(ev => ev.includes(' MAKE (+4)')) ? 4 : 3) : 2; if (three) s.tpm++; }
     }
     if (p.shooterId && p.freeThrows) { const s = line(p.shooterId); s.fta += p.freeThrows.attempted; s.ftm += p.freeThrows.made; s.pts += p.freeThrows.made; }
     if (p.rebounderId) { const offense = e.offenseTeamId === homeTeamId ? e.onCourtHome : e.onCourtAway; if (offense.includes(p.rebounderId)) line(p.rebounderId).oreb++; else line(p.rebounderId).dreb++; }

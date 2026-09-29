@@ -5,7 +5,7 @@ import type { PlayerSeason } from '../simulation/types';
 import { DEFAULT_GAME_SETTINGS, ERA_PRESETS } from '../simulation/types';
 import { cardPool, cardPlayer } from './cards';
 import { huntTeams, type HuntTeam } from './teams';
-import { eraCoach, underEra, type HuntEra } from './eras';
+import { eraCoach, eraRules, underEra, type HuntEra } from './eras';
 import { withRotation } from './run';
 
 /*
@@ -28,7 +28,7 @@ export function dreamGame(h: NbaHistory, homeId: string, awayId: string, era: Hu
   // Team ids must differ even for the same franchise in two seasons.
   const home = side(h, a, era, a.abbr), away = side(h, b, era, b.abbr === a.abbr ? `${b.abbr}2` : b.abbr);
   const decade = `${Math.floor(Math.min(2020, Math.max(1960, era.from)) / 10) * 10}s` as keyof typeof ERA_PRESETS;
-  const result = simulateGame({ home, away, settings: { ...DEFAULT_GAME_SETTINGS, era: ERA_PRESETS[decade] ?? DEFAULT_GAME_SETTINGS.era, seed, injuriesEnabled: false, teamChemistryEnabled: false } });
+  const result = simulateGame({ home, away, rules: eraRules(era), settings: { ...DEFAULT_GAME_SETTINGS, era: ERA_PRESETS[decade] ?? DEFAULT_GAME_SETTINGS.era, seed, injuriesEnabled: false, teamChemistryEnabled: false } });
   return { result, home, away, era };
 }
 

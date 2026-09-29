@@ -1,4 +1,5 @@
 import type { League } from './league';
+import { rivalRefuses } from './gmRivals';
 import type { GMLeagueExtras, TradeProposal } from './gm';
 import { validateTrade, tradeableFuturePicks, computeFutureDraftPickValue } from './gm';
 import { pickAssetValue, tradeAssetValue } from './tradeValue';
@@ -26,7 +27,7 @@ export function talkState(league: League, extras: GMLeagueExtras, teamId: string
 /** True when this AI team has broken off talks for now. */
 export function talksClosed(league: League, extras: GMLeagueExtras, teamId: string): boolean {
   const s = talkState(league, extras, teamId);
-  return s.closedUntilRound != null && currentRound(league) < s.closedUntilRound;
+  return rivalRefuses(league, teamId) || (s.closedUntilRound != null && currentRound(league) < s.closedUntilRound);
 }
 
 function withTalks(league: League, extras: GMLeagueExtras, teamId: string, state: TradeTalkState): GMLeagueExtras {

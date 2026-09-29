@@ -64,6 +64,9 @@ export const CrestArt = memo(function CrestArt({ team, identity, layout }: { tea
     <circle cx="100" cy="100" r="64" fill={INK} />
     <circle cx="100" cy="100" r="61" fill={primary} />
     <circle cx="100" cy="100" r="61" fill="none" stroke={CREAM} strokeOpacity=".25" strokeWidth="2" strokeDasharray="4 4" />
+    {/* Light across the top of the inner disc, and rivets around the outer ring. */}
+    <path d="M44 88A58 58 0 0 1 156 88A60 30 0 0 0 44 88Z" fill="#fff" opacity=".12" />
+    {Array.from({ length: 16 }, (_, i) => { const a = (i / 16) * Math.PI * 2; return <circle key={i} cx={100 + Math.cos(a) * 94.5} cy={100 + Math.sin(a) * 94.5} r="1.6" fill={INK} opacity=".45" />; })}
     <ArcText text={city || identity.abbreviation} r={77} top px={city.length > 12 ? 2.4 : 3.2} fill={CREAM} />
     <ArcText text={nickname} r={77} top={false} px={nickname.length > 12 ? 2.4 : 3.2} fill={CREAM} />
     {[-1, 1].map(s => <path key={s} d="M0 -6L2 -2H6L3 1L4 6L0 3L-4 6L-3 1L-6 -2H-2Z" fill={CREAM} stroke={INK} strokeWidth="1" transform={`translate(${100 + s * 80},100)`} />)}
@@ -79,6 +82,9 @@ export const CrestArt = memo(function CrestArt({ team, identity, layout }: { tea
   return <g shapeRendering="geometricPrecision">
     <path d="M22 18H178V112L158 146L128 168L100 184L72 168L42 146L22 112Z" fill={INK} />
     <path d="M28 24H172V110L154 141L126 161L100 176L74 161L46 141L28 110Z" fill={primary} />
+    {/* Bevel: a lit left edge and a shaded right edge. */}
+    <path d="M28 24H34V108L50 136L46 141L28 110Z" fill="#fff" opacity=".16" />
+    <path d="M166 24H172V110L154 141L126 161L100 176L100 170L124 155L150 136L166 108Z" fill="#000" opacity=".2" />
     <path d="M28 24H172V56H28Z" fill={secondary} />
     <Word text={city || identity.abbreviation} cx={100} y={40} maxWidth={134} maxPx={3} fill={CREAM} />
     <Mark identity={identity} cx={100} cy={100} scale={1.55} fill={CREAM} />
