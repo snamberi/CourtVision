@@ -32,6 +32,7 @@ export const GROUPS: NavGroup[] = [
       { label: 'All-Star', tab: 'allStarWeekend' },
       { label: 'Schedule', tab: 'schedule' },
       { label: 'Daily Schedule', tab: 'dailySchedule' },
+      { label: 'Road Trips', tab: 'travel', requiresControlledTeam: true },
       { label: 'Finances', tab: 'finances' },
       { label: 'History', tab: 'history' },
       { label: 'Almanac', tab: 'almanac' },
@@ -41,6 +42,7 @@ export const GROUPS: NavGroup[] = [
       { label: 'News Feed', tab: 'news' },
       { label: 'Storylines', tab: 'storylines' },
       { label: 'Press Room', tab: 'press', requiresControlledTeam: true },
+      { label: 'Card Album', tab: 'cards' },
     ],
   },
   {
@@ -55,12 +57,14 @@ export const GROUPS: NavGroup[] = [
       { label: 'Schedule', tab: 'schedule' },
       { label: 'Finances', tab: 'finances' },
       { label: 'Team History', tab: 'teamHistory' },
+      { label: 'Franchise Timeline', tab: 'timeline' },
     ],
   },
   {
     title: 'Front Office',
     items: [
       { label: 'GM Office', tab: 'gmOffice' },
+      { label: 'GM Rivals', tab: 'gmRivals' },
       { label: 'Summer League', tab: 'summerLeague' },
       { label: 'Free Agents', tab: 'freeAgency' },
       { label: 'Extensions', tab: 'extensions', requiresControlledTeam: true },
@@ -116,6 +120,7 @@ export const GROUPS: NavGroup[] = [
 ];
 
 export const NAV_ICONS: Record<string, string> = {
+  travel: 'calendar', cards: 'star', gmRivals: 'trade', timeline: 'trophy',
   cup: 'trophy', deadline: 'clock', yearInReview: 'star', press: 'list', medical: 'warning', extensions: 'list', threeTeam: 'trade', summerCamp: 'star', storylines: 'list', gmOffice: 'star', summerLeague: 'play', coaching: 'list', allStarWeekend: 'trophy', dashboard: 'court', standings: 'chart', playoffs: 'trophy', schedule: 'calendar',
   dailySchedule: 'calendar', finances: 'chart', history: 'list', powerRankings: 'chart',
   transactions: 'trade', news: 'list', yourTeam: 'team', roster: 'team', freeAgency: 'team',

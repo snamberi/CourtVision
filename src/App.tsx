@@ -136,6 +136,7 @@ const Community = lazy(() => import('./components/cloud/Community').then(m => ({
 const CareerMode = lazy(() => import('./components/career/CareerMode').then(m => ({ default: m.CareerMode })));
 const SummerCampPage = lazy(() => import('./components/SummerCampPage').then(m => ({ default: m.SummerCampPage })));
 const MedicalRoomPage = lazy(() => import('./components/MedicalRoomPage').then(m => ({ default: m.MedicalRoomPage })));
+const RoadTripsPage = lazy(() => import('./components/RoadTripsPage').then(m => ({ default: m.RoadTripsPage })));
 const PressRoomPage = lazy(() => import('./components/PressRoomPage').then(m => ({ default: m.PressRoomPage })));
 const SchedulePage = lazy(() => import('./components/SchedulePage').then(m => ({ default: m.SchedulePage })));
 const BulkEditor = lazy(() => import('./components/BulkEditor').then(m => ({ default: m.BulkEditor })));
@@ -1678,6 +1679,7 @@ function App() {
         {tab === 'summerCamp' && <SummerCampPage league={league} controlledTeamId={controlledTeamId} onChange={setLeague} onSelectPlayer={selectPlayer} />}
         {tab === 'medical' && <MedicalRoomPage league={league} controlledTeamId={controlledTeamId} onChange={setLeague} onSelectPlayer={selectPlayer} />}
         {tab === 'press' && <PressRoomPage league={league} extras={extras} controlledTeamId={controlledTeamId} onChange={setLeague} />}
+        {tab === 'travel' && <RoadTripsPage league={league} controlledTeamId={controlledTeamId} onChange={setLeague} />}
         {tab === 'yearInReview' && <YearInReviewPage league={league} extras={extras} controlledTeamId={controlledTeamId} awardOptions={awardOptions(awardSettings)}
           onOpenAwards={() => setTab('awards')} onSelectPlayer={selectPlayer}
           onOpenGame={(id) => { setViewedGameId(id); setBoxscoreSource('league'); setTab('boxscore'); }} />}

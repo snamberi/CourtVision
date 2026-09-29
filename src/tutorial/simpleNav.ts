@@ -37,6 +37,8 @@ export const SIMPLE_HUBS: SimpleHub[] = [
       { label: 'Press room', tab: 'press' },
       { label: 'Schedule', tab: 'schedule' },
       { label: 'Daily schedule', tab: 'dailySchedule' },
+      { label: 'Road trips', tab: 'travel', requiresControlledTeam: true },
+      { label: 'Card album', tab: 'cards' },
     ],
   },
   {
@@ -52,6 +54,7 @@ export const SIMPLE_HUBS: SimpleHub[] = [
       { label: 'Staff', tab: 'staff' },
       { label: 'Finances', tab: 'finances' },
       { label: 'Team history', tab: 'teamHistory' },
+      { label: 'Franchise timeline', tab: 'timeline' },
     ],
   },
   {
@@ -70,6 +73,7 @@ export const SIMPLE_HUBS: SimpleHub[] = [
       { label: 'Watch list', tab: 'watchList' },
       { label: 'Compare players', tab: 'compare' },
       { label: 'GM Office', tab: 'gmOffice' },
+      { label: 'GM rivals', tab: 'gmRivals' },
     ],
   },
   {

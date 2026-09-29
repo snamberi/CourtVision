@@ -22,6 +22,7 @@ import type { AllStarGameResult, ThreePointContestResult, DunkContestResult } fr
 import type { AllStarVotingRecord } from './allStarVoting';
 import { applyGameBonds, duoBoost } from './chemistryWeb';
 import { homeCourtEdge } from './business';
+import { travelEdge } from './travel';
 
 /** Pulls a playerId -> minutes map out of one team's box score, for coach-relationship drift. */
 function minutesFromBox(box: { players: Record<string, { minutes: number }> }): Record<string, number> {
@@ -217,6 +218,8 @@ export interface League {
   rivalryWeek?: import('./rivalryWeek').RivalryWeekState;
   /** Halftime speeches you gave this season and last (see halftime.ts); the best turnarounds make the season reel. */
   halftimeSpeeches?: import('./halftime').SpeechRecord[];
+  /** How you're handling this season's road trips (rest, team dinner, push through; see travel.ts). */
+  travel?: import('./travel').TravelState;
   /** Fragile returning players and load management (see medical.ts). */
   medical?: import('./medical').MedicalState;
 
@@ -637,10 +640,10 @@ export function teamGameInput(league: League, teamId: string): PreparedGame['inp
 }
 
 /** Tonight's extra edge for a team: a strong duo whose partner dressed, and (at home) the arena's upgrades. */
-export function gameBoost(league: League, team: LeagueTeam, dressedIds: string[], home: boolean): { boost?: Record<string, number> } {
+export function gameBoost(league: League, team: LeagueTeam, dressedIds: string[], home: boolean, gameId?: string): { boost?: Record<string, number> } {
   const boost = league.settings.teamChemistryEnabled === false ? {} : duoBoost(team, dressedIds);
-  const edge = home ? homeCourtEdge(team) : 0;
-  if (edge > 0) for (const id of dressedIds) boost[id] = (boost[id] ?? 0) + edge;
+  const edge = (home ? homeCourtEdge(team) : 0) + (gameId ? travelEdge(league, team.teamId, gameId) : 0);
+  if (edge !== 0) for (const id of dressedIds) boost[id] = (boost[id] ?? 0) + edge;
   return Object.keys(boost).length ? { boost } : {};
 }
 
@@ -662,8 +665,8 @@ function prepareGame(league: League, idx: number, seedBase: number, injuries: Re
   awayAvailable = ensureMinimumAvailable(away.seasons, awayAvailable, injuries);
 
   const input: PreparedGame['input'] = {
-    home: { teamId: home.teamId, seasons: homeAvailable, coach: home.coach, chemistry: home.chemistry, coachIdentity: gameStaffCoach(home), rotationOrder: home.rotationOrder, ...gameBoost(league, home, homeAvailable.map(s => s.playerId), true) },
-    away: { teamId: away.teamId, seasons: awayAvailable, coach: away.coach, chemistry: away.chemistry, coachIdentity: gameStaffCoach(away), rotationOrder: away.rotationOrder, ...gameBoost(league, away, awayAvailable.map(s => s.playerId), false) },
+    home: { teamId: home.teamId, seasons: homeAvailable, coach: home.coach, chemistry: home.chemistry, coachIdentity: gameStaffCoach(home), rotationOrder: home.rotationOrder, ...gameBoost(league, home, homeAvailable.map(s => s.playerId), true, g.id) },
+    away: { teamId: away.teamId, seasons: awayAvailable, coach: away.coach, chemistry: away.chemistry, coachIdentity: gameStaffCoach(away), rotationOrder: away.rotationOrder, ...gameBoost(league, away, awayAvailable.map(s => s.playerId), false, g.id) },
     settings: { ...league.settings, seed: seedBase + idx },
     rules: league.rulesSettings, moraleImpact: league.coachingSettings?.moraleImpact,
     liveCoaching,
