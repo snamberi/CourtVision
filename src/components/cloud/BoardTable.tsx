@@ -47,7 +47,7 @@ export function BoardTable({ spec, scoreLabel, onUser, empty = 'No one on this b
   if (!d.rows.length) return <p className="empty-state">{empty}</p>;
   const base = cur.base ?? null;
   const since = cur.since ?? 'last week';
-  const name = (r: BoardRow) => onUser && r.username ? <button className="link-button name-link" onClick={() => onUser(r.username)}><NameTag name={r.username} icon={r.icon} color={r.color} /></button> : <NameTag name={r.username} icon={r.icon} color={r.color} />;
+  const name = (r: BoardRow) => onUser && r.username ? <button className="link-button name-link" onClick={() => onUser(r.username)}><NameTag name={r.username} icon={r.icon} color={r.color} title={r.title} /></button> : <NameTag name={r.username} icon={r.icon} color={r.color} title={r.title} />;
   const podium = d.rows.filter(r => r.rank <= 3).slice(0, 3);
   const rest = d.rows.filter(r => !podium.includes(r));
   const mine = d.rows.find(r => r.you);
@@ -55,7 +55,6 @@ export function BoardTable({ spec, scoreLabel, onUser, empty = 'No one on this b
   return <>
     {podium.length > 0 && <ol className="wb-podium" aria-label="Top three">{[podium[1], podium[0], podium[2]].map(r => r && <li key={r.userId} className={`wb-step p${r.rank} ${r.you ? 'wb-you' : ''}`}>
       <span className="wb-who">{name(r)}{r.you ? <small> (you)</small> : null}</span>
-      {r.title ? <small className="wb-title">{r.title}</small> : null}
       <b className="wb-pscore">{r.score.toLocaleString()} <small>{scoreLabel}</small></b>
       <Move since={since} change={rankChange(base, r.userId, r.rank)} />
       <span className="wb-block" aria-label={`Rank ${r.rank}`}><i>{r.rank}</i><small>{MEDAL[r.rank - 1]}</small></span>
@@ -64,7 +63,7 @@ export function BoardTable({ spec, scoreLabel, onUser, empty = 'No one on this b
       <thead><tr><th>#</th><th className="col-name">GM</th><th>{scoreLabel}</th><th className="col-name">Result</th></tr></thead>
       <tbody>{rest.map(r => <tr key={`${r.userId}-${r.rank}`} className={r.you ? 'wb-you' : ''}>
         <td>{r.rank} <Move since={since} change={rankChange(base, r.userId, r.rank)} /></td>
-        <td className="col-name">{name(r)}{r.you ? ' (you)' : ''}{r.title ? <small className="wb-title"> {r.title}</small> : null}</td>
+        <td className="col-name">{name(r)}{r.you ? ' (you)' : ''}</td>
         <td>{r.score.toLocaleString()}</td><td className="col-name">{r.detail}</td>
       </tr>)}</tbody>
     </table></div>}

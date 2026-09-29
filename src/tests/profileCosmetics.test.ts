@@ -7,13 +7,13 @@ import { computeHonors } from '../../server/honors';
 beforeEach(() => localStorage.clear());
 
 describe('profile cosmetics', () => {
-  it('every sprite is 10 x 10 in the palette, and every icon has one (42 icons: 30 new)', () => {
+  it('every sprite is 10 x 10 in the palette, and every icon has one (54 icons: 30 from the level road, 12 animated from the Trophy Road)', () => {
     for (const [id, rows] of Object.entries(SPRITES)) {
       expect(rows, id).toHaveLength(10);
       for (const row of rows) { expect(row.length, `${id}: ${row}`).toBe(10); for (const ch of row) expect(ch === '.' || ch in PALETTE, `${id}: ${ch}`).toBe(true); }
     }
     for (const icon of ICONS) expect(SPRITES[icon.base], icon.id).toBeTruthy();
-    expect(ICONS.length).toBe(42);
+    expect(ICONS.length).toBe(54);
     expect(new Set(ICONS.map(i => i.id)).size).toBe(ICONS.length);
     expect(new Set(NAME_COLORS.map(c => c.id)).size).toBe(NAME_COLORS.length);
   });
@@ -38,12 +38,14 @@ describe('profile cosmetics', () => {
   });
 
   it('unlocks come from levels, ranked tiers, achievements and leaderboard honors', () => {
-    const base = { level: 1, rank: -1, honors: [] as string[], modes: [] as string[], supporter: false };
+    const base = { level: 1, rank: -1, honors: [] as string[], modes: [] as string[], supporter: false, trophies: 0 };
     expect(isOpen({ level: 5 }, base)).toBe(false);
     expect(isOpen({ level: 5 }, { ...base, level: 5 })).toBe(true);
     expect(isOpen({ rank: 4 }, { ...base, rank: 4 })).toBe(true);
     expect(isOpen({ mode: 'pvp-1200' }, { ...base, modes: ['pvp-1200'] })).toBe(true);
     expect(isOpen({ anyHonor: true }, { ...base, honors: ['gm-100'] })).toBe(true);
+    expect(isOpen({ trophies: 5000 }, { ...base, trophies: 4999 })).toBe(false);
+    expect(isOpen({ trophies: 5000 }, { ...base, trophies: 5000 })).toBe(true);
     // Prism: a #1 finish only.
     expect(isOpen({ honor: 'first' }, { ...base, honors: ['gm-10'] })).toBe(false);
     expect(isOpen({ honor: 'first' }, { ...base, honors: ['weekly-1'] })).toBe(true);

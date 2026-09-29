@@ -20,15 +20,16 @@ import { FEATS_EVENT } from '../../profile/feats';
 import { DAILY_EVENT } from '../../profile/dailyGoals';
 import { ModeAchievements } from './ModeAchievements';
 import { LevelRoad } from './LevelRoad';
+import { TrophyRoad } from './TrophyRoad';
 import { PassesPanel } from './PassesPanel';
 import { passesOnSale } from '../../billing/billing';
 import '../hunt/hunt.css';
 import '../career/career.css';
 import './locker.css';
 
-export type ProfileTab = 'profile' | 'road' | 'trophies' | 'achievements' | 'passes' | 'backup';
+export type ProfileTab = 'profile' | 'road' | 'trophyroad' | 'trophies' | 'achievements' | 'passes' | 'backup';
 const TABS: { id: ProfileTab; label: string }[] = ([
-  { id: 'profile', label: 'Profile' }, { id: 'road', label: 'Level road' }, { id: 'trophies', label: 'Trophy room' },
+  { id: 'profile', label: 'Profile' }, { id: 'road', label: 'Level road' }, { id: 'trophyroad', label: 'Trophy road' }, { id: 'trophies', label: 'Trophy room' },
   { id: 'achievements', label: 'Achievements' }, { id: 'passes', label: 'Passes' }, { id: 'backup', label: 'Backup' },
 // The Passes tab appears only once checkout links are configured (docs/BILLING_SETUP.md).
 ] satisfies { id: ProfileTab; label: string }[]).filter(t => t.id !== 'passes' || passesOnSale());
@@ -78,13 +79,14 @@ export function ProfileHub({ onExit, initialTab = 'profile' }: { onExit: () => v
 
     {tab === 'profile' && <ProfilePanel />}
     {tab === 'road' && <LevelRoad />}
+    {tab === 'trophyroad' && <TrophyRoad />}
     {tab === 'passes' && <PassesPanel />}
     {tab === 'backup' && <div className="locker-bay"><BackupPanel compact /></div>}
     {tab === 'achievements' && <ModeAchievements stats={modes} rarity={rarity} />}
 
     {tab === 'trophies' && <>
     <div className="hunt-over-stats locker-totals">
-      <div><small>TROPHIES</small><b>{trophies}</b></div>
+      <div><small>ON THE SHELF</small><b>{trophies}</b></div>
       <div><small>HALL OF FAMERS</small><b>{inducted}</b></div>
       <div><small>HUNTS WON</small><b>{hunt.wins}</b></div>
       <div><small>GM TITLES</small><b>{gm.titles}</b></div>

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { transform, cssFiles, readCss } from '../../scripts/theme-palette.mjs';
 import { PALETTE } from '../theme/palette.gen';
-import { THEMES, THEME_BY_ID, themeLevel, mapColor, parseHex, analyse, family, themeCss, applyTheme, readTheme, setTheme, THEME_KEY, type ThemeId } from '../theme/themes';
+import { THEMES, THEME_BY_ID, themeLevel, themeTrophies, themeOpen, mapColor, parseHex, analyse, family, themeCss, applyTheme, readTheme, setTheme, THEME_KEY, type ThemeId } from '../theme/themes';
 import { ThemeWelcome, ThemeSection, ThemePicker, needsThemeChoice } from '../components/ThemePicker';
 import { LEVEL_ROAD, ROAD_LOOK_NAMES } from '../profile/cosmetics';
 import { unlocksBetween } from '../profile/profile';
@@ -78,9 +78,12 @@ describe('looks on the Level Road', () => {
       expect(ROAD_LOOK_NAMES[id]).toBe(t!.name);
     }
     expect(Object.keys(ROAD_LOOK_NAMES).sort()).toEqual(road.map(([, , id]) => id).sort());
-    // The first five are free; there are fifteen in all.
-    expect(THEMES.filter(t => themeLevel(t.id) === 1).map(t => t.id)).toEqual(['original', 'cartridge', 'scoreboard', 'prodark', 'terminal']);
-    expect(THEMES).toHaveLength(15);
+    // The first five are free; ten on the Level Road, six on the Trophy Road: 21 in all.
+    expect(THEMES.filter(t => themeLevel(t.id) === 1 && themeTrophies(t.id) === 0).map(t => t.id)).toEqual(['original', 'cartridge', 'scoreboard', 'prodark', 'terminal']);
+    expect(THEMES.filter(t => themeTrophies(t.id) > 0).map(t => t.id)).toEqual(['aurora', 'royalcourt', 'galaxy', 'hallowed', 'eclipse', 'immortal']);
+    expect(themeOpen('galaxy', 250, 74_999)).toBe(false);
+    expect(themeOpen('galaxy', 1, 75_000)).toBe(true);
+    expect(THEMES).toHaveLength(21);
     expect(unlocksBetween(20, 25)).toContain('the Front Office app look');
   });
 

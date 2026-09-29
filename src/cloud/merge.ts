@@ -15,6 +15,7 @@ import { readFeats, mergeFeats } from '../profile/feats';
 export const SYNC_KEYS = [
   'courtvision:gmLegacy', 'cv-hunt-records', 'cv-hunt-album', 'cv-rebuild-records', 'cv-rebuild-records-done',
   'cv-weekly-records', 'cv-daily-history', 'cv-profile-equip', 'cv-code-results', 'cv-feats',
+  'cv-legend-records', 'cv-card-album',
 ] as const;
 export type SyncKey = typeof SYNC_KEYS[number];
 
@@ -86,6 +87,14 @@ export function mergeValue(key: SyncKey, local: string | null | undefined, cloud
     case 'cv-code-results': return JSON.stringify(mergeCodes(parse(local, {}), parse(cloud, {})));
     case 'cv-feats': return JSON.stringify(mergeFeats(readFeats(() => local), readFeats(() => cloud)));
     case 'cv-profile-equip': return local;
+    case 'cv-legend-records': {
+      // Best score and stars per Legend Challenge; attempts from whichever device played more.
+      type Rec = { best: number; stars: number; attempts: number };
+      const out: Record<string, Rec> = { ...parse<Record<string, Rec>>(cloud, {}) };
+      for (const [id, x] of Object.entries(parse<Record<string, Rec>>(local, {}))) { const y = out[id]; out[id] = y ? { best: max(x.best, y.best), stars: max(x.stars, y.stars), attempts: max(x.attempts, y.attempts) } : x; }
+      return JSON.stringify(out);
+    }
+    case 'cv-card-album': return JSON.stringify({ ...parse<Record<string, unknown>>(cloud, {}), ...parse<Record<string, unknown>>(local, {}) });
   }
 }
 

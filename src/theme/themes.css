@@ -75,3 +75,33 @@
 :root[data-cv-theme="championship"] :is(.main-menu, .app-body main, .hunt) {
   background: radial-gradient(900px 420px at 50% -10%, rgba(212, 175, 55, .10), transparent 65%), #0a0a0b;
 }
+
+/* ---------------------------------------------------------------- the Trophy Road looks
+   Each has a slow moving backdrop on the page floor (panels stay solid). Nothing moves with reduced motion or Lite mode. */
+:root[data-cv-theme="hallowed"] { color-scheme: light; }
+:root:is([data-cv-theme="aurora"], [data-cv-theme="royalcourt"], [data-cv-theme="galaxy"], [data-cv-theme="hallowed"], [data-cv-theme="eclipse"], [data-cv-theme="immortal"]) :is(.main-menu, .app-body main, .hunt) {
+  background-attachment: fixed; background-size: 200% 200%; animation: cv-look-drift 28s ease-in-out infinite alternate;
+}
+@keyframes cv-look-drift { from { background-position: 0% 0%; } to { background-position: 100% 100%; } }
+:root[data-cv-theme="aurora"] :is(.main-menu, .app-body main, .hunt) {
+  background-image: radial-gradient(ellipse at 20% 10%, rgba(111, 255, 176, .22), transparent 55%), radial-gradient(ellipse at 80% 20%, rgba(199, 155, 255, .22), transparent 50%), radial-gradient(ellipse at 50% 90%, rgba(79, 214, 214, .12), transparent 60%), linear-gradient(#04121a, #04121a);
+}
+:root[data-cv-theme="royalcourt"] :is(.main-menu, .app-body main, .hunt) {
+  background-image: repeating-linear-gradient(45deg, rgba(212, 175, 55, .06) 0 2px, transparent 2px 22px), radial-gradient(ellipse at 50% 0%, rgba(125, 74, 166, .35), transparent 60%), linear-gradient(#12061f, #12061f);
+}
+:root[data-cv-theme="galaxy"] :is(.main-menu, .app-body main, .hunt) {
+  background-image: radial-gradient(1px 1px at 12% 20%, #fff, transparent), radial-gradient(1px 1px at 72% 34%, #fff, transparent), radial-gradient(1.5px 1.5px at 40% 70%, #cfe0ff, transparent), radial-gradient(1px 1px at 88% 82%, #fff, transparent), radial-gradient(1px 1px at 28% 88%, #ffd6f5, transparent), radial-gradient(ellipse at 70% 30%, rgba(255, 122, 217, .18), transparent 55%), radial-gradient(ellipse at 20% 70%, rgba(111, 211, 255, .14), transparent 55%), linear-gradient(#05030f, #05030f);
+}
+:root[data-cv-theme="hallowed"] :is(.main-menu, .app-body main, .hunt) {
+  background-image: linear-gradient(115deg, rgba(184, 134, 11, .08) 0 12%, transparent 12% 40%, rgba(255, 255, 255, .5) 40% 44%, transparent 44%), radial-gradient(ellipse at 50% -10%, rgba(184, 134, 11, .18), transparent 60%), linear-gradient(#ece6d8, #ece6d8);
+}
+:root[data-cv-theme="eclipse"] :is(.main-menu, .app-body main, .hunt) {
+  background-image: radial-gradient(circle at 80% 12%, #050303 0 60px, rgba(255, 122, 61, .55) 62px, rgba(255, 61, 61, .18) 90px, transparent 160px), radial-gradient(ellipse at 20% 100%, rgba(255, 61, 61, .1), transparent 60%), linear-gradient(#050303, #050303);
+}
+:root[data-cv-theme="immortal"] :is(.main-menu, .app-body main, .hunt) {
+  background-image: linear-gradient(120deg, rgba(255, 77, 106, .12), rgba(255, 224, 102, .1), rgba(111, 255, 176, .1), rgba(111, 211, 255, .12), rgba(211, 140, 255, .12), rgba(255, 77, 106, .12)), linear-gradient(#07070c, #07070c);
+}
+:root[data-cv-theme="immortal"] :is(.dashboard-panel, .mode-card, .locker-bay, .menu-card) { border-image: linear-gradient(90deg, #ff4d6a, #ffe066, #6fffb0, #6fd3ff, #d38cff) 1; }
+:root:is([data-cv-theme="galaxy"], [data-cv-theme="immortal"], [data-cv-theme="aurora"]) :is(h1, h2) { text-shadow: 0 0 10px rgba(255, 255, 255, .25); }
+@media (prefers-reduced-motion: reduce) { :root :is(.main-menu, .app-body main, .hunt) { animation: none !important; } }
+:root.lite :is(.main-menu, .app-body main, .hunt) { animation: none !important; }

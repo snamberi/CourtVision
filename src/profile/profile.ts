@@ -4,6 +4,7 @@ import { loadRebuildRecords } from '../simulation/rebuildChallenge';
 import { loadWeeklyRecords } from '../retention/weekly';
 import { dailyGoalXp } from './dailyGoals';
 import { localRead, type Read } from '../lib/kv';
+import { TITLE_COLORS, trophyNeed } from './trophyRoad';
 import { ICONS, NAME_COLORS, LEVEL_ROAD, ROAD_TITLES, ROAD_LOOK_NAMES, roadLevel, unlockContext, isOpen, earnedExtraTitles, iconDef, type IconId, type ColorId, type RewardKind } from './cosmetics';
 
 /*
@@ -121,7 +122,7 @@ export function rankTitles(read: Read = localRead): string[] {
   return RANK_TITLES.filter(t => best >= t.order).map(t => t.id);
 }
 
-export interface Equipped { frame: FrameId; floor: FloorId; title: string; icon: IconId; color: ColorId }
+export interface Equipped { frame: FrameId; floor: FloorId; title: string; icon: IconId; color: ColorId; titleColor: string }
 const EQUIP_KEY = 'cv-profile-equip';
 export const PROFILE_EVENT = 'courtvision:profile';
 
@@ -136,7 +137,8 @@ export function equipped(level = levelFor(totalXp()).level): Equipped {
   const title = raw.title && special.includes(raw.title) ? raw.title : ok(TITLES, raw.title, openTitles[openTitles.length - 1].id);
   const icon = ICONS.find(i => i.id === raw.icon && isOpen(i.rule, ctx))?.id ?? 'ball';
   const color = NAME_COLORS.find(c => c.id === raw.color && isOpen(c.rule, ctx))?.id ?? 'cream';
-  return { frame: ok(FRAMES, raw.frame, 'classic'), floor: ok(FLOORS, raw.floor, 'team'), title, icon, color };
+  const titleColor = TITLE_COLORS.find(c => c.id === raw.titleColor && (c.id === 'plain' || ctx.trophies >= (trophyNeed('titleColor', c.id) ?? Infinity)))?.id ?? 'plain';
+  return { frame: ok(FRAMES, raw.frame, 'classic'), floor: ok(FLOORS, raw.floor, 'team'), title, icon, color, titleColor };
 }
 
 /** The name shown on your profile card when you are not signed in (signed in, it is your GM name). */

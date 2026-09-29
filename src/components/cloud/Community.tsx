@@ -138,7 +138,7 @@ function Friends({ onUser }: { onUser: (u: string) => void }) {
       <label htmlFor="friend-search">Find a GM by name</label>
       <div><input id="friend-search" className="year-input" value={q} onChange={e => setQ(e.target.value)} placeholder="GM name" /><button type="submit" disabled={q.trim().length < 2}>Search</button></div>
     </form>
-    {hits && (hits.length ? <ul className="cv-saved">{hits.map(h => <li key={h.id}><div><b><NameTag name={`@${h.username}`} icon={h.icon} color={h.color} /></b><small>LV {h.level} · {h.title}</small></div><button onClick={() => onUser(h.username)}>Profile</button></li>)}</ul> : <p className="empty-state">No GM by that name.</p>)}
+    {hits && (hits.length ? <ul className="cv-saved">{hits.map(h => <li key={h.id}><div><b><NameTag name={`@${h.username}`} icon={h.icon} color={h.color} title={h.title} /></b><small>LV {h.level}</small></div><button onClick={() => onUser(h.username)}>Profile</button></li>)}</ul> : <p className="empty-state">No GM by that name.</p>)}
     <h3 className="hunt-subhead">You and the GMs you follow</h3>
     {acct.status === 'signedIn' ? <BoardTable spec={{ kind: 'friends' }} scoreLabel="XP" onUser={onUser} empty="Follow GMs from their profile to see them here." /> : <p className="hint-text">Sign in to follow GMs.</p>}
     <p className="hint-text">Challenge a friend: every league shows a league code on its dashboard. Send it; when you both finish the first season, the result shows on the code's board, side by side.</p>
@@ -213,7 +213,7 @@ function ProfileView({ username, onUser }: { username: string; onUser: (u: strin
       <div className="profile-head">
         <ProfileIcon id={d.profile.icon} size={56} title={`${d.profile.username}'s icon`} />
         <div className="profile-level"><small>LEVEL</small><b>{d.profile.level}</b></div>
-        <div className="profile-progress"><strong><NameTag name={`@${d.profile.username}`} icon={null} color={d.profile.color} /></strong>{honorTitles(s).length > 0 && <span className="profile-honors">{honorTitles(s).map(t => <em key={t}>{t}</em>)}</span>}<small>{d.profile.title} · {d.profile.xp.toLocaleString()} XP · {followerCount} follower{followerCount === 1 ? '' : 's'} · ranked {season.name} this month</small></div>
+        <div className="profile-progress"><strong><NameTag name={`@${d.profile.username}`} icon={null} color={d.profile.color} title={d.profile.title} /></strong>{honorTitles(s).length > 0 && <span className="profile-honors">{honorTitles(s).map(t => <em key={t}>{t}</em>)}</span>}<small>{d.profile.xp.toLocaleString()} XP · {followerCount} follower{followerCount === 1 ? '' : 's'} · ranked {season.name} this month</small></div>
       </div>
       <div className="hunt-over-stats locker-totals">
         <div><small>GM TITLES</small><b>{Number(s.titles ?? 0)}</b></div><div><small>SEASONS</small><b>{Number(s.seasons ?? 0)}</b></div><div><small>HALL OF FAMERS</small><b>{Number(s.hallOfFame ?? 0)}</b></div>

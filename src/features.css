@@ -113,3 +113,39 @@
   .chem-web-map { transform: scale(.75); transform-origin: top left; margin-bottom: -110px; }
   .legend-run-head { flex-direction: column; }
 }
+
+/* ---- Trophy Road cosmetics: animated name/title colours, animated icons, titles under names ---- */
+.anim-flow, .anim-shimmer, .anim-pulse { background-size: 200% 100% !important; }
+.anim-flow { animation: cv-flow 3.2s linear infinite; }
+.anim-shimmer { animation: cv-shimmer 2.4s ease-in-out infinite; }
+.anim-pulse { animation: cv-flow 4s linear infinite, cv-pulse 1.6s ease-in-out infinite; }
+@keyframes cv-flow { from { background-position: 0% 50%; } to { background-position: 200% 50%; } }
+@keyframes cv-shimmer { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+@keyframes cv-pulse { 50% { filter: brightness(1.45) drop-shadow(0 0 3px var(--c-shadow-ffffff, #ffffff)); } }
+.name-tag-titled { align-items: center; }
+.name-tag-lines { display: inline-flex; flex-direction: column; min-width: 0; line-height: 1.15; }
+.name-tag-lines > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.name-tag .name-tag-title { font-size: .72em; font-weight: 600; letter-spacing: .02em; }
+.profile-chip-title .name-tag-title { font-size: 1em; }
+.icon-anim { overflow: visible; }
+.icon-anim-flicker .icon-sprite { animation: icon-flicker .5s steps(2) infinite; transform-origin: 50% 90%; }
+.icon-anim-spin .icon-sprite { animation: icon-spin 2.4s linear infinite; transform-origin: 5px 5px; transform-box: view-box; }
+.icon-anim-twinkle .icon-sprite { animation: icon-twinkle 1.4s ease-in-out infinite; transform-origin: 5px 5px; transform-box: view-box; }
+.icon-anim-flash .icon-sprite { animation: icon-flash 1.8s steps(1) infinite; }
+.icon-anim-glow .icon-sprite { animation: icon-glow 1.8s ease-in-out infinite; }
+.icon-anim-bob .icon-sprite { animation: icon-bob 1.2s ease-in-out infinite; }
+.icon-glint { animation: icon-glint 2.2s ease-in-out infinite; }
+@keyframes icon-flicker { 50% { transform: scaleY(1.06) translateY(-.3px); filter: brightness(1.25); } }
+@keyframes icon-spin { from { transform: scaleX(1); } 25% { transform: scaleX(0); } 50% { transform: scaleX(-1); } 75% { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes icon-twinkle { 50% { transform: scale(.82) rotate(8deg); filter: brightness(1.5); } }
+@keyframes icon-flash { 0%, 70% { filter: none; } 72% { filter: brightness(2.2); } 76% { filter: none; } 80% { filter: brightness(2.4); } 86% { filter: none; } }
+@keyframes icon-glow { 50% { filter: brightness(1.4) drop-shadow(0 0 1.2px var(--c-shadow-ffffff, #ffffff)); } }
+@keyframes icon-bob { 50% { transform: translateY(-.8px); } }
+@keyframes icon-glint { 0% { transform: translateX(0) skewX(-20deg); } 60%, 100% { transform: translateX(16px) skewX(-20deg); } }
+.trophy-road .trophy-count b { font-size: 26px; color: var(--c-fg-ffd166, #ffd166); }
+.trophy-bar i { background: linear-gradient(90deg, var(--c-bg-c9971f, #c9971f), var(--c-bg-ffd166, #ffd166), var(--c-bg-fff3c4, #fff3c4)) !important; }
+.trophy-road .road-stop.major { box-shadow: 0 0 0 2px var(--c-shadow-ffd166, #ffd166), 0 0 14px var(--c-shadow-ffd16655, #ffd16655); }
+.trophy-road-title { color: var(--c-fg-ffd166, #ffd166); }
+@media (prefers-reduced-motion: reduce) {
+  .anim-flow, .anim-shimmer, .anim-pulse, .icon-anim .icon-sprite, .icon-glint { animation: none; }
+}
