@@ -171,3 +171,17 @@
 .coaching-identity:has(.coach-portrait) { grid-template-columns: auto 1fr 1.5fr; }
 @media (max-width: 1050px) { .coaching-identity:has(.coach-portrait) { grid-template-columns: auto 1fr; } .coaching-identity .coaching-trait-grid { grid-column: 1 / -1; } }
 .watch-crew { color: var(--c-fg-94a0b2, #94a0b2); font-size: 11px; }
+/* ---- Halftime speech ---- */
+.halftime { position: fixed; inset: 0; z-index: 2500; display: grid; place-items: center; background: var(--c-bg-05080ecc, #05080ecc); padding: 16px; overflow: auto; }
+.halftime-box { width: 100%; max-width: 620px; padding: 18px; background: var(--c-bg-121926, #121926); border: 2px solid var(--c-border-f47b20, #f47b20); box-shadow: 4px 4px 0 var(--c-shadow-060a11, #060a11); }
+.halftime-box h3 { margin: 4px 0; }
+.halftime-speeches { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 6px; margin: 10px 0; }
+.halftime-speeches button { display: flex; flex-direction: column; align-items: flex-start; text-align: left; gap: 4px; }
+.halftime-speeches button.active { border-color: var(--c-border-f47b20, #f47b20); background: var(--c-bg-192333, #192333); }
+.halftime-speeches small { color: var(--c-fg-94a0b2, #94a0b2); font-style: italic; }
+.halftime-room ul { list-style: none; padding: 0; margin: 6px 0 12px; display: grid; gap: 4px; }
+.halftime-room li { display: flex; align-items: center; gap: 8px; padding: 4px 6px; background: var(--c-bg-0b1018, #0b1018); border-left: 3px solid var(--c-border-55c878, #55c878); }
+.halftime-room li.down { border-left-color: var(--c-border-e85d5d, #e85d5d); }
+.halftime-room li span { flex: 1; min-width: 0; font-size: 12px; }
+.halftime-room li em { font-style: normal; font-weight: 700; font-variant-numeric: tabular-nums; }
+.halftime-headline { color: var(--c-fg-ffd166, #ffd166); }

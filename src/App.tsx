@@ -69,6 +69,7 @@ import { rivalryBadge } from './simulation/rivalry';
 import { rivalryWeekGame, rivalryHype } from './simulation/rivalryWeek';
 import { duoKeys } from './simulation/chemistryWeb';
 import { coachLook } from './visuals/coachLook';
+import type { Speech } from './simulation/halftime';
 import type { NbaHistory } from './history/nbaHistoryData';
 import { HistoricalSettingsCard } from './components/HistoricalSettingsCard';
 import { migrateHistoricalLeague } from './history/migrateHistorical';
@@ -852,8 +853,13 @@ function App() {
     if (!session) return 'There is no live game to coach.';
     if (league !== session.committed) return 'This game is locked in — the league has moved on since tip-off.';
     const commands = [...session.commands, command];
-    const played = simulateFullRound(session.base, seed, { [session.gameId]: commands });
-    if (!played.schedule.find(g => g.id === session.gameId)?.result) return 'The game could not be re-simulated.';
+    const simmed = simulateFullRound(session.base, seed, { [session.gameId]: commands });
+    if (!simmed.schedule.find(g => g.id === session.gameId)?.result) return 'The game could not be re-simulated.';
+    // Halftime speeches are remembered for the season reel (this season and last are kept).
+    const speeches = commands.filter((c): c is Extract<LiveCoachingCommand, { kind: 'speech' }> => c.kind === 'speech')
+      .map(c => ({ season: simmed.season ?? '', gameId: session.gameId, teamId: c.teamId, speech: c.speech as Speech, halftimeMargin: c.margin ?? 0 }));
+    const kept = (simmed.halftimeSpeeches ?? []).filter(s => s.gameId !== session.gameId && Number(s.season.slice(0, 4)) >= Number((simmed.season ?? '0').slice(0, 4)) - 1);
+    const played = speeches.length ? { ...simmed, halftimeSpeeches: [...kept, ...speeches].slice(-60) } : simmed;
     const committed = applyLeagueAIPass(played, session.baseExtras, true);
     setCoachSession({ ...session, commands, committed });
     return null;

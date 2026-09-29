@@ -215,6 +215,8 @@ export interface League {
   press?: import('./press').PressState;
   /** This season's two Rivalry Week games against your biggest rival, the build-up and the fallout (see rivalryWeek.ts). */
   rivalryWeek?: import('./rivalryWeek').RivalryWeekState;
+  /** Halftime speeches you gave this season and last (see halftime.ts); the best turnarounds make the season reel. */
+  halftimeSpeeches?: import('./halftime').SpeechRecord[];
   /** Fragile returning players and load management (see medical.ts). */
   medical?: import('./medical').MedicalState;
 
