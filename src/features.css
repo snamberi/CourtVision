@@ -149,3 +149,19 @@
 @media (prefers-reduced-motion: reduce) {
   .anim-flow, .anim-shimmer, .anim-pulse, .icon-anim .icon-sprite, .icon-glint { animation: none; }
 }
+.trophy-unlock { position: fixed; inset: 0; z-index: 3000; display: grid; place-items: center; background: var(--c-bg-05080ecc, #05080ecc); padding: 16px; }
+.tu-rays { position: absolute; width: 900px; height: 900px; max-width: 200vw; background: repeating-conic-gradient(from 0deg, var(--c-bg-ffd16633, #ffd16633) 0 10deg, transparent 10deg 20deg); border-radius: 50%; animation: tu-spin 18s linear infinite; mask-image: radial-gradient(circle, var(--c-any-000000, #000) 20%, transparent 65%); -webkit-mask-image: radial-gradient(circle, var(--c-any-000000, #000) 20%, transparent 65%); }
+@keyframes tu-spin { to { transform: rotate(360deg); } }
+.tu-box { position: relative; max-width: 640px; width: 100%; padding: 22px; background: var(--c-bg-121926, #121926); border: 2px solid var(--c-border-ffd166, #ffd166); box-shadow: 0 0 40px var(--c-shadow-ffd16655, #ffd16655), 4px 4px 0 var(--c-shadow-060a11, #060a11); text-align: center; animation: tu-pop .45s cubic-bezier(.2, 1.6, .4, 1); }
+@keyframes tu-pop { from { transform: scale(.6); opacity: 0; } }
+.tu-box h2 { margin: 4px 0 14px; color: var(--c-fg-ffd166, #ffd166); font-size: 30px; }
+.tu-rewards { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-bottom: 16px; }
+.tu-reward { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 130px; padding: 12px; background: var(--c-bg-0b1018, #0b1018); border: 1px solid var(--c-border-2a3546, #2a3546); }
+.tu-reward small { color: var(--c-fg-94a0b2, #94a0b2); }
+.tu-title { font-size: 20px; color: var(--c-fg-ffd166, #ffd166); }
+.tu-name { font-size: 22px; }
+.tu-look { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; width: 90px; height: 56px; padding: 6px; border: 2px solid; }
+.tu-look i { display: block; }
+@media (prefers-reduced-motion: reduce) { .tu-rays, .tu-box { animation: none; } }
+.bio-family { display: flex; flex-direction: column; gap: 2px; }
+.bio-family small { color: var(--c-fg-94a0b2, #94a0b2); }

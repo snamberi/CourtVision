@@ -220,6 +220,11 @@ export function generateNewsFeed(league: League, extras: GMLeagueExtras, maxItem
     add({ id: `fo:${e.kind}:${e.teamId}:${e.order}`, season: e.season, category: 'Teams', teamId: e.teamId, teamName: e.teamName,
       headline: e.headline, detail: e.detail, order: 310_000 + e.order });
   }
+  // Family: a retired player's son in the draft class (see family.ts).
+  for (const p of extras.draftClass) for (const f of p.trueSeason.family ?? []) if (f.relation === 'father') {
+    add({ id: `family:${p.playerId}`, category: 'Draft', teamId: null, teamName: null, playerId: p.playerId, order: 290_000,
+      headline: `${p.playerId}, son of ${f.playerId}, has entered the draft.`, detail: `A familiar name on the big board: his father played in this league.` });
+  }
   // Rivalry Week: bragging rights or boos (see rivalryWeek.ts).
   if (league.rivalryWeek?.season === season) for (const r of rivalryWeekNews(league)) {
     const played = league.schedule.findIndex(g => g.id === r.gameId);

@@ -121,3 +121,16 @@ export const unpackColors = (v: string | null | undefined): { color: string; tit
   const [color, titleColor] = (v ?? 'cream').split('|');
   return { color: color || 'cream', titleColor: titleColor || 'plain' };
 };
+
+const SEEN_KEY = 'cv-trophy-seen';
+/** Trophy Road stops passed since the last time they were shown (the first call records the count quietly). */
+export function takeTrophyUp(trophies: number): { from: number; to: number; rewards: [number, TrophyRewardKind, string][] } | null {
+  try {
+    const raw = localStorage.getItem(SEEN_KEY);
+    localStorage.setItem(SEEN_KEY, String(trophies));
+    if (raw == null) return null;
+    const seen = Number(raw);
+    const rewards = TROPHY_ROAD.filter(([t]) => t > seen && t <= trophies);
+    return rewards.length ? { from: seen, to: trophies, rewards } : null;
+  } catch { return null; }
+}

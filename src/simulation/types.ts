@@ -317,6 +317,8 @@ export interface PlayerSeason {
   jerseyNumber?: number;
   /** Look chosen in Edit Player (skin, hair, beard, headwear); unset keeps the look the player's id gives him. */
   appearance?: import('../visuals/playerSprite').Appearance;
+  /** Relatives in the league (a retired star's son, a brother): see simulation/family.ts. */
+  family?: import('./family').FamilyLink[];
   college?: string;
   nationality?: string;
   birthDate?: string; // ISO date, real players only

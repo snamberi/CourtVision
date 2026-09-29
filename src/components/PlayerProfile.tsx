@@ -1,4 +1,5 @@
 import { PersonalityPanel } from './MoralePanels';
+import { familyTies, relationLabel } from '../simulation/family';
 import { scoutingReport } from '../simulation/scouting';
 import { PlayerDevelopmentPanel } from './PlayerDevelopmentPanel';
 import { PixelIcon } from './PixelIcon';
@@ -62,6 +63,7 @@ export function PlayerProfile({ season, teamName, onChange, sandboxMode, onLookC
   const ratings = calculateRatings(season);
   const badgeNames = season.badges.map((id) => [...NORMAL_BADGES, ...EXPERIMENTAL_BADGES].find((b) => b.id === id)?.name ?? id);
   const awardsHistory = league ? getPlayerAwardsHistory(league, season.playerId) : [];
+  const family = league ? familyTies(league, extras, season) : [];
   // Draft prospects keep their true potential hidden outside sandbox mode: show the user's scouting range instead.
   const prospect = !sandboxMode && league && extras ? extras.draftClass.find(p => p.playerId === season.playerId) : undefined;
   const scouted = prospect && league && extras ? scoutingReport(prospect, league, extras, controlledTeamId) : null;
@@ -123,7 +125,7 @@ export function PlayerProfile({ season, teamName, onChange, sandboxMode, onLookC
         />
       ) : (
         <>{league && extras && !prospect && <PersonalityPanel p={season} league={league} extras={extras} />}
-        <PlayerCard season={season} ratings={ratings} badgeNames={badgeNames} awardsHistory={awardsHistory} league={league} /></>
+        <PlayerCard season={season} ratings={ratings} badgeNames={badgeNames} awardsHistory={awardsHistory} league={league} family={family} /></>
       )}
     </div>
   );
@@ -238,9 +240,9 @@ function buildTeamHistory(season: PlayerSeason, teamNameFor: (teamId: string | n
   return stints;
 }
 
-function PlayerCard({ season, ratings, badgeNames, awardsHistory, league }: {
+function PlayerCard({ season, ratings, badgeNames, awardsHistory, league, family }: {
   season: PlayerSeason; ratings: ReturnType<typeof calculateRatings>; badgeNames: string[];
-  awardsHistory: PlayerAwardEntry[]; league?: League;
+  awardsHistory: PlayerAwardEntry[]; league?: League; family: ReturnType<typeof familyTies>;
 }) {
   const [view, setView] = useState<'totals' | 'perGame' | 'advanced' | 'playoffs'>('perGame');
   const currentAdvanced = useMemo(() => league ? currentSeasonAdvanced(league).get(season.playerId) : undefined, [league, season.playerId]);
@@ -439,6 +441,7 @@ function PlayerCard({ season, ratings, badgeNames, awardsHistory, league }: {
             <tr><td>Height / Weight</td><td>{Math.floor(season.attributes.physical.heightInches / 12)}'{season.attributes.physical.heightInches % 12}" · {season.attributes.physical.weightLbs} lbs</td></tr>
             <tr><td>College</td><td>{season.college || '—'}</td></tr>
             <tr><td>Nationality</td><td>{season.nationality || '—'}</td></tr>
+            {family.length > 0 && <tr><td>Family</td><td className="bio-family">{family.map(f => <span key={f.playerId}><b>{relationLabel(f.relation)}</b> {f.playerId.replace(/ '\d+$/, '')} <small>({f.where})</small></span>)}</td></tr>}
             <tr>
               <td>Draft</td>
               <td>

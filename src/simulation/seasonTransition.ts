@@ -1,4 +1,5 @@
 import { rollBusinessSeason } from './business';
+import { withLegacySons } from './family';
 import { enforceSticky, isStuck } from './sticky';
 import { lotteryResult, consensusBoard } from './draftNight';
 import { extensionTakesOver, markContractYears } from './extensions';
@@ -354,7 +355,7 @@ export function beginNewSeasonRoster(
   retiredPlayerIds.push(...faResult.retired.map(r => r.playerId));
   newlyRetired.push(...faResult.retired);
 
-  const generateClass = () => generateDraftClass(pickDraftClassSize(teams.length, rng), Math.floor(rng.next() * 1_000_000), newSeason, collectPlayerIds(league, extras));
+  const generateClass = () => { const size = pickDraftClassSize(teams.length, rng), seed = Math.floor(rng.next() * 1_000_000); return withLegacySons(generateDraftClass(size, seed, newSeason, collectPlayerIds(league, extras)), { ...league, retiredPlayers: [...(league.retiredPlayers ?? []), ...newlyRetired] }, seed); };
   // Historical leagues: this offseason's real draft class, and real players whose NBA debut is this season.
   let historical = league.historical;
   let draftClass: ReturnType<typeof generateDraftClass>;

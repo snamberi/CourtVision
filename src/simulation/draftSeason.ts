@@ -1,4 +1,5 @@
 import type { League } from './league';
+import { withLegacySons } from './family';
 import { computeStandings, defaultCoachTendencies } from './league';
 import type { DraftProspect, GMLeagueExtras, SalaryCapSettings } from './gm';
 import { currentDraftOrder, generateDraftClass, pickDraftClassSize, rookieContract } from './gm';
@@ -36,7 +37,8 @@ export function ensureUpcomingDraftClass(league: League, extras: GMLeagueExtras)
   if ((league.seasonPhase ?? 'regular_season') !== 'regular_season') return extras;
   const label = upcomingDraftLabel(league);
   const rng = new RNG(hash(`draftclass:${label}`));
-  return { ...extras, draftClass: generateDraftClass(pickDraftClassSize(league.teams.length, rng), hash(`draftclass-seed:${label}`), label, collectPlayerIds(league, extras)), draftWorkouts: {} };
+  const draftClass = withLegacySons(generateDraftClass(pickDraftClassSize(league.teams.length, rng), hash(`draftclass-seed:${label}`), label, collectPlayerIds(league, extras)), league, hash(`legacy:${label}`));
+  return { ...extras, draftClass, draftWorkouts: {} };
 }
 
 /** 0 before opening night, 1 once the regular season is over. */
