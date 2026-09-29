@@ -32,11 +32,14 @@ const REF_LAST = ['Foster', 'Brothers', 'Davis', 'Capers', 'Zarba', 'Fitzgerald'
 export interface RefCrewMember { name: string; number: number; role: 'Crew chief' | 'Referee' | 'Umpire' }
 export function refCrew(seed: number | string): RefCrewMember[] {
   const h = hash(String(seed));
-  const used = new Set<number>();
+  const used = new Set<number>(), last = new Set<string>();
   return (['Crew chief', 'Referee', 'Umpire'] as const).map((role, i) => {
     let n = (h >>> (i * 5)) % 80 + 5;
     while (used.has(n)) n++;
     used.add(n);
-    return { role, number: n, name: `${REF_FIRST[(h >>> (i * 3 + 1)) % REF_FIRST.length]} ${REF_LAST[(h >>> (i * 4 + 2)) % REF_LAST.length]}` };
+    let k = (h >>> (i * 4 + 2)) + i * 7;
+    while (last.has(REF_LAST[k % REF_LAST.length])) k++;
+    last.add(REF_LAST[k % REF_LAST.length]);
+    return { role, number: n, name: `${REF_FIRST[(h >>> (i * 3 + 1)) % REF_FIRST.length]} ${REF_LAST[k % REF_LAST.length]}` };
   });
 }

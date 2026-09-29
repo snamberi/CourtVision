@@ -5,7 +5,7 @@ import { splitTeamName } from '../visuals/pixelFont';
  * Road trips and travel fatigue. Every team has a home city on the map: a real NBA city when its name has one, and
  * otherwise one of the real metro spots nobody else uses (fixed per team). Walking a team's schedule in order: every
  * flight adds fatigue by distance, time zones crossed and short rest; a stretch at home lets it drain away. Fatigue
- * is a small minus to decision-making and help defense on the night (up to -3; see gameBoost in league.ts), so long
+ * is a small minus to decision-making and help defense on the night (up to -2.5; see gameBoost in league.ts), so long
  * road trips and coast-to-coast swings are felt the way they are in the real league.
  *
  * On your team's road trips you decide how to handle it: rest days (fatigue from the trip cut by more than half),
@@ -98,10 +98,10 @@ export function travelWalk(league: League, teamId: string): Walk {
   for (const g of games) {
     const away = g.awayTeamId === teamId, host = cities.get(g.homeTeamId) ?? home;
     const gap = Math.max(1, g.round - lastRound);
-    f = Math.max(0, f - 0.35 * (gap - 1));                // days off drain it
+    f *= Math.pow(0.7, gap);                              // every game day, the legs come back a little
     const d = miles(at, host), z = Math.abs(timeZone(at) - timeZone(host));
-    if (!away && at === home) f *= 0.5;                   // a homestand
-    else f += d / 900 + z * 0.7 + (gap <= 1 ? 0.5 : 0);
+    if (d > 1) f += d / 1500 + z * 0.45 + (gap <= 1 ? 0.2 : 0); // a flight: distance, time zones, short rest
+    if (!away) f *= 0.6;                                  // sleeping in your own bed
     if (away) {
       if (!trip) trip = { id: `${teamId}:${g.id}`, legs: [], miles: 0, zones: 0, peak: 0 };
       const plan = plans[trip.id];
@@ -122,12 +122,12 @@ export function travelWalk(league: League, teamId: string): Walk {
   return walk;
 }
 
-/** Tonight's travel effect for a team: minus up to 3 from fatigue, plus 1 on a trip you chose to push through. */
+/** Tonight's travel effect for a team: minus up to 2.5 from fatigue, plus 1 on a trip you chose to push through. */
 export function travelEdge(league: League, teamId: string, gameId: string): number {
   const w = travelWalk(league, teamId);
   const f = w.fatigue.get(gameId) ?? 0;
   const pushed = w.trips.some(t => t.plan === 'push' && t.legs.some(l => l.gameId === gameId)) ? 1 : 0;
-  return Math.round((-Math.min(3, f * 0.45) + pushed) * 100) / 100;
+  return Math.round((-Math.min(2.5, f * 0.3) + pushed) * 100) / 100;
 }
 
 /** Picks a plan for one of your road trips (a team dinner also lifts chemistry and bonds, once per trip). */

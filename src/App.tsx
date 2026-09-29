@@ -137,6 +137,7 @@ const Community = lazy(() => import('./components/cloud/Community').then(m => ({
 const CareerMode = lazy(() => import('./components/career/CareerMode').then(m => ({ default: m.CareerMode })));
 const SummerCampPage = lazy(() => import('./components/SummerCampPage').then(m => ({ default: m.SummerCampPage })));
 const MedicalRoomPage = lazy(() => import('./components/MedicalRoomPage').then(m => ({ default: m.MedicalRoomPage })));
+const FranchiseTimelinePage = lazy(() => import('./components/FranchiseTimelinePage').then(m => ({ default: m.FranchiseTimelinePage })));
 const GmRivalsPage = lazy(() => import('./components/GmRivalsPage').then(m => ({ default: m.GmRivalsPage })));
 const CardAlbumPage = lazy(() => import('./components/CardAlbumPage').then(m => ({ default: m.CardAlbumPage })));
 const RoadTripsPage = lazy(() => import('./components/RoadTripsPage').then(m => ({ default: m.RoadTripsPage })));
@@ -1694,6 +1695,7 @@ function App() {
         {tab === 'press' && <PressRoomPage league={league} extras={extras} controlledTeamId={controlledTeamId} onChange={setLeague} />}
         {tab === 'cards' && <CardAlbumPage />}
         {tab === 'gmRivals' && <GmRivalsPage league={league} extras={extras} />}
+        {tab === 'timeline' && <FranchiseTimelinePage league={league} extras={extras} controlledTeamId={controlledTeamId} onSelectPlayer={selectPlayer} />}
         {tab === 'travel' && <RoadTripsPage league={league} controlledTeamId={controlledTeamId} onChange={setLeague} />}
         {tab === 'yearInReview' && <YearInReviewPage league={league} extras={extras} controlledTeamId={controlledTeamId} awardOptions={awardOptions(awardSettings)}
           onOpenAwards={() => setTab('awards')} onSelectPlayer={selectPlayer}

@@ -114,7 +114,9 @@ describe('Trade Deadline Day', () => {
     expect(two.league.deadlineDay).toEqual(again.league.deadlineDay);
 
     const noon = advanceDeadlineHour(advanceDeadlineHour(advanceDeadlineHour(opened.league, opened.extras, me, 3).league, opened.extras, me, 3).league, opened.extras, me, 3);
-    const offer = [1, 2, 3, 4, 5].map(seed => deadlineCall(noon.league, noon.extras, me, seed)).find(Boolean)!;
+    // A call already waiting on your phone counts; otherwise ring around (a team with a pending offer doesn't call twice).
+    const offer = noon.extras.pendingTradeOffers.find(o => validateTrade(noon.league, noon.extras, o).valid)
+      ?? [1, 2, 3, 4, 5].map(seed => deadlineCall(noon.league, noon.extras, me, seed)).find(Boolean)!;
     expect(offer).toBeTruthy();
     expect(validateTrade(noon.league, noon.extras, offer).valid).toBe(true);
     const traded = executeTrade(noon.league, noon.extras, offer);

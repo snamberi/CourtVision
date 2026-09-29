@@ -280,3 +280,32 @@ button.tcard:hover, button.tcard:focus-visible { transform: translateY(-3px); ou
 .deadline-rivals em { font-style: normal; font-size: 11px; margin-left: 6px; color: var(--c-fg-94a0b2, #94a0b2); }
 .deadline-rivals em.bad { color: var(--c-fg-e85d5d, #e85d5d); }
 .deadline-rivals em.good { color: var(--c-fg-55c878, #55c878); }
+/* ---- Franchise timeline ---- */
+.timeline-title { display: flex; align-items: center; gap: 10px; }
+.timeline-actions { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+.timeline-rafters { display: flex; gap: 8px; flex-wrap: wrap; padding: 10px; margin-bottom: 10px; background: var(--c-bg-0b1018, #0b1018); border: 1px solid var(--c-border-2a3546, #2a3546); }
+.timeline-banner { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 64px; height: 84px; padding-bottom: 10px; background: var(--tl1); color: var(--tl2); clip-path: polygon(0 0, 100% 0, 100% 85%, 50% 100%, 0 85%); font-size: 9px; text-align: center; }
+.timeline-banner b { font-size: 10px; }
+.timeline-banner small { font-size: 10px; color: inherit; opacity: .85; }
+.timeline-jersey b { font-size: 20px; }
+.timeline-rail { display: flex; gap: 0; list-style: none; margin: 0 0 12px; padding: 0 0 10px; overflow-x: auto; scroll-snap-type: x proximity; }
+.timeline-rail li { flex: none; scroll-snap-align: start; position: relative; }
+.timeline-rail li::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 4px; background: var(--tl1); opacity: .5; }
+.timeline-stop { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; width: 118px; margin: 0 6px; padding: 8px 6px; background: var(--c-bg-121926, #121926); border: 2px solid var(--c-border-2a3546, #2a3546); color: var(--c-fg-f4f0e6, #f4f0e6); font: inherit; cursor: pointer; }
+.timeline-stop.champ { border-color: var(--c-border-ffd166, #ffd166); background: var(--c-bg-2a2412, #2a2412); }
+.timeline-stop.active { outline: 2px solid var(--c-border-f47b20, #f47b20); }
+.timeline-stop.current { border-style: dashed; }
+.timeline-stop small { color: var(--c-fg-94a0b2, #94a0b2); font-size: 10px; }
+.timeline-stop.champ small { color: var(--c-fg-ffd166, #ffd166); }
+.timeline-record { font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.timeline-icons { display: flex; gap: 3px; min-height: 18px; }
+.timeline-icons i, .timeline-events i { font-style: normal; display: inline-grid; place-items: center; width: 18px; height: 18px; background: var(--c-bg-0b1018, #0b1018); border: 1px solid var(--c-border-2a3546, #2a3546); font-size: 11px; }
+.tl-title i, i.tl-title { color: var(--c-fg-ffd166, #ffd166); }
+.tl-trade i, i.tl-trade { color: var(--c-fg-4da3ff, #4da3ff); }
+.tl-jersey i, i.tl-jersey { color: var(--c-fg-f4f0e6, #f4f0e6); }
+.tl-game7 i, i.tl-game7 { color: var(--c-fg-e85d5d, #e85d5d); }
+.timeline-detail { padding: 12px; background: var(--c-bg-121926, #121926); border: 1px solid var(--c-border-2a3546, #2a3546); }
+.timeline-events { list-style: none; padding: 0; margin: 0 0 10px; display: grid; gap: 4px; }
+.timeline-events li { display: flex; gap: 8px; align-items: center; }
+.trophy-road .road-reward .name-tag > span, .trophy-road .road-reward .name-tag-lines > span, .trophy-road .road-title { white-space: normal; overflow: visible; text-overflow: clip; }
+.trophy-road .road-reward { min-width: 0; flex-direction: column; align-items: flex-start; gap: 2px; }

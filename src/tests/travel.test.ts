@@ -41,3 +41,15 @@ describe('road trips and travel fatigue', () => {
     expect(home).toBeLessThan(0.66);
   }, 120000);
 });
+describe('travel fatigue levels', () => {
+  it('costs a little on an ordinary night and more on long trips, never more than 2.5', () => {
+    const edges = league.schedule.flatMap(g => [travelEdge(league, g.homeTeamId, g.id), travelEdge(league, g.awayTeamId, g.id)]);
+    const avg = edges.reduce((n, v) => n + v, 0) / edges.length;
+    expect(avg).toBeGreaterThan(-1);
+    expect(Math.min(...edges)).toBeGreaterThanOrEqual(-2.5);
+    // Home teams are fresher than visitors on the same night.
+    const homeAvg = league.schedule.reduce((n, g) => n + travelEdge(league, g.homeTeamId, g.id), 0) / league.schedule.length;
+    const awayAvg = league.schedule.reduce((n, g) => n + travelEdge(league, g.awayTeamId, g.id), 0) / league.schedule.length;
+    expect(homeAvg).toBeGreaterThan(awayAvg);
+  });
+});

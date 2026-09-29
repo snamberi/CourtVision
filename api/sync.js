@@ -2363,7 +2363,300 @@ function dailyGoalXp(read = localRead) {
 	}
 }
 //#endregion
+//#region src/profile/trophyRoad.ts
+/** One or two rewards every 5,000 trophies. The last stops are the rarest things in the game. */
+const TROPHY_ROAD = [
+	[
+		5e3,
+		"title",
+		"Contender"
+	],
+	[
+		5e3,
+		"titleColor",
+		"amber"
+	],
+	[
+		1e4,
+		"color",
+		"emberflow"
+	],
+	[
+		15e3,
+		"icon",
+		"fireball"
+	],
+	[
+		2e4,
+		"title",
+		"Trophy Hunter"
+	],
+	[
+		2e4,
+		"titleColor",
+		"gold"
+	],
+	[
+		25e3,
+		"look",
+		"aurora"
+	],
+	[
+		3e4,
+		"color",
+		"neonwave"
+	],
+	[
+		35e3,
+		"icon",
+		"trophy-shine"
+	],
+	[
+		4e4,
+		"title",
+		"Banner Raiser"
+	],
+	[
+		4e4,
+		"titleColor",
+		"ice"
+	],
+	[
+		45e3,
+		"color",
+		"lava"
+	],
+	[
+		5e4,
+		"look",
+		"royalcourt"
+	],
+	[
+		5e4,
+		"icon",
+		"crown-spin"
+	],
+	[
+		55e3,
+		"title",
+		"Ring Collector"
+	],
+	[
+		6e4,
+		"titleColor",
+		"rainbow"
+	],
+	[
+		65e3,
+		"icon",
+		"star-twinkle"
+	],
+	[
+		7e4,
+		"color",
+		"galaxy"
+	],
+	[
+		75e3,
+		"look",
+		"galaxy"
+	],
+	[
+		75e3,
+		"title",
+		"Franchise Icon"
+	],
+	[
+		8e4,
+		"icon",
+		"bolt-strike"
+	],
+	[
+		85e3,
+		"titleColor",
+		"fire"
+	],
+	[
+		9e4,
+		"color",
+		"goldrush"
+	],
+	[
+		95e3,
+		"title",
+		"Legend of the Game"
+	],
+	[
+		1e5,
+		"icon",
+		"ring"
+	],
+	[
+		1e5,
+		"title",
+		"Six Figures"
+	],
+	[
+		1e5,
+		"color",
+		"dsheen"
+	],
+	[
+		105e3,
+		"titleColor",
+		"emerald"
+	],
+	[
+		11e4,
+		"icon",
+		"diamond-pulse"
+	],
+	[
+		115e3,
+		"title",
+		"Hardwood Royalty"
+	],
+	[
+		12e4,
+		"color",
+		"sunset"
+	],
+	[
+		125e3,
+		"look",
+		"hallowed"
+	],
+	[
+		125e3,
+		"titleColor",
+		"platinum"
+	],
+	[
+		13e4,
+		"icon",
+		"phoenix"
+	],
+	[
+		135e3,
+		"title",
+		"The Chosen One"
+	],
+	[
+		14e4,
+		"color",
+		"phantom"
+	],
+	[
+		145e3,
+		"titleColor",
+		"aurora"
+	],
+	[
+		15e4,
+		"icon",
+		"meteor"
+	],
+	[
+		15e4,
+		"title",
+		"Mythic GM"
+	],
+	[
+		15e4,
+		"color",
+		"solar"
+	],
+	[
+		155e3,
+		"titleColor",
+		"bloodmoon"
+	],
+	[
+		16e4,
+		"title",
+		"Architect of Eras"
+	],
+	[
+		165e3,
+		"icon",
+		"crown-flame"
+	],
+	[
+		17e4,
+		"color",
+		"nebula"
+	],
+	[
+		175e3,
+		"look",
+		"eclipse"
+	],
+	[
+		175e3,
+		"title",
+		"Untouchable"
+	],
+	[
+		18e4,
+		"titleColor",
+		"starlight"
+	],
+	[
+		185e3,
+		"icon",
+		"goat"
+	],
+	[
+		19e4,
+		"color",
+		"celestial"
+	],
+	[
+		19e4,
+		"title",
+		"Eternal"
+	],
+	[
+		195e3,
+		"titleColor",
+		"molten"
+	],
+	[
+		2e5,
+		"title",
+		"Court Vision Immortal"
+	],
+	[
+		2e5,
+		"icon",
+		"goat-crown"
+	],
+	[
+		2e5,
+		"color",
+		"immortal"
+	],
+	[
+		2e5,
+		"titleColor",
+		"immortal"
+	],
+	[
+		2e5,
+		"look",
+		"immortal"
+	]
+];
+const trophyNeed = (kind, id) => TROPHY_ROAD.find(([, k, i]) => k === kind && i === id)?.[0];
+TROPHY_ROAD.filter(([, k]) => k === "title").map(([t, , id]) => ({
+	id,
+	trophies: t
+}));
+//#endregion
 //#region src/profile/cosmetics.ts
+const byTrophies = (kind, id) => ({ trophies: trophyNeed(kind, id) ?? 5e3 });
+const trophyHow = (r) => "trophies" in r ? `${r.trophies.toLocaleString()} trophies` : "";
+const albumHow = (r) => "album" in r ? r.album === "sets" ? `Complete ${r.n} team card set${r.n === 1 ? "" : "s"}` : `Collect ${r.n} legendary cards` : "";
 /** Every 5 levels, one or two rewards (levels 5 to 250); every 25 levels also an app look (src/theme/themes.ts). */
 const LEVEL_ROAD = [
 	[
@@ -2884,45 +3177,198 @@ const jersey = (id, name, main, dark, trim = "#f4f0e6") => icon(id, name, "jerse
 	J: dark,
 	w: trim
 });
-icon("ball", "Basketball", "ball", void 0, { level: 1 }), icon("hoop", "Hoop", "hoop", void 0, { level: 1 }), icon("sneaker", "Sneaker"), icon("whistle", "Whistle"), icon("clipboard", "Clipboard"), icon("star", "All-Star"), icon("flame", "Heater"), icon("trophy", "Trophy"), icon("crown", "Crown"), jersey("jersey-red", "Red jersey", "#e85d5d", "#a83232"), jersey("jersey-blue", "Blue jersey", "#4da3ff", "#2f6fb8"), jersey("jersey-green", "Green jersey", "#55c878", "#2f8a4f"), jersey("jersey-purple", "Purple jersey", "#b983ff", "#7e4fc9"), jersey("jersey-teal", "Teal jersey", "#3fc1c9", "#23828a"), jersey("jersey-black", "Black jersey", "#2a3546", "#121926"), jersey("jersey-white", "Home whites", "#f4f0e6", "#c9ced8", "#f47b20"), icon("ball-classic", "Leather ball", "ball", {
-	o: "#a0522d",
-	O: "#6b3515"
-}), icon("ball-aba", "ABA ball", "ball", {
-	o: "#e85d5d",
-	O: "#4da3ff"
-}), icon("ball-ice", "Ice ball", "ball", {
-	o: "#bfe6ff",
-	O: "#4da3ff"
-}), icon("ball-neon", "Neon ball", "ball", {
-	o: "#6fdc93",
-	O: "#ff4dd2"
-}), icon("sneaker-red", "Red sneaker", "sneaker", {
-	w: "#e85d5d",
-	o: "#f4f0e6"
-}), icon("sneaker-blue", "Blue sneaker", "sneaker", {
-	w: "#4da3ff",
-	o: "#f4f0e6"
-}), icon("sneaker-gold", "Gold sneaker", "sneaker", {
-	w: "#ffd166",
-	o: "#0b1018"
-}), icon("trophy-silver", "Silver trophy", "trophy", {
-	g: "#d7dde6",
-	G: "#94a0b2"
-}), icon("trophy-bronze", "Bronze trophy", "trophy", {
-	g: "#d08a4a",
-	G: "#8c5a2b"
-}), icon("crown-ruby", "Ruby crown", "crown", {
-	g: "#e85d5d",
-	G: "#a83232",
-	r: "#ffd166"
-}), icon("lightning", "Lightning"), icon("shotclock", "Shot clock"), icon("rocket", "Rocket"), icon("headband", "Headband"), icon("shield", "Shield"), icon("megaphone", "Megaphone"), icon("sun", "Sun"), icon("moon", "Moon"), icon("snowflake", "Snowflake"), { ...icon("diamond", "Diamond", "diamond", void 0, { rank: 4 }) }, { ...icon("ghost", "Ghost", "ghost", void 0, { mode: "pvp-1200" }) }, { ...icon("medal", "Medal", "medal", void 0, { anyHonor: true }) }, { ...icon("ball-gold", "Gold ball", "ball", {
-	o: "#ffd166",
-	O: "#c9971f"
-}, { supporter: true }) }, { ...icon("sneaker-black", "Blackout sneaker", "sneaker", {
-	w: "#2a3546",
-	o: "#ff9d3d",
-	O: "#f4f0e6"
-}, { supporter: true }) }, { ...jersey("jersey-gold", "Gold jersey", "#ffd166", "#c9971f", "#0b1018") }, { ...icon("heart", "Heart", "heart", void 0, { supporter: true }) };
+[
+	icon("ball", "Basketball", "ball", void 0, { level: 1 }),
+	icon("hoop", "Hoop", "hoop", void 0, { level: 1 }),
+	icon("sneaker", "Sneaker"),
+	icon("whistle", "Whistle"),
+	icon("clipboard", "Clipboard"),
+	icon("star", "All-Star"),
+	icon("flame", "Heater"),
+	icon("trophy", "Trophy"),
+	icon("crown", "Crown"),
+	jersey("jersey-red", "Red jersey", "#e85d5d", "#a83232"),
+	jersey("jersey-blue", "Blue jersey", "#4da3ff", "#2f6fb8"),
+	jersey("jersey-green", "Green jersey", "#55c878", "#2f8a4f"),
+	jersey("jersey-purple", "Purple jersey", "#b983ff", "#7e4fc9"),
+	jersey("jersey-teal", "Teal jersey", "#3fc1c9", "#23828a"),
+	jersey("jersey-black", "Black jersey", "#2a3546", "#121926"),
+	jersey("jersey-white", "Home whites", "#f4f0e6", "#c9ced8", "#f47b20"),
+	icon("ball-classic", "Leather ball", "ball", {
+		o: "#a0522d",
+		O: "#6b3515"
+	}),
+	icon("ball-aba", "ABA ball", "ball", {
+		o: "#e85d5d",
+		O: "#4da3ff"
+	}),
+	icon("ball-ice", "Ice ball", "ball", {
+		o: "#bfe6ff",
+		O: "#4da3ff"
+	}),
+	icon("ball-neon", "Neon ball", "ball", {
+		o: "#6fdc93",
+		O: "#ff4dd2"
+	}),
+	icon("sneaker-red", "Red sneaker", "sneaker", {
+		w: "#e85d5d",
+		o: "#f4f0e6"
+	}),
+	icon("sneaker-blue", "Blue sneaker", "sneaker", {
+		w: "#4da3ff",
+		o: "#f4f0e6"
+	}),
+	icon("sneaker-gold", "Gold sneaker", "sneaker", {
+		w: "#ffd166",
+		o: "#0b1018"
+	}),
+	icon("trophy-silver", "Silver trophy", "trophy", {
+		g: "#d7dde6",
+		G: "#94a0b2"
+	}),
+	icon("trophy-bronze", "Bronze trophy", "trophy", {
+		g: "#d08a4a",
+		G: "#8c5a2b"
+	}),
+	icon("crown-ruby", "Ruby crown", "crown", {
+		g: "#e85d5d",
+		G: "#a83232",
+		r: "#ffd166"
+	}),
+	icon("lightning", "Lightning"),
+	icon("shotclock", "Shot clock"),
+	icon("rocket", "Rocket"),
+	icon("headband", "Headband"),
+	icon("shield", "Shield"),
+	icon("megaphone", "Megaphone"),
+	icon("sun", "Sun"),
+	icon("moon", "Moon"),
+	icon("snowflake", "Snowflake"),
+	{ ...icon("diamond", "Diamond", "diamond", void 0, { rank: 4 }) },
+	{ ...icon("ghost", "Ghost", "ghost", void 0, { mode: "pvp-1200" }) },
+	{ ...icon("medal", "Medal", "medal", void 0, { anyHonor: true }) },
+	{ ...icon("ball-gold", "Gold ball", "ball", {
+		o: "#ffd166",
+		O: "#c9971f"
+	}, { supporter: true }) },
+	{ ...icon("sneaker-black", "Blackout sneaker", "sneaker", {
+		w: "#2a3546",
+		o: "#ff9d3d",
+		O: "#f4f0e6"
+	}, { supporter: true }) },
+	{ ...jersey("jersey-gold", "Gold jersey", "#ffd166", "#c9971f", "#0b1018") },
+	{ ...icon("heart", "Heart", "heart", void 0, { supporter: true }) },
+	...[
+		[
+			"fireball",
+			"Fireball",
+			"fireball",
+			void 0,
+			"flicker"
+		],
+		[
+			"trophy-shine",
+			"Gleaming trophy",
+			"trophy",
+			void 0,
+			"shine"
+		],
+		[
+			"crown-spin",
+			"Spinning crown",
+			"crown",
+			void 0,
+			"spin"
+		],
+		[
+			"star-twinkle",
+			"Twinkling star",
+			"star",
+			void 0,
+			"twinkle"
+		],
+		[
+			"bolt-strike",
+			"Lightning strike",
+			"lightning",
+			void 0,
+			"flash"
+		],
+		[
+			"ring",
+			"Championship ring",
+			"ring",
+			void 0,
+			"shine"
+		],
+		[
+			"diamond-pulse",
+			"Pulsing diamond",
+			"diamond",
+			void 0,
+			"glow"
+		],
+		[
+			"phoenix",
+			"Phoenix",
+			"phoenix",
+			void 0,
+			"flicker"
+		],
+		[
+			"meteor",
+			"Meteor",
+			"meteor",
+			void 0,
+			"bob"
+		],
+		[
+			"crown-flame",
+			"Crown of fire",
+			"crown",
+			{
+				g: "#ff9d3d",
+				G: "#e85d5d",
+				r: "#ffd166",
+				b: "#ffe066"
+			},
+			"flicker"
+		],
+		[
+			"goat",
+			"The GOAT",
+			"goat",
+			void 0,
+			"bob"
+		],
+		[
+			"goat-crown",
+			"Crowned GOAT",
+			"goatcrown",
+			void 0,
+			"glow"
+		]
+	].map(([id, name, base, recolor, anim]) => {
+		const rule = byTrophies("icon", id);
+		return {
+			id,
+			name,
+			base,
+			recolor,
+			anim,
+			rule,
+			how: trophyHow(rule)
+		};
+	}),
+	albumHow({
+		album: "sets",
+		n: 3
+	}),
+	albumHow({
+		album: "legendary",
+		n: 10
+	})
+];
 const color = (id, name, css, rule = byRoad("color", id)) => ({
 	id,
 	name,
@@ -2930,7 +3376,21 @@ const color = (id, name, css, rule = byRoad("color", id)) => ({
 	rule,
 	how: levelHow(rule)
 });
-color("cream", "Cream", "#f4f0e6", { level: 1 }), color("orange", "Court orange", "#ff9d3d"), color("red", "Red", "#ff6b6b"), color("sky", "Sky", "#6db8ff"), color("pink", "Pink", "#ff8fc8"), color("mint", "Mint", "#6fdc93"), color("teal", "Teal", "#4fd6d6"), color("lime", "Lime", "#b8e05a"), color("violet", "Violet", "#c79bff"), color("silver", "Silver", "#d7dde6"), color("bronze", "Bronze", "#d99a5c"), color("sand", "Sand", "#e6cf9a"), color("coral", "Coral", "#ff8a6b"), color("gold", "Gold", "#ffd166"), color("lavender", "Lavender", "#b8a8ff"), color("crimson", "Crimson", "#ff4d6a"), color("emerald", "Emerald", "#3fd98a"), color("ice", "Ice", "#bfe6ff"), color("platinum", "Platinum", "linear-gradient(90deg, #e8edf3, #9fb0c4, #e8edf3)"), color("obsidian", "Obsidian", "linear-gradient(90deg, #8a93a6, #f4f0e6, #8a93a6)"), color("inferno", "Inferno", "linear-gradient(90deg, #ff4d2e, #ff9d3d, #ffd166, #ff9d3d, #ff4d2e)"), { ...color("ember", "Ember", "#ff6b3d", { rank: 5 }) }, { ...color("prism", "Prism", "linear-gradient(90deg, #ff9d3d, #ffd166, #6fdc93, #6db8ff, #c79bff)", { honor: "first" }) }, { ...color("aurora", "Aurora", "linear-gradient(90deg, #6fdc93, #4fd6d6, #b8a8ff, #ff8fc8)", { supporter: true }) }, { ...color("supporter", "Supporter pink", "#ff5fa2", { supporter: true }) };
+const animated = (id, name, css, anim) => {
+	const rule = byTrophies("color", id);
+	return {
+		id,
+		name,
+		css,
+		anim,
+		rule,
+		how: trophyHow(rule)
+	};
+};
+color("cream", "Cream", "#f4f0e6", { level: 1 }), color("orange", "Court orange", "#ff9d3d"), color("red", "Red", "#ff6b6b"), color("sky", "Sky", "#6db8ff"), color("pink", "Pink", "#ff8fc8"), color("mint", "Mint", "#6fdc93"), color("teal", "Teal", "#4fd6d6"), color("lime", "Lime", "#b8e05a"), color("violet", "Violet", "#c79bff"), color("silver", "Silver", "#d7dde6"), color("bronze", "Bronze", "#d99a5c"), color("sand", "Sand", "#e6cf9a"), color("coral", "Coral", "#ff8a6b"), color("gold", "Gold", "#ffd166"), color("lavender", "Lavender", "#b8a8ff"), color("crimson", "Crimson", "#ff4d6a"), color("emerald", "Emerald", "#3fd98a"), color("ice", "Ice", "#bfe6ff"), color("platinum", "Platinum", "linear-gradient(90deg, #e8edf3, #9fb0c4, #e8edf3)"), color("obsidian", "Obsidian", "linear-gradient(90deg, #8a93a6, #f4f0e6, #8a93a6)"), color("inferno", "Inferno", "linear-gradient(90deg, #ff4d2e, #ff9d3d, #ffd166, #ff9d3d, #ff4d2e)"), { ...color("ember", "Ember", "#ff6b3d", { rank: 5 }) }, { ...color("prism", "Prism", "linear-gradient(90deg, #ff9d3d, #ffd166, #6fdc93, #6db8ff, #c79bff)", { honor: "first" }) }, { ...color("aurora", "Aurora", "linear-gradient(90deg, #6fdc93, #4fd6d6, #b8a8ff, #ff8fc8)", { supporter: true }) }, { ...color("supporter", "Supporter pink", "#ff5fa2", { supporter: true }) }, animated("emberflow", "Ember flow", "linear-gradient(90deg, #ff4d2e, #ff9d3d, #ffd166, #ff9d3d, #ff4d2e)", "flow"), animated("neonwave", "Neon wave", "linear-gradient(90deg, #ff4dd2, #6fd3ff, #7dff9b, #6fd3ff, #ff4dd2)", "flow"), animated("lava", "Lava", "linear-gradient(90deg, #7a1200, #ff3d1f, #ffb347, #ff3d1f, #7a1200)", "pulse"), animated("galaxy", "Galaxy", "linear-gradient(90deg, #6a45c0, #ff7ad9, #6fd3ff, #ffffff, #6a45c0)", "flow"), animated("goldrush", "Gold rush", "linear-gradient(90deg, #c9971f, #fff3c4, #ffd166, #fff3c4, #c9971f)", "shimmer"), animated("dsheen", "Diamond sheen", "linear-gradient(90deg, #6db8ff, #ffffff, #bfe6ff, #ffffff, #6db8ff)", "shimmer"), animated("sunset", "Sunset", "linear-gradient(90deg, #ff5f6d, #ffc371, #ff8fc8, #ffc371, #ff5f6d)", "flow"), animated("phantom", "Phantom", "linear-gradient(90deg, #5b6b82, #ffffff, #b8a8ff, #ffffff, #5b6b82)", "pulse"), animated("solar", "Solar flare", "linear-gradient(90deg, #ff3d1f, #ffe066, #ffffff, #ffe066, #ff3d1f)", "flow"), animated("nebula", "Nebula", "linear-gradient(90deg, #3b1d82, #ff4dd2, #4fd6d6, #b983ff, #3b1d82)", "flow"), animated("celestial", "Celestial", "linear-gradient(90deg, #ffd166, #ffffff, #8fa8ff, #ffffff, #ffd166)", "shimmer"), { ...animated("holo", "Holo foil", "linear-gradient(90deg, #ff8fc8, #6fd3ff, #7dff9b, #ffe38a, #ff8fc8)", "flow") }, albumHow({
+	album: "legendary",
+	n: 5
+}), animated("immortal", "Immortal", "linear-gradient(90deg, #ff4d2e, #ffd166, #6fdc93, #4fd6d6, #c79bff, #ff4dd2, #ff4d2e)", "flow");
 /** Titles on the level road, in order (Rookie GM is everyone's first). */
 const ROAD_TITLES = ["Rookie GM", ...LEVEL_ROAD.filter(([, k]) => k === "title").map(([, , id]) => id)];
 //#endregion
@@ -3529,7 +3989,10 @@ const SYNC_KEYS = [
 	"cv-daily-history",
 	"cv-profile-equip",
 	"cv-code-results",
-	"cv-feats"
+	"cv-feats",
+	"cv-legend-records",
+	"cv-card-album",
+	"cv-card-sets"
 ];
 const parse = (raw, fallback) => {
 	if (!raw) return fallback;
@@ -3647,6 +4110,23 @@ function mergeValue(key, local, cloud) {
 		case "cv-code-results": return JSON.stringify(mergeCodes(parse(local, {}), parse(cloud, {})));
 		case "cv-feats": return JSON.stringify(mergeFeats(readFeats(() => local), readFeats(() => cloud)));
 		case "cv-profile-equip": return local;
+		case "cv-legend-records": {
+			const out = { ...parse(cloud, {}) };
+			for (const [id, x] of Object.entries(parse(local, {}))) {
+				const y = out[id];
+				out[id] = y ? {
+					best: max(x.best, y.best),
+					stars: max(x.stars, y.stars),
+					attempts: max(x.attempts, y.attempts)
+				} : x;
+			}
+			return JSON.stringify(out);
+		}
+		case "cv-card-sets":
+		case "cv-card-album": return JSON.stringify({
+			...parse(cloud, {}),
+			...parse(local, {})
+		});
 	}
 }
 function mergeStorage(local, cloud) {

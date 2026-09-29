@@ -55,7 +55,7 @@ export function RoadTripsPage({ league, controlledTeamId, onChange }: { league: 
     <div className="season-feature-header"><div><span className="pixel-eyebrow">TRAVEL</span><h2><PixelIcon name="calendar" size={22} /> Road Trips</h2>
       <p>{home.name} · {ZONE_NAME[timeZone(home)]} time · {walk.trips.length} road trips, {totalMiles.toLocaleString()} miles this season</p></div>
       <div className="trip-now"><small>Travel fatigue before the next game</small><Meter v={now} /><b>{now < 1 ? 'Fresh' : now < 2.5 ? 'A little tired' : now < 4 ? 'Road-weary' : 'Exhausted'}</b></div></div>
-    <p className="hint-text">Every flight wears on a team: long distances, time zones crossed and games on short rest add up, and a homestand lets it drain away. Fatigue costs up to 3 points of decision-making and help defense on the night, for every team in the league. On your road trips you choose how to handle it.</p>
+    <p className="hint-text">Every flight wears on a team: long distances, time zones crossed and games on short rest add up, and a homestand lets it drain away. Fatigue costs up to 2.5 points of decision-making and help defense on the night, for every team in the league. On your road trips you choose how to handle it.</p>
     <div className="trip-layout">
       <TripMap cities={[...cities.entries()]} home={home} trip={selected} primary={identity?.primary ?? '#f47b20'} teamNames={name} />
       <div className="trip-list">

@@ -6,6 +6,19 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2026-10-21',
+    title: 'The Trophy Road, trading cards and road trips',
+    items: [
+      '**Trophy Road:** wins, titles, stars and cards earn trophies. Every 5,000 up to 200,000 unlocks something legendary: animated name colours and profile icons, title colours, six new app looks with moving backdrops (Aurora, Royal Court, Galaxy, Hallowed Hall, Eclipse, Immortal) and titles. Your title now shows under your name everywhere, leaderboards included.',
+      '**Trading cards:** every player gets a card each season (rookie card, All-Star foil, champion ring, MVP gold, legendary holo). Your roster\'s cards arrive when a season ends, plus packs to open. Complete team sets and share any card as an image (League → Card Album).',
+      '**Road trips:** your team on a pixel map of the US. Long flights, time zones and short rest wear teams down; pick rest days, a team dinner or push through on each trip.',
+      '**Halftime speech:** when you coach a game live, the tape stops at the half. Fiery, calm, call out the star or praise the bench: players react by personality and the score. The best turnaround makes your season reel.',
+      '**GM rivals:** three named GMs (a trade shark, a youth collector and an old-school GM) remember your trades, hold grudges, won\'t take your calls if you fleece them, and bring their own agendas to Deadline Day.',
+      '**Franchise timeline:** any team\'s history as a scrollable timeline of banners, big trades, retired numbers, playoff runs and arena upgrades. Tap a season for its roster and awards; share it as one long image.',
+      '**More character:** coaches work the sideline in their own outfits (suit, quarter-zip, tracksuit…) and react to the game; a named, numbered crew of three refs signals fouls. Player bios show family: brothers, fathers and sons, including real NBA families, and retired stars\' sons entering the draft.',
+    ],
+  },
+  {
     id: '2026-10-14',
     title: 'Rivalry Week, chemistry and Legend Challenges',
     items: [

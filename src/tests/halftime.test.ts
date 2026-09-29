@@ -28,3 +28,9 @@ describe('halftime speech', () => {
     expect(g.possessionLog.slice(half)).not.toEqual(base.possessionLog.slice(half));
   });
 });
+describe('ref crew', () => {
+  it('three officials with different surnames and numbers', async () => {
+    const { refCrew } = await import('../visuals/coachLook');
+    for (let s = 0; s < 200; s++) { const c = refCrew(s); expect(new Set(c.map(r => r.name.split(' ')[1])).size).toBe(3); expect(new Set(c.map(r => r.number)).size).toBe(3); }
+  });
+});
