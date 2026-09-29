@@ -74,6 +74,9 @@ export default defineConfig(({ mode }) => ({
   base: mode === 'desktop' ? './' : '/',
   build: {
     ...(mode === 'desktop' ? { outDir: 'dist-desktop', emptyOutDir: true } : {}),
+    // The tiny bundler runtime is imported by the entry script straight away; preloading it as well only makes Chrome
+    // warn "preloaded but not used" once the service worker takes over the page (the preload came from the network).
+    modulePreload: { resolveDependencies: (_file, deps) => deps.filter(d => !/rolldown-runtime/.test(d)) },
     // Libraries get their own chunks: they change rarely, so returning players keep them cached across game updates.
     rolldownOptions: {
       output: {
