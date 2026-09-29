@@ -1,4 +1,5 @@
 import { enforceSticky, stickyTradeProblems, isStuck } from './sticky';
+import { rememberRivalTrade } from './gmRivals';
 import { consensusBoard, pickReaction } from './draftNight';
 import { formatSeasonYear } from './calendar';
 import { withGrudge } from './personality';
@@ -402,6 +403,13 @@ export function evaluateTradeSides(league: League, extras: GMLeagueExtras, propo
 /** Executes a trade unconditionally — call validateTrade first unless sandbox mode intentionally allows an invalid trade. */
 export function executeTrade(league: League, extras: GMLeagueExtras, proposal: TradeProposal): { league: League; extras: GMLeagueExtras } {
   if (!validateTradeAssets(league, extras, proposal).valid) return { league, extras };
+  // GM rivals remember deals with you (see gmRivals.ts): what each side took home, valued before the trade.
+  const rivalInvolved = league.gmRivals?.rivals.some(r => r.teamId === proposal.teamAId || r.teamId === proposal.teamBId);
+  const received = rivalInvolved ? {
+    a: tradePackageValue(league, extras, proposal.teamBId, proposal.playersFromB, proposal.picksFromB, proposal.currentPicksFromB),
+    b: tradePackageValue(league, extras, proposal.teamAId, proposal.playersFromA, proposal.picksFromA, proposal.currentPicksFromA),
+  } : null;
+  const traded = rivalInvolved ? new Map(league.teams.flatMap(t => t.seasons).map(s => [s.playerId, s])) : null;
   const teamAName = league.teams.find((t) => t.teamId === proposal.teamAId)?.name ?? proposal.teamAId;
   const teamBName = league.teams.find((t) => t.teamId === proposal.teamBId)?.name ?? proposal.teamBId;
   const teams = league.teams.map((t) => {
@@ -442,7 +450,7 @@ export function executeTrade(league: League, extras: GMLeagueExtras, proposal: T
     draftOrder: extras.draftDayOpen ? draftOrder : extras.draftOrder,
     tradeBlock: extras.tradeBlock.filter(id => !movedPlayers.has(id)),
   });
-  return { league: settled.league, extras: settled.extras };
+  return { league: received && traded ? rememberRivalTrade(settled.league, proposal, received, traded) : settled.league, extras: settled.extras };
 }
 
 // ---- Free agency ----

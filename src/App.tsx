@@ -69,6 +69,7 @@ import { rivalryBadge } from './simulation/rivalry';
 import { rivalryWeekGame, rivalryHype } from './simulation/rivalryWeek';
 import { duoKeys } from './simulation/chemistryWeb';
 import { coachLook } from './visuals/coachLook';
+import { ensureGmRivals } from './simulation/gmRivals';
 import type { Speech } from './simulation/halftime';
 import type { NbaHistory } from './history/nbaHistoryData';
 import { HistoricalSettingsCard } from './components/HistoricalSettingsCard';
@@ -136,6 +137,7 @@ const Community = lazy(() => import('./components/cloud/Community').then(m => ({
 const CareerMode = lazy(() => import('./components/career/CareerMode').then(m => ({ default: m.CareerMode })));
 const SummerCampPage = lazy(() => import('./components/SummerCampPage').then(m => ({ default: m.SummerCampPage })));
 const MedicalRoomPage = lazy(() => import('./components/MedicalRoomPage').then(m => ({ default: m.MedicalRoomPage })));
+const GmRivalsPage = lazy(() => import('./components/GmRivalsPage').then(m => ({ default: m.GmRivalsPage })));
 const CardAlbumPage = lazy(() => import('./components/CardAlbumPage').then(m => ({ default: m.CardAlbumPage })));
 const RoadTripsPage = lazy(() => import('./components/RoadTripsPage').then(m => ({ default: m.RoadTripsPage })));
 const PressRoomPage = lazy(() => import('./components/PressRoomPage').then(m => ({ default: m.PressRoomPage })));
@@ -707,7 +709,7 @@ function App() {
   // Reporters line up after big results, streaks, trade requests and playoff series.
   const pressWaiting = league.press?.pending.length ?? 0;
   useEffect(() => {
-    const next = collectPress(league, controlledTeamId);
+    const next = collectPress(ensureGmRivals(league, controlledTeamId), controlledTeamId);
     if (next !== league) adoptLeague(next);
   }, [league.schedule, league.playoffBracket, league.teams, controlledTeamId]); // eslint-disable-line react-hooks/exhaustive-deps
   const lastPressCount = useRef(pressWaiting);
@@ -1691,6 +1693,7 @@ function App() {
         {tab === 'medical' && <MedicalRoomPage league={league} controlledTeamId={controlledTeamId} onChange={setLeague} onSelectPlayer={selectPlayer} />}
         {tab === 'press' && <PressRoomPage league={league} extras={extras} controlledTeamId={controlledTeamId} onChange={setLeague} />}
         {tab === 'cards' && <CardAlbumPage />}
+        {tab === 'gmRivals' && <GmRivalsPage league={league} extras={extras} />}
         {tab === 'travel' && <RoadTripsPage league={league} controlledTeamId={controlledTeamId} onChange={setLeague} />}
         {tab === 'yearInReview' && <YearInReviewPage league={league} extras={extras} controlledTeamId={controlledTeamId} awardOptions={awardOptions(awardSettings)}
           onOpenAwards={() => setTab('awards')} onSelectPlayer={selectPlayer}

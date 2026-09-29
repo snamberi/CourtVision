@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ARCHETYPE, rivalAgenda, relationLabel } from '../simulation/gmRivals';
 import type { League } from '../simulation/league';
 import type { GMLeagueExtras, TradeProposal } from '../simulation/gm';
 import { evaluateTradeSides, executeTrade, isTradeDeadlinePassed, validateTrade } from '../simulation/gm';
@@ -83,6 +84,10 @@ export function DeadlineDayPage({ league, extras, controlledTeamId, onChange, on
       </div>
     </section>
 
+    {(league.gmRivals?.rivals.length ?? 0) > 0 && <section className="dashboard-panel deadline-rivals" aria-label="Rival GMs">
+      <h5><PixelIcon name="trade" size={16} /> Your GM rivals are working the phones</h5>
+      <ul>{league.gmRivals!.rivals.map(r => <li key={r.teamId}><b>{r.name}</b> <small>({ARCHETYPE[r.archetype].label}, {league.teams.find(t => t.teamId === r.teamId)?.name})</small>: {rivalAgenda(league, extras, r).text} <em className={r.relation <= -15 ? 'bad' : r.relation >= 15 ? 'good' : ''}>{relationLabel(r.relation)}</em></li>)}</ul>
+    </section>}
     <div className="deadline-grid">
       <section className="dashboard-panel deadline-ticker" aria-label="Breaking deals">
         <h5>Breaking</h5>

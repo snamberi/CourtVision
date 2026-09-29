@@ -257,3 +257,26 @@ button.tcard:hover, button.tcard:focus-visible { transform: translateY(-3px); ou
 .card-zoom-box .tcard { transform: scale(1.5); margin: 60px 0; }
 @media (max-width: 640px) { .card-sets > div { grid-template-columns: minmax(0, 1fr) auto; } .card-set-bar { grid-column: 1 / -1; } .card-zoom-box .tcard { transform: scale(1.2); margin: 30px 0; } }
 @media (prefers-reduced-motion: reduce) { .tcard-allstar::after, .tcard-legend::after, .tcard-legend, .pack-slot { animation: none; } }
+/* ---- GM rivals ---- */
+.gm-rival-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+.gm-rival { padding: 12px; background: var(--c-bg-121926, #121926); border: 1px solid var(--c-border-2a3546, #2a3546); border-top: 4px solid var(--c-border-f47b20, #f47b20); }
+.gm-rival-collector { border-top-color: var(--c-border-55c878, #55c878); }
+.gm-rival-oldschool { border-top-color: var(--c-border-c9971f, #c9971f); }
+.gm-rival.refuses { border-color: var(--c-border-e85d5d, #e85d5d); }
+.gm-rival header { display: flex; gap: 10px; align-items: center; }
+.gm-rival header svg { border: 1px solid var(--c-border-2a3546, #2a3546); flex: none; }
+.gm-rival h3 { margin: 2px 0; }
+.gm-rival-team { display: flex; gap: 6px; align-items: center; margin: 0; color: var(--c-fg-94a0b2, #94a0b2); font-size: 12px; }
+.gm-rival-relation { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--c-fg-94a0b2, #94a0b2); }
+.gm-rival-bar { position: relative; flex: 1; height: 8px; background: linear-gradient(90deg, var(--c-bg-e85d5d, #e85d5d), var(--c-bg-2a3546, #2a3546) 50%, var(--c-bg-55c878, #55c878)); }
+.gm-rival-bar i { position: absolute; top: -3px; width: 4px; height: 14px; margin-left: -2px; background: var(--c-bg-f4f0e6, #f4f0e6); box-shadow: 0 0 0 1px var(--c-shadow-0b1018, #0b1018); }
+.gm-rival blockquote { margin: 8px 0; padding: 6px 10px; border-left: 3px solid var(--c-border-2a3546, #2a3546); font-style: italic; color: var(--c-fg-c9ced8, #c9ced8); }
+.gm-rival-memory { list-style: none; padding: 0; margin: 6px 0 0; font-size: 12px; }
+.gm-rival-memory li { padding: 3px 0; border-bottom: 1px solid var(--c-border-1c2a3d, #1c2a3d); }
+.gm-rival-memory li.bad em { color: var(--c-fg-e85d5d, #e85d5d); }
+.gm-rival-memory li.good em { color: var(--c-fg-55c878, #55c878); }
+.gm-rival-memory em { font-style: normal; font-weight: 700; float: right; }
+.deadline-rivals ul { list-style: none; padding: 0; margin: 6px 0 0; display: grid; gap: 4px; font-size: 13px; }
+.deadline-rivals em { font-style: normal; font-size: 11px; margin-left: 6px; color: var(--c-fg-94a0b2, #94a0b2); }
+.deadline-rivals em.bad { color: var(--c-fg-e85d5d, #e85d5d); }
+.deadline-rivals em.good { color: var(--c-fg-55c878, #55c878); }

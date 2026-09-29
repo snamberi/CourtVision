@@ -220,6 +220,8 @@ export interface League {
   halftimeSpeeches?: import('./halftime').SpeechRecord[];
   /** How you're handling this season's road trips (rest, team dinner, push through; see travel.ts). */
   travel?: import('./travel').TravelState;
+  /** Three named AI GMs with personalities who remember your trades (see gmRivals.ts). */
+  gmRivals?: import('./gmRivals').GmRivalsState;
   /** Fragile returning players and load management (see medical.ts). */
   medical?: import('./medical').MedicalState;
 
