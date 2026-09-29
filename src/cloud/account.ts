@@ -19,6 +19,8 @@ const KEY_ = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 export const cloudEnabled = !IS_DESKTOP_BUILD && !!URL_ && !!KEY_;
 /** What this build was given (yes/no, plus the public project address), for the Online status check. */
 export const cloudBuild = { url: URL_ || null, hasKey: !!KEY_, desktop: IS_DESKTOP_BUILD };
+/** The public (anon) key is already in the page bundle; the status check sends it, as Supabase requires. */
+export const cloudPublicKey = KEY_ || null;
 /** Where the session is kept (outside the "cv-" and "courtvision:" keys, so backups never carry it). */
 export const AUTH_STORAGE_KEY = 'courtvision-auth';
 

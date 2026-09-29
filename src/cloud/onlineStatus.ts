@@ -1,4 +1,4 @@
-import { cloudBuild } from './account';
+import { cloudBuild, cloudPublicKey } from './account';
 
 /*
  * The Online status check: goes through everything accounts and leaderboards need on this site, in order, and says
@@ -27,7 +27,7 @@ export function statusSteps(build: { url: string | null; hasKey: boolean }, heal
         : health.supabase === 'unreachable' ? `Supabase did not accept the address or key${health.detail ? ` (${health.detail.slice(0, 80)})` : ''}. Copy SUPABASE_URL and the keys again from Supabase → Project Settings → API. A paused free project must be restored in Supabase first.` : undefined });
   }
   if (built) steps.push({ id: 'auth', label: 'This browser can reach Supabase sign-in', state: authOk == null ? 'unknown' : authOk ? 'ok' : 'fail',
-    fix: authOk === false ? 'Supabase did not answer. If the project is paused (free projects pause after a week without use), restore it in the Supabase dashboard.' : undefined });
+    fix: authOk === false ? 'Supabase did not accept this build\'s public key, or did not answer. Copy the anon (public) key again from Supabase → Project Settings → API into the Build variable SUPABASE_ANON_KEY and Retry build. If the project is paused (free projects pause after a week without use), restore it in the Supabase dashboard.' : undefined });
   return steps;
 }
 
@@ -40,7 +40,7 @@ export async function checkOnline(): Promise<Step[]> {
   } catch { health = 'no-api'; }
   let authOk: boolean | null = null;
   if (cloudBuild.url) {
-    try { const r = await fetch(`${cloudBuild.url.replace(/\/$/, '')}/auth/v1/settings`); authOk = r.status < 500; } catch { authOk = false; }
+    try { const r = await fetch(`${cloudBuild.url.replace(/\/$/, '')}/auth/v1/settings`, { headers: cloudPublicKey ? { apikey: cloudPublicKey } : {} }); authOk = r.ok; } catch { authOk = false; }
   }
   return statusSteps(cloudBuild, health, authOk);
 }
