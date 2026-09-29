@@ -19,6 +19,8 @@ import { DAILY_EVENT } from '../profile/dailyGoals';
 export const PROGRESS_EVENT = 'courtvision:progress';
 let running: Promise<void> | null = null;
 let lastPushed = '';
+/** The site answered 503 (its Supabase settings are missing): stop posting until the page reloads. */
+let serverOff = false;
 let timer: ReturnType<typeof setTimeout> | null = null;
 
 function readLocal(): Record<string, string> {
@@ -72,11 +74,12 @@ export function syncNow(): Promise<void> {
       const blob: ProgressBlob = { version: 1, updatedAt: Date.now(), storage, careers };
       const body = JSON.stringify(blob);
       const fingerprint = JSON.stringify({ userId, storage, careers: careers.map(c => [c.id, c.updatedAt]) });
-      if (fingerprint !== lastPushed) {
+      if (fingerprint !== lastPushed && !serverOff) {
         const res = await fetch('/api/sync', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken() ?? token}` }, body });
         const out = await res.json().catch(() => null) as { error?: string } | null;
         // Another sync (this device or another) just landed: try again shortly with the merged result.
         if (res.status === 429) { setAccount({ sync: { ...getAccount().sync, state: 'ok' } }); syncSoon(5_000); return; }
+        if (res.status === 503) serverOff = true;
         if (!res.ok) throw new Error(out?.error ?? `Sync failed (${res.status}).`);
         lastPushed = fingerprint;
         await refreshProfile(client);
