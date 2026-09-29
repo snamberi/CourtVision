@@ -1,6 +1,6 @@
 import { localRead, type Read } from '../lib/kv';
 import { noteFeat } from '../profile/feats';
-import { DECKS, DIFFICULTIES, draftGrade, type HuntRun, type DeckId, type Difficulty, type DraftGrade } from './run';
+import { DECKS, DIFFICULTIES, draftGrade, migrateDraft, type HuntRun, type DeckId, type Difficulty, type DraftGrade } from './run';
 
 /* League Hunt keeps its run, records and album in this browser (they are small: card ids and progress). Storage can
  * be blocked in a private window; everything then lasts as long as the page is open. */
@@ -18,12 +18,12 @@ export function loadRun(): HuntRun | null {
   try {
     // Hunts from before the series rework (versions 1 and 2) can't continue under the new rules; they are dropped.
     const r = JSON.parse(localStorage.getItem(RUN_KEY) ?? 'null') as { version?: number } | null;
-    return r && r.version === 3 ? r as HuntRun : null;
+    return r && r.version === 3 ? migrateDraft(r as HuntRun) : null;
   } catch { return null; }
 }
 export function saveRun(run: HuntRun): void {
   try { localStorage.setItem(RUN_KEY, JSON.stringify(run)); } catch { /* storage blocked */ }
-  addToAlbum(run.squad);
+  addToAlbum(run.squad.filter(Boolean));
 }
 export function clearRun(): void { try { localStorage.removeItem(RUN_KEY); } catch { /* storage blocked */ } }
 

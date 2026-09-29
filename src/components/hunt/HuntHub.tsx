@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import type { NbaHistory } from '../../history/nbaHistoryData';
 import { cardPool, seasonLabel, RARITY_LABEL, type HuntCard } from '../../hunt/cards';
 import { ERAS, eraOf } from '../../hunt/eras';
-import { DECKS, DIFFICULTIES, SQUAD_SIZE, SERIES_COUNT, type DeckId, type Difficulty, type NewRunOptions } from '../../hunt/run';
+import { DECKS, DIFFICULTIES, SQUAD_SIZE, SERIES_COUNT, ENEMY_EDGE, MAX_BOOSTS, type DeckId, type Difficulty, type NewRunOptions } from '../../hunt/run';
+import { MAX_ITEMS } from '../../hunt/items';
 import { DECK_IDS, DIFFICULTY_IDS, deckUnlocked, difficultyUnlocked, loadAlbum, todayUtc, dailySeed, type HuntRecords } from '../../hunt/storage';
 import { dreamGame, teamsIn, seasonEnds, type DreamGame } from '../../hunt/matchup';
 import { BoxScoreTable } from '../BoxScoreTable';
@@ -31,12 +32,12 @@ function NewHunt({ records, onStart }: { records: HuntRecords; onStart: (opts: N
   const [deck, setDeck] = useState<DeckId>('classic');
   const [difficulty, setDifficulty] = useState<Difficulty>('pro');
   return <div className="hunt-intro">
-    <p className="hunt-lede">Spin a {SQUAD_SIZE}-man squad and a coach from all of NBA history, then win ten best-of-seven series against real teams, each under the rules of its era. Series 5 is a semi-boss; series 10 is the boss, a 100-rated all-time great.</p>
+    <p className="hunt-lede">Spin a {SQUAD_SIZE}-man squad and a coach from all of NBA history, then win ten best-of-seven series against real teams, each under the rules of its era. Series 5 is a semi-boss; series 10 is the boss, an all-time great. Every team you face plays {ENEMY_EDGE} above its rating: it is meant to be hard.</p>
     <ul className="hunt-rules">
-      <li><b>The spins.</b> PG, SG, SF, PF, C, coach, then your sixth man: three cards each, keep one. The spins are <b>blind</b>: you see the player, his season and team, but not his rating or stats until you choose. Every spin is poorer than the last, but every draft has at least one Star and one Great on the table. Your picks earn a draft grade.</li>
+      <li><b>The slot machine.</b> All seven slots (PG, SG, SF, PF, C, sixth man and coach) spin at once. Hit <b>STOP</b>, lock one, and the rest spin again, until everyone is locked. The reels are <b>blind</b>: you see the player, his season and team, but not his rating until you lock him. Every round is a little poorer than the last, and one early round lands a Star, another a Great. Your locks earn a draft grade.</li>
       <li><b>Cards are player-seasons.</b> 1996 Jordan and 2003 Jordan are different cards. Ratings are ranked within each season, so every era is fair.</li>
       <li><b>Team rating, 0-100.</b> 60 is a bad team, 70 about 40 wins, 80 about 45, 90 a 55-62 win team, 100 a 68-win all-time great.</li>
-      <li><b>Boosts and shops.</b> Pick a boost after a series win, three per hunt. A shop comes before series 1, 3, 5, 7 and 9: players, coaches, items and training (lives only on Rookie).</li>
+      <li><b>Boosts, two kinds.</b> Pick a boost after a series win ({MAX_BOOSTS} per hunt). Separately, a shop comes before series 1, 3, 5, 7 and 9: players, coaches, training and shop boosts ({MAX_ITEMS} per hunt; lives only on Rookie). The team's focus is chosen once, at training camp, and can't be changed.</li>
       <li><b>Era rules and chemistry.</b> No three-point line before 1979-80, hand-checking in the 90s. Real teammates, franchises and famous rivals play better together.</li>
     </ul>
     <h3 className="hunt-subhead">Starting deck</h3>

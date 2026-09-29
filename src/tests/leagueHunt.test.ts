@@ -4,24 +4,17 @@ import { cardPool, cardPlayer } from '../hunt/cards';
 import { huntTeams } from '../hunt/teams';
 import { ERAS, underEra } from '../hunt/eras';
 import {
-  newRun, spinPick, chooseFocus, playSeries, takeBoost, leaveShop, buyCard, buyCoach, buyItem, buyLife, train, gameBonuses, squadRating, opponentRating, spinWeights,
-  SPINS, SLOTS, SERIES_COUNT, SEMI_BOSS, START_COINS, MAX_TRAINING, BOOST_CAP, SERIES_START, MAX_BOOSTS, type HuntRun,
+  newRun, stopReels, lockReel, openSpins, draftBest, chooseFocus, playSeries, takeBoost, leaveShop, buyCard, buyCoach, buyItem, buyLife, train, gameBonuses, squadRating, opponentRating, spinWeights,
+  SPINS, SLOTS, ENEMY_EDGE, SERIES_COUNT, SEMI_BOSS, START_COINS, MAX_TRAINING, BOOST_CAP, SERIES_START, MAX_BOOSTS, type HuntRun,
 } from '../hunt/run';
+import { MAX_ITEMS } from '../hunt/items';
 import { rawStrength, rosterRating, winsToRating } from '../hunt/rating';
 import { COACH_BY_ID } from '../hunt/coaches';
 import { chemistry } from '../hunt/chemistry';
 
 type H = Awaited<ReturnType<typeof loadHistoryForTests>>;
-/** Keeps the best card (or coach) of every spin. */
-const spinAll = (h: H, run: HuntRun) => {
-  const pool = cardPool(h);
-  let r = run;
-  while (r.stage === 'draft') {
-    const coach = SPINS[r.spin] === 'COACH';
-    r = spinPick(h, r, [...r.offer].sort((a, b) => (coach ? COACH_BY_ID.get(b)!.bonus - COACH_BY_ID.get(a)!.bonus : pool.byId.get(b)!.ovr - pool.byId.get(a)!.ovr))[0]);
-  }
-  return r;
-};
+/** Locks the best player on the reels every round. */
+const spinAll = (h: H, run: HuntRun) => draftBest(h, run);
 
 describe('League Hunt', () => {
   it('cards are real player-seasons with rarity by rating', async () => {
@@ -62,7 +55,7 @@ describe('League Hunt', () => {
     expect(bad.reduce((a, b) => a + b, 0) / bad.length).toBeLessThan(68);
   }, 120_000);
 
-  it('the spins: PG, SG, SF, PF, C, coach, sixth man; a guaranteed Star and Great; later spins are poorer', async () => {
+  it('the slot machine: every open slot spins, STOP freezes them, lock one and the rest respin; a Star and a Great land early', async () => {
     const h = await loadHistoryForTests();
     const pool = cardPool(h);
     expect(SPINS).toEqual(['PG', 'SG', 'SF', 'PF', 'C', 'COACH', '6TH']);
@@ -70,24 +63,45 @@ describe('League Hunt', () => {
     expect(spinWeights(0).epic).toBeGreaterThan(spinWeights(6).epic);
     for (const seed of [1, 2, 3, 4, 5]) {
       let run = newRun(h, seed);
+      expect(run.reels).toBeNull();
+      expect(lockReel(h, run, 'PG')).toBe(run); // nothing to lock while everything spins
       const seen: string[] = [];
-      while (run.stage === 'draft') {
-        const kind = SPINS[run.spin];
-        expect(run.offer).toHaveLength(3);
-        if (kind === 'COACH') expect(run.offer.every(id => COACH_BY_ID.has(id))).toBe(true);
-        else {
-          const cards = run.offer.map(id => pool.byId.get(id)!);
-          if (kind !== '6TH') expect(cards.every(c => c.pos === kind || (c.pos === 'G' && (kind === 'PG' || kind === 'SG')) || (c.pos === 'F' && (kind === 'SF' || kind === 'PF')))).toBe(true);
-          seen.push(...cards.map(c => c.rarity));
+      for (let round = 0; run.stage === 'draft'; round++) {
+        const open = openSpins(run);
+        expect(open).toHaveLength(SPINS.length - round);
+        run = stopReels(h, run);
+        expect(stopReels(h, run)).toBe(run); // already stopped
+        expect(Object.keys(run.reels!).sort()).toEqual([...open].sort());
+        for (const [k, id] of Object.entries(run.reels!)) {
+          if (k === 'COACH') { expect(COACH_BY_ID.has(id!)).toBe(true); continue; }
+          const c = pool.byId.get(id!)!;
+          if (k !== '6TH') expect(c.pos === k || (c.pos === 'G' && (k === 'PG' || k === 'SG')) || (c.pos === 'F' && (k === 'SF' || k === 'PF'))).toBe(true);
+          if (round === run.guarantees.star || round === run.guarantees.great) seen.push(c.rarity);
         }
-        run = spinPick(h, run, run.offer[0]);
+        // Lock the last reel on the table: the others spin again.
+        const k = open[open.length - 1];
+        const id = run.reels![k]!;
+        run = lockReel(h, run, k);
+        expect(k === 'COACH' ? run.coach : run.squad[SLOTS.indexOf(k as typeof SLOTS[number])]).toBe(id);
+        if (run.stage === 'draft') expect(run.reels).toBeNull();
       }
       expect(seen).toContain('legendary');
       expect(seen).toContain('epic');
+      expect(run.squad.every(Boolean)).toBe(true);
       expect(run.squad).toHaveLength(SLOTS.length);
+      expect(new Set(run.squad.map(id => pool.byId.get(id)!.playerId)).size).toBe(SLOTS.length);
       expect(run.coach).toBeTruthy();
       expect(run.stage).toBe('focus');
     }
+  }, 120_000);
+
+  it('the focus is set once and every opponent plays above its series rating', async () => {
+    const h = await loadHistoryForTests();
+    let run = chooseFocus(h, spinAll(h, newRun(h, 4242)), 'star');
+    expect(run.focus).toBe('star');
+    expect(chooseFocus(h, run, 'coach')).toBe(run); // can't change it in the shop
+    run = leaveShop(run);
+    expect(run.series.every(s => s.lift >= ENEMY_EDGE || s.kind !== 'normal')).toBe(true);
   }, 120_000);
 
   it('a run: ten best-of-seven series, a semi-boss and a 100-rated boss, boosts after wins, shops every two series', async () => {
@@ -96,7 +110,7 @@ describe('League Hunt', () => {
     expect(run.series).toHaveLength(SERIES_COUNT);
     expect(run.series[SEMI_BOSS].kind).toBe('semi');
     expect(run.series[SERIES_COUNT - 1].kind).toBe('boss');
-    expect(opponentRating(h, run, run.series[SERIES_COUNT - 1])).toBe(100);
+    expect(opponentRating(h, run, run.series[SERIES_COUNT - 1])).toBeGreaterThanOrEqual(100);
     expect(new Set(run.series.map(s => s.teamId)).size).toBe(SERIES_COUNT);
     run = chooseFocus(h, run, 'star');
     expect(run.stage).toBe('shop');
@@ -155,7 +169,7 @@ describe('League Hunt', () => {
     expect(grown.bonus - gameBonuses(h, { ...run, boosts: [] }, undefined, SERIES_START).cards[5].bonus).toBe(6);
   }, 120_000);
 
-  it('the shop: slot-for-slot signings, a coach, items, training, a life and the focus', async () => {
+  it('the shop: slot-for-slot signings, a coach, shop boosts (two), training and a life', async () => {
     const h = await loadHistoryForTests();
     const pool = cardPool(h);
     let run = chooseFocus(h, spinAll(h, newRun(h, 99)), 'chemistry');
@@ -166,8 +180,8 @@ describe('League Hunt', () => {
     expect(run.squad).toHaveLength(SLOTS.length);
     expect(buyCard(h, run, offer.id)).toBe(run); // sold
     if (run.shop!.coach) { run = buyCoach(run); expect(run.coach).toBe(run.shop!.coach); }
-    run = buyItem(run, run.shop!.items[0]);
-    expect(run.items).toHaveLength(1);
+    for (const i of run.shop!.items) run = buyItem(run, i);
+    expect(run.items).toHaveLength(MAX_ITEMS); // two shop boosts at most
     const id = run.squad[0];
     for (let i = 0; i < 5; i++) run = train(h, run, id);
     expect(run.training[id]).toBe(MAX_TRAINING);
@@ -176,8 +190,7 @@ describe('League Hunt', () => {
     const rookie = buyLife({ ...run, difficulty: 'rookie' });
     expect(rookie.lives).toBe(3);
     expect(buyLife(rookie)).toBe(rookie);
-    run = chooseFocus(h, run, 'coach');
-    expect(run.focus).toBe('coach');
+    expect(chooseFocus(h, run, 'coach').focus).toBe('chemistry'); // the focus is set for the whole hunt
     expect(squadRating(h, run)).toBeGreaterThan(0);
     expect(pool.byId.has(run.squad[5])).toBe(true);
     expect(leaveShop(run).stage).toBe('series');

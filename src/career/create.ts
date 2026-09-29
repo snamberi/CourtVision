@@ -3,7 +3,7 @@ import { makeDefaultSeason } from '../simulation/presets/samplePlayers';
 import { calculateOverall } from '../simulation/engine/overall';
 import { positionsFrom } from '../history/realPlayers';
 import { RNG } from '../simulation/engine/rng';
-import { CATEGORIES, CATEGORY_BY_ID, MEASUREMENTS, categoryScore, withCategory, type CategoryId, type CategoryValues } from './categories';
+import { CATEGORIES, CATEGORY_BY_ID, MEASUREMENTS, categoryScore, categoryValues, withCategory, type CategoryId, type CategoryValues } from './categories';
 
 /*
  * Building the Career Mode player. What you pick (on the wheel or in MyPlayer) is his PRIME: the ratings he grows into.
@@ -110,6 +110,12 @@ function buildPrimeShell(p: PlayerSeason, prime: Prime, readiness: Readiness): P
 }
 
 export const startProgress = (): Progress => Object.fromEntries(CATEGORIES.map(c => [c.id, 0])) as Progress;
+/** A build in progress, filled out: categories not taken yet count as an ordinary NBA player's (the default ratings). */
+export function projectedPrime(partial: Partial<Prime>): Prime {
+  const d = makeDefaultSeason('projection', '2025', null, 27);
+  return Object.fromEntries(CATEGORIES.map(c => [c.id, partial[c.id] ?? categoryValues(d, c.id)])) as Prime;
+}
+
 /** His overall at his prime (what the wheel built). */
 export function primeOverall(prime: Prime, readiness: Readiness, pos: Position): number {
   let p = makeDefaultSeason('prime', '2025', null, 27);

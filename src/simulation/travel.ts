@@ -37,11 +37,14 @@ export const CITIES: City[] = [
 ];
 
 const hash = (s: string) => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
-const cache = new WeakMap<LeagueTeam[], Map<string, City>>();
+/** Home cities by team line-up (keyed by ids and names, so a new teams array after every game still hits). */
+const cache = new Map<string, Map<string, City>>();
+const teamsKey = (teams: LeagueTeam[]) => teams.map(t => `${t.teamId}=${t.name}`).join('|');
 
 /** Each team's home city (real when its name has one; otherwise a free real-metro spot, fixed per team). */
 export function homeCities(teams: LeagueTeam[]): Map<string, City> {
-  const hit = cache.get(teams);
+  const key = teamsKey(teams);
+  const hit = cache.get(key);
   if (hit) return hit;
   const out = new Map<string, City>(), used = new Set<string>();
   const byName = (name: string) => { const { city } = splitTeamName(name); return CITIES.find(c => c.name.toLowerCase() === city.toLowerCase()) ?? CITIES.find(c => name.toLowerCase().startsWith(c.name.toLowerCase() + ' ')); };
@@ -53,7 +56,8 @@ export function homeCities(teams: LeagueTeam[]): Map<string, City> {
     used.add(`${c.lat},${c.lon}`);
     out.set(t.teamId, { ...c, name: splitTeamName(t.name).city || c.name });
   }
-  cache.set(teams, out);
+  if (cache.size > 50) cache.clear();
+  cache.set(key, out);
   return out;
 }
 
@@ -122,11 +126,35 @@ export function travelWalk(league: League, teamId: string): Walk {
   return walk;
 }
 
+/*
+ * Fatigue only depends on the schedule's shape (who plays where, on which day) and the trip plans, not on results, so
+ * the game-night lookup is cached by that shape: the league's arrays are new after every game, the walk is not.
+ */
+const edgeCache = new Map<string, { fatigue: Map<string, number>; pushed: Set<string> }>();
+function scheduleKey(league: League): string {
+  const s = league.schedule;
+  let rounds = 0;
+  for (let i = 0; i < s.length; i++) rounds = (rounds * 31 + s[i].round) | 0;
+  return `${league.season}|${s.length}|${s[0]?.id}|${s[s.length - 1]?.id}|${rounds}|${teamsKey(league.teams)}`;
+}
+function edgeWalk(league: League, teamId: string) {
+  const plans = league.travel?.teamId === teamId && league.travel.season === league.season ? league.travel.plans : {};
+  const key = `${scheduleKey(league)}|${teamId}|${JSON.stringify(plans)}`;
+  let hit = edgeCache.get(key);
+  if (!hit) {
+    const w = travelWalk(league, teamId);
+    hit = { fatigue: w.fatigue, pushed: new Set(w.trips.filter(t => t.plan === 'push').flatMap(t => t.legs.map(l => l.gameId))) };
+    if (edgeCache.size > 400) edgeCache.clear();
+    edgeCache.set(key, hit);
+  }
+  return hit;
+}
+
 /** Tonight's travel effect for a team: minus up to 2.5 from fatigue, plus 1 on a trip you chose to push through. */
 export function travelEdge(league: League, teamId: string, gameId: string): number {
-  const w = travelWalk(league, teamId);
+  const w = edgeWalk(league, teamId);
   const f = w.fatigue.get(gameId) ?? 0;
-  const pushed = w.trips.some(t => t.plan === 'push' && t.legs.some(l => l.gameId === gameId)) ? 1 : 0;
+  const pushed = w.pushed.has(gameId) ? 1 : 0;
   return Math.round((-Math.min(2.5, f * 0.3) + pushed) * 100) / 100;
 }
 

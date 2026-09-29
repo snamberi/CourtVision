@@ -115,6 +115,8 @@ describe('Career Mode', () => {
     // Builds started before lucky spins existed get the full count.
     const { lucky: _gone, ...old } = newWheel(9);
     expect(luckyLeft(old)).toBe(LUCKY_SPINS);
+    // A lucky spin always lands on a Star or a Great.
+    for (let i = 0; i < 60; i++) { const w = spin(h, { ...newWheel(100 + i), lucky: 1 }, false, true).current![0]; expect(['legendary', 'epic']).toContain(pool.byId.get(w.reel[w.stop])!.rarity); }
     // Lucky odds: Stars and Greats about 2.5x as common.
     const share = (lucky: boolean) => { let n = 0, rare = 0, w = newWheel(4); for (let i = 0; i < 200; i++) { w = spin(h, { ...w, current: null, takenFrom: [], lucky: 2 }, false, lucky); for (const id of w.current![0].reel) { n++; if (['legendary', 'epic'].includes(pool.byId.get(id)!.rarity)) rare++; } } return rare / n; };
     expect(share(true) / share(false)).toBeGreaterThan(1.7);
@@ -130,14 +132,14 @@ describe('Career Mode', () => {
     expect(takenValues(h, plainStar.id, 'size')['physical.heightInches']).toBe(categoryValues(donor(h, plainStar.id), 'size')['physical.heightInches']);
   }, 120_000);
 
-  it('Prime Boost: his absolute prime, or six skills up 10-20%; costs a Lucky Spin; never height, never past 120', async () => {
+  it('Prime Boost: his absolute prime, or six skills up 10-20%; one, free; never height, never past 120', async () => {
     const h = await loadHistoryForTests();
     const at = (id: string, lucky = LUCKY_SPINS): WheelState => ({ ...newWheel(3), spinCount: 1, lucky, current: [{ reel: Array(24).fill(id), stop: 0 }] });
     const modes = new Set<string>();
     for (const c of wheelPool(h).filter(x => x.rarity === 'legendary' || x.rarity === 'epic').slice(0, 60)) {
       const s = at(c.id), b = primeBoost(h, s, 0), boost = b.current![0].boost!;
       modes.add(boost.mode);
-      expect(luckyLeft(b)).toBe(LUCKY_SPINS - 1);
+      expect(luckyLeft(b)).toBe(LUCKY_SPINS); // free: no Lucky Spin spent
       expect(boostLeft(b)).toBe(0);
       expect(boost.values.size).toBeUndefined(); // height and length never change
       for (const cat of CATEGORIES.filter(x => x.id !== 'size')) {
@@ -160,9 +162,9 @@ describe('Career Mode', () => {
       expect(take(h, b, 0, 'size').picks.size!.values).toEqual(takenValues(h, c.id, 'size'));
     }
     expect(modes).toEqual(new Set(['prime', 'surge']));
-    // It needs a Lucky Spin left, and a wheel waiting for a pick.
+    // It works without a Lucky Spin left, and needs a wheel waiting for a pick.
     const id = wheelPool(h)[0].id;
-    expect(primeBoost(h, at(id, 0), 0)).toEqual(at(id, 0));
+    expect(primeBoost(h, at(id, 0), 0).current![0].boost).toBeTruthy();
     const taken = take(h, at(id), 0, 'iq');
     expect(primeBoost(h, taken, 0)).toBe(taken);
   }, 120_000);

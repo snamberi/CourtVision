@@ -277,3 +277,49 @@ button.hunt-card:disabled .hunt-card-action { background: var(--c-bg-2a3546, #2a
 .hunt-card-notes { display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; min-height: 20px; }
 .hunt-card-notes i { font-style: normal; font-size: 10px; padding: 1px 5px; background: var(--c-bg-192333, #192333); border: 1px solid var(--c-border-2a3546, #2a3546); color: var(--c-fg-ffd166, #ffd166); }
 .hunt-card-notes i.none { color: var(--c-fg-94a0b2, #94a0b2); }
+
+/* ---- Slot-machine draft: every open slot spins; STOP freezes them; lock one, the rest respin. ---- */
+.hunt-slots { max-width: 760px; margin: 0 auto; width: 100%; gap: 12px; }
+.hunt-slots-head { display: flex; justify-content: space-between; align-items: center; }
+.hunt-slot-dots { display: flex; gap: 6px; list-style: none; margin: 0; padding: 0; }
+.hunt-slot-dots li { width: 10px; height: 10px; border-radius: 50%; background: var(--c-bg-2a3546, #2a3546); }
+.hunt-slot-dots li.on { background: var(--c-bg-ffd166, #ffd166); box-shadow: 0 0 6px var(--c-shadow-ffd166, #ffd166); }
+.hunt-slots-msg { margin: 0; text-align: center; color: var(--c-fg-c9ced8, #c9ced8); font-size: 14px; min-height: 1.3em; }
+.hunt-stop-word { color: var(--c-fg-f47b20, #f47b20); }
+.hunt-reel-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.hunt-reel { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 8px 12px; min-height: 150px; background: var(--c-bg-161b24, #161b24); border: 2px solid var(--c-border-2a3546, #2a3546); border-radius: 10px; color: inherit; font: inherit; text-align: center; overflow: hidden; }
+.hunt-reel-pos { font: 11px var(--ff-pixel, 'Press Start 2P', monospace); color: var(--c-fg-f47b20, #f47b20); letter-spacing: .06em; display: flex; gap: 6px; align-items: center; }
+.hunt-reel-pos em { font-style: normal; color: var(--c-fg-ffd166, #ffd166); font-size: 8px; }
+.hunt-reel-text { display: grid; gap: 2px; min-width: 0; }
+.hunt-reel-text b { font: 16px var(--ff-display, 'Oswald', sans-serif); line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hunt-reel-text small { font-size: 11px; color: var(--c-fg-94a0b2, #94a0b2); }
+.hunt-reel-text i { font-style: normal; font-size: 10px; color: var(--c-fg-ffd166, #ffd166); }
+.hunt-reel-face { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; background: var(--c-bg-2a3546, #2a3546); font: 18px var(--ff-display, 'Oswald', sans-serif); color: var(--c-fg-f4f0e6, #f4f0e6); }
+.hunt-reel-ovr { position: absolute; top: 8px; right: 8px; font: 18px var(--ff-display, 'Oswald', sans-serif); color: var(--c-fg-f47b20, #f47b20); }
+.hunt-reel-ovr.rarity-rare { color: var(--c-fg-4da3ff, #4da3ff); } .hunt-reel-ovr.rarity-epic { color: var(--c-fg-b983ff, #b983ff); } .hunt-reel-ovr.rarity-legendary { color: var(--c-fg-ffd166, #ffd166); }
+/* Spinning: a blur and a vertical judder, like a reel going round. */
+.hunt-reel.spinning > :not(.hunt-reel-pos) { filter: blur(1.4px); animation: hunt-reel-spin 170ms linear infinite; opacity: .85; }
+@keyframes hunt-reel-spin { 0% { transform: translateY(-10px); } 50% { transform: translateY(8px); } 100% { transform: translateY(-10px); } }
+.hunt-reel.frozen { border-color: var(--c-border-f47b20, #f47b20); box-shadow: 0 0 14px var(--c-shadow-f47b2066, #f47b2066), inset 0 0 12px var(--c-shadow-f47b2033, #f47b2033); animation: hunt-reel-land 220ms ease-out; }
+button.hunt-reel.frozen { cursor: pointer; transition: transform 120ms, box-shadow 120ms; }
+button.hunt-reel.frozen:hover, button.hunt-reel.frozen:focus-visible { transform: translateY(-3px); box-shadow: 0 0 22px var(--c-shadow-f47b20, #f47b20); outline: none; }
+@keyframes hunt-reel-land { 0% { transform: translateY(-8px); } 60% { transform: translateY(3px); } 100% { transform: none; } }
+.hunt-reel.locked { border-color: var(--c-border-ffd166, #ffd166); background: linear-gradient(var(--c-bg-231e12, #231e12), var(--c-bg-161b24, #161b24)); }
+.hunt-reel.just-locked { animation: hunt-reel-flip 420ms ease-out; }
+@keyframes hunt-reel-flip { 0% { transform: rotateY(90deg); } 100% { transform: none; } }
+.hunt-reel.coach { flex-direction: row; min-height: 0; padding: 10px 14px; gap: 12px; text-align: left; justify-content: flex-start; }
+.hunt-reel.coach .hunt-reel-face { width: 40px; height: 40px; font-size: 14px; }
+.hunt-reel.coach .hunt-reel-ovr { top: 50%; transform: translateY(-50%); right: 14px; }
+.hunt-stop { justify-self: center; min-width: 200px; padding: 12px 36px; background: var(--c-bg-f47b20, #f47b20); color: var(--c-fg-140c02, #140c02); border: 0; border-radius: 8px; font: 16px var(--ff-pixel, 'Press Start 2P', monospace); letter-spacing: .08em; cursor: pointer; box-shadow: 0 4px 0 var(--c-shadow-9c4a0e, #9c4a0e); }
+.hunt-stop:hover { background: var(--c-bg-ff9d3d, #ff9d3d); }
+.hunt-stop:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--c-shadow-9c4a0e, #9c4a0e); }
+.hunt-lock-hint { justify-self: center; margin: 0; padding: 12px 28px; font: 13px var(--ff-pixel, 'Press Start 2P', monospace); letter-spacing: .08em; color: var(--c-fg-5a6272, #5a6272); display: flex; align-items: center; gap: 8px; }
+.hunt-lock-hint.ready { color: var(--c-fg-c9ced8, #c9ced8); }
+.hunt-slots-odds { text-align: center; }
+@media (max-width: 560px) {
+  .hunt-reel-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .hunt-reel { min-height: 130px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hunt-reel.spinning > :not(.hunt-reel-pos), .hunt-reel.frozen, .hunt-reel.just-locked { animation: none; filter: none; }
+}

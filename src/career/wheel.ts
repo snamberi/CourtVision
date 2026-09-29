@@ -16,20 +16,20 @@ import { legendRank } from '../draft/allTimeDraft';
  *
  * Among Stars the all-time greats come up most (weighted by their Top 100 rank), and a Star's ratings come in 3 higher.
  *
- * Tools: two Lucky Spins (Stars and Greats 2.5x as likely); Move Left and Move Right (once each) shift a stopped wheel
- * one slice; two Respins spin again without taking anything; one Triple Spin spins three wheels at once, and you may
- * take one category from each of them (at least one before the next spin).
+ * Tools: two Lucky Spins (they always land on a Star or a Great); Move Left and Move Right (once each) shift a stopped
+ * wheel one slice; two Respins spin again without taking anything; one Triple Spin spins three wheels at once, and you
+ * may take one category from each of them (at least one before the next spin); one free Prime Boost.
  */
 
 export const REEL_LENGTH = 24;
 export const RESPINS = 2;
-/** Lucky spins per player: Stars and Greats come up this many times as often. */
+/** Lucky spins per player: they always land on a Star or a Great (and the reel around them is richer, LUCK times the Stars and Greats). */
 export const LUCKY_SPINS = 2;
 export const LUCK = 2.5;
 /** Every rating taken from a Star (not his measurements) comes in this much higher. */
 export const STAR_BONUS = 3;
 
-/** Prime Boosts per player (each also spends a Lucky Spin). */
+/** Prime Boosts per player (free: they don't use a Lucky Spin). */
 export const PRIME_BOOSTS = 1;
 /** A boosted landing: his absolute prime (`prime`) or, already there, six skills raised 10-20% (`surge`). */
 export interface Boost { mode: 'prime' | 'surge'; values: Partial<Record<CategoryId, CategoryValues>>; raised: string[] }
@@ -192,10 +192,26 @@ function pickCard(h: NbaHistory, rng: RNG, luck = 1): HuntCard {
   return pool[lo];
 }
 
+/** Stars and Greats only, by their wheel weight (a lucky spin's landing). */
+const elitePools = new WeakMap<NbaHistory, { list: HuntCard[]; cum: number[] }>();
+function pickElite(h: NbaHistory, rng: RNG): HuntCard {
+  let e = elitePools.get(h);
+  if (!e) { const list = wheelPool(h).filter(c => c.rarity === 'legendary' || c.rarity === 'epic'); let t = 0; e = { list, cum: list.map(c => (t += sliceWeight(h, c, LUCK))) }; elitePools.set(h, e); }
+  const x = rng.next() * e.cum[e.cum.length - 1];
+  let lo = 0, hi = e.cum.length - 1;
+  while (lo < hi) { const mid = (lo + hi) >> 1; if (e.cum[mid] > x) hi = mid; else lo = mid + 1; }
+  return e.list[lo];
+}
+
 function makeWheels(h: NbaHistory, s: WheelState, count: number, lucky = false): Wheel[] {
   const rng = new RNG(s.seed * 7919 + s.spinCount * 104_729 + 17);
   const luck = lucky ? LUCK : 1;
-  return Array.from({ length: count }, () => ({ reel: Array.from({ length: REEL_LENGTH }, () => pickCard(h, rng, luck).id), stop: rng.nextInt(REEL_LENGTH), ...(lucky ? { lucky: true } : {}) }));
+  return Array.from({ length: count }, () => {
+    const reel = Array.from({ length: REEL_LENGTH }, () => pickCard(h, rng, luck).id), stop = rng.nextInt(REEL_LENGTH);
+    // A lucky spin always lands on a Star or a Great.
+    if (lucky) { const rarity = cardPool(h).byId.get(reel[stop])?.rarity; if (rarity !== 'legendary' && rarity !== 'epic') reel[stop] = pickElite(h, rng).id; }
+    return { reel, stop, ...(lucky ? { lucky: true } : {}) };
+  });
 }
 
 /** Spins the wheel (or, with `triple`, the triple spin; with `lucky`, one of the lucky spins). */
@@ -250,14 +266,14 @@ const BOOSTABLE = CATEGORIES.filter(c => c.id !== 'size').map(c => c.id);
 export const SURGE_SKILLS = 6;
 
 /**
- * The Prime Boost for the player a wheel stopped on (once per player, and it spends a Lucky Spin). It puts him in his
+ * The Prime Boost for the player a wheel stopped on (once per player, free). It puts him in his
  * absolute prime: every skill at the best he ever had it, in any season. If that would raise fewer than six skills
  * (he is already at his peak), six random skills rise 10-20% instead. Nothing passes 120; height, length and weight
  * never change.
  */
 export function primeBoost(h: NbaHistory, s: WheelState, wheel: number): WheelState {
   const w = s.current?.[wheel];
-  if (!w || !mustTake(s) || s.takenFrom.includes(wheel) || w.boost || boostLeft(s) <= 0 || luckyLeft(s) <= 0) return s;
+  if (!w || !mustTake(s) || s.takenFrom.includes(wheel) || w.boost || boostLeft(s) <= 0) return s;
   const cardId = landed(w), card = cardPool(h).byId.get(cardId)!;
   const base = Object.fromEntries(BOOSTABLE.map(c => [c, takenValues(h, cardId, c)])) as Record<CategoryId, CategoryValues>;
   const peak = structuredClone(base), raised: string[] = [];
@@ -280,7 +296,7 @@ export function primeBoost(h: NbaHistory, s: WheelState, wheel: number): WheelSt
     }
     boost = { mode: 'surge', values, raised: picked };
   }
-  return { ...s, boost: boostLeft(s) - 1, lucky: luckyLeft(s) - 1, current: s.current!.map((x, i) => (i === wheel ? { ...x, boost } : x)) };
+  return { ...s, boost: boostLeft(s) - 1, current: s.current!.map((x, i) => (i === wheel ? { ...x, boost } : x)) };
 }
 
 /** A wheel's categories as they would be taken (boosted when the Prime Boost was used on it). */

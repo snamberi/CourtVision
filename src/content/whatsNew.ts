@@ -6,6 +6,18 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2026-10-28',
+    title: 'A slot-machine League Hunt and a cleaner Career Mode',
+    items: [
+      '**League Hunt draft is a slot machine:** all seven slots spin at once. Hit STOP, lock one, the rest respin, until your squad and coach are locked.',
+      '**League Hunt is tougher:** every team you face plays 5 above its rating. Shop boosts (two per hunt) are now separate from series-win boosts (three), and your team focus is set once at training camp.',
+      '**Career Mode looks cleaner:** everything is centered, the hub puts Continue first, and your career has tabs (Offseason, Last season, Ratings, Career stats) with Play always on top.',
+      '**The wheel:** nothing about where it lands shows until it stops, and the strip never runs out of players. Lucky Spins now always land on a Star or a Great, and the Prime Boost is one free boost.',
+      '**Your player:** a live prime overall as you build, and the same attribute names everywhere.',
+      '**Faster:** League Hunt games score like real NBA games, the season before your draft starts playing as soon as you open Career Mode, and season sims do less busywork.',
+    ],
+  },
+  {
     id: '2026-10-21',
     title: 'The Trophy Road, trading cards and road trips',
     items: [

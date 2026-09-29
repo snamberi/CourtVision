@@ -4,21 +4,12 @@ import { loadHistoryForTests } from './helpers/nbaHistoryFixture';
 import { cardPool } from '../hunt/cards';
 import { huntTeams } from '../hunt/teams';
 import { ERAS } from '../hunt/eras';
-import { newRun, spinPick, maxLives, opponentRating, SPINS, type HuntRun } from '../hunt/run';
-import { COACH_BY_ID } from '../hunt/coaches';
+import { newRun, stopReels, lockReel, draftBest, maxLives, opponentRating, type HuntRun, type SpinKind } from '../hunt/run';
 import { deckUnlocked, difficultyUnlocked, loadAlbum, saveRun, recordRun, loadRecords, dailySeed, todayUtc } from '../hunt/storage';
 import { dreamGame, teamsIn } from '../hunt/matchup';
 
 type H = Awaited<ReturnType<typeof loadHistoryForTests>>;
-const draftAll = (h: H, run: HuntRun) => {
-  const pool = cardPool(h);
-  let r = run;
-  while (r.stage === 'draft') {
-    const coach = SPINS[r.spin] === 'COACH';
-    r = spinPick(h, r, [...r.offer].sort((a, b) => (coach ? COACH_BY_ID.get(b)!.bonus - COACH_BY_ID.get(a)!.bonus : pool.byId.get(b)!.ovr - pool.byId.get(a)!.ovr))[0]);
-  }
-  return r;
-};
+const draftAll = (h: H, run: HuntRun) => draftBest(h, run);
 
 describe('League Hunt: decks, difficulty, daily, album, dream matchup', () => {
   beforeEach(() => localStorage.clear());
@@ -31,18 +22,19 @@ describe('League Hunt: decks, difficulty, daily, album, dream matchup', () => {
     const pace = draftAll(h, newRun(h, 12, { deck: 'paceSpace' }));
     expect(pace.squad.every(id => pool.byId.get(id)!.end >= 2010)).toBe(true);
     expect(pace.items).toContain('sevenSeconds');
-    // Big Man Era: the PF and C spins always show a Great or better.
+    // Big Man Era: the PF and C reels always land on a Great or better.
     let big = newRun(h, 13, { deck: 'bigMen' });
     expect(big.items).toContain('badBoys');
     while (big.stage === 'draft') {
-      if (SPINS[big.spin] === 'PF' || SPINS[big.spin] === 'C') expect(big.offer.some(id => ['epic', 'legendary'].includes(pool.byId.get(id)!.rarity))).toBe(true);
-      big = spinPick(h, big, big.offer[0]);
+      big = stopReels(h, big);
+      for (const k of ['PF', 'C'] as const) if (big.reels![k]) expect(['epic', 'legendary']).toContain(pool.byId.get(big.reels![k]!)!.rarity);
+      big = lockReel(h, big, Object.keys(big.reels!)[0] as SpinKind);
     }
-    // Dynasty: after the first spin, one card is a real teammate of someone drafted.
-    let dyn = newRun(h, 14, { deck: 'dynasty' });
-    dyn = spinPick(h, dyn, dyn.offer[0]);
+    // Dynasty: after the first lock, one reel is a real teammate of someone locked.
+    let dyn = stopReels(h, newRun(h, 14, { deck: 'dynasty' }));
+    dyn = stopReels(h, lockReel(h, dyn, 'PG'));
     const mates = new Set(huntTeams(h).filter(t => t.roster.includes(dyn.squad[0])).flatMap(t => t.roster));
-    expect(dyn.offer.some(id => mates.has(id))).toBe(true);
+    expect(Object.values(dyn.reels!).some(id => mates.has(id!))).toBe(true);
   }, 120_000);
 
   it('difficulty changes lives and opponents', async () => {
@@ -66,7 +58,7 @@ describe('League Hunt: decks, difficulty, daily, album, dream matchup', () => {
     expect(dailySeed(date)).not.toBe(dailySeed('2026-09-28'));
     const a = newRun(h, dailySeed(date), { daily: date }), b = newRun(h, dailySeed(date), { daily: date });
     expect(a.series).toEqual(b.series);
-    expect(a.offer).toEqual(b.offer);
+    expect(stopReels(h, a).reels).toEqual(stopReels(h, b).reels);
     const done: HuntRun = { ...a, stage: 'lost', seriesIndex: 2, results: [{ index: 0, teamId: a.series[0].teamId, games: [], won: true, coins: 0 }] };
     const rec = recordRun(done);
     expect(rec.daily?.[date]).toEqual({ won: false, stop: 2, wins: 1, losses: 0 });
