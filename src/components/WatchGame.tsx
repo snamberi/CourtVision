@@ -1,4 +1,5 @@
 import { OccasionBanner } from './OccasionBanner';
+import { refCrew, type CoachLook } from '../visuals/coachLook';
 import { TeamLink, TeamText } from './TeamLink';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { GameResult } from '../simulation/boxscore';
@@ -93,7 +94,7 @@ interface Props {
   /** What the court shows beyond the game: the home arena's upgrades, Rivalry Week, strong duos. */
   court?: CourtExtras;
 }
-export interface CourtExtras { arena?: Partial<Record<'scoreboard'|'lights'|'crowd'|'mascot',number>>; rivalryWeek?: { hype: number } | null; duos?: Set<string> }
+export interface CourtExtras { arena?: Partial<Record<'scoreboard'|'lights'|'crowd'|'mascot',number>>; rivalryWeek?: { hype: number } | null; duos?: Set<string>; coaches?: { home?: CoachLook; away?: CoachLook } }
 const SOUND_KEY='cv-watch-sound';
 const readSound=()=>{try{return localStorage.getItem(SOUND_KEY)==='on';}catch{return false;}};
 const writeSound=(on:boolean)=>{try{localStorage.setItem(SOUND_KEY,on?'on':'off');}catch{/* private mode: keep the in-memory choice */}};
@@ -104,6 +105,8 @@ const BIG_CALL:Partial<Record<Highlight['kind'],string>>={gameWinner:'GAME-WINNE
 const BIG_HIT_MS=1300,BIG_SLOW=.35;
 
 export function WatchGame({game,home,away,homeRoster=[],awayRoster=[],onBoxScore,startAt,coaching,rivalry,occasion,crowdFill,court}:Props) {
+  // The game's officiating crew: the same three for the same game.
+  const crew=useMemo(()=>refCrew(game.seed??`${home.teamId}-${away.teamId}`),[game.seed,home.teamId,away.teamId]);
   const occasionBoost=occasion?({game7:.4,final:.32,cupFinal:.28,elimination:.25,playoff:.15,cup:.12} as const)[occasion.stakes]:0;
   const rivalryBoost=Math.min(.45,(rivalry?(rivalry.level==='Bitter rivals'?.3:rivalry.level==='Rivals'?.2:.12):0)+occasionBoost);
   const total=game.possessionLog.length;
@@ -306,7 +309,7 @@ export function WatchGame({game,home,away,homeRoster=[],awayRoster=[],onBoxScore
     </div>
     {soundNote&&!sound&&<p className="hint-text watch-sound-note">{soundNote}</p>}
     <details className="watch-options"><summary>Camera & display</summary><div><label>Camera<select aria-label="Court camera" value={camera} onChange={e=>setCamera(e.target.value as CourtCamera)}><option value="full">Full court</option><option value="broadcast">Broadcast (TV)</option><option value="follow">Follow the ball</option></select></label><label><input type="checkbox" checked={bigCam} onChange={e=>{setBigCam(e.target.checked);if(!e.target.checked)setBigmo(null);}}/> Big-moment replays</label><label><input type="checkbox" checked={shotChart} onChange={e=>setShotChart(e.target.checked)}/> Shot chart</label><label><input type="checkbox" checked={labels} onChange={e=>setLabels(e.target.checked)}/> Player names</label><label><input type="checkbox" checked={trail} onChange={e=>setTrail(e.target.checked)}/> Ball trail</label><button onClick={async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else if(screen.current?.requestFullscreen)await screen.current.requestFullscreen();else setScreenMessage('Fullscreen is unavailable in this browser.');}catch{setScreenMessage('Your browser could not enter fullscreen.');}}}>Toggle Fullscreen</button></div>{screenMessage&&<p role="status">{screenMessage}</p>}</details>
-    {clip&&clipFrame&&<div ref={clipStage} className="clip-stage" aria-hidden="true" inert><WatchCourt frame={clipFrame} home={home} away={away} rosters={rosters} crowdFill={occasion?1:crowdFill} arena={court?.arena} rivalry={!!court?.rivalryWeek} duos={court?.duos} labels camera="full" bug={{homeScore:clipProgress>=.98?clip.h.homeScoreAfter:playbackScore(game,clip.h.index).home,awayScore:clipProgress>=.98?clip.h.awayScoreAfter:playbackScore(game,clip.h.index).away,clock:playbackClock(game,clip.h.index,clipProgress).replace(' · ',' ')}}/></div>}
+    {clip&&clipFrame&&<div ref={clipStage} className="clip-stage" aria-hidden="true" inert><WatchCourt frame={clipFrame} home={home} away={away} rosters={rosters} crowdFill={occasion?1:crowdFill} arena={court?.arena} rivalry={!!court?.rivalryWeek} duos={court?.duos} coaches={court?.coaches} refs={crew.map(r=>r.number)} labels camera="full" bug={{homeScore:clipProgress>=.98?clip.h.homeScoreAfter:playbackScore(game,clip.h.index).home,awayScore:clipProgress>=.98?clip.h.awayScoreAfter:playbackScore(game,clip.h.index).away,clock:playbackClock(game,clip.h.index,clipProgress).replace(' · ',' ')}}/></div>}
     {clipOut&&<div className="share-modal" role="dialog" aria-label="Highlight clip" onClick={e=>{if(e.target===e.currentTarget)setClipOut(null);}}><div className="share-box">
       <img src={clipOut.url} alt={clipOut.text} width={640} height={416}/>
       <div className="contest-actions">{typeof navigator.share==='function'&&<button className="primary" onClick={()=>void saveClip('share')}>Share</button>}<button className={typeof navigator.share==='function'?'':'primary'} onClick={()=>void saveClip('download')}>Download GIF</button><button className="link-button" onClick={()=>setClipOut(null)}>Close</button></div>
@@ -315,7 +318,7 @@ export function WatchGame({game,home,away,homeRoster=[],awayRoster=[],onBoxScore
     <div ref={arena} className={`watch-stage ${bigmo?`bigmo-${bigmo.phase}`:''}`}>
       {bigmo&&<div className={`bigmo-tag ${bigmo.phase}`} role="status">{bigmo.phase==='hit'?<b>{BIG_CALL[bigmo.h.kind]??HIGHLIGHT_LABEL[bigmo.h.kind].toUpperCase()}</b>:<><b>REPLAY</b><small>slow motion · {bigmo.h.playerId}</small></>}</div>}
       {reelNow&&<div className="watch-reel-banner" role="status"><b>HIGHLIGHT {reel!.pos+1}/{reel!.plays.length}</b><span>{HIGHLIGHT_LABEL[reelNow.kind]} · {reelNow.text}</span><button onClick={()=>{setReel(null);setPlaying(false);if(recording.current)void stopRecording();}}>{isRecording?'Stop recording':'Exit reel'}</button></div>}
-      {frame?<WatchCourt frame={frame} home={home} away={away} rosters={rosters} crowdFill={occasion?1:crowdFill} arena={court?.arena} rivalry={!!court?.rivalryWeek} duos={court?.duos} hotId={hot?.playerId} labels={labels} trail={trail} camera={camera} ghosts={ghosts} shots={shots} bug={{homeScore:score.home,awayScore:score.away,clock:finished?'FINAL':clockLabel.replace(' · ',' '),shotClock}}/>:<p className="empty-state">This saved game has no possession log. Its final box score is still available.</p>}
+      {frame?<WatchCourt frame={frame} home={home} away={away} rosters={rosters} crowdFill={occasion?1:crowdFill} arena={court?.arena} rivalry={!!court?.rivalryWeek} duos={court?.duos} coaches={court?.coaches} refs={crew.map(r=>r.number)} crew={crew} hotId={hot?.playerId} labels={labels} trail={trail} camera={camera} ghosts={ghosts} shots={shots} bug={{homeScore:score.home,awayScore:score.away,clock:finished?'FINAL':clockLabel.replace(' · ',' '),shotClock}}/>:<p className="empty-state">This saved game has no possession log. Its final box score is still available.</p>}
     </div>
     <div className="watch-call" aria-live="polite" aria-atomic="true"><span className="pixel-eyebrow">COURTSIDE CALL</span><p><TeamText text={commentary ?? ''} /></p>{run&&<strong className="watch-run">{run.home?home.name:away.name} · {run.points}–0 RUN</strong>}{hot&&<strong className="hot-hand">ON FIRE · {hot.playerId} — {hot.threes} straight made threes</strong>}{finished&&!reel&&reelPlays.length>0&&<button className="primary watch-final-reel" onClick={startReel}><PixelIcon name="play" size={14}/> Watch the {reelPlays.length}-play highlight reel</button>}</div>
 

@@ -165,3 +165,9 @@
 @media (prefers-reduced-motion: reduce) { .tu-rays, .tu-box { animation: none; } }
 .bio-family { display: flex; flex-direction: column; gap: 2px; }
 .bio-family small { color: var(--c-fg-94a0b2, #94a0b2); }
+.coach-portrait { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.coach-portrait svg { background: var(--c-bg-0b1018, #0b1018); border: 1px solid var(--c-border-2a3546, #2a3546); image-rendering: pixelated; }
+.coach-portrait figcaption { font-size: 11px; color: var(--c-fg-94a0b2, #94a0b2); }
+.coaching-identity:has(.coach-portrait) { grid-template-columns: auto 1fr 1.5fr; }
+@media (max-width: 1050px) { .coaching-identity:has(.coach-portrait) { grid-template-columns: auto 1fr; } .coaching-identity .coaching-trait-grid { grid-column: 1 / -1; } }
+.watch-crew { color: var(--c-fg-94a0b2, #94a0b2); font-size: 11px; }

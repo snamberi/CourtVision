@@ -68,6 +68,7 @@ import { DEFAULT_LEAGUE_RULES } from './simulation/leagueRules';
 import { rivalryBadge } from './simulation/rivalry';
 import { rivalryWeekGame, rivalryHype } from './simulation/rivalryWeek';
 import { duoKeys } from './simulation/chemistryWeb';
+import { coachLook } from './visuals/coachLook';
 import type { NbaHistory } from './history/nbaHistoryData';
 import { HistoricalSettingsCard } from './components/HistoricalSettingsCard';
 import { migrateHistoricalLeague } from './history/migrateHistorical';
@@ -1854,7 +1855,9 @@ function App() {
               crowdFill={homeTeam ? crowdFill(league, homeTeam.teamId) : undefined}
               court={boxscoreSource === 'league' ? (() => {
                 const rw = scheduled && controlledTeamId ? rivalryWeekGame(league, scheduled.id) : null;
-                return { arena: arenaLevels(homeTeam), duos: new Set([...duoKeys(homeTeam), ...duoKeys(awayTeam)]), rivalryWeek: rw && controlledTeamId ? { hype: rivalryHype(league, controlledTeamId, rw) } : null };
+                const look = (t?: typeof homeTeam) => t?.coachIdentity ? coachLook(t.coachIdentity.coachId, t.coachIdentity.age) : undefined;
+                return { arena: arenaLevels(homeTeam), duos: new Set([...duoKeys(homeTeam), ...duoKeys(awayTeam)]), rivalryWeek: rw && controlledTeamId ? { hype: rivalryHype(league, controlledTeamId, rw) } : null,
+                  coaches: { home: look(homeTeam), away: look(awayTeam) } };
               })() : undefined}
               initialWatch={watchNextResult}
               watchStart={watchNextResult ? watchStart : undefined}
