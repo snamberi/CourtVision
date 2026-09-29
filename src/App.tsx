@@ -136,6 +136,7 @@ const Community = lazy(() => import('./components/cloud/Community').then(m => ({
 const CareerMode = lazy(() => import('./components/career/CareerMode').then(m => ({ default: m.CareerMode })));
 const SummerCampPage = lazy(() => import('./components/SummerCampPage').then(m => ({ default: m.SummerCampPage })));
 const MedicalRoomPage = lazy(() => import('./components/MedicalRoomPage').then(m => ({ default: m.MedicalRoomPage })));
+const CardAlbumPage = lazy(() => import('./components/CardAlbumPage').then(m => ({ default: m.CardAlbumPage })));
 const RoadTripsPage = lazy(() => import('./components/RoadTripsPage').then(m => ({ default: m.RoadTripsPage })));
 const PressRoomPage = lazy(() => import('./components/PressRoomPage').then(m => ({ default: m.PressRoomPage })));
 const SchedulePage = lazy(() => import('./components/SchedulePage').then(m => ({ default: m.SchedulePage })));
@@ -692,6 +693,16 @@ function App() {
     if (injuryDecisions > lastDecisions.current) pushToast(`Injury: the doctors need your call in the Medical Room (${injuryDecisions} waiting).`, 'error');
     lastDecisions.current = injuryDecisions;
   }, [injuryDecisions]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Trading cards: when a season is archived, your roster's cards and the season's packs arrive (once per league).
+  const archivedSeasons = league.franchiseHistory?.length ?? 0;
+  useEffect(() => {
+    if (!activeSaveId || screen !== 'app' || !archivedSeasons) return;
+    void import('./cards/cards').then(m => {
+      const got = m.awardSeasonCards(league, activeSaveId, controlledTeamId);
+      if (got && (got.added || got.packs)) pushToast(`Card album: ${got.added} new card${got.added === 1 ? '' : 's'} from your roster and ${got.packs} pack${got.packs === 1 ? '' : 's'} to open.`, 'success');
+    });
+  }, [archivedSeasons, activeSaveId, screen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reporters line up after big results, streaks, trade requests and playoff series.
   const pressWaiting = league.press?.pending.length ?? 0;
@@ -1679,6 +1690,7 @@ function App() {
         {tab === 'summerCamp' && <SummerCampPage league={league} controlledTeamId={controlledTeamId} onChange={setLeague} onSelectPlayer={selectPlayer} />}
         {tab === 'medical' && <MedicalRoomPage league={league} controlledTeamId={controlledTeamId} onChange={setLeague} onSelectPlayer={selectPlayer} />}
         {tab === 'press' && <PressRoomPage league={league} extras={extras} controlledTeamId={controlledTeamId} onChange={setLeague} />}
+        {tab === 'cards' && <CardAlbumPage />}
         {tab === 'travel' && <RoadTripsPage league={league} controlledTeamId={controlledTeamId} onChange={setLeague} />}
         {tab === 'yearInReview' && <YearInReviewPage league={league} extras={extras} controlledTeamId={controlledTeamId} awardOptions={awardOptions(awardSettings)}
           onOpenAwards={() => setTab('awards')} onSelectPlayer={selectPlayer}

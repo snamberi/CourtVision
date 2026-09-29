@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { xpParts, totalXp, levelFor, equipped, equip, rankTitles, localName, setLocalName, FRAMES, FLOORS, TITLES, PROFILE_EVENT, type Unlock } from '../profile/profile';
-import { ICONS, NAME_COLORS, HONORS, MODE_TITLES, SUPPORTER_TITLE, unlockContext, isOpen, earnedExtraTitles, type UnlockContext } from '../profile/cosmetics';
+import { ALBUM_TITLES, ICONS, NAME_COLORS, HONORS, MODE_TITLES, SUPPORTER_TITLE, unlockContext, isOpen, earnedExtraTitles, type UnlockContext } from '../profile/cosmetics';
 import { DAILY_EVENT } from '../profile/dailyGoals';
 import { LEGACY_EVENT } from '../storage/gmLegacy';
 import { PixelIcon } from './PixelIcon';
@@ -53,6 +53,7 @@ function titleGroups(c: UnlockContext) {
     { label: 'Achievements', items: MODE_TITLES.map(m => ({ title: m.title, open: c.modes.includes(m.mode), how: m.how })) },
     { label: 'Supporter', items: [{ title: SUPPORTER_TITLE, open: c.supporter, how: 'Supporter pass' }] },
     { label: 'Trophy Road', items: TROPHY_TITLES.map(t => ({ title: t.id, open: c.trophies >= t.trophies, how: `${t.trophies.toLocaleString()} trophies` })) },
+    { label: 'Card album', items: ALBUM_TITLES.map(t => ({ title: t.title, open: ((t.kind === 'sets' ? c.album?.sets : c.album?.legendary) ?? 0) >= t.n, how: t.kind === 'sets' ? `Complete ${t.n} team card set${t.n === 1 ? '' : 's'}` : `Collect ${t.n} legendary cards` })) },
   ].filter(g => g.label !== 'Supporter' || showSupporter(c));
 }
 

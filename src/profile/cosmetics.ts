@@ -1,6 +1,15 @@
 import { localRead, type Read } from '../lib/kv';
 import { totalTrophies, trophyNeed, TROPHY_TITLES } from './trophyRoad';
 
+/** Complete team sets and legendary cards in the album (read straight from storage; see cards/cards.ts). */
+function albumCounts(read: Read): { sets: number; legendary: number } {
+  try {
+    const album = JSON.parse(read('cv-card-album') ?? '{}') as Record<string, { rarity: string }>;
+    const sets = Object.values(JSON.parse(read('cv-card-sets') ?? '{}') as Record<string, { ids: string[] }>);
+    return { sets: sets.filter(s => s.ids.every(id => album[id])).length, legendary: Object.values(album).filter(c => c.rarity === 'legendary').length };
+  } catch { return { sets: 0, legendary: 0 }; }
+}
+
 /*
  * Profile cosmetics: pixel profile icons, name colours, titles, card frames and court floors. Everything is earned by
  * playing (the level road, ranked tiers, achievements, leaderboard placements) or, for a small separate set, comes
@@ -12,12 +21,13 @@ import { totalTrophies, trophyNeed, TROPHY_TITLES } from './trophyRoad';
  */
 
 export type RewardKind = 'icon' | 'color' | 'title' | 'frame' | 'floor' | 'look';
-export type Rule = { level: number } | { rank: number } | { honor: string } | { mode: string } | { anyHonor: true } | { supporter: true } | { trophies: number };
+export type Rule = { level: number } | { rank: number } | { honor: string } | { mode: string } | { anyHonor: true } | { supporter: true } | { trophies: number } | { album: 'sets' | 'legendary'; n: number };
 /** Animated cosmetics (the Trophy Road): see features.css `.anim-*` and `.icon-anim-*`. */
 export type IconAnim = 'flicker' | 'shine' | 'spin' | 'twinkle' | 'flash' | 'glow' | 'bob';
 export type ColorAnim = 'flow' | 'shimmer' | 'pulse';
 const byTrophies = (kind: 'icon' | 'color', id: string): Rule => ({ trophies: trophyNeed(kind, id) ?? 5_000 });
 const trophyHow = (r: Rule) => ('trophies' in r ? `${r.trophies.toLocaleString()} trophies` : '');
+const albumHow = (r: Rule) => ('album' in r ? r.album === 'sets' ? `Complete ${r.n} team card set${r.n === 1 ? '' : 's'}` : `Collect ${r.n} legendary cards` : '');
 export interface Cosmetic<T extends string = string> { id: T; name: string; rule: Rule; how: string }
 
 /** Every 5 levels, one or two rewards (levels 5 to 250); every 25 levels also an app look (src/theme/themes.ts). */
@@ -128,6 +138,9 @@ export const ICONS: IconDef[] = [
     ['meteor', 'Meteor', 'meteor', undefined, 'bob'], ['crown-flame', 'Crown of fire', 'crown', { g: '#ff9d3d', G: '#e85d5d', r: '#ffd166', b: '#ffe066' }, 'flicker'],
     ['goat', 'The GOAT', 'goat', undefined, 'bob'], ['goat-crown', 'Crowned GOAT', 'goatcrown', undefined, 'glow'],
   ] as [string, string, string, Record<string, string> | undefined, IconAnim][]).map(([id, name, base, recolor, anim]) => { const rule = byTrophies('icon', id); return { id, name, base, recolor, anim, rule, how: trophyHow(rule) }; }),
+  // The card album.
+  { id: 'card-holo', name: 'Holo card', base: 'card', anim: 'shine' as IconAnim, rule: { album: 'sets', n: 3 } as Rule, how: albumHow({ album: 'sets', n: 3 }) },
+  { id: 'card-legend', name: 'Legendary card', base: 'card', recolor: { b: '#ffd166', B: '#c9971f' }, anim: 'glow' as IconAnim, rule: { album: 'legendary', n: 10 } as Rule, how: albumHow({ album: 'legendary', n: 10 }) },
 ];
 export type IconId = string;
 
@@ -161,6 +174,7 @@ export const NAME_COLORS: (Cosmetic & { css: string; anim?: ColorAnim })[] = [
   animated('solar', 'Solar flare', 'linear-gradient(90deg, #ff3d1f, #ffe066, #ffffff, #ffe066, #ff3d1f)', 'flow'),
   animated('nebula', 'Nebula', 'linear-gradient(90deg, #3b1d82, #ff4dd2, #4fd6d6, #b983ff, #3b1d82)', 'flow'),
   animated('celestial', 'Celestial', 'linear-gradient(90deg, #ffd166, #ffffff, #8fa8ff, #ffffff, #ffd166)', 'shimmer'),
+  { ...animated('holo', 'Holo foil', 'linear-gradient(90deg, #ff8fc8, #6fd3ff, #7dff9b, #ffe38a, #ff8fc8)', 'flow'), rule: { album: 'legendary', n: 5 } as Rule, how: albumHow({ album: 'legendary', n: 5 }) },
   animated('immortal', 'Immortal', 'linear-gradient(90deg, #ff4d2e, #ffd166, #6fdc93, #4fd6d6, #c79bff, #ff4dd2, #ff4d2e)', 'flow'),
 ];
 
@@ -209,10 +223,10 @@ export function hasEntitlement(kind: 'noAds' | 'supporter', read: Read = localRe
   return kind === 'noAds' ? !!e.noAds || supporter : supporter;
 }
 
-export interface UnlockContext { level: number; rank: number; honors: string[]; modes: string[]; supporter: boolean; trophies: number }
+export interface UnlockContext { level: number; rank: number; honors: string[]; modes: string[]; supporter: boolean; trophies: number; album?: { sets: number; legendary: number } }
 /** What unlocks read: the level is passed in; the rest comes from this browser. */
 export function unlockContext(level: number, read: Read = localRead): UnlockContext {
-  return { level, rank: TIERS.indexOf(read('cv-ranked-best') ?? ''), honors: readHonors(read), modes: json<string[]>(read, 'cv-mode-ach-seen', []), supporter: hasEntitlement('supporter', read), trophies: totalTrophies(read) };
+  return { level, rank: TIERS.indexOf(read('cv-ranked-best') ?? ''), honors: readHonors(read), modes: json<string[]>(read, 'cv-mode-ach-seen', []), supporter: hasEntitlement('supporter', read), trophies: totalTrophies(read), album: albumCounts(read) };
 }
 export function isOpen(rule: Rule, c: UnlockContext): boolean {
   if ('level' in rule) return c.level >= rule.level;
@@ -221,6 +235,7 @@ export function isOpen(rule: Rule, c: UnlockContext): boolean {
   if ('anyHonor' in rule) return c.honors.length > 0;
   if ('supporter' in rule) return c.supporter;
   if ('trophies' in rule) return c.trophies >= rule.trophies;
+  if ('album' in rule) return (rule.album === 'sets' ? c.album?.sets ?? 0 : c.album?.legendary ?? 0) >= rule.n;
   return rule.honor === 'first' ? c.honors.some(h => HONORS.find(x => x.id === h)?.first) : c.honors.includes(rule.honor);
 }
 
@@ -230,6 +245,11 @@ export const earnedExtraTitles = (c: UnlockContext): string[] => [
   ...MODE_TITLES.filter(t => c.modes.includes(t.mode)).map(t => t.title),
   ...(c.supporter ? [SUPPORTER_TITLE] : []),
   ...TROPHY_TITLES.filter(t => c.trophies >= t.trophies).map(t => t.id),
+  ...ALBUM_TITLES.filter(t => ((t.kind === 'sets' ? c.album?.sets : c.album?.legendary) ?? 0) >= t.n).map(t => t.title),
+];
+/** Titles from the card album. */
+export const ALBUM_TITLES: { title: string; kind: 'sets' | 'legendary'; n: number }[] = [
+  { title: 'Collector', kind: 'sets', n: 1 }, { title: 'Set Master', kind: 'sets', n: 10 }, { title: 'Legendary Collector', kind: 'legendary', n: 15 },
 ];
 /** A name colour (the profile field may also carry the title colour after a "|"; see trophyRoad.ts). */
 export const colorDef = (id: string | null | undefined) => NAME_COLORS.find(c => c.id === (id ?? '').split('|')[0]) ?? NAME_COLORS[0];
@@ -272,5 +292,6 @@ export const SPRITES: Record<string, string[]> = {
   meteor: ['o.........', '.oo.......', '..ooo.....', '...ookkk..', '....kgggk.', '...kgwgGGk', '...kggGGGk', '...kgGGGGk', '....kGGGk.', '.....kkk..'],
   goat: ['k.......k.', 'kk.....kk.', '.kwkkkkwk.', '.kwwwwwwk.', 'kwkwwwwkwk', '.kwwwwwwk.', '..kwwwwk..', '..kwkkwk..', '...kwwk...', '...kssk...'],
   goatcrown: ['.g.g..g.g.', '.gggggggg.', '.kGGGGGGk.', '.kwkkkkwk.', '.kwwwwwwk.', 'kwkwwwwkwk', '.kwwwwwwk.', '..kwwwwk..', '..kwkkwk..', '...kssk...'],
+  card: ['.kkkkkkkk.', 'kbbbbbbbbk', 'kbwwwwwwBk', 'kbwoowwwBk', 'kbwoowwwBk', 'kbwwwwwwBk', 'kbwkkkkwBk', 'kbwwwwwwBk', 'kBBBBBBBBk', '.kkkkkkkk.'],
   heart: ['..........', '.kkk..kkk.', 'krrrkkrrrk', 'krwrrrrrrk', 'krrrrrrrrk', '.krrrrrrk.', '..krrrrk..', '...krrk...', '....kk....', '..........'],
 };

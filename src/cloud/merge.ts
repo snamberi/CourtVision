@@ -15,7 +15,7 @@ import { readFeats, mergeFeats } from '../profile/feats';
 export const SYNC_KEYS = [
   'courtvision:gmLegacy', 'cv-hunt-records', 'cv-hunt-album', 'cv-rebuild-records', 'cv-rebuild-records-done',
   'cv-weekly-records', 'cv-daily-history', 'cv-profile-equip', 'cv-code-results', 'cv-feats',
-  'cv-legend-records', 'cv-card-album',
+  'cv-legend-records', 'cv-card-album', 'cv-card-sets',
 ] as const;
 export type SyncKey = typeof SYNC_KEYS[number];
 
@@ -94,6 +94,7 @@ export function mergeValue(key: SyncKey, local: string | null | undefined, cloud
       for (const [id, x] of Object.entries(parse<Record<string, Rec>>(local, {}))) { const y = out[id]; out[id] = y ? { best: max(x.best, y.best), stars: max(x.stars, y.stars), attempts: max(x.attempts, y.attempts) } : x; }
       return JSON.stringify(out);
     }
+    case 'cv-card-sets':
     case 'cv-card-album': return JSON.stringify({ ...parse<Record<string, unknown>>(cloud, {}), ...parse<Record<string, unknown>>(local, {}) });
   }
 }
