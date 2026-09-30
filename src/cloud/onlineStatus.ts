@@ -21,7 +21,7 @@ export function statusSteps(build: { url: string | null; hasKey: boolean }, heal
   if (health && health !== 'no-api') {
     const missing = [!health.runtime.url && 'SUPABASE_URL', !health.runtime.publicKey && 'SUPABASE_ANON_KEY', !health.runtime.serviceKey && 'SUPABASE_SERVICE_ROLE_KEY (as a Secret)'].filter(Boolean);
     steps.push({ id: 'runtime', label: 'The running site has its Supabase settings (for cloud saves and PvP)', state: missing.length ? 'fail' : 'ok',
-      fix: missing.length ? `Cloudflare → courtvision → Settings → Variables and Secrets: add ${missing.join(', ')}. No rebuild needed.` : undefined });
+      fix: missing.length ? `Cloudflare → courtvision → Settings → Build → Variables and secrets (the same place as the other two): add ${missing.join(', ')}, then Retry build. The build copies them into the Worker. (Or add them under Settings → Variables and Secrets, then Deploy.)` : undefined });
     steps.push({ id: 'database', label: 'Supabase answers and the tables exist', state: health.supabase === 'ok' ? 'ok' : health.supabase === 'no-config' ? 'unknown' : 'fail',
       fix: health.supabase === 'no-schema' ? 'Supabase → SQL Editor: paste all of supabase/schema.sql from the repository and Run.'
         : health.supabase === 'unreachable' ? `Supabase did not accept the address or key${health.detail ? ` (${health.detail.slice(0, 80)})` : ''}. Copy SUPABASE_URL and the keys again from Supabase → Project Settings → API. A paused free project must be restored in Supabase first.` : undefined });

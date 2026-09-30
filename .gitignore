@@ -3,3 +3,4 @@ dist
 dist-desktop
 *.local
 dist-cloudtest
+worker/buildEnv.generated.ts
