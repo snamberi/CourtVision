@@ -1,12 +1,12 @@
 import { PrivacyLink } from './PrivacyPolicyPage';
 import { IS_DESKTOP_BUILD } from '../appMode';
-import { LegacyPanel, useLegacy } from './FrontOfficePanels';
 import { DiscordLink, DISCORD_URL } from './DiscordLink';
 import { CookieSettingsLink } from '../consent/ConsentBanner';
 import { ConsentBanner } from '../consent/ConsentBanner';
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import logoIcon from '../assets/brand/logo-icon.png';
 import { PlayerAvatar } from './PlayerAvatar';
+import { MyAvatar } from './UserAvatar';
 import { PixelBall, PixelIcon } from './PixelIcon';
 import type { TradeDifficulty } from '../simulation/gm';
 import type { SaveSummary } from '../storage/saves';
@@ -20,11 +20,10 @@ import { WhatsNew } from './WhatsNew';
 import { ThemeWelcome, needsThemeChoice } from './ThemePicker';
 import { WeeklyBoardDialog } from './WeeklyBoard';
 import { cloudEnabled } from '../cloud/account';
-import { AccountButton, MenuAccountCard } from './cloud/AccountButton';
+import { AccountButton } from './cloud/AccountButton';
 import { ProfileChip } from './ProfilePanel';
 import { totalXp, levelFor, takeLevelUp, unlocksBetween } from '../profile/profile';
 import { TrophyUnlock } from './locker/TrophyUnlock';
-import { liteMode, performanceSetting, setPerformanceSetting, type PerformanceSetting } from '../lib/performanceMode';
 
 export type GameMode = 'random' | 'real' | 'legends' | 'career' | 'rebuild' | 'draft';
 export interface RealLeagueOptions { source: 'history' | 'csv'; realDevelopment: boolean; forceRosters?: boolean; allPlayers?: boolean }
@@ -32,7 +31,6 @@ export interface RealLeagueOptions { source: 'history' | 'csv'; realDevelopment:
 const HISTORY_START_YEARS: number[] = Array.from({ length: 2025 - 1946 + 1 }, (_, i) => 2025 - i);
 
 interface Props {
-  recovery?: ReactNode;
   onStart: (mode: GameMode, difficulty: TradeDifficulty, year: string, leagueName: string, real?: RealLeagueOptions, scenarioId?: string) => void;
   /** Shown while a historical league is being assembled. */
   busy?: string | null;
@@ -48,6 +46,8 @@ interface Props {
   onCommunity?: () => void;
   /** Opens your player profile. */
   onProfile?: () => void;
+  /** Opens Settings (backups, graphics, privacy). */
+  onSettings?: () => void;
 }
 
 const MODES: { id: GameMode; title: string; blurb: string }[] = [
@@ -143,7 +143,7 @@ function SavedLeaguesList({ saves, onContinue, onDeleteSave, onRenameSave }: Pic
   );
 }
 
-export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSave, recovery, busy = null, onLocker, onCode, onCommunity, onProfile }: Props) {
+export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSave, busy = null, onLocker, onCode, onCommunity, onProfile, onSettings }: Props) {
   // First visit: pick a look before anything else; What's New waits until it is picked.
   const [pickLook, setPickLook] = useState(needsThemeChoice);
   const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
@@ -162,13 +162,13 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
 
   return (
     <div className="main-menu">
-      <div className="menu-masthead"><img src={logoIcon} alt="" /><span>COURT VISION<small>BASKETBALL MANAGEMENT</small></span><span className="menu-edition">THE PIXEL COURT</span>{(onProfile || onLocker) && <ProfileChip onOpen={onProfile ?? onLocker} />}{onCommunity && <AccountButton onCommunity={onCommunity} />}<InstallAppButton /><DiscordLink className="menu-discord" /></div>
+      <div className="menu-masthead"><img src={logoIcon} alt="" /><span>COURT VISION<small>BASKETBALL MANAGEMENT</small></span><span className="menu-edition">THE PIXEL COURT</span>{(onProfile || onLocker) && <ProfileChip onOpen={onProfile ?? onLocker} />}{onCommunity && <AccountButton onCommunity={onCommunity} />}<InstallAppButton /><DiscordLink className="menu-discord" />{onSettings && <button className="account-chip menu-settings" onClick={onSettings} title="Settings: backups, graphics, privacy"><PixelIcon name="settings" size={14} /> Settings</button>}</div>
       <div className="menu-hero">
         <div className="menu-hero-copy"><span className="pixel-eyebrow">BUILD A TEAM. WRITE ITS HISTORY.</span><h1>Your league.<br /><span>Your legacy.</span></h1><p>Scout the next great. Build your starting five.<br />Turn one season into a dynasty.</p></div>
         <div className="menu-player-scene" aria-hidden="true">
           <span className="menu-court-line" />
           <PlayerAvatar playerId="Court Vision Guard" primaryColor="#386bba" secondaryColor="#fff0cf" jerseyNumber={30} size={100} />
-          <PlayerAvatar playerId="Court Vision Wing" primaryColor="#6e3994" secondaryColor="#c6aeff" jerseyNumber={1} size={140} />
+          <MyAvatar size={150} className="menu-you" title="Your character" />
           <PlayerAvatar playerId="Court Vision Center" primaryColor="#ec852b" secondaryColor="#fcdfad" jerseyNumber={23} size={100} />
           <PixelBall size={48} />
         </div>
@@ -283,25 +283,16 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
       {onCode && <CodeEntry busy={busy} onCode={onCode} />}
 
 
-      <MenuLegacy />
-      {onCommunity && <MenuAccountCard onCommunity={onCommunity} />}
-
       <ThisWeek onCommunity={onCommunity} busy={busy} onRebuild={() => onStart('rebuild', 'normal', '', '', undefined, 'weekly')} onCareer={() => onStart('career', 'normal', '', '')} onHunt={() => onStart('legends', 'normal', '', '')} />
 
-      {recovery}
       <AdBanner slot="menu" />
-      <footer className="legal-footer">{!IS_DESKTOP_BUILD && <><a href="/how-to-play.html">How to Play</a> · <a href="/guides/">Guides</a> · <a href="/faq.html">FAQ</a> · <a href="/about.html">About</a> · <a href="/changelog.html">What's new</a> · </>}<PrivacyLink /> · <CookieSettingsLink /> · <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer">Discord</a> · <PerformanceToggle /></footer>
+      <footer className="legal-footer">{!IS_DESKTOP_BUILD && <><a href="/how-to-play.html">How to Play</a> · <a href="/guides/">Guides</a> · <a href="/faq.html">FAQ</a> · <a href="/about.html">About</a> · <a href="/changelog.html">What's new</a> · </>}<PrivacyLink /> · <CookieSettingsLink /> · <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer">Discord</a>{onSettings && <> · <button className="link-button" onClick={onSettings}>Settings</button></>}</footer>
       <LevelUpNote onProfile={onProfile ?? onLocker} />
       <TrophyUnlock onProfile={onProfile ?? onLocker} />
       <ConsentBanner />
       {pickLook ? <ThemeWelcome onDone={() => setPickLook(false)} /> : <WhatsNew />}
     </div>
   );
-}
-
-function MenuLegacy() {
-  const legacy = useLegacy();
-  return <LegacyPanel legacy={legacy} compact />;
 }
 
 /** This week: the Rebuild and Career of the Week (same seed for everyone until Monday) and the Daily Legend. */
@@ -329,15 +320,6 @@ function ThisWeek({ busy, onRebuild, onCareer, onHunt, onCommunity }: { busy: st
         <button onClick={onHunt}>League Hunt</button></article>
     </div>
   </section>;
-}
-
-/** Graphics: Auto (lite on low-end devices), Lite or Full. */
-function PerformanceToggle() {
-  const [setting, setSetting] = useState<PerformanceSetting>(() => performanceSetting());
-  const next: Record<PerformanceSetting, PerformanceSetting> = { auto: 'lite', lite: 'full', full: 'auto' };
-  const label = setting === 'auto' ? `Auto (${liteMode('auto') ? 'lite' : 'full'})` : setting === 'lite' ? 'Lite' : 'Full';
-  return <button className="link-button" title="Lite mode stops looping animations and blur, and uses fewer simulation workers. Auto turns it on for low-memory devices."
-    onClick={() => { const v = next[setting]; setPerformanceSetting(v); setSetting(v); }}>Graphics: {label}</button>;
 }
 
 /** Level up since the last visit to the menu: what it unlocked. */

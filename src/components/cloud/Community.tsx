@@ -10,7 +10,6 @@ import { ACHIEVEMENT_BY_ID } from '../../simulation/frontOffice';
 import { TITLES, levelFor, totalXp, rankTitles, equip } from '../../profile/profile';
 import { usernameProblem } from '../../lib/names';
 import { BoardTable } from './BoardTable';
-import { OnlineStatus } from './OnlineStatus';
 import { PvpArena } from './PvpArena';
 import { openSignIn } from '../../cloud/signIn';
 import { PixelIcon } from '../PixelIcon';
@@ -41,7 +40,7 @@ export function Community({ onExit, user, onUser }: { onExit: () => void; user: 
       <button className="hunt-exit" onClick={user ? () => onUser(null) : onExit}><PixelIcon name="exit" size={16} /> {user ? 'Back' : 'Main Menu'}</button>
       <div className="hunt-title"><span className="pixel-eyebrow">PLAY AGAINST EVERYONE</span><h1>{user ? `@${user}` : 'Community'}</h1></div>
     </header>
-    {!cloudEnabled ? <><p className="empty-state">Accounts and online leaderboards are not switched on for this site yet.</p><OnlineStatus open /></>
+    {!cloudEnabled ? <><p className="empty-state">Accounts and online leaderboards are not switched on for this site yet.</p></>
       : user ? <ProfileView username={user} onUser={onUser} />
         : <>
           <div className="stats-view-toggle community-tabs" role="tablist" aria-label="Community">
@@ -53,7 +52,6 @@ export function Community({ onExit, user, onUser }: { onExit: () => void; user: 
           {tab === 'pvp' && <PvpArena onUser={onUser} />}
           {tab === 'friends' && <Friends onUser={onUser} />}
           {tab === 'me' && <Me onUser={onUser} />}
-          <OnlineStatus />
         </>}
   </div>;
 }

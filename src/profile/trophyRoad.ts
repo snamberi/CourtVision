@@ -4,6 +4,7 @@ import { loadRebuildRecords } from '../simulation/rebuildChallenge';
 import { loadWeeklyRecords } from '../retention/weekly';
 import { dailyGoalXp } from './dailyGoals';
 import { localRead, type Read } from '../lib/kv';
+import { AVATAR_TROPHY_ROAD } from './avatar';
 
 /*
  * Trophies and the Trophy Road. Trophies are counted from the same records as XP (GM legacy, careers, League Hunt,
@@ -49,7 +50,7 @@ export function trophyParts(read: Read = localRead): TrophyPart[] {
 }
 export const totalTrophies = (read: Read = localRead) => trophyParts(read).reduce((n, p) => n + p.trophies, 0);
 
-export type TrophyRewardKind = 'title' | 'color' | 'icon' | 'titleColor' | 'look';
+export type TrophyRewardKind = 'title' | 'color' | 'icon' | 'titleColor' | 'look' | 'avatar';
 /** One or two rewards every 5,000 trophies. The last stops are the rarest things in the game. */
 export const TROPHY_ROAD: [number, TrophyRewardKind, string][] = [
   [5_000, 'title', 'Contender'], [5_000, 'titleColor', 'amber'],
@@ -93,6 +94,9 @@ export const TROPHY_ROAD: [number, TrophyRewardKind, string][] = [
   [195_000, 'titleColor', 'molten'],
   [200_000, 'title', 'Court Vision Immortal'], [200_000, 'icon', 'goat-crown'], [200_000, 'color', 'immortal'], [200_000, 'titleColor', 'immortal'], [200_000, 'look', 'immortal'],
 ];
+// Your character's pieces ride the same road (ids are "category:piece"; see AVATAR_TROPHY_ROAD in avatar.ts).
+for (const [t, cat, id] of AVATAR_TROPHY_ROAD) TROPHY_ROAD.push([t, 'avatar', `${cat}:${id}`]);
+TROPHY_ROAD.sort((a, b) => a[0] - b[0]);
 export const trophyNeed = (kind: TrophyRewardKind, id: string) => TROPHY_ROAD.find(([, k, i]) => k === kind && i === id)?.[0];
 export const TROPHY_TITLES = TROPHY_ROAD.filter(([, k]) => k === 'title').map(([t, , id]) => ({ id, trophies: t }));
 

@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { readFavorites } from '../../profile/favorites';
 import type { NbaHistory } from '../../history/nbaHistoryData';
 import { cardNotes } from '../../hunt/cardNotes';
 import { cardPool, seasonLabel, RARITY_LABEL, type HuntCard } from '../../hunt/cards';
@@ -67,13 +68,13 @@ export function LeagueHunt({ onExit }: { onExit: () => void }) {
 
   return <div className={`hunt ${play ? `era-${play.play.era.id}` : ''}`}>
     {header}
-    {!run ? <HuntHub h={h} records={records} onStart={(seed, opts) => { setPlay(null); setRun(newRun(h, seed, opts)); }} />
+    {!run ? <HuntHub h={h} records={records} onStart={(seed, opts) => { setPlay(null); setRun(newRun(h, seed, { ...opts, fav: readFavorites().player })); }} />
       : play ? <SeriesView h={h} run={run} play={play.play} series={play.series} index={play.index} onReveal={() => setPlay(p => (p && !p.revealed ? { ...p, revealed: true } : p))} onContinue={() => setPlay(null)} />
       : run.stage === 'draft' ? <SlotMachine key={run.seed} h={h} run={run} onRun={setRun} onAbandon={() => setRun(null)} />
       : run.stage === 'focus' ? <FocusView run={run} onChoose={f => setRun(chooseFocus(h, run, f))} />
       : run.stage === 'shop' ? <Shop h={h} run={run} onRun={setRun} />
       : run.stage === 'boost' ? <BoostPick h={h} run={run} onTake={b => setRun(takeBoost(h, run, b))} />
-      : run.stage === 'won' || run.stage === 'lost' ? <RunOver h={h} run={run} records={records} onNew={() => { setPlay(null); setRun(newRun(h, Math.floor(Math.random() * 1_000_000_000), { deck: run.deck, difficulty: run.difficulty })); }} onExit={() => { setRun(null); onExit(); }} />
+      : run.stage === 'won' || run.stage === 'lost' ? <RunOver h={h} run={run} records={records} onNew={() => { setPlay(null); setRun(newRun(h, Math.floor(Math.random() * 1_000_000_000), { deck: run.deck, difficulty: run.difficulty, fav: readFavorites().player })); }} onExit={() => { setRun(null); onExit(); }} />
       : <SeriesPreview h={h} run={run} onPlay={() => { const r = playSeries(h, run); if (!r) return; setPlay({ play: r.play, series: run.series[run.seriesIndex], index: run.seriesIndex, before: run, revealed: false }); setRun(r.run); }} onAbandon={() => setRun(null)} />}
   </div>;
 }

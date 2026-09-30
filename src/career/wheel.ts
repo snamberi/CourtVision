@@ -4,6 +4,7 @@ import { RNG } from '../simulation/engine/rng';
 import { cardPool, cardPlayer, type HuntCard } from '../hunt/cards';
 import { CATEGORIES, categoryValues, type CategoryId, type CategoryValues } from './categories';
 import { legendRank } from '../draft/allTimeDraft';
+import { FAV_BOOST } from '../profile/favorites';
 
 /*
  * The Career Mode wheel. Every real player in NBA history is on it once, at his best season. Most spins land on role
@@ -50,9 +51,12 @@ export interface WheelState {
   lucky?: number;
   /** Prime Boosts left (absent: the full count). */
   boost?: number;
+  /** Your favourite player (Profile): when a spin lands on his rarity, FAV_BOOST more chance it is him, until he comes up once. */
+  fav?: string;
+  favLanded?: boolean;
 }
 
-export const newWheel = (seed: number): WheelState => ({ seed, spinCount: 0, current: null, takenFrom: [], picks: {}, moves: { left: true, right: true }, respins: RESPINS, triple: true, lucky: LUCKY_SPINS });
+export const newWheel = (seed: number, fav?: string): WheelState => ({ seed, spinCount: 0, current: null, takenFrom: [], picks: {}, moves: { left: true, right: true }, respins: RESPINS, triple: true, lucky: LUCKY_SPINS, ...(fav ? { fav } : {}) });
 export const luckyLeft = (s: WheelState) => s.lucky ?? LUCKY_SPINS;
 export const boostLeft = (s: WheelState) => s.boost ?? PRIME_BOOSTS;
 
@@ -203,6 +207,18 @@ function pickElite(h: NbaHistory, rng: RNG): HuntCard {
   return e.list[lo];
 }
 
+/** Your favourite player's slice on the wheel (his best season), by player id or name. */
+export function favCard(h: NbaHistory, fav: string): HuntCard | undefined {
+  const key = fav.toLowerCase();
+  return wheelPool(h).find(c => c.playerId.toLowerCase() === key || c.name.toLowerCase() === key);
+}
+/** Once your favourite has come up on a wheel, the odds go back to normal for the rest of this player. */
+function noteFav(h: NbaHistory, s: WheelState): WheelState {
+  if (!s.fav || s.favLanded || !s.current) return s;
+  const fav = favCard(h, s.fav);
+  return fav && s.current.some(w => landed(w) === fav.id) ? { ...s, favLanded: true } : s;
+}
+
 function makeWheels(h: NbaHistory, s: WheelState, count: number, lucky = false): Wheel[] {
   const rng = new RNG(s.seed * 7919 + s.spinCount * 104_729 + 17);
   const luck = lucky ? LUCK : 1;
@@ -210,6 +226,9 @@ function makeWheels(h: NbaHistory, s: WheelState, count: number, lucky = false):
     const reel = Array.from({ length: REEL_LENGTH }, () => pickCard(h, rng, luck).id), stop = rng.nextInt(REEL_LENGTH);
     // A lucky spin always lands on a Star or a Great.
     if (lucky) { const rarity = cardPool(h).byId.get(reel[stop])?.rarity; if (rarity !== 'legendary' && rarity !== 'epic') reel[stop] = pickElite(h, rng).id; }
+    // Your favourite player: landing on his rarity, a FAV_BOOST chance it is him (until he has come up once).
+    const fav = s.fav && !s.favLanded ? favCard(h, s.fav) : undefined;
+    if (fav && cardPool(h).byId.get(reel[stop])?.rarity === fav.rarity && !reel.includes(fav.id) && rng.next() < FAV_BOOST) reel[stop] = fav.id;
     return { reel, stop, ...(lucky ? { lucky: true } : {}) };
   });
 }
@@ -218,7 +237,7 @@ function makeWheels(h: NbaHistory, s: WheelState, count: number, lucky = false):
 export function spin(h: NbaHistory, s: WheelState, triple = false, lucky = false): WheelState {
   if (!canSpin(s) || (triple && !s.triple) || (lucky && luckyLeft(s) <= 0)) return s;
   const next = { ...s, spinCount: s.spinCount + 1, takenFrom: [], triple: triple ? false : s.triple, ...(lucky ? { lucky: luckyLeft(s) - 1 } : {}) };
-  return { ...next, current: makeWheels(h, next, triple ? 3 : 1, lucky) };
+  return noteFav(h, { ...next, current: makeWheels(h, next, triple ? 3 : 1, lucky) });
 }
 
 /** Spins again without taking anything from this spin. */
@@ -227,7 +246,7 @@ export function respin(h: NbaHistory, s: WheelState): WheelState {
   if (!mustTake(s) || s.respins <= 0 || s.current!.some(w => w.boost)) return s;
   const next = { ...s, spinCount: s.spinCount + 1, respins: s.respins - 1, takenFrom: [] };
   // A respin of a lucky spin stays lucky.
-  return { ...next, current: makeWheels(h, next, s.current!.length, !!s.current![0]?.lucky) };
+  return noteFav(h, { ...next, current: makeWheels(h, next, s.current!.length, !!s.current![0]?.lucky) });
 }
 
 /** Shifts a stopped single wheel one slice left or right (each direction once). */

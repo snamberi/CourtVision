@@ -13,6 +13,7 @@ import { BOOST_IDS, type BoostId } from './boosts';
 import { BUFFS, BUFF_IDS, type BuffId } from './buffs';
 import { COACHES, COACH_BY_ID, coachRarity, type HuntCoach } from './coaches';
 import { rosterRating, bonusToReach } from './rating';
+import { FAV_BOOST } from '../profile/favorites';
 
 /*
  * A League Hunt run.
@@ -101,6 +102,8 @@ export interface HuntRun {
   lines?: Record<string, { g: number; pts: number; reb: number; ast: number }>;
   /** The blind spins: what you took and the best on the table, per spin (overall; the coach's bonus on the coach spin). */
   picks?: { spin: number; got: number; best: number }[];
+  /** Your favourite player: a reel landing on his rarity is him FAV_BOOST more often, until you lock him. */
+  fav?: string;
 }
 
 export type DeckId = 'classic' | 'bigMen' | 'oldSchool' | 'paceSpace' | 'dynasty';
@@ -165,7 +168,7 @@ export const opponentRating = (h: NbaHistory, run: HuntRun, s: HuntSeries) => ro
 
 // ---------------------------------------------------------------- a new run
 
-export interface NewRunOptions { deck?: DeckId; difficulty?: Difficulty; daily?: string }
+export interface NewRunOptions { deck?: DeckId; difficulty?: Difficulty; daily?: string; /** Your favourite player (Profile); ignored in the Daily Legend. */ fav?: string }
 
 function pickTeam(h: NbaHistory, teams: HuntTeam[], era: HuntEra, target: number, rng: RNG, used: Set<string>): HuntTeam {
   const free = teams.filter(t => !used.has(t.id));
@@ -204,7 +207,7 @@ export function newRun(h: NbaHistory, seed: number, opts: NewRunOptions = {}): H
   series.push({ teamId: bossTeam.id, eraId: eraOf(bossTeam.end).id, kind: 'boss', buffs: buffPool(3), lift: 0 });
   let run: HuntRun = { version: 3, seed, stage: 'draft', squad: SLOTS.map(() => ''), spin: 0, offer: [], reels: null, guarantees: { star: 0, great: 1 },
     lives: diff.lives, coins: START_COINS + diff.coinShift + deck.coins, items: [...deck.items], boosts: [], growth: { star: 0, sixth: 0, chemistry: 0, coach: 0 }, training: {},
-    series, seriesIndex: 0, attempts: 0, results: [], deck: deck.id, difficulty: diff.id, ...(opts.daily ? { daily: opts.daily } : {}) };
+    series, seriesIndex: 0, attempts: 0, results: [], deck: deck.id, difficulty: diff.id, ...(opts.daily ? { daily: opts.daily } : opts.fav ? { fav: opts.fav } : {}) };
   // Lift every team that falls short of its series' rating (buffs count, so the lift is what is left).
   run = { ...run, series: run.series.map((s, i) => {
     const target = s.kind === 'boss' ? diff.bossRating : Math.min(99, TARGETS[i] + diff.shift);
@@ -265,6 +268,16 @@ export function migrateDraft(run: HuntRun): HuntRun {
   return { ...run, squad, offer: [], reels: null, spin: SPINS.length - openSpins({ squad, coach: run.coach }).length };
 }
 
+/** A card of your favourite player at this rarity that fits this reel, while you haven't locked him yet. */
+function favOnReel(h: NbaHistory, run: HuntRun, taken: Set<string>, fits: (c: HuntCard) => boolean, rarity: Rarity): HuntCard | undefined {
+  if (!run.fav || run.daily) return undefined;
+  const key = run.fav.toLowerCase();
+  const pool = cardPool(h);
+  if (run.squad.some(id => id && pool.byId.get(id)?.playerId.toLowerCase() === key)) return undefined;
+  const mine = pool.byRarity[rarity].filter(c => (c.playerId.toLowerCase() === key || c.name.toLowerCase() === key) && fits(c) && !taken.has(c.playerId) && c.ovr >= MIN_OFFER_OVR);
+  return mine.sort((a, b) => b.ovr - a.ovr)[0];
+}
+
 /** STOP: every slot still spinning lands on a card (a coach on the coach reel). Seeded by the round, so a reload shows the same. */
 export function stopReels(h: NbaHistory, run: HuntRun): HuntRun {
   if (run.stage !== 'draft' || run.reels) return run;
@@ -302,6 +315,9 @@ export function stopReels(h: NbaHistory, run: HuntRun): HuntRun {
       const bigMen = deck.id === 'bigMen' && (k === 'PF' || k === 'C');
       const want = k === forcedAt ? forced! : bigMen ? (rng.next() < 0.25 ? 'legendary' : 'epic') : pick();
       id = drawPlayers(h, taken, rng, 1, fits, () => want)[0];
+      // Your favourite player: on his rarity, a FAV_BOOST chance the reel shows him instead (until you lock him).
+      const fav = favOnReel(h, run, taken, fits, want);
+      if (fav && rng.next() < FAV_BOOST) id = fav.id;
     }
     if (id) { reels[k] = id; taken.add(pool.byId.get(id)!.playerId); }
   }

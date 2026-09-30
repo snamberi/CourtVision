@@ -73,3 +73,22 @@
 .road-look i { display: block; height: 100%; }
 .road-look i:first-child { border: 1px solid; }
 .road-look-reward small { font-weight: 600; }
+
+/* Settings (the gear in the main menu header). */
+.settings-page .locker-bay .backup-panel { margin-top: 10px; }
+.settings-links { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.settings-advanced { margin: 28px 0 8px; opacity: .72; font-size: .85rem; }
+.settings-advanced > summary { cursor: pointer; color: var(--cv-text-muted, var(--c-fg-94a0b2, #94a0b2)); }
+.settings-advanced[open] { opacity: 1; }
+
+/* Favourites (Profile tab). */
+.fav-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px 24px; }
+.fav-field { display: grid; gap: 6px; align-content: start; }
+.fav-field > span:first-child { font-weight: 700; }
+.fav-field small { color: var(--cv-text-muted, var(--c-fg-94a0b2, #94a0b2)); line-height: 1.45; }
+.fav-team { display: flex; align-items: center; gap: 8px; }
+.fav-team select { flex: 1; min-width: 0; }
+.fav-chosen { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.fav-hits { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.fav-hits button { width: 100%; display: flex; justify-content: space-between; gap: 10px; text-align: left; }
+.fav-hits small { color: var(--cv-text-muted, var(--c-fg-94a0b2, #94a0b2)); font-variant-numeric: tabular-nums; }

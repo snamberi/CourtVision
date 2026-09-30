@@ -6,6 +6,16 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2026-11-11',
+    title: 'Your own character',
+    items: [
+      "**Your character:** everyone now has a pixel player of their own (a random one to start). Dress it on Profile → Your character: body colour, hair, hair colour, beards, 50 outfits, headwear, eyewear, neck and back pieces, shoes and an aura. It stands in the middle of the main menu.",
+      "**Unlock more:** new pieces open with your level, and the Trophy Road now has 40 character rewards: anime-inspired outfits (a martial arts gi, a ninja jumpsuit, a pirate vest, a scout cloak, a checkered haori and more), wild body colours up to rainbow, super spiky hair, wings and animated auras.",
+      "**Favourite team and player:** set them on the Profile tab. Your team is picked for you when you choose a team (you can still change it). When a Career Mode wheel or a League Hunt reel lands on your favourite player's rarity, it's him 15% more often, until you get him once in that run.",
+      "**Tidier main menu:** your account and the leaderboards are in the header, your GM legacy lives in your profile, and backups, graphics and privacy moved to the new Settings page (the gear).",
+    ],
+  },
+  {
     id: '2026-11-04',
     title: "The Owner's Box",
     items: [

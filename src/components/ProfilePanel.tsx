@@ -5,6 +5,7 @@ import { DAILY_EVENT } from '../profile/dailyGoals';
 import { LEGACY_EVENT } from '../storage/gmLegacy';
 import { PixelIcon } from './PixelIcon';
 import { ProfileIcon, NameTag } from './ProfileIcon';
+import { MyAvatar } from './UserAvatar';
 import { useAccount } from '../cloud/account';
 import { passesOnSale } from '../billing/billing';
 import { ThemeSection } from './ThemePicker';
@@ -28,7 +29,7 @@ export function ProfileChip({ onOpen }: { onOpen?: () => void }) {
   const p = useProfile();
   const eq = equipped(p.level);
   return <button className="profile-chip" onClick={onOpen} title={`${p.xp.toLocaleString()} XP · ${p.need ? `${p.need - p.into} to level ${p.level + 1}` : 'max level'}`}>
-    <ProfileIcon id={eq.icon} size={18} title="" /><b>LV {p.level}</b><NameTag name="" icon={null} title={eq.title} titleColor={eq.titleColor} className="profile-chip-title" /><i style={{ width: `${p.need ? p.into / p.need * 100 : 100}%` }} aria-hidden="true" />
+    <MyAvatar size={22} mode="portrait" animate={false} title="" /><b>LV {p.level}</b><NameTag name="" icon={null} title={eq.title} titleColor={eq.titleColor} className="profile-chip-title" /><i style={{ width: `${p.need ? p.into / p.need * 100 : 100}%` }} aria-hidden="true" />
   </button>;
 }
 
@@ -69,7 +70,8 @@ export function ProfilePanel() {
   return <section className="locker-bay profile-panel">
     <h2><PixelIcon name="star" size={18} /> Your card</h2>
     <div className={`profile-card-big frame-${eq.frame}`}>
-      <ProfileIcon id={eq.icon} size={72} title={`${name}'s icon`} />
+      <MyAvatar size={72} mode="portrait" title={`${name}'s character`} className="profile-card-avatar" />
+      <ProfileIcon id={eq.icon} size={40} title={`${name}'s icon`} />
       <div className="profile-card-id">
         <NameTag name={signedIn ? `@${name}` : name} icon={null} color={eq.color} title={eq.title} titleColor={eq.titleColor} className="profile-card-name" />
         <div className="hunt-cap-bar"><i style={{ width: `${p.need ? p.into / p.need * 100 : 100}%` }} /></div>

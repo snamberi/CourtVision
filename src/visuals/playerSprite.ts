@@ -44,8 +44,11 @@ export type HairStyle = typeof HAIR_STYLES[number];
 export type BeardStyle = typeof BEARD_STYLES[number];
 export type HatStyle = typeof HAT_STYLES[number];
 /** A player's look chosen in Edit Player; anything left out keeps the look his id gives him. Colours are palette indexes. */
-export interface Appearance { skin?: number; hairStyle?: HairStyle; hairColor?: number; beardStyle?: BeardStyle; hatStyle?: HatStyle | 'none'; hatColor?: number }
+export interface Appearance { skin?: number; hairStyle?: HairStyle; hairColor?: number; beardStyle?: BeardStyle; hatStyle?: HatStyle | 'none'; hatColor?: number;
+  /** Any skin or hair colour as #rrggbb (the profile character's fantasy colours); wins over the palette index. */
+  skinHex?: string; hairHex?: string; hatHex?: string }
 
+const isHex = (v: string | undefined): boolean => !!v && /^#[\da-f]{6}$/i.test(v);
 const pick = <T,>(list: readonly T[], i: number | undefined, fallback: T): T => (i != null && i >= 0 && i < list.length ? list[i] : fallback);
 export function playerTraits(playerId: string, look?: Appearance) {
   const seed = hashPlayerId(playerId);
@@ -61,12 +64,12 @@ export function playerTraits(playerId: string, look?: Appearance) {
   if (!look) return base;
   return {
     ...base,
-    skin: pick(SKIN_TONES, look.skin, base.skin),
-    hair: pick(HAIR_COLORS, look.hairColor, base.hair),
+    skin: isHex(look.skinHex) ? look.skinHex! : pick(SKIN_TONES, look.skin, base.skin),
+    hair: isHex(look.hairHex) ? look.hairHex! : pick(HAIR_COLORS, look.hairColor, base.hair),
     hairStyle: look.hairStyle && HAIR_STYLES.includes(look.hairStyle) ? look.hairStyle : base.hairStyle,
     beardStyle: look.beardStyle && BEARD_STYLES.includes(look.beardStyle) ? look.beardStyle : base.beardStyle,
     hatStyle: look.hatStyle === 'none' ? null : look.hatStyle && HAT_STYLES.includes(look.hatStyle) ? look.hatStyle : base.hatStyle,
-    hatColor: pick(HAT_COLORS, look.hatColor, base.hatColor),
+    hatColor: isHex(look.hatHex) ? look.hatHex! : pick(HAT_COLORS, look.hatColor, base.hatColor),
   };
 }
 
@@ -77,7 +80,7 @@ function hexColor(value: string, fallback: string): string {
   return fallback;
 }
 
-function mix(a: string, b: string, amount: number): string {
+export function mix(a: string, b: string, amount: number): string {
   const channels = [1, 3, 5].map((i) => Math.round(
     parseInt(a.slice(i, i + 2), 16) * (1 - amount) + parseInt(b.slice(i, i + 2), 16) * amount,
   ));
@@ -331,9 +334,22 @@ export function buildPlayerGrid({ playerId, primary, secondary, jerseyNumber, ag
     }
   }
 
-  // Hats sit over the crown while exposed curls/dreads remain visible at the sides.
-  const hat = t.hatStyle;
-  const hatColor = t.hatColor;
+  drawHat(rect, t.hatStyle, t.hatColor, skin);
+
+  if (age != null && age >= 36) {
+    const gray = age >= 43 ? '#c6bec4' : '#a79caa';
+    for (const x of [11, 27]) for (let y = 11; y < 15; y++)
+      if ([hair, hairDark, hairLight].includes(grid[y][x] ?? '')) rect(x, y, 1, 1, gray);
+    if (age >= 40) { rect(12, 18, 2, 1, skinDark); rect(26, 18, 2, 1, skinDeep); }
+  }
+  if (t.seed % 6 === 0) { rect(9, 18, 1, 2, '#ffd166'); rect(9, 18, 1, 1, WHITE); }
+
+  return grid;
+}
+
+/** Hats sit over the crown while exposed curls/dreads remain visible at the sides (the profile character draws them over its own hair). */
+export function drawHat(rect: (x: number, y: number, w: number, h: number, color: string) => void, style: HatStyle | null, hatColor: string, skin: string): void {
+  const hat = style;
   const hatLight = mix(hatColor, WHITE, 0.35);
   const hatDark = mix(hatColor, OUTLINE, 0.4);
   if (hat === 'headband' || hat === 'headbandWide' || hat === 'visor') {
@@ -353,16 +369,6 @@ export function buildPlayerGrid({ playerId, primary, secondary, jerseyNumber, ag
     if (hat === 'durag') { rect(28, 11, 3, 3, hatDark); rect(29, 13, 2, 6, hatColor); }
     if (hat === 'skullCap') rect(12, 10, 16, 1, hatLight);
   }
-
-  if (age != null && age >= 36) {
-    const gray = age >= 43 ? '#c6bec4' : '#a79caa';
-    for (const x of [11, 27]) for (let y = 11; y < 15; y++)
-      if ([hair, hairDark, hairLight].includes(grid[y][x] ?? '')) rect(x, y, 1, 1, gray);
-    if (age >= 40) { rect(12, 18, 2, 1, skinDark); rect(26, 18, 2, 1, skinDeep); }
-  }
-  if (t.seed % 6 === 0) { rect(9, 18, 1, 2, '#ffd166'); rect(9, 18, 1, 1, WHITE); }
-
-  return grid;
 }
 
 /** A one-pixel outline follows the final silhouette, including fingers and hair. */

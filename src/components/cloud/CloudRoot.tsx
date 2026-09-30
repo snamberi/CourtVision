@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { closeSignIn, useSignInOpen } from '../../cloud/signIn';
-import { OnlineStatus } from './OnlineStatus';
 import { Modal } from '../Modal';
 import { cloudEnabled, signInWith, signInWithEmail, updateProfile, useAccount, type Provider } from '../../cloud/account';
 import { usernameProblem } from '../../lib/names';
@@ -74,7 +73,6 @@ function NotReadyDialog() {
     <span className="pixel-eyebrow">COURT VISION ACCOUNT</span>
     <h2>Accounts are almost here</h2>
     <p className="hint-text">Sign-in with Discord, Google or an email link is switching on soon. Your progress is safe in this browser in the meantime, and it will move to your account the first time you sign in.</p>
-    <OnlineStatus />
     <div className="contest-actions"><button className="primary" onClick={closeSignIn}>OK</button></div>
   </Modal>;
 }

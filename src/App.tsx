@@ -57,6 +57,7 @@ import { loadGoogleConsentTool } from './ads/adsense';
 import { hasEntitlement } from './profile/cosmetics';
 import { IS_DESKTOP_BUILD } from './appMode';
 import { MainMenu, type GameMode, type RealLeagueOptions } from './components/MainMenu';
+import { SettingsPage } from './components/SettingsPage';
 import { ChooseTeamScreen } from './components/ChooseTeamScreen';
 import { retireJerseyNumber, unretireJerseyNumber } from './simulation/league';
 import { collectPlayerIds, withUniquePlayerId } from './simulation/playerIds';
@@ -231,7 +232,7 @@ function buildInitialExtras(league: League): GMLeagueExtras {
   };
 }
 
-type Screen = 'menu' | 'chooseTeam' | 'app' | 'hunt' | 'career' | 'locker' | 'profile' | 'community' | 'draft';
+type Screen = 'menu' | 'chooseTeam' | 'app' | 'hunt' | 'career' | 'locker' | 'profile' | 'community' | 'draft' | 'settings';
 
 const debouncedSave = createDebouncedSave();
 
@@ -313,7 +314,7 @@ function App() {
   const [communityUser, setCommunityUser] = useState<string | null>(null);
   const [boxscoreSource, setBoxscoreSource] = useState<'league' | 'exhibition'>('league');
 
-  const currentRoute = screen === 'menu' ? '#/menu' : screen === 'chooseTeam' ? '#/choose-team' : screen === 'hunt' ? '#/hunt' : screen === 'career' ? '#/career' : screen === 'locker' ? '#/locker' : screen === 'profile' ? '#/profile' : screen === 'draft' ? '#/draft' : screen === 'community' ? (communityUser ? `#/u/${encodeURIComponent(communityUser)}` : '#/community')
+  const currentRoute = screen === 'menu' ? '#/menu' : screen === 'chooseTeam' ? '#/choose-team' : screen === 'hunt' ? '#/hunt' : screen === 'career' ? '#/career' : screen === 'locker' ? '#/locker' : screen === 'profile' ? '#/profile' : screen === 'settings' ? '#/settings' : screen === 'draft' ? '#/draft' : screen === 'community' ? (communityUser ? `#/u/${encodeURIComponent(communityUser)}` : '#/community')
     : activeSaveId ? routeHash({ saveId: activeSaveId, tab, player: selectedPlayerId,
       team: viewedTeamId, game: viewedGameId ?? undefined, source: boxscoreSource, sub: leagueSettingsSub }) : null;
   const { restoring, showPrivacy, closePrivacy } = useGameHistory(currentRoute, async (hash, isCurrent) => {
@@ -324,7 +325,7 @@ function App() {
       jobs.resetAll();
       const profileMatch = hash.match(/^#\/u\/(.+)$/);
       setCommunityUser(profileMatch ? decodeURIComponent(profileMatch[1]) : null);
-      setScreen(hash === '#/choose-team' && pendingLeague ? 'chooseTeam' : hash === '#/hunt' ? 'hunt' : hash === '#/career' ? 'career' : hash === '#/locker' ? 'locker' : hash === '#/profile' ? 'profile' : hash === '#/community' || profileMatch ? 'community' : hash === '#/draft' ? 'draft' : 'menu');
+      setScreen(hash === '#/choose-team' && pendingLeague ? 'chooseTeam' : hash === '#/hunt' ? 'hunt' : hash === '#/career' ? 'career' : hash === '#/locker' ? 'locker' : hash === '#/profile' ? 'profile' : hash === '#/settings' ? 'settings' : hash === '#/community' || profileMatch ? 'community' : hash === '#/draft' ? 'draft' : 'menu');
       refreshSaves();
       return;
     }
@@ -1330,6 +1331,12 @@ function App() {
   if (screen === 'profile' || screen === 'locker') {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening your profile…</main>}><ProfileHub key={screen} initialTab={screen === 'locker' ? 'trophies' : 'profile'} onExit={() => setScreen('menu')} /></Suspense></>;
   }
+  if (screen === 'settings') {
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><SettingsPage onExit={() => setScreen('menu')} backups={<>
+      <BackupPanel />
+      <SaveRecoveryPanel beforeAction={async () => { await debouncedSave.flush(); }} onOpen={async id => { jobs.resetAll(); await debouncedSave.flush(); await continueSavedUniverse(id); }} />
+    </>} /></>;
+  }
   if (screen === 'career') {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Career Mode…</main>}><CareerMode onExit={() => setScreen('menu')} /></Suspense></>;
   }
@@ -1352,10 +1359,7 @@ function App() {
           saves={saveSummaries}
           onContinue={continueSavedUniverse}
           onDeleteSave={handleDeleteSave}
-          recovery={<details className="menu-recovery"><summary>Backups: recover a league, or back up everything</summary>
-          <SaveRecoveryPanel beforeAction={async () => { await debouncedSave.flush(); }} onOpen={async id => { jobs.resetAll(); await debouncedSave.flush(); await continueSavedUniverse(id); }} />
-          <BackupPanel />
-        </details>}
+          onSettings={() => setScreen('settings')}
           onRenameSave={handleRenameSave}
         />
 

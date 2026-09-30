@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { readFavorites } from '../../profile/favorites';
 import type { NbaHistory } from '../../history/nbaHistoryData';
 import type { SeasonStatTotals } from '../../simulation/types';
 import { calculateOverall } from '../../simulation/engine/overall';
@@ -186,7 +187,7 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
     {busy && <div className="cv-busy" role="status"><span>{busy.label}</span>{busy.pct != null && <div className="hunt-cap-bar"><i style={{ width: `${busy.pct}%` }} /></div>}
       {active?.meta.autopilot && <button className="link-button" onClick={() => setActive(a => (a ? { ...a, meta: { ...a.meta, autopilot: false } } : a))}>Stop autopilot after this season</button>}</div>}
     {view.k === 'hub' ? <Hub careers={careers} onNew={startNew} onOpen={open} onDelete={id => deleteCareer(id).then(refresh)} />
-      : view.k === 'wheel' ? <WheelBuilder h={h} seed={view.seed} onBack={() => setView({ k: 'hub' })} onDone={prime => setView({ k: 'identity', seed: view.seed, prime, mode: 'wheel' })} />
+      : view.k === 'wheel' ? <WheelBuilder h={h} seed={view.seed} fav={weekly ? undefined : readFavorites().player} onBack={() => setView({ k: 'hub' })} onDone={prime => setView({ k: 'identity', seed: view.seed, prime, mode: 'wheel' })} />
       : view.k === 'myplayer' ? <MyPlayerBuilder seed={view.seed} onBack={() => setView({ k: 'hub' })} onDone={prime => setView({ k: 'identity', seed: view.seed, prime, mode: 'myplayer' })} />
       : view.k === 'identity' ? (busy ? null : <IdentityView prime={view.prime} seed={view.seed} ready={preReady} pct={prePct} onBack={() => setView({ k: view.mode === 'wheel' ? 'wheel' : 'myplayer', seed: view.seed })} onDone={c => enterDraft(view, c)} />)
       : active ? <CareerView h={h} a={active} busy={!!busy} tradeAsked={tradeAsked}

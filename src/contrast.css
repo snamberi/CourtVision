@@ -497,3 +497,4 @@ html.lite *, html.lite *::before, html.lite *::after { backdrop-filter: none !im
 .look-swatches button { width: 26px; height: 26px; min-height: 0; padding: 0; border: 2px solid var(--c-border-2a3546, #2a3546); box-shadow: none; }
 .look-swatches button.on { border-color: var(--c-border-f47b20, #f47b20); outline: 2px solid var(--c-border-0b1018, #0b1018); }
 @media (max-width: 640px) { .look-panel { grid-template-columns: 1fr; } }
+.menu-masthead .menu-settings { padding: 6px 8px; }
