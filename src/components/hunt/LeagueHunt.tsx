@@ -18,7 +18,10 @@ import type { ChemistryBond } from '../../hunt/chemistry';
 import { track, trackOnce } from '../../analytics/track';
 import { ghostFromRun } from '../../hunt/pvp';
 import { publishGhost, saveLocalGhost } from '../../cloud/pvp';
-import { loadRun, saveRun, clearRun, loadRecords, recordRun, type HuntRecords } from '../../hunt/storage';
+import { loadRun, saveRun, clearRun, loadRecords, recordRun, huntScore, type HuntRecords } from '../../hunt/storage';
+import { ClaimRankCard } from '../cloud/ClaimRankCard';
+import { noteRunHighs } from '../../retention/recordBook';
+import { RunStatsTable, RunHighs } from './RunStats';
 import { PlayerAvatar } from '../PlayerAvatar';
 import { PixelIcon } from '../PixelIcon';
 import { HuntHub } from './HuntHub';
@@ -51,6 +54,7 @@ export function LeagueHunt({ onExit }: { onExit: () => void }) {
     else saveRun(r);
     if (r && (r.stage === 'won' || r.stage === 'lost') && run?.stage !== r.stage) {
       setRecords(recordRun(r));
+      noteRunHighs('hunt', r.highs);
       noteFeaturedXp('legends', `hunt-${r.seed}`, XP.huntRun + (r.stage === 'won' ? XP.huntWin : 0) + (r.daily ? XP.huntDaily : 0));
       // The finished squad becomes your League Hunt PvP team (published when you are signed in).
       const ghost = ghostFromRun(r);
@@ -384,6 +388,19 @@ function HuntBase({ h, run, onRun, onPlay, onAbandon }: { h: NbaHistory; run: Hu
   </section>;
 }
 
+/** The guest pitch after a run: the Daily Legend and the Weekly Hunt have boards; any other run gets the plain pitch. */
+function HuntClaim({ run, records }: { run: HuntRun; records: HuntRecords }) {
+  const id = `hunt:${run.seed}`;
+  const day = run.daily ? records.daily?.[run.daily] : undefined;
+  if (run.daily && day) return <ClaimRankCard id={id} board={{ kind: 'daily', day: run.daily }} score={huntScore(day)} scored={`Your Daily Legend scored ${huntScore(day).toLocaleString()}`} where="on today's Daily Legend board" />;
+  const week = run.weekly ? records.weekly?.[run.weekly] : undefined;
+  if (run.weekly && week) {
+    const best = huntScore({ ...week, won: !!week.won && week.wins >= 40 });
+    return <ClaimRankCard id={id} board={{ kind: 'weekly', board: 'hunt', week: run.weekly }} score={best} scored={`Your best Weekly Hunt run scored ${best.toLocaleString()}`} where="on this week's board (the top 10% win the weekly reward)" />;
+  }
+  return <ClaimRankCard id={id} board={{ kind: 'players' }} score={0} scored={run.stage === 'won' ? 'You conquered basketball history' : `You reached series ${run.seriesIndex + 1}`} where="" pitchOnly />;
+}
+
 function RunOver({ h, run, records, onNew, onExit }: { h: NbaHistory; run: HuntRun; records: HuntRecords; onNew: () => void; onExit: () => void }) {
   const teams = new Map(huntTeams(h).map((t: HuntTeam) => [t.id, t]));
   const [copied, setCopied] = useState(false);
@@ -412,11 +429,12 @@ function RunOver({ h, run, records, onNew, onExit }: { h: NbaHistory; run: HuntR
         <div><small>COINS LEFT</small><b>{run.coins}</b></div>
       </div>
     </div>
+    <HuntClaim run={run} records={records} />
     {mvp && <div className="hunt-mvp"><PlayerAvatar playerId={mvp.name} primaryColor="#f47b20" secondaryColor="#f4f0e6" size={72} />
       <div><span className="pixel-eyebrow">HUNT MVP</span><strong>{mvp.name}</strong><span>{per(mvp.pts, mvp.g)} PTS · {per(mvp.reb, mvp.g)} REB · {per(mvp.ast, mvp.g)} AST in {mvp.g} game{mvp.g === 1 ? '' : 's'}</span></div></div>}
     <ol className="hunt-log">{run.results.map((r, i) => { const t = teams.get(r.teamId)!; return <li key={i} className={r.won ? 'won' : 'lost'}>{r.won ? 'W' : 'L'} {wl(r)} vs {teamLabel(t)} <small>· {eraOf(t.end).label}</small></li>; })}</ol>
-    {lines.length > 0 && <div className="feature-table-scroll"><table className="db-table hunt-lines"><thead><tr><th className="col-name">Player</th><th>G</th><th>PTS</th><th>REB</th><th>AST</th></tr></thead>
-      <tbody>{lines.slice(0, 8).map(l => <tr key={l.name}><td className="col-name">{l.name}</td><td>{l.g}</td><td>{per(l.pts, l.g)}</td><td>{per(l.reb, l.g)}</td><td>{per(l.ast, l.g)}</td></tr>)}</tbody></table></div>}
+    {lines.length > 0 && <RunStatsTable lines={run.lines} title="Squad stats" />}
+    <RunHighs highs={run.highs} mode="hunt" />
     <SlotBoard h={h} run={run} />
     <p className="hint-text">Your hunts: {records.runs} · won {records.wins} · furthest series {records.bestStop + 1} of {SERIES_COUNT}{records.bestGrade ? ` · best draft grade ${records.bestGrade}` : ''}</p>
     {won && <div className="hunt-crossover"><span className="pixel-eyebrow">BONUS RUN</span><b>Can this squad go 82-0?</b>

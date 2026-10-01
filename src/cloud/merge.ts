@@ -1,3 +1,5 @@
+import { readRecordBook, mergeRecordBook } from '../retention/recordBook';
+import { readPlayTime, mergePlayTime } from '../retention/playTime';
 /*
  * Cloud progress: which stored values travel with an account, and how two copies (this device and the cloud) are
  * merged. Every merge keeps the best of both, so signing in on a second device can never erase progress:
@@ -21,7 +23,7 @@ export const SYNC_KEYS = [
   'courtvision:gmLegacy', 'cv-hunt-records', 'cv-hunt-album', 'cv-rebuild-records', 'cv-rebuild-records-done',
   'cv-weekly-records', 'cv-daily-history', 'cv-profile-equip', 'cv-code-results', 'cv-feats',
   'cv-legend-records', 'cv-card-album', 'cv-card-sets', 'cv-avatar', 'cv-streak', 'cv-pass',
-  'cv-perfect-records', 'cv-bonus-xp',
+  'cv-perfect-records', 'cv-bonus-xp', 'cv-record-book', 'cv-play-time',
 ] as const;
 export type SyncKey = typeof SYNC_KEYS[number];
 
@@ -100,6 +102,8 @@ export function mergeValue(key: SyncKey, local: string | null | undefined, cloud
     case 'cv-streak': return JSON.stringify(mergeStreak(readStreak(() => local), readStreak(() => cloud)));
     case 'cv-bonus-xp': return JSON.stringify(mergeBonusLog(readBonusLog(() => local), readBonusLog(() => cloud)));
     case 'cv-perfect-records': return JSON.stringify(mergePerfectRecords(loadPerfectRecords(() => local), loadPerfectRecords(() => cloud)));
+    case 'cv-record-book': return JSON.stringify(mergeRecordBook(readRecordBook(() => local), readRecordBook(() => cloud)));
+    case 'cv-play-time': return JSON.stringify(mergePlayTime(readPlayTime(() => local), readPlayTime(() => cloud)));
     case 'cv-pass': return JSON.stringify(mergePass(readPass(() => local), readPass(() => cloud)));
     case 'cv-legend-records': {
       // Best score and stars per Legend Challenge; attempts from whichever device played more.

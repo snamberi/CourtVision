@@ -91,6 +91,17 @@ function art(id: AvatarFrameId): { under?: ReactNode; over: ReactNode } {
         <text x={C} y={91} textAnchor="middle" fontSize="9" fontWeight="900" fill="#3a2a06" fontFamily="'Press Start 2P', monospace">98-0</text>
       </> };
     }
+    case 'founding': {
+      // Founding GM: a court-orange crest, cream stitching, a pixel ball on top and the FOUNDER banner.
+      const seams = Array.from({ length: 12 }, (_, i) => { const [x, y] = polar(i * 30 + 15, R + 5.5); return <rect key={i} x={x - 1.2} y={y - 1.2} width={2.4} height={2.4} fill="#f4f0e6" stroke="#0b1018" strokeWidth=".5" />; });
+      return { under: <circle cx={C} cy={C} r={R + 8} fill="#3a1d08" />, over: <>
+        <Ring color="#f47b20" width={6} /><Ring color="#ff9d3d" width={1.2} r={R + 5.5} />{seams}
+        <circle cx={C} cy={9} r={7} fill="#f47b20" stroke="#0b1018" strokeWidth="1.2" />
+        <path d={`M${C - 7} 9h14M${C} 2v14M${C - 5} 4q5 5 0 10M${C + 5} 4q-5 5 0 10`} fill="none" stroke="#0b1018" strokeWidth="1" />
+        <path d={`M${C - 27} 80h54l-4 7l4 7h-54l4-7z`} fill="#f4f0e6" stroke="#0b1018" strokeWidth="1.4" />
+        <text x={C} y={90.5} textAnchor="middle" fontSize="6.5" fontWeight="900" fill="#c4521a" fontFamily="'Press Start 2P', monospace">FOUNDER</text>
+      </> };
+    }
     case 'sovereign': {
       // Game owner: black angel wings, a ring of blue fire, a sapphire-and-gold king's crown.
       const tongues = Array.from({ length: 22 }, (_, i) => { const a = i * (360 / 22), h = i % 2 ? 8 : 13; return <polygon key={i} points={pts([polar(a - 7, R + 1), polar(a, R + h), polar(a + 7, R + 1)])} fill={i % 3 === 0 ? '#ffffff' : i % 3 === 1 ? '#6fd3ff' : '#1f4fd9'} />; });

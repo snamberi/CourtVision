@@ -84,6 +84,7 @@ import { beginNewSeasonRoster, finalizeNewSeasonSchedule, type SeasonTransitionS
 import { acceptJobOffer, becomeSpectator, ensureFrontOffice, markSandboxUse, isOfficialLeague, ACHIEVEMENT_BY_ID, type OwnerReview } from './simulation/frontOffice';
 import { JobOffersDialog, OwnerReviewDialog } from './components/FrontOfficePanels';
 import { recordLeagueLegacy } from './storage/gmLegacy';
+import { usePlayClock } from './retention/usePlayClock';
 import { challengeProgress, recordRebuild, scenarioById } from './simulation/rebuildChallenge';
 import { weeklyRebuild, recordWeekly, TWISTS, type WeeklyRebuild } from './retention/weekly';
 import { decodeLeagueCode, encodeLeagueCode, type LeagueOrigin } from './retention/leagueCode';
@@ -245,6 +246,7 @@ function App() {
   const [league, setLeague] = useState<League>(buildInitialLeague);
   const [extras, setExtras] = useState<GMLeagueExtras>(() => buildInitialExtras(league));
   const [pendingLeague, setPendingLeague] = useState<League | null>(null);
+  usePlayClock(screen === 'app' ? (league.rebuildChallenge ? 'rebuild' : 'gm') : screen === 'hunt' || screen === 'perfect' || screen === 'career' || screen === 'draft' ? screen : 'menu');
   const [pendingExtras, setPendingExtras] = useState<GMLeagueExtras | null>(null);
   const [controlledTeamId, setControlledTeamId] = useState<string | null>(null);
   const sandboxMode = league.settings.sandboxMode === true;

@@ -12,6 +12,7 @@ import { ITEMS, ITEM_IDS, MAX_ITEMS, type ItemId } from './items';
 import { BOOST_IDS, type BoostId } from './boosts';
 import { BUFFS, BUFF_IDS, type BuffId } from './buffs';
 import { COACHES, COACH_BY_ID, coachRarity, type HuntCoach } from './coaches';
+import { addBox, addHighs, type RunLine, type GameHighs } from './statLines';
 import { rosterRating, bonusToReach } from './rating';
 import { FAV_BOOST } from '../profile/favorites';
 
@@ -101,7 +102,9 @@ export interface HuntRun {
   daily?: string;
   /** The Weekly Hunt's week ("2026-W40"): the same hunt for everyone that week, best attempt counts. */
   weekly?: string;
-  lines?: Record<string, { g: number; pts: number; reb: number; ast: number }>;
+  lines?: Record<string, RunLine>;
+  /** The best single games of the run (the record book). */
+  highs?: GameHighs;
   /** The blind spins: what you took and the best on the table, per spin (overall; the coach's bonus on the coach spin). */
   picks?: { spin: number; got: number; best: number }[];
   /** Your favourite player: a reel landing on his rarity is him FAV_BOOST more often, until you lock him. */
@@ -511,7 +514,8 @@ export function playSeries(h: NbaHistory, run: HuntRun): { run: HuntRun; play: S
   const theirCoach = s.buffs.includes('runGun') ? { ...base, paceTendency: Math.min(99, base.paceTendency + 20) } : base;
   const decade = `${Math.floor(Math.min(2020, Math.max(1960, team.end - 1)) / 10) * 10}s` as keyof typeof ERA_PRESETS;
   const games: SeriesGame[] = [];
-  const lines = { ...(run.lines ?? {}) };
+  let lines = { ...(run.lines ?? {}) };
+  let highs = { ...(run.highs ?? {}) };
   const seriesLines: Record<string, { g: number; pts: number; reb: number; ast: number }> = {};
   let st: SeriesState = { ...SERIES_START };
   while (st.ourWins < WINS_NEEDED && st.theirWins < WINS_NEEDED) {
@@ -526,11 +530,11 @@ export function playSeries(h: NbaHistory, run: HuntRun): { run: HuntRun; play: S
     for (const [name, l] of Object.entries(result.homeBox.players)) {
       if (!l.minutes) continue;
       if (l.points > top.pts) top = { name, pts: l.points };
-      for (const bag of [lines, seriesLines]) {
-        const cur = bag[name] ?? { g: 0, pts: 0, reb: 0, ast: 0 };
-        bag[name] = { g: cur.g + 1, pts: cur.pts + l.points, reb: cur.reb + l.oreb + l.dreb, ast: cur.ast + l.ast };
-      }
+      const cur = seriesLines[name] ?? { g: 0, pts: 0, reb: 0, ast: 0 };
+      seriesLines[name] = { g: cur.g + 1, pts: cur.pts + l.points, reb: cur.reb + l.oreb + l.dreb, ast: cur.ast + l.ast };
     }
+    lines = addBox(lines, result.homeBox.players);
+    highs = addHighs(highs, result.homeBox.players, `${team.name} (${era.label.replace(/^The /, '')})`);
     games.push({ us: result.homeScore, them: result.awayScore, won, top: `${top.name} ${top.pts}` });
     st = { game: st.game + 1, ourWins: st.ourWins + (won ? 1 : 0), theirWins: st.theirWins + (won ? 0 : 1), streak: won ? st.streak + 1 : 0, lostLast: !won };
   }
@@ -539,7 +543,7 @@ export function playSeries(h: NbaHistory, run: HuntRun): { run: HuntRun; play: S
   const mvp = Object.entries(seriesLines).map(([name, l]) => ({ name, ...l, score: l.pts + l.reb * 1.2 + l.ast * 1.5 })).sort((a, b) => b.score - a.score)[0];
   const play: SeriesPlay = { games, won, coins, teamName: team.name, era, mvp };
   const results = [...run.results, { index: run.seriesIndex, teamId: s.teamId, games, won, coins }];
-  const next: HuntRun = { ...run, results, lines, coins: run.coins + coins, note: undefined };
+  const next: HuntRun = { ...run, results, lines, highs, coins: run.coins + coins, note: undefined };
   if (won) {
     const growth = run.focus ? { ...run.growth, [run.focus]: run.growth[run.focus] + 1 } : run.growth;
     if (s.kind === 'boss') return { run: { ...next, growth, stage: 'won' }, play };

@@ -22,6 +22,7 @@ import { WhatsNew } from './WhatsNew';
 import { ThemeWelcome, needsThemeChoice } from './ThemePicker';
 import { WeeklyBoardDialog } from './WeeklyBoard';
 import { cloudEnabled, useAccount } from '../cloud/account';
+import { SaveSafetyNudge } from './cloud/SaveSafetyNudge';
 import { WelcomeSignIn, needsSignInWelcome } from './cloud/WelcomeSignIn';
 import { AccountButton } from './cloud/AccountButton';
 import { ProfileChip } from './ProfilePanel';
@@ -190,6 +191,7 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
   return (
     <div className="main-menu">
       <div className="menu-masthead"><img src={logoIcon} alt="" /><span>COURT VISION<small>BASKETBALL MANAGEMENT</small></span><span className="menu-edition">THE PIXEL COURT</span>{(onProfile || onLocker) && <ProfileChip onOpen={onProfile ?? onLocker} />}{visit.v.streak.current >= 2 && <button className="account-chip streak-pill" onClick={onProfile ?? onLocker} title={`Daily streak: ${visit.v.streak.current} days in a row (best ${visit.v.streak.best})`}><PixelIcon name="flame" size={14} /> {visit.v.streak.current}</button>}{onCommunity && <AccountButton onCommunity={onCommunity} />}<InstallAppButton /><DiscordLink className="menu-discord" />{onSettings && <button className="account-chip menu-settings" onClick={onSettings} title="Settings: backups, graphics, privacy"><PixelIcon name="settings" size={14} /> Settings</button>}</div>
+      <SaveSafetyNudge />
       <div className="menu-hero">
         <div className="menu-hero-copy"><span className="pixel-eyebrow">BUILD A TEAM. WRITE ITS HISTORY.</span><h1>Your league.<br /><span>Your legacy.</span></h1><p>Scout the next great. Build your starting five.<br />Turn one season into a dynasty.</p></div>
         <div className="menu-player-scene" aria-hidden="true">

@@ -11,6 +11,7 @@ import { SCENARIOS, scoreResults, FINISH_POINTS, type ScoredSeason } from '../sr
 import { loadWeeklyRecords, weeklyRebuild } from '../src/retention/weekly';
 import { weekKey } from '../src/retention/week';
 import { decodeLeagueCode } from '../src/retention/leagueCode';
+import { codeScore } from '../src/retention/codeResults';
 import { SYNC_KEYS, type ProgressBlob, type CodeResult } from '../src/cloud/merge';
 import { seasonOf, dailyLegendPoints, weeklyRebuildPoints, weeklyCareerPoints, dailyGoalPoints, tierFor } from '../src/cloud/ranked';
 import type { CareerMeta } from '../src/career/career';
@@ -142,7 +143,7 @@ export function derive(blob: ProgressBlob, now = new Date()): Derived {
     for (const [code, c] of Object.entries(JSON.parse(read('cv-code-results') ?? '{}') as Record<string, CodeResult>)) {
       try { decodeLeagueCode(code); } catch { continue; }
       if (!c || !int(c.wins, 0, 82) || !int(c.losses, 0, 82) || c.wins + c.losses < 20 || c.wins + c.losses > 82 || !FINISHES.has(c.finish)) continue;
-      codes.push({ code: code.toUpperCase().slice(0, 40), team: typeof c.team === 'string' ? c.team.slice(0, 12) : null, wins: c.wins, losses: c.losses, finish: c.finish, score: c.wins * 2 + (FINISH_POINTS[c.finish as keyof typeof FINISH_POINTS] ?? 0) });
+      codes.push({ code: code.toUpperCase().slice(0, 40), team: typeof c.team === 'string' ? c.team.slice(0, 12) : null, wins: c.wins, losses: c.losses, finish: c.finish, score: codeScore(c) });
     }
   } catch { /* none */ }
 
@@ -185,6 +186,6 @@ export function publicAvatar(blob: ProgressBlob, level: number, honors: string[]
   try { frame = (JSON.parse(read('cv-profile-equip') ?? '{}') as { avatarFrame?: string }).avatarFrame; } catch { /* none */ }
   const f = avatarFrameDef(frame);
   const modes = f.modes ? earnedModeAchievements(read) : [];
-  const ok = owner || (f.staff ? false : f.modes ? f.modes.some(m => modes.includes(m)) : f.honors ? f.honors.some(h => honors.includes(h)) : f.level != null ? level >= f.level : true);
+  const ok = owner || (f.staff ? false : f.account ? true : f.modes ? f.modes.some(m => modes.includes(m)) : f.honors ? f.honors.some(h => honors.includes(h)) : f.level != null ? level >= f.level : true);
   return encodeAvatar(look, ok ? f.id : 'none');
 }

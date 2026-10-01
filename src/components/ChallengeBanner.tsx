@@ -9,6 +9,7 @@ import { PixelIcon } from './PixelIcon';
 import { ShareCardButton } from './ShareCardButton';
 import { TWISTS } from '../retention/weekly';
 import { PostScore } from './WeeklyBoard';
+import { ClaimRankCard } from './cloud/ClaimRankCard';
 
 const Stars = ({ n }: { n: number }) => <span className="rb-stars" aria-label={`${n} of 3 stars`}>{[1, 2, 3].map(i => <span key={i} className={i <= n ? 'on' : ''}><PixelIcon name="star" size={18} /></span>)}</span>;
 
@@ -86,6 +87,7 @@ export function ChallengeBanner({ league, contracts, onMenu }: { league: League;
         stats: [{ label: 'Score', value: p.score.toLocaleString() }, { label: 'Seasons', value: String(p.results.length) }, { label: 'Best record', value: (() => { const b = [...p.results].sort((x, y) => y.wins - x.wins)[0]; return b ? `${b.wins}-${b.losses}` : '—'; })() }],
         lines: p.results.map((r, i) => `Year ${i + 1}: ${r.wins}-${r.losses} · ${r.finish}`), accent: p.status === 'won' ? 'gold' : 'red',
       }} /><span className="hint-text">Or keep playing: the league goes on, the score is final.</span></div>}
-    {over && p.config.weekly && p.official && !p.fired && <PostScore board="rebuild" week={p.config.weekly.week} />}
+    {over && p.config.weekly && p.official && !p.fired && <ClaimRankCard id={`rebuild:${p.config.weekly.week}:${p.scenario.id}`} board={{ kind: 'weekly', board: 'rebuild', week: p.config.weekly.week }} score={p.score} scored={`Your rebuild scored ${p.score.toLocaleString()}`} where="on this week's Rebuild board" />}
+    {over && p.config.weekly && p.official && !p.fired && <PostScore board="rebuild" week={p.config.weekly.week} guestPitch={false} />}
   </section>;
 }

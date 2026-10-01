@@ -28,6 +28,7 @@ import { weeklyCareer, loadWeeklyRecords, recordWeekly, weekEndsAt, type WeeklyC
 import { track, trackOnce } from '../../analytics/track';
 import { noteCareers } from '../../profile/profile';
 import { PostScore } from '../WeeklyBoard';
+import { ClaimRankCard } from '../cloud/ClaimRankCard';
 import { WheelBuilder, MyPlayerBuilder, IdentityView, type IdentityChoice } from './CareerCreate';
 import '../hunt/hunt.css';
 import './career.css';
@@ -436,6 +437,7 @@ function Legacy({ h, meta, onNew }: { h: NbaHistory; meta: CareerMeta; onNew: ()
         <div><small>LEGACY SCORE</small><b>{score}</b></div>
         <div><small>SEASONS</small><b>{meta.years.length}</b></div>
       </div></div>
+    <ClaimRankCard id={`career:${meta.id}`} board={{ kind: 'players' }} score={Math.round(ret.legacy)} scored={`Your career scored ${ret.legacy.toFixed(1)}`} where="globally" />
     <h3 className="hunt-subhead">Career</h3>
     <div className="hunt-over-stats cv-line">
       <div><small>GAMES</small><b>{g}</b></div><div><small>POINTS</small><b>{r.pts.toLocaleString()}</b></div><div><small>REBOUNDS</small><b>{r.reb.toLocaleString()}</b></div><div><small>ASSISTS</small><b>{r.ast.toLocaleString()}</b></div>
@@ -458,6 +460,6 @@ function Legacy({ h, meta, onNew }: { h: NbaHistory; meta: CareerMeta; onNew: ()
       lines: [...shelf.filter(([k]) => r[k] > 0 && !['titles', 'mvp', 'allStar'].includes(k)).map(([k, l]) => `${r[k]}× ${l}`), ...(ret.jerseys?.length ? [`#${meta.identity.jersey} retired by ${ret.jerseys.join(' and ')}`] : [])],
       avatar: { playerId: meta.playerId, jersey: meta.identity.jersey }, accent: ret.hallOfFame !== 'no' ? 'gold' : 'orange',
     }} /><button onClick={() => navigator.clipboard?.writeText(share).then(() => setCopied(true), () => {})}>{copied ? 'Copied!' : 'Copy as text'}</button></div>
-    {meta.weekly && <PostScore board="career" week={meta.weekly} />}
+    {meta.weekly && <PostScore board="career" week={meta.weekly} guestPitch={false} />}
   </section>;
 }

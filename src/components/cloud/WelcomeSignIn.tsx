@@ -3,7 +3,7 @@ import { Modal } from '../Modal';
 import { cloudEnabled, useAccount } from '../../cloud/account';
 import { openSignIn } from '../../cloud/signIn';
 import { IS_DESKTOP_BUILD } from '../../appMode';
-import { MyAvatar } from '../UserAvatar';
+import { MyFramedAvatar } from '../AvatarFrame';
 
 const ASKED_KEY = 'cv-signin-asked';
 const asked = () => { try { return localStorage.getItem(ASKED_KEY) === '1'; } catch { return true; } };
@@ -21,10 +21,10 @@ export function WelcomeSignIn({ onDone }: { onDone: () => void }) {
   if (!open || !needsSignInWelcome(a.status)) return null;
   const close = () => { remember(); setOpen(false); onDone(); };
   return <Modal label="Welcome to Court Vision" onClose={close} className="welcome-signin">
-    <div className="welcome-signin-head"><MyAvatar size={88} title="Your character" /><div>
+    <div className="welcome-signin-head"><MyFramedAvatar frame="founding" size={88} title="You with the Founding GM frame" /><div>
       <span className="pixel-eyebrow">WELCOME, GM</span>
       <h2>Sign in to save your progress</h2>
-      <p className="hint-text">Keep your level, trophies, character and records on every device, and play the leaderboards, ranked seasons and League Hunt PvP. Discord, Google or an email link, free.</p>
+      <p className="hint-text">Keep your level, trophies, character and records on every device, and play the leaderboards, ranked seasons and League Hunt PvP. Discord, Google or an email link, free, and you get the Founding GM title and profile frame.</p>
     </div></div>
     <div className="contest-actions">
       <button className="primary" onClick={() => { remember(); setOpen(false); openSignIn(); onDone(); }}>Sign in</button>

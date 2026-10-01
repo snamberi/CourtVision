@@ -1,3 +1,4 @@
+import { noteFoundingAccount } from '../profile/founding';
 import { useSyncExternalStore } from 'react';
 import type { SupabaseClient, Session } from '@supabase/supabase-js';
 import { noteFeat } from '../profile/feats';
@@ -60,6 +61,7 @@ async function applySession(client: SupabaseClient, s: Session | null) {
   // Passes belong to the account: signed out, this browser forgets them (they come back on sign-in).
   if (!s) { setAccount({ status: 'signedOut', userId: null, email: null, provider: null, profile: null }); if (before) { writeEntitlements(null); noteOwnerAccess(false); } return; }
   setAccount({ status: 'signedIn', userId: s.user.id, email: s.user.email ?? null, provider: (s.user.app_metadata?.provider as string | undefined) ?? null });
+  noteFoundingAccount();
   if (before !== s.user.id || !state.profile) await refreshProfile(client);
   if (before !== s.user.id) window.dispatchEvent(new Event(SIGNED_IN_EVENT));
 }

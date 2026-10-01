@@ -3,12 +3,18 @@ import type { NbaHistory } from '../../history/nbaHistoryData';
 import { cardPool, seasonLabel, RARITY_LABEL, type HuntCard } from '../../hunt/cards';
 import { huntTeams, teamLabel } from '../../hunt/teams';
 import { COACH_STYLE, coachRarity } from '../../hunt/coaches';
+import { eraOf } from '../../hunt/eras';
 import {
   newPerfectRun, pickPlayer, quickSpinCard, reelFiller, rerollTeam, rerollEra, applyPrime, pickCoach, playNext, rollPool, franchiseName, eraById, teamBonds,
-  perfectRating, teamRating, summary, verdict, BOSS_TEAMS, QUICK_SLOTS, QUICK_SLOT_LABEL, SQUAD, SEASON_GAMES, ROUND_NAMES, WINS_NEEDED, SCORE, COACH_BY_ID,
+  perfectRating, teamRating, summary, starCount, starCapReached, MAX_STARS, coachMatchup, coachMatchupText, streakPressure, STREAK_STEP, STREAK_MAX, OPP_EDGE, verdict, BOSS_TEAMS, QUICK_SLOTS, QUICK_SLOT_LABEL, SQUAD, SEASON_GAMES, ROUND_NAMES, WINS_NEEDED, SCORE, COACH_BY_ID,
   type PerfectRun, type PerfectMode, type PerfectGame,
 } from '../../perfect/run';
-import { loadPerfectRun, savePerfectRun, loadPerfectRecords, recordPerfect, dailyPerfect, type PerfectRecords } from '../../perfect/storage';
+import { loadPerfectRun, savePerfectRun, loadPerfectRecords, recordPerfect, dailyPerfect, perfectWeeks, type PerfectRecords } from '../../perfect/storage';
+import { weekKey } from '../../retention/week';
+import { ClaimRankCard } from '../cloud/ClaimRankCard';
+import { noteRunHighs, noteFinalsMvp } from '../../retention/recordBook';
+import { runMvp, perGame } from '../../hunt/statLines';
+import { RunStatsTable, RecordBookPanel, RunHighs } from '../hunt/RunStats';
 import { todayUtc } from '../../hunt/storage';
 import { teamColors } from '../../simulation/teamColors';
 import { FEATS_EVENT } from '../../profile/feats';
@@ -49,6 +55,9 @@ export function PerfectChallenge({ onExit }: { onExit: () => void }) {
     if (r && r.stage === 'done' && prev?.stage !== 'done') {
       setRecords(recordPerfect(r));
       const s = summary(r);
+      noteRunHighs('perfect', r.highs);
+      const fmvp = s.champion ? runMvp(r.finalsLines) : null;
+      if (fmvp) noteFinalsMvp({ name: fmvp.name, record: `${s.w}-${s.l}`, pts: fmvp.pts, g: fmvp.g });
       noteFeaturedXp('perfect', `p820-${r.seed}-${r.mode}`, perfectRunXp({ champion: s.champion, perfectSeason: s.perfectSeason, perfect98: s.perfectSeason && s.perfectPlayoffs, daily: !!r.daily }));
       window.dispatchEvent(new Event(FEATS_EVENT));
       trackOnce(`p820-${r.seed}-${r.mode}`, 'mode_finish', { mode: 'perfect', variant: r.mode, daily: !!r.daily, wins: s.w, champion: s.champion });
@@ -100,12 +109,17 @@ function Hub({ records, onStart }: { records: PerfectRecords; onStart: (mode: Pe
       <span><b>{records.runs}</b><small>Runs</small></span>
       {records.huntSquadBest && <span><b>{records.huntSquadBest.w}-{records.huntSquadBest.l}</b><small>Best Hunt squad</small></span>}
     </div>
+    <RecordBookPanel />
     <details className="hunt-how"><summary>How scoring and rewards work</summary>
       <ul>
         <li>Every win: {SCORE.win} points plus the margin (up to {SCORE.marginCap}). Beating a boss team: +{SCORE.boss}.</li>
         <li>Playoff win: +{SCORE.playoffWin}; a sweep: +{SCORE.sweep}; the title: +{SCORE.title.toLocaleString()}.</li>
         <li>82-0: +{SCORE.perfectSeason.toLocaleString()}. 16-0 in the playoffs too: another +{SCORE.perfectPlayoffs.toLocaleString()}.</li>
         <li>Lineups matter: start a guard and a big, and don't stack three at one position. Real teammates, franchise-mates and famous rivals add chemistry.</li>
+        <li>Ratings are hidden until the season is over: pick on the name, the season and the numbers he put up. Your team rating, your coach's and the opponents' come out at the end.</li>
+        <li>At most {MAX_STARS} Stars on a team: once you have {MAX_STARS}, the spins stop offering more.</li>
+        <li>Streak pressure: every {STREAK_STEP} straight wins, everyone plays you harder (+1, up to +{STREAK_MAX}). A loss resets it. Franchise Spin opponents are +{OPP_EDGE.franchise} tougher, since you choose.</li>
+        <li>Coaches have eras: a run-and-gun coach beats the slow 1990s, the triangle wins grinders, a five-out coach is lost without a three-point line. ±2 to your team that game.</li>
         <li>Every game is played under the rules of the opponent's era, and ratings are ranked within each season, so a 1965 star and a 2016 star stand on the same scale.</li>
         <li>Rewards: the <b>Undefeated</b> title and profile frame for 82-0; the gold <b>Perfection</b> title and frame for 98-0. Trophy Road points for your best season, titles and perfect seasons.</li>
       </ul></details>
@@ -114,11 +128,15 @@ function Hub({ records, onStart }: { records: PerfectRecords; onStart: (mode: Pe
 
 // ---------------------------------------------------------------- cards and the squad
 
-function CardTile({ c, onPick, prime }: { c: HuntCard; onPick?: () => void; prime?: boolean }) {
+/** Ratings stay hidden until the run is over: you pick on the name, the season and the numbers he put up. */
+const ratingsShown = (run: Pick<PerfectRun, 'stage'>) => run.stage === 'done';
+const HIDDEN = '?';
+
+function CardTile({ c, onPick, prime, hide }: { c: HuntCard; onPick?: () => void; prime?: boolean; hide?: boolean }) {
   const body = <>
     <PlayerAvatar playerId={c.name} primaryColor={POS_COLOR[c.pos] ?? '#f47b20'} secondaryColor="#f4f0e6" size={44} mode="portrait" />
     <span className="p820-card-text"><b>{c.name}</b><small>{seasonLabel(c.end)} · {c.team} · {c.pos}</small><i>{c.ppg} pts · {c.rpg} reb · {c.apg} ast</i></span>
-    <span className={`p820-ovr rarity-${c.rarity}`} title={RARITY_LABEL[c.rarity]}>{c.ovr}</span>
+    <span className={`p820-ovr rarity-${c.rarity}`} title={hide ? `${RARITY_LABEL[c.rarity]} · rating hidden until the season is over` : RARITY_LABEL[c.rarity]}>{hide ? HIDDEN : c.ovr}</span>
     {prime && <em className="p820-prime-tag">PRIME</em>}
   </>;
   return onPick ? <button className={`p820-card rarity-${c.rarity}`} onClick={onPick}>{body}</button> : <div className={`p820-card rarity-${c.rarity}`}>{body}</div>;
@@ -131,8 +149,10 @@ function SquadPanel({ h, run }: { h: NbaHistory; run: PerfectRun }) {
     <h3>Your team <small>{run.squad.length}/{SQUAD}</small></h3>
     <ol>{Array.from({ length: SQUAD }, (_, i) => { const c = run.squad[i] ? pool.byId.get(run.squad[i]) : undefined; return <li key={i} className={c ? `rarity-${c.rarity}` : 'empty'}>
       <span className="p820-slot">{run.mode === 'quick' && run.from !== 'hunt' ? QUICK_SLOTS[i] : run.from === 'hunt' && i < 6 ? 'HUNT' : i < 5 ? 'START' : 'BENCH'}</span>
-      {c ? <><b>{c.name}</b><small>{seasonLabel(c.end)} {c.team} · {c.pos}</small><span className="p820-ovr-mini">{c.ovr}</span></> : <small>—</small>}</li>; })}</ol>
-    {run.squad.length >= 5 && <p className="p820-rating">Team rating <b>{perfectRating(h, run)}</b> <small>(100 = a 68-win team)</small></p>}
+      {c ? <><b>{c.name}</b><small>{seasonLabel(c.end)} {c.team} · {c.pos}</small><span className="p820-ovr-mini">{ratingsShown(run) ? c.ovr : HIDDEN}</span></> : <small>—</small>}</li>; })}</ol>
+    {ratingsShown(run) && run.coach && COACH_BY_ID.get(run.coach) && <p className="p820-rating">Coach <b>{COACH_BY_ID.get(run.coach)!.name}</b> <small>({COACH_BY_ID.get(run.coach)!.bonus >= 0 ? '+' : ''}{COACH_BY_ID.get(run.coach)!.bonus})</small></p>}
+    {run.squad.length >= 5 && <p className="p820-rating">Team rating <b>{ratingsShown(run) ? perfectRating(h, run) : '??'}</b> <small>{ratingsShown(run) ? '(100 = a 68-win team)' : '(revealed when the season is over)'}</small></p>}
+    {run.stage === 'draft' && <p className={`p820-stars ${starCapReached(h, run) ? 'full' : ''}`}><PixelIcon name="star" size={12} /> Stars {starCount(h, run)}/{MAX_STARS}{starCapReached(h, run) ? ': no more Stars on the reels' : ''}</p>}
     {bonds.length > 0 && <ul className="p820-bonds">{bonds.map((b, i) => <li key={i} className={b.bonus < 0 ? 'bad' : 'good'}>{b.bonus > 0 ? '+' : ''}{b.bonus} · {b.label}</li>)}</ul>}
   </aside>;
 }
@@ -157,8 +177,8 @@ function QuickDraft({ h, run, setRun }: { h: NbaHistory; run: PerfectRun; setRun
       <span className="pixel-eyebrow">{run.from === 'hunt' ? `YOUR HUNT SQUAD + BENCH SPIN ${run.squad.length - 5} OF ${SQUAD - 6}` : `SPIN ${run.squad.length + 1} OF ${SQUAD}`}</span>
       <h2>{QUICK_SLOT_LABEL[slot]}</h2>
       <div className={`p820-reel ${spinning ? 'spinning' : ''} ${landed ? 'landed' : ''}`} aria-live="polite">
-        {landed ? <CardTile c={landed} />
-          : <div className="p820-reel-strip" style={{ transform: spinning ? `translateY(-${(strip.length - 1) * 64}px)` : 'translateY(0)' }}>{strip.map((c, i) => <div key={i} className="p820-reel-row"><b>{c.name}</b><small>{seasonLabel(c.end)} {c.team}</small><span>{c.ovr}</span></div>)}</div>}
+        {landed ? <CardTile c={landed} hide />
+          : <div className="p820-reel-strip" style={{ transform: spinning ? `translateY(-${(strip.length - 1) * 64}px)` : 'translateY(0)' }}>{strip.map((c, i) => <div key={i} className="p820-reel-row"><b>{c.name}</b><small>{seasonLabel(c.end)} {c.team}</small><span>{HIDDEN}</span></div>)}</div>}
       </div>
       {landed ? <button className="primary p820-big" onClick={keep}>{run.squad.length + 1 >= SQUAD ? (run.coach ? 'Keep and start the season' : 'Keep and spin the coach') : 'Keep and spin again'}</button>
         : <button className="primary p820-big" onClick={spin} disabled={spinning}>{spinning ? 'Spinning…' : 'SPIN'}</button>}
@@ -176,15 +196,13 @@ function FranchiseDraft({ h, run, setRun }: { h: NbaHistory; run: PerfectRun; se
   const col = teamColors(roll.franchise);
   const [revealed, setRevealed] = useState(false);
   const rollKey = `${roll.franchise}|${roll.eraId}|${run.rolls}`;
-  const prevKey = useRef('');
   useEffect(() => {
-    if (prevKey.current === rollKey) return;
-    prevKey.current = rollKey;
     setRevealed(false);
     const t = window.setTimeout(() => setRevealed(true), window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 30 : 900);
     return () => window.clearTimeout(t);
   }, [rollKey]);
-  const players = rollPool(h, run, roll);
+  // Listed by name, not by rating, so the order gives nothing away.
+  const players = [...rollPool(h, run, roll)].sort((a, b) => a.name.localeCompare(b.name));
   return <section className="p820-draft">
     <div className="p820-stage">
       <span className="pixel-eyebrow">PICK {run.squad.length + 1} OF {SQUAD} · ONE PLAYER PER SPIN</span>
@@ -199,7 +217,7 @@ function FranchiseDraft({ h, run, setRun }: { h: NbaHistory; run: PerfectRun; se
       </div>
       {revealed && <>
         <p className="hint-text">{run.prime ? 'Absolute Prime: everyone at the best season of his career.' : `Each player at his best season with the ${name} in ${era.label.toLowerCase()}.`} Pick one.</p>
-        <div className="p820-pool">{players.map(c => <CardTile key={c.id} c={c} prime={run.prime} onPick={() => setRun(pickPlayer(h, run, c.id))} />)}</div>
+        <div className="p820-pool">{players.map(c => <CardTile key={c.id} c={c} prime={run.prime} hide onPick={() => setRun(pickPlayer(h, run, c.id))} />)}</div>
       </>}
     </div>
     <SquadPanel h={h} run={run} />
@@ -216,7 +234,7 @@ function CoachPick({ h, run, setRun }: { h: NbaHistory; run: PerfectRun; setRun:
       <span className="pixel-eyebrow">LAST SPIN</span><h2>{run.mode === 'quick' ? 'Spin your coach' : 'Pick your coach'}</h2>
       {!shown ? <button className="primary p820-big" onClick={() => setShown(true)}>SPIN THE COACH</button>
         : <div className="p820-coaches">{offer.map(x => <button key={x.id} className={`p820-coach rarity-${coachRarity(x)}`} onClick={() => setRun(pickCoach(h, run, x.id))}>
-          <b>{x.name}</b><span className="p820-ovr-mini">{x.bonus >= 0 ? '+' : ''}{x.bonus}</span><small>{COACH_STYLE[x.style]}</small><i>{x.blurb}</i><em>{run.mode === 'quick' ? 'Start the season' : 'Choose'}</em></button>)}</div>}
+          <b>{x.name}</b><span className="p820-ovr-mini" title="Coach rating hidden until the season is over">{HIDDEN}</span><small>{COACH_STYLE[x.style]}</small><small className="p820-coach-eras">{coachMatchupText(x.style)}</small><i>{x.blurb}</i><em>{run.mode === 'quick' ? 'Start the season' : 'Choose'}</em></button>)}</div>}
     </div>
     <SquadPanel h={h} run={run} />
   </section>;
@@ -256,13 +274,15 @@ function Season({ h, run, setRun }: { h: NbaHistory; run: PerfectRun; setRun: (r
     <div className="p820-scoreboard">
       <div className={`p820-record ${alive ? 'alive' : s.l ? 'broken' : ''}`}><span>{s.w}-{s.l}</span><small>{run.stage === 'season' ? `${run.games.length}/${SEASON_GAMES} games` : `Regular season · playoffs ${s.pw}-${s.pl}`}</small></div>
       <div className="p820-status">{alive ? <b className="p820-alive">82-0 STILL ALIVE · {s.w} STRAIGHT</b> : s.firstLoss != null ? <b className="p820-broken">Perfect run ended in game {s.firstLoss + 1}{(() => { const g = run.games[s.firstLoss!]; const t = teams.get(g.opp); return t ? ` (${g.us}-${g.them} vs ${teamLabel(t)})` : ''; })()}</b> : <b>Tip-off</b>}
-        <small>Score {s.score.toLocaleString()} · bosses {s.bossWins}/{s.bosses} · rating {perfectRating(h, run)}</small></div>
+        <small>Score {s.score.toLocaleString()} · bosses {s.bossWins}/{s.bosses}</small></div>
     </div>
     <ol className="p820-dots" aria-label="Season results">{Array.from({ length: SEASON_GAMES }, (_, i) => <GameDot key={i} n={i + 1} g={run.games[i]} boss={run.bosses.includes(i)} />)}</ol>
     {run.stage === 'playoffs' && <div className="p820-bracket">{ROUND_NAMES.map((name, i) => { const ser = run.playoffs[i]; const t = ser ? teams.get(ser.opp) : undefined; const w = ser?.games.filter(g => g.won).length ?? 0, l = (ser?.games.length ?? 0) - w;
-      return <div key={i} className={`p820-series ${ser ? (w >= WINS_NEEDED ? 'won' : l >= WINS_NEEDED ? 'lost' : 'on') : 'later'}`}><small>{name}</small><b>{t ? teamLabel(t) : 'TBD'}</b>{t && <span>{w}-{l} · their rating {teamRating(h, t)}</span>}</div>; })}</div>}
+      return <div key={i} className={`p820-series ${ser ? (w >= WINS_NEEDED ? 'won' : l >= WINS_NEEDED ? 'lost' : 'on') : 'later'}`}><small>{name}</small><b>{t ? teamLabel(t) : 'TBD'}</b>{t && <span>{w}-{l} · {t.w}-{t.l} in {seasonLabel(t.end)}</span>}</div>; })}</div>}
     <div className="p820-next">
-      {nextOpp && <p>Next: <b>{teamLabel(nextOpp)}</b> ({nextOpp.w}-{nextOpp.l}{nextOpp.champion ? ', champions' : ''}) · rating {teamRating(h, nextOpp)}{nextBoss && <em className="p820-boss-tag">BOSS · {nextBoss.tag}</em>}</p>}
+      {nextOpp && <p>Next: <b>{teamLabel(nextOpp)}</b> ({nextOpp.w}-{nextOpp.l}{nextOpp.champion ? ', champions' : ''}){nextBoss && <em className="p820-boss-tag">BOSS · {nextBoss.tag}</em>}
+        {(() => { const m = coachMatchup(run.coach ? COACH_BY_ID.get(run.coach)?.style : undefined, eraOf(nextOpp.end).id); return m ? <em className={`p820-matchup ${m > 0 ? 'good' : 'bad'}`}>Coach vs {eraOf(nextOpp.end).label.replace(/^The /, '')}: {m > 0 ? '+' : ''}{m}</em> : null; })()}
+        {streakPressure(run) > 0 && <em className="p820-pressure">Streak pressure +{streakPressure(run)}</em>}</p>}
       {last && <p className="hint-text">Last game: {last.won ? 'W' : 'L'} {last.us}-{last.them} vs {teams.get(last.opp) ? teamLabel(teams.get(last.opp)!) : last.opp} · top scorer {last.top}</p>}
       <div className="p820-actions">
         <button onClick={() => setAuto('game')} disabled={!!auto}>Play next game</button>
@@ -272,10 +292,30 @@ function Season({ h, run, setRun }: { h: NbaHistory; run: PerfectRun; setRun: (r
       </div>
     </div>
     <SquadPanel h={h} run={run} />
+    {run.stage === 'playoffs' && run.playoffLines ? <RunStatsTable lines={run.playoffLines} title="Playoff stats" /> : <RunStatsTable lines={run.lines} title="Season stats" note={`${run.games.length} game${run.games.length === 1 ? '' : 's'}`} />}
   </section>;
 }
 
 // ---------------------------------------------------------------- the end
+
+/** The run's MVP (regular season) and, with a title, the Finals MVP. */
+function RunMvps({ run }: { run: PerfectRun }) {
+  const mvp = runMvp(run.lines, 20), s = summary(run), fmvp = s.champion ? runMvp(run.finalsLines) : null;
+  if (!mvp && !fmvp) return null;
+  const card = (label: string, m: NonNullable<typeof mvp>) => <div className="hunt-mvp"><PlayerAvatar playerId={m.name} primaryColor="#f47b20" secondaryColor="#f4f0e6" size={64} />
+    <div><span className="pixel-eyebrow">{label}</span><strong>{m.name}</strong><span>{perGame(m.pts, m.g)} PTS · {perGame(m.reb, m.g)} REB · {perGame(m.ast, m.g)} AST · {perGame(m.min, m.g)} MIN in {m.g} game{m.g === 1 ? '' : 's'}</span></div></div>;
+  return <div className="p820-mvps">{mvp && card('RUN MVP', mvp)}{fmvp && card('FINALS MVP', fmvp)}</div>;
+}
+
+/** The guest pitch: a Daily 82-0 counts for the week's board (your best day of the week); other runs get the plain pitch. */
+function PerfectClaim({ run, records, score }: { run: PerfectRun; records: PerfectRecords; score: number }) {
+  const id = `perfect:${run.seed}:${run.daily ?? run.mode}`;
+  if (run.daily) {
+    const week = weekKey(new Date(`${run.daily}T12:00:00Z`)), best = perfectWeeks(records)[week]?.score ?? score;
+    return <ClaimRankCard id={id} board={{ kind: 'weekly', board: 'perfect', week }} score={best} scored={`Your Daily 82-0 scored ${best.toLocaleString()}`} where="on this week's 82-0 board" />;
+  }
+  return <ClaimRankCard id={id} board={{ kind: 'players' }} score={0} scored={`Your 82-0 run scored ${score.toLocaleString()}`} where="" pitchOnly />;
+}
 
 function Finished({ h, run, records, onAgain }: { h: NbaHistory; run: PerfectRun; records: PerfectRecords; onAgain: () => void }) {
   const s = summary(run);
@@ -289,8 +329,10 @@ function Finished({ h, run, records, onAgain }: { h: NbaHistory; run: PerfectRun
       <div className="p820-final-record">{s.w}-{s.l}<small>playoffs {s.pw}-{s.pl}</small></div>
       <p>{verdict(s)}</p>
       {frame && <div className="p820-reward"><FramedAvatar look={look} team={team} frame={frame} size={96} /><span><b>{frame === 'perfectGold' ? 'Perfection' : 'Undefeated'}</b> title and profile frame unlocked. Equip them in your Player Profile.</span></div>}
-      {!s.champion && lastSeries && teams.get(lastSeries.opp) && <p className="hint-text">Knocked out by the {teamLabel(teams.get(lastSeries.opp)!)}.</p>}
+      {!s.champion && lastSeries && teams.get(lastSeries.opp) && <p className="hint-text">Knocked out by the {teamLabel(teams.get(lastSeries.opp)!)} (their rating {teamRating(h, teams.get(lastSeries.opp)!)}).</p>}
     </div>
+    <PerfectClaim run={run} records={records} score={s.score} />
+    <RunMvps run={run} />
     <table className="p820-score"><tbody>
       <tr><td>Wins ({s.w} × {SCORE.win} + margins)</td><td>{run.games.filter(g => g.won).reduce((n, g) => n + SCORE.win + Math.min(SCORE.marginCap, g.us - g.them), 0).toLocaleString()}</td></tr>
       <tr><td>Bosses beaten ({s.bossWins}/{s.bosses})</td><td>{(s.bossWins * SCORE.boss).toLocaleString()}</td></tr>
@@ -302,6 +344,9 @@ function Finished({ h, run, records, onAgain }: { h: NbaHistory; run: PerfectRun
     </tbody></table>
     <p className="hint-text">Best ever: {records.best ? `${records.best.w}-${records.best.l}, ${records.best.score.toLocaleString()} points` : '—'} · {records.titles} title{records.titles === 1 ? '' : 's'} · {records.perfectSeasons} perfect season{records.perfectSeasons === 1 ? '' : 's'}{run.daily ? ' · Daily 82-0: your best try today counts on the weekly board.' : ''}</p>
     <SquadPanel h={h} run={run} />
+    <RunStatsTable lines={run.lines} title="Regular season stats" />
+    <RunStatsTable lines={run.playoffLines} title="Playoff stats" />
+    <RunHighs highs={run.highs} mode="perfect" />
     <div className="p820-actions p820-end-actions"><button className="primary p820-big" onClick={onAgain}>Play again</button>
       <ShareCardButton tall fileName="82-0-challenge.png" label="Share card" text={`I went ${s.w}-${s.l}${s.champion ? ' and won the title' : ''} in the 82-0 Challenge (score ${s.score.toLocaleString()}). Can you go 82-0?`} spec={{
         kicker: `82-0 Challenge · ${MODE_INFO[run.mode].name}${run.daily ? ` · Daily ${run.daily}` : run.from === 'hunt' ? ' · Hunt squad' : ''}`,
@@ -310,7 +355,7 @@ function Finished({ h, run, records, onAgain }: { h: NbaHistory; run: PerfectRun
         badge: s.perfectSeason && s.perfectPlayoffs ? 'PERFECTION · 98-0' : s.perfectSeason ? 'UNDEFEATED · 82-0' : s.bossWins === s.bosses && s.bosses > 0 ? 'EVERY BOSS BEATEN' : undefined,
         stats: [{ label: 'Record', value: `${s.w}-${s.l}` }, { label: 'Playoffs', value: `${s.pw}-${s.pl}` }, { label: 'Bosses', value: `${s.bossWins}/${s.bosses}` }, { label: 'Score', value: s.score.toLocaleString() }],
         results: run.games.map(g => ({ won: g.won, boss: g.boss })),
-        lines: [...run.squad].map(id => cardPool(h).byId.get(id)!).sort((a, b) => b.ovr - a.ovr).map(c => `${c.name} ${seasonLabel(c.end)} · ${c.ovr}`),
+        lines: [...(() => { const m = runMvp(run.lines, 20); return m ? [`Run MVP: ${m.name} ${perGame(m.pts, m.g)} PPG`] : []; })(), ...[...run.squad].map(id => cardPool(h).byId.get(id)!).sort((a, b) => b.ovr - a.ovr).map(c => `${c.name} ${seasonLabel(c.end)} · ${c.ovr}`)],
         avatar: (() => { const top = [...run.squad].map(id => cardPool(h).byId.get(id)!).sort((a, b) => b.ovr - a.ovr)[0]; return top ? { playerId: top.name, primary: POS_COLOR[top.pos] } : undefined; })(),
         accent: s.perfectSeason ? 'gold' : s.champion ? 'green' : 'orange',
       }} /></div>

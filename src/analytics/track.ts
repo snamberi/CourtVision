@@ -6,7 +6,7 @@ import { IS_DESKTOP_BUILD } from '../appMode';
  * Nothing is sent in the Windows edition, or when the browser sends a Global Privacy Control or Do Not Track signal.
  */
 
-export type EventName = 'account' | 'pvp' | 'daily_goal' | 'clip' | 'league_code' | 'leaderboard' | 'mode_start' | 'mode_finish' | 'weekly_start' | 'share_card' | 'backup' | 'whats_new' | 'app_install';
+export type EventName = 'account' | 'pvp' | 'daily_goal' | 'clip' | 'league_code' | 'leaderboard' | 'mode_start' | 'mode_finish' | 'weekly_start' | 'share_card' | 'backup' | 'whats_new' | 'app_install' | 'claim_rank';
 type Value = string | number | boolean;
 type Umami = { track: (event: string, data?: Record<string, Value>) => void };
 

@@ -515,3 +515,24 @@ html.lite *, html.lite *::before, html.lite *::after { backdrop-filter: none !im
 .share-format { display: flex; gap: 6px; margin-bottom: 8px; }
 .share-format button.on { border-color: var(--c-border-f47b20, #f47b20); color: var(--c-fg-ffd166, #ffd166); }
 .profile-card-big.frame-sovereign { border-color: var(--c-border-6fd3ff, #6fd3ff); background: radial-gradient(circle at 80% 20%, var(--c-bg-1f4fd955, #1f4fd955), transparent 60%), linear-gradient(180deg, var(--c-bg-060b2a, #060b2a), var(--c-bg-0a1f6a, #0a1f6a)); box-shadow: 0 0 0 2px var(--c-shadow-ffd166, #ffd166), 0 0 18px var(--c-shadow-4da3ffaa, #4da3ffaa), inset 0 -18px 30px var(--c-shadow-1f4fd966, #1f4fd966); }
+
+/* Claim your rank: the guest pitch on results screens (ClaimRankCard). */
+.claim-rank { margin-top: 12px; padding: 12px 14px; border: 2px solid var(--c-border-ffd166, #ffd166); background: var(--c-bg-192333, #192333); box-shadow: 2px 2px 0 var(--c-shadow-000000, #000); display: grid; gap: 10px; }
+.claim-rank-head { display: flex; gap: 12px; align-items: center; }
+.claim-rank-head > div { display: grid; gap: 4px; }
+.claim-rank-line { font-size: 1.05rem; color: var(--c-fg-f4f0e6, #f4f0e6); }
+.claim-rank .contest-actions { margin: 0; }
+.claim-rank--done { grid-template-columns: auto 1fr; align-items: center; border-color: var(--c-border-55c878, #55c878); }
+.claim-rank-modal .claim-rank-line { font-size: 1.25rem; }
+@media (max-width: 520px) { .claim-rank-head { flex-direction: column; text-align: center; } }
+
+/* Time played on the profile card. */
+.play-time { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 10px 0 0; font-size: .9rem; }
+.play-time > span { color: var(--c-fg-94a0b2, #94a0b2); }
+.play-time ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; flex-basis: 100%; }
+.play-time li { padding: 3px 8px; border: 1px solid var(--c-border-2a3546, #2a3546); background: var(--c-bg-121926, #121926); font-size: .8rem; font-variant-numeric: tabular-nums; }
+.play-time li small { color: var(--c-fg-94a0b2, #94a0b2); }
+
+/* The save-safety reminder on the main menu (SaveSafetyNudge). */
+.save-nudge { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 10px 0; padding: 10px 14px; border: 2px solid var(--c-border-ff9d3d, #ff9d3d); background: var(--c-bg-192333, #192333); box-shadow: 2px 2px 0 var(--c-shadow-000000, #000); }
+.save-nudge > span { flex: 1 1 320px; }

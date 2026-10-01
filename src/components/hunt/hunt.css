@@ -471,3 +471,19 @@ button.hunt-reel.frozen:hover, button.hunt-reel.frozen:focus-visible { transform
 .hunt-crossover b { font: 13px var(--ff-pixel, 'Press Start 2P', monospace); color: var(--c-fg-ffd166, #ffd166); }
 .hunt-crossover p { margin: 0; color: var(--c-fg-d3d7df, #d3d7df); }
 .hunt-crossover button { justify-self: start; }
+
+/* Run stats, best games and the record book (RunStats.tsx). */
+.run-stats { margin-top: 14px; }
+.run-stats-table th, .run-stats-table td { font-variant-numeric: tabular-nums; }
+.run-stats-sort { all: unset; cursor: pointer; }
+.run-stats-sort:focus-visible { outline: 2px solid var(--c-border-ff9d3d, #ff9d3d); }
+.run-highs { margin-top: 14px; }
+.run-highs ul, .record-book-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; }
+.run-highs li, .record-book-list li { display: grid; gap: 2px; padding: 8px 10px; border: 1px solid var(--c-border-2a3546, #2a3546); background: var(--c-bg-121926, #121926); }
+.run-highs li b, .record-book-list li b { font-size: 1.4rem; color: var(--c-fg-ffd166, #ffd166); font-variant-numeric: tabular-nums; }
+.run-highs li span, .record-book-list li span { font-size: .8rem; }
+.run-highs li.record { border-color: var(--c-border-ffd166, #ffd166); }
+.run-highs li em { font-style: normal; font-size: .7rem; color: var(--c-fg-ffd166, #ffd166); }
+.record-book-list li i { font-style: normal; font-size: .7rem; color: var(--c-fg-94a0b2, #94a0b2); }
+.record-book { margin-top: 16px; }
+.p820-mvps { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; margin-top: 12px; }

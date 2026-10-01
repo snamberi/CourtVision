@@ -1,3 +1,4 @@
+import { RecordBookPanel } from './RunStats';
 import { useMemo, useState } from 'react';
 import type { NbaHistory } from '../../history/nbaHistoryData';
 import { cardPool, seasonLabel, RARITY_LABEL, type HuntCard } from '../../hunt/cards';
@@ -38,6 +39,7 @@ export function HuntHub({ h, records, onStart }: { h: NbaHistory; records: HuntR
         : tab === 'album' ? <Album h={h} />
         : <DreamMatchup h={h} />}
     </div>
+    {tab === 'hunt' && <RecordBookPanel />}
   </section>;
 }
 

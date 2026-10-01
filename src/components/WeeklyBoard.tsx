@@ -37,7 +37,8 @@ export function WeeklyBoardDialog({ onClose, initial = 'rebuild', onCommunity }:
 }
 
 /** Under a finished weekly result: signed in, it is on the board automatically; signed out, a way in. */
-export function PostScore({ board, week }: { board: Board; week: string }) {
+/** `guestPitch: false` when a ClaimRankCard already makes the pitch to a guest: then only the board link shows. */
+export function PostScore({ board, week, guestPitch = true }: { board: Board; week: string; guestPitch?: boolean }) {
   const acct = useAccount();
   const [open, setOpen] = useState(false);
   useEffect(() => { if (acct.status === 'signedIn') void syncNow(); }, [acct.status]);
@@ -45,7 +46,7 @@ export function PostScore({ board, week }: { board: Board; week: string }) {
   return <div className="post-score">
     {acct.status === 'signedIn'
       ? <span className="backup-msg ok">✓ On the {week} board as @{acct.profile?.username ?? '…'} (it syncs automatically).</span>
-      : <><button className="primary" onClick={openSignIn}>Sign in to put this on the weekly board</button><span className="hint-text">Your result is saved here and goes up as soon as you sign in.</span></>}
+      : guestPitch && <><button className="primary" onClick={openSignIn}>Sign in to put this on the weekly board</button><span className="hint-text">Your result is saved here and goes up as soon as you sign in.</span></>}
     <button className="link-button" onClick={() => setOpen(true)}>See the board</button>
     {open && <WeeklyBoardDialog initial={board} onClose={() => setOpen(false)} />}
   </div>;
