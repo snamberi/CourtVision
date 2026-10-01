@@ -1,6 +1,6 @@
-import { memo, useId, useMemo } from 'react';
+import { memo, useId, useMemo, useRef } from 'react';
 import type { PlayerSeason } from '../simulation/types';
-import type { CourtActor, CourtBall, CourtFrame, CourtShot } from '../simulation/courtMotion';
+import type { CourtActor, CourtBall, CourtFrame, CourtPoint, CourtShot } from '../simulation/courtMotion';
 import { resolveTeamIdentity, type TeamIdentity } from '../simulation/teamIdentity';
 import { useTeamIdentity } from '../visuals/TeamIdentityContext';
 import { actionSprite, pickFrame, handReach, headTop, ORIGIN_X, ORIGIN_Y } from '../visuals/actionSprites';
@@ -379,8 +379,27 @@ function cameraBox(frame:CourtFrame,camera:CourtCamera):string{
  if(camera==='full')return `${SCENE.x} 0 ${SCENE.w} 600`;
  const ball=frame.ball,cx=frame.players.reduce((s,a)=>s+a.x,0)/Math.max(1,frame.players.length),cy=frame.players.reduce((s,a)=>s+a.y,0)/Math.max(1,frame.players.length);
  if(camera==='broadcast'){const w=700,h=344,fx=ball.x*.45+cx*.55;return `${Math.max(SCENE.x,Math.min(SCENE.x+SCENE.w-w,fx-w/2)).toFixed(1)} ${Math.max(0,Math.min(600-h,(ball.y*.3+cy*.7)-h/2+10)).toFixed(1)} ${w} ${h}`;}
- const fx=ball.x*.7+cx*.3,fy=ball.y*.7+cy*.3;
- return `${Math.max(SCENE.x,Math.min(SCENE.x+SCENE.w-560,fx-280)).toFixed(1)} ${Math.max(0,Math.min(600-276,fy-150)).toFixed(1)} 560 276`;
+ return followBox(followTarget(frame),FOLLOW_W);
+}
+/** The follow camera: about twice as close as the full court, centred between the ball and the play. */
+const FOLLOW_W=660;
+function followTarget(frame:CourtFrame):CourtPoint{
+ const ps=frame.players,cx=ps.reduce((s,a)=>s+a.x,0)/Math.max(1,ps.length),cy=ps.reduce((s,a)=>s+a.y,0)/Math.max(1,ps.length);
+ return {x:frame.ball.x*.6+cx*.4,y:frame.ball.y*.35+cy*.35+310*.3};
+}
+function followBox(c:CourtPoint,w:number):string{
+ const h=Math.round(w*600/SCENE.w);
+ return `${Math.max(SCENE.x,Math.min(SCENE.x+SCENE.w-w,c.x-w/2)).toFixed(1)} ${Math.max(0,Math.min(600-h,c.y-h/2+12)).toFixed(1)} ${w} ${h}`;
+}
+/** A camera operator: eases toward the play instead of snapping with every pass (a cut or a new quarter jumps). */
+function useFollowCamera(frame:CourtFrame,on:boolean):string|null{
+ const cur=useRef<CourtPoint|null>(null);
+ if(!on){cur.current=null;return null;}
+ const t=followTarget(frame),c=cur.current;
+ // eslint-disable-next-line react-hooks/refs -- the camera's position carries over from frame to frame by design
+ cur.current=!c||Math.hypot(t.x-c.x,t.y-c.y)>420?t:{x:c.x+(t.x-c.x)*.09,y:c.y+(t.y-c.y)*.07};
+ // eslint-disable-next-line react-hooks/refs
+ return followBox(cur.current,FOLLOW_W);
 }
 export function WatchCourt({frame,home,away,rosters,hotId,labels=true,trail=false,camera='full',ghosts=[],shots=[],bug,crowdFill=1,arena,building,rivalry=false,duos,coaches,refs,crew}:{building?:{name:string;suites:number};frame:CourtFrame;home:Team;away:Team;rosters:PlayerSeason[];hotId?:string;labels?:boolean;trail?:boolean;camera?:CourtCamera;ghosts?:CourtBall[];shots?:CourtShot[];bug?:CourtBug;crowdFill?:number;
  /** The home arena's upgrade levels (business.ts), drawn on the court. */
@@ -411,7 +430,8 @@ export function WatchCourt({frame,home,away,rosters,hotId,labels=true,trail=fals
   if(c&&c.t>0&&c.t<1&&(c.tone==='make'||c.tone==='defense')){const ours=c.tone==='make'?frame.offenseTeamId===teamId:frame.offenseTeamId!==teamId;return ours?'up':'cross';}
   return frame.offenseTeamId===teamId?(Math.floor(frame.ball.x/120)%2?'point':'down'):'cross';};
  const athlete=(a:CourtActor)=>{const homeSide=a.teamId===home.teamId;return <Athlete key={a.id} ballZ={ball.z} hoopX={frame.hoop.x} actor={a} player={rosters.find(p=>p.playerId===a.id)} identity={homeSide?hi:awayKit} ring={homeSide?hi.primary:ai.primary} hot={a.id===hotId} carrier={a.id===frame.carrier} labels={labels&&(a.teamId===frame.offenseTeamId||!frame.offenseTeamId||a.id===frame.carrier)} above={a.teamId!==frame.offenseTeamId&&!!frame.offenseTeamId}/>;};
- return <div className="watch-arena"><svg className="watch-court" viewBox={cameraBox(frame,camera)} role="img" aria-label={`${home.name} home court. ${frame.phase}.`}>
+ const followView=useFollowCamera(frame,camera==='follow');
+ return <div className="watch-arena"><svg className="watch-court" viewBox={followView??cameraBox(frame,camera)} role="img" aria-label={`${home.name} home court. ${frame.phase}.`}>
   <Arena home={home} away={away} identity={hi} awayKit={awayKit} id={id} hype={hype} homeBench={homeBench} awayBench={awayBench} fill={rivalry?1:crowdFill} loud={lv.crowd} mascot={lv.mascot} rivalry={rivalry} building={building}/>
   {lv.lights>0&&<ArenaLights level={lv.lights} identity={hi}/>}
   {lv.scoreboard>0&&<VideoBoard level={lv.scoreboard} identity={hi} bug={bug} hype={hype}/>}

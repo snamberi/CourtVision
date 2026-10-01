@@ -203,7 +203,8 @@ function baseFrame(entry:PossessionLogEntry,play:PossessionPlayback,progress:num
  const laneY=[150,470,310,200,420];
  offense.forEach((id,i)=>{
   const start=startOf(id);
-  const lane=mirror({x:fast?600:520,y:laneY[i%laneY.length]});
+  // Fill the lanes: the ball comes up the middle while the others run ahead to the wings and corners.
+  const lane=id===bringer?mirror({x:fast?600:540,y:310-sign*30}):mirror({x:(fast?700:640)+(i%2)*40,y:[150,470,180,440,310][i%5]});
   const keys:Key[]=[{t:0,p:start}];
   if(id===inbounder){keys.push({t:.03,p:mirror({x:80,y:310+sign*44})},{t:.1,p:mirror({x:150,y:310+sign*70})});}
   const slot=mirror(slotOf(id)),alt=mirror(SLOTS[RELOCATE[(offense.indexOf(id)+salt)%SLOTS.length]]);
@@ -298,6 +299,23 @@ function baseFrame(entry:PossessionLogEntry,play:PossessionPlayback,progress:num
   const facing=moving&&Math.abs(vx)>20&&!anim?Math.sign(vx):toward;
   return {...loc,id,teamId:entry.offenseTeamId,jump,stride:moving?Math.sin(q*58+i):0,pose,facing,cycle:moving?strideCycle(keys,q,i*.37):(q*20+i)/(Math.PI*2),gait:moving?gaitFor(Math.hypot(vx,vy),vx,vy,facing,false):undefined,vx,vy,...(anim?{anim}:{})};
  });
+ // Floor spacing (before the defense picks up its men): the men running the action can come together; everyone else
+ // holds a spot well away from his teammates (5-out spacing). Off during transition, free throws and the crash.
+ if(!ftActive&&q<.6&&!fast){
+  // Who runs the action is fixed for the whole trip, so nobody's spacing changes in a single frame.
+  const inPlay=(id:string)=>id===creator||id===shooter||id===screener||id===bringer;
+  const fade=ease(window01(q,.2,.32))*(1-ease(window01(q,.48,.6)));
+  const pair=(a:string,b:string,x:string,y:string)=>(a===x&&b===y)||(a===y&&b===x);
+  for(let k=0;k<2;k++)for(let i=0;i<actors.length;i++)for(let j=i+1;j<actors.length;j++){
+   const a=actors[i],b=actors[j];
+   if(pair(a.id,b.id,screener??'',creator)||pair(a.id,b.id,shooter,screener??'')||pair(a.id,b.id,creator,shooter))continue;
+   const radius=inPlay(a.id)&&inPlay(b.id)?62:inPlay(a.id)||inPlay(b.id)?96:130,dx=b.x-a.x,dy=b.y-a.y,dist=Math.hypot(dx,dy);
+   if(dist<radius){const amount=(radius-dist)*.3*fade,nx=dist?dx/dist:1,ny=dist?dy/dist:0;
+    // The man in the action holds his spot; the spacer moves.
+    const wa=inPlay(a.id)&&!inPlay(b.id)?0:inPlay(b.id)&&!inPlay(a.id)?2:1;
+    a.x-=nx*amount*wa;a.y-=ny*amount*wa;b.x+=nx*amount*(2-wa);b.y+=ny*amount*(2-wa);}
+  }
+ }
  const byId=(id:string|undefined)=>actors.find(a=>a.id===id);
  const hand=(id:string|undefined):CourtPoint=>{const a=byId(id)??mirror({x:720,y:310});return {x:a.x+(right?12:-12),y:a.y-3}};
  // Who has the ball, for defensive help: the passer until the pass lands.
@@ -327,9 +345,10 @@ function baseFrame(entry:PossessionLogEntry,play:PossessionPlayback,progress:num
   if(attacker){
    // Tight on the ball, a step off one pass away, sagging into the paint two passes away: all by distance to the ball.
    const far=Math.hypot(anchor.x-attacker.x,anchor.y-attacker.y);
-   const dx=hoop.x-attacker.x,dy=hoop.y-attacker.y,d=Math.hypot(dx,dy)||1,gap=24+12*ease((far-30)/90);
+   const dx=hoop.x-attacker.x,dy=hoop.y-attacker.y,d=Math.hypot(dx,dy)||1,gap=20+10*ease((far-30)/90);
    target={x:attacker.x+dx/d*gap,y:attacker.y+dy/d*gap};
-   if(!ftActive)target=courtLerp(target,mirror({x:806,y:310}),.32*ease((far-170)/120));
+   // Two passes away he sags only a little toward the paint: he stays with his man, so the floor stays spread.
+   if(!ftActive)target=courtLerp(target,mirror({x:806,y:310}),.12*ease((far-200)/140));
   }else target=mirror(SLOTS[i%5]);
   const missed=!!play.shooterId&&!play.shotMade&&!onlyFT&&!turnover;
   // Box out the crashers: get between them and the rim.
@@ -388,14 +407,21 @@ function baseFrame(entry:PossessionLogEntry,play:PossessionPlayback,progress:num
   const a=actors[i],b=actors[j],dx=b.x-a.x,dy=b.y-a.y,dist=Math.hypot(dx,dy),radius=21;
   if(dist<radius){const amount=(radius-dist)*.5*ease(q/.12),nx=dist?dx/dist:1,ny=dist?dy/dist:0;a.x-=nx*amount;a.y-=ny*amount;b.x+=nx*amount;b.y+=ny*amount;}
  }
+ // Two defenders don't stack on the same spot.
+ if(!ftActive&&q<.6&&!fast)for(let i=0;i<actors.length;i++)for(let j=i+1;j<actors.length;j++){
+  const a=actors[i],b=actors[j];if(a.teamId!==b.teamId||a.teamId===entry.offenseTeamId)continue;
+  const dx=b.x-a.x,dy=b.y-a.y,dist=Math.hypot(dx,dy);
+  if(dist<40){const amount=(40-dist)*.5*ease(window01(q,.2,.32))*(1-ease(window01(q,.48,.6))),nx=dist?dx/dist:1,ny=dist?dy/dist:0;a.x-=nx*amount;a.y-=ny*amount;b.x+=nx*amount;b.y+=ny*amount;}
+ }
  for(const a of actors){a.x=limit(a.x,78,922);a.y=limit(a.y,100,520);}
 
  // ---- The ball ----
  const dribbleHand=(id:string|undefined):CourtBall=>{
-  const a=byId(id)??{...mirror({x:720,y:310})},c=q*9,k=Math.floor(c),f=c-k;
-  const side=(m:number)=>Math.floor(m/3)%2?-1:1,cross=k%3===2;
+  // About 2.4 bounces a second of real time, low and tight at the hip; a crossover every few bounces.
+  const a=byId(id)??{...mirror({x:720,y:310})},c=q*mainShare*replayDuration(entry)/1000*2.4,k=Math.floor(c),f=c-k;
+  const side=(m:number)=>Math.floor(m/4)%2?-1:1,cross=k%4===3;
   const lateral=cross?side(k)+(side(k+1)-side(k))*f:side(k);
-  return {x:a.x+lateral*11+(right?4:-4),y:a.y-2+lateral*3,z:4+24*4*f*(1-f),spin:q*1500};
+  return {x:a.x+lateral*7+(right?5:-5),y:a.y+1+lateral*2,z:3+18*Math.abs(Math.cos(f*Math.PI)),spin:q*1500};
  };
  const held=(id:string|undefined):CourtBall=>({...hand(id),z:26,spin:0});
  let ball:CourtBall,phase=entry.secondChance?'Second chance':fast?'Push it':'Bring it up',carrier:string|undefined=bringer,net=0,shotAttempt:number|undefined,rim=0,callout:CourtCallout|undefined;
