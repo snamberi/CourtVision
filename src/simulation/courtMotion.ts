@@ -9,7 +9,8 @@ export type CourtAnimKind=AnimKind;
 export type CourtGait=Gait;
 /** Presentation only: which animation a player is in and how far through it (0-1), and where he is in his run cycle. */
 export interface CourtActor extends CourtPoint { id:string; teamId:string; jump:number; stride:number; pose:CourtPose; facing:number; anim?:{kind:CourtAnimKind;t:number}; cycle?:number;
- /** How he moves (walk, run, sprint, backpedal, defensive slide), from his speed and direction. */ gait?:CourtGait; /** Floor velocity, court px per second (presentation only). */ vx?:number; vy?:number }
+ /** How he moves (walk, run, sprint, backpedal, defensive slide), from his speed and direction. */ gait?:CourtGait; /** Floor velocity, court px per second (presentation only). */ vx?:number; vy?:number;
+ /** A defender guarding the man with the ball: low, a hand up in his face, feet shuffling. */ onBall?:boolean }
 export interface CourtCallout { text:string; x:number; y:number; t:number; tone:'make'|'defense'|'neutral' }
 export interface CourtFrame {
  players:CourtActor[]; ball:CourtBall; phase:string; carrier?:string; hoop:CourtPoint; net:number; attackRight:boolean; shotAttempt?:number;
@@ -150,7 +151,9 @@ function startFor(id:string,index:number,offense:boolean,c:{starts?:Map<string,C
  return c.mirror((offense?ring:dring)[index%5]);
 }
 
-function baseFrame(entry:PossessionLogEntry,play:PossessionPlayback,progress:number,homeId:string,awayId:string,regulationPeriods:number,starts?:Map<string,CourtPoint>,previous?:PossessionLogEntry):CourtFrame {
+/** `loose`: where the last possession left the ball when nobody holds it (under the net after a basket, out of
+ * bounds): someone walks over and picks it up instead of the ball flying to him. */
+function baseFrame(entry:PossessionLogEntry,play:PossessionPlayback,progress:number,homeId:string,awayId:string,regulationPeriods:number,starts?:Map<string,CourtPoint>,previous?:PossessionLogEntry,loose?:CourtPoint):CourtFrame {
  const p=limit(progress),offHome=entry.offenseTeamId===homeId;
  const g=geometry(entry,play,homeId,regulationPeriods),{right,mirror,salt,sign,close,three,onlyFT,ftCount}=g;
  const offense=offHome?entry.onCourtHome:entry.onCourtAway,defense=offHome?entry.onCourtAway:entry.onCourtHome;
@@ -176,6 +179,10 @@ function baseFrame(entry:PossessionLogEntry,play:PossessionPlayback,progress:num
  const startOf=(id:string)=>startFor(id,Math.max(0,offense.indexOf(id)),true,{starts,mirror});
  const inbounder=made?[...offense.filter(id=>id!==bringer)].sort((a,b)=>Math.hypot(startOf(a).x-own.x,startOf(a).y-own.y)-Math.hypot(startOf(b).x-own.x,startOf(b).y-own.y))[0]:undefined;
  const fast=entry.action==='transition'||entry.secondChance;
+ // Where a missed shot comes down: the rebounder goes there to catch it.
+ const reboundSpot=mirror({x:846-(salt%30),y:310+sign*(40+salt%43)});
+ // Who goes and gets a dead ball: the inbounder after a basket, otherwise the man bringing it up.
+ const fetcher=loose&&!(prev&&prev.offenseTeamId===entry.offenseTeamId)?(inbounder??bringer):undefined;
 
  // ---- Ball route: in-bound/outlet -> bringer -> swing passes -> creator -> (recorded pass) -> shooter ----
  const chain=[bringer];
@@ -206,7 +213,8 @@ function baseFrame(entry:PossessionLogEntry,play:PossessionPlayback,progress:num
   // Fill the lanes: the ball comes up the middle while the others run ahead to the wings and corners.
   const lane=id===bringer?mirror({x:fast?600:540,y:310-sign*30}):mirror({x:(fast?700:640)+(i%2)*40,y:[150,470,180,440,310][i%5]});
   const keys:Key[]=[{t:0,p:start}];
-  if(id===inbounder){keys.push({t:.03,p:mirror({x:80,y:310+sign*44})},{t:.1,p:mirror({x:150,y:310+sign*70})});}
+  if(id===fetcher&&loose)keys.push({t:.045,p:{...loose}});
+  if(id===inbounder){keys.push({t:id===fetcher?.075:.03,p:mirror({x:80,y:310+sign*44})},{t:id===fetcher?.14:.1,p:mirror({x:150,y:310+sign*70})});}
   const slot=mirror(slotOf(id)),alt=mirror(SLOTS[RELOCATE[(offense.indexOf(id)+salt)%SLOTS.length]]);
   const S=(x:number,y:number)=>mirror({x,y:310+y*sign}); // a spot on the strong (+) or weak (-) side
   if(id===bringer&&id===creator&&id===shooter){
@@ -275,7 +283,7 @@ function baseFrame(entry:PossessionLogEntry,play:PossessionPlayback,progress:num
   let loc=track(keys,q),pose:CourtPose='run';
   const moving=speedOn(keys,q)>60;
   const ahead=track(keys,q+.004),behind=track(keys,q-.004),vx=(ahead.x-behind.x)/.008/pxPerQ*SPRINT,vy=(ahead.y-behind.y)/.008/pxPerQ*SPRINT;
-  if(q>.55&&play.rebounderId===id&&!isShooter&&!ftActive)loc=courtLerp(loc,mirror({x:862,y:310+sign*46}),ease(window01(q,.55,.8)));
+  if(q>.55&&play.rebounderId===id&&!isShooter&&!ftActive)loc=courtLerp(loc,{x:reboundSpot.x+(right?8:-8),y:reboundSpot.y+4},ease(window01(q,.55,.86)));
   if(ftActive&&!isShooter)loc=mirror(FT_OFF[offense.filter(v=>v!==shooter).indexOf(id)%FT_OFF.length]);
   if(turnover&&q>.8)loc=courtLerp(loc,mirror({x:600-i*28,y:180+i*62}),ease(window01(q,.8,1)));
   const screens=(set==='roll'?id===shooter:id===screener&&set!=='iso'&&set!=='handoff'&&set!=='transition'&&set!=='post'&&set!=='backdoor');
@@ -353,7 +361,8 @@ function baseFrame(entry:PossessionLogEntry,play:PossessionPlayback,progress:num
   const missed=!!play.shooterId&&!play.shotMade&&!onlyFT&&!turnover;
   // Box out the crashers: get between them and the rim.
   if(missed&&q>.7&&attacker&&(attacker.id===screener||attacker.id===play.rebounderId)&&!ftActive)target=courtLerp(target,{x:attacker.x+(hoop.x-attacker.x)*.35,y:attacker.y+(hoop.y-attacker.y)*.35},ease(window01(q,.7,.82)));
-  if(q>.57&&(id===play.blockerId||id===play.rebounderId))target=courtLerp(target,{x:hoop.x+(right?-30:30),y:310+(id===play.blockerId?0:sign*49)},ease(window01(q,.57,.7)));
+  if(q>.57&&id===play.blockerId&&id!==play.rebounderId)target=courtLerp(target,{x:hoop.x+(right?-30:30),y:310},ease(window01(q,.57,.7)));
+  if(q>.57&&id===play.rebounderId)target=courtLerp(target,{x:reboundSpot.x+(right?8:-8),y:reboundSpot.y+4},ease(window01(q,.57,.86)));
   if(id===play.stealerId&&q>.36&&q<.8){target=courtLerp(target,anchor,ease(window01(q,.36,.5))*(1-ease(window01(q,.7,.8))));}
   if(turnover&&id===play.stealerId&&q>=.62){target=courtLerp(target,mirror({x:260,y:310+sign*40}),ease(window01(q,.62,1)));}
   else if(turnover&&q>=.7)target=courtLerp(target,mirror({x:520-i*30,y:170+i*66}),ease(window01(q,.7,1)));
@@ -383,10 +392,14 @@ function baseFrame(entry:PossessionLogEntry,play:PossessionPlayback,progress:num
   const missedShot=!!play.shooterId&&!play.shotMade&&!onlyFT&&!turnover;
   if(missedShot&&q>.72&&q<.88&&attacker&&(attacker.id===screener||attacker.id===play.rebounderId)&&!ftActive&&id!==play.rebounderId)pose='boxout';
   if(charge&&id===chargeDrawer&&q>=.5&&q<.82)anim={kind:'charge',t:window01(q,.5,.82)};
-  actors.push({...loc,id,teamId:offHome?awayId:homeId,jump:contest?Math.sin((q-.56)/.24*Math.PI)*(id===play.blockerId?25:12):0,stride:running||chasing||gait?Math.sin(q*58+i)*.8:Math.sin(q*30+i)*.25,
+  const onBall=!!attacker&&attacker.id===holderAt(q)&&pose==='guard'&&!anim&&q>=T_UP*.8&&q<.56&&!ftActive&&!turnover;
+  actors.push({...loc,id,teamId:offHome?awayId:homeId,...(onBall?{onBall}:{}),jump:contest?Math.sin((q-.56)/.24*Math.PI)*(id===play.blockerId?25:12):0,stride:running||chasing||gait?Math.sin(q*58+i)*.8:Math.sin(q*30+i)*.25,
    pose,facing,cycle:(running||chasing||gait?q*58+i:q*30+i)/(Math.PI*2),gait,vx,vy,...(anim?{anim}:{})});
  });
- const entryPass=inbounder?{from:inbounder,t0:.04,t1:.1}:outletFrom?{from:outletFrom,t0:.02,t1:.07}:null;
+ // When the dead ball is in his hands (the moment his track reaches it).
+ const grabT=fetcher&&loose?tracks.get(fetcher)?.find(k=>k.p.x===loose.x&&k.p.y===loose.y)?.t:undefined;
+ const inT0=grabT!=null&&fetcher===inbounder?Math.min(.2,grabT+.045):.04;
+ const entryPass=inbounder?{from:inbounder,t0:inT0,t1:inT0+.06}:outletFrom?{from:outletFrom,t0:.02,t1:.07}:null;
  // How each pass is thrown: bounce passes, overhead skip passes across the floor, chest passes.
  const passLength=(ps:{from:string;to:string})=>{const a=tracks.get(ps.from),b=tracks.get(ps.to);if(!a||!b)return 0;const pa=track(a,T_ACT),pb=track(b,T_ACT);return Math.hypot(pa.x-pb.x,pa.y-pb.y);};
  const passKind=(ps:{from:string;to:string;bounce:boolean}):CourtAnimKind=>ps.bounce?'bouncePass':passLength(ps)>300?'overheadPass':'chestPass';
@@ -401,7 +414,7 @@ function baseFrame(entry:PossessionLogEntry,play:PossessionPlayback,progress:num
   const board=play.rebounderId&&!play.shotMade&&!turnover?actors.find(a=>a.id===play.rebounderId):undefined;
   if(board&&q>=.84&&q<.99){board.pose='rebound';board.jump=Math.max(board.jump,Math.sin(window01(q,.84,.99)*Math.PI)*17);board.anim={kind:'rebound',t:window01(q,.84,.99)};}
  }
- if(ftActive&&p<mainShare+.1){const before=baseFrame(entry,play,mainShare-.000001,homeId,awayId,regulationPeriods,starts,previous);const t=ease((p-mainShare)/.1);for(const a of actors){const old=before.players.find(v=>v.id===a.id);if(old){const point=courtLerp(old,a,t);a.x=point.x;a.y=point.y;}}}
+ if(ftActive&&p<mainShare+.1){const before=baseFrame(entry,play,mainShare-.000001,homeId,awayId,regulationPeriods,starts,previous,loose);const t=ease((p-mainShare)/.1);for(const a of actors){const old=before.players.find(v=>v.id===a.id);if(old){const point=courtLerp(old,a,t);a.x=point.x;a.y=point.y;}}}
  // Symmetric separation keeps feet apart without frame-rate-dependent integration.
  for(let k=0;k<3;k++)for(let i=0;i<actors.length;i++)for(let j=i+1;j<actors.length;j++){
   const a=actors[i],b=actors[j],dx=b.x-a.x,dy=b.y-a.y,dist=Math.hypot(dx,dy),radius=21;
@@ -426,7 +439,8 @@ function baseFrame(entry:PossessionLogEntry,play:PossessionPlayback,progress:num
  const held=(id:string|undefined):CourtBall=>({...hand(id),z:26,spin:0});
  let ball:CourtBall,phase=entry.secondChance?'Second chance':fast?'Push it':'Bring it up',carrier:string|undefined=bringer,net=0,shotAttempt:number|undefined,rim=0,callout:CourtCallout|undefined;
  // In-bound or outlet first (entryPass is set above).
- if(entryPass&&q<entryPass.t0){ball=held(entryPass.from);carrier=entryPass.from;phase=inbounder?'Inbound':'Outlet';}
+ if(grabT!=null&&loose&&q<grabT){ball={...loose,z:0,spin:0};carrier=undefined;phase=inbounder?'Inbound':'Loose ball';}
+ else if(entryPass&&q<entryPass.t0){ball=held(entryPass.from);carrier=entryPass.from;phase=inbounder?'Inbound':'Outlet';}
  else if(entryPass&&q<entryPass.t1){ball=ballFlight(hand(entryPass.from),hand(bringer),(q-entryPass.t0)/(entryPass.t1-entryPass.t0),40,26,inbounder?.6:.8);carrier=undefined;phase=inbounder?'Inbound':'Outlet pass';}
  else{
   const holder=holderAt(q),flying=passes.find(ps=>q>=ps.t0&&q<ps.t1);
@@ -479,12 +493,14 @@ function baseFrame(entry:PossessionLogEntry,play:PossessionPlayback,progress:num
    }
    else {
     // Front-rim contact pops the ball up before it caroms toward the rebounder.
-    const pop=mirror({x:900-(10+salt%8),y:310+sign*6}),kick=mirror({x:846-(salt%30),y:310+sign*(40+salt%43)});
+    // Off the rim, down to the spot the rebounder has gone to, and into his hands at the top of his jump.
+    const pop=mirror({x:900-(10+salt%8),y:310+sign*6}),kick=reboundSpot;
     rim=Math.sin(window01(q,.76,.84)*Math.PI);
     if(q<.82)ball=ballFlight(hoop,pop,limit((q-.76)/.06),34,40,.3);
-    else if(q<.88)ball=ballFlight(pop,kick,limit((q-.82)/.06),40,9,.45);
-    else ball=ballFlight(kick,hand(play.rebounderId),limit((q-.88)/.1),9,25,.32);
-    phase=q<.88?'Off the rim':play.rebounderId?'Rebound':'Loose ball';if(q>=.98)carrier=play.rebounderId;
+    else if(q<.89)ball=ballFlight(pop,kick,limit((q-.82)/.07),40,30,.45);
+    else if(play.rebounderId)ball={...hand(play.rebounderId),z:30,spin:0};
+    else ball=ballFlight(kick,mirror({x:820,y:310+sign*90}),limit((q-.89)/.11),30,0,.4);
+    phase=q<.89?'Off the rim':play.rebounderId?'Rebound':'Loose ball';if(q>=.89)carrier=play.rebounderId;
    }
   }
  }
@@ -525,7 +541,9 @@ export function courtFrame(entry:PossessionLogEntry,progress:number,homeId:strin
  const play=playbackForEntry(entry);
  const prior=previous&&previous.quarter===entry.quarter?baseFrame(previous,playbackForEntry(previous),1,homeId,awayId,regulationPeriods):undefined;
  const starts=prior?new Map(prior.players.map(a=>[a.id,a])):undefined;
- const frame=baseFrame(entry,play,progress,homeId,awayId,regulationPeriods,starts,previous);
+ // A dead ball (nobody holding it when the last possession ended) is picked up where it lies.
+ const loose=prior&&!prior.carrier?{x:prior.ball.x,y:prior.ball.y}:undefined;
+ const frame=baseFrame(entry,play,progress,homeId,awayId,regulationPeriods,starts,previous,loose);
  // Legs have momentum: each player is the average of where the choreography put him over the last third of a
  // second, so a changed target turns into a run rather than a snap. The window closes at both ends of the
  // possession so one possession still hands over exactly where the next begins.
@@ -533,11 +551,11 @@ export function courtFrame(entry:PossessionLogEntry,progress:number,homeId:strin
  if(span>1e-4){
   const raw=new Map(frame.players.map(a=>[a.id,{x:a.x,y:a.y}]));
   const sums=new Map(frame.players.map(a=>[a.id,{x:a.x,y:a.y}]));
-  for(let k=1;k<SMOOTH_TAPS;k++){const back=baseFrame(entry,play,progress-span*k/(SMOOTH_TAPS-1),homeId,awayId,regulationPeriods,starts,previous);for(const a of back.players){const sum=sums.get(a.id);if(sum){sum.x+=a.x;sum.y+=a.y;}}}
+  for(let k=1;k<SMOOTH_TAPS;k++){const back=baseFrame(entry,play,progress-span*k/(SMOOTH_TAPS-1),homeId,awayId,regulationPeriods,starts,previous,loose);for(const a of back.players){const sum=sums.get(a.id);if(sum){sum.x+=a.x;sum.y+=a.y;}}}
   for(const a of frame.players){const sum=sums.get(a.id)!;a.x=sum.x/SMOOTH_TAPS;a.y=sum.y/SMOOTH_TAPS;}
   const held=frame.carrier?frame.players.find(a=>a.id===frame.carrier):undefined;
   if(held&&frame.ball.z<40){const r=raw.get(held.id)!;frame.ball={...frame.ball,x:frame.ball.x+held.x-r.x,y:frame.ball.y+held.y-r.y};}
  }
- if(prior&&previous&&progress<.12){const t=ease(progress/.12),point=courtLerp(prior.ball,frame.ball,t);frame.ball={...point,z:prior.ball.z+(frame.ball.z-prior.ball.z)*t+12*Math.sin(t*Math.PI),spin:t*360};if(frame.phase!=='Inbound'&&frame.phase!=='Outlet'&&frame.phase!=='Outlet pass')frame.phase=previous.offenseTeamId===entry.offenseTeamId?'Keep possession':'Take it up';frame.carrier=undefined;}
+ if(prior&&previous&&progress<.12&&!loose){const t=ease(progress/.12),point=courtLerp(prior.ball,frame.ball,t);frame.ball={...point,z:prior.ball.z+(frame.ball.z-prior.ball.z)*t,spin:0};if(frame.phase!=='Inbound'&&frame.phase!=='Outlet'&&frame.phase!=='Outlet pass')frame.phase=previous.offenseTeamId===entry.offenseTeamId?'Keep possession':'Take it up';frame.carrier=undefined;}
  return frame;
 }

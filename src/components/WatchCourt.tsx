@@ -305,7 +305,7 @@ const lastName=(id:string)=>{const parts=id.split(/[\s-]+/);return (parts[parts.
 function Athlete({actor,player,identity,ring,hot,carrier,labels,above,ballZ,hoopX}:{actor:CourtActor;player?:PlayerSeason;identity:TeamIdentity;ring:string;hot:boolean;carrier:boolean;labels:boolean;above:boolean;ballZ:number;hoopX:number}){
  const scale=1.18*Math.max(.9,Math.min(1.1,(player?.attributes.physical.heightInches??79)/79));
  const moving=actor.stride!==0&&actor.pose!=='guard';
- const {id:frameId,pose,flip}=useMemo(()=>pickFrame({pose:actor.pose,anim:actor.anim,cycle:actor.cycle,carrier,moving,ballZ,gait:actor.gait}),[actor.pose,actor.anim,actor.cycle,carrier,moving,ballZ,actor.gait]);
+ const {id:frameId,pose,flip}=useMemo(()=>pickFrame({pose:actor.pose,anim:actor.anim,cycle:actor.cycle,carrier,moving,ballZ,gait:actor.gait,onBall:actor.onBall}),[actor.pose,actor.anim,actor.cycle,carrier,moving,ballZ,actor.gait,actor.onBall]);
  // The spin move turns him round for two frames.
  const facing=(actor.facing<0?-1:1)*(flip?-1:1);
  const paths=actionSprite(frameId,pose,{playerId:actor.id,primary:identity.primary,secondary:identity.secondary,jerseyNumber:player?.jerseyNumber,age:player?.age,jerseyStyle:identity.jerseyStyle,appearance:player?.appearance},facing);
