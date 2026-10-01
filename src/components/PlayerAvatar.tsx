@@ -27,7 +27,7 @@ interface PlayerAvatarProps {
 }
 
 /** The shared renderer upgrades every player surface without regenerating saved players.
- * Paths are grouped by color and memoized: detailed sprites need only ~30 SVG nodes.
+ * Paths are grouped by color and memoized: detailed sprites use a compact set of SVG paths.
  */
 export const PlayerAvatar = memo(function PlayerAvatar({
   playerId, teamId, primaryColor, secondaryColor, jerseyNumber, heightInches, age, jerseyStyle,

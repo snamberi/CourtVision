@@ -1,4 +1,4 @@
-import { buildPlayerGrid, outlineGrid, gridToPaths, drawHat, mix, HAIR_STYLES, BEARD_STYLES, HAT_STYLES, type SpriteGrid, type SpritePath, type HairStyle, type BeardStyle, type HatStyle } from './playerSprite';
+import { buildPlayerGrid, outlineGrid, detailedSpritePaths, gridToPaths, drawHat, mix, HAIR_STYLES, BEARD_STYLES, HAT_STYLES, type SpriteGrid, type SpritePath, type HairStyle, type BeardStyle, type HatStyle } from './playerSprite';
 import { SKINS, HAIR_COLORS, SHOES, RAINBOW, outfitDef, colorHex, type AvatarLook, type Outfit } from '../profile/avatar';
 
 /*
@@ -362,5 +362,5 @@ export function buildAvatarGrid({ look, team }: AvatarOptions): { grid: SpriteGr
 }
 export function buildAvatarSprite(opts: AvatarOptions): AvatarSprite {
   const { grid, aura } = buildAvatarGrid(opts);
-  return { paths: gridToPaths(grid), aura: gridToPaths(aura), auraKind: opts.look.aura };
+  return { paths: detailedSpritePaths(grid), aura: gridToPaths(aura), auraKind: opts.look.aura };
 }

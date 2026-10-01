@@ -1,4 +1,4 @@
-/** Code-native, 40 × 52 pixel characters. No image requests or saved-data changes.
+/** Code-native, 40 × 52 pixel characters with a half-pixel detail layer. No image requests or saved-data changes.
  * Keep the original ID hash and trait order: existing players retain their skin,
  * hair, beard and headwear choices while receiving the more detailed artwork.
  */
@@ -12,6 +12,7 @@ export const HAIR_STYLES = [
   'afroMedium', 'afroLarge', 'afroFlatTop', 'mohawkThin', 'mohawkThick',
   'mohawkFade', 'highTopFlat', 'highTopFade', 'cornrows', 'dreadsShort',
   'dreadsMedium', 'dreadsLong', 'dreadsPiled',
+  'waves', 'sidePart', 'slickBack', 'undercut', 'curlyFade', 'twists', 'boxBraids',
 ] as const;
 export const BEARD_STYLES = [
   'none', 'stubbleLight', 'stubbleFull', 'soulPatch', 'goatee', 'goateeWide',
@@ -21,9 +22,12 @@ export const BEARD_STYLES = [
   'balboa', 'mutton', 'anchor', 'thinLine',
 ] as const;
 export const HAT_STYLES = ['beanie', 'beanieCuffed', 'skullCap', 'cap', 'capBack', 'bucket', 'headband', 'headbandWide', 'durag', 'visor'] as const;
-export const SKIN_TONES = ['#f2c9a0', '#d9a066', '#c68a5a', '#8d5a34', '#5c3a21'];
-export const HAIR_COLORS = ['#0b0b0b', '#2b1a10', '#5a3a1a', '#b8860b', '#6b6b6b'];
-export const HAT_COLORS = ['#c8102e', '#1d428a', '#007a33', '#f2a900', '#111111', '#6b21a8'];
+export const SKIN_TONES = ['#f2c9a0', '#d9a066', '#c68a5a', '#8d5a34', '#5c3a21', '#ffe0bd', '#a86b3c', '#3d2616'];
+export const HAIR_COLORS = ['#0b0b0b', '#2b1a10', '#5a3a1a', '#b8860b', '#6b6b6b', '#8a3a1a', '#d8b25a', '#e8e4d8', '#f4f4f4', '#963b63', '#375eaa', '#67449c'];
+export const HAT_COLORS = ['#c8102e', '#1d428a', '#007a33', '#f2a900', '#111111', '#6b21a8', '#f4f0e6', '#ed742e', '#249596', '#dc7fa0'];
+export const EYE_COLORS = ['#563921', '#273549', '#467387', '#58724b', '#9b783e', '#656a76'];
+export const EYE_STYLES = ['steady', 'focused', 'relaxed', 'wide'] as const;
+export const EXPRESSIONS = ['smile', 'neutral', 'grin', 'determined'] as const;
 const OUTLINE = '#080d19';
 const WHITE = '#fff3df';
 const DIGITS: Record<string, string[]> = {
@@ -45,21 +49,26 @@ export type BeardStyle = typeof BEARD_STYLES[number];
 export type HatStyle = typeof HAT_STYLES[number];
 /** A player's look chosen in Edit Player; anything left out keeps the look his id gives him. Colours are palette indexes. */
 export interface Appearance { skin?: number; hairStyle?: HairStyle; hairColor?: number; beardStyle?: BeardStyle; hatStyle?: HatStyle | 'none'; hatColor?: number;
+  eyeColor?: number; eyeStyle?: typeof EYE_STYLES[number]; expression?: typeof EXPRESSIONS[number];
   /** Any skin or hair colour as #rrggbb (the profile character's fantasy colours); wins over the palette index. */
   skinHex?: string; hairHex?: string; hatHex?: string }
 
 const isHex = (v: string | undefined): boolean => !!v && /^#[\da-f]{6}$/i.test(v);
-const pick = <T,>(list: readonly T[], i: number | undefined, fallback: T): T => (i != null && i >= 0 && i < list.length ? list[i] : fallback);
+const pick = <T,>(list: readonly T[], i: number | undefined, fallback: T): T => (i != null && Number.isInteger(i) && i >= 0 && i < list.length ? list[i] : fallback);
 export function playerTraits(playerId: string, look?: Appearance) {
   const seed = hashPlayerId(playerId);
   const base = {
     seed,
-    skin: SKIN_TONES[seed % SKIN_TONES.length],
-    hair: HAIR_COLORS[Math.floor(seed / 7) % HAIR_COLORS.length],
-    hairStyle: HAIR_STYLES[Math.floor(seed / 13) % HAIR_STYLES.length] as HairStyle,
+    // Original palette sizes are intentional: new options must not reroll existing identities.
+    skin: SKIN_TONES[seed % 5],
+    hair: HAIR_COLORS[Math.floor(seed / 7) % 5],
+    hairStyle: HAIR_STYLES[Math.floor(seed / 13) % 25] as HairStyle,
     beardStyle: (seed % 100 < 40 ? 'none' : BEARD_STYLES[1 + (Math.floor(seed / 17) % (BEARD_STYLES.length - 1))]) as BeardStyle,
     hatStyle: (Math.floor(seed / 100) % 100 < 78 ? null : HAT_STYLES[Math.floor(seed / 19) % HAT_STYLES.length]) as HatStyle | null,
-    hatColor: HAT_COLORS[Math.floor(seed / 23) % HAT_COLORS.length],
+    hatColor: HAT_COLORS[Math.floor(seed / 23) % 6],
+    eyeColor: EYE_COLORS[Math.floor(seed / 29) % EYE_COLORS.length],
+    eyeStyle: EYE_STYLES[Math.floor(seed / 31) % EYE_STYLES.length],
+    expression: EXPRESSIONS[Math.floor(seed / 37) % EXPRESSIONS.length],
   };
   if (!look) return base;
   return {
@@ -70,6 +79,9 @@ export function playerTraits(playerId: string, look?: Appearance) {
     beardStyle: look.beardStyle && BEARD_STYLES.includes(look.beardStyle) ? look.beardStyle : base.beardStyle,
     hatStyle: look.hatStyle === 'none' ? null : look.hatStyle && HAT_STYLES.includes(look.hatStyle) ? look.hatStyle : base.hatStyle,
     hatColor: isHex(look.hatHex) ? look.hatHex! : pick(HAT_COLORS, look.hatColor, base.hatColor),
+    eyeColor: pick(EYE_COLORS, look.eyeColor, base.eyeColor),
+    eyeStyle: look.eyeStyle && EYE_STYLES.includes(look.eyeStyle) ? look.eyeStyle : base.eyeStyle,
+    expression: look.expression && EXPRESSIONS.includes(look.expression) ? look.expression : base.expression,
   };
 }
 
@@ -104,7 +116,7 @@ export interface SpritePath { fill: string; d: string }
 
 /** Rasterize the layers, then batch horizontal runs by color into a small SVG path set. */
 export function buildPlayerSprite(opts: SpriteOptions): SpritePath[] {
-  return gridToPaths(outlineGrid(buildPlayerGrid(opts)));
+  return detailedSpritePaths(outlineGrid(buildPlayerGrid(opts)));
 }
 
 export type SpriteGrid = (string | null)[][];
@@ -217,6 +229,16 @@ export function buildPlayerGrid({ playerId, primary, secondary, jerseyNumber, ag
   rect(21, 42, 7, 1, trim);
   rect(12, 40, 2, 2, trimDark);
   rect(26, 40, 2, 2, trimDark);
+  // Sewn panels, shoulder piping, a small chest patch and fabric folds.
+  rect(13, 28, 1, 9, trimLight);
+  rect(24, 34, 1, 3, kitLight);
+  rect(22, 36, 3, 1, kitDark);
+  rect(15, 36, 3, 1, kitDark);
+  rect(24, 28, 2, 2, trim);
+  rect(24, 28, 1, 1, WHITE);
+  rect(18, 38, 4, 1, trimLight);
+  rect(19, 39, 1, 2, WHITE);
+  rect(21, 39, 1, 1, WHITE);
 
   if (jerseyStyle === 'stripe') rect(14, 30, 12, 3, trim);
   if (jerseyStyle === 'split') rect(21, 29, 5, 8, trim);
@@ -249,17 +271,22 @@ export function buildPlayerGrid({ playerId, primary, secondary, jerseyNumber, ag
 
   // Eyes: white sclera, dark iris, a small light catch; brows and nose give expression.
   const eyeY = 14 + (t.seed % 7 === 0 ? 1 : 0);
-  rect(13, eyeY - 2, 5, 1, hairDark);
-  rect(23, eyeY - 2, 4, 1, hairDark);
-  rect(13, eyeY, 5, 4, WHITE);
-  rect(23, eyeY, 4, 4, WHITE);
-  rect(16, eyeY, 2, 4, '#182338');
-  rect(25, eyeY, 2, 4, '#182338');
-  rect(16, eyeY, 1, 1, '#7894b0');
-  rect(25, eyeY, 1, 1, '#7894b0');
+  const eyeH = t.eyeStyle === 'wide' ? 4 : t.eyeStyle === 'relaxed' ? 2 : 3;
+  for (const x of [13, 23]) {
+    rect(x, eyeY - 2, 4, 1, hairDark);
+    rect(x, eyeY, 4, eyeH, WHITE);
+    rect(x + 2, eyeY, 2, eyeH, t.eyeColor);
+    rect(x + 3, eyeY + 1, 1, eyeH - 1, OUTLINE);
+    rect(x + 2, eyeY, 1, 1, '#dae2dc');
+    rect(x, eyeY + eyeH, 4, 1, skinDark);
+  }
+  if (t.eyeStyle === 'focused') { rect(16, eyeY - 1, 2, 1, hairDark); rect(22, eyeY - 1, 2, 1, hairDark); }
+  rect(18, 13, 1, 3, skinLight);
   rect(20, 16, 2, 3, skinDark);
   rect(19, 18, 2, 1, skinLight);
   rect(13, 19, 2, 1, skinLight);
+  rect(23, 19, 3, 1, skinLight);
+  rect(21, 18, 1, 1, skinDeep);
 
   // Facial hair stays inside the jaw. Full styles layer around a readable mouth.
   const beard = t.beardStyle;
@@ -286,14 +313,35 @@ export function buildPlayerGrid({ playerId, primary, secondary, jerseyNumber, ag
     }
   }
   rect(17, 20, 7, 1, skinDeep);
-  if (t.seed % 3 !== 1) rect(18, 20, 5, 1, WHITE);
+  if (t.expression === 'grin') { rect(18, 20, 5, 1, WHITE); rect(18, 21, 5, 1, skinDeep); }
+  else if (t.expression === 'smile') { rect(18, 20, 5, 1, WHITE); rect(19, 22, 3, 1, skinLight); }
+  else if (t.expression === 'determined') { rect(17, 20, 2, 1, skin); rect(22, 20, 2, 1, skin); rect(18, 21, 5, 1, skinDeep); }
   else rect(19, 21, 3, 1, skinLight);
 
   // Hair silhouettes are individually built and shaded, with texture only on hair pixels.
   const style = t.hairStyle;
   const h = (x: number, y: number, w: number, height: number) => rect(x, y, w, height, hair);
   if (style !== 'bald') {
-    if (['lowFade', 'buzzCut'].includes(style)) {
+    if (style === 'waves') {
+      h(13, 6, 14, 4); h(11, 9, 2, 4); h(27, 9, 2, 4);
+      for (let x = 13; x < 27; x += 4) { rect(x, 7, 2, 1, hairLight); rect(x + 1, 9, 2, 1, hairLight); }
+    } else if (style === 'sidePart' || style === 'slickBack' || style === 'undercut') {
+      h(13, 4, 14, 6); h(11, 7, 18, 3);
+      h(11, 10, 2, style === 'undercut' ? 1 : 3); h(27, 10, 2, 2);
+      for (let x = 14; x < 27; x += 3) rect(x, 5, 1, 3, hairLight);
+      if (style === 'sidePart') { rect(24, 5, 1, 5, skinDark); h(14, 9, 9, 2); }
+    } else if (style === 'twists' || style === 'boxBraids') {
+      h(12, 5, 16, 5);
+      for (let x = 10; x <= 28; x += 3) {
+        h(x, 5 + x % 2, 2, x < 14 || x > 25 ? (style === 'boxBraids' ? 16 : 9) : 5);
+        rect(x, 7, 1, 2, hairLight);
+        if (style === 'boxBraids' && (x < 14 || x > 25)) rect(x, 18, 2, 1, trimLight);
+      }
+    } else if (style === 'curlyFade') {
+      h(12, 5, 16, 6); h(14, 3, 12, 3);
+      for (let x = 12; x < 28; x += 3) { h(x, 4 + x % 2, 2, 3); rect(x, 7, 1, 1, hairLight); }
+      rect(11, 11, 2, 2, mix(skin, hair, .5)); rect(27, 11, 2, 2, mix(skin, hair, .5));
+    } else if (['lowFade', 'buzzCut'].includes(style)) {
       h(13, 7, 14, style === 'buzzCut' ? 3 : 1);
       h(11, 10, 2, 3); h(27, 10, 2, 3);
     } else if (style.startsWith('afro') || style.startsWith('curly')) {
@@ -386,7 +434,7 @@ export function outlineGrid(grid: SpriteGrid): SpriteGrid {
 }
 
 /** Batches horizontal runs by colour into a small SVG path set. */
-export function gridToPaths(outlined: SpriteGrid): SpritePath[] {
+export function gridToPaths(outlined: SpriteGrid, pixel = 1): SpritePath[] {
   const H = outlined.length, W = outlined[0]?.length ?? 0;
   const paths = new Map<string, string[]>();
   for (let y = 0; y < H; y++) for (let x = 0; x < W;) {
@@ -395,9 +443,33 @@ export function gridToPaths(outlined: SpriteGrid): SpritePath[] {
     let end = x + 1;
     while (end < W && outlined[y][end] === fill) end++;
     const runs = paths.get(fill) ?? [];
-    runs.push(`M${x} ${y}h${end - x}v1h-${end - x}z`);
+    runs.push(`M${x * pixel} ${y * pixel}h${(end - x) * pixel}v${pixel}h-${(end - x) * pixel}z`);
     paths.set(fill, runs);
     x = end;
   }
   return [...paths].map(([fill, runs]) => ({ fill, d: runs.join('') }));
+}
+
+/** Half-pixel material edges add definition at portrait size without changing the
+ * logical grid, silhouette, animation anchors, or saved appearance. No blur/noise.
+ * One extra shade per colour keeps SVGs batched and the palette deliberately small. */
+export function detailedSpritePaths(grid: SpriteGrid): SpritePath[] {
+  const H = grid.length, W = grid[0]?.length ?? 0;
+  const detail: SpriteGrid = Array.from({ length: H * 2 }, () => Array(W * 2).fill(null));
+  const shades = new Map<string, string>();
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const c = grid[y][x];
+    if (!c) continue;
+    for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++) detail[y * 2 + dy][x * 2 + dx] = c;
+    // Leave ink, eyes and isolated single-pixel embroidery crisp.
+    if (c === OUTLINE || !/^#[\da-f]{6}$/i.test(c)) continue;
+    const sameRight = grid[y][x + 1] === c, sameBelow = grid[y + 1]?.[x] === c;
+    if (grid[y - 1]?.[x] !== c && sameRight && sameBelow) {
+      let light = shades.get(c);
+      if (!light) { light = mix(c, WHITE, .18); shades.set(c, light); }
+      detail[y * 2][x * 2] = light;
+      detail[y * 2][x * 2 + 1] = light;
+    }
+  }
+  return gridToPaths(detail, .5);
 }

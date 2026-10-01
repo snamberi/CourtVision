@@ -1,4 +1,4 @@
-import { buildPlayerGrid, outlineGrid, gridToPaths, playerTraits, type Appearance, type SpriteGrid, type SpritePath } from './playerSprite';
+import { buildPlayerGrid, outlineGrid, detailedSpritePaths, playerTraits, type Appearance, type SpriteGrid, type SpritePath } from './playerSprite';
 
 /*
  * Frame-by-frame court animations for the players everyone already knows: the head, face, hair, beard, headwear and
@@ -272,7 +272,7 @@ export function rasterizePose(input: Pose, look: ActionLook, facing = 1): Sprite
       if (n && part[yy][xx] > part[y][x] && part[yy][xx] >= 2 && skinSet.has(n)) { out[y][x] = mix(c, OUTLINE, .75); break; }
     }
   }
-  return gridToPaths(outlineGrid(out));
+  return detailedSpritePaths(outlineGrid(out));
 }
 
 // ---------------------------------------------------------------- cache

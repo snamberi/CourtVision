@@ -5,6 +5,7 @@ import { resolveTeamIdentity, type TeamIdentity } from '../simulation/teamIdenti
 import { useTeamIdentity } from '../visuals/TeamIdentityContext';
 import { actionSprite, pickFrame, handReach, headTop, ORIGIN_X, ORIGIN_Y } from '../visuals/actionSprites';
 import { PlayerAvatar } from './PlayerAvatar';
+import { PixelBall } from './PixelIcon';
 import { CrestArt } from './TeamCrest';
 import { DISCORD_URL } from './DiscordLink';
 import { CLYDE_PATH } from '../visuals/discordGlyph';
@@ -63,7 +64,12 @@ function Fan({x,y,n,primary,secondary,stand,scale=1}:{x:number;y:number;n:number
  return <g transform={`translate(${x},${y-(stand?4:0)}) scale(${scale})`}>
   <rect x="0" y="9" width="14" height="10" fill={n%3===0?primary:n%4===0?secondary:CROWD_SHIRT[n%CROWD_SHIRT.length]}/>
   <rect x="2" y="1" width="10" height="9" fill={skin}/><rect x="2" y="0" width="10" height={n%4===1?2:4} fill={hair}/>
+  <path d="M2 4H3V9H2ZM3 1H7V2H3Z" fill="#fff3df" opacity=".22"/><path d="M10 4H12V10H10ZM12 10H14V19H12" fill="#080d19" opacity=".28"/>
   <rect x="4" y="5" width="2" height="2" fill="#1a1410"/><rect x="8" y="5" width="2" height="2" fill="#1a1410"/>
+  <path d="M5 8H9V9H5ZM4 11H10V12H4" fill="#fff3df" opacity=".65"/>
+  {n%5===0&&<path d="M2 2H12V4H2ZM8 4H14V5H8Z" fill={secondary}/>}
+  {n%3===0&&<path d="M6 13H8V17H6ZM5 17H9V18H5" fill={secondary}/>}
+  {n%7===0&&<path d="M3 5H7V7H3ZM8 5H12V7H8ZM7 5H8V6H7" fill="#121926"/>}
   {stand&&<><rect x="-3" y="-3" width="3" height="11" fill={skin}/><rect x="14" y="-3" width="3" height="11" fill={skin}/></>}
  </g>;
 }
@@ -190,6 +196,11 @@ const Arena=memo(function Arena({home,away,identity,awayKit,id,hype,homeBench,aw
     <rect width="24" height="24" fill="#4b5058"/>
     {[[2,3],[9,14],[17,6],[21,19],[5,20],[13,9]].map(([x,y])=><rect key={`${x}-${y}`} x={x} y={y} width="2" height="2" fill={(x+y)%3?'#5b6069':'#3c4047'}/>)}
    </pattern>
+   <pattern id={`${id}-grain`} width="144" height="40" patternUnits="userSpaceOnUse" shapeRendering="crispEdges">
+    <path d="M6 3H29M38 8H62M81 2H102M112 13H139M9 22H37M44 31H67M78 27H119M126 36H142M13 37H31M62 18H84" stroke="#6f4527" strokeWidth=".5" strokeOpacity=".22"/>
+    <path d="M7 4H24M40 9H66M81 3H107M9 23H42M78 28H112M64 19H87" stroke="#fff0ca" strokeWidth=".5" strokeOpacity=".3"/>
+    <path d="M17 8H24V9H17ZM96 33H100V34H96Z" fill="#764c2c" opacity=".12"/>
+   </pattern>
    <radialGradient id={`${id}-sheen`} cx="50%" cy="40%" r="65%"><stop offset="0" stopColor="#fff6dc" stopOpacity=".16"/><stop offset=".6" stopColor="#fff6dc" stopOpacity="0"/><stop offset="1" stopColor="#1a0f05" stopOpacity=".22"/></radialGradient>
    <linearGradient id={`${id}-apron`} x1="0" y1="0" x2="1" y2="0"><stop offset="0" stopColor={apronDark}/><stop offset=".12" stopColor={apron}/><stop offset=".88" stopColor={apron}/><stop offset="1" stopColor={apronDark}/></linearGradient>
   </defs>
@@ -216,6 +227,7 @@ const Arena=memo(function Arena({home,away,identity,awayKit,id,hype,homeBench,aw
   {rivalry&&<rect data-testid="rivalry-trim" x="47" y="72" width="906" height="476" fill="none" stroke={awayKit.secondary} strokeWidth="6" strokeDasharray="18 18" opacity=".9"/>}
   <rect x="58" y="81" width="884" height="458" fill="#0b1018"/>
   <rect x="62" y="85" width="876" height="450" fill={`url(#${id}-${style})`}/>
+  {style!=='asphalt'&&<rect x="62" y="85" width="876" height="450" fill={`url(#${id}-grain)`} pointerEvents="none"/>}
   <path d={`M62 ${LANE.top}H${62+LANE.depth}V${LANE.bottom}H62ZM938 ${LANE.top}H${938-LANE.depth}V${LANE.bottom}H938Z`} fill={paint}/>
   {[62+LANE.depth,938-LANE.depth].map((x,i)=><path key={i} d={`M${x} ${310-FT_R}A${FT_R} ${FT_R} 0 0 ${i?0:1} ${x} ${310+FT_R}Z`} fill={identity.secondary} opacity=".85"/>)}
   <circle cx="500" cy="310" r="56" fill={identity.secondary} opacity=".35"/>
@@ -223,6 +235,8 @@ const Arena=memo(function Arena({home,away,identity,awayKit,id,hype,homeBench,aw
   {/* The team name painted along both sidelines, between the arcs. */}
   {[[300,106],[700,106],[300,522],[700,522]].map(([x,y],i)=>{const t=rivalry&&i<2?(i?'WEEK':'RIVALRY'):splitTeamName(home.name).nickname.toUpperCase()||identity.abbreviation,w=pixelTextWidth(t),px=Math.max(2,Math.min(3,150/w));return <g key={i} transform={`translate(${(x-w*px/2).toFixed(1)},${(y-3.5*px).toFixed(1)})`} opacity=".5" shapeRendering="crispEdges"><path d={pixelTextPath(t,px)} fill={identity.primary}/></g>;})}
   <g data-testid="home-court-logo" transform="translate(405,215) scale(.95)" opacity=".96"><CrestArt team={home} identity={identity}/></g>
+  {/* Fine paint scuffs and reflected light bars keep the floor tactile at close camera zoom. */}
+  <g opacity=".08" fill="#fff3df" pointerEvents="none" shapeRendering="crispEdges"><path d="M145 147H325V149H145ZM675 147H855V149H675ZM145 466H325V468H145ZM675 466H855V468H675Z"/><path d="M176 292H187V294H176ZM813 323H824V325H813ZM228 350H242V351H228ZM758 268H772V269H758"/></g>
   {/* Reflections of the arena lights on the varnish. */}
   {[[240,190],[760,190],[240,430],[760,430],[500,310]].map(([x,y],i)=><ellipse key={i} cx={x} cy={y} rx={i===4?120:80} ry={i===4?46:30} fill="#fffbe8" opacity={i===4?.06:.08} pointerEvents="none"/>)}
   <rect x="62" y="85" width="876" height="450" fill={`url(#${id}-sheen)`} pointerEvents="none"/>
@@ -306,7 +320,7 @@ function Athlete({actor,player,identity,ring,hot,carrier,labels,above,ballZ,hoop
 function Ball({ball}:{ball:CourtBall}){
  const size=1+Math.min(.45,ball.z*.006);
  return <g data-testid="court-ball" data-height={ball.z.toFixed(2)} transform={`translate(${ball.x.toFixed(2)},${(ball.y-ballHeight(ball.z)).toFixed(2)}) scale(${size.toFixed(3)})`}>
-  <g transform={`rotate(${ball.spin.toFixed(1)})`}><path d="M-4 -7H4L7 -4V4L4 7H-4L-7 4V-4Z" fill="#f99b3d" stroke="#65351c" strokeWidth="1.5"/><path d="M0 -7V7M-7 0H7M-4 -6Q2 0-4 6" fill="none" stroke="#7b4020" strokeWidth="1.2"/><path d="M-3 -5H1" stroke="#ffce7f" strokeWidth="2"/></g>
+  <g transform={`rotate(${ball.spin.toFixed(1)}) translate(-7,-7)`}><PixelBall size={14}/></g>
  </g>;
 }
 function ShotChart({shots,home,homeColor,awayColor}:{shots:CourtShot[];home:string;homeColor:string;awayColor:string}){

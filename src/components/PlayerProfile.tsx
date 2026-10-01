@@ -116,7 +116,7 @@ export function PlayerProfile({ season, teamName, onChange, sandboxMode, onLookC
         </div>
       </div>
 
-      {lookMode && onLookChange && !editMode && <section className="dashboard-panel"><h5>Look</h5><AppearancePanel season={season} onChange={next => onLookChange(season.playerId, next.appearance)} /></section>}
+      {lookMode && onLookChange && !editMode && <section className="dashboard-panel"><h5>Look</h5><AppearancePanel key={season.playerId} season={season} onChange={next => onLookChange(season.playerId, next.appearance)} /></section>}
       {league && <div className="code-mode-actions" role="group" aria-label="Player profile sections">{(['overview','development'] as const).map(view=><button key={view} aria-pressed={profileTab===view} className={profileTab===view?'active':''} onClick={()=>{setLocalTab(view);onTabChange?.(view);setEditMode(false)}}>{view==='overview'?'Overview':'Development'}</button>)}</div>}
       {profileTab === 'development' && league ? <PlayerDevelopmentPanel player={season} league={league} controlledTeamId={controlledTeamId} sandboxMode={sandboxMode} onChange={onLeagueExtrasChange && extras ? l => onLeagueExtrasChange(l,extras) : undefined} /> : sandboxMode && editMode ? (
         <FullPlayerEditor

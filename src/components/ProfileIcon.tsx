@@ -1,26 +1,18 @@
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import { SPRITES, PALETTE, colorDef, iconDef } from '../profile/cosmetics';
 import { titleColorDef, unpackColors } from '../profile/trophyRoad';
+import { detailedSpritePaths } from '../visuals/playerSprite';
 
 /** A profile icon: a 10 x 10 pixel sprite on a dark tile (runs of one colour drawn as one rect). */
 export const ProfileIcon = memo(function ProfileIcon({ id, size = 28, title }: { id: string | null | undefined; size?: number; title?: string }) {
   const def = iconDef(id);
   const rows = SPRITES[def.base] ?? SPRITES.ball;
   const palette = def.recolor ? { ...PALETTE, ...def.recolor } : PALETTE;
-  const rects: { x: number; y: number; w: number; fill: string }[] = [];
-  rows.forEach((row, y) => {
-    for (let x = 0; x < row.length;) {
-      const ch = row[x];
-      let w = 1;
-      while (row[x + w] === ch) w++;
-      if (ch !== '.') rects.push({ x, y, w, fill: palette[ch] });
-      x += w;
-    }
-  });
+  const paths = useMemo(() => detailedSpritePaths(rows.map(row => [...row].map(ch => ch === '.' ? null : palette[ch] ?? null))), [rows, palette]);
   // Trophy Road icons move: the sprite flickers, spins, twinkles… and 'shine' sweeps a glint across it.
   return <svg className={`profile-icon${def.anim ? ` icon-anim icon-anim-${def.anim}` : ''}`} width={size} height={size} viewBox="-1 -1 12 12" shapeRendering="crispEdges" role="img" aria-label={title ?? def.name}>
     <rect x={-1} y={-1} width={12} height={12} fill="#121926" />
-    <g className="icon-sprite">{rects.map((r, i) => <rect key={i} x={r.x} y={r.y} width={r.w} height={1} fill={r.fill} />)}</g>
+    <path d="M-1 -1H11V0H-1ZM-1 0H0V11H-1Z" fill="#ffffff" opacity=".12" /><g className="icon-sprite">{paths.map(p => <path key={p.fill} d={p.d} fill={p.fill} />)}</g>
     {def.anim === 'shine' && <rect className="icon-glint" x={-4} y={-1} width={2} height={12} fill="#ffffff" opacity=".55" transform="skewX(-20)" />}
   </svg>;
 });
