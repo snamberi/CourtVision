@@ -47,10 +47,12 @@ describe('game-owner access', () => {
 
 describe('Game Owner only items', () => {
   it('are closed and hidden for everyone else, open for the owner', async () => {
-    const { AVATAR_CATEGORIES, SOVEREIGN_LOOK, isOwnerPiece } = await import('../profile/avatar');
+    const { AVATAR_CATEGORIES, SOVEREIGN_LOOK, SOVEREIGN_GOLD_LOOK, isOwnerPiece } = await import('../profile/avatar');
     const { listedFor } = await import('../profile/profile');
     const { AVATAR_FRAMES } = await import('../profile/avatarFrames');
     const staffIcon = ICONS.find(i => i.id === 'sovereign')!;
+    expect(isOpen(NAME_COLORS.find(c => c.id === 'blueglint')!.rule, unlockContext(750))).toBe(false);
+    expect(earnedExtraTitles(unlockContext(750))).not.toContain('The Sovereign');
     expect(isOpen(staffIcon.rule, unlockContext(750))).toBe(false);
     expect(listedFor(FRAMES).some(f => f.id === 'sovereign')).toBe(false);
     expect(listedFor(FLOORS).some(f => f.id === 'celestial')).toBe(false);
@@ -58,12 +60,15 @@ describe('Game Owner only items', () => {
     expect(avatarFrameOpen(AVATAR_FRAMES.find(f => f.id === 'sovereign')!, { level: 750, trophies: 1e9, honors: ['ranked-1'] })).toBe(false);
     expect(titleColorOpen(TITLE_COLORS.find(c => c.id === 'sovereign')!, { trophies: 1e9 })).toBe(false);
     // Every piece of the owner's character is an owner piece.
-    for (const c of AVATAR_CATEGORIES) if (c.id !== 'beard') expect(isOwnerPiece(c.items.find(i => i.id === SOVEREIGN_LOOK[c.id])!)).toBe(true);
+    for (const look of [SOVEREIGN_LOOK, SOVEREIGN_GOLD_LOOK]) for (const c of AVATAR_CATEGORIES) if (c.id !== 'beard') expect(isOwnerPiece(c.items.find(i => i.id === look[c.id])!)).toBe(true);
     noteOwnerAccess(true);
     expect(isOpen(staffIcon.rule, unlockContext(1))).toBe(true);
     expect(listedFor(FRAMES).some(f => f.id === 'sovereign')).toBe(true);
-    equip({ frame: 'sovereign', floor: 'celestial', avatarFrame: 'sovereign', icon: 'sovereign', color: 'sovereign', titleColor: 'sovereign' });
-    expect(equipped(1)).toMatchObject({ frame: 'sovereign', floor: 'celestial', avatarFrame: 'sovereign', icon: 'sovereign', color: 'sovereign', titleColor: 'sovereign' });
+    equip({ frame: 'sovereign', floor: 'celestial', avatarFrame: 'sovereign', icon: 'sovereign', color: 'blueglint', titleColor: 'sovereign', title: 'The Sovereign' });
+    expect(equipped(1)).toMatchObject({ frame: 'sovereign', floor: 'celestial', avatarFrame: 'sovereign', icon: 'sovereign', color: 'blueglint', titleColor: 'sovereign', title: 'The Sovereign' });
+    const { themeOpen, visibleThemes } = await import('../theme/themes');
+    expect(themeOpen('sovereign', 1, 0)).toBe(true);
+    expect(visibleThemes().some(t => t.id === 'sovereign')).toBe(true);
   });
 
   it('the boards show the owner character only for the owner account', async () => {

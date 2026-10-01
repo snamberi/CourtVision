@@ -6,6 +6,7 @@
 
 export const OWNER_ACCESS_KEY = 'courtvision-owner';
 export const OWNER_TITLE = 'Game Owner';
+export const SOVEREIGN_TITLE = 'The Sovereign';
 
 export function hasOwnerAccess(read: (key: string) => string | null = k => localStorage.getItem(k)): boolean {
   try { return read(OWNER_ACCESS_KEY) === '1'; } catch { return false; }
