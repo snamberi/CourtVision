@@ -16,6 +16,8 @@ import { PixelIcon } from '../PixelIcon';
 import { PlayerAvatar } from '../PlayerAvatar';
 import { ProfileIcon, NameTag } from '../ProfileIcon';
 import { HONORS } from '../../profile/cosmetics';
+import { CodeAvatar } from '../AvatarFrame';
+import { FriendlyMatch } from './FriendlyMatch';
 
 /** The leaderboard honors on a public profile (server-granted, in its stats). */
 const honorTitles = (s: Record<string, unknown>) => (Array.isArray(s.honors) ? s.honors : []).map(h => HONORS.find(x => x.id === h)?.title).filter((t): t is string => !!t);
@@ -23,9 +25,9 @@ import '../hunt/hunt.css';
 import '../locker/locker.css';
 
 type Tab = 'boards' | 'ranked' | 'pvp' | 'friends' | 'me';
-type BoardId = 'gms' | 'players' | 'wrebuild' | 'wcareer' | 'daily' | 'rebuild' | 'friends';
+type BoardId = 'gms' | 'players' | 'whunt' | 'wrebuild' | 'wcareer' | 'daily' | 'rebuild' | 'friends';
 const BOARDS: { id: BoardId; label: string }[] = [
-  { id: 'gms', label: 'GMs' }, { id: 'players', label: 'Created players' }, { id: 'wrebuild', label: 'Rebuild of the Week' }, { id: 'wcareer', label: 'Career of the Week' },
+  { id: 'gms', label: 'GMs' }, { id: 'players', label: 'Created players' }, { id: 'whunt', label: 'Weekly Hunt' }, { id: 'wrebuild', label: 'Rebuild of the Week' }, { id: 'wcareer', label: 'Career of the Week' },
   { id: 'daily', label: 'Daily Legend' }, { id: 'rebuild', label: 'Rebuild records' }, { id: 'friends', label: 'Friends' },
 ];
 const day = (offset: number) => new Date(Date.now() - offset * 86_400_000).toISOString().slice(0, 10);
@@ -74,6 +76,7 @@ function Boards({ onUser }: { onUser: (u: string) => void }) {
   switch (board) {
     case 'gms': spec = { kind: 'gms' }; label = 'XP'; blurb = 'Every GM by profile XP: seasons, titles, careers, hunts, rebuilds, weekly challenges and daily goals, in every mode.'; break;
     case 'players': spec = { kind: 'players', week: weeklyPlayers ? weeks.now : null }; label = 'Legacy'; blurb = weeklyPlayers ? `Career of the Week (${weeklyCareer().draftYear ?? 2026} draft): the best careers this week.` : 'The greatest created players from every GM, by Legacy Score (the same scale as the all-time Top 100).'; break;
+    case 'whunt': spec = { kind: 'weekly', board: 'hunt', week }; label = 'Score'; blurb = 'The same hunt for everyone this week, as many tries as you like: your best counts. The top 10% when the week ends win the Weekly Hunter title and aura.'; break;
     case 'wrebuild': spec = { kind: 'weekly', board: 'rebuild', week }; label = 'Score'; blurb = `${weeklyRebuild(week).scenario.title} · ${weeklyRebuild(week).twist.label}. Scored from your season records.`; break;
     case 'wcareer': spec = { kind: 'weekly', board: 'career', week }; label = 'Legacy'; blurb = 'The same wheel and draft class for everyone this week.'; break;
     case 'daily': spec = { kind: 'daily', day: yesterday ? day(1) : day(0) }; label = 'Score'; blurb = 'Everyone plays the same hunt each day. Winning it beats everything; then how far you got.'; break;
@@ -83,7 +86,7 @@ function Boards({ onUser }: { onUser: (u: string) => void }) {
   return <section className="locker-bay">
     <div className="board-picker" role="radiogroup" aria-label="Leaderboard">{BOARDS.map(b => <button key={b.id} role="radio" aria-checked={board === b.id} className={`difficulty-chip ${board === b.id ? 'selected' : ''}`} onClick={() => setBoard(b.id)}>{b.label}</button>)}</div>
     <div className="board-options">
-      {(board === 'wrebuild' || board === 'wcareer') && <button aria-pressed={lastWeek} onClick={() => setLastWeek(v => !v)}>{lastWeek ? `Last week (${weeks.last})` : `This week (${weeks.now})`}</button>}
+      {(board === 'wrebuild' || board === 'wcareer' || board === 'whunt') && <button aria-pressed={lastWeek} onClick={() => setLastWeek(v => !v)}>{lastWeek ? `Last week (${weeks.last})` : `This week (${weeks.now})`}</button>}
       {board === 'players' && <button aria-pressed={weeklyPlayers} onClick={() => setWeeklyPlayers(v => !v)}>{weeklyPlayers ? 'This week' : 'All time'}</button>}
       {board === 'daily' && <button aria-pressed={yesterday} onClick={() => setYesterday(v => !v)}>{yesterday ? 'Yesterday' : 'Today'}</button>}
       {board === 'rebuild' && <select className="year-input" value={scenario} onChange={e => setScenario(e.target.value)} aria-label="Scenario">{SCENARIOS.map(s => <option key={s.id} value={s.id}>{s.title} ({s.team} {s.startYear})</option>)}</select>}
@@ -206,7 +209,27 @@ function ProfileView({ username, onUser }: { username: string; onUser: (u: strin
   const follows = following ?? d.following;
   const season = tierFor((s.ranked ?? {})[currentSeason()] ?? 0).tier;
   const followerCount = d.followers + (following == null || following === d.following ? 0 : following ? 1 : -1);
+  const rarest = [...d.achievements].filter(id => rarity[id] != null).sort((a, b) => rarity[a] - rarity[b]).slice(0, 3);
+  const huntBest = Number(s.huntBest ?? 0);
   return <>
+    <section className="locker-bay profile-showcase">
+      <div className="showcase-stage">
+        {d.profile.avatar ? <><CodeAvatar code={d.profile.avatar} size={132} title={`${d.profile.username}'s portrait`} /><CodeAvatar code={d.profile.avatar} full size={150} title={`${d.profile.username}'s character`} /></>
+          : <p className="hint-text">No character online yet.</p>}
+      </div>
+      <div className="showcase-facts">
+        <span className="pixel-eyebrow">SHOWCASE</span>
+        <h2><NameTag name={`@${d.profile.username}`} icon={d.profile.icon} color={d.profile.color} title={d.profile.title} /></h2>
+        <ul className="showcase-list">
+          <li><small>BEST LEAGUE HUNT</small><b>{Number(s.huntWins ?? 0) > 0 ? `Won ${Number(s.huntWins)} hunt${Number(s.huntWins) === 1 ? '' : 's'}` : huntBest > 0 ? `Reached series ${huntBest + 1}` : '—'}</b></li>
+          <li><small>RANKED THIS MONTH</small><b style={{ color: season.color }}>{season.name}</b></li>
+          <li><small>HUNT PVP</small><b>{d.pvp ? `${d.pvp.rating} (${d.pvp.wins}-${d.pvp.losses})` : '—'}</b></li>
+          <li><small>GREATEST PLAYER</small><b>{s.bestPlayer ? `${s.bestPlayer.name} · ${s.bestPlayer.legacy}` : '—'}</b></li>
+        </ul>
+        {rarest.length > 0 && <><small className="showcase-sub">RAREST ACHIEVEMENTS</small><ul className="achievement-chips showcase-rare">{rarest.map(id => <li key={id}><b>{ACHIEVEMENT_BY_ID.get(id)?.name ?? id.replace(/^mode-/, '')}</b><small>{rarity[id]}% of GMs</small></li>)}</ul></>}
+        {!isMe && d.pvp?.squad != null && <FriendlyMatch theirs={d.pvp.squad} username={d.profile.username} />}
+      </div>
+    </section>
     <section className="locker-bay profile-card">
       <div className="profile-head">
         <ProfileIcon id={d.profile.icon} size={56} title={`${d.profile.username}'s icon`} />

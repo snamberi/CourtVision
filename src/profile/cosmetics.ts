@@ -1,6 +1,8 @@
 import { localRead, type Read } from '../lib/kv';
 import { totalTrophies, trophyNeed, TROPHY_TITLES } from './trophyRoad';
 import { AVATAR_LEVEL_ROAD } from './avatar';
+import { readStreak, streakTitles } from '../retention/streak';
+import { readPass, passBestTier, passTitles } from '../retention/pass';
 
 /** Complete team sets and legendary cards in the album (read straight from storage; see cards/cards.ts). */
 function albumCounts(read: Read): { sets: number; legendary: number } {
@@ -21,7 +23,7 @@ function albumCounts(read: Read): { sets: number; legendary: number } {
  * achievements this browser has already announced (modeUnlocks.ts); Supporter items read the entitlements (billing).
  */
 
-export type RewardKind = 'icon' | 'color' | 'title' | 'frame' | 'floor' | 'look' | 'avatar';
+export type RewardKind = 'icon' | 'color' | 'title' | 'frame' | 'floor' | 'look' | 'avatar' | 'avatarFrame';
 export type Rule = { level: number } | { rank: number } | { honor: string } | { mode: string } | { anyHonor: true } | { supporter: true } | { trophies: number } | { album: 'sets' | 'legendary'; n: number } | { owner: number };
 /** Animated cosmetics (the Trophy Road): see features.css `.anim-*` and `.icon-anim-*`. */
 export type IconAnim = 'flicker' | 'shine' | 'spin' | 'twinkle' | 'flash' | 'glow' | 'bob';
@@ -100,6 +102,8 @@ export const LEVEL_ROAD: [number, RewardKind, string][] = [
   [700, 'title', 'Legendary Ascendant'], [700, 'color', 'celestialblue'],
   [750, 'title', 'The Final Boss'], [750, 'color', 'infinity'], [750, 'icon', 'goat-gold'],
 ];
+// Profile-picture frames (avatarFrames.ts).
+LEVEL_ROAD.push([30, 'avatarFrame', 'rookie'], [120, 'avatarFrame', 'courtside'], [300, 'avatarFrame', 'neon']);
 // Your character's pieces on the road (ids are "category:piece"; see AVATAR_LEVEL_ROAD in avatar.ts).
 for (const [l, cat, id] of AVATAR_LEVEL_ROAD) LEVEL_ROAD.push([l, 'avatar', `${cat}:${id}`]);
 LEVEL_ROAD.sort((a, b) => a[0] - b[0]);
@@ -231,6 +235,10 @@ export const HONORS: { id: string; title: string; how: string; first?: boolean }
   { id: 'weekly-1', title: 'Weekly Champion', how: '#1 on a finished weekly board', first: true },
   { id: 'daily-1', title: 'Daily Legend Champion', how: '#1 on a finished Daily Legend board', first: true },
   { id: 'ranked-10', title: 'Ranked Top 10', how: 'Top 10 in a ranked season' },
+  { id: 'ranked-1', title: 'Season Champion', how: '#1 when a ranked season ends', first: true },
+  { id: 'ranked-2', title: 'Season Runner-up', how: '#2 when a ranked season ends' },
+  { id: 'ranked-3', title: 'Season Podium', how: '#3 when a ranked season ends' },
+  { id: 'hunt-week-10', title: 'Weekly Hunter', how: 'Top 10% of a finished Weekly Hunt' },
   { id: 'pvp-10', title: 'PvP Elite', how: 'Top 10 in Hunt PvP' },
 ];
 
@@ -264,10 +272,10 @@ export function hasEntitlement(kind: 'noAds' | 'supporter', read: Read = localRe
   return kind === 'noAds' ? !!e.noAds || supporter : supporter;
 }
 
-export interface UnlockContext { level: number; rank: number; honors: string[]; modes: string[]; supporter: boolean; trophies: number; album?: { sets: number; legendary: number }; owner?: number }
+export interface UnlockContext { level: number; rank: number; honors: string[]; modes: string[]; supporter: boolean; trophies: number; album?: { sets: number; legendary: number }; owner?: number; /** Best daily streak and best Season Pass tier. */ streak?: number; pass?: number }
 /** What unlocks read: the level is passed in; the rest comes from this browser. */
 export function unlockContext(level: number, read: Read = localRead): UnlockContext {
-  return { level, rank: TIERS.indexOf(read('cv-ranked-best') ?? ''), honors: readHonors(read), modes: json<string[]>(read, 'cv-mode-ach-seen', []), supporter: hasEntitlement('supporter', read), trophies: totalTrophies(read), album: albumCounts(read), owner: ownerBest(read) };
+  return { level, rank: TIERS.indexOf(read('cv-ranked-best') ?? ''), honors: readHonors(read), modes: json<string[]>(read, 'cv-mode-ach-seen', []), supporter: hasEntitlement('supporter', read), trophies: totalTrophies(read), album: albumCounts(read), owner: ownerBest(read), streak: readStreak(read).best, pass: passBestTier(readPass(read)) };
 }
 export function isOpen(rule: Rule, c: UnlockContext): boolean {
   if ('level' in rule) return c.level >= rule.level;
@@ -289,6 +297,7 @@ export const earnedExtraTitles = (c: UnlockContext): string[] => [
   ...TROPHY_TITLES.filter(t => c.trophies >= t.trophies).map(t => t.id),
   ...ALBUM_TITLES.filter(t => ((t.kind === 'sets' ? c.album?.sets : c.album?.legendary) ?? 0) >= t.n).map(t => t.title),
   ...OWNER_TITLES.filter(t => (c.owner ?? 0) >= t.legacy).map(t => t.title),
+  ...streakTitles(c.streak ?? 0), ...passTitles(c.pass ?? 0),
 ];
 export function ownerBest(read: Read = localRead): number {
   try { return ((JSON.parse(read('cv-owner-records') ?? '[]') as { legacy: number }[]) ?? []).reduce((m, r) => Math.max(m, r.legacy ?? 0), 0); } catch { return 0; }

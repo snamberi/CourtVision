@@ -351,6 +351,8 @@ export interface AnimInput {
   ballZ: number;
   /** How he's moving off the ball (from his speed and direction): walk, run, sprint, backpedal, defensive slide. */
   gait?: Gait;
+  /** Guarding the ball: a low stance with a hand up, feet always shuffling. */
+  onBall?: boolean;
 }
 const step = (t: number, cuts: number[]) => { let i = 0; while (i < cuts.length && t >= cuts[i]) i++; return i; };
 const frac = (v: number) => ((v % 1) + 1) % 1;
@@ -393,7 +395,7 @@ export function pickFrame(a: AnimInput): { id: string; pose: Pose; flip?: boolea
     case 'pass': return { id: 'P1', pose: PASS[1] };
     case 'boxout': return frameOf('boxOut', cyc6 % 2);
     case 'guard': {
-      if (a.moving || a.gait === 'slide') return frameOf('slide', cyc6);
+      if (a.moving || a.gait === 'slide' || a.onBall) return frameOf('slide', cyc6);
       const i = Math.floor(frac(a.cycle ?? 0) * 2) % 2; return { id: `G${i}`, pose: GUARD[i] };
     }
     case 'dribble': return a.moving ? { id: `RD${level}${runAt}`, pose: RUN_DRIBBLE[level][runAt] } : { id: `D${level}`, pose: DRIBBLE[level] };

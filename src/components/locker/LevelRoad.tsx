@@ -5,6 +5,7 @@ import { FRAMES, FLOORS, MAX_LEVEL, levelFor, totalXp, PROFILE_EVENT } from '../
 import { ProfileIcon, NameTag } from '../ProfileIcon';
 import { PixelIcon } from '../PixelIcon';
 import { AvatarPiece } from '../UserAvatar';
+import { FrameReward } from '../AvatarFrame';
 
 /** One reward as it looks on the road. */
 function Reward({ kind, id }: { kind: RewardKind; id: string }) {
@@ -12,6 +13,7 @@ function Reward({ kind, id }: { kind: RewardKind; id: string }) {
   if (kind === 'color') return <span className="road-reward"><NameTag name={NAME_COLORS.find(c => c.id === id)?.name ?? id} icon={null} color={id} /><small>Name colour</small></span>;
   if (kind === 'title') return <span className="road-reward"><b className="road-title">{id}</b><small>Title</small></span>;
   if (kind === 'avatar') return <span className="road-reward road-avatar-reward"><AvatarPiece piece={id} /></span>;
+  if (kind === 'avatarFrame') return <span className="road-reward road-avatar-reward"><FrameReward id={id} /></span>;
   if (kind === 'look') {
     const t = THEME_BY_ID.get(id as ThemeId);
     const p = t?.preview;

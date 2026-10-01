@@ -99,6 +99,8 @@ export interface HuntRun {
   deck?: DeckId;
   difficulty?: Difficulty;
   daily?: string;
+  /** The Weekly Hunt's week ("2026-W40"): the same hunt for everyone that week, best attempt counts. */
+  weekly?: string;
   lines?: Record<string, { g: number; pts: number; reb: number; ast: number }>;
   /** The blind spins: what you took and the best on the table, per spin (overall; the coach's bonus on the coach spin). */
   picks?: { spin: number; got: number; best: number }[];
@@ -168,7 +170,7 @@ export const opponentRating = (h: NbaHistory, run: HuntRun, s: HuntSeries) => ro
 
 // ---------------------------------------------------------------- a new run
 
-export interface NewRunOptions { deck?: DeckId; difficulty?: Difficulty; daily?: string; /** Your favourite player (Profile); ignored in the Daily Legend. */ fav?: string }
+export interface NewRunOptions { deck?: DeckId; difficulty?: Difficulty; daily?: string; weekly?: string; /** Your favourite player (Profile); ignored in the Daily Legend. */ fav?: string }
 
 function pickTeam(h: NbaHistory, teams: HuntTeam[], era: HuntEra, target: number, rng: RNG, used: Set<string>): HuntTeam {
   const free = teams.filter(t => !used.has(t.id));
@@ -207,7 +209,7 @@ export function newRun(h: NbaHistory, seed: number, opts: NewRunOptions = {}): H
   series.push({ teamId: bossTeam.id, eraId: eraOf(bossTeam.end).id, kind: 'boss', buffs: buffPool(3), lift: 0 });
   let run: HuntRun = { version: 3, seed, stage: 'draft', squad: SLOTS.map(() => ''), spin: 0, offer: [], reels: null, guarantees: { star: 0, great: 1 },
     lives: diff.lives, coins: START_COINS + diff.coinShift + deck.coins, items: [...deck.items], boosts: [], growth: { star: 0, sixth: 0, chemistry: 0, coach: 0 }, training: {},
-    series, seriesIndex: 0, attempts: 0, results: [], deck: deck.id, difficulty: diff.id, ...(opts.daily ? { daily: opts.daily } : opts.fav ? { fav: opts.fav } : {}) };
+    series, seriesIndex: 0, attempts: 0, results: [], deck: deck.id, difficulty: diff.id, ...(opts.daily ? { daily: opts.daily } : opts.weekly ? { weekly: opts.weekly } : opts.fav ? { fav: opts.fav } : {}) };
   // Lift every team that falls short of its series' rating (buffs count, so the lift is what is left).
   run = { ...run, series: run.series.map((s, i) => {
     const target = s.kind === 'boss' ? diff.bossRating : Math.min(99, TARGETS[i] + diff.shift);
@@ -224,6 +226,8 @@ export function newRun(h: NbaHistory, seed: number, opts: NewRunOptions = {}): H
 
 /** Every team you face plays this much above the rating of its series. */
 export const ENEMY_EDGE = 5;
+/** Every player on your squad plays this much above his card in every game (the hunt was too hard without it). */
+export const SQUAD_EDGE = 3;
 
 // ---------------------------------------------------------------- the spins
 
@@ -231,7 +235,8 @@ const fitsSlot = (c: HuntCard, s: SpinKind) => s === '6TH' || c.pos === s || (c.
 
 /** Rarity odds for spin `i`: every spin is a little poorer than the one before. */
 export function spinWeights(i: number): Record<Rarity, number> {
-  const legendary = Math.max(0.2, 1.5 - 0.2 * i), epic = Math.max(1.5, 6 - 0.8 * i), rare = Math.max(10, 20 - 1.8 * i);
+  // Seven points more on the good cards than before (Star +1, Great +2, Good +4), every round.
+  const legendary = Math.max(0.2, 1.5 - 0.2 * i) + 1, epic = Math.max(1.5, 6 - 0.8 * i) + 2, rare = Math.max(10, 20 - 1.8 * i) + 4;
   return { legendary, epic, rare, common: Math.max(10, 100 - legendary - epic - rare) };
 }
 
@@ -270,7 +275,7 @@ export function migrateDraft(run: HuntRun): HuntRun {
 
 /** A card of your favourite player at this rarity that fits this reel, while you haven't locked him yet. */
 function favOnReel(h: NbaHistory, run: HuntRun, taken: Set<string>, fits: (c: HuntCard) => boolean, rarity: Rarity): HuntCard | undefined {
-  if (!run.fav || run.daily) return undefined;
+  if (!run.fav || run.daily || run.weekly) return undefined;
   const key = run.fav.toLowerCase();
   const pool = cardPool(h);
   if (run.squad.some(id => id && pool.byId.get(id)?.playerId.toLowerCase() === key)) return undefined;
@@ -402,6 +407,7 @@ export function gameBonuses(h: NbaHistory, run: HuntRun, era: HuntEra | undefine
     let fromBoosts = 0;
     const addBoost = (v: number, label: string) => { const room = Math.max(0, BOOST_CAP - fromBoosts), got = Math.min(v, room); fromBoosts += got; add(got, label); };
     const sixth = slot === 5, starter = slot < 5;
+    add(SQUAD_EDGE, 'hunt edge');
     add(chem.get(c.id) ?? 0, 'chemistry');
     add(coachAll, 'coach');
     if (coach?.franchises.includes(c.franchise) || coach?.franchises.includes(c.team)) add(1, 'coach\'s old team');

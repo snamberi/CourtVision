@@ -7,6 +7,7 @@ import { loadWeeklyRecords } from '../retention/weekly';
 import { dailyGoalXp } from './dailyGoals';
 import { localRead, type Read } from '../lib/kv';
 import { TITLE_COLORS, titleColorOpen } from './trophyRoad';
+import { avatarFrameDef, avatarFrameOpen, AVATAR_FRAMES, type AvatarFrameId } from './avatarFrames';
 import { ICONS, NAME_COLORS, LEVEL_ROAD, ROAD_TITLES, ROAD_LOOK_NAMES, roadLevel, unlockContext, isOpen, earnedExtraTitles, iconDef, type IconId, type ColorId, type RewardKind } from './cosmetics';
 
 /*
@@ -138,7 +139,7 @@ export function rankTitles(read: Read = localRead): string[] {
   return RANK_TITLES.filter(t => best >= t.order).map(t => t.id);
 }
 
-export interface Equipped { frame: FrameId; floor: FloorId; title: string; icon: IconId; color: ColorId; titleColor: string }
+export interface Equipped { frame: FrameId; floor: FloorId; title: string; icon: IconId; color: ColorId; titleColor: string; /** The profile-picture frame (avatarFrames.ts). */ avatarFrame: AvatarFrameId }
 const EQUIP_KEY = 'cv-profile-equip';
 export const PROFILE_EVENT = 'courtvision:profile';
 
@@ -154,7 +155,9 @@ export function equipped(level = levelFor(totalXp()).level): Equipped {
   const icon = ICONS.find(i => i.id === raw.icon && isOpen(i.rule, ctx))?.id ?? 'ball';
   const color = NAME_COLORS.find(c => c.id === raw.color && isOpen(c.rule, ctx))?.id ?? 'cream';
   const titleColor = TITLE_COLORS.find(c => c.id === raw.titleColor && titleColorOpen(c, ctx))?.id ?? 'plain';
-  return { frame: ok(FRAMES, raw.frame, 'classic'), floor: ok(FLOORS, raw.floor, 'team'), title, icon, color, titleColor };
+  const af = avatarFrameDef(raw.avatarFrame);
+  const avatarFrame = avatarFrameOpen(af, ctx) ? af.id : 'none';
+  return { frame: ok(FRAMES, raw.frame, 'classic'), floor: ok(FLOORS, raw.floor, 'team'), title, icon, color, titleColor, avatarFrame };
 }
 
 /** The name shown on your profile card when you are not signed in (signed in, it is your GM name). */
@@ -178,6 +181,7 @@ export function unlocksBetween(from: number, to: number): string[] {
     icon: id => `the ${iconDef(id).name} icon`, color: id => `the ${NAME_COLORS.find(c => c.id === id)?.name ?? id} name colour`,
     title: id => `the "${id}" title`, frame: id => `the ${FRAMES.find(f => f.id === id)?.name ?? id} card frame`, floor: id => `the ${FLOORS.find(f => f.id === id)?.name ?? id} court`,
     look: id => `the ${ROAD_LOOK_NAMES[id] ?? id} app look`,
+    avatarFrame: id => `the ${AVATAR_FRAMES.find(f => f.id === id)?.name ?? id} profile-picture frame`,
     avatar: id => { const [cat, piece] = id.split(':') as [AvatarCategory, string]; return `${avatarItem(cat, piece)?.name ?? piece} for your character`; },
   };
   return LEVEL_ROAD.filter(([l]) => l > from && l <= to).map(([, k, id]) => name[k](id));

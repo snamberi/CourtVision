@@ -24,6 +24,8 @@ import { WelcomeSignIn, needsSignInWelcome } from './cloud/WelcomeSignIn';
 import { AccountButton } from './cloud/AccountButton';
 import { ProfileChip } from './ProfilePanel';
 import { totalXp, levelFor, takeLevelUp, unlocksBetween } from '../profile/profile';
+import { noteVisit } from '../retention/streak';
+import { notePass } from '../retention/pass';
 import { TrophyUnlock } from './locker/TrophyUnlock';
 
 export type GameMode = 'random' | 'real' | 'legends' | 'career' | 'rebuild' | 'draft';
@@ -147,6 +149,8 @@ function SavedLeaguesList({ saves, onContinue, onDeleteSave, onRenameSave }: Pic
 export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSave, busy = null, onLocker, onCode, onCommunity, onProfile, onSettings }: Props) {
   // First visit: pick a look before anything else; What's New waits until it is picked.
   const [pickLook, setPickLook] = useState(needsThemeChoice);
+  // Today's visit counts for the daily streak and the Season Pass.
+  const [visit] = useState<Visit>(() => ({ v: noteVisit(), p: notePass(totalXp()) }));
   // Then (accounts on, signed out, first time): sign in, or carry on without an account.
   const account = useAccount();
   const [askSignIn, setAskSignIn] = useState(true);
@@ -167,7 +171,7 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
 
   return (
     <div className="main-menu">
-      <div className="menu-masthead"><img src={logoIcon} alt="" /><span>COURT VISION<small>BASKETBALL MANAGEMENT</small></span><span className="menu-edition">THE PIXEL COURT</span>{(onProfile || onLocker) && <ProfileChip onOpen={onProfile ?? onLocker} />}{onCommunity && <AccountButton onCommunity={onCommunity} />}<InstallAppButton /><DiscordLink className="menu-discord" />{onSettings && <button className="account-chip menu-settings" onClick={onSettings} title="Settings: backups, graphics, privacy"><PixelIcon name="settings" size={14} /> Settings</button>}</div>
+      <div className="menu-masthead"><img src={logoIcon} alt="" /><span>COURT VISION<small>BASKETBALL MANAGEMENT</small></span><span className="menu-edition">THE PIXEL COURT</span>{(onProfile || onLocker) && <ProfileChip onOpen={onProfile ?? onLocker} />}{visit.v.streak.current >= 2 && <button className="account-chip streak-pill" onClick={onProfile ?? onLocker} title={`Daily streak: ${visit.v.streak.current} days in a row (best ${visit.v.streak.best})`}><PixelIcon name="flame" size={14} /> {visit.v.streak.current}</button>}{onCommunity && <AccountButton onCommunity={onCommunity} />}<InstallAppButton /><DiscordLink className="menu-discord" />{onSettings && <button className="account-chip menu-settings" onClick={onSettings} title="Settings: backups, graphics, privacy"><PixelIcon name="settings" size={14} /> Settings</button>}</div>
       <div className="menu-hero">
         <div className="menu-hero-copy"><span className="pixel-eyebrow">BUILD A TEAM. WRITE ITS HISTORY.</span><h1>Your league.<br /><span>Your legacy.</span></h1><p>Scout the next great. Build your starting five.<br />Turn one season into a dynasty.</p></div>
         <div className="menu-player-scene" aria-hidden="true">
@@ -293,6 +297,7 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
       <AdBanner slot="menu" />
       <footer className="legal-footer">{!IS_DESKTOP_BUILD && <><a href="/how-to-play.html">How to Play</a> · <a href="/guides/">Guides</a> · <a href="/faq.html">FAQ</a> · <a href="/about.html">About</a> · <a href="/changelog.html">What's new</a> · </>}<PrivacyLink /> · <CookieSettingsLink /> · <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer">Discord</a>{onSettings && <> · <button className="link-button" onClick={onSettings}>Settings</button></>}</footer>
       <LevelUpNote onProfile={onProfile ?? onLocker} />
+      <StreakNote visit={visit} onProfile={onProfile ?? onLocker} />
       <TrophyUnlock onProfile={onProfile ?? onLocker} />
       <ConsentBanner />
       {pickLook ? <ThemeWelcome onDone={() => setPickLook(false)} /> : showSignIn ? <WelcomeSignIn onDone={() => setAskSignIn(false)} /> : <WhatsNew />}
@@ -325,6 +330,17 @@ function ThisWeek({ busy, onRebuild, onCareer, onHunt, onCommunity }: { busy: st
         <button onClick={onHunt}>League Hunt</button></article>
     </div>
   </section>;
+}
+
+type Visit = { v: ReturnType<typeof noteVisit>; p: ReturnType<typeof notePass> };
+/** A note when today's visit reaches a streak reward or a Season Pass tier. */
+function StreakNote({ visit, onProfile }: { visit: Visit; onProfile?: () => void }) {
+  const [open, setOpen] = useState(true);
+  const { v, p } = visit;
+  const got = [...v.reached.map(r => r.title ? `the "${r.title}" title` : `${r.trophies.toLocaleString()} trophies`), ...(p.newTiers.length ? [`Season Pass tier ${p.tier}`] : [])];
+  if (!open || !got.length) return null;
+  return <div className="level-up level-up-corner streak-note" role="status"><b>{v.reached.length ? `${v.streak.best}-DAY STREAK` : 'SEASON PASS'}</b><span>You reached {got.join(' and ')}.</span>
+    {onProfile && <button onClick={onProfile}>See your rewards</button>}<button className="link-button" onClick={() => setOpen(false)}>Close</button></div>;
 }
 
 /** Level up since the last visit to the menu: what it unlocked. */

@@ -1,11 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { xpParts, totalXp, levelFor, equipped, equip, rankTitles, localName, setLocalName, unlockOpen, FRAMES, FLOORS, TITLES, PROFILE_EVENT, type Unlock } from '../profile/profile';
 import { ALBUM_TITLES, ICONS, NAME_COLORS, HONORS, MODE_TITLES, SUPPORTER_TITLE, unlockContext, isOpen, earnedExtraTitles, type UnlockContext } from '../profile/cosmetics';
 import { DAILY_EVENT } from '../profile/dailyGoals';
 import { LEGACY_EVENT } from '../storage/gmLegacy';
 import { PixelIcon } from './PixelIcon';
 import { ProfileIcon, NameTag } from './ProfileIcon';
-import { MyAvatar } from './UserAvatar';
+import { MyFramedAvatar } from './AvatarFrame';
+import { CourtFloorPreview, ShareFramePreview } from './ProfilePreviews';
+import { AVATAR_FRAMES, avatarFrameOpen, avatarFrameHow } from '../profile/avatarFrames';
+import { STREAK_REWARDS } from '../retention/streak';
+import { PASS_REWARDS } from '../retention/pass';
 import { useAccount } from '../cloud/account';
 import { passesOnSale } from '../billing/billing';
 import { ThemeSection } from './ThemePicker';
@@ -29,14 +33,20 @@ export function ProfileChip({ onOpen }: { onOpen?: () => void }) {
   const p = useProfile();
   const eq = equipped(p.level);
   return <button className="profile-chip" onClick={onOpen} title={`${p.xp.toLocaleString()} XP · ${p.need ? `${p.need - p.into} to level ${p.level + 1}` : 'max level'}`}>
-    <MyAvatar size={22} mode="portrait" animate={false} title="" /><b>LV {p.level}</b><NameTag name="" icon={null} title={eq.title} titleColor={eq.titleColor} className="profile-chip-title" /><i style={{ width: `${p.need ? p.into / p.need * 100 : 100}%` }} aria-hidden="true" />
+    <MyFramedAvatar size={30} title="" /><b>LV {p.level}</b><NameTag name="" icon={null} title={eq.title} titleColor={eq.titleColor} className="profile-chip-title" /><i style={{ width: `${p.need ? p.into / p.need * 100 : 100}%` }} aria-hidden="true" />
   </button>;
 }
 
-function Picker<T extends string>({ label, list, level, trophies = 0, value, onPick }: { label: string; list: Unlock<T>[]; level: number; trophies?: number; value: string; onPick: (v: T) => void }) {
+function Picker<T extends string>({ label, list, level, trophies = 0, value, onPick, preview }: { label: string; list: Unlock<T>[]; level: number; trophies?: number; value: string; onPick: (v: T) => void; preview?: (id: T) => ReactNode }) {
+  // A locked one can still be tried: clicking it shows the preview without equipping it.
+  const [hover, setHover] = useState<T | null>(null);
+  const [pinned, setPinned] = useState<T | null>(null);
+  const peek = hover ?? pinned;
+  const shown = (peek ?? value) as T, shownDef = list.find(u => u.id === shown);
   return <div className="profile-picker"><h3 className="hunt-subhead">{label}</h3>
-    <div role="radiogroup" aria-label={label}>{list.map(u => { const open = unlockOpen(u, level, trophies); return <button key={u.id} role="radio" aria-checked={value === u.id} disabled={!open}
-      className={`profile-unlock ${value === u.id ? 'selected' : ''} ${open ? '' : 'locked'} unlock-${u.id.replace(/\s+/g, '-').toLowerCase()}`} onClick={() => onPick(u.id)}>
+    {preview && <div className="profile-preview">{preview(shown)}<small>{shownDef?.name}{peek && peek !== value ? (shownDef && unlockOpen(shownDef, level, trophies) ? ' · preview' : ` · preview (${shownDef?.trophies != null ? `${shownDef.trophies.toLocaleString()} trophies` : `level ${shownDef?.level}`})`) : ' · equipped'}</small></div>}
+    <div role="radiogroup" aria-label={label}>{list.map(u => { const open = unlockOpen(u, level, trophies); return <button key={u.id} role="radio" aria-checked={value === u.id} aria-disabled={!open}
+      className={`profile-unlock ${value === u.id ? 'selected' : ''} ${open ? '' : 'locked'} ${peek === u.id ? 'peeking' : ''} unlock-${u.id.replace(/\s+/g, '-').toLowerCase()}`} onMouseEnter={() => preview && setHover(u.id)} onFocus={() => preview && setHover(u.id)} onMouseLeave={() => setHover(null)} onBlur={() => setHover(null)} onClick={() => { if (open) { onPick(u.id); setPinned(null); setHover(null); } else setPinned(u.id); }}>
       <b>{u.name}</b><small>{open ? u.blurb || 'Unlocked' : u.trophies != null ? `${u.trophies.toLocaleString()} trophies` : `Level ${u.level}`}</small></button>; })}</div></div>;
 }
 
@@ -54,6 +64,8 @@ function titleGroups(c: UnlockContext) {
     { label: 'Achievements', items: MODE_TITLES.map(m => ({ title: m.title, open: c.modes.includes(m.mode), how: m.how })) },
     { label: 'Supporter', items: [{ title: SUPPORTER_TITLE, open: c.supporter, how: 'Supporter pass' }] },
     { label: 'Trophy Road', items: TROPHY_TITLES.map(t => ({ title: t.id, open: c.trophies >= t.trophies, how: `${t.trophies.toLocaleString()} trophies` })) },
+    { label: 'Daily streak', items: STREAK_REWARDS.filter(r => r.title).map(r => ({ title: r.title!, open: (c.streak ?? 0) >= r.days, how: `Visit ${r.days} days in a row` })) },
+    { label: 'Season Pass', items: PASS_REWARDS.filter(r => r.title).map(r => ({ title: r.title!, open: (c.pass ?? 0) >= r.tier, how: `Reach tier ${r.tier} of a Season Pass` })) },
     { label: 'Card album', items: ALBUM_TITLES.map(t => ({ title: t.title, open: ((t.kind === 'sets' ? c.album?.sets : c.album?.legendary) ?? 0) >= t.n, how: t.kind === 'sets' ? `Complete ${t.n} team card set${t.n === 1 ? '' : 's'}` : `Collect ${t.n} legendary cards` })) },
   ].filter(g => g.label !== 'Supporter' || showSupporter(c));
 }
@@ -70,7 +82,7 @@ export function ProfilePanel() {
   return <section className="locker-bay profile-panel">
     <h2><PixelIcon name="star" size={18} /> Your card</h2>
     <div className={`profile-card-big frame-${eq.frame}`}>
-      <MyAvatar size={72} mode="portrait" title={`${name}'s character`} className="profile-card-avatar" />
+      <span className="profile-card-avatar"><MyFramedAvatar size={96} title={`${name}'s character`} /></span>
       <ProfileIcon id={eq.icon} size={40} title={`${name}'s icon`} />
       <div className="profile-card-id">
         <NameTag name={signedIn ? `@${name}` : name} icon={null} color={eq.color} title={eq.title} titleColor={eq.titleColor} className="profile-card-name" />
@@ -79,6 +91,11 @@ export function ProfilePanel() {
       </div>
       {!signedIn && <label className="profile-name-edit"><span>Profile name</span><input className="year-input" value={localName() === 'You' ? '' : localName()} placeholder="You" maxLength={18} onChange={e => setLocalName(e.target.value)} /><small>Sign in to claim a GM name on the boards.</small></label>}
     </div>
+
+    <div className="profile-picker"><h3 className="hunt-subhead">Profile picture frame</h3>
+      <div className="avf-picks" role="radiogroup" aria-label="Profile picture frame">{AVATAR_FRAMES.map(f => { const open = avatarFrameOpen(f, ctx); return <button key={f.id} role="radio" aria-checked={eq.avatarFrame === f.id} disabled={!open} title={f.blurb}
+        className={`avf-pick ${eq.avatarFrame === f.id ? 'selected' : ''} ${open ? '' : 'locked'}`} onClick={() => equip({ avatarFrame: f.id })}>
+        <MyFramedAvatar frame={f.id} size={76} title={f.name} /><b>{f.name}</b><small>{open ? 'Unlocked' : avatarFrameHow(f)}</small></button>; })}</div></div>
 
     <ThemeSection />
 
@@ -106,7 +123,7 @@ export function ProfilePanel() {
 
     <table className="db-table profile-xp"><tbody>{p.parts.map(x => <tr key={x.id}><td className="col-name">{x.label}</td><td className="col-name">{x.detail}</td><td>{x.xp.toLocaleString()} XP</td></tr>)}</tbody></table>
     <p className="hint-text">XP comes from everything you finish: GM seasons, wins, titles and achievements (official leagues), careers, hunts, rebuilds, weekly challenges and daily goals. Icons, colours and titles are earned only by playing: levels, ranked seasons, achievements and leaderboard finishes (leaderboard titles arrive when you sync).</p>
-    <Picker label="Share-card frame" list={FRAMES} level={p.level} trophies={ctx.trophies} value={eq.frame} onPick={v => equip({ frame: v })} />
-    <Picker label="Court floor (Watch Game)" list={FLOORS} level={p.level} trophies={ctx.trophies} value={eq.floor} onPick={v => equip({ floor: v })} />
+    <Picker label="Share-card frame" list={FRAMES} level={p.level} trophies={ctx.trophies} value={eq.frame} onPick={v => equip({ frame: v })} preview={id => <ShareFramePreview frame={id} />} />
+    <Picker label="Court floor (Watch Game)" list={FLOORS} level={p.level} trophies={ctx.trophies} value={eq.floor} onPick={v => equip({ floor: v })} preview={id => <CourtFloorPreview floor={id} />} />
   </section>;
 }

@@ -1,6 +1,6 @@
-import { memo, useId, useMemo } from 'react';
+import { memo, useId, useMemo, useRef } from 'react';
 import type { PlayerSeason } from '../simulation/types';
-import type { CourtActor, CourtBall, CourtFrame, CourtShot } from '../simulation/courtMotion';
+import type { CourtActor, CourtBall, CourtFrame, CourtPoint, CourtShot } from '../simulation/courtMotion';
 import { resolveTeamIdentity, type TeamIdentity } from '../simulation/teamIdentity';
 import { useTeamIdentity } from '../visuals/TeamIdentityContext';
 import { actionSprite, pickFrame, handReach, headTop, ORIGIN_X, ORIGIN_Y } from '../visuals/actionSprites';
@@ -158,12 +158,9 @@ function DiscordBoard({x,y}:{x:number;y:number}){
   </g>
  </a>;
 }
-const Arena=memo(function Arena({home,away,identity,awayKit,id,hype,homeBench,awayBench,fill=1,loud=0,mascot=0,rivalry=false,building}:{home:Team;away:Team;identity:TeamIdentity;awayKit:TeamIdentity;id:string;hype:number;homeBench:PlayerSeason[];awayBench:PlayerSeason[];fill?:number;loud?:number;mascot?:number;rivalry?:boolean;building?:{name:string;suites:number}}){
- const tableText=building?building.name.toUpperCase().replace(/[^A-Z0-9 ]/g,'').slice(0,22):identity.abbreviation+' COURT VISION';
- const apron=shade(identity.primary,-.18),apronDark=shade(identity.primary,-.45),paint=identity.courtPaint,picked=equippedFloor(),style=picked==='team'?floorStyle(home.teamId):picked;
- const cream='#f6ecd2';
+/** The floor patterns, `${id}-${floor}` (also the floor previews in the Profile). */
+export function FloorPatterns({id}:{id:string}){
  return <>
-  <defs>
    <pattern id={`${id}-planks`} width="120" height="10" patternUnits="userSpaceOnUse" shapeRendering="crispEdges">
     <rect width="120" height="10" fill="#e3b479"/><rect y="5" width="120" height="5" fill="#dcab6e"/>
     <path d="M0 0H120M0 5H120" stroke="#a8743f" strokeOpacity=".55"/><path d="M34 0V5M92 0V5M8 5V10M66 5V10" stroke="#a8743f" strokeOpacity=".45"/>
@@ -199,6 +196,15 @@ const Arena=memo(function Arena({home,away,identity,awayKit,id,hype,homeBench,aw
    <pattern id={`${id}-lava`} width="60" height="60" patternUnits="userSpaceOnUse" shapeRendering="crispEdges"><rect width="60" height="60" fill="#2a1a16"/><path d="M0 20L14 26L22 18L36 28L60 22M10 60L18 44L30 50L44 40L52 48" stroke="#ff6b2d" strokeWidth="2" fill="none"/><path d="M14 26L22 18M30 50L44 40" stroke="#ffd166" strokeWidth="1" fill="none"/></pattern>
    <pattern id={`${id}-gold`} width="120" height="10" patternUnits="userSpaceOnUse" shapeRendering="crispEdges"><rect width="120" height="10" fill="#e8b84a"/><rect y="5" width="120" height="5" fill="#d9a83a"/><path d="M0 0H120M0 5H120" stroke="#9a7212" strokeOpacity=".55"/><path d="M44 2H80M12 7H40" stroke="#fff3c4" strokeOpacity=".7"/></pattern>
    <pattern id={`${id}-galaxy`} width="80" height="80" patternUnits="userSpaceOnUse" shapeRendering="crispEdges"><rect width="80" height="80" fill="#160d33"/><rect x="0" y="0" width="80" height="80" fill="#3b1d82" opacity=".25"/>{[[8,12,'#ffffff'],[40,30,'#ff7ad9'],[66,8,'#6fd3ff'],[20,58,'#ffffff'],[58,62,'#ffd166'],[34,74,'#ffffff']].map(([x,y,c])=><rect key={`${x}-${y}`} x={x as number} y={y as number} width="2" height="2" fill={c as string}/>)}</pattern>
+ </>;
+}
+const Arena=memo(function Arena({home,away,identity,awayKit,id,hype,homeBench,awayBench,fill=1,loud=0,mascot=0,rivalry=false,building}:{home:Team;away:Team;identity:TeamIdentity;awayKit:TeamIdentity;id:string;hype:number;homeBench:PlayerSeason[];awayBench:PlayerSeason[];fill?:number;loud?:number;mascot?:number;rivalry?:boolean;building?:{name:string;suites:number}}){
+ const tableText=building?building.name.toUpperCase().replace(/[^A-Z0-9 ]/g,'').slice(0,22):identity.abbreviation+' COURT VISION';
+ const apron=shade(identity.primary,-.18),apronDark=shade(identity.primary,-.45),paint=identity.courtPaint,picked=equippedFloor(),style=picked==='team'?floorStyle(home.teamId):picked;
+ const cream='#f6ecd2';
+ return <>
+  <defs>
+   <FloorPatterns id={id}/>
    <pattern id={`${id}-grain`} width="144" height="40" patternUnits="userSpaceOnUse" shapeRendering="crispEdges">
     <path d="M6 3H29M38 8H62M81 2H102M112 13H139M9 22H37M44 31H67M78 27H119M126 36H142M13 37H31M62 18H84" stroke="#6f4527" strokeWidth=".5" strokeOpacity=".22"/>
     <path d="M7 4H24M40 9H66M81 3H107M9 23H42M78 28H112M64 19H87" stroke="#fff0ca" strokeWidth=".5" strokeOpacity=".3"/>
@@ -299,7 +305,7 @@ const lastName=(id:string)=>{const parts=id.split(/[\s-]+/);return (parts[parts.
 function Athlete({actor,player,identity,ring,hot,carrier,labels,above,ballZ,hoopX}:{actor:CourtActor;player?:PlayerSeason;identity:TeamIdentity;ring:string;hot:boolean;carrier:boolean;labels:boolean;above:boolean;ballZ:number;hoopX:number}){
  const scale=1.18*Math.max(.9,Math.min(1.1,(player?.attributes.physical.heightInches??79)/79));
  const moving=actor.stride!==0&&actor.pose!=='guard';
- const {id:frameId,pose,flip}=useMemo(()=>pickFrame({pose:actor.pose,anim:actor.anim,cycle:actor.cycle,carrier,moving,ballZ,gait:actor.gait}),[actor.pose,actor.anim,actor.cycle,carrier,moving,ballZ,actor.gait]);
+ const {id:frameId,pose,flip}=useMemo(()=>pickFrame({pose:actor.pose,anim:actor.anim,cycle:actor.cycle,carrier,moving,ballZ,gait:actor.gait,onBall:actor.onBall}),[actor.pose,actor.anim,actor.cycle,carrier,moving,ballZ,actor.gait,actor.onBall]);
  // The spin move turns him round for two frames.
  const facing=(actor.facing<0?-1:1)*(flip?-1:1);
  const paths=actionSprite(frameId,pose,{playerId:actor.id,primary:identity.primary,secondary:identity.secondary,jerseyNumber:player?.jerseyNumber,age:player?.age,jerseyStyle:identity.jerseyStyle,appearance:player?.appearance},facing);
@@ -373,8 +379,27 @@ function cameraBox(frame:CourtFrame,camera:CourtCamera):string{
  if(camera==='full')return `${SCENE.x} 0 ${SCENE.w} 600`;
  const ball=frame.ball,cx=frame.players.reduce((s,a)=>s+a.x,0)/Math.max(1,frame.players.length),cy=frame.players.reduce((s,a)=>s+a.y,0)/Math.max(1,frame.players.length);
  if(camera==='broadcast'){const w=700,h=344,fx=ball.x*.45+cx*.55;return `${Math.max(SCENE.x,Math.min(SCENE.x+SCENE.w-w,fx-w/2)).toFixed(1)} ${Math.max(0,Math.min(600-h,(ball.y*.3+cy*.7)-h/2+10)).toFixed(1)} ${w} ${h}`;}
- const fx=ball.x*.7+cx*.3,fy=ball.y*.7+cy*.3;
- return `${Math.max(SCENE.x,Math.min(SCENE.x+SCENE.w-560,fx-280)).toFixed(1)} ${Math.max(0,Math.min(600-276,fy-150)).toFixed(1)} 560 276`;
+ return followBox(followTarget(frame),FOLLOW_W);
+}
+/** The follow camera: about twice as close as the full court, centred between the ball and the play. */
+const FOLLOW_W=660;
+function followTarget(frame:CourtFrame):CourtPoint{
+ const ps=frame.players,cx=ps.reduce((s,a)=>s+a.x,0)/Math.max(1,ps.length),cy=ps.reduce((s,a)=>s+a.y,0)/Math.max(1,ps.length);
+ return {x:frame.ball.x*.6+cx*.4,y:frame.ball.y*.35+cy*.35+310*.3};
+}
+function followBox(c:CourtPoint,w:number):string{
+ const h=Math.round(w*600/SCENE.w);
+ return `${Math.max(SCENE.x,Math.min(SCENE.x+SCENE.w-w,c.x-w/2)).toFixed(1)} ${Math.max(0,Math.min(600-h,c.y-h/2+12)).toFixed(1)} ${w} ${h}`;
+}
+/** A camera operator: eases toward the play instead of snapping with every pass (a cut or a new quarter jumps). */
+function useFollowCamera(frame:CourtFrame,on:boolean):string|null{
+ const cur=useRef<CourtPoint|null>(null);
+ if(!on){cur.current=null;return null;}
+ const t=followTarget(frame),c=cur.current;
+ // eslint-disable-next-line react-hooks/refs -- the camera's position carries over from frame to frame by design
+ cur.current=!c||Math.hypot(t.x-c.x,t.y-c.y)>420?t:{x:c.x+(t.x-c.x)*.09,y:c.y+(t.y-c.y)*.07};
+ // eslint-disable-next-line react-hooks/refs
+ return followBox(cur.current,FOLLOW_W);
 }
 export function WatchCourt({frame,home,away,rosters,hotId,labels=true,trail=false,camera='full',ghosts=[],shots=[],bug,crowdFill=1,arena,building,rivalry=false,duos,coaches,refs,crew}:{building?:{name:string;suites:number};frame:CourtFrame;home:Team;away:Team;rosters:PlayerSeason[];hotId?:string;labels?:boolean;trail?:boolean;camera?:CourtCamera;ghosts?:CourtBall[];shots?:CourtShot[];bug?:CourtBug;crowdFill?:number;
  /** The home arena's upgrade levels (business.ts), drawn on the court. */
@@ -405,7 +430,8 @@ export function WatchCourt({frame,home,away,rosters,hotId,labels=true,trail=fals
   if(c&&c.t>0&&c.t<1&&(c.tone==='make'||c.tone==='defense')){const ours=c.tone==='make'?frame.offenseTeamId===teamId:frame.offenseTeamId!==teamId;return ours?'up':'cross';}
   return frame.offenseTeamId===teamId?(Math.floor(frame.ball.x/120)%2?'point':'down'):'cross';};
  const athlete=(a:CourtActor)=>{const homeSide=a.teamId===home.teamId;return <Athlete key={a.id} ballZ={ball.z} hoopX={frame.hoop.x} actor={a} player={rosters.find(p=>p.playerId===a.id)} identity={homeSide?hi:awayKit} ring={homeSide?hi.primary:ai.primary} hot={a.id===hotId} carrier={a.id===frame.carrier} labels={labels&&(a.teamId===frame.offenseTeamId||!frame.offenseTeamId||a.id===frame.carrier)} above={a.teamId!==frame.offenseTeamId&&!!frame.offenseTeamId}/>;};
- return <div className="watch-arena"><svg className="watch-court" viewBox={cameraBox(frame,camera)} role="img" aria-label={`${home.name} home court. ${frame.phase}.`}>
+ const followView=useFollowCamera(frame,camera==='follow');
+ return <div className="watch-arena"><svg className="watch-court" viewBox={followView??cameraBox(frame,camera)} role="img" aria-label={`${home.name} home court. ${frame.phase}.`}>
   <Arena home={home} away={away} identity={hi} awayKit={awayKit} id={id} hype={hype} homeBench={homeBench} awayBench={awayBench} fill={rivalry?1:crowdFill} loud={lv.crowd} mascot={lv.mascot} rivalry={rivalry} building={building}/>
   {lv.lights>0&&<ArenaLights level={lv.lights} identity={hi}/>}
   {lv.scoreboard>0&&<VideoBoard level={lv.scoreboard} identity={hi} bug={bug} hype={hype}/>}

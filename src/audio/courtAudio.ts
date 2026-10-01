@@ -83,6 +83,18 @@ export class CourtAudio {
     g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(.2, now + .03); g.gain.setValueAtTime(.2, now + .95); g.gain.exponentialRampToValueAtTime(.001, now + 1.1);
     o.connect(f).connect(g).connect(this.master!); o.start(now); o.stop(now + 1.12);
   }
+  /** A dunk: the rim rattles, a low thud through the floor, and the building gets loud. */
+  dunk(loud: boolean) {
+    const ctx = this.ctx; if (!this.enabled || !ctx) return;
+    const now = ctx.currentTime, o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(90, now); o.frequency.exponentialRampToValueAtTime(38, now + .28);
+    g.gain.setValueAtTime(.7, now); g.gain.exponentialRampToValueAtTime(.001, now + .32);
+    o.connect(g).connect(this.master!); o.start(now); o.stop(now + .33);
+    this.rim();
+    this.burst(loud ? .7 : .25, 850, 'bandpass', loud ? 2.2 : 1.1, .5, true);
+  }
+  /** A made three: a quick rising crowd pop. */
+  pop(loud: boolean) { this.burst(loud ? .42 : .14, 1100, 'bandpass', loud ? 1.2 : .7, .7, true); }
   /** Home crowd reaction. `loud` for a home basket or stop, soft murmur for the visitors. */
   cheer(loud: boolean) { this.burst(loud ? .5 : .14, loud ? 900 : 600, 'bandpass', loud ? 1.6 : .9, .6, true); }
 

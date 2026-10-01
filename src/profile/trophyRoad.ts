@@ -5,6 +5,8 @@ import { loadWeeklyRecords } from '../retention/weekly';
 import { dailyGoalXp } from './dailyGoals';
 import { localRead, type Read } from '../lib/kv';
 import { AVATAR_TROPHY_ROAD } from './avatar';
+import { readStreak, streakTrophies } from '../retention/streak';
+import { readPass, passTrophies } from '../retention/pass';
 
 /*
  * Trophies and the Trophy Road. Trophies are counted from the same records as XP (GM legacy, careers, League Hunt,
@@ -47,11 +49,13 @@ export function trophyParts(read: Read = localRead): TrophyPart[] {
     { id: 'legend', label: 'Legend Challenges', trophies: legend.reduce((n, r) => n + r.stars, 0) * T.legendStar },
     { id: 'cards', label: 'Card album', trophies: cards * T.card },
     { id: 'owner', label: "Owner's Box", trophies: owners.reduce((n, r) => n + (r.seasons ?? 0) * T.ownerSeason + Math.max(0, r.legacy ?? 0) * T.ownerLegacy, 0) },
+    { id: 'streak', label: 'Daily streak', trophies: streakTrophies(readStreak(read)) },
+    { id: 'pass', label: 'Season Pass', trophies: passTrophies(readPass(read)) },
   ];
 }
 export const totalTrophies = (read: Read = localRead) => trophyParts(read).reduce((n, p) => n + p.trophies, 0);
 
-export type TrophyRewardKind = 'title' | 'color' | 'icon' | 'titleColor' | 'look' | 'avatar' | 'frame' | 'floor';
+export type TrophyRewardKind = 'title' | 'color' | 'icon' | 'titleColor' | 'look' | 'avatar' | 'frame' | 'floor' | 'avatarFrame';
 /** One or two rewards every 5,000 trophies. The last stops are the rarest things in the game. */
 export const TROPHY_ROAD: [number, TrophyRewardKind, string][] = [
   [5_000, 'title', 'Contender'], [5_000, 'titleColor', 'amber'],
@@ -116,6 +120,8 @@ TROPHY_ROAD.push(
 );
 // Your character's pieces ride the same road (ids are "category:piece"; see AVATAR_TROPHY_ROAD in avatar.ts).
 for (const [t, cat, id] of AVATAR_TROPHY_ROAD) TROPHY_ROAD.push([t, 'avatar', `${cat}:${id}`]);
+// Profile-picture frames (avatarFrames.ts).
+TROPHY_ROAD.push([75_000, 'avatarFrame', 'blaze'], [250_000, 'avatarFrame', 'dragon'], [600_000, 'avatarFrame', 'celestial']);
 TROPHY_ROAD.sort((a, b) => a[0] - b[0]);
 export const trophyNeed = (kind: TrophyRewardKind, id: string) => TROPHY_ROAD.find(([, k, i]) => k === kind && i === id)?.[0];
 export const TROPHY_TITLES = TROPHY_ROAD.filter(([, k]) => k === 'title').map(([t, , id]) => ({ id, trophies: t }));

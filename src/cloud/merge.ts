@@ -6,16 +6,19 @@
  */
 
 import type { GmLegacy } from '../storage/gmLegacy';
-import type { HuntRecords } from '../hunt/storage';
+import { huntScore, type HuntRecords } from '../hunt/storage';
 import type { RebuildRecord } from '../simulation/rebuildChallenge';
 import type { WeeklyRecords } from '../retention/weekly';
 import { readFeats, mergeFeats } from '../profile/feats';
+import { avatarSavedAt } from '../profile/avatar';
+import { readStreak, mergeStreak } from '../retention/streak';
+import { readPass, mergePass } from '../retention/pass';
 
 /** The stored values that belong to the account (everything else is per device). */
 export const SYNC_KEYS = [
   'courtvision:gmLegacy', 'cv-hunt-records', 'cv-hunt-album', 'cv-rebuild-records', 'cv-rebuild-records-done',
   'cv-weekly-records', 'cv-daily-history', 'cv-profile-equip', 'cv-code-results', 'cv-feats',
-  'cv-legend-records', 'cv-card-album', 'cv-card-sets',
+  'cv-legend-records', 'cv-card-album', 'cv-card-sets', 'cv-avatar', 'cv-streak', 'cv-pass',
 ] as const;
 export type SyncKey = typeof SYNC_KEYS[number];
 
@@ -35,7 +38,9 @@ function mergeLegacy(a: GmLegacy, b: GmLegacy): GmLegacy {
 function mergeHunt(a: HuntRecords, b: HuntRecords): HuntRecords {
   const daily = { ...(b.daily ?? {}) };
   for (const [d, r] of Object.entries(a.daily ?? {})) { const o = daily[d]; if (!o || (r.won && !o.won) || (r.won === o.won && r.stop > o.stop)) daily[d] = r; }
-  return { runs: max(a.runs, b.runs), wins: max(a.wins, b.wins), bestStop: max(a.bestStop, b.bestStop), ...(a.lastSeed != null ? { lastSeed: a.lastSeed } : b.lastSeed != null ? { lastSeed: b.lastSeed } : {}), daily };
+  const weekly = { ...(b.weekly ?? {}) };
+  for (const [w, r] of Object.entries(a.weekly ?? {})) { const o = weekly[w]; weekly[w] = !o ? r : { ...(huntScore(r) > huntScore(o) ? r : o), tries: max(r.tries, o.tries) }; }
+  return { runs: max(a.runs, b.runs), wins: max(a.wins, b.wins), bestStop: max(a.bestStop, b.bestStop), ...(a.lastSeed != null ? { lastSeed: a.lastSeed } : b.lastSeed != null ? { lastSeed: b.lastSeed } : {}), daily, ...(Object.keys(weekly).length ? { weekly } : {}) };
 }
 
 function mergeRebuild(a: Record<string, RebuildRecord>, b: Record<string, RebuildRecord>): Record<string, RebuildRecord> {
@@ -87,6 +92,10 @@ export function mergeValue(key: SyncKey, local: string | null | undefined, cloud
     case 'cv-code-results': return JSON.stringify(mergeCodes(parse(local, {}), parse(cloud, {})));
     case 'cv-feats': return JSON.stringify(mergeFeats(readFeats(() => local), readFeats(() => cloud)));
     case 'cv-profile-equip': return local;
+    // Your character: the one changed most recently (a random first character never beats a chosen one).
+    case 'cv-avatar': return avatarSavedAt(cloud) > avatarSavedAt(local) ? cloud : local;
+    case 'cv-streak': return JSON.stringify(mergeStreak(readStreak(() => local), readStreak(() => cloud)));
+    case 'cv-pass': return JSON.stringify(mergePass(readPass(() => local), readPass(() => cloud)));
     case 'cv-legend-records': {
       // Best score and stars per Legend Challenge; attempts from whichever device played more.
       type Rec = { best: number; stars: number; attempts: number };

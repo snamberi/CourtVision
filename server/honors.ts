@@ -9,7 +9,7 @@ import { seasonOf } from '../src/cloud/ranked';
  * (src/profile/cosmetics.ts). A board needs a real field before it hands out honors, so an empty league can't.
  */
 
-const MIN_FIELD = { gm: 10, weekly: 3, daily: 3, pvp: 20, ranked: 20 };
+const MIN_FIELD = { gm: 10, weekly: 3, daily: 3, pvp: 20, ranked: 20, podium: 5, weeklyHunt: 5 };
 const enc = encodeURIComponent;
 
 export async function computeHonors(env: SupaEnv, userId: string, d: Derived, now: Date, previous: string[], f: Fetch = fetch): Promise<string[]> {
@@ -39,6 +39,22 @@ export async function computeHonors(env: SupaEnv, userId: string, d: Derived, no
   if (mine > 0) {
     const q = `lb_ranked?select=user_id&season=eq.${enc(season)}&${others}`;
     if ((await count(env, q, f)) + 1 >= MIN_FIELD.ranked && (await count(env, `${q}&points=gt.${mine}`, f)) < 10) honors.add('ranked-10');
+  }
+  // The ranked season that just ended: #1, #2 or #3 of a real field.
+  const lastSeason = seasonOf(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 0)).toISOString().slice(0, 10));
+  const last = d.ranked.filter(r => r.season === lastSeason).reduce((n, r) => n + r.points, 0);
+  if (last > 0) {
+    const q = `lb_ranked?select=user_id&season=eq.${enc(lastSeason)}&${others}`;
+    if ((await count(env, q, f)) + 1 >= MIN_FIELD.podium) {
+      const place = (await count(env, `${q}&points=gt.${last}`, f)) + 1;
+      if (place <= 3) honors.add(`ranked-${place}`);
+    }
+  }
+  // Weekly Hunts that are over: the top 10% of a real field.
+  for (const w of d.weekly.filter(x => x.board === 'hunt' && x.week < thisWeek).slice(-4)) {
+    const q = `weekly_scores?select=user_id&board=eq.hunt&week=eq.${enc(w.week)}&${others}`;
+    const field = (await count(env, q, f)) + 1;
+    if (field >= MIN_FIELD.weeklyHunt && (await count(env, `${q}&score=gt.${w.score}`, f)) + 1 <= Math.max(1, Math.ceil(field * 0.1))) honors.add('hunt-week-10');
   }
   return [...honors].sort();
 }

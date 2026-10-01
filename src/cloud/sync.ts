@@ -8,6 +8,7 @@ import { LEGACY_EVENT } from '../storage/gmLegacy';
 import { PROFILE_EVENT, equipped } from '../profile/profile';
 import { updateProfile } from './account';
 import { DAILY_EVENT } from '../profile/dailyGoals';
+import { AVATAR_EVENT } from '../profile/avatar';
 
 /*
  * Cloud sync: pull the account's progress, merge it with this device's (merge.ts keeps the best of both), write the
@@ -34,7 +35,7 @@ function writeLocal(storage: Record<string, string>) {
   for (const [k, v] of Object.entries(storage)) {
     try { if (localStorage.getItem(k) !== v) { localStorage.setItem(k, v); changed = true; } } catch { /* storage blocked */ }
   }
-  if (changed) for (const e of [LEGACY_EVENT, PROFILE_EVENT, DAILY_EVENT, PROGRESS_EVENT]) window.dispatchEvent(new Event(e));
+  if (changed) for (const e of [LEGACY_EVENT, PROFILE_EVENT, DAILY_EVENT, PROGRESS_EVENT, AVATAR_EVENT]) window.dispatchEvent(new Event(e));
 }
 
 /** Retired careers travel with the account (careers still being played stay on their device with their league). */
@@ -110,7 +111,7 @@ export function startSync(): void {
   if (started || typeof window === 'undefined') return;
   started = true;
   window.addEventListener(SIGNED_IN_EVENT, () => { lastPushed = ''; void syncNow(); });
-  for (const e of [LEGACY_EVENT, DAILY_EVENT, PROFILE_EVENT, PROGRESS_EVENT]) window.addEventListener(e, () => syncSoon());
+  for (const e of [LEGACY_EVENT, DAILY_EVENT, PROFILE_EVENT, PROGRESS_EVENT, AVATAR_EVENT]) window.addEventListener(e, () => syncSoon());
   // The title and frame you equip show on your public profile too.
   window.addEventListener(PROFILE_EVENT, () => {
     const p = getAccount().profile;

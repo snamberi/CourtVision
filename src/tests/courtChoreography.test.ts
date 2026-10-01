@@ -60,4 +60,29 @@ describe('court choreography', () => {
     const pnr = log.findIndex((e, i) => i > 0 && courtFrame(e, .4, 'H', 'A', 4, log[i - 1]).phase === 'Pick and roll');
     expect(courtFrame(log[pnr], .39, 'H', 'A', 4, log[pnr - 1]).players.some(a => a.pose === 'screen')).toBe(true);
   });
+
+  it('a dead ball waits on the floor until the inbounder walks over and picks it up', () => {
+    const i = log.findIndex((e, k) => k > 0 && e.quarter === log[k - 1].quarter && e.offenseTeamId !== log[k - 1].offenseTeamId && log[k - 1].result === 'MAKE' && !e.secondChance);
+    const fs = frames(i, 200);
+    const start = fs[0].ball;
+    // The ball does not move by itself before someone has it.
+    const firstHeld = fs.findIndex(f => f.carrier);
+    expect(firstHeld).toBeGreaterThan(0);
+    for (const f of fs.slice(0, firstHeld)) expect(Math.hypot(f.ball.x - start.x, f.ball.y - start.y)).toBeLessThan(2);
+    // And when it's picked up, the man is right there.
+    const holder = fs[firstHeld].players.find(p => p.id === fs[firstHeld].carrier)!;
+    expect(Math.hypot(holder.x - start.x, holder.y - start.y)).toBeLessThan(30);
+  });
+
+  it('a rebound is caught where the ball comes down: the rebounder goes to it', () => {
+    let checked = 0;
+    for (let i = 1; i < log.length && checked < 8; i++) {
+      const f = courtFrame(log[i], .9, 'H', 'A', 4, log[i - 1]);
+      if (f.phase !== 'Rebound' || !f.carrier) continue;
+      const r = f.players.find(p => p.id === f.carrier)!;
+      expect(Math.hypot(r.x - f.ball.x, r.y - f.ball.y)).toBeLessThan(25);
+      checked++;
+    }
+    expect(checked).toBeGreaterThan(0);
+  });
 });

@@ -23,15 +23,16 @@ import { DAILY_EVENT } from '../../profile/dailyGoals';
 import { ModeAchievements } from './ModeAchievements';
 import { LevelRoad } from './LevelRoad';
 import { TrophyRoad } from './TrophyRoad';
+import { SeasonPass } from './SeasonPass';
 import { PassesPanel } from './PassesPanel';
 import { passesOnSale } from '../../billing/billing';
 import '../hunt/hunt.css';
 import '../career/career.css';
 import './locker.css';
 
-export type ProfileTab = 'profile' | 'character' | 'road' | 'trophyroad' | 'trophies' | 'achievements' | 'passes';
+export type ProfileTab = 'profile' | 'character' | 'season' | 'road' | 'trophyroad' | 'trophies' | 'achievements' | 'passes';
 const TABS: { id: ProfileTab; label: string }[] = ([
-  { id: 'profile', label: 'Profile' }, { id: 'character', label: 'Your character' }, { id: 'road', label: 'Level road' }, { id: 'trophyroad', label: 'Trophy road' }, { id: 'trophies', label: 'Trophy room' },
+  { id: 'profile', label: 'Profile' }, { id: 'character', label: 'Your character' }, { id: 'season', label: 'Season pass' }, { id: 'road', label: 'Level road' }, { id: 'trophyroad', label: 'Trophy road' }, { id: 'trophies', label: 'Trophy room' },
   { id: 'achievements', label: 'Achievements' }, { id: 'passes', label: 'Passes' },
 // The Passes tab appears only once checkout links are configured (docs/BILLING_SETUP.md).
 ] satisfies { id: ProfileTab; label: string }[]).filter(t => t.id !== 'passes' || passesOnSale());
@@ -81,6 +82,7 @@ export function ProfileHub({ onExit, initialTab = 'profile' }: { onExit: () => v
 
     {tab === 'profile' && <><LegacyPanel legacy={legacy} compact /><FavoritesPanel /><ProfilePanel /></>}
     {tab === 'character' && <AvatarEditor />}
+    {tab === 'season' && <SeasonPass />}
     {tab === 'road' && <LevelRoad />}
     {tab === 'trophyroad' && <TrophyRoad />}
     {tab === 'passes' && <PassesPanel />}
