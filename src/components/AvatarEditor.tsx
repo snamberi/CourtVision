@@ -1,5 +1,5 @@
 import { useState, type CSSProperties } from 'react';
-import { AVATAR_CATEGORIES, SOVEREIGN_LOOK, isOwnerPiece, saveAvatar, randomAvatar, avatarHow, avatarItem, outfitDef, type AvatarCategory, type AvatarItem, type AvatarLook } from '../profile/avatar';
+import { AVATAR_CATEGORIES, SOVEREIGN_LOOK, SOVEREIGN_GOLD_LOOK, isOwnerPiece, saveAvatar, randomAvatar, avatarHow, avatarItem, outfitDef, type AvatarCategory, type AvatarItem, type AvatarLook } from '../profile/avatar';
 import { unlockContext, isOpen } from '../profile/cosmetics';
 import { totalXp, levelFor } from '../profile/profile';
 import { readAvatarPresets, writeAvatarPresets } from '../profile/avatarPresets';
@@ -85,6 +85,7 @@ export function AvatarEditor() {
         {preview && <div className="studio-tryon" role="status"><PixelIcon name="lock" size={16} /><span>Unlock at {avatarHow(preview.item).toLowerCase()}.</span><button type="button" onClick={() => setPreview(null)}>Close preview</button></div>}
         <div className="studio-actions"><button type="button" className="primary" onClick={() => commit(randomAvatar(Math.random, (_c, i) => open(i)), 'New look equipped.')}><PixelIcon name="shuffle" size={16} /> Shuffle look</button>
           {ctx.staff && <button type="button" className="studio-sovereign" onClick={() => commit({ ...SOVEREIGN_LOOK }, 'The Sovereign: blue crown, black wings, cosmic blue fire.')}><PixelIcon name="star" size={16} /> Wear the Sovereign</button>}
+          {ctx.staff && <button type="button" className="studio-sovereign" onClick={() => commit({ ...SOVEREIGN_GOLD_LOOK }, 'The Gold Sovereign: gold robe and golden cape.')}><PixelIcon name="star" size={16} /> Wear the Gold Sovereign</button>}
           <button type="button" disabled={!history.length} onClick={() => { const last = history.at(-1); if (last) { saveAvatar(last); setHistory(h => h.slice(0, -1)); setPreview(null); setStatus('Last change undone.'); } }}>Undo</button></div>
         <div className="studio-equipped"><span className="studio-label">ON YOUR CHARACTER</span><div>{(['outfit', 'hair', 'hat', 'shoes', 'aura'] as AvatarCategory[]).map(c => <button type="button" key={c} onClick={() => changeCategory(c)}><PixelIcon name={ICONS[c]} size={14} /><span>{avatarItem(c, look[c])?.name}</span></button>)}</div></div>
         <div className="studio-save-looks"><div className="studio-section-title"><h3>Saved looks</h3><small>3 slots</small></div>

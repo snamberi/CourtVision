@@ -201,7 +201,7 @@ function drawOutfit(r: Rect, o: Outfit, team: { primary: string; secondary: stri
       r(9, 24, 6, 3, trim.c); r(25, 24, 6, 3, trim.c); r(9, 24, 6, 1, trim.l); r(25, 26, 6, 1, trim.d);
       r(15, 24, 10, 2, trim.c); r(16, 25, 8, 1, trim.d);
       for (let i = 0; i < 11; i++) r(14 + i, 27 + i, 2, 1, trim.c);
-      r(11, 37, 18, 2, trim.c); r(11, 38, 18, 1, trim.d); r(19, 36, 3, 3, '#6fd3ff'); r(19, 36, 1, 1, WHITE);
+      r(11, 37, 18, 2, trim.c); r(11, 38, 18, 1, trim.d); r(19, 36, 3, 3, '#6fd3ff'); r(19, 36, 1, 1, '#9fe7ff');
       r(11, 44, 18, 1, trim.c); r(7, 31, 3, 1, trim.c); r(30, 31, 3, 1, trim.c); r(18, 39, 4, 6, '#0e1a5a'); return;
     case 'royal':
       torso(r, main); longSleeves(r, main); pants(r, main); coatSkirt(r, main, main.d);
@@ -397,6 +397,14 @@ function drawBack(grid: SpriteGrid, id: string) {
         if (i % 3 === 0) back(x, top, 1, 1, '#3a4258');
       }
       return;
+    case 'sovereignCape':
+      // The Sovereign's golden cape, edged in blue, widening to the floor.
+      for (let y = 24; y < 50; y++) {
+        const s = Math.floor((y - 24) / 4), x0 = 9 - s, w = 22 + s * 2;
+        back(x0, y, 1, 1, '#1f4fd9'); back(x0 + w - 1, y, 1, 1, '#1f4fd9');
+        for (let x = x0 + 1; x < x0 + w - 1; x++) back(x, y, 1, 1, (x + y) % 7 === 0 ? '#ffe08a' : (y + s) % 6 === 0 ? '#c9971f' : '#ffd166');
+      }
+      return;
     case 'angelWings': for (const [x0, dir] of [[9, -1], [30, 1]] as const) for (let i = 0; i < 9; i++) { const x = dir < 0 ? x0 - i : x0 + i; back(x, 20 + Math.floor(i / 2), 1, 16 - i, i % 3 === 2 ? '#dfe6f0' : '#f8fbff'); } return;
     case 'batWings': for (const [x0, dir] of [[9, -1], [30, 1]] as const) for (let i = 0; i < 9; i++) { const x = dir < 0 ? x0 - i : x0 + i; back(x, 20 + i, 1, 10 - (i % 3) * 2, i % 3 === 0 ? '#3b1d5a' : '#5a2d82'); } return;
     case 'jetpack': back(7, 26, 5, 12, '#8a93a3'); back(28, 26, 5, 12, '#8a93a3'); back(8, 26, 3, 1, '#c9d1dc'); back(29, 26, 3, 1, '#c9d1dc'); back(8, 38, 3, 3, '#ff9d3d'); back(29, 38, 3, 3, '#ff9d3d'); back(9, 41, 1, 2, '#ffd166'); back(30, 41, 1, 2, '#ffd166'); return;
@@ -507,13 +515,6 @@ export function buildAvatarGrid({ look, team }: AvatarOptions): { grid: SpriteGr
   else drawCustomHat(r, look.hat, hairBase);
   drawEyes(r, look.eyes);
   drawNeck(r, look.neck);
-  // The Sovereign robe's golden cape, lined in blue, drawn before wings so it shows below them.
-  if (o.kind === 'sovereign') {
-    for (let y = 24; y < 50; y++) {
-      const s = Math.floor((y - 24) / 4), w = 22 + s * 2, x0 = 9 - s;
-      for (let x = x0; x < x0 + w; x++) if (y >= 0 && y < grid.length && x >= 0 && x < grid[0].length && !grid[y][x]) grid[y][x] = x === x0 || x === x0 + w - 1 ? '#1f4fd9' : (x + y) % 7 === 0 ? '#ffe08a' : (y + s) % 6 === 0 ? '#c9971f' : '#ffd166';
-    }
-  }
   drawBack(grid, look.neck);
 
   // Rainbow skin and hair: every shade of the stand-in colour takes the rainbow at that spot, keeping its shading.
