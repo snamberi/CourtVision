@@ -1,4 +1,4 @@
-import { derive, sanitizeBlob } from './derive';
+import { derive, sanitizeBlob, publicAvatar } from './derive';
 import { mergeStorage, mergeCareers } from '../src/cloud/merge';
 import { computeHonors, pvpHonor } from './honors';
 import { getUser, rest, upsert, deleteUser, json, bearer, type SupaEnv, type Fetch } from './supabase';
@@ -48,6 +48,9 @@ export async function handleSync(req: Request, env: SupaEnv | null, now = new Da
       const ghost = ((await rest(env, 'GET', `hunt_ghosts?${eq}&select=rating`, undefined, undefined, f)) as { rating: number }[] | null)?.[0];
       if (ghost && !honors.includes('pvp-10') && await pvpHonor(env, id, ghost.rating, f)) honors = [...honors, 'pvp-10'].sort();
     } catch { /* keep the honors already earned */ }
+    // Your character on the boards (a database without the avatar column yet just skips it).
+    const avatar = publicAvatar(blob, d.profile.level, honors);
+    if (avatar) await rest(env, 'PATCH', `profiles?id=eq.${id}`, { avatar }, 'return=minimal', f).catch(() => null);
     await Promise.all([
       rest(env, 'PATCH', `profiles?id=eq.${id}`, { level: d.profile.level, xp: d.profile.xp, stats: { ...d.profile.stats, honors }, updated_at: now.toISOString() }, 'return=minimal', f),
       rest(env, 'DELETE', `user_achievements?${eq}`, undefined, 'return=minimal', f).then(() => upsert(env, 'user_achievements', own(d.achievements.map(a => ({ achievement_id: a }))), 'user_id,achievement_id', f)),
@@ -58,7 +61,7 @@ export async function handleSync(req: Request, env: SupaEnv | null, now = new Da
       upsert(env, 'code_results', own(d.codes.map(c => ({ ...c, updated_at: now.toISOString() }))), 'code,user_id', f),
       upsert(env, 'ranked_events', own(d.ranked), 'user_id,event', f),
     ]);
-    return json({ ok: true, level: d.profile.level, xp: d.profile.xp, honors });
+    return json({ ok: true, level: d.profile.level, xp: d.profile.xp, honors, avatar });
   } catch {
     return json({ error: 'Cloud sync is having trouble. Your progress is safe on this device; it will sync later.' }, 502);
   }

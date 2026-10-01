@@ -5,13 +5,13 @@ import { supa, getAccount } from './account';
  * the top rows and, when signed in, your own rank on that board.
  */
 
-export interface BoardRow { rank: number; userId: string; username: string; title?: string; icon?: string; color?: string; score: number; detail: string; you: boolean; extra?: Record<string, unknown> }
+export interface BoardRow { rank: number; userId: string; username: string; title?: string; icon?: string; color?: string; /** Their character's look code. */ avatar?: string; score: number; detail: string; you: boolean; extra?: Record<string, unknown> }
 export interface BoardResult { rows: BoardRow[]; total: number; you: { rank: number; score: number } | null }
 
 export type BoardSpec =
   | { kind: 'gms' }
   | { kind: 'players'; week?: string | null }
-  | { kind: 'weekly'; board: 'rebuild' | 'career'; week: string }
+  | { kind: 'weekly'; board: 'rebuild' | 'career' | 'hunt'; week: string }
   | { kind: 'daily'; day: string }
   | { kind: 'rebuild'; scenario: string }
   | { kind: 'ranked'; season: string }
@@ -53,7 +53,7 @@ export async function loadBoard(spec: BoardSpec, limit = 100): Promise<BoardResu
   const { data, count, error } = await sel.order(q.score, { ascending: false }).limit(limit);
   if (error) throw new Error(error.message);
   const rows = ((data ?? []) as Record<string, unknown>[]).map((r, i) => ({
-    rank: i + 1, userId: String(r[idCol]), username: String(r.username ?? ''), title: r.title as string | undefined, icon: r.icon as string | undefined, color: r.color as string | undefined, score: Number(r[q.score]), detail: q.detail(r), you: r[idCol] === me, extra: r,
+    rank: i + 1, userId: String(r[idCol]), username: String(r.username ?? ''), title: r.title as string | undefined, icon: r.icon as string | undefined, color: r.color as string | undefined, avatar: r.avatar as string | undefined, score: Number(r[q.score]), detail: q.detail(r), you: r[idCol] === me, extra: r,
   }));
   let you: BoardResult['you'] = null;
   if (me) {
@@ -85,15 +85,15 @@ export async function loadProfile(username: string) {
     client.from('created_players').select('*').eq('user_id', id).order('legacy', { ascending: false }).limit(10),
     client.from('user_achievements').select('achievement_id').eq('user_id', id),
     client.from('rebuild_records').select('*').eq('user_id', id),
-    client.from('hunt_ghosts').select('rating, wins, losses').eq('user_id', id).maybeSingle(),
+    client.from('hunt_ghosts').select('rating, wins, losses, squad').eq('user_id', id).maybeSingle(),
     client.from('follows').select('*', { count: 'exact', head: true }).eq('target_id', id),
     getAccount().userId ? client.from('follows').select('target_id').eq('user_id', getAccount().userId!).eq('target_id', id) : Promise.resolve({ data: [] }),
   ]);
   return {
-    profile: p as { id: string; username: string; title: string; frame: string; icon?: string; color?: string; level: number; xp: number; stats: Record<string, unknown> },
+    profile: p as { id: string; username: string; title: string; frame: string; icon?: string; color?: string; avatar?: string; level: number; xp: number; stats: Record<string, unknown> },
     players: (players.data ?? []) as Record<string, unknown>[], achievements: ((ach.data ?? []) as { achievement_id: string }[]).map(a => a.achievement_id),
     rebuild: (rebuild.data ?? []) as { scenario: string; best: number; stars: number; title_in: number | null }[],
-    pvp: ghost.data as { rating: number; wins: number; losses: number } | null, followers: followers.count ?? 0, following: ((following.data ?? []) as unknown[]).length > 0,
+    pvp: ghost.data as { rating: number; wins: number; losses: number; squad?: unknown } | null, followers: followers.count ?? 0, following: ((following.data ?? []) as unknown[]).length > 0,
   };
 }
 
@@ -116,7 +116,7 @@ export async function report(targetId: string, reason: string): Promise<void> {
 export async function searchUsers(prefix: string) {
   const client = await supa();
   const { data } = await client.from('lb_users').select('*').ilike('username', `${prefix.replace(/[%_]/g, '')}%`).order('xp', { ascending: false }).limit(10);
-  return (data ?? []) as { id: string; username: string; title: string; level: number; icon?: string; color?: string }[];
+  return (data ?? []) as { id: string; username: string; title: string; level: number; icon?: string; color?: string; avatar?: string }[];
 }
 
 export async function achievementRarity(): Promise<Record<string, number>> {

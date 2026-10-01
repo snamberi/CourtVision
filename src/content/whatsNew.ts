@@ -6,6 +6,19 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2026-12-09',
+    title: 'Profile frames, the Weekly Hunt, a Season Pass and your character online',
+    items: [
+      "**Profile-picture frames:** nine ornate frames around your character's portrait. Finish a ranked season **#1, #2 or #3** for the gold, silver and bronze winged frames; six more are on the Level Road and the Trophy Road. Pick one on Profile.",
+      "**Your character online:** your character (and frame) now travels with your account and stands next to your name on every leaderboard, with the top three on the podium.",
+      "**Public profile showcase:** your character, best League Hunt, ranked tier, PvP rating and rarest achievements, plus a **Challenge to a 1v1** button for a friendly match against their hunt team.",
+      "**The Weekly Hunt:** one hunt for everyone all week, as many tries as you like. The top 10% when the week ends win the Weekly Hunter title and the hunter's flame aura.",
+      "**Season Pass (free) and daily streak:** every XP you earn this month fills a 30-tier pass of trophies and titles; come back each day to build a streak.",
+      "**Previews:** see any court floor and share-card frame before you equip it (click a locked one to try it).",
+      "**TikTok clips and more sound:** make a vertical 9:16 highlight clip with a caption; slams now shake the arena with a dunk sound, and threes get a crowd pop.",
+    ],
+  },
+  {
     id: '2026-12-02',
     title: 'A new League Hunt base, anime gear, detailed coaches and new rewards',
     items: [

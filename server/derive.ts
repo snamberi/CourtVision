@@ -4,7 +4,7 @@ import { xpParts, totalXp, levelFor, careerCacheOf, type CareerXpCache } from '.
 import { earnedModeAchievements } from '../src/profile/modeAchievements';
 import { TIERS } from '../src/cloud/ranked';
 import { readLegacy, legacyTotals } from '../src/storage/gmLegacy';
-import { loadRecords } from '../src/hunt/storage';
+import { loadRecords, huntScore } from '../src/hunt/storage';
 import { loadRebuildRecords } from '../src/simulation/rebuildChallenge';
 import { SCENARIOS, scoreResults, FINISH_POINTS, type ScoredSeason } from '../src/simulation/rebuildScenarios';
 import { loadWeeklyRecords, weeklyRebuild } from '../src/retention/weekly';
@@ -14,6 +14,9 @@ import { SYNC_KEYS, type ProgressBlob, type CodeResult } from '../src/cloud/merg
 import { seasonOf, dailyLegendPoints, weeklyRebuildPoints, weeklyCareerPoints, dailyGoalPoints, tierFor } from '../src/cloud/ranked';
 import type { CareerMeta } from '../src/career/career';
 import { careerResume } from '../src/career/career';
+import { AVATAR_CATEGORIES, DEFAULT_AVATAR, cleanAvatar, type AvatarLook } from '../src/profile/avatar';
+import { avatarFrameDef } from '../src/profile/avatarFrames';
+import { encodeAvatar } from '../src/profile/avatarCode';
 
 /*
  * Turns a player's synced progress into their public rows: profile level and stats, achievements, created players,
@@ -25,7 +28,7 @@ export interface Derived {
   profile: { level: number; xp: number; stats: Record<string, unknown> };
   achievements: string[];
   players: Record<string, unknown>[];
-  weekly: { board: 'rebuild' | 'career'; week: string; score: number; detail: string }[];
+  weekly: { board: 'rebuild' | 'career' | 'hunt'; week: string; score: number; detail: string }[];
   daily: { day: string; won: boolean; stop: number; wins: number; losses: number; score: number }[];
   rebuild: { scenario: string; best: number; stars: number; title_in: number | null }[];
   codes: { code: string; team: string | null; wins: number; losses: number; finish: string; score: number }[];
@@ -97,8 +100,13 @@ export function derive(blob: ProgressBlob, now = new Date()): Derived {
     }
   }
 
-  // Daily Legend.
+  // Daily Legend and the Weekly Hunt.
   const hunt = loadRecords(read);
+  for (const [week, w] of Object.entries(hunt.weekly ?? {})) {
+    if (!/^\d{4}-W\d{2}$/.test(week) || week < FIRST_WEEK || week > thisWeek || !w || !int(w.stop, 0, 10) || !int(w.wins, 0, 70) || !int(w.losses, 0, 70)) continue;
+    const won = !!w.won && w.wins >= 40;
+    weekly.push({ board: 'hunt', week, score: huntScore({ ...w, won }), detail: won ? `Beat the boss · ${w.wins}-${w.losses} in games` : `Reached series ${w.stop + 1} · ${w.wins}-${w.losses}` });
+  }
   const daily: Derived['daily'] = [];
   for (const [day, d] of Object.entries(hunt.daily ?? {})) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || day < FIRST_DAY || day > today || !d || !int(d.stop, 0, 10) || !int(d.wins, 0, 40) || !int(d.losses, 0, 40)) continue;
@@ -141,7 +149,7 @@ export function derive(blob: ProgressBlob, now = new Date()): Derived {
   const stats = {
     ranked: bySeason, rankedBest: tierFor(rankedBest).tier.id,
     seasons: gm.seasons, wins: gm.wins, titles: gm.titles, achievements: gm.achievements,
-    huntRuns: hunt.runs, huntWins: hunt.wins, dailyWins: daily.filter(d => d.won).length,
+    huntRuns: hunt.runs, huntWins: hunt.wins, huntBest: int(hunt.bestStop, 0, 10) ? hunt.bestStop : 0, dailyWins: daily.filter(d => d.won).length,
     rebuildStars: rebuild.reduce((n, r) => n + r.stars, 0), rebuildTitles: rebuild.filter(r => r.title_in != null).length,
     careers: players.length, hallOfFame: hof, bestPlayer: best, xpParts: Object.fromEntries(parts.map(p => [p.id, p.xp])),
     summary: `${plural(gm.titles, 'title')} · ${plural(hof, 'Hall of Famer')} · ${plural(hunt.wins, 'hunt')} won`,
@@ -150,4 +158,25 @@ export function derive(blob: ProgressBlob, now = new Date()): Derived {
   const modes = earnedModeAchievements(readWithCareers, { rankedTier: TIERS.findIndex(t => t.id === stats.rankedBest) }).map(id => `mode-${id}`);
   return { profile: { level: levelFor(xp).level, xp, stats: { ...stats, modeAchievements: modes.length } }, achievements: [...Object.keys(legacy.achievements).filter(a => /^[\w-]{1,40}$/.test(a)).slice(0, 200), ...modes],
     players, weekly, daily, rebuild, codes, ranked };
+}
+
+/**
+ * Your character for the boards, as a look code (src/profile/avatarCode.ts). Pieces and frames won on the
+ * leaderboards need the honor, and level pieces the level; anything else that isn't earned falls back to the default.
+ */
+export function publicAvatar(blob: ProgressBlob, level: number, honors: string[]): string | null {
+  const read = objectRead(blob.storage);
+  const raw = read('cv-avatar');
+  if (!raw) return null;
+  let look: AvatarLook;
+  try { look = cleanAvatar(JSON.parse(raw) as Partial<AvatarLook>); } catch { return null; }
+  for (const c of AVATAR_CATEGORIES) {
+    const r = c.items.find(i => i.id === look[c.id])?.rule;
+    if (r && (('honor' in r && !honors.includes(r.honor)) || ('level' in r && r.level > level))) look = { ...look, [c.id]: DEFAULT_AVATAR[c.id] };
+  }
+  let frame: string | undefined;
+  try { frame = (JSON.parse(read('cv-profile-equip') ?? '{}') as { avatarFrame?: string }).avatarFrame; } catch { /* none */ }
+  const f = avatarFrameDef(frame);
+  const ok = f.honors ? f.honors.some(h => honors.includes(h)) : f.level != null ? level >= f.level : true;
+  return encodeAvatar(look, ok ? f.id : 'none');
 }

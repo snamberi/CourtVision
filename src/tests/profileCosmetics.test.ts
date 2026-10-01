@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
+import { AVATAR_FRAMES } from '../profile/avatarFrames';
 import { avatarItem, type AvatarCategory } from '../profile/avatar';
 import { ICONS, SPRITES, PALETTE, NAME_COLORS, HONORS, MODE_TITLES, LEVEL_ROAD, ROAD_LOOK_NAMES, ENTITLEMENTS_KEY, isOpen, unlockContext, earnedExtraTitles, noteHonors, readHonors } from '../profile/cosmetics';
 import { equipped, equip, levelFor, levelCost, MAX_LEVEL, FRAMES, FLOORS, TITLES, unlocksBetween } from '../profile/profile';
@@ -26,6 +27,7 @@ describe('profile cosmetics', () => {
     for (const [lv, kind, id] of LEVEL_ROAD) {
       expect(lv % 5, `${kind} ${id}`).toBe(0);
       if (kind === 'look') { expect(ROAD_LOOK_NAMES[id], id).toBeTruthy(); continue; } // checked against the themes in themes.test
+      if (kind === 'avatarFrame') { expect(AVATAR_FRAMES.find(f => f.id === id)?.level, id).toBe(lv); continue; }
       if (kind === 'avatar') { const [cat, piece] = id.split(':'); expect(avatarItem(cat as AvatarCategory, piece)?.rule, id).toEqual({ level: lv }); continue; }
       const list = kind === 'icon' ? ICONS : kind === 'color' ? NAME_COLORS : kind === 'frame' ? FRAMES : kind === 'floor' ? FLOORS : TITLES;
       const hit = list.find(x => x.id === id) as { rule?: { level?: number }; level?: number } | undefined;
@@ -106,5 +108,22 @@ describe('leaderboard honors on the server', () => {
     const f = counts([['score=gt', 0], ['weekly_scores', 8], ['lb_users', 2]]);
     expect(await computeHonors(env, 'me', derived({ weekly }), now, [], f)).toEqual(['weekly-1']);
     expect(await computeHonors(env, 'me', derived({ weekly: [weekly[1]] }), now, [], f)).toEqual([]);
+  });
+
+  it('a ranked season that ended: #1, #2 or #3 of a real field earns a podium honor (and its frame)', async () => {
+    const now = new Date('2026-10-05T12:00:00Z');
+    const ranked = [{ event: 'dl:2026-09-20', season: '2026-09', points: 300 }];
+    expect(await computeHonors(env, 'me', derived({ ranked }), now, [], counts([['points=gt', 1], ['lb_ranked', 12], ['lb_users', 2]]))).toEqual(['ranked-2']);
+    expect(await computeHonors(env, 'me', derived({ ranked }), now, [], counts([['points=gt', 3], ['lb_ranked', 12], ['lb_users', 2]]))).toEqual([]);
+    // Too few played that season.
+    expect(await computeHonors(env, 'me', derived({ ranked }), now, [], counts([['points=gt', 0], ['lb_ranked', 2], ['lb_users', 2]]))).toEqual([]);
+  });
+
+  it('the top 10% of a finished Weekly Hunt earn Weekly Hunter', async () => {
+    const now = new Date('2026-10-05T12:00:00Z');
+    const weekly = [{ board: 'hunt' as const, week: '2026-W40', score: 700, detail: '' }];
+    // 30 played: the top 3 make the cut. Fourth does not.
+    expect(await computeHonors(env, 'me', derived({ weekly }), now, [], counts([['score=gt', 2], ['board=eq.hunt', 29], ['lb_users', 2]]))).toContain('hunt-week-10');
+    expect(await computeHonors(env, 'me', derived({ weekly }), now, [], counts([['score=gt', 3], ['board=eq.hunt', 29], ['lb_users', 2]]))).not.toContain('hunt-week-10');
   });
 });

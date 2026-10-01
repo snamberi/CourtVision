@@ -391,7 +391,7 @@ const AURA_COLORS: Record<string, string[]> = {
   shadow: ['#3b1d5a', '#6a3fb5', '#1a1030'], ice: ['#bfe6ff', '#ffffff', '#6db8ff'], toxic: ['#7dff5a', '#3fae5f', '#d0ff8a'],
   cosmic: ['#6a45c0', '#ff7ad9', '#6fd3ff', '#ffffff'], rainbow: RAINBOW, sparkles: ['#ffd166', '#ffffff'], hearts: ['#ff4d8d', '#ff9fc8'],
   superWarrior: ['#ffe14d', '#fff6b0', '#ffc400', '#ffffff'], storm: ['#7b4dff', '#c9b3ff', '#3b1d9a'],
-  sakura: ['#ffb7d5', '#ff8fc0', '#fff0f6'], cursed: ['#2a2f8a', '#4d6bff', '#9fb3ff', '#0b0f3a'],
+  sakura: ['#ffb7d5', '#ff8fc0', '#fff0f6'], hunter: ['#e8322e', '#ffd166', '#ff9d3d', '#7a1010'], cursed: ['#2a2f8a', '#4d6bff', '#9fb3ff', '#0b0f3a'],
 };
 function auraCells(grid: SpriteGrid, kind: string): SpriteGrid {
   const H = grid.length, W = grid[0].length;
@@ -407,7 +407,7 @@ function auraCells(grid: SpriteGrid, kind: string): SpriteGrid {
     }
     return false;
   };
-  const rising = kind === 'fire' || kind === 'golden' || kind === 'lightning' || kind === 'superWarrior' || kind === 'storm' || kind === 'cursed';
+  const rising = kind === 'fire' || kind === 'golden' || kind === 'lightning' || kind === 'superWarrior' || kind === 'storm' || kind === 'cursed' || kind === 'hunter';
   const crackle = kind === 'superWarrior' || kind === 'storm' || kind === 'cursed';
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     if (grid[y][x]) continue;

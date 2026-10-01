@@ -4,23 +4,25 @@ import { cardPool, seasonLabel, RARITY_LABEL, type HuntCard } from '../../hunt/c
 import { ERAS, eraOf } from '../../hunt/eras';
 import { DECKS, DIFFICULTIES, SQUAD_SIZE, SERIES_COUNT, ENEMY_EDGE, MAX_BOOSTS, type DeckId, type Difficulty, type NewRunOptions } from '../../hunt/run';
 import { MAX_ITEMS } from '../../hunt/items';
-import { DECK_IDS, DIFFICULTY_IDS, deckUnlocked, difficultyUnlocked, loadAlbum, todayUtc, dailySeed, type HuntRecords } from '../../hunt/storage';
+import { DECK_IDS, DIFFICULTY_IDS, deckUnlocked, difficultyUnlocked, loadAlbum, todayUtc, dailySeed, weeklyHunt, type HuntRecords } from '../../hunt/storage';
+import { weekKey } from '../../retention/week';
 import { dreamGame, teamsIn, seasonEnds, type DreamGame } from '../../hunt/matchup';
 import { BoxScoreTable } from '../BoxScoreTable';
 import { WatchGame } from '../WatchGame';
 import { LegendChallenges } from './LegendChallenges';
 
-type HubTab = 'hunt' | 'daily' | 'legend' | 'album' | 'dream';
+type HubTab = 'hunt' | 'weekly' | 'daily' | 'legend' | 'album' | 'dream';
 
 /** The League Hunt home: start a hunt (deck and difficulty), the Daily Legend, the album and Dream Matchup. */
 export function HuntHub({ h, records, onStart }: { h: NbaHistory; records: HuntRecords; onStart: (seed: number, opts: NewRunOptions) => void }) {
   const [tab, setTab] = useState<HubTab>('hunt');
   return <section className="hunt-hub">
     <div className="stats-view-toggle hunt-hub-tabs" role="tablist" aria-label="League Hunt">
-      {([['hunt', 'New Hunt'], ['daily', 'Daily Legend'], ['legend', 'Legend Challenges'], ['album', 'Album'], ['dream', 'Dream Matchup']] as const).map(([id, label]) =>
+      {([['hunt', 'New Hunt'], ['weekly', 'Weekly Hunt'], ['daily', 'Daily Legend'], ['legend', 'Legend Challenges'], ['album', 'Album'], ['dream', 'Dream Matchup']] as const).map(([id, label]) =>
         <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}>{label}</button>)}
     </div>
     {tab === 'hunt' ? <NewHunt records={records} onStart={opts => onStart(Math.floor(Math.random() * 1_000_000_000), opts)} />
+      : tab === 'weekly' ? <Weekly records={records} onStart={(seed, opts) => onStart(seed, opts)} />
       : tab === 'daily' ? <Daily records={records} onStart={(seed, opts) => onStart(seed, opts)} />
       : tab === 'legend' ? <LegendChallenges h={h} />
       : tab === 'album' ? <Album h={h} />
@@ -63,6 +65,24 @@ function Daily({ records, onStart }: { records: HuntRecords; onStart: (seed: num
       : <button className="primary hunt-start" onClick={() => onStart(dailySeed(today), { deck: 'classic', difficulty: 'pro', daily: today })}>Play today's Daily Legend</button>}
     {past.length > 0 && <><h3 className="hunt-subhead">Your recent days</h3>
       <ol className="hunt-log">{past.map(([date, r]) => <li key={date} className={r.won ? 'won' : 'lost'}>{date} · {r.won ? 'Beat the boss' : `Series ${r.stop + 1}`} · {r.wins}-{r.losses}</li>)}</ol></>}
+  </div>;
+}
+
+function Weekly({ records, onStart }: { records: HuntRecords; onStart: (seed: number, opts: NewRunOptions) => void }) {
+  const [now] = useState(() => new Date());
+  const week = weekKey(now);
+  const w = weeklyHunt(week), best = records.weekly?.[week];
+  const end = new Date(now); end.setUTCDate(end.getUTCDate() + ((8 - (end.getUTCDay() || 7)) % 7 || 7)); end.setUTCHours(0, 0, 0, 0);
+  const days = Math.max(1, Math.ceil((end.getTime() - now.getTime()) / 86_400_000));
+  const past = Object.entries(records.weekly ?? {}).filter(([k]) => k !== week).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 8);
+  return <div className="hunt-intro">
+    <p className="hunt-lede">One hunt for the whole week, the same for everyone: the same reels, the same ten teams and the same boss. Play it as often as you like; your <b>best</b> attempt counts on the Weekly Hunt board. Finish in the <b>top 10%</b> when the week ends to win the <b>Weekly Hunter</b> title and the hunter's flame aura for your character.</p>
+    <div className="hunt-over-stats"><div><small>THIS WEEK</small><b>{week}</b></div><div><small>DECK</small><b>{DECKS[w.deck].name}</b></div><div><small>DIFFICULTY</small><b>{DIFFICULTIES[w.difficulty].name}</b></div><div><small>ENDS IN</small><b>{days} day{days === 1 ? '' : 's'}</b></div></div>
+    {best && <p className="hunt-note">Your best this week: {best.won ? 'beat the boss' : `reached series ${best.stop + 1} of ${SERIES_COUNT}`} ({best.wins}-{best.losses}){best.tries ? ` · ${best.tries} attempt${best.tries === 1 ? '' : 's'}` : ''}.</p>}
+    <button className="primary hunt-start" onClick={() => onStart(w.seed, { deck: w.deck, difficulty: w.difficulty, weekly: week })}>{best ? 'Try the Weekly Hunt again' : "Play this week's hunt"}</button>
+    <p className="hint-text">The board is in Community → Leaderboards → Weekly Hunt. A new hunt arrives every Monday (UTC).</p>
+    {past.length > 0 && <><h3 className="hunt-subhead">Your past weeks</h3>
+      <ol className="hunt-log">{past.map(([k, r]) => <li key={k} className={r.won ? 'won' : 'lost'}>{k} · {r.won ? 'Beat the boss' : `Series ${r.stop + 1}`} · {r.wins}-{r.losses}</li>)}</ol></>}
   </div>;
 }
 

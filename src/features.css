@@ -414,3 +414,74 @@ button.tcard:hover, button.tcard:focus-visible { transform: translateY(-3px); ou
 .ae-tile small { font-size: .7rem; }
 .road-avatar-reward .user-avatar { margin: 0 auto; }
 @media (max-width: 700px) { .avatar-editor { grid-template-columns: 1fr; } .ae-stage { position: static; } }
+
+/* ---------- Profile-picture frames (AvatarFrame.tsx) ---------- */
+.avf { position: relative; display: inline-block; flex-shrink: 0; vertical-align: middle; }
+.avf-art { position: absolute; inset: 0; overflow: visible; pointer-events: none; }
+.avf-pic { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); border-radius: 50%; overflow: hidden; background: var(--c-bg-192333, #192333); }
+.avf-pic svg { display: block; }
+.avf-plain .avf-pic { border: 2px solid var(--c-border-2a3546, #2a3546); }
+.avf-pulse { animation: avf-pulse 1.6s ease-in-out infinite; transform-origin: 50% 50%; }
+.avf-flicker { animation: avf-flicker .5s steps(2) infinite; transform-origin: 50% 50%; }
+.avf-spin { animation: avf-spin 9s linear infinite; transform-origin: 50% 50%; transform-box: view-box; }
+.avf-glow { animation: avf-glow 2.4s ease-in-out infinite; }
+@keyframes avf-pulse { 50% { opacity: .55; } }
+@keyframes avf-flicker { 50% { transform: scale(1.05); opacity: .85; } }
+@keyframes avf-spin { to { transform: rotate(360deg); } }
+@keyframes avf-glow { 50% { filter: drop-shadow(0 0 4px var(--c-shadow-ffe14d, #ffe14d)) brightness(1.15); } }
+.avf-goldCrown .avf-art { filter: drop-shadow(0 0 3px var(--c-shadow-ffd1668c, rgba(255, 209, 102, .55))); }
+.avf-neon .avf-art { filter: drop-shadow(0 0 3px var(--c-shadow-4fd6d6, #4fd6d6)); }
+@media (prefers-reduced-motion: reduce) { .avf-pulse, .avf-flicker, .avf-spin, .avf-glow { animation: none; } }
+.avf-picks { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
+.avf-pick { display: grid; justify-items: center; gap: 4px; padding: 10px 6px 8px; background: var(--c-bg-121926, #121926); border: 2px solid var(--c-border-2a3546, #2a3546); color: inherit; font: inherit; cursor: pointer; }
+.avf-pick b { font-size: 12px; }
+.avf-pick small { font-size: 10px; color: var(--c-fg-94a0b2, #94a0b2); text-align: center; }
+.avf-pick.selected { border-color: var(--c-border-f47b20, #f47b20); box-shadow: 0 0 0 2px var(--c-shadow-f47b20, #f47b20) inset; }
+.avf-pick.locked { opacity: .55; cursor: not-allowed; }
+.profile-chip .avf { margin: -4px 0; }
+.profile-card-avatar .avf { display: block; }
+
+/* ---------- Previews in the Profile pickers ---------- */
+.profile-preview { display: grid; justify-items: start; gap: 4px; margin: 0 0 10px; }
+.profile-preview small { color: var(--c-fg-94a0b2, #94a0b2); font-size: 12px; }
+.floor-preview, .share-preview { display: block; max-width: 100%; height: auto; border: 2px solid var(--c-border-2a3546, #2a3546); box-shadow: 3px 3px 0 var(--c-shadow-03070d, #03070d); }
+.share-preview-loading { display: block; background: var(--c-bg-121926, #121926); }
+.profile-unlock.locked { cursor: help; }
+.profile-unlock.peeking { outline: 2px dashed var(--c-border-ffd166, #ffd166); outline-offset: -2px; }
+
+/* ---------- Characters on the boards ---------- */
+.name-link { display: inline-flex; align-items: center; gap: 6px; }
+.wb-character { display: block; margin: 0 auto -4px; }
+.wb-character svg { display: block; margin: 0 auto; }
+
+/* ---------- Public profile showcase ---------- */
+.profile-showcase { display: grid; grid-template-columns: minmax(220px, auto) 1fr; gap: 18px; align-items: center; background: linear-gradient(120deg, var(--c-bg-1a2440, #1a2440), var(--c-bg-121926, #121926)); }
+.showcase-stage { display: flex; align-items: flex-end; justify-content: center; gap: 4px; min-height: 170px; padding: 10px; background: repeating-linear-gradient(90deg, var(--c-bg-c98a4b, #c98a4b) 0 18px, var(--c-bg-b97a3e, #b97a3e) 18px 36px); border: 3px solid var(--c-border-0b1018, #0b1018); }
+.showcase-facts h2 { margin: 4px 0 10px; }
+.showcase-list { list-style: none; margin: 0 0 10px; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.showcase-list li { display: grid; gap: 2px; padding: 8px 10px; background: var(--c-bg-0b1018, #0b1018); border-left: 3px solid var(--c-border-f47b20, #f47b20); }
+.showcase-list small, .showcase-sub { font-size: 10px; letter-spacing: .08em; color: var(--c-fg-94a0b2, #94a0b2); }
+.showcase-rare { margin-top: 6px; }
+.friendly { display: grid; gap: 6px; margin-top: 12px; justify-items: start; }
+.friendly small { color: var(--c-fg-94a0b2, #94a0b2); }
+@media (max-width: 700px) { .profile-showcase { grid-template-columns: 1fr; } }
+
+/* ---------- Season Pass and the daily streak ---------- */
+.pass-track { list-style: none; margin: 12px 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
+.pass-track li { display: grid; gap: 2px; padding: 8px; background: var(--c-bg-121926, #121926); border: 2px solid var(--c-border-2a3546, #2a3546); text-align: center; }
+.pass-track li small { font-size: 10px; color: var(--c-fg-94a0b2, #94a0b2); }
+.pass-track li b { font-size: 13px; }
+.pass-track li span { font-size: 10px; color: var(--c-fg-94a0b2, #94a0b2); }
+.pass-track li.big { border-color: var(--c-border-b983ff, #b983ff); }
+.pass-track li.got { background: var(--c-bg-1f2a1a, #1f2a1a); border-color: var(--c-border-55c878, #55c878); }
+.pass-track li.got b { color: var(--c-fg-55c878, #55c878); }
+.pass-track li.next { border-color: var(--c-border-ffd166, #ffd166); box-shadow: 0 0 0 2px var(--c-shadow-ffd166, #ffd166) inset; }
+.streak-pill { color: var(--c-fg-ff9d3d, #ff9d3d); font-weight: 700; }
+
+/* ---------- Juice: a slam shakes the arena ---------- */
+.watch-stage.slam-shake { animation: slam-shake 340ms steps(6) 1; }
+@keyframes slam-shake { 0%, 100% { transform: translate(0, 0); } 20% { transform: translate(-4px, 2px); } 40% { transform: translate(4px, -3px); } 60% { transform: translate(-3px, 3px); } 80% { transform: translate(2px, -2px); } }
+@media (prefers-reduced-motion: reduce) { .watch-stage.slam-shake { animation: none; } }
+.hl-tiktok { margin-left: 4px; }
+.profile-picker > .profile-preview { grid-template-columns: minmax(0, 420px); justify-items: start; }
+.profile-picker > .profile-preview .floor-preview, .profile-picker > .profile-preview .share-preview { width: 100%; height: auto; }

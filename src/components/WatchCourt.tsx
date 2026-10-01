@@ -158,12 +158,9 @@ function DiscordBoard({x,y}:{x:number;y:number}){
   </g>
  </a>;
 }
-const Arena=memo(function Arena({home,away,identity,awayKit,id,hype,homeBench,awayBench,fill=1,loud=0,mascot=0,rivalry=false,building}:{home:Team;away:Team;identity:TeamIdentity;awayKit:TeamIdentity;id:string;hype:number;homeBench:PlayerSeason[];awayBench:PlayerSeason[];fill?:number;loud?:number;mascot?:number;rivalry?:boolean;building?:{name:string;suites:number}}){
- const tableText=building?building.name.toUpperCase().replace(/[^A-Z0-9 ]/g,'').slice(0,22):identity.abbreviation+' COURT VISION';
- const apron=shade(identity.primary,-.18),apronDark=shade(identity.primary,-.45),paint=identity.courtPaint,picked=equippedFloor(),style=picked==='team'?floorStyle(home.teamId):picked;
- const cream='#f6ecd2';
+/** The floor patterns, `${id}-${floor}` (also the floor previews in the Profile). */
+export function FloorPatterns({id}:{id:string}){
  return <>
-  <defs>
    <pattern id={`${id}-planks`} width="120" height="10" patternUnits="userSpaceOnUse" shapeRendering="crispEdges">
     <rect width="120" height="10" fill="#e3b479"/><rect y="5" width="120" height="5" fill="#dcab6e"/>
     <path d="M0 0H120M0 5H120" stroke="#a8743f" strokeOpacity=".55"/><path d="M34 0V5M92 0V5M8 5V10M66 5V10" stroke="#a8743f" strokeOpacity=".45"/>
@@ -199,6 +196,15 @@ const Arena=memo(function Arena({home,away,identity,awayKit,id,hype,homeBench,aw
    <pattern id={`${id}-lava`} width="60" height="60" patternUnits="userSpaceOnUse" shapeRendering="crispEdges"><rect width="60" height="60" fill="#2a1a16"/><path d="M0 20L14 26L22 18L36 28L60 22M10 60L18 44L30 50L44 40L52 48" stroke="#ff6b2d" strokeWidth="2" fill="none"/><path d="M14 26L22 18M30 50L44 40" stroke="#ffd166" strokeWidth="1" fill="none"/></pattern>
    <pattern id={`${id}-gold`} width="120" height="10" patternUnits="userSpaceOnUse" shapeRendering="crispEdges"><rect width="120" height="10" fill="#e8b84a"/><rect y="5" width="120" height="5" fill="#d9a83a"/><path d="M0 0H120M0 5H120" stroke="#9a7212" strokeOpacity=".55"/><path d="M44 2H80M12 7H40" stroke="#fff3c4" strokeOpacity=".7"/></pattern>
    <pattern id={`${id}-galaxy`} width="80" height="80" patternUnits="userSpaceOnUse" shapeRendering="crispEdges"><rect width="80" height="80" fill="#160d33"/><rect x="0" y="0" width="80" height="80" fill="#3b1d82" opacity=".25"/>{[[8,12,'#ffffff'],[40,30,'#ff7ad9'],[66,8,'#6fd3ff'],[20,58,'#ffffff'],[58,62,'#ffd166'],[34,74,'#ffffff']].map(([x,y,c])=><rect key={`${x}-${y}`} x={x as number} y={y as number} width="2" height="2" fill={c as string}/>)}</pattern>
+ </>;
+}
+const Arena=memo(function Arena({home,away,identity,awayKit,id,hype,homeBench,awayBench,fill=1,loud=0,mascot=0,rivalry=false,building}:{home:Team;away:Team;identity:TeamIdentity;awayKit:TeamIdentity;id:string;hype:number;homeBench:PlayerSeason[];awayBench:PlayerSeason[];fill?:number;loud?:number;mascot?:number;rivalry?:boolean;building?:{name:string;suites:number}}){
+ const tableText=building?building.name.toUpperCase().replace(/[^A-Z0-9 ]/g,'').slice(0,22):identity.abbreviation+' COURT VISION';
+ const apron=shade(identity.primary,-.18),apronDark=shade(identity.primary,-.45),paint=identity.courtPaint,picked=equippedFloor(),style=picked==='team'?floorStyle(home.teamId):picked;
+ const cream='#f6ecd2';
+ return <>
+  <defs>
+   <FloorPatterns id={id}/>
    <pattern id={`${id}-grain`} width="144" height="40" patternUnits="userSpaceOnUse" shapeRendering="crispEdges">
     <path d="M6 3H29M38 8H62M81 2H102M112 13H139M9 22H37M44 31H67M78 27H119M126 36H142M13 37H31M62 18H84" stroke="#6f4527" strokeWidth=".5" strokeOpacity=".22"/>
     <path d="M7 4H24M40 9H66M81 3H107M9 23H42M78 28H112M64 19H87" stroke="#fff0ca" strokeWidth=".5" strokeOpacity=".3"/>

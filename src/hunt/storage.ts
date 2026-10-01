@@ -10,7 +10,7 @@ const RECORDS_KEY = 'cv-hunt-records';
 const ALBUM_KEY = 'cv-hunt-album';
 
 export interface DailyResult { won: boolean; stop: number; wins: number; losses: number }
-export interface HuntRecords { runs: number; wins: number; bestStop: number; lastSeed?: number; daily?: Record<string, DailyResult>; bestGrade?: DraftGrade }
+export interface HuntRecords { runs: number; wins: number; bestStop: number; lastSeed?: number; daily?: Record<string, DailyResult>; /** The Weekly Hunt: your best attempt each week. */ weekly?: Record<string, DailyResult & { tries?: number }>; bestGrade?: DraftGrade }
 const GRADE_ORDER: DraftGrade[] = ['A+', 'A', 'B', 'C', 'D', 'F'];
 const EMPTY: HuntRecords = { runs: 0, wins: 0, bestStop: 0 };
 
@@ -40,6 +40,11 @@ export function recordRun(run: HuntRun): HuntRecords {
   const bestGrade = g && (!r.bestGrade || GRADE_ORDER.indexOf(g) < GRADE_ORDER.indexOf(r.bestGrade)) ? g : r.bestGrade;
   const next: HuntRecords = { ...r, ...(bestGrade ? { bestGrade } : {}), runs: r.runs + 1, wins: r.wins + (run.stage === 'won' ? 1 : 0), bestStop: Math.max(r.bestStop, run.stage === 'won' ? run.series.length - 1 : run.seriesIndex), lastSeed: run.seed,
     ...(run.daily ? { daily: { ...(r.daily ?? {}), [run.daily]: { won: run.stage === 'won', stop: run.seriesIndex, wins, losses: run.results.length - wins } } } : {}) };
+  if (run.weekly) {
+    const old = r.weekly?.[run.weekly], res: DailyResult = { won: run.stage === 'won', stop: run.stage === 'won' ? run.series.length - 1 : run.seriesIndex, wins, losses: run.results.length - wins };
+    const better = !old || huntScore(res) > huntScore(old);
+    next.weekly = { ...(r.weekly ?? {}), [run.weekly]: { ...(better ? res : old), tries: (old?.tries ?? 0) + 1 } };
+  }
   try { localStorage.setItem(RECORDS_KEY, JSON.stringify(next)); } catch { /* storage blocked */ }
   if (run.stage === 'won' && run.difficulty === 'legend') noteFeat('huntLegendWins', 1);
   return next;
@@ -68,6 +73,20 @@ export function addToAlbum(ids: string[]): void {
   for (const id of ids) album.add(id);
   if (album.size === before) return;
   try { localStorage.setItem(ALBUM_KEY, JSON.stringify([...album])); } catch { /* storage blocked */ }
+}
+
+/** How a Daily Legend or Weekly Hunt result ranks: winning beats everything, then how far you got. */
+export const huntScore = (d: DailyResult) => (d.won ? 1000 + (d.wins - d.losses) * 10 : d.stop * 100 + d.wins * 2);
+
+// ---------------------------------------------------------------- the Weekly Hunt
+
+/** The week's hunt: one seed, and a deck and difficulty that rotate week by week. */
+export function weeklyHunt(week: string): { seed: number; deck: DeckId; difficulty: Difficulty } {
+  let hsh = 2166136261;
+  for (const ch of `league-hunt-weekly|${week}`) { hsh ^= ch.charCodeAt(0); hsh = Math.imul(hsh, 16777619); }
+  const n = hsh >>> 0;
+  const decks: DeckId[] = ['classic', 'bigMen', 'oldSchool', 'paceSpace', 'dynasty'];
+  return { seed: n % 1_000_000_000, deck: decks[n % decks.length], difficulty: (n >>> 8) % 3 === 0 ? 'legend' : 'pro' };
 }
 
 // ---------------------------------------------------------------- the Daily Legend

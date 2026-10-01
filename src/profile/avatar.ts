@@ -184,6 +184,7 @@ export const AURAS: AvatarItem[] = [
   item('aura', 'toxic', 'Toxic', lv(180)), item('aura', 'fire', 'Fire'), item('aura', 'golden', 'Super golden'), item('aura', 'lightning', 'Lightning'),
   item('aura', 'shadow', 'Shadow'), item('aura', 'cosmic', 'Cosmic'), item('aura', 'rainbow', 'Rainbow'), item('aura', 'superWarrior', 'Super warrior aura'), item('aura', 'storm', 'Storm'),
   item('aura', 'sakura', 'Cherry blossoms'), item('aura', 'cursed', 'Cursed energy'),
+  item('aura', 'hunter', "Hunter's flames", { honor: 'hunt-week-10' }),
 ];
 
 export const AVATAR_CATEGORIES: { id: AvatarCategory; label: string; items: AvatarItem[] }[] = [
@@ -228,12 +229,17 @@ export function readAvatar(read: Read = localRead): AvatarLook {
   const raw = read(AVATAR_KEY);
   if (raw) { try { return cleanAvatar(JSON.parse(raw) as Partial<AvatarLook>); } catch { /* made again below */ } }
   const made = randomAvatar();
-  if (read === localRead) { try { localStorage.setItem(AVATAR_KEY, JSON.stringify(made)); } catch { /* storage blocked: random each visit */ } }
+  // "at: 0" marks a character nobody chose yet: the one saved to your account wins over it (cloud/merge.ts).
+  if (read === localRead) { try { localStorage.setItem(AVATAR_KEY, JSON.stringify({ ...made, at: 0 })); } catch { /* storage blocked: random each visit */ } }
   return made;
+}
+/** When the character was last changed by hand (0 for the random first one). */
+export function avatarSavedAt(raw: string | null | undefined): number {
+  try { const at = (JSON.parse(raw ?? 'null') as { at?: unknown } | null)?.at; return typeof at === 'number' ? at : 0; } catch { return 0; }
 }
 
 export function saveAvatar(look: AvatarLook): void {
-  try { localStorage.setItem(AVATAR_KEY, JSON.stringify(cleanAvatar(look))); } catch { /* storage blocked */ }
+  try { localStorage.setItem(AVATAR_KEY, JSON.stringify({ ...cleanAvatar(look), at: Date.now() })); } catch { /* storage blocked */ }
   if (typeof window !== 'undefined') window.dispatchEvent(new Event(AVATAR_EVENT));
 }
 
@@ -242,5 +248,6 @@ export function avatarHow(i: AvatarItem): string {
   const r = i.rule;
   if ('level' in r) return r.level <= 1 ? 'Everyone' : `Level ${r.level}`;
   if ('trophies' in r) return `${r.trophies.toLocaleString()} trophies`;
+  if ('honor' in r && r.honor === 'hunt-week-10') return 'Top 10% of a Weekly Hunt';
   return 'Special';
 }

@@ -52,7 +52,7 @@ export function LeagueHunt({ onExit }: { onExit: () => void }) {
       if (ghost) { saveLocalGhost(ghost); void publishGhost(ghost).catch(() => {}); }
       trackOnce(`hunt-${r.seed}`, 'mode_finish', { mode: 'hunt', result: r.stage, reached: r.seriesIndex + 1, difficulty: r.difficulty ?? 'pro', deck: r.deck ?? 'classic', daily: !!r.daily });
     }
-    if (r && r.stage === 'draft' && r.seed !== run?.seed) track('mode_start', { mode: 'hunt', variant: r.daily ? 'daily' : 'run', difficulty: r.difficulty ?? 'pro', deck: r.deck ?? 'classic' });
+    if (r && r.stage === 'draft' && r.seed !== run?.seed) track('mode_start', { mode: 'hunt', variant: r.daily ? 'daily' : r.weekly ? 'weekly' : 'run', difficulty: r.difficulty ?? 'pro', deck: r.deck ?? 'classic' });
   };
 
   /** PLAY: out of the shop (if it is open) and straight into the series. */
@@ -336,7 +336,7 @@ function HuntBase({ h, run, onRun, onPlay, onAbandon }: { h: NbaHistory; run: Hu
         <div className={`hunt-next ${s.kind !== 'normal' ? `hunt-next-${s.kind}` : ''}`}>
           <span className="pixel-eyebrow">{kindLabel(s, run.seriesIndex)} OF {SERIES_COUNT} · BEST OF SEVEN · {era.label.toUpperCase()}</span>
           <h2>{teamLabel(team)}</h2>
-          <small>{team.w}-{team.l}{team.champion ? ' · Champions' : ''} · {run.daily ? `Daily Legend ${run.daily}` : `${DECKS[run.deck ?? 'classic'].name} · ${DIFFICULTIES[run.difficulty ?? 'pro'].name}`}</small>
+          <small>{team.w}-{team.l}{team.champion ? ' · Champions' : ''} · {run.daily ? `Daily Legend ${run.daily}` : run.weekly ? `Weekly Hunt ${run.weekly}` : `${DECKS[run.deck ?? 'classic'].name} · ${DIFFICULTIES[run.difficulty ?? 'pro'].name}`}</small>
         </div>
         <div className="hunt-court" aria-label="Your starting five">
           <i className="hunt-court-key" aria-hidden="true" /><i className="hunt-court-arc" aria-hidden="true" />
@@ -415,7 +415,7 @@ function RunOver({ h, run, records, onNew, onExit }: { h: NbaHistory; run: HuntR
     <SlotBoard h={h} run={run} />
     <p className="hint-text">Your hunts: {records.runs} · won {records.wins} · furthest series {records.bestStop + 1} of {SERIES_COUNT}{records.bestGrade ? ` · best draft grade ${records.bestGrade}` : ''}</p>
     <div className="contest-actions"><button className="primary" onClick={onNew}>Start a new hunt</button><ShareCardButton fileName="league-hunt.png" text={share} spec={{
-      kicker: `League Hunt${run.daily ? ` · Daily Legend ${run.daily}` : ` · ${DIFFICULTIES[run.difficulty ?? 'pro'].name}`}`,
+      kicker: `League Hunt${run.daily ? ` · Daily Legend ${run.daily}` : run.weekly ? ` · Weekly Hunt ${run.weekly}` : ` · ${DIFFICULTIES[run.difficulty ?? 'pro'].name}`}`,
       title: won ? 'Hunt complete' : `Reached series ${run.seriesIndex + 1} of ${SERIES_COUNT}`,
       subtitle: mvp ? `MVP ${mvp.name}: ${per(mvp.pts, mvp.g)} PTS · ${per(mvp.reb, mvp.g)} REB · ${per(mvp.ast, mvp.g)} AST` : undefined,
       stats: [{ label: 'Series', value: `${seriesWon}-${seriesLost}` }, { label: 'Games', value: `${gamesWon}-${gamesPlayed - gamesWon}` }, draftGrade(run) ? { label: 'Draft grade', value: draftGrade(run)!.grade } : { label: 'Boosts', value: String(run.boosts.length) }],
