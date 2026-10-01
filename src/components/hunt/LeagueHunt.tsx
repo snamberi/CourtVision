@@ -26,6 +26,10 @@ import { HuntMap } from './HuntMap';
 import { CoachFigure } from '../CoachFigure';
 import { coachLook } from '../../visuals/coachLook';
 import { ShareCardButton } from '../ShareCardButton';
+import { noteFeaturedXp } from '../../retention/modeOfWeek';
+import { newPerfectFromHunt } from '../../perfect/run';
+import { savePerfectRun } from '../../perfect/storage';
+import { XP } from '../../profile/profile';
 import './hunt.css';
 
 /** League Hunt: spin a six-man squad and a coach from all of basketball history, then win ten best-of-seven series. */
@@ -47,6 +51,7 @@ export function LeagueHunt({ onExit }: { onExit: () => void }) {
     else saveRun(r);
     if (r && (r.stage === 'won' || r.stage === 'lost') && run?.stage !== r.stage) {
       setRecords(recordRun(r));
+      noteFeaturedXp('legends', `hunt-${r.seed}`, XP.huntRun + (r.stage === 'won' ? XP.huntWin : 0) + (r.daily ? XP.huntDaily : 0));
       // The finished squad becomes your League Hunt PvP team (published when you are signed in).
       const ghost = ghostFromRun(r);
       if (ghost) { saveLocalGhost(ghost); void publishGhost(ghost).catch(() => {}); }
@@ -414,7 +419,14 @@ function RunOver({ h, run, records, onNew, onExit }: { h: NbaHistory; run: HuntR
       <tbody>{lines.slice(0, 8).map(l => <tr key={l.name}><td className="col-name">{l.name}</td><td>{l.g}</td><td>{per(l.pts, l.g)}</td><td>{per(l.reb, l.g)}</td><td>{per(l.ast, l.g)}</td></tr>)}</tbody></table></div>}
     <SlotBoard h={h} run={run} />
     <p className="hint-text">Your hunts: {records.runs} · won {records.wins} · furthest series {records.bestStop + 1} of {SERIES_COUNT}{records.bestGrade ? ` · best draft grade ${records.bestGrade}` : ''}</p>
-    <div className="contest-actions"><button className="primary" onClick={onNew}>Start a new hunt</button><ShareCardButton fileName="league-hunt.png" text={share} spec={{
+    {won && <div className="hunt-crossover"><span className="pixel-eyebrow">BONUS RUN</span><b>Can this squad go 82-0?</b>
+      <p>Take your six and your coach into the 82-0 Challenge: spin four bench players, then play all 82 and the playoffs. Hunt squads get their own record.</p>
+      <button className="primary" onClick={() => {
+        if (localStorage.getItem('cv-perfect-run') && !window.confirm('This replaces the 82-0 run you have in progress. Continue?')) return;
+        savePerfectRun(newPerfectFromHunt(h, run.seed, run.squad, run.coach));
+        location.hash = '#/82-0';
+      }}>Take this squad to 82-0</button></div>}
+    <div className="contest-actions"><button className="primary" onClick={onNew}>Start a new hunt</button><ShareCardButton tall fileName="league-hunt.png" text={share} spec={{
       kicker: `League Hunt${run.daily ? ` · Daily Legend ${run.daily}` : run.weekly ? ` · Weekly Hunt ${run.weekly}` : ` · ${DIFFICULTIES[run.difficulty ?? 'pro'].name}`}`,
       title: won ? 'Hunt complete' : `Reached series ${run.seriesIndex + 1} of ${SERIES_COUNT}`,
       subtitle: mvp ? `MVP ${mvp.name}: ${per(mvp.pts, mvp.g)} PTS · ${per(mvp.reb, mvp.g)} REB · ${per(mvp.ast, mvp.g)} AST` : undefined,

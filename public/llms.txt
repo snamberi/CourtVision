@@ -1,0 +1,42 @@
+# Court Vision
+
+> Court Vision is a free basketball GM and simulation game that runs in the browser (and as an installable app). Run an NBA franchise from any season since 1946-47 with real players, or play quick modes: the 82-0 Challenge, League Hunt, Career Mode, the Rebuild Challenge and the All-Time Draft. Every game is simulated possession by possession. No download or account needed.
+
+- Play free: https://courtvisiongame.com/
+- Price: free on the web (ad-supported); a free offline Windows edition has no ads.
+- Platforms: any modern browser on desktop, phone or tablet; installable as an app; offline Windows edition.
+- Data: real NBA statistics from Basketball-Reference.com; Court Vision computes its own ratings. Independent fan project, not affiliated with the NBA.
+- Community: https://discord.gg/5uGK5HDS8e
+
+## Game modes
+
+| Mode | Time | What it is |
+| --- | --- | --- |
+| 82-0 Challenge | 5-10 min | Build a ten-man team from all of NBA history and try to go 82-0, then 16-0 in the playoffs, against real teams and boss teams like the 72-10 Bulls. |
+| Career Mode | 5-15 min | Create one player and live his whole career, from draft night to the Hall of Fame and the all-time Top 100. |
+| Rebuild Challenge | 10-20 min | Take over a real team at its lowest point in NBA history and win a title before time runs out. |
+| All-Time Draft | 10-20 min | Thirty teams draft every player in history at his best, then play a full season. |
+| League Hunt | 15-30 min a run | Spin a six-man squad and a coach from all of history and win ten best-of-seven series against great teams from every era. |
+| Real League | Unlimited | Run a real NBA franchise from any season since 1946-47: draft, trade, sign, coach. |
+| Random Players | Unlimited | A generated 30-team league for pure franchise building. |
+
+## Guides
+
+- [Career Mode](https://courtvisiongame.com/guides/career-mode.html): How Career Mode works in Court Vision: building a player on the wheel of NBA history or in MyPlayer, development, free agency, awards, the Hall of Fame and the Top 100.
+- [League Hunt](https://courtvisiongame.com/guides/league-hunt.html): How League Hunt works in Court Vision: spinning a six-man squad from basketball history, era rules, best-of-seven series, boosts, shops, difficulty and the Daily Legend.
+- [82-0 Challenge](https://courtvisiongame.com/guides/82-0-challenge.html): How the 82-0 Challenge works in Court Vision: building a ten-man team from NBA history, Quick Spin and Franchise Spin, boss teams, lineup rules, chemistry, scoring, the Daily 82-0 and rewards.
+- [All-Time Draft](https://courtvisiongame.com/guides/all-time-draft.html): How the All-Time Draft works in Court Vision: thirty teams draft every player in NBA history at his best season, AI GMs who draft for need, and a full season under any era's rules.
+- [Rebuild Challenge](https://courtvisiongame.com/guides/rebuild-challenge.html): How the Rebuild Challenge works in Court Vision: take over a real NBA team at its lowest point and win a championship before the clock runs out.
+- [Real NBA history](https://courtvisiongame.com/guides/real-nba-history.html): How Court Vision's Real League works: real rosters from any season since 1946-47, real careers, real draft classes, ratings computed from statistics, and Real Player Development.
+- [Ratings explained](https://courtvisiongame.com/guides/ratings-explained.html): How Court Vision rates players and teams: player Overall, the 0-100 team rating matched to real win totals, ratings past 99, the Legacy Score and the all-time Top 100.
+
+## About and help
+
+- [About](https://courtvisiongame.com/about.html): Court Vision is a free, browser-based pixel-art basketball management game with real NBA history, a full simulation engine, and seven game modes, from franchise GM to the 82-0 Challenge.
+- [How to Play](https://courtvisiongame.com/how-to-play.html): Start your first Court Vision league: choosing a team, setting a rotation, the season calendar, trades, the draft, free agency and the offseason.
+- [FAQ](https://courtvisiongame.com/faq.html): Answers to common questions about Court Vision: every game mode and how long it takes, the 82-0 Challenge, saves, accounts, playing on a phone or offline, real player data and ads.
+- [Changelog](https://courtvisiongame.com/changelog.html): What's new in Court Vision: the 82-0 Challenge, Mode of the Week, Career Mode big moments, the All-Time Draft, League Hunt and more.
+
+## Full text
+
+- [llms-full.txt](https://courtvisiongame.com/llms-full.txt): every guide and help page as plain text.

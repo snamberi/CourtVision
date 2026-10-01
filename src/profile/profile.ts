@@ -4,9 +4,12 @@ import { avatarItem, type AvatarCategory } from './avatar';
 import { loadRecords } from '../hunt/storage';
 import { loadRebuildRecords } from '../simulation/rebuildChallenge';
 import { loadWeeklyRecords } from '../retention/weekly';
+import { loadPerfectRecords } from '../perfect/storage';
+import { readBonusLog, bonusXp } from '../retention/modeOfWeek';
 import { dailyGoalXp } from './dailyGoals';
 import { localRead, type Read } from '../lib/kv';
 import { TITLE_COLORS, titleColorOpen } from './trophyRoad';
+import { hasOwnerAccess } from './ownerAccess';
 import { avatarFrameDef, avatarFrameOpen, AVATAR_FRAMES, type AvatarFrameId } from './avatarFrames';
 import { ICONS, NAME_COLORS, LEVEL_ROAD, ROAD_TITLES, ROAD_LOOK_NAMES, roadLevel, unlockContext, isOpen, earnedExtraTitles, iconDef, type IconId, type ColorId, type RewardKind } from './cosmetics';
 
@@ -56,7 +59,12 @@ export const XP = {
   rebuildAttempt: 100, rebuildStar: 75, rebuildTitle: 250,
   careerRetired: 150, careerHof: 150,
   weekly: 150,
+  perfectRun: 40, perfectDaily: 40, perfectTitle: 250, perfectSeason: 1000, perfect98: 1500,
 } as const;
+
+/** XP one finished 82-0 run earns (also what the Mode of the Week doubles). */
+export const perfectRunXp = (r: { champion: boolean; perfectSeason: boolean; perfect98: boolean; daily: boolean }) =>
+  XP.perfectRun + (r.daily ? XP.perfectDaily : 0) + (r.champion ? XP.perfectTitle : 0) + (r.perfectSeason ? XP.perfectSeason : 0) + (r.perfect98 ? XP.perfect98 : 0);
 
 export function xpParts(read: Read = localRead): XpPart[] {
   const gm = legacyTotals(readLegacy(read));
@@ -67,13 +75,17 @@ export function xpParts(read: Read = localRead): XpPart[] {
   const c = careerCache(read);
   const weeks = Object.values(loadWeeklyRecords(read)).reduce((n, w) => n + (w.rebuild ? 1 : 0) + (w.career ? 1 : 0), 0);
   const goals = dailyGoalXp(read);
+  const p820 = loadPerfectRecords(read), p820Days = Object.keys(p820.daily ?? {}).length;
+  const bonus = bonusXp(readBonusLog(read));
   return [
     { id: 'gm', label: 'GM leagues', xp: gm.seasons * XP.gmSeason + gm.wins * XP.gmWin + gm.titles * XP.gmTitle + gm.achievements * XP.achievement, detail: `${gm.seasons} season${gm.seasons === 1 ? '' : 's'} · ${gm.wins} wins · ${gm.titles} title${gm.titles === 1 ? '' : 's'} · ${gm.achievements} achievement${gm.achievements === 1 ? '' : 's'}` },
     { id: 'career', label: 'Career Mode', xp: c.retired * XP.careerRetired + c.legacy + c.hallOfFame * XP.careerHof, detail: `${c.retired} retired · ${c.hallOfFame} Hall of Famer${c.hallOfFame === 1 ? '' : 's'} · Legacy ${c.legacy} in all` },
     { id: 'hunt', label: 'League Hunt', xp: hunt.runs * XP.huntRun + hunt.wins * XP.huntWin + daily * XP.huntDaily, detail: `${hunt.runs} run${hunt.runs === 1 ? '' : 's'} · ${hunt.wins} won · ${daily} Daily Legend${daily === 1 ? '' : 's'}` },
+    { id: 'perfect', label: '82-0 Challenge', xp: p820.runs * XP.perfectRun + p820Days * XP.perfectDaily + p820.titles * XP.perfectTitle + p820.perfectSeasons * XP.perfectSeason + p820.perfect98 * XP.perfect98, detail: `${p820.runs} run${p820.runs === 1 ? '' : 's'} · ${p820.titles} title${p820.titles === 1 ? '' : 's'} · ${p820.perfectSeasons} perfect season${p820.perfectSeasons === 1 ? '' : 's'}` },
     { id: 'rebuild', label: 'Rebuild Challenge', xp: rbAttempts * XP.rebuildAttempt + rbStars * XP.rebuildStar + rbTitles * XP.rebuildTitle, detail: `${rbAttempts} finished · ${rbStars} star${rbStars === 1 ? '' : 's'} · ${rbTitles} rebuilt to a title` },
     { id: 'weekly', label: 'Weekly challenges', xp: weeks * XP.weekly, detail: `${weeks} weekly result${weeks === 1 ? '' : 's'}` },
     { id: 'daily', label: 'Daily goals', xp: goals.xp, detail: `${goals.done} goal${goals.done === 1 ? '' : 's'} done` },
+    { id: 'bonus', label: 'Mode of the Week', xp: bonus.xp, detail: `Double XP on ${bonus.runs} run${bonus.runs === 1 ? '' : 's'}` },
   ];
 }
 
@@ -96,7 +108,7 @@ export type FloorId = 'team' | 'planks' | 'parquet' | 'blonde' | 'midnight' | 'a
   | 'cherry' | 'sand' | 'retro' | 'herringbone' | 'ebony' | 'ice' | 'neon' | 'lava' | 'gold' | 'galaxy';
 export interface Unlock<T extends string> { id: T; name: string; level: number; blurb: string; /** Opened on the Trophy Road at this many trophies instead of a level. */ trophies?: number }
 /** Whether a level-road or Trophy Road unlock is open. */
-export const unlockOpen = (u: { level: number; trophies?: number }, level: number, trophies: number) => u.trophies != null ? trophies >= u.trophies : u.level <= level;
+export const unlockOpen = (u: { level: number; trophies?: number }, level: number, trophies: number) => hasOwnerAccess() || (u.trophies != null ? trophies >= u.trophies : u.level <= level);
 
 // Levels come from the level road (cosmetics.ts), so each reward is listed in one place.
 const road = (kind: RewardKind, id: string) => roadLevel(kind, id) ?? 1;
@@ -135,7 +147,7 @@ export const RANK_TITLES: { id: string; tier: string; order: number }[] = [
 const TIER_ORDER = ['bronze', 'silver', 'gold', 'platinum', 'diamond', 'legend'];
 export const RANKED_BEST_KEY = 'cv-ranked-best';
 export function rankTitles(read: Read = localRead): string[] {
-  const best = TIER_ORDER.indexOf(read(RANKED_BEST_KEY) ?? '');
+  const best = hasOwnerAccess(read) ? Infinity : TIER_ORDER.indexOf(read(RANKED_BEST_KEY) ?? '');
   return RANK_TITLES.filter(t => best >= t.order).map(t => t.id);
 }
 
@@ -149,7 +161,7 @@ export function equipped(level = levelFor(totalXp()).level): Equipped {
   try { raw = JSON.parse(localStorage.getItem(EQUIP_KEY) ?? '{}') as Partial<Equipped>; } catch { /* default */ }
   const ctx = unlockContext(level);
   const ok = <T extends string>(list: Unlock<T>[], v: T | undefined, fallback: T): T => { const u = list.find(x => x.id === v); return u && unlockOpen(u, level, ctx.trophies) ? u.id : fallback; };
-  const openTitles = TITLES.filter(t => t.level <= level);
+  const openTitles = TITLES.filter(t => t.level <= ctx.level);
   const special = [...rankTitles(), ...earnedExtraTitles(ctx)];
   const title = raw.title && special.includes(raw.title) ? raw.title : ok(TITLES, raw.title, openTitles[openTitles.length - 1].id);
   const icon = ICONS.find(i => i.id === raw.icon && isOpen(i.rule, ctx))?.id ?? 'ball';

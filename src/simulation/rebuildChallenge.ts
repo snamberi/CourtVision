@@ -1,3 +1,4 @@
+import { noteFeaturedXp } from '../retention/modeOfWeek';
 import type { League, PlayoffFinish } from './league';
 import { isOfficialLeague } from './frontOffice';
 import { localRead, type Read } from '../lib/kv';
@@ -67,5 +68,7 @@ export function recordRebuild(p: ChallengeProgress, saveId: string): Record<stri
     titleIn: p.titleIn != null && (prev?.titleIn == null || p.titleIn < prev.titleIn) ? p.titleIn : prev?.titleIn ?? null };
   const out = { ...all, [p.scenario.id]: next };
   try { localStorage.setItem(KEY, JSON.stringify(out)); localStorage.setItem(doneKey, JSON.stringify([...done, saveId])); } catch { /* storage blocked */ }
+  // Mode of the Week: a finished rebuild in its week counts double (attempt, stars and a title, as profile XP counts them).
+  noteFeaturedXp('rebuild', `rb-${saveId}`, 100 + p.stars * 75 + (p.titleIn != null ? 250 : 0));
   return out;
 }

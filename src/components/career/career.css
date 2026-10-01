@@ -274,3 +274,11 @@ div.mp-callout { cursor: default; }
 .cv-builder-head .pixel-eyebrow { display: block; text-align: center; }
 /* The full category names (the same as everywhere else) wrap rather than being cut off. */
 .mp-callout b { white-space: normal; overflow: visible; line-height: 1.1; }
+.cv-moment .share-box { max-width: 520px; display: grid; gap: 10px; text-align: center; }
+.cv-moment h2 { margin: 0; font: 18px var(--ff-pixel, 'Press Start 2P', monospace); color: var(--c-fg-ffd166, #ffd166); }
+.cv-moment p { margin: 0; color: var(--c-fg-d3d7df, #d3d7df); line-height: 1.5; }
+.cv-moment-choices { display: grid; gap: 8px; }
+.cv-moment-choices button { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; padding: 12px 14px; text-align: left; }
+.cv-moment-choices button small { color: var(--c-fg-55c878, #55c878); }
+.cv-moment-result { padding: 10px 12px; background: var(--c-bg-192333, #192333); border-left: 3px solid var(--c-border-f47b20, #f47b20); text-align: left; }
+.cv-moment .primary { justify-self: center; min-width: 180px; }

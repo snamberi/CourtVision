@@ -28,6 +28,9 @@ alter table public.profiles add column if not exists icon text not null default 
 alter table public.profiles add column if not exists color text not null default 'cream' check (length(color) <= 20);
 -- Your character as a look code (src/profile/avatarCode.ts). Written only by the server at sync, after checking it.
 alter table public.profiles add column if not exists avatar text check (length(avatar) <= 64);
+-- 'owner' opens every cosmetic for that account. Set only here, in the SQL editor (not in the update grant below):
+--   update public.profiles set role = 'owner' where username = 'YourName';
+alter table public.profiles add column if not exists role text check (role in ('owner'));
 
 -- A profile row for every new account.
 create or replace function public.handle_new_user() returns trigger language plpgsql security definer set search_path = public as $$
@@ -87,7 +90,7 @@ create table if not exists public.weekly_scores (
 create index if not exists weekly_scores_rank on public.weekly_scores (board, week, score desc);
 -- The Weekly Hunt board joined the weekly boards later.
 alter table public.weekly_scores drop constraint if exists weekly_scores_board_check;
-alter table public.weekly_scores add constraint weekly_scores_board_check check (board in ('rebuild', 'career', 'hunt'));
+alter table public.weekly_scores add constraint weekly_scores_board_check check (board in ('rebuild', 'career', 'hunt', 'perfect'));
 
 create table if not exists public.daily_legend (
   day date not null,

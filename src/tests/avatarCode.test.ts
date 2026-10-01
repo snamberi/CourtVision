@@ -40,4 +40,9 @@ describe('the character on the boards (server)', () => {
     expect(stripped?.frame).toBe('none');
     expect(decodeAvatar(publicAvatar(blob({}, 'bronzeCrest'), 20, ['ranked-1']))?.frame).toBe('bronzeCrest');
   });
+  it("keeps everything for the game owner's account", async () => {
+    const { publicAvatar } = await import('../../server/derive');
+    const all = decodeAvatar(publicAvatar(blob({ aura: 'hunter', outfit: 'astronaut' }, 'goldCrown'), 1, [], true));
+    expect(all?.look.aura).toBe('hunter'); expect(all?.look.outfit).toBe('astronaut'); expect(all?.frame).toBe('goldCrown');
+  });
 });

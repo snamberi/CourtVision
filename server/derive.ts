@@ -5,6 +5,7 @@ import { earnedModeAchievements } from '../src/profile/modeAchievements';
 import { TIERS } from '../src/cloud/ranked';
 import { readLegacy, legacyTotals } from '../src/storage/gmLegacy';
 import { loadRecords, huntScore } from '../src/hunt/storage';
+import { loadPerfectRecords, perfectWeeks } from '../src/perfect/storage';
 import { loadRebuildRecords } from '../src/simulation/rebuildChallenge';
 import { SCENARIOS, scoreResults, FINISH_POINTS, type ScoredSeason } from '../src/simulation/rebuildScenarios';
 import { loadWeeklyRecords, weeklyRebuild } from '../src/retention/weekly';
@@ -28,7 +29,7 @@ export interface Derived {
   profile: { level: number; xp: number; stats: Record<string, unknown> };
   achievements: string[];
   players: Record<string, unknown>[];
-  weekly: { board: 'rebuild' | 'career' | 'hunt'; week: string; score: number; detail: string }[];
+  weekly: { board: 'rebuild' | 'career' | 'hunt' | 'perfect'; week: string; score: number; detail: string }[];
   daily: { day: string; won: boolean; stop: number; wins: number; losses: number; score: number }[];
   rebuild: { scenario: string; best: number; stars: number; title_in: number | null }[];
   codes: { code: string; team: string | null; wins: number; losses: number; finish: string; score: number }[];
@@ -107,6 +108,11 @@ export function derive(blob: ProgressBlob, now = new Date()): Derived {
     const won = !!w.won && w.wins >= 40;
     weekly.push({ board: 'hunt', week, score: huntScore({ ...w, won }), detail: won ? `Beat the boss · ${w.wins}-${w.losses} in games` : `Reached series ${w.stop + 1} · ${w.wins}-${w.losses}` });
   }
+  // The Daily 82-0: your best day of each week.
+  for (const [week, d] of Object.entries(perfectWeeks(loadPerfectRecords(read)))) {
+    if (!/^\d{4}-W\d{2}$/.test(week) || week < FIRST_WEEK || week > thisWeek || !int(d.score, 0, 30_000) || !int(d.w, 0, 82) || !int(d.l, 0, 82) || d.w + d.l > 82 || !int(d.pw, 0, 16) || !int(d.pl, 0, 12)) continue;
+    weekly.push({ board: 'perfect', week, score: d.score, detail: `${d.w}-${d.l}${d.pw + d.pl ? ` · playoffs ${d.pw}-${d.pl}` : ''}${d.champion ? ' · champions' : ''}` });
+  }
   const daily: Derived['daily'] = [];
   for (const [day, d] of Object.entries(hunt.daily ?? {})) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || day < FIRST_DAY || day > today || !d || !int(d.stop, 0, 10) || !int(d.wins, 0, 40) || !int(d.losses, 0, 40)) continue;
@@ -164,19 +170,21 @@ export function derive(blob: ProgressBlob, now = new Date()): Derived {
  * Your character for the boards, as a look code (src/profile/avatarCode.ts). Pieces and frames won on the
  * leaderboards need the honor, and level pieces the level; anything else that isn't earned falls back to the default.
  */
-export function publicAvatar(blob: ProgressBlob, level: number, honors: string[]): string | null {
+/** `owner`: the game owner's account (profiles.role), with everything open, keeps every piece. */
+export function publicAvatar(blob: ProgressBlob, level: number, honors: string[], owner = false): string | null {
   const read = objectRead(blob.storage);
   const raw = read('cv-avatar');
   if (!raw) return null;
   let look: AvatarLook;
   try { look = cleanAvatar(JSON.parse(raw) as Partial<AvatarLook>); } catch { return null; }
-  for (const c of AVATAR_CATEGORIES) {
+  for (const c of owner ? [] : AVATAR_CATEGORIES) {
     const r = c.items.find(i => i.id === look[c.id])?.rule;
     if (r && (('honor' in r && !honors.includes(r.honor)) || ('level' in r && r.level > level))) look = { ...look, [c.id]: DEFAULT_AVATAR[c.id] };
   }
   let frame: string | undefined;
   try { frame = (JSON.parse(read('cv-profile-equip') ?? '{}') as { avatarFrame?: string }).avatarFrame; } catch { /* none */ }
   const f = avatarFrameDef(frame);
-  const ok = f.honors ? f.honors.some(h => honors.includes(h)) : f.level != null ? level >= f.level : true;
+  const modes = f.modes ? earnedModeAchievements(read) : [];
+  const ok = owner || (f.modes ? f.modes.some(m => modes.includes(m)) : f.honors ? f.honors.some(h => honors.includes(h)) : f.level != null ? level >= f.level : true);
   return encodeAvatar(look, ok ? f.id : 'none');
 }

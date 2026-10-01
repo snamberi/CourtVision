@@ -1,7 +1,7 @@
 {
   "name": "Court Vision: basketball GM",
   "short_name": "Court Vision",
-  "description": "A free pixel-art basketball GM and simulation game: real NBA history, League Hunt, Career Mode and the Rebuild Challenge.",
+  "description": "A free pixel-art basketball GM and simulation game: real NBA history, the 82-0 Challenge, League Hunt, Career Mode, the Rebuild Challenge and the All-Time Draft.",
   "id": "/",
   "start_url": "/",
   "scope": "/",
@@ -9,10 +9,63 @@
   "orientation": "any",
   "background_color": "#0b1018",
   "theme_color": "#0b1018",
-  "categories": ["games", "sports"],
+  "categories": [
+    "games",
+    "sports"
+  ],
   "icons": [
-    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "82-0 Challenge",
+      "short_name": "82-0",
+      "url": "/#/82-0",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "League Hunt",
+      "short_name": "Hunt",
+      "url": "/#/hunt",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Career Mode",
+      "short_name": "Career",
+      "url": "/#/career",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
   ]
 }

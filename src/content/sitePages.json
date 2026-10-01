@@ -1,12 +1,12 @@
 {
   "site": "Court Vision",
-  "updated": "2026-09-27",
+  "updated": "2026-10-01",
   "pages": [
     {
       "path": "about.html",
       "nav": "About",
       "title": "About Court Vision: a free basketball GM and simulation game",
-      "description": "Court Vision is a free, browser-based pixel-art basketball management game with real NBA history, a full simulation engine, and five game modes.",
+      "description": "Court Vision is a free, browser-based pixel-art basketball management game with real NBA history, a full simulation engine, and seven game modes, from franchise GM to the 82-0 Challenge.",
       "h1": "About Court Vision",
       "lead": "Court Vision is a free basketball management and simulation game that runs in your browser. You run a franchise (drafting, trading, signing, coaching) and every game is played out possession by possession by a full simulation engine, not decided by a coin flip.",
       "sections": [
@@ -20,7 +20,9 @@
                 "**Play real NBA history.** Start a league in any season from 1946-47 to today with real players, real rosters and their real careers, awards and champions. See [Real NBA history](guides/real-nba-history.html).",
                 "**League Hunt.** Spin a six-man squad from all of basketball history and win ten best-of-seven series against the great teams of every era. See the [League Hunt guide](guides/league-hunt.html).",
                 "**Career Mode.** Create one player and live his entire career, from draft night to the Hall of Fame and the all-time Top 100. See the [Career Mode guide](guides/career-mode.html).",
-                "**Rebuild Challenge.** Take over a real team at its lowest point and win a title before time runs out. See the [Rebuild Challenge guide](guides/rebuild-challenge.html)."
+                "**Rebuild Challenge.** Take over a real team at its lowest point and win a title before time runs out. See the [Rebuild Challenge guide](guides/rebuild-challenge.html).",
+                "**82-0 Challenge.** Spin or pick a ten-man team from all of history and try to go 82-0, then 16-0 in the playoffs, against real teams and boss teams like the 72-10 Bulls. See the [82-0 Challenge guide](guides/82-0-challenge.html).",
+                "**All-Time Draft.** Thirty teams, thirteen rounds, every player in history at his best: draft against AI GMs, then play the season. See the [All-Time Draft guide](guides/all-time-draft.html)."
               ]
             }
           ]
@@ -43,7 +45,7 @@
           "blocks": [
             {
               "type": "p",
-              "text": "Court Vision has no accounts. Everything you play is saved in your own browser. You can export a single backup file with every league, career and record from the GM Locker or the main menu, and restore it on any device. The [Privacy Policy](privacy.html) explains exactly what is stored and how advertising works on the web version."
+              "text": "Accounts are optional. Everything you play is saved in your own browser, and a free account (Discord, Google or an email link) also keeps your progress with you on every device. You can export a single backup file with every league, career and record from the GM Locker or the main menu, and restore it on any device. The [Privacy Policy](privacy.html) explains exactly what is stored and how advertising works on the web version."
             },
             {
               "type": "p",
@@ -303,6 +305,15 @@
               "text": "Your Hall of Famers get plaques in the Career Mode Hall of Fame and in the GM Locker. A retired or active player can also be brought into any GM league from the Free Agency page."
             }
           ]
+        },
+        {
+          "h2": "Big moments",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "After a season with something special in it (a title, an MVP, a 50-point night, a first All-Star selection, a playoff exit, the rookie wall, or the first signs of Father Time) you make a call. Every answer is worth something: **Legacy Score** right away, or a summer of extra work in one skill that shows up in your ratings next season. Your calls appear in the career timeline. On autopilot, seasons play on without them."
+            }
+          ]
         }
       ]
     },
@@ -374,6 +385,164 @@
                 "**Daily Legend:** one hunt a day, the same for everyone. Keep your streak going.",
                 "**Album:** every card you have had on a squad, with progress toward each era's stars.",
                 "**Dream Matchup:** play any two real team-seasons against each other under any era's rules."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "guides/82-0-challenge.html",
+      "nav": "82-0 Challenge",
+      "title": "82-0 Challenge guide: Quick Spin, Franchise Spin, bosses and scoring",
+      "description": "How the 82-0 Challenge works in Court Vision: building a ten-man team from NBA history, Quick Spin and Franchise Spin, boss teams, lineup rules, chemistry, scoring, the Daily 82-0 and rewards.",
+      "h1": "82-0 Challenge guide",
+      "lead": "The 82-0 Challenge asks one question: can your team go undefeated? Build a ten-man team and a coach from all of NBA history, play a full 82-game season against real teams from every era, then four best-of-seven playoff rounds. The goal is 82-0, then 16-0.",
+      "sections": [
+        {
+          "h2": "Two ways to build",
+          "blocks": [
+            {
+              "type": "ul",
+              "items": [
+                "**Quick Spin:** ten spins (point guard, shooting guard, small forward, power forward and center, then five bench spots) and a coach spin. Whatever the reel lands on is yours. Fast and full of luck.",
+                "**Franchise Spin:** each spin rolls a franchise and an era, for example the Warriors in the 2010s. You see everyone who played there in that era, each at his best season with the team, and pick **one**. You get one team reroll, one era reroll and one **Absolute Prime** boost, which shows that spin's players at the best season of their whole career. More choice, tougher opponents.",
+                "**From League Hunt:** after you win a hunt, you can take that six-man squad and its coach into an 82-0 season, plus four bench spins. Hunt squads have their own record."
+              ]
+            }
+          ]
+        },
+        {
+          "h2": "The season and the bosses",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "The 82 games are against real team-seasons, getting tougher as the season goes on, and every game is played under the rules of the opponent's era. Six boss teams sit on the schedule: Wilt's 68-13 Sixers, the 1971-72 Lakers who won 33 straight, Bird's 1985-86 Celtics, the 72-10 Bulls, the 73-9 Warriors and the 2016-17 Warriors. The playoffs are four best-of-seven rounds against stronger and stronger teams, ending with a champion."
+            },
+            {
+              "type": "p",
+              "text": "You can play one game at a time, or sim the season and watch the record tick up. A banner tracks whether 82-0 is still alive, and when the streak breaks it shows the game and the team that did it."
+            }
+          ]
+        },
+        {
+          "h2": "Lineups and chemistry",
+          "blocks": [
+            {
+              "type": "ul",
+              "items": [
+                "Your five best players start. If no guard starts, or no big man (center or power forward) starts, the starters play worse. Three starters at one position also costs a little.",
+                "Real teammates from the same season, players from the same franchise and famous rivals on the same side play better together.",
+                "Ratings are ranked within each season, so a 1965 star and a 2016 star stand on the same scale. See [Ratings explained](guides/ratings-explained.html)."
+              ]
+            }
+          ]
+        },
+        {
+          "h2": "Scoring",
+          "blocks": [
+            {
+              "type": "table",
+              "columns": [
+                "What",
+                "Points"
+              ],
+              "rows": [
+                [
+                  "Each regular-season win",
+                  "100, plus the winning margin up to 25"
+                ],
+                [
+                  "Each boss team beaten",
+                  "400"
+                ],
+                [
+                  "Each playoff win",
+                  "200"
+                ],
+                [
+                  "Each sweep",
+                  "250"
+                ],
+                [
+                  "The title",
+                  "1,500"
+                ],
+                [
+                  "Going 82-0",
+                  "5,000"
+                ],
+                [
+                  "Then 16-0 in the playoffs",
+                  "5,000 more"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "h2": "Daily 82-0, records and rewards",
+          "blocks": [
+            {
+              "type": "ul",
+              "items": [
+                "**Daily 82-0:** the same spins for everyone each day, alternating between Quick Spin and Franchise Spin. Your best try of the day counts, and your best day of the week goes on the online weekly board.",
+                "**Rewards:** the Undefeated title and profile frame for an 82-0 season, and the gold Perfection title and frame for 98-0 (82-0 and 16-0). Five achievements and Trophy Road points for your best season, titles and perfect seasons.",
+                "**Share cards:** a landscape card or a 9:16 card for TikTok and Stories, with your whole season as a strip of wins and losses."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "guides/all-time-draft.html",
+      "nav": "All-Time Draft",
+      "title": "All-Time Draft guide: thirty teams, thirteen rounds, every player at his best",
+      "description": "How the All-Time Draft works in Court Vision: thirty teams draft every player in NBA history at his best season, AI GMs who draft for need, and a full season under any era's rules.",
+      "h1": "All-Time Draft guide",
+      "lead": "The All-Time Draft puts every player in NBA history into one draft pool, each at his best season. Thirty teams take turns for thirteen rounds; you draft against AI GMs, then play a full season with the whole GM game.",
+      "sections": [
+        {
+          "h2": "How the draft works",
+          "blocks": [
+            {
+              "type": "ul",
+              "items": [
+                "Thirty teams, thirteen rounds: a full roster for everyone.",
+                "Every player in history is in the pool at his best season, so the first picks are the greatest players ever.",
+                "AI GMs draft for need: a team with three guards goes looking for a big man. A draft board shows every pick, the clock, and the steals and reaches."
+              ]
+            }
+          ]
+        },
+        {
+          "h2": "After the draft",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "Your drafted team plays a full season in the GM game, under the rules of the era you choose: trades, rotations, coaching, the playoffs. Titles count toward your GM legacy and achievements."
+            }
+          ]
+        },
+        {
+          "h2": "All-Time Draft of the Week",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "Every week there is a shared All-Time Draft with the same order, era and AI GMs for everyone, so you can compare drafts with friends."
+            }
+          ]
+        },
+        {
+          "h2": "Tips",
+          "blocks": [
+            {
+              "type": "ul",
+              "items": [
+                "Take the best player available early, then fill positions: a team needs someone to bring the ball up and someone to protect the rim.",
+                "Late rounds are where role players win titles: shooters and defenders matter more than names.",
+                "Learn how player ratings compare across eras in [Ratings explained](guides/ratings-explained.html)."
               ]
             }
           ]
@@ -758,8 +927,8 @@
     {
       "path": "faq.html",
       "nav": "FAQ",
-      "title": "Court Vision FAQ: saves, devices, offline play, ads and more",
-      "description": "Answers to common questions about Court Vision: where saves are stored, moving to another device, the offline Windows edition, ads, real player data and reporting bugs.",
+      "title": "Court Vision FAQ: game modes, saves, devices, offline play and more",
+      "description": "Answers to common questions about Court Vision: every game mode and how long it takes, the 82-0 Challenge, saves, accounts, playing on a phone or offline, real player data and ads.",
       "h1": "Frequently asked questions",
       "lead": "Quick answers to the questions players ask most. Anything missing? Ask on our [Discord](https://discord.gg/5uGK5HDS8e).",
       "sections": [
@@ -781,7 +950,97 @@
             },
             {
               "type": "p",
-              "text": "With an account, your GM level, achievements, trophies, League Hunt, Rebuild and weekly results, daily goals and retired Career Mode players follow you to every device, and you appear on the online leaderboards, ranked seasons and League Hunt PvP. GM leagues and careers still in progress stay on the device where you play them: they are several megabytes each, so use **Backup everything** to move those."
+              "text": "With an account, your GM level, achievements, trophies, League Hunt, 82-0 Challenge, Rebuild and weekly results, daily goals and retired Career Mode players follow you to every device, and you appear on the online leaderboards, ranked seasons and League Hunt PvP. GM leagues and careers still in progress stay on the device where you play them: they are several megabytes each, so use **Backup everything** to move those."
+            }
+          ]
+        },
+        {
+          "h2": "What game modes are there, and how long do they take?",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "Seven. Pick by how much time you have:"
+            },
+            {
+              "type": "table",
+              "columns": [
+                "Mode",
+                "How long",
+                "What it is"
+              ],
+              "rows": [
+                [
+                  "82-0 Challenge",
+                  "5-10 minutes",
+                  "Build a ten-man team from all of history and try to go 82-0, then 16-0 in the playoffs."
+                ],
+                [
+                  "Career Mode",
+                  "5-15 minutes",
+                  "Create one player and live his whole career, from draft night to the Hall of Fame."
+                ],
+                [
+                  "Rebuild Challenge",
+                  "10-20 minutes",
+                  "Take over a real team at its lowest point and win a title before time runs out."
+                ],
+                [
+                  "All-Time Draft",
+                  "10-20 minutes",
+                  "Thirty teams draft every player in history at his best, then play the season."
+                ],
+                [
+                  "League Hunt",
+                  "15-30 minutes a run",
+                  "Spin a six-man squad and beat ten great teams from every era in best-of-seven series."
+                ],
+                [
+                  "Real League",
+                  "Unlimited",
+                  "Run a real NBA franchise from any season since 1946-47."
+                ],
+                [
+                  "Random Players",
+                  "Unlimited",
+                  "A generated 30-team league with nothing real: pure franchise building."
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "h2": "What is the 82-0 Challenge?",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "A quick mode about one question: can your team go undefeated? Spin ten players and a coach (Quick Spin), or roll a franchise and an era and pick one player from everyone who played there (Franchise Spin). Then play all 82 games against real teams from every era, including boss teams like the 72-10 Bulls and the 73-9 Warriors, and four playoff rounds. Every run gets a score, there is a Daily 82-0 with the same spins for everyone, and going 82-0 unlocks the Undefeated title and profile frame. See the [82-0 Challenge guide](guides/82-0-challenge.html)."
+            }
+          ]
+        },
+        {
+          "h2": "What is the Mode of the Week?",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "Each week one mode (the 82-0 Challenge, League Hunt, Career Mode or the Rebuild Challenge) earns **double XP**: every run you finish in it that week gives its XP twice, up to 3,000 bonus XP a week. It changes every Monday and is shown on the main menu."
+            }
+          ]
+        },
+        {
+          "h2": "Can I play on my phone?",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "Yes. Court Vision runs in any modern phone browser, and you can install it as an app from the main menu (on iPhone: Share, then Add to Home Screen). The quick modes (82-0 Challenge, Career Mode, League Hunt) are made for short sessions on a phone."
+            }
+          ]
+        },
+        {
+          "h2": "Is Court Vision affiliated with the NBA?",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "No. Court Vision is an independent fan project, not affiliated with or endorsed by the NBA, its teams or its players. Historical statistics come from [Basketball-Reference.com](https://www.basketball-reference.com/); the ratings are Court Vision's own."
             }
           ]
         },
@@ -906,10 +1165,27 @@
       "path": "changelog.html",
       "nav": "Changelog",
       "title": "Court Vision changelog: new game modes and features",
-      "description": "What's new in Court Vision: Career Mode, League Hunt, Rebuild Challenge, the GM Locker, Trade Deadline Day and more.",
+      "description": "What's new in Court Vision: the 82-0 Challenge, Mode of the Week, Career Mode big moments, the All-Time Draft, League Hunt and more.",
       "h1": "Changelog",
       "lead": "The biggest recent additions to Court Vision, newest first.",
       "sections": [
+        {
+          "h2": "October 2026: the 82-0 Challenge",
+          "blocks": [
+            {
+              "type": "ul",
+              "items": [
+                "**82-0 Challenge:** a new mode. Build a ten-man team (Quick Spin or Franchise Spin), play all 82 games against real teams and boss teams like the 72-10 Bulls, then four playoff rounds. Scored runs, a Daily 82-0 with a weekly board, and the Undefeated and Perfection rewards.",
+                "**Hunt squads to 82-0:** after you win a League Hunt, take that squad into an 82-0 season as a bonus run.",
+                "**Mode of the Week:** one mode earns double XP every week.",
+                "**Career Mode big moments:** titles, MVPs, 50-point nights, playoff heartbreak and more now ask you to make a call, worth Legacy or a summer of training.",
+                "**Share cards in 9:16** for TikTok, Reels and Stories, with your 82-game season as a strip of wins and losses.",
+                "**Menu:** every mode card shows how long a sitting takes, tags, the most popular and most fun picks, and what you have in progress.",
+                "**Profile frames, a free Season Pass, a daily streak, your character on the leaderboards** and the Weekly Hunt arrived in the weeks before."
+              ]
+            }
+          ]
+        },
         {
           "h2": "All-Time Draft",
           "blocks": [
@@ -1006,5 +1282,6 @@
         }
       ]
     }
-  ]
+  ],
+  "url": "https://courtvisiongame.com"
 }

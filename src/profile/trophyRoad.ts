@@ -6,6 +6,7 @@ import { dailyGoalXp } from './dailyGoals';
 import { localRead, type Read } from '../lib/kv';
 import { AVATAR_TROPHY_ROAD } from './avatar';
 import { readStreak, streakTrophies } from '../retention/streak';
+import { loadPerfectRecords, perfectTrophies } from '../perfect/storage';
 import { readPass, passTrophies } from '../retention/pass';
 
 /*
@@ -50,6 +51,7 @@ export function trophyParts(read: Read = localRead): TrophyPart[] {
     { id: 'cards', label: 'Card album', trophies: cards * T.card },
     { id: 'owner', label: "Owner's Box", trophies: owners.reduce((n, r) => n + (r.seasons ?? 0) * T.ownerSeason + Math.max(0, r.legacy ?? 0) * T.ownerLegacy, 0) },
     { id: 'streak', label: 'Daily streak', trophies: streakTrophies(readStreak(read)) },
+    { id: 'perfect', label: '82-0 Challenge', trophies: perfectTrophies(loadPerfectRecords(read)) },
     { id: 'pass', label: 'Season Pass', trophies: passTrophies(readPass(read)) },
   ];
 }

@@ -66,10 +66,11 @@ describe('weekly hunt and frames', () => {
     expect(weeklyHunt('2026-W40').seed).not.toBe(weeklyHunt('2026-W41').seed);
     expect(huntScore({ won: true, stop: 9, wins: 40, losses: 10 })).toBeGreaterThan(huntScore({ won: false, stop: 9, wins: 39, losses: 12 }));
   });
-  it('has nine profile frames: three ranked, three on each road', () => {
+  it('has eleven profile frames: three ranked, three on each road, two from the 82-0 Challenge', () => {
     const frames = AVATAR_FRAMES.filter(f => f.id !== 'none');
-    expect(frames).toHaveLength(9);
+    expect(frames).toHaveLength(11);
     expect(frames.filter(f => f.honors)).toHaveLength(3);
+    expect(frames.filter(f => f.modes)).toHaveLength(2);
     expect(TROPHY_ROAD.filter(([, k]) => k === 'avatarFrame')).toHaveLength(3);
     expect(LEVEL_ROAD.filter(([, k]) => k === 'avatarFrame')).toHaveLength(3);
     const gold = AVATAR_FRAMES.find(f => f.id === 'goldCrown')!, bronze = AVATAR_FRAMES.find(f => f.id === 'bronzeCrest')!;

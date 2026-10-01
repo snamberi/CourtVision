@@ -36,6 +36,9 @@ const serviceWorker = (): Plugin => ({
   },
 })
 
+/** The live site, used when the build is not told another address (SITE_URL). */
+const PRODUCTION_SITE = 'https://courtvisiongame.com'
+
 /**
  * robots.txt and sitemap.xml for the web build: the game plus the crawlable guide pages (see scripts/generate-site-pages.mjs).
  * The sitemap needs the site's address: SITE_URL (set it on Cloudflare), or the production address Vercel provides at build time.
@@ -44,12 +47,17 @@ const siteMaps = (): Plugin => ({
   name: 'site-maps',
   apply: 'build',
   generateBundle() {
-    const raw = process.env.SITE_URL || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : '');
+    const raw = process.env.SITE_URL || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : '') || PRODUCTION_SITE;
     const site = raw.replace(/\/$/, '');
-    const pages = ['', 'about.html', 'how-to-play.html', 'guides/', 'guides/career-mode.html', 'guides/league-hunt.html', 'guides/rebuild-challenge.html',
-      'guides/real-nba-history.html', 'guides/ratings-explained.html', 'faq.html', 'changelog.html', 'privacy.html'];
-    this.emitFile({ type: 'asset', fileName: 'robots.txt', source: `User-agent: *\nAllow: /\n${site ? `\nSitemap: ${site}/sitemap.xml\n` : ''}` });
-    if (site) this.emitFile({ type: 'asset', fileName: 'sitemap.xml', source: `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${pages.map(p => `  <url><loc>${site}/${p}</loc></url>`).join('\n')}\n</urlset>\n` });
+    const updated = (JSON.parse(readFileSync(new URL('./src/content/sitePages.json', import.meta.url), 'utf8')) as { updated: string }).updated;
+    const pages: [string, number][] = [['', 1], ['guides/', 0.8], ['guides/82-0-challenge.html', 0.8], ['guides/league-hunt.html', 0.8], ['guides/career-mode.html', 0.8],
+      ['guides/all-time-draft.html', 0.7], ['guides/rebuild-challenge.html', 0.7], ['guides/real-nba-history.html', 0.7], ['guides/ratings-explained.html', 0.6],
+      ['how-to-play.html', 0.8], ['faq.html', 0.8], ['about.html', 0.6], ['changelog.html', 0.5], ['privacy.html', 0.3]];
+    // Search engines and AI assistants (ChatGPT, Claude, Perplexity, Gemini...) may read every page; the API is not for crawling.
+    const aiBots = ['GPTBot', 'OAI-SearchBot', 'ChatGPT-User', 'ClaudeBot', 'Claude-User', 'Claude-SearchBot', 'PerplexityBot', 'Perplexity-User', 'Google-Extended', 'Applebot-Extended', 'Bingbot', 'DuckAssistBot', 'meta-externalagent'];
+    const robots = ['User-agent: *', 'Allow: /', 'Disallow: /api/', '', ...aiBots.flatMap(b => [`User-agent: ${b}`, 'Allow: /', 'Disallow: /api/', '']), `Sitemap: ${site}/sitemap.xml`, ''].join('\n');
+    this.emitFile({ type: 'asset', fileName: 'robots.txt', source: robots });
+    this.emitFile({ type: 'asset', fileName: 'sitemap.xml', source: `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${pages.map(([p, pr]) => `  <url><loc>${site}/${p}</loc><lastmod>${updated}</lastmod><priority>${pr.toFixed(1)}</priority></url>`).join('\n')}\n</urlset>\n` });
   },
 })
 

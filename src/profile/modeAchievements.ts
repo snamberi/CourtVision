@@ -2,6 +2,7 @@ import { localRead, type Read } from '../lib/kv';
 import type { TrophyKey } from '../simulation/trophies';
 import { readLegacy } from '../storage/gmLegacy';
 import { loadRecords } from '../hunt/storage';
+import { loadPerfectRecords } from '../perfect/storage';
 import { loadRebuildRecords } from '../simulation/rebuildChallenge';
 import { loadWeeklyRecords } from '../retention/weekly';
 import { careerCache } from './profile';
@@ -14,9 +15,9 @@ import { readFeats, type Feats } from './feats';
  * can count them for rarity. They are trophies only: the modes already give XP for the same results.
  */
 
-export type Mode = 'career' | 'hunt' | 'rebuild' | 'draft' | 'pvp' | 'ranked' | 'weekly' | 'daily';
+export type Mode = 'career' | 'hunt' | 'perfect' | 'rebuild' | 'draft' | 'pvp' | 'ranked' | 'weekly' | 'daily';
 export const MODE_LABELS: Record<Mode, string> = {
-  career: 'Career Mode', hunt: 'League Hunt', rebuild: 'Rebuild Challenge', draft: 'All-Time Draft',
+  career: 'Career Mode', hunt: 'League Hunt', perfect: '82-0 Challenge', rebuild: 'Rebuild Challenge', draft: 'All-Time Draft',
   pvp: 'Hunt PvP', ranked: 'Ranked', weekly: 'Weekly challenges', daily: 'Daily goals',
 };
 
@@ -27,6 +28,8 @@ export interface ModeStats {
   drafts: number; draftTop: number; draftTitles: number;
   pvpWins: number; pvpBest: number; rankedTier: number;
   weeks: number; perfectDays: number; goalStreak: number;
+  /** The 82-0 Challenge. */
+  p82Wins: number; p82Titles: number; p82Perfect: number; p82Perfect98: number;
 }
 
 export interface ModeAchievement { id: string; mode: Mode; name: string; description: string; icon: TrophyKey; progress: (s: ModeStats) => [number, number]; label?: (n: number, goal: number) => string }
@@ -50,6 +53,12 @@ export const MODE_ACHIEVEMENTS: ModeAchievement[] = [
   { id: 'hunt-daily-seven', mode: 'hunt', name: 'Daily Habit', description: 'Play seven Daily Legends.', icon: 'ironMan', progress: s => at(s.dailyPlayed, 7) },
   { id: 'hunt-album-100', mode: 'hunt', name: 'Collector', description: 'Hold 100 cards in your album.', icon: 'allStar', progress: s => at(s.album, 100) },
   { id: 'hunt-album-300', mode: 'hunt', name: 'Archivist', description: 'Hold 300 cards in your album.', icon: 'allStarMvp', progress: s => at(s.album, 300) },
+
+  { id: 'perfect-60', mode: 'perfect', name: 'Sixty Wins', description: 'Win 60 games in an 82-0 Challenge season.', icon: 'pom', progress: s => at(s.p82Wins, 60) },
+  { id: 'perfect-title', mode: 'perfect', name: 'Ring Chaser', description: 'Win the title in the 82-0 Challenge.', icon: 'champion', progress: s => at(s.p82Titles, 1) },
+  { id: 'perfect-74', mode: 'perfect', name: 'Better Than 73-9', description: 'Win 74 games in an 82-0 Challenge season.', icon: 'mvp', progress: s => at(s.p82Wins, 74) },
+  { id: 'perfect-82', mode: 'perfect', name: 'Undefeated', description: 'Go 82-0 in the 82-0 Challenge.', icon: 'fmvp', progress: s => at(s.p82Perfect, 1) },
+  { id: 'perfect-98', mode: 'perfect', name: 'Perfection', description: 'Go 82-0, then 16-0 in the playoffs.', icon: 'eoy', progress: s => at(s.p82Perfect98, 1) },
 
   { id: 'rebuild-star', mode: 'rebuild', name: 'First Star', description: 'Earn a star in a Rebuild Challenge.', icon: 'mip', progress: s => at(s.rebuildStars, 1) },
   { id: 'rebuild-title', mode: 'rebuild', name: 'Rebuilt', description: 'Rebuild a team into champions.', icon: 'champion', progress: s => at(s.rebuildTitles, 1) },
@@ -96,6 +105,7 @@ export function modeStats(read: Read = localRead, extra: Feats = {}): ModeStats 
   const weeks = Object.values(loadWeeklyRecords(read)).reduce((n, w) => n + (w.rebuild ? 1 : 0) + (w.career ? 1 : 0), 0);
   const goals = json<Record<string, { done: number }>>(read, 'cv-daily-history', {});
   const rankedLocal = RANK_ORDER.indexOf(read('cv-ranked-best') ?? '');
+  const p82 = loadPerfectRecords(read);
   return {
     retired: c.retired, hallOfFame: c.hallOfFame, firstBallot: c.firstBallot ?? 0, top10: c.top10 ?? 0, mvpCareers: c.mvpCareers ?? 0, mostTitles: c.mostTitles ?? 0, mostPoints: c.mostPoints ?? 0,
     huntWins: hunt.wins, huntLegendWins: feats.huntLegendWins ?? 0, dailyPlayed: daily.length, dailyWins: daily.filter(d => d.won).length,
@@ -108,6 +118,7 @@ export function modeStats(read: Read = localRead, extra: Feats = {}): ModeStats 
     rankedTier: Math.max(feats.rankedTier ?? 0, rankedLocal, extra.rankedTier ?? 0),
     weeks, perfectDays: Object.values(goals).filter(g => g.done >= 3).length,
     goalStreak: longestStreak(Object.entries(goals).filter(([, g]) => g.done > 0).map(([d]) => d)),
+    p82Wins: p82.bestWins, p82Titles: p82.titles, p82Perfect: p82.perfectSeasons, p82Perfect98: p82.perfect98,
   };
 }
 
