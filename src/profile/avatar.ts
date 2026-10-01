@@ -113,6 +113,7 @@ export const BEARDS: AvatarItem[] = [
 
 export type OutfitKind = 'warriorArmor' | 'jersey' | 'tee' | 'hoodie' | 'track' | 'suit' | 'tux' | 'varsity' | 'overalls' | 'labcoat' | 'chef' | 'referee' | 'hawaiian' | 'santa' | 'astronaut' | 'armor'
   | 'contestant' | 'guard' | 'webHero' | 'capedHero' | 'soulReaper' | 'demonHunter' | 'sorcerer' | 'airNomad' | 'arcade80s' | 'trainer'
+  | 'sovereign'
   | 'gi' | 'ninja' | 'pirate' | 'scout' | 'haori' | 'gakuran' | 'hero' | 'plugsuit' | 'cloudrobe' | 'kimono' | 'sailor' | 'captain' | 'flamecloak' | 'royal' | 'wizard';
 export interface Outfit extends AvatarItem { kind: OutfitKind; main: string; trim: string; number?: number; style?: 'classic' | 'stripe' | 'split' }
 const fit = (id: string, name: string, kind: OutfitKind, main: string, trim: string, rule: Rule = FREE, extra: Partial<Outfit> = {}): Outfit => ({ ...item('outfit', id, name, rule), kind, main, trim, ...extra });
@@ -154,7 +155,7 @@ export const OUTFITS: Outfit[] = [
   fit('soulReaper', 'Soul reaper robe', 'soulReaper', '#14161c', '#f4f6fa'), fit('capedHero', 'One-punch hero suit', 'capedHero', '#ffd84a', '#e8322e', lv(120)),
   fit('sorcerer', 'Sorcerer school uniform', 'sorcerer', '#1c2440', '#ffd166', lv(180)), fit('airNomad', 'Air monk robes', 'airNomad', '#f2b632', '#e8742a', lv(75)),
   // The game owner's.
-  fit('sovereign', 'Sovereign robe', 'royal', '#0e1a5a', '#6fd3ff', OWNER),
+  fit('sovereign', 'Sovereign robe and golden cape', 'sovereign', '#1a3fb8', '#ffd166', OWNER),
 ];
 
 // ---------------------------------------------------------------- headwear, eyewear, neck and back, shoes, aura

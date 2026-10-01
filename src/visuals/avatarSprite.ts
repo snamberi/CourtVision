@@ -195,6 +195,14 @@ function drawOutfit(r: Rect, o: Outfit, team: { primary: string; secondary: stri
       r(12, 25, 5, 13, main.c); r(23, 25, 5, 13, main.c); r(11, 38, 7, 7, main.c); r(22, 38, 7, 7, main.c);
       for (let x = 11; x < 29; x++) { if (x >= 18 && x < 22) continue; const h = 1 + ((x * 7) % 3); r(x, 45 - h, 1, h, x % 2 ? trim.c : '#ff9d3d'); }
       r(7, 30, 3, 2, trim.c); r(30, 30, 3, 2, trim.c); return;
+    case 'sovereign':
+      // A sapphire robe in gold: gold pauldrons and collar, a gold sash and belt, a blue jewel, gold-trimmed hems.
+      torso(r, main); longSleeves(r, main); pants(r, main); coatSkirt(r, main, main.d);
+      r(9, 24, 6, 3, trim.c); r(25, 24, 6, 3, trim.c); r(9, 24, 6, 1, trim.l); r(25, 26, 6, 1, trim.d);
+      r(15, 24, 10, 2, trim.c); r(16, 25, 8, 1, trim.d);
+      for (let i = 0; i < 11; i++) r(14 + i, 27 + i, 2, 1, trim.c);
+      r(11, 37, 18, 2, trim.c); r(11, 38, 18, 1, trim.d); r(19, 36, 3, 3, '#6fd3ff'); r(19, 36, 1, 1, WHITE);
+      r(11, 44, 18, 1, trim.c); r(7, 31, 3, 1, trim.c); r(30, 31, 3, 1, trim.c); r(18, 39, 4, 6, '#0e1a5a'); return;
     case 'royal':
       torso(r, main); longSleeves(r, main); pants(r, main); coatSkirt(r, main, main.d);
       r(11, 24, 18, 3, WHITE); for (const x of [13, 17, 22, 26]) r(x, 25, 1, 1, OUTLINE);
@@ -499,6 +507,13 @@ export function buildAvatarGrid({ look, team }: AvatarOptions): { grid: SpriteGr
   else drawCustomHat(r, look.hat, hairBase);
   drawEyes(r, look.eyes);
   drawNeck(r, look.neck);
+  // The Sovereign robe's golden cape, lined in blue, drawn before wings so it shows below them.
+  if (o.kind === 'sovereign') {
+    for (let y = 24; y < 50; y++) {
+      const s = Math.floor((y - 24) / 4), w = 22 + s * 2, x0 = 9 - s;
+      for (let x = x0; x < x0 + w; x++) if (y >= 0 && y < grid.length && x >= 0 && x < grid[0].length && !grid[y][x]) grid[y][x] = x === x0 || x === x0 + w - 1 ? '#1f4fd9' : (x + y) % 7 === 0 ? '#ffe08a' : (y + s) % 6 === 0 ? '#c9971f' : '#ffd166';
+    }
+  }
   drawBack(grid, look.neck);
 
   // Rainbow skin and hair: every shade of the stand-in colour takes the rainbow at that spot, keeping its shading.

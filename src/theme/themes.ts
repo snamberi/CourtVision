@@ -21,7 +21,9 @@ export type ThemeId = 'original' | 'cartridge' | 'scoreboard' | 'prodark' | 'ter
   // Unlocked on the Level Road (LEVEL_ROAD in profile/cosmetics.ts, reward kind 'look').
   | 'frontoffice' | 'hardwood' | 'blacktop' | 'playbook' | 'handheld' | 'broadcast' | 'neongrid' | 'arcade' | 'comicpop' | 'championship'
   // Unlocked on the Trophy Road (profile/trophyRoad.ts).
-  | 'aurora' | 'royalcourt' | 'galaxy' | 'hallowed' | 'eclipse' | 'immortal';
+  | 'aurora' | 'royalcourt' | 'galaxy' | 'hallowed' | 'eclipse' | 'immortal'
+  // The game owner's (hidden from everyone else).
+  | 'sovereign';
 type Family = 'red' | 'orange' | 'gold' | 'green' | 'blue' | 'purple';
 type Stop = [number, string];
 type Role = 'bg' | 'fg' | 'border' | 'shadow' | 'any';
@@ -42,6 +44,8 @@ export interface ThemeSpec {
   fonts?: Partial<Record<'display' | 'pixel' | 'body' | 'mono' | 'vt', string>>;
   /** Loads the theme's web fonts (bundled, so they work offline). */
   loadFonts?: () => Promise<unknown>;
+  /** Game Owner only (profile/ownerAccess.ts): hidden from everyone else. */
+  staff?: boolean;
   /** Colours for the picker's preview card. */
   preview: { bg: string; panel: string; line: string; text: string; dim: string; accent: string; onAccent: string; hi: string; display: string; body: string };
 }
@@ -279,6 +283,15 @@ THEMES.push(
     loadFonts: fontsOf(() => import('@fontsource/bungee/latin-400.css')),
     preview: { bg: '#07070c', panel: '#101018', line: '#55557a', text: '#ffffff', dim: '#d8d8ee', accent: '#ffb347', onAccent: '#07070c', hi: '#6fd3ff', display: "'Bungee', sans-serif", body: "'Inter', sans-serif" },
   },
+  {
+    id: 'sovereign', name: 'Celestial Sovereign', blurb: 'Deep space, blue fire and royal gold. Game Owner only.', staff: true,
+    ramps: darkRamps({ floor: '#03061a', panel: '#071033', panel2: '#0a1640', panel3: '#0e1c4e', raised: '#13245e', line: '#1c3480', lineMid: '#3a62d8', lineStrong: '#9fe7ff', dim: '#c4d6ff', text: '#f4f8ff', bright: '#ffffff', ink: '#03061a' }),
+    shadow: '#01030d',
+    accent: { red: '#ff5c7a', orange: '#ffd166', gold: '#ffd166', green: '#6fffb0', blue: '#6fd3ff', purple: '#9f8cff' },
+    fonts: { display: "'Cinzel', 'Oswald', serif", pixel: "'Cinzel', serif", vt: "'Cinzel', serif" },
+    loadFonts: fontsOf(() => import('@fontsource/cinzel/latin-600.css'), () => import('@fontsource/cinzel/latin-700.css')),
+    preview: { bg: '#03061a', panel: '#071033', line: '#3a62d8', text: '#f4f8ff', dim: '#c4d6ff', accent: '#ffd166', onAccent: '#03061a', hi: '#6fd3ff', display: "'Cinzel', serif", body: "'Inter', sans-serif" },
+  },
 );
 
 /** The level a look opens at: the Level Road for the ten road looks, everyone for the rest. */
@@ -286,7 +299,9 @@ export const themeLevel = (id: ThemeId) => roadLevel('look', id) ?? 1;
 /** Trophies a look needs (the Trophy Road looks), or 0. */
 export const themeTrophies = (id: ThemeId) => trophyNeed('look', id) ?? 0;
 /** Whether a look is open at this level and trophy count. */
-export const themeOpen = (id: ThemeId, level: number, trophies: number) => hasOwnerAccess() || (level >= themeLevel(id) && trophies >= themeTrophies(id));
+export const themeOpen = (id: ThemeId, level: number, trophies: number) => hasOwnerAccess() || (!THEME_BY_ID.get(id)?.staff && level >= themeLevel(id) && trophies >= themeTrophies(id));
+/** The looks this browser can see (Game Owner looks only for the owner). */
+export const visibleThemes = () => (hasOwnerAccess() ? THEMES : THEMES.filter(t => !t.staff));
 
 export const THEME_BY_ID = new Map(THEMES.map(t => [t.id, t]));
 
@@ -375,7 +390,9 @@ export function themeCss(id: ThemeId): string {
 export function applyTheme(id: ThemeId): void {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
-  const t = THEME_BY_ID.get(id) ?? THEMES[0];
+  const found = THEME_BY_ID.get(id) ?? THEMES[0];
+  // A Game Owner look on someone else's device falls back to the original.
+  const t = found.staff && !hasOwnerAccess() ? THEMES[0] : found;
   let style = document.getElementById('cv-theme') as HTMLStyleElement | null;
   if (t.id === 'original') { root.removeAttribute('data-cv-theme'); style?.remove(); }
   else {

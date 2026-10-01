@@ -1,5 +1,5 @@
 import { localRead, type Read } from '../lib/kv';
-import { hasOwnerAccess, OWNER_TITLE } from './ownerAccess';
+import { hasOwnerAccess, OWNER_TITLE, SOVEREIGN_TITLE } from './ownerAccess';
 import { totalTrophies, trophyNeed, TROPHY_TITLES } from './trophyRoad';
 import { AVATAR_LEVEL_ROAD } from './avatar';
 import { readStreak, streakTitles } from '../retention/streak';
@@ -219,6 +219,7 @@ export const NAME_COLORS: (Cosmetic & { css: string; anim?: ColorAnim })[] = [
   animated('dsheen', 'Diamond sheen', 'linear-gradient(90deg, #6db8ff, #ffffff, #bfe6ff, #ffffff, #6db8ff)', 'shimmer'),
   animated('sunset', 'Sunset', 'linear-gradient(90deg, #ff5f6d, #ffc371, #ff8fc8, #ffc371, #ff5f6d)', 'flow'),
   animated('phantom', 'Phantom', 'linear-gradient(90deg, #5b6b82, #ffffff, #b8a8ff, #ffffff, #5b6b82)', 'pulse'),
+  { id: 'blueglint', name: 'Blue glint', css: 'linear-gradient(90deg, #1f4fd9, #4da3ff, #ffffff, #9fe7ff, #ffffff, #4da3ff, #1f4fd9)', anim: 'shimmer' as ColorAnim, rule: STAFF, how: OWNER_ONLY },
   { id: 'sovereign', name: 'Sovereign blue fire', css: 'linear-gradient(90deg, #1f4fd9, #6fd3ff, #ffffff, #ffd166, #ffffff, #6fd3ff, #1f4fd9)', anim: 'flow' as ColorAnim, rule: STAFF, how: OWNER_ONLY },
   animated('solar', 'Solar flare', 'linear-gradient(90deg, #ff3d1f, #ffe066, #ffffff, #ffe066, #ff3d1f)', 'flow'),
   animated('nebula', 'Nebula', 'linear-gradient(90deg, #3b1d82, #ff4dd2, #4fd6d6, #b983ff, #3b1d82)', 'flow'),
@@ -312,7 +313,7 @@ export const earnedExtraTitles = (c: UnlockContext): string[] => [
   ...ALBUM_TITLES.filter(t => ((t.kind === 'sets' ? c.album?.sets : c.album?.legendary) ?? 0) >= t.n).map(t => t.title),
   ...OWNER_TITLES.filter(t => (c.owner ?? 0) >= t.legacy).map(t => t.title),
   ...streakTitles(c.streak ?? 0), ...passTitles(c.pass ?? 0),
-  ...(c.staff ? [OWNER_TITLE] : []),
+  ...(c.staff ? [OWNER_TITLE, SOVEREIGN_TITLE] : []),
 ];
 export function ownerBest(read: Read = localRead): number {
   try { return ((JSON.parse(read('cv-owner-records') ?? '[]') as { legacy: number }[]) ?? []).reduce((m, r) => Math.max(m, r.legacy ?? 0), 0); } catch { return 0; }
