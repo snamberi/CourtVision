@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react';
 import type { SupabaseClient, Session } from '@supabase/supabase-js';
 import { noteFeat } from '../profile/feats';
 import { noteHonors } from '../profile/cosmetics';
+import { noteOwnerAccess } from '../profile/ownerAccess';
 import { TIERS } from './ranked';
 import { IS_DESKTOP_BUILD } from '../appMode';
 import { loadEntitlements, writeEntitlements } from '../billing/billing';
@@ -57,7 +58,7 @@ async function applySession(client: SupabaseClient, s: Session | null) {
   const before = session?.user.id;
   session = s;
   // Passes belong to the account: signed out, this browser forgets them (they come back on sign-in).
-  if (!s) { setAccount({ status: 'signedOut', userId: null, email: null, provider: null, profile: null }); if (before) writeEntitlements(null); return; }
+  if (!s) { setAccount({ status: 'signedOut', userId: null, email: null, provider: null, profile: null }); if (before) { writeEntitlements(null); noteOwnerAccess(false); } return; }
   setAccount({ status: 'signedIn', userId: s.user.id, email: s.user.email ?? null, provider: (s.user.app_metadata?.provider as string | undefined) ?? null });
   if (before !== s.user.id || !state.profile) await refreshProfile(client);
   if (before !== s.user.id) window.dispatchEvent(new Event(SIGNED_IN_EVENT));
@@ -74,6 +75,9 @@ export async function refreshProfile(client?: SupabaseClient): Promise<CloudProf
   const profile = (data as CloudProfile | null) ?? null;
   // Leaderboard honors are granted by the server at sync; they unlock titles, the medal icon and the prism colour.
   noteHonors(profile?.stats?.honors);
+  // Owner access (profiles.role, set only from the SQL editor). A database without the column yet leaves it as it was.
+  const role = await c.from('profiles').select('role').eq('id', session.user.id).maybeSingle();
+  if (!role.error) noteOwnerAccess((role.data as { role?: string | null } | null)?.role === 'owner');
   const best = profile?.stats?.rankedBest;
   if (typeof best === 'string') {
     try { localStorage.setItem('cv-ranked-best', best); } catch { /* storage blocked */ }

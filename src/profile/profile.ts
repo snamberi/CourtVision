@@ -7,6 +7,7 @@ import { loadWeeklyRecords } from '../retention/weekly';
 import { dailyGoalXp } from './dailyGoals';
 import { localRead, type Read } from '../lib/kv';
 import { TITLE_COLORS, titleColorOpen } from './trophyRoad';
+import { hasOwnerAccess } from './ownerAccess';
 import { avatarFrameDef, avatarFrameOpen, AVATAR_FRAMES, type AvatarFrameId } from './avatarFrames';
 import { ICONS, NAME_COLORS, LEVEL_ROAD, ROAD_TITLES, ROAD_LOOK_NAMES, roadLevel, unlockContext, isOpen, earnedExtraTitles, iconDef, type IconId, type ColorId, type RewardKind } from './cosmetics';
 
@@ -96,7 +97,7 @@ export type FloorId = 'team' | 'planks' | 'parquet' | 'blonde' | 'midnight' | 'a
   | 'cherry' | 'sand' | 'retro' | 'herringbone' | 'ebony' | 'ice' | 'neon' | 'lava' | 'gold' | 'galaxy';
 export interface Unlock<T extends string> { id: T; name: string; level: number; blurb: string; /** Opened on the Trophy Road at this many trophies instead of a level. */ trophies?: number }
 /** Whether a level-road or Trophy Road unlock is open. */
-export const unlockOpen = (u: { level: number; trophies?: number }, level: number, trophies: number) => u.trophies != null ? trophies >= u.trophies : u.level <= level;
+export const unlockOpen = (u: { level: number; trophies?: number }, level: number, trophies: number) => hasOwnerAccess() || (u.trophies != null ? trophies >= u.trophies : u.level <= level);
 
 // Levels come from the level road (cosmetics.ts), so each reward is listed in one place.
 const road = (kind: RewardKind, id: string) => roadLevel(kind, id) ?? 1;
@@ -135,7 +136,7 @@ export const RANK_TITLES: { id: string; tier: string; order: number }[] = [
 const TIER_ORDER = ['bronze', 'silver', 'gold', 'platinum', 'diamond', 'legend'];
 export const RANKED_BEST_KEY = 'cv-ranked-best';
 export function rankTitles(read: Read = localRead): string[] {
-  const best = TIER_ORDER.indexOf(read(RANKED_BEST_KEY) ?? '');
+  const best = hasOwnerAccess(read) ? Infinity : TIER_ORDER.indexOf(read(RANKED_BEST_KEY) ?? '');
   return RANK_TITLES.filter(t => best >= t.order).map(t => t.id);
 }
 
@@ -149,7 +150,7 @@ export function equipped(level = levelFor(totalXp()).level): Equipped {
   try { raw = JSON.parse(localStorage.getItem(EQUIP_KEY) ?? '{}') as Partial<Equipped>; } catch { /* default */ }
   const ctx = unlockContext(level);
   const ok = <T extends string>(list: Unlock<T>[], v: T | undefined, fallback: T): T => { const u = list.find(x => x.id === v); return u && unlockOpen(u, level, ctx.trophies) ? u.id : fallback; };
-  const openTitles = TITLES.filter(t => t.level <= level);
+  const openTitles = TITLES.filter(t => t.level <= ctx.level);
   const special = [...rankTitles(), ...earnedExtraTitles(ctx)];
   const title = raw.title && special.includes(raw.title) ? raw.title : ok(TITLES, raw.title, openTitles[openTitles.length - 1].id);
   const icon = ICONS.find(i => i.id === raw.icon && isOpen(i.rule, ctx))?.id ?? 'ball';

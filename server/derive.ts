@@ -164,19 +164,20 @@ export function derive(blob: ProgressBlob, now = new Date()): Derived {
  * Your character for the boards, as a look code (src/profile/avatarCode.ts). Pieces and frames won on the
  * leaderboards need the honor, and level pieces the level; anything else that isn't earned falls back to the default.
  */
-export function publicAvatar(blob: ProgressBlob, level: number, honors: string[]): string | null {
+/** `owner`: the game owner's account (profiles.role), with everything open, keeps every piece. */
+export function publicAvatar(blob: ProgressBlob, level: number, honors: string[], owner = false): string | null {
   const read = objectRead(blob.storage);
   const raw = read('cv-avatar');
   if (!raw) return null;
   let look: AvatarLook;
   try { look = cleanAvatar(JSON.parse(raw) as Partial<AvatarLook>); } catch { return null; }
-  for (const c of AVATAR_CATEGORIES) {
+  for (const c of owner ? [] : AVATAR_CATEGORIES) {
     const r = c.items.find(i => i.id === look[c.id])?.rule;
     if (r && (('honor' in r && !honors.includes(r.honor)) || ('level' in r && r.level > level))) look = { ...look, [c.id]: DEFAULT_AVATAR[c.id] };
   }
   let frame: string | undefined;
   try { frame = (JSON.parse(read('cv-profile-equip') ?? '{}') as { avatarFrame?: string }).avatarFrame; } catch { /* none */ }
   const f = avatarFrameDef(frame);
-  const ok = f.honors ? f.honors.some(h => honors.includes(h)) : f.level != null ? level >= f.level : true;
+  const ok = owner || (f.honors ? f.honors.some(h => honors.includes(h)) : f.level != null ? level >= f.level : true);
   return encodeAvatar(look, ok ? f.id : 'none');
 }

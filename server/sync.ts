@@ -40,7 +40,9 @@ export async function handleSync(req: Request, env: SupaEnv | null, now = new Da
     const own = <T extends object>(rows: T[]) => rows.map(r => ({ ...r, user_id: id }));
     await upsert(env, 'progress', [{ user_id: id, data: blob, size, updated_at: now.toISOString() }], 'user_id', f);
     // Leaderboard honors: compared with everyone else now; once earned they stay. A failure keeps what was there.
-    const current = ((await rest(env, 'GET', `profiles?id=eq.${id}&select=stats`, undefined, undefined, f)) as { stats?: { honors?: unknown } }[] | null)?.[0];
+    // A database without the role column yet reads without it.
+    const current = ((await rest(env, 'GET', `profiles?id=eq.${id}&select=stats,role`, undefined, undefined, f).catch(() => rest(env, 'GET', `profiles?id=eq.${id}&select=stats`, undefined, undefined, f))) as { stats?: { honors?: unknown }; role?: string | null }[] | null)?.[0];
+    const owner = current?.role === 'owner';
     const previous = Array.isArray(current?.stats?.honors) ? (current!.stats!.honors as unknown[]).filter((h): h is string => typeof h === 'string') : [];
     let honors = previous;
     try {
@@ -49,7 +51,7 @@ export async function handleSync(req: Request, env: SupaEnv | null, now = new Da
       if (ghost && !honors.includes('pvp-10') && await pvpHonor(env, id, ghost.rating, f)) honors = [...honors, 'pvp-10'].sort();
     } catch { /* keep the honors already earned */ }
     // Your character on the boards (a database without the avatar column yet just skips it).
-    const avatar = publicAvatar(blob, d.profile.level, honors);
+    const avatar = publicAvatar(blob, d.profile.level, honors, owner);
     if (avatar) await rest(env, 'PATCH', `profiles?id=eq.${id}`, { avatar }, 'return=minimal', f).catch(() => null);
     await Promise.all([
       rest(env, 'PATCH', `profiles?id=eq.${id}`, { level: d.profile.level, xp: d.profile.xp, stats: { ...d.profile.stats, honors }, updated_at: now.toISOString() }, 'return=minimal', f),
@@ -61,7 +63,7 @@ export async function handleSync(req: Request, env: SupaEnv | null, now = new Da
       upsert(env, 'code_results', own(d.codes.map(c => ({ ...c, updated_at: now.toISOString() }))), 'code,user_id', f),
       upsert(env, 'ranked_events', own(d.ranked), 'user_id,event', f),
     ]);
-    return json({ ok: true, level: d.profile.level, xp: d.profile.xp, honors, avatar });
+    return json({ ok: true, level: d.profile.level, xp: d.profile.xp, honors, avatar, owner });
   } catch {
     return json({ error: 'Cloud sync is having trouble. Your progress is safe on this device; it will sync later.' }, 502);
   }

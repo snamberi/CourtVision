@@ -1,3 +1,4 @@
+import { hasOwnerAccess } from '../profile/ownerAccess';
 import { PALETTE } from './palette.gen';
 import { roadLevel } from '../profile/cosmetics';
 import { trophyNeed } from '../profile/trophyRoad';
@@ -285,7 +286,7 @@ export const themeLevel = (id: ThemeId) => roadLevel('look', id) ?? 1;
 /** Trophies a look needs (the Trophy Road looks), or 0. */
 export const themeTrophies = (id: ThemeId) => trophyNeed('look', id) ?? 0;
 /** Whether a look is open at this level and trophy count. */
-export const themeOpen = (id: ThemeId, level: number, trophies: number) => level >= themeLevel(id) && trophies >= themeTrophies(id);
+export const themeOpen = (id: ThemeId, level: number, trophies: number) => hasOwnerAccess() || (level >= themeLevel(id) && trophies >= themeTrophies(id));
 
 export const THEME_BY_ID = new Map(THEMES.map(t => [t.id, t]));
 
