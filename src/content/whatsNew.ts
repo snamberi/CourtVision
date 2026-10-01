@@ -6,6 +6,15 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2026-11-25',
+    title: 'A whole new animation set on the court',
+    items: [
+      "**35 animations, six frames each:** walking, running, sprinting, backpedalling and defensive slides; stationary and moving dribbles, crossovers, behind-the-back, spin moves, jab steps and pump fakes; jump shots, step-backs, fadeaways, free throws, layups, floaters, dunks and alley-oops; chest, bounce and overhead passes and the catch; rebounds, blocks, contests, steals, box-outs, screens, loose-ball dives, charges, falls, landings and celebrations.",
+      "**Smarter movement:** players walk, run or sprint by how far they have to go, their feet match the floor, and they look where they're going. Defenders slide to stay in front, backpedal in transition, close out on the catch and rotate to help on drives.",
+      "**Better ball movement:** each pass flies its own way (flat chest passes, bounce passes, high overhead skip passes), crossovers and spins carry the ball from hand to hand, and every shot type has its own motion.",
+    ],
+  },
+  {
     id: '2026-11-18',
     title: 'Longer roads, warrior gear and your own jersey',
     items: [
