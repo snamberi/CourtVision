@@ -7,11 +7,12 @@ export interface Release { id: string; title: string; items: string[] }
 export const RELEASES: Release[] = [
   {
     id: '2026-12-02',
-    title: 'A new League Hunt base, detailed coaches and 20 new rewards',
+    title: 'A new League Hunt base, anime gear, detailed coaches and new rewards',
     items: [
       "**League Hunt, rebuilt around you:** the road runs across the top, your starting five stand on a court in the middle with a big PLAY button, the Shop is on the left (players, coaches, boosts, a life and training) and your coach and boosts are on the right. PLAY leaves the shop and starts the series in one click.",
       "**Detailed coaches and refs:** coaches on the sideline and in the hunt now wear real suits with ties, tracksuits, quarter-zips and tuxedos on the same detailed body as the players, and refs wear striped shirts with their crew number and blow the whistle.",
       "**10 new share-card frames and 10 new court floors** on the Trophy Road, from cherry wood and herringbone to neon, lava, gold and galaxy.",
+      "**20 anime and TV-inspired character pieces:** a monster trainer outfit, an '80s arcade tee, the survival game tracksuit, the pink guard jumpsuit and mask, demon hunter, web hero, soul reaper, one-punch hero, sorcerer and air monk outfits, a fox spirit mask, spiky ninja and sorcerer hair, idol star eyes, spinning red eyes, a sorcerer blindfold, a katana, and cherry blossom and cursed energy auras. Most are on the Trophy Road.",
       "**Sign in to save your progress:** when you arrive signed out you'll be asked once, with a Continue without signing in button.",
     ],
   },

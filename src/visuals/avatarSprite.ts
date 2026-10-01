@@ -101,6 +101,52 @@ function drawOutfit(r: Rect, o: Outfit, team: { primary: string; secondary: stri
       r(10, 24, 5, 4, '#e8b84a'); r(25, 24, 5, 4, '#c9971f'); r(14, 25, 3, 2, '#e8b84a'); r(23, 25, 3, 2, '#c9971f');
       r(12, 36, 7, 4, '#e8b84a'); r(21, 36, 7, 4, '#c9971f'); r(18, 36, 4, 2, '#1f3a8a');
       r(4, 31, 5, 4, '#f4f6fa'); r(3, 33, 3, 3, '#e3e7ee'); r(31, 32, 5, 4, '#f4f6fa'); r(34, 35, 2, 2, '#e3e7ee'); return;
+    // ------------------------------------------------ anime and TV-inspired, part two
+    case 'trainer':
+      // A blue vest over a black tee, green gloves and jeans.
+      torso(r, black); shortSleeves(r, black); pants(r, shade('#2f4f8f'));
+      r(12, 25, 4, 13, main.c); r(24, 25, 4, 13, main.d); r(12, 25, 2, 13, main.l); r(14, 30, 2, 1, WHITE); r(24, 30, 2, 1, WHITE);
+      r(7, 30, 4, 3, '#3fae5f'); r(29, 30, 4, 3, '#2f8a4a'); return;
+    case 'arcade80s':
+      torso(r, main); shortSleeves(r, main); pants(r, shade('#3b5b8f'));
+      r(16, 25, 8, 1, trim.c); r(9, 28, 4, 1, trim.c); r(27, 28, 4, 1, trim.c);
+      r(17, 29, 6, 4, '#1a1f2a'); r(18, 30, 1, 2, '#ff6fb8'); r(20, 30, 1, 2, '#4fd6d6'); r(22, 30, 1, 2, '#ffd166'); return;
+    case 'contestant':
+      torso(r, main); longSleeves(r, main); pants(r, main);
+      r(12, 26, 1, 12, trim.c); r(27, 26, 1, 12, trim.c); r(9, 27, 1, 5, trim.c); r(30, 27, 1, 5, trim.c); r(20, 27, 1, 11, main.d);
+      r(21, 28, 6, 4, WHITE); for (const x of [22, 24, 26]) r(x, 29, 1, 2, OUTLINE); r(12, 41, 1, 5, trim.c); r(27, 41, 1, 5, trim.c); return;
+    case 'guard':
+      torso(r, main); longSleeves(r, main); pants(r, main);
+      r(20, 25, 1, 11, main.d); r(12, 36, 16, 2, trim.c); r(19, 36, 2, 2, '#8a93a3'); r(7, 30, 4, 3, trim.c); r(29, 30, 4, 3, trim.c);
+      r(12, 43, 6, 3, trim.c); r(22, 43, 6, 3, trim.c); r(15, 27, 1, 2, main.l); return;
+    case 'demonHunter':
+      torso(r, main); longSleeves(r, main); pants(r, main);
+      r(16, 25, 8, 2, main.l); for (const y of [29, 32]) r(20, y, 1, 1, '#ffd166'); r(12, 36, 16, 1, trim.c); r(19, 36, 2, 1, '#ffd166');
+      r(12, 42, 6, 4, trim.c); r(22, 42, 6, 4, trim.c); for (const y of [43, 45]) { r(12, y, 6, 1, '#c9d1dc'); r(22, y, 6, 1, '#c9d1dc'); } return;
+    case 'webHero': {
+      torso(r, main); longSleeves(r, main); pants(r, trim);
+      r(12, 31, 3, 7, trim.c); r(25, 31, 3, 7, trim.c); r(9, 29, 4, 3, trim.c); r(27, 29, 4, 3, trim.c);
+      for (let x = 13; x < 28; x += 3) r(x, 26, 1, 5, main.d);
+      for (let y = 27; y < 31; y += 2) r(12, y, 16, 1, main.d);
+      r(19, 29, 2, 4, OUTLINE); r(17, 30, 6, 1, OUTLINE); r(17, 32, 6, 1, OUTLINE); r(7, 30, 3, 2, main.c); r(30, 30, 3, 2, main.c);
+      r(12, 43, 6, 3, main.c); r(22, 43, 6, 3, main.c); return;
+    }
+    case 'soulReaper':
+      torso(r, main); longSleeves(r, main); coatSkirt(r, main, main.d); r(12, 41, 6, 5, main.c); r(22, 41, 6, 5, main.c);
+      r(18, 27, 4, 3, WHITE); for (let i = 0; i < 5; i++) { r(16 + i, 27 + i, 1, 1, WHITE); r(23 - i, 27 + i, 1, 1, WHITE); }
+      r(12, 35, 16, 2, trim.c); r(12, 36, 16, 1, '#c9d1dc'); r(7, 31, 3, 1, main.l); r(30, 31, 3, 1, main.l); return;
+    case 'capedHero':
+      torso(r, main); longSleeves(r, main); pants(r, main);
+      r(20, 27, 1, 9, main.d); r(12, 36, 16, 2, black.c); r(19, 36, 2, 2, '#ffd166');
+      r(7, 30, 4, 3, trim.c); r(29, 30, 4, 3, trim.c); r(12, 42, 6, 4, trim.c); r(22, 42, 6, 4, trim.c); r(12, 42, 6, 1, trim.l); r(22, 42, 6, 1, trim.l); return;
+    case 'sorcerer':
+      torso(r, main); longSleeves(r, main); pants(r, main);
+      r(14, 23, 12, 4, main.d); r(15, 23, 10, 1, main.l); r(19, 25, 2, 2, trim.c); r(19, 25, 1, 1, trim.l);
+      r(11, 41, 7, 5, main.c); r(22, 41, 7, 5, main.c); r(12, 38, 16, 1, main.d); return;
+    case 'airNomad':
+      torso(r, main); longSleeves(r, main); pants(r, trim);
+      for (let i = 0; i < 13; i++) r(11 + i, 25 + i, 3, 1, trim.c);
+      r(11, 24, 6, 2, trim.c); r(12, 36, 16, 1, trim.d); r(7, 31, 3, 1, main.l); r(30, 31, 3, 1, main.l); return;
     case 'gi':
       torso(r, main); shortSleeves(r, main); pants(r, main);
       r(17, 27, 6, 4, trim.c); r(18, 27, 4, 2, skin.c); r(12, 35, 16, 2, trim.c); r(7, 31, 3, 2, trim.c); r(30, 32, 3, 2, trim.c);
@@ -191,6 +237,19 @@ function drawHair(r: Rect, id: string, hair: Shade) {
       for (const [x, top] of [[12, 1], [15, 0], [18, 0], [21, 0], [24, 1], [26, 2]] as const) h(x, top, 3, 4);
       h(19, 10, 3, 2); h(20, 12, 1, 1);
       r(16, 1, 1, 6, hair.l); r(22, 1, 1, 6, hair.l); r(26, 4, 2, 6, hair.d); return;
+    case 'spikyNinja':
+      // Spikes every way and choppy bangs.
+      h(11, 5, 18, 6); h(9, 7, 4, 6); h(27, 7, 4, 6);
+      for (const [x, top] of [[9, 3], [12, 1], [16, 0], [20, 1], [24, 0], [27, 2]] as const) h(x, top, 3, 5);
+      h(6, 7, 4, 2); h(30, 7, 4, 2); h(7, 10, 3, 2); h(30, 10, 3, 2);
+      h(13, 10, 2, 3); h(17, 10, 2, 2); h(22, 10, 2, 3); h(25, 10, 2, 2);
+      r(13, 2, 1, 4, hair.l); r(21, 2, 1, 4, hair.l); r(28, 5, 2, 4, hair.d); return;
+    case 'sorcererSpikes':
+      // Swept up and back, leaning to one side, with a few strands over the forehead.
+      h(12, 5, 16, 6); h(11, 7, 2, 6); h(27, 7, 2, 6); h(9, 6, 3, 2); h(29, 6, 3, 2);
+      for (const [x, top] of [[12, 2], [15, 0], [18, 1], [21, 0], [24, 1], [27, 3]] as const) { h(x, top + 1, 2, 5 - top); h(x + 1, top, 1, 1); }
+      h(14, 10, 2, 3); h(19, 10, 2, 4); h(24, 10, 2, 3);
+      r(16, 1, 1, 4, hair.l); r(22, 1, 1, 4, hair.l); r(27, 6, 1, 4, hair.d); return;
     case 'superSpikes':
       h(11, 6, 18, 5); h(10, 8, 3, 7); h(27, 8, 3, 7);
       for (const [x, top] of [[11, 1], [15, 0], [19, 0], [23, 0], [26, 2], [8, 4], [30, 4]] as const) { h(x, top, 3, 7 - top); h(x + 1, top - 1 < 0 ? 0 : top - 1, 1, 1); }
@@ -229,6 +288,16 @@ function drawCustomHat(r: Rect, id: string, hairHex: string) {
   switch (id) {
     case 'crown': r(12, 4, 16, 4, gold.c); r(12, 2, 2, 2, gold.c); r(16, 1, 2, 3, gold.c); r(22, 1, 2, 3, gold.c); r(26, 2, 2, 2, gold.c); r(19, 0, 2, 4, gold.c);
       r(12, 7, 16, 1, gold.d); r(15, 5, 2, 1, '#e8322e'); r(19, 5, 2, 1, '#4da3ff'); r(23, 5, 2, 1, '#6fdc93'); r(13, 4, 6, 1, gold.l); return;
+    case 'foxMask':
+      // A white fox mask with red markings.
+      r(13, 9, 14, 11, '#f4f6fa'); r(13, 6, 3, 3, '#f4f6fa'); r(24, 6, 3, 3, '#f4f6fa'); r(14, 7, 1, 2, '#e8322e'); r(25, 7, 1, 2, '#e8322e');
+      r(14, 13, 4, 1, '#e8322e'); r(22, 13, 4, 1, '#e8322e'); r(15, 14, 3, 1, OUTLINE); r(22, 14, 3, 1, OUTLINE);
+      r(14, 17, 2, 1, '#e8322e'); r(24, 17, 2, 1, '#e8322e'); r(18, 17, 4, 3, '#e3e7ee'); r(19, 17, 2, 1, OUTLINE); r(19, 10, 2, 2, '#e8322e'); return;
+    case 'guardMask':
+      // A black mask with a white shape, and a black hood.
+      r(11, 5, 18, 6, '#e8508a'); r(10, 8, 3, 12, '#e8508a'); r(27, 8, 3, 12, '#e8508a');
+      r(12, 9, 16, 12, '#161a24'); r(13, 9, 3, 1, '#3a3f4a');
+      for (const [x, y] of [[19, 12], [20, 12], [18, 13], [21, 13], [17, 14], [22, 14], [17, 15], [22, 15], [18, 16], [21, 16], [19, 17], [20, 17]] as const) r(x, y, 1, 1, '#f4f6fa'); return;
     case 'halo': r(13, 1, 14, 1, '#ffe066'); r(15, 0, 10, 1, '#fff6c4'); r(15, 2, 10, 1, '#e6b800'); return;
     case 'ninjaBand': r(11, 9, 18, 3, '#1d428a'); r(15, 9, 10, 3, '#c9ccd1'); r(15, 9, 10, 1, '#eef1f6'); r(19, 10, 2, 1, '#5b6b82'); r(18, 11, 4, 1, '#8a93a3'); r(28, 10, 4, 2, '#1d428a'); r(30, 12, 2, 6, '#1d428a'); return;
     case 'strawHat': r(12, 3, 16, 6, '#f2d27a'); r(13, 3, 14, 1, '#fff0b3'); r(12, 7, 16, 2, '#c8102e'); r(6, 9, 28, 2, '#e8c46a'); r(6, 10, 28, 1, '#b8923a'); return;
@@ -258,6 +327,9 @@ function drawEyes(r: Rect, id: string) {
     case 'eyepatch': r(12, y - 1, 7, 6, '#111827'); r(11, 11, 2, 1, '#111827'); r(18, 11, 11, 1, '#111827'); return;
     case 'skiGoggles': r(10, y - 2, 20, 6, '#2b2f3a'); r(12, y - 1, 16, 4, '#ff9d3d'); r(12, y - 1, 16, 1, '#ffd166'); r(14, y + 1, 3, 1, WHITE); return;
     case 'cyberVisor': r(11, y, 19, 3, '#ff2d4a'); r(11, y + 1, 19, 1, '#ffb3b3'); r(29, y - 1, 2, 5, '#5b6b82'); return;
+    case 'starEyes': for (const x of [16, 25]) { r(x - 1, y + 1, 4, 1, '#ffd166'); r(x, y, 2, 3, '#ffd166'); r(x, y + 3, 1, 1, '#ffd166'); r(x + 1, y + 3, 1, 1, '#ffd166'); r(x, y + 1, 2, 1, WHITE); } return;
+    case 'sharingan': for (const x of [16, 25]) { r(x - 1, y, 3, 4, '#d0202e'); r(x, y + 1, 1, 2, OUTLINE); r(x - 1, y, 1, 1, OUTLINE); r(x + 1, y + 3, 1, 1, OUTLINE); r(x + 1, y, 1, 1, '#ff8080'); } return;
+    case 'blindfold': r(11, y - 1, 18, 5, '#161a24'); r(11, y - 1, 18, 1, '#3a3f4a'); r(28, y + 3, 2, 3, '#161a24'); return;
     case 'scouter': r(22, y - 1, 6, 5, '#7dff9b'); r(22, y - 1, 6, 1, '#b8ffcc'); r(28, 11, 3, 8, '#e8322e'); r(29, 12, 1, 6, '#ff9d9d'); return;
     case 'glowRed': for (const x of [16, 25]) { r(x, y, 2, 4, '#ff2d2d'); r(x, y, 1, 1, '#ffd166'); } r(13, y + 1, 1, 1, '#ff2d2d'); return;
     case 'sparkle': for (const [x, w] of [[13, 5], [23, 4]] as const) { r(x, y - 1, w, 5, WHITE); r(x + w - 3, y - 1, 3, 5, '#2f5fb3'); r(x + w - 3, y - 1, 1, 1, WHITE); r(x + w - 1, y + 2, 1, 1, '#9fc3ff'); } return;
@@ -275,6 +347,7 @@ function drawNeck(r: Rect, id: string) {
     case 'scarf': r(14, 24, 12, 3, '#e8322e'); r(15, 24, 10, 1, '#ff8080'); r(23, 26, 3, 9, '#e8322e'); r(24, 35, 2, 2, '#e8322e'); r(26, 27, 4, 2, '#e8322e'); return;
     case 'capeRed': case 'capeBlack': case 'capeGold': { const c = id === 'capeRed' ? '#b0122a' : id === 'capeGold' ? '#c9971f' : '#1a1f2a'; r(11, 24, 3, 2, c); r(26, 24, 3, 2, c); r(19, 25, 2, 1, id === 'capeGold' ? '#fff3c4' : '#ffd166'); return; }
     case 'jetpack': r(12, 26, 2, 1, '#5b6b82'); r(26, 26, 2, 1, '#5b6b82'); return;
+    case 'katana': for (let i = 0; i < 12; i++) r(14 + i, 26 + i, 2, 1, '#5a3a1a'); return;
     case 'weightedCape':
       // Square shoulder pads and a high collar.
       r(7, 23, 7, 4, '#f4f6fa'); r(26, 23, 7, 4, '#e3e7ee'); r(7, 23, 7, 1, '#ffffff'); r(7, 26, 7, 1, '#c9d1dc'); r(26, 26, 7, 1, '#b8c0cc');
@@ -291,6 +364,16 @@ function drawBack(grid: SpriteGrid, id: string) {
     case 'batWings': for (const [x0, dir] of [[9, -1], [30, 1]] as const) for (let i = 0; i < 9; i++) { const x = dir < 0 ? x0 - i : x0 + i; back(x, 20 + i, 1, 10 - (i % 3) * 2, i % 3 === 0 ? '#3b1d5a' : '#5a2d82'); } return;
     case 'jetpack': back(7, 26, 5, 12, '#8a93a3'); back(28, 26, 5, 12, '#8a93a3'); back(8, 26, 3, 1, '#c9d1dc'); back(29, 26, 3, 1, '#c9d1dc'); back(8, 38, 3, 3, '#ff9d3d'); back(29, 38, 3, 3, '#ff9d3d'); back(9, 41, 1, 2, '#ffd166'); back(30, 41, 1, 2, '#ffd166'); return;
     case 'backpack': back(11, 26, 18, 12, '#e8322e'); return;
+    case 'katana':
+      // A sword on the back, the hilt over the right shoulder.
+      for (let i = 0; i < 30; i++) {
+        const x = 32 - i, y = 15 + i;
+        if (i < 6) { back(x, y, 2, 1, i % 2 ? '#c8102e' : '#161a24'); continue; }
+        if (i === 6) { back(x - 1, y - 1, 4, 3, '#ffd166'); continue; }
+        back(x, y, 2, 1, '#c9d1dc'); back(x + 1, y, 1, 1, '#eef1f6');
+      }
+      return;
+
     case 'weightedCape': for (let y = 24; y < 50; y++) { const s = Math.floor((y - 24) / 4); back(8 - s, y, 24 + s * 2, 1, (y + s) % 6 === 0 ? '#c9d1dc' : '#eef1f6'); } return;
     case 'tail': {
       // A furry tail curling out from behind the waist.
@@ -308,6 +391,7 @@ const AURA_COLORS: Record<string, string[]> = {
   shadow: ['#3b1d5a', '#6a3fb5', '#1a1030'], ice: ['#bfe6ff', '#ffffff', '#6db8ff'], toxic: ['#7dff5a', '#3fae5f', '#d0ff8a'],
   cosmic: ['#6a45c0', '#ff7ad9', '#6fd3ff', '#ffffff'], rainbow: RAINBOW, sparkles: ['#ffd166', '#ffffff'], hearts: ['#ff4d8d', '#ff9fc8'],
   superWarrior: ['#ffe14d', '#fff6b0', '#ffc400', '#ffffff'], storm: ['#7b4dff', '#c9b3ff', '#3b1d9a'],
+  sakura: ['#ffb7d5', '#ff8fc0', '#fff0f6'], cursed: ['#2a2f8a', '#4d6bff', '#9fb3ff', '#0b0f3a'],
 };
 function auraCells(grid: SpriteGrid, kind: string): SpriteGrid {
   const H = grid.length, W = grid[0].length;
@@ -323,15 +407,15 @@ function auraCells(grid: SpriteGrid, kind: string): SpriteGrid {
     }
     return false;
   };
-  const rising = kind === 'fire' || kind === 'golden' || kind === 'lightning' || kind === 'superWarrior' || kind === 'storm';
-  const crackle = kind === 'superWarrior' || kind === 'storm';
+  const rising = kind === 'fire' || kind === 'golden' || kind === 'lightning' || kind === 'superWarrior' || kind === 'storm' || kind === 'cursed';
+  const crackle = kind === 'superWarrior' || kind === 'storm' || kind === 'cursed';
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     if (grid[y][x]) continue;
-    if (kind === 'sparkles' || kind === 'hearts') {
+    if (kind === 'sparkles' || kind === 'hearts' || kind === 'sakura') {
       // Bits floating in the margin around the body.
       if (near(x, y, 1, 1, 1) || !near(x, y, 3, 3, 3) || noise(x, y) % 9) continue;
       out[y][x] = colors[noise(y, x) % colors.length];
-      if (kind === 'hearts' && x + 1 < W && !grid[y][x + 1]) out[y][x + 1] = colors[0];
+      if ((kind === 'hearts' || kind === 'sakura') && x + 1 < W && !grid[y][x + 1]) out[y][x + 1] = colors[0];
       continue;
     }
     // Flames and bolts rise: the aura reaches higher above the body than beside it, in tongues.

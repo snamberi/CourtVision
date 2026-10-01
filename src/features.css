@@ -390,7 +390,7 @@ button.tcard:hover, button.tcard:focus-visible { transform: translateY(-3px); ou
 /* ---------------------------------------------------------------- your character (profile/avatar.ts) */
 .user-avatar { display: block; image-rendering: pixelated; flex: 0 0 auto; }
 .avatar-aura.animated { animation: aura-flicker 1.1s steps(3) infinite; transform-origin: 50% 90%; }
-.avatar-aura.animated.aura-sparkles, .avatar-aura.animated.aura-hearts { animation: aura-twinkle 1.6s steps(4) infinite; }
+.avatar-aura.animated.aura-sparkles, .avatar-aura.animated.aura-hearts, .avatar-aura.animated.aura-sakura { animation: aura-twinkle 1.6s steps(4) infinite; }
 .avatar-aura.animated.aura-rainbow, .avatar-aura.animated.aura-cosmic { animation: aura-hue 3s linear infinite; }
 @keyframes aura-flicker { 0%, 100% { opacity: 1; transform: scaleY(1); } 50% { opacity: .7; transform: scaleY(1.03); } }
 @keyframes aura-twinkle { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }

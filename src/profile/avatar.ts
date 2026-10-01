@@ -39,6 +39,12 @@ export const AVATAR_TROPHY_ROAD: [number, AvatarCategory, string][] = [
   // Past 200,000: a stop every 50,000.
   [250_000, 'hair', 'spikyWarrior'], [300_000, 'outfit', 'warriorArmor'], [350_000, 'neck', 'tail'], [400_000, 'hair', 'flameWarrior'],
   [450_000, 'neck', 'weightedCape'], [550_000, 'shoes', 'warriorBoots'], [650_000, 'hairColor', 'superBlue'], [750_000, 'aura', 'superWarrior'],
+  // Anime and TV-inspired pieces, sharing stops with the rewards above.
+  [10_000, 'hair', 'spikyNinja'], [25_000, 'outfit', 'trainer'], [40_000, 'eyes', 'starEyes'], [55_000, 'outfit', 'arcade80s'],
+  [70_000, 'hat', 'foxMask'], [85_000, 'outfit', 'contestant'], [100_000, 'hat', 'guardMask'], [105_000, 'outfit', 'guard'],
+  [120_000, 'outfit', 'demonHunter'], [125_000, 'neck', 'katana'], [140_000, 'eyes', 'sharingan'], [160_000, 'outfit', 'webHero'],
+  [180_000, 'aura', 'sakura'], [200_000, 'outfit', 'soulReaper'], [500_000, 'hair', 'sorcererSpikes'], [600_000, 'eyes', 'blindfold'],
+  [700_000, 'aura', 'cursed'],
 ];
 /** Level Road stops for the character, past level 250 (LEVEL_ROAD in cosmetics.ts lists them). */
 export const AVATAR_LEVEL_ROAD: [number, AvatarCategory, string][] = [
@@ -83,8 +89,8 @@ export const HAIR_COLORS: AvatarItem[] = [
 
 const LABEL = (id: string) => id.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase()).replace(/X L$/, 'XL');
 /** The new styles the character adds to the 25 every player can have. */
-export const NEW_HAIR = ['spikyWarrior', 'flameWarrior', 'superSpikes', 'wildSpikes', 'longStraight', 'ponytail', 'topknot', 'spaceBuns', 'twinTails', 'sideSwept', 'pompadour', 'bowlCut', 'punkSpikes', 'flowingLong'] as const;
-const HAIR_NAMES: Record<string, string> = { superSpikes: 'Super spikes', spikyWarrior: 'Spiky warrior hair', flameWarrior: "Prince's flame hair" };
+export const NEW_HAIR = ['spikyWarrior', 'flameWarrior', 'superSpikes', 'wildSpikes', 'longStraight', 'ponytail', 'topknot', 'spaceBuns', 'twinTails', 'sideSwept', 'pompadour', 'bowlCut', 'punkSpikes', 'flowingLong', 'spikyNinja', 'sorcererSpikes'] as const;
+const HAIR_NAMES: Record<string, string> = { superSpikes: 'Super spikes', spikyWarrior: 'Spiky warrior hair', flameWarrior: "Prince's flame hair", spikyNinja: 'Spiky ninja hair', sorcererSpikes: 'Sorcerer spikes' };
 const HAIR_LEVELS: Record<string, number> = { wildSpikes: 30, longStraight: 20, ponytail: 12, topknot: 65, spaceBuns: 50, twinTails: 75, sideSwept: 8, pompadour: 40, bowlCut: 5, punkSpikes: 85 };
 export const HAIRS: AvatarItem[] = [
   ...HAIR_STYLES.map(id => item('hair', id, LABEL(id))),
@@ -100,6 +106,7 @@ export const BEARDS: AvatarItem[] = [
 // ---------------------------------------------------------------- outfits (50)
 
 export type OutfitKind = 'warriorArmor' | 'jersey' | 'tee' | 'hoodie' | 'track' | 'suit' | 'tux' | 'varsity' | 'overalls' | 'labcoat' | 'chef' | 'referee' | 'hawaiian' | 'santa' | 'astronaut' | 'armor'
+  | 'contestant' | 'guard' | 'webHero' | 'capedHero' | 'soulReaper' | 'demonHunter' | 'sorcerer' | 'airNomad' | 'arcade80s' | 'trainer'
   | 'gi' | 'ninja' | 'pirate' | 'scout' | 'haori' | 'gakuran' | 'hero' | 'plugsuit' | 'cloudrobe' | 'kimono' | 'sailor' | 'captain' | 'flamecloak' | 'royal' | 'wizard';
 export interface Outfit extends AvatarItem { kind: OutfitKind; main: string; trim: string; number?: number; style?: 'classic' | 'stripe' | 'split' }
 const fit = (id: string, name: string, kind: OutfitKind, main: string, trim: string, rule: Rule = FREE, extra: Partial<Outfit> = {}): Outfit => ({ ...item('outfit', id, name, rule), kind, main, trim, ...extra });
@@ -134,22 +141,29 @@ export const OUTFITS: Outfit[] = [
   fit('wizard', 'Starry wizard robe', 'wizard', '#1f2f6b', '#ffd166'),
   fit('warriorArmor', 'Warrior battle armour', 'warriorArmor', '#f4f6fa', '#e8b84a'),
   fit('gi-blue', 'Blue training gi', 'gi', '#2f5fb3', '#f47b20'), fit('gi-black', 'Black training gi', 'gi', '#22262f', '#e8322e'),
+  // Anime and TV-inspired.
+  fit('trainer', 'Monster trainer outfit', 'trainer', '#2f6fd9', '#1a1f2a'), fit('arcade80s', "'80s arcade ringer tee", 'arcade80s', '#f4f0e6', '#d0202e'),
+  fit('contestant', 'Survival game tracksuit', 'contestant', '#2f8a6b', '#f4f6fa'), fit('guard', 'Pink guard jumpsuit', 'guard', '#e8508a', '#161a24'),
+  fit('demonHunter', 'Demon hunter uniform', 'demonHunter', '#161a24', '#f4f6fa'), fit('webHero', 'Web hero suit', 'webHero', '#d0202e', '#1f4fa0'),
+  fit('soulReaper', 'Soul reaper robe', 'soulReaper', '#14161c', '#f4f6fa'), fit('capedHero', 'One-punch hero suit', 'capedHero', '#ffd84a', '#e8322e', lv(120)),
+  fit('sorcerer', 'Sorcerer school uniform', 'sorcerer', '#1c2440', '#ffd166', lv(180)), fit('airNomad', 'Air monk robes', 'airNomad', '#f2b632', '#e8742a', lv(75)),
 ];
 
 // ---------------------------------------------------------------- headwear, eyewear, neck and back, shoes, aura
 
-export const NEW_HATS = ['crown', 'halo', 'ninjaBand', 'strawHat', 'catEars', 'devilHorns', 'bunnyEars', 'wizardHat', 'topHat', 'vikingHelmet', 'partyHat', 'chefHat', 'propeller', 'santaHat'] as const;
+export const NEW_HATS = ['crown', 'halo', 'ninjaBand', 'strawHat', 'foxMask', 'guardMask', 'catEars', 'devilHorns', 'bunnyEars', 'wizardHat', 'topHat', 'vikingHelmet', 'partyHat', 'chefHat', 'propeller', 'santaHat'] as const;
 const HAT_LEVELS: Record<string, number> = { crown: 200, catEars: 22, devilHorns: 66, bunnyEars: 44, wizardHat: 130, topHat: 75, vikingHelmet: 105, partyHat: 12, chefHat: 50, propeller: 28, santaHat: 80 };
 export const HATS: AvatarItem[] = [
   item('hat', 'none', 'Nothing'),
   ...HAT_STYLES.map(id => item('hat', id, LABEL(id))),
-  ...NEW_HATS.map(id => item('hat', id, id === 'ninjaBand' ? 'Ninja headband' : id === 'strawHat' ? 'Straw hat' : LABEL(id), lv(HAT_LEVELS[id] ?? 1))),
+  ...NEW_HATS.map(id => item('hat', id, ({ ninjaBand: 'Ninja headband', strawHat: 'Straw hat', foxMask: 'Fox spirit mask', guardMask: 'Guard mask' } as Record<string, string>)[id] ?? LABEL(id), lv(HAT_LEVELS[id] ?? 1))),
 ];
 export const EYES: AvatarItem[] = [
   item('eyes', 'none', 'Nothing'), item('eyes', 'glasses', 'Glasses'), item('eyes', 'shades', 'Shades'),
   item('eyes', 'goggles', 'Sport goggles', lv(8)), item('eyes', 'threeD', '3D glasses', lv(24)), item('eyes', 'heartShades', 'Heart shades', lv(38)),
   item('eyes', 'monocle', 'Monocle', lv(52)), item('eyes', 'eyepatch', 'Eye patch', lv(68)), item('eyes', 'skiGoggles', 'Ski goggles', lv(88)),
   item('eyes', 'cyberVisor', 'Cyber visor', lv(160)), item('eyes', 'scouter', 'Power scouter'), item('eyes', 'glowRed', 'Crimson eyes'), item('eyes', 'sparkle', 'Sparkle eyes'),
+  item('eyes', 'starEyes', 'Idol star eyes'), item('eyes', 'sharingan', 'Spinning red eyes'), item('eyes', 'blindfold', 'Sorcerer blindfold'),
 ];
 export const NECKS: AvatarItem[] = [
   item('neck', 'none', 'Nothing'), item('neck', 'goldChain', 'Gold chain'), item('neck', 'headphones', 'Headphones'),
@@ -157,7 +171,7 @@ export const NECKS: AvatarItem[] = [
   item('neck', 'medal', 'Gold medal', lv(42)), item('neck', 'backpack', 'Backpack', lv(58)), item('neck', 'capeRed', 'Red cape', lv(72)),
   item('neck', 'capeBlack', 'Black cape', lv(115)), item('neck', 'scarf', 'Hero scarf'), item('neck', 'angelWings', 'Angel wings'),
   item('neck', 'batWings', 'Bat wings'), item('neck', 'jetpack', 'Jetpack'),
-  item('neck', 'weightedCape', 'Weighted cape'), item('neck', 'tail', 'Warrior tail'), item('neck', 'capeGold', 'Gold cape'),
+  item('neck', 'weightedCape', 'Weighted cape'), item('neck', 'tail', 'Warrior tail'), item('neck', 'capeGold', 'Gold cape'), item('neck', 'katana', 'Katana'),
 ];
 export const SHOES: AvatarItem[] = [
   item('shoes', 'team', 'Match the outfit'), item('shoes', 'white', 'White', FREE, { hex: '#f4f6fa' }), item('shoes', 'black', 'Black', FREE, { hex: '#1a1f2a' }),
@@ -169,6 +183,7 @@ export const AURAS: AvatarItem[] = [
   item('aura', 'none', 'Nothing'), item('aura', 'sparkles', 'Sparkles', lv(32)), item('aura', 'hearts', 'Hearts', lv(64)), item('aura', 'ice', 'Frost', lv(96)),
   item('aura', 'toxic', 'Toxic', lv(180)), item('aura', 'fire', 'Fire'), item('aura', 'golden', 'Super golden'), item('aura', 'lightning', 'Lightning'),
   item('aura', 'shadow', 'Shadow'), item('aura', 'cosmic', 'Cosmic'), item('aura', 'rainbow', 'Rainbow'), item('aura', 'superWarrior', 'Super warrior aura'), item('aura', 'storm', 'Storm'),
+  item('aura', 'sakura', 'Cherry blossoms'), item('aura', 'cursed', 'Cursed energy'),
 ];
 
 export const AVATAR_CATEGORIES: { id: AvatarCategory; label: string; items: AvatarItem[] }[] = [
