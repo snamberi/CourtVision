@@ -1,19 +1,34 @@
-import { memo, useMemo } from 'react';
+import { memo, useId, useMemo } from 'react';
 import { SPRITES, PALETTE, colorDef, iconDef } from '../profile/cosmetics';
 import { titleColorDef, unpackColors } from '../profile/trophyRoad';
-import { detailedSpritePaths } from '../visuals/playerSprite';
+import { detailedSpritePaths, gridToPaths, type SpriteGrid, type SpritePath } from '../visuals/playerSprite';
+import { iconFx } from '../visuals/iconFx';
 
 /** A profile icon: a 10 x 10 pixel sprite on a dark tile (runs of one colour drawn as one rect). */
 export const ProfileIcon = memo(function ProfileIcon({ id, size = 28, title }: { id: string | null | undefined; size?: number; title?: string }) {
   const def = iconDef(id);
-  const rows = SPRITES[def.base] ?? SPRITES.ball;
-  const palette = def.recolor ? { ...PALETTE, ...def.recolor } : PALETTE;
-  const paths = useMemo(() => detailedSpritePaths(rows.map(row => [...row].map(ch => ch === '.' ? null : palette[ch] ?? null))), [rows, palette]);
-  // Trophy Road icons move: the sprite flickers, spins, twinkles… and 'shine' sweeps a glint across it.
+  const clip = `icon-clip-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
+  const { paths, fx } = useMemo(() => {
+    const rows = SPRITES[def.base] ?? SPRITES.ball;
+    const palette = def.recolor ? { ...PALETTE, ...def.recolor } : PALETTE;
+    const grid = rows.map(row => [...row].map(ch => ch === '.' ? null : palette[ch] ?? null));
+    const fxGrids = iconFx(grid, def.anim, def.fx ?? (def.base === 'crown' || def.base === 'goatcrown' ? 'gold' : 'fire'));
+    const draw = (g?: SpriteGrid) => (g ? gridToPaths(g) : []);
+    return { paths: detailedSpritePaths(grid), fx: { under: draw(fxGrids.under), a: draw(fxGrids.a), b: draw(fxGrids.b) } };
+  }, [def]);
+  const layer = (list: SpritePath[], className: string) => list.length > 0 && <g className={className} transform="translate(-1 -1)">{list.map(p => <path key={p.fill} d={p.d} fill={p.fill} />)}</g>;
+  // Trophy Road icons move: flames lick round the fireball, a glint crosses the trophy, sparkles twinkle in turn…
   return <svg className={`profile-icon${def.anim ? ` icon-anim icon-anim-${def.anim}` : ''}`} width={size} height={size} viewBox="-1 -1 12 12" shapeRendering="crispEdges" role="img" aria-label={title ?? def.name}>
     <rect x={-1} y={-1} width={12} height={12} fill="#121926" />
-    <path d="M-1 -1H11V0H-1ZM-1 0H0V11H-1Z" fill="#ffffff" opacity=".12" /><g className="icon-sprite">{paths.map(p => <path key={p.fill} d={p.d} fill={p.fill} />)}</g>
-    {def.anim === 'shine' && <rect className="icon-glint" x={-4} y={-1} width={2} height={12} fill="#ffffff" opacity=".55" transform="skewX(-20)" />}
+    <path d="M-1 -1H11V0H-1ZM-1 0H0V11H-1Z" fill="#ffffff" opacity=".12" />
+    {layer(fx.under, 'icon-fx-under')}
+    <g className="icon-sprite">{paths.map(p => <path key={p.fill} d={p.d} fill={p.fill} />)}</g>
+    {def.anim === 'shine' && <>
+      <clipPath id={clip}>{paths.map(p => <path key={p.fill} d={p.d} />)}</clipPath>
+      <g clipPath={`url(#${clip})`}><g className="icon-glint"><rect x={-3} y={-1} width={1} height={12} fill="#ffffff" opacity=".85" /><rect x={-2} y={-1} width={1} height={12} fill="#ffffff" opacity=".45" /></g></g>
+    </>}
+    {layer(fx.a, 'icon-fx-a')}
+    {layer(fx.b, 'icon-fx-b')}
   </svg>;
 });
 

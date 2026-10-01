@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { NAME_COLORS, iconDef } from '../../profile/cosmetics';
-import { TROPHY_ROAD, TROPHY_STEP, TROPHY_MAX, TITLE_COLORS, trophyParts, type TrophyRewardKind } from '../../profile/trophyRoad';
+import { TROPHY_ROAD, TROPHY_MAX, TITLE_COLORS, trophyParts, type TrophyRewardKind } from '../../profile/trophyRoad';
 import { THEME_BY_ID, type ThemeId } from '../../theme/themes';
 import { PROFILE_EVENT } from '../../profile/profile';
 import { ProfileIcon, NameTag } from '../ProfileIcon';
@@ -27,14 +27,15 @@ export function TrophyRoad() {
   const next = stops.find(t => t > trophies);
   const nextRef = useRef<HTMLLIElement>(null);
   useEffect(() => { nextRef.current?.scrollIntoView?.({ block: 'nearest', inline: 'center' }); }, []);
-  const prev = next ? next - TROPHY_STEP : TROPHY_MAX;
+  // The bar fills from the stop before the next one (5,000 apart, then 50,000 past 200,000).
+  const prev = next ? [...stops].reverse().find(t => t < next) ?? 0 : TROPHY_MAX;
   const opened = TROPHY_ROAD.filter(([t]) => t <= trophies).length;
   return <section className="locker-bay level-road trophy-road">
     <h2><PixelIcon name="trophy" size={18} /> Trophy road</h2>
     <div className="road-head">
       <div className="profile-level trophy-count"><small>TROPHIES</small><b>{trophies.toLocaleString()}</b></div>
       <div className="profile-progress"><strong>{next ? `Next reward at ${next.toLocaleString()} trophies` : 'Every legendary reward is yours'}</strong>
-        <div className="hunt-cap-bar trophy-bar"><i style={{ width: `${next ? Math.min(100, (trophies - prev) / TROPHY_STEP * 100) : 100}%` }} /></div>
+        <div className="hunt-cap-bar trophy-bar"><i style={{ width: `${next ? Math.min(100, (trophies - prev) / Math.max(1, next - prev) * 100) : 100}%` }} /></div>
         <small>{next ? `${(next - trophies).toLocaleString()} to go · ` : ''}{opened} of {TROPHY_ROAD.length} rewards · the road ends at {TROPHY_MAX.toLocaleString()}</small></div>
     </div>
     <ol className="road-stops">{stops.map(t => {

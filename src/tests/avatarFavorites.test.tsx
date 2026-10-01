@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { loadHistoryForTests } from './helpers/nbaHistoryFixture';
 import { AVATAR_CATEGORIES, AVATAR_TROPHY_ROAD, OUTFITS, DEFAULT_AVATAR, randomAvatar, cleanAvatar, avatarItem, type AvatarLook } from '../profile/avatar';
-import { buildAvatarGrid } from '../visuals/avatarSprite';
+import { buildAvatarGrid, outfitKit } from '../visuals/avatarSprite';
+import { teamColors } from '../simulation/teamColors';
 import { TROPHY_ROAD } from '../profile/trophyRoad';
 import { isOpen, unlockContext } from '../profile/cosmetics';
 import { favoriteTeamIn, defaultTeam, REAL_FRANCHISES, FAV_BOOST } from '../profile/favorites';
@@ -12,8 +13,8 @@ import { cardPool } from '../hunt/cards';
 import { UserAvatar } from '../components/UserAvatar';
 
 describe('your character', () => {
-  it('has fifty outfits and ten categories, every piece drawn without stand-in colours', () => {
-    expect(OUTFITS).toHaveLength(50);
+  it('has fifty-plus outfits and ten categories, every piece drawn without stand-in colours', () => {
+    expect(OUTFITS.length).toBeGreaterThanOrEqual(50);
     expect(AVATAR_CATEGORIES).toHaveLength(10);
     for (const c of AVATAR_CATEGORIES) {
       expect(new Set(c.items.map(i => i.id)).size, c.id).toBe(c.items.length);
@@ -51,6 +52,17 @@ describe('your character', () => {
     }
     // Stops stay in order.
     expect(TROPHY_ROAD.map(([t]) => t)).toEqual([...TROPHY_ROAD.map(([t]) => t)].sort((a, b) => a - b));
+  });
+
+  it('a jersey takes any team colours and any number, and bad values fall away', () => {
+    const look = cleanAvatar({ ...DEFAULT_AVATAR, outfit: 'jersey-red', kitTeam: 'LAL', kitNumber: 24 });
+    expect(outfitKit(look)).toEqual({ ...teamColors('LAL'), number: 24 });
+    expect(cleanAvatar({ ...look, kitTeam: 'XYZ', kitNumber: 140 })).not.toHaveProperty('kitTeam');
+    expect(cleanAvatar({ ...look, kitNumber: 140 })).not.toHaveProperty('kitNumber');
+    // Not a jersey: no number, the outfit's own colours.
+    expect(outfitKit({ ...look, outfit: 'hoodie-gray' }).number).toBeNull();
+    const html = renderToStaticMarkup(<UserAvatar look={look} />);
+    expect(html).toContain(teamColors('LAL').primary);
   });
 
   it('renders with an aura and in portrait', () => {

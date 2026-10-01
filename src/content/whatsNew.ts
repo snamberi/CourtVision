@@ -6,6 +6,16 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2026-11-18',
+    title: 'Longer roads, warrior gear and your own jersey',
+    items: [
+      "**The Trophy Road goes to 750,000** (a stop every 50,000 after 200,000) and **the Level Road to level 750** (a stop every 50 levels after 250), with new titles, name and title colours, icons and character pieces at every stop.",
+      "**Warrior gear for your character:** spiky warrior hair, the prince's flame hair, battle armour, a weighted cape, a warrior tail, warrior boots and, at 750,000 trophies, the super warrior aura.",
+      "**Your own jersey:** pick a jersey in the Character studio and choose any team's colours and any number from 0 to 99.",
+      "**Better animated icons:** real flames lick round the fireball, the phoenix and the burning crowns; the glint now crosses only the trophy itself; stars twinkle, bolts spark and halos glow.",
+    ],
+  },
+  {
     id: '2026-11-11',
     title: 'Your own character',
     items: [

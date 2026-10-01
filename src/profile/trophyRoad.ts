@@ -14,7 +14,8 @@ import { AVATAR_TROPHY_ROAD } from './avatar';
  * title colours, app looks and titles.
  */
 
-export const TROPHY_STEP = 5_000, TROPHY_MAX = 200_000;
+/** A stop every 5,000 trophies up to 200,000, then every 50,000 up to 750,000. */
+export const TROPHY_STEP = 5_000, TROPHY_BIG_STEP = 50_000, TROPHY_BIG_FROM = 200_000, TROPHY_MAX = 750_000;
 export const TROPHIES = {
   gmWin: 12, gmSeason: 200, gmTitle: 2_500, achievement: 250,
   careerRetired: 500, careerLegacy: 2, careerHof: 1_000,
@@ -93,6 +94,18 @@ export const TROPHY_ROAD: [number, TrophyRewardKind, string][] = [
   [190_000, 'color', 'celestial'], [190_000, 'title', 'Eternal'],
   [195_000, 'titleColor', 'molten'],
   [200_000, 'title', 'Court Vision Immortal'], [200_000, 'icon', 'goat-crown'], [200_000, 'color', 'immortal'], [200_000, 'titleColor', 'immortal'], [200_000, 'look', 'immortal'],
+  // Past 200,000: a stop every 50,000 up to 750,000 (the character's pieces join below).
+  [250_000, 'title', 'Beyond Legendary'], [250_000, 'color', 'plasma'],
+  [300_000, 'title', 'Galactic GM'], [300_000, 'icon', 'fireball-blue'],
+  [350_000, 'titleColor', 'plasma'],
+  [400_000, 'title', 'Unstoppable'], [400_000, 'icon', 'trophy-diamond-shine'],
+  [450_000, 'color', 'borealis'],
+  [500_000, 'title', 'Half a Million'], [500_000, 'icon', 'crown-blueflame'], [500_000, 'titleColor', 'supernova'],
+  [550_000, 'color', 'starfire'],
+  [600_000, 'title', 'Myth Maker'], [600_000, 'icon', 'phoenix-gold'],
+  [650_000, 'titleColor', 'cosmos'],
+  [700_000, 'title', 'Living Myth'], [700_000, 'icon', 'ball-galaxy'], [700_000, 'color', 'eternalflame'],
+  [750_000, 'title', 'Court Vision God'], [750_000, 'titleColor', 'divine'], [750_000, 'color', 'divine'],
 ];
 // Your character's pieces ride the same road (ids are "category:piece"; see AVATAR_TROPHY_ROAD in avatar.ts).
 for (const [t, cat, id] of AVATAR_TROPHY_ROAD) TROPHY_ROAD.push([t, 'avatar', `${cat}:${id}`]);
@@ -117,6 +130,10 @@ export const TITLE_COLORS: TitleColor[] = [
   { id: 'starlight', name: 'Starlight', css: 'linear-gradient(90deg, #1b1f4a, #ffffff, #8fa8ff, #ffffff, #1b1f4a)', anim: 'shimmer' },
   { id: 'molten', name: 'Molten gold', css: 'linear-gradient(90deg, #7a4a00, #ffd166, #fff3c4, #ffb300, #7a4a00)', anim: 'flow' },
   { id: 'tycoon', name: 'Tycoon gold', css: 'linear-gradient(90deg, #8a6a12, #ffd166, #fffbe6, #ffd166, #3a9a5b, #ffd166, #8a6a12)', anim: 'shimmer', ownerLegacy: 60 },
+  { id: 'plasma', name: 'Plasma', css: 'linear-gradient(90deg, #3fc8ff, #ffffff, #b983ff, #ffffff, #3fc8ff)', anim: 'flow' },
+  { id: 'supernova', name: 'Supernova', css: 'linear-gradient(90deg, #ff4d2e, #ffd166, #ffffff, #ffd166, #ff4d2e)', anim: 'pulse' },
+  { id: 'cosmos', name: 'Cosmos', css: 'linear-gradient(90deg, #1b1f4a, #6a45c0, #ff7ad9, #6fd3ff, #1b1f4a)', anim: 'flow' },
+  { id: 'divine', name: 'Divine', css: 'linear-gradient(90deg, #fff3c4, #ffd166, #ffffff, #9fe7ff, #ffffff, #ffd166, #fff3c4)', anim: 'shimmer' },
   { id: 'immortal', name: 'Immortal', css: 'linear-gradient(90deg, #ff4d2e, #ffd166, #6fdc93, #4fd6d6, #c79bff, #ff4dd2, #ff4d2e)', anim: 'flow' },
 ];
 /** Whether a title colour is open: the Trophy Road's, or an owner legacy for the Owner's Box one. */

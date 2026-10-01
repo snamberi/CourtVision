@@ -128,26 +128,41 @@
 .name-tag .name-tag-title { font-size: .72em; font-weight: 600; letter-spacing: .02em; }
 .profile-chip-title .name-tag-title { font-size: 1em; }
 .icon-anim { overflow: visible; }
-.icon-anim-flicker .icon-sprite { animation: icon-flicker .5s steps(2) infinite; transform-origin: 50% 90%; }
-.icon-anim-spin .icon-sprite { animation: icon-spin 2.4s linear infinite; transform-origin: 5px 5px; transform-box: view-box; }
-.icon-anim-twinkle .icon-sprite { animation: icon-twinkle 1.4s ease-in-out infinite; transform-origin: 5px 5px; transform-box: view-box; }
+/* Two alternating frames (flames, sparkles, sparks): pixel-crisp, no tweening. */
+.icon-anim .icon-fx-a { animation: icon-frame-a .44s steps(1) infinite; }
+.icon-anim .icon-fx-b { animation: icon-frame-b .44s steps(1) infinite; opacity: 0; }
+.icon-anim-twinkle .icon-fx-a, .icon-anim-twinkle .icon-fx-b, .icon-anim-flash .icon-fx-a, .icon-anim-flash .icon-fx-b { animation-duration: 1.1s; }
+@keyframes icon-frame-a { 50% { opacity: 0; } }
+@keyframes icon-frame-b { 50% { opacity: 1; } }
+.icon-anim-flicker .icon-fx-under { animation: icon-embers .66s steps(2) infinite; }
+@keyframes icon-embers { 50% { opacity: .45; } }
+.icon-anim-flicker .icon-sprite { animation: icon-heat .44s steps(1) infinite; }
+@keyframes icon-heat { 50% { filter: brightness(1.18); } }
+/* A coin-like turn in eight steps, so the pixels stay sharp. */
+.icon-anim-spin .icon-sprite { animation: icon-spin 2.4s steps(8) infinite; transform-origin: 5px 5px; transform-box: view-box; }
+@keyframes icon-spin { from { transform: scaleX(1); } 25% { transform: scaleX(.15); } 50% { transform: scaleX(-1); } 75% { transform: scaleX(-.15); } to { transform: scaleX(1); } }
+.icon-anim-twinkle .icon-sprite { animation: icon-twinkle 1.1s steps(2) infinite; }
+@keyframes icon-twinkle { 50% { filter: brightness(1.35); } }
 .icon-anim-flash .icon-sprite { animation: icon-flash 1.8s steps(1) infinite; }
-.icon-anim-glow .icon-sprite { animation: icon-glow 1.8s ease-in-out infinite; }
-.icon-anim-bob .icon-sprite { animation: icon-bob 1.2s ease-in-out infinite; }
-.icon-glint { animation: icon-glint 2.2s ease-in-out infinite; }
-@keyframes icon-flicker { 50% { transform: scaleY(1.06) translateY(-.3px); filter: brightness(1.25); } }
-@keyframes icon-spin { from { transform: scaleX(1); } 25% { transform: scaleX(0); } 50% { transform: scaleX(-1); } 75% { transform: scaleX(0); } to { transform: scaleX(1); } }
-@keyframes icon-twinkle { 50% { transform: scale(.82) rotate(8deg); filter: brightness(1.5); } }
-@keyframes icon-flash { 0%, 70% { filter: none; } 72% { filter: brightness(2.2); } 76% { filter: none; } 80% { filter: brightness(2.4); } 86% { filter: none; } }
-@keyframes icon-glow { 50% { filter: brightness(1.4) drop-shadow(0 0 1.2px var(--c-shadow-ffffff, #ffffff)); } }
-@keyframes icon-bob { 50% { transform: translateY(-.8px); } }
-@keyframes icon-glint { 0% { transform: translateX(0) skewX(-20deg); } 60%, 100% { transform: translateX(16px) skewX(-20deg); } }
+@keyframes icon-flash { 0%, 70% { filter: none; } 72% { filter: brightness(2); } 78% { filter: none; } 82% { filter: brightness(2.2); } 88% { filter: none; } }
+.icon-anim-glow .icon-fx-under { animation: icon-halo 1.6s steps(4) infinite; }
+@keyframes icon-halo { 0%, 100% { opacity: .15; } 50% { opacity: .65; } }
+.icon-anim-bob .icon-sprite { animation: icon-bob 1.2s steps(2) infinite; }
+@keyframes icon-bob { 50% { transform: translateY(-1px); } }
+.icon-anim-bob .icon-fx-under { animation: icon-shadow 1.2s steps(2) infinite; transform-origin: 6px 11px; transform-box: view-box; }
+@keyframes icon-shadow { 50% { transform: scaleX(.7); opacity: .6; } }
+/* The glint: a two-pixel streak that crosses the shape only, then a sparkle at the corner. */
+.icon-glint { animation: icon-glint 2.4s steps(14) infinite; transform: skewX(-20deg); }
+@keyframes icon-glint { 0% { transform: translateX(0) skewX(-20deg); } 55%, 100% { transform: translateX(15px) skewX(-20deg); } }
+.icon-anim-shine .icon-fx-a { animation: icon-sparkle 2.4s steps(1) infinite; opacity: 0; }
+@keyframes icon-sparkle { 0%, 52% { opacity: 0; } 56%, 70% { opacity: 1; } 74%, 100% { opacity: 0; } }
 .trophy-road .trophy-count b { font-size: 26px; color: var(--c-fg-ffd166, #ffd166); }
 .trophy-bar i { background: linear-gradient(90deg, var(--c-bg-c9971f, #c9971f), var(--c-bg-ffd166, #ffd166), var(--c-bg-fff3c4, #fff3c4)) !important; }
 .trophy-road .road-stop.major { box-shadow: 0 0 0 2px var(--c-shadow-ffd166, #ffd166), 0 0 14px var(--c-shadow-ffd16655, #ffd16655); }
 .trophy-road-title { color: var(--c-fg-ffd166, #ffd166); }
 @media (prefers-reduced-motion: reduce) {
-  .anim-flow, .anim-shimmer, .anim-pulse, .icon-anim .icon-sprite, .icon-glint { animation: none; }
+  .anim-flow, .anim-shimmer, .anim-pulse, .icon-anim .icon-sprite, .icon-glint, .icon-anim .icon-fx-a, .icon-anim .icon-fx-b, .icon-anim .icon-fx-under { animation: none; }
+  .icon-anim .icon-fx-b { opacity: 0; }
 }
 .trophy-unlock { position: fixed; inset: 0; z-index: 3000; display: grid; place-items: center; background: var(--c-bg-05080ecc, #05080ecc); padding: 16px; }
 .tu-rays { position: absolute; width: 900px; height: 900px; max-width: 200vw; background: repeating-conic-gradient(from 0deg, var(--c-bg-ffd16633, #ffd16633) 0 10deg, transparent 10deg 20deg); border-radius: 50%; animation: tu-spin 18s linear infinite; mask-image: radial-gradient(circle, var(--c-any-000000, #000) 20%, transparent 65%); -webkit-mask-image: radial-gradient(circle, var(--c-any-000000, #000) 20%, transparent 65%); }

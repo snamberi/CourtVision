@@ -4,12 +4,14 @@ import { THEME_BY_ID, type ThemeId } from '../../theme/themes';
 import { FRAMES, FLOORS, MAX_LEVEL, levelFor, totalXp, PROFILE_EVENT } from '../../profile/profile';
 import { ProfileIcon, NameTag } from '../ProfileIcon';
 import { PixelIcon } from '../PixelIcon';
+import { AvatarPiece } from '../UserAvatar';
 
 /** One reward as it looks on the road. */
 function Reward({ kind, id }: { kind: RewardKind; id: string }) {
   if (kind === 'icon') return <span className="road-reward"><ProfileIcon id={id} size={30} /><small>{iconDef(id).name} icon</small></span>;
   if (kind === 'color') return <span className="road-reward"><NameTag name={NAME_COLORS.find(c => c.id === id)?.name ?? id} icon={null} color={id} /><small>Name colour</small></span>;
   if (kind === 'title') return <span className="road-reward"><b className="road-title">{id}</b><small>Title</small></span>;
+  if (kind === 'avatar') return <span className="road-reward road-avatar-reward"><AvatarPiece piece={id} /></span>;
   if (kind === 'look') {
     const t = THEME_BY_ID.get(id as ThemeId);
     const p = t?.preview;
@@ -19,7 +21,7 @@ function Reward({ kind, id }: { kind: RewardKind; id: string }) {
   return <span className="road-reward"><i className={`road-floor floor-${id}`} aria-hidden="true" /><small>{FLOORS.find(f => f.id === id)?.name ?? id} court</small></span>;
 }
 
-/** The level road: a reward every 5 levels up to 250, where you are on it, and what comes next. */
+/** The level road: a reward every 5 levels up to 250 and every 50 after that up to 750, where you are on it, and what comes next. */
 export function LevelRoad() {
   const [, setTick] = useState(0);
   useEffect(() => { const bump = () => setTick(t => t + 1); window.addEventListener(PROFILE_EVENT, bump); return () => window.removeEventListener(PROFILE_EVENT, bump); }, []);

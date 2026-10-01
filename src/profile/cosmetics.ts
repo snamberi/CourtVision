@@ -1,5 +1,6 @@
 import { localRead, type Read } from '../lib/kv';
 import { totalTrophies, trophyNeed, TROPHY_TITLES } from './trophyRoad';
+import { AVATAR_LEVEL_ROAD } from './avatar';
 
 /** Complete team sets and legendary cards in the album (read straight from storage; see cards/cards.ts). */
 function albumCounts(read: Read): { sets: number; legendary: number } {
@@ -20,7 +21,7 @@ function albumCounts(read: Read): { sets: number; legendary: number } {
  * achievements this browser has already announced (modeUnlocks.ts); Supporter items read the entitlements (billing).
  */
 
-export type RewardKind = 'icon' | 'color' | 'title' | 'frame' | 'floor' | 'look';
+export type RewardKind = 'icon' | 'color' | 'title' | 'frame' | 'floor' | 'look' | 'avatar';
 export type Rule = { level: number } | { rank: number } | { honor: string } | { mode: string } | { anyHonor: true } | { supporter: true } | { trophies: number } | { album: 'sets' | 'legendary'; n: number } | { owner: number };
 /** Animated cosmetics (the Trophy Road): see features.css `.anim-*` and `.icon-anim-*`. */
 export type IconAnim = 'flicker' | 'shine' | 'spin' | 'twinkle' | 'flash' | 'glow' | 'bob';
@@ -87,7 +88,21 @@ export const LEVEL_ROAD: [number, RewardKind, string][] = [
   [240, 'title', 'Immortal'],
   [245, 'title', 'Court Visionary'],
   [250, 'title', 'GOAT GM'], [250, 'color', 'inferno'], [250, 'look', 'championship'],
+  // Past 250, a stop every 50 levels up to 750.
+  [300, 'title', 'Basketball Sage'], [300, 'icon', 'jersey-rainbow'], [300, 'color', 'cobalt'],
+  [350, 'title', 'Court Philosopher'], [350, 'icon', 'crown-diamond'],
+  [400, 'title', 'Era Definer'], [400, 'color', 'ultraviolet'], [400, 'icon', 'trophy-diamond'],
+  [450, 'title', 'Grandmaster GM'], [450, 'icon', 'shield-gold'],
+  [500, 'title', 'Five Hundred Club'], [500, 'color', 'moltencore'], [500, 'icon', 'ball-diamond'],
+  [550, 'title', 'Dynasty Emperor'], [550, 'icon', 'rocket-gold'],
+  [600, 'title', 'Timeless'], [600, 'color', 'sunrise'],
+  [650, 'title', 'Architect of Legends'], [650, 'icon', 'star-rainbow'],
+  [700, 'title', 'Legendary Ascendant'], [700, 'color', 'celestialblue'],
+  [750, 'title', 'The Final Boss'], [750, 'color', 'infinity'], [750, 'icon', 'goat-gold'],
 ];
+// Your character's pieces on the road (ids are "category:piece"; see AVATAR_LEVEL_ROAD in avatar.ts).
+for (const [l, cat, id] of AVATAR_LEVEL_ROAD) LEVEL_ROAD.push([l, 'avatar', `${cat}:${id}`]);
+LEVEL_ROAD.sort((a, b) => a[0] - b[0]);
 /** The app looks on the road, by id (their colours live in src/theme/themes.ts; a test keeps the names in step). */
 export const ROAD_LOOK_NAMES: Record<string, string> = {
   frontoffice: 'Front Office', hardwood: 'Hardwood', blacktop: 'Blacktop', playbook: 'Playbook', handheld: 'Handheld',
@@ -102,7 +117,7 @@ const TIERS = ['bronze', 'silver', 'gold', 'platinum', 'diamond', 'legend'];
 
 // ---------------------------------------------------------------- icons
 
-export interface IconDef extends Cosmetic { base: string; recolor?: Record<string, string>; anim?: IconAnim }
+export interface IconDef extends Cosmetic { base: string; recolor?: Record<string, string>; anim?: IconAnim; /** Flame colours for the flicker (fire by default; gold on crowns). */ fx?: 'fire' | 'gold' | 'blue' }
 const icon = (id: string, name: string, base = id, recolor?: Record<string, string>, rule: Rule = byRoad('icon', id)): IconDef =>
   ({ id, name, base, recolor, rule, how: levelHow(rule) });
 const jersey = (id: string, name: string, main: string, dark: string, trim = '#f4f0e6') => icon(id, name, 'jersey', { j: main, J: dark, w: trim });
@@ -125,6 +140,12 @@ export const ICONS: IconDef[] = [
   icon('crown-ruby', 'Ruby crown', 'crown', { g: '#e85d5d', G: '#a83232', r: '#ffd166' }),
   icon('lightning', 'Lightning'), icon('shotclock', 'Shot clock'), icon('rocket', 'Rocket'), icon('headband', 'Headband'), icon('shield', 'Shield'),
   icon('megaphone', 'Megaphone'), icon('sun', 'Sun'), icon('moon', 'Moon'), icon('snowflake', 'Snowflake'),
+  // Levels 300 to 750.
+  jersey('jersey-rainbow', 'Rainbow jersey', '#b983ff', '#ff6fd8', '#ffd166'),
+  icon('crown-diamond', 'Diamond crown', 'crown', { g: '#bfe9ff', G: '#6db8ff', r: '#ffffff', b: '#b983ff' }),
+  icon('trophy-diamond', 'Diamond trophy', 'trophy', { g: '#bfe9ff', G: '#6db8ff' }), icon('ball-diamond', 'Diamond ball', 'ball', { o: '#bfe9ff', O: '#6db8ff' }),
+  icon('shield-gold', 'Gold shield', 'shield', { b: '#ffd166', B: '#c9971f', w: '#fff3c4' }), icon('rocket-gold', 'Gold rocket', 'rocket', { w: '#ffd166', b: '#ff6fd8' }),
+  icon('star-rainbow', 'Rainbow star', 'star', { g: '#ff6fd8', G: '#6db8ff' }), icon('goat-gold', 'Golden GOAT', 'goat', { w: '#ffd166', s: '#c9971f' }),
   // Earned elsewhere.
   { ...icon('diamond', 'Diamond', 'diamond', undefined, { rank: 4 }), how: 'Reach Diamond in a ranked season' },
   { ...icon('ghost', 'Ghost', 'ghost', undefined, { mode: 'pvp-1200' }), how: 'Reach a 1200 PvP rating' },
@@ -142,7 +163,10 @@ export const ICONS: IconDef[] = [
     ['diamond-pulse', 'Pulsing diamond', 'diamond', undefined, 'glow'], ['phoenix', 'Phoenix', 'phoenix', undefined, 'flicker'],
     ['meteor', 'Meteor', 'meteor', undefined, 'bob'], ['crown-flame', 'Crown of fire', 'crown', { g: '#ff9d3d', G: '#e85d5d', r: '#ffd166', b: '#ffe066' }, 'flicker'],
     ['goat', 'The GOAT', 'goat', undefined, 'bob'], ['goat-crown', 'Crowned GOAT', 'goatcrown', undefined, 'glow'],
-  ] as [string, string, string, Record<string, string> | undefined, IconAnim][]).map(([id, name, base, recolor, anim]) => { const rule = byTrophies('icon', id); return { id, name, base, recolor, anim, rule, how: trophyHow(rule) }; }),
+    ['fireball-blue', 'Blue fireball', 'fireball', { o: '#4da3ff', O: '#1f4fd9' }, 'flicker'], ['trophy-diamond-shine', 'Gleaming diamond trophy', 'trophy', { g: '#bfe9ff', G: '#6db8ff' }, 'shine'],
+    ['crown-blueflame', 'Crown of blue fire', 'crown', { g: '#9fe7ff', G: '#1f4fd9', r: '#ffffff', b: '#ffffff' }, 'flicker'], ['phoenix-gold', 'Golden phoenix', 'phoenix', { r: '#ffd166', o: '#ffb300' }, 'flicker'],
+    ['ball-galaxy', 'Galaxy ball', 'ball', { o: '#6a45c0', O: '#ff7ad9' }, 'twinkle'],
+  ] as [string, string, string, Record<string, string> | undefined, IconAnim][]).map(([id, name, base, recolor, anim]) => { const rule = byTrophies('icon', id); return { id, name, base, recolor, anim, rule, how: trophyHow(rule), ...(/blue/.test(id) ? { fx: 'blue' as const } : /gold/.test(id) ? { fx: 'gold' as const } : {}) }; }),
   // The card album.
   { id: 'card-holo', name: 'Holo card', base: 'card', anim: 'shine' as IconAnim, rule: { album: 'sets', n: 3 } as Rule, how: albumHow({ album: 'sets', n: 3 }) },
   // The Owner's Box.
@@ -165,6 +189,11 @@ export const NAME_COLORS: (Cosmetic & { css: string; anim?: ColorAnim })[] = [
   color('ice', 'Ice', '#bfe6ff'), color('platinum', 'Platinum', 'linear-gradient(90deg, #e8edf3, #9fb0c4, #e8edf3)'),
   color('obsidian', 'Obsidian', 'linear-gradient(90deg, #8a93a6, #f4f0e6, #8a93a6)'),
   color('inferno', 'Inferno', 'linear-gradient(90deg, #ff4d2e, #ff9d3d, #ffd166, #ff9d3d, #ff4d2e)'),
+  color('cobalt', 'Cobalt', '#5b84ff'), color('ultraviolet', 'Ultraviolet', '#a66bff'),
+  color('moltencore', 'Molten core', 'linear-gradient(90deg, #7a1200, #ff6b2d, #ffd166, #ff6b2d, #7a1200)'),
+  color('sunrise', 'Sunrise', 'linear-gradient(90deg, #ff8a6b, #ffd166, #fff3c4, #ffd166, #ff8a6b)'),
+  color('celestialblue', 'Celestial blue', 'linear-gradient(90deg, #6db8ff, #ffffff, #b8a8ff, #ffffff, #6db8ff)'),
+  color('infinity', 'Infinity', 'linear-gradient(90deg, #ff4d4d, #ffd166, #6fdc93, #6db8ff, #b983ff, #ff6fd8, #ff4d4d)'),
   { ...color('ember', 'Ember', '#ff6b3d', { rank: 5 }), how: 'Reach Legend in a ranked season' },
   { ...color('prism', 'Prism', 'linear-gradient(90deg, #ff9d3d, #ffd166, #6fdc93, #6db8ff, #c79bff)', { honor: 'first' }), how: 'Finish #1 on a leaderboard' },
   { ...color('aurora', 'Aurora', 'linear-gradient(90deg, #6fdc93, #4fd6d6, #b8a8ff, #ff8fc8)', { supporter: true }), how: 'Supporter pass' },
@@ -182,6 +211,11 @@ export const NAME_COLORS: (Cosmetic & { css: string; anim?: ColorAnim })[] = [
   animated('nebula', 'Nebula', 'linear-gradient(90deg, #3b1d82, #ff4dd2, #4fd6d6, #b983ff, #3b1d82)', 'flow'),
   animated('celestial', 'Celestial', 'linear-gradient(90deg, #ffd166, #ffffff, #8fa8ff, #ffffff, #ffd166)', 'shimmer'),
   { ...animated('holo', 'Holo foil', 'linear-gradient(90deg, #ff8fc8, #6fd3ff, #7dff9b, #ffe38a, #ff8fc8)', 'flow'), rule: { album: 'legendary', n: 5 } as Rule, how: albumHow({ album: 'legendary', n: 5 }) },
+  animated('plasma', 'Plasma', 'linear-gradient(90deg, #3fc8ff, #ffffff, #b983ff, #ffffff, #3fc8ff)', 'flow'),
+  animated('borealis', 'Borealis', 'linear-gradient(90deg, #1f9e5c, #6fffb0, #4fd6d6, #b8a8ff, #1f9e5c)', 'flow'),
+  animated('starfire', 'Starfire', 'linear-gradient(90deg, #ff4d2e, #ffffff, #ffd166, #ffffff, #ff4d2e)', 'shimmer'),
+  animated('eternalflame', 'Eternal flame', 'linear-gradient(90deg, #1f4fd9, #4da3ff, #ffffff, #ffd166, #ff4d2e, #1f4fd9)', 'flow'),
+  animated('divine', 'Divine', 'linear-gradient(90deg, #fff3c4, #ffd166, #ffffff, #9fe7ff, #ffffff, #ffd166, #fff3c4)', 'shimmer'),
   animated('immortal', 'Immortal', 'linear-gradient(90deg, #ff4d2e, #ffd166, #6fdc93, #4fd6d6, #c79bff, #ff4dd2, #ff4d2e)', 'flow'),
 ];
 
@@ -298,7 +332,7 @@ export const SPRITES: Record<string, string[]> = {
   sun: ['....kk....', '.k.kggk.k.', '..kggggk..', '.kggwwggk.', 'kgggwwgggk', 'kgggggggGk', '.kggggggk.', '..kgGGgk..', '.k.kGGk.k.', '....kk....'],
   moon: ['...kkkk...', '..kwwwk...', '.kwwwk....', '.kwwk.....', 'kwwwk.....', 'kwwwk.....', '.kwwk.....', '.kwwwk....', '..kwwwk...', '...kkkk...'],
   snowflake: ['....b.....', '.b..b..b..', '..b.b.b...', '...bbb....', 'bbbbwbbbb.', '...bbb....', '..b.b.b...', '.b..b..b..', '....b.....', '..........'],
-  fireball: ['...o..r...', '..ror.or..', '.rogrrogr.', '..kkkkkk..', '.kooOooOk.', 'koOoooOook', 'kOOOOOOOOk', 'kooOoooOok', '.kooOooOk.', '..kkkkkk..'],
+  fireball: ['..........', '..........', '...kkkk...', '..kooOok..', '.koOoOoOk.', '.kOOOOOOk.', '.kooOoOok.', '.koOooOok.', '..kooOok..', '...kkkk...'],
   ring: ['...kkkk...', '..kbwbBk..', '.kgkbbkGk.', 'kgk.kk.kGk', 'kgk....kGk', 'kgk....kGk', 'kgk....kGk', '.kgk..kGk.', '..kggGGk..', '...kkkk...'],
   phoenix: ['k........k', 'rk......kr', 'ork.kk.kro', '.orkggkro.', '..okgwko..', '...kggk...', '..orggro..', '.or.rr.ro.', '.r..or..r.', '....r.....'],
   meteor: ['o.........', '.oo.......', '..ooo.....', '...ookkk..', '....kgggk.', '...kgwgGGk', '...kggGGGk', '...kgGGGGk', '....kGGGk.', '.....kkk..'],

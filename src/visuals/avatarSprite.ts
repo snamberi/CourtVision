@@ -1,4 +1,5 @@
 import { buildPlayerGrid, outlineGrid, detailedSpritePaths, gridToPaths, drawHat, mix, HAIR_STYLES, BEARD_STYLES, HAT_STYLES, type SpriteGrid, type SpritePath, type HairStyle, type BeardStyle, type HatStyle } from './playerSprite';
+import { teamColors } from '../simulation/teamColors';
 import { SKINS, HAIR_COLORS, SHOES, RAINBOW, outfitDef, colorHex, type AvatarLook, type Outfit } from '../profile/avatar';
 
 /*
@@ -43,8 +44,8 @@ function pants(r: Rect, s: Shade) {
 /** A coat's skirt to the knees, open in the middle. */
 function coatSkirt(r: Rect, s: Shade, inner: string) { r(11, 38, 18, 7, s.c); r(18, 38, 4, 7, inner); r(11, 44, 18, 1, s.d); r(26, 38, 3, 7, s.d); }
 
-function drawOutfit(r: Rect, o: Outfit, team: AvatarOptions['team'], skin: Shade) {
-  const main = shade(o.id === 'jersey-fav' && team ? team.primary : o.main), trim = shade(o.id === 'jersey-fav' && team ? team.secondary : o.trim);
+function drawOutfit(r: Rect, o: Outfit, team: { primary: string; secondary: string }, skin: Shade) {
+  const main = shade(team.primary), trim = shade(team.secondary);
   const white = shade('#f4f6fa'), black = shade('#161a24'), gold = '#ffd166';
   switch (o.kind) {
     case 'jersey': return; // the body's own uniform, in these colours
@@ -93,6 +94,13 @@ function drawOutfit(r: Rect, o: Outfit, team: AvatarOptions['team'], skin: Shade
       torso(r, main); longSleeves(r, shade(o.trim)); pants(r, shade(o.trim));
       r(9, 24, 5, 3, main.l); r(26, 24, 5, 3, main.c); r(12, 30, 16, 1, main.d); r(12, 34, 16, 1, main.d); r(19, 27, 2, 10, main.l); r(12, 42, 6, 2, main.c); r(22, 42, 6, 2, main.c); return;
     // ------------------------------------------------ anime-inspired
+    case 'warriorArmor':
+      // A blue bodysuit under a white chest plate, with gold shoulder straps and white gloves.
+      torso(r, shade('#1f3a8a')); longSleeves(r, shade('#1f3a8a')); pants(r, shade('#1f3a8a'));
+      r(12, 27, 16, 9, '#f4f6fa'); r(12, 27, 2, 9, '#ffffff'); r(25, 27, 3, 9, '#c9d1dc'); r(14, 31, 12, 1, '#c9d1dc');
+      r(10, 24, 5, 4, '#e8b84a'); r(25, 24, 5, 4, '#c9971f'); r(14, 25, 3, 2, '#e8b84a'); r(23, 25, 3, 2, '#c9971f');
+      r(12, 36, 7, 4, '#e8b84a'); r(21, 36, 7, 4, '#c9971f'); r(18, 36, 4, 2, '#1f3a8a');
+      r(4, 31, 5, 4, '#f4f6fa'); r(3, 33, 3, 3, '#e3e7ee'); r(31, 32, 5, 4, '#f4f6fa'); r(34, 35, 2, 2, '#e3e7ee'); return;
     case 'gi':
       torso(r, main); shortSleeves(r, main); pants(r, main);
       r(17, 27, 6, 4, trim.c); r(18, 27, 4, 2, skin.c); r(12, 35, 16, 2, trim.c); r(7, 31, 3, 2, trim.c); r(30, 32, 3, 2, trim.c);
@@ -156,6 +164,7 @@ function drawShoes(r: Rect, id: string, o: Outfit, skin: Shade) {
   if (id === 'team') return;
   for (const x of [12, 23]) {
     if (id === 'sandals') { r(x - 1, 46, 7, 2, skin.c); r(x - 1, 48, 7, 1, '#8a5a2b'); r(x - 1, 49, 7, 1, '#5a3a1a'); r(x + 1, 46, 1, 2, '#c8102e'); continue; }
+    if (id === 'warriorBoots') { r(x - 1, 41, 7, 8, '#f4f6fa'); r(x - 1, 41, 7, 2, '#e8b84a'); r(x + 4, 43, 2, 6, '#c9d1dc'); r(x - 1, 49, 7, 1, '#5b6b82'); continue; }
     if (id === 'boots' || id === 'heroBoots') {
       const c = shade(id === 'boots' ? '#6b4423' : '#e8322e');
       r(x - 1, 41, 7, 8, c.c); r(x - 1, 41, 2, 7, c.l); r(x + 4, 41, 2, 8, c.d); r(x - 1, 49, 7, 1, id === 'boots' ? '#2b1a10' : '#ffd166'); continue;
@@ -170,6 +179,18 @@ function drawShoes(r: Rect, id: string, o: Outfit, skin: Shade) {
 function drawHair(r: Rect, id: string, hair: Shade) {
   const h = (x: number, y: number, w: number, hh: number) => r(x, y, w, hh, hair.c);
   switch (id) {
+    case 'spikyWarrior':
+      // Big spikes every way, and three bangs falling over the forehead.
+      h(11, 5, 18, 6); h(9, 7, 4, 7); h(27, 7, 4, 7);
+      for (const [x, y, w, hh] of [[10, 1, 3, 5], [13, 0, 3, 6], [17, 1, 3, 5], [21, 0, 3, 6], [25, 2, 3, 4], [6, 5, 4, 3], [30, 5, 4, 3], [5, 9, 4, 2], [31, 9, 4, 2], [7, 3, 3, 3], [29, 3, 3, 3]] as const) h(x, y, w, hh);
+      h(13, 10, 3, 3); h(18, 10, 3, 4); h(23, 10, 3, 3); h(14, 13, 1, 1); h(19, 14, 1, 1); h(24, 13, 1, 1);
+      r(14, 2, 1, 4, hair.l); r(22, 2, 1, 4, hair.l); r(28, 8, 2, 4, hair.d); return;
+    case 'flameWarrior':
+      // Swept straight up like a flame, with a sharp widow's peak.
+      h(12, 3, 16, 8); h(11, 7, 2, 5); h(27, 7, 2, 5);
+      for (const [x, top] of [[12, 1], [15, 0], [18, 0], [21, 0], [24, 1], [26, 2]] as const) h(x, top, 3, 4);
+      h(19, 10, 3, 2); h(20, 12, 1, 1);
+      r(16, 1, 1, 6, hair.l); r(22, 1, 1, 6, hair.l); r(26, 4, 2, 6, hair.d); return;
     case 'superSpikes':
       h(11, 6, 18, 5); h(10, 8, 3, 7); h(27, 8, 3, 7);
       for (const [x, top] of [[11, 1], [15, 0], [19, 0], [23, 0], [26, 2], [8, 4], [30, 4]] as const) { h(x, top, 3, 7 - top); h(x + 1, top - 1 < 0 ? 0 : top - 1, 1, 1); }
@@ -252,8 +273,12 @@ function drawNeck(r: Rect, id: string) {
     case 'medal': r(17, 27, 1, 4, '#1d428a'); r(22, 27, 1, 4, '#c8102e'); r(18, 31, 4, 1, '#1d428a'); r(18, 32, 4, 4, '#ffd166'); r(19, 33, 2, 2, '#fff0b3'); return;
     case 'backpack': r(13, 25, 2, 13, '#3a3f4a'); r(25, 25, 2, 13, '#3a3f4a'); return;
     case 'scarf': r(14, 24, 12, 3, '#e8322e'); r(15, 24, 10, 1, '#ff8080'); r(23, 26, 3, 9, '#e8322e'); r(24, 35, 2, 2, '#e8322e'); r(26, 27, 4, 2, '#e8322e'); return;
-    case 'capeRed': case 'capeBlack': r(11, 24, 3, 2, id === 'capeRed' ? '#b0122a' : '#1a1f2a'); r(26, 24, 3, 2, id === 'capeRed' ? '#b0122a' : '#1a1f2a'); r(19, 25, 2, 1, '#ffd166'); return;
+    case 'capeRed': case 'capeBlack': case 'capeGold': { const c = id === 'capeRed' ? '#b0122a' : id === 'capeGold' ? '#c9971f' : '#1a1f2a'; r(11, 24, 3, 2, c); r(26, 24, 3, 2, c); r(19, 25, 2, 1, id === 'capeGold' ? '#fff3c4' : '#ffd166'); return; }
     case 'jetpack': r(12, 26, 2, 1, '#5b6b82'); r(26, 26, 2, 1, '#5b6b82'); return;
+    case 'weightedCape':
+      // Square shoulder pads and a high collar.
+      r(7, 23, 7, 4, '#f4f6fa'); r(26, 23, 7, 4, '#e3e7ee'); r(7, 23, 7, 1, '#ffffff'); r(7, 26, 7, 1, '#c9d1dc'); r(26, 26, 7, 1, '#b8c0cc');
+      r(13, 23, 3, 2, '#f4f6fa'); r(24, 23, 3, 2, '#e3e7ee'); return;
   }
 }
 
@@ -261,11 +286,18 @@ function drawNeck(r: Rect, id: string) {
 function drawBack(grid: SpriteGrid, id: string) {
   const back: Rect = (x, y, w, h, c) => { for (let yy = Math.max(0, y); yy < Math.min(grid.length, y + h); yy++) for (let xx = Math.max(0, x); xx < Math.min(grid[0].length, x + w); xx++) if (!grid[yy][xx]) grid[yy][xx] = c; };
   switch (id) {
-    case 'capeRed': case 'capeBlack': { const c = shade(id === 'capeRed' ? '#c8102e' : '#1a1f2a'); for (let y = 25; y < 49; y++) { const s = Math.floor((y - 25) / 5); back(10 - s, y, 20 + s * 2, 1, (y + s) % 7 === 0 ? c.d : c.c); } return; }
+    case 'capeRed': case 'capeBlack': case 'capeGold': { const c = shade(id === 'capeRed' ? '#c8102e' : id === 'capeGold' ? '#e8b84a' : '#1a1f2a'); for (let y = 25; y < 49; y++) { const s = Math.floor((y - 25) / 5); back(10 - s, y, 20 + s * 2, 1, (y + s) % 7 === 0 ? c.d : c.c); } return; }
     case 'angelWings': for (const [x0, dir] of [[9, -1], [30, 1]] as const) for (let i = 0; i < 9; i++) { const x = dir < 0 ? x0 - i : x0 + i; back(x, 20 + Math.floor(i / 2), 1, 16 - i, i % 3 === 2 ? '#dfe6f0' : '#f8fbff'); } return;
     case 'batWings': for (const [x0, dir] of [[9, -1], [30, 1]] as const) for (let i = 0; i < 9; i++) { const x = dir < 0 ? x0 - i : x0 + i; back(x, 20 + i, 1, 10 - (i % 3) * 2, i % 3 === 0 ? '#3b1d5a' : '#5a2d82'); } return;
     case 'jetpack': back(7, 26, 5, 12, '#8a93a3'); back(28, 26, 5, 12, '#8a93a3'); back(8, 26, 3, 1, '#c9d1dc'); back(29, 26, 3, 1, '#c9d1dc'); back(8, 38, 3, 3, '#ff9d3d'); back(29, 38, 3, 3, '#ff9d3d'); back(9, 41, 1, 2, '#ffd166'); back(30, 41, 1, 2, '#ffd166'); return;
     case 'backpack': back(11, 26, 18, 12, '#e8322e'); return;
+    case 'weightedCape': for (let y = 24; y < 50; y++) { const s = Math.floor((y - 24) / 4); back(8 - s, y, 24 + s * 2, 1, (y + s) % 6 === 0 ? '#c9d1dc' : '#eef1f6'); } return;
+    case 'tail': {
+      // A furry tail curling out from behind the waist.
+      const fur = '#8a5a2b', dark = '#5a3a1a';
+      for (const [x, y] of [[28, 38], [29, 38], [30, 37], [31, 36], [32, 35], [33, 34], [34, 33], [34, 32], [34, 31], [33, 30], [32, 30], [31, 31]] as const) { back(x, y, 2, 2, fur); back(x + 1, y + 1, 1, 1, dark); }
+      return;
+    }
   }
 }
 
@@ -275,6 +307,7 @@ const AURA_COLORS: Record<string, string[]> = {
   fire: ['#ff4d2e', '#ff9d3d', '#ffd166'], golden: ['#ffe14d', '#fff3a0', '#ffc400'], lightning: ['#6fd3ff', '#ffffff', '#4da3ff'],
   shadow: ['#3b1d5a', '#6a3fb5', '#1a1030'], ice: ['#bfe6ff', '#ffffff', '#6db8ff'], toxic: ['#7dff5a', '#3fae5f', '#d0ff8a'],
   cosmic: ['#6a45c0', '#ff7ad9', '#6fd3ff', '#ffffff'], rainbow: RAINBOW, sparkles: ['#ffd166', '#ffffff'], hearts: ['#ff4d8d', '#ff9fc8'],
+  superWarrior: ['#ffe14d', '#fff6b0', '#ffc400', '#ffffff'], storm: ['#7b4dff', '#c9b3ff', '#3b1d9a'],
 };
 function auraCells(grid: SpriteGrid, kind: string): SpriteGrid {
   const H = grid.length, W = grid[0].length;
@@ -290,7 +323,8 @@ function auraCells(grid: SpriteGrid, kind: string): SpriteGrid {
     }
     return false;
   };
-  const rising = kind === 'fire' || kind === 'golden' || kind === 'lightning';
+  const rising = kind === 'fire' || kind === 'golden' || kind === 'lightning' || kind === 'superWarrior' || kind === 'storm';
+  const crackle = kind === 'superWarrior' || kind === 'storm';
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     if (grid[y][x]) continue;
     if (kind === 'sparkles' || kind === 'hearts') {
@@ -301,7 +335,11 @@ function auraCells(grid: SpriteGrid, kind: string): SpriteGrid {
       continue;
     }
     // Flames and bolts rise: the aura reaches higher above the body than beside it, in tongues.
-    if (!near(x, y, 2, 1, rising ? 3 : 2)) continue;
+    if (!near(x, y, 2, 1, rising ? 3 : 2)) {
+      // The super warrior's power crackles with little bolts further out.
+      if (crackle && near(x, y, 3, 3, 4) && noise(x, y) % 11 === 0) out[y][x] = kind === 'storm' ? '#ffffff' : '#9fe7ff';
+      continue;
+    }
     if (rising && !near(x, y, 1, 1, 1) && noise(x, Math.floor(y / 2)) % 3 === 0) continue;
     const band = rising ? Math.min(colors.length - 1, near(x, y, 1, 1, 1) ? 0 : 1 + (noise(x, y) % (colors.length - 1))) : (kind === 'rainbow' ? Math.floor((x + y) / 3) : x + y * 2) % colors.length;
     out[y][x] = colors[band];
@@ -313,14 +351,23 @@ function auraCells(grid: SpriteGrid, kind: string): SpriteGrid {
 
 const rainbowAt = (x: number, y: number) => RAINBOW[Math.floor((x + y) / 4) % RAINBOW.length];
 
+/** An outfit's colours and number: a jersey can wear any team's colours and any number (your favourite team's for "Your team"). */
+export function outfitKit(look: AvatarLook, team?: AvatarOptions['team']): { primary: string; secondary: string; number: number | null } {
+  const o = outfitDef(look.outfit);
+  if (o.kind !== 'jersey') return { primary: o.main, secondary: o.trim, number: null };
+  const colors = look.kitTeam ? teamColors(look.kitTeam) : o.id === 'jersey-fav' && team ? team : { primary: o.main, secondary: o.trim };
+  return { ...colors, number: look.kitNumber ?? o.number ?? null };
+}
+
 export function buildAvatarGrid({ look, team }: AvatarOptions): { grid: SpriteGrid; aura: SpriteGrid } {
   const o = outfitDef(look.outfit);
   const skinHex = colorHex(SKINS, look.skin), hairHex = colorHex(HAIR_COLORS, look.hairColor);
   const skinBase = skinHex === 'rainbow' ? SKIN_KEY : skinHex, hairBase = hairHex === 'rainbow' ? HAIR_KEY : hairHex;
   const classicHair = (HAIR_STYLES as readonly string[]).includes(look.hair), classicBeard = (BEARD_STYLES as readonly string[]).includes(look.beard);
-  const kitMain = o.id === 'jersey-fav' && team ? team.primary : o.main, kitTrim = o.id === 'jersey-fav' && team ? team.secondary : o.trim;
+  const kit = outfitKit(look, team);
+  const kitMain = kit.primary, kitTrim = kit.secondary;
   const grid = buildPlayerGrid({
-    playerId: BODY_ID, primary: kitMain, secondary: kitTrim, jerseyNumber: o.kind === 'jersey' ? o.number ?? null : null, jerseyStyle: o.style,
+    playerId: BODY_ID, primary: kitMain, secondary: kitTrim, jerseyNumber: kit.number, jerseyStyle: o.style,
     appearance: { skinHex: skinBase, hairHex: hairBase, hairStyle: (classicHair ? look.hair : 'bald') as HairStyle, beardStyle: (classicBeard ? look.beard : 'none') as BeardStyle, hatStyle: 'none' },
   });
   const r: Rect = (x, y, w, h, c) => {
@@ -328,7 +375,7 @@ export function buildAvatarGrid({ look, team }: AvatarOptions): { grid: SpriteGr
   };
   const skin = shade(skinBase), hair: Shade = { c: hairBase, l: mix(hairBase, '#a8a0b4', 0.3), d: mix(hairBase, OUTLINE, 0.4) };
 
-  drawOutfit(r, o, team, skin);
+  drawOutfit(r, o, kit, skin);
   drawShoes(r, look.shoes, o, skin);
   if (!classicBeard) drawBeard(r, look.beard, hair);
   if (!classicHair) drawHair(r, look.hair, hair);

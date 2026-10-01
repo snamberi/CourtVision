@@ -4,9 +4,10 @@ import { ICONS, NAME_COLORS, SPRITES, colorCss } from '../profile/cosmetics';
 import { THEME_BY_ID, type ThemeId } from '../theme/themes';
 
 describe('Trophy Road', () => {
-  it('has a reward at every 5,000 trophies up to 200,000, each one defined', () => {
+  it('has a reward at every 5,000 trophies up to 200,000, then every 50,000 to 750,000, each one defined', () => {
     const stops = [...new Set(TROPHY_ROAD.map(([t]) => t))];
-    expect(stops).toEqual(Array.from({ length: TROPHY_MAX / TROPHY_STEP }, (_, i) => (i + 1) * TROPHY_STEP));
+    expect(stops).toEqual([...Array.from({ length: 200_000 / TROPHY_STEP }, (_, i) => (i + 1) * TROPHY_STEP), ...Array.from({ length: (TROPHY_MAX - 200_000) / 50_000 }, (_, i) => 250_000 + i * 50_000)]);
+    expect(TROPHY_MAX).toBe(750_000);
     for (const [, kind, id] of TROPHY_ROAD) {
       if (kind === 'icon') { const d = ICONS.find(i => i.id === id); expect(d, id).toBeDefined(); expect(d!.anim, id).toBeDefined(); expect(SPRITES[d!.base], id).toBeDefined(); }
       if (kind === 'color') expect(NAME_COLORS.find(c => c.id === id)?.anim, id).toBeDefined();

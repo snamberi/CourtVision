@@ -1,10 +1,12 @@
 import { useState, type CSSProperties } from 'react';
-import { AVATAR_CATEGORIES, saveAvatar, randomAvatar, avatarHow, avatarItem, type AvatarCategory, type AvatarItem, type AvatarLook } from '../profile/avatar';
+import { AVATAR_CATEGORIES, saveAvatar, randomAvatar, avatarHow, avatarItem, outfitDef, type AvatarCategory, type AvatarItem, type AvatarLook } from '../profile/avatar';
 import { unlockContext, isOpen } from '../profile/cosmetics';
 import { totalXp, levelFor } from '../profile/profile';
 import { readAvatarPresets, writeAvatarPresets } from '../profile/avatarPresets';
 import { UserAvatar, useAvatar } from './UserAvatar';
 import { PixelIcon } from './PixelIcon';
+import { REAL_FRANCHISES } from '../profile/favorites';
+import { outfitKit } from '../visuals/avatarSprite';
 import './customization.css';
 
 const HEAD: AvatarCategory[] = ['hair', 'hairColor', 'beard', 'hat', 'eyes'];
@@ -29,6 +31,8 @@ export function AvatarEditor() {
   const [slots, setSlots] = useState(readAvatarPresets);
   const [slotName, setSlotName] = useState('');
   const [status, setStatus] = useState('Changes save automatically.');
+  /** Just picked a jersey: ask for its team and number. */
+  const [jerseyAsk, setJerseyAsk] = useState(false);
   const ctx = unlockContext(levelFor(totalXp()).level);
   const open = (i: AvatarItem) => isOpen(i.rule, ctx);
   const category = AVATAR_CATEGORIES.find(c => c.id === cat)!;
@@ -93,10 +97,11 @@ export function AvatarEditor() {
         <div className="studio-toolbar"><label className="studio-search"><PixelIcon name="search" size={16} /><input type="search" value={query} placeholder={`Search ${category.label.toLowerCase()}…`} aria-label={`Search ${category.label.toLowerCase()}`} onChange={e => setQuery(e.target.value)} /></label>
           <select aria-label="Filter pieces" value={filter} onChange={e => setFilter(e.target.value)}><option value="all">All pieces</option><option value="open">Unlocked</option><option value="locked">Locked</option></select></div>
         {cat === 'hair' && <p className="studio-hint">Hair previews show the cut without headwear.</p>}
+        {cat === 'outfit' && outfitDef(look.outfit).kind === 'jersey' && <JerseyPanel key={look.outfit} look={look} ask={jerseyAsk} onChange={(next, msg) => commit(next, msg)} onDone={() => setJerseyAsk(false)} />}
         <div className="studio-results"><span>{shown.length} {shown.length === 1 ? 'piece' : 'pieces'}</span><span>Click a locked piece to try it on</span></div>
         <div className="studio-grid" role="group" aria-label={`${category.label} choices`}>{shown.map(i => {
           const unlocked = open(i), equipped = look[cat] === i.id, trying = preview?.cat === cat && preview.item.id === i.id;
-          return <button type="button" key={i.id} aria-pressed={equipped} className={`studio-tile${equipped ? ' selected' : ''}${!unlocked ? ' locked' : ''}${trying ? ' trying' : ''}`} onClick={() => unlocked ? commit({ ...look, [cat]: i.id }, `${i.name} equipped.`) : setPreview({ cat, item: i })} aria-label={`${i.name}${unlocked ? equipped ? ', equipped' : '' : `, locked: ${avatarHow(i)}, preview`}`}>
+          return <button type="button" key={i.id} aria-pressed={equipped} className={`studio-tile${equipped ? ' selected' : ''}${!unlocked ? ' locked' : ''}${trying ? ' trying' : ''}`} onClick={() => { if (!unlocked) { setPreview({ cat, item: i }); return; } commit({ ...look, [cat]: i.id }, `${i.name} equipped.`); if (cat === 'outfit' && outfitDef(i.id).kind === 'jersey') setJerseyAsk(true); }} aria-label={`${i.name}${unlocked ? equipped ? ', equipped' : '' : `, locked: ${avatarHow(i)}, preview`}`}>
             <span className="studio-tile-state">{equipped ? <PixelIcon name="check" size={13} /> : !unlocked ? <PixelIcon name="lock" size={13} /> : null}</span>
             <span className="studio-tile-art">{i.hex && <span className={`studio-color-chip${i.hex === 'rainbow' ? ' rainbow' : ''}`} style={i.hex !== 'rainbow' ? { background: i.hex } : undefined} />}<UserAvatar look={{ ...look, ...(cat === 'hair' ? { hat: 'none' } : {}), [cat]: i.id }} team={team} size={63} mode={HEAD.includes(cat) ? 'portrait' : 'full'} animate={false} title={i.name} /></span>
             <b>{i.name}</b><small>{equipped ? 'Equipped' : unlocked ? 'Available' : avatarHow(i)}</small>
@@ -107,4 +112,26 @@ export function AvatarEditor() {
       </div>
     </div>
   </section>;
+}
+
+/** A jersey's team and number: any franchise's colours, any number from 0 to 99. */
+function JerseyPanel({ look, ask, onChange, onDone }: { look: AvatarLook; ask: boolean; onChange: (next: AvatarLook, message: string) => void; onDone: () => void }) {
+  const kit = outfitKit(look);
+  const [number, setNumber] = useState(String(kit.number ?? ''));
+  const setTeam = (team: string) => { const { kitTeam: _old, ...rest } = look; onChange(team ? { ...rest, kitTeam: team } : rest, team ? `${REAL_FRANCHISES.find(t => t.id === team)?.city} jersey on.` : 'Jersey colours reset.'); };
+  const setNum = (raw: string) => {
+    const digits = raw.replace(/\D/g, '').slice(0, 2);
+    setNumber(digits);
+    const { kitNumber: _old, ...rest } = look;
+    onChange(digits === '' ? rest : { ...rest, kitNumber: Number(digits) }, digits === '' ? 'Number reset.' : `Number ${Number(digits)} on.`);
+  };
+  return <div className={`studio-jersey${ask ? ' asking' : ''}`} role="group" aria-label="Your jersey">
+    <span className="pixel-eyebrow">{ask ? 'MAKE IT YOURS' : 'YOUR JERSEY'}</span>
+    <label>Team<select value={look.kitTeam ?? ''} autoFocus={ask} onChange={e => setTeam(e.target.value)}>
+      <option value="">{look.outfit === 'jersey-fav' ? 'Your favourite team' : 'The jersey\'s own colours'}</option>
+      {REAL_FRANCHISES.map(t => <option key={t.id} value={t.id}>{t.city} ({t.id})</option>)}
+    </select></label>
+    <label>Number<input inputMode="numeric" value={number} maxLength={2} placeholder="0-99" onChange={e => setNum(e.target.value)} aria-label="Jersey number" /></label>
+    {ask && <button type="button" className="primary" onClick={onDone}>Done</button>}
+  </div>;
 }

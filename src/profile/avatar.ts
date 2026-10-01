@@ -1,6 +1,7 @@
 import { localRead, type Read } from '../lib/kv';
 import { HAIR_STYLES, BEARD_STYLES, HAT_STYLES } from '../visuals/playerSprite';
 import type { Rule } from './cosmetics';
+import { REAL_FRANCHISES } from './favorites';
 
 /*
  * Your character: a pixel player everyone gets (random on the first visit) and can dress however they like on the
@@ -12,7 +13,9 @@ import type { Rule } from './cosmetics';
  */
 
 export type AvatarCategory = 'skin' | 'hair' | 'hairColor' | 'beard' | 'outfit' | 'hat' | 'eyes' | 'neck' | 'shoes' | 'aura';
-export interface AvatarLook { skin: string; hair: string; hairColor: string; beard: string; outfit: string; hat: string; eyes: string; neck: string; shoes: string; aura: string }
+export interface AvatarLook { skin: string; hair: string; hairColor: string; beard: string; outfit: string; hat: string; eyes: string; neck: string; shoes: string; aura: string;
+  /** A jersey's team (a real franchise id: its colours) and number; leave out for the jersey's own. */
+  kitTeam?: string; kitNumber?: number }
 export interface AvatarItem { id: string; name: string; rule: Rule; /** Colour for colour items (#rrggbb, or 'rainbow'). */ hex?: string; tag?: string }
 
 export const AVATAR_KEY = 'cv-avatar';
@@ -33,8 +36,21 @@ export const AVATAR_TROPHY_ROAD: [number, AvatarCategory, string][] = [
   [145_000, 'outfit', 'royal'], [150_000, 'skin', 'gold'], [155_000, 'outfit', 'wizard'], [160_000, 'aura', 'cosmic'],
   [165_000, 'shoes', 'rocket'], [170_000, 'neck', 'batWings'], [175_000, 'hat', 'halo'], [180_000, 'aura', 'rainbow'],
   [185_000, 'eyes', 'sparkle'], [190_000, 'hair', 'flowingLong'], [195_000, 'neck', 'jetpack'], [200_000, 'skin', 'rainbow'],
+  // Past 200,000: a stop every 50,000.
+  [250_000, 'hair', 'spikyWarrior'], [300_000, 'outfit', 'warriorArmor'], [350_000, 'neck', 'tail'], [400_000, 'hair', 'flameWarrior'],
+  [450_000, 'neck', 'weightedCape'], [550_000, 'shoes', 'warriorBoots'], [650_000, 'hairColor', 'superBlue'], [750_000, 'aura', 'superWarrior'],
 ];
-const road = (cat: AvatarCategory, id: string): Rule | undefined => { const hit = AVATAR_TROPHY_ROAD.find(([, c, i]) => c === cat && i === id); return hit ? { trophies: hit[0] } : undefined; };
+/** Level Road stops for the character, past level 250 (LEVEL_ROAD in cosmetics.ts lists them). */
+export const AVATAR_LEVEL_ROAD: [number, AvatarCategory, string][] = [
+  [350, 'outfit', 'gi-blue'], [450, 'hairColor', 'ember'], [500, 'aura', 'storm'], [550, 'neck', 'capeGold'],
+  [600, 'outfit', 'gi-black'], [650, 'hairColor', 'platinumGlow'], [750, 'skin', 'diamond'],
+];
+const road = (cat: AvatarCategory, id: string): Rule | undefined => {
+  const hit = AVATAR_TROPHY_ROAD.find(([, c, i]) => c === cat && i === id);
+  if (hit) return { trophies: hit[0] };
+  const lvl = AVATAR_LEVEL_ROAD.find(([, c, i]) => c === cat && i === id);
+  return lvl ? { level: lvl[0] } : undefined;
+};
 const item = (cat: AvatarCategory, id: string, name: string, rule: Rule = FREE, extra: Partial<AvatarItem> = {}): AvatarItem => ({ id, name, rule: road(cat, id) ?? rule, ...extra });
 
 // ---------------------------------------------------------------- body and hair colours
@@ -49,6 +65,7 @@ export const SKINS: AvatarItem[] = [
   item('skin', 'green', 'Green', FREE, { hex: '#4fbf5f' }), item('skin', 'red', 'Red', FREE, { hex: '#e04848' }),
   item('skin', 'blue', 'Blue', FREE, { hex: '#4a86e8' }), item('skin', 'gold', 'Solid gold', FREE, { hex: '#f2c230' }),
   item('skin', 'rainbow', 'Rainbow', FREE, { hex: 'rainbow' }),
+  item('skin', 'diamond', 'Diamond', FREE, { hex: '#bfe9ff' }),
 ];
 
 export const HAIR_COLORS: AvatarItem[] = [
@@ -59,17 +76,19 @@ export const HAIR_COLORS: AvatarItem[] = [
   item('hairColor', 'green', 'Green', lv(45), { hex: '#36c25a' }), item('hairColor', 'purple', 'Purple', lv(55), { hex: '#8e4fe0' }),
   item('hairColor', 'cyan', 'Cyan', lv(70), { hex: '#2fd6e6' }), item('hairColor', 'super', 'Super gold', lv(90), { hex: '#ffe14d' }),
   item('hairColor', 'silver', 'Silver', lv(110), { hex: '#c9d1dc' }), item('hairColor', 'rainbow', 'Rainbow', FREE, { hex: 'rainbow' }),
+  item('hairColor', 'superBlue', 'Super blue', FREE, { hex: '#3fc8ff' }), item('hairColor', 'ember', 'Ember', FREE, { hex: '#ff5a1f' }), item('hairColor', 'platinumGlow', 'Platinum glow', FREE, { hex: '#fff4c9' }),
 ];
 
 // ---------------------------------------------------------------- hair and beards
 
 const LABEL = (id: string) => id.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase()).replace(/X L$/, 'XL');
 /** The new styles the character adds to the 25 every player can have. */
-export const NEW_HAIR = ['superSpikes', 'wildSpikes', 'longStraight', 'ponytail', 'topknot', 'spaceBuns', 'twinTails', 'sideSwept', 'pompadour', 'bowlCut', 'punkSpikes', 'flowingLong'] as const;
+export const NEW_HAIR = ['spikyWarrior', 'flameWarrior', 'superSpikes', 'wildSpikes', 'longStraight', 'ponytail', 'topknot', 'spaceBuns', 'twinTails', 'sideSwept', 'pompadour', 'bowlCut', 'punkSpikes', 'flowingLong'] as const;
+const HAIR_NAMES: Record<string, string> = { superSpikes: 'Super spikes', spikyWarrior: 'Spiky warrior hair', flameWarrior: "Prince's flame hair" };
 const HAIR_LEVELS: Record<string, number> = { wildSpikes: 30, longStraight: 20, ponytail: 12, topknot: 65, spaceBuns: 50, twinTails: 75, sideSwept: 8, pompadour: 40, bowlCut: 5, punkSpikes: 85 };
 export const HAIRS: AvatarItem[] = [
   ...HAIR_STYLES.map(id => item('hair', id, LABEL(id))),
-  ...NEW_HAIR.map(id => item('hair', id, id === 'superSpikes' ? 'Super spikes' : LABEL(id), lv(HAIR_LEVELS[id] ?? 1))),
+  ...NEW_HAIR.map(id => item('hair', id, HAIR_NAMES[id] ?? LABEL(id), lv(HAIR_LEVELS[id] ?? 1))),
 ];
 export const NEW_BEARDS = ['wizard', 'viking', 'handlebar', 'sideburns', 'flameBeard'] as const;
 const BEARD_LEVELS: Record<string, number> = { wizard: 120, viking: 95, handlebar: 35, sideburns: 18, flameBeard: 140 };
@@ -80,7 +99,7 @@ export const BEARDS: AvatarItem[] = [
 
 // ---------------------------------------------------------------- outfits (50)
 
-export type OutfitKind = 'jersey' | 'tee' | 'hoodie' | 'track' | 'suit' | 'tux' | 'varsity' | 'overalls' | 'labcoat' | 'chef' | 'referee' | 'hawaiian' | 'santa' | 'astronaut' | 'armor'
+export type OutfitKind = 'warriorArmor' | 'jersey' | 'tee' | 'hoodie' | 'track' | 'suit' | 'tux' | 'varsity' | 'overalls' | 'labcoat' | 'chef' | 'referee' | 'hawaiian' | 'santa' | 'astronaut' | 'armor'
   | 'gi' | 'ninja' | 'pirate' | 'scout' | 'haori' | 'gakuran' | 'hero' | 'plugsuit' | 'cloudrobe' | 'kimono' | 'sailor' | 'captain' | 'flamecloak' | 'royal' | 'wizard';
 export interface Outfit extends AvatarItem { kind: OutfitKind; main: string; trim: string; number?: number; style?: 'classic' | 'stripe' | 'split' }
 const fit = (id: string, name: string, kind: OutfitKind, main: string, trim: string, rule: Rule = FREE, extra: Partial<Outfit> = {}): Outfit => ({ ...item('outfit', id, name, rule), kind, main, trim, ...extra });
@@ -113,6 +132,8 @@ export const OUTFITS: Outfit[] = [
   fit('sailor', 'Sailor uniform', 'sailor', '#f4f6fa', '#1f3566'), fit('captain', "Admiral's coat", 'captain', '#f4f6fa', '#ffd166'),
   fit('flamecloak', 'Flame cloak', 'flamecloak', '#f4f0e6', '#e8322e'), fit('royal', 'Royal robe', 'royal', '#5a2d91', '#ffd166'),
   fit('wizard', 'Starry wizard robe', 'wizard', '#1f2f6b', '#ffd166'),
+  fit('warriorArmor', 'Warrior battle armour', 'warriorArmor', '#f4f6fa', '#e8b84a'),
+  fit('gi-blue', 'Blue training gi', 'gi', '#2f5fb3', '#f47b20'), fit('gi-black', 'Black training gi', 'gi', '#22262f', '#e8322e'),
 ];
 
 // ---------------------------------------------------------------- headwear, eyewear, neck and back, shoes, aura
@@ -136,17 +157,18 @@ export const NECKS: AvatarItem[] = [
   item('neck', 'medal', 'Gold medal', lv(42)), item('neck', 'backpack', 'Backpack', lv(58)), item('neck', 'capeRed', 'Red cape', lv(72)),
   item('neck', 'capeBlack', 'Black cape', lv(115)), item('neck', 'scarf', 'Hero scarf'), item('neck', 'angelWings', 'Angel wings'),
   item('neck', 'batWings', 'Bat wings'), item('neck', 'jetpack', 'Jetpack'),
+  item('neck', 'weightedCape', 'Weighted cape'), item('neck', 'tail', 'Warrior tail'), item('neck', 'capeGold', 'Gold cape'),
 ];
 export const SHOES: AvatarItem[] = [
   item('shoes', 'team', 'Match the outfit'), item('shoes', 'white', 'White', FREE, { hex: '#f4f6fa' }), item('shoes', 'black', 'Black', FREE, { hex: '#1a1f2a' }),
   item('shoes', 'red', 'Red', FREE, { hex: '#d33a3a' }), item('shoes', 'blue', 'Blue', FREE, { hex: '#3f7bd9' }), item('shoes', 'green', 'Green', lv(16), { hex: '#3fae5f' }),
   item('shoes', 'gold', 'Gold', lv(90), { hex: '#ffd166' }), item('shoes', 'neon', 'Neon', lv(62), { hex: '#7dff5a' }), item('shoes', 'boots', 'Boots', lv(34)),
-  item('shoes', 'sandals', 'Wooden sandals', lv(48)), item('shoes', 'heroBoots', 'Hero boots', lv(135)), item('shoes', 'rocket', 'Rocket boots'),
+  item('shoes', 'sandals', 'Wooden sandals', lv(48)), item('shoes', 'heroBoots', 'Hero boots', lv(135)), item('shoes', 'rocket', 'Rocket boots'), item('shoes', 'warriorBoots', 'Warrior boots'),
 ];
 export const AURAS: AvatarItem[] = [
   item('aura', 'none', 'Nothing'), item('aura', 'sparkles', 'Sparkles', lv(32)), item('aura', 'hearts', 'Hearts', lv(64)), item('aura', 'ice', 'Frost', lv(96)),
   item('aura', 'toxic', 'Toxic', lv(180)), item('aura', 'fire', 'Fire'), item('aura', 'golden', 'Super golden'), item('aura', 'lightning', 'Lightning'),
-  item('aura', 'shadow', 'Shadow'), item('aura', 'cosmic', 'Cosmic'), item('aura', 'rainbow', 'Rainbow'),
+  item('aura', 'shadow', 'Shadow'), item('aura', 'cosmic', 'Cosmic'), item('aura', 'rainbow', 'Rainbow'), item('aura', 'superWarrior', 'Super warrior aura'), item('aura', 'storm', 'Storm'),
 ];
 
 export const AVATAR_CATEGORIES: { id: AvatarCategory; label: string; items: AvatarItem[] }[] = [
@@ -181,6 +203,8 @@ export function randomAvatar(rand: () => number = Math.random, open: (cat: Avata
 export function cleanAvatar(raw: Partial<AvatarLook> | null | undefined): AvatarLook {
   const out = { ...DEFAULT_AVATAR };
   for (const c of AVATAR_CATEGORIES) { const v = raw?.[c.id]; if (typeof v === 'string' && c.items.some(i => i.id === v)) out[c.id] = v; }
+  if (typeof raw?.kitTeam === 'string' && REAL_FRANCHISES.some(t => t.id === raw.kitTeam)) out.kitTeam = raw.kitTeam;
+  if (typeof raw?.kitNumber === 'number' && Number.isInteger(raw.kitNumber) && raw.kitNumber >= 0 && raw.kitNumber <= 99) out.kitNumber = raw.kitNumber;
   return out;
 }
 

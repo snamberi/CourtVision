@@ -1,4 +1,5 @@
 import { readLegacy, legacyTotals } from '../storage/gmLegacy';
+import { avatarItem, type AvatarCategory } from './avatar';
 import { loadRecords } from '../hunt/storage';
 import { loadRebuildRecords } from '../simulation/rebuildChallenge';
 import { loadWeeklyRecords } from '../retention/weekly';
@@ -76,9 +77,9 @@ export function xpParts(read: Read = localRead): XpPart[] {
 
 export const totalXp = (parts = xpParts()) => parts.reduce((n, p) => n + p.xp, 0);
 
-/** XP needed to go from `level` to the next: 175, 200, 225… (the level road runs to 250; see cosmetics.ts). */
+/** XP needed to go from `level` to the next: 175, 200, 225… (the level road runs to 750; see cosmetics.ts). */
 export const levelCost = (level: number) => 150 + 25 * level;
-export const MAX_LEVEL = 250;
+export const MAX_LEVEL = 750;
 export function levelFor(xp: number): { level: number; into: number; need: number } {
   let level = 1, left = xp;
   while (level < MAX_LEVEL && left >= levelCost(level)) { left -= levelCost(level); level++; }
@@ -162,6 +163,7 @@ export function unlocksBetween(from: number, to: number): string[] {
     icon: id => `the ${iconDef(id).name} icon`, color: id => `the ${NAME_COLORS.find(c => c.id === id)?.name ?? id} name colour`,
     title: id => `the "${id}" title`, frame: id => `the ${FRAMES.find(f => f.id === id)?.name ?? id} card frame`, floor: id => `the ${FLOORS.find(f => f.id === id)?.name ?? id} court`,
     look: id => `the ${ROAD_LOOK_NAMES[id] ?? id} app look`,
+    avatar: id => { const [cat, piece] = id.split(':') as [AvatarCategory, string]; return `${avatarItem(cat, piece)?.name ?? piece} for your character`; },
   };
   return LEVEL_ROAD.filter(([l]) => l > from && l <= to).map(([, k, id]) => name[k](id));
 }
