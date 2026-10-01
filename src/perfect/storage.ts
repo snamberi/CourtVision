@@ -21,6 +21,8 @@ export interface PerfectRecords {
   best?: PerfectResult;
   /** The Daily 82-0: your best result each day. */
   daily?: Record<string, PerfectResult & { tries: number }>;
+  /** The best season by a League Hunt squad brought over after its hunt. */
+  huntSquadBest?: PerfectResult;
   lastSeed?: number;
 }
 const EMPTY: PerfectRecords = { runs: 0, titles: 0, perfectSeasons: 0, perfect98: 0, bestWins: 0 };
@@ -49,6 +51,7 @@ export function recordPerfect(run: PerfectRun): PerfectRecords {
     ...r, lastSeed: key, runs: r.runs + 1, titles: r.titles + (s.champion ? 1 : 0),
     perfectSeasons: r.perfectSeasons + (s.perfectSeason ? 1 : 0), perfect98: r.perfect98 + (s.perfectSeason && s.perfectPlayoffs ? 1 : 0),
     bestWins: Math.max(r.bestWins, s.w), best: better(r.best, result) ? result : r.best,
+    ...(run.from === 'hunt' ? { huntSquadBest: better(r.huntSquadBest, result) ? result : r.huntSquadBest } : {}),
   };
   if (run.daily) {
     const d = r.daily?.[run.daily];
@@ -63,9 +66,10 @@ export function mergePerfectRecords(a: PerfectRecords, b: PerfectRecords): Perfe
   const daily: Record<string, PerfectResult & { tries: number }> = { ...(b.daily ?? {}) };
   for (const [day, x] of Object.entries(a.daily ?? {})) { const y = daily[day]; daily[day] = !y ? x : { ...(x.score >= y.score ? x : y), tries: Math.max(x.tries, y.tries) }; }
   const best = !a.best ? b.best : !b.best ? a.best : a.best.score >= b.best.score ? a.best : b.best;
+  const huntSquadBest = !a.huntSquadBest ? b.huntSquadBest : !b.huntSquadBest ? a.huntSquadBest : a.huntSquadBest.score >= b.huntSquadBest.score ? a.huntSquadBest : b.huntSquadBest;
   return {
     runs: Math.max(a.runs, b.runs), titles: Math.max(a.titles, b.titles), perfectSeasons: Math.max(a.perfectSeasons, b.perfectSeasons),
-    perfect98: Math.max(a.perfect98, b.perfect98), bestWins: Math.max(a.bestWins, b.bestWins), ...(best ? { best } : {}), ...(Object.keys(daily).length ? { daily } : {}),
+    perfect98: Math.max(a.perfect98, b.perfect98), bestWins: Math.max(a.bestWins, b.bestWins), ...(best ? { best } : {}), ...(huntSquadBest ? { huntSquadBest } : {}), ...(Object.keys(daily).length ? { daily } : {}),
   };
 }
 

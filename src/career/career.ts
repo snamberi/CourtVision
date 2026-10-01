@@ -11,6 +11,7 @@ import { primaryPosition } from '../simulation/teamStatus';
 import { CATEGORIES, categoryScore, withCategory, type CategoryId } from './categories';
 import { buildPlayer, tendenciesFor, valuesAt, primeOverall, MAX_PROGRESS, START_AGE, type Identity, type Prime, type Progress, type Readiness } from './create';
 import { emptyResume, legacyScore, top100, top100Rank, type LegacyResume } from './legacy';
+import { seasonMoment, applyMomentChoice, storyLegacy, type BigMoment, type MomentPick } from './bigMoments';
 import type { NbaHistory } from '../history/nbaHistoryData';
 
 /*
@@ -48,6 +49,9 @@ export interface CareerMeta {
   autopilot: boolean;
   /** Things that happened this offseason (signings, trades), shown with the next season. */
   notes: string[];
+  /** The season's big moment, waiting for your call (bigMoments.ts); and the calls you made. */
+  pendingMoment?: BigMoment;
+  bigMoments?: MomentPick[];
   retired?: { age: number; season: string; legacy: number; rank: number | null; hallOfFame: 'first-ballot' | 'yes' | 'no'; jerseys?: string[] };
 }
 
@@ -245,6 +249,7 @@ export function careerResume(meta: CareerMeta): LegacyResume {
       else if (a.key === 'allDefense1') r.allDef1++; else if (a.key === 'allDefense2') r.allDef2++; else if (a.key === 'roy') r.roy++;
     }
   }
+  r.story = storyLegacy(meta.bigMoments);
   return r;
 }
 
@@ -285,6 +290,7 @@ export function careerMoments(meta: CareerMeta): Moment[] {
   const tot = { points: 0, reb: 0, ast: 0, gamesPlayed: 0 };
   for (const y of meta.years) {
     const add = (text: string, big = false) => out.push({ season: y.season, age: y.age, text, big });
+    for (const p of meta.bigMoments ?? []) if (p.season === y.season) add(`${p.title}: ${p.choice}`, true);
     const hi = y.highs;
     if (hi) {
       for (const mark of [60, 50, 40, 30]) if (hi.gameHighPoints >= mark && bestPts < mark) { add(mark >= 50 ? `${hi.gameHighPoints}-point game!` : `First ${mark}-point game (${hi.gameHighPoints})`, mark >= 50); break; }
@@ -329,8 +335,19 @@ export function landSeason(meta: CareerMeta, league: League, extras: GMLeagueExt
   const found = findPlayer(league, extras, meta.playerId);
   if (!found) return { meta: withYear, league, extras, year };
   const developed: CareerMeta = { ...withYear, progress: developSummer(withYear, found.player.age) };
-  const applied = applyProgress(league, extras, developed);
-  return { meta: developed, ...applied, year };
+  // The season's big moment waits for your call (autopilot plays on without one).
+  const moment = year && !meta.autopilot ? seasonMoment(year, withYear.years.length, meta.bigMoments ?? []) : null;
+  const withMoment: CareerMeta = moment ? { ...developed, pendingMoment: moment } : { ...developed, pendingMoment: undefined };
+  const applied = applyProgress(league, extras, withMoment);
+  return { meta: withMoment, ...applied, year };
+}
+
+/** Your call on the season's big moment: its Legacy goes on record, its training moves his ratings now. */
+export function chooseMoment(meta: CareerMeta, league: League, extras: GMLeagueExtras, index: number): { meta: CareerMeta; league: League; extras: GMLeagueExtras } {
+  if (!meta.pendingMoment) return { meta, league, extras };
+  const { pick, progress } = applyMomentChoice(meta.pendingMoment, index, meta.progress);
+  const next: CareerMeta = { ...meta, progress, pendingMoment: undefined, bigMoments: [...(meta.bigMoments ?? []), pick], notes: [...meta.notes, `${pick.title}: ${pick.choice}.`], updatedAt: Date.now() };
+  return { meta: next, ...applyProgress(league, extras, next) };
 }
 
 /** What autopilot does at the draft: trains his strengths, takes the best offer for his level, and knows when to stop. */

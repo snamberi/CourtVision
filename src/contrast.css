@@ -511,3 +511,6 @@ html.lite *, html.lite *::before, html.lite *::after { backdrop-filter: none !im
 .profile-card-big.frame-galaxy { border-color: var(--c-border-b983ff, #b983ff); box-shadow: 0 0 0 3px var(--c-shadow-3b1d82, #3b1d82), 0 0 12px var(--c-shadow-ff7ad966, #ff7ad966); }
 .profile-card-big.frame-rainbow { border-color: var(--c-border-ff9d3d, #ff9d3d); box-shadow: 0 0 0 3px var(--c-shadow-ffd166, #ffd166), 0 0 0 6px var(--c-shadow-6db8ff, #6db8ff), 0 0 0 9px var(--c-shadow-b983ff, #b983ff); }
 .profile-card-big.frame-legend { border-color: var(--c-border-ffd166, #ffd166); box-shadow: 0 0 0 3px var(--c-shadow-ffffff, #ffffff), 0 0 0 6px var(--c-shadow-ffd166, #ffd166), 0 0 16px var(--c-shadow-ffd16699, #ffd16699); }
+.share-box img.share-tall { aspect-ratio: 9 / 16; width: auto; max-width: 100%; max-height: 62vh; display: block; margin: 0 auto; }
+.share-format { display: flex; gap: 6px; margin-bottom: 8px; }
+.share-format button.on { border-color: var(--c-border-f47b20, #f47b20); color: var(--c-fg-ffd166, #ffd166); }

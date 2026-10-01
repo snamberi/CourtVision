@@ -467,3 +467,7 @@ button.hunt-reel.frozen:hover, button.hunt-reel.frozen:focus-visible { transform
 .hunt-how { width: 100%; text-align: left; border-top: 2px solid var(--c-border-2a3546, #2a3546); padding-top: 10px; }
 .hunt-how summary { cursor: pointer; font-weight: 700; text-align: center; }
 @media (max-width: 760px) { .hunt-modes { grid-template-columns: repeat(2, minmax(0, 1fr)); } .hunt-mode-tile small { display: none; } }
+.hunt-crossover { display: grid; gap: 6px; margin: 14px 0; padding: 14px 16px; background: var(--c-bg-2a2210, #2a2210); border: 2px solid var(--c-border-ffd166, #ffd166); box-shadow: 3px 3px 0 var(--c-shadow-0b1018, #0b1018); }
+.hunt-crossover b { font: 13px var(--ff-pixel, 'Press Start 2P', monospace); color: var(--c-fg-ffd166, #ffd166); }
+.hunt-crossover p { margin: 0; color: var(--c-fg-d3d7df, #d3d7df); }
+.hunt-crossover button { justify-self: start; }

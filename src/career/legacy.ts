@@ -14,6 +14,8 @@ export interface LegacyResume {
   allNba1: number; allNba2: number; allNba3: number; allStar: number;
   dpoy: number; allDef1: number; allDef2: number; roy: number;
   games: number; pts: number; reb: number; ast: number; stl: number; blk: number;
+  /** Career Mode only: Legacy from the big moments you chose (bigMoments.ts). */
+  story?: number;
 }
 export const emptyResume = (): LegacyResume => ({ titles: 0, fmvp: 0, mvp: 0, allNba1: 0, allNba2: 0, allNba3: 0, allStar: 0, dpoy: 0, allDef1: 0, allDef2: 0, roy: 0, games: 0, pts: 0, reb: 0, ast: 0, stl: 0, blk: 0 });
 
@@ -21,7 +23,8 @@ export function legacyScore(r: LegacyResume): number {
   const s = r.titles * 5 + r.fmvp * 6 + r.mvp * 10
     + r.allNba1 * 5 + r.allNba2 * 3 + r.allNba3 * 1.5 + r.allStar * 1.5
     + r.dpoy * 3 + r.allDef1 * 1.2 + r.allDef2 * 0.6 + r.roy
-    + r.pts / 1000 * 1.6 + r.reb / 1000 * 0.9 + r.ast / 1000 * 1.2 + (r.stl + r.blk) / 1000 * 0.8;
+    + r.pts / 1000 * 1.6 + r.reb / 1000 * 0.9 + r.ast / 1000 * 1.2 + (r.stl + r.blk) / 1000 * 0.8
+    + (r.story ?? 0);
   return Math.round(s * 10) / 10;
 }
 

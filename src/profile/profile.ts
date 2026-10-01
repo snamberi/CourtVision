@@ -4,6 +4,8 @@ import { avatarItem, type AvatarCategory } from './avatar';
 import { loadRecords } from '../hunt/storage';
 import { loadRebuildRecords } from '../simulation/rebuildChallenge';
 import { loadWeeklyRecords } from '../retention/weekly';
+import { loadPerfectRecords } from '../perfect/storage';
+import { readBonusLog, bonusXp } from '../retention/modeOfWeek';
 import { dailyGoalXp } from './dailyGoals';
 import { localRead, type Read } from '../lib/kv';
 import { TITLE_COLORS, titleColorOpen } from './trophyRoad';
@@ -57,7 +59,12 @@ export const XP = {
   rebuildAttempt: 100, rebuildStar: 75, rebuildTitle: 250,
   careerRetired: 150, careerHof: 150,
   weekly: 150,
+  perfectRun: 40, perfectDaily: 40, perfectTitle: 250, perfectSeason: 1000, perfect98: 1500,
 } as const;
+
+/** XP one finished 82-0 run earns (also what the Mode of the Week doubles). */
+export const perfectRunXp = (r: { champion: boolean; perfectSeason: boolean; perfect98: boolean; daily: boolean }) =>
+  XP.perfectRun + (r.daily ? XP.perfectDaily : 0) + (r.champion ? XP.perfectTitle : 0) + (r.perfectSeason ? XP.perfectSeason : 0) + (r.perfect98 ? XP.perfect98 : 0);
 
 export function xpParts(read: Read = localRead): XpPart[] {
   const gm = legacyTotals(readLegacy(read));
@@ -68,13 +75,17 @@ export function xpParts(read: Read = localRead): XpPart[] {
   const c = careerCache(read);
   const weeks = Object.values(loadWeeklyRecords(read)).reduce((n, w) => n + (w.rebuild ? 1 : 0) + (w.career ? 1 : 0), 0);
   const goals = dailyGoalXp(read);
+  const p820 = loadPerfectRecords(read), p820Days = Object.keys(p820.daily ?? {}).length;
+  const bonus = bonusXp(readBonusLog(read));
   return [
     { id: 'gm', label: 'GM leagues', xp: gm.seasons * XP.gmSeason + gm.wins * XP.gmWin + gm.titles * XP.gmTitle + gm.achievements * XP.achievement, detail: `${gm.seasons} season${gm.seasons === 1 ? '' : 's'} · ${gm.wins} wins · ${gm.titles} title${gm.titles === 1 ? '' : 's'} · ${gm.achievements} achievement${gm.achievements === 1 ? '' : 's'}` },
     { id: 'career', label: 'Career Mode', xp: c.retired * XP.careerRetired + c.legacy + c.hallOfFame * XP.careerHof, detail: `${c.retired} retired · ${c.hallOfFame} Hall of Famer${c.hallOfFame === 1 ? '' : 's'} · Legacy ${c.legacy} in all` },
     { id: 'hunt', label: 'League Hunt', xp: hunt.runs * XP.huntRun + hunt.wins * XP.huntWin + daily * XP.huntDaily, detail: `${hunt.runs} run${hunt.runs === 1 ? '' : 's'} · ${hunt.wins} won · ${daily} Daily Legend${daily === 1 ? '' : 's'}` },
+    { id: 'perfect', label: '82-0 Challenge', xp: p820.runs * XP.perfectRun + p820Days * XP.perfectDaily + p820.titles * XP.perfectTitle + p820.perfectSeasons * XP.perfectSeason + p820.perfect98 * XP.perfect98, detail: `${p820.runs} run${p820.runs === 1 ? '' : 's'} · ${p820.titles} title${p820.titles === 1 ? '' : 's'} · ${p820.perfectSeasons} perfect season${p820.perfectSeasons === 1 ? '' : 's'}` },
     { id: 'rebuild', label: 'Rebuild Challenge', xp: rbAttempts * XP.rebuildAttempt + rbStars * XP.rebuildStar + rbTitles * XP.rebuildTitle, detail: `${rbAttempts} finished · ${rbStars} star${rbStars === 1 ? '' : 's'} · ${rbTitles} rebuilt to a title` },
     { id: 'weekly', label: 'Weekly challenges', xp: weeks * XP.weekly, detail: `${weeks} weekly result${weeks === 1 ? '' : 's'}` },
     { id: 'daily', label: 'Daily goals', xp: goals.xp, detail: `${goals.done} goal${goals.done === 1 ? '' : 's'} done` },
+    { id: 'bonus', label: 'Mode of the Week', xp: bonus.xp, detail: `Double XP on ${bonus.runs} run${bonus.runs === 1 ? '' : 's'}` },
   ];
 }
 

@@ -15,7 +15,7 @@
 .p820-mode em { font-style: normal; font-weight: 800; color: var(--c-fg-f47b20, #f47b20); }
 .p820-daily { border-color: var(--c-border-8a6a12, #8a6a12); }
 .p820-daily em { color: var(--c-fg-ffd166, #ffd166); }
-.p820-records { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.p820-records { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
 .p820-records span { display: flex; flex-direction: column; align-items: center; padding: 10px 6px; background: var(--c-bg-161b24, #161b24); border: 1px solid var(--c-border-2a3546, #2a3546); border-radius: 4px; }
 .p820-records b { font-size: 20px; font-variant-numeric: tabular-nums; color: var(--c-fg-f4f0e6, #f4f0e6); }
 .p820-records small { color: var(--c-fg-94a0b2, #94a0b2); font-size: 12px; }
@@ -139,3 +139,4 @@ button.p820-card:hover, button.p820-card:focus-visible { border-color: var(--c-b
   .p820-goal { font-size: 44px; }
   .p820-scoreboard { flex-direction: column; text-align: center; }
 }
+.p820-end-actions { justify-content: center; align-items: center; grid-column: 1; }

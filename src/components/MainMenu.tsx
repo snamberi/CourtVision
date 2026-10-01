@@ -3,7 +3,9 @@ import { IS_DESKTOP_BUILD } from '../appMode';
 import { DiscordLink, DISCORD_URL } from './DiscordLink';
 import { CookieSettingsLink } from '../consent/ConsentBanner';
 import { ConsentBanner } from '../consent/ConsentBanner';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { localProgress, careerProgress, type InProgress } from '../menu/inProgress';
+import { modeOfWeek, FEATURED_NAME, WEEKLY_BONUS_CAP } from '../retention/modeOfWeek';
 import logoIcon from '../assets/brand/logo-icon.png';
 import { PlayerAvatar } from './PlayerAvatar';
 import { MyAvatar } from './UserAvatar';
@@ -175,6 +177,15 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
   const [allPlayers, setAllPlayers] = useState(true);
   const [historyYear, setHistoryYear] = useState('2016');
   const historical = selectedMode === 'real' && realSource === 'history';
+  // Runs in progress, for the Continue chips (careers live in their own database, read after the menu shows).
+  const [progress, setProgress] = useState<InProgress>(() => localProgress());
+  useEffect(() => {
+    let live = true;
+    import('../career/storage').then(m => m.listCareers()).then(list => { const c = careerProgress(list); if (live && c) setProgress(p => ({ ...p, career: c })); }, () => {});
+    return () => { live = false; };
+  }, []);
+  const continuing = selectedMode ? progress[selectedMode] : undefined;
+  const [featured] = useState(() => modeOfWeek());
 
   return (
     <div className="main-menu">
@@ -204,6 +215,8 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
             <span className="mode-card-kicker"><PixelIcon name={m.icon} size={24} /><span>{m.kicker}</span><span className="mode-selection-dot" /></span>
             <h3>{m.title}</h3>
             <p>{m.blurb}</p>
+            {featured === m.id && <span className="mode-xp" title="Mode of the Week: double XP for runs finished this week">2× XP</span>}
+            {progress[m.id] && <span className="mode-continue"><PixelIcon name="play" size={12} /> In progress: {progress[m.id]}</span>}
             <span className="mode-meta"><span className="mode-time" title="How long a sitting takes"><PixelIcon name="clock" size={12} /> {m.time}</span>{m.tags.map(t => <span key={t} className="mode-tag">{t}</span>)}</span>
           </button>
         ))}
@@ -291,7 +304,7 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
 
       {selectedMode && (
         <button className="primary menu-start" disabled={!!busy} onClick={() => onStart(selectedMode, difficulty, historical ? historyYear : year, leagueName, selectedMode === 'real' ? { source: realSource, realDevelopment, forceRosters, allPlayers } : undefined, selectedMode === 'rebuild' ? scenario : undefined)}>
-          {busy ?? `Start ${historical ? `${historyYear}–${String(Number(historyYear) + 1).slice(2)} NBA` : MODES.find((m) => m.id === selectedMode)?.title}`}
+          {busy ?? (continuing ? `Continue ${MODES.find((m) => m.id === selectedMode)?.title}` : `Start ${historical ? `${historyYear}–${String(Number(historyYear) + 1).slice(2)} NBA` : MODES.find((m) => m.id === selectedMode)?.title}`)}
         </button>
       )}
 
@@ -301,7 +314,7 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
       {onCode && <CodeEntry busy={busy} onCode={onCode} />}
 
 
-      <ThisWeek onCommunity={onCommunity} busy={busy} onRebuild={() => onStart('rebuild', 'normal', '', '', undefined, 'weekly')} onCareer={() => onStart('career', 'normal', '', '')} onHunt={() => onStart('legends', 'normal', '', '')} />
+      <ThisWeek onCommunity={onCommunity} busy={busy} onFeatured={() => { setSelectedMode(featured); document.querySelector('.mode-grid')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }} onRebuild={() => onStart('rebuild', 'normal', '', '', undefined, 'weekly')} onCareer={() => onStart('career', 'normal', '', '')} onHunt={() => onStart('legends', 'normal', '', '')} />
 
       <AdBanner slot="menu" />
       <footer className="legal-footer">{!IS_DESKTOP_BUILD && <><a href="/how-to-play.html">How to Play</a> · <a href="/guides/">Guides</a> · <a href="/faq.html">FAQ</a> · <a href="/about.html">About</a> · <a href="/changelog.html">What's new</a> · </>}<PrivacyLink /> · <CookieSettingsLink /> · <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer">Discord</a>{onSettings && <> · <button className="link-button" onClick={onSettings}>Settings</button></>}</footer>
@@ -315,7 +328,8 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
 }
 
 /** This week: the Rebuild and Career of the Week (same seed for everyone until Monday) and the Daily Legend. */
-function ThisWeek({ busy, onRebuild, onCareer, onHunt, onCommunity }: { busy: string | null; onRebuild: () => void; onCareer: () => void; onHunt: () => void; onCommunity?: () => void }) {
+function ThisWeek({ busy, onRebuild, onCareer, onHunt, onCommunity, onFeatured }: { busy: string | null; onRebuild: () => void; onCareer: () => void; onHunt: () => void; onCommunity?: () => void; onFeatured: () => void }) {
+  const featured = modeOfWeek();
   const [now] = useState(() => new Date());
   const [board, setBoard] = useState(false);
   const rb = weeklyRebuild(), cw = weeklyCareer();
@@ -325,6 +339,9 @@ function ThisWeek({ busy, onRebuild, onCareer, onHunt, onCommunity }: { busy: st
   return <section className="this-week" aria-label="This week's challenges">
     <div className="this-week-head"><h2>This week</h2><span>{rb.week} · new challenges in {days} day{days === 1 ? '' : 's'}{streak > 1 ? ` · ${streak}-week streak` : ''}</span>{cloudEnabled && <button className="link-button" onClick={() => setBoard(true)}>Leaderboard</button>}</div>
     {board && <WeeklyBoardDialog onClose={() => setBoard(false)} onCommunity={onCommunity} />}
+    <article className="mode-of-week"><span className="pixel-eyebrow">MODE OF THE WEEK · DOUBLE XP</span><b>{FEATURED_NAME[featured]}</b>
+      <p>Every {FEATURED_NAME[featured]} run you finish this week earns its XP twice (up to {WEEKLY_BONUS_CAP.toLocaleString()} bonus XP). A new mode every Monday.</p>
+      <button className="primary" onClick={onFeatured}>Play {FEATURED_NAME[featured]}</button></article>
     <div className="this-week-grid">
       <article><span className="pixel-eyebrow">REBUILD OF THE WEEK</span><b>{rb.scenario.title}</b>
         <p>{rb.scenario.startYear}-{String(rb.scenario.startYear + 1).slice(2)} {rb.scenario.team} · {rb.seasons} seasons · <em>{rb.twist.label}</em>. {rb.twist.id === 'standard' ? 'The same league for everyone.' : `${rb.twist.blurb} The same league for everyone.`}</p>

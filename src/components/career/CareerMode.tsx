@@ -1,3 +1,6 @@
+import type { BigMoment } from '../../career/bigMoments';
+import { CATEGORY_BY_ID } from '../../career/categories';
+import { noteFeaturedXp } from '../../retention/modeOfWeek';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { readFavorites } from '../../profile/favorites';
 import type { NbaHistory } from '../../history/nbaHistoryData';
@@ -9,7 +12,7 @@ import { DEFAULT_AWARD_SETTINGS } from '../../simulation/awards';
 import { CATEGORIES, categoryScore, type CategoryId } from '../../career/categories';
 import { startProgress, valuesAt, primeOverall, type Prime } from '../../career/create';
 import {
-  newCareerMeta, joinDraft, draftResult, landSeason, careerMoments, careerShelf, type Moment, autopilotOffseason, findPlayer, freeAgentOffers, signOffer, requestTrade, retire, uniqueName, careerResume,
+  newCareerMeta, joinDraft, draftResult, landSeason, chooseMoment, careerMoments, careerShelf, type Moment, autopilotOffseason, findPlayer, freeAgentOffers, signOffer, requestTrade, retire, uniqueName, careerResume,
   OFFER_LABEL, type CareerMeta, type CareerMode as Mode, type CareerYear, type TradeWish,
 } from '../../career/career';
 import { legacyScore, top100, top100Rank } from '../../career/legacy';
@@ -152,7 +155,7 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
 
   // Autopilot: offseason choices and the next season, until he retires.
   useEffect(() => {
-    if (!h || !active?.world || !active.meta.autopilot || active.meta.status !== 'active' || busy) return;
+    if (!h || !active?.world || !active.meta.autopilot || active.meta.status !== 'active' || busy || active.meta.pendingMoment) return;
     const t = setTimeout(() => {
       const { meta, world } = active;
       if (world!.phase === 'atDraft') {
@@ -196,9 +199,27 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
           onTraining={training => persist({ ...active.meta, training }, active.world)}
           onSign={offerIdx => { const w = active.world!; const offers = freeAgentOffers(w.league, w.extras, active.meta); const o = offers[offerIdx]; if (!o) return; const r = signOffer(w.league, w.extras, active.meta, o); persist({ ...active.meta, notes: [...active.meta.notes, r.note] }, { ...w, league: r.league, extras: r.extras }); }}
           onTrade={wish => { const w = active.world!; const r = requestTrade(w.league, w.extras, active.meta, wish); setTradeAsked(r.note); persist({ ...active.meta, notes: [...active.meta.notes, r.note] }, { ...w, league: r.league, extras: r.extras }); }}
-          onRetire={() => { const w = active.world!; const f = findPlayer(w.league, w.extras, active.meta.playerId); persist(retire(active.meta, h, w.league.season ?? '', f?.player.age ?? 0), null); }}
+          onRetire={() => { const w = active.world!; const f = findPlayer(w.league, w.extras, active.meta.playerId); const done = retire(active.meta, h, w.league.season ?? '', f?.player.age ?? 0); if (done.retired) noteFeaturedXp('career', `career-${done.id}`, 150 + done.retired.legacy + (done.retired.hallOfFame !== 'no' ? 150 : 0)); persist(done, null); }}
           onNew={() => setView({ k: 'hub' })} />
       : null}
+    {active?.meta.pendingMoment && active.world && !busy && view.k !== 'hub' && <MomentDialog moment={active.meta.pendingMoment} name={active.meta.identity.name}
+      onChoose={i => { const w = active.world!; const r = chooseMoment(active.meta, w.league, w.extras, i); persist(r.meta, { ...w, league: r.league, extras: r.extras }); }} />}
+  </div>;
+}
+
+/** The season's big moment: two calls, each worth Legacy or a summer of work. */
+function MomentDialog({ moment, name, onChoose }: { moment: BigMoment; name: string; onChoose: (index: number) => void }) {
+  const [picked, setPicked] = useState<number | null>(null);
+  const c = picked != null ? moment.choices[picked] : null;
+  return <div className="share-modal cv-moment" role="dialog" aria-modal="true" aria-labelledby="cv-moment-title">
+    <div className="share-box">
+      <span className="pixel-eyebrow">BIG MOMENT · {moment.season}</span>
+      <h2 id="cv-moment-title">{moment.title}</h2>
+      <p>{moment.text}</p>
+      {!c ? <div className="cv-moment-choices">{moment.choices.map((ch, i) => <button key={i} onClick={() => setPicked(i)}>
+        <b>{ch.label}</b><small>{[ch.legacy ? `+${ch.legacy} Legacy` : '', ch.train ? `Training: ${CATEGORY_BY_ID.get(ch.train.cat)?.name ?? ch.train.cat}` : ''].filter(Boolean).join(' · ')}</small></button>)}</div>
+        : <><p className="cv-moment-result"><b>{name}:</b> {c.result}</p><button className="primary" onClick={() => onChoose(picked!)}>Continue</button></>}
+    </div>
   </div>;
 }
 

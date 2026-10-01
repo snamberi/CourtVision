@@ -54,6 +54,8 @@ export interface PerfectRun {
   games: PerfectGame[];
   playoffs: PerfectSeries[];
   result?: 'champion' | 'eliminated';
+  /** A League Hunt squad brought over after winning its hunt (its own records). */
+  from?: 'hunt';
 }
 
 export const SQUAD = 10;
@@ -167,6 +169,16 @@ export function newPerfectRun(h: NbaHistory, mode: PerfectMode, seed: number, da
   return mode === 'franchise' ? { ...run, roll: rollFor(h, run), rolls: 1 } : run;
 }
 
+/**
+ * A League Hunt squad that won its hunt, taken into an 82-0 season: its six players and coach, then four Quick Spin
+ * bench spots to make ten.
+ */
+export function newPerfectFromHunt(h: NbaHistory, seed: number, squad: string[], coach?: string): PerfectRun {
+  const pool = cardPool(h);
+  const ids = squad.filter(id => pool.byId.has(id)).slice(0, SQUAD);
+  return { v: 1, mode: 'quick', seed, from: 'hunt', stage: 'draft', squad: ids, ...(coach && COACH_BY_ID.has(coach) ? { coach } : {}), rolls: 0, rerolls: { team: 0, era: 0, prime: 0 }, schedule: [], bosses: [], games: [], playoffs: [] };
+}
+
 const QUICK_WEIGHTS: Record<Rarity, number> = { common: 35, rare: 34, epic: 22, legendary: 9 };
 const fitsQuick = (c: HuntCard, s: QuickSlot) =>
   s === 'ANY' ? true
@@ -223,6 +235,8 @@ export function pickPlayer(h: NbaHistory, run: PerfectRun, cardId?: string): Per
   }
   const squad = [...run.squad, id];
   let next: PerfectRun = { ...run, squad, prime: false };
+  // A hunt squad keeps its coach and goes straight to the season.
+  if (squad.length >= SQUAD && run.coach) return { ...next, stage: 'season', roll: undefined, ...buildSchedule(h, next) };
   if (squad.length >= SQUAD) return { ...next, stage: 'coach', roll: undefined, coachOffer: coachOffer(next, h) };
   if (run.mode === 'franchise') next = { ...next, roll: rollFor(h, next), rolls: run.rolls + 1 };
   return next;

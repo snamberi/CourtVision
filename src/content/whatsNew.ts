@@ -14,7 +14,12 @@ export const RELEASES: Release[] = [
       "**Boss teams on the schedule:** Wilt's Sixers, the 33-straight Lakers, Bird's Celtics, the **72-10 Bulls** and the **73-9 Warriors** (both versions). Beating one is worth bonus points.",
       "**Lineups and chemistry matter:** start a guard and a big; real teammates, franchise-mates and famous rivals play better together. Every game uses the rules of the opponent's era.",
       "**Scored, daily and rewarded:** every run gets a score (wins, margins, bosses, the playoffs). The **Daily 82-0** gives everyone the same spins, with a weekly board. Go 82-0 for the **Undefeated** title and frame, 98-0 for the gold **Perfection** ones.",
-      "**Mode cards** on the menu now show how long a sitting takes and what kind of game each mode is, plus the most popular and most fun picks.",
+      "**Mode cards** on the menu now show how long a sitting takes, what kind of game each mode is, the most popular and most fun picks, and a **Continue** chip for anything you have in progress.",
+      "**Mode of the Week:** one mode earns **double XP** every week. It's on the menu.",
+      "**Career Mode big moments:** a title, an MVP, a 50-point night or a playoff heartbreak now asks you to make a call, worth Legacy or a summer of training.",
+      "**Hunt squad to 82-0:** win a League Hunt, then take that squad into an 82-0 season.",
+      "**Share in 9:16:** 82-0 and League Hunt share cards now come in a TikTok-ready vertical size, with your whole season as a strip of wins and losses.",
+      "**New guides** for the 82-0 Challenge and the All-Time Draft, and a bigger FAQ.",
     ],
   },
   {

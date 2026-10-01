@@ -15,9 +15,12 @@ import { FEATS_EVENT } from '../../profile/feats';
 import { track, trackOnce } from '../../analytics/track';
 import { PlayerAvatar } from '../PlayerAvatar';
 import { PixelIcon } from '../PixelIcon';
+import { ShareCardButton } from '../ShareCardButton';
 import { FramedAvatar } from '../AvatarFrame';
 import { useAvatar } from '../UserAvatar';
 import '../hunt/hunt.css';
+import { noteFeaturedXp } from '../../retention/modeOfWeek';
+import { perfectRunXp } from '../../profile/profile';
 import './perfect.css';
 
 const POS_COLOR: Record<string, string> = { PG: '#4da3ff', SG: '#55c878', SF: '#f47b20', PF: '#b983ff', C: '#e85d5d', G: '#4da3ff', F: '#f47b20' };
@@ -45,8 +48,9 @@ export function PerfectChallenge({ onExit }: { onExit: () => void }) {
     savePerfectRun(r);
     if (r && r.stage === 'done' && prev?.stage !== 'done') {
       setRecords(recordPerfect(r));
-      window.dispatchEvent(new Event(FEATS_EVENT));
       const s = summary(r);
+      noteFeaturedXp('perfect', `p820-${r.seed}-${r.mode}`, perfectRunXp({ champion: s.champion, perfectSeason: s.perfectSeason, perfect98: s.perfectSeason && s.perfectPlayoffs, daily: !!r.daily }));
+      window.dispatchEvent(new Event(FEATS_EVENT));
       trackOnce(`p820-${r.seed}-${r.mode}`, 'mode_finish', { mode: 'perfect', variant: r.mode, daily: !!r.daily, wins: s.w, champion: s.champion });
     }
   };
@@ -58,7 +62,7 @@ export function PerfectChallenge({ onExit }: { onExit: () => void }) {
 
   const header = <header className="hunt-top">
     <button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button>
-    <div className="hunt-title"><span className="pixel-eyebrow">{run ? `${MODE_INFO[run.mode].name.toUpperCase()}${run.daily ? ' · DAILY' : ''}` : 'BUILD A TEAM · PLAY ALL 82'}</span><h1>82-0 Challenge</h1></div>
+    <div className="hunt-title"><span className="pixel-eyebrow">{run ? (run.from === 'hunt' ? 'HUNT SQUAD · BONUS RUN' : `${MODE_INFO[run.mode].name.toUpperCase()}${run.daily ? ' · DAILY' : ''}`) : 'BUILD A TEAM · PLAY ALL 82'}</span><h1>82-0 Challenge</h1></div>
     {run && run.stage !== 'done' && <button className="hunt-exit" onClick={() => { if (window.confirm('Give up this run? It will not count.')) setRun(null); }}>Give up</button>}
   </header>;
   if (error) return <div className="hunt p820">{header}<p className="empty-state">Could not load the NBA history data: {error}</p></div>;
@@ -94,6 +98,7 @@ function Hub({ records, onStart }: { records: PerfectRecords; onStart: (mode: Pe
       <span><b>{records.titles}</b><small>Titles</small></span>
       <span><b>{records.perfectSeasons}</b><small>82-0 seasons</small></span>
       <span><b>{records.runs}</b><small>Runs</small></span>
+      {records.huntSquadBest && <span><b>{records.huntSquadBest.w}-{records.huntSquadBest.l}</b><small>Best Hunt squad</small></span>}
     </div>
     <details className="hunt-how"><summary>How scoring and rewards work</summary>
       <ul>
@@ -125,7 +130,7 @@ function SquadPanel({ h, run }: { h: NbaHistory; run: PerfectRun }) {
   return <aside className="p820-squad">
     <h3>Your team <small>{run.squad.length}/{SQUAD}</small></h3>
     <ol>{Array.from({ length: SQUAD }, (_, i) => { const c = run.squad[i] ? pool.byId.get(run.squad[i]) : undefined; return <li key={i} className={c ? `rarity-${c.rarity}` : 'empty'}>
-      <span className="p820-slot">{run.mode === 'quick' ? QUICK_SLOTS[i] : i < 5 ? 'START' : 'BENCH'}</span>
+      <span className="p820-slot">{run.mode === 'quick' && run.from !== 'hunt' ? QUICK_SLOTS[i] : run.from === 'hunt' && i < 6 ? 'HUNT' : i < 5 ? 'START' : 'BENCH'}</span>
       {c ? <><b>{c.name}</b><small>{seasonLabel(c.end)} {c.team} · {c.pos}</small><span className="p820-ovr-mini">{c.ovr}</span></> : <small>—</small>}</li>; })}</ol>
     {run.squad.length >= 5 && <p className="p820-rating">Team rating <b>{perfectRating(h, run)}</b> <small>(100 = a 68-win team)</small></p>}
     {bonds.length > 0 && <ul className="p820-bonds">{bonds.map((b, i) => <li key={i} className={b.bonus < 0 ? 'bad' : 'good'}>{b.bonus > 0 ? '+' : ''}{b.bonus} · {b.label}</li>)}</ul>}
@@ -149,13 +154,13 @@ function QuickDraft({ h, run, setRun }: { h: NbaHistory; run: PerfectRun; setRun
   const keep = () => { setLanded(null); setRun(pickPlayer(h, run)); };
   return <section className="p820-draft">
     <div className="p820-stage">
-      <span className="pixel-eyebrow">SPIN {run.squad.length + 1} OF {SQUAD}</span>
+      <span className="pixel-eyebrow">{run.from === 'hunt' ? `YOUR HUNT SQUAD + BENCH SPIN ${run.squad.length - 5} OF ${SQUAD - 6}` : `SPIN ${run.squad.length + 1} OF ${SQUAD}`}</span>
       <h2>{QUICK_SLOT_LABEL[slot]}</h2>
       <div className={`p820-reel ${spinning ? 'spinning' : ''} ${landed ? 'landed' : ''}`} aria-live="polite">
         {landed ? <CardTile c={landed} />
           : <div className="p820-reel-strip" style={{ transform: spinning ? `translateY(-${(strip.length - 1) * 64}px)` : 'translateY(0)' }}>{strip.map((c, i) => <div key={i} className="p820-reel-row"><b>{c.name}</b><small>{seasonLabel(c.end)} {c.team}</small><span>{c.ovr}</span></div>)}</div>}
       </div>
-      {landed ? <button className="primary p820-big" onClick={keep}>{run.squad.length + 1 >= SQUAD ? 'Keep and spin the coach' : 'Keep and spin again'}</button>
+      {landed ? <button className="primary p820-big" onClick={keep}>{run.squad.length + 1 >= SQUAD ? (run.coach ? 'Keep and start the season' : 'Keep and spin the coach') : 'Keep and spin again'}</button>
         : <button className="primary p820-big" onClick={spin} disabled={spinning}>{spinning ? 'Spinning…' : 'SPIN'}</button>}
     </div>
     <SquadPanel h={h} run={run} />
@@ -297,6 +302,17 @@ function Finished({ h, run, records, onAgain }: { h: NbaHistory; run: PerfectRun
     </tbody></table>
     <p className="hint-text">Best ever: {records.best ? `${records.best.w}-${records.best.l}, ${records.best.score.toLocaleString()} points` : '—'} · {records.titles} title{records.titles === 1 ? '' : 's'} · {records.perfectSeasons} perfect season{records.perfectSeasons === 1 ? '' : 's'}{run.daily ? ' · Daily 82-0: your best try today counts on the weekly board.' : ''}</p>
     <SquadPanel h={h} run={run} />
-    <button className="primary p820-big" onClick={onAgain}>Play again</button>
+    <div className="p820-actions p820-end-actions"><button className="primary p820-big" onClick={onAgain}>Play again</button>
+      <ShareCardButton tall fileName="82-0-challenge.png" label="Share card" text={`I went ${s.w}-${s.l}${s.champion ? ' and won the title' : ''} in the 82-0 Challenge (score ${s.score.toLocaleString()}). Can you go 82-0?`} spec={{
+        kicker: `82-0 Challenge · ${MODE_INFO[run.mode].name}${run.daily ? ` · Daily ${run.daily}` : run.from === 'hunt' ? ' · Hunt squad' : ''}`,
+        title: `${s.w}-${s.l}`,
+        subtitle: `${s.champion ? 'Champions' : `Out in the ${ROUND_NAMES[lastSeries?.round ?? 0].toLowerCase()}`} · playoffs ${s.pw}-${s.pl} · score ${s.score.toLocaleString()}`,
+        badge: s.perfectSeason && s.perfectPlayoffs ? 'PERFECTION · 98-0' : s.perfectSeason ? 'UNDEFEATED · 82-0' : s.bossWins === s.bosses && s.bosses > 0 ? 'EVERY BOSS BEATEN' : undefined,
+        stats: [{ label: 'Record', value: `${s.w}-${s.l}` }, { label: 'Playoffs', value: `${s.pw}-${s.pl}` }, { label: 'Bosses', value: `${s.bossWins}/${s.bosses}` }, { label: 'Score', value: s.score.toLocaleString() }],
+        results: run.games.map(g => ({ won: g.won, boss: g.boss })),
+        lines: [...run.squad].map(id => cardPool(h).byId.get(id)!).sort((a, b) => b.ovr - a.ovr).map(c => `${c.name} ${seasonLabel(c.end)} · ${c.ovr}`),
+        avatar: (() => { const top = [...run.squad].map(id => cardPool(h).byId.get(id)!).sort((a, b) => b.ovr - a.ovr)[0]; return top ? { playerId: top.name, primary: POS_COLOR[top.pos] } : undefined; })(),
+        accent: s.perfectSeason ? 'gold' : s.champion ? 'green' : 'orange',
+      }} /></div>
   </section>;
 }

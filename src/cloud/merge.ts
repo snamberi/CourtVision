@@ -14,13 +14,14 @@ import { avatarSavedAt } from '../profile/avatar';
 import { readStreak, mergeStreak } from '../retention/streak';
 import { readPass, mergePass } from '../retention/pass';
 import { loadPerfectRecords, mergePerfectRecords } from '../perfect/storage';
+import { readBonusLog, mergeBonusLog } from '../retention/modeOfWeek';
 
 /** The stored values that belong to the account (everything else is per device). */
 export const SYNC_KEYS = [
   'courtvision:gmLegacy', 'cv-hunt-records', 'cv-hunt-album', 'cv-rebuild-records', 'cv-rebuild-records-done',
   'cv-weekly-records', 'cv-daily-history', 'cv-profile-equip', 'cv-code-results', 'cv-feats',
   'cv-legend-records', 'cv-card-album', 'cv-card-sets', 'cv-avatar', 'cv-streak', 'cv-pass',
-  'cv-perfect-records',
+  'cv-perfect-records', 'cv-bonus-xp',
 ] as const;
 export type SyncKey = typeof SYNC_KEYS[number];
 
@@ -97,6 +98,7 @@ export function mergeValue(key: SyncKey, local: string | null | undefined, cloud
     // Your character: the one changed most recently (a random first character never beats a chosen one).
     case 'cv-avatar': return avatarSavedAt(cloud) > avatarSavedAt(local) ? cloud : local;
     case 'cv-streak': return JSON.stringify(mergeStreak(readStreak(() => local), readStreak(() => cloud)));
+    case 'cv-bonus-xp': return JSON.stringify(mergeBonusLog(readBonusLog(() => local), readBonusLog(() => cloud)));
     case 'cv-perfect-records': return JSON.stringify(mergePerfectRecords(loadPerfectRecords(() => local), loadPerfectRecords(() => cloud)));
     case 'cv-pass': return JSON.stringify(mergePass(readPass(() => local), readPass(() => cloud)));
     case 'cv-legend-records': {

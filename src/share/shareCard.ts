@@ -25,12 +25,17 @@ export interface ShareCardSpec {
   accent?: 'orange' | 'gold' | 'red' | 'green';
   /** GM Profile cosmetic around the card (see profile.ts). */
   frame?: FrameId;
+  /** Game results as a strip of squares (won/lost, with bosses outlined): the 82-0 Challenge's season. */
+  results?: { won: boolean; boss?: boolean }[];
+  /** 9:16 for TikTok, Reels and Stories (1080 x 1920) instead of the 1200 x 630 landscape card. */
+  vertical?: boolean;
 }
 
 /** The site's own address for the footer: the production domain when the build knows it, else this page's host. */
 export const siteHost = () => (import.meta.env.VITE_SITE_HOST as string | undefined) || (typeof location !== 'undefined' ? location.host : 'Court Vision');
 
 export const CARD_W = 1200, CARD_H = 630;
+export const TALL_W = 1080, TALL_H = 1920;
 const C = { bg: '#0b1018', panel: '#121926', raised: '#192333', line: '#2a3546', text: '#f4f0e6', muted: '#94a0b2', orange: '#f47b20', gold: '#ffd166', red: '#e85d5d', green: '#55c878' };
 const PIXEL = "'Press Start 2P', monospace", DISPLAY = "'Oswald', 'Arial Narrow', sans-serif", UI = "'Inter', system-ui, sans-serif";
 
@@ -55,6 +60,7 @@ function drawSprite(ctx: CanvasRenderingContext2D, a: NonNullable<ShareCardSpec[
 
 /** Draws the card onto a new canvas (fonts should be loaded first; see renderShareCard). */
 export function drawShareCard(spec: ShareCardSpec, site = siteHost()): HTMLCanvasElement {
+  if (spec.vertical) return drawTallCard(spec, site);
   const canvas = document.createElement('canvas');
   canvas.width = CARD_W; canvas.height = CARD_H;
   const ctx = canvas.getContext('2d')!;
@@ -107,8 +113,9 @@ export function drawShareCard(spec: ShareCardSpec, site = siteHost()): HTMLCanva
     });
     y += 96;
   }
+  if (spec.results?.length) { y += 16; y += drawResults(ctx, spec.results, left, y, textMax, 28); }
   // Lines.
-  const lines = (spec.lines ?? []).slice(0, 6);
+  const lines = (spec.lines ?? []).slice(0, spec.results?.length ? 3 : 6);
   ctx.font = `22px ${UI}`;
   lines.forEach((l, i) => {
     const ly = y + 40 + i * 32;
@@ -126,9 +133,81 @@ export function drawShareCard(spec: ShareCardSpec, site = siteHost()): HTMLCanva
   return canvas;
 }
 
+/** Squares for each game result, wrapped into rows. Returns the height used. */
+function drawResults(ctx: CanvasRenderingContext2D, results: NonNullable<ShareCardSpec['results']>, x: number, y: number, width: number, perRow: number): number {
+  const gap = 4, size = Math.floor((width - (perRow - 1) * gap) / perRow);
+  results.forEach((g, i) => {
+    const cx = x + (i % perRow) * (size + gap), cy = y + Math.floor(i / perRow) * (size + gap);
+    ctx.fillStyle = g.won ? C.green : C.red; ctx.fillRect(cx, cy, size, size);
+    if (g.boss) { ctx.strokeStyle = C.gold; ctx.lineWidth = 3; ctx.strokeRect(cx + 1.5, cy + 1.5, size - 3, size - 3); }
+  });
+  return Math.ceil(results.length / perRow) * (size + gap);
+}
+
+/** The 9:16 card: everything stacked, big, centred, for phone screens. */
+function drawTallCard(spec: ShareCardSpec, site: string): HTMLCanvasElement {
+  const W = TALL_W, H = TALL_H;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d')!;
+  ctx.imageSmoothingEnabled = false;
+  const accent = C[spec.accent ?? 'orange'];
+  ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = 'rgba(244,123,32,.08)'; ctx.lineWidth = 8;
+  ctx.beginPath(); ctx.arc(W / 2, H * 0.36, 260, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(60, H * 0.36); ctx.lineTo(W - 60, H * 0.36); ctx.stroke();
+  ctx.fillStyle = '#03070d'; ctx.fillRect(34, 34, W - 60, H - 60);
+  ctx.fillStyle = C.panel; ctx.fillRect(26, 26, W - 60, H - 60);
+  ctx.strokeStyle = accent; ctx.lineWidth = 5; ctx.strokeRect(28, 28, W - 64, H - 64);
+  drawFrame(ctx, spec.frame ?? 'classic', W, H);
+  const mid = W / 2, max = W - 160;
+  const center = (text: string, y: number) => { const t = fit(ctx, text, max); ctx.fillText(t, mid - ctx.measureText(t).width / 2, y); };
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = accent; ctx.font = `24px ${PIXEL}`; center(spec.kicker.toUpperCase(), 140);
+  ctx.fillStyle = C.text; ctx.font = `bold 120px ${DISPLAY}`; center(spec.title.toUpperCase(), 290);
+  let y = 290;
+  if (spec.subtitle) { ctx.fillStyle = C.muted; ctx.font = `36px ${UI}`; center(spec.subtitle, (y += 70)); }
+  if (spec.badge) {
+    y += 40;
+    ctx.font = `22px ${PIXEL}`;
+    const w = ctx.measureText(spec.badge).width + 40;
+    ctx.fillStyle = '#2a2210'; ctx.fillRect(mid - w / 2, y, w, 52);
+    ctx.strokeStyle = C.gold; ctx.lineWidth = 3; ctx.strokeRect(mid - w / 2 + 1.5, y + 1.5, w - 3, 49);
+    ctx.fillStyle = C.gold; ctx.fillText(spec.badge, mid - w / 2 + 20, y + 36);
+    y += 52;
+  }
+  if (spec.avatar) { const sc = spec.results?.length ? 6 : 9; drawSprite(ctx, spec.avatar, mid - 22 * sc, y + 20, sc); y += 20 + 52 * sc; }
+  const stats = spec.stats.slice(0, 4);
+  if (stats.length) {
+    y += 30;
+    const cols = stats.length > 2 ? 2 : stats.length, boxW = (max - (cols - 1) * 20) / cols, boxH = 150;
+    stats.forEach((s, i) => {
+      const x = 80 + (i % cols) * (boxW + 20), by = y + Math.floor(i / cols) * (boxH + 20);
+      ctx.fillStyle = C.bg; ctx.fillRect(x, by, boxW, boxH);
+      ctx.strokeStyle = C.line; ctx.lineWidth = 3; ctx.strokeRect(x + 1.5, by + 1.5, boxW - 3, boxH - 3);
+      ctx.fillStyle = C.muted; ctx.font = `18px ${PIXEL}`; ctx.fillText(fit(ctx, s.label.toUpperCase(), boxW - 40), x + 24, by + 44);
+      ctx.fillStyle = accent === C.red ? C.text : accent; ctx.font = `bold 72px ${DISPLAY}`; ctx.fillText(fit(ctx, s.value, boxW - 40), x + 24, by + 124);
+    });
+    y += Math.ceil(stats.length / cols) * (boxH + 20);
+  }
+  if (spec.results?.length) { y += 20; y += drawResults(ctx, spec.results, 80, y, max, 21); }
+  const lines = (spec.lines ?? []).slice(0, 10);
+  ctx.font = `32px ${UI}`;
+  lines.forEach((l, i) => {
+    const ly = y + 60 + i * 48;
+    if (ly > H - 150) return;
+    ctx.fillStyle = accent; ctx.fillRect(80, ly - 18, 12, 12);
+    ctx.fillStyle = C.text; ctx.fillText(fit(ctx, l, max - 40), 110, ly);
+  });
+  ctx.fillStyle = C.raised; ctx.fillRect(28, H - 130, W - 64, 102);
+  ctx.fillStyle = C.orange; ctx.font = `28px ${PIXEL}`; center('COURT VISION', H - 80);
+  ctx.fillStyle = C.muted; ctx.font = `26px ${UI}`; center(`${site} · free in your browser`, H - 44);
+  return canvas;
+}
+
 /** Cosmetic frames unlocked with GM Profile levels. Drawn inside the border, clear of the text and the avatar. */
-function drawFrame(ctx: CanvasRenderingContext2D, frame: FrameId) {
-  const x0 = 28, y0 = 28, w = CARD_W - 64, h = CARD_H - 64;
+function drawFrame(ctx: CanvasRenderingContext2D, frame: FrameId, W = CARD_W, H = CARD_H) {
+  const x0 = 28, y0 = 28, w = W - 64, h = H - 64;
   if (frame === 'gold') {
     ctx.strokeStyle = C.gold; ctx.lineWidth = 4; ctx.strokeRect(x0, y0, w, h);
     ctx.lineWidth = 2; ctx.strokeRect(x0 + 10, y0 + 10, w - 20, h - 20);
@@ -141,7 +220,7 @@ function drawFrame(ctx: CanvasRenderingContext2D, frame: FrameId) {
     ctx.save(); ctx.shadowColor = '#3ef2ff'; ctx.shadowBlur = 18; ctx.strokeStyle = '#3ef2ff'; ctx.lineWidth = 4; ctx.strokeRect(x0, y0, w, h);
     ctx.shadowColor = '#ff4fd8'; ctx.strokeStyle = '#ff4fd8'; ctx.lineWidth = 2; ctx.strokeRect(x0 + 10, y0 + 10, w - 20, h - 20); ctx.restore();
   } else if (frame === 'banner') {
-    for (const [bx, label] of [[CARD_W - 150, 'CV'], [CARD_W - 100, '#1']] as const) {
+    for (const [bx, label] of [[W - 150, 'CV'], [W - 100, '#1']] as const) {
       ctx.fillStyle = '#7a1f2b'; ctx.beginPath(); ctx.moveTo(bx, y0); ctx.lineTo(bx + 40, y0); ctx.lineTo(bx + 40, y0 + 90); ctx.lineTo(bx + 20, y0 + 76); ctx.lineTo(bx, y0 + 90); ctx.closePath(); ctx.fill();
       ctx.strokeStyle = C.gold; ctx.lineWidth = 2; ctx.stroke();
       ctx.fillStyle = C.gold; ctx.font = `14px ${PIXEL}`; ctx.fillText(label, bx + 20 - ctx.measureText(label).width / 2, y0 + 44);
