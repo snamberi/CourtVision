@@ -392,6 +392,8 @@ button.tcard:hover, button.tcard:focus-visible { transform: translateY(-3px); ou
 .avatar-aura.animated { animation: aura-flicker 1.1s steps(3) infinite; transform-origin: 50% 90%; }
 .avatar-aura.animated.aura-sparkles, .avatar-aura.animated.aura-hearts, .avatar-aura.animated.aura-sakura { animation: aura-twinkle 1.6s steps(4) infinite; }
 .avatar-aura.animated.aura-rainbow, .avatar-aura.animated.aura-cosmic { animation: aura-hue 3s linear infinite; }
+.avatar-aura.animated.aura-cosmicFire { animation: aura-flicker .9s steps(3) infinite, aura-bluefire 2.4s ease-in-out infinite; }
+@keyframes aura-bluefire { 0%, 100% { filter: drop-shadow(0 0 1px var(--c-shadow-6fd3ff, #6fd3ff)); } 50% { filter: drop-shadow(0 0 3px var(--c-shadow-4da3ff, #4da3ff)); } }
 @keyframes aura-flicker { 0%, 100% { opacity: 1; transform: scaleY(1); } 50% { opacity: .7; transform: scaleY(1.03); } }
 @keyframes aura-twinkle { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
 @keyframes aura-hue { to { filter: hue-rotate(360deg); } }

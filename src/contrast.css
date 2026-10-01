@@ -514,3 +514,4 @@ html.lite *, html.lite *::before, html.lite *::after { backdrop-filter: none !im
 .share-box img.share-tall { aspect-ratio: 9 / 16; width: auto; max-width: 100%; max-height: 62vh; display: block; margin: 0 auto; }
 .share-format { display: flex; gap: 6px; margin-bottom: 8px; }
 .share-format button.on { border-color: var(--c-border-f47b20, #f47b20); color: var(--c-fg-ffd166, #ffd166); }
+.profile-card-big.frame-sovereign { border-color: var(--c-border-6fd3ff, #6fd3ff); background: radial-gradient(circle at 80% 20%, var(--c-bg-1f4fd955, #1f4fd955), transparent 60%), linear-gradient(180deg, var(--c-bg-060b2a, #060b2a), var(--c-bg-0a1f6a, #0a1f6a)); box-shadow: 0 0 0 2px var(--c-shadow-ffd166, #ffd166), 0 0 18px var(--c-shadow-4da3ffaa, #4da3ffaa), inset 0 -18px 30px var(--c-shadow-1f4fd966, #1f4fd966); }

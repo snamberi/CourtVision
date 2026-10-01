@@ -9,13 +9,13 @@ import { computeHonors } from '../../server/honors';
 beforeEach(() => localStorage.clear());
 
 describe('profile cosmetics', () => {
-  it('every sprite is 10 x 10 in the palette, and every icon has one (70 icons: 38 from the level road, 17 from the Trophy Road, 2 from the card album, 1 from the Owner Box)', () => {
+  it('every sprite is 10 x 10 in the palette, and every icon has one (71 icons: 38 from the level road, 17 from the Trophy Road, 2 from the card album, 1 from the Owner Box, 1 Game Owner only)', () => {
     for (const [id, rows] of Object.entries(SPRITES)) {
       expect(rows, id).toHaveLength(10);
       for (const row of rows) { expect(row.length, `${id}: ${row}`).toBe(10); for (const ch of row) expect(ch === '.' || ch in PALETTE, `${id}: ${ch}`).toBe(true); }
     }
     for (const icon of ICONS) expect(SPRITES[icon.base], icon.id).toBeTruthy();
-    expect(ICONS.length).toBe(70);
+    expect(ICONS.length).toBe(71);
     expect(new Set(ICONS.map(i => i.id)).size).toBe(ICONS.length);
     expect(new Set(NAME_COLORS.map(c => c.id)).size).toBe(NAME_COLORS.length);
   });

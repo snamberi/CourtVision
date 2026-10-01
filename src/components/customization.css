@@ -158,3 +158,5 @@
 .studio-jersey label { display: grid; gap: 4px; font-size: .8rem; color: var(--cv-text-muted, var(--c-fg-94a0b2, #94a0b2)); }
 .studio-jersey select { min-width: 220px; }
 .studio-jersey input { width: 72px; text-align: center; font-variant-numeric: tabular-nums; }
+.studio-actions { flex-wrap: wrap; }
+.studio-actions .studio-sovereign { flex: 1 1 100%; color: var(--c-fg-9fe7ff, #9fe7ff); background: linear-gradient(90deg, var(--c-bg-060b2a, #060b2a), var(--c-bg-1f4fd9, #1f4fd9), var(--c-bg-060b2a, #060b2a)); border-color: var(--c-border-ffd166, #ffd166); box-shadow: 0 0 10px var(--c-shadow-4da3ff88, #4da3ff88); }

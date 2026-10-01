@@ -179,12 +179,12 @@ export function publicAvatar(blob: ProgressBlob, level: number, honors: string[]
   try { look = cleanAvatar(JSON.parse(raw) as Partial<AvatarLook>); } catch { return null; }
   for (const c of owner ? [] : AVATAR_CATEGORIES) {
     const r = c.items.find(i => i.id === look[c.id])?.rule;
-    if (r && (('honor' in r && !honors.includes(r.honor)) || ('level' in r && r.level > level))) look = { ...look, [c.id]: DEFAULT_AVATAR[c.id] };
+    if (r && ('staff' in r || ('honor' in r && !honors.includes(r.honor)) || ('level' in r && r.level > level))) look = { ...look, [c.id]: DEFAULT_AVATAR[c.id] };
   }
   let frame: string | undefined;
   try { frame = (JSON.parse(read('cv-profile-equip') ?? '{}') as { avatarFrame?: string }).avatarFrame; } catch { /* none */ }
   const f = avatarFrameDef(frame);
   const modes = f.modes ? earnedModeAchievements(read) : [];
-  const ok = owner || (f.modes ? f.modes.some(m => modes.includes(m)) : f.honors ? f.honors.some(h => honors.includes(h)) : f.level != null ? level >= f.level : true);
+  const ok = owner || (f.staff ? false : f.modes ? f.modes.some(m => modes.includes(m)) : f.honors ? f.honors.some(h => honors.includes(h)) : f.level != null ? level >= f.level : true);
   return encodeAvatar(look, ok ? f.id : 'none');
 }

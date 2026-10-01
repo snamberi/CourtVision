@@ -103,12 +103,14 @@ export function levelFor(xp: number): { level: number; into: number; need: numbe
 // ---------------------------------------------------------------- cosmetics
 
 export type FrameId = 'classic' | 'gold' | 'hardwood' | 'neon' | 'banner' | 'fire'
-  | 'diamond' | 'jade' | 'pixel' | 'ice' | 'lightning' | 'ember' | 'royal' | 'galaxy' | 'rainbow' | 'legend';
+  | 'diamond' | 'jade' | 'pixel' | 'ice' | 'lightning' | 'ember' | 'royal' | 'galaxy' | 'rainbow' | 'legend' | 'sovereign';
 export type FloorId = 'team' | 'planks' | 'parquet' | 'blonde' | 'midnight' | 'asphalt'
-  | 'cherry' | 'sand' | 'retro' | 'herringbone' | 'ebony' | 'ice' | 'neon' | 'lava' | 'gold' | 'galaxy';
-export interface Unlock<T extends string> { id: T; name: string; level: number; blurb: string; /** Opened on the Trophy Road at this many trophies instead of a level. */ trophies?: number }
+  | 'cherry' | 'sand' | 'retro' | 'herringbone' | 'ebony' | 'ice' | 'neon' | 'lava' | 'gold' | 'galaxy' | 'celestial';
+export interface Unlock<T extends string> { id: T; name: string; level: number; blurb: string; /** Opened on the Trophy Road at this many trophies instead of a level. */ trophies?: number; /** The game owner's account only (ownerAccess.ts); hidden from everyone else. */ staff?: boolean }
 /** Whether a level-road or Trophy Road unlock is open. */
-export const unlockOpen = (u: { level: number; trophies?: number }, level: number, trophies: number) => hasOwnerAccess() || (u.trophies != null ? trophies >= u.trophies : u.level <= level);
+export const unlockOpen = (u: { level: number; trophies?: number; staff?: boolean }, level: number, trophies: number) => hasOwnerAccess() || (!u.staff && (u.trophies != null ? trophies >= u.trophies : u.level <= level));
+/** Owner-only items are listed only for the owner. */
+export const listedFor = <T extends { staff?: boolean }>(list: T[]) => (hasOwnerAccess() ? list : list.filter(u => !u.staff));
 
 // Levels come from the level road (cosmetics.ts), so each reward is listed in one place.
 const road = (kind: RewardKind, id: string) => roadLevel(kind, id) ?? 1;
@@ -124,6 +126,8 @@ export const FRAMES: Unlock<FrameId>[] = [
     ['ice', 'Icicles', 'Frost along the top, icicles hanging.'], ['lightning', 'Lightning', 'A zigzag bolt top and bottom.'], ['ember', 'Ember', 'Glowing coals along the border.'],
     ['royal', 'Royal', 'Purple velvet and gold corners.'], ['galaxy', 'Galaxy', 'Deep space, scattered with stars.'], ['rainbow', 'Rainbow', 'Every colour, all the way round.'],
     ['legend', 'Legend', 'Gold and white with stars: the rarest frame.']] as [FrameId, string, string][]).map(([id, name, blurb]) => ({ id, name, blurb, level: 1, trophies: trophyNeed('frame', id) ?? 750_000 })),
+  // The game owner's.
+  { id: 'sovereign', name: 'Celestial Sovereign', level: 1, staff: true, blurb: 'Deep space, blue fire and a king\'s crown. Game Owner only.' },
 ];
 export const FLOORS: Unlock<FloorId>[] = [
   { id: 'team', name: "Home team's floor", level: 1, blurb: 'Each arena keeps its own floor.' },
@@ -137,6 +141,7 @@ export const FLOORS: Unlock<FloorId>[] = [
     ['herringbone', 'Herringbone', 'Zigzag wood blocks.'], ['ebony', 'Ebony', 'Black wood with gold seams.'], ['ice', 'Frozen court', 'Ice tiles with frost lines.'],
     ['neon', 'Neon grid', 'A dark floor with glowing lines.'], ['lava', 'Lava floor', 'Cooled rock with glowing cracks.'], ['gold', 'Gold rush', 'Polished gold planks.'],
     ['galaxy', 'Galaxy court', 'Play among the stars.']] as [FloorId, string, string][]).map(([id, name, blurb]) => ({ id, name, blurb, level: 1, trophies: trophyNeed('floor', id) ?? 750_000 })),
+  { id: 'celestial', name: 'Celestial throne', level: 1, staff: true, blurb: 'A starfield floor laced with blue fire. Game Owner only.' },
 ];
 export const TITLES: Unlock<string>[] = ROAD_TITLES.map(id => ({ id, name: id, level: id === 'Rookie GM' ? 1 : road('title', id), blurb: '' }));
 

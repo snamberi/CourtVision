@@ -1,4 +1,5 @@
 import { buildPlayerSprite } from '../visuals/playerSprite';
+import { cardTheme, type CardTheme } from './cardThemes';
 import type { FrameId } from '../profile/profile';
 
 /*
@@ -65,72 +66,82 @@ export function drawShareCard(spec: ShareCardSpec, site = siteHost()): HTMLCanva
   canvas.width = CARD_W; canvas.height = CARD_H;
   const ctx = canvas.getContext('2d')!;
   ctx.imageSmoothingEnabled = false;
-  const accent = C[spec.accent ?? 'orange'];
-  // Background: navy with a faint court.
-  ctx.fillStyle = C.bg; ctx.fillRect(0, 0, CARD_W, CARD_H);
-  ctx.strokeStyle = 'rgba(244,123,32,.07)'; ctx.lineWidth = 6;
-  ctx.beginPath(); ctx.arc(CARD_W - 250, CARD_H / 2, 170, 0, Math.PI * 2); ctx.stroke();
-  ctx.strokeRect(CARD_W - 520, 40, 480, CARD_H - 80);
-  // Frame with a hard pixel shadow.
-  ctx.fillStyle = '#03070d'; ctx.fillRect(34, 34, CARD_W - 60, CARD_H - 60);
-  ctx.fillStyle = C.panel; ctx.fillRect(26, 26, CARD_W - 60, CARD_H - 60);
-  ctx.strokeStyle = accent; ctx.lineWidth = 4; ctx.strokeRect(28, 28, CARD_W - 64, CARD_H - 64);
-  drawFrame(ctx, spec.frame ?? 'classic');
-
-  const left = 64, textMax = spec.avatar ? 760 : CARD_W - 140;
+  const T = cardTheme(spec.frame), W = CARD_W, H = CARD_H;
+  // The frame's whole-card design, then a translucent panel for the text and the frame's border.
+  T.background(ctx, W, H);
+  const textMax = spec.avatar ? 760 : W - 140, left = 64;
+  ctx.fillStyle = T.panel; ctx.fillRect(26, 26, (spec.avatar ? 840 : W - 60), H - 60);
+  T.border(ctx, 28, 28, W - 64, H - 64);
+  const accent = resultColor(spec, T);
   ctx.textBaseline = 'alphabetic';
-  ctx.fillStyle = accent; ctx.font = `16px ${PIXEL}`;
+  ctx.shadowColor = 'rgba(0,0,0,.85)'; ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 2; ctx.shadowBlur = 0;
+  ctx.fillStyle = T.accent; ctx.font = `16px ${PIXEL}`;
   ctx.fillText(fit(ctx, spec.kicker.toUpperCase(), textMax), left, 86);
-  ctx.fillStyle = C.text; ctx.font = `bold 64px ${DISPLAY}`;
+  ctx.fillStyle = T.text; ctx.font = `bold 64px ${DISPLAY}`;
   ctx.fillText(fit(ctx, spec.title.toUpperCase(), textMax), left, 160);
   let y = 160;
-  if (spec.subtitle) { ctx.fillStyle = C.muted; ctx.font = `26px ${UI}`; ctx.fillText(fit(ctx, spec.subtitle, textMax), left, (y += 44)); }
+  if (spec.subtitle) { ctx.fillStyle = T.muted; ctx.font = `26px ${UI}`; ctx.fillText(fit(ctx, spec.subtitle, textMax), left, (y += 44)); }
   if (spec.stars != null) {
     ctx.font = `34px ${UI}`;
-    for (let i = 0; i < 3; i++) { ctx.fillStyle = i < spec.stars ? C.gold : C.line; ctx.fillText('★', left + i * 40, y + 50); }
+    for (let i = 0; i < 3; i++) { ctx.fillStyle = i < spec.stars ? C.gold : T.line; ctx.fillText('★', left + i * 40, y + 50); }
     y += 50;
   }
   if (spec.badge) {
     y += 22;
     ctx.font = `14px ${PIXEL}`;
     const w = ctx.measureText(spec.badge).width + 28;
-    ctx.fillStyle = '#2a2210'; ctx.fillRect(left, y, w, 34);
-    ctx.strokeStyle = C.gold; ctx.lineWidth = 2; ctx.strokeRect(left + 1, y + 1, w - 2, 32);
-    ctx.fillStyle = C.gold; ctx.fillText(spec.badge, left + 14, y + 23);
+    ctx.fillStyle = 'rgba(42,34,16,.92)'; ctx.fillRect(left, y, w, 34);
+    ctx.strokeStyle = T.accent2; ctx.lineWidth = 2; ctx.strokeRect(left + 1, y + 1, w - 2, 32);
+    ctx.fillStyle = T.accent2; ctx.fillText(spec.badge, left + 14, y + 23);
     y += 34;
   }
-  // Big numbers.
   const stats = spec.stats.slice(0, 4);
   if (stats.length) {
     y += 30;
     const boxW = Math.min(180, (textMax - (stats.length - 1) * 12) / stats.length);
     stats.forEach((s, i) => {
       const x = left + i * (boxW + 12);
-      ctx.fillStyle = C.bg; ctx.fillRect(x, y, boxW, 96);
-      ctx.strokeStyle = C.line; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, boxW - 2, 94);
-      ctx.fillStyle = C.muted; ctx.font = `12px ${PIXEL}`; ctx.fillText(fit(ctx, s.label.toUpperCase(), boxW - 20), x + 12, y + 26);
-      ctx.fillStyle = accent === C.red ? C.text : accent; ctx.font = `bold 44px ${DISPLAY}`; ctx.fillText(fit(ctx, s.value, boxW - 20), x + 12, y + 78);
+      ctx.fillStyle = T.box; ctx.fillRect(x, y, boxW, 96);
+      ctx.strokeStyle = T.line; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, boxW - 2, 94);
+      ctx.fillStyle = T.accent; ctx.fillRect(x + 1, y + 1, boxW - 2, 3);
+      ctx.fillStyle = T.muted; ctx.font = `12px ${PIXEL}`; ctx.fillText(fit(ctx, s.label.toUpperCase(), boxW - 20), x + 12, y + 28);
+      ctx.fillStyle = accent; ctx.font = `bold 44px ${DISPLAY}`; ctx.fillText(fit(ctx, s.value, boxW - 20), x + 12, y + 80);
     });
     y += 96;
   }
   if (spec.results?.length) { y += 16; y += drawResults(ctx, spec.results, left, y, textMax, 28); }
-  // Lines.
   const lines = (spec.lines ?? []).slice(0, spec.results?.length ? 3 : 6);
   ctx.font = `22px ${UI}`;
   lines.forEach((l, i) => {
     const ly = y + 40 + i * 32;
-    if (ly > CARD_H - 90) return;
-    ctx.fillStyle = accent; ctx.fillRect(left, ly - 12, 8, 8);
-    ctx.fillStyle = C.text; ctx.fillText(fit(ctx, l, textMax - 24), left + 22, ly);
+    if (ly > H - 90) return;
+    ctx.fillStyle = T.accent; ctx.fillRect(left, ly - 12, 8, 8);
+    ctx.fillStyle = T.text; ctx.fillText(fit(ctx, l, textMax - 24), left + 22, ly);
   });
-  if (spec.avatar) drawSprite(ctx, spec.avatar, CARD_W - 420, 110, 8);
+  if (spec.avatar) {
+    radial(ctx, W - 250, 300, 230, `${T.accent}44`);
+    drawSprite(ctx, spec.avatar, W - 420, 110, 8);
+    T.overAvatar?.(ctx, W - 420 + 22 * 8, 110, 8);
+  }
   // Footer.
-  ctx.fillStyle = C.raised; ctx.fillRect(28, CARD_H - 82, CARD_W - 64, 54);
-  ctx.fillStyle = C.orange; ctx.font = `18px ${PIXEL}`; ctx.fillText('COURT VISION', left, CARD_H - 47);
-  ctx.fillStyle = C.muted; ctx.font = `20px ${UI}`;
+  ctx.fillStyle = T.footer; ctx.fillRect(30, H - 82, W - 68, 52);
+  ctx.fillStyle = T.accent; ctx.fillRect(30, H - 82, W - 68, 2);
+  ctx.fillStyle = C.orange; ctx.font = `18px ${PIXEL}`; ctx.fillText('COURT VISION', left, H - 47);
+  ctx.fillStyle = T.muted; ctx.font = `20px ${UI}`;
   const foot = `${site} · discord.gg/5uGK5HDS8e`;
-  ctx.fillText(foot, CARD_W - 64 - ctx.measureText(foot).width, CARD_H - 48);
+  ctx.fillText(foot, W - 64 - ctx.measureText(foot).width, H - 48);
   return canvas;
+}
+
+/** The colour of the big numbers: the result's colour (gold for a title, red for a loss), or the frame's. */
+function resultColor(spec: ShareCardSpec, T: CardTheme): string {
+  if (!spec.accent || spec.accent === 'orange') return T.accent === '#f47b20' ? C.orange : T.accent;
+  return spec.accent === 'red' ? T.text : C[spec.accent];
+}
+function radial(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, inner: string) {
+  const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+  g.addColorStop(0, inner); g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2);
 }
 
 /** Squares for each game result, wrapped into rows. Returns the height used. */
@@ -151,42 +162,39 @@ function drawTallCard(spec: ShareCardSpec, site: string): HTMLCanvasElement {
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext('2d')!;
   ctx.imageSmoothingEnabled = false;
-  const accent = C[spec.accent ?? 'orange'];
-  ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
-  ctx.strokeStyle = 'rgba(244,123,32,.08)'; ctx.lineWidth = 8;
-  ctx.beginPath(); ctx.arc(W / 2, H * 0.36, 260, 0, Math.PI * 2); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(60, H * 0.36); ctx.lineTo(W - 60, H * 0.36); ctx.stroke();
-  ctx.fillStyle = '#03070d'; ctx.fillRect(34, 34, W - 60, H - 60);
-  ctx.fillStyle = C.panel; ctx.fillRect(26, 26, W - 60, H - 60);
-  ctx.strokeStyle = accent; ctx.lineWidth = 5; ctx.strokeRect(28, 28, W - 64, H - 64);
-  drawFrame(ctx, spec.frame ?? 'classic', W, H);
+  const T = cardTheme(spec.frame), accent = resultColor(spec, T);
+  T.background(ctx, W, H);
+  ctx.shadowColor = 'rgba(0,0,0,.85)'; ctx.shadowOffsetX = 3; ctx.shadowOffsetY = 3; ctx.shadowBlur = 0;
+  ctx.fillStyle = T.panel; ctx.fillRect(60, 200, W - 120, H - 400);
+  T.border(ctx, 28, 28, W - 64, H - 64);
   const mid = W / 2, max = W - 160;
   const center = (text: string, y: number) => { const t = fit(ctx, text, max); ctx.fillText(t, mid - ctx.measureText(t).width / 2, y); };
   ctx.textBaseline = 'alphabetic';
-  ctx.fillStyle = accent; ctx.font = `24px ${PIXEL}`; center(spec.kicker.toUpperCase(), 140);
-  ctx.fillStyle = C.text; ctx.font = `bold 120px ${DISPLAY}`; center(spec.title.toUpperCase(), 290);
-  let y = 290;
-  if (spec.subtitle) { ctx.fillStyle = C.muted; ctx.font = `36px ${UI}`; center(spec.subtitle, (y += 70)); }
+  ctx.fillStyle = T.accent; ctx.font = `24px ${PIXEL}`; center(spec.kicker.toUpperCase(), 140);
+  ctx.fillStyle = T.text; ctx.font = `bold 120px ${DISPLAY}`; center(spec.title.toUpperCase(), 330);
+  let y = 330;
+  if (spec.subtitle) { ctx.fillStyle = T.muted; ctx.font = `36px ${UI}`; center(spec.subtitle, (y += 70)); }
   if (spec.badge) {
     y += 40;
     ctx.font = `22px ${PIXEL}`;
     const w = ctx.measureText(spec.badge).width + 40;
-    ctx.fillStyle = '#2a2210'; ctx.fillRect(mid - w / 2, y, w, 52);
-    ctx.strokeStyle = C.gold; ctx.lineWidth = 3; ctx.strokeRect(mid - w / 2 + 1.5, y + 1.5, w - 3, 49);
-    ctx.fillStyle = C.gold; ctx.fillText(spec.badge, mid - w / 2 + 20, y + 36);
+    ctx.fillStyle = 'rgba(42,34,16,.92)'; ctx.fillRect(mid - w / 2, y, w, 52);
+    ctx.strokeStyle = T.accent2; ctx.lineWidth = 3; ctx.strokeRect(mid - w / 2 + 1.5, y + 1.5, w - 3, 49);
+    ctx.fillStyle = T.accent2; ctx.fillText(spec.badge, mid - w / 2 + 20, y + 36);
     y += 52;
   }
-  if (spec.avatar) { const sc = spec.results?.length ? 6 : 9; drawSprite(ctx, spec.avatar, mid - 22 * sc, y + 20, sc); y += 20 + 52 * sc; }
+  if (spec.avatar) { const sc = spec.results?.length ? 6 : 9; radial(ctx, mid, y + 20 + 26 * sc, 26 * sc + 60, `${T.accent}55`); drawSprite(ctx, spec.avatar, mid - 22 * sc, y + 20, sc); T.overAvatar?.(ctx, mid, y + 20, sc); y += 20 + 52 * sc; }
   const stats = spec.stats.slice(0, 4);
   if (stats.length) {
     y += 30;
     const cols = stats.length > 2 ? 2 : stats.length, boxW = (max - (cols - 1) * 20) / cols, boxH = 150;
     stats.forEach((s, i) => {
       const x = 80 + (i % cols) * (boxW + 20), by = y + Math.floor(i / cols) * (boxH + 20);
-      ctx.fillStyle = C.bg; ctx.fillRect(x, by, boxW, boxH);
-      ctx.strokeStyle = C.line; ctx.lineWidth = 3; ctx.strokeRect(x + 1.5, by + 1.5, boxW - 3, boxH - 3);
-      ctx.fillStyle = C.muted; ctx.font = `18px ${PIXEL}`; ctx.fillText(fit(ctx, s.label.toUpperCase(), boxW - 40), x + 24, by + 44);
-      ctx.fillStyle = accent === C.red ? C.text : accent; ctx.font = `bold 72px ${DISPLAY}`; ctx.fillText(fit(ctx, s.value, boxW - 40), x + 24, by + 124);
+      ctx.fillStyle = T.box; ctx.fillRect(x, by, boxW, boxH);
+      ctx.strokeStyle = T.line; ctx.lineWidth = 3; ctx.strokeRect(x + 1.5, by + 1.5, boxW - 3, boxH - 3);
+      ctx.fillStyle = T.accent; ctx.fillRect(x + 2, by + 2, boxW - 4, 4);
+      ctx.fillStyle = T.muted; ctx.font = `18px ${PIXEL}`; ctx.fillText(fit(ctx, s.label.toUpperCase(), boxW - 40), x + 24, by + 46);
+      ctx.fillStyle = accent; ctx.font = `bold 72px ${DISPLAY}`; ctx.fillText(fit(ctx, s.value, boxW - 40), x + 24, by + 124);
     });
     y += Math.ceil(stats.length / cols) * (boxH + 20);
   }
@@ -196,64 +204,14 @@ function drawTallCard(spec: ShareCardSpec, site: string): HTMLCanvasElement {
   lines.forEach((l, i) => {
     const ly = y + 60 + i * 48;
     if (ly > H - 150) return;
-    ctx.fillStyle = accent; ctx.fillRect(80, ly - 18, 12, 12);
-    ctx.fillStyle = C.text; ctx.fillText(fit(ctx, l, max - 40), 110, ly);
+    ctx.fillStyle = T.accent; ctx.fillRect(80, ly - 18, 12, 12);
+    ctx.fillStyle = T.text; ctx.fillText(fit(ctx, l, max - 40), 110, ly);
   });
-  ctx.fillStyle = C.raised; ctx.fillRect(28, H - 130, W - 64, 102);
+  ctx.fillStyle = T.footer; ctx.fillRect(30, H - 130, W - 68, 100);
+  ctx.fillStyle = T.accent; ctx.fillRect(30, H - 130, W - 68, 3);
   ctx.fillStyle = C.orange; ctx.font = `28px ${PIXEL}`; center('COURT VISION', H - 80);
-  ctx.fillStyle = C.muted; ctx.font = `26px ${UI}`; center(`${site} · free in your browser`, H - 44);
+  ctx.fillStyle = T.muted; ctx.font = `26px ${UI}`; center(`${site} · free in your browser`, H - 44);
   return canvas;
-}
-
-/** Cosmetic frames unlocked with GM Profile levels. Drawn inside the border, clear of the text and the avatar. */
-function drawFrame(ctx: CanvasRenderingContext2D, frame: FrameId, W = CARD_W, H = CARD_H) {
-  const x0 = 28, y0 = 28, w = W - 64, h = H - 64;
-  if (frame === 'gold') {
-    ctx.strokeStyle = C.gold; ctx.lineWidth = 4; ctx.strokeRect(x0, y0, w, h);
-    ctx.lineWidth = 2; ctx.strokeRect(x0 + 10, y0 + 10, w - 20, h - 20);
-    ctx.fillStyle = C.gold; for (const [x, y] of [[x0 + 4, y0 + 4], [x0 + w - 16, y0 + 4], [x0 + 4, y0 + h - 16], [x0 + w - 16, y0 + h - 16]]) ctx.fillRect(x, y, 12, 12);
-  } else if (frame === 'hardwood') {
-    for (let i = 0; i < w; i += 60) { ctx.fillStyle = (i / 60) % 2 ? '#dcab6e' : '#e3b479'; ctx.fillRect(x0 + i, y0 + 2, Math.min(60, w - i), 14); ctx.fillStyle = '#a8743f'; ctx.fillRect(x0 + i, y0 + 2, 2, 14); }
-    ctx.fillStyle = '#a8743f'; ctx.fillRect(x0, y0 + 9, w, 1);
-    ctx.strokeStyle = '#e3b479'; ctx.lineWidth = 4; ctx.strokeRect(x0, y0, w, h);
-  } else if (frame === 'neon') {
-    ctx.save(); ctx.shadowColor = '#3ef2ff'; ctx.shadowBlur = 18; ctx.strokeStyle = '#3ef2ff'; ctx.lineWidth = 4; ctx.strokeRect(x0, y0, w, h);
-    ctx.shadowColor = '#ff4fd8'; ctx.strokeStyle = '#ff4fd8'; ctx.lineWidth = 2; ctx.strokeRect(x0 + 10, y0 + 10, w - 20, h - 20); ctx.restore();
-  } else if (frame === 'banner') {
-    for (const [bx, label] of [[W - 150, 'CV'], [W - 100, '#1']] as const) {
-      ctx.fillStyle = '#7a1f2b'; ctx.beginPath(); ctx.moveTo(bx, y0); ctx.lineTo(bx + 40, y0); ctx.lineTo(bx + 40, y0 + 90); ctx.lineTo(bx + 20, y0 + 76); ctx.lineTo(bx, y0 + 90); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = C.gold; ctx.lineWidth = 2; ctx.stroke();
-      ctx.fillStyle = C.gold; ctx.font = `14px ${PIXEL}`; ctx.fillText(label, bx + 20 - ctx.measureText(label).width / 2, y0 + 44);
-    }
-    ctx.strokeStyle = C.gold; ctx.lineWidth = 4; ctx.strokeRect(x0, y0, w, h);
-  } else if (frame === 'fire') {
-    const cols = ['#e85d5d', '#f47b20', '#ffd166'];
-    for (let x = x0; x < x0 + w; x += 12) {
-      const t = (Math.sin(x * 0.37) + Math.sin(x * 0.113) + Math.sin(x * 0.029) + 3) / 6;
-      const hgt = 12 + Math.round(t * 26 / 4) * 4;
-      cols.forEach((c, i) => { const hh = hgt - i * 8; if (hh > 0) { ctx.fillStyle = c; ctx.fillRect(x + i * 2, y0 + 2, 12 - i * 4, hh); } });
-    }
-    ctx.strokeStyle = '#e85d5d'; ctx.lineWidth = 4; ctx.strokeRect(x0, y0, w, h);
-  } else drawTrophyFrame(ctx, frame, x0, y0, w, h);
-}
-
-/** The Trophy Road frames. */
-function drawTrophyFrame(ctx: CanvasRenderingContext2D, frame: FrameId, x0: number, y0: number, w: number, h: number) {
-  const box = (c: string, lw: number, inset = 0) => { ctx.strokeStyle = c; ctx.lineWidth = lw; ctx.strokeRect(x0 + inset, y0 + inset, w - inset * 2, h - inset * 2); };
-  const corners = (c: string, size: number) => { ctx.fillStyle = c; for (const [x, y] of [[x0 - 4, y0 - 4], [x0 + w - size + 4, y0 - 4], [x0 - 4, y0 + h - size + 4], [x0 + w - size + 4, y0 + h - size + 4]]) ctx.fillRect(x, y, size, size); };
-  const dots = (cols: string[], n: number) => { for (let i = 0; i < n; i++) { const x = x0 + 12 + ((i * 97) % (w - 24)), y = y0 + 12 + ((i * 53) % (h - 24)); if (y > y0 + 40 && y < y0 + h - 40 && x > x0 + 40 && x < x0 + w - 40) continue; ctx.fillStyle = cols[i % cols.length]; ctx.fillRect(x, y, 4, 4); } };
-  switch (frame) {
-    case 'diamond': box('#9fe7ff', 4); box('#ffffff', 2, 10); corners('#6db8ff', 14); ctx.fillStyle = '#ffffff'; for (const [x, y] of [[x0 + 2, y0 + 2], [x0 + w - 6, y0 + 2]]) ctx.fillRect(x, y, 4, 4); break;
-    case 'jade': box('#2fa86a', 5); box('#9be3b8', 2, 10); corners('#1f7a4a', 18); break;
-    case 'pixel': for (let x = x0; x < x0 + w; x += 16) { ctx.fillStyle = (x / 16) % 2 ? '#f47b20' : '#4da3ff'; ctx.fillRect(x, y0, 12, 12); ctx.fillRect(x, y0 + h - 12, 12, 12); } for (let y = y0; y < y0 + h; y += 16) { ctx.fillStyle = (y / 16) % 2 ? '#ffd166' : '#55c878'; ctx.fillRect(x0, y, 12, 12); ctx.fillRect(x0 + w - 12, y, 12, 12); } break;
-    case 'ice': box('#bfe6ff', 4); for (let x = x0 + 8; x < x0 + w - 8; x += 22) { const len = 10 + ((x * 7) % 24); ctx.fillStyle = '#e8f7ff'; ctx.fillRect(x, y0 + 2, 6, len); ctx.fillStyle = '#9fd4ff'; ctx.fillRect(x + 2, y0 + 2 + len, 2, 6); } break;
-    case 'lightning': box('#ffd166', 3); ctx.strokeStyle = '#fff3a0'; ctx.lineWidth = 4; for (const y of [y0 + 14, y0 + h - 14]) { ctx.beginPath(); for (let x = x0; x <= x0 + w; x += 24) ctx.lineTo(x, y + (((x - x0) / 24) % 2 ? -8 : 8)); ctx.stroke(); } break;
-    case 'ember': box('#7a1200', 6); for (let x = x0; x < x0 + w; x += 10) { ctx.fillStyle = ['#ff4d2e', '#ff9d3d', '#ffd166'][(x / 10) % 3 | 0]; ctx.fillRect(x, y0 + h - 8, 8, 6); ctx.fillRect(x, y0 + 2, 8, 6); } break;
-    case 'royal': box('#5a2d91', 8); box('#ffd166', 2, 12); corners('#ffd166', 20); break;
-    case 'galaxy': box('#3b1d82', 6); box('#b983ff', 2, 10); dots(['#ffffff', '#ff7ad9', '#6fd3ff'], 120); break;
-    case 'rainbow': ['#ff4d4d', '#ff9d3d', '#ffd166', '#6fdc93', '#6db8ff', '#b983ff'].forEach((c, i) => box(c, 3, i * 3)); break;
-    case 'legend': box('#ffd166', 6); box('#ffffff', 2, 12); corners('#ffd166', 22); dots(['#ffd166', '#ffffff'], 60); break;
-  }
 }
 
 /** Waits for the game's fonts, then draws. */

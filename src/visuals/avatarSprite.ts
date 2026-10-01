@@ -210,6 +210,7 @@ function drawShoes(r: Rect, id: string, o: Outfit, skin: Shade) {
   if (id === 'team') return;
   for (const x of [12, 23]) {
     if (id === 'sandals') { r(x - 1, 46, 7, 2, skin.c); r(x - 1, 48, 7, 1, '#8a5a2b'); r(x - 1, 49, 7, 1, '#5a3a1a'); r(x + 1, 46, 1, 2, '#c8102e'); continue; }
+    if (id === 'cosmicBoots') { r(x - 1, 41, 7, 8, '#0e1a5a'); r(x - 1, 41, 7, 1, '#ffd166'); r(x, 43, 1, 5, '#4da3ff'); r(x + 4, 42, 2, 7, '#060b2a'); r(x - 1, 49, 7, 1, '#6fd3ff'); r(x, 50, 5, 1, '#9fe7ff'); continue; }
     if (id === 'warriorBoots') { r(x - 1, 41, 7, 8, '#f4f6fa'); r(x - 1, 41, 7, 2, '#e8b84a'); r(x + 4, 43, 2, 6, '#c9d1dc'); r(x - 1, 49, 7, 1, '#5b6b82'); continue; }
     if (id === 'boots' || id === 'heroBoots') {
       const c = shade(id === 'boots' ? '#6b4423' : '#e8322e');
@@ -268,10 +269,16 @@ function drawHair(r: Rect, id: string, hair: Shade) {
     case 'pompadour': h(12, 6, 16, 4); h(11, 8, 2, 3); h(27, 8, 2, 3); h(12, 2, 16, 5); h(14, 1, 12, 1); r(14, 3, 10, 1, hair.l); return;
     case 'bowlCut': h(11, 5, 18, 7); h(10, 8, 2, 6); h(28, 8, 2, 6); r(12, 11, 16, 1, hair.d); r(13, 6, 10, 1, hair.l); return;
     case 'punkSpikes': h(12, 7, 16, 3); for (let x = 12; x < 28; x += 3) { h(x, 2, 2, 5); h(x, 1, 1, 1); } return;
+    case 'sovereignFlame':
+      // Swept back like a blue flame, long at the back, with streaks of white fire.
+      h(11, 4, 18, 7); h(9, 7, 4, 10); h(27, 7, 4, 10); h(8, 14, 3, 8); h(29, 14, 3, 8); h(7, 20, 2, 4); h(31, 20, 2, 4);
+      for (const [x, top] of [[10, 2], [13, 0], [17, 0], [21, 0], [25, 1], [28, 3]] as const) { h(x, top + 1, 3, 5 - top); h(x + 1, top, 1, 1); }
+      r(14, 1, 1, 6, '#ffffff'); r(22, 1, 1, 6, '#9fe7ff'); r(10, 9, 1, 10, hair.l); r(29, 9, 1, 10, hair.d); r(18, 3, 1, 4, '#ffffff'); return;
   }
 }
 
 function drawBeard(r: Rect, id: string, hair: Shade) {
+  if (id === 'stardust') { for (const [x, y] of [[14, 20], [17, 22], [20, 21], [23, 22], [25, 20], [19, 24], [16, 25], [22, 25]] as const) r(x, y, 1, 1, (x + y) % 2 ? '#9fe7ff' : '#ffffff'); return; }
   if (id === 'flameBeard') {
     r(12, 19, 3, 3, '#ff9d3d'); r(25, 19, 3, 3, '#ff9d3d'); r(14, 21, 12, 5, '#ff9d3d'); r(15, 23, 10, 5, '#e8322e'); r(17, 26, 6, 3, '#ffd166'); r(19, 28, 2, 2, '#ff9d3d');
     r(17, 20, 7, 1, '#351c29'); return;
@@ -298,6 +305,13 @@ function drawCustomHat(r: Rect, id: string, hairHex: string) {
       r(11, 5, 18, 6, '#e8508a'); r(10, 8, 3, 12, '#e8508a'); r(27, 8, 3, 12, '#e8508a');
       r(12, 9, 16, 12, '#161a24'); r(13, 9, 3, 1, '#3a3f4a');
       for (const [x, y] of [[19, 12], [20, 12], [18, 13], [21, 13], [17, 14], [22, 14], [17, 15], [22, 15], [18, 16], [21, 16], [19, 17], [20, 17]] as const) r(x, y, 1, 1, '#f4f6fa'); return;
+    case 'blueCrown': {
+      // A king's crown in sapphire and gold, with a white-hot jewel.
+      const b = shade('#2f6fff');
+      r(11, 4, 18, 5, b.c); r(11, 1, 2, 3, b.c); r(15, 0, 2, 4, b.c); r(19, 0, 2, 4, '#ffd166'); r(23, 0, 2, 4, b.c); r(27, 1, 2, 3, b.c);
+      r(11, 8, 18, 1, '#ffd166'); r(11, 4, 18, 1, '#ffd166'); r(12, 5, 6, 1, b.l);
+      r(14, 6, 2, 1, '#9fe7ff'); r(19, 5, 2, 2, '#ffffff'); r(24, 6, 2, 1, '#9fe7ff'); r(19, 0, 2, 1, '#ffffff'); return;
+    }
     case 'halo': r(13, 1, 14, 1, '#ffe066'); r(15, 0, 10, 1, '#fff6c4'); r(15, 2, 10, 1, '#e6b800'); return;
     case 'ninjaBand': r(11, 9, 18, 3, '#1d428a'); r(15, 9, 10, 3, '#c9ccd1'); r(15, 9, 10, 1, '#eef1f6'); r(19, 10, 2, 1, '#5b6b82'); r(18, 11, 4, 1, '#8a93a3'); r(28, 10, 4, 2, '#1d428a'); r(30, 12, 2, 6, '#1d428a'); return;
     case 'strawHat': r(12, 3, 16, 6, '#f2d27a'); r(13, 3, 14, 1, '#fff0b3'); r(12, 7, 16, 2, '#c8102e'); r(6, 9, 28, 2, '#e8c46a'); r(6, 10, 28, 1, '#b8923a'); return;
@@ -329,6 +343,12 @@ function drawEyes(r: Rect, id: string) {
     case 'cyberVisor': r(11, y, 19, 3, '#ff2d4a'); r(11, y + 1, 19, 1, '#ffb3b3'); r(29, y - 1, 2, 5, '#5b6b82'); return;
     case 'starEyes': for (const x of [16, 25]) { r(x - 1, y + 1, 4, 1, '#ffd166'); r(x, y, 2, 3, '#ffd166'); r(x, y + 3, 1, 1, '#ffd166'); r(x + 1, y + 3, 1, 1, '#ffd166'); r(x, y + 1, 2, 1, WHITE); } return;
     case 'sharingan': for (const x of [16, 25]) { r(x - 1, y, 3, 4, '#d0202e'); r(x, y + 1, 1, 2, OUTLINE); r(x - 1, y, 1, 1, OUTLINE); r(x + 1, y + 3, 1, 1, OUTLINE); r(x + 1, y, 1, 1, '#ff8080'); } return;
+    case 'voidFace':
+      // No face: a void of night sky where the face should be, edged in blue light.
+      r(12, 10, 16, 12, '#04061a'); r(13, 9, 14, 1, '#04061a'); r(14, 22, 12, 1, '#04061a');
+      r(12, 10, 1, 12, '#1f4fd9'); r(27, 10, 1, 12, '#1f4fd9');
+      for (const [x, yy, c] of [[15, 12, '#ffffff'], [24, 13, '#9fe7ff'], [19, 16, '#b8a8ff'], [17, 19, '#ffffff'], [23, 18, '#6fd3ff'], [21, 11, '#ffffff']] as const) r(x, yy, 1, 1, c);
+      return;
     case 'blindfold': r(11, y - 1, 18, 5, '#161a24'); r(11, y - 1, 18, 1, '#3a3f4a'); r(28, y + 3, 2, 3, '#161a24'); return;
     case 'scouter': r(22, y - 1, 6, 5, '#7dff9b'); r(22, y - 1, 6, 1, '#b8ffcc'); r(28, 11, 3, 8, '#e8322e'); r(29, 12, 1, 6, '#ff9d9d'); return;
     case 'glowRed': for (const x of [16, 25]) { r(x, y, 2, 4, '#ff2d2d'); r(x, y, 1, 1, '#ffd166'); } r(13, y + 1, 1, 1, '#ff2d2d'); return;
@@ -360,6 +380,15 @@ function drawBack(grid: SpriteGrid, id: string) {
   const back: Rect = (x, y, w, h, c) => { for (let yy = Math.max(0, y); yy < Math.min(grid.length, y + h); yy++) for (let xx = Math.max(0, x); xx < Math.min(grid[0].length, x + w); xx++) if (!grid[yy][xx]) grid[yy][xx] = c; };
   switch (id) {
     case 'capeRed': case 'capeBlack': case 'capeGold': { const c = shade(id === 'capeRed' ? '#c8102e' : id === 'capeGold' ? '#e8b84a' : '#1a1f2a'); for (let y = 25; y < 49; y++) { const s = Math.floor((y - 25) / 5); back(10 - s, y, 20 + s * 2, 1, (y + s) % 7 === 0 ? c.d : c.c); } return; }
+    case 'blackWings':
+      // Big black angel wings, feathers edged in blue fire.
+      for (const [x0, dir] of [[9, -1], [30, 1]] as const) for (let i = 0; i < 11; i++) {
+        const x = dir < 0 ? x0 - i : x0 + i, top = 14 + Math.floor(i * 0.6), len = 22 - Math.floor(i * 1.2);
+        back(x, top, 1, len, i % 3 === 2 ? '#2a2f3f' : '#0b0e16');
+        back(x, top + len, 1, 1, i % 2 ? '#4da3ff' : '#9fe7ff');
+        if (i % 3 === 0) back(x, top, 1, 1, '#3a4258');
+      }
+      return;
     case 'angelWings': for (const [x0, dir] of [[9, -1], [30, 1]] as const) for (let i = 0; i < 9; i++) { const x = dir < 0 ? x0 - i : x0 + i; back(x, 20 + Math.floor(i / 2), 1, 16 - i, i % 3 === 2 ? '#dfe6f0' : '#f8fbff'); } return;
     case 'batWings': for (const [x0, dir] of [[9, -1], [30, 1]] as const) for (let i = 0; i < 9; i++) { const x = dir < 0 ? x0 - i : x0 + i; back(x, 20 + i, 1, 10 - (i % 3) * 2, i % 3 === 0 ? '#3b1d5a' : '#5a2d82'); } return;
     case 'jetpack': back(7, 26, 5, 12, '#8a93a3'); back(28, 26, 5, 12, '#8a93a3'); back(8, 26, 3, 1, '#c9d1dc'); back(29, 26, 3, 1, '#c9d1dc'); back(8, 38, 3, 3, '#ff9d3d'); back(29, 38, 3, 3, '#ff9d3d'); back(9, 41, 1, 2, '#ffd166'); back(30, 41, 1, 2, '#ffd166'); return;
@@ -392,6 +421,7 @@ const AURA_COLORS: Record<string, string[]> = {
   cosmic: ['#6a45c0', '#ff7ad9', '#6fd3ff', '#ffffff'], rainbow: RAINBOW, sparkles: ['#ffd166', '#ffffff'], hearts: ['#ff4d8d', '#ff9fc8'],
   superWarrior: ['#ffe14d', '#fff6b0', '#ffc400', '#ffffff'], storm: ['#7b4dff', '#c9b3ff', '#3b1d9a'],
   sakura: ['#ffb7d5', '#ff8fc0', '#fff0f6'], hunter: ['#e8322e', '#ffd166', '#ff9d3d', '#7a1010'], cursed: ['#2a2f8a', '#4d6bff', '#9fb3ff', '#0b0f3a'],
+  cosmicFire: ['#9fe7ff', '#1f4fd9', '#6fd3ff', '#ffffff', '#4a2fbf', '#0a1f7a'],
 };
 function auraCells(grid: SpriteGrid, kind: string): SpriteGrid {
   const H = grid.length, W = grid[0].length;
@@ -407,8 +437,8 @@ function auraCells(grid: SpriteGrid, kind: string): SpriteGrid {
     }
     return false;
   };
-  const rising = kind === 'fire' || kind === 'golden' || kind === 'lightning' || kind === 'superWarrior' || kind === 'storm' || kind === 'cursed' || kind === 'hunter';
-  const crackle = kind === 'superWarrior' || kind === 'storm' || kind === 'cursed';
+  const rising = kind === 'fire' || kind === 'golden' || kind === 'lightning' || kind === 'superWarrior' || kind === 'storm' || kind === 'cursed' || kind === 'hunter' || kind === 'cosmicFire';
+  const crackle = kind === 'superWarrior' || kind === 'storm' || kind === 'cursed' || kind === 'cosmicFire';
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     if (grid[y][x]) continue;
     if (kind === 'sparkles' || kind === 'hearts' || kind === 'sakura') {
@@ -422,6 +452,8 @@ function auraCells(grid: SpriteGrid, kind: string): SpriteGrid {
     if (!near(x, y, 2, 1, rising ? 3 : 2)) {
       // The super warrior's power crackles with little bolts further out.
       if (crackle && near(x, y, 3, 3, 4) && noise(x, y) % 11 === 0) out[y][x] = kind === 'storm' ? '#ffffff' : '#9fe7ff';
+      // Cosmic fire scatters stars further out.
+      else if (kind === 'cosmicFire' && near(x, y, 5, 5, 5) && noise(x, y) % 17 === 0) out[y][x] = noise(y, x) % 3 ? '#ffffff' : '#b8a8ff';
       continue;
     }
     if (rising && !near(x, y, 1, 1, 1) && noise(x, Math.floor(y / 2)) % 3 === 0) continue;

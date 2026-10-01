@@ -115,3 +115,5 @@
 .road-floor.floor-gold { background: repeating-linear-gradient(90deg, var(--c-bg-e8b84a, #e8b84a) 0 6px, var(--c-bg-9a7212, #9a7212) 6px 7px); }
 .road-floor.floor-galaxy { background: radial-gradient(circle at 30% 40%, var(--c-bg-ffffff, #ffffff) 1px, transparent 2px), radial-gradient(circle at 70% 70%, var(--c-bg-ff7ad9, #ff7ad9) 1px, transparent 2px), var(--c-bg-160d33, #160d33); }
 .tu-swatch { width: 64px; height: 64px; }
+.road-frame.frame-sovereign { border-color: var(--c-border-6fd3ff, #6fd3ff); box-shadow: inset 0 0 0 2px var(--c-shadow-ffd166, #ffd166), 0 0 8px var(--c-shadow-4da3ffaa, #4da3ffaa); }
+.road-floor.floor-celestial { background: radial-gradient(circle at 30% 40%, var(--c-bg-ffffff, #ffffff) 1px, transparent 2px), linear-gradient(0deg, var(--c-bg-4da3ff, #4da3ff) 0 3px, transparent 3px), var(--c-bg-060b2a, #060b2a); }
