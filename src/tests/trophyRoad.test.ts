@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { TROPHY_ROAD, TROPHY_STEP, TROPHY_MAX, TITLE_COLORS, trophyParts, packColors, unpackColors } from '../profile/trophyRoad';
 import { ICONS, NAME_COLORS, SPRITES, colorCss } from '../profile/cosmetics';
 import { THEME_BY_ID, type ThemeId } from '../theme/themes';
+import { FRAMES, FLOORS, unlockOpen } from '../profile/profile';
 
 describe('Trophy Road', () => {
   it('has a reward at every 5,000 trophies up to 200,000, then every 50,000 to 750,000, each one defined', () => {
@@ -30,5 +31,13 @@ describe('Trophy Road', () => {
     const parts = trophyParts(k => store[k] ?? null);
     expect(parts.find(p => p.id === 'hunt')!.trophies).toBe(2 * 80 + 1800);
     expect(parts.find(p => p.id === 'legend')!.trophies).toBe(3 * 350);
+  });
+  it('carries ten share-card frames and ten court floors, each opening at its stop', () => {
+    const frames = TROPHY_ROAD.filter(([, k]) => k === 'frame'), floors = TROPHY_ROAD.filter(([, k]) => k === 'floor');
+    expect(frames).toHaveLength(10); expect(floors).toHaveLength(10);
+    for (const [t, , id] of frames) expect(FRAMES.find(f => f.id === id)?.trophies, id).toBe(t);
+    for (const [t, , id] of floors) expect(FLOORS.find(f => f.id === id)?.trophies, id).toBe(t);
+    expect(unlockOpen(FRAMES.find(f => f.id === 'diamond')!, 1, 15_000)).toBe(true);
+    expect(unlockOpen(FRAMES.find(f => f.id === 'diamond')!, 750, 14_999)).toBe(false);
   });
 });

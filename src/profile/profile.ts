@@ -1,4 +1,5 @@
 import { readLegacy, legacyTotals } from '../storage/gmLegacy';
+import { trophyNeed } from './trophyRoad';
 import { avatarItem, type AvatarCategory } from './avatar';
 import { loadRecords } from '../hunt/storage';
 import { loadRebuildRecords } from '../simulation/rebuildChallenge';
@@ -88,9 +89,13 @@ export function levelFor(xp: number): { level: number; into: number; need: numbe
 
 // ---------------------------------------------------------------- cosmetics
 
-export type FrameId = 'classic' | 'gold' | 'hardwood' | 'neon' | 'banner' | 'fire';
-export type FloorId = 'team' | 'planks' | 'parquet' | 'blonde' | 'midnight' | 'asphalt';
-export interface Unlock<T extends string> { id: T; name: string; level: number; blurb: string }
+export type FrameId = 'classic' | 'gold' | 'hardwood' | 'neon' | 'banner' | 'fire'
+  | 'diamond' | 'jade' | 'pixel' | 'ice' | 'lightning' | 'ember' | 'royal' | 'galaxy' | 'rainbow' | 'legend';
+export type FloorId = 'team' | 'planks' | 'parquet' | 'blonde' | 'midnight' | 'asphalt'
+  | 'cherry' | 'sand' | 'retro' | 'herringbone' | 'ebony' | 'ice' | 'neon' | 'lava' | 'gold' | 'galaxy';
+export interface Unlock<T extends string> { id: T; name: string; level: number; blurb: string; /** Opened on the Trophy Road at this many trophies instead of a level. */ trophies?: number }
+/** Whether a level-road or Trophy Road unlock is open. */
+export const unlockOpen = (u: { level: number; trophies?: number }, level: number, trophies: number) => u.trophies != null ? trophies >= u.trophies : u.level <= level;
 
 // Levels come from the level road (cosmetics.ts), so each reward is listed in one place.
 const road = (kind: RewardKind, id: string) => roadLevel(kind, id) ?? 1;
@@ -101,6 +106,11 @@ export const FRAMES: Unlock<FrameId>[] = [
   { id: 'neon', name: 'Neon', level: road('frame', 'neon'), blurb: 'Arcade cyan and magenta.' },
   { id: 'banner', name: 'Banner', level: road('frame', 'banner'), blurb: 'Championship banners in the rafters.' },
   { id: 'fire', name: 'On Fire', level: road('frame', 'fire'), blurb: 'Pixel flames. For the heaters.' },
+  // The Trophy Road.
+  ...([['diamond', 'Diamond', 'Ice-blue double border with corner gems.'], ['jade', 'Jade', 'Green lacquer with knotted corners.'], ['pixel', '8-bit', 'Alternating pixel blocks all round.'],
+    ['ice', 'Icicles', 'Frost along the top, icicles hanging.'], ['lightning', 'Lightning', 'A zigzag bolt top and bottom.'], ['ember', 'Ember', 'Glowing coals along the border.'],
+    ['royal', 'Royal', 'Purple velvet and gold corners.'], ['galaxy', 'Galaxy', 'Deep space, scattered with stars.'], ['rainbow', 'Rainbow', 'Every colour, all the way round.'],
+    ['legend', 'Legend', 'Gold and white with stars: the rarest frame.']] as [FrameId, string, string][]).map(([id, name, blurb]) => ({ id, name, blurb, level: 1, trophies: trophyNeed('frame', id) ?? 750_000 })),
 ];
 export const FLOORS: Unlock<FloorId>[] = [
   { id: 'team', name: "Home team's floor", level: 1, blurb: 'Each arena keeps its own floor.' },
@@ -109,6 +119,11 @@ export const FLOORS: Unlock<FloorId>[] = [
   { id: 'blonde', name: 'Blonde maple', level: road('floor', 'blonde'), blurb: 'Pale, bright 90s wood.' },
   { id: 'midnight', name: 'Midnight', level: road('floor', 'midnight'), blurb: 'Dark stained wood.' },
   { id: 'asphalt', name: 'Street court', level: road('floor', 'asphalt'), blurb: 'Blacktop, outdoors.' },
+  // The Trophy Road.
+  ...([['cherry', 'Cherry wood', 'Rich red-brown planks.'], ['sand', 'Beach court', 'Packed sand, sun-bleached.'], ['retro', 'Retro checker', 'A 70s checkerboard.'],
+    ['herringbone', 'Herringbone', 'Zigzag wood blocks.'], ['ebony', 'Ebony', 'Black wood with gold seams.'], ['ice', 'Frozen court', 'Ice tiles with frost lines.'],
+    ['neon', 'Neon grid', 'A dark floor with glowing lines.'], ['lava', 'Lava floor', 'Cooled rock with glowing cracks.'], ['gold', 'Gold rush', 'Polished gold planks.'],
+    ['galaxy', 'Galaxy court', 'Play among the stars.']] as [FloorId, string, string][]).map(([id, name, blurb]) => ({ id, name, blurb, level: 1, trophies: trophyNeed('floor', id) ?? 750_000 })),
 ];
 export const TITLES: Unlock<string>[] = ROAD_TITLES.map(id => ({ id, name: id, level: id === 'Rookie GM' ? 1 : road('title', id), blurb: '' }));
 
@@ -131,8 +146,8 @@ export const PROFILE_EVENT = 'courtvision:profile';
 export function equipped(level = levelFor(totalXp()).level): Equipped {
   let raw: Partial<Equipped> = {};
   try { raw = JSON.parse(localStorage.getItem(EQUIP_KEY) ?? '{}') as Partial<Equipped>; } catch { /* default */ }
-  const ok = <T extends string>(list: Unlock<T>[], v: T | undefined, fallback: T): T => { const u = list.find(x => x.id === v); return u && u.level <= level ? u.id : fallback; };
   const ctx = unlockContext(level);
+  const ok = <T extends string>(list: Unlock<T>[], v: T | undefined, fallback: T): T => { const u = list.find(x => x.id === v); return u && unlockOpen(u, level, ctx.trophies) ? u.id : fallback; };
   const openTitles = TITLES.filter(t => t.level <= level);
   const special = [...rankTitles(), ...earnedExtraTitles(ctx)];
   const title = raw.title && special.includes(raw.title) ? raw.title : ok(TITLES, raw.title, openTitles[openTitles.length - 1].id);

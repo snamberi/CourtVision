@@ -411,3 +411,49 @@ export function buildAvatarSprite(opts: AvatarOptions): AvatarSprite {
   const { grid, aura } = buildAvatarGrid(opts);
   return { paths: detailedSpritePaths(grid), aura: gridToPaths(aura), auraKind: opts.look.aura };
 }
+
+// ---------------------------------------------------------------- coaches and referees
+
+export type FigurePose = 'down' | 'cross' | 'point' | 'up' | 'whistle';
+export interface FigureOptions {
+  id: string; skin: string; hair: string; hairStyle?: HairStyle; beard?: BeardStyle; glasses?: boolean;
+  /** The outfit kind (suit, track, referee…) in its colours. */
+  kind: Outfit['kind']; main: string; trim: string; pose?: FigurePose;
+}
+/**
+ * A sideline figure (a head coach, a referee) on the same detailed body as the players: the face, hair and beard come
+ * from the player renderer, the clothes from the character outfits, and the arms are posed for the sideline.
+ */
+export function buildFigureGrid({ id, skin, hair, hairStyle = 'short', beard = 'none', glasses = false, kind, main, trim, pose = 'down' }: FigureOptions): SpriteGrid {
+  const grid = buildPlayerGrid({ playerId: id, primary: main, secondary: trim, jerseyNumber: null, appearance: { skinHex: skin, hairHex: hair, hairStyle, beardStyle: beard, hatStyle: 'none' } });
+  const r: Rect = (x, y, w, h, c) => {
+    for (let yy = Math.max(0, y); yy < Math.min(grid.length, y + h); yy++) for (let xx = Math.max(0, x); xx < Math.min(grid[0].length, x + w); xx++) grid[yy][xx] = c;
+  };
+  const skinShade = shade(skin);
+  const outfit = { id: 'figure', name: '', rule: { level: 1 }, kind, main, trim } as Outfit;
+  drawOutfit(r, outfit, { primary: main, secondary: trim }, skinShade);
+  drawShoes(r, 'black', outfit, skinShade);
+  if (glasses) drawEyes(r, 'glasses');
+  if (pose !== 'down') {
+    // Clear the hanging arms, then pose new ones in the outfit's sleeve colour.
+    for (let y = 25; y < 38; y++) for (let x = 0; x < 40; x++) if (x < 12 || x > 27) grid[y][x] = null;
+    const sleeve = kind === 'referee' || kind === 'tee' || kind === 'hawaiian' ? skinShade : shade(main);
+    const cuff = kind === 'referee' ? '#f4f6fa' : sleeve.c;
+    const armDown = (x: number) => { r(x, 25, 3, 9, sleeve.c); r(x, 25, 3, 3, cuff); r(x, 34, 3, 3, skin); };
+    const armUp = (x: number) => { r(x, 12, 3, 14, sleeve.c); r(x, 22, 3, 4, cuff); r(x, 9, 3, 3, skin); };
+    if (pose === 'cross') {
+      r(9, 25, 3, 6, cuff); r(28, 25, 3, 6, cuff);
+      r(11, 29, 18, 3, sleeve.c); r(11, 32, 18, 2, sleeve.d); r(10, 29, 2, 2, skin); r(28, 32, 2, 2, skin);
+    } else if (pose === 'point') { armDown(9); r(28, 26, 9, 3, sleeve.c); r(28, 26, 3, 3, cuff); r(37, 26, 3, 3, skin); }
+    else if (pose === 'up') { armUp(9); armUp(28); }
+    else { armDown(9); armUp(28); }
+  }
+  return outlineGrid(grid);
+}
+const figureCache = new Map<string, SpritePath[]>();
+export function buildFigureSprite(opts: FigureOptions): SpritePath[] {
+  const key = JSON.stringify(opts);
+  let hit = figureCache.get(key);
+  if (!hit) { if (figureCache.size > 300) figureCache.clear(); hit = detailedSpritePaths(buildFigureGrid(opts)); figureCache.set(key, hit); }
+  return hit;
+}

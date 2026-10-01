@@ -23,6 +23,8 @@ import { PlayerAvatar } from '../PlayerAvatar';
 import { PixelIcon } from '../PixelIcon';
 import { HuntHub } from './HuntHub';
 import { HuntMap } from './HuntMap';
+import { CoachFigure } from '../CoachFigure';
+import { coachLook } from '../../visuals/coachLook';
 import { ShareCardButton } from '../ShareCardButton';
 import './hunt.css';
 
@@ -53,6 +55,13 @@ export function LeagueHunt({ onExit }: { onExit: () => void }) {
     if (r && r.stage === 'draft' && r.seed !== run?.seed) track('mode_start', { mode: 'hunt', variant: r.daily ? 'daily' : 'run', difficulty: r.difficulty ?? 'pro', deck: r.deck ?? 'classic' });
   };
 
+  /** PLAY: out of the shop (if it is open) and straight into the series. */
+  const startSeries = () => {
+    if (!h || !run) return;
+    const ready = run.stage === 'shop' ? leaveShop(run) : run;
+    const r = playSeries(h, ready); if (!r) return;
+    setPlay({ play: r.play, series: ready.series[ready.seriesIndex], index: ready.seriesIndex, before: ready, revealed: false }); setRun(r.run);
+  };
   // While the scoreboard runs, the header still shows the lives and coins from before the series (no spoilers).
   const shown = play && !play.revealed ? play.before : run;
   const header = <header className="hunt-top">
@@ -72,47 +81,15 @@ export function LeagueHunt({ onExit }: { onExit: () => void }) {
       : play ? <SeriesView h={h} run={run} play={play.play} series={play.series} index={play.index} onReveal={() => setPlay(p => (p && !p.revealed ? { ...p, revealed: true } : p))} onContinue={() => setPlay(null)} />
       : run.stage === 'draft' ? <SlotMachine key={run.seed} h={h} run={run} onRun={setRun} onAbandon={() => setRun(null)} />
       : run.stage === 'focus' ? <FocusView run={run} onChoose={f => setRun(chooseFocus(h, run, f))} />
-      : run.stage === 'shop' ? <Shop h={h} run={run} onRun={setRun} />
+      : run.stage === 'shop' ? <HuntBase h={h} run={run} onRun={setRun} onPlay={startSeries} onAbandon={() => setRun(null)} />
       : run.stage === 'boost' ? <BoostPick h={h} run={run} onTake={b => setRun(takeBoost(h, run, b))} />
       : run.stage === 'won' || run.stage === 'lost' ? <RunOver h={h} run={run} records={records} onNew={() => { setPlay(null); setRun(newRun(h, Math.floor(Math.random() * 1_000_000_000), { deck: run.deck, difficulty: run.difficulty, fav: readFavorites().player })); }} onExit={() => { setRun(null); onExit(); }} />
-      : <SeriesPreview h={h} run={run} onPlay={() => { const r = playSeries(h, run); if (!r) return; setPlay({ play: r.play, series: run.series[run.seriesIndex], index: run.seriesIndex, before: run, revealed: false }); setRun(r.run); }} onAbandon={() => setRun(null)} />}
+      : <HuntBase h={h} run={run} onRun={setRun} onPlay={startSeries} onAbandon={() => setRun(null)} />}
   </div>;
 }
 
 const posColor: Record<string, string> = { PG: '#4da3ff', SG: '#55c878', SF: '#ffd166', PF: '#f47b20', C: '#e85d5d', G: '#4da3ff', F: '#f47b20' };
 const pct = (v: number) => `${Math.round(v)}%`;
-
-function Card({ card, onClick, disabled, action, note, delay, blind, tag, notes }: { card: HuntCard; onClick?: () => void; disabled?: boolean; action?: string; note?: string; delay?: number; blind?: boolean; tag?: string; notes?: string[] }) {
-  // Blind (on the spins): who, when and where only. The rating, the stats and the rarity show once you have chosen.
-  const body = <>
-    <span className="hunt-card-top"><small>{blind ? 'RATING HIDDEN' : RARITY_LABEL[card.rarity].toUpperCase()}</small><b>{card.pos}</b></span>
-    {tag && <span className={`hunt-card-tag ${tag === 'YOURS' ? 'mine' : ''}`}>{tag}</span>}
-    <PlayerAvatar playerId={card.name} primaryColor={posColor[card.pos] ?? '#f47b20'} secondaryColor="#f4f0e6" size={64} />
-    <strong className="hunt-card-name">{blind ? <RollingName final={card.name} delay={delay ?? 0} /> : card.name}</strong>
-    <span className="hunt-card-season">{seasonLabel(card.end)} · {card.teamName}</span>
-    {blind ? <span className="hunt-card-ovr hunt-card-q"><b>?</b><small>OVR</small></span> : <span className="hunt-card-ovr"><b>{card.ovr}</b><small>OVR</small></span>}
-    {blind ? <span className="hunt-card-notes">{notes?.length ? notes.slice(0, 3).map(n => <i key={n}>{n}</i>) : <i className="none">No awards that season</i>}</span> : <span className="hunt-card-line">{card.ppg} PTS · {card.rpg} REB · {card.apg} AST</span>}
-    {action && <span className="hunt-card-action">{action}</span>}
-    {note && <span className="hunt-card-note">{note}</span>}
-  </>;
-  const style = delay != null ? { animationDelay: `${delay}ms` } : undefined;
-  const cls = blind ? 'blind' : `rarity-${card.rarity}`;
-  return onClick ? <button className={`hunt-card hunt-spin-in ${cls}`} style={style} disabled={disabled} onClick={onClick}>{body}</button> : <div className={`hunt-card ${cls} ${tag ? 'hunt-flip' : ''}`} style={style}>{body}</div>;
-}
-
-const ROLL_TICKS = 9, ROLL_MS = 70;
-/** A slot-machine roll of names that settles on the real one (skipped when motion is reduced). */
-function RollingName({ final, delay }: { final: string; delay: number }) {
-  const [tick, setTick] = useState(() => (reducedMotion() ? ROLL_TICKS : 0));
-  useEffect(() => {
-    if (tick >= ROLL_TICKS) return;
-    const t = setTimeout(() => setTick(n => n + 1), tick === 0 ? delay + ROLL_MS : ROLL_MS);
-    return () => clearTimeout(t);
-  }, [tick, delay]);
-  if (tick >= ROLL_TICKS) return <>{final}</>;
-  return <span className="hunt-roll" aria-hidden="true">{ROLL_NAMES[(final.length * 7 + tick * 13) % ROLL_NAMES.length]}</span>;
-}
-const ROLL_NAMES = ['Bill Russell', 'Magic Johnson', 'Larry Bird', 'Kareem Abdul-Jabbar', 'Hakeem Olajuwon', 'Tim Duncan', 'Allen Iverson', 'Stephen Curry', 'Kevin Garnett', 'Oscar Robertson', 'Jerry West', 'Dirk Nowitzki', 'Shaquille O\'Neal', 'Julius Erving', 'John Stockton', 'Moses Malone'];
 
 /** The six slots and the coach, filled or waiting. */
 function SlotBoard({ h, run, series }: { h: NbaHistory; run: HuntRun; series?: HuntSeries }) {
@@ -242,49 +219,6 @@ function Bonds({ bonds }: { bonds: ChemistryBond[] }) {
 
 const kindLabel = (s: HuntSeries, i: number) => (s.kind === 'boss' ? 'BOSS' : s.kind === 'semi' ? 'SEMI-BOSS' : `SERIES ${i + 1}`);
 
-function SeriesPreview({ h, run, onPlay, onAbandon }: { h: NbaHistory; run: HuntRun; onPlay: () => void; onAbandon: () => void }) {
-  const s = run.series[run.seriesIndex];
-  const team = huntTeams(h).find(t => t.id === s.teamId)!;
-  const era = ERAS.find(e => e.id === s.eraId) ?? eraOf(team.end);
-  const pool = cardPool(h);
-  const mine = new Set(run.squad.map(id => pool.byId.get(id)?.playerId));
-  const theirs = team.roster.map(id => pool.byId.get(id)!).filter(c => c && !mine.has(c.playerId)).slice(0, SLOTS.length);
-  const ours = squadRating(h, run, s), them = opponentRating(h, run, s);
-  const { bonds } = gameBonuses(h, run, era, NEUTRAL_GAME, s);
-  return <section className="hunt-stage">
-    <HuntMap h={h} run={run} />
-    {run.note && <p className="hunt-note" role="status">{run.note}</p>}
-    <div className="hunt-matchup">
-      <div className={`hunt-era ${s.kind !== 'normal' ? `hunt-era-${s.kind}` : ''}`}>
-        <span className="pixel-eyebrow">{kindLabel(s, run.seriesIndex)} OF {SERIES_COUNT} · BEST OF SEVEN · {era.label.toUpperCase()}</span>
-        <small className="hunt-mode">{run.daily ? `Daily Legend ${run.daily}` : `${DECKS[run.deck ?? 'classic'].name} deck · ${DIFFICULTIES[run.difficulty ?? 'pro'].name}`}</small>
-        <h2>{teamLabel(team)}</h2>
-        <p>{team.w}-{team.l}{team.champion ? ' · Champions' : ''}</p>
-        <div className="hunt-versus"><div><small>YOU</small><b className="hunt-rating">{ours}</b></div><span>vs</span><div><small>THEM</small><b className="hunt-rating">{them}</b></div></div>
-        <p className="hunt-era-rules">Era rules: {era.blurb}</p>
-        {s.buffs.length > 0 && <><h3 className="hunt-subhead">Their buffs</h3><ul className="hunt-buffs">{s.buffs.map(b => <li key={b}><b>{BUFFS[b].name}</b> {BUFFS[b].blurb(buffValue(run, b, s.kind))}</li>)}
-          {s.lift > 0 && <li><b>{s.kind === 'boss' ? 'Dynasty Aura' : s.kind === 'semi' ? 'Contender' : 'Hungry'}</b> Everyone +{Number.isInteger(s.lift) ? s.lift : s.lift.toFixed(1)}.</li>}</ul></>}
-        <button className="primary hunt-play" onClick={onPlay}>Play</button>
-        {run.attempts > 0 && <p className="hint-text">Rematch {run.attempts + 1}. {run.lives} {run.lives === 1 ? 'life' : 'lives'} left.</p>}
-      </div>
-      <div className="hunt-opponent"><h3>Their six</h3><ol>{theirs.map(c => <li key={c.id}><span className="hunt-squad-ovr">{c.ovr}</span><span>{c.name} <small>{c.pos}</small></span></li>)}</ol></div>
-    </div>
-    <div className="hunt-matchup">
-      <SlotBoard h={h} run={run} series={s} />
-      <div className="hunt-opponent">
-        <h3>Series-win boosts {run.boosts.length}/{MAX_BOOSTS} <small>(up to +{BOOST_CAP} per player per game)</small></h3>
-        {run.boosts.length ? <ul className="hunt-buffs">{run.boosts.map(b => <li key={b}><b>{BOOSTS[b].name}</b> {BOOSTS[b].blurb}</li>)}</ul> : <p className="hint-text">Win a series to pick your first boost. You can hold {MAX_BOOSTS}, so choose well.</p>}
-        <h3 className="hunt-subhead">Shop boosts {shopItems(run).length}/{MAX_ITEMS}</h3>
-        {run.items.length ? <ul className="hunt-buffs">{run.items.map(i => <li key={i}><b>{ITEMS[i].name}</b> {ITEMS[i].blurb}{!shopItems(run).includes(i) && <small> (deck gift)</small>}</li>)}</ul> : <p className="hint-text">Buy up to {MAX_ITEMS} in the shops.</p>}
-        <h3 className="hunt-subhead">Chemistry for this series</h3>
-        <Bonds bonds={bonds} />
-        {run.focus && <p className="hint-text">Team focus: <b>{FOCUS[run.focus].name}</b>.</p>}
-      </div>
-    </div>
-    <button className="link-button" onClick={onAbandon}>Abandon this hunt</button>
-  </section>;
-}
-
 const SERIES_MS = 10_000;
 const reducedMotion = () => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 /** How far into a game the scoreboard is (0-1) for each side: two different curves, so the lead changes hands. */
@@ -345,29 +279,103 @@ function BoostPick({ h, run, onTake }: { h: NbaHistory; run: HuntRun; onTake: (b
   </section>;
 }
 
-function Shop({ h, run, onRun }: { h: NbaHistory; run: HuntRun; onRun: (r: HuntRun) => void }) {
+/** A spot on the mini court for each starter (PG at the top, the bigs low), in % of the court. */
+const COURT_SPOT: Record<string, [number, number]> = { PG: [50, 16], SG: [18, 38], SF: [82, 38], PF: [30, 72], C: [70, 72] };
+
+/**
+ * The hunt's home base between series: the road on top; your team on a court in the middle with the PLAY button; the
+ * shop on the left (players, a coach, shop boosts, a life, training; shut until you win a series); your coach, your
+ * boosts and the team's chemistry on the right.
+ */
+function HuntBase({ h, run, onRun, onPlay, onAbandon }: { h: NbaHistory; run: HuntRun; onRun: (r: HuntRun) => void; onPlay: () => void; onAbandon: () => void }) {
   const pool = cardPool(h);
-  const shop = run.shop!;
-  const coach = shop.coach ? COACH_BY_ID.get(shop.coach) : undefined;
-  const next = run.series[run.seriesIndex];
-  return <section className="hunt-stage">
-    <div className="hunt-stage-head"><div><span className="pixel-eyebrow">THE SHOP · <span className="hunt-coins">{run.coins}</span> COINS · NEXT: {kindLabel(next, run.seriesIndex)}</span><h2>Spend your coins</h2></div>
-      <button className="primary" onClick={() => onRun(leaveShop(run))}>On to {next.kind === 'boss' ? 'the boss' : next.kind === 'semi' ? 'the semi-boss' : `series ${run.seriesIndex + 1}`}</button></div>
+  const s = run.series[run.seriesIndex];
+  const team = huntTeams(h).find(t => t.id === s.teamId)!;
+  const era = ERAS.find(e => e.id === s.eraId) ?? eraOf(team.end);
+  const ours = squadRating(h, run, s), them = opponentRating(h, run, s);
+  const { cards: bonuses, bonds } = gameBonuses(h, run, era, NEUTRAL_GAME, s);
+  const coach = run.coach ? COACH_BY_ID.get(run.coach) : undefined;
+  const shop = run.stage === 'shop' ? run.shop : undefined;
+  const shopCoach = shop?.coach ? COACH_BY_ID.get(shop.coach) : undefined;
+  const mine = new Set(run.squad.map(id => pool.byId.get(id)?.playerId));
+  const theirs = team.roster.map(id => pool.byId.get(id)!).filter(c => c && !mine.has(c.playerId)).slice(0, SLOTS.length);
+  const odds = ours - them;
+  return <section className="hunt-base">
+    <div className="hunt-base-road"><HuntMap h={h} run={run} /></div>
     {run.note && <p className="hunt-note" role="status">{run.note}</p>}
-    <h3 className="hunt-subhead">Players <small>(each one replaces the player in his slot)</small></h3>
-    <div className="hunt-offer">{shop.cards.map(({ id, slot }) => { const sold = shop.sold.includes(id), price = cardPrice(h, id), out = pool.byId.get(run.squad[slot])!;
-      return <Card key={id} card={pool.byId.get(id)!} disabled={sold || run.coins < price} onClick={() => onRun(buyCard(h, run, id))} action={sold ? 'Signed' : `${price} coins`} note={`New ${slotName(slot)}: replaces ${out.name} (${out.ovr})`} />; })}</div>
-    <h3 className="hunt-subhead">{canBuyLife(run) ? 'Coach, shop boosts and a life' : 'Coach and shop boosts'} <small>{shopItems(run).length}/{MAX_ITEMS} shop boosts (kept apart from your {MAX_BOOSTS} series-win boosts)</small></h3>
-    <div className="hunt-items">
-      {coach && <button className="hunt-item" disabled={shop.sold.includes(coach.id) || run.coins < coachPrice(coach)} onClick={() => onRun(buyCoach(run))}><b>Coach {coach.name} ({coach.bonus > 0 ? '+' : ''}{coach.bonus})</b><span>{COACH_STYLE[coach.style]}. Replaces {run.coach ? COACH_BY_ID.get(run.coach)!.name : 'your coach'}.</span><small>{shop.sold.includes(coach.id) ? 'Hired' : `${coachPrice(coach)} coins`}</small></button>}
-      {shop.items.map(i => { const it = ITEMS[i], sold = shop.sold.includes(i); return <button key={i} className="hunt-item" disabled={sold || run.coins < it.price || shopItems(run).length >= MAX_ITEMS} onClick={() => onRun(buyItem(run, i))}>
-        <b>{it.name}</b><span>{it.blurb}</span><small>{sold ? 'Bought' : `${it.price} coins`}</small></button>; })}
-      {canBuyLife(run) && <button className="hunt-item" disabled={!!shop.lifeBought || run.lives >= maxLives(run) || run.coins < LIFE_PRICE} onClick={() => onRun(buyLife(run))}><b><PixelIcon name="heart" size={14} /> A life</b><span>Get back one lost life (once per shop).</span><small>{shop.lifeBought ? 'Bought' : `${LIFE_PRICE} coins`}</small></button>}
+    <div className="hunt-base-grid">
+      {/* ---------------- the shop ---------------- */}
+      <aside className={`hunt-shop ${shop ? '' : 'closed'}`} aria-label="Shop">
+        <div className="hunt-shop-awning" aria-hidden="true">{Array.from({ length: 9 }, (_, i) => <i key={i} />)}</div>
+        <div className="hunt-shop-sign"><span>SHOP</span><small><b className="hunt-coins">{run.coins}</b> coins</small></div>
+        {!shop ? <div className="hunt-shop-shut"><PixelIcon name="lock" size={28} /><b>Closed</b><p>The shop opens after every series you win: new players, coaches, shop boosts and training.</p></div> : <>
+          <h3 className="hunt-shop-shelf">Players</h3>
+          <div className="hunt-shop-items">{shop.cards.map(({ id, slot }) => { const c = pool.byId.get(id)!, sold = shop.sold.includes(id), price = cardPrice(h, id), out = pool.byId.get(run.squad[slot])!;
+            return <button key={id} className={`hunt-ware rarity-${c.rarity}`} disabled={sold || run.coins < price} onClick={() => onRun(buyCard(h, run, id))} title={`Replaces ${out.name} (${out.ovr})`}>
+              <PlayerAvatar playerId={c.name} primaryColor={posColor[c.pos] ?? '#f47b20'} secondaryColor="#f4f0e6" size={40} mode="portrait" />
+              <span className="hunt-ware-name"><b>{c.name}</b><small>{c.ovr} OVR · {slotName(slot)} · for {out.name.split(' ').slice(-1)[0]} ({out.ovr})</small></span>
+              <span className="hunt-price">{sold ? 'SOLD' : price}</span></button>; })}</div>
+          {shopCoach && <><h3 className="hunt-shop-shelf">Coach</h3>
+            <button className="hunt-ware" disabled={shop.sold.includes(shopCoach.id) || run.coins < coachPrice(shopCoach)} onClick={() => onRun(buyCoach(run))}>
+              <span className="hunt-ware-coach"><svg viewBox="-22 -50 44 54" aria-hidden="true"><CoachFigure look={coachLook(shopCoach.name, 60)} primary="#f47b20" secondary="#f4f0e6" /></svg></span>
+              <span className="hunt-ware-name"><b>{shopCoach.name} ({shopCoach.bonus > 0 ? '+' : ''}{shopCoach.bonus})</b><small>{COACH_STYLE[shopCoach.style]}</small></span>
+              <span className="hunt-price">{shop.sold.includes(shopCoach.id) ? 'HIRED' : coachPrice(shopCoach)}</span></button></>}
+          <h3 className="hunt-shop-shelf">Boosts <small>{shopItems(run).length}/{MAX_ITEMS}</small></h3>
+          <div className="hunt-shop-items">{shop.items.map(i => { const it = ITEMS[i], sold = shop.sold.includes(i); return <button key={i} className="hunt-ware" disabled={sold || run.coins < it.price || shopItems(run).length >= MAX_ITEMS} onClick={() => onRun(buyItem(run, i))}>
+            <span className="hunt-ware-icon"><PixelIcon name="star" size={20} /></span><span className="hunt-ware-name"><b>{it.name}</b><small>{it.blurb}</small></span><span className="hunt-price">{sold ? 'SOLD' : it.price}</span></button>; })}
+            {canBuyLife(run) && <button className="hunt-ware" disabled={!!shop.lifeBought || run.lives >= maxLives(run) || run.coins < LIFE_PRICE} onClick={() => onRun(buyLife(run))}>
+              <span className="hunt-ware-icon life"><PixelIcon name="heart" size={20} /></span><span className="hunt-ware-name"><b>A life</b><small>Get one lost life back.</small></span><span className="hunt-price">{shop.lifeBought ? 'SOLD' : LIFE_PRICE}</span></button>}</div>
+          <h3 className="hunt-shop-shelf">Training <small>+{TRAIN_STEP} each, up to +{MAX_TRAINING} · {TRAIN_PRICE} coins</small></h3>
+          <div className="hunt-train">{run.squad.map((id, i) => { const c = pool.byId.get(id)!, t = run.training[id] ?? 0; return <button key={id} disabled={t >= MAX_TRAINING || run.coins < TRAIN_PRICE} onClick={() => onRun(train(h, run, id))}>
+            <b>{slotName(i).toUpperCase()}</b><span>{c.name.split(' ').slice(-1)[0]}</span><small>{t ? `+${t}` : '+0'}</small></button>; })}</div>
+        </>}
+      </aside>
+
+      {/* ---------------- your team and PLAY ---------------- */}
+      <main className="hunt-center">
+        <div className={`hunt-next ${s.kind !== 'normal' ? `hunt-next-${s.kind}` : ''}`}>
+          <span className="pixel-eyebrow">{kindLabel(s, run.seriesIndex)} OF {SERIES_COUNT} · BEST OF SEVEN · {era.label.toUpperCase()}</span>
+          <h2>{teamLabel(team)}</h2>
+          <small>{team.w}-{team.l}{team.champion ? ' · Champions' : ''} · {run.daily ? `Daily Legend ${run.daily}` : `${DECKS[run.deck ?? 'classic'].name} · ${DIFFICULTIES[run.difficulty ?? 'pro'].name}`}</small>
+        </div>
+        <div className="hunt-court" aria-label="Your starting five">
+          <i className="hunt-court-key" aria-hidden="true" /><i className="hunt-court-arc" aria-hidden="true" />
+          {SLOTS.slice(0, 5).map((slot, i) => { const b = bonuses[i], c = b?.card; if (!c) return null; const [x, y] = COURT_SPOT[slot] ?? [50, 50];
+            return <div key={slot} className={`hunt-court-man rarity-${c.rarity}`} style={{ left: `${x}%`, top: `${y}%` }}>
+              <PlayerAvatar playerId={c.name} primaryColor="#f47b20" secondaryColor="#f4f0e6" size={46} />
+              <span className="hunt-court-tag"><b>{c.ovr}{b.bonus ? <i className={b.bonus > 0 ? 'up' : 'down'}>{b.bonus > 0 ? '+' : ''}{b.bonus}</i> : null}</b>{slot} {c.name.split(' ').slice(-1)[0]}{run.training[c.id] ? ` +${run.training[c.id]}` : ''}</span>
+            </div>; })}
+        </div>
+        <div className="hunt-bench">{(() => { const b = bonuses[5], c = b?.card; return c ? <span><small>6TH MAN</small> <b>{c.ovr}</b> {c.name}</span> : null; })()}</div>
+        <div className="hunt-versus-bar"><div><small>YOU</small><b className="hunt-rating">{ours}</b></div>
+          <button className="primary hunt-play-big" onClick={onPlay}><PixelIcon name="play" size={22} /> PLAY</button>
+          <div><small>THEM</small><b className="hunt-rating">{them}</b></div></div>
+        <p className="hint-text hunt-odds">{odds >= 3 ? 'You are the favourite.' : odds <= -3 ? 'You are the underdog: shop and train first.' : 'A close series.'}{run.attempts > 0 ? ` Rematch ${run.attempts + 1}. ${run.lives} ${run.lives === 1 ? 'life' : 'lives'} left.` : ''}</p>
+        <details className="hunt-scout"><summary>Scout {teamLabel(team)}</summary>
+          <p className="hunt-era-rules">Era rules: {era.blurb}</p>
+          {s.buffs.length > 0 && <ul className="hunt-buffs">{s.buffs.map(b => <li key={b}><b>{BUFFS[b].name}</b> {BUFFS[b].blurb(buffValue(run, b, s.kind))}</li>)}
+            {s.lift > 0 && <li><b>{s.kind === 'boss' ? 'Dynasty Aura' : s.kind === 'semi' ? 'Contender' : 'Hungry'}</b> Everyone +{Number.isInteger(s.lift) ? s.lift : s.lift.toFixed(1)}.</li>}</ul>}
+          <ol className="hunt-their">{theirs.map(c => <li key={c.id}><b>{c.ovr}</b> {c.name} <small>{c.pos}</small></li>)}</ol>
+        </details>
+      </main>
+
+      {/* ---------------- your coach and boosts ---------------- */}
+      <aside className="hunt-locker" aria-label="Your coach and boosts">
+        <h3>Your coach</h3>
+        {coach ? <div className={`hunt-coach-card rarity-${coachRarity(coach)}`}>
+          <span className="hunt-coach-art"><svg viewBox="-22 -50 44 54" aria-hidden="true"><CoachFigure look={coachLook(coach.name, 60)} primary="#f47b20" secondary="#f4f0e6" pose="cross" /></svg></span>
+          <div><b>{coach.name}</b><span className="hunt-coach-bonus">{coachBonus(run) > 0 ? '+' : ''}{coachBonus(run)}</span><small>{COACH_STYLE[coach.style]}</small></div>
+        </div> : <p className="hint-text">No coach yet.</p>}
+        <h3>Boosts <small>{run.boosts.length}/{MAX_BOOSTS}</small></h3>
+        {run.boosts.length ? <ul className="hunt-chips">{run.boosts.map(b => <li key={b} title={BOOSTS[b].blurb}><PixelIcon name="flame" size={14} /><b>{BOOSTS[b].name}</b><small>{BOOSTS[b].blurb}</small></li>)}</ul> : <p className="hint-text">Win a series to pick one (up to {MAX_BOOSTS}).</p>}
+        <h3>Shop boosts <small>{shopItems(run).length}/{MAX_ITEMS}</small></h3>
+        {run.items.length ? <ul className="hunt-chips">{run.items.map(i => <li key={i} title={ITEMS[i].blurb}><PixelIcon name="star" size={14} /><b>{ITEMS[i].name}</b><small>{ITEMS[i].blurb}</small></li>)}</ul> : <p className="hint-text">Buy up to {MAX_ITEMS} in the shop.</p>}
+        <h3>Chemistry</h3>
+        <Bonds bonds={bonds} />
+        {run.focus && <p className="hint-text">Team focus: <b>{FOCUS[run.focus].name}</b>.</p>}
+      </aside>
     </div>
-    <h3 className="hunt-subhead">Training <small>(+{TRAIN_STEP} for one player, up to +{MAX_TRAINING}; {TRAIN_PRICE} coins)</small></h3>
-    <div className="hunt-replace">{run.squad.map((id, i) => { const c = pool.byId.get(id)!, t = run.training[id] ?? 0; return <button key={id} disabled={t >= MAX_TRAINING || run.coins < TRAIN_PRICE} onClick={() => onRun(train(h, run, id))}>{slotName(i).toUpperCase()} {c.ovr} {c.name}{t ? <small> (+{t})</small> : null}</button>; })}</div>
-    {run.focus && <p className="hint-text">Team focus: <b>{FOCUS[run.focus].name}</b> <small>(set at training camp for the whole hunt)</small>.</p>}
-    <SlotBoard h={h} run={run} series={next} />
+    <button className="link-button hunt-abandon" onClick={onAbandon}>Abandon this hunt</button>
   </section>;
 }
 

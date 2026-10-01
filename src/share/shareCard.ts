@@ -155,6 +155,25 @@ function drawFrame(ctx: CanvasRenderingContext2D, frame: FrameId) {
       cols.forEach((c, i) => { const hh = hgt - i * 8; if (hh > 0) { ctx.fillStyle = c; ctx.fillRect(x + i * 2, y0 + 2, 12 - i * 4, hh); } });
     }
     ctx.strokeStyle = '#e85d5d'; ctx.lineWidth = 4; ctx.strokeRect(x0, y0, w, h);
+  } else drawTrophyFrame(ctx, frame, x0, y0, w, h);
+}
+
+/** The Trophy Road frames. */
+function drawTrophyFrame(ctx: CanvasRenderingContext2D, frame: FrameId, x0: number, y0: number, w: number, h: number) {
+  const box = (c: string, lw: number, inset = 0) => { ctx.strokeStyle = c; ctx.lineWidth = lw; ctx.strokeRect(x0 + inset, y0 + inset, w - inset * 2, h - inset * 2); };
+  const corners = (c: string, size: number) => { ctx.fillStyle = c; for (const [x, y] of [[x0 - 4, y0 - 4], [x0 + w - size + 4, y0 - 4], [x0 - 4, y0 + h - size + 4], [x0 + w - size + 4, y0 + h - size + 4]]) ctx.fillRect(x, y, size, size); };
+  const dots = (cols: string[], n: number) => { for (let i = 0; i < n; i++) { const x = x0 + 12 + ((i * 97) % (w - 24)), y = y0 + 12 + ((i * 53) % (h - 24)); if (y > y0 + 40 && y < y0 + h - 40 && x > x0 + 40 && x < x0 + w - 40) continue; ctx.fillStyle = cols[i % cols.length]; ctx.fillRect(x, y, 4, 4); } };
+  switch (frame) {
+    case 'diamond': box('#9fe7ff', 4); box('#ffffff', 2, 10); corners('#6db8ff', 14); ctx.fillStyle = '#ffffff'; for (const [x, y] of [[x0 + 2, y0 + 2], [x0 + w - 6, y0 + 2]]) ctx.fillRect(x, y, 4, 4); break;
+    case 'jade': box('#2fa86a', 5); box('#9be3b8', 2, 10); corners('#1f7a4a', 18); break;
+    case 'pixel': for (let x = x0; x < x0 + w; x += 16) { ctx.fillStyle = (x / 16) % 2 ? '#f47b20' : '#4da3ff'; ctx.fillRect(x, y0, 12, 12); ctx.fillRect(x, y0 + h - 12, 12, 12); } for (let y = y0; y < y0 + h; y += 16) { ctx.fillStyle = (y / 16) % 2 ? '#ffd166' : '#55c878'; ctx.fillRect(x0, y, 12, 12); ctx.fillRect(x0 + w - 12, y, 12, 12); } break;
+    case 'ice': box('#bfe6ff', 4); for (let x = x0 + 8; x < x0 + w - 8; x += 22) { const len = 10 + ((x * 7) % 24); ctx.fillStyle = '#e8f7ff'; ctx.fillRect(x, y0 + 2, 6, len); ctx.fillStyle = '#9fd4ff'; ctx.fillRect(x + 2, y0 + 2 + len, 2, 6); } break;
+    case 'lightning': box('#ffd166', 3); ctx.strokeStyle = '#fff3a0'; ctx.lineWidth = 4; for (const y of [y0 + 14, y0 + h - 14]) { ctx.beginPath(); for (let x = x0; x <= x0 + w; x += 24) ctx.lineTo(x, y + (((x - x0) / 24) % 2 ? -8 : 8)); ctx.stroke(); } break;
+    case 'ember': box('#7a1200', 6); for (let x = x0; x < x0 + w; x += 10) { ctx.fillStyle = ['#ff4d2e', '#ff9d3d', '#ffd166'][(x / 10) % 3 | 0]; ctx.fillRect(x, y0 + h - 8, 8, 6); ctx.fillRect(x, y0 + 2, 8, 6); } break;
+    case 'royal': box('#5a2d91', 8); box('#ffd166', 2, 12); corners('#ffd166', 20); break;
+    case 'galaxy': box('#3b1d82', 6); box('#b983ff', 2, 10); dots(['#ffffff', '#ff7ad9', '#6fd3ff'], 120); break;
+    case 'rainbow': ['#ff4d4d', '#ff9d3d', '#ffd166', '#6fdc93', '#6db8ff', '#b983ff'].forEach((c, i) => box(c, 3, i * 3)); break;
+    case 'legend': box('#ffd166', 6); box('#ffffff', 2, 12); corners('#ffd166', 22); dots(['#ffd166', '#ffffff'], 60); break;
   }
 }
 

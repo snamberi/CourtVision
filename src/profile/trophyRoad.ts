@@ -51,7 +51,7 @@ export function trophyParts(read: Read = localRead): TrophyPart[] {
 }
 export const totalTrophies = (read: Read = localRead) => trophyParts(read).reduce((n, p) => n + p.trophies, 0);
 
-export type TrophyRewardKind = 'title' | 'color' | 'icon' | 'titleColor' | 'look' | 'avatar';
+export type TrophyRewardKind = 'title' | 'color' | 'icon' | 'titleColor' | 'look' | 'avatar' | 'frame' | 'floor';
 /** One or two rewards every 5,000 trophies. The last stops are the rarest things in the game. */
 export const TROPHY_ROAD: [number, TrophyRewardKind, string][] = [
   [5_000, 'title', 'Contender'], [5_000, 'titleColor', 'amber'],
@@ -107,6 +107,13 @@ export const TROPHY_ROAD: [number, TrophyRewardKind, string][] = [
   [700_000, 'title', 'Living Myth'], [700_000, 'icon', 'ball-galaxy'], [700_000, 'color', 'eternalflame'],
   [750_000, 'title', 'Court Vision God'], [750_000, 'titleColor', 'divine'], [750_000, 'color', 'divine'],
 ];
+// Share-card frames and Watch Game floors.
+TROPHY_ROAD.push(
+  [10_000, 'floor', 'cherry'], [15_000, 'frame', 'diamond'], [25_000, 'frame', 'jade'], [30_000, 'floor', 'sand'], [35_000, 'frame', 'pixel'],
+  [40_000, 'floor', 'retro'], [45_000, 'frame', 'ice'], [55_000, 'floor', 'herringbone'], [65_000, 'frame', 'lightning'], [80_000, 'floor', 'ebony'],
+  [85_000, 'frame', 'ember'], [95_000, 'floor', 'ice'], [105_000, 'frame', 'royal'], [120_000, 'floor', 'neon'], [140_000, 'frame', 'galaxy'],
+  [160_000, 'floor', 'lava'], [180_000, 'frame', 'rainbow'], [250_000, 'floor', 'gold'], [300_000, 'frame', 'legend'], [400_000, 'floor', 'galaxy'],
+);
 // Your character's pieces ride the same road (ids are "category:piece"; see AVATAR_TROPHY_ROAD in avatar.ts).
 for (const [t, cat, id] of AVATAR_TROPHY_ROAD) TROPHY_ROAD.push([t, 'avatar', `${cat}:${id}`]);
 TROPHY_ROAD.sort((a, b) => a[0] - b[0]);

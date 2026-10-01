@@ -11,7 +11,7 @@ import { DISCORD_URL } from './DiscordLink';
 import { CLYDE_PATH } from '../visuals/discordGlyph';
 import { pixelTextPath, pixelTextWidth, splitTeamName } from '../visuals/pixelFont';
 import { equippedFloor } from '../profile/profile';
-import { CoachFigure, type CoachPose } from './CoachFigure';
+import { CoachFigure, RefereeFigure, type CoachPose } from './CoachFigure';
 import { coachLook, type CoachLook } from '../visuals/coachLook';
 
 type Team={teamId:string;name:string};
@@ -141,16 +141,8 @@ function Bench({x,y,players,kit,count=9,teamId}:{x:number;y:number;players:Playe
 /** A referee in stripes who trails the play along the sideline. */
 export function Referee({x,y,facing=1,number,whistle=false}:{x:number;y:number;facing?:number;number?:number;whistle?:boolean}){
  return <g transform={`translate(${x.toFixed(1)},${y}) scale(${facing},1)`} shapeRendering="crispEdges" data-testid="court-referee" data-whistle={whistle?'1':undefined}>
-  <ellipse cx="0" cy="0" rx="10" ry="3.5" fill="#1a120c" opacity=".3"/>
-  <rect x="-6" y="-14" width="5" height="14" fill="#15161b"/><rect x="1" y="-14" width="5" height="14" fill="#15161b"/>
-  <rect x="-7" y="-2" width="6" height="3" fill="#0a0a0a"/><rect x="1" y="-2" width="6" height="3" fill="#0a0a0a"/>
-  <rect x="-8" y="-31" width="16" height="18" fill="#f4f1ea"/>{[-6,-2,2,6].map(v=><rect key={v} x={v-1} y="-31" width="2" height="18" fill="#15161b"/>)}
-  <rect x="-12" y="-30" width="4" height="12" fill="#f4f1ea"/>{whistle?<><rect x="8" y="-46" width="4" height="16" fill="#f4f1ea"/><rect x="8" y="-50" width="4" height="4" fill="#d6aa7b"/></>:<rect x="8" y="-30" width="4" height="12" fill="#f4f1ea"/>}
-  <rect x="-12" y="-19" width="4" height="4" fill="#d6aa7b"/>{!whistle&&<rect x="8" y="-19" width="4" height="4" fill="#d6aa7b"/>}
-  {number!=null&&<><rect x="-4" y="-27" width="8" height="6" fill="#f4f1ea"/><text x="0" y="-22" textAnchor="middle" transform={facing<0?'scale(-1,1)':undefined} fontFamily="monospace" fontSize="6" fontWeight="bold" fill="#15161b">{number}</text></>}
-  {whistle&&<rect x="-1" y="-35" width="3" height="2" fill="#c9ced8"/>}
-  <rect x="-5" y="-42" width="10" height="11" fill="#d6aa7b"/><rect x="-5" y="-43" width="10" height="3" fill="#3b2a1c"/>
-  <rect x="-3" y="-38" width="2" height="2" fill="#1a1410"/><rect x="2" y="-38" width="2" height="2" fill="#1a1410"/>
+  <RefereeFigure number={number} whistle={whistle}/>
+  {number!=null&&<><rect x="-3" y="-21" width="7" height="6" fill="#f4f6fa"/><text x="0.5" y="-16.2" textAnchor="middle" transform={facing<0?'scale(-1,1)':undefined} fontFamily="monospace" fontSize="5.5" fontWeight="bold" fill="#12151c">{number}</text></>}
  </g>;
 }
 /** Courtside board with the community link (it opens Discord in a new tab). */
@@ -196,6 +188,17 @@ const Arena=memo(function Arena({home,away,identity,awayKit,id,hype,homeBench,aw
     <rect width="24" height="24" fill="#4b5058"/>
     {[[2,3],[9,14],[17,6],[21,19],[5,20],[13,9]].map(([x,y])=><rect key={`${x}-${y}`} x={x} y={y} width="2" height="2" fill={(x+y)%3?'#5b6069':'#3c4047'}/>)}
    </pattern>
+   {/* The Trophy Road floors. */}
+   <pattern id={`${id}-cherry`} width="120" height="10" patternUnits="userSpaceOnUse" shapeRendering="crispEdges"><rect width="120" height="10" fill="#9a4a2e"/><rect y="5" width="120" height="5" fill="#8c4229"/><path d="M0 0H120M0 5H120" stroke="#5a2414" strokeOpacity=".6"/><path d="M30 0V5M90 0V5M10 5V10M64 5V10" stroke="#5a2414" strokeOpacity=".5"/></pattern>
+   <pattern id={`${id}-sand`} width="24" height="24" patternUnits="userSpaceOnUse" shapeRendering="crispEdges"><rect width="24" height="24" fill="#e2c88f"/>{[[3,4],[11,15],[18,7],[20,20],[6,19],[14,10]].map(([x,y])=><rect key={`${x}-${y}`} x={x} y={y} width="2" height="2" fill={(x+y)%3?'#d1b277':'#efdcad'}/>)}</pattern>
+   <pattern id={`${id}-retro`} width="40" height="40" patternUnits="userSpaceOnUse" shapeRendering="crispEdges"><rect width="40" height="40" fill="#c8732b"/><rect width="20" height="20" fill="#7a4520"/><rect x="20" y="20" width="20" height="20" fill="#7a4520"/></pattern>
+   <pattern id={`${id}-herringbone`} width="32" height="32" patternUnits="userSpaceOnUse" shapeRendering="crispEdges"><rect width="32" height="32" fill="#c98e57"/>{[0,8,16,24].map(k=><g key={k}><path d={`M${k} 0L${k+8} 8L${k} 16L${k+8} 24L${k} 32`} stroke="#8a5530" strokeOpacity=".7" fill="none"/></g>)}<path d="M0 8H32M0 24H32" stroke="#e0aa72" strokeOpacity=".35"/></pattern>
+   <pattern id={`${id}-ebony`} width="120" height="10" patternUnits="userSpaceOnUse" shapeRendering="crispEdges"><rect width="120" height="10" fill="#1d1612"/><rect y="5" width="120" height="5" fill="#241b16"/><path d="M0 0H120M0 5H120" stroke="#c9971f" strokeOpacity=".55"/><path d="M40 0V5M100 0V5M18 5V10M72 5V10" stroke="#c9971f" strokeOpacity=".4"/></pattern>
+   <pattern id={`${id}-ice`} width="48" height="48" patternUnits="userSpaceOnUse" shapeRendering="crispEdges"><rect width="48" height="48" fill="#cfeeff"/><rect width="24" height="24" fill="#d9f3ff"/><rect x="24" y="24" width="24" height="24" fill="#d9f3ff"/><path d="M4 30L14 22L20 26M30 6L36 14L44 10" stroke="#ffffff" strokeOpacity=".9" fill="none"/></pattern>
+   <pattern id={`${id}-neon`} width="40" height="40" patternUnits="userSpaceOnUse" shapeRendering="crispEdges"><rect width="40" height="40" fill="#120c24"/><path d="M0 0H40M0 0V40" stroke="#3ef2ff" strokeOpacity=".55"/><rect x="0" y="0" width="2" height="2" fill="#ff4fd8"/></pattern>
+   <pattern id={`${id}-lava`} width="60" height="60" patternUnits="userSpaceOnUse" shapeRendering="crispEdges"><rect width="60" height="60" fill="#2a1a16"/><path d="M0 20L14 26L22 18L36 28L60 22M10 60L18 44L30 50L44 40L52 48" stroke="#ff6b2d" strokeWidth="2" fill="none"/><path d="M14 26L22 18M30 50L44 40" stroke="#ffd166" strokeWidth="1" fill="none"/></pattern>
+   <pattern id={`${id}-gold`} width="120" height="10" patternUnits="userSpaceOnUse" shapeRendering="crispEdges"><rect width="120" height="10" fill="#e8b84a"/><rect y="5" width="120" height="5" fill="#d9a83a"/><path d="M0 0H120M0 5H120" stroke="#9a7212" strokeOpacity=".55"/><path d="M44 2H80M12 7H40" stroke="#fff3c4" strokeOpacity=".7"/></pattern>
+   <pattern id={`${id}-galaxy`} width="80" height="80" patternUnits="userSpaceOnUse" shapeRendering="crispEdges"><rect width="80" height="80" fill="#160d33"/><rect x="0" y="0" width="80" height="80" fill="#3b1d82" opacity=".25"/>{[[8,12,'#ffffff'],[40,30,'#ff7ad9'],[66,8,'#6fd3ff'],[20,58,'#ffffff'],[58,62,'#ffd166'],[34,74,'#ffffff']].map(([x,y,c])=><rect key={`${x}-${y}`} x={x as number} y={y as number} width="2" height="2" fill={c as string}/>)}</pattern>
    <pattern id={`${id}-grain`} width="144" height="40" patternUnits="userSpaceOnUse" shapeRendering="crispEdges">
     <path d="M6 3H29M38 8H62M81 2H102M112 13H139M9 22H37M44 31H67M78 27H119M126 36H142M13 37H31M62 18H84" stroke="#6f4527" strokeWidth=".5" strokeOpacity=".22"/>
     <path d="M7 4H24M40 9H66M81 3H107M9 23H42M78 28H112M64 19H87" stroke="#fff0ca" strokeWidth=".5" strokeOpacity=".3"/>
@@ -227,7 +230,7 @@ const Arena=memo(function Arena({home,away,identity,awayKit,id,hype,homeBench,aw
   {rivalry&&<rect data-testid="rivalry-trim" x="47" y="72" width="906" height="476" fill="none" stroke={awayKit.secondary} strokeWidth="6" strokeDasharray="18 18" opacity=".9"/>}
   <rect x="58" y="81" width="884" height="458" fill="#0b1018"/>
   <rect x="62" y="85" width="876" height="450" fill={`url(#${id}-${style})`}/>
-  {style!=='asphalt'&&<rect x="62" y="85" width="876" height="450" fill={`url(#${id}-grain)`} pointerEvents="none"/>}
+  {['planks','parquet','blonde','midnight','cherry','herringbone','ebony','gold'].includes(style)&&<rect x="62" y="85" width="876" height="450" fill={`url(#${id}-grain)`} pointerEvents="none"/>}
   <path d={`M62 ${LANE.top}H${62+LANE.depth}V${LANE.bottom}H62ZM938 ${LANE.top}H${938-LANE.depth}V${LANE.bottom}H938Z`} fill={paint}/>
   {[62+LANE.depth,938-LANE.depth].map((x,i)=><path key={i} d={`M${x} ${310-FT_R}A${FT_R} ${FT_R} 0 0 ${i?0:1} ${x} ${310+FT_R}Z`} fill={identity.secondary} opacity=".85"/>)}
   <circle cx="500" cy="310" r="56" fill={identity.secondary} opacity=".35"/>

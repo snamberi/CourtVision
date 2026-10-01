@@ -19,7 +19,8 @@ import { InstallAppButton } from './InstallAppButton';
 import { WhatsNew } from './WhatsNew';
 import { ThemeWelcome, needsThemeChoice } from './ThemePicker';
 import { WeeklyBoardDialog } from './WeeklyBoard';
-import { cloudEnabled } from '../cloud/account';
+import { cloudEnabled, useAccount } from '../cloud/account';
+import { WelcomeSignIn, needsSignInWelcome } from './cloud/WelcomeSignIn';
 import { AccountButton } from './cloud/AccountButton';
 import { ProfileChip } from './ProfilePanel';
 import { totalXp, levelFor, takeLevelUp, unlocksBetween } from '../profile/profile';
@@ -146,6 +147,10 @@ function SavedLeaguesList({ saves, onContinue, onDeleteSave, onRenameSave }: Pic
 export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSave, busy = null, onLocker, onCode, onCommunity, onProfile, onSettings }: Props) {
   // First visit: pick a look before anything else; What's New waits until it is picked.
   const [pickLook, setPickLook] = useState(needsThemeChoice);
+  // Then (accounts on, signed out, first time): sign in, or carry on without an account.
+  const account = useAccount();
+  const [askSignIn, setAskSignIn] = useState(true);
+  const showSignIn = askSignIn && needsSignInWelcome(account.status);
   const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
   const [scenario, setScenario] = useState(SCENARIOS[0].id);
   const [rebuildRecords] = useState(() => loadRebuildRecords());
@@ -290,7 +295,7 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
       <LevelUpNote onProfile={onProfile ?? onLocker} />
       <TrophyUnlock onProfile={onProfile ?? onLocker} />
       <ConsentBanner />
-      {pickLook ? <ThemeWelcome onDone={() => setPickLook(false)} /> : <WhatsNew />}
+      {pickLook ? <ThemeWelcome onDone={() => setPickLook(false)} /> : showSignIn ? <WelcomeSignIn onDone={() => setAskSignIn(false)} /> : <WhatsNew />}
     </div>
   );
 }
