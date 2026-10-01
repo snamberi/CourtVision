@@ -66,7 +66,7 @@ const MODES: { id: GameMode; title: string; blurb: string; kicker: string; icon:
     blurb: 'Start from real NBA history — real players, careers, awards and champions up to any season from 1946 — or build a league from your own CSV data.',
   },
   {
-    id: 'legends', kicker: '03 / REIMAGINE', icon: 'trophy', time: '15-30 min a run', tags: ['Roguelike', 'Spins', 'Ranked'],
+    id: 'legends', kicker: '03 / REIMAGINE', icon: 'trophy', time: '15-30 min a run', tags: ['Roguelike', 'Spins', 'Ranked'], badge: 'popular',
     title: 'League Hunt',
     blurb: 'Spin a six-man squad and a coach from all of history, then win ten best-of-seven series against the great teams of every era. A semi-boss, a boss, three boosts.',
   },
@@ -81,7 +81,7 @@ const MODES: { id: GameMode; title: string; blurb: string; kicker: string; icon:
     blurb: 'Take over a real team at its lowest point in NBA history (the Bulls after Jordan, the 7-59 Bobcats) and win a title before the clock runs out. Scored, starred and ranked.',
   },
   {
-    id: 'career', kicker: '06 / BECOME', icon: 'star', time: '5-15 min', tags: ['Single player', 'Story', 'Spins'],
+    id: 'career', kicker: '06 / BECOME', icon: 'star', time: '5-15 min', tags: ['Single player', 'Story', 'Spins'], badge: 'fun',
     title: 'Career Mode',
     blurb: 'Create one player (spin the wheel of NBA history or build him yourself) and live his whole career in today\'s league: draft night, training, free agency, awards, the Hall of Fame and the all-time Top 100.',
   },
