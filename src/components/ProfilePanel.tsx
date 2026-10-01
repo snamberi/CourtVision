@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { xpParts, totalXp, levelFor, equipped, equip, rankTitles, localName, setLocalName, unlockOpen, FRAMES, FLOORS, TITLES, PROFILE_EVENT, type Unlock } from '../profile/profile';
+import { xpParts, totalXp, levelFor, equipped, equip, rankTitles, localName, setLocalName, unlockOpen, listedFor, FRAMES, FLOORS, TITLES, PROFILE_EVENT, type Unlock } from '../profile/profile';
 import { OWNER_TITLE } from '../profile/ownerAccess';
 import { ALBUM_TITLES, ICONS, NAME_COLORS, HONORS, MODE_TITLES, SUPPORTER_TITLE, unlockContext, isOpen, earnedExtraTitles, type UnlockContext } from '../profile/cosmetics';
 import { DAILY_EVENT } from '../profile/dailyGoals';
@@ -53,7 +53,7 @@ function Picker<T extends string>({ label, list, level, trophies = 0, value, onP
 
 /** Supporter cosmetics are listed only while the pass is on sale (or already owned). */
 const showSupporter = (c: UnlockContext) => c.supporter || passesOnSale();
-const listed = <T extends { rule: object }>(list: T[], c: UnlockContext) => list.filter(x => !('supporter' in x.rule) || showSupporter(c));
+const listed = <T extends { rule: object }>(list: T[], c: UnlockContext) => list.filter(x => (!('supporter' in x.rule) || showSupporter(c)) && (!('staff' in x.rule) || !!c.staff));
 
 /** Every title and where it comes from: levels, ranked seasons, leaderboards and the modes. */
 function titleGroups(c: UnlockContext) {
@@ -95,7 +95,7 @@ export function ProfilePanel() {
     </div>
 
     <div className="profile-picker"><h3 className="hunt-subhead">Profile picture frame</h3>
-      <div className="avf-picks" role="radiogroup" aria-label="Profile picture frame">{AVATAR_FRAMES.map(f => { const open = avatarFrameOpen(f, ctx); return <button key={f.id} role="radio" aria-checked={eq.avatarFrame === f.id} disabled={!open} title={f.blurb}
+      <div className="avf-picks" role="radiogroup" aria-label="Profile picture frame">{AVATAR_FRAMES.filter(f => !f.staff || ctx.staff).map(f => { const open = avatarFrameOpen(f, ctx); return <button key={f.id} role="radio" aria-checked={eq.avatarFrame === f.id} disabled={!open} title={f.blurb}
         className={`avf-pick ${eq.avatarFrame === f.id ? 'selected' : ''} ${open ? '' : 'locked'}`} onClick={() => equip({ avatarFrame: f.id })}>
         <MyFramedAvatar frame={f.id} size={76} title={f.name} /><b>{f.name}</b><small>{open ? 'Unlocked' : avatarFrameHow(f)}</small></button>; })}</div></div>
 
@@ -112,7 +112,7 @@ export function ProfilePanel() {
         <i className={c.anim ? `anim-${c.anim}` : undefined} style={{ background: c.css, backgroundSize: c.anim ? '200% 100%' : undefined }} aria-hidden="true" /><b>{c.name}</b><small>{open ? 'Unlocked' : c.how}</small></button>; })}</div></div>
 
     <div className="profile-picker"><h3 className="hunt-subhead">Title colour <small>{ctx.trophies.toLocaleString()} trophies</small></h3>
-      <div className="profile-colors" role="radiogroup" aria-label="Title colour">{TITLE_COLORS.map(c => { const open = titleColorOpen(c, ctx); return <button key={c.id} role="radio" aria-checked={eq.titleColor === c.id} disabled={!open}
+      <div className="profile-colors" role="radiogroup" aria-label="Title colour">{TITLE_COLORS.filter(c => !c.staff || ctx.staff).map(c => { const open = titleColorOpen(c, ctx); return <button key={c.id} role="radio" aria-checked={eq.titleColor === c.id} disabled={!open}
         className={`profile-color-pick ${eq.titleColor === c.id ? 'selected' : ''} ${open ? '' : 'locked'}`} onClick={() => equip({ titleColor: c.id })}>
         <NameTag name="" icon={null} title={c.name} titleColor={c.id} /><small>{open ? 'Unlocked' : c.ownerLegacy != null ? `Owner legacy ${c.ownerLegacy}` : `${(trophyNeed('titleColor', c.id) ?? 0).toLocaleString()} trophies`}</small></button>; })}</div></div>
 
@@ -125,7 +125,7 @@ export function ProfilePanel() {
 
     <table className="db-table profile-xp"><tbody>{p.parts.map(x => <tr key={x.id}><td className="col-name">{x.label}</td><td className="col-name">{x.detail}</td><td>{x.xp.toLocaleString()} XP</td></tr>)}</tbody></table>
     <p className="hint-text">XP comes from everything you finish: GM seasons, wins, titles and achievements (official leagues), careers, hunts, rebuilds, weekly challenges and daily goals. Icons, colours and titles are earned only by playing: levels, ranked seasons, achievements and leaderboard finishes (leaderboard titles arrive when you sync).</p>
-    <Picker label="Share-card frame" list={FRAMES} level={p.level} trophies={ctx.trophies} value={eq.frame} onPick={v => equip({ frame: v })} preview={id => <ShareFramePreview frame={id} />} />
-    <Picker label="Court floor (Watch Game)" list={FLOORS} level={p.level} trophies={ctx.trophies} value={eq.floor} onPick={v => equip({ floor: v })} preview={id => <CourtFloorPreview floor={id} />} />
+    <Picker label="Share-card frame" list={listedFor(FRAMES)} level={p.level} trophies={ctx.trophies} value={eq.frame} onPick={v => equip({ frame: v })} preview={id => <ShareFramePreview frame={id} />} />
+    <Picker label="Court floor (Watch Game)" list={listedFor(FLOORS)} level={p.level} trophies={ctx.trophies} value={eq.floor} onPick={v => equip({ floor: v })} preview={id => <CourtFloorPreview floor={id} />} />
   </section>;
 }

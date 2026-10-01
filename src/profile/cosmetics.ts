@@ -25,7 +25,7 @@ function albumCounts(read: Read): { sets: number; legendary: number } {
  */
 
 export type RewardKind = 'icon' | 'color' | 'title' | 'frame' | 'floor' | 'look' | 'avatar' | 'avatarFrame';
-export type Rule = { level: number } | { rank: number } | { honor: string } | { mode: string } | { anyHonor: true } | { supporter: true } | { trophies: number } | { album: 'sets' | 'legendary'; n: number } | { owner: number };
+export type Rule = { level: number } | { rank: number } | { honor: string } | { mode: string } | { anyHonor: true } | { supporter: true } | { trophies: number } | { album: 'sets' | 'legendary'; n: number } | { owner: number } | { staff: true };
 /** Animated cosmetics (the Trophy Road): see features.css `.anim-*` and `.icon-anim-*`. */
 export type IconAnim = 'flicker' | 'shine' | 'spin' | 'twinkle' | 'flash' | 'glow' | 'bob';
 export type ColorAnim = 'flow' | 'shimmer' | 'pulse';
@@ -118,6 +118,11 @@ export const roadLevel = (kind: RewardKind, id: string) => LEVEL_ROAD.find(([, k
 const byRoad = (kind: RewardKind, id: string, fallback = 1): Rule => ({ level: roadLevel(kind, id) ?? fallback });
 const levelHow = (r: Rule) => ('level' in r ? (r.level <= 1 ? 'Everyone' : `Level ${r.level}`) : '');
 
+/** Game Owner only items (see ownerAccess.ts): open for the owner's account, hidden from everyone else. */
+export const STAFF: Rule = { staff: true };
+export const OWNER_ONLY = 'Game Owner only';
+export const isStaffItem = (x: { rule: Rule }) => 'staff' in x.rule;
+
 const TIERS = ['bronze', 'silver', 'gold', 'platinum', 'diamond', 'legend'];
 
 // ---------------------------------------------------------------- icons
@@ -176,6 +181,8 @@ export const ICONS: IconDef[] = [
   { id: 'card-holo', name: 'Holo card', base: 'card', anim: 'shine' as IconAnim, rule: { album: 'sets', n: 3 } as Rule, how: albumHow({ album: 'sets', n: 3 }) },
   // The Owner's Box.
   { id: 'skybox', name: 'Skybox', base: 'skybox', anim: 'glow' as IconAnim, rule: { owner: OWNER_REWARD.skybox } as Rule, how: ownerHow({ owner: OWNER_REWARD.skybox }) },
+  // The game owner's (hidden from everyone else).
+  { id: 'sovereign', name: 'Sovereign crown', base: 'sovereign', recolor: { o: '#6fd3ff', O: '#1f4fd9', b: '#9fe7ff' }, anim: 'flicker' as IconAnim, fx: 'blue' as const, rule: STAFF, how: OWNER_ONLY },
   { id: 'card-legend', name: 'Legendary card', base: 'card', recolor: { b: '#ffd166', B: '#c9971f' }, anim: 'glow' as IconAnim, rule: { album: 'legendary', n: 10 } as Rule, how: albumHow({ album: 'legendary', n: 10 }) },
 ];
 export type IconId = string;
@@ -212,6 +219,7 @@ export const NAME_COLORS: (Cosmetic & { css: string; anim?: ColorAnim })[] = [
   animated('dsheen', 'Diamond sheen', 'linear-gradient(90deg, #6db8ff, #ffffff, #bfe6ff, #ffffff, #6db8ff)', 'shimmer'),
   animated('sunset', 'Sunset', 'linear-gradient(90deg, #ff5f6d, #ffc371, #ff8fc8, #ffc371, #ff5f6d)', 'flow'),
   animated('phantom', 'Phantom', 'linear-gradient(90deg, #5b6b82, #ffffff, #b8a8ff, #ffffff, #5b6b82)', 'pulse'),
+  { id: 'sovereign', name: 'Sovereign blue fire', css: 'linear-gradient(90deg, #1f4fd9, #6fd3ff, #ffffff, #ffd166, #ffffff, #6fd3ff, #1f4fd9)', anim: 'flow' as ColorAnim, rule: STAFF, how: OWNER_ONLY },
   animated('solar', 'Solar flare', 'linear-gradient(90deg, #ff3d1f, #ffe066, #ffffff, #ffe066, #ff3d1f)', 'flow'),
   animated('nebula', 'Nebula', 'linear-gradient(90deg, #3b1d82, #ff4dd2, #4fd6d6, #b983ff, #3b1d82)', 'flow'),
   animated('celestial', 'Celestial', 'linear-gradient(90deg, #ffd166, #ffffff, #8fa8ff, #ffffff, #ffd166)', 'shimmer'),
@@ -283,6 +291,7 @@ export function unlockContext(level: number, read: Read = localRead): UnlockCont
 }
 export function isOpen(rule: Rule, c: UnlockContext): boolean {
   if (c.staff) return true;
+  if ('staff' in rule) return false;
   if ('level' in rule) return c.level >= rule.level;
   if ('rank' in rule) return c.rank >= rule.rank;
   if ('mode' in rule) return c.modes.includes(rule.mode);
@@ -353,6 +362,7 @@ export const SPRITES: Record<string, string[]> = {
   meteor: ['o.........', '.oo.......', '..ooo.....', '...ookkk..', '....kgggk.', '...kgwgGGk', '...kggGGGk', '...kgGGGGk', '....kGGGk.', '.....kkk..'],
   goat: ['k.......k.', 'kk.....kk.', '.kwkkkkwk.', '.kwwwwwwk.', 'kwkwwwwkwk', '.kwwwwwwk.', '..kwwwwk..', '..kwkkwk..', '...kwwk...', '...kssk...'],
   goatcrown: ['.g.g..g.g.', '.gggggggg.', '.kGGGGGGk.', '.kwkkkkwk.', '.kwwwwwwk.', 'kwkwwwwkwk', '.kwwwwwwk.', '..kwwwwk..', '..kwkkwk..', '...kssk...'],
+  sovereign: ['.o..oo..o.', 'oOo.oO.oOo', 'kgk.gg.kgk', 'kgkggggkGk', 'kggwgggGGk', 'kgbgggbgGk', 'kggggggGGk', 'kGGGGGGGGk', 'kkkkkkkkkk', '.o.oOOo.o.'],
   skybox: ['kkkkkkkkkk', 'kggggggggk', 'kgbwgbwgGk', 'kgbbgbbgGk', 'kggggggggk', 'kkkkkkkkkk', '.kdddddddk', '.kdwdwdwdk', '.kdddddddk', '.kkkkkkkk.'],
   card: ['.kkkkkkkk.', 'kbbbbbbbbk', 'kbwwwwwwBk', 'kbwoowwwBk', 'kbwoowwwBk', 'kbwwwwwwBk', 'kbwkkkkwBk', 'kbwwwwwwBk', 'kBBBBBBBBk', '.kkkkkkkk.'],
   heart: ['..........', '.kkk..kkk.', 'krrrkkrrrk', 'krwrrrrrrk', 'krrrrrrrrk', '.krrrrrrk.', '..krrrrk..', '...krrk...', '....kk....', '..........'],

@@ -23,6 +23,8 @@ export const AVATAR_EVENT = 'courtvision:avatar';
 export const RAINBOW = ['#ff4d4d', '#ff9d3d', '#ffd166', '#6fdc93', '#4fd6d6', '#6db8ff', '#b983ff', '#ff6fd8'];
 
 const FREE: Rule = { level: 1 };
+/** Game Owner only (see ownerAccess.ts): hidden from everyone else. */
+const OWNER: Rule = { staff: true };
 const lv = (level: number): Rule => ({ level });
 /** Trophy Road stops for the character (see TROPHY_ROAD in trophyRoad.ts: the two lists are kept in step by a test). */
 export const AVATAR_TROPHY_ROAD: [number, AvatarCategory, string][] = [
@@ -72,6 +74,7 @@ export const SKINS: AvatarItem[] = [
   item('skin', 'blue', 'Blue', FREE, { hex: '#4a86e8' }), item('skin', 'gold', 'Solid gold', FREE, { hex: '#f2c230' }),
   item('skin', 'rainbow', 'Rainbow', FREE, { hex: 'rainbow' }),
   item('skin', 'diamond', 'Diamond', FREE, { hex: '#bfe9ff' }),
+  item('skin', 'abyss', 'Abyss blue', OWNER, { hex: '#1a2a78' }),
 ];
 
 export const HAIR_COLORS: AvatarItem[] = [
@@ -83,6 +86,7 @@ export const HAIR_COLORS: AvatarItem[] = [
   item('hairColor', 'cyan', 'Cyan', lv(70), { hex: '#2fd6e6' }), item('hairColor', 'super', 'Super gold', lv(90), { hex: '#ffe14d' }),
   item('hairColor', 'silver', 'Silver', lv(110), { hex: '#c9d1dc' }), item('hairColor', 'rainbow', 'Rainbow', FREE, { hex: 'rainbow' }),
   item('hairColor', 'superBlue', 'Super blue', FREE, { hex: '#3fc8ff' }), item('hairColor', 'ember', 'Ember', FREE, { hex: '#ff5a1f' }), item('hairColor', 'platinumGlow', 'Platinum glow', FREE, { hex: '#fff4c9' }),
+  item('hairColor', 'blueFire', 'Blue fire', OWNER, { hex: '#3fa9ff' }),
 ];
 
 // ---------------------------------------------------------------- hair and beards
@@ -95,12 +99,14 @@ const HAIR_LEVELS: Record<string, number> = { wildSpikes: 30, longStraight: 20, 
 export const HAIRS: AvatarItem[] = [
   ...HAIR_STYLES.map(id => item('hair', id, LABEL(id))),
   ...NEW_HAIR.map(id => item('hair', id, HAIR_NAMES[id] ?? LABEL(id), lv(HAIR_LEVELS[id] ?? 1))),
+  item('hair', 'sovereignFlame', 'Sovereign flame', OWNER),
 ];
 export const NEW_BEARDS = ['wizard', 'viking', 'handlebar', 'sideburns', 'flameBeard'] as const;
 const BEARD_LEVELS: Record<string, number> = { wizard: 120, viking: 95, handlebar: 35, sideburns: 18, flameBeard: 140 };
 export const BEARDS: AvatarItem[] = [
   ...BEARD_STYLES.map(id => item('beard', id, id === 'none' ? 'Clean shaven' : LABEL(id))),
   ...NEW_BEARDS.map(id => item('beard', id, id === 'flameBeard' ? 'Flame beard' : id === 'wizard' ? 'Wizard beard' : id === 'viking' ? 'Viking braids' : LABEL(id), lv(BEARD_LEVELS[id]))),
+  item('beard', 'stardust', 'Stardust', OWNER),
 ];
 
 // ---------------------------------------------------------------- outfits (50)
@@ -147,6 +153,8 @@ export const OUTFITS: Outfit[] = [
   fit('demonHunter', 'Demon hunter uniform', 'demonHunter', '#161a24', '#f4f6fa'), fit('webHero', 'Web hero suit', 'webHero', '#d0202e', '#1f4fa0'),
   fit('soulReaper', 'Soul reaper robe', 'soulReaper', '#14161c', '#f4f6fa'), fit('capedHero', 'One-punch hero suit', 'capedHero', '#ffd84a', '#e8322e', lv(120)),
   fit('sorcerer', 'Sorcerer school uniform', 'sorcerer', '#1c2440', '#ffd166', lv(180)), fit('airNomad', 'Air monk robes', 'airNomad', '#f2b632', '#e8742a', lv(75)),
+  // The game owner's.
+  fit('sovereign', 'Sovereign robe', 'royal', '#0e1a5a', '#6fd3ff', OWNER),
 ];
 
 // ---------------------------------------------------------------- headwear, eyewear, neck and back, shoes, aura
@@ -157,6 +165,7 @@ export const HATS: AvatarItem[] = [
   item('hat', 'none', 'Nothing'),
   ...HAT_STYLES.map(id => item('hat', id, LABEL(id))),
   ...NEW_HATS.map(id => item('hat', id, ({ ninjaBand: 'Ninja headband', strawHat: 'Straw hat', foxMask: 'Fox spirit mask', guardMask: 'Guard mask' } as Record<string, string>)[id] ?? LABEL(id), lv(HAT_LEVELS[id] ?? 1))),
+  item('hat', 'blueCrown', "Sovereign's blue crown", OWNER),
 ];
 export const EYES: AvatarItem[] = [
   item('eyes', 'none', 'Nothing'), item('eyes', 'glasses', 'Glasses'), item('eyes', 'shades', 'Shades'),
@@ -164,6 +173,7 @@ export const EYES: AvatarItem[] = [
   item('eyes', 'monocle', 'Monocle', lv(52)), item('eyes', 'eyepatch', 'Eye patch', lv(68)), item('eyes', 'skiGoggles', 'Ski goggles', lv(88)),
   item('eyes', 'cyberVisor', 'Cyber visor', lv(160)), item('eyes', 'scouter', 'Power scouter'), item('eyes', 'glowRed', 'Crimson eyes'), item('eyes', 'sparkle', 'Sparkle eyes'),
   item('eyes', 'starEyes', 'Idol star eyes'), item('eyes', 'sharingan', 'Spinning red eyes'), item('eyes', 'blindfold', 'Sorcerer blindfold'),
+  item('eyes', 'voidFace', 'Faceless void', OWNER),
 ];
 export const NECKS: AvatarItem[] = [
   item('neck', 'none', 'Nothing'), item('neck', 'goldChain', 'Gold chain'), item('neck', 'headphones', 'Headphones'),
@@ -172,12 +182,14 @@ export const NECKS: AvatarItem[] = [
   item('neck', 'capeBlack', 'Black cape', lv(115)), item('neck', 'scarf', 'Hero scarf'), item('neck', 'angelWings', 'Angel wings'),
   item('neck', 'batWings', 'Bat wings'), item('neck', 'jetpack', 'Jetpack'),
   item('neck', 'weightedCape', 'Weighted cape'), item('neck', 'tail', 'Warrior tail'), item('neck', 'capeGold', 'Gold cape'), item('neck', 'katana', 'Katana'),
+  item('neck', 'blackWings', 'Black angel wings', OWNER),
 ];
 export const SHOES: AvatarItem[] = [
   item('shoes', 'team', 'Match the outfit'), item('shoes', 'white', 'White', FREE, { hex: '#f4f6fa' }), item('shoes', 'black', 'Black', FREE, { hex: '#1a1f2a' }),
   item('shoes', 'red', 'Red', FREE, { hex: '#d33a3a' }), item('shoes', 'blue', 'Blue', FREE, { hex: '#3f7bd9' }), item('shoes', 'green', 'Green', lv(16), { hex: '#3fae5f' }),
   item('shoes', 'gold', 'Gold', lv(90), { hex: '#ffd166' }), item('shoes', 'neon', 'Neon', lv(62), { hex: '#7dff5a' }), item('shoes', 'boots', 'Boots', lv(34)),
   item('shoes', 'sandals', 'Wooden sandals', lv(48)), item('shoes', 'heroBoots', 'Hero boots', lv(135)), item('shoes', 'rocket', 'Rocket boots'), item('shoes', 'warriorBoots', 'Warrior boots'),
+  item('shoes', 'cosmicBoots', 'Blue fire boots', OWNER),
 ];
 export const AURAS: AvatarItem[] = [
   item('aura', 'none', 'Nothing'), item('aura', 'sparkles', 'Sparkles', lv(32)), item('aura', 'hearts', 'Hearts', lv(64)), item('aura', 'ice', 'Frost', lv(96)),
@@ -185,6 +197,7 @@ export const AURAS: AvatarItem[] = [
   item('aura', 'shadow', 'Shadow'), item('aura', 'cosmic', 'Cosmic'), item('aura', 'rainbow', 'Rainbow'), item('aura', 'superWarrior', 'Super warrior aura'), item('aura', 'storm', 'Storm'),
   item('aura', 'sakura', 'Cherry blossoms'), item('aura', 'cursed', 'Cursed energy'),
   item('aura', 'hunter', "Hunter's flames", { honor: 'hunt-week-10' }),
+  item('aura', 'cosmicFire', 'Cosmic blue fire', OWNER),
 ];
 
 export const AVATAR_CATEGORIES: { id: AvatarCategory; label: string; items: AvatarItem[] }[] = [
@@ -193,6 +206,11 @@ export const AVATAR_CATEGORIES: { id: AvatarCategory; label: string; items: Avat
   { id: 'eyes', label: 'Eyewear', items: EYES }, { id: 'neck', label: 'Neck & back', items: NECKS }, { id: 'shoes', label: 'Shoes', items: SHOES },
   { id: 'aura', label: 'Aura', items: AURAS },
 ];
+/** The game owner's character: abyss-blue skin, the sovereign flame hair, a blue crown, no face, black wings and cosmic blue fire. */
+export const SOVEREIGN_LOOK: AvatarLook = { skin: 'abyss', hair: 'sovereignFlame', hairColor: 'blueFire', beard: 'none', outfit: 'sovereign', hat: 'blueCrown', eyes: 'voidFace', neck: 'blackWings', shoes: 'cosmicBoots', aura: 'cosmicFire' };
+/** Owner-only pieces are listed only for the owner. */
+export const isOwnerPiece = (i: AvatarItem) => 'staff' in i.rule;
+
 export const avatarItem = (cat: AvatarCategory, id: string) => AVATAR_CATEGORIES.find(c => c.id === cat)!.items.find(i => i.id === id);
 export const outfitDef = (id: string) => OUTFITS.find(o => o.id === id) ?? OUTFITS[0];
 export const colorHex = (list: AvatarItem[], id: string) => (list.find(i => i.id === id) ?? list[0]).hex!;
@@ -249,5 +267,6 @@ export function avatarHow(i: AvatarItem): string {
   if ('level' in r) return r.level <= 1 ? 'Everyone' : `Level ${r.level}`;
   if ('trophies' in r) return `${r.trophies.toLocaleString()} trophies`;
   if ('honor' in r && r.honor === 'hunt-week-10') return 'Top 10% of a Weekly Hunt';
+  if ('staff' in r) return 'Game Owner only';
   return 'Special';
 }

@@ -91,6 +91,21 @@ function art(id: AvatarFrameId): { under?: ReactNode; over: ReactNode } {
         <text x={C} y={91} textAnchor="middle" fontSize="9" fontWeight="900" fill="#3a2a06" fontFamily="'Press Start 2P', monospace">98-0</text>
       </> };
     }
+    case 'sovereign': {
+      // Game owner: black angel wings, a ring of blue fire, a sapphire-and-gold king's crown.
+      const tongues = Array.from({ length: 22 }, (_, i) => { const a = i * (360 / 22), h = i % 2 ? 8 : 13; return <polygon key={i} points={pts([polar(a - 7, R + 1), polar(a, R + h), polar(a + 7, R + 1)])} fill={i % 3 === 0 ? '#ffffff' : i % 3 === 1 ? '#6fd3ff' : '#1f4fd9'} />; });
+      return { under: <><g className="avf-glow"><circle cx={C} cy={C} r={R + 12} fill="#04081f" opacity=".9" />
+          <Wing side={-1} light="#2a2f3f" dark="#0b0e16" n={8} reach={27} /><Wing side={1} light="#2a2f3f" dark="#0b0e16" n={8} reach={27} /></g>
+        <g className="avf-flicker">{tongues}</g></>, over: <>
+        <Ring color="#1f4fd9" width={5} /><Ring color="#9fe7ff" width={1.2} r={R + 4.5} /><Ring color="#ffd166" width={1} r={R - 1} />
+        {[30, 150, 210, 330].map(a => { const [x, y] = polar(a, R + 2); return <Gem key={a} x={x} y={y} c="#6fd3ff" />; })}
+        <path d={`M${C - 15} 17l-3-13l9 7l9-10l9 10l9-7l-3 13z`} fill="#ffd166" stroke="#0b1018" strokeWidth="1.2" />
+        <path d={`M${C - 12} 15l-1.5-7l6 4.5l7.5-8l7.5 8l6-4.5l-1.5 7z`} fill="#4da3ff" opacity=".85" />
+        <Gem x={C} y={8} c="#ffffff" s={2.4} /><Gem x={C - 8} y={12} c="#6fd3ff" s={1.8} /><Gem x={C + 8} y={12} c="#6fd3ff" s={1.8} />
+        <rect x={C - 10} y={84} width={20} height={11} rx={2} fill="#0a1f6a" stroke="#ffd166" strokeWidth="1.2" />
+        <text x={C} y={92.5} textAnchor="middle" fontSize="7" fontWeight="900" fill="#9fe7ff" fontFamily="'Press Start 2P', monospace">GM</text>
+      </> };
+    }
     default: return { over: <Ring color="#2a3546" width={2.5} /> };
   }
 }

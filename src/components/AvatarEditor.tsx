@@ -1,5 +1,5 @@
 import { useState, type CSSProperties } from 'react';
-import { AVATAR_CATEGORIES, saveAvatar, randomAvatar, avatarHow, avatarItem, outfitDef, type AvatarCategory, type AvatarItem, type AvatarLook } from '../profile/avatar';
+import { AVATAR_CATEGORIES, SOVEREIGN_LOOK, isOwnerPiece, saveAvatar, randomAvatar, avatarHow, avatarItem, outfitDef, type AvatarCategory, type AvatarItem, type AvatarLook } from '../profile/avatar';
 import { unlockContext, isOpen } from '../profile/cosmetics';
 import { totalXp, levelFor } from '../profile/profile';
 import { readAvatarPresets, writeAvatarPresets } from '../profile/avatarPresets';
@@ -35,11 +35,13 @@ export function AvatarEditor() {
   const [jerseyAsk, setJerseyAsk] = useState(false);
   const ctx = unlockContext(levelFor(totalXp()).level);
   const open = (i: AvatarItem) => isOpen(i.rule, ctx);
+  // Game Owner pieces show only for the owner's account.
+  const visible = (items: AvatarItem[]) => (ctx.staff ? items : items.filter(i => !isOwnerPiece(i)));
   const category = AVATAR_CATEGORIES.find(c => c.id === cat)!;
-  const openCount = (items: AvatarItem[]) => items.filter(open).length;
+  const openCount = (items: AvatarItem[]) => visible(items).filter(open).length;
   const allOpen = AVATAR_CATEGORIES.reduce((n, c) => n + openCount(c.items), 0);
-  const all = AVATAR_CATEGORIES.reduce((n, c) => n + c.items.length, 0);
-  const shown = category.items.filter(i => (!query.trim() || i.name.toLowerCase().includes(query.trim().toLowerCase())) && (filter === 'all' || (filter === 'open' ? open(i) : !open(i))));
+  const all = AVATAR_CATEGORIES.reduce((n, c) => n + visible(c.items).length, 0);
+  const shown = visible(category.items).filter(i => (!query.trim() || i.name.toLowerCase().includes(query.trim().toLowerCase())) && (filter === 'all' || (filter === 'open' ? open(i) : !open(i))));
   const display = preview ? { ...look, [preview.cat]: preview.item.id } : look;
   const commit = (next: AvatarLook, message: string) => {
     setPreview(null);
@@ -82,6 +84,7 @@ export function AvatarEditor() {
         </div>
         {preview && <div className="studio-tryon" role="status"><PixelIcon name="lock" size={16} /><span>Unlock at {avatarHow(preview.item).toLowerCase()}.</span><button type="button" onClick={() => setPreview(null)}>Close preview</button></div>}
         <div className="studio-actions"><button type="button" className="primary" onClick={() => commit(randomAvatar(Math.random, (_c, i) => open(i)), 'New look equipped.')}><PixelIcon name="shuffle" size={16} /> Shuffle look</button>
+          {ctx.staff && <button type="button" className="studio-sovereign" onClick={() => commit({ ...SOVEREIGN_LOOK }, 'The Sovereign: blue crown, black wings, cosmic blue fire.')}><PixelIcon name="star" size={16} /> Wear the Sovereign</button>}
           <button type="button" disabled={!history.length} onClick={() => { const last = history.at(-1); if (last) { saveAvatar(last); setHistory(h => h.slice(0, -1)); setPreview(null); setStatus('Last change undone.'); } }}>Undo</button></div>
         <div className="studio-equipped"><span className="studio-label">ON YOUR CHARACTER</span><div>{(['outfit', 'hair', 'hat', 'shoes', 'aura'] as AvatarCategory[]).map(c => <button type="button" key={c} onClick={() => changeCategory(c)}><PixelIcon name={ICONS[c]} size={14} /><span>{avatarItem(c, look[c])?.name}</span></button>)}</div></div>
         <div className="studio-save-looks"><div className="studio-section-title"><h3>Saved looks</h3><small>3 slots</small></div>
@@ -92,7 +95,7 @@ export function AvatarEditor() {
         </div>
       </aside>
       <div className="studio-browser">
-        <div className="studio-categories" role="group" aria-label="Character categories">{AVATAR_CATEGORIES.map(c => <button type="button" key={c.id} aria-pressed={cat === c.id} onClick={() => changeCategory(c.id)}><PixelIcon name={ICONS[c.id]} size={17} /><span>{c.label}</span><small>{openCount(c.items)}/{c.items.length}</small></button>)}</div>
+        <div className="studio-categories" role="group" aria-label="Character categories">{AVATAR_CATEGORIES.map(c => <button type="button" key={c.id} aria-pressed={cat === c.id} onClick={() => changeCategory(c.id)}><PixelIcon name={ICONS[c.id]} size={17} /><span>{c.label}</span><small>{openCount(c.items)}/{visible(c.items).length}</small></button>)}</div>
         <div className="studio-section-title studio-category-heading"><div><h3>{category.label}</h3><p>{DESCRIPTIONS[cat]}</p></div><button type="button" onClick={shuffleCategory} aria-label={`Shuffle ${category.label}`} title={`Shuffle unlocked ${category.label.toLowerCase()}`}><PixelIcon name="shuffle" size={18} /></button></div>
         <div className="studio-toolbar"><label className="studio-search"><PixelIcon name="search" size={16} /><input type="search" value={query} placeholder={`Search ${category.label.toLowerCase()}…`} aria-label={`Search ${category.label.toLowerCase()}`} onChange={e => setQuery(e.target.value)} /></label>
           <select aria-label="Filter pieces" value={filter} onChange={e => setFilter(e.target.value)}><option value="all">All pieces</option><option value="open">Unlocked</option><option value="locked">Locked</option></select></div>

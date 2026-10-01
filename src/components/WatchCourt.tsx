@@ -196,6 +196,14 @@ export function FloorPatterns({id}:{id:string}){
    <pattern id={`${id}-lava`} width="60" height="60" patternUnits="userSpaceOnUse" shapeRendering="crispEdges"><rect width="60" height="60" fill="#2a1a16"/><path d="M0 20L14 26L22 18L36 28L60 22M10 60L18 44L30 50L44 40L52 48" stroke="#ff6b2d" strokeWidth="2" fill="none"/><path d="M14 26L22 18M30 50L44 40" stroke="#ffd166" strokeWidth="1" fill="none"/></pattern>
    <pattern id={`${id}-gold`} width="120" height="10" patternUnits="userSpaceOnUse" shapeRendering="crispEdges"><rect width="120" height="10" fill="#e8b84a"/><rect y="5" width="120" height="5" fill="#d9a83a"/><path d="M0 0H120M0 5H120" stroke="#9a7212" strokeOpacity=".55"/><path d="M44 2H80M12 7H40" stroke="#fff3c4" strokeOpacity=".7"/></pattern>
    <pattern id={`${id}-galaxy`} width="80" height="80" patternUnits="userSpaceOnUse" shapeRendering="crispEdges"><rect width="80" height="80" fill="#160d33"/><rect x="0" y="0" width="80" height="80" fill="#3b1d82" opacity=".25"/>{[[8,12,'#ffffff'],[40,30,'#ff7ad9'],[66,8,'#6fd3ff'],[20,58,'#ffffff'],[58,62,'#ffd166'],[34,74,'#ffffff']].map(([x,y,c])=><rect key={`${x}-${y}`} x={x as number} y={y as number} width="2" height="2" fill={c as string}/>)}</pattern>
+   {/* The game owner's: a starfield laced with blue fire and gold crowns. */}
+   <pattern id={`${id}-celestial`} width="120" height="120" patternUnits="userSpaceOnUse" shapeRendering="crispEdges">
+    <rect width="120" height="120" fill="#060b2a"/><rect width="120" height="120" fill="#1f4fd9" opacity=".18"/>
+    <path d="M0 96L10 88L18 94L30 80L40 90L52 76L62 88L74 74L86 86L98 72L108 84L120 78" stroke="#4da3ff" strokeWidth="3" fill="none" opacity=".75"/>
+    <path d="M0 102L12 96L22 100L34 90L46 98L58 86L70 96L82 84L94 94L106 82L120 90" stroke="#9fe7ff" strokeWidth="1.5" fill="none" opacity=".8"/>
+    {[[8,10,'#ffffff'],[34,22,'#9fe7ff'],[70,8,'#ffffff'],[96,30,'#b8a8ff'],[18,52,'#ffffff'],[54,44,'#6fd3ff'],[88,58,'#ffffff'],[110,12,'#9fe7ff']].map(([x,y,c])=><rect key={`${x}-${y}`} x={x as number} y={y as number} width="2" height="2" fill={c as string}/>)}
+    <path d="M52 30H64L66 24L61 27L58 21L55 27L50 24Z" fill="#ffd166" opacity=".55"/>
+   </pattern>
  </>;
 }
 const Arena=memo(function Arena({home,away,identity,awayKit,id,hype,homeBench,awayBench,fill=1,loud=0,mascot=0,rivalry=false,building}:{home:Team;away:Team;identity:TeamIdentity;awayKit:TeamIdentity;id:string;hype:number;homeBench:PlayerSeason[];awayBench:PlayerSeason[];fill?:number;loud?:number;mascot?:number;rivalry?:boolean;building?:{name:string;suites:number}}){
