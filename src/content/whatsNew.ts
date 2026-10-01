@@ -15,6 +15,8 @@ export const RELEASES: Release[] = [
       "**The Weekly Hunt:** one hunt for everyone all week, as many tries as you like. The top 10% when the week ends win the Weekly Hunter title and the hunter's flame aura.",
       "**Season Pass (free) and daily streak:** every XP you earn this month fills a 30-tier pass of trophies and titles; come back each day to build a streak.",
       "**Previews:** see any court floor and share-card frame before you equip it (click a locked one to try it).",
+      "**League Hunt is easier and simpler to start:** a new home with big mode tiles and a two-step \"Build your hunt\" (deck, then difficulty). Good, Great and Star cards now come up 7 points more often, and every player on your squad plays **+3** above his card.",
+      "**Watch Game looks like a real broadcast:** a close camera follows the ball, the offense spreads the floor, defenders stay on their man with a hand up, the dribble is quick and low, and players walk over to pick up loose balls and go get rebounds.",
       "**TikTok clips and more sound:** make a vertical 9:16 highlight clip with a caption; slams now shake the arena with a dunk sound, and threes get a crowd pop.",
     ],
   },

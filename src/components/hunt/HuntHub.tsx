@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import type { NbaHistory } from '../../history/nbaHistoryData';
 import { cardPool, seasonLabel, RARITY_LABEL, type HuntCard } from '../../hunt/cards';
 import { ERAS, eraOf } from '../../hunt/eras';
-import { DECKS, DIFFICULTIES, SQUAD_SIZE, SERIES_COUNT, ENEMY_EDGE, MAX_BOOSTS, type DeckId, type Difficulty, type NewRunOptions } from '../../hunt/run';
+import { DECKS, DIFFICULTIES, SQUAD_SIZE, SERIES_COUNT, ENEMY_EDGE, SQUAD_EDGE, MAX_BOOSTS, type DeckId, type Difficulty, type NewRunOptions } from '../../hunt/run';
+import { PixelIcon } from '../PixelIcon';
 import { MAX_ITEMS } from '../../hunt/items';
 import { DECK_IDS, DIFFICULTY_IDS, deckUnlocked, difficultyUnlocked, loadAlbum, todayUtc, dailySeed, weeklyHunt, type HuntRecords } from '../../hunt/storage';
 import { weekKey } from '../../retention/week';
@@ -13,43 +14,60 @@ import { LegendChallenges } from './LegendChallenges';
 
 type HubTab = 'hunt' | 'weekly' | 'daily' | 'legend' | 'album' | 'dream';
 
-/** The League Hunt home: start a hunt (deck and difficulty), the Daily Legend, the album and Dream Matchup. */
+/** The League Hunt home: big tiles for each mode, then the chosen one in a centred panel. */
 export function HuntHub({ h, records, onStart }: { h: NbaHistory; records: HuntRecords; onStart: (seed: number, opts: NewRunOptions) => void }) {
   const [tab, setTab] = useState<HubTab>('hunt');
-  return <section className="hunt-hub">
-    <div className="stats-view-toggle hunt-hub-tabs" role="tablist" aria-label="League Hunt">
-      {([['hunt', 'New Hunt'], ['weekly', 'Weekly Hunt'], ['daily', 'Daily Legend'], ['legend', 'Legend Challenges'], ['album', 'Album'], ['dream', 'Dream Matchup']] as const).map(([id, label]) =>
-        <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}>{label}</button>)}
+  const today = todayUtc(), week = weekKey();
+  const weekBest = records.weekly?.[week], dayDone = records.daily?.[today];
+  const tiles: { id: HubTab; icon: string; name: string; sub: string; badge?: string }[] = [
+    { id: 'hunt', icon: 'play', name: 'New Hunt', sub: 'Spin a squad, beat ten teams', badge: records.runs ? `${records.wins} won` : undefined },
+    { id: 'weekly', icon: 'trophy', name: 'Weekly Hunt', sub: 'One hunt for everyone, all week', badge: weekBest ? (weekBest.won ? 'Beaten' : `Best: series ${weekBest.stop + 1}`) : 'New' },
+    { id: 'daily', icon: 'calendar', name: 'Daily Legend', sub: 'One try a day', badge: dayDone ? 'Done today' : 'Ready' },
+    { id: 'legend', icon: 'crown', name: 'Legend Challenges', sub: 'Famous teams, special rules' },
+    { id: 'album', icon: 'list', name: 'Album', sub: 'Every card you have owned' },
+    { id: 'dream', icon: 'court', name: 'Dream Matchup', sub: 'Any two teams in history' },
+  ];
+  return <section className="hunt-hub hunt-hub-centered">
+    <nav className="hunt-modes" aria-label="League Hunt modes">{tiles.map(t => <button key={t.id} className={`hunt-mode-tile ${tab === t.id ? 'on' : ''}`} aria-pressed={tab === t.id} onClick={() => setTab(t.id)}>
+      <span className="hunt-mode-icon"><PixelIcon name={t.icon} size={22} /></span><b>{t.name}</b><small>{t.sub}</small>{t.badge && <em>{t.badge}</em>}</button>)}</nav>
+    <div className="hunt-hub-panel">
+      {tab === 'hunt' ? <NewHunt records={records} onStart={opts => onStart(Math.floor(Math.random() * 1_000_000_000), opts)} />
+        : tab === 'weekly' ? <Weekly records={records} onStart={(seed, opts) => onStart(seed, opts)} />
+        : tab === 'daily' ? <Daily records={records} onStart={(seed, opts) => onStart(seed, opts)} />
+        : tab === 'legend' ? <LegendChallenges h={h} />
+        : tab === 'album' ? <Album h={h} />
+        : <DreamMatchup h={h} />}
     </div>
-    {tab === 'hunt' ? <NewHunt records={records} onStart={opts => onStart(Math.floor(Math.random() * 1_000_000_000), opts)} />
-      : tab === 'weekly' ? <Weekly records={records} onStart={(seed, opts) => onStart(seed, opts)} />
-      : tab === 'daily' ? <Daily records={records} onStart={(seed, opts) => onStart(seed, opts)} />
-      : tab === 'legend' ? <LegendChallenges h={h} />
-      : tab === 'album' ? <Album h={h} />
-      : <DreamMatchup h={h} />}
   </section>;
 }
 
+/** Build a hunt in two picks (deck, difficulty) and start: the rules wait behind "How a hunt works". */
 function NewHunt({ records, onStart }: { records: HuntRecords; onStart: (opts: NewRunOptions) => void }) {
   const [deck, setDeck] = useState<DeckId>('classic');
   const [difficulty, setDifficulty] = useState<Difficulty>('pro');
-  return <div className="hunt-intro">
-    <p className="hunt-lede">Spin a {SQUAD_SIZE}-man squad and a coach from all of NBA history, then win ten best-of-seven series against real teams, each under the rules of its era. Series 5 is a semi-boss; series 10 is the boss, an all-time great. Every team you face plays {ENEMY_EDGE} above its rating: it is meant to be hard.</p>
-    <ul className="hunt-rules">
-      <li><b>The slot machine.</b> All seven slots (PG, SG, SF, PF, C, sixth man and coach) spin at once. Hit <b>STOP</b>, lock one, and the rest spin again, until everyone is locked. The reels are <b>blind</b>: you see the player, his season and team, but not his rating until you lock him. Every round is a little poorer than the last, and one early round lands a Star, another a Great. Your locks earn a draft grade.</li>
-      <li><b>Cards are player-seasons.</b> 1996 Jordan and 2003 Jordan are different cards. Ratings are ranked within each season, so every era is fair.</li>
-      <li><b>Team rating, 0-100.</b> 60 is a bad team, 70 about 40 wins, 80 about 45, 90 a 55-62 win team, 100 a 68-win all-time great.</li>
-      <li><b>Boosts, two kinds.</b> Pick a boost after a series win ({MAX_BOOSTS} per hunt). Separately, a shop comes before series 1, 3, 5, 7 and 9: players, coaches, training and shop boosts ({MAX_ITEMS} per hunt; lives only on Rookie). The team's focus is chosen once, at training camp, and can't be changed.</li>
-      <li><b>Era rules and chemistry.</b> No three-point line before 1979-80, hand-checking in the 90s. Real teammates, franchises and famous rivals play better together.</li>
-    </ul>
-    <h3 className="hunt-subhead">Starting deck</h3>
-    <div className="hunt-choices">{DECK_IDS.map(id => { const d = DECKS[id], open = deckUnlocked(records, id); return <button key={id} className={`hunt-choice ${deck === id ? 'on' : ''}`} disabled={!open} aria-pressed={deck === id} onClick={() => setDeck(id)}>
-      <b>{d.name}</b><span>{open ? d.blurb : `Locked: ${d.unlock}`}</span></button>; })}</div>
-    <h3 className="hunt-subhead">Difficulty</h3>
-    <div className="hunt-choices">{DIFFICULTY_IDS.map(id => { const d = DIFFICULTIES[id], open = difficultyUnlocked(records, id); return <button key={id} className={`hunt-choice ${difficulty === id ? 'on' : ''}`} disabled={!open} aria-pressed={difficulty === id} onClick={() => setDifficulty(id)}>
-      <b>{d.name}</b><span>{open ? d.blurb : `Locked: ${d.unlock}`}</span></button>; })}</div>
-    <button className="primary hunt-start" onClick={() => onStart({ deck, difficulty })}>Start a new hunt</button>
-    {records.runs > 0 && <p className="hint-text">Your hunts: {records.runs} · won {records.wins} · furthest series {records.bestStop + 1} of {SERIES_COUNT}</p>}
+  const d = DECKS[deck], diff = DIFFICULTIES[difficulty];
+  return <div className="hunt-builder">
+    <div className="hunt-builder-head"><span className="pixel-eyebrow">NEW HUNT</span><h2>Build your hunt</h2>
+      <p>Spin a {SQUAD_SIZE}-man squad and a coach from all of NBA history, then win ten best-of-seven series. Series 5 is a semi-boss, series 10 the boss.</p></div>
+    <div className="hunt-step"><span className="hunt-step-n">1</span><h3>Starting deck</h3>
+      <div className="hunt-pills" role="radiogroup" aria-label="Starting deck">{DECK_IDS.map(id => { const open = deckUnlocked(records, id); return <button key={id} role="radio" aria-checked={deck === id} className={`hunt-pill ${deck === id ? 'on' : ''}`} disabled={!open} title={open ? DECKS[id].blurb : `Locked: ${DECKS[id].unlock}`} onClick={() => setDeck(id)}>
+        {!open && <PixelIcon name="lock" size={12} />} {DECKS[id].name}</button>; })}</div>
+      <p className="hunt-step-note">{d.blurb}</p></div>
+    <div className="hunt-step"><span className="hunt-step-n">2</span><h3>Difficulty</h3>
+      <div className="hunt-pills" role="radiogroup" aria-label="Difficulty">{DIFFICULTY_IDS.map(id => { const open = difficultyUnlocked(records, id); return <button key={id} role="radio" aria-checked={difficulty === id} className={`hunt-pill ${difficulty === id ? 'on' : ''}`} disabled={!open} title={open ? DIFFICULTIES[id].blurb : `Locked: ${DIFFICULTIES[id].unlock}`} onClick={() => setDifficulty(id)}>
+        {!open && <PixelIcon name="lock" size={12} />} {DIFFICULTIES[id].name}</button>; })}</div>
+      <p className="hunt-step-note">{diff.blurb}</p></div>
+    <div className="hunt-summary"><span><b>{d.name}</b> deck</span><span><b>{diff.name}</b></span><span><b>{diff.lives}</b> lives</span><span>Boss rated <b>{diff.bossRating}</b></span></div>
+    <button className="primary hunt-start hunt-start-big" onClick={() => onStart({ deck, difficulty })}><PixelIcon name="play" size={20} /> Start the hunt</button>
+    {records.runs > 0 && <div className="hunt-over-stats hunt-builder-stats"><div><small>HUNTS</small><b>{records.runs}</b></div><div><small>WON</small><b>{records.wins}</b></div><div><small>FURTHEST</small><b>{records.bestStop + 1}/{SERIES_COUNT}</b></div></div>}
+    <details className="hunt-how"><summary>How a hunt works</summary>
+      <ul className="hunt-rules">
+        <li><b>The slot machine.</b> All seven slots (PG, SG, SF, PF, C, sixth man and coach) spin at once. Hit <b>STOP</b>, lock one, and the rest spin again, until everyone is locked. Ratings stay hidden until you lock.</li>
+        <li><b>Cards are player-seasons.</b> 1996 Jordan and 2003 Jordan are different cards, ranked within their season so every era is fair.</li>
+        <li><b>Team rating, 0-100.</b> 70 is about 40 wins, 90 a 55-62 win team, 100 a 68-win all-time great. Your players play +{SQUAD_EDGE} above their cards; every team you face plays {ENEMY_EDGE} above its rating.</li>
+        <li><b>Boosts and the shop.</b> Pick a boost after a series win ({MAX_BOOSTS} per hunt). The shop sells players, coaches, training and shop boosts ({MAX_ITEMS} per hunt).</li>
+        <li><b>Era rules and chemistry.</b> No three-point line before 1979-80, hand-checking in the 90s. Real teammates and rivals play better together.</li>
+      </ul></details>
   </div>;
 }
 

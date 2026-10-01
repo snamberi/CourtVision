@@ -226,6 +226,8 @@ export function newRun(h: NbaHistory, seed: number, opts: NewRunOptions = {}): H
 
 /** Every team you face plays this much above the rating of its series. */
 export const ENEMY_EDGE = 5;
+/** Every player on your squad plays this much above his card in every game (the hunt was too hard without it). */
+export const SQUAD_EDGE = 3;
 
 // ---------------------------------------------------------------- the spins
 
@@ -233,7 +235,8 @@ const fitsSlot = (c: HuntCard, s: SpinKind) => s === '6TH' || c.pos === s || (c.
 
 /** Rarity odds for spin `i`: every spin is a little poorer than the one before. */
 export function spinWeights(i: number): Record<Rarity, number> {
-  const legendary = Math.max(0.2, 1.5 - 0.2 * i), epic = Math.max(1.5, 6 - 0.8 * i), rare = Math.max(10, 20 - 1.8 * i);
+  // Seven points more on the good cards than before (Star +1, Great +2, Good +4), every round.
+  const legendary = Math.max(0.2, 1.5 - 0.2 * i) + 1, epic = Math.max(1.5, 6 - 0.8 * i) + 2, rare = Math.max(10, 20 - 1.8 * i) + 4;
   return { legendary, epic, rare, common: Math.max(10, 100 - legendary - epic - rare) };
 }
 
@@ -404,6 +407,7 @@ export function gameBonuses(h: NbaHistory, run: HuntRun, era: HuntEra | undefine
     let fromBoosts = 0;
     const addBoost = (v: number, label: string) => { const room = Math.max(0, BOOST_CAP - fromBoosts), got = Math.min(v, room); fromBoosts += got; add(got, label); };
     const sixth = slot === 5, starter = slot < 5;
+    add(SQUAD_EDGE, 'hunt edge');
     add(chem.get(c.id) ?? 0, 'chemistry');
     add(coachAll, 'coach');
     if (coach?.franchises.includes(c.franchise) || coach?.franchises.includes(c.team)) add(1, 'coach\'s old team');

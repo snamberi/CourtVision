@@ -431,3 +431,39 @@ button.hunt-reel.frozen:hover, button.hunt-reel.frozen:focus-visible { transform
   .hunt-play-big { padding: 14px 30px; font-size: 24px; }
   .hunt-versus-bar { gap: 12px; }
 }
+
+/* ---------- The League Hunt home: mode tiles over a centred panel ---------- */
+.hunt-hub-centered { max-width: 1040px; margin: 0 auto; }
+.hunt-modes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.hunt-mode-tile { position: relative; display: grid; grid-template-columns: 44px 1fr; grid-template-rows: auto auto; column-gap: 10px; align-items: center; text-align: left; padding: 12px 14px; background: var(--c-bg-121926, #121926); border: 2px solid var(--c-border-2a3546, #2a3546); box-shadow: 3px 3px 0 var(--c-shadow-03070d, #03070d); color: inherit; font: inherit; cursor: pointer; transition: transform 120ms, border-color 120ms; }
+.hunt-mode-tile:hover { transform: translateY(-2px); border-color: var(--c-border-ff9d3d, #ff9d3d); }
+.hunt-mode-tile.on { border-color: var(--c-border-f47b20, #f47b20); background: var(--c-bg-1f2738, #1f2738); box-shadow: 0 0 0 2px var(--c-shadow-f47b20, #f47b20) inset, 3px 3px 0 var(--c-shadow-03070d, #03070d); }
+.hunt-mode-icon { grid-row: 1 / 3; display: grid; place-items: center; width: 44px; height: 44px; background: var(--c-bg-0b1018, #0b1018); color: var(--c-fg-f47b20, #f47b20); }
+.hunt-mode-tile b { font: 18px var(--ff-display, 'Oswald', sans-serif); letter-spacing: .02em; }
+.hunt-mode-tile small { font-size: 12px; color: var(--c-fg-94a0b2, #94a0b2); }
+.hunt-mode-tile em { position: absolute; top: 8px; right: 8px; font-style: normal; font-size: 10px; font-weight: 700; padding: 2px 6px; background: var(--c-bg-ffd166, #ffd166); color: var(--c-fg-140c02, #140c02); }
+.hunt-hub-panel { margin-top: 18px; display: grid; justify-items: center; }
+.hunt-hub-panel > * { width: 100%; max-width: 860px; }
+.hunt-hub-panel .hunt-intro { margin: 0 auto; text-align: center; }
+.hunt-hub-panel .hunt-intro .hunt-log { text-align: left; display: inline-grid; }
+.hunt-hub-panel .hunt-intro .hunt-over-stats { justify-content: center; }
+.hunt-hub-panel .hunt-start { margin: 8px auto; }
+
+.hunt-builder { display: grid; gap: 14px; justify-items: center; text-align: center; padding: 18px 20px 20px; background: var(--c-bg-121926, #121926); border: 2px solid var(--c-border-2a3546, #2a3546); box-shadow: 4px 4px 0 var(--c-shadow-03070d, #03070d); }
+.hunt-builder-head h2 { margin: 4px 0; font: 32px var(--ff-display, 'Oswald', sans-serif); }
+.hunt-builder-head p { margin: 0 auto; max-width: 620px; color: var(--c-fg-c9ced8, #c9ced8); }
+.hunt-step { display: grid; gap: 8px; justify-items: center; width: 100%; }
+.hunt-step h3 { margin: 0; font: 16px var(--ff-display, 'Oswald', sans-serif); letter-spacing: .08em; text-transform: uppercase; }
+.hunt-step-n { display: grid; place-items: center; width: 26px; height: 26px; background: var(--c-bg-f47b20, #f47b20); color: var(--c-fg-140c02, #140c02); font-weight: 900; }
+.hunt-pills { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.hunt-pill { display: inline-flex; align-items: center; gap: 4px; padding: 8px 16px; background: var(--c-bg-0b1018, #0b1018); border: 2px solid var(--c-border-2a3546, #2a3546); color: inherit; font: inherit; font-weight: 700; cursor: pointer; }
+.hunt-pill.on { border-color: var(--c-border-f47b20, #f47b20); background: var(--c-bg-2a1a0c, #2a1a0c); color: var(--c-fg-ffd166, #ffd166); }
+.hunt-pill:disabled { opacity: .45; cursor: not-allowed; }
+.hunt-step-note { margin: 0; max-width: 560px; font-size: 13px; color: var(--c-fg-94a0b2, #94a0b2); min-height: 2.4em; }
+.hunt-summary { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 18px; padding: 8px 14px; background: var(--c-bg-0b1018, #0b1018); font-size: 14px; }
+.hunt-summary b { color: var(--c-fg-ffd166, #ffd166); }
+.hunt-start-big { display: inline-flex; align-items: center; gap: 10px; padding: 14px 40px; font: 24px/1 var(--ff-display, 'Oswald', sans-serif); letter-spacing: .1em; text-transform: uppercase; box-shadow: 4px 4px 0 var(--c-shadow-03070d, #03070d); }
+.hunt-builder-stats { justify-content: center; }
+.hunt-how { width: 100%; text-align: left; border-top: 2px solid var(--c-border-2a3546, #2a3546); padding-top: 10px; }
+.hunt-how summary { cursor: pointer; font-weight: 700; text-align: center; }
+@media (max-width: 760px) { .hunt-modes { grid-template-columns: repeat(2, minmax(0, 1fr)); } .hunt-mode-tile small { display: none; } }
