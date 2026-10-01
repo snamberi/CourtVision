@@ -4,6 +4,7 @@ import type { GMLeagueExtras } from '../simulation/gm';
 import { ExpansionDraftBoard } from './ExpansionDraftBoard';
 import { calculateOverall } from '../simulation/engine/overall';
 import { PlayerAvatar } from './PlayerAvatar';
+import { defaultTeam } from '../profile/favorites';
 
 interface Props {
   league: League;
@@ -13,7 +14,8 @@ interface Props {
 
 export function ChooseTeamScreen({ league, extras, onConfirm }: Props) {
   const [mode, setMode] = useState<'pick' | 'create' | 'own'>('pick');
-  const [pickedTeamId, setPickedTeamId] = useState(league.teams[0]?.teamId ?? '');
+  // Your favourite team (Profile) is picked for you when it is in this league; any team can still be chosen.
+  const [pickedTeamId, setPickedTeamId] = useState(() => defaultTeam(league.teams.map(t => t.teamId)));
 
   const avgOverall = (teamId: string) => {
     const t = league.teams.find((x) => x.teamId === teamId);

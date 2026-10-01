@@ -1,12 +1,15 @@
 import type { PossessionLogEntry, PossessionPlayback } from './boxscore';
 import { playbackForEntry } from './gamePlayback';
+import type { AnimKind, Gait } from '../visuals/actionSprites';
 
 export interface CourtPoint { x:number; y:number }
 export interface CourtBall extends CourtPoint { z:number; spin:number }
-export type CourtPose='run'|'guard'|'shoot'|'reach'|'idle'|'dribble'|'celebrate'|'screen'|'rebound'|'pass';
-export type CourtAnimKind='jumper'|'layup'|'dunk'|'ft'|'pass'|'rebound'|'celebrate';
+export type CourtPose='run'|'guard'|'shoot'|'reach'|'idle'|'dribble'|'celebrate'|'screen'|'rebound'|'pass'|'boxout';
+export type CourtAnimKind=AnimKind;
+export type CourtGait=Gait;
 /** Presentation only: which animation a player is in and how far through it (0-1), and where he is in his run cycle. */
-export interface CourtActor extends CourtPoint { id:string; teamId:string; jump:number; stride:number; pose:CourtPose; facing:number; anim?:{kind:CourtAnimKind;t:number}; cycle?:number }
+export interface CourtActor extends CourtPoint { id:string; teamId:string; jump:number; stride:number; pose:CourtPose; facing:number; anim?:{kind:CourtAnimKind;t:number}; cycle?:number;
+ /** How he moves (walk, run, sprint, backpedal, defensive slide), from his speed and direction. */ gait?:CourtGait; /** Floor velocity, court px per second (presentation only). */ vx?:number; vy?:number }
 export interface CourtCallout { text:string; x:number; y:number; t:number; tone:'make'|'defense'|'neutral' }
 export interface CourtFrame {
  players:CourtActor[]; ball:CourtBall; phase:string; carrier?:string; hoop:CourtPoint; net:number; attackRight:boolean; shotAttempt?:number;
@@ -116,6 +119,20 @@ const sorted=(keys:Key[])=>keys.filter((k,i)=>i===0||k.t>keys[i-1].t);
 /** Court pixels a player covers per second at a sprint (about 21 ft/s; the court is ~9.3 px per foot). Curves
  * ease in and out, so the peak runs about half again faster. */
 const SPRINT=150;
+/** How a speed (court px per second) and direction look on the legs. */
+function gaitFor(speed:number,vx:number,vy:number,facing:number,defense:boolean):CourtGait|undefined{
+ if(speed<14)return undefined;
+ const lateral=Math.abs(vy)>Math.abs(vx)*1.2;
+ if(defense&&speed<95&&lateral)return 'slide';
+ if(speed<70&&vx*facing<-8)return 'backpedal';
+ return speed<52?'walk':speed<118?'run':'sprint';
+}
+/** Feet that match the floor: the run cycle advances with the distance covered (about 30 px a stride). */
+function strideCycle(keys:Key[],q:number,phase:number):number{
+ let d=0,prev=track(keys,0);
+ for(let k=1;k<=40;k++){const pt=track(keys,q*k/40);d+=Math.hypot(pt.x-prev.x,pt.y-prev.y);prev=pt;}
+ return d/30+phase;
+}
 /** Spaces keys so no leg asks for more than a sprint; later keys wait for the player to get there. */
 function paced(keys:Key[],pxPerQ:number):Key[] {
  const out=keys.map(k=>({...k}));
@@ -247,10 +264,16 @@ function baseFrame(entry:PossessionLogEntry,play:PossessionPlayback,progress:num
   tracks.set(id,paced(sorted(keys),pxPerQ));
  });
 
+ // The kind of shot, from the recorded type: lobs finished at the rim, step-backs, fadeaways, floaters, layups.
+ const shotKind:CourtAnimKind=dunk?(assisted&&salt%2===0?'alleyOop':'dunk'):type==='stepback'?'stepback':type==='fadeaway'?'fadeaway':(type==='close'||type==='hook'||type==='postShot')?'floater':close?'layup':'jumper';
+ const pumpFake=!assisted&&!drive&&shotKind==='jumper'&&salt%4===1;
+ /** The creator's dribble move to beat his man, from the possession's salt (none in transition). */
+ const move:CourtAnimKind|undefined=fast||onlyFT?undefined:(['crossover','behindBack',drive?'spin':'crossover','jab',undefined] as (CourtAnimKind|undefined)[])[(salt>>2)%5];
  const actors:CourtActor[]=offense.map((id,i)=>{
   const keys=tracks.get(id)!,isShooter=id===shooter;
   let loc=track(keys,q),pose:CourtPose='run';
   const moving=speedOn(keys,q)>60;
+  const ahead=track(keys,q+.004),behind=track(keys,q-.004),vx=(ahead.x-behind.x)/.008/pxPerQ*SPRINT,vy=(ahead.y-behind.y)/.008/pxPerQ*SPRINT;
   if(q>.55&&play.rebounderId===id&&!isShooter&&!ftActive)loc=courtLerp(loc,mirror({x:862,y:310+sign*46}),ease(window01(q,.55,.8)));
   if(ftActive&&!isShooter)loc=mirror(FT_OFF[offense.filter(v=>v!==shooter).indexOf(id)%FT_OFF.length]);
   if(turnover&&q>.8)loc=courtLerp(loc,mirror({x:600-i*28,y:180+i*62}),ease(window01(q,.8,1)));
@@ -266,9 +289,14 @@ function baseFrame(entry:PossessionLogEntry,play:PossessionPlayback,progress:num
   // The shot as an animation: gather, rise, release, follow-through and landing, by the kind of shot.
   const shotEnd=dunk?.84:.78;
   let anim:CourtActor['anim'];
+  const shooting=isShooter&&!!play.shooterId&&!onlyFT&&!ftActive&&!turnover;
   if(pose==='celebrate')anim={kind:'celebrate',t:window01(q,.84,1)};
-  else if(isShooter&&play.shooterId&&!onlyFT&&!ftActive&&!turnover&&q>=.47&&q<shotEnd+.08)anim={kind:dunk?'dunk':close?'layup':'jumper',t:window01(q,.47,shotEnd+.08)};
-  return {...loc,id,teamId:entry.offenseTeamId,jump,stride:moving?Math.sin(q*58+i):0,pose,facing:toward,cycle:(q*58+i)/(Math.PI*2),...(anim?{anim}:{})};
+  else if(shooting&&q>=.47&&q<shotEnd+.08)anim={kind:shotKind,t:window01(q,.47,shotEnd+.08)};
+  // A pump fake before a one-on-one jumper; landing and recovering after a miss.
+  else if(shooting&&pumpFake&&q>=.415&&q<.47){anim={kind:'pumpFake',t:window01(q,.415,.47)};pose='idle';}
+  else if(shooting&&!play.shotMade&&q>=shotEnd+.08&&q<shotEnd+.17)anim={kind:'land',t:window01(q,shotEnd+.08,shotEnd+.17)};
+  const facing=moving&&Math.abs(vx)>20&&!anim?Math.sign(vx):toward;
+  return {...loc,id,teamId:entry.offenseTeamId,jump,stride:moving?Math.sin(q*58+i):0,pose,facing,cycle:moving?strideCycle(keys,q,i*.37):(q*20+i)/(Math.PI*2),gait:moving?gaitFor(Math.hypot(vx,vy),vx,vy,facing,false):undefined,vx,vy,...(anim?{anim}:{})};
  });
  const byId=(id:string|undefined)=>actors.find(a=>a.id===id);
  const hand=(id:string|undefined):CourtPoint=>{const a=byId(id)??mirror({x:720,y:310});return {x:a.x+(right?12:-12),y:a.y-3}};
@@ -286,6 +314,13 @@ function baseFrame(entry:PossessionLogEntry,play:PossessionPlayback,progress:num
 
  // ---- Defense: goal-side of the man, sagging into help away from the ball; sprinting back in transition ----
  const defStart=(id:string,i:number)=>startFor(id,i,false,{starts,mirror});
+ // The help defender on a drive: the one whose man is farthest from where the drive finishes.
+ const manOf=(i:number)=>actors[i%Math.max(1,actors.length)];
+ const farFromShot=(i:number)=>{const m=manOf(i);return m&&m.id!==shooter?Math.hypot(m.x-shot.x,m.y-shot.y):-1;};
+ const helper=drive?defense.reduce((best,id,i)=>farFromShot(i)>farFromShot(defense.indexOf(best))?id:best,defense[0]):undefined;
+ // A charge: the defender on the man who lost it took the hit.
+ const charge=turnover&&entry.events.some(e=>/Turnover: CHARGE/.test(e));
+ const chargeDrawer=charge?defense[Math.max(0,offense.indexOf(entry.ballHandlerId))%Math.max(1,defense.length)]:undefined;
  defense.forEach((id,i)=>{
   const attacker=actors[i%Math.max(1,actors.length)];
   let target:CourtPoint;
@@ -306,6 +341,8 @@ function baseFrame(entry:PossessionLogEntry,play:PossessionPlayback,progress:num
   // After a make the defense takes the ball out: one heads for the baseline, the rest start up the floor.
   if(play.shotMade&&!ftActive&&!onlyFT&&q>.86){const inb=i===0;target=courtLerp(target,inb?mirror({x:896,y:310-sign*50}):mirror({x:700-i*30,y:laneY[i%laneY.length]}),ease(window01(q,.86,1)));}
   if(ftActive)target=mirror(FT_DEF[i%FT_DEF.length]);
+  // Help on the drive: the weak-side defender rotates into the lane, then recovers.
+  if(drive&&!ftActive&&!turnover&&id===helper&&q>.48&&q<.62)target=courtLerp(target,mirror({x:842,y:310}),Math.sin(window01(q,.48,.62)*Math.PI)*.7);
   const start=defStart(id,i);
   // Sprint back: the time to get there grows with the distance.
   const backBy=limit(Math.hypot(target.x-start.x,target.y-start.y)/pxPerQ*1.5,.12,.5);
@@ -313,12 +350,35 @@ function baseFrame(entry:PossessionLogEntry,play:PossessionPlayback,progress:num
   const contest=(id===play.blockerId||attacker?.id===shooter)&&q>.56&&q<.8&&!ftActive&&!turnover;
   const chasing=turnover&&q>.62;
   const running=q<backBy&&Math.hypot(target.x-start.x,target.y-start.y)>40;
-  actors.push({...loc,id,teamId:offHome?awayId:homeId,jump:contest?Math.sin((q-.56)/.24*Math.PI)*(id===play.blockerId?25:12):0,stride:running||chasing?Math.sin(q*58+i)*.8:Math.sin(q*30+i)*.25,
-   pose:contest?'reach':chasing?(id===play.stealerId?'dribble':'run'):running?'run':ftActive?'idle':'guard',facing:-toward,cycle:(running||chasing?q*58+i:q*30+i)/(Math.PI*2)});
+  // Speed and direction from where he was a moment ago.
+  const before=courtLerp(start,target,ease(Math.max(0,q-.01)/backBy)),vx=(loc.x-before.x)/.01/pxPerQ*SPRINT,vy=(loc.y-before.y)/.01/pxPerQ*SPRINT;
+  let facing=-toward;
+  const gait:CourtGait|undefined=ftActive?undefined:gaitFor(Math.hypot(vx,vy),vx,vy,facing,true);
+  // Turn and run when it's far (a sprint back in transition); otherwise stay square to the ball and slide or backpedal.
+  if((gait==='run'||gait==='sprint')&&Math.abs(vx)>10)facing=Math.sign(vx);
+  let pose:CourtPose=contest?'reach':chasing?(id===play.stealerId?'dribble':'run'):gait&&gait!=='slide'?'run':running?'run':ftActive?'idle':'guard';
+  let anim:CourtActor['anim'];
+  if(contest&&id===play.blockerId)anim={kind:'block',t:window01(q,.56,.74)};
+  else if(contest)anim={kind:'contest',t:window01(q,.54,.72)};
+  if(id===play.stealerId&&q>=.44&&q<.56)anim={kind:'steal',t:window01(q,.44,.56)};
+  const missedShot=!!play.shooterId&&!play.shotMade&&!onlyFT&&!turnover;
+  if(missedShot&&q>.72&&q<.88&&attacker&&(attacker.id===screener||attacker.id===play.rebounderId)&&!ftActive&&id!==play.rebounderId)pose='boxout';
+  if(charge&&id===chargeDrawer&&q>=.5&&q<.82)anim={kind:'charge',t:window01(q,.5,.82)};
+  actors.push({...loc,id,teamId:offHome?awayId:homeId,jump:contest?Math.sin((q-.56)/.24*Math.PI)*(id===play.blockerId?25:12):0,stride:running||chasing||gait?Math.sin(q*58+i)*.8:Math.sin(q*30+i)*.25,
+   pose,facing,cycle:(running||chasing||gait?q*58+i:q*30+i)/(Math.PI*2),gait,vx,vy,...(anim?{anim}:{})});
  });
+ const entryPass=inbounder?{from:inbounder,t0:.04,t1:.1}:outletFrom?{from:outletFrom,t0:.02,t1:.07}:null;
+ // How each pass is thrown: bounce passes, overhead skip passes across the floor, chest passes.
+ const passLength=(ps:{from:string;to:string})=>{const a=tracks.get(ps.from),b=tracks.get(ps.to);if(!a||!b)return 0;const pa=track(a,T_ACT),pb=track(b,T_ACT);return Math.hypot(pa.x-pb.x,pa.y-pb.y);};
+ const passKind=(ps:{from:string;to:string;bounce:boolean}):CourtAnimKind=>ps.bounce?'bouncePass':passLength(ps)>300?'overheadPass':'chestPass';
  // Body language: the passer snaps the ball out with both hands; the rebounder goes up for it with both arms.
  if(!ftActive){
-  for(const ps of passes)if(q>=ps.t0-.01&&q<ps.t0+.035){const a=byId(ps.from);if(a&&a.pose!=='shoot'){a.pose='pass';a.anim={kind:'pass',t:limit((q-(ps.t0-.01))/.045)};}}
+  for(const ps of passes){
+   if(q>=ps.t0-.012&&q<ps.t0+.035){const a=byId(ps.from);if(a&&a.pose!=='shoot'){a.pose='pass';a.anim={kind:passKind(ps),t:limit((q-(ps.t0-.012))/.047)};}}
+   // The receiver shows a target and pulls it in.
+   if(q>=ps.t1-.02&&q<ps.t1+.03){const a=byId(ps.to);if(a&&a.pose!=='shoot'&&!a.anim)a.anim={kind:'catch',t:limit((q-(ps.t1-.02))/.05)};}
+  }
+  if(entryPass&&q>=entryPass.t0-.012&&q<entryPass.t0+.03){const a=byId(entryPass.from);if(a){a.pose='pass';a.anim={kind:'overheadPass',t:limit((q-(entryPass.t0-.012))/.042)};}}
   const board=play.rebounderId&&!play.shotMade&&!turnover?actors.find(a=>a.id===play.rebounderId):undefined;
   if(board&&q>=.84&&q<.99){board.pose='rebound';board.jump=Math.max(board.jump,Math.sin(window01(q,.84,.99)*Math.PI)*17);board.anim={kind:'rebound',t:window01(q,.84,.99)};}
  }
@@ -339,21 +399,33 @@ function baseFrame(entry:PossessionLogEntry,play:PossessionPlayback,progress:num
  };
  const held=(id:string|undefined):CourtBall=>({...hand(id),z:26,spin:0});
  let ball:CourtBall,phase=entry.secondChance?'Second chance':fast?'Push it':'Bring it up',carrier:string|undefined=bringer,net=0,shotAttempt:number|undefined,rim=0,callout:CourtCallout|undefined;
- // In-bound or outlet first.
- const entryPass=inbounder?{from:inbounder,t0:.04,t1:.1}:outletFrom?{from:outletFrom,t0:.02,t1:.07}:null;
+ // In-bound or outlet first (entryPass is set above).
  if(entryPass&&q<entryPass.t0){ball=held(entryPass.from);carrier=entryPass.from;phase=inbounder?'Inbound':'Outlet';}
- else if(entryPass&&q<entryPass.t1){ball=ballFlight(hand(entryPass.from),hand(bringer),(q-entryPass.t0)/(entryPass.t1-entryPass.t0),24,24,inbounder?.5:.7);carrier=undefined;phase=inbounder?'Inbound':'Outlet pass';}
+ else if(entryPass&&q<entryPass.t1){ball=ballFlight(hand(entryPass.from),hand(bringer),(q-entryPass.t0)/(entryPass.t1-entryPass.t0),40,26,inbounder?.6:.8);carrier=undefined;phase=inbounder?'Inbound':'Outlet pass';}
  else{
   const holder=holderAt(q),flying=passes.find(ps=>q>=ps.t0&&q<ps.t1);
   if(flying){
    const t=(q-flying.t0)/(flying.t1-flying.t0),from=hand(flying.from),to=hand(flying.to);
-   if(flying.bounce){const mid=courtLerp(from,to,.52);ball=t<.52?ballFlight(from,mid,t/.52,23,3,.35):ballFlight(mid,to,(t-.52)/.48,3,26,.32);}else ball=ballFlight(from,to,t,24,26,.55);
+   const kind=passKind(flying);
+   if(flying.bounce){const mid=courtLerp(from,to,.52);ball=t<.52?ballFlight(from,mid,t/.52,23,3,.35):ballFlight(mid,to,(t-.52)/.48,3,26,.32);}
+   else if(kind==='overheadPass')ball=ballFlight(from,to,t,40,28,.85);
+   else ball=ballFlight(from,to,t,25,26,.32);
    carrier=undefined;phase=flying.to===shooter&&flying.from===creator&&play.passerId?(flying.bounce?'Bounce pass':'Pass'):'Swing pass';
   }else{
    carrier=holder;
    // The man with the ball dribbles when he's moving or attacking; a catch on the perimeter is held in triple threat.
    const a=byId(holder),keys=tracks.get(holder),movingNow=keys?speedOn(keys,q)>40:false;
    ball=movingNow||(holder===creator&&q>=.38&&q<T_ACT)||(holder===shooter&&drive&&q>=.5)?dribbleHand(holder):held(holder);
+   // The creator's move: a crossover, behind the back, a spin on the drive, or a jab step (the ball follows his hands).
+   if(holder===creator&&move&&q>=.385&&q<.45&&a){
+    const t=window01(q,.385,.45),dir=right?1:-1;
+    a.anim={kind:move,t};if(a.pose==='run'||a.pose==='idle')a.pose='dribble';
+    if(move==='jab')ball=held(holder);
+    else{
+     const lateral=move==='spin'?Math.cos(t*Math.PI*2):1-2*ease(t),under=move==='behindBack'?-5*Math.sin(t*Math.PI):0;
+     ball={x:a.x+lateral*11+dir*4+(move==='spin'?Math.sin(t*Math.PI*2)*8*dir:0),y:a.y-2+lateral*3+under,z:3+16*Math.abs(Math.sin(t*Math.PI*2)),spin:q*1500};
+    }
+   }
    if(a&&q>=.36&&q<T_ACT&&SET_LABEL[set])phase=SET_LABEL[set]!;
    else if(q>=T_UP&&q<T_ACT)phase='Work the ball';
    if(q>=T_PASS-.02)phase=drive?'Drive & gather':'Set for the shot';
@@ -395,8 +467,12 @@ function baseFrame(entry:PossessionLogEntry,play:PossessionPlayback,progress:num
   ball=ballFlight(hand(loser),dest,limit((q-.5)/.12),23,play.stealerId?24:3,.45);phase=play.stealerId?'Steal':'Turnover';carrier=undefined;
   if(play.stealerId&&q>=.62){ball=dribbleHand(play.stealerId);carrier=play.stealerId;phase='Breakaway';}
   else if(!play.stealerId&&q>=.62){ball={...dest,z:0,spin:0};}
-  callout={text:play.stealerId?'STEAL!':'TURNOVER',x:dest.x,y:dest.y-58,t:window01(q,.5,.85),tone:play.stealerId?'defense':'neutral'};
+  callout={text:play.stealerId?'STEAL!':charge?'CHARGE!':'TURNOVER',x:dest.x,y:dest.y-58,t:window01(q,.5,.85),tone:play.stealerId||charge?'defense':'neutral'};
+  // A loose ball: the man who lost it dives on the floor after it.
+  if(!play.stealerId&&!charge&&salt%2===0&&q>=.52&&q<.78){const d=byId(loser);if(d){d.anim={kind:'dive',t:window01(q,.52,.78)};const pt=courtLerp(d,dest,ease(window01(q,.52,.66))*.6);d.x=pt.x;d.y=pt.y;d.facing=dest.x>d.x?1:-1;}}
  }
+ // Hit on the shot: sometimes the shooter goes down and gets back up.
+ if(entry.result==='FOUL'&&!ftActive&&salt%3===0&&q>=.53&&q<.72){const f=byId(shooter);if(f){f.anim={kind:'fall',t:window01(q,.53,.72)};f.jump=0;}}
  if(entry.result==='FOUL'&&!ftActive&&q>=T_PASS-.02){phase='Whistle';ball={...hand(shooter),z:26,spin:0};if(q>.5)callout={text:'FOUL',x:hand(shooter).x,y:hand(shooter).y-66,t:window01(q,.5,1),tone:'neutral'};}
  if(ftActive){
   const count=Math.max(1,ftCount),cycle=limit((p-mainShare)/(1-mainShare))*count,attempt=Math.min(count-1,Math.floor(cycle)),t=cycle-attempt;
@@ -407,7 +483,12 @@ function baseFrame(entry:PossessionLogEntry,play:PossessionPlayback,progress:num
    if(madeFt)callout={text:'+1',x:hoop.x,y:hoop.y-60,t:u,tone:'make'};}
  }
  // The ball carrier dribbles; everyone else faces the ball.
- for(const a of actors){if(a.id===carrier){if(a.pose==='run'||a.pose==='idle')a.pose=ball.z<20?'dribble':'idle';}else if(Math.abs(ball.x-a.x)>4)a.facing=ball.x>a.x?1:-1;}
+ for(const a of actors){
+  if(a.id===carrier){if(a.pose==='run'||a.pose==='idle')a.pose=ball.z<20?'dribble':'idle';}
+  // Off the ball: a man running looks where he's going; standing, sliding or backpedalling, he watches the ball.
+  else if((a.gait==='run'||a.gait==='sprint')&&a.vx!=null&&Math.abs(a.vx)>25&&!a.anim)a.facing=Math.sign(a.vx);
+  else if(Math.abs(ball.x-a.x)>4&&!(a.anim&&['dive','charge','fall'].includes(a.anim.kind)))a.facing=ball.x>a.x?1:-1;
+ }
  const passer=play.assistId??(shooter!==creator?creator:undefined);
  const duo=play.shotMade&&passer&&passer!==shooter?{key:passer<shooter?`${passer}|${shooter}`:`${shooter}|${passer}`,passer,shooter}:undefined;
  return {players:actors,ball,phase,carrier,hoop,net,attackRight:right,shotAttempt,offenseTeamId:entry.offenseTeamId,callout,rim,shotFrom,duo};

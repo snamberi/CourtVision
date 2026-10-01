@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { xpParts, totalXp, levelFor, equipped, equip, rankTitles, localName, setLocalName, FRAMES, FLOORS, TITLES, PROFILE_EVENT, type Unlock } from '../profile/profile';
+import { xpParts, totalXp, levelFor, equipped, equip, rankTitles, localName, setLocalName, unlockOpen, FRAMES, FLOORS, TITLES, PROFILE_EVENT, type Unlock } from '../profile/profile';
 import { ALBUM_TITLES, ICONS, NAME_COLORS, HONORS, MODE_TITLES, SUPPORTER_TITLE, unlockContext, isOpen, earnedExtraTitles, type UnlockContext } from '../profile/cosmetics';
 import { DAILY_EVENT } from '../profile/dailyGoals';
 import { LEGACY_EVENT } from '../storage/gmLegacy';
 import { PixelIcon } from './PixelIcon';
 import { ProfileIcon, NameTag } from './ProfileIcon';
+import { MyAvatar } from './UserAvatar';
 import { useAccount } from '../cloud/account';
 import { passesOnSale } from '../billing/billing';
 import { ThemeSection } from './ThemePicker';
@@ -28,15 +29,15 @@ export function ProfileChip({ onOpen }: { onOpen?: () => void }) {
   const p = useProfile();
   const eq = equipped(p.level);
   return <button className="profile-chip" onClick={onOpen} title={`${p.xp.toLocaleString()} XP · ${p.need ? `${p.need - p.into} to level ${p.level + 1}` : 'max level'}`}>
-    <ProfileIcon id={eq.icon} size={18} title="" /><b>LV {p.level}</b><NameTag name="" icon={null} title={eq.title} titleColor={eq.titleColor} className="profile-chip-title" /><i style={{ width: `${p.need ? p.into / p.need * 100 : 100}%` }} aria-hidden="true" />
+    <MyAvatar size={22} mode="portrait" animate={false} title="" /><b>LV {p.level}</b><NameTag name="" icon={null} title={eq.title} titleColor={eq.titleColor} className="profile-chip-title" /><i style={{ width: `${p.need ? p.into / p.need * 100 : 100}%` }} aria-hidden="true" />
   </button>;
 }
 
-function Picker<T extends string>({ label, list, level, value, onPick }: { label: string; list: Unlock<T>[]; level: number; value: string; onPick: (v: T) => void }) {
+function Picker<T extends string>({ label, list, level, trophies = 0, value, onPick }: { label: string; list: Unlock<T>[]; level: number; trophies?: number; value: string; onPick: (v: T) => void }) {
   return <div className="profile-picker"><h3 className="hunt-subhead">{label}</h3>
-    <div role="radiogroup" aria-label={label}>{list.map(u => { const open = u.level <= level; return <button key={u.id} role="radio" aria-checked={value === u.id} disabled={!open}
+    <div role="radiogroup" aria-label={label}>{list.map(u => { const open = unlockOpen(u, level, trophies); return <button key={u.id} role="radio" aria-checked={value === u.id} disabled={!open}
       className={`profile-unlock ${value === u.id ? 'selected' : ''} ${open ? '' : 'locked'} unlock-${u.id.replace(/\s+/g, '-').toLowerCase()}`} onClick={() => onPick(u.id)}>
-      <b>{u.name}</b><small>{open ? u.blurb || 'Unlocked' : `Level ${u.level}`}</small></button>; })}</div></div>;
+      <b>{u.name}</b><small>{open ? u.blurb || 'Unlocked' : u.trophies != null ? `${u.trophies.toLocaleString()} trophies` : `Level ${u.level}`}</small></button>; })}</div></div>;
 }
 
 /** Supporter cosmetics are listed only while the pass is on sale (or already owned). */
@@ -69,7 +70,8 @@ export function ProfilePanel() {
   return <section className="locker-bay profile-panel">
     <h2><PixelIcon name="star" size={18} /> Your card</h2>
     <div className={`profile-card-big frame-${eq.frame}`}>
-      <ProfileIcon id={eq.icon} size={72} title={`${name}'s icon`} />
+      <MyAvatar size={72} mode="portrait" title={`${name}'s character`} className="profile-card-avatar" />
+      <ProfileIcon id={eq.icon} size={40} title={`${name}'s icon`} />
       <div className="profile-card-id">
         <NameTag name={signedIn ? `@${name}` : name} icon={null} color={eq.color} title={eq.title} titleColor={eq.titleColor} className="profile-card-name" />
         <div className="hunt-cap-bar"><i style={{ width: `${p.need ? p.into / p.need * 100 : 100}%` }} /></div>
@@ -104,7 +106,7 @@ export function ProfilePanel() {
 
     <table className="db-table profile-xp"><tbody>{p.parts.map(x => <tr key={x.id}><td className="col-name">{x.label}</td><td className="col-name">{x.detail}</td><td>{x.xp.toLocaleString()} XP</td></tr>)}</tbody></table>
     <p className="hint-text">XP comes from everything you finish: GM seasons, wins, titles and achievements (official leagues), careers, hunts, rebuilds, weekly challenges and daily goals. Icons, colours and titles are earned only by playing: levels, ranked seasons, achievements and leaderboard finishes (leaderboard titles arrive when you sync).</p>
-    <Picker label="Share-card frame" list={FRAMES} level={p.level} value={eq.frame} onPick={v => equip({ frame: v })} />
-    <Picker label="Court floor (Watch Game)" list={FLOORS} level={p.level} value={eq.floor} onPick={v => equip({ floor: v })} />
+    <Picker label="Share-card frame" list={FRAMES} level={p.level} trophies={ctx.trophies} value={eq.frame} onPick={v => equip({ frame: v })} />
+    <Picker label="Court floor (Watch Game)" list={FLOORS} level={p.level} trophies={ctx.trophies} value={eq.floor} onPick={v => equip({ floor: v })} />
   </section>;
 }

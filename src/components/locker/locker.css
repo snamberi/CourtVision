@@ -73,3 +73,45 @@
 .road-look i { display: block; height: 100%; }
 .road-look i:first-child { border: 1px solid; }
 .road-look-reward small { font-weight: 600; }
+
+/* Settings (the gear in the main menu header). */
+.settings-page .locker-bay .backup-panel { margin-top: 10px; }
+.settings-links { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.settings-advanced { margin: 28px 0 8px; opacity: .72; font-size: .85rem; }
+.settings-advanced > summary { cursor: pointer; color: var(--cv-text-muted, var(--c-fg-94a0b2, #94a0b2)); }
+.settings-advanced[open] { opacity: 1; }
+
+/* Favourites (Profile tab). */
+.fav-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px 24px; }
+.fav-field { display: grid; gap: 6px; align-content: start; }
+.fav-field > span:first-child { font-weight: 700; }
+.fav-field small { color: var(--cv-text-muted, var(--c-fg-94a0b2, #94a0b2)); line-height: 1.45; }
+.fav-team { display: flex; align-items: center; gap: 8px; }
+.fav-team select { flex: 1; min-width: 0; }
+.fav-chosen { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.fav-hits { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.fav-hits button { width: 100%; display: flex; justify-content: space-between; gap: 10px; text-align: left; }
+.fav-hits small { color: var(--cv-text-muted, var(--c-fg-94a0b2, #94a0b2)); font-variant-numeric: tabular-nums; }
+
+/* Trophy Road frames and floors (road swatches). */
+.road-frame.frame-diamond { border-color: var(--c-border-9fe7ff, #9fe7ff); box-shadow: inset 0 0 0 2px var(--c-shadow-ffffff, #ffffff); }
+.road-frame.frame-jade { border-color: var(--c-border-2fa86a, #2fa86a); box-shadow: inset 0 0 0 2px var(--c-shadow-9be3b8, #9be3b8); }
+.road-frame.frame-pixel { border: 3px dashed var(--c-border-4da3ff, #4da3ff); box-shadow: inset 0 0 0 3px var(--c-shadow-f47b20, #f47b20); }
+.road-frame.frame-ice { border-color: var(--c-border-bfe6ff, #bfe6ff); border-top-width: 6px; }
+.road-frame.frame-lightning { border-color: var(--c-border-ffd166, #ffd166); border-style: double; border-width: 5px; }
+.road-frame.frame-ember { border-color: var(--c-border-ff6b2d, #ff6b2d); box-shadow: inset 0 0 0 2px var(--c-shadow-7a1200, #7a1200), 0 0 6px var(--c-shadow-ff9d3d, #ff9d3d); }
+.road-frame.frame-royal { border-color: var(--c-border-5a2d91, #5a2d91); box-shadow: inset 0 0 0 2px var(--c-shadow-ffd166, #ffd166); }
+.road-frame.frame-galaxy { border-color: var(--c-border-3b1d82, #3b1d82); background: radial-gradient(circle at 30% 30%, var(--c-bg-ff7ad9, #ff7ad9) 1px, transparent 2px), radial-gradient(circle at 70% 60%, var(--c-bg-ffffff, #ffffff) 1px, transparent 2px), var(--c-bg-160d33, #160d33); }
+.road-frame.frame-rainbow { border: 3px solid transparent; background: linear-gradient(var(--c-bg-192333, #192333), var(--c-bg-192333, #192333)) padding-box, linear-gradient(90deg, var(--c-bg-ff4d4d, #ff4d4d), var(--c-bg-ffd166, #ffd166), var(--c-bg-6fdc93, #6fdc93), var(--c-bg-6db8ff, #6db8ff), var(--c-bg-b983ff, #b983ff)) border-box; }
+.road-frame.frame-legend { border-color: var(--c-border-ffd166, #ffd166); box-shadow: inset 0 0 0 2px var(--c-shadow-ffffff, #ffffff), 0 0 8px var(--c-shadow-ffd16699, #ffd16699); }
+.road-floor.floor-cherry { background: repeating-linear-gradient(90deg, var(--c-bg-9a4a2e, #9a4a2e) 0 6px, var(--c-bg-7a3820, #7a3820) 6px 7px); }
+.road-floor.floor-sand { background: var(--c-bg-e2c88f, #e2c88f); }
+.road-floor.floor-retro { background: repeating-conic-gradient(var(--c-bg-7a4520, #7a4520) 0 25%, var(--c-bg-c8732b, #c8732b) 0 50%) 0 0 / 12px 12px; }
+.road-floor.floor-herringbone { background: repeating-linear-gradient(45deg, var(--c-bg-c98e57, #c98e57) 0 4px, var(--c-bg-8a5530, #8a5530) 4px 5px); }
+.road-floor.floor-ebony { background: repeating-linear-gradient(90deg, var(--c-bg-1d1612, #1d1612) 0 6px, var(--c-bg-c9971f, #c9971f) 6px 7px); }
+.road-floor.floor-ice { background: repeating-conic-gradient(var(--c-bg-cfeeff, #cfeeff) 0 25%, var(--c-bg-e8f7ff, #e8f7ff) 0 50%) 0 0 / 12px 12px; }
+.road-floor.floor-neon { background: linear-gradient(var(--c-bg-3ef2ff, #3ef2ff) 1px, transparent 1px) 0 0 / 8px 8px, linear-gradient(90deg, var(--c-bg-3ef2ff, #3ef2ff) 1px, transparent 1px) 0 0 / 8px 8px, var(--c-bg-120c24, #120c24); }
+.road-floor.floor-lava { background: linear-gradient(135deg, transparent 45%, var(--c-bg-ff6b2d, #ff6b2d) 45% 55%, transparent 55%) 0 0 / 12px 12px, var(--c-bg-2a1a16, #2a1a16); }
+.road-floor.floor-gold { background: repeating-linear-gradient(90deg, var(--c-bg-e8b84a, #e8b84a) 0 6px, var(--c-bg-9a7212, #9a7212) 6px 7px); }
+.road-floor.floor-galaxy { background: radial-gradient(circle at 30% 40%, var(--c-bg-ffffff, #ffffff) 1px, transparent 2px), radial-gradient(circle at 70% 70%, var(--c-bg-ff7ad9, #ff7ad9) 1px, transparent 2px), var(--c-bg-160d33, #160d33); }
+.tu-swatch { width: 64px; height: 64px; }

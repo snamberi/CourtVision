@@ -6,6 +6,46 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2026-12-02',
+    title: 'A new League Hunt base, anime gear, detailed coaches and new rewards',
+    items: [
+      "**League Hunt, rebuilt around you:** the road runs across the top, your starting five stand on a court in the middle with a big PLAY button, the Shop is on the left (players, coaches, boosts, a life and training) and your coach and boosts are on the right. PLAY leaves the shop and starts the series in one click.",
+      "**Detailed coaches and refs:** coaches on the sideline and in the hunt now wear real suits with ties, tracksuits, quarter-zips and tuxedos on the same detailed body as the players, and refs wear striped shirts with their crew number and blow the whistle.",
+      "**10 new share-card frames and 10 new court floors** on the Trophy Road, from cherry wood and herringbone to neon, lava, gold and galaxy.",
+      "**20 anime and TV-inspired character pieces:** a monster trainer outfit, an '80s arcade tee, the survival game tracksuit, the pink guard jumpsuit and mask, demon hunter, web hero, soul reaper, one-punch hero, sorcerer and air monk outfits, a fox spirit mask, spiky ninja and sorcerer hair, idol star eyes, spinning red eyes, a sorcerer blindfold, a katana, and cherry blossom and cursed energy auras. Most are on the Trophy Road.",
+      "**Sign in to save your progress:** when you arrive signed out you'll be asked once, with a Continue without signing in button.",
+    ],
+  },
+  {
+    id: '2026-11-25',
+    title: 'A whole new animation set on the court',
+    items: [
+      "**35 animations, six frames each:** walking, running, sprinting, backpedalling and defensive slides; stationary and moving dribbles, crossovers, behind-the-back, spin moves, jab steps and pump fakes; jump shots, step-backs, fadeaways, free throws, layups, floaters, dunks and alley-oops; chest, bounce and overhead passes and the catch; rebounds, blocks, contests, steals, box-outs, screens, loose-ball dives, charges, falls, landings and celebrations.",
+      "**Smarter movement:** players walk, run or sprint by how far they have to go, their feet match the floor, and they look where they're going. Defenders slide to stay in front, backpedal in transition, close out on the catch and rotate to help on drives.",
+      "**Better ball movement:** each pass flies its own way (flat chest passes, bounce passes, high overhead skip passes), crossovers and spins carry the ball from hand to hand, and every shot type has its own motion.",
+    ],
+  },
+  {
+    id: '2026-11-18',
+    title: 'Longer roads, warrior gear and your own jersey',
+    items: [
+      "**The Trophy Road goes to 750,000** (a stop every 50,000 after 200,000) and **the Level Road to level 750** (a stop every 50 levels after 250), with new titles, name and title colours, icons and character pieces at every stop.",
+      "**Warrior gear for your character:** spiky warrior hair, the prince's flame hair, battle armour, a weighted cape, a warrior tail, warrior boots and, at 750,000 trophies, the super warrior aura.",
+      "**Your own jersey:** pick a jersey in the Character studio and choose any team's colours and any number from 0 to 99.",
+      "**Better animated icons:** real flames lick round the fireball, the phoenix and the burning crowns; the glint now crosses only the trophy itself; stars twinkle, bolts spark and halos glow.",
+    ],
+  },
+  {
+    id: '2026-11-11',
+    title: 'Your own character',
+    items: [
+      "**Your character:** everyone now has a pixel player of their own (a random one to start). Dress it on Profile → Your character: body colour, hair, hair colour, beards, 50 outfits, headwear, eyewear, neck and back pieces, shoes and an aura. It stands in the middle of the main menu.",
+      "**Unlock more:** new pieces open with your level, and the Trophy Road now has 40 character rewards: anime-inspired outfits (a martial arts gi, a ninja jumpsuit, a pirate vest, a scout cloak, a checkered haori and more), wild body colours up to rainbow, super spiky hair, wings and animated auras.",
+      "**Favourite team and player:** set them on the Profile tab. Your team is picked for you when you choose a team (you can still change it). When a Career Mode wheel or a League Hunt reel lands on your favourite player's rarity, it's him 15% more often, until you get him once in that run.",
+      "**Tidier main menu:** your account and the leaderboards are in the header, your GM legacy lives in your profile, and backups, graphics and privacy moved to the new Settings page (the gear).",
+    ],
+  },
+  {
     id: '2026-11-04',
     title: "The Owner's Box",
     items: [

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
+import { avatarItem, type AvatarCategory } from '../profile/avatar';
 import { ICONS, SPRITES, PALETTE, NAME_COLORS, HONORS, MODE_TITLES, LEVEL_ROAD, ROAD_LOOK_NAMES, ENTITLEMENTS_KEY, isOpen, unlockContext, earnedExtraTitles, noteHonors, readHonors } from '../profile/cosmetics';
 import { equipped, equip, levelFor, levelCost, MAX_LEVEL, FRAMES, FLOORS, TITLES, unlocksBetween } from '../profile/profile';
 import { computeHonors } from '../../server/honors';
@@ -7,30 +8,33 @@ import { computeHonors } from '../../server/honors';
 beforeEach(() => localStorage.clear());
 
 describe('profile cosmetics', () => {
-  it('every sprite is 10 x 10 in the palette, and every icon has one (57 icons: 30 from the level road, 12 from the Trophy Road, 2 from the card album, 1 from the Owner Box)', () => {
+  it('every sprite is 10 x 10 in the palette, and every icon has one (70 icons: 38 from the level road, 17 from the Trophy Road, 2 from the card album, 1 from the Owner Box)', () => {
     for (const [id, rows] of Object.entries(SPRITES)) {
       expect(rows, id).toHaveLength(10);
       for (const row of rows) { expect(row.length, `${id}: ${row}`).toBe(10); for (const ch of row) expect(ch === '.' || ch in PALETTE, `${id}: ${ch}`).toBe(true); }
     }
     for (const icon of ICONS) expect(SPRITES[icon.base], icon.id).toBeTruthy();
-    expect(ICONS.length).toBe(57);
+    expect(ICONS.length).toBe(70);
     expect(new Set(ICONS.map(i => i.id)).size).toBe(ICONS.length);
     expect(new Set(NAME_COLORS.map(c => c.id)).size).toBe(NAME_COLORS.length);
   });
 
-  it('the level road: a reward every 5 levels to 250, and every reward exists', () => {
+  it('the level road: a reward every 5 levels to 250, every 50 to 750, and every reward exists', () => {
     for (let l = 5; l <= 250; l += 5) expect(LEVEL_ROAD.some(([lv]) => lv === l), `level ${l}`).toBe(true);
+    for (let l = 300; l <= 750; l += 50) expect(LEVEL_ROAD.some(([lv]) => lv === l), `level ${l}`).toBe(true);
+    expect(LEVEL_ROAD.every(([lv]) => lv <= 250 || lv % 50 === 0)).toBe(true);
     for (const [lv, kind, id] of LEVEL_ROAD) {
       expect(lv % 5, `${kind} ${id}`).toBe(0);
       if (kind === 'look') { expect(ROAD_LOOK_NAMES[id], id).toBeTruthy(); continue; } // checked against the themes in themes.test
+      if (kind === 'avatar') { const [cat, piece] = id.split(':'); expect(avatarItem(cat as AvatarCategory, piece)?.rule, id).toEqual({ level: lv }); continue; }
       const list = kind === 'icon' ? ICONS : kind === 'color' ? NAME_COLORS : kind === 'frame' ? FRAMES : kind === 'floor' ? FLOORS : TITLES;
       const hit = list.find(x => x.id === id) as { rule?: { level?: number }; level?: number } | undefined;
       expect(hit, `${kind} ${id}`).toBeTruthy();
       expect(hit!.rule?.level ?? hit!.level, `${kind} ${id}`).toBe(lv);
     }
     expect(new Set(LEVEL_ROAD.map(([, k, id]) => `${k}:${id}`)).size).toBe(LEVEL_ROAD.length);
-    expect(MAX_LEVEL).toBe(250);
-    expect(levelFor(1e9).level).toBe(250);
+    expect(MAX_LEVEL).toBe(750);
+    expect(levelFor(1e9).level).toBe(750);
     // Level 250 is a long road (over 800,000 XP), level 5 a short one.
     expect(Array.from({ length: 249 }, (_, i) => levelCost(i + 1)).reduce((a, b) => a + b, 0)).toBeGreaterThan(800_000);
     expect(levelFor(900).level).toBe(5);

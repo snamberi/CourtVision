@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { defaultTeam } from '../../profile/favorites';
 import type { NbaHistory } from '../../history/nbaHistoryData';
 import type { League } from '../../simulation/league';
 import type { GMLeagueExtras } from '../../simulation/gm';
@@ -98,7 +99,7 @@ export function AllTimeDraft({ onExit, onStart }: { onExit: () => void; onStart:
 function Setup({ h, teams, saved, onResume, onStart }: { h: NbaHistory; teams: DraftTeam[]; saved: DraftState | null; onResume: (s: DraftState) => void; onStart: (make: (teams: DraftTeam[]) => DraftState) => Promise<void> }) {
   const [era, setEra] = useState('20s');
   const [slot, setSlot] = useState<number | 'random'>('random');
-  const [team, setTeam] = useState<string>(() => teams[0].id);
+  const [team, setTeam] = useState<string>(() => defaultTeam(teams.map(t => t.id)));
   const [week] = useState(() => weekKey());
   const top = draftPool(h).slice(0, 5);
   const wSeed = weeklySeed('draft', week);

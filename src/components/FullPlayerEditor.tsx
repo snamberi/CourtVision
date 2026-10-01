@@ -112,7 +112,7 @@ export function FullPlayerEditor({ season, onChange, sandboxMode, league, extras
       </div>
 
       <Collapsible title={CATEGORY_LABELS.look} isOpen={open.look} onToggle={() => toggle('look')}>
-        <AppearancePanel season={season} onChange={onChange} />
+        <AppearancePanel key={season.playerId} season={season} onChange={onChange} />
       </Collapsible>
 
       {league && extras && onLeagueExtrasChange && (

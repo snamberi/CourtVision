@@ -497,3 +497,17 @@ html.lite *, html.lite *::before, html.lite *::after { backdrop-filter: none !im
 .look-swatches button { width: 26px; height: 26px; min-height: 0; padding: 0; border: 2px solid var(--c-border-2a3546, #2a3546); box-shadow: none; }
 .look-swatches button.on { border-color: var(--c-border-f47b20, #f47b20); outline: 2px solid var(--c-border-0b1018, #0b1018); }
 @media (max-width: 640px) { .look-panel { grid-template-columns: 1fr; } }
+.menu-masthead .menu-settings { padding: 6px 8px; }
+.welcome-signin-head { display: flex; gap: 16px; align-items: center; margin-bottom: 12px; }
+.welcome-signin-head h2 { margin: 4px 0 6px; }
+@media (max-width: 520px) { .welcome-signin-head { flex-direction: column; text-align: center; } }
+.profile-card-big.frame-diamond { border-color: var(--c-border-9fe7ff, #9fe7ff); box-shadow: 0 0 0 3px var(--c-shadow-ffffff, #ffffff), 0 0 0 5px var(--c-shadow-6db8ff, #6db8ff); }
+.profile-card-big.frame-jade { border-color: var(--c-border-2fa86a, #2fa86a); box-shadow: 0 0 0 3px var(--c-shadow-9be3b8, #9be3b8); }
+.profile-card-big.frame-pixel { border-style: dashed; border-color: var(--c-border-4da3ff, #4da3ff); box-shadow: 0 0 0 3px var(--c-shadow-f47b20, #f47b20); }
+.profile-card-big.frame-ice { border-color: var(--c-border-bfe6ff, #bfe6ff); box-shadow: 0 -4px 0 var(--c-shadow-e8f7ff, #e8f7ff); }
+.profile-card-big.frame-lightning { border-color: var(--c-border-ffd166, #ffd166); border-style: double; }
+.profile-card-big.frame-ember { border-color: var(--c-border-ff6b2d, #ff6b2d); box-shadow: 0 0 10px var(--c-shadow-ff9d3d, #ff9d3d); }
+.profile-card-big.frame-royal { border-color: var(--c-border-5a2d91, #5a2d91); box-shadow: 0 0 0 3px var(--c-shadow-ffd166, #ffd166); }
+.profile-card-big.frame-galaxy { border-color: var(--c-border-b983ff, #b983ff); box-shadow: 0 0 0 3px var(--c-shadow-3b1d82, #3b1d82), 0 0 12px var(--c-shadow-ff7ad966, #ff7ad966); }
+.profile-card-big.frame-rainbow { border-color: var(--c-border-ff9d3d, #ff9d3d); box-shadow: 0 0 0 3px var(--c-shadow-ffd166, #ffd166), 0 0 0 6px var(--c-shadow-6db8ff, #6db8ff), 0 0 0 9px var(--c-shadow-b983ff, #b983ff); }
+.profile-card-big.frame-legend { border-color: var(--c-border-ffd166, #ffd166); box-shadow: 0 0 0 3px var(--c-shadow-ffffff, #ffffff), 0 0 0 6px var(--c-shadow-ffd166, #ffd166), 0 0 16px var(--c-shadow-ffd16699, #ffd16699); }

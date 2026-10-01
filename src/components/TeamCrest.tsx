@@ -3,6 +3,7 @@ import type { LeagueTeam } from '../simulation/league';
 import { resolveTeamIdentity, type TeamIdentity } from '../simulation/teamIdentity';
 import { MARKS } from '../visuals/logoMarks';
 import { pixelTextPath, pixelTextWidth, splitTeamName } from '../visuals/pixelFont';
+import { TeamMark } from './TeamMark';
 
 export type CrestLayout = 'roundel' | 'wordmark' | 'shield';
 const LAYOUTS: CrestLayout[] = ['roundel', 'wordmark', 'shield'];
@@ -49,7 +50,7 @@ function Mark({ identity, cx, cy, scale, fill, shadow = INK }: { identity: TeamI
   const t = `translate(${cx - 25 * scale},${cy - 26 * scale}) scale(${scale})`;
   return <g>
     <path d={d} transform={`translate(${cx - 25 * scale + scale * 1.2},${cy - 26 * scale + scale * 1.2}) scale(${scale})`} fill={shadow} fillRule="evenodd" opacity=".55" />
-    <path d={d} transform={t} fill={fill} fillRule="evenodd" stroke={INK} strokeWidth={1.2} paintOrder="stroke" />
+    <g transform={t}><TeamMark logo={identity.logo} fill={fill} accent={identity.primary} /></g>
   </g>;
 }
 
@@ -61,6 +62,7 @@ export const CrestArt = memo(function CrestArt({ team, identity, layout }: { tea
   if (kind === 'roundel') return <g shapeRendering="geometricPrecision">
     <circle cx="100" cy="100" r="97" fill={INK} />
     <circle cx="100" cy="100" r="92" fill={secondary} />
+    <circle cx="100" cy="100" r="89" fill="none" stroke={CREAM} strokeOpacity=".4" strokeWidth="1.5" />
     <circle cx="100" cy="100" r="64" fill={INK} />
     <circle cx="100" cy="100" r="61" fill={primary} />
     <circle cx="100" cy="100" r="61" fill="none" stroke={CREAM} strokeOpacity=".25" strokeWidth="2" strokeDasharray="4 4" />
@@ -75,6 +77,7 @@ export const CrestArt = memo(function CrestArt({ team, identity, layout }: { tea
   if (kind === 'wordmark') return <g shapeRendering="geometricPrecision">
     <Mark identity={identity} cx={100} cy={96} scale={3.2} fill={secondary} shadow={primary} />
     <rect x="12" y="38" width="176" height="20" fill={secondary} stroke={INK} strokeWidth="3" />
+    <path d="M15 40H185M15 56H185" stroke={CREAM} strokeOpacity=".4" />
     <Word text={city || identity.abbreviation} cx={100} y={48} maxWidth={160} maxPx={2.4} fill={CREAM} />
     <Word text={nickname} cx={100} y={120} maxWidth={186} maxPx={7} fill={CREAM} outline={primary} outer />
     <rect x="46" y="150" width="108" height="6" fill={secondary} stroke={INK} strokeWidth="2" />
@@ -82,6 +85,7 @@ export const CrestArt = memo(function CrestArt({ team, identity, layout }: { tea
   return <g shapeRendering="geometricPrecision">
     <path d="M22 18H178V112L158 146L128 168L100 184L72 168L42 146L22 112Z" fill={INK} />
     <path d="M28 24H172V110L154 141L126 161L100 176L74 161L46 141L28 110Z" fill={primary} />
+    <path d="M35 30H165V108L149 136L123 155L100 168L77 155L51 136L35 108Z" fill="none" stroke={secondary} strokeWidth="2" strokeDasharray="3 3" opacity=".65" />
     {/* Bevel: a lit left edge and a shaded right edge. */}
     <path d="M28 24H34V108L50 136L46 141L28 110Z" fill="#fff" opacity=".16" />
     <path d="M166 24H172V110L154 141L126 161L100 176L100 170L124 155L150 136L166 108Z" fill="#000" opacity=".2" />

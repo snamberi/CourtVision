@@ -11,7 +11,9 @@ import { PixelTrophy } from '../PixelTrophy';
 import { PixelIcon } from '../PixelIcon';
 import { PlayerAvatar } from '../PlayerAvatar';
 import { HallOfFame } from '../career/CareerMode';
-import { BackupPanel } from '../BackupPanel';
+import { LegacyPanel } from '../FrontOfficePanels';
+import { FavoritesPanel } from '../FavoritesPanel';
+import { AvatarEditor } from '../AvatarEditor';
 import { ProfilePanel } from '../ProfilePanel';
 import { cloudEnabled } from '../../cloud/account';
 import { noteCareers } from '../../profile/profile';
@@ -27,10 +29,10 @@ import '../hunt/hunt.css';
 import '../career/career.css';
 import './locker.css';
 
-export type ProfileTab = 'profile' | 'road' | 'trophyroad' | 'trophies' | 'achievements' | 'passes' | 'backup';
+export type ProfileTab = 'profile' | 'character' | 'road' | 'trophyroad' | 'trophies' | 'achievements' | 'passes';
 const TABS: { id: ProfileTab; label: string }[] = ([
-  { id: 'profile', label: 'Profile' }, { id: 'road', label: 'Level road' }, { id: 'trophyroad', label: 'Trophy road' }, { id: 'trophies', label: 'Trophy room' },
-  { id: 'achievements', label: 'Achievements' }, { id: 'passes', label: 'Passes' }, { id: 'backup', label: 'Backup' },
+  { id: 'profile', label: 'Profile' }, { id: 'character', label: 'Your character' }, { id: 'road', label: 'Level road' }, { id: 'trophyroad', label: 'Trophy road' }, { id: 'trophies', label: 'Trophy room' },
+  { id: 'achievements', label: 'Achievements' }, { id: 'passes', label: 'Passes' },
 // The Passes tab appears only once checkout links are configured (docs/BILLING_SETUP.md).
 ] satisfies { id: ProfileTab; label: string }[]).filter(t => t.id !== 'passes' || passesOnSale());
 
@@ -77,11 +79,11 @@ export function ProfileHub({ onExit, initialTab = 'profile' }: { onExit: () => v
     </header>
     <div className="profile-tabs code-mode-actions" role="tablist" aria-label="Profile sections">{TABS.map(t => <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>{t.label}</button>)}</div>
 
-    {tab === 'profile' && <ProfilePanel />}
+    {tab === 'profile' && <><LegacyPanel legacy={legacy} compact /><FavoritesPanel /><ProfilePanel /></>}
+    {tab === 'character' && <AvatarEditor />}
     {tab === 'road' && <LevelRoad />}
     {tab === 'trophyroad' && <TrophyRoad />}
     {tab === 'passes' && <PassesPanel />}
-    {tab === 'backup' && <div className="locker-bay"><BackupPanel compact /></div>}
     {tab === 'achievements' && <ModeAchievements stats={modes} rarity={rarity} />}
 
     {tab === 'trophies' && <>
@@ -138,6 +140,7 @@ export function ProfileHub({ onExit, initialTab = 'profile' }: { onExit: () => v
         <div><b>{a.name}</b><small>{a.description}</small>{got && <small className="locker-when">{formatSeasonYear(got.season)} · {got.leagueName}</small>}{rarity[a.id] != null && <small className="locker-rarity">{rarity[a.id]}% of GMs have this</small>}</div>
       </li>; })}</ul>
       <p className="hint-text">Front-office achievements count in official leagues (Sandbox and God Mode leagues don't).</p>
+      <LegacyPanel legacy={legacy} />
     </section>
     </>}
   </div>;

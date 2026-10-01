@@ -15,12 +15,12 @@ const game = (id: string, my: number, their: number, mine: PlayerStatLine[] = [l
 const league = (schedule: ScheduledGame[]): League => ({ teams: [], schedule, settings: {} as League['settings'], season: '2026' });
 
 describe('GM Profile', () => {
-  it('levels: each costs 25 more than the last, up to 250', () => {
+  it('levels: each costs 25 more than the last, up to 750', () => {
     expect(levelFor(0)).toEqual({ level: 1, into: 0, need: levelCost(1) });
     expect(levelFor(174).level).toBe(1);
     expect(levelFor(175).level).toBe(2);
     expect(levelFor(175 + 200 + 225).level).toBe(4);
-    expect(levelFor(10_000_000).level).toBe(250);
+    expect(levelFor(10_000_000).level).toBe(750);
   });
 
   it('XP comes from every mode\'s records, including old progress', () => {

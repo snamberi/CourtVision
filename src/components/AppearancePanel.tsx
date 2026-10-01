@@ -1,41 +1,75 @@
+import { useMemo, useState } from 'react';
 import type { PlayerSeason } from '../simulation/types';
-import { HAIR_STYLES, BEARD_STYLES, HAT_STYLES, SKIN_TONES, HAIR_COLORS, HAT_COLORS, playerTraits, type Appearance } from '../visuals/playerSprite';
+import { HAIR_STYLES, BEARD_STYLES, HAT_STYLES, SKIN_TONES, HAIR_COLORS, HAT_COLORS, EYE_COLORS, EYE_STYLES, EXPRESSIONS, playerTraits, type Appearance } from '../visuals/playerSprite';
 import { actionSprite, POSES, SPRITE_W, SPRITE_H } from '../visuals/actionSprites';
 import { teamColors } from '../simulation/teamColors';
 import { useTeamIdentity } from '../visuals/TeamIdentityContext';
 import { PlayerAvatar } from './PlayerAvatar';
+import { PixelIcon } from './PixelIcon';
+import './customization.css';
 
-/** "hairStyle" → "Hair style", "afroFlatTop" → "Afro flat top". */
 const label = (key: string) => key.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase()).replace(/ ([A-Z])/g, (_, c: string) => ` ${c.toLowerCase()}`);
+const TABS = [{ id: 'face', name: 'Face', icon: 'team' }, { id: 'hair', name: 'Hair', icon: 'team' }, { id: 'beard', name: 'Facial hair', icon: 'team' }, { id: 'hat', name: 'Headwear', icon: 'crown' }, { id: 'colors', name: 'Colors', icon: 'star' }] as const;
+type Tab = typeof TABS[number]['id'];
+const choose = <T,>(items: readonly T[]) => items[Math.floor(Math.random() * items.length)];
 
-function Swatches({ colors, value, onPick, name }: { colors: readonly string[]; value: number; onPick: (i: number) => void; name: string }) {
-  return <div className="look-swatches" role="radiogroup" aria-label={name}>
-    {colors.map((c, i) => <button key={c} type="button" role="radio" aria-checked={i === value} aria-label={`${name} ${i + 1}`} className={i === value ? 'on' : ''} style={{ background: c }} onClick={() => onPick(i)} />)}
+function Swatches({ colors, value, onPick, name }: { colors: readonly string[]; value: string; onPick: (i: number) => void; name: string }) {
+  return <div className="studio-swatches" role="group" aria-label={name}>
+    {colors.map((c, i) => <button key={c} type="button" aria-pressed={c === value} aria-label={`${name} ${i + 1}`} title={c} style={{ background: c }} onClick={() => onPick(i)}>{c === value && <span>✓</span>}</button>)}
   </div>;
 }
 
-/** Edit Player → Look: skin, hair, facial hair and headwear, with the portrait and an in-game frame as a live preview. */
+/** The same player identity rendered in portrait, uniform and court poses. */
 export function AppearancePanel({ season, onChange }: { season: PlayerSeason; onChange: (next: PlayerSeason) => void }) {
   const look = season.appearance ?? {};
   const t = playerTraits(season.playerId, look);
   const identity = useTeamIdentity(season.teamId);
   const kit = identity ?? teamColors(season.teamId);
-  const set = (patch: Appearance) => onChange({ ...season, appearance: { ...look, ...patch } });
-  const index = (list: readonly string[], v: string) => Math.max(0, list.indexOf(v));
-  const frame = actionSprite('LOOK', POSES.JUMPER[3], { playerId: season.playerId, primary: kit.primary, secondary: kit.secondary, jerseyNumber: season.jerseyNumber, age: season.age, appearance: look });
-  return <div className="look-panel">
-    <div className="look-preview">
-      <PlayerAvatar playerId={season.playerId} teamId={season.teamId} jerseyNumber={season.jerseyNumber} age={season.age} appearance={look} size={96} />
-      <svg width={SPRITE_W * 2} height={SPRITE_H * 2} viewBox={`0 0 ${SPRITE_W} ${SPRITE_H}`} shapeRendering="crispEdges" role="img" aria-label="On the court">{frame.map(p => <path key={p.fill} fill={p.fill} d={p.d} />)}</svg>
+  const [tab, setTab] = useState<Tab>('hair');
+  const [view, setView] = useState<'full' | 'portrait' | 'court'>('full');
+  const [query, setQuery] = useState('');
+  const [history, setHistory] = useState<(Appearance | undefined)[]>([]);
+  const [status, setStatus] = useState('Select a piece to update the player.');
+  const replace = (next: Appearance | undefined, message: string) => {
+    setHistory(h => [...h.slice(-19), season.appearance]);
+    onChange({ ...season, appearance: next }); setStatus(message);
+  };
+  const set = (patch: Appearance, message = 'Player appearance updated.') => replace({ ...look, ...patch }, message);
+  const lookKey = JSON.stringify(look);
+  const frame = useMemo(() => actionSprite('LOOK', POSES.JUMPER[3], { playerId: season.playerId, primary: kit.primary, secondary: kit.secondary, jerseyStyle: identity?.jerseyStyle, jerseyNumber: season.jerseyNumber, age: season.age, appearance: JSON.parse(lookKey) }), [season.playerId, season.jerseyNumber, season.age, kit.primary, kit.secondary, identity?.jerseyStyle, lookKey]);
+  const randomize = () => replace({ skin: Math.floor(Math.random() * SKIN_TONES.length), hairColor: Math.floor(Math.random() * 9), hairStyle: choose(HAIR_STYLES), beardStyle: choose(BEARD_STYLES), hatStyle: Math.random() < .65 ? 'none' : choose(HAT_STYLES), hatColor: Math.floor(Math.random() * HAT_COLORS.length), eyeColor: Math.floor(Math.random() * EYE_COLORS.length), eyeStyle: choose(EYE_STYLES), expression: choose(EXPRESSIONS) }, 'New player look applied.');
+  const avatar = (appearance: Appearance, size = 58) => <PlayerAvatar playerId={season.playerId} teamId={season.teamId} jerseyNumber={season.jerseyNumber} age={season.age} appearance={appearance} mode="portrait" size={size} />;
+  const tiles = (items: readonly string[], key: 'hairStyle' | 'beardStyle' | 'hatStyle' | 'eyeStyle' | 'expression', selected: string) => items.filter(i => label(i).toLowerCase().includes(query.trim().toLowerCase())).map(i => {
+    const patch = { [key]: i } as Appearance;
+    return <button type="button" key={i} className={`studio-tile${selected === i ? ' selected' : ''}`} aria-pressed={selected === i} onClick={() => set(patch, `${label(i)} selected.`)} aria-label={i === 'none' ? 'None' : label(i)}>
+      <span className="studio-tile-state">{selected === i && <PixelIcon name="check" size={13} />}</span><span className="studio-tile-art">{avatar({ ...look, ...(key === 'hairStyle' ? { hatStyle: 'none' as const } : {}), ...patch })}</span><b>{i === 'none' ? 'None' : label(i)}</b>
+    </button>;
+  });
+  const colorField = (name: string, colors: readonly string[], value: string, field: 'skin' | 'hairColor' | 'hatColor', hex: 'skinHex' | 'hairHex' | 'hatHex') => <div className="studio-color-field"><h4>{name}</h4><Swatches colors={colors} value={value} name={name} onPick={i => set({ [field]: i, [hex]: undefined })} /><label className="studio-custom-color"><input type="color" aria-label={`Custom ${name.toLowerCase()}`} value={value} onChange={e => set({ [hex]: e.target.value })} /><span>Custom color</span><code>{value.toUpperCase()}</code></label></div>;
+
+  return <section className="player-look-studio" aria-label="Player appearance studio">
+    <header className="studio-heading"><div><span className="pixel-eyebrow">PLAYER APPEARANCE</span><h3>Signature look</h3><p>Bring {season.firstName || season.playerId} to life.</p></div><span className="studio-tag">PIXEL STUDIO</span></header>
+    <div className="studio-layout">
+      <aside className="studio-preview-column">
+        <div className="studio-stage"><div className="studio-stage-label"><span><i /> LIVE PREVIEW</span><span>#{season.jerseyNumber ?? '—'}</span></div>
+          <div className="studio-view" role="group" aria-label="Player preview view">{(['full', 'portrait', 'court'] as const).map(v => <button type="button" key={v} aria-pressed={view === v} onClick={() => setView(v)}>{v === 'full' ? 'Full body' : v === 'portrait' ? 'Portrait' : 'On court'}</button>)}</div>
+          <div className={`studio-character studio-character--${view}`}><div className="studio-locker-lines" aria-hidden="true" />{view === 'court' ? <svg width={210} height={290} viewBox={`0 0 ${SPRITE_W} ${SPRITE_H}`} shapeRendering="crispEdges" role="img" aria-label="On the court">{frame.map(p => <path key={p.fill} fill={p.fill} d={p.d} />)}</svg> : <PlayerAvatar playerId={season.playerId} teamId={season.teamId} jerseyNumber={season.jerseyNumber} age={season.age} appearance={look} mode={view} size={view === 'full' ? 190 : 170} title={season.playerId} />}<div className="studio-platform" aria-hidden="true" /></div>
+          <div className="studio-stage-caption"><small>YOUR PLAYER</small><strong>{season.playerId}</strong></div>
+        </div>
+        <div className="studio-actions"><button type="button" onClick={randomize}><PixelIcon name="shuffle" size={16} /> Randomize</button><button type="button" disabled={!history.length} onClick={() => { if (history.length) { onChange({ ...season, appearance: history.at(-1) }); setHistory(h => h.slice(0, -1)); setStatus('Last change undone.'); } }}>Undo</button></div>
+        <button type="button" className="studio-reset" disabled={!season.appearance} onClick={() => replace(undefined, 'Original look restored.')}>Restore original look</button>
+        <div className="studio-status" role="status">{status}</div>
+      </aside>
+      <div className="studio-browser">
+        <div className="studio-categories" role="group" aria-label="Player appearance categories">{TABS.map(c => <button type="button" key={c.id} aria-pressed={tab === c.id} onClick={() => { setTab(c.id); setQuery(''); }}><PixelIcon name={c.icon} size={16} /><span>{c.name}</span></button>)}</div>
+        {tab !== 'colors' && tab !== 'face' && <div className="studio-toolbar"><label className="studio-search"><PixelIcon name="search" size={16} /><input type="search" aria-label="Search player styles" placeholder={`Search ${TABS.find(c => c.id === tab)?.name.toLowerCase()}…`} value={query} onChange={e => setQuery(e.target.value)} /></label></div>}
+        {tab === 'hair' && <><div className="studio-section-title"><h4>Choose your cut</h4><small>{HAIR_STYLES.length} styles</small></div><p className="studio-hint">Hair previews show the cut without headwear.</p><div className="studio-grid">{tiles(HAIR_STYLES, 'hairStyle', t.hairStyle)}</div></>}
+        {tab === 'beard' && <><div className="studio-section-title"><h4>Facial hair</h4><small>{BEARD_STYLES.length} styles</small></div><div className="studio-grid">{tiles(BEARD_STYLES, 'beardStyle', t.beardStyle)}</div></>}
+        {tab === 'hat' && <><div className="studio-section-title"><h4>Headwear</h4><small>{HAT_STYLES.length + 1} choices</small></div><div className="studio-grid">{tiles(['none', ...HAT_STYLES], 'hatStyle', t.hatStyle ?? 'none')}</div>{colorField('Headwear color', HAT_COLORS, t.hatColor, 'hatColor', 'hatHex')}</>}
+        {query && ![...(tab === 'hair' ? HAIR_STYLES : tab === 'beard' ? BEARD_STYLES : ['none', ...HAT_STYLES])].some(i => label(i).toLowerCase().includes(query.trim().toLowerCase())) && <div className="studio-empty"><p>No matching styles.</p><button type="button" onClick={() => setQuery('')}>Clear search</button></div>}
+        {tab === 'face' && <><div className="studio-section-title"><h4>Eyes & brows</h4></div><div className="studio-grid">{tiles(EYE_STYLES, 'eyeStyle', t.eyeStyle)}</div><h4>Eye color</h4><Swatches name="Eye color" colors={EYE_COLORS} value={t.eyeColor} onPick={i => set({ eyeColor: i })} /><div className="studio-section-title"><h4>Expression</h4></div><div className="studio-grid">{tiles(EXPRESSIONS, 'expression', t.expression)}</div></>}
+        {tab === 'colors' && <div className="studio-color-fields">{colorField('Skin tone', SKIN_TONES, t.skin, 'skin', 'skinHex')}{colorField('Hair color', HAIR_COLORS, t.hair, 'hairColor', 'hairHex')}{colorField('Headwear color', HAT_COLORS, t.hatColor, 'hatColor', 'hatHex')}</div>}
+      </div>
     </div>
-    <div className="look-fields">
-      <label>Skin tone<Swatches name="Skin tone" colors={SKIN_TONES} value={index(SKIN_TONES, t.skin)} onPick={i => set({ skin: i })} /></label>
-      <label>Hair<select value={t.hairStyle} onChange={e => set({ hairStyle: e.target.value as Appearance['hairStyle'] })}>{HAIR_STYLES.map(h => <option key={h} value={h}>{label(h)}</option>)}</select></label>
-      <label>Hair colour<Swatches name="Hair colour" colors={HAIR_COLORS} value={index(HAIR_COLORS, t.hair)} onPick={i => set({ hairColor: i })} /></label>
-      <label>Facial hair<select value={t.beardStyle} onChange={e => set({ beardStyle: e.target.value as Appearance['beardStyle'] })}>{BEARD_STYLES.map(b => <option key={b} value={b}>{b === 'none' ? 'None' : label(b)}</option>)}</select></label>
-      <label>Headwear<select value={t.hatStyle ?? 'none'} onChange={e => set({ hatStyle: e.target.value as Appearance['hatStyle'] })}><option value="none">None</option>{HAT_STYLES.map(h => <option key={h} value={h}>{label(h)}</option>)}</select></label>
-      {t.hatStyle && <label>Headwear colour<Swatches name="Headwear colour" colors={HAT_COLORS} value={index(HAT_COLORS, t.hatColor)} onPick={i => set({ hatColor: i })} /></label>}
-      {season.appearance && <button type="button" className="link-button" onClick={() => { const next = { ...season }; delete next.appearance; onChange(next); }}>Back to his original look</button>}
-    </div>
-  </div>;
+  </section>;
 }

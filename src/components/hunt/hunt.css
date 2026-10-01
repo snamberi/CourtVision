@@ -323,3 +323,111 @@ button.hunt-reel.frozen:hover, button.hunt-reel.frozen:focus-visible { transform
 @media (prefers-reduced-motion: reduce) {
   .hunt-reel.spinning > :not(.hunt-reel-pos), .hunt-reel.frozen, .hunt-reel.just-locked { animation: none; filter: none; }
 }
+
+/* ---------- The hunt base: road on top, shop | team + PLAY | coach & boosts ---------- */
+.hunt-base { display: grid; gap: 14px; }
+.hunt-base-road { background: var(--c-bg-121926, #121926); border: 2px solid var(--c-border-2a3546, #2a3546); padding: 10px 12px; box-shadow: 3px 3px 0 var(--c-shadow-03070d, #03070d); overflow-x: auto; }
+.hunt-base-road .hunt-map { margin: 0; }
+.hunt-base-grid { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(340px, 1.5fr) minmax(240px, .9fr); gap: 16px; align-items: start; }
+.hunt-abandon { justify-self: center; }
+
+/* The shop: a striped awning, a hanging sign and wooden shelves of goods. */
+.hunt-shop { position: relative; background: linear-gradient(var(--c-bg-2a1c12, #2a1c12), var(--c-bg-1a120c, #1a120c)); border: 3px solid var(--c-border-6b4a2b, #6b4a2b); box-shadow: 4px 4px 0 var(--c-shadow-03070d, #03070d); padding: 0 12px 14px; }
+.hunt-shop-awning { display: flex; margin: 0 -12px; height: 26px; border-bottom: 3px solid var(--c-border-8a2a1c, #8a2a1c); }
+.hunt-shop-awning i { flex: 1; background: var(--c-bg-e85d5d, #e85d5d); clip-path: polygon(0 0, 100% 0, 100% 70%, 50% 100%, 0 70%); }
+.hunt-shop-awning i:nth-child(even) { background: var(--c-bg-f4f0e6, #f4f0e6); }
+.hunt-shop-sign { display: flex; flex-direction: column; align-items: center; width: max-content; margin: 10px auto 6px; padding: 6px 22px 5px; background: var(--c-bg-f47b20, #f47b20); color: var(--c-fg-140c02, #140c02); border: 3px solid var(--c-border-140c02, #140c02); box-shadow: 3px 3px 0 var(--c-shadow-03070d, #03070d); }
+.hunt-shop-sign span { font: 30px/1 var(--ff-display, 'Oswald', sans-serif); letter-spacing: .14em; }
+.hunt-shop-sign small { font-size: 12px; font-weight: 700; }
+.hunt-shop-sign .hunt-coins { color: inherit; }
+.hunt-shop-shelf { margin: 14px 0 6px; padding-bottom: 4px; border-bottom: 4px solid var(--c-border-6b4a2b, #6b4a2b); font: 15px var(--ff-display, 'Oswald', sans-serif); letter-spacing: .08em; text-transform: uppercase; color: var(--c-fg-ffd166, #ffd166); }
+.hunt-shop-shelf small { font: 11px var(--ff-body, inherit); letter-spacing: 0; text-transform: none; color: var(--c-fg-94a0b2, #94a0b2); margin-left: 6px; }
+.hunt-shop-items { display: grid; gap: 6px; }
+.hunt-ware { display: grid; grid-template-columns: 44px 1fr auto; align-items: center; gap: 8px; width: 100%; padding: 6px 8px; background: var(--c-bg-121926, #121926); border: 2px solid var(--c-border-2a3546, #2a3546); color: inherit; font: inherit; text-align: left; cursor: pointer; transition: transform 120ms, border-color 120ms; }
+.hunt-ware:hover:not(:disabled) { transform: translateX(3px); border-color: var(--c-border-f47b20, #f47b20); }
+.hunt-ware:disabled { opacity: .5; cursor: not-allowed; }
+.hunt-ware.rarity-rare { border-left: 4px solid var(--c-border-4da3ff, #4da3ff); }
+.hunt-ware.rarity-epic { border-left: 4px solid var(--c-border-b983ff, #b983ff); }
+.hunt-ware.rarity-legendary { border-left: 4px solid var(--c-border-ffd166, #ffd166); }
+.hunt-ware-name { display: grid; min-width: 0; }
+.hunt-ware-name b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hunt-ware-name small { font-size: 11px; color: var(--c-fg-94a0b2, #94a0b2); }
+.hunt-ware-icon { display: grid; place-items: center; width: 40px; height: 40px; background: var(--c-bg-0b1018, #0b1018); color: var(--c-fg-ffd166, #ffd166); }
+.hunt-ware-icon.life { color: var(--c-fg-e85d5d, #e85d5d); }
+.hunt-ware-coach { display: block; width: 40px; height: 44px; }
+.hunt-ware-coach svg, .hunt-coach-art svg { display: block; width: 100%; height: 100%; }
+.hunt-price { padding: 3px 8px; background: var(--c-bg-ffd166, #ffd166); color: var(--c-fg-140c02, #140c02); font-weight: 700; font-size: 12px; font-variant-numeric: tabular-nums; box-shadow: 2px 2px 0 var(--c-shadow-03070d, #03070d); }
+.hunt-train { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.hunt-train button { display: grid; gap: 1px; padding: 6px 4px; background: var(--c-bg-121926, #121926); border: 2px solid var(--c-border-2a3546, #2a3546); color: inherit; font: inherit; cursor: pointer; }
+.hunt-train button:hover:not(:disabled) { border-color: var(--c-border-55c878, #55c878); }
+.hunt-train button:disabled { opacity: .5; cursor: not-allowed; }
+.hunt-train b { font-size: 11px; color: var(--c-fg-f47b20, #f47b20); }
+.hunt-train span { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hunt-train small { font-size: 11px; color: var(--c-fg-55c878, #55c878); }
+.hunt-shop.closed .hunt-shop-awning i { filter: grayscale(.8) brightness(.6); }
+.hunt-shop-shut { display: grid; justify-items: center; gap: 6px; padding: 26px 8px 18px; text-align: center; color: var(--c-fg-94a0b2, #94a0b2); }
+.hunt-shop-shut b { font: 22px var(--ff-display, 'Oswald', sans-serif); letter-spacing: .1em; color: var(--c-fg-f4f0e6, #f4f0e6); text-transform: uppercase; }
+.hunt-shop-shut p { margin: 0; font-size: 13px; }
+
+/* The middle: next opponent, your five on a court, the big PLAY. */
+.hunt-center { display: grid; gap: 10px; justify-items: center; text-align: center; }
+.hunt-next { width: 100%; padding: 10px 12px; background: var(--c-bg-121926, #121926); border: 2px solid var(--c-border-2a3546, #2a3546); }
+.hunt-next h2 { margin: 2px 0; font: 28px var(--ff-display, 'Oswald', sans-serif); }
+.hunt-next small { color: var(--c-fg-94a0b2, #94a0b2); }
+.hunt-next-semi { border-color: var(--c-border-b983ff, #b983ff); }
+.hunt-next-boss { border-color: var(--c-border-e85d5d, #e85d5d); box-shadow: 0 0 0 2px var(--c-shadow-5a1a1a, #5a1a1a); }
+.hunt-court { position: relative; width: 100%; max-width: 560px; aspect-ratio: 5 / 4; background: repeating-linear-gradient(90deg, var(--c-bg-c98a4b, #c98a4b) 0 22px, var(--c-bg-b97a3e, #b97a3e) 22px 44px); border: 4px solid var(--c-border-f4f0e6, #f4f0e6); box-shadow: 4px 4px 0 var(--c-shadow-03070d, #03070d); overflow: hidden; }
+.hunt-court-key { position: absolute; left: 34%; right: 34%; top: 0; height: 42%; border: 3px solid var(--c-border-f4f0e6, #f4f0e6); border-top: 0; background: var(--c-bg-f47b20, #f47b20); opacity: .55; }
+.hunt-court-arc { position: absolute; left: 6%; right: 6%; top: -40%; height: 110%; border: 3px solid var(--c-border-f4f0e6, #f4f0e6); border-radius: 0 0 50% 50%; border-top: 0; opacity: .7; }
+.hunt-court-man { position: absolute; display: grid; justify-items: center; transform: translate(-50%, -50%); z-index: 1; }
+.hunt-court-man svg { filter: drop-shadow(2px 2px 0 var(--c-shadow-03070d80, rgba(3, 7, 13, .5))); }
+.hunt-court-tag { display: flex; align-items: center; gap: 4px; margin-top: -2px; padding: 2px 6px; background: var(--c-bg-0b1018, #0b1018); border: 2px solid var(--c-border-2a3546, #2a3546); font-size: 11px; white-space: nowrap; }
+.hunt-court-tag b { font-size: 14px; color: var(--c-fg-f47b20, #f47b20); }
+.hunt-court-tag i { font-style: normal; font-size: 10px; margin-left: 2px; }
+.hunt-court-tag i.up { color: var(--c-fg-55c878, #55c878); }
+.hunt-court-tag i.down { color: var(--c-fg-e85d5d, #e85d5d); }
+.hunt-court-man.rarity-rare .hunt-court-tag { border-color: var(--c-border-4da3ff, #4da3ff); }
+.hunt-court-man.rarity-epic .hunt-court-tag { border-color: var(--c-border-b983ff, #b983ff); }
+.hunt-court-man.rarity-legendary .hunt-court-tag { border-color: var(--c-border-ffd166, #ffd166); }
+.hunt-bench { font-size: 13px; color: var(--c-fg-94a0b2, #94a0b2); }
+.hunt-bench b { color: var(--c-fg-f47b20, #f47b20); }
+.hunt-versus-bar { display: flex; align-items: center; justify-content: center; gap: 22px; }
+.hunt-versus-bar > div { display: grid; justify-items: center; }
+.hunt-versus-bar small { font-size: 11px; letter-spacing: .1em; color: var(--c-fg-94a0b2, #94a0b2); }
+.hunt-play-big { display: inline-flex; align-items: center; gap: 10px; padding: 16px 44px; font: 30px/1 var(--ff-display, 'Oswald', sans-serif); letter-spacing: .12em; box-shadow: 4px 4px 0 var(--c-shadow-03070d, #03070d); animation: hunt-play-pulse 1.8s ease-in-out infinite; }
+.hunt-play-big:hover { transform: translateY(-2px); }
+@keyframes hunt-play-pulse { 50% { box-shadow: 4px 4px 0 var(--c-shadow-03070d, #03070d), 0 0 0 6px var(--c-shadow-f47b2040, rgba(244, 123, 32, .25)); } }
+@media (prefers-reduced-motion: reduce) { .hunt-play-big { animation: none; } }
+.hunt-odds { margin: 0; }
+.hunt-scout { width: 100%; text-align: left; background: var(--c-bg-121926, #121926); border: 2px solid var(--c-border-2a3546, #2a3546); padding: 8px 12px; }
+.hunt-scout summary { cursor: pointer; font-weight: 700; }
+.hunt-their { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 3px; font-size: 13px; }
+.hunt-their b { color: var(--c-fg-f47b20, #f47b20); }
+
+/* The right: your coach, boosts and chemistry. */
+.hunt-locker { display: grid; gap: 8px; background: var(--c-bg-121926, #121926); border: 2px solid var(--c-border-2a3546, #2a3546); box-shadow: 3px 3px 0 var(--c-shadow-03070d, #03070d); padding: 12px; }
+.hunt-locker h3 { margin: 6px 0 0; font: 15px var(--ff-display, 'Oswald', sans-serif); letter-spacing: .08em; text-transform: uppercase; }
+.hunt-locker h3 small { font: 11px var(--ff-body, inherit); color: var(--c-fg-94a0b2, #94a0b2); letter-spacing: 0; }
+.hunt-coach-card { display: grid; grid-template-columns: 76px 1fr; align-items: center; gap: 10px; padding: 8px; background: var(--c-bg-0b1018, #0b1018); border: 2px solid var(--c-border-2a3546, #2a3546); }
+.hunt-coach-card.rarity-rare { border-color: var(--c-border-4da3ff, #4da3ff); }
+.hunt-coach-card.rarity-epic { border-color: var(--c-border-b983ff, #b983ff); }
+.hunt-coach-card.rarity-legendary { border-color: var(--c-border-ffd166, #ffd166); }
+.hunt-coach-art { display: block; width: 76px; height: 92px; }
+.hunt-coach-card > div { display: grid; gap: 2px; }
+.hunt-coach-card small { font-size: 12px; color: var(--c-fg-94a0b2, #94a0b2); }
+.hunt-coach-bonus { font: 24px var(--ff-display, 'Oswald', sans-serif); color: var(--c-fg-55c878, #55c878); }
+.hunt-chips { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
+.hunt-chips li { display: grid; grid-template-columns: 16px 1fr; column-gap: 6px; align-items: center; padding: 5px 8px; background: var(--c-bg-0b1018, #0b1018); border-left: 3px solid var(--c-border-f47b20, #f47b20); color: var(--c-fg-ffd166, #ffd166); }
+.hunt-chips b { color: var(--c-fg-f4f0e6, #f4f0e6); font-size: 13px; }
+.hunt-chips small { grid-column: 2; font-size: 11px; color: var(--c-fg-94a0b2, #94a0b2); }
+
+@media (max-width: 1100px) {
+  .hunt-base-grid { grid-template-columns: 1fr 1fr; }
+  .hunt-center { grid-column: 1 / -1; order: -1; }
+}
+@media (max-width: 700px) {
+  .hunt-base-grid { grid-template-columns: 1fr; }
+  .hunt-court-man svg { width: 34px; height: 34px; }
+  .hunt-play-big { padding: 14px 30px; font-size: 24px; }
+  .hunt-versus-bar { gap: 12px; }
+}

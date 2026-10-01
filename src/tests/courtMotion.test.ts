@@ -28,4 +28,27 @@ describe('court motion',()=>{
   expect(courtShot({...entry,result:'TURNOVER'},'H')).toBeNull();
   expect(courtShot(entry,'H')!.x).toBeGreaterThan(500);expect(courtShot({...entry,quarter:3},'H')!.x).toBeLessThan(500);
  });
+ it('moves like basketball: walks, runs, sprints and slides, dribble moves, every kind of pass and a catch',()=>{
+  const gaits=new Set<string>(),anims=new Set<string>();
+  for(const [i,e] of game.possessionLog.entries())for(let p=0;p<=1;p+=.02){const f=courtFrame(e,p,'H','A',4,game.possessionLog[i-1]);for(const a of f.players){if(a.gait)gaits.add(a.gait);if(a.anim)anims.add(a.anim.kind);}}
+  for(const g of ['walk','run','sprint','slide'])expect(gaits.has(g),g).toBe(true);
+  for(const k of ['crossover','chestPass','catch','contest'])expect(anims.has(k),k).toBe(true);
+  expect(['behindBack','spin','jab'].some(k=>anims.has(k))).toBe(true);
+  expect(['overheadPass','bouncePass'].some(k=>anims.has(k))).toBe(true);
+ });
+ it('a charge puts the defender on the floor and calls it; a block is a block, not a reach',()=>{
+  const e={...entry,result:'TURNOVER' as const,events:[...entry.events,'Turnover: CHARGE'],playback:{}};
+  const f=courtFrame(e,.66,'H','A');
+  expect(f.players.some(a=>a.anim?.kind==='charge')).toBe(true);
+  expect(courtFrame(e,.7,'H','A').callout?.text).toBe('CHARGE!');
+  const b=courtFrame({...entry,result:'MISS',playback:{...entry.playback,shotMade:false,blockerId:entry.onCourtAway[0]}},.62,'H','A');
+  expect(b.players.find(a=>a.id===entry.onCourtAway[0])?.anim?.kind).toBe('block');
+ });
+ it('shoots the shot the log records: a floater, a step-back, a fadeaway',()=>{
+  const kindAt=(shotType:string)=>courtFrame({...entry,playback:{...entry.playback,shotType}},.6,'H','A').players.find(a=>a.id===entry.playback!.shooterId)?.anim?.kind;
+  expect(kindAt('close')).toBe('floater');
+  expect(kindAt('stepback')).toBe('stepback');
+  expect(kindAt('fadeaway')).toBe('fadeaway');
+  expect(kindAt('layup')).toBe('layup');
+ });
 });
