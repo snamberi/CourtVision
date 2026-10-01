@@ -6,6 +6,18 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2026-12-16',
+    title: 'The 82-0 Challenge',
+    items: [
+      "**New mode: the 82-0 Challenge.** Build a ten-man team and a coach, play all 82 games against real teams from every era, then four playoff rounds. The goal: **82-0, then 16-0.**",
+      "**Quick Spin:** ten spins (five starters by position, five off the bench) and a coach spin. **Franchise Spin:** each spin rolls a franchise and an era, and you pick ONE player from everyone who played there, at his best season with them. One team reroll, one era reroll and one **Absolute Prime** boost.",
+      "**Boss teams on the schedule:** Wilt's Sixers, the 33-straight Lakers, Bird's Celtics, the **72-10 Bulls** and the **73-9 Warriors** (both versions). Beating one is worth bonus points.",
+      "**Lineups and chemistry matter:** start a guard and a big; real teammates, franchise-mates and famous rivals play better together. Every game uses the rules of the opponent's era.",
+      "**Scored, daily and rewarded:** every run gets a score (wins, margins, bosses, the playoffs). The **Daily 82-0** gives everyone the same spins, with a weekly board. Go 82-0 for the **Undefeated** title and frame, 98-0 for the gold **Perfection** ones.",
+      "**Mode cards** on the menu now show how long a sitting takes and what kind of game each mode is, plus the most popular and most fun picks.",
+    ],
+  },
+  {
     id: '2026-12-09',
     title: 'Profile frames, the Weekly Hunt, a Season Pass and your character online',
     items: [

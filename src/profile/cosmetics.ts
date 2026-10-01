@@ -252,6 +252,8 @@ export const MODE_TITLES: { mode: string; title: string; how: string }[] = [
   { mode: 'draft-title', title: 'All-Time Champion', how: 'Win a title with an All-Time Draft team' },
   { mode: 'pvp-ten', title: 'Ghost Hunter', how: 'Win ten PvP series' },
   { mode: 'goals-streak', title: 'The Grinder', how: 'Daily goals seven days in a row' },
+  { mode: 'perfect-82', title: 'Undefeated', how: 'Go 82-0 in the 82-0 Challenge' },
+  { mode: 'perfect-98', title: 'Perfection', how: 'Go 82-0 and 16-0 in the 82-0 Challenge' },
 ];
 
 export const HONORS_KEY = 'cv-board-honors';

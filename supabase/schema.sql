@@ -90,7 +90,7 @@ create table if not exists public.weekly_scores (
 create index if not exists weekly_scores_rank on public.weekly_scores (board, week, score desc);
 -- The Weekly Hunt board joined the weekly boards later.
 alter table public.weekly_scores drop constraint if exists weekly_scores_board_check;
-alter table public.weekly_scores add constraint weekly_scores_board_check check (board in ('rebuild', 'career', 'hunt'));
+alter table public.weekly_scores add constraint weekly_scores_board_check check (board in ('rebuild', 'career', 'hunt', 'perfect'));
 
 create table if not exists public.daily_legend (
   day date not null,

@@ -76,6 +76,21 @@ function art(id: AvatarFrameId): { under?: ReactNode; over: ReactNode } {
       <Gem x={C} y={9} c="#e8322e" s={2.4} />
       <Badge n={1} fill="#ffd166" />
     </> };
+    case 'undefeated': return { under: <circle cx={C} cy={C} r={R + 7} fill="#1b2230" />, over: <>
+      <Ring color="#c9d1dc" width={5} /><Ring color="#6c7a8c" width={1} r={R + 5} dash="2 3" />
+      <polygon points={pts([[C, 4], [C + 2.6, 10], [C + 9, 10], [C + 3.8, 14], [C + 5.6, 20], [C, 16.4], [C - 5.6, 20], [C - 3.8, 14], [C - 9, 10], [C - 2.6, 10]])} fill="#eef1f6" stroke="#0b1018" strokeWidth="1" />
+      <path d={`M${C - 24} 80h48l-4 7l4 7h-48l4-7z`} fill="#0b1018" stroke="#c9d1dc" strokeWidth="1.4" />
+      <text x={C} y={91} textAnchor="middle" fontSize="9" fontWeight="900" fill="#f4f0e6" fontFamily="'Press Start 2P', monospace">82-0</text>
+    </> };
+    case 'perfectGold': {
+      const leaves = (side: -1 | 1) => Array.from({ length: 7 }, (_, i) => { const a = side * (115 + i * 17); const [x, y] = polar(a, R + 6); return <ellipse key={i} cx={x} cy={y} rx={5} ry={2.4} transform={`rotate(${a + (side > 0 ? 70 : 110)} ${x} ${y})`} fill={i % 2 ? '#c9971f' : '#ffe14d'} stroke="#0b1018" strokeWidth=".6" />; });
+      return { under: <g className="avf-glow"><circle cx={C} cy={C} r={R + 9} fill="#3a2a06" opacity=".7" />{leaves(-1)}{leaves(1)}</g>, over: <>
+        <Ring color="#ffd166" width={5.5} /><Ring color="#fff6c4" width={1.2} r={R + 4.6} />
+        <path d={`M${C - 12} 15l-2-11l7 5l7-8l7 8l7-5l-2 11z`} fill="#ffd166" stroke="#0b1018" strokeWidth="1.2" /><Gem x={C} y={8} c="#fff6c4" s={2.2} />
+        <path d={`M${C - 24} 80h48l-4 7l4 7h-48l4-7z`} fill="#ffd166" stroke="#0b1018" strokeWidth="1.4" />
+        <text x={C} y={91} textAnchor="middle" fontSize="9" fontWeight="900" fill="#3a2a06" fontFamily="'Press Start 2P', monospace">98-0</text>
+      </> };
+    }
     default: return { over: <Ring color="#2a3546" width={2.5} /> };
   }
 }
