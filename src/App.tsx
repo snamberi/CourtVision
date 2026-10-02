@@ -7,6 +7,7 @@ import { SANDBOX_TABS, canEditTeam } from './navigation/permissions';
 import { TeamIdentityProvider } from './visuals/TeamIdentityContext';
 import { SaveRecoveryPanel } from './components/SaveRecoveryPanel';
 import { parseRoute, routeHash, type Tab } from './navigation/routes';
+import type { ArcadeTab } from './components/arcade/Arcade';
 import { useGameHistory } from './navigation/useGameHistory';
 import { manageCoachRosters, normalizeRosterRules, ROSTER_LIMITS } from './simulation/coachRosters';
 import { currentDraftOrder } from './simulation/gm';
@@ -113,6 +114,7 @@ import { addDays, formatDisplayDate, formatSeasonYear } from './simulation/calen
 import { awardOptions, computeFinalsMVP, finalsMVPLine, normalizeAwardSettings, seasonGamesPerTeam } from './simulation/awards';
 import { ChampionshipCelebration, type CelebrationInfo } from './components/ChampionshipCelebration';
 import { Sidebar } from './components/Sidebar';
+import { PhoneTabs } from './components/PhoneTabs';
 import { TeamLogo } from './components/TeamLogo';
 import { AdBanner } from './components/AdBanner';
 import { DownloadButton } from './components/DownloadButton';
@@ -136,6 +138,7 @@ const PlayerDatabase = lazy(() => import('./components/PlayerDatabase').then(m =
 const StandingsPage = lazy(() => import('./components/StandingsPage').then(m => ({ default: m.StandingsPage })));
 const ThreeTeamTradePage = lazy(() => import('./components/ThreeTeamTradePage').then(m => ({ default: m.ThreeTeamTradePage })));
 const ExtensionsPage = lazy(() => import('./components/ExtensionsPage').then(m => ({ default: m.ExtensionsPage })));
+const Arcade = lazy(() => import('./components/arcade/Arcade').then(m => ({ default: m.Arcade })));
 const PerfectChallenge = lazy(() => import('./components/perfect/PerfectChallenge').then(m => ({ default: m.PerfectChallenge })));
 const LeagueHunt = lazy(() => import('./components/hunt/LeagueHunt').then(m => ({ default: m.LeagueHunt })));
 const CareerImportPanel = lazy(() => import('./components/career/CareerImportPanel').then(m => ({ default: m.CareerImportPanel })));
@@ -237,7 +240,9 @@ function buildInitialExtras(league: League): GMLeagueExtras {
   };
 }
 
-type Screen = 'menu' | 'chooseTeam' | 'app' | 'hunt' | 'perfect' | 'career' | 'locker' | 'profile' | 'community' | 'draft' | 'settings';
+type Screen = 'menu' | 'chooseTeam' | 'app' | 'hunt' | 'perfect' | 'career' | 'locker' | 'profile' | 'community' | 'draft' | 'settings' | 'arcade';
+const ARCADE_HASH: Record<ArcadeTab, string> = { guess: '#/guess', hilo: '#/higher-lower', bracket: '#/bracket' };
+const arcadeTabOf = (hash: string) => (Object.entries(ARCADE_HASH).find(([, h]) => h === hash)?.[0] as ArcadeTab | undefined);
 
 const debouncedSave = createDebouncedSave();
 
@@ -249,7 +254,7 @@ function App() {
   const [league, setLeague] = useState<League>(buildInitialLeague);
   const [extras, setExtras] = useState<GMLeagueExtras>(() => buildInitialExtras(league));
   const [pendingLeague, setPendingLeague] = useState<League | null>(null);
-  usePlayClock(screen === 'app' ? (league.rebuildChallenge ? 'rebuild' : 'gm') : screen === 'hunt' || screen === 'perfect' || screen === 'career' || screen === 'draft' ? screen : 'menu');
+  usePlayClock(screen === 'app' ? (league.rebuildChallenge ? 'rebuild' : 'gm') : screen === 'hunt' || screen === 'perfect' || screen === 'career' || screen === 'draft' ? screen : screen === 'arcade' ? 'other' : 'menu');
   const [pendingExtras, setPendingExtras] = useState<GMLeagueExtras | null>(null);
   const [controlledTeamId, setControlledTeamId] = useState<string | null>(null);
   const sandboxMode = league.settings.sandboxMode === true;
@@ -318,9 +323,10 @@ function App() {
   const [watchStart, setWatchStart] = useState<number | undefined>(undefined);
   const [coachSession, setCoachSession] = useState<{ base: League; baseExtras: GMLeagueExtras; gameId: string; teamId: string; commands: LiveCoachingCommand[]; committed: League; openCoach?: boolean } | null>(null);
   const [communityUser, setCommunityUser] = useState<string | null>(null);
+  const [arcadeTab, setArcadeTab] = useState<ArcadeTab>('guess');
   const [boxscoreSource, setBoxscoreSource] = useState<'league' | 'exhibition'>('league');
 
-  const currentRoute = screen === 'menu' ? '#/menu' : screen === 'chooseTeam' ? '#/choose-team' : screen === 'hunt' ? '#/hunt' : screen === 'perfect' ? '#/82-0' : screen === 'career' ? '#/career' : screen === 'locker' ? '#/locker' : screen === 'profile' ? '#/profile' : screen === 'settings' ? '#/settings' : screen === 'draft' ? '#/draft' : screen === 'community' ? (communityUser ? `#/u/${encodeURIComponent(communityUser)}` : '#/community')
+  const currentRoute = screen === 'menu' ? '#/menu' : screen === 'chooseTeam' ? '#/choose-team' : screen === 'hunt' ? '#/hunt' : screen === 'perfect' ? '#/82-0' : screen === 'career' ? '#/career' : screen === 'locker' ? '#/locker' : screen === 'profile' ? '#/profile' : screen === 'settings' ? '#/settings' : screen === 'draft' ? '#/draft' : screen === 'arcade' ? ARCADE_HASH[arcadeTab] : screen === 'community' ? (communityUser ? `#/u/${encodeURIComponent(communityUser)}` : '#/community')
     : activeSaveId ? routeHash({ saveId: activeSaveId, tab, player: selectedPlayerId,
       team: viewedTeamId, game: viewedGameId ?? undefined, source: boxscoreSource, sub: leagueSettingsSub }) : null;
   const { restoring, showPrivacy, closePrivacy } = useGameHistory(currentRoute, async (hash, isCurrent) => {
@@ -334,7 +340,9 @@ function App() {
       jobs.resetAll();
       const profileMatch = hash.match(/^#\/u\/(.+)$/);
       setCommunityUser(profileMatch ? decodeURIComponent(profileMatch[1]) : null);
-      setScreen(hash === '#/choose-team' && pendingLeague ? 'chooseTeam' : hash === '#/hunt' ? 'hunt' : hash === '#/82-0' ? 'perfect' : hash === '#/career' ? 'career' : hash === '#/locker' ? 'locker' : hash === '#/profile' ? 'profile' : hash === '#/settings' ? 'settings' : hash === '#/community' || profileMatch ? 'community' : hash === '#/draft' ? 'draft' : 'menu');
+      const arcade = arcadeTabOf(hash);
+      if (arcade) setArcadeTab(arcade);
+      setScreen(arcade ? 'arcade' : hash === '#/choose-team' && pendingLeague ? 'chooseTeam' : hash === '#/hunt' ? 'hunt' : hash === '#/82-0' ? 'perfect' : hash === '#/career' ? 'career' : hash === '#/locker' ? 'locker' : hash === '#/profile' ? 'profile' : hash === '#/settings' ? 'settings' : hash === '#/community' || profileMatch ? 'community' : hash === '#/draft' ? 'draft' : 'menu');
       refreshSaves();
       return;
     }
@@ -1292,6 +1300,8 @@ function App() {
     if (feature && tutorial && !lockedTabSet.has(next) && !tutorial.opened.includes(feature.id)) acknowledgeUnlock(feature, true);
     setHint(null);
     setTab(next as Tab);
+    // On a phone the menu slides over the page: close it once a page is picked.
+    if (window.matchMedia('(max-width: 720px)').matches) setSidebarCollapsed(true);
   };
   const steps = tourSteps({ teamName: controlledTeam?.name ?? null, navMode, hasLocks: locked.length > 0 });
   const tourStep = tutorial?.tourStep;
@@ -1349,6 +1359,9 @@ function App() {
       <SaveRecoveryPanel beforeAction={async () => { await debouncedSave.flush(); }} onOpen={async id => { jobs.resetAll(); await debouncedSave.flush(); await continueSavedUniverse(id); }} />
     </>} /></>;
   }
+  if (screen === 'arcade') {
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening the quick games…</main>}><Arcade tab={arcadeTab} onTab={setArcadeTab} onExit={() => setScreen('menu')} /></Suspense></>;
+  }
   if (screen === 'career') {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Career Mode…</main>}><CareerMode onExit={() => setScreen('menu')} /></Suspense></>;
   }
@@ -1375,6 +1388,7 @@ function App() {
           onContinue={continueSavedUniverse}
           onDeleteSave={handleDeleteSave}
           onSettings={() => setScreen('settings')}
+          onArcade={t => { setArcadeTab(t); setScreen('arcade'); }}
           onRenameSave={handleRenameSave}
         />
 
@@ -1512,6 +1526,7 @@ function App() {
         />
       )}
 
+      <PhoneTabs tab={tab} hasControlledTeam={!!controlledTeam} menuOpen={!sidebarCollapsed} onNavigate={navigateFromMenu} onMore={() => setSidebarCollapsed(v => !v)} />
       <div className="app-body">
         <Sidebar
           historical={!!league.historical}

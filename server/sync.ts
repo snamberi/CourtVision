@@ -1,4 +1,4 @@
-import { derive, sanitizeBlob, publicAvatar } from './derive';
+import { ARCADE_BOARDS, derive, sanitizeBlob, publicAvatar } from './derive';
 import { mergeStorage, mergeCareers } from '../src/cloud/merge';
 import { computeHonors, pvpHonor } from './honors';
 import { getUser, rest, upsert, deleteUser, json, bearer, type SupaEnv, type Fetch } from './supabase';
@@ -86,7 +86,9 @@ export async function handleSync(req: Request, env: SupaEnv | null, now = new Da
       rest(env, 'PATCH', `profiles?id=eq.${id}`, { level: d.profile.level, xp: d.profile.xp, stats: { ...d.profile.stats, honors }, updated_at: now.toISOString() }, 'return=minimal', f),
       rest(env, 'DELETE', `user_achievements?${eq}`, undefined, 'return=minimal', f).then(() => upsert(env, 'user_achievements', own(d.achievements.map(a => ({ achievement_id: a }))), 'user_id,achievement_id', f)),
       upsert(env, 'created_players', own(d.players), 'user_id,career_id', f),
-      upsert(env, 'weekly_scores', own(d.weekly.map(w => ({ ...w, updated_at: now.toISOString() }))), 'board,week,user_id', f),
+      upsert(env, 'weekly_scores', own(d.weekly.filter(w => !ARCADE_BOARDS.includes(w.board)).map(w => ({ ...w, updated_at: now.toISOString() }))), 'board,week,user_id', f),
+      // The quick games' boards on their own: a database that does not allow them yet keeps everything else.
+      upsert(env, 'weekly_scores', own(d.weekly.filter(w => ARCADE_BOARDS.includes(w.board)).map(w => ({ ...w, updated_at: now.toISOString() }))), 'board,week,user_id', f).catch(() => null),
       upsert(env, 'daily_legend', own(d.daily), 'day,user_id', f),
       upsert(env, 'rebuild_records', own(d.rebuild), 'scenario,user_id', f),
       upsert(env, 'code_results', own(d.codes.map(c => ({ ...c, updated_at: now.toISOString() }))), 'code,user_id', f),

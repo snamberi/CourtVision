@@ -31,6 +31,8 @@ import { totalXp, levelFor, takeLevelUp, unlocksBetween } from '../profile/profi
 import { noteVisit } from '../retention/streak';
 import { notePass } from '../retention/pass';
 import { TrophyUnlock } from './locker/TrophyUnlock';
+import { readArcade, guessStreak, isGuessDone } from '../arcade/storage';
+import { weekKey } from '../retention/week';
 
 export type GameMode = 'random' | 'real' | 'legends' | 'perfect' | 'career' | 'rebuild' | 'draft';
 export interface RealLeagueOptions { source: 'history' | 'csv'; realDevelopment: boolean; forceRosters?: boolean; allPlayers?: boolean }
@@ -55,6 +57,8 @@ interface Props {
   onProfile?: () => void;
   /** Opens Settings (backups, graphics, privacy). */
   onSettings?: () => void;
+  /** Opens a quick game. */
+  onArcade?: (game: 'guess' | 'hilo' | 'bracket') => void;
 }
 
 /** Every mode on the menu, with how long a sitting takes and what kind of game it is. `badge` marks a highlight. */
@@ -157,7 +161,7 @@ function SavedLeaguesList({ saves, onContinue, onDeleteSave, onRenameSave }: Pic
   );
 }
 
-export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSave, busy = null, onLocker, onCode, onCommunity, onProfile, onSettings }: Props) {
+export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSave, busy = null, onLocker, onCode, onCommunity, onProfile, onSettings, onArcade }: Props) {
   // First visit: pick a look before anything else; What's New waits until it is picked.
   const [pickLook, setPickLook] = useState(needsThemeChoice);
   // Today's visit counts for the daily streak and the Season Pass.
@@ -239,6 +243,8 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
           </button>
         ))}
       </div>
+
+      {onArcade && <QuickGames onOpen={onArcade} />}
 
       {selectedMode === 'rebuild' && <div className="menu-setup rb-setup"><div className="difficulty-picker rb-picker"><h4>Choose your rebuild</h4>
         <div className="rb-scenarios" role="radiogroup" aria-label="Rebuild scenarios">{SCENARIOS.map(sc => { const rec = rebuildRecords[sc.id]; return <button key={sc.id} role="radio" aria-checked={scenario === sc.id} className={`rb-scenario ${scenario === sc.id ? 'selected' : ''}`} onClick={() => setScenario(sc.id)}>
@@ -407,4 +413,22 @@ function CodeEntry({ busy, onCode }: { busy: string | null; onCode: (code: strin
       <button className="primary" type="submit" disabled={!!busy || !code.trim()}>{busy ?? 'Start'}</button></div>
     {error && <p className="backup-msg err" role="alert">{error}</p>}
   </form>;
+}
+
+/** The quick games strip under the modes: today's puzzle, your streak, this week's bracket. */
+function QuickGames({ onOpen }: { onOpen: (game: 'guess' | 'hilo' | 'bracket') => void }) {
+  const [r] = useState(readArcade);
+  const today = new Date().toISOString().slice(0, 10), week = weekKey();
+  const day = r.guess[today], streak = guessStreak(r, today).current, bracket = r.bracket[week];
+  const games = [
+    { id: 'guess' as const, icon: 'search', title: 'Guess the Player', blurb: 'One real NBA player a day. Six guesses.', status: isGuessDone(day) ? (day!.won ? `Solved in ${day!.guesses.length}` : 'Missed today') : 'New puzzle today', extra: streak ? `${streak}-day streak` : null },
+    { id: 'hilo' as const, icon: 'up', title: 'Higher or Lower', blurb: 'Career numbers, head to head. How long can you go?', status: r.hilo.best ? `Best streak ${r.hilo.best}` : 'Set your first streak', extra: null },
+    { id: 'bracket' as const, icon: 'trophy', title: 'Bracket Challenge', blurb: 'Sixteen all-time teams. Pick every series.', status: bracket?.played ? `${bracket.score} pts this week` : bracket?.locked ? 'Picks locked' : 'New bracket this week', extra: null },
+  ];
+  return <section className="quick-games" aria-labelledby="quick-games-title">
+    <div className="menu-section-heading"><h2 id="quick-games-title">Quick games</h2><span>REAL NBA HISTORY · 2 MINUTES</span></div>
+    <div className="quick-games-grid">{games.map(g => <button key={g.id} className="quick-game" onClick={() => onOpen(g.id)}>
+      <PixelIcon name={g.icon} size={24} /><b>{g.title}</b><small>{g.blurb}</small><em>{g.status}{g.extra ? ` · ${g.extra}` : ''}</em>
+    </button>)}</div>
+  </section>;
 }

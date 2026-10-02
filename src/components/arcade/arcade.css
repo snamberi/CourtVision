@@ -1,0 +1,81 @@
+/* Quick games: Guess the Player, Higher or Lower, the Bracket Challenge. */
+.arcade { max-width: 1120px; margin: 0 auto; }
+.arcade-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 18px; }
+.arcade-tabs button { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; }
+.arcade-tabs button.selected { background: var(--amber); color: var(--c-fg-140c02, #140c02); border-color: var(--c-border-ffd29c, #ffd29c); }
+.arcade-legend { display: inline-flex; align-items: center; gap: 6px; margin-left: 6px; color: var(--text-dim); }
+.arcade-legend i { display: inline-block; width: 12px; height: 12px; }
+.arcade-legend i.hit, .arcade-cell.hit { background: var(--c-bg-2f9e55, #2f9e55); color: var(--c-fg-ffffff, #fff); }
+.arcade-legend i.close, .arcade-cell.close { background: var(--c-bg-c9a227, #c9a227); color: var(--c-fg-1a1300, #1a1300); }
+
+/* Guess the Player */
+.arcade-guess-box { position: relative; max-width: 520px; margin: 0 0 14px; }
+.arcade-guess-box input { width: 100%; padding: 12px 14px; font-size: 16px; }
+.arcade-suggest { position: absolute; z-index: 5; left: 0; right: 0; top: calc(100% + 4px); margin: 0; padding: 4px; list-style: none; background: var(--c-bg-121926, #121926); border: 2px solid var(--c-border-f47b20, #f47b20); box-shadow: 4px 4px 0 var(--c-shadow-000000, #000); }
+.arcade-suggest button { display: flex; justify-content: space-between; gap: 12px; width: 100%; padding: 8px 10px; text-align: left; background: transparent; border: 0; box-shadow: none; }
+.arcade-suggest button:hover, .arcade-suggest button:focus-visible { background: var(--c-bg-1d2a40, #1d2a40); }
+.arcade-suggest small { color: var(--text-dim); }
+.arcade-grid { display: grid; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
+.arcade-row { display: grid; grid-template-columns: minmax(120px, 1.6fr) repeat(6, minmax(64px, 1fr)); gap: 5px; min-width: 540px; }
+.arcade-head span { font: 600 11px var(--font-data); letter-spacing: .08em; text-transform: uppercase; color: var(--text-dim); text-align: center; }
+.arcade-head span:first-child { text-align: left; }
+.arcade-name { display: flex; align-items: center; font-weight: 700; color: var(--court); }
+.arcade-cell { display: flex; align-items: center; justify-content: center; gap: 4px; min-height: 46px; padding: 4px 6px; font: 600 13px/1.2 var(--font-data); text-align: center; background: var(--c-bg-1c2536, #1c2536); border: 1px solid var(--c-border-2a3546, #2a3546); animation: arcade-flip 300ms ease-out both; }
+.arcade-cell.miss { color: var(--text); }
+.arcade-cell.blank { background: transparent; border-style: dashed; animation: none; }
+.arcade-cell em { font-style: normal; font-size: 11px; }
+.arcade-row.empty .arcade-name { opacity: 0; }
+@keyframes arcade-flip { from { transform: rotateX(90deg); } to { transform: none; } }
+.arcade-reveal { display: grid; gap: 8px; margin: 18px 0; padding: 18px 20px; background: var(--c-bg-121926, #121926); border: 2px solid var(--c-border-2f9e55, #2f9e55); box-shadow: 4px 4px 0 var(--c-shadow-000000, #000); }
+.arcade-reveal.lost { border-color: var(--c-border-e85d5d, #e85d5d); }
+.arcade-reveal h2 { margin: 0; }
+.arcade-reveal p { margin: 0; color: var(--text-dim); }
+.arcade-stats { display: flex; flex-wrap: wrap; gap: 10px; margin: 6px 0; }
+.arcade-stats span { display: grid; min-width: 104px; padding: 8px 12px; background: var(--c-bg-0b1018, #0b1018); border: 1px solid var(--c-border-2a3546, #2a3546); }
+.arcade-stats b { font: 600 22px/1.1 var(--font-display); color: var(--c-fg-ffd166, #ffd166); }
+.arcade-stats small { color: var(--text-dim); font-size: 11px; }
+.arcade-big { padding: 12px 22px; font-size: 18px; }
+
+/* Higher or Lower */
+.arcade-hilo-intro { display: grid; justify-items: start; gap: 12px; }
+.arcade-hilo-top { display: flex; gap: 18px; font: 600 14px var(--font-data); color: var(--text-dim); }
+.arcade-hilo-top b { color: var(--c-fg-ffd166, #ffd166); font-size: 20px; }
+.arcade-hilo-q { font-size: 17px; }
+.arcade-hilo-pair { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px; }
+.arcade-vs { font: 18px var(--font-pixel); color: var(--amber); }
+.arcade-hilo-card { display: grid; justify-items: center; gap: 6px; padding: 22px 16px; text-align: center; background: var(--c-bg-13213a, #13213a); border: 2px solid var(--c-border-2f63ad, #2f63ad); box-shadow: 4px 4px 0 var(--c-shadow-000000, #000); }
+.arcade-hilo-card.hidden { border-color: var(--c-border-f47b20, #f47b20); }
+.arcade-hilo-card h3 { margin: 0; font-size: 22px; }
+.arcade-hilo-card small { color: var(--text-dim); }
+.arcade-hilo-value { font: 600 44px/1 var(--font-display); color: var(--c-fg-ffd166, #ffd166); animation: arcade-pop 260ms ease-out; }
+.arcade-hilo-card.hidden .arcade-hilo-value { color: var(--c-fg-f47b20, #f47b20); animation: none; }
+@keyframes arcade-pop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+.arcade-hilo-buttons { display: flex; justify-content: center; gap: 14px; margin-top: 18px; }
+.arcade-hilo-buttons button { display: inline-flex; align-items: center; gap: 8px; min-width: 150px; justify-content: center; padding: 12px 18px; font-size: 18px; }
+.arcade-verdict { text-align: center; font: 16px var(--font-pixel); margin: 12px 0 0; }
+.arcade-verdict.right { color: var(--c-fg-55c878, #55c878); }
+.arcade-verdict.wrong { color: var(--c-fg-e85d5d, #e85d5d); }
+
+/* Bracket Challenge */
+.arcade-bracket-cols { display: grid; grid-template-columns: repeat(4, minmax(210px, 1fr)); gap: 14px; overflow-x: auto; padding-bottom: 6px; }
+.arcade-bracket-col { display: flex; flex-direction: column; justify-content: space-around; gap: 10px; }
+.arcade-bracket-col h3 small { color: var(--text-dim); font-size: 11px; }
+.arcade-match { display: grid; gap: 3px; padding: 6px; background: var(--c-bg-0f1828, #0f1828); border: 1px solid var(--c-border-2a3546, #2a3546); }
+.arcade-match.right { border-color: var(--c-border-2f9e55, #2f9e55); }
+.arcade-match.wrong { border-color: var(--c-border-8a3a3a, #8a3a3a); }
+.arcade-team { display: grid; grid-template-columns: 22px 1fr auto; align-items: center; gap: 6px; width: 100%; padding: 6px 8px; text-align: left; font-size: 12px; background: var(--c-bg-16233a, #16233a); border: 1px solid var(--c-border-2a3a55, #2a3a55); box-shadow: none; }
+.arcade-team i { font-style: normal; color: var(--text-dim); font-size: 11px; }
+.arcade-team b { color: var(--c-fg-ffd166, #ffd166); }
+.arcade-team.picked { border-color: var(--c-border-f47b20, #f47b20); background: var(--c-bg-2a1d10, #2a1d10); }
+.arcade-team.won { font-weight: 700; }
+.arcade-team:disabled { opacity: 1; cursor: default; }
+.arcade-match-note { font-size: 11px; color: var(--text-dim); }
+.arcade-match.right .arcade-match-note { color: var(--c-fg-55c878, #55c878); }
+
+@media (max-width: 760px) {
+  .arcade-hilo-pair { grid-template-columns: 1fr; }
+  .arcade-vs { text-align: center; }
+  .arcade-hilo-value { font-size: 36px; }
+  .arcade-bracket-cols { grid-template-columns: repeat(4, 220px); }
+}
+@media (prefers-reduced-motion: reduce) { .arcade-cell, .arcade-hilo-value { animation: none; } }

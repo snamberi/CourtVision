@@ -11,7 +11,7 @@ export interface BoardResult { rows: BoardRow[]; total: number; you: { rank: num
 export type BoardSpec =
   | { kind: 'gms' }
   | { kind: 'players'; week?: string | null }
-  | { kind: 'weekly'; board: 'rebuild' | 'career' | 'hunt' | 'perfect'; week: string }
+  | { kind: 'weekly'; board: 'rebuild' | 'career' | 'hunt' | 'perfect' | 'guess' | 'hilo' | 'bracket'; week: string }
   | { kind: 'daily'; day: string }
   | { kind: 'rebuild'; scenario: string }
   | { kind: 'ranked'; season: string }

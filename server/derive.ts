@@ -19,6 +19,7 @@ import { careerResume } from '../src/career/career';
 import { AVATAR_CATEGORIES, DEFAULT_AVATAR, cleanAvatar, type AvatarLook } from '../src/profile/avatar';
 import { avatarFrameDef } from '../src/profile/avatarFrames';
 import { encodeAvatar } from '../src/profile/avatarCode';
+import { readArcade, guessWeeks, BRACKET_MAX, GUESS_TRIES } from '../src/arcade/storage';
 
 /*
  * Turns a player's synced progress into their public rows: profile level and stats, achievements, created players,
@@ -26,11 +27,15 @@ import { encodeAvatar } from '../src/profile/avatarCode';
  * here and anything implausible is dropped: the browser's copy is never trusted as-is.
  */
 
+export type WeeklyBoard = 'rebuild' | 'career' | 'hunt' | 'perfect' | 'guess' | 'hilo' | 'bracket';
+/** The quick games' boards (added later: a database without them yet keeps the others). */
+export const ARCADE_BOARDS: readonly WeeklyBoard[] = ['guess', 'hilo', 'bracket'];
+
 export interface Derived {
   profile: { level: number; xp: number; stats: Record<string, unknown> };
   achievements: string[];
   players: Record<string, unknown>[];
-  weekly: { board: 'rebuild' | 'career' | 'hunt' | 'perfect'; week: string; score: number; detail: string }[];
+  weekly: { board: WeeklyBoard; week: string; score: number; detail: string }[];
   daily: { day: string; won: boolean; stop: number; wins: number; losses: number; score: number }[];
   rebuild: { scenario: string; best: number; stars: number; title_in: number | null }[];
   codes: { code: string; team: string | null; wins: number; losses: number; finish: string; score: number }[];
@@ -115,6 +120,20 @@ export function derive(blob: ProgressBlob, now = new Date()): Derived {
   for (const [week, d] of Object.entries(perfectWeeks(loadPerfectRecords(read)))) {
     if (!/^\d{4}-W\d{2}$/.test(week) || week < FIRST_WEEK || week > thisWeek || !int(d.score, 0, 30_000) || !int(d.w, 0, 82) || !int(d.l, 0, 82) || d.w + d.l > 82 || !int(d.pw, 0, 16) || !int(d.pl, 0, 12)) continue;
     weekly.push({ board: 'perfect', week, score: d.score, detail: `${d.w}-${d.l}${d.pw + d.pl ? ` · playoffs ${d.pw}-${d.pl}` : ''}${d.champion ? ' · champions' : ''}` });
+  }
+  // The quick games: Guess the Player (the week's days), Higher or Lower (best streak), the Bracket Challenge.
+  const arcade = readArcade(read);
+  for (const [week, g] of Object.entries(guessWeeks({ ...arcade, guess: Object.fromEntries(Object.entries(arcade.guess).filter(([day, d]) => day >= FIRST_DAY && day <= today && Array.isArray(d?.guesses) && d.guesses.length >= 1 && d.guesses.length <= GUESS_TRIES)) }))) {
+    if (week < FIRST_WEEK || week > thisWeek || !int(g.score, 0, 7 * 600) || g.score === 0) continue;
+    weekly.push({ board: 'guess', week, score: g.score, detail: `${plural(g.solved, 'day')} solved of ${g.days}` });
+  }
+  for (const [week, best] of Object.entries(arcade.hilo.weeks)) {
+    if (!/^\d{4}-W\d{2}$/.test(week) || week < FIRST_WEEK || week > thisWeek || !int(best, 1, 1000)) continue;
+    weekly.push({ board: 'hilo', week, score: best, detail: `Streak of ${best}` });
+  }
+  for (const [week, b] of Object.entries(arcade.bracket)) {
+    if (!/^\d{4}-W\d{2}$/.test(week) || week < FIRST_WEEK || week > thisWeek || !b?.played || !int(b.score, 0, BRACKET_MAX) || b.score % 10) continue;
+    weekly.push({ board: 'bracket', week, score: b.score, detail: `${b.score}/${BRACKET_MAX}${typeof b.champion === 'string' ? ` · champion ${b.champion.split('@')[0].slice(0, 6)} ${b.champion.split('@')[1]?.slice(0, 4) ?? ''}` : ''}` });
   }
   const daily: Derived['daily'] = [];
   for (const [day, d] of Object.entries(hunt.daily ?? {})) {
