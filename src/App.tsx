@@ -328,6 +328,7 @@ function App() {
   const [communityUser, setCommunityUser] = useState<string | null>(null);
   const [arcadeTab, setArcadeTab] = useState<ArcadeTab>('guess');
   const [createChallenge, setCreateChallenge] = useState<Challenge>('free');
+  const [communityTab, setCommunityTab] = useState<'boards' | 'friends'>('boards');
   const [boxscoreSource, setBoxscoreSource] = useState<'league' | 'exhibition'>('league');
 
   const currentRoute = screen === 'menu' ? '#/menu' : screen === 'chooseTeam' ? '#/choose-team' : screen === 'hunt' ? '#/hunt' : screen === 'perfect' ? '#/82-0' : screen === 'career' ? '#/career' : screen === 'locker' ? '#/locker' : screen === 'profile' ? '#/profile' : screen === 'settings' ? '#/settings' : screen === 'create' ? '#/new-league' : screen === 'draft' ? '#/draft' : screen === 'arcade' ? ARCADE_HASH[arcadeTab] : screen === 'community' ? (communityUser ? `#/u/${encodeURIComponent(communityUser)}` : '#/community')
@@ -1365,7 +1366,7 @@ function App() {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening the draft room…</main>}><AllTimeDraft onExit={() => setScreen('menu')} onStart={(l, e, teamId, name) => { enterApp(l, e, teamId, name); setTab('dashboard'); }} /></Suspense></>;
   }
   if (screen === 'community') {
-    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Community…</main>}><Community onExit={() => { setCommunityUser(null); setScreen('menu'); }} user={communityUser} onUser={u => setCommunityUser(u || null)} /></Suspense></>;
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Community…</main>}><Community key={communityTab} initialTab={communityTab} onExit={() => { setCommunityUser(null); setScreen('menu'); }} user={communityUser} onUser={u => setCommunityUser(u || null)} /></Suspense></>;
   }
   // The GM Locker lives in the Player Profile now: an old #/locker link opens its Trophy room.
   if (screen === 'profile' || screen === 'locker') {
@@ -1400,7 +1401,7 @@ function App() {
           onStart={startGameMode}
           onLocker={() => setScreen('locker')}
           onProfile={() => setScreen('profile')}
-          onCommunity={() => { setCommunityUser(null); setScreen('community'); }}
+          onCommunity={t => { setCommunityUser(null); setCommunityTab(t ?? 'boards'); setScreen('community'); }}
           onCode={startFromCode}
           busy={menuBusy}
           saves={saveSummaries}

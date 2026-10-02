@@ -52,7 +52,7 @@
 :root .menu-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 8px; }
 :root .menu-section-heading h2 { font: 12px/1.7 var(--look-pixel); color: var(--look-text); letter-spacing: 0; }
 :root .menu-section-heading > span { font: 600 10px/1.4 var(--look-body); color: var(--look-muted); letter-spacing: .08em; }
-:root .mode-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+:root .mode-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 /* Each card sits in a wrapper: a first click picks it, and its Play button appears inside the card's bottom edge. */
 .mode-card-wrap { position: relative; display: flex; min-width: 0; }
 .mode-card-wrap > button.mode-card { flex: 1; width: 100%; }
@@ -172,3 +172,54 @@
 @media (max-width: 355px) { :root .main-menu { padding-left: 12px; padding-right: 12px; } .mh-word { font-size: 8px; } .mh-brand > img { width: 25px; height: 25px; } }
 @media (pointer: coarse) { :root .menu-masthead :is(.account-chip, .profile-chip, .menu-discord) { min-height: 44px; min-width: 40px; } }
 @media (prefers-reduced-motion: reduce) { :root button.mode-card:hover:not(:disabled) { transform: none; } :root .mode-card-wrap .mode-play { animation: none; } }
+
+/* Header: just sign in (or your name), Settings and Discord, on one row at every width. */
+:root .menu-masthead .mh-actions.mh-simple { display: flex; position: static; flex-wrap: nowrap; }
+@media (max-width: 540px) { :root .menu-masthead .mh-simple .menu-discord span { display: none; } }
+
+/* Coming-soon mode slots. */
+:root button.mode-card.mode-soon { cursor: default; opacity: 1; background-color: transparent; border-style: dashed; box-shadow: none; }
+:root button.mode-card.mode-soon:hover { transform: none; background-color: transparent; border-color: var(--look-line); }
+:root button.mode-card.mode-soon :is(h3, p, .mode-card-kicker) { color: var(--look-muted); }
+:root button.mode-card.mode-soon .pixel-icon { color: var(--look-muted); }
+
+/* The menu phone: floats in the bottom-left corner when there is room beside the menu, otherwise it lies in the
+   page as a landscape phone with the four apps in a row. */
+.menu-phone { align-self: flex-start; }
+.menu-phone-body { position: relative; display: grid; gap: 8px; padding: 8px 10px 10px; background-color: var(--look-raised); color: var(--look-text); border: 3px solid var(--look-edge); border-radius: 14px; box-shadow: var(--look-shadow), inset 0 0 0 2px var(--look-page); }
+.menu-phone-status { display: flex; align-items: center; justify-content: space-between; gap: 6px; font: 700 9px/1 var(--look-body); color: var(--look-muted); }
+.menu-phone-notch { width: 26px; height: 6px; background-color: var(--look-page); border-radius: 3px; }
+.menu-phone-icons { display: inline-flex; align-items: center; gap: 3px; }
+.menu-phone-icons .sig { width: 9px; height: 7px; background: linear-gradient(90deg, currentColor 2px, transparent 2px 3px, currentColor 3px 5px, transparent 5px 6px, currentColor 6px); clip-path: polygon(0 100%, 100% 0, 100% 100%); }
+.menu-phone-icons .bat { width: 13px; height: 7px; border: 1px solid currentColor; border-radius: 1px; background: linear-gradient(90deg, var(--look-accent) 70%, transparent 70%); }
+.menu-phone-apps { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 6px; }
+.menu-phone-app { display: grid; justify-items: center; gap: 3px; min-width: 0; padding: 2px; background: transparent; border: 0; box-shadow: none; color: var(--look-text); cursor: pointer; }
+.menu-phone-app small { font: 600 9px/1.2 var(--look-body); color: var(--look-muted); white-space: nowrap; }
+.menu-phone-app:hover small, .menu-phone-app:focus-visible small { color: var(--look-text); }
+.app-tile { position: relative; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; border: 2px solid var(--look-line); background-color: var(--look-panel); transition: transform 120ms; overflow: hidden; }
+.menu-phone-app:hover .app-tile, .menu-phone-app:focus-visible .app-tile { transform: translateY(-2px); border-color: var(--look-accent); }
+.app-tile.boards { background-color: var(--look-accent); color: var(--look-on-accent); border-color: var(--look-accent); }
+.app-tile.friends { color: var(--look-secondary); }
+.app-tile.streak { color: var(--look-accent); }
+.app-tile em { position: absolute; right: 1px; bottom: 1px; min-width: 15px; padding: 1px 3px; font: normal 700 9px/1.2 var(--look-body); text-align: center; background-color: var(--look-page); color: var(--look-text); border-radius: 4px; }
+.app-tile.streak em { position: static; padding: 0; background: none; font-size: 11px; margin-top: -4px; }
+.app-tile.streak { align-content: center; gap: 0; }
+.menu-phone-home { justify-self: center; width: 34px; height: 3px; border-radius: 2px; background-color: var(--look-muted); opacity: .6; }
+
+@media (min-width: 1560px) {
+  .menu-phone { position: fixed; left: 16px; bottom: 16px; z-index: 40; width: 118px; }
+  /* Level-up and streak notes sit beside the phone. */
+  .main-menu .level-up.level-up-corner { left: 150px; }
+}
+@media (max-width: 1559px) {
+  .menu-phone-body { grid-template-columns: auto 1fr; align-items: center; padding: 8px 12px; border-radius: 12px; }
+  .menu-phone-status { flex-direction: column; justify-content: center; gap: 5px; padding-right: 10px; border-right: 1px solid var(--look-line); }
+  .menu-phone-notch { width: 6px; height: 20px; }
+  .menu-phone-apps { grid-template-columns: repeat(4, auto); gap: 4px 14px; }
+  .menu-phone-home { display: none; }
+}
+@media (max-width: 540px) {
+  .menu-phone { align-self: stretch; }
+  .menu-phone-apps { justify-content: space-between; gap: 4px 8px; }
+}
+@media (prefers-reduced-motion: reduce) { .app-tile { transition: none; } .menu-phone-app:hover .app-tile { transform: none; } }

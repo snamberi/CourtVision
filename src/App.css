@@ -2209,3 +2209,5 @@ a.ad-creative:hover .ad-cta { background: var(--c-bg-ff8f3c, #ff8f3c); }
 .settings-page .league-rule-item { min-width: 0; padding: 14px 16px; border: 1px solid var(--look-line); border-radius: var(--look-radius); background-color: var(--look-raised); }
 .settings-page .league-rule-item .rating-row { flex-wrap: wrap; }
 .setting-card-body :is(.backup-panel, .save-recovery) > h3:first-child { display: none; }
+.settings-theme .mh-theme { display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; }
+.settings-theme .mh-theme-name { display: inline; }

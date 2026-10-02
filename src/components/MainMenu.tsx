@@ -23,6 +23,7 @@ import { RivalAlerts } from './cloud/RivalAlerts';
 import { WeeklyRecap } from './WeeklyRecap';
 import { WelcomeSignIn, needsSignInWelcome } from './cloud/WelcomeSignIn';
 import { MenuMasthead } from './MenuMasthead';
+import { MenuPhone } from './MenuPhone';
 import { totalXp, levelFor, takeLevelUp, unlocksBetween } from '../profile/profile';
 import { noteVisit } from '../retention/streak';
 import { notePass } from '../retention/pass';
@@ -45,8 +46,8 @@ interface Props {
   onLocker?: () => void;
   /** Starts the league a code describes; returns an error message, or null. */
   onCode?: (code: string) => string | null;
-  /** Opens Community (online boards, ranked, PvP, profiles). */
-  onCommunity?: () => void;
+  /** Opens Community (online boards, ranked, PvP, friends), at a tab. */
+  onCommunity?: (tab?: 'boards' | 'friends') => void;
   /** Opens your player profile. */
   onProfile?: () => void;
   /** Opens Settings (backups, graphics, privacy). */
@@ -174,7 +175,7 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
 
   return (
     <div className="main-menu">
-      <MenuMasthead onProfile={onProfile} onLocker={onLocker} onCommunity={onCommunity} onSettings={onSettings} streak={visit.v.streak} />
+      <MenuMasthead onProfile={onProfile ?? onLocker} onCommunity={onCommunity && (() => onCommunity('boards'))} onSettings={onSettings} />
       <SaveSafetyNudge />
       <RivalAlerts />
       <WeeklyRecap />
@@ -188,6 +189,8 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
           <PixelBall size={48} />
         </div>
       </div>
+
+      <MenuPhone onBoards={onCommunity && (() => onCommunity('boards'))} onFriends={onCommunity && (() => onCommunity('friends'))} onProfile={onProfile ?? onLocker} streak={visit.v.streak} />
 
       <div className="menu-section-heading"><h2>Choose your game</h2><span>PICK ONE, THEN PRESS PLAY</span></div>
 
@@ -212,6 +215,15 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
             </button>}
           </div>;
         })}
+        {/* Room for the next modes. */}
+        {[5, 6].map(n => <div key={n} className="mode-card-wrap soon">
+          <button className="mode-card mode-soon" disabled aria-label="Coming soon">
+            <span className="mode-card-kicker"><PixelIcon name="lock" size={24} /><span>0{n} / SOON</span></span>
+            <h3>Coming soon</h3>
+            <p>A new way to play is on the way. Watch What's New and Discord for the reveal.</p>
+            <span className="mode-meta"><span className="mode-tag">Coming soon</span></span>
+          </button>
+        </div>)}
       </div>
 
       {onArcade && <QuickGames onOpen={onArcade} />}

@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { PixelIcon } from './PixelIcon';
 import { InstallAppButton } from './InstallAppButton';
+import { ThemeChip } from './ThemePicker';
 import { OnlineStatus } from './cloud/OnlineStatus';
 import { CookieSettingsLink } from '../consent/ConsentBanner';
 import { PrivacyLink } from './PrivacyPolicyPage';
@@ -34,9 +35,12 @@ export function SettingsPage({ onExit, backup, recovery }: { onExit: () => void;
   return <div className="hunt locker settings-page settings-menu">
     <header className="hunt-top">
       <button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button>
-      <div className="hunt-title"><span className="pixel-eyebrow">BACKUPS, GRAPHICS, INSTALL, PRIVACY</span><h1>Settings</h1></div>
+      <div className="hunt-title"><span className="pixel-eyebrow">LOOK, BACKUPS, GRAPHICS, INSTALL, PRIVACY</span><h1>Settings</h1></div>
     </header>
     <div className="setting-cards">
+      <SettingCard icon="star" title="Look" blurb="The colours, fonts and menu art of the whole game. Pick from every look.">
+        <span className="settings-theme"><ThemeChip /></span>
+      </SettingCard>
       <SettingCard icon="check" title="Backup everything">{backup}</SettingCard>
       <SettingCard icon="chart" title="League recovery">{recovery}</SettingCard>
       <SettingCard icon="star" title="Graphics" blurb="Lite mode stops looping animations and blur, and uses fewer simulation workers. Auto turns it on for low-memory devices.">
