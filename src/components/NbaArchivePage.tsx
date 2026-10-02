@@ -149,7 +149,7 @@ function ArchivePlayer({ h, p, cutoff }: { h: NbaHistory; p: HistPlayer; cutoff:
     ...h.champions.filter(c => c.season < cutoff && c.rosterCredit.includes(p.idx)).map(c => ({ season: c.season, text: `NBA Champion (${c.champion})` })),
   ].sort((a, b) => a.season - b.season);
   const v = (x: number | null) => (x == null ? NA : x);
-  const pct = (m: number | null, a: number | null) => (m == null || !a ? NA : (m / a * 100).toFixed(1));
+  const pct = (m: number | null, a: number | null) => (m == null || !a ? NA : String(Math.round(m / a * 100)));
   const line = (r: HistSeasonRow, split: boolean) => <tr key={`${r.league}${r.season}${r.team}${r.stintIndex}`} className={split ? 'split-row' : undefined}>
     <td>{split ? '↳' : label(r.season)}</td><td>{r.isAggregate ? 'TOT' : r.team}{r.league !== 'NBA' && !split ? <small> {r.league}</small> : null}</td><td>{split ? '' : v(r.age)}</td>
     <td>{v(r.stats.g)}</td><td>{v(r.stats.mp)}</td><td>{v(r.stats.pts)}</td><td>{v(r.stats.trb)}</td><td>{v(r.stats.ast)}</td><td>{v(r.stats.stl)}</td><td>{v(r.stats.blk)}</td><td>{v(r.stats.tov)}</td>

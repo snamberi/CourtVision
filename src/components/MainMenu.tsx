@@ -11,10 +11,8 @@ import { MyAvatar } from './UserAvatar';
 import { PixelBall, PixelIcon } from './PixelIcon';
 import type { TradeDifficulty } from '../simulation/gm';
 import type { SaveSummary } from '../storage/saves';
-import { formatSeasonYear, nbaHistoryYearRange } from '../simulation/calendar';
+import { formatSeasonYear } from '../simulation/calendar';
 import { AdBanner } from './AdBanner';
-import { SCENARIOS, loadRebuildRecords } from '../simulation/rebuildChallenge';
-import { DataCredits } from './DataCredits';
 import { weeklyRebuild, weeklyCareer, loadWeeklyRecords, weeklyStreak, weekEndsAt } from '../retention/weekly';
 import { WhatsNew } from './WhatsNew';
 import { ThemeWelcome, needsThemeChoice } from './ThemePicker';
@@ -29,13 +27,11 @@ import { totalXp, levelFor, takeLevelUp, unlocksBetween } from '../profile/profi
 import { noteVisit } from '../retention/streak';
 import { notePass } from '../retention/pass';
 import { TrophyUnlock } from './locker/TrophyUnlock';
-import { readArcade, guessStreak, isGuessDone } from '../arcade/storage';
+import { readArcade, guessStreak, isGuessDone, endlessOf } from '../arcade/storage';
 import { weekKey } from '../retention/week';
 
 export type GameMode = 'random' | 'real' | 'legends' | 'perfect' | 'career' | 'rebuild' | 'draft';
 export interface RealLeagueOptions { source: 'history' | 'csv'; realDevelopment: boolean; forceRosters?: boolean; allPlayers?: boolean }
-/** Start years the bundled NBA history supports (history through the season before; data ends 2025-26). */
-const HISTORY_START_YEARS: number[] = Array.from({ length: 2025 - 1946 + 1 }, (_, i) => 2025 - i);
 
 interface Props {
   onStart: (mode: GameMode, difficulty: TradeDifficulty, year: string, leagueName: string, real?: RealLeagueOptions, scenarioId?: string) => void;
@@ -56,54 +52,39 @@ interface Props {
   /** Opens Settings (backups, graphics, privacy). */
   onSettings?: () => void;
   /** Opens a quick game. */
-  onArcade?: (game: 'guess' | 'hilo' | 'bracket') => void;
+  onArcade?: (game: 'guess' | 'hilo' | 'bracket' | 'quiz') => void;
+  /** Opens the New Franchise page (with a challenge picked, for the Rebuild and the All-Time Draft). */
+  onCreate?: (challenge?: 'free' | 'rebuild' | 'draft') => void;
 }
 
-/** Every mode on the menu, with how long a sitting takes and what kind of game it is. `badge` marks a highlight. */
-const MODES: { id: GameMode; title: string; blurb: string; kicker: string; icon: string; time: string; tags: string[]; badge?: 'popular' | 'fun' }[] = [
+/** The cards on the menu. Franchise opens the New Franchise page (a real or random league, the Rebuild Challenge and
+ *  the All-Time Draft); the others open their own setup screens. `badge` marks a highlight. */
+export type MenuMode = 'franchise' | 'legends' | 'perfect' | 'career';
+const MODES: { id: MenuMode; title: string; blurb: string; kicker: string; icon: string; time: string; tags: string[]; badge?: 'popular' | 'fun' }[] = [
   {
-    id: 'random', kicker: '01 / CREATE', icon: 'team', time: 'Unlimited', tags: ['Franchise', 'Sandbox', 'Chill'],
-    title: 'Random Players',
-    blurb: 'A freshly generated 30-team league, 18 players a roster, full 82-game schedule. Every player, every team - nothing real.',
+    id: 'franchise', kicker: '01 / FRANCHISE', icon: 'court', time: 'Unlimited', tags: ['Real NBA', 'Random', 'Challenges'], badge: 'popular',
+    title: 'Franchise',
+    blurb: 'Run a team in real NBA history from any season since 1946, or in a brand-new random league. Also here: the Rebuild Challenge and the All-Time Draft.',
   },
   {
-    id: 'real', kicker: '02 / IMPORT', icon: 'court', time: 'Unlimited', tags: ['Franchise', 'Real NBA', 'Deep'], badge: 'popular',
-    title: 'Real League',
-    blurb: 'Start from real NBA history — real players, careers, awards and champions up to any season from 1946 — or build a league from your own CSV data.',
-  },
-  {
-    id: 'legends', kicker: '03 / REIMAGINE', icon: 'trophy', time: '15-30 min a run', tags: ['Roguelike', 'Spins', 'Ranked'], badge: 'popular',
+    id: 'legends', kicker: '02 / REIMAGINE', icon: 'trophy', time: '15-30 min a run', tags: ['Roguelike', 'Spins', 'Ranked'], badge: 'popular',
     title: 'League Hunt',
     blurb: 'Spin a six-man squad and a coach from all of history, then win ten best-of-seven series against the great teams of every era. A semi-boss, a boss, three boosts.',
   },
   {
-    id: 'perfect', kicker: '04 / PERFECT', icon: 'star', time: '5-10 min', tags: ['Spins', 'Quick', 'Bragging rights'], badge: 'fun',
+    id: 'perfect', kicker: '03 / PERFECT', icon: 'star', time: '5-10 min', tags: ['Spins', 'Quick', 'Bragging rights'], badge: 'fun',
     title: '82-0 Challenge',
     blurb: 'Spin ten players and a coach (or pick one player from each franchise-and-era roll), play all 82 against real teams and the 72-10 Bulls and 73-9 Warriors, then the playoffs. Go 82-0. Then 16-0.',
   },
   {
-    id: 'rebuild', kicker: '05 / REBUILD', icon: 'chart', time: '10-20 min', tags: ['Puzzle', 'Trades', 'Weekly'],
-    title: 'Rebuild Challenge',
-    blurb: 'Take over a real team at its lowest point in NBA history (the Bulls after Jordan, the 7-59 Bobcats) and win a title before the clock runs out. Scored, starred and ranked.',
-  },
-  {
-    id: 'career', kicker: '06 / BECOME', icon: 'star', time: '5-15 min', tags: ['Single player', 'Story', 'Spins'], badge: 'fun',
+    id: 'career', kicker: '04 / BECOME', icon: 'star', time: '5-15 min', tags: ['Single player', 'Story', 'Spins'], badge: 'fun',
     title: 'Career Mode',
     blurb: 'Create one player (spin the wheel of NBA history or build him yourself) and live his whole career in today\'s league: draft night, training, free agency, awards, the Hall of Fame and the all-time Top 100.',
   },
-  {
-    id: 'draft', kicker: '07 / DRAFT', icon: 'team', time: '10-20 min', tags: ['Draft', 'Legends', 'Quick'],
-    title: 'All-Time Draft',
-    blurb: 'Thirty teams, thirteen rounds, every player in history at his best. Draft against AI GMs who build for need, then play the season under any era\'s rules with the full GM game.',
-  },
 ];
+/** The menu card a Mode of the Week falls under. */
+const cardOf = (m: string): MenuMode => (m === 'rebuild' || m === 'draft' || m === 'real' || m === 'random' ? 'franchise' : m as MenuMode);
 const BADGE_LABEL = { popular: 'Most popular', fun: 'Most fun' } as const;
-
-const DIFFICULTIES: { id: TradeDifficulty; label: string; blurb: string }[] = [
-  { id: 'easy', label: 'Easy', blurb: 'Trades go through with a wide value tolerance.' },
-  { id: 'normal', label: 'Normal', blurb: 'Trades need roughly matched value.' },
-  { id: 'hard', label: 'Hard', blurb: 'Trades need tightly matched value - young high-potential players carry a real premium.' },
-];
 
 function formatWhen(ts: number): string {
   return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
@@ -159,7 +140,7 @@ function SavedLeaguesList({ saves, onContinue, onDeleteSave, onRenameSave }: Pic
   );
 }
 
-export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSave, busy = null, onLocker, onCode, onCommunity, onProfile, onSettings, onArcade }: Props) {
+export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSave, busy = null, onLocker, onCode, onCommunity, onProfile, onSettings, onArcade, onCreate }: Props) {
   // First visit: pick a look before anything else; What's New waits until it is picked.
   const [pickLook, setPickLook] = useState(needsThemeChoice);
   // Today's visit counts for the daily streak and the Season Pass.
@@ -168,19 +149,8 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
   const account = useAccount();
   const [askSignIn, setAskSignIn] = useState(true);
   const showSignIn = askSignIn && needsSignInWelcome(account.status);
-  const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
-  const [scenario, setScenario] = useState(SCENARIOS[0].id);
-  const [rebuildRecords] = useState(() => loadRebuildRecords());
-  const [difficulty, setDifficulty] = useState<TradeDifficulty>('normal');
-  const yearOptions = nbaHistoryYearRange();
-  const [year, setYear] = useState(String(yearOptions[0]));
-  const [leagueName, setLeagueName] = useState('My League');
-  const [realSource, setRealSource] = useState<'history' | 'csv'>('history');
-  const [realDevelopment, setRealDevelopment] = useState(true);
-  const [forceRosters, setForceRosters] = useState(false);
-  const [allPlayers, setAllPlayers] = useState(true);
-  const [historyYear, setHistoryYear] = useState('2016');
-  const historical = selectedMode === 'real' && realSource === 'history';
+  // A first click picks a card (its Play button appears); Play (or a second click) opens the mode's setup.
+  const [selectedMode, setSelectedMode] = useState<MenuMode | null>(null);
   // Runs in progress, for the Continue chips (careers live in their own database, read after the menu shows).
   const [progress, setProgress] = useState<InProgress>(() => localProgress());
   useEffect(() => {
@@ -188,8 +158,19 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
     import('../career/storage').then(m => m.listCareers()).then(list => { const c = careerProgress(list); if (live && c) setProgress(p => ({ ...p, career: c })); }, () => {});
     return () => { live = false; };
   }, []);
-  const continuing = selectedMode ? progress[selectedMode] : undefined;
+  const progressOf = (m: MenuMode) => (m === 'franchise' ? progress.rebuild ?? progress.draft ?? progress.real ?? progress.random : progress[m]);
   const [featured] = useState(() => modeOfWeek());
+  const play = (m: MenuMode) => {
+    if (busy) return;
+    if (m === 'franchise') { if (onCreate) onCreate(); return; }
+    onStart(m, 'normal', '', '');
+  };
+  // Escape lets go of the picked card.
+  useEffect(() => {
+    if (!selectedMode) return;
+    const on = (e: KeyboardEvent) => { if (e.key === 'Escape') setSelectedMode(null); };
+    window.addEventListener('keydown', on); return () => window.removeEventListener('keydown', on);
+  }, [selectedMode]);
 
   return (
     <div className="main-menu">
@@ -208,112 +189,32 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
         </div>
       </div>
 
-      <div className="menu-section-heading"><h2>Choose your game</h2><span>SEVEN WAYS TO MAKE HISTORY</span></div>
+      <div className="menu-section-heading"><h2>Choose your game</h2><span>PICK ONE, THEN PRESS PLAY</span></div>
 
       <div className="mode-grid">
-        {MODES.map((m) => (
-          <button
-            key={m.id}
-            className={`mode-card ${selectedMode === m.id ? 'selected' : ''}`}
-            onClick={() => setSelectedMode(m.id)}
-            aria-pressed={selectedMode === m.id}
-          >
-            <span className="mode-card-kicker"><PixelIcon name={m.icon} size={24} /><span>{m.kicker}</span>{(m.badge || featured === m.id) && <span className="mode-flags">{featured === m.id && <span className="mode-xp" title="Mode of the Week: double XP for runs finished this week">2× XP</span>}{m.badge && <span className={`mode-badge mode-badge-${m.badge}`}><PixelIcon name={m.badge === 'popular' ? 'flame' : 'star'} size={12} /> {BADGE_LABEL[m.badge]}</span>}</span>}<span className="mode-selection-dot" /></span>
-            <h3>{m.title}</h3>
-            <p>{m.blurb}</p>
-            {progress[m.id] && <span className="mode-continue"><PixelIcon name="play" size={12} /> In progress: {progress[m.id]}</span>}
-            <span className="mode-meta"><span className="mode-time" title="How long a sitting takes"><PixelIcon name="clock" size={12} /> {m.time}</span>{m.tags.map(t => <span key={t} className="mode-tag">{t}</span>)}</span>
-          </button>
-        ))}
+        {MODES.map((m) => {
+          const picked = selectedMode === m.id, inProgress = progressOf(m.id), hot = cardOf(featured) === m.id;
+          return <div key={m.id} className={`mode-card-wrap ${picked ? 'picked' : ''}`}>
+            <button
+              className={`mode-card ${picked ? 'selected' : ''}`}
+              onClick={() => (picked ? play(m.id) : setSelectedMode(m.id))}
+              aria-pressed={picked}
+              aria-describedby={picked ? `mode-play-${m.id}` : undefined}
+            >
+              <span className="mode-card-kicker"><PixelIcon name={m.icon} size={24} /><span>{m.kicker}</span>{(m.badge || hot) && <span className="mode-flags">{hot && <span className="mode-xp" title={`Mode of the Week: double XP for ${FEATURED_NAME[featured]} runs finished this week`}>2× XP</span>}{m.badge && <span className={`mode-badge mode-badge-${m.badge}`}><PixelIcon name={m.badge === 'popular' ? 'flame' : 'star'} size={12} /> {BADGE_LABEL[m.badge]}</span>}</span>}<span className="mode-selection-dot" /></span>
+              <h3>{m.title}</h3>
+              <p>{m.blurb}</p>
+              {inProgress && <span className="mode-continue"><PixelIcon name="play" size={12} /> In progress: {inProgress}</span>}
+              <span className="mode-meta"><span className="mode-time" title="How long a sitting takes"><PixelIcon name="clock" size={12} /> {m.time}</span>{m.tags.map(t => <span key={t} className="mode-tag">{t}</span>)}</span>
+            </button>
+            {picked && <button id={`mode-play-${m.id}`} className="primary mode-play" disabled={!!busy} onClick={() => play(m.id)} autoFocus>
+              <PixelIcon name="play" size={14} /> {busy ?? (inProgress && m.id !== 'franchise' ? 'Continue' : m.id === 'franchise' ? 'Play: set up a league' : 'Play')}
+            </button>}
+          </div>;
+        })}
       </div>
 
       {onArcade && <QuickGames onOpen={onArcade} />}
-
-      {selectedMode === 'rebuild' && <div className="menu-setup rb-setup"><div className="difficulty-picker rb-picker"><h4>Choose your rebuild</h4>
-        <div className="rb-scenarios" role="radiogroup" aria-label="Rebuild scenarios">{SCENARIOS.map(sc => { const rec = rebuildRecords[sc.id]; return <button key={sc.id} role="radio" aria-checked={scenario === sc.id} className={`rb-scenario ${scenario === sc.id ? 'selected' : ''}`} onClick={() => setScenario(sc.id)}>
-          <small>{sc.startYear}-{String(sc.startYear + 1).slice(2)} · {sc.team} · {sc.seasons} seasons · {sc.difficulty}</small><b>{sc.title}</b><span>{sc.blurb}</span>
-          <small>{rec ? `${'★'.repeat(rec.stars)}${'☆'.repeat(3 - rec.stars)} · best ${rec.best.toLocaleString()}${rec.titleIn ? ` · title in year ${rec.titleIn}` : ''}` : 'Not played yet'}</small></button>; })}</div>
-        <p className="hint-text">Real NBA history from that season: real rosters, real players on their real careers, real draft classes. You run the team with every tool of the game. A title scores 1,000 plus 250 for every season left; wins and playoff runs add up along the way. Sandbox leagues don't count.</p></div></div>}
-
-      {selectedMode && selectedMode !== 'legends' && selectedMode !== 'perfect' && selectedMode !== 'career' && selectedMode !== 'rebuild' && selectedMode !== 'draft' && (
-        <div className="menu-setup">
-          <div className="difficulty-picker">
-            <h4>League Name</h4>
-            <input
-              className="year-input" type="text" value={leagueName}
-              onChange={(e) => setLeagueName(e.target.value)}
-              placeholder="e.g. My Dynasty"
-            />
-          </div>
-          {selectedMode === 'real' && <div className="difficulty-picker real-source-picker">
-            <h4>Data Source</h4>
-            <div className="difficulty-options" role="radiogroup" aria-label="Real league data source">
-              <button role="radio" aria-checked={realSource === 'history'} className={`difficulty-chip ${realSource === 'history' ? 'selected' : ''}`} onClick={() => setRealSource('history')}>Built-in NBA history</button>
-              <button role="radio" aria-checked={realSource === 'csv'} className={`difficulty-chip ${realSource === 'csv' ? 'selected' : ''}`} onClick={() => setRealSource('csv')}>Custom CSV import</button>
-            </div>
-            <p className="hint-text">{realSource === 'history'
-              ? 'Real players with their year-by-year statistics, awards and champions from NBA history. Teams use city names, and every rating is Court Vision\'s own, computed from the statistics.'
-              : 'Import your own legally obtained data on the Import Data page after the league opens.'}</p>
-            {realSource === 'history' && <DataCredits compact />}
-          </div>}
-          {historical ? <div className="difficulty-picker">
-            <h4>Starting Season</h4>
-            <select className="year-input" value={historyYear} onChange={(e) => setHistoryYear(e.target.value)} aria-label="Starting season">
-              {HISTORY_START_YEARS.map((y) => <option key={y} value={y}>{y + 1} ({y}–{String(y + 1).slice(2)})</option>)}
-            </select>
-            <p className="hint-text">Starting {historyYear}–{String(Number(historyYear) + 1).slice(2)} loads every completed season from 1946–47 through {Number(historyYear) - 1}–{String(Number(historyYear)).slice(2)}. The new season starts unplayed; from then on your league writes its own history.</p>
-          </div> : <div className="difficulty-picker">
-            <h4>Starting Season</h4>
-            <select className="year-input" value={year} onChange={(e) => setYear(e.target.value)}>
-              {yearOptions.map((y) => <option key={y} value={y}>{y + 1}</option>)}
-            </select>
-            <p className="hint-text">Seasons are named for the year they end. Pick any season from the NBA's founding ({yearOptions[yearOptions.length - 1] + 1}) through today.</p>
-          </div>}
-          {historical && <div className="difficulty-picker">
-            <h4>Real Player Development</h4>
-            <label className="real-dev-toggle"><input type="checkbox" checked={realDevelopment} onChange={e => setRealDevelopment(e.target.checked)} /> Follow each real player's historical development</label>
-            <p className="hint-text">{realDevelopment
-              ? 'On: real players rise and decline along their real rating trajectory at each new season; training can\'t change their base ratings. Results, awards and transactions are still decided by your league. Generated players develop normally.'
-              : 'Off: real players develop through Court Vision\'s team, coaching, training, minutes and aging systems, like everyone else.'} You can change this later in League Settings.</p>
-          </div>}
-          {historical && <div className="difficulty-picker">
-            <h4>Historical Rosters</h4>
-            <label className="real-dev-toggle"><input type="checkbox" checked={forceRosters} onChange={e => setForceRosters(e.target.checked)} /> Keep every team's real roster, season after season</label>
-            <p className="hint-text">{forceRosters
-              ? 'On: at the start of each season the data covers, every AI team takes the floor with its real roster (players move to the team they really played for). AI teams make no trades and only sign free agents to fill a short roster. Your own team is still yours to run.'
-              : 'Off: rosters start real and then change through your league\'s own trades, signings and drafts.'}</p>
-          </div>}
-          {historical && <div className="difficulty-picker">
-            <h4>Every Real Player</h4>
-            <label className="real-dev-toggle"><input type="checkbox" checked={allPlayers} onChange={e => setAllPlayers(e.target.checked)} /> Load players who retired before {historyYear} too</label>
-            <p className="hint-text">{allPlayers
-              ? 'On: every NBA and BAA player whose career ended before the start is in the league as a retired player, with his real career statistics, awards and profile. They count in all-time records and the Hall of Fame.'
-              : 'Off: only players active at the start (and those still to come) are in the league. Retired players stay in the NBA History archive, and you can load them later from there.'}</p>
-          </div>}
-          <div className="difficulty-picker">
-            <h4>Trade Difficulty</h4>
-            <div className="difficulty-options">
-              {DIFFICULTIES.map((d) => (
-                <button
-                  key={d.id}
-                  className={`difficulty-chip ${difficulty === d.id ? 'selected' : ''}`}
-                  onClick={() => setDifficulty(d.id)}
-                  title={d.blurb}
-                >
-                  {d.label}
-                </button>
-              ))}
-            </div>
-            <p className="hint-text">{DIFFICULTIES.find((d) => d.id === difficulty)?.blurb}</p>
-          </div>
-        </div>
-      )}
-
-      {selectedMode && (
-        <button className="primary menu-start" disabled={!!busy} onClick={() => onStart(selectedMode, difficulty, historical ? historyYear : year, leagueName, selectedMode === 'real' ? { source: realSource, realDevelopment, forceRosters, allPlayers } : undefined, selectedMode === 'rebuild' ? scenario : undefined)}>
-          {busy ?? (continuing ? `Continue ${MODES.find((m) => m.id === selectedMode)?.title}` : `Start ${historical ? `${historyYear}–${String(Number(historyYear) + 1).slice(2)} NBA` : MODES.find((m) => m.id === selectedMode)?.title}`)}
-        </button>
-      )}
 
       <SavedLeaguesList saves={saves} onContinue={onContinue} onDeleteSave={onDeleteSave} onRenameSave={onRenameSave} />
 
@@ -321,7 +222,7 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
       {onCode && <CodeEntry busy={busy} onCode={onCode} />}
 
 
-      <ThisWeek onCommunity={onCommunity} busy={busy} onFeatured={() => { setSelectedMode(featured); document.querySelector('.mode-grid')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }} onRebuild={() => onStart('rebuild', 'normal', '', '', undefined, 'weekly')} onCareer={() => onStart('career', 'normal', '', '')} onHunt={() => onStart('legends', 'normal', '', '')} />
+      <ThisWeek onCommunity={onCommunity} busy={busy} onFeatured={() => { setSelectedMode(cardOf(featured)); document.querySelector('.mode-grid')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }} onRebuild={() => onStart('rebuild', 'normal', '', '', undefined, 'weekly')} onCareer={() => onStart('career', 'normal', '', '')} onHunt={() => onStart('legends', 'normal', '', '')} />
 
       <AdBanner slot="menu" />
       <footer className="legal-footer">{!IS_DESKTOP_BUILD && <><a href="/how-to-play.html">How to Play</a> · <a href="/guides/">Guides</a> · <a href="/faq.html">FAQ</a> · <a href="/about.html">About</a> · <a href="/changelog.html">What's new</a> · </>}<PrivacyLink /> · <CookieSettingsLink /> · <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer">Discord</a>{onSettings && <> · <button className="link-button" onClick={onSettings}>Settings</button></>}</footer>
@@ -399,14 +300,15 @@ function CodeEntry({ busy, onCode }: { busy: string | null; onCode: (code: strin
 }
 
 /** The quick games strip under the modes: today's puzzle, your streak, this week's bracket. */
-function QuickGames({ onOpen }: { onOpen: (game: 'guess' | 'hilo' | 'bracket') => void }) {
+function QuickGames({ onOpen }: { onOpen: (game: 'guess' | 'hilo' | 'bracket' | 'quiz') => void }) {
   const [r] = useState(readArcade);
   const today = new Date().toISOString().slice(0, 10), week = weekKey();
-  const day = r.guess[today], streak = guessStreak(r, today).current, bracket = r.bracket[week];
+  const day = r.guess[today], streak = guessStreak(r, today).current, bracket = r.bracket[week], quiz = endlessOf(r).quiz;
   const games = [
-    { id: 'guess' as const, icon: 'search', title: 'Guess the Player', blurb: 'One real NBA player a day. Six guesses.', status: isGuessDone(day) ? (day!.won ? `Solved in ${day!.guesses.length}` : 'Missed today') : 'New puzzle today', extra: streak ? `${streak}-day streak` : null },
+    { id: 'guess' as const, icon: 'search', title: 'Guess the Player', blurb: 'A daily player for everyone, then endless rounds.', status: isGuessDone(day) ? (day!.won ? `Solved in ${day!.guesses.length} · endless open` : 'Missed today · endless open') : 'New puzzle today', extra: streak ? `${streak}-day streak` : null },
     { id: 'hilo' as const, icon: 'up', title: 'Higher or Lower', blurb: 'Career numbers, head to head. How long can you go?', status: r.hilo.best ? `Best streak ${r.hilo.best}` : 'Set your first streak', extra: null },
-    { id: 'bracket' as const, icon: 'trophy', title: 'Bracket Challenge', blurb: 'Sixteen all-time teams. Pick every series.', status: bracket?.played ? `${bracket.score} pts this week` : bracket?.locked ? 'Picks locked' : 'New bracket this week', extra: null },
+    { id: 'bracket' as const, icon: 'trophy', title: 'Bracket Challenge', blurb: 'Sixteen all-time teams. Weekly, or random any time.', status: bracket?.played ? `${bracket.score} pts this week` : bracket?.locked ? 'Picks locked' : 'New bracket this week', extra: null },
+    { id: 'quiz' as const, icon: 'star', title: 'NBA Quiz', blurb: 'Ten questions on titles, MVPs, picks and legends.', status: quiz.best ? `Best round ${quiz.best.toLocaleString()}` : 'A new round every time', extra: null },
   ];
   return <section className="quick-games" aria-labelledby="quick-games-title">
     <div className="menu-section-heading"><h2 id="quick-games-title">Quick games</h2><span>REAL NBA HISTORY · 2 MINUTES</span></div>

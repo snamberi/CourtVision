@@ -12,6 +12,7 @@ import { computeTradeValue } from '../simulation/gm';
 import { perGameAverages } from '../simulation/careerStats';
 import type { PlayerSeason } from '../simulation/types';
 import { StarIcon } from './Icons';
+import { statWhole } from './statFormat';
 
 interface Props {
   currentChampion?: string | null;
@@ -90,11 +91,11 @@ export function YourTeamPage({ league, controlledTeamId, onSelectPlayer, onChang
         <td>{calculateOverall(s)}</td>
         <td>{s.development.potential.toFixed(0)}</td>
         <td>{computeTradeValue(s).toFixed(0)}</td>
-        <td>{avg.gamesPlayed > 0 ? avg.ppg.toFixed(1) : '—'}</td>
-        <td>{avg.gamesPlayed > 0 ? avg.rpg.toFixed(1) : '—'}</td>
-        <td>{avg.gamesPlayed > 0 ? avg.apg.toFixed(1) : '—'}</td>
-        <td>{avg.gamesPlayed > 0 ? avg.mpg.toFixed(1) : '—'}</td>
-        <td>{avg.gamesPlayed > 0 ? avg.efficiency.toFixed(1) : '—'}</td>
+        <td>{avg.gamesPlayed > 0 ? statWhole(avg.ppg) : '—'}</td>
+        <td>{avg.gamesPlayed > 0 ? statWhole(avg.rpg) : '—'}</td>
+        <td>{avg.gamesPlayed > 0 ? statWhole(avg.apg) : '—'}</td>
+        <td>{avg.gamesPlayed > 0 ? statWhole(avg.mpg) : '—'}</td>
+        <td>{avg.gamesPlayed > 0 ? statWhole(avg.efficiency) : '—'}</td>
         <td>{isInjured ? <span className="injury-out-tag">{injury!.gamesRemaining}d</span> : ''}</td>
       </tr>
     );

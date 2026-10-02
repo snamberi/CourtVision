@@ -13,6 +13,7 @@ import type { League } from '../simulation/league';
 import type { GMLeagueExtras } from '../simulation/gm';
 import { NegotiationPanel } from './NegotiationPanel';
 import { openNegotiation } from '../simulation/agents';
+import { statWhole } from './statFormat';
 
 interface Props {
   title: string;
@@ -148,11 +149,11 @@ export function FreeAgentTable({ title, players, team, contracts, capSettings, c
                   <td>{r.season.age}</td>
                   <td>{r.overall}</td>
                   <td>{r.potential}</td>
-                  <td>{r.avg.mpg.toFixed(1)}{r.usingLastSeason && <span className="fa-last-season-tag" title="These stats are from last season — this player hasn't played any games while unsigned">Last season</span>}</td>
-                  <td>{r.avg.ppg.toFixed(1)}</td>
-                  <td>{r.avg.rpg.toFixed(1)}</td>
-                  <td>{r.avg.apg.toFixed(1)}</td>
-                  <td>{r.avg.efficiency.toFixed(1)}</td>
+                  <td>{statWhole(r.avg.mpg)}{r.usingLastSeason && <span className="fa-last-season-tag" title="These stats are from last season — this player hasn't played any games while unsigned">Last season</span>}</td>
+                  <td>{statWhole(r.avg.ppg)}</td>
+                  <td>{statWhole(r.avg.rpg)}</td>
+                  <td>{statWhole(r.avg.apg)}</td>
+                  <td>{statWhole(r.avg.efficiency)}</td>
                   <td className={r.verdict?.refuses ? 'fa-refuses' : ''} title={r.verdict?.reason}>{r.mood}</td>
                   <td title={r.ask ? `${r.ask.years} years${r.ask.playerOption ? ', player option' : ''}` : undefined}>{fmtMoney(r.asking)}{r.ask && <small className="fa-ask-years"> · {r.ask.years}y{r.ask.playerOption ? ' PO' : ''}</small>}</td>
                   <td>{Math.max(0, r.season.age - 19)}</td>

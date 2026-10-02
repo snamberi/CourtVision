@@ -18,34 +18,40 @@ export function PerformanceToggle() {
     onClick={() => { const v = next[setting]; setPerformanceSetting(v); setSetting(v); }}>Graphics: {label}</button>;
 }
 
+function SettingCard({ icon, title, blurb, wide, children }: { icon: string; title: string; blurb?: string; wide?: boolean; children: ReactNode }) {
+  return <section className={`setting-card ${wide ? 'wide' : ''}`}>
+    <h2><PixelIcon name={icon} size={18} /> {title}</h2>
+    {blurb && <p className="hint-text">{blurb}</p>}
+    <div className="setting-card-body">{children}</div>
+  </section>;
+}
+
 /**
- * Settings (the gear in the main menu header): backups and league recovery, graphics, privacy, and, tucked away at
- * the bottom, the site owner's online status check.
+ * Settings (the gear in the main menu header): one card per setting. Backups and league recovery, graphics, the app
+ * install, privacy, and, tucked away at the bottom, the site owner's online status check.
  */
-export function SettingsPage({ onExit, backups }: { onExit: () => void; backups: ReactNode }) {
-  return <div className="hunt locker settings-page">
+export function SettingsPage({ onExit, backup, recovery }: { onExit: () => void; backup: ReactNode; recovery: ReactNode }) {
+  return <div className="hunt locker settings-page settings-menu">
     <header className="hunt-top">
       <button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button>
       <div className="hunt-title"><span className="pixel-eyebrow">BACKUPS, GRAPHICS, INSTALL, PRIVACY</span><h1>Settings</h1></div>
     </header>
-    <section className="locker-bay">
-      <h2><PixelIcon name="check" size={18} /> Backups</h2>
-      <p className="hint-text">Save everything to one file (leagues, careers, your profile, records and cosmetics), bring it back on any device, or recover a league.</p>
-      {backups}
-    </section>
-    <section className="locker-bay">
-      <h2><PixelIcon name="star" size={18} /> Graphics</h2>
-      <p className="hint-text">Lite mode stops looping animations and blur, and uses fewer simulation workers. Auto turns it on for low-memory devices.</p>
-      <PerformanceToggle />
-      <p className="settings-install"><InstallAppButton /></p>
-    </section>
-    <section className="locker-bay">
-      <h2><PixelIcon name="team" size={18} /> Privacy</h2>
-      <p className="settings-links"><PrivacyLink /> · <CookieSettingsLink /></p>
-    </section>
-    {!IS_DESKTOP_BUILD && <details className="settings-advanced">
-      <summary>Advanced</summary>
-      <OnlineStatus />
-    </details>}
+    <div className="setting-cards">
+      <SettingCard icon="check" title="Backup everything">{backup}</SettingCard>
+      <SettingCard icon="chart" title="League recovery">{recovery}</SettingCard>
+      <SettingCard icon="star" title="Graphics" blurb="Lite mode stops looping animations and blur, and uses fewer simulation workers. Auto turns it on for low-memory devices.">
+        <PerformanceToggle />
+      </SettingCard>
+      <SettingCard icon="play" title="Install the app" blurb="Play from your home screen or desktop, offline too.">
+        <p className="settings-install"><InstallAppButton /></p>
+        <p className="hint-text settings-install-note">Already installed, or your browser can't install apps? Use your browser's menu: "Add to Home Screen" or "Install".</p>
+      </SettingCard>
+      <SettingCard icon="team" title="Privacy" blurb="What Court Vision stores, and your cookie choices.">
+        <p className="settings-links"><PrivacyLink /> · <CookieSettingsLink /></p>
+      </SettingCard>
+      {!IS_DESKTOP_BUILD && <SettingCard icon="settings" title="Advanced" blurb="Checks the online services (accounts and leaderboards).">
+        <details className="settings-advanced"><summary>Online status</summary><OnlineStatus /></details>
+      </SettingCard>}
+    </div>
   </div>;
 }

@@ -21,6 +21,7 @@ import type { PlayerSeason } from '../simulation/types';
 import { PlayerAvatar, PlayerNameTag } from './PlayerAvatar';
 import { OfficeRoom } from './OfficeRoom';
 import { PixelIcon } from './PixelIcon';
+import { statWhole } from './statFormat';
 
 interface Props {
   league: League;
@@ -164,7 +165,7 @@ export function DashboardPage({ league, extras, controlledTeamId, seasonPhase, o
                 {lead ? (
                   <>
                     <span className="award-team-player" onClick={() => onSelectPlayer?.(lead.player.playerId)}>{lead.player.playerId}</span>
-                    {' '}{lead.value.toFixed(1)} {key.replace('pg', '').toUpperCase()}
+                    {' '}{statWhole(lead.value)} {key.replace('pg', '').toUpperCase()}
                   </>
                 ) : <span className="hint-text">No games played yet.</span>}
               </p>
@@ -179,7 +180,7 @@ export function DashboardPage({ league, extras, controlledTeamId, seasonPhase, o
                 {lead ? (
                   <>
                     <span className="award-team-player" onClick={() => onSelectPlayer?.(lead.player.playerId)}>{lead.player.playerId}</span>
-                    {' '}{lead.value.toFixed(1)} {key.replace('pg', '').toUpperCase()}
+                    {' '}{statWhole(lead.value)} {key.replace('pg', '').toUpperCase()}
                   </>
                 ) : <span className="hint-text">No games played yet.</span>}
               </p>
@@ -248,10 +249,10 @@ export function DashboardPage({ league, extras, controlledTeamId, seasonPhase, o
                     <td>{calculateOverall(s)}</td>
                     <td>{s.development.potential.toFixed(0)}</td>
                     <td>{contract ? `$${(contract.annualSalary / 1_000_000).toFixed(1)}M · ${contract.yearsRemaining}y` : '—'}</td>
-                    <td>{avg.mpg.toFixed(1)}</td>
-                    <td>{avg.ppg.toFixed(1)}</td>
-                    <td>{avg.rpg.toFixed(1)}</td>
-                    <td>{avg.apg.toFixed(1)}</td>
+                    <td>{statWhole(avg.mpg)}</td>
+                    <td>{statWhole(avg.ppg)}</td>
+                    <td>{statWhole(avg.rpg)}</td>
+                    <td>{statWhole(avg.apg)}</td>
                   </tr>
                 );
               })}

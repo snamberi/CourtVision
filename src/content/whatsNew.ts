@@ -6,6 +6,19 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2026-12-30',
+    title: 'Endless quick games, an NBA Quiz and a new way to start',
+    items: [
+      "**NBA Quiz:** ten questions a round on champions, MVPs, Finals MVPs, Rookies of the Year, No. 1 picks, scoring titles and career numbers. Pick an era, answer fast for bonus points, and play as many rounds as you like.",
+      "**Play any time:** Guess the Player has an **Endless** mode (a new player every round, famous or deep cuts) after the daily puzzle, and the Bracket Challenge has **Random brackets** from any era.",
+      "**Pick, then Play:** click a mode to pick it, then press **Play** on its card.",
+      "**New Franchise:** one page to start any GM league. Choose a real NBA league or a random one, its name, starting season and difficulty, or take the **Rebuild Challenge** or the **All-Time Draft**.",
+      "**League settings before you start:** game style, games a season, quarter length, rules era, injuries, the trade deadline, the salary cap and more.",
+      "**Roomier Settings:** every setting has its own card.",
+      "**Whole-number stats:** points, rebounds, assists, percentages and ratings now read 23, not 23.4.",
+    ],
+  },
+  {
     id: '2026-12-23',
     title: 'Quick games, five new looks and a cleaner menu',
     items: [

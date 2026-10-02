@@ -26,6 +26,18 @@ export function dailyAnswer(h: NbaHistory, day: string): PlayerFacts {
 }
 export const guessable = (h: NbaHistory) => allFacts(h).filter(isGuessable);
 
+/** Endless play's answer pools: the famous ones (the daily pool), or deeper cuts (any All-Star with a real career). */
+export type GuessPool = 'famous' | 'deep';
+export function endlessPool(h: NbaHistory, pool: GuessPool): PlayerFacts[] {
+  return pool === 'famous' ? answerPool(h) : allFacts(h).filter(f => f.debut >= 1960 && f.games >= 300 && f.allStars >= 1);
+}
+/** A random answer for endless play, never one of `avoid` (today's daily answer and the recent ones). */
+export function randomAnswer(h: NbaHistory, pool: GuessPool, rand: () => number, avoid: Set<number>): PlayerFacts {
+  const list = endlessPool(h, pool), open = list.filter(f => !avoid.has(f.idx));
+  const from = open.length ? open : list;
+  return from[Math.floor(rand() * from.length)];
+}
+
 const num = (label: string, g: number, a: number, close: number, show: (n: number) => string): Cell =>
   ({ label, value: show(g), mark: g === a ? 'hit' : Math.abs(g - a) <= close ? 'close' : 'miss', ...(g === a ? {} : { arrow: a > g ? 'up' as const : 'down' as const }) });
 

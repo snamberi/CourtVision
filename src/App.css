@@ -2181,3 +2181,31 @@ a.ad-creative:hover .ad-cta { background: var(--c-bg-ff8f3c, #ff8f3c); }
   .play-button-root { right: 12px; bottom: 84px; }
   .play-button-fixed { padding: 12px 18px; font-size: 0.88rem; }
 }
+
+/* Settings: one card per setting, spaced out in a grid (menu Settings, the league's Settings tab and Award Formulas). */
+.settings-menu { max-width: 1180px; }
+.setting-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: 20px; align-items: start; }
+.setting-card { display: grid; align-content: start; gap: 10px; min-width: 0; padding: 20px 22px; background-color: var(--look-panel); color: var(--look-text); border: var(--look-border) solid var(--look-line); border-radius: var(--look-radius); box-shadow: var(--look-shadow); }
+.setting-card.wide { grid-column: 1 / -1; }
+.setting-card h2 { display: flex; align-items: center; gap: 10px; margin: 0; font: 13px/1.5 var(--look-pixel); color: var(--look-text); }
+.setting-card h2 .pixel-icon { color: var(--look-secondary); }
+.setting-card > .hint-text { margin: 0; color: var(--look-muted); }
+.setting-card-body { display: grid; gap: 10px; min-width: 0; }
+.setting-card-body .backup-panel, .setting-card-body .save-recovery { margin: 0; padding: 0; border: 0; box-shadow: none; background: transparent; }
+.setting-card-body > .link-button { justify-self: start; padding: 10px 14px; border: 1px solid var(--look-line); background-color: var(--look-raised); text-decoration: none; }
+.setting-card .settings-install:empty + .settings-install-note { display: block; }
+.settings-install-note { margin: 0; }
+.setting-card .settings-advanced { margin: 0; }
+
+.settings-page.settings-cards { max-width: 1180px; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr)); gap: 20px; align-items: start; }
+.settings-page.settings-cards > section { margin: 0; padding: 20px 22px; min-width: 0; }
+.settings-page.settings-cards > :is(section.wide, .import-setup) { grid-column: 1 / -1; }
+.settings-page.settings-cards > section > button { justify-self: start; }
+
+/* Award Formulas: each setting is its own card. */
+.settings-page > section + section { margin-top: 20px; }
+.settings-page section:has(> .league-rule-item) { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 14px; }
+.settings-page section:has(> .league-rule-item) > :not(.league-rule-item) { grid-column: 1 / -1; margin-bottom: 0; }
+.settings-page .league-rule-item { min-width: 0; padding: 14px 16px; border: 1px solid var(--look-line); border-radius: var(--look-radius); background-color: var(--look-raised); }
+.settings-page .league-rule-item .rating-row { flex-wrap: wrap; }
+.setting-card-body :is(.backup-panel, .save-recovery) > h3:first-child { display: none; }

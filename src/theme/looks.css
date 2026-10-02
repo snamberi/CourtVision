@@ -52,7 +52,13 @@
 :root .menu-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 8px; }
 :root .menu-section-heading h2 { font: 12px/1.7 var(--look-pixel); color: var(--look-text); letter-spacing: 0; }
 :root .menu-section-heading > span { font: 600 10px/1.4 var(--look-body); color: var(--look-muted); letter-spacing: .08em; }
-:root .mode-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+:root .mode-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+/* Each card sits in a wrapper: a first click picks it, and its Play button appears inside the card's bottom edge. */
+.mode-card-wrap { position: relative; display: flex; min-width: 0; }
+.mode-card-wrap > button.mode-card { flex: 1; width: 100%; }
+:root .mode-card-wrap.picked > button.mode-card { padding-bottom: 66px; }
+:root .mode-card-wrap .mode-play { position: absolute; left: 17px; right: 17px; bottom: 15px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; animation: mode-play-in 140ms ease-out; }
+@keyframes mode-play-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 :root button.mode-card { display: flex; flex-direction: column; justify-content: flex-start; min-width: 0; min-height: 209px; padding: 17px; text-align: left; background-color: var(--look-panel); color: var(--look-text); border: var(--look-border) solid var(--look-line); box-shadow: var(--look-shadow); }
 :root button.mode-card:hover:not(:disabled) { background-color: var(--look-raised); border-color: var(--look-edge); transform: translateY(-2px); }
 :root button.mode-card.selected { border-color: var(--look-accent); outline: 1px solid var(--look-accent); }
@@ -107,14 +113,15 @@
 }
 /* Quick games strip on the menu (the look roles from skins.css, like the mode cards). */
 .quick-games { width: 100%; display: grid; gap: 14px; }
-.quick-games-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 16px; }
+.quick-games-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px 16px; }
 .quick-game { display: grid; grid-template-columns: auto 1fr; grid-template-areas: 'icon title' 'icon blurb' 'icon status'; gap: 2px 12px; align-items: center; padding: 14px 16px; text-align: left; background-color: var(--look-panel); color: var(--look-text); border: var(--look-border) solid var(--look-line); border-radius: var(--look-radius); box-shadow: var(--look-shadow); }
 .quick-game:hover:not(:disabled) { background-color: var(--look-raised); border-color: var(--look-edge); }
 .quick-game .pixel-icon { grid-area: icon; color: var(--look-secondary); }
 .quick-game b { grid-area: title; font: 12px/1.5 var(--look-pixel); color: var(--look-text); }
 .quick-game small { grid-area: blurb; color: var(--look-muted); font: 12px/1.5 var(--look-body); }
 .quick-game em { grid-area: status; font: normal 700 11px/1.4 var(--look-body); color: var(--look-accent); }
-@media (max-width: 760px) { .quick-games-grid { grid-template-columns: 1fr; } }
+@media (max-width: 1100px) { .quick-games-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .quick-games-grid { grid-template-columns: 1fr; } }
 
 /* GM mode on phones: the bottom tab bar replaces the narrow icon rail; More opens the full menu. */
 .phone-tabs { display: none; }
@@ -164,4 +171,4 @@
 }
 @media (max-width: 355px) { :root .main-menu { padding-left: 12px; padding-right: 12px; } .mh-word { font-size: 8px; } .mh-brand > img { width: 25px; height: 25px; } }
 @media (pointer: coarse) { :root .menu-masthead :is(.account-chip, .profile-chip, .menu-discord) { min-height: 44px; min-width: 40px; } }
-@media (prefers-reduced-motion: reduce) { :root button.mode-card:hover:not(:disabled) { transform: none; } }
+@media (prefers-reduced-motion: reduce) { :root button.mode-card:hover:not(:disabled) { transform: none; } :root .mode-card-wrap .mode-play { animation: none; } }
