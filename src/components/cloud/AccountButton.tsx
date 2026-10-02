@@ -13,7 +13,7 @@ export function AccountButton({ onCommunity, onProfile }: { onCommunity: () => v
     <button className="account-chip" onClick={onCommunity}>Leaderboards</button>
     {a.status === 'signedIn'
       ? <button className="account-chip mh-user" onClick={onProfile} title="Signed in: your profile and sync">
-        <i className="mh-user-dot" aria-hidden="true" /><MyAvatar size={22} mode="portrait" animate={false} title="" /><span><b>{name ? `@${name}` : 'Signed in'}</b>{a.profile?.title && <small>{a.profile.title}</small>}</span>
+        <i className="mh-user-dot" aria-hidden="true" /><MyAvatar size={22} mode="portrait" animate={false} title="" /><span><b>{name ? `@${name}` : 'Pick your GM name'}</b>{a.profile?.title && <small>{a.profile.title}</small>}</span>
       </button>
       : <button className="account-chip primary" disabled={a.status === 'loading' || a.status === 'idle'} onClick={openSignIn}>{a.status === 'loading' ? 'Signing in…' : 'Sign in'}</button>}
   </>;

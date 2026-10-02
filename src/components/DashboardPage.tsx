@@ -107,7 +107,7 @@ export function DashboardPage({ league, extras, controlledTeamId, seasonPhase, o
         <div className="dashboard-hero-record">
           <span className="dashboard-hero-wl">{record ? `${record.wins}-${record.losses}` : '0-0'}</span>
           <span className="hint-text">
-            {confRank > 0 ? `${ordinal(confRank)} in conference` : '—'} · {PHASE_LABEL[seasonPhase]}
+            {confRank > 0 && record && record.wins + record.losses > 0 ? `${ordinal(confRank)} in conference` : 'No games yet'} · {PHASE_LABEL[seasonPhase]}
           </span>
           <span className="hint-text">{total - unplayed}/{total} games played</span>
           {nextGame && opponent && (

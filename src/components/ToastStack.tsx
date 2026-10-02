@@ -40,9 +40,11 @@ function ToastItem({ toast, onDismiss }: { toast: ToastData; onDismiss: (id: num
       onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
       onBlur={() => setPaused(false)}
+      // A tap on the toast itself closes it too (easier than the small × on a phone).
+      onClick={() => onDismiss(toast.id)}
     >
       <span>{toast.message}</span>
-      <button onClick={() => onDismiss(toast.id)} aria-label="Dismiss notification">×</button>
+      <button onClick={e => { e.stopPropagation(); onDismiss(toast.id); }} aria-label="Dismiss notification">×</button>
     </div>
   );
 }

@@ -393,3 +393,34 @@ button.mode-card { display: flex; flex-direction: column; justify-content: flex-
   .app-body main { margin-left: 0; width: 100%; padding-bottom: 170px; }
   .play-button-root { bottom: calc(76px + env(safe-area-inset-bottom)); right: 12px; }
 }
+
+/* ---------------------------------------------------------------- small fixes (phones and narrow windows) */
+.code-mode-actions { flex-wrap: wrap; }
+.code-mode-actions button { white-space: normal; text-align: left; }
+@media (max-width: 720px) {
+  /* "Unlocked: …" sits above the tab bar instead of over the page's title. */
+  .unlock-notice { top: auto; bottom: calc(72px + env(safe-area-inset-bottom)); left: 10px; right: 10px; padding: 10px 12px; gap: 6px; }
+  .unlock-notice p { font-size: 11.5px; line-height: 1.45; }
+  .unlock-notice-actions button { font-size: 15px; padding: 4px 12px; }
+  /* Awards Night: the button under the text, not squeezing it into a column. */
+  .awards-night-cta { flex-wrap: wrap; }
+  .awards-night-cta > div { flex: 1 1 calc(100% - 60px); }
+  .awards-night-cta > button { flex: 1 1 100%; }
+  /* Dream Matchup: long team names never push the pickers off the screen. */
+  .hunt-dream, .hunt-dream-pickers, .hunt-dream-side { min-width: 0; max-width: 100%; }
+  .hunt-dream-side select, .hunt-dream-era select { width: 100%; min-width: 0; text-overflow: ellipsis; }
+  /* Quick games: the three games on one row. */
+  .arcade .arcade-tabs { flex-wrap: nowrap; overflow-x: auto; gap: 6px; scrollbar-width: none; }
+  .arcade .arcade-tabs button { flex: 0 0 auto; padding: 7px 10px; font-size: 13px; }
+  .arcade .arcade-row { min-width: 470px; grid-template-columns: 104px repeat(6, minmax(56px, 1fr)); }
+  .arcade .arcade-cell { min-height: 40px; font-size: 11.5px; }
+  .arcade .arcade-name { position: sticky; left: 0; z-index: 1; background: var(--bg); font-size: 12px; }
+}
+.phone-tabs button { position: relative; }
+.phone-tab-badge { position: absolute; top: 3px; left: calc(50% + 6px); min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--amber); color: #140c02; font: 700 10px/16px var(--font-data); }
+.arcade .arcade-suggest button.active { background: rgba(255, 255, 255, .08); outline: 1px solid var(--amber); }
+/* Room under the last card for the fixed Play button. */
+@media (min-width: 721px) { .app-body main { padding-bottom: 110px; } }
+@media (max-width: 720px) {
+  body:has(.unlock-notice) .toast-stack { bottom: calc(220px + env(safe-area-inset-bottom)); }
+}

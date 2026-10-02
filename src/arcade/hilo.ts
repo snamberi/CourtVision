@@ -24,12 +24,15 @@ export function hiloPool(h: NbaHistory): PlayerFacts[] {
 
 export interface HiloRound { a: number; b: number; stat: HiloStat }
 
-/** A round: the next player and a number on which the two differ (so every round has a right answer). */
-export function nextRound(pool: PlayerFacts[], a: PlayerFacts, rand: () => number, avoid: Set<number>): HiloRound {
+/** A round: the next player and a number on which the two differ (so every round has a right answer). `recent`: the last rounds' numbers, newest first. */
+export function nextRound(pool: PlayerFacts[], a: PlayerFacts, rand: () => number, avoid: Set<number>, recent: HiloStat[] = []): HiloRound {
   for (let tries = 0; tries < 200; tries++) {
     const b = pool[Math.floor(rand() * pool.length)];
     if (!b || b.idx === a.idx || avoid.has(b.idx)) continue;
-    const stats = HILO_STATS.filter(s => a[s.id] !== b[s.id] && !(s.id === 'rings' && a.rings + b.rings === 0));
+    const all = HILO_STATS.filter(s => a[s.id] !== b[s.id] && !(s.id === 'rings' && a.rings + b.rings === 0));
+    // Not the same number three rounds running, when there is another to ask about.
+    const fresh = recent.length >= 2 && recent[0] === recent[1] ? all.filter(s => s.id !== recent[0]) : all;
+    const stats = fresh.length ? fresh : all;
     if (!stats.length) continue;
     return { a: a.idx, b: b.idx, stat: stats[Math.floor(rand() * stats.length)].id };
   }

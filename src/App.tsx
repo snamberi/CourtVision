@@ -254,7 +254,7 @@ function App() {
   const [league, setLeague] = useState<League>(buildInitialLeague);
   const [extras, setExtras] = useState<GMLeagueExtras>(() => buildInitialExtras(league));
   const [pendingLeague, setPendingLeague] = useState<League | null>(null);
-  usePlayClock(screen === 'app' ? (league.rebuildChallenge ? 'rebuild' : 'gm') : screen === 'hunt' || screen === 'perfect' || screen === 'career' || screen === 'draft' ? screen : screen === 'arcade' ? 'other' : 'menu');
+  usePlayClock(screen === 'app' ? (league.rebuildChallenge ? 'rebuild' : 'gm') : screen === 'hunt' || screen === 'perfect' || screen === 'career' || screen === 'draft' ? screen : screen === 'arcade' ? 'arcade' : 'menu');
   const [pendingExtras, setPendingExtras] = useState<GMLeagueExtras | null>(null);
   const [controlledTeamId, setControlledTeamId] = useState<string | null>(null);
   const sandboxMode = league.settings.sandboxMode === true;
@@ -1263,6 +1263,7 @@ function App() {
   const controlledTeam = controlledTeamId ? league.teams.find((t) => t.teamId === controlledTeamId) : null;
   const unplayedCount = gamesRemainingForTeam(league, controlledTeamId);
   const leagueUnplayedCount = league.schedule.filter((g) => !g.played).length;
+  const teamUnplayedCount = controlledTeamId ? league.schedule.filter((g) => !g.played && (g.homeTeamId === controlledTeamId || g.awayTeamId === controlledTeamId)).length : null;
   const tradeDeadlinePassed = isTradeDeadlinePassed(league);
   const seasonComplete = league.schedule.length > 0 && league.schedule.every((g) => g.played);
   const rosterIssues = seasonPhase === 'regular_season' && !seasonComplete ? rosterComplianceIssues(league, extras.capSettings) : [];
@@ -1433,7 +1434,7 @@ function App() {
             <TeamLogo team={controlledTeam} size={32} />
             <span className="topbar-team-text">
               <TeamLink teamId={controlledTeam.teamId} />
-              <small>{topbarRecord.rank ? `${ordinalRank(topbarRecord.rank)} in ${topbarRecord.scope} · ` : ''}{PHASE_NAMES[seasonPhase]}</small>
+              <small>{topbarRecord.rank && topbarRecord.wins + topbarRecord.losses > 0 ? `${ordinalRank(topbarRecord.rank)} in ${topbarRecord.scope} · ` : ''}{PHASE_NAMES[seasonPhase]}</small>
             </span>
             <span className="topbar-record" aria-label={`Record ${topbarRecord.wins} and ${topbarRecord.losses}`}>{topbarRecord.wins}-{topbarRecord.losses}</span>
           </div>
@@ -1444,6 +1445,7 @@ function App() {
         seasonPhase={seasonPhase}
         rosterIssues={rosterIssues}
         leagueUnplayedCount={leagueUnplayedCount}
+        teamUnplayedCount={teamUnplayedCount}
         tradeDeadlinePassed={tradeDeadlinePassed || !tradeDeadlineEnabled(league) || isDeadlineDayOpen(league)}
         onWatchNext={() => playNextGame(true)}
         onCoachNext={controlledTeamId ? () => playNextGame(true, true) : undefined}
@@ -1526,7 +1528,7 @@ function App() {
         />
       )}
 
-      <PhoneTabs tab={tab} hasControlledTeam={!!controlledTeam} menuOpen={!sidebarCollapsed} onNavigate={navigateFromMenu} onMore={() => setSidebarCollapsed(v => !v)} />
+      <PhoneTabs tab={tab} offers={extras.pendingTradeOffers.length} hasControlledTeam={!!controlledTeam} menuOpen={!sidebarCollapsed} onNavigate={navigateFromMenu} onMore={() => setSidebarCollapsed(v => !v)} />
       <div className="app-body">
         <Sidebar
           historical={!!league.historical}

@@ -19,6 +19,8 @@ export interface PlayButtonProps {
 
   // --- regular season: games remaining for the schedule as a whole ---
   leagueUnplayedCount: number;
+  /** Your team's games left (when you run a team): what the button counts down. */
+  teamUnplayedCount?: number | null;
   tradeDeadlinePassed: boolean;
   onWatchNext?: () => void;
   /** Watch the controlled team's next game with live coaching (timeouts, subs, pace, defense). */
@@ -98,7 +100,7 @@ export function PlayButton(props: PlayButtonProps) {
   if (blocked) idleLabel = 'Play';
   else if (seasonSimJob.running && simProgress) idleLabel = `Simulating… ${simProgress.pct}%`;
   else if (anyJobRunning) idleLabel = 'Simulating…';
-  else if (seasonPhase === 'regular_season' && !seasonComplete) idleLabel = `Play (${leagueUnplayedCount} left)`;
+  else if (seasonPhase === 'regular_season' && !seasonComplete) idleLabel = props.teamUnplayedCount === 0 ? 'Finish the season' : props.teamUnplayedCount != null ? `Play · ${props.teamUnplayedCount} game${props.teamUnplayedCount === 1 ? '' : 's'} left` : `Play (${leagueUnplayedCount} left)`;
   else if (seasonPhase === 'regular_season' && seasonComplete) idleLabel = 'Begin Playoffs';
   else if (seasonPhase === 'playoffs' && playoffBracket?.championTeamId) idleLabel = 'View Recap';
   else if (seasonPhase === 'playoffs') idleLabel = 'Play Playoffs';
@@ -155,7 +157,7 @@ export function PlayButton(props: PlayButtonProps) {
 
           {!blocked && !anyJobRunning && seasonPhase === 'regular_season' && !seasonComplete && (
             <div className="play-menu-section">
-              <p className="hint-text">Generate up to {leagueUnplayedCount} more games this season.</p>
+              <p className="hint-text">{props.teamUnplayedCount != null ? `${props.teamUnplayedCount} of your games left (${leagueUnplayedCount} around the league).` : `Generate up to ${leagueUnplayedCount} more games this season.`}</p>
               {props.onWatchNext && <button className="primary" disabled={leagueUnplayedCount === 0} onClick={() => doAndClose(props.onWatchNext!)}>Watch Next Game</button>}
               {props.onCoachNext && <button className="primary" disabled={leagueUnplayedCount === 0} onClick={() => doAndClose(props.onCoachNext!)}>Coach Next Game Live</button>}
               <div className="play-menu-presets">

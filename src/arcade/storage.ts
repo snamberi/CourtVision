@@ -84,3 +84,12 @@ export function guessStreak(r: ArcadeRecords, today: string): { current: number;
 /** Bracket points per correct pick, by round (first round, quarters, semis, final): 320 for a perfect bracket. */
 export const BRACKET_POINTS = [10, 20, 40, 80] as const;
 export const BRACKET_MAX = 8 * 10 + 4 * 20 + 2 * 40 + 80;
+
+/** XP from the quick games: 20 a solved Guess the Player day, 40 a played bracket (plus a tenth of its score), and each week's best Higher or Lower streak at 2 XP a step (up to 20 steps). */
+export function arcadeXp(r: ArcadeRecords): { xp: number; solved: number; brackets: number; hiloWeeks: number } {
+  const solved = Object.entries(r.guess).filter(([day, d]) => /^\d{4}-\d{2}-\d{2}$/.test(day) && Array.isArray(d?.guesses) && guessPoints(d) > 0).length;
+  const played = Object.values(r.bracket).filter(b => b?.played && Number.isInteger(b.score) && b.score >= 0 && b.score <= BRACKET_MAX);
+  const hilo = Object.values(r.hilo.weeks).filter(n => Number.isInteger(n) && n > 0);
+  const xp = solved * 20 + played.reduce((n, b) => n + 40 + Math.floor(b.score / 10), 0) + hilo.reduce((n, s) => n + Math.min(20, s) * 2, 0);
+  return { xp, solved, brackets: played.length, hiloWeeks: hilo.length };
+}

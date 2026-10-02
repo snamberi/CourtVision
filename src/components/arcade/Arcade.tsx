@@ -3,6 +3,7 @@ import type { NbaHistory } from '../../history/nbaHistoryData';
 import { PixelIcon } from '../PixelIcon';
 import { ClaimRankCard } from '../cloud/ClaimRankCard';
 import { track } from '../../analytics/track';
+import { noteWeekRun } from '../../retention/weekLog';
 import { todayUtc } from '../../hunt/storage';
 import { weekKey } from '../../retention/week';
 import { allFacts, heightLabel, type PlayerFacts } from '../../arcade/facts';
@@ -52,7 +53,7 @@ export function Arcade({ tab, onTab, onExit }: { tab: ArcadeTab; onTab: (t: Arca
     </nav>
     {error ? <p className="empty-state">Could not load the NBA history data: {error}</p>
       : !h ? <p className="empty-state">Loading 80 years of basketball…</p>
-      : tab === 'guess' ? <GuessGame h={h} /> : tab === 'hilo' ? <HiloGame h={h} /> : <BracketGame h={h} />}
+      : tab === 'guess' ? <GuessGame h={h} onNext={() => onTab('hilo')} /> : tab === 'hilo' ? <HiloGame h={h} /> : <BracketGame h={h} />}
   </div>;
 }
 
@@ -60,7 +61,7 @@ export function Arcade({ tab, onTab, onExit }: { tab: ArcadeTab; onTab: (t: Arca
 
 const untilMidnight = () => { const now = new Date(), next = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1); const m = Math.ceil((next - now.getTime()) / 60000); return `${Math.floor(m / 60)}h ${m % 60}m`; };
 
-function GuessGame({ h }: { h: NbaHistory }) {
+function GuessGame({ h, onNext }: { h: NbaHistory; onNext: () => void }) {
   const today = todayUtc(), week = weekKey();
   const answer = useMemo(() => dailyAnswer(h, today), [h, today]);
   const list = useMemo(() => guessable(h), [h]);
@@ -70,7 +71,11 @@ function GuessGame({ h }: { h: NbaHistory }) {
   const over = isOver(day);
   const [text, setText] = useState('');
   const [note, setNote] = useState<string | null>(null);
+  const [active, setActive] = useState(0);
+  const [, setClock] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  // The "next player in" countdown ticks once a minute.
+  useEffect(() => { const t = window.setInterval(() => setClock(c => c + 1), 60_000); return () => window.clearInterval(t); }, []);
   const tried = new Set(day.guesses);
   const matches = searchPlayers(list.filter(f => !tried.has(f.idx)), text);
   const rows: Cell[][] = day.guesses.map(i => compare(byIdx.get(i)!, answer));
@@ -78,16 +83,25 @@ function GuessGame({ h }: { h: NbaHistory }) {
     if (over || tried.has(f.idx)) return;
     const won = f.idx === answer.idx, guesses = [...day.guesses, f.idx];
     updateArcade(r => ({ ...r, guess: { ...r.guess, [today]: { guesses, won } } }));
-    if (won || guesses.length >= GUESS_TRIES) track('mode_finish', { mode: 'guess', won, tries: guesses.length });
-    setText(''); inputRef.current?.focus();
+    if (won || guesses.length >= GUESS_TRIES) {
+      track('mode_finish', { mode: 'guess', won, tries: guesses.length });
+      noteWeekRun('guess', { score: guessPoints({ guesses, won }), line: won ? `solved in ${guesses.length}` : 'missed' }, `guess-${today}`);
+    }
+    setText(''); setActive(0); inputRef.current?.focus();
   };
   const streak = guessStreak(rec, today), weekScore = guessWeeks(rec)[week]?.score ?? 0;
   return <section className="arcade-guess">
     <p className="hunt-lede">Puzzle #{puzzleNumber(today)}: one real NBA player, the same for everyone today. {GUESS_TRIES} guesses. <span className="arcade-legend"><i className="hit" /> right <i className="close" /> close <span aria-hidden="true">▲▼</span> higher or lower</span></p>
     {!over && <div className="arcade-guess-box">
-      <input ref={inputRef} className="year-input" value={text} onChange={e => setText(e.target.value)} placeholder={`Guess ${day.guesses.length + 1} of ${GUESS_TRIES}: type a player`} aria-label="Type a player's name"
-        onKeyDown={e => { if (e.key === 'Enter' && matches[0]) guess(matches[0]); }} autoComplete="off" />
-      {matches.length > 0 && <ul className="arcade-suggest" role="listbox">{matches.map(f => <li key={f.idx}><button role="option" aria-selected="false" onClick={() => guess(f)}><b>{f.name}</b><small>{f.team} · {f.debut}-{String(f.last).slice(2)}</small></button></li>)}</ul>}
+      <input ref={inputRef} className="year-input" value={text} onChange={e => { setText(e.target.value); setActive(0); }} placeholder={`Guess ${day.guesses.length + 1} of ${GUESS_TRIES}: type a player`} aria-label="Type a player's name"
+        aria-activedescendant={matches[active] ? `guess-opt-${matches[active].idx}` : undefined} autoFocus
+        onKeyDown={e => {
+          if (e.key === 'ArrowDown') { e.preventDefault(); setActive(i => Math.min(matches.length - 1, i + 1)); }
+          else if (e.key === 'ArrowUp') { e.preventDefault(); setActive(i => Math.max(0, i - 1)); }
+          else if (e.key === 'Escape') setText('');
+          else if (e.key === 'Enter' && matches[active]) guess(matches[active]);
+        }} autoComplete="off" />
+      {matches.length > 0 && <ul className="arcade-suggest" role="listbox">{matches.map((f, i) => <li key={f.idx}><button id={`guess-opt-${f.idx}`} role="option" aria-selected={i === active} className={i === active ? 'active' : ''} onMouseEnter={() => setActive(i)} onClick={() => guess(f)}><b>{f.name}</b><small>{f.team} · {f.debut}-{String(f.last).slice(2)}</small></button></li>)}</ul>}
     </div>}
     <div className="arcade-grid" role="table" aria-label="Your guesses">
       <div className="arcade-row arcade-head" role="row"><span role="columnheader">Player</span>{['Team', 'Pos', 'Height', 'Debut', 'PPG', 'All-Star'].map(l => <span key={l} role="columnheader">{l}</span>)}</div>
@@ -113,6 +127,7 @@ function GuessGame({ h }: { h: NbaHistory }) {
       </div>
       <div className="contest-actions">
         <button className="primary" onClick={async () => { const r = await share(shareText(today, day, rows, SITE)); setNote(r === 'copied' ? 'Copied: paste it anywhere.' : r === 'failed' ? 'Could not share from this browser.' : null); }}><PixelIcon name="star" size={14} /> Share result</button>
+        <button onClick={onNext}><PixelIcon name="up" size={14} /> Play Higher or Lower</button>
         <span className="hint-text">Next player in {untilMidnight()}.</span>
       </div>
       {note && <p className="hint-text" role="status">{note}</p>}
@@ -145,11 +160,14 @@ function HiloGame({ h }: { h: NbaHistory }) {
   const [reveal, setReveal] = useState<'right' | 'wrong' | null>(null);
   const [over, setOver] = useState(false);
   const seen = useRef(new Set<number>());
+  const recent = useRef<HiloRound['stat'][]>([]);
   const start = () => {
     rand.current = mulberry(Math.floor(Math.random() * 1_000_000_007));
     const a = pool[Math.floor(rand.current() * pool.length)];
     seen.current = new Set([a.idx]);
-    setRound(nextRound(pool, a, rand.current, seen.current)); setStreak(0); setReveal(null); setOver(false);
+    const r = nextRound(pool, a, rand.current, seen.current);
+    recent.current = [r.stat];
+    setRound(r); setStreak(0); setReveal(null); setOver(false);
     track('mode_start', { mode: 'hilo' });
   };
   const pick = (higher: boolean) => {
@@ -159,20 +177,32 @@ function HiloGame({ h }: { h: NbaHistory }) {
     window.setTimeout(() => {
       if (right) {
         const b = byIdx.get(round.b)!; seen.current.add(b.idx);
-        setStreak(s => s + 1); setRound(nextRound(pool, b, rand.current, seen.current)); setReveal(null);
+        const next = nextRound(pool, b, rand.current, seen.current, recent.current);
+        recent.current = [next.stat, ...recent.current].slice(0, 2);
+        setStreak(s => s + 1); setRound(next); setReveal(null);
       } else {
         setOver(true);
         updateArcade(r => ({ ...r, hilo: { best: Math.max(r.hilo.best, streak), runs: r.hilo.runs + 1, weeks: { ...r.hilo.weeks, [week]: Math.max(r.hilo.weeks[week] ?? 0, streak) } } }));
         track('mode_finish', { mode: 'hilo', streak });
+        noteWeekRun('hilo', { score: streak, line: `streak of ${streak}` }, `hilo-${Date.now()}`);
       }
     }, 1100);
   };
+  // Keys: ↑ higher, ↓ lower, Enter to play (again).
+  const keys = useRef<(e: KeyboardEvent) => void>(() => {});
+  keys.current = e => {
+    if ((e.target as HTMLElement)?.tagName === 'INPUT') return;
+    if (e.key === 'ArrowUp' && round && !over) { e.preventDefault(); pick(true); }
+    else if (e.key === 'ArrowDown' && round && !over) { e.preventDefault(); pick(false); }
+    else if (e.key === 'Enter' && (!round || over) && !(e.target as HTMLElement)?.closest('button:not([role="tab"])')) start();
+  };
+  useEffect(() => { const on = (e: KeyboardEvent) => keys.current(e); window.addEventListener('keydown', on); return () => window.removeEventListener('keydown', on); }, []);
   const best = rec.hilo.best, weekBest = rec.hilo.weeks[week] ?? 0;
   if (!round) return <section className="arcade-hilo-intro">
     <p className="hunt-lede">Two real players, one career number. Does the second one have more or less? Keep the streak going: one miss and it is over.</p>
     <div className="arcade-stats"><span><b>{best}</b><small>Best streak</small></span><span><b>{weekBest}</b><small>Best this week</small></span><span><b>{rec.hilo.runs}</b><small>Runs</small></span></div>
     <button className="primary arcade-big" onClick={start}><PixelIcon name="play" size={16} /> Play</button>
-    <p className="hint-text">Your best streak of the week goes on the weekly board. Numbers: points, rebounds and assists per game, career points, All-Star selections and championships (well-known players from 1974 on).</p>
+    <p className="hint-text">Your best streak of the week goes on the weekly board. Keys: ↑ higher, ↓ lower, Enter to play. Numbers: points, rebounds and assists per game, career points, All-Star selections and championships (well-known players from 1974 on).</p>
   </section>;
   const a = byIdx.get(round.a)!, b = byIdx.get(round.b)!, stat = statDef(round.stat);
   return <section className="arcade-hilo">
@@ -210,17 +240,28 @@ function BracketGame({ h }: { h: NbaHistory }) {
   const byId = useMemo(() => new Map(field.map(t => [t.id, t])), [field]);
   const rec = useArcade();
   const saved = rec.bracket[week];
-  const [picks, setPicks] = useState<(string | null)[]>(() => saved?.picks?.length === 15 ? saved.picks : Array(15).fill(null));
+  const [picks, setPicks] = useState<(string | null)[]>(() => saved?.picks?.length === 15 ? saved.picks.map(p => p || null) : Array(15).fill(null));
   const [results, setResults] = useState<BracketResult[]>(saved?.results ?? []);
   const [running, setRunning] = useState(false);
   const locked = !!saved?.locked;
   const played = !!saved?.played;
+  // Picks are kept as you make them (not locked), so leaving the page doesn't lose them.
+  const savePicks = (next: (string | null)[]) => {
+    setPicks(next);
+    updateArcade(r => (r.bracket[week]?.locked ? r : { ...r, bracket: { ...r.bracket, [week]: { picks: next.map(p => p ?? ''), locked: false, played: false, score: 0 } } }));
+  };
   const choose = (slot: number, id: string) => {
     if (locked) return;
     const next = [...picks]; next[slot] = id;
     // Later picks that no longer have their team in the matchup are cleared.
     for (let s = slot + 1; s < 15; s++) { const [x, y] = slotTeams(field, next, s); if (next[s] && next[s] !== x && next[s] !== y) next[s] = null; }
-    setPicks(next);
+    savePicks(next);
+  };
+  /** Every series to the better seed. */
+  const favourites = () => {
+    const next: string[] = [];
+    for (let s = 0; s < 15; s++) { const [x, y] = slotTeams(field, next, s); next[s] = seedOf(field, x!) < seedOf(field, y!) ? x! : y!; }
+    savePicks(next);
   };
   const tipOff = async () => {
     if (picks.some(p => !p) || running) return;
@@ -242,6 +283,7 @@ function BracketGame({ h }: { h: NbaHistory }) {
     const score = scorePicks(locks, out.map(r => ({ slot: r.slot, high: r.high, low: r.low, winsHigh: r.wh, winsLow: r.wl, winner: r.winner, games: [] })));
     updateArcade(r => ({ ...r, bracket: { ...r.bracket, [week]: { picks: locks, locked: true, played: true, score, champion: out[14].winner, results: out } } }));
     track('mode_finish', { mode: 'bracket', score });
+    noteWeekRun('bracket', { score, line: `${score}/${BRACKET_MAX}` }, `bracket-${week}`);
     setRunning(false);
   };
   const resultBySlot = new Map(results.map(r => [r.slot, r]));
@@ -267,6 +309,8 @@ function BracketGame({ h }: { h: NbaHistory }) {
       </div>)}
     </div>
     {!locked && <div className="contest-actions"><button className="primary arcade-big" disabled={picks.some(p => !p)} onClick={tipOff}><PixelIcon name="play" size={16} /> Lock picks and tip off</button>
+      <button onClick={favourites}>Pick all favourites</button>
+      <button disabled={!picks.some(Boolean)} onClick={() => savePicks(Array(15).fill(null))}>Clear picks</button>
       <span className="hint-text">{picks.filter(Boolean).length} of 15 picked. Picks lock at tip-off.</span></div>}
     {locked && !played && !running && <div className="contest-actions"><button className="primary arcade-big" onClick={tipOff}><PixelIcon name="play" size={16} /> Play the bracket</button><span className="hint-text">Your picks are locked.</span></div>}
     {running && <p className="hint-text" role="status">Playing series {results.length + 1} of 15…</p>}

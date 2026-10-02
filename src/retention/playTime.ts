@@ -6,8 +6,8 @@ import { localRead, type Read } from '../lib/kv';
  */
 
 export const PLAY_TIME_KEY = 'cv-play-time';
-export type PlayArea = 'gm' | 'career' | 'hunt' | 'perfect' | 'draft' | 'rebuild' | 'menu' | 'other';
-export const AREA_LABEL: Record<PlayArea, string> = { gm: 'GM Mode', career: 'Career', hunt: 'League Hunt', perfect: '82-0 Challenge', draft: 'All-Time Draft', rebuild: 'Rebuild', menu: 'Menus and profile', other: 'Everything else' };
+export type PlayArea = 'gm' | 'career' | 'hunt' | 'perfect' | 'draft' | 'rebuild' | 'arcade' | 'menu' | 'other';
+export const AREA_LABEL: Record<PlayArea, string> = { gm: 'GM Mode', career: 'Career', hunt: 'League Hunt', perfect: '82-0 Challenge', draft: 'All-Time Draft', rebuild: 'Rebuild', arcade: 'Quick games', menu: 'Menus and profile', other: 'Everything else' };
 export interface PlayTime { total: number; areas: Partial<Record<PlayArea, number>> }
 
 export function readPlayTime(read: Read = localRead): PlayTime {

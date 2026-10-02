@@ -5,7 +5,8 @@ import { allFacts, isNotable } from '../arcade/facts';
 import { dailyAnswer, answerPool, compare, puzzleNumber, searchPlayers, guessable, shareText } from '../arcade/guess';
 import { hiloPool, nextRound, isRight, mulberry } from '../arcade/hilo';
 import { bracketField, slotTeams, playSeries, scorePicks, FIRST_ROUND } from '../arcade/bracket';
-import { guessPoints, guessWeeks, guessStreak, mergeArcade, BRACKET_MAX, type ArcadeRecords } from '../arcade/storage';
+import { guessPoints, guessWeeks, guessStreak, mergeArcade, arcadeXp, BRACKET_MAX, type ArcadeRecords } from '../arcade/storage';
+import { xpParts } from '../profile/profile';
 import { derive } from '../../server/derive';
 
 let h: NbaHistory;
@@ -83,6 +84,19 @@ describe('Higher or Lower', () => {
   });
 });
 
+describe('Higher or Lower variety', () => {
+  it('never asks about the same number three rounds running when another would do', () => {
+    const pool = hiloPool(h), rand = mulberry(11);
+    let a = pool[3], recent: string[] = [];
+    for (let i = 0; i < 300; i++) {
+      const r = nextRound(pool, a, rand, new Set([a.idx]), recent as never);
+      if (recent.length === 2 && recent[0] === recent[1]) expect(r.stat).not.toBe(recent[0]);
+      recent = [r.stat, ...recent].slice(0, 2);
+      a = pool.find(f => f.idx === r.b)!;
+    }
+  });
+});
+
 describe('Bracket Challenge', () => {
   it('seeds sixteen different franchises and plays the same series for everyone', () => {
     const field = bracketField(h, '2026-W41');
@@ -131,5 +145,20 @@ describe('quick games records', () => {
       expect.objectContaining({ board: 'bracket', week: '2026-W41', score: 150 }),
     ]));
     expect(rows).toHaveLength(3);
+  });
+});
+
+describe('quick games XP', () => {
+  it('counts solved days, played brackets and each week\'s best streak (capped)', () => {
+    const r: ArcadeRecords = {
+      guess: { '2026-10-05': { guesses: [1, 2], won: true }, '2026-10-06': { guesses: [1, 2, 3, 4, 5, 6], won: false } },
+      hilo: { best: 30, runs: 9, weeks: { '2026-W41': 30, '2026-W42': 5 } },
+      bracket: { '2026-W41': { picks: [], locked: true, played: true, score: 150 }, '2026-W42': { picks: [], locked: false, played: false, score: 0 } },
+    };
+    expect(arcadeXp(r)).toEqual({ xp: 20 + (40 + 15) + (40 + 10), solved: 1, brackets: 1, hiloWeeks: 2 });
+  });
+  it('shows up in the profile XP', () => {
+    const store: Record<string, string> = { 'cv-arcade': JSON.stringify({ guess: { '2026-10-05': { guesses: [1], won: true } }, hilo: { best: 0, runs: 0, weeks: {} }, bracket: {} }) };
+    expect(xpParts(k => store[k] ?? null).find(p => p.id === 'arcade')?.xp).toBe(20);
   });
 });

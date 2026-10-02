@@ -11,6 +11,7 @@ export function WhatsNew() {
   const [releases] = useState(() => unseenReleases());
   const [open, setOpen] = useState(releases.length > 0);
   const closeRef = useRef<HTMLButtonElement>(null);
+  const [touch] = useState(() => typeof window !== 'undefined' && window.matchMedia?.('(hover: none)').matches);
   const close = () => { markReleasesSeen(); setOpen(false); };
   useEffect(() => {
     if (!open) return;
@@ -31,7 +32,7 @@ export function WhatsNew() {
       <div className="contest-actions whats-new-actions">
         <button ref={closeRef} className="primary">Let's play</button>
         {!IS_DESKTOP_BUILD && <a className="link-button" href="/changelog.html" onClick={() => markReleasesSeen()}>Full changelog</a>}
-        <span className="whats-new-hint" aria-hidden="true">Click anywhere to continue</span>
+        <span className="whats-new-hint" aria-hidden="true">{touch ? 'Tap' : 'Click'} anywhere to continue</span>
       </div>
     </div>
   </div>;
