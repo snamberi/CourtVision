@@ -2211,3 +2211,10 @@ a.ad-creative:hover .ad-cta { background: var(--c-bg-ff8f3c, #ff8f3c); }
 .setting-card-body :is(.backup-panel, .save-recovery) > h3:first-child { display: none; }
 .settings-theme .mh-theme { display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; }
 .settings-theme .mh-theme-name { display: inline; }
+
+/* World Games medals on a player's profile. */
+.wg-medal-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.wg-medal-chip { padding: 6px 10px; border: 1px solid var(--look-line); background-color: var(--look-raised); color: var(--look-text); }
+.wg-medal-chip.gold { border-color: var(--c-border-ffd166, #ffd166); }
+.wg-medal-chip.silver { border-color: var(--c-border-c0c7d2, #c0c7d2); }
+.wg-medal-chip.bronze { border-color: var(--c-border-cd8a4f, #cd8a4f); }

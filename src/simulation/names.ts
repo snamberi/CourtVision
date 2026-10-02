@@ -133,3 +133,17 @@ export function generatePlayerName(rng: RNG, usedNames: Set<string>): string {
 }
 
 export { NATIONALITIES, COLLEGES };
+
+/** A unique name for a generated player from `country` (its own name pool, or a mixed international one). */
+export function nameForCountry(country: string, rng: RNG, usedNames: Set<string>): string {
+  const nat = NATIONALITIES.find(n => n.country === country);
+  const firsts = nat?.firstNames ?? NATIONALITIES.slice(1).flatMap(n => n.firstNames);
+  const lasts = nat?.lastNames ?? NATIONALITIES.slice(1).flatMap(n => n.lastNames);
+  for (let i = 0; i < 40; i++) {
+    const name = `${firsts[rng.nextInt(firsts.length)]} ${lasts[rng.nextInt(lasts.length)]}`;
+    if (!usedNames.has(name)) { usedNames.add(name); return name; }
+  }
+  const name = uniquePlayerId(`${firsts[0]} ${lasts[0]}`, usedNames);
+  usedNames.add(name);
+  return name;
+}

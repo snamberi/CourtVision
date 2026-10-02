@@ -65,7 +65,7 @@ const MODES: { id: MenuMode; title: string; blurb: string; kicker: string; icon:
   {
     id: 'franchise', kicker: '01 / FRANCHISE', icon: 'court', time: 'Unlimited', tags: ['Real NBA', 'Random', 'Challenges'], badge: 'popular',
     title: 'Franchise',
-    blurb: 'Run a team in real NBA history from any season since 1946, or in a brand-new random league. Also here: the Rebuild Challenge and the All-Time Draft.',
+    blurb: 'Run a team in real NBA history from any season since 1946, or in a brand-new random league. Also here: the Rebuild Challenge, the All-Time Draft and the World Games.',
   },
   {
     id: 'legends', kicker: '02 / REIMAGINE', icon: 'trophy', time: '15-30 min a run', tags: ['Roguelike', 'Spins', 'Ranked'], badge: 'popular',

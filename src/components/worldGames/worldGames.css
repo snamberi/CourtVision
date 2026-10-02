@@ -1,0 +1,65 @@
+/* World Games: podium, groups, knockouts, leaders, team picker. Colours from the look roles (skins.css). */
+.wg-page { display: grid; gap: 18px; max-width: 1180px; }
+.wg-flag { display: inline-block; flex: 0 0 auto; border: 1px solid var(--look-line); image-rendering: pixelated; vertical-align: middle; }
+.wg-country { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.wg-card { display: grid; gap: 12px; padding: 18px 20px; background-color: var(--look-panel); color: var(--look-text); border: var(--look-border) solid var(--look-line); border-radius: var(--look-radius); box-shadow: var(--look-shadow); }
+.wg-card h2, .wg-card h3 { margin: 0; }
+.wg-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.wg-head h2 { font: 14px/1.5 var(--look-pixel); }
+.wg-head .hint-text { margin: 0; }
+
+.wg-podium { display: grid; grid-template-columns: repeat(3, minmax(0, 170px)); justify-content: center; align-items: end; gap: 10px; padding-top: 6px; }
+.wg-step { display: grid; justify-items: center; gap: 6px; padding: 14px 8px 12px; text-align: center; background-color: var(--look-raised); border: var(--look-border) solid var(--look-line); border-radius: var(--look-radius); }
+.wg-step.gold { min-height: 176px; border-color: var(--c-border-ffd166, #ffd166); }
+.wg-step.silver { min-height: 150px; border-color: var(--c-border-c0c7d2, #c0c7d2); }
+.wg-step.bronze { min-height: 132px; border-color: var(--c-border-cd8a4f, #cd8a4f); }
+.wg-step b { font: 12px/1.4 var(--look-pixel); }
+.wg-step small { font: 700 10px var(--look-body); letter-spacing: .1em; color: var(--look-muted); }
+.wg-medal { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; }
+.wg-medal i { width: 18px; height: 18px; border-radius: 50%; box-shadow: inset -3px -3px 0 var(--c-shadow-00000040, rgba(0, 0, 0, .25)); }
+.gold .wg-medal i { background: var(--c-bg-ffd166, #ffd166); }
+.silver .wg-medal i { background: var(--c-bg-c0c7d2, #c0c7d2); }
+.bronze .wg-medal i { background: var(--c-bg-cd8a4f, #cd8a4f); }
+.wg-final-line { grid-column: 1 / -1; margin: 4px 0 0; text-align: center; color: var(--look-muted); }
+
+.wg-groups { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.wg-group caption { text-align: left; font: 11px/1.6 var(--look-pixel); color: var(--look-text); padding-bottom: 4px; }
+.wg-group td, .wg-group th { padding: 5px 8px; }
+.wg-group tr.wg-through td:first-child { box-shadow: inset 3px 0 0 var(--look-accent); }
+tr.wg-mine td { background-color: var(--look-raised); font-weight: 700; }
+
+.wg-games ul { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.wg-game { display: grid; gap: 3px; padding: 8px 10px; background-color: var(--look-raised); border: 1px solid var(--look-line); border-radius: var(--look-radius); }
+.wg-game > span { display: flex; justify-content: space-between; gap: 8px; color: var(--look-muted); }
+.wg-game > span.won { color: var(--look-text); font-weight: 700; }
+.wg-game small, .wg-game em { font: normal 11px var(--look-body); color: var(--look-muted); }
+.wg-game.wg-mine { border-color: var(--look-accent); }
+.wg-game.wg-final { border-color: var(--c-border-ffd166, #ffd166); }
+.wg-knockouts { display: grid; gap: 10px; }
+
+.wg-leaders { display: grid; gap: 12px; }
+.wg-mvp { display: grid; gap: 3px; padding: 12px 14px; background-color: var(--look-raised); border-left: 4px solid var(--c-border-ffd166, #ffd166); }
+.wg-mvp b { font: 13px/1.5 var(--look-pixel); }
+.wg-five { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.wg-five li { display: grid; gap: 2px; padding: 8px 10px; background-color: var(--look-raised); border: 1px solid var(--look-line); }
+.wg-medal-table { max-width: 420px; }
+
+.wg-pick { display: grid; gap: 10px; }
+.wg-pick-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
+.wg-pick-row { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; padding: 8px 10px; text-align: left; background-color: var(--look-raised); color: var(--look-text); border: 1px solid var(--look-line); border-radius: var(--look-radius); box-shadow: none; }
+.wg-pick-row.on { border-color: var(--look-accent); outline: 1px solid var(--look-accent); }
+.wg-pick-row small { display: block; color: var(--look-muted); font-size: 11px; }
+.wg-pick-row b.ovr { font: 12px var(--look-pixel); color: var(--look-accent); }
+.wg-check { width: 16px; height: 16px; border: 2px solid var(--look-line); }
+.wg-pick-row.on .wg-check { background-color: var(--look-accent); border-color: var(--look-accent); }
+.wg-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.wg-settings { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.wg-settings select { min-width: 200px; }
+.wg-my-medals { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.wg-my-medals li { padding: 6px 10px; background-color: var(--look-raised); border: 1px solid var(--look-line); }
+
+@media (max-width: 760px) {
+  .wg-groups { grid-template-columns: 1fr; }
+  .wg-podium { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .wg-step b { font-size: 10px; }
+}

@@ -33,6 +33,9 @@ export interface CreateSettings {
   /** Random leagues: the salary cap (the tax line moves with it) and a hard cap. */
   salaryCap: number;
   hardCap: boolean;
+  /** The World Games every four summers, and the country you coach ('' = the AI plays every country). */
+  worldGames: boolean;
+  worldGamesCoach: string;
 }
 
 export const FEELS: { id: GameFeel; blurb: string }[] = [
@@ -54,6 +57,7 @@ export const QUARTER_LENGTHS = [12, 10, 8, 6];
 export const DEFAULT_CREATE: CreateSettings = {
   feel: 'Standard', era: 'season', quarterMinutes: 12, games: 82, injuries: false, injuryRate: 1, fatigue: true, chemistry: true,
   homeCourt: 0.03, tradeDeadline: 0.65, sandbox: false, salaryCap: 140_000_000, hardCap: false,
+  worldGames: true, worldGamesCoach: '',
 };
 
 /** How many settings differ from the defaults (shown on the button). */
@@ -70,6 +74,7 @@ export function summary(s: CreateSettings, random: boolean): string[] {
   if (s.sandbox) out.push('Sandbox');
   if (random && s.salaryCap !== DEFAULT_CREATE.salaryCap) out.push(`$${Math.round(s.salaryCap / 1e6)}M cap`);
   if (random && s.hardCap) out.push('Hard cap');
+  out.push(!s.worldGames ? 'No World Games' : s.worldGamesCoach ? `World Games: you coach ${s.worldGamesCoach}` : 'World Games every 4 years');
   return out;
 }
 
@@ -90,10 +95,11 @@ export function applyCreateSettings(league: League, extras: GMLeagueExtras, s: C
   if (s.tradeDeadline !== d.tradeDeadline) settings.tradeDeadlinePct = s.tradeDeadline;
   if (s.sandbox !== d.sandbox) settings.sandboxMode = s.sandbox;
   if (s.games !== d.games) settings.gamesPerSeason = s.games;
+  const worldGames = !s.worldGames || s.worldGamesCoach ? { worldGames: { history: [], ...(!s.worldGames ? { off: true } : {}), ...(s.worldGamesCoach ? { coach: s.worldGamesCoach } : {}) } } : {};
   const scheduled = league.teams.length ? Math.round((league.schedule.length * 2) / league.teams.length) : s.games;
   const schedule = scheduled !== s.games && league.teams.length > 1 ? generateSeasonSchedule(league.teams.map(t => t.teamId), s.games) : league.schedule;
   const capSettings = random && (s.salaryCap !== d.salaryCap || s.hardCap !== d.hardCap)
     ? { ...extras.capSettings, salaryCap: s.salaryCap, luxuryTaxLine: Math.round(s.salaryCap * (extras.capSettings.luxuryTaxLine / extras.capSettings.salaryCap)), hardCapEnabled: s.hardCap }
     : extras.capSettings;
-  return { league: { ...league, settings, schedule }, extras: { ...extras, capSettings } };
+  return { league: { ...league, settings, schedule, ...worldGames }, extras: { ...extras, capSettings } };
 }

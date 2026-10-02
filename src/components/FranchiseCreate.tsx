@@ -5,6 +5,8 @@ import { SCENARIOS, loadRebuildRecords } from '../simulation/rebuildChallenge';
 import { DataCredits } from './DataCredits';
 import { PixelIcon } from './PixelIcon';
 import { Modal } from './Modal';
+import { COUNTRIES } from '../worldGames/data';
+import { MODE_GAMES, type GamesId } from '../worldGames/mode';
 import { DEFAULT_CREATE, FEELS, ERA_CHOICES, GAME_COUNTS, QUARTER_LENGTHS, changedCount, summary, type CreateSettings } from '../menu/createSettings';
 import './create.css';
 
@@ -14,12 +16,13 @@ import './create.css';
  * and, if you like, its settings before the first game.
  */
 
-export type Challenge = 'free' | 'rebuild' | 'draft';
+export type Challenge = 'free' | 'rebuild' | 'draft' | 'worldgames';
 export type LeagueSource = 'history' | 'random' | 'csv';
 export type CreateChoice =
   | { kind: 'league'; source: LeagueSource; name: string; year: string; difficulty: TradeDifficulty; real: { realDevelopment: boolean; forceRosters: boolean; allPlayers: boolean }; settings: CreateSettings }
   | { kind: 'rebuild'; scenario: string }
-  | { kind: 'draft' };
+  | { kind: 'draft' }
+  | { kind: 'worldgames'; games: GamesId; country: string };
 
 const HISTORY_START_YEARS: number[] = Array.from({ length: 2025 - 1946 + 1 }, (_, i) => 2025 - i);
 const DIFFICULTIES: { id: TradeDifficulty; label: string; blurb: string }[] = [
@@ -31,6 +34,7 @@ const CHALLENGES: { id: Challenge; icon: string; title: string; blurb: string; t
   { id: 'free', icon: 'team', title: 'Franchise', blurb: 'Run a team for as many seasons as you like: trades, drafts, free agency, owners and your own history.', time: 'Unlimited' },
   { id: 'rebuild', icon: 'chart', title: 'Rebuild Challenge', blurb: 'Take a real team at its lowest point and win a title before the clock runs out. Scored and starred.', time: '10-20 min' },
   { id: 'draft', icon: 'trophy', title: 'All-Time Draft', blurb: 'Thirty teams, thirteen rounds, every player in history at his best. Then play the season.', time: '10-20 min' },
+  { id: 'worldgames', icon: 'star', title: 'World Games', blurb: 'Coach a national team at a real Games (1992-2024) or the Fantasy Games. Pick twelve, win medals.', time: '10-15 min' },
 ];
 const NAMES = ['My Dynasty', 'The Pixel League', 'Banner Season', 'Hardwood Kings', 'Dynasty Mode', 'Court Vision League', 'The Long Rebuild', 'Ring Chasers', 'Next Era', 'Title Town'];
 
@@ -51,6 +55,8 @@ export function FranchiseCreate({ onBack, onStart, busy = null, initial = 'free'
   const [editing, setEditing] = useState(false);
   const [scenario, setScenario] = useState(SCENARIOS[0].id);
   const [records] = useState(() => loadRebuildRecords());
+  const [wgGames, setWgGames] = useState<GamesId>(2024);
+  const [wgCountry, setWgCountry] = useState('USA');
   const historical = source === 'history';
   const year = historical ? historyYear : randomYear;
   const changed = changedCount(settings);
@@ -58,10 +64,11 @@ export function FranchiseCreate({ onBack, onStart, busy = null, initial = 'free'
   const start = () => {
     if (challenge === 'rebuild') onStart({ kind: 'rebuild', scenario });
     else if (challenge === 'draft') onStart({ kind: 'draft' });
+    else if (challenge === 'worldgames') onStart({ kind: 'worldgames', games: wgGames, country: wgCountry });
     else onStart({ kind: 'league', source, name: name.trim() || 'My League', year, difficulty, real: { realDevelopment, forceRosters, allPlayers }, settings });
   };
   const sc = SCENARIOS.find(s => s.id === scenario)!;
-  const startLabel = busy ?? (challenge === 'rebuild' ? `Start: ${sc.title}` : challenge === 'draft' ? 'Go to the draft room' : historical ? `Start the ${seasonName(Number(historyYear))} NBA` : source === 'random' ? 'Create the random league' : 'Create the league');
+  const startLabel = busy ?? (challenge === 'rebuild' ? `Start: ${sc.title}` : challenge === 'draft' ? 'Go to the draft room' : challenge === 'worldgames' ? `Coach ${wgCountry}` : historical ? `Start the ${seasonName(Number(historyYear))} NBA` : source === 'random' ? 'Create the random league' : 'Create the league');
 
   return <div className="create-page">
     <header className="create-top">
@@ -71,7 +78,7 @@ export function FranchiseCreate({ onBack, onStart, busy = null, initial = 'free'
 
     <section className="create-step" aria-labelledby="create-step-game">
       <h2 id="create-step-game"><span className="create-num">1</span> Choose your game</h2>
-      <div className="create-choices create-choices-3" role="radiogroup" aria-label="Game">
+      <div className="create-choices create-choices-4" role="radiogroup" aria-label="Game">
         {CHALLENGES.map(c => <button key={c.id} role="radio" aria-checked={challenge === c.id} className={`create-choice ${challenge === c.id ? 'selected' : ''}`} onClick={() => setChallenge(c.id)}>
           <span className="create-choice-head"><PixelIcon name={c.icon} size={22} /><b>{c.title}</b><small><PixelIcon name="clock" size={11} /> {c.time}</small></span>
           <span className="create-choice-blurb">{c.blurb}</span>
@@ -146,6 +153,19 @@ export function FranchiseCreate({ onBack, onStart, busy = null, initial = 'free'
       <p className="hint-text">Real NBA history from that season: real rosters, real players on their real careers, real draft classes. A title scores 1,000 plus 250 for every season left; wins and playoff runs add up along the way. Settings are fixed so every score is fair.</p>
     </section>}
 
+    {challenge === 'worldgames' && <section className="create-step" aria-labelledby="create-step-wg">
+      <h2 id="create-step-wg"><span className="create-num">2</span> Pick the Games and your country</h2>
+      <div className="create-choices create-choices-3" role="radiogroup" aria-label="Which Games">
+        {MODE_GAMES.map(g => <button key={String(g.id)} role="radio" aria-checked={wgGames === g.id} className={`create-choice ${wgGames === g.id ? 'selected' : ''}`} onClick={() => setWgGames(g.id)}>
+          <span className="create-choice-head"><b>{g.label}</b></span><span className="create-choice-blurb">{g.blurb}</span>
+        </button>)}
+      </div>
+      <label className="create-field"><span>Your country</span>
+        <select className="year-input" value={wgCountry} onChange={e => setWgCountry(e.target.value)}>{COUNTRIES.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}</select>
+        <small>Pick from your country's real players {wgGames === 'fantasy' ? 'of all time' : 'of that season'}; empty spots go to home-league players. No contracts, trades or free agency here: pick twelve and play.</small>
+      </label>
+    </section>}
+
     {challenge === 'draft' && <section className="create-step" aria-labelledby="create-step-draft">
       <h2 id="create-step-draft"><span className="create-num">2</span> How it works</h2>
       <ol className="create-steps-list">
@@ -156,8 +176,8 @@ export function FranchiseCreate({ onBack, onStart, busy = null, initial = 'free'
     </section>}
 
     <div className="create-go">
-      <div className="create-go-text"><b>{challenge === 'free' ? `${name.trim() || 'My League'}` : challenge === 'rebuild' ? sc.title : 'All-Time Draft'}</b>
-        <small>{challenge === 'free' ? `${source === 'random' ? 'Random league' : source === 'csv' ? 'Your own data' : 'Real NBA'}${source !== 'csv' ? ` · ${seasonName(Number(year))}` : ''} · ${DIFFICULTIES.find(d => d.id === difficulty)!.label}${changed ? ` · ${changed} custom setting${changed > 1 ? 's' : ''}` : ''}` : challenge === 'rebuild' ? `${sc.team} · ${sc.seasons} seasons to win a title` : 'Thirty teams, thirteen rounds'}</small></div>
+      <div className="create-go-text"><b>{challenge === 'free' ? `${name.trim() || 'My League'}` : challenge === 'rebuild' ? sc.title : challenge === 'worldgames' ? `World Games: ${wgCountry}` : 'All-Time Draft'}</b>
+        <small>{challenge === 'free' ? `${source === 'random' ? 'Random league' : source === 'csv' ? 'Your own data' : 'Real NBA'}${source !== 'csv' ? ` · ${seasonName(Number(year))}` : ''} · ${DIFFICULTIES.find(d => d.id === difficulty)!.label}${changed ? ` · ${changed} custom setting${changed > 1 ? 's' : ''}` : ''}` : challenge === 'rebuild' ? `${sc.team} · ${sc.seasons} seasons to win a title` : challenge === 'worldgames' ? MODE_GAMES.find(g => g.id === wgGames)?.label : 'Thirty teams, thirteen rounds'}</small></div>
       <button className="primary create-start" disabled={!!busy} onClick={start}><PixelIcon name="play" size={16} /> {startLabel}</button>
     </div>
 
@@ -207,6 +227,13 @@ function SettingsDialog({ value, random, onDone, onCancel }: { value: CreateSett
         <input type="range" min={100_000_000} max={200_000_000} step={5_000_000} value={s.salaryCap} onChange={e => set('salaryCap', Number(e.target.value))} />
         <small>${Math.round(s.salaryCap / 1e6)}M; the luxury tax line moves with it.</small>
         <span className="create-check"><input type="checkbox" checked={s.hardCap} onChange={e => set('hardCap', e.target.checked)} id="create-hardcap" /> <label htmlFor="create-hardcap">Hard cap (no going over)</label></span></label>}
+      <div className="create-setting wide"><b>World Games</b>
+        <label className="create-check"><input type="checkbox" checked={s.worldGames} onChange={e => set('worldGames', e.target.checked)} /> Every four summers, the league's best players play for their countries</label>
+        {s.worldGames && <select className="year-input" value={s.worldGamesCoach} onChange={e => set('worldGamesCoach', e.target.value)} aria-label="Who plays the World Games">
+          <option value="">The AI plays every country</option>
+          {COUNTRIES.map(c => <option key={c.name} value={c.name}>I coach {c.name}</option>)}
+        </select>}
+        <small>Medals stay on the players for good and count for the Hall of Fame. Coach a country to pick its twelve and play it yourself.</small></div>
       <div className="create-setting wide"><b>Sandbox mode</b>
         <label className="create-check"><input type="checkbox" checked={s.sandbox} onChange={e => set('sandbox', e.target.checked)} /> Ratings over 100 and edit anything</label>
         <small>Sandbox leagues don't count for achievements, the GM career or the leaderboards.</small></div>

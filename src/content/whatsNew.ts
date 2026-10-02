@@ -6,6 +6,18 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2027-01-06',
+    title: 'The World Games',
+    items: [
+      "**The World Games, every four summers:** in your leagues, right after the draft, the best players go home to play for their countries: twelve national teams, three groups, then the quarterfinals, semifinals and the medal games under FIBA rules.",
+      "**Medals for good:** gold, silver and bronze stay on every player who won them, show on their profile and count for the Hall of Fame. Real players arrive with their real medals from 1992 on (Jordan's 1992 gold, LeBron's three).",
+      "**AI or you:** the AI plays every country by default. Pick a country in the league's World Games page (or in New Franchise settings) to choose its twelve and play it round by round.",
+      "**New in New Franchise: World Games mode.** Coach a national team at a real Games (Barcelona 1992 to Paris 2024) with its real players of that season, or the Fantasy Games with every player in history at his best. No contracts or free agency: pick twelve and win medals.",
+      "**Real national teams:** every international player in the NBA now plays for his real country (Jokić for Serbia, Dončić for Slovenia, Giannis for Greece).",
+      "**A cleaner menu:** the header holds just Sign in, Settings and Discord; Leaderboards, Friends, your Profile and your streak live on the new phone in the corner.",
+    ],
+  },
+  {
     id: '2026-12-30',
     title: 'Endless quick games, an NBA Quiz and a new way to start',
     items: [
