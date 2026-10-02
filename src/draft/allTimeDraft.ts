@@ -104,6 +104,10 @@ export function pickScore(card: HuntCard, value: number, roster: HuntCard[], pic
 }
 
 /** The pick an AI GM (or "auto-pick" for you) makes. */
+/** Difficulty: on Rookie the AI GMs draft loosely (more reaches), on Legend they barely miss. Your own auto-pick is untouched. */
+export const AI_SLOPPINESS: Record<TradeDifficulty, number> = { easy: 4, normal: 1, hard: 0.35 };
+const aiSloppiness = (s: DraftState, teamId: string) => (teamId === s.config.userTeam ? 1 : AI_SLOPPINESS[s.config.difficulty] ?? 1);
+
 export function autoPick(h: NbaHistory, s: DraftState, teamId: string): HuntCard {
   const roster = rosterOf(h, s, teamId);
   const picksLeft = ROUNDS - roster.length;
@@ -111,7 +115,7 @@ export function autoPick(h: NbaHistory, s: DraftState, teamId: string): HuntCard
   const pool = available(h, s).slice(0, 60);
   let best = pool[0], bestScore = -Infinity;
   for (const c of pool) {
-    const sc = pickScore(c, draftValue(h, c), roster, picksLeft, rng.next() * 2.5 + (teamId === s.config.userTeam ? 0 : (teamId.charCodeAt(1) % 3) * (groupOf(c.pos) === 'C' ? 0.5 : 0)));
+    const sc = pickScore(c, draftValue(h, c), roster, picksLeft, rng.next() * 2.5 * aiSloppiness(s, teamId) + (teamId === s.config.userTeam ? 0 : (teamId.charCodeAt(1) % 3) * (groupOf(c.pos) === 'C' ? 0.5 : 0)));
     if (sc > bestScore) { bestScore = sc; best = c; }
   }
   return best;

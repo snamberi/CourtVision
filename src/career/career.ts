@@ -1,3 +1,4 @@
+import type { Level } from '../retention/challenge';
 import type { League } from '../simulation/league';
 import type { GMLeagueExtras, DraftProspect } from '../simulation/gm';
 import { capSpaceRemaining, hasRosterRoom, movePlayerToTeam, signFreeAgent, computeAskingSalary } from '../simulation/gm';
@@ -53,6 +54,8 @@ export interface CareerMeta {
   pendingMoment?: BigMoment;
   bigMoments?: MomentPick[];
   retired?: { age: number; season: string; legacy: number; rank: number | null; hallOfFame: 'first-ballot' | 'yes' | 'no'; jerseys?: string[] };
+  /** Rookie grows faster and ages slower; Legend the other way (absent = Pro). Rookie careers stay off the online boards. */
+  difficulty?: Level;
 }
 
 export const newCareerMeta = (id: string, seed: number, mode: CareerMode, identity: Identity, prime: Prime, readiness: Readiness, playerId: string, startSeason: string, progress: Progress): CareerMeta => ({
@@ -104,14 +107,18 @@ export function draftResult(league: League, meta: CareerMeta, picks: { playerId:
 
 const PHYSICAL: CategoryId[] = ['athleticism', 'body'];
 /** One offseason of growth for a category: fast when young, slower toward the prime, then decline. */
-export function growth(cat: CategoryId, age: number, trained: boolean, rng: RNG): number {
+/** How fast he grows and how hard age hits him, by difficulty. */
+export const GROWTH_SCALE: Record<Level, { up: number; down: number }> = { rookie: { up: 1.3, down: 0.75 }, pro: { up: 1, down: 1 }, legend: { up: 0.8, down: 1.25 } };
+
+export function growth(cat: CategoryId, age: number, trained: boolean, rng: RNG, level: Level = 'pro'): number {
   if (cat === 'size') return 0;
   const physical = PHYSICAL.includes(cat), mind = cat === 'iq';
   let g = age <= 20 ? 0.22 : age <= 22 ? 0.19 : age <= 24 ? 0.14 : age <= 26 ? 0.08 : age <= 28 ? 0.02 : 0;
   const declineFrom = physical ? 29 : mind ? 34 : 31;
   if (age >= declineFrom) g = -(physical ? 0.07 : 0.05) * (1 + (age - declineFrom) * 0.35);
   if (trained) g = g > 0 ? g + 0.12 : g * 0.5 + 0.02;
-  return g + (rng.next() * 2 - 1) * 0.04;
+  const k = GROWTH_SCALE[level];
+  return g * (g > 0 ? k.up : k.down) + (rng.next() * 2 - 1) * 0.04;
 }
 
 /** The player's summer: every category moves by age, training and luck (training can carry him past his prime). */
@@ -121,7 +128,7 @@ export function developSummer(meta: CareerMeta, age: number): Progress {
   for (const c of CATEGORIES) {
     const trained = meta.training.includes(c.id);
     const cap = trained ? MAX_PROGRESS : Math.max(1, meta.progress[c.id]);
-    next[c.id] = Math.max(-1.5, Math.min(cap, meta.progress[c.id] + growth(c.id, age, trained, rng)));
+    next[c.id] = Math.max(-1.5, Math.min(cap, meta.progress[c.id] + growth(c.id, age, trained, rng, meta.difficulty)));
   }
   return next;
 }

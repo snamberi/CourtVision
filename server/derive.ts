@@ -11,6 +11,7 @@ import { SCENARIOS, scoreResults, FINISH_POINTS, type ScoredSeason } from '../sr
 import { loadWeeklyRecords, weeklyRebuild } from '../src/retention/weekly';
 import { weekKey } from '../src/retention/week';
 import { decodeLeagueCode } from '../src/retention/leagueCode';
+import { codeScore } from '../src/retention/codeResults';
 import { SYNC_KEYS, type ProgressBlob, type CodeResult } from '../src/cloud/merge';
 import { seasonOf, dailyLegendPoints, weeklyRebuildPoints, weeklyCareerPoints, dailyGoalPoints, tierFor } from '../src/cloud/ranked';
 import type { CareerMeta } from '../src/career/career';
@@ -18,6 +19,7 @@ import { careerResume } from '../src/career/career';
 import { AVATAR_CATEGORIES, DEFAULT_AVATAR, cleanAvatar, type AvatarLook } from '../src/profile/avatar';
 import { avatarFrameDef } from '../src/profile/avatarFrames';
 import { encodeAvatar } from '../src/profile/avatarCode';
+import { readArcade, guessWeeks, BRACKET_MAX, GUESS_TRIES } from '../src/arcade/storage';
 
 /*
  * Turns a player's synced progress into their public rows: profile level and stats, achievements, created players,
@@ -25,11 +27,15 @@ import { encodeAvatar } from '../src/profile/avatarCode';
  * here and anything implausible is dropped: the browser's copy is never trusted as-is.
  */
 
+export type WeeklyBoard = 'rebuild' | 'career' | 'hunt' | 'perfect' | 'guess' | 'hilo' | 'bracket';
+/** The quick games' boards (added later: a database without them yet keeps the others). */
+export const ARCADE_BOARDS: readonly WeeklyBoard[] = ['guess', 'hilo', 'bracket'];
+
 export interface Derived {
   profile: { level: number; xp: number; stats: Record<string, unknown> };
   achievements: string[];
   players: Record<string, unknown>[];
-  weekly: { board: 'rebuild' | 'career' | 'hunt' | 'perfect'; week: string; score: number; detail: string }[];
+  weekly: { board: WeeklyBoard; week: string; score: number; detail: string }[];
   daily: { day: string; won: boolean; stop: number; wins: number; losses: number; score: number }[];
   rebuild: { scenario: string; best: number; stars: number; title_in: number | null }[];
   codes: { code: string; team: string | null; wins: number; losses: number; finish: string; score: number }[];
@@ -47,7 +53,7 @@ export function sanitizeBlob(raw: unknown): ProgressBlob | null {
   const b = raw as ProgressBlob;
   if (!b || b.version !== 1 || typeof b.storage !== 'object' || !Array.isArray(b.careers)) return null;
   const storage: Record<string, string> = {};
-  for (const k of SYNC_KEYS) { const v = b.storage[k]; if (typeof v === 'string' && v.length < 400_000) storage[k] = v; }
+  for (const k of SYNC_KEYS) { const v = b.storage[k]; if (typeof v === 'string' && v.length < 2_000_000) storage[k] = v; }
   return { version: 1, updatedAt: Number(b.updatedAt) || Date.now(), storage, careers: b.careers.filter(c => c && typeof c === 'object').slice(0, 500) };
 }
 
@@ -62,6 +68,8 @@ export function derive(blob: ProgressBlob, now = new Date()): Derived {
   for (const m of blob.careers as CareerMeta[]) {
     const r = m.retired, name = cleanName(m.playerId);
     if (m.status !== 'retired' || !r || !name || !int(Math.round(r.legacy), 0, 400) || !Array.isArray(m.years) || !int(m.years.length, 1, 25)) continue;
+    // Rookie careers (the easy setting) count for your XP but stay off the Legacy board.
+    if (m.difficulty === 'rookie') { counted.push(m); continue; }
     const res = careerResume(m), legacy = Math.round(r.legacy), g = Math.max(1, res.games);
     if (res.titles > m.years.length || res.mvp > m.years.length || res.games > 30 * 110) continue;
     const hall = ['yes', 'first-ballot'].includes(r.hallOfFame) ? r.hallOfFame : 'no';
@@ -113,6 +121,20 @@ export function derive(blob: ProgressBlob, now = new Date()): Derived {
     if (!/^\d{4}-W\d{2}$/.test(week) || week < FIRST_WEEK || week > thisWeek || !int(d.score, 0, 30_000) || !int(d.w, 0, 82) || !int(d.l, 0, 82) || d.w + d.l > 82 || !int(d.pw, 0, 16) || !int(d.pl, 0, 12)) continue;
     weekly.push({ board: 'perfect', week, score: d.score, detail: `${d.w}-${d.l}${d.pw + d.pl ? ` · playoffs ${d.pw}-${d.pl}` : ''}${d.champion ? ' · champions' : ''}` });
   }
+  // The quick games: Guess the Player (the week's days), Higher or Lower (best streak), the Bracket Challenge.
+  const arcade = readArcade(read);
+  for (const [week, g] of Object.entries(guessWeeks({ ...arcade, guess: Object.fromEntries(Object.entries(arcade.guess).filter(([day, d]) => day >= FIRST_DAY && day <= today && Array.isArray(d?.guesses) && d.guesses.length >= 1 && d.guesses.length <= GUESS_TRIES)) }))) {
+    if (week < FIRST_WEEK || week > thisWeek || !int(g.score, 0, 7 * 600) || g.score === 0) continue;
+    weekly.push({ board: 'guess', week, score: g.score, detail: `${plural(g.solved, 'day')} solved of ${g.days}` });
+  }
+  for (const [week, best] of Object.entries(arcade.hilo.weeks)) {
+    if (!/^\d{4}-W\d{2}$/.test(week) || week < FIRST_WEEK || week > thisWeek || !int(best, 1, 1000)) continue;
+    weekly.push({ board: 'hilo', week, score: best, detail: `Streak of ${best}` });
+  }
+  for (const [week, b] of Object.entries(arcade.bracket)) {
+    if (!/^\d{4}-W\d{2}$/.test(week) || week < FIRST_WEEK || week > thisWeek || !b?.played || !int(b.score, 0, BRACKET_MAX) || b.score % 10) continue;
+    weekly.push({ board: 'bracket', week, score: b.score, detail: `${b.score}/${BRACKET_MAX}${typeof b.champion === 'string' ? ` · champion ${b.champion.split('@')[0].slice(0, 6)} ${b.champion.split('@')[1]?.slice(0, 4) ?? ''}` : ''}` });
+  }
   const daily: Derived['daily'] = [];
   for (const [day, d] of Object.entries(hunt.daily ?? {})) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || day < FIRST_DAY || day > today || !d || !int(d.stop, 0, 10) || !int(d.wins, 0, 40) || !int(d.losses, 0, 40)) continue;
@@ -142,7 +164,7 @@ export function derive(blob: ProgressBlob, now = new Date()): Derived {
     for (const [code, c] of Object.entries(JSON.parse(read('cv-code-results') ?? '{}') as Record<string, CodeResult>)) {
       try { decodeLeagueCode(code); } catch { continue; }
       if (!c || !int(c.wins, 0, 82) || !int(c.losses, 0, 82) || c.wins + c.losses < 20 || c.wins + c.losses > 82 || !FINISHES.has(c.finish)) continue;
-      codes.push({ code: code.toUpperCase().slice(0, 40), team: typeof c.team === 'string' ? c.team.slice(0, 12) : null, wins: c.wins, losses: c.losses, finish: c.finish, score: c.wins * 2 + (FINISH_POINTS[c.finish as keyof typeof FINISH_POINTS] ?? 0) });
+      codes.push({ code: code.toUpperCase().slice(0, 40), team: typeof c.team === 'string' ? c.team.slice(0, 12) : null, wins: c.wins, losses: c.losses, finish: c.finish, score: codeScore(c) });
     }
   } catch { /* none */ }
 
@@ -185,6 +207,6 @@ export function publicAvatar(blob: ProgressBlob, level: number, honors: string[]
   try { frame = (JSON.parse(read('cv-profile-equip') ?? '{}') as { avatarFrame?: string }).avatarFrame; } catch { /* none */ }
   const f = avatarFrameDef(frame);
   const modes = f.modes ? earnedModeAchievements(read) : [];
-  const ok = owner || (f.staff ? false : f.modes ? f.modes.some(m => modes.includes(m)) : f.honors ? f.honors.some(h => honors.includes(h)) : f.level != null ? level >= f.level : true);
+  const ok = owner || (f.staff ? false : f.account ? true : f.modes ? f.modes.some(m => modes.includes(m)) : f.honors ? f.honors.some(h => honors.includes(h)) : f.level != null ? level >= f.level : true);
   return encodeAvatar(look, ok ? f.id : 'none');
 }

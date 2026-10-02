@@ -1,5 +1,6 @@
 import { localRead, type Read } from '../lib/kv';
 import { hasOwnerAccess, OWNER_TITLE, SOVEREIGN_TITLE } from './ownerAccess';
+import { hasFoundingAccount, FOUNDING_TITLE } from './founding';
 import { totalTrophies, trophyNeed, TROPHY_TITLES } from './trophyRoad';
 import { AVATAR_LEVEL_ROAD } from './avatar';
 import { readStreak, streakTitles } from '../retention/streak';
@@ -284,11 +285,11 @@ export function hasEntitlement(kind: 'noAds' | 'supporter', read: Read = localRe
   return kind === 'noAds' ? !!e.noAds || supporter : supporter;
 }
 
-export interface UnlockContext { level: number; rank: number; honors: string[]; modes: string[]; supporter: boolean; trophies: number; album?: { sets: number; legendary: number }; owner?: number; /** Best daily streak and best Season Pass tier. */ streak?: number; pass?: number; /** The game owner's account: everything is open (ownerAccess.ts). */ staff?: boolean }
+export interface UnlockContext { level: number; rank: number; honors: string[]; modes: string[]; supporter: boolean; trophies: number; album?: { sets: number; legendary: number }; owner?: number; /** Best daily streak and best Season Pass tier. */ streak?: number; pass?: number; /** The game owner's account: everything is open (ownerAccess.ts). */ staff?: boolean; /** This browser has signed in to an account (the Founding GM reward). */ account?: boolean }
 /** What unlocks read: the level is passed in; the rest comes from this browser. */
 export function unlockContext(level: number, read: Read = localRead): UnlockContext {
-  if (hasOwnerAccess(read)) return { level: Math.max(level, 100_000), rank: TIERS.length - 1, honors: HONORS.map(h => h.id), modes: MODE_TITLES.map(t => t.mode), supporter: true, trophies: 1e9, album: { sets: 1e6, legendary: 1e6 }, owner: 1e6, streak: 1e6, pass: 1e6, staff: true };
-  return { level, rank: TIERS.indexOf(read('cv-ranked-best') ?? ''), honors: readHonors(read), modes: json<string[]>(read, 'cv-mode-ach-seen', []), supporter: hasEntitlement('supporter', read), trophies: totalTrophies(read), album: albumCounts(read), owner: ownerBest(read), streak: readStreak(read).best, pass: passBestTier(readPass(read)) };
+  if (hasOwnerAccess(read)) return { level: Math.max(level, 100_000), rank: TIERS.length - 1, honors: HONORS.map(h => h.id), modes: MODE_TITLES.map(t => t.mode), supporter: true, trophies: 1e9, album: { sets: 1e6, legendary: 1e6 }, owner: 1e6, streak: 1e6, pass: 1e6, staff: true, account: true };
+  return { level, rank: TIERS.indexOf(read('cv-ranked-best') ?? ''), honors: readHonors(read), modes: json<string[]>(read, 'cv-mode-ach-seen', []), supporter: hasEntitlement('supporter', read), trophies: totalTrophies(read), album: albumCounts(read), owner: ownerBest(read), streak: readStreak(read).best, pass: passBestTier(readPass(read)), account: hasFoundingAccount(read) };
 }
 export function isOpen(rule: Rule, c: UnlockContext): boolean {
   if (c.staff) return true;
@@ -313,6 +314,7 @@ export const earnedExtraTitles = (c: UnlockContext): string[] => [
   ...ALBUM_TITLES.filter(t => ((t.kind === 'sets' ? c.album?.sets : c.album?.legendary) ?? 0) >= t.n).map(t => t.title),
   ...OWNER_TITLES.filter(t => (c.owner ?? 0) >= t.legacy).map(t => t.title),
   ...streakTitles(c.streak ?? 0), ...passTitles(c.pass ?? 0),
+  ...(c.account ? [FOUNDING_TITLE] : []),
   ...(c.staff ? [OWNER_TITLE, SOVEREIGN_TITLE] : []),
 ];
 export function ownerBest(read: Read = localRead): number {

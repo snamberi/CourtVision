@@ -1,3 +1,4 @@
+import { noteFoundingAccount } from '../profile/founding';
 import { useSyncExternalStore } from 'react';
 import type { SupabaseClient, Session } from '@supabase/supabase-js';
 import { noteFeat } from '../profile/feats';
@@ -30,7 +31,7 @@ export interface AccountState {
   status: 'off' | 'idle' | 'loading' | 'signedOut' | 'signedIn';
   userId: string | null; email: string | null; provider: string | null;
   profile: CloudProfile | null;
-  sync: { state: 'idle' | 'syncing' | 'ok' | 'error'; at: number | null; message: string | null };
+  sync: { state: 'idle' | 'syncing' | 'ok' | 'error'; at: number | null; message: string | null; /** The last upload: unpacked bytes, bytes sent (compressed), and the careers' share. */ size?: { raw: number; wire: number; careers: number } };
 }
 
 let state: AccountState = { status: cloudEnabled ? 'idle' : 'off', userId: null, email: null, provider: null, profile: null, sync: { state: 'idle', at: null, message: null } };
@@ -60,6 +61,7 @@ async function applySession(client: SupabaseClient, s: Session | null) {
   // Passes belong to the account: signed out, this browser forgets them (they come back on sign-in).
   if (!s) { setAccount({ status: 'signedOut', userId: null, email: null, provider: null, profile: null }); if (before) { writeEntitlements(null); noteOwnerAccess(false); } return; }
   setAccount({ status: 'signedIn', userId: s.user.id, email: s.user.email ?? null, provider: (s.user.app_metadata?.provider as string | undefined) ?? null });
+  noteFoundingAccount();
   if (before !== s.user.id || !state.profile) await refreshProfile(client);
   if (before !== s.user.id) window.dispatchEvent(new Event(SIGNED_IN_EVENT));
 }

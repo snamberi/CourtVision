@@ -1614,7 +1614,7 @@ button.danger:hover { filter: brightness(1.1); }
 
 .stats-subheading { color: var(--text-dim); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; margin: 16px 0 6px; }
 .pick-protection-toggle {
-  margin-left: 6px; padding: 2px 6px; font-size: 8px; background: var(--panel);
+  margin-left: 6px; padding: 3px 8px; font: 600 11px/1.2 var(--font-data); white-space: nowrap; background: var(--panel);
   border: 1px solid var(--line); color: var(--amber); cursor: pointer;
 }
 .pick-protection-toggle:hover { background: var(--panel-2); }

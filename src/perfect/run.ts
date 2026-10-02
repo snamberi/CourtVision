@@ -2,13 +2,16 @@ import type { NbaHistory } from '../history/nbaHistoryData';
 import { RNG } from '../simulation/engine/rng';
 import { simulateGame } from '../simulation/engine/game';
 import { DEFAULT_GAME_SETTINGS, ERA_PRESETS } from '../simulation/types';
-import { cardPool, cardPlayer, type HuntCard, type Rarity } from '../hunt/cards';
+import { cardPool, cardPlayer, seasonLabel, type HuntCard, type Rarity } from '../hunt/cards';
 import { huntTeams, type HuntTeam } from '../hunt/teams';
 import { ERAS, eraCoach, eraOf, eraRules, underEra, type HuntEra } from '../hunt/eras';
 import { chemistry, chemistryBonus, type ChemistryBond } from '../hunt/chemistry';
-import { COACHES, COACH_BY_ID, coachRarity, type HuntCoach } from '../hunt/coaches';
+import { COACHES, COACH_BY_ID, coachRarity, type HuntCoach, type CoachStyle } from '../hunt/coaches';
 import { withRotation } from '../hunt/run';
 import { rosterRating } from '../hunt/rating';
+import { addBox, addHighs, type RunLine, type GameHighs } from '../hunt/statLines';
+import { challengeMultiplier, STANDARD_VIEW, type Level, type RunView } from '../retention/challenge';
+import type { PlayerStatLine } from '../simulation/boxscore';
 
 /*
  * The 82-0 Challenge: build a ten-man team and a coach, then play a whole 82-game season against real teams from
@@ -48,6 +51,17 @@ export interface PerfectRun {
   prime?: boolean;
   /** Coach choices (Franchise Spin offers three; Quick Spin spins one). */
   coachOffer?: string[];
+  /** Player totals: the regular season, the playoffs and the Finals (for the Finals MVP). Older runs start counting late. */
+  lines?: Record<string, RunLine>;
+  playoffLines?: Record<string, RunLine>;
+  finalsLines?: Record<string, RunLine>;
+  /** The best single games of the run (the record book). */
+  highs?: GameHighs;
+  /** A same-spin duel: the challenger's code (retention/duel.ts), compared at the end. */
+  duel?: string;
+  /** Difficulty and how the spins are shown (retention/challenge.ts); absent = Pro, ratings hidden, colours on. */
+  level?: Level;
+  view?: RunView;
   /** 82 opponent team ids; `bosses` are indexes into it. */
   schedule: string[];
   bosses: number[];
@@ -128,13 +142,19 @@ const ROLL_ERAS = [EARLY, ...ERAS];
 const eraKey = (end: number) => (end < EARLY.to + 1 ? EARLY.id : eraOf(end).id);
 export const eraById = (id: string): HuntEra => ROLL_ERAS.find(e => e.id === id) ?? ERAS[ERAS.length - 1];
 
+/** At most this many Stars (legendary cards) on a team: once you have them, the spins stop offering more. */
+export const MAX_STARS = 3;
+export const starCount = (h: NbaHistory, run: Pick<PerfectRun, 'squad'>) => run.squad.filter(id => card(h, id).rarity === 'legendary').length;
+export const starCapReached = (h: NbaHistory, run: Pick<PerfectRun, 'squad'>) => starCount(h, run) >= MAX_STARS;
+
 /** The players offered by a roll: each at his best season there (or of his career with the prime boost), minus anyone you have. */
 export function rollPool(h: NbaHistory, run: Pick<PerfectRun, 'squad' | 'prime'>, roll: PerfectRoll): HuntCard[] {
   const idx = franchiseIndex(h);
   const taken = new Set(run.squad.map(id => card(h, id).playerId));
+  const capped = starCapReached(h, run);
   const list = (idx.pools.get(`${roll.franchise}|${roll.eraId}`) ?? []).filter(c => !taken.has(c.playerId));
-  if (!run.prime) return list;
-  return list.map(c => idx.prime.get(c.playerId) ?? c).sort((a, b) => b.ovr - a.ovr);
+  const out = run.prime ? list.map(c => idx.prime.get(c.playerId) ?? c).sort((a, b) => b.ovr - a.ovr) : list;
+  return capped ? out.filter(c => c.rarity !== 'legendary') : out;
 }
 
 const MIN_POOL = 3;
@@ -164,8 +184,11 @@ function rollFor(h: NbaHistory, run: PerfectRun, keep?: { franchise?: string; er
 
 // ---------------------------------------------------------------- starting and drafting
 
-export function newPerfectRun(h: NbaHistory, mode: PerfectMode, seed: number, daily?: string): PerfectRun {
-  const run: PerfectRun = { v: 1, mode, seed, daily, stage: 'draft', squad: [], rolls: 0, rerolls: { team: 1, era: 1, prime: 1 }, schedule: [], bosses: [], games: [], playoffs: [] };
+export function newPerfectRun(h: NbaHistory, mode: PerfectMode, seed: number, daily?: string, opts: { level?: Level; view?: RunView } = {}): PerfectRun {
+  // The Daily is the standard game for everyone.
+  const level = daily ? 'pro' : opts.level ?? 'pro', view = daily ? STANDARD_VIEW : opts.view ?? STANDARD_VIEW;
+  const run: PerfectRun = { v: 1, mode, seed, daily, stage: 'draft', squad: [], rolls: 0, rerolls: { team: 1, era: 1, prime: 1 }, schedule: [], bosses: [], games: [], playoffs: [],
+    ...(level !== 'pro' ? { level } : {}), ...(view.numbers !== STANDARD_VIEW.numbers || view.colors !== STANDARD_VIEW.colors ? { view } : {}) };
   return mode === 'franchise' ? { ...run, roll: rollFor(h, run), rolls: 1 } : run;
 }
 
@@ -192,11 +215,13 @@ export function quickSpinCard(h: NbaHistory, run: PerfectRun): HuntCard {
   const slot = QUICK_SLOTS[run.squad.length] ?? 'ANY';
   const rng = rngFor(run, 50 + run.squad.length);
   const taken = new Set(run.squad.map(id => card(h, id).playerId));
-  const total = Object.values(QUICK_WEIGHTS).reduce((a, b) => a + b, 0);
+  // The star cap: with three Stars already, the reel can't land on another.
+  const weights = starCapReached(h, run) ? { ...QUICK_WEIGHTS, legendary: 0 } : QUICK_WEIGHTS;
+  const total = Object.values(weights).reduce((a, b) => a + b, 0);
   let r = rng.next() * total, rarity: Rarity = 'common';
-  for (const k of Object.keys(QUICK_WEIGHTS) as Rarity[]) { r -= QUICK_WEIGHTS[k]; if (r <= 0) { rarity = k; break; } }
+  for (const k of Object.keys(weights) as Rarity[]) { r -= weights[k]; if (r <= 0 && weights[k] > 0) { rarity = k; break; } }
   const pool = cardPool(h).byRarity[rarity].filter(c => fitsQuick(c, slot) && !taken.has(c.playerId) && c.ovr >= 45);
-  return pool[Math.floor(rng.next() * pool.length)] ?? cardPool(h).cards.find(c => !taken.has(c.playerId))!;
+  return pool[Math.floor(rng.next() * pool.length)] ?? cardPool(h).cards.find(c => !taken.has(c.playerId) && (rarity === 'legendary' || c.rarity !== 'legendary'))!;
 }
 
 /** Random cards for the reel to scroll past before it stops (cosmetic only). */
@@ -345,15 +370,53 @@ export const teamRating = (h: NbaHistory, t: HuntTeam) => rosterRating(h, t.rost
  * How much stronger the real teams play (overall points). Franchise Spin lets you choose, so its opponents are
  * tougher; bosses and each playoff round add more. Tuned so a stacked team goes about 70-78 wins and 82-0 is rare.
  */
-export const OPP_EDGE = { quick: 0, franchise: 10, boss: 3, perRound: 1 };
-export const oppEdge = (run: Pick<PerfectRun, 'mode'>, boss: boolean, round = -1) => OPP_EDGE[run.mode] + (boss ? OPP_EDGE.boss : 0) + Math.max(0, round) * OPP_EDGE.perRound;
+export const OPP_EDGE = { quick: 0, franchise: 8, boss: 3, perRound: 1 };
+/** Streak pressure: every 10 straight wins, everyone is gunning for you (+1, up to +4). A loss resets it. */
+export const STREAK_STEP = 10, STREAK_MAX = 4;
+export const currentStreak = (run: Pick<PerfectRun, 'games' | 'playoffs'>) => {
+  const all = [...run.games, ...run.playoffs.flatMap(x => x.games)];
+  let n = 0;
+  for (let i = all.length - 1; i >= 0 && all[i].won; i--) n++;
+  return n;
+};
+export const streakPressure = (run: Pick<PerfectRun, 'games' | 'playoffs'>) => Math.min(STREAK_MAX, Math.floor(currentStreak(run) / STREAK_STEP));
+/** Difficulty: how much better (or worse) every opponent plays. */
+export const LEVEL_EDGE: Record<Level, number> = { rookie: -4, pro: 0, legend: 4 };
+export const oppEdge = (run: Pick<PerfectRun, 'mode' | 'games' | 'playoffs' | 'level'>, boss: boolean, round = -1) =>
+  OPP_EDGE[run.mode] + LEVEL_EDGE[run.level ?? 'pro'] + (boss ? OPP_EDGE.boss : 0) + Math.max(0, round) * OPP_EDGE.perRound + streakPressure(run);
 
-function playGame(h: NbaHistory, run: PerfectRun, oppId: string, salt: number, boss = false, round = -1): PerfectGame {
+/**
+ * Coach style against the opponent's era (overall points for your team that game). With the ratings hidden, the
+ * style is the thing to reason about: run-and-gun beats the slow half-court eras, the triangle wins grinders, and so on.
+ */
+const STYLE_ERAS: Record<CoachStyle, { good: string[]; bad: string[] }> = {
+  pace: { good: ['90s', '00s'], bad: ['60s'] },
+  threes: { good: ['80s', '90s'], bad: ['60s', '70s'] },
+  defense: { good: ['60s', '70s', '20s'], bad: ['90s'] },
+  triangle: { good: ['90s', '00s'], bad: ['10s', '20s'] },
+  balanced: { good: [], bad: [] },
+};
+export const COACH_MATCHUP = 2;
+export function coachMatchup(style: CoachStyle | undefined, eraId: string): number {
+  if (!style) return 0;
+  const m = STYLE_ERAS[style];
+  return m.good.includes(eraId) ? COACH_MATCHUP : m.bad.includes(eraId) ? -COACH_MATCHUP : 0;
+}
+/** "Best against the 1990s and 2000s · worst against the 1960s". */
+export function coachMatchupText(style: CoachStyle): string {
+  const name = (ids: string[]) => ids.map(id => ERAS.find(e => e.id === id)?.label.replace(/^The /, '') ?? id).join(', ');
+  const m = STYLE_ERAS[style];
+  if (!m.good.length) return 'No era edge either way';
+  return `Best vs ${name(m.good)}${m.bad.length ? ` · worst vs ${name(m.bad)}` : ''}`;
+}
+
+function playGame(h: NbaHistory, run: PerfectRun, oppId: string, salt: number, boss = false, round = -1): { game: PerfectGame; box: Record<string, PlayerStatLine>; vs: string } {
   const team = teamById(h)(oppId)!;
   const era = eraOf(team.end);
-  const bonus = squadBonuses(h, run);
-  const pool = cardPool(h);
   const coach = run.coach ? COACH_BY_ID.get(run.coach) : undefined;
+  const matchup = coachMatchup(coach?.style, era.id);
+  const bonus = new Map([...squadBonuses(h, run)].map(([id, b]) => [id, b + matchup]));
+  const pool = cardPool(h);
   const base = eraCoach(era);
   let ourCoach = base;
   if (coach?.style === 'pace') ourCoach = { ...ourCoach, paceTendency: Math.min(99, base.paceTendency + 22), threePointFrequency: era.threes === 'none' ? 2 : Math.max(base.threePointFrequency, 60) };
@@ -379,7 +442,7 @@ function playGame(h: NbaHistory, run: PerfectRun, oppId: string, salt: number, b
   });
   let top = { name: '', pts: -1 };
   for (const [name, l] of Object.entries(result.homeBox.players)) if (l.minutes && l.points > top.pts) top = { name, pts: l.points };
-  return { opp: oppId, us: result.homeScore, them: result.awayScore, won: result.homeScore > result.awayScore, top: `${top.name} ${top.pts}`, ...(boss ? { boss: true } : {}) };
+  return { game: { opp: oppId, us: result.homeScore, them: result.awayScore, won: result.homeScore > result.awayScore, top: `${top.name} ${top.pts}`, ...(boss ? { boss: true } : {}) }, box: result.homeBox.players, vs: `${team.name} (${seasonLabel(team.end)})` };
 }
 
 /** Plays the next `n` games (regular season first, then the playoffs, one game at a time). */
@@ -388,17 +451,18 @@ export function playNext(h: NbaHistory, run: PerfectRun, n = 1): PerfectRun {
   for (let i = 0; i < n; i++) {
     if (r.stage === 'season') {
       const g = r.games.length;
-      const game = playGame(h, r, r.schedule[g], g + 1, r.bosses.includes(g));
+      const { game, box, vs } = playGame(h, r, r.schedule[g], g + 1, r.bosses.includes(g));
       const games = [...r.games, game];
-      r = { ...r, games };
+      r = { ...r, games, lines: addBox(r.lines ?? {}, box), highs: addHighs(r.highs ?? {}, box, vs) };
       if (games.length >= SEASON_GAMES) r = { ...r, stage: 'playoffs', playoffs: [{ round: 0, opp: playoffOpponent(h, r, 0), games: [] }] };
     } else if (r.stage === 'playoffs') {
       const s = r.playoffs[r.playoffs.length - 1];
-      const game = playGame(h, r, s.opp, 1000 + s.round * 10 + s.games.length, false, s.round);
+      const { game, box, vs } = playGame(h, r, s.opp, 1000 + s.round * 10 + s.games.length, false, s.round);
       const series = { ...s, games: [...s.games, game] };
       const playoffs = [...r.playoffs.slice(0, -1), series];
       const w = series.games.filter(x => x.won).length, l = series.games.length - w;
-      r = { ...r, playoffs };
+      r = { ...r, playoffs, playoffLines: addBox(r.playoffLines ?? {}, box), highs: addHighs(r.highs ?? {}, box, vs),
+        ...(series.round === PLAYOFF_ROUNDS - 1 ? { finalsLines: addBox(r.finalsLines ?? {}, box) } : {}) };
       if (l >= WINS_NEEDED) r = { ...r, stage: 'done', result: 'eliminated' };
       else if (w >= WINS_NEEDED) {
         if (series.round + 1 >= PLAYOFF_ROUNDS) r = { ...r, stage: 'done', result: 'champion' };
@@ -418,7 +482,7 @@ export function playToEnd(h: NbaHistory, run: PerfectRun, stage: 'season' | 'pla
 
 // ---------------------------------------------------------------- results and score
 
-export interface PerfectSummary { w: number; l: number; pw: number; pl: number; bossWins: number; bosses: number; rounds: number; champion: boolean; perfectSeason: boolean; perfectPlayoffs: boolean; score: number; streak: number; firstLoss: number | null }
+export interface PerfectSummary { w: number; l: number; pw: number; pl: number; bossWins: number; bosses: number; rounds: number; champion: boolean; perfectSeason: boolean; perfectPlayoffs: boolean; score: number; /** The challenge multiplier already in `score`. */ multiplier: number; streak: number; firstLoss: number | null }
 
 export function summary(run: PerfectRun): PerfectSummary {
   const w = run.games.filter(g => g.won).length, l = run.games.length - w;
@@ -439,7 +503,9 @@ export function summary(run: PerfectRun): PerfectSummary {
   if (champion) score += SCORE.title;
   if (perfectSeason) score += SCORE.perfectSeason;
   if (perfectPlayoffs) score += SCORE.perfectPlayoffs;
-  return { w, l, pw, pl, bossWins, bosses: run.bosses.length, rounds, champion, perfectSeason, perfectPlayoffs, score, streak, firstLoss: firstLossAt < 0 ? null : firstLossAt };
+  // A self-imposed challenge (harder level, hidden colours) pays more; an easier one less. The Daily is always ×1.
+  const multiplier = challengeMultiplier(run.level, run.view);
+  return { w, l, pw, pl, bossWins, bosses: run.bosses.length, rounds, champion, perfectSeason, perfectPlayoffs, score: Math.round(score * multiplier), multiplier, streak, firstLoss: firstLossAt < 0 ? null : firstLossAt };
 }
 
 /** A one-line verdict for the end screen. */

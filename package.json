@@ -16,6 +16,7 @@
     "bench:season": "rolldown scripts/bench/seasonBench.ts --platform node --file node_modules/.cache/bench/season.mjs --log-level silent && node node_modules/.cache/bench/season.mjs",
     "build:api": "node scripts/build-api.mjs",
     "theme:palette": "node scripts/theme-palette.mjs",
+    "theme:assets": "node scripts/generate-theme-scenes.mjs",
     "bench:ai": "rolldown scripts/bench/aiAudit.ts --platform node --file node_modules/.cache/bench/ai.mjs --log-level silent && node node_modules/.cache/bench/ai.mjs"
   },
   "dependencies": {

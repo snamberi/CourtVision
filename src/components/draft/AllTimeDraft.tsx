@@ -1,3 +1,6 @@
+import { challengePrefs, saveChallengePrefs, type Level } from '../../retention/challenge';
+import { LevelPicker } from '../ChallengeOptions';
+import type { TradeDifficulty } from '../../simulation/gm';
 import { useEffect, useMemo, useState } from 'react';
 import { defaultTeam } from '../../profile/favorites';
 import type { NbaHistory } from '../../history/nbaHistoryData';
@@ -96,18 +99,26 @@ export function AllTimeDraft({ onExit, onStart }: { onExit: () => void; onStart:
 
 // ---------------------------------------------------------------- setup
 
+const LEVEL_TO_TRADE: Record<Level, TradeDifficulty> = { rookie: 'easy', pro: 'normal', legend: 'hard' };
+const DRAFT_LEVEL_BLURB: Record<Level, string> = {
+  rookie: 'The AI GMs reach and miss: more steals fall to you, and trades after the draft are easier.',
+  pro: 'The standard draft (the weekly board is always Pro).',
+  legend: 'The AI GMs draft sharp and drive hard bargains in trades. Good luck.',
+};
+
 function Setup({ h, teams, saved, onResume, onStart }: { h: NbaHistory; teams: DraftTeam[]; saved: DraftState | null; onResume: (s: DraftState) => void; onStart: (make: (teams: DraftTeam[]) => DraftState) => Promise<void> }) {
   const [era, setEra] = useState('20s');
   const [slot, setSlot] = useState<number | 'random'>('random');
   const [team, setTeam] = useState<string>(() => defaultTeam(teams.map(t => t.id)));
   const [week] = useState(() => weekKey());
+  const [level, setLevel] = useState(() => challengePrefs('draft').level);
   const top = draftPool(h).slice(0, 5);
   const wSeed = weeklySeed('draft', week);
   const wEra = ERAS[wSeed % ERAS.length], wSlot = Math.floor(wSeed / 7) % 30;
   const start = (weekly: boolean) => {
     const seed = weekly ? wSeed : Math.floor(Math.random() * 1_000_000_000);
     const userSlot = weekly ? wSlot : slot === 'random' ? Math.floor(Math.random() * 30) : slot;
-    void onStart(ts => newDraft({ seed, eraId: weekly ? wEra.id : era, userTeam: team, userSlot, teams: ts, difficulty: 'normal', ...(weekly ? { weekly: week } : {}) }));
+    void onStart(ts => newDraft({ seed, eraId: weekly ? wEra.id : era, userTeam: team, userSlot, teams: ts, difficulty: weekly ? 'normal' : LEVEL_TO_TRADE[level], ...(weekly ? { weekly: week } : {}) }));
   };
   return <section className="hunt-stage">
     <p className="hunt-lede">Thirty teams take turns picking from every player in NBA history, each at his best season. Snake order, thirteen rounds. AI GMs take the best player left for what their roster needs. Then your team plays a full season under the era's rules, with every GM tool: trades, free agency, the draft, and on and on if you like.</p>
@@ -118,6 +129,7 @@ function Setup({ h, teams, saved, onResume, onStart }: { h: NbaHistory; teams: D
       <label>Era rules<select className="year-input" value={era} onChange={e => setEra(e.target.value)}>{ERAS.map(x => <option key={x.id} value={x.id}>{x.label}</option>)}</select></label>
     </div>
     <p className="hint-text">{eraById(era).blurb}</p>
+    <div className="draft-level"><b>Difficulty</b><LevelPicker value={level} onChange={l => { setLevel(l); saveChallengePrefs('draft', { level: l }); }} blurbs={DRAFT_LEVEL_BLURB} /></div>
     <div className="contest-actions"><button className="primary" onClick={() => start(false)}>Start the draft</button></div>
     <div className="weekly-card">
       <div><span className="pixel-eyebrow">ALL-TIME DRAFT OF THE WEEK · {week}</span><b>{wEra.label} rules · you pick {wSlot + 1}{wSlot === 0 ? 'st' : wSlot === 1 ? 'nd' : wSlot === 2 ? 'rd' : 'th'}</b>

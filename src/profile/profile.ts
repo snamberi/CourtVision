@@ -7,6 +7,7 @@ import { loadWeeklyRecords } from '../retention/weekly';
 import { loadPerfectRecords } from '../perfect/storage';
 import { readBonusLog, bonusXp } from '../retention/modeOfWeek';
 import { dailyGoalXp } from './dailyGoals';
+import { readArcade, arcadeXp } from '../arcade/storage';
 import { localRead, type Read } from '../lib/kv';
 import { TITLE_COLORS, titleColorOpen } from './trophyRoad';
 import { hasOwnerAccess } from './ownerAccess';
@@ -77,6 +78,7 @@ export function xpParts(read: Read = localRead): XpPart[] {
   const goals = dailyGoalXp(read);
   const p820 = loadPerfectRecords(read), p820Days = Object.keys(p820.daily ?? {}).length;
   const bonus = bonusXp(readBonusLog(read));
+  const arcade = arcadeXp(readArcade(read));
   return [
     { id: 'gm', label: 'GM leagues', xp: gm.seasons * XP.gmSeason + gm.wins * XP.gmWin + gm.titles * XP.gmTitle + gm.achievements * XP.achievement, detail: `${gm.seasons} season${gm.seasons === 1 ? '' : 's'} · ${gm.wins} wins · ${gm.titles} title${gm.titles === 1 ? '' : 's'} · ${gm.achievements} achievement${gm.achievements === 1 ? '' : 's'}` },
     { id: 'career', label: 'Career Mode', xp: c.retired * XP.careerRetired + c.legacy + c.hallOfFame * XP.careerHof, detail: `${c.retired} retired · ${c.hallOfFame} Hall of Famer${c.hallOfFame === 1 ? '' : 's'} · Legacy ${c.legacy} in all` },
@@ -86,6 +88,7 @@ export function xpParts(read: Read = localRead): XpPart[] {
     { id: 'weekly', label: 'Weekly challenges', xp: weeks * XP.weekly, detail: `${weeks} weekly result${weeks === 1 ? '' : 's'}` },
     { id: 'daily', label: 'Daily goals', xp: goals.xp, detail: `${goals.done} goal${goals.done === 1 ? '' : 's'} done` },
     { id: 'bonus', label: 'Mode of the Week', xp: bonus.xp, detail: `Double XP on ${bonus.runs} run${bonus.runs === 1 ? '' : 's'}` },
+    { id: 'arcade', label: 'Quick games', xp: arcade.xp, detail: `${arcade.solved} puzzle${arcade.solved === 1 ? '' : 's'} solved · ${arcade.brackets} bracket${arcade.brackets === 1 ? '' : 's'} · ${arcade.hiloWeeks} Higher or Lower week${arcade.hiloWeeks === 1 ? '' : 's'}` },
   ];
 }
 

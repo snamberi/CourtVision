@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import './themePicker.css';
-import { THEME_EVENT, readTheme, setTheme, applyTheme, themeLevel, themeTrophies, themeOpen, visibleThemes, type ThemeId, type ThemeSpec } from '../theme/themes';
+import { Modal } from './Modal';
+import { THEME_BY_ID, THEME_EVENT, readTheme, setTheme, applyTheme, themeLevel, themeTrophies, themeOpen, visibleThemes, type ThemeId, type ThemeSpec } from '../theme/themes';
 import { totalTrophies } from '../profile/trophyRoad';
 import { levelFor, totalXp, PROFILE_EVENT } from '../profile/profile';
 
@@ -29,12 +30,12 @@ function useLevel(): number {
 
 /** A small Court Vision screen drawn in a theme's own colours and fonts, so every card previews its look. */
 function Preview({ t }: { t: ThemeSpec }) {
-  const p = t.preview;
-  return <span className="theme-preview" aria-hidden="true" style={{ background: p.bg, color: p.text, borderColor: p.line, fontFamily: p.body }}>
-    <span className="tp-top" style={{ fontFamily: p.display }}>Court Vision</span>
-    <span className="tp-row" style={{ background: p.panel, borderColor: p.line }}><b>S. Curry</b><em style={{ color: p.hi }}>96</em></span>
-    <span className="tp-row" style={{ background: p.panel, borderColor: p.line }}><b style={{ color: p.dim }}>J. Brown</b><em>88</em></span>
-    <span className="tp-btn" style={{ background: p.accent, color: p.onAccent, fontFamily: p.display }}>Play</span>
+  return <span className="theme-preview" data-theme-preview={t.id} aria-hidden="true">
+    <span className="tp-top"><i />COURT VISION<span>01</span></span>
+    <span className="tp-scene" />
+    <span className="tp-stats"><span className="tp-row"><b>S. Curry</b><em>96</em></span>
+      <span className="tp-row"><b>J. Brown</b><em>88</em></span></span>
+    <span className="tp-btn">Play <span>→</span></span>
   </span>;
 }
 
@@ -63,7 +64,7 @@ export function ThemeSection() {
   const open = list.filter(t => themeOpen(t.id, level, trophies)).length;
   return <div className="profile-picker theme-section"><h3 className="hunt-subhead">App look <small>{open} of {list.length} unlocked</small></h3>
     <ThemePicker value={id} onPick={setTheme} level={level} trophies={trophies} />
-    <p className="hint-text">Changes the colours and fonts everywhere, in every mode. Kept on this device. A new look unlocks every 25 levels on the Level Road, and the legendary ones (with moving backdrops) on the Trophy Road.</p>
+    <p className="hint-text">Changes the scenery, panels, colours and type throughout every mode. Kept on this device. A new look unlocks every 25 levels on the Level Road, and the legendary looks unlock on the Trophy Road.</p>
   </div>;
 }
 
@@ -98,3 +99,19 @@ export function ThemeWelcome({ onDone }: { onDone: () => void }) {
 
 /** Whether the first-visit picker still has to be shown. */
 export const needsThemeChoice = () => readTheme() === null;
+
+/** The masthead's "Theme: <name>" chip: opens every look in a dialog. */
+export function ThemeChip() {
+  const id = useTheme();
+  const [open, setOpen] = useState(false);
+  const t = THEME_BY_ID.get(id) ?? THEME_BY_ID.get('original')!;
+  return <>
+    <button className="account-chip mh-theme" onClick={() => setOpen(true)} aria-haspopup="dialog" aria-label={`Change theme: ${t.name}`} title={`Change theme: ${t.name}`}>
+      <i className="mh-theme-dot" aria-hidden="true" /><span className="mh-theme-name">{t.name}</span>
+    </button>
+    {open && <Modal label="App look" onClose={() => setOpen(false)} className="theme-modal">
+      <ThemeSection />
+      <div className="theme-modal-actions"><button className="primary" onClick={() => setOpen(false)}>Done</button></div>
+    </Modal>}
+  </>;
+}

@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { PixelIcon } from './PixelIcon';
+import { InstallAppButton } from './InstallAppButton';
 import { OnlineStatus } from './cloud/OnlineStatus';
 import { CookieSettingsLink } from '../consent/ConsentBanner';
 import { PrivacyLink } from './PrivacyPolicyPage';
@@ -25,7 +26,7 @@ export function SettingsPage({ onExit, backups }: { onExit: () => void; backups:
   return <div className="hunt locker settings-page">
     <header className="hunt-top">
       <button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button>
-      <div className="hunt-title"><span className="pixel-eyebrow">BACKUPS, GRAPHICS, PRIVACY</span><h1>Settings</h1></div>
+      <div className="hunt-title"><span className="pixel-eyebrow">BACKUPS, GRAPHICS, INSTALL, PRIVACY</span><h1>Settings</h1></div>
     </header>
     <section className="locker-bay">
       <h2><PixelIcon name="check" size={18} /> Backups</h2>
@@ -36,6 +37,7 @@ export function SettingsPage({ onExit, backups }: { onExit: () => void; backups:
       <h2><PixelIcon name="star" size={18} /> Graphics</h2>
       <p className="hint-text">Lite mode stops looping animations and blur, and uses fewer simulation workers. Auto turns it on for low-memory devices.</p>
       <PerformanceToggle />
+      <p className="settings-install"><InstallAppButton /></p>
     </section>
     <section className="locker-bay">
       <h2><PixelIcon name="team" size={18} /> Privacy</h2>

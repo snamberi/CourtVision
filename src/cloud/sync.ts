@@ -51,6 +51,15 @@ const OWNER_KEY = 'cv-cloud-owner';
 const readOwner = () => { try { return localStorage.getItem(OWNER_KEY); } catch { return null; } };
 const writeOwner = (id: string) => { try { localStorage.setItem(OWNER_KEY, id); } catch { /* storage blocked */ } };
 
+/** The last upload's size: unpacked, on the wire, and the careers' share. */
+let lastSize: { raw: number; wire: number; careers: number } | null = null;
+
+/** Gzip-compresses the upload where the browser can (CompressionStream); null where it can't. */
+export async function gzip(text: string): Promise<Uint8Array<ArrayBuffer> | null> {
+  if (typeof CompressionStream === 'undefined') return null;
+  try { return new Uint8Array(await new Response(new Blob([text]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer()); } catch { return null; }
+}
+
 export function syncNow(): Promise<void> {
   if (running) return running;
   running = (async () => {
@@ -76,13 +85,16 @@ export function syncNow(): Promise<void> {
       const body = JSON.stringify(blob);
       const fingerprint = JSON.stringify({ userId, storage, careers: careers.map(c => [c.id, c.updatedAt]) });
       if (fingerprint !== lastPushed && !serverOff) {
-        const res = await fetch('/api/sync', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken() ?? token}` }, body });
+        // Gzip on the way up (game data shrinks about ten times); browsers without it send plain JSON.
+        const packed = await gzip(body);
+        const res = await fetch('/api/sync', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken() ?? token}`, ...(packed ? { 'X-Sync-Encoding': 'gzip' } : {}) }, body: packed ?? body });
         const out = await res.json().catch(() => null) as { error?: string } | null;
         // Another sync (this device or another) just landed: try again shortly with the merged result.
         if (res.status === 429) { setAccount({ sync: { ...getAccount().sync, state: 'ok' } }); syncSoon(5_000); return; }
         if (res.status === 503) serverOff = true;
         if (!res.ok) throw new Error(out?.error ?? `Sync failed (${res.status}).`);
         lastPushed = fingerprint;
+        lastSize = { raw: body.length, wire: packed?.byteLength ?? body.length, careers: JSON.stringify(careers).length };
         await refreshProfile(client);
       }
       // The title and frame shown on the boards follow what is equipped here.
@@ -90,9 +102,9 @@ export function syncNow(): Promise<void> {
       const packed = packColors(e.color, e.titleColor);
       if (prof && (prof.title !== e.title || prof.frame !== e.frame || (prof.icon ?? 'ball') !== e.icon || (prof.color ?? 'cream') !== packed)) await updateProfile({ title: e.title, frame: e.frame, icon: e.icon, color: packed });
       writeOwner(userId);
-      setAccount({ sync: { state: 'ok', at: Date.now(), message: null } });
+      setAccount({ sync: { state: 'ok', at: Date.now(), message: null, size: lastSize ?? undefined } });
     } catch (e) {
-      setAccount({ sync: { state: 'error', at: getAccount().sync.at, message: e instanceof Error ? e.message : String(e) } });
+      setAccount({ sync: { state: 'error', at: getAccount().sync.at, message: e instanceof Error ? e.message : String(e), size: lastSize ?? undefined } });
     }
   })().finally(() => { running = null; });
   return running;

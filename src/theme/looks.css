@@ -1,0 +1,167 @@
+/* Shared layout for all 22 looks. The masthead is always a single row. */
+:root .main-menu {
+  --menu-width: 1260px;
+  padding: 22px max(22px, calc((100vw - var(--menu-width)) / 2)) 44px; gap: 25px;
+  background-color: var(--look-page);
+  background-image: linear-gradient(90deg, var(--look-page-wash), var(--look-page) max(22px, calc((100vw - var(--menu-width)) / 2 - 24px)), var(--look-page) calc(100% - max(22px, calc((100vw - var(--menu-width)) / 2 - 24px))), var(--look-page-wash)), var(--look-scene);
+  background-size: 100% 100%, auto 100vh; background-position: center; background-attachment: fixed;
+}
+:root .menu-masthead { display: flex; align-items: center; flex-wrap: nowrap; position: relative; z-index: 30; gap: 12px; min-width: 0; min-height: 60px; padding: 0 0 16px; border-bottom: 2px solid var(--look-accent); box-shadow: none; font: inherit; }
+.mh-brand { display: flex; align-items: center; gap: 9px; flex: 0 0 auto; }
+.mh-brand > img { width: 34px; height: 34px; object-fit: contain; image-rendering: pixelated; }
+.mh-word { display: block; font: 12px/1.3 'Press Start 2P', monospace; color: var(--look-text); white-space: nowrap; }
+.mh-word small { display: block; margin-top: 5px; font: 600 9px/1.3 var(--look-body); color: var(--look-muted); letter-spacing: .1em; }
+.mh-led { display: none; }
+:root .menu-edition { display: none; margin: 0; color: var(--look-muted); font: 10px var(--look-body); white-space: nowrap; }
+.mh-actions, .mh-tools { display: flex; align-items: center; gap: 7px; flex-wrap: nowrap; }
+.mh-actions { margin-left: auto; min-width: 0; }
+.mh-tools { flex: 0 0 auto; }
+:root .menu-masthead :is(.account-chip, .profile-chip, .menu-discord) { flex-shrink: 0; min-height: 38px; padding: 6px 9px; font: 600 11px/1.2 var(--look-body); background: var(--look-panel); color: var(--look-text); border: 1px solid var(--look-line); border-radius: var(--look-radius); box-shadow: none; white-space: nowrap; }
+:root .menu-masthead .account-chip.primary { background: var(--look-accent); color: var(--look-on-accent); border-color: var(--look-accent); }
+:root .menu-masthead .profile-chip { max-width: 177px; padding-bottom: 8px; gap: 6px; overflow: hidden; }
+:root .menu-masthead .profile-chip b { font: 600 10px var(--look-body); }
+:root .menu-masthead .profile-chip span { font-size: 10px; }
+:root .menu-masthead .profile-chip-title { max-width: 88px; overflow: hidden; text-overflow: ellipsis; }
+:root .menu-masthead .menu-discord { margin: 0; gap: 5px; background: var(--look-accent); color: var(--look-on-accent); border-color: var(--look-accent); }
+:root .menu-masthead .menu-discord svg { width: 18px; height: 18px; }
+:root .menu-masthead .menu-discord span { font: 600 11px/1.2 var(--look-body); letter-spacing: 0; }
+.mh-user { gap: 6px; text-align: left; max-width: 128px; }
+.mh-user > span { display: grid; gap: 2px; overflow: hidden; }
+.mh-user b { font-size: 11px; overflow: hidden; text-overflow: ellipsis; }
+.mh-user small { font-size: 9px; font-weight: 400; color: var(--look-muted); }
+.mh-user-dot { width: 6px; height: 6px; background: var(--look-muted); }
+.mh-user :is(.user-avatar, svg) { flex-shrink: 0; }
+:root .menu-masthead .mh-theme { gap: 6px; max-width: 159px; }
+.mh-theme-dot { width: 9px; height: 9px; flex: 0 0 auto; background: var(--look-accent); box-shadow: inset 0 0 0 1px var(--look-edge); }
+.mh-theme-name { overflow: hidden; text-overflow: ellipsis; }
+.mh-theme-label { display: none; }
+:root .menu-masthead .mh-more { display: none; width: 38px; justify-content: center; padding: 0; }
+:root .theme-modal .share-box { width: min(1080px, calc(100vw - 32px)); max-height: calc(100dvh - 36px); overflow-y: auto; display: grid; gap: 14px; }
+.theme-modal-actions { position: sticky; bottom: -1px; z-index: 2; display: flex; justify-content: flex-end; padding: 10px 0 0; background: var(--look-panel); border-top: 1px solid var(--look-line); }
+
+:root .menu-hero { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 30px; min-height: 0; padding: 13px 0 0; }
+:root .menu-hero .pixel-eyebrow { color: var(--look-secondary); font: 600 11px/1.5 var(--look-body); letter-spacing: .09em; }
+:root .menu-hero h1 { font-family: var(--look-pixel); color: var(--look-text); font-size: clamp(25px, 2.6vw, 37px); line-height: 1.5; margin: 14px 0 18px; }
+:root .menu-hero h1 span { color: var(--look-accent); }
+:root .menu-hero p { color: var(--look-muted); font: 14px/1.8 var(--look-body); }
+:root .menu-player-scene { min-width: 0; min-height: 275px; padding: 22px 12px 24px; overflow: hidden; background: var(--look-page) var(--look-scene) center / cover; border: var(--look-border) solid var(--look-edge); border-radius: var(--look-radius); box-shadow: var(--look-shadow); }
+:root .menu-player-scene::before, :root .menu-player-scene::after, :root .menu-court-line { display: none; }
+:root .menu-player-scene > :is(.player-avatar, svg) { position: relative; z-index: 1; flex-shrink: 1; max-width: 28%; transform-origin: bottom center; }
+:root .menu-player-scene > :is(.player-avatar, svg):nth-child(3) { max-width: 35%; }
+:root .menu-player-scene > .pixel-ball { position: absolute; width: 36px; height: 36px; bottom: 20px; right: 24px; }
+:root .menu-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 8px; }
+:root .menu-section-heading h2 { font: 12px/1.7 var(--look-pixel); color: var(--look-text); letter-spacing: 0; }
+:root .menu-section-heading > span { font: 600 10px/1.4 var(--look-body); color: var(--look-muted); letter-spacing: .08em; }
+:root .mode-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+:root button.mode-card { display: flex; flex-direction: column; justify-content: flex-start; min-width: 0; min-height: 209px; padding: 17px; text-align: left; background-color: var(--look-panel); color: var(--look-text); border: var(--look-border) solid var(--look-line); box-shadow: var(--look-shadow); }
+:root button.mode-card:hover:not(:disabled) { background-color: var(--look-raised); border-color: var(--look-edge); transform: translateY(-2px); }
+:root button.mode-card.selected { border-color: var(--look-accent); outline: 1px solid var(--look-accent); }
+:root .mode-card .mode-continue { align-self: flex-start; }
+:root .mode-card-kicker { display: flex; align-items: center; flex-wrap: wrap; font: 500 10px/1.4 var(--look-body); color: var(--look-muted); gap: 7px; }
+:root .mode-card-kicker > .pixel-icon { width: 20px; height: 20px; color: var(--look-secondary); }
+:root .mode-card h3 { font: 12px/1.6 var(--look-pixel); color: var(--look-text); margin: 12px 0 10px; letter-spacing: 0; }
+:root .mode-card p { font: 12px/1.65 var(--look-body); color: var(--look-muted); letter-spacing: 0; }
+:root .mode-flags { display: flex; gap: 5px; margin: 0 0 0 auto; flex-shrink: 0; }
+:root .mode-flags + .mode-selection-dot { margin-left: 0; }
+:root .mode-flags > :is(.mode-badge, .mode-xp) { position: static; padding: 3px 5px; font: 600 9px/1.3 var(--look-body); border: 0; box-shadow: none; }
+:root .mode-badge { background: var(--look-accent); color: var(--look-on-accent); }
+:root .mode-badge .pixel-icon { color: inherit; }
+:root .mode-selection-dot { width: 9px; height: 9px; border-color: var(--look-edge); }
+:root .mode-meta { gap: 5px; margin-top: auto; padding-top: 12px; }
+:root :is(.mode-time, .mode-tag) { padding: 3px 6px; font: 500 10px/1.3 var(--look-body); letter-spacing: 0; border: 1px solid var(--look-line); color: var(--look-muted); }
+:root .mode-time { color: var(--look-text); font-weight: 600; border-color: var(--look-edge); }
+.settings-install:empty { display: none; }
+
+@media (min-width: 1800px) { :root .main-menu { --menu-width: 1380px; } :root .menu-edition { display: block; } }
+@media (max-width: 1380px) { .menu-masthead :is(.profile-chip-title, .menu-settings > span, .mh-user small) { display: none; } }
+@media (max-width: 1179px) {
+  :root .menu-masthead { padding-right: 29px; }
+  .mh-tools { margin-left: auto; }
+  :root .menu-masthead .mh-more { display: flex; }
+  .mh-actions { display: none; }
+  .mh-actions.is-open { display: grid; grid-template-columns: 1fr; position: absolute; right: 29px; top: calc(100% + 8px); width: min(320px, calc(100vw - 46px)); padding: 12px; gap: 8px; background: var(--look-panel); border: 1px solid var(--look-edge); box-shadow: var(--look-shadow); }
+  :root .mh-actions.is-open :is(.account-chip, .profile-chip, .menu-discord) { width: 100%; max-width: none; min-height: 44px; justify-content: flex-start; }
+  .mh-actions.is-open :is(.profile-chip-title, .mh-user small, .menu-discord span) { display: block; }
+  :root .mode-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  :root .menu-hero h1 { font-size: clamp(22px, 3vw, 31px); }
+}
+@media (max-width: 760px) {
+  :root .main-menu { padding: 14px 16px 36px; gap: 20px; background-image: none; }
+  :root .menu-masthead { gap: 8px; min-height: 54px; padding-bottom: 12px; }
+  .mh-brand { gap: 7px; } .mh-brand > img { width: 29px; height: 29px; }
+  .mh-word { font-size: 10px; } .mh-word small { font-size: 8px; letter-spacing: .03em; }
+  .mh-tools { gap: 5px; }
+  :root .menu-masthead .mh-theme { max-width: 136px; }
+  :root .menu-masthead .menu-settings { width: 38px; justify-content: center; padding: 0; }
+  :root .menu-hero { grid-template-columns: 1fr; gap: 20px; padding-top: 4px; }
+  :root .menu-player-scene { min-height: 242px; }
+  :root .menu-section-heading > span { display: none; }
+  :root button.mode-card { padding: 15px; }
+}
+@media (max-width: 540px) {
+  :root .mode-grid { grid-template-columns: 1fr; }
+  .mh-word { font-size: 9px; } .mh-word small { display: none; }
+  :root .menu-masthead :is(.mh-theme, .menu-settings, .mh-more) { width: 35px; min-width: 35px; padding: 0; justify-content: center; }
+  .mh-theme-name { display: none; }
+  :root .menu-hero h1 { font-size: 24px; }
+}
+/* Quick games strip on the menu (the look roles from skins.css, like the mode cards). */
+.quick-games { width: 100%; display: grid; gap: 14px; }
+.quick-games-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 16px; }
+.quick-game { display: grid; grid-template-columns: auto 1fr; grid-template-areas: 'icon title' 'icon blurb' 'icon status'; gap: 2px 12px; align-items: center; padding: 14px 16px; text-align: left; background-color: var(--look-panel); color: var(--look-text); border: var(--look-border) solid var(--look-line); border-radius: var(--look-radius); box-shadow: var(--look-shadow); }
+.quick-game:hover:not(:disabled) { background-color: var(--look-raised); border-color: var(--look-edge); }
+.quick-game .pixel-icon { grid-area: icon; color: var(--look-secondary); }
+.quick-game b { grid-area: title; font: 12px/1.5 var(--look-pixel); color: var(--look-text); }
+.quick-game small { grid-area: blurb; color: var(--look-muted); font: 12px/1.5 var(--look-body); }
+.quick-game em { grid-area: status; font: normal 700 11px/1.4 var(--look-body); color: var(--look-accent); }
+@media (max-width: 760px) { .quick-games-grid { grid-template-columns: 1fr; } }
+
+/* GM mode on phones: the bottom tab bar replaces the narrow icon rail; More opens the full menu. */
+.phone-tabs { display: none; }
+@media (max-width: 720px) {
+  .phone-tabs {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: grid; grid-template-columns: repeat(5, 1fr);
+    padding: 4px 4px calc(4px + env(safe-area-inset-bottom)); background: var(--panel); border-top: 2px solid var(--amber); box-shadow: 0 -4px 0 rgba(0, 0, 0, .35);
+  }
+  .phone-tabs button { display: grid; justify-items: center; gap: 3px; min-height: 52px; padding: 6px 2px; background: transparent; border: 0; box-shadow: none; color: var(--text-dim); font: 600 11px var(--font-data); }
+  .phone-tabs button .pixel-icon { color: inherit; }
+  .phone-tabs button.active { color: var(--amber); background: rgba(255, 255, 255, .05); }
+  .sidebar.collapsed { display: none; }
+  .sidebar:not(.collapsed) { bottom: 62px; }
+  .app-body main { margin-left: 0; width: 100%; padding-bottom: 170px; }
+  .play-button-root { bottom: calc(76px + env(safe-area-inset-bottom)); right: 12px; }
+}
+
+/* ---------------------------------------------------------------- small fixes (phones and narrow windows) */
+.code-mode-actions { flex-wrap: wrap; }
+.code-mode-actions button { white-space: normal; text-align: left; }
+@media (max-width: 720px) {
+  /* "Unlocked: …" sits above the tab bar instead of over the page's title. */
+  .unlock-notice { top: auto; bottom: calc(72px + env(safe-area-inset-bottom)); left: 10px; right: 10px; padding: 10px 12px; gap: 6px; }
+  .unlock-notice p { font-size: 11.5px; line-height: 1.45; }
+  .unlock-notice-actions button { font-size: 15px; padding: 4px 12px; }
+  /* Awards Night: the button under the text, not squeezing it into a column. */
+  .awards-night-cta { flex-wrap: wrap; }
+  .awards-night-cta > div { flex: 1 1 calc(100% - 60px); }
+  .awards-night-cta > button { flex: 1 1 100%; }
+  /* Dream Matchup: long team names never push the pickers off the screen. */
+  .hunt-dream, .hunt-dream-pickers, .hunt-dream-side { min-width: 0; max-width: 100%; }
+  .hunt-dream-side select, .hunt-dream-era select { width: 100%; min-width: 0; text-overflow: ellipsis; }
+  /* Quick games: the three games on one row. */
+  .arcade .arcade-tabs { flex-wrap: nowrap; overflow-x: auto; gap: 6px; scrollbar-width: none; }
+  .arcade .arcade-tabs button { flex: 0 0 auto; padding: 7px 10px; font-size: 13px; }
+  .arcade .arcade-row { min-width: 470px; grid-template-columns: 104px repeat(6, minmax(56px, 1fr)); }
+  .arcade .arcade-cell { min-height: 40px; font-size: 11.5px; }
+  .arcade .arcade-name { position: sticky; left: 0; z-index: 1; background: var(--bg); font-size: 12px; }
+}
+.phone-tabs button { position: relative; }
+.phone-tab-badge { position: absolute; top: 3px; left: calc(50% + 6px); min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--amber); color: #140c02; font: 700 10px/16px var(--font-data); }
+.arcade .arcade-suggest button.active { background: rgba(255, 255, 255, .08); outline: 1px solid var(--amber); }
+/* Room under the last card for the fixed Play button. */
+@media (min-width: 721px) { .app-body main { padding-bottom: 110px; } }
+@media (max-width: 720px) {
+  body:has(.unlock-notice) .toast-stack { bottom: calc(220px + env(safe-area-inset-bottom)); }
+}
+@media (max-width: 355px) { :root .main-menu { padding-left: 12px; padding-right: 12px; } .mh-word { font-size: 8px; } .mh-brand > img { width: 25px; height: 25px; } }
+@media (pointer: coarse) { :root .menu-masthead :is(.account-chip, .profile-chip, .menu-discord) { min-height: 44px; min-width: 40px; } }
+@media (prefers-reduced-motion: reduce) { :root button.mode-card:hover:not(:disabled) { transform: none; } }

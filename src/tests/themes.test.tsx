@@ -6,6 +6,7 @@ import { PALETTE } from '../theme/palette.gen';
 import { THEMES, THEME_BY_ID, themeLevel, themeTrophies, themeOpen, visibleThemes, mapColor, parseHex, analyse, family, themeCss, applyTheme, readTheme, setTheme, THEME_KEY, type ThemeId } from '../theme/themes';
 import { ThemeWelcome, ThemeSection, ThemePicker, needsThemeChoice } from '../components/ThemePicker';
 import { LEVEL_ROAD, ROAD_LOOK_NAMES } from '../profile/cosmetics';
+import { THEME_SKINS } from '../theme/skins';
 import { unlocksBetween } from '../profile/profile';
 
 /** WCAG contrast ratio of two opaque hex colours. */
@@ -41,6 +42,14 @@ describe('every colour and font in the stylesheets is themeable', () => {
 });
 
 describe('themes', () => {
+  it('all visual skins keep data and action text readable', () => {
+    expect(Object.keys(THEME_SKINS).sort()).toEqual(THEMES.map(t => t.id).sort());
+    for (const [id, s] of Object.entries(THEME_SKINS)) {
+      for (const [a, b] of [[s.text, s.panel], [s.muted, s.panel], [s.text, s.raised], [s.onAccent, s.accent]]) {
+        expect(contrast(a, b), `${id}: ${a} on ${b}`).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  });
   const core = { bg: 'bg-060a12', panel: 'bg-13213a', text: 'fg-f3f6fb', dim: 'fg-b6c4d6', court: 'fg-fff6e2', button: 'any-ff9a3a', buttonText: 'fg-211709', good: 'any-6fe39a', bad: 'any-ff7a70' };
   const m = (id: string, key: string) => { const t = THEMES.find(x => x.id === id)!; const i = key.indexOf('-'); return mapColor(t, key.slice(0, i) as never, key.slice(i + 1)); };
 

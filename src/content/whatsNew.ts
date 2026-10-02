@@ -6,6 +6,21 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2026-12-23',
+    title: 'Quick games, five new looks and a cleaner menu',
+    items: [
+      "**Quick games:** a daily **Guess the Player** (six guesses, a streak and a shareable grid), **Higher or Lower** with real career numbers, and a weekly **Bracket Challenge** of sixteen all-time teams. Each has a weekly board and earns XP.",
+      "**Five redesigned looks:** Stat Terminal, Pro Dark, Scoreboard (with a full pixel arena), Cartridge and the original Court Vision. Switch any time with the new **Theme** button.",
+      "**A cleaner header:** your level, streak, Leaderboards, your name and Discord on one row; Settings and Theme below.",
+      "**Same-spin duels:** send a friend the exact same League Hunt or 82-0 run and compare scores.",
+      "**Difficulty everywhere:** Rookie, Pro or Legend in the 82-0 Challenge, Career Mode and the All-Time Draft, plus optional **Show ratings** and **Show rarity colours** switches to challenge yourself.",
+      "**Stats in your runs:** per-game stats, an MVP and a record book of your best single games in the 82-0 Challenge and League Hunt.",
+      "**Weekly recap and rival alerts:** a look back at your week on Monday, and a heads-up when a friend passes you on a board.",
+      "**On phones:** GM mode has a tab bar along the bottom (Home, Team, Trade, League, More), and pop-ups no longer cover the page.",
+      "**Lots of fixes:** the Play button counts your own games left, no conference rank before a game is played, and many layout fixes on small screens.",
+    ],
+  },
+  {
     id: '2026-12-16',
     title: 'The 82-0 Challenge',
     items: [

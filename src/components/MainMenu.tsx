@@ -1,12 +1,11 @@
 import { PrivacyLink } from './PrivacyPolicyPage';
 import { IS_DESKTOP_BUILD } from '../appMode';
-import { DiscordLink, DISCORD_URL } from './DiscordLink';
+import { DISCORD_URL } from './DiscordLink';
 import { CookieSettingsLink } from '../consent/ConsentBanner';
 import { ConsentBanner } from '../consent/ConsentBanner';
 import { useEffect, useState } from 'react';
 import { localProgress, careerProgress, type InProgress } from '../menu/inProgress';
 import { modeOfWeek, FEATURED_NAME, WEEKLY_BONUS_CAP } from '../retention/modeOfWeek';
-import logoIcon from '../assets/brand/logo-icon.png';
 import { PlayerAvatar } from './PlayerAvatar';
 import { MyAvatar } from './UserAvatar';
 import { PixelBall, PixelIcon } from './PixelIcon';
@@ -17,18 +16,21 @@ import { AdBanner } from './AdBanner';
 import { SCENARIOS, loadRebuildRecords } from '../simulation/rebuildChallenge';
 import { DataCredits } from './DataCredits';
 import { weeklyRebuild, weeklyCareer, loadWeeklyRecords, weeklyStreak, weekEndsAt } from '../retention/weekly';
-import { InstallAppButton } from './InstallAppButton';
 import { WhatsNew } from './WhatsNew';
 import { ThemeWelcome, needsThemeChoice } from './ThemePicker';
 import { WeeklyBoardDialog } from './WeeklyBoard';
 import { cloudEnabled, useAccount } from '../cloud/account';
+import { SaveSafetyNudge } from './cloud/SaveSafetyNudge';
+import { RivalAlerts } from './cloud/RivalAlerts';
+import { WeeklyRecap } from './WeeklyRecap';
 import { WelcomeSignIn, needsSignInWelcome } from './cloud/WelcomeSignIn';
-import { AccountButton } from './cloud/AccountButton';
-import { ProfileChip } from './ProfilePanel';
+import { MenuMasthead } from './MenuMasthead';
 import { totalXp, levelFor, takeLevelUp, unlocksBetween } from '../profile/profile';
 import { noteVisit } from '../retention/streak';
 import { notePass } from '../retention/pass';
 import { TrophyUnlock } from './locker/TrophyUnlock';
+import { readArcade, guessStreak, isGuessDone } from '../arcade/storage';
+import { weekKey } from '../retention/week';
 
 export type GameMode = 'random' | 'real' | 'legends' | 'perfect' | 'career' | 'rebuild' | 'draft';
 export interface RealLeagueOptions { source: 'history' | 'csv'; realDevelopment: boolean; forceRosters?: boolean; allPlayers?: boolean }
@@ -53,6 +55,8 @@ interface Props {
   onProfile?: () => void;
   /** Opens Settings (backups, graphics, privacy). */
   onSettings?: () => void;
+  /** Opens a quick game. */
+  onArcade?: (game: 'guess' | 'hilo' | 'bracket') => void;
 }
 
 /** Every mode on the menu, with how long a sitting takes and what kind of game it is. `badge` marks a highlight. */
@@ -155,7 +159,7 @@ function SavedLeaguesList({ saves, onContinue, onDeleteSave, onRenameSave }: Pic
   );
 }
 
-export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSave, busy = null, onLocker, onCode, onCommunity, onProfile, onSettings }: Props) {
+export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSave, busy = null, onLocker, onCode, onCommunity, onProfile, onSettings, onArcade }: Props) {
   // First visit: pick a look before anything else; What's New waits until it is picked.
   const [pickLook, setPickLook] = useState(needsThemeChoice);
   // Today's visit counts for the daily streak and the Season Pass.
@@ -189,7 +193,10 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
 
   return (
     <div className="main-menu">
-      <div className="menu-masthead"><img src={logoIcon} alt="" /><span>COURT VISION<small>BASKETBALL MANAGEMENT</small></span><span className="menu-edition">THE PIXEL COURT</span>{(onProfile || onLocker) && <ProfileChip onOpen={onProfile ?? onLocker} />}{visit.v.streak.current >= 2 && <button className="account-chip streak-pill" onClick={onProfile ?? onLocker} title={`Daily streak: ${visit.v.streak.current} days in a row (best ${visit.v.streak.best})`}><PixelIcon name="flame" size={14} /> {visit.v.streak.current}</button>}{onCommunity && <AccountButton onCommunity={onCommunity} />}<InstallAppButton /><DiscordLink className="menu-discord" />{onSettings && <button className="account-chip menu-settings" onClick={onSettings} title="Settings: backups, graphics, privacy"><PixelIcon name="settings" size={14} /> Settings</button>}</div>
+      <MenuMasthead onProfile={onProfile} onLocker={onLocker} onCommunity={onCommunity} onSettings={onSettings} streak={visit.v.streak} />
+      <SaveSafetyNudge />
+      <RivalAlerts />
+      <WeeklyRecap />
       <div className="menu-hero">
         <div className="menu-hero-copy"><span className="pixel-eyebrow">BUILD A TEAM. WRITE ITS HISTORY.</span><h1>Your league.<br /><span>Your legacy.</span></h1><p>Scout the next great. Build your starting five.<br />Turn one season into a dynasty.</p></div>
         <div className="menu-player-scene" aria-hidden="true">
@@ -211,16 +218,16 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
             onClick={() => setSelectedMode(m.id)}
             aria-pressed={selectedMode === m.id}
           >
-            {m.badge && <span className={`mode-badge mode-badge-${m.badge}`}><PixelIcon name={m.badge === 'popular' ? 'flame' : 'star'} size={12} /> {BADGE_LABEL[m.badge]}</span>}
-            <span className="mode-card-kicker"><PixelIcon name={m.icon} size={24} /><span>{m.kicker}</span><span className="mode-selection-dot" /></span>
+            <span className="mode-card-kicker"><PixelIcon name={m.icon} size={24} /><span>{m.kicker}</span>{(m.badge || featured === m.id) && <span className="mode-flags">{featured === m.id && <span className="mode-xp" title="Mode of the Week: double XP for runs finished this week">2× XP</span>}{m.badge && <span className={`mode-badge mode-badge-${m.badge}`}><PixelIcon name={m.badge === 'popular' ? 'flame' : 'star'} size={12} /> {BADGE_LABEL[m.badge]}</span>}</span>}<span className="mode-selection-dot" /></span>
             <h3>{m.title}</h3>
             <p>{m.blurb}</p>
-            {featured === m.id && <span className="mode-xp" title="Mode of the Week: double XP for runs finished this week">2× XP</span>}
             {progress[m.id] && <span className="mode-continue"><PixelIcon name="play" size={12} /> In progress: {progress[m.id]}</span>}
             <span className="mode-meta"><span className="mode-time" title="How long a sitting takes"><PixelIcon name="clock" size={12} /> {m.time}</span>{m.tags.map(t => <span key={t} className="mode-tag">{t}</span>)}</span>
           </button>
         ))}
       </div>
+
+      {onArcade && <QuickGames onOpen={onArcade} />}
 
       {selectedMode === 'rebuild' && <div className="menu-setup rb-setup"><div className="difficulty-picker rb-picker"><h4>Choose your rebuild</h4>
         <div className="rb-scenarios" role="radiogroup" aria-label="Rebuild scenarios">{SCENARIOS.map(sc => { const rec = rebuildRecords[sc.id]; return <button key={sc.id} role="radio" aria-checked={scenario === sc.id} className={`rb-scenario ${scenario === sc.id ? 'selected' : ''}`} onClick={() => setScenario(sc.id)}>
@@ -389,4 +396,22 @@ function CodeEntry({ busy, onCode }: { busy: string | null; onCode: (code: strin
       <button className="primary" type="submit" disabled={!!busy || !code.trim()}>{busy ?? 'Start'}</button></div>
     {error && <p className="backup-msg err" role="alert">{error}</p>}
   </form>;
+}
+
+/** The quick games strip under the modes: today's puzzle, your streak, this week's bracket. */
+function QuickGames({ onOpen }: { onOpen: (game: 'guess' | 'hilo' | 'bracket') => void }) {
+  const [r] = useState(readArcade);
+  const today = new Date().toISOString().slice(0, 10), week = weekKey();
+  const day = r.guess[today], streak = guessStreak(r, today).current, bracket = r.bracket[week];
+  const games = [
+    { id: 'guess' as const, icon: 'search', title: 'Guess the Player', blurb: 'One real NBA player a day. Six guesses.', status: isGuessDone(day) ? (day!.won ? `Solved in ${day!.guesses.length}` : 'Missed today') : 'New puzzle today', extra: streak ? `${streak}-day streak` : null },
+    { id: 'hilo' as const, icon: 'up', title: 'Higher or Lower', blurb: 'Career numbers, head to head. How long can you go?', status: r.hilo.best ? `Best streak ${r.hilo.best}` : 'Set your first streak', extra: null },
+    { id: 'bracket' as const, icon: 'trophy', title: 'Bracket Challenge', blurb: 'Sixteen all-time teams. Pick every series.', status: bracket?.played ? `${bracket.score} pts this week` : bracket?.locked ? 'Picks locked' : 'New bracket this week', extra: null },
+  ];
+  return <section className="quick-games" aria-labelledby="quick-games-title">
+    <div className="menu-section-heading"><h2 id="quick-games-title">Quick games</h2><span>REAL NBA HISTORY · 2 MINUTES</span></div>
+    <div className="quick-games-grid">{games.map(g => <button key={g.id} className="quick-game" onClick={() => onOpen(g.id)}>
+      <PixelIcon name={g.icon} size={24} /><b>{g.title}</b><small>{g.blurb}</small><em>{g.status}{g.extra ? ` · ${g.extra}` : ''}</em>
+    </button>)}</div>
+  </section>;
 }
