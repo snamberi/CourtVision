@@ -536,3 +536,11 @@ html.lite *, html.lite *::before, html.lite *::after { backdrop-filter: none !im
 /* The save-safety reminder on the main menu (SaveSafetyNudge). */
 .save-nudge { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 10px 0; padding: 10px 14px; border: 2px solid var(--c-border-ff9d3d, #ff9d3d); background: var(--c-bg-192333, #192333); box-shadow: 2px 2px 0 var(--c-shadow-000000, #000); }
 .save-nudge > span { flex: 1 1 320px; }
+
+/* Account sync on the Profile (it used to be a header chip). */
+.sync-panel { display: flex; align-items: center; gap: 12px; margin: 10px 0 0; padding: 10px 12px; border: 1px solid var(--c-border-2a3546, #2a3546); background: var(--c-bg-121926, #121926); }
+.sync-panel > div { flex: 1; display: grid; gap: 2px; }
+.sync-panel small { color: var(--c-fg-94a0b2, #94a0b2); }
+.sync-panel .sync-error { color: var(--c-fg-e85d5d, #e85d5d); }
+.sync-panel.error { border-color: var(--c-border-e85d5d, #e85d5d); }
+@media (max-width: 520px) { .sync-panel { flex-wrap: wrap; } }

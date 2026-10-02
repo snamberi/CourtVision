@@ -1,3 +1,4 @@
+import { syncNow } from '../cloud/sync';
 import { readPlayTime, formatPlayTime, topArea, AREA_LABEL, type PlayArea } from '../retention/playTime';
 import { PLAY_TIME_EVENT } from '../retention/usePlayClock';
 import { useEffect, useState, type ReactNode } from 'react';
@@ -76,6 +77,21 @@ function titleGroups(c: UnlockContext) {
   ].filter(g => g.label !== 'Supporter' || showSupporter(c));
 }
 
+const kb = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1000))} KB`);
+const ago = (at: number) => { const m = Math.round((Date.now() - at) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : `${Math.round(m / 60)} h ago`; };
+
+/** Your account's sync (it used to sit in the header): the state, when it last went up, how big it is, and Sync now. */
+function SyncPanel() {
+  const a = useAccount(), s = a.sync;
+  const label = s.state === 'syncing' ? 'Syncing…' : s.state === 'error' ? 'Sync problem' : s.at ? `Synced ${ago(s.at)}` : 'Not synced yet';
+  return <div className={`sync-panel ${s.state}`} role="status">
+    <span className={`sync-dot ${s.state}`} aria-hidden="true" />
+    <div><b>{label}</b><small>Your level, records, character and finished careers are saved to @{a.profile?.username ?? '…'} and follow you to any device.{s.size ? ` Last upload ${kb(s.size.raw)} (${kb(s.size.wire)} sent, careers ${kb(s.size.careers)}).` : ''}</small>
+      {s.state === 'error' && s.message && <small className="sync-error">{s.message}</small>}</div>
+    <button onClick={() => void syncNow()} disabled={s.state === 'syncing'}>Sync now</button>
+  </div>;
+}
+
 /** Time played, all told and by mode (src/retention/playTime.ts). */
 function PlayTimeLine() {
   const [t, setT] = useState(() => readPlayTime());
@@ -108,6 +124,7 @@ export function ProfilePanel() {
       </div>
       {!signedIn && <label className="profile-name-edit"><span>Profile name</span><input className="year-input" value={localName() === 'You' ? '' : localName()} placeholder="You" maxLength={18} onChange={e => setLocalName(e.target.value)} /><small>Sign in to claim a GM name on the boards.</small></label>}
     </div>
+    {signedIn && <SyncPanel />}
     <PlayTimeLine />
 
     <div className="profile-picker"><h3 className="hunt-subhead">Profile picture frame</h3>

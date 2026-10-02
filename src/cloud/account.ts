@@ -31,7 +31,7 @@ export interface AccountState {
   status: 'off' | 'idle' | 'loading' | 'signedOut' | 'signedIn';
   userId: string | null; email: string | null; provider: string | null;
   profile: CloudProfile | null;
-  sync: { state: 'idle' | 'syncing' | 'ok' | 'error'; at: number | null; message: string | null };
+  sync: { state: 'idle' | 'syncing' | 'ok' | 'error'; at: number | null; message: string | null; /** The last upload: unpacked bytes, bytes sent (compressed), and the careers' share. */ size?: { raw: number; wire: number; careers: number } };
 }
 
 let state: AccountState = { status: cloudEnabled ? 'idle' : 'off', userId: null, email: null, provider: null, profile: null, sync: { state: 'idle', at: null, message: null } };

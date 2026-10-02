@@ -48,7 +48,7 @@ export function sanitizeBlob(raw: unknown): ProgressBlob | null {
   const b = raw as ProgressBlob;
   if (!b || b.version !== 1 || typeof b.storage !== 'object' || !Array.isArray(b.careers)) return null;
   const storage: Record<string, string> = {};
-  for (const k of SYNC_KEYS) { const v = b.storage[k]; if (typeof v === 'string' && v.length < 400_000) storage[k] = v; }
+  for (const k of SYNC_KEYS) { const v = b.storage[k]; if (typeof v === 'string' && v.length < 2_000_000) storage[k] = v; }
   return { version: 1, updatedAt: Number(b.updatedAt) || Date.now(), storage, careers: b.careers.filter(c => c && typeof c === 'object').slice(0, 500) };
 }
 

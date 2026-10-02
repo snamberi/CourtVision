@@ -8,7 +8,34 @@ import { getUser, rest, upsert, deleteUser, json, bearer, type SupaEnv, type Fet
  * DELETE deletes the account and everything with it.
  */
 
+/** The upload as it travels (gzip-compressed by the game), and the progress once unpacked and merged. */
 export const MAX_BYTES = 800_000;
+export const MAX_RAW_BYTES = 6_000_000;
+export const SYNC_ENCODING_HEADER = 'X-Sync-Encoding';
+const tooLarge = (size: number) => json({ error: `Your progress is too large to sync (${(size / 1_000_000).toFixed(1)} MB; the limit is ${MAX_RAW_BYTES / 1_000_000} MB).`, size }, 413);
+
+/** The request body as text: gzip-compressed when the game says so (much smaller on the wire), plain otherwise. */
+async function bodyText(req: Request): Promise<{ text: string; wire: number } | { error: Response }> {
+  const raw = new Uint8Array(await req.arrayBuffer());
+  if (raw.length > MAX_BYTES) return { error: tooLarge(raw.length) };
+  if (req.headers.get(SYNC_ENCODING_HEADER) !== 'gzip') return { text: new TextDecoder().decode(raw), wire: raw.length };
+  try {
+    const stream = new Blob([raw]).stream().pipeThrough(new DecompressionStream('gzip'));
+    const reader = stream.getReader(), chunks: Uint8Array[] = [];
+    let total = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.length;
+      if (total > MAX_RAW_BYTES) { await reader.cancel(); return { error: tooLarge(total) }; }
+      chunks.push(value);
+    }
+    const all = new Uint8Array(total);
+    let at = 0;
+    for (const c of chunks) { all.set(c, at); at += c.length; }
+    return { text: new TextDecoder().decode(all), wire: raw.length };
+  } catch { return { error: json({ error: 'Bad progress data.' }, 400) }; }
+}
 /** One push every few seconds per account is plenty (the game batches its own). */
 export const MIN_GAP_MS = 3_000;
 
@@ -24,8 +51,10 @@ export async function handleSync(req: Request, env: SupaEnv | null, now = new Da
   try {
     if (req.method === 'DELETE') { await deleteUser(env, id, f); return json({ ok: true }); }
     if (req.method !== 'POST') return json({ error: 'Method not allowed.' }, 405);
-    const text = await req.text();
-    if (text.length > MAX_BYTES) return json({ error: 'Your progress is too large to sync.' }, 413);
+    const body = await bodyText(req);
+    if ('error' in body) return body.error;
+    const { text } = body;
+    if (text.length > MAX_RAW_BYTES) return tooLarge(text.length);
     let blob;
     try { blob = sanitizeBlob(JSON.parse(text)); } catch { blob = null; }
     if (!blob) return json({ error: 'Bad progress data.' }, 400);
@@ -35,7 +64,7 @@ export async function handleSync(req: Request, env: SupaEnv | null, now = new Da
     const prev = stored ? sanitizeBlob(stored.data) : null;
     if (prev) blob = { ...blob, storage: mergeStorage(blob.storage, prev.storage), careers: mergeCareers(careerRows(blob.careers), careerRows(prev.careers)) };
     const size = JSON.stringify(blob).length;
-    if (size > MAX_BYTES) return json({ error: 'Your progress is too large to sync.' }, 413);
+    if (size > MAX_RAW_BYTES) return tooLarge(size);
     const d = derive(blob, now);
     const own = <T extends object>(rows: T[]) => rows.map(r => ({ ...r, user_id: id }));
     await upsert(env, 'progress', [{ user_id: id, data: blob, size, updated_at: now.toISOString() }], 'user_id', f);
