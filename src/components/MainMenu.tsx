@@ -1,12 +1,11 @@
 import { PrivacyLink } from './PrivacyPolicyPage';
 import { IS_DESKTOP_BUILD } from '../appMode';
-import { DiscordLink, DISCORD_URL } from './DiscordLink';
+import { DISCORD_URL } from './DiscordLink';
 import { CookieSettingsLink } from '../consent/ConsentBanner';
 import { ConsentBanner } from '../consent/ConsentBanner';
 import { useEffect, useState } from 'react';
 import { localProgress, careerProgress, type InProgress } from '../menu/inProgress';
 import { modeOfWeek, FEATURED_NAME, WEEKLY_BONUS_CAP } from '../retention/modeOfWeek';
-import logoIcon from '../assets/brand/logo-icon.png';
 import { PlayerAvatar } from './PlayerAvatar';
 import { MyAvatar } from './UserAvatar';
 import { PixelBall, PixelIcon } from './PixelIcon';
@@ -18,15 +17,14 @@ import { SCENARIOS, loadRebuildRecords } from '../simulation/rebuildChallenge';
 import { DataCredits } from './DataCredits';
 import { weeklyRebuild, weeklyCareer, loadWeeklyRecords, weeklyStreak, weekEndsAt } from '../retention/weekly';
 import { WhatsNew } from './WhatsNew';
-import { ThemeWelcome, ThemeChip, needsThemeChoice } from './ThemePicker';
+import { ThemeWelcome, needsThemeChoice } from './ThemePicker';
 import { WeeklyBoardDialog } from './WeeklyBoard';
 import { cloudEnabled, useAccount } from '../cloud/account';
 import { SaveSafetyNudge } from './cloud/SaveSafetyNudge';
 import { RivalAlerts } from './cloud/RivalAlerts';
 import { WeeklyRecap } from './WeeklyRecap';
 import { WelcomeSignIn, needsSignInWelcome } from './cloud/WelcomeSignIn';
-import { AccountButton } from './cloud/AccountButton';
-import { ProfileChip } from './ProfilePanel';
+import { MenuMasthead } from './MenuMasthead';
 import { totalXp, levelFor, takeLevelUp, unlocksBetween } from '../profile/profile';
 import { noteVisit } from '../retention/streak';
 import { notePass } from '../retention/pass';
@@ -195,22 +193,7 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
 
   return (
     <div className="main-menu">
-      <header className="menu-masthead">
-        <div className="mh-row">
-          <span className="mh-brand"><img src={logoIcon} alt="" /><span className="mh-word">COURT VISION<small>BASKETBALL MANAGEMENT</small></span><i className="mh-led" aria-hidden="true"><small>LED</small></i></span>
-          <span className="menu-edition">THE PIXEL COURT</span>
-          <span className="mh-chips">
-            {(onProfile || onLocker) && <ProfileChip onOpen={onProfile ?? onLocker} />}
-            {visit.v.streak.current >= 2 && <button className="account-chip streak-pill" onClick={onProfile ?? onLocker} title={`Daily streak: ${visit.v.streak.current} days in a row (best ${visit.v.streak.best})`}><PixelIcon name="flame" size={14} /> {visit.v.streak.current}</button>}
-            {onCommunity && <AccountButton onCommunity={onCommunity} onProfile={onProfile ?? onLocker} />}
-            <DiscordLink className="menu-discord" />
-          </span>
-        </div>
-        <div className="mh-sub">
-          {onSettings && <button className="account-chip menu-settings" onClick={onSettings} title="Settings: backups, graphics, install, privacy"><PixelIcon name="settings" size={14} /> Settings</button>}
-          <ThemeChip />
-        </div>
-      </header>
+      <MenuMasthead onProfile={onProfile} onLocker={onLocker} onCommunity={onCommunity} onSettings={onSettings} streak={visit.v.streak} />
       <SaveSafetyNudge />
       <RivalAlerts />
       <WeeklyRecap />
