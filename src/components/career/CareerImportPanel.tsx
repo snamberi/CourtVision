@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { plural } from '../../lib/humanize';
 import type { League } from '../../simulation/league';
 import type { GMLeagueExtras } from '../../simulation/gm';
 import { calculateOverall } from '../../simulation/engine/overall';
@@ -40,7 +41,7 @@ export function CareerImportPanel({ league, extras, onChange, onToast, allowTeam
       : !tools ? <p className="hint-text">Loading your careers…</p>
       : !tools.list.length ? <p className="hint-text">No careers with a season played yet. Play one in Career Mode first.</p>
       : <div className="sandbox-import-form">
-        <label>Player <select value={meta?.id ?? ''} onChange={e => setPick(e.target.value)}>{tools.list.map(m => <option key={m.id} value={m.id}>{m.playerId} · {m.years.length} seasons{m.retired ? ` · retired, legacy ${m.retired.legacy}` : ''}</option>)}</select></label>
+        <label>Player <select value={meta?.id ?? ''} onChange={e => setPick(e.target.value)}>{tools.list.map(m => <option key={m.id} value={m.id}>{m.playerId} · {plural(m.years.length, 'season')}{m.retired ? ` · retired, legacy ${m.retired.legacy}` : ''}</option>)}</select></label>
         <label>As <select value={stage} onChange={e => setStage(e.target.value as typeof stage)}>{(Object.keys(tools.mod.STAGE_LABEL) as (typeof stage)[]).map(s => <option key={s} value={s}>{tools.mod.STAGE_LABEL[s]}</option>)}</select></label>
         {allowTeams && <label>Add to <select value={teamId} onChange={e => setTeamId(e.target.value)}><option value="">Free agency</option>{league.teams.map(t => <option key={t.teamId} value={t.teamId}>{t.name}</option>)}</select></label>}
         {preview != null && <p className="hint-text">He arrives at {preview} Overall.{allowTeams ? '' : ' He joins free agency: sign him before someone else does.'}</p>}

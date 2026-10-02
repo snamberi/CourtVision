@@ -109,6 +109,7 @@ export type FrameId = 'classic' | 'gold' | 'hardwood' | 'neon' | 'banner' | 'fir
   | 'diamond' | 'jade' | 'pixel' | 'ice' | 'lightning' | 'ember' | 'royal' | 'galaxy' | 'rainbow' | 'legend' | 'sovereign';
 export type FloorId = 'team' | 'planks' | 'parquet' | 'blonde' | 'midnight' | 'asphalt'
   | 'cherry' | 'sand' | 'retro' | 'herringbone' | 'ebony' | 'ice' | 'neon' | 'lava' | 'gold' | 'galaxy' | 'celestial';
+export type PhoneId = 'classic' | 'courtside' | 'hardwood' | 'jersey' | 'neon' | 'handheld' | 'ice' | 'gold' | 'lava' | 'galaxy' | 'diamond';
 export interface Unlock<T extends string> { id: T; name: string; level: number; blurb: string; /** Opened on the Trophy Road at this many trophies instead of a level. */ trophies?: number; /** The game owner's account only (ownerAccess.ts); hidden from everyone else. */ staff?: boolean }
 /** Whether a level-road or Trophy Road unlock is open. */
 export const unlockOpen = (u: { level: number; trophies?: number; staff?: boolean }, level: number, trophies: number) => hasOwnerAccess() || (!u.staff && (u.trophies != null ? trophies >= u.trophies : u.level <= level));
@@ -146,6 +147,18 @@ export const FLOORS: Unlock<FloorId>[] = [
     ['galaxy', 'Galaxy court', 'Play among the stars.']] as [FloorId, string, string][]).map(([id, name, blurb]) => ({ id, name, blurb, level: 1, trophies: trophyNeed('floor', id) ?? 750_000 })),
   { id: 'celestial', name: 'Celestial throne', level: 1, staff: true, blurb: 'A starfield floor laced with blue fire. Game Owner only.' },
 ];
+/** Looks for the phone on the main menu: five on the level road, five on the Trophy Road. */
+export const PHONES: Unlock<PhoneId>[] = [
+  { id: 'classic', name: 'Classic', level: 1, blurb: 'Matches the app look.' },
+  { id: 'courtside', name: 'Courtside', level: road('phone', 'courtside'), blurb: 'Basketball orange with black seams.' },
+  { id: 'hardwood', name: 'Hardwood', level: road('phone', 'hardwood'), blurb: 'A maple case with a painted line.' },
+  { id: 'jersey', name: 'Home jersey', level: road('phone', 'jersey'), blurb: 'White with red and blue trim.' },
+  { id: 'neon', name: 'Neon', level: road('phone', 'neon'), blurb: 'Black glass, glowing edges.' },
+  { id: 'handheld', name: 'Handheld', level: road('phone', 'handheld'), blurb: 'Grey plastic and a green screen.' },
+  ...([['ice', 'Frost', 'Pale blue ice with frosted corners.'], ['gold', 'Gold', 'Polished gold, for champions.'], ['lava', 'Lava', 'Black rock with glowing cracks.'],
+    ['galaxy', 'Galaxy', 'Deep space and drifting stars.'], ['diamond', 'Diamond', 'Cut crystal that catches the light.']] as [PhoneId, string, string][])
+    .map(([id, name, blurb]) => ({ id, name, blurb, level: 1, trophies: trophyNeed('phone', id) ?? 750_000 })),
+];
 export const TITLES: Unlock<string>[] = ROAD_TITLES.map(id => ({ id, name: id, level: id === 'Rookie GM' ? 1 : road('title', id), blurb: '' }));
 
 /** Titles earned in ranked seasons (the best tier you have reached; kept in this browser after each sync). */
@@ -159,7 +172,7 @@ export function rankTitles(read: Read = localRead): string[] {
   return RANK_TITLES.filter(t => best >= t.order).map(t => t.id);
 }
 
-export interface Equipped { frame: FrameId; floor: FloorId; title: string; icon: IconId; color: ColorId; titleColor: string; /** The profile-picture frame (avatarFrames.ts). */ avatarFrame: AvatarFrameId }
+export interface Equipped { frame: FrameId; floor: FloorId; /** The menu phone's look. */ phone: PhoneId; title: string; icon: IconId; color: ColorId; titleColor: string; /** The profile-picture frame (avatarFrames.ts). */ avatarFrame: AvatarFrameId }
 const EQUIP_KEY = 'cv-profile-equip';
 export const PROFILE_EVENT = 'courtvision:profile';
 
@@ -177,7 +190,7 @@ export function equipped(level = levelFor(totalXp()).level): Equipped {
   const titleColor = TITLE_COLORS.find(c => c.id === raw.titleColor && titleColorOpen(c, ctx))?.id ?? 'plain';
   const af = avatarFrameDef(raw.avatarFrame);
   const avatarFrame = avatarFrameOpen(af, ctx) ? af.id : 'none';
-  return { frame: ok(FRAMES, raw.frame, 'classic'), floor: ok(FLOORS, raw.floor, 'team'), title, icon, color, titleColor, avatarFrame };
+  return { frame: ok(FRAMES, raw.frame, 'classic'), floor: ok(FLOORS, raw.floor, 'team'), phone: ok(PHONES, raw.phone, 'classic'), title, icon, color, titleColor, avatarFrame };
 }
 
 /** The name shown on your profile card when you are not signed in (signed in, it is your GM name). */
@@ -201,6 +214,7 @@ export function unlocksBetween(from: number, to: number): string[] {
     icon: id => `the ${iconDef(id).name} icon`, color: id => `the ${NAME_COLORS.find(c => c.id === id)?.name ?? id} name colour`,
     title: id => `the "${id}" title`, frame: id => `the ${FRAMES.find(f => f.id === id)?.name ?? id} card frame`, floor: id => `the ${FLOORS.find(f => f.id === id)?.name ?? id} court`,
     look: id => `the ${ROAD_LOOK_NAMES[id] ?? id} app look`,
+    phone: id => `the ${PHONES.find(f => f.id === id)?.name ?? id} phone`,
     avatarFrame: id => `the ${AVATAR_FRAMES.find(f => f.id === id)?.name ?? id} profile-picture frame`,
     avatar: id => { const [cat, piece] = id.split(':') as [AvatarCategory, string]; return `${avatarItem(cat, piece)?.name ?? piece} for your character`; },
   };

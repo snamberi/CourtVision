@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { ordinal } from '../lib/humanize';
 import { PixelIcon } from './PixelIcon';
 import type { League } from '../simulation/league';
 import type { GMLeagueExtras } from '../simulation/gm';
@@ -92,7 +93,7 @@ export function YearInReviewPage({ league, extras, controlledTeamId, awardOption
             <td><span className={`yir-verdict verdict-${d.verdict.toLowerCase().replace(/ /g, '-')}`}>{d.verdict}</span></td></tr>)}</tbody></table>
           : <p className="hint-text">None of your recent draft picks are in the league.</p>}
         {review.steals.length > 0 && <><h4>Steals around the league</h4><ul className="yir-steals">{review.steals.map(s => <li key={s.playerId}>
-          <button className="link-button" onClick={() => onSelectPlayer(s.playerId)}>{s.playerId}</button> went {s.pick}th in {s.draftYear}; now {s.classRank === 1 ? 'the best' : `#${s.classRank}`} in his class ({s.overall} OVR).</li>)}</ul></>}
+          <button className="link-button" onClick={() => onSelectPlayer(s.playerId)}>{s.playerId}</button> went {s.pick == null ? 'undrafted' : ordinal(s.pick)} in {s.draftYear}; now {s.classRank === 1 ? 'the best' : `#${s.classRank}`} in his class ({s.overall} OVR).</li>)}</ul></>}
       </div>}
       {chapter === 5 && <div className="yir-league">
         <h2>Around the league</h2>

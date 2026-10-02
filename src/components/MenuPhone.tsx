@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { PixelIcon } from './PixelIcon';
 import { MyAvatar } from './UserAvatar';
-import { totalXp, levelFor } from '../profile/profile';
+import { totalXp, levelFor, equipped, PROFILE_EVENT, type PhoneId } from '../profile/profile';
 
 /*
  * The menu phone: a small pixel phone in the bottom-left corner of the main menu with four apps (Leaderboards,
@@ -15,9 +15,16 @@ export function MenuPhone({ onBoards, onFriends, onProfile, streak }: {
 }) {
   const [time, setTime] = useState(clock);
   useEffect(() => { const t = window.setInterval(() => setTime(clock()), 30_000); return () => window.clearInterval(t); }, []);
-  const [level] = useState(() => levelFor(totalXp()).level);
+  // Your level and the phone look you picked (Profile → Menu phone), kept up to date.
+  const [state, setState] = useState(() => ({ level: levelFor(totalXp()).level, skin: phoneLook() }));
+  useEffect(() => {
+    const sync = () => setState({ level: levelFor(totalXp()).level, skin: phoneLook() });
+    window.addEventListener(PROFILE_EVENT, sync); window.addEventListener('courtvision:progress', sync);
+    return () => { window.removeEventListener(PROFILE_EVENT, sync); window.removeEventListener('courtvision:progress', sync); };
+  }, []);
+  const { level, skin } = state;
   const days = streak.current;
-  return <aside className="menu-phone" aria-label="Your phone">
+  return <aside className={`menu-phone phone-skin-${skin}`} aria-label="Your phone">
     <div className="menu-phone-body">
       <div className="menu-phone-status" aria-hidden="true"><span>{time}</span><i className="menu-phone-notch" /><span className="menu-phone-icons"><i className="sig" /><i className="bat" /></span></div>
       <div className="menu-phone-apps">
@@ -32,3 +39,5 @@ export function MenuPhone({ onBoards, onFriends, onProfile, streak }: {
     </div>
   </aside>;
 }
+
+const phoneLook = (): PhoneId => { try { return equipped().phone; } catch { return 'classic'; } };

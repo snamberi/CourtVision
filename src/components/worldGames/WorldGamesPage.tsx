@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
+import { ordinal } from '../../lib/humanize';
 import type { League } from '../../simulation/league';
 import type { PlayerSeason } from '../../simulation/types';
 import { COUNTRIES, hostOf } from '../../worldGames/data';
@@ -96,5 +97,5 @@ export function WorldGamesPage({ league, freeAgents, controlledTeamId, seed, onC
 
 function placeText(r: WorldGamesRecord, c: string): string {
   const i = r.placings.indexOf(c);
-  return i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : i >= 0 ? `finished ${i + 1}th` : 'did not qualify';
+  return i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : i >= 0 ? `finished ${ordinal(i + 1)}` : 'did not qualify';
 }

@@ -1,4 +1,5 @@
 import { PixelIcon } from './PixelIcon';
+import { plural } from '../lib/humanize';
 import { TeamLink } from './TeamLink';
 import { useState } from 'react';
 import type { PlayerSeason } from '../simulation/types';
@@ -78,7 +79,7 @@ export function FullPlayerEditor({ season, onChange, sandboxMode, league, extras
           <span className="badge-chip">Age {season.age}</span>
           <span className="badge-chip">OVR {overall}</span>
           <span className="badge-chip">POT {season.development.potential.toFixed(0)}</span>
-          <span className="hint-text">{avg.gamesPlayed} games played this season</span>
+          <span className="hint-text">{plural(avg.gamesPlayed, 'game')} played this season</span>
         </div>
         {avg.gamesPlayed > 0 ? (
           <div className="finances-table-wrap">

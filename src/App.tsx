@@ -1469,7 +1469,7 @@ function App() {
         </button>
         <div className="brand">
           <img src={logoIcon} alt="" className="brand-logo" />
-          <span className="brand-word">COURTVISION</span>
+          <span className="brand-word">COURT VISION</span>
         </div>
         {controlledTeam && topbarRecord ? (
           <div className="topbar-team">

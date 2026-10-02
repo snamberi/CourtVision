@@ -1,4 +1,5 @@
 import { TeamLink, TeamText } from './TeamLink';
+import { shortMoney } from '../lib/humanize';
 import { useState } from 'react';
 import type { League, LeagueTeam } from '../simulation/league';
 import type { GMLeagueExtras, FutureDraftPick } from '../simulation/gm';
@@ -175,7 +176,7 @@ export function TradePage({ league, extras, controlledTeamId, onChange, onToast,
             {teamA.seasons.map((s) => (
               <label key={s.playerId} className="badge-chip">
                 <input type="checkbox" checked={fromA.includes(s.playerId)} onChange={() => toggle(fromA, setFromA, s.playerId)} />
-                <PlayerNameTag playerId={s.playerId} teamId={s.teamId} jerseyNumber={s.jerseyNumber} size={22} /> (${(extras.contracts[s.playerId]?.annualSalary ?? 0).toLocaleString()}{showValues && <>, value {computeTradeValue(s).toFixed(0)}</>})
+                <PlayerNameTag playerId={s.playerId} teamId={s.teamId} jerseyNumber={s.jerseyNumber} size={22} /> ({shortMoney(extras.contracts[s.playerId]?.annualSalary ?? 0)}{showValues && <>, value {computeTradeValue(s).toFixed(0)}</>})
               </label>
             ))}
           </div>
@@ -190,7 +191,7 @@ export function TradePage({ league, extras, controlledTeamId, onChange, onToast,
             {teamB.seasons.map((s) => (
               <label key={s.playerId} className="badge-chip">
                 <input type="checkbox" checked={fromB.includes(s.playerId)} onChange={() => toggle(fromB, setFromB, s.playerId)} />
-                <PlayerNameTag playerId={s.playerId} teamId={s.teamId} jerseyNumber={s.jerseyNumber} size={22} /> (${(extras.contracts[s.playerId]?.annualSalary ?? 0).toLocaleString()}{showValues && <>, value {computeTradeValue(s).toFixed(0)}</>})
+                <PlayerNameTag playerId={s.playerId} teamId={s.teamId} jerseyNumber={s.jerseyNumber} size={22} /> ({shortMoney(extras.contracts[s.playerId]?.annualSalary ?? 0)}{showValues && <>, value {computeTradeValue(s).toFixed(0)}</>})
               </label>
             ))}
           </div>
@@ -206,8 +207,8 @@ export function TradePage({ league, extras, controlledTeamId, onChange, onToast,
       <TradeScale aName={teamA.name} bName={teamB.name} aiSide={teamAId === controlledTeamId ? 'b' : teamBId === controlledTeamId ? 'a' : 'b'} view={teamAId === controlledTeamId || teamBId !== controlledTeamId ? sides.b : sides.a}
         tolerance={tradeTolerance(extras)} empty={!fromA.length && !fromB.length && !picksFromA.length && !picksFromB.length} />
       <div className="trade-comparison">
-        <div><strong><TeamLink name={teamA.name} /> sends:</strong> ${salaryA.toLocaleString()} <small className="hint-text">· {directionLabel(sides.a.direction)}{showValues && <> · their view: give {sides.a.give.toFixed(0)} / get {sides.a.receive.toFixed(0)}</>}</small></div>
-        <div><strong><TeamLink name={teamB.name} /> sends:</strong> ${salaryB.toLocaleString()} <small className="hint-text">· {directionLabel(sides.b.direction)}{showValues && <> · their view: give {sides.b.give.toFixed(0)} / get {sides.b.receive.toFixed(0)}</>}</small></div>
+        <div><strong><TeamLink name={teamA.name} /> sends:</strong> {shortMoney(salaryA)} <small className="hint-text">· {directionLabel(sides.a.direction)}{showValues && <> · their view: give {sides.a.give.toFixed(0)} / get {sides.a.receive.toFixed(0)}</>}</small></div>
+        <div><strong><TeamLink name={teamB.name} /> sends:</strong> {shortMoney(salaryB)} <small className="hint-text">· {directionLabel(sides.b.direction)}{showValues && <> · their view: give {sides.b.give.toFixed(0)} / get {sides.b.receive.toFixed(0)}</>}</small></div>
         <div className={`trade-verdict ${tradeVerdict(sides.a.give, sides.a.receive).className}`}>{teamA.name}: {tradeVerdict(sides.a.give, sides.a.receive).label}</div>
         <div className={`trade-verdict ${tradeVerdict(sides.b.give, sides.b.receive).className}`}>{teamB.name}: {tradeVerdict(sides.b.give, sides.b.receive).label}</div>
       </div>

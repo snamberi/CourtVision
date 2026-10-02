@@ -154,9 +154,9 @@
   /* Dream Matchup: long team names never push the pickers off the screen. */
   .hunt-dream, .hunt-dream-pickers, .hunt-dream-side { min-width: 0; max-width: 100%; }
   .hunt-dream-side select, .hunt-dream-era select { width: 100%; min-width: 0; text-overflow: ellipsis; }
-  /* Quick games: the three games on one row. */
-  .arcade .arcade-tabs { flex-wrap: nowrap; overflow-x: auto; gap: 6px; scrollbar-width: none; }
-  .arcade .arcade-tabs button { flex: 0 0 auto; padding: 7px 10px; font-size: 13px; }
+  /* Quick games: all four games in view, two by two. */
+  .arcade .arcade-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .arcade .arcade-tabs button { justify-content: center; padding: 7px 8px; font-size: 12px; }
   .arcade .arcade-row { min-width: 470px; grid-template-columns: 104px repeat(6, minmax(56px, 1fr)); }
   .arcade .arcade-cell { min-height: 40px; font-size: 11.5px; }
   .arcade .arcade-name { position: sticky; left: 0; z-index: 1; background: var(--bg); font-size: 12px; }
@@ -186,19 +186,19 @@
 /* The menu phone: floats in the bottom-left corner when there is room beside the menu, otherwise it lies in the
    page as a landscape phone with the four apps in a row. */
 .menu-phone { align-self: flex-start; }
-.menu-phone-body { position: relative; display: grid; gap: 8px; padding: 8px 10px 10px; background-color: var(--look-raised); color: var(--look-text); border: 3px solid var(--look-edge); border-radius: 14px; box-shadow: var(--look-shadow), inset 0 0 0 2px var(--look-page); }
-.menu-phone-status { display: flex; align-items: center; justify-content: space-between; gap: 6px; font: 700 9px/1 var(--look-body); color: var(--look-muted); }
+.menu-phone-body { position: relative; display: grid; gap: 8px; padding: 8px 10px 10px; background: var(--phone-body, var(--look-raised)); color: var(--phone-text, var(--look-text)); border: 3px solid var(--phone-edge, var(--look-edge)); border-radius: 14px; box-shadow: var(--look-shadow), inset 0 0 0 2px var(--phone-inner, var(--look-page)); }
+.menu-phone-status { display: flex; align-items: center; justify-content: space-between; gap: 6px; font: 700 9px/1 var(--look-body); color: var(--phone-muted, var(--look-muted)); }
 .menu-phone-notch { width: 26px; height: 6px; background-color: var(--look-page); border-radius: 3px; }
 .menu-phone-icons { display: inline-flex; align-items: center; gap: 3px; }
 .menu-phone-icons .sig { width: 9px; height: 7px; background: linear-gradient(90deg, currentColor 2px, transparent 2px 3px, currentColor 3px 5px, transparent 5px 6px, currentColor 6px); clip-path: polygon(0 100%, 100% 0, 100% 100%); }
 .menu-phone-icons .bat { width: 13px; height: 7px; border: 1px solid currentColor; border-radius: 1px; background: linear-gradient(90deg, var(--look-accent) 70%, transparent 70%); }
 .menu-phone-apps { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 6px; }
-.menu-phone-app { display: grid; justify-items: center; gap: 3px; min-width: 0; padding: 2px; background: transparent; border: 0; box-shadow: none; color: var(--look-text); cursor: pointer; }
-.menu-phone-app small { font: 600 9px/1.2 var(--look-body); color: var(--look-muted); white-space: nowrap; }
+.menu-phone-app { display: grid; justify-items: center; gap: 3px; min-width: 0; padding: 2px; background: transparent; border: 0; box-shadow: none; color: var(--phone-text, var(--look-text)); cursor: pointer; }
+.menu-phone-app small { font: 600 9px/1.2 var(--look-body); color: var(--phone-muted, var(--look-muted)); white-space: nowrap; }
 .menu-phone-app:hover small, .menu-phone-app:focus-visible small { color: var(--look-text); }
-.app-tile { position: relative; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; border: 2px solid var(--look-line); background-color: var(--look-panel); transition: transform 120ms; overflow: hidden; }
+.app-tile { position: relative; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; border: 2px solid var(--phone-tile-edge, var(--look-line)); background-color: var(--phone-tile, var(--look-panel)); transition: transform 120ms; overflow: hidden; }
 .menu-phone-app:hover .app-tile, .menu-phone-app:focus-visible .app-tile { transform: translateY(-2px); border-color: var(--look-accent); }
-.app-tile.boards { background-color: var(--look-accent); color: var(--look-on-accent); border-color: var(--look-accent); }
+.app-tile.boards { background-color: var(--phone-accent, var(--look-accent)); color: var(--phone-on-accent, var(--look-on-accent)); border-color: var(--phone-accent, var(--look-accent)); }
 .app-tile.friends { color: var(--look-secondary); }
 .app-tile.streak { color: var(--look-accent); }
 .app-tile em { position: absolute; right: 1px; bottom: 1px; min-width: 15px; padding: 1px 3px; font: normal 700 9px/1.2 var(--look-body); text-align: center; background-color: var(--look-page); color: var(--look-text); border-radius: 4px; }
@@ -223,3 +223,53 @@
   .menu-phone-apps { justify-content: space-between; gap: 4px 8px; }
 }
 @media (prefers-reduced-motion: reduce) { .app-tile { transition: none; } .menu-phone-app:hover .app-tile { transform: none; } }
+
+/* Phone looks (Level Road and Trophy Road rewards; the picker is in the Profile). Each sets the phone's own colours. */
+.phone-skin-courtside { --phone-body: linear-gradient(90deg, #e8762b 0 7%, #241812 7% 9%, #e8762b 9% 91%, #241812 91% 93%, #e8762b 93%); --phone-edge: #241812; --phone-inner: #9c4413; --phone-text: #fff6ea; --phone-muted: #ffe2c4; --phone-tile: #b8561c; --phone-tile-edge: #241812; --phone-accent: #241812; --phone-on-accent: #ffb070; }
+.phone-skin-hardwood { --phone-body: repeating-linear-gradient(90deg, #c9934f 0 9px, #b98142 9px 10px, #d5a463 10px 19px, #b98142 19px 20px); --phone-edge: #6b4320; --phone-inner: #8c5a2b; --phone-text: #2a1708; --phone-muted: #4a2c12; --phone-tile: #e4bd85; --phone-tile-edge: #6b4320; --phone-accent: #c8102e; --phone-on-accent: #fff; }
+.phone-skin-jersey { --phone-body: linear-gradient(90deg, #c8102e 0 6px, #fff 6px calc(100% - 6px), #1d428a calc(100% - 6px)); --phone-edge: #1d428a; --phone-inner: #e8ecf4; --phone-text: #10224a; --phone-muted: #3a4e78; --phone-tile: #eef1f8; --phone-tile-edge: #c8102e; --phone-accent: #1d428a; --phone-on-accent: #fff; }
+.phone-skin-neon { --phone-body: #07070f; --phone-edge: #18f0ff; --phone-inner: #ff2bd6; --phone-text: #e9fbff; --phone-muted: #7fe8ff; --phone-tile: #12122a; --phone-tile-edge: #ff2bd6; --phone-accent: #18f0ff; --phone-on-accent: #07070f; }
+.phone-skin-neon .menu-phone-body, .phone-mini.phone-skin-neon { box-shadow: 0 0 10px #18f0ff99, inset 0 0 0 2px #ff2bd6; }
+.phone-skin-handheld { --phone-body: #b9b8ad; --phone-edge: #5e5d57; --phone-inner: #8e8d84; --phone-text: #1d2b14; --phone-muted: #2f4224; --phone-tile: #9bbb59; --phone-tile-edge: #3d5a1e; --phone-accent: #3d5a1e; --phone-on-accent: #c9e08a; }
+.phone-skin-ice { --phone-body: linear-gradient(160deg, #eaf8ff, #a9dcf5 60%, #e6f6ff); --phone-edge: #5fb2dd; --phone-inner: #ffffff; --phone-text: #0e3550; --phone-muted: #2b5f80; --phone-tile: #f4fbff; --phone-tile-edge: #7cc4e8; --phone-accent: #2a8cc4; --phone-on-accent: #fff; }
+.phone-skin-gold { --phone-body: linear-gradient(135deg, #8a6416, #f6d77a 35%, #c79a2c 55%, #fff1b8 75%, #a77a1c); --phone-edge: #6b4b0c; --phone-inner: #fff1b8; --phone-text: #2c1d02; --phone-muted: #4a3306; --phone-tile: #f3d27a; --phone-tile-edge: #8a6416; --phone-accent: #2c1d02; --phone-on-accent: #ffd166; }
+.phone-skin-lava { --phone-body: radial-gradient(circle at 30% 70%, #ff6a00 0 3px, transparent 4px), radial-gradient(circle at 75% 30%, #ff3d00 0 2px, transparent 3px), linear-gradient(170deg, #1b0d0a, #2b120c 50%, #120806); --phone-edge: #ff5a1f; --phone-inner: #4a1a0e; --phone-text: #ffe2d1; --phone-muted: #ff9c6b; --phone-tile: #2a100a; --phone-tile-edge: #ff5a1f; --phone-accent: #ff5a1f; --phone-on-accent: #1b0d0a; }
+.phone-skin-galaxy { --phone-body: radial-gradient(1px 1px at 20% 30%, #fff, transparent), radial-gradient(1px 1px at 70% 60%, #fff, transparent), radial-gradient(1.5px 1.5px at 40% 80%, #cfe0ff, transparent), radial-gradient(circle at 70% 20%, #5b2a86, transparent 60%), #0b0821; --phone-edge: #8f6bff; --phone-inner: #2b1f5a; --phone-text: #efe9ff; --phone-muted: #b7a6ff; --phone-tile: #19123d; --phone-tile-edge: #8f6bff; --phone-accent: #8f6bff; --phone-on-accent: #0b0821; }
+.phone-skin-diamond { --phone-body: linear-gradient(135deg, #e8fbff, #b6ecff 25%, #ffffff 40%, #c9d7ff 60%, #f3e8ff 80%, #b9f3ff); --phone-edge: #7fd6f0; --phone-inner: #ffffff; --phone-text: #142a44; --phone-muted: #355a7a; --phone-tile: #ffffffcc; --phone-tile-edge: #9ad8ff; --phone-accent: #3aa0d8; --phone-on-accent: #fff; }
+
+/* The small phone in the Profile picker and on the roads. */
+.phone-mini { display: inline-grid; place-items: center; background: var(--phone-body, var(--look-raised)); border: 2px solid var(--phone-edge, var(--look-edge)); border-radius: 22%/13%; box-sizing: border-box; vertical-align: middle; }
+.phone-mini-screen { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; width: 100%; align-content: center; }
+.phone-mini-screen > i { display: block; aspect-ratio: 1; border-radius: 25%; background-color: var(--phone-tile, var(--look-panel)); border: 1px solid var(--phone-tile-edge, var(--look-line)); }
+.phone-mini-screen > i:first-child { background-color: var(--phone-accent, var(--look-accent)); }
+
+/* ---- Small fixes pass ---- */
+/* The week's challenges line up with the game modes above them. */
+.main-menu > .this-week { width: 100%; max-width: var(--menu-width, 1260px); }
+/* Settings: the backup and recovery tools sit flat inside their cards, no second shadowed box. */
+:root .settings-page .setting-card-body :is(.backup-panel, .save-recovery) { box-shadow: none; }
+/* Player stats: the search and filters wrap instead of running off a phone screen. */
+.db-controls { flex-wrap: wrap; }
+.db-controls .db-search { min-width: 0; flex: 1 1 200px; }
+@media (max-width: 720px) {
+  .db-controls .db-search { flex-basis: 100%; }
+  .db-controls select { flex: 1 1 0; min-width: 0; }
+  /* Quick games: the record boxes share the row evenly; the era picker is a tidy grid. */
+  .arcade .arcade-stats span { flex: 1 1 0; min-width: 0; }
+  .arcade .arcade-switch { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
+  .arcade .arcade-switch button { border-right: 0; border-bottom: 1px solid #2a3546; }
+  /* Coming-soon slots: one short line on a phone, not two big empty cards. */
+  :root button.mode-card.mode-soon { min-height: 0; padding-top: 12px; padding-bottom: 12px; }
+  :root button.mode-card.mode-soon :is(p, .mode-meta) { display: none; }
+}
+/* Roster: retiring a number is tucked away until you need it. */
+.retire-form { margin-top: 10px; }
+.retire-form > summary { cursor: pointer; width: max-content; color: var(--look-muted); font-size: 13px; }
+.retire-form[open] > summary { margin-bottom: 8px; color: var(--look-text); }
+/* Difficulty buttons line up under their heading; the centred League Hunt builder keeps them centred. */
+.challenge-opt .hunt-pills { justify-content: flex-start; }
+.hunt-builder .challenge-opt .hunt-pills { justify-content: center; }
+/* League Hunt builder: the "New hunt" label centred over its title. */
+.hunt-builder-head .pixel-eyebrow { display: block; text-align: center; }
+/* Settings: graphics as three plain choices. */
+.hunt-pills.perf-choice { justify-content: flex-start; }

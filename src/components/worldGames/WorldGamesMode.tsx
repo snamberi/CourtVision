@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ordinal } from '../../lib/humanize';
 import type { NbaHistory } from '../../history/nbaHistoryData';
 import { PixelIcon } from '../PixelIcon';
 import { track } from '../../analytics/track';
@@ -22,6 +23,8 @@ export function WorldGamesMode({ games, country, onExit, onNew }: { games: Games
   }, []);
   const [seed, setSeed] = useState(() => Math.floor(Math.random() * 1e9));
   const [run, setRun] = useState<{ state: WGState; teams: Map<string, NationalTeam> } | null>(null);
+  /** Your last twelve: Play again starts from them. */
+  const [lastChosen, setLastChosen] = useState<string[] | null>(null);
   const [result, setResult] = useState<{ place: number; score: number; records: ModeRecords; state: WGState } | null>(null);
   const pool = useMemo(() => (h ? myPool(h, games, country) : []), [h, games, country]);
   const host = hostFor(games, country);
@@ -43,7 +46,7 @@ export function WorldGamesMode({ games, country, onExit, onNew }: { games: Games
       : !h ? <p className="empty-state">Loading every national team…</p>
       : result && run ? <>
         <section className="wg-card">
-          <div className="wg-head"><h2>{result.place <= 2 ? `${MEDAL_ICON[(['gold', 'silver', 'bronze'] as const)[result.place]]} ${['Gold', 'Silver', 'Bronze'][result.place]} for ${country}!` : `${country} finished ${result.place + 1}th`}</h2>
+          <div className="wg-head"><h2>{result.place <= 2 ? `${MEDAL_ICON[(['gold', 'silver', 'bronze'] as const)[result.place]]} ${['Gold', 'Silver', 'Bronze'][result.place]} for ${country}!` : `${country} finished ${ordinal(result.place + 1)}`}</h2>
             <div className="wg-actions">
               <button className="primary" onClick={() => { setRun(null); setResult(null); setSeed(Math.floor(Math.random() * 1e9)); }}><PixelIcon name="play" size={14} /> Play again</button>
               <button onClick={onNew}>Other Games or country</button>
@@ -54,9 +57,10 @@ export function WorldGamesMode({ games, country, onExit, onNew }: { games: Games
         <TournamentRun key={`${seed}-done`} initial={result.state} teams={run.teams} mine={country} onDone={() => {}} sourceLabel="real players" />
       </>
       : run ? <TournamentRun key={seed} initial={run.state} teams={run.teams} mine={country} onDone={done} sourceLabel="real players" />
-      : <PickTwelve country={country} pool={pool} initial={pool.slice(0, 12).map(p => p.playerId)}
+      : <PickTwelve country={country} pool={pool} initial={lastChosen ?? pool.slice(0, 12).map(p => p.playerId)}
         note={games === 'fantasy' ? `Every ${country} player in history at his best season.` : `${country}'s players as they were in ${games - 1}-${String(games).slice(2)}. ${host.city} hosts.`}
         onStart={chosen => {
+          setLastChosen(chosen);
           const teams = modeTeams(h, games, country, chosen, seed);
           setRun({ state: startTournament([...teams.values()], year, host.city, host.country, seed), teams });
           track('mode_start', { mode: 'worldgames', games: String(games), country });

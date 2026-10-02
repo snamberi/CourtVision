@@ -136,7 +136,9 @@ export function PlayerStatsPage({ teams, league, onSelect }: Props) {
       </div>
       {(view === 'advanced' || view === 'winShares') && <p className="hint-text">Regular season only. PER is scaled so the league average is 15; win shares estimate how many team wins a player produced on offense (OWS) and defense (DWS).</p>}
       {rows.length === 0 ? (
-        <p className="empty-state">{view === 'playoffs' ? 'No playoff games played yet this season.' : 'No players match — try lowering the minimum games played.'}</p>
+        <p className="empty-state">{view === 'playoffs' ? 'No playoff games played yet this season.'
+          : !teams.some(t => t.seasons.some(s => (s.seasonStats?.gamesPlayed ?? 0) > 0)) ? 'No games played yet this season: stats show up after the first tip-off.'
+          : query ? `No player matches "${query}".` : 'No players match — try lowering the minimum games played.'}</p>
       ) : (
         <div className="stat-table-scroll"><table className="db-table stat-line-table">
           <thead><tr><th className="col-name">Name</th><th>Team</th>{view !== 'playoffs' && <th>GP</th>}

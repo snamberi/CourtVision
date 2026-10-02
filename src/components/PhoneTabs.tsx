@@ -7,7 +7,7 @@ import { PixelIcon } from './PixelIcon';
  */
 
 const groupTabs = (title: string) => new Set(GROUPS.find(g => g.title === title)?.items.map(i => i.tab) ?? []);
-const TEAM = groupTabs('Team'), OFFICE = groupTabs('Front Office'), LEAGUE = groupTabs('League');
+const TEAM = groupTabs('Team'), OFFICE = groupTabs('Front Office'), LEAGUE = new Set([...groupTabs('League'), ...groupTabs('Stats')]);
 
 export function PhoneTabs({ tab, hasControlledTeam, onNavigate, onMore, menuOpen, offers = 0 }: { tab: string; hasControlledTeam: boolean; onNavigate: (tab: string) => void; onMore: () => void; menuOpen: boolean; /** Trade offers waiting: a badge on Trade, which then opens them. */ offers?: number }) {
   const area = tab === 'dashboard' ? 'home' : TEAM.has(tab) ? 'team' : OFFICE.has(tab) ? 'trade' : LEAGUE.has(tab) ? 'league' : null;

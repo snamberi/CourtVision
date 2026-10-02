@@ -10,13 +10,14 @@ import { liteMode, performanceSetting, setPerformanceSetting, type PerformanceSe
 import './locker/locker.css';
 import './hunt/hunt.css';
 
-/** Graphics: Auto (lite on low-end devices), Lite or Full. */
+/** Graphics: Auto (lite on low-end devices), Lite or Full: three plain choices. */
 export function PerformanceToggle() {
   const [setting, setSetting] = useState<PerformanceSetting>(() => performanceSetting());
-  const next: Record<PerformanceSetting, PerformanceSetting> = { auto: 'lite', lite: 'full', full: 'auto' };
-  const label = setting === 'auto' ? `Auto (${liteMode('auto') ? 'lite' : 'full'})` : setting === 'lite' ? 'Lite' : 'Full';
-  return <button className="link-button" title="Lite mode stops looping animations and blur, and uses fewer simulation workers. Auto turns it on for low-memory devices."
-    onClick={() => { const v = next[setting]; setPerformanceSetting(v); setSetting(v); }}>Graphics: {label}</button>;
+  const options: { id: PerformanceSetting; label: string }[] = [{ id: 'auto', label: `Auto (${liteMode('auto') ? 'lite' : 'full'} here)` }, { id: 'lite', label: 'Lite' }, { id: 'full', label: 'Full' }];
+  return <div className="hunt-pills perf-choice" role="radiogroup" aria-label="Graphics">
+    {options.map(o => <button key={o.id} role="radio" aria-checked={setting === o.id} className={`hunt-pill ${setting === o.id ? 'on' : ''}`}
+      onClick={() => { setPerformanceSetting(o.id); setSetting(o.id); }}>{o.label}</button>)}
+  </div>;
 }
 
 function SettingCard({ icon, title, blurb, wide, children }: { icon: string; title: string; blurb?: string; wide?: boolean; children: ReactNode }) {

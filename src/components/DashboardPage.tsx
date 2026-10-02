@@ -1,4 +1,5 @@
 import { formatSeasonYear } from '../simulation/calendar';
+import { ordinal } from '../lib/humanize';
 import type { ReactNode } from 'react';
 import { TeamLogo } from './TeamLogo';
 import { useTeamIdentity } from '../visuals/TeamIdentityContext';
@@ -265,8 +266,4 @@ export function DashboardPage({ league, extras, controlledTeamId, seasonPhase, o
   );
 }
 
-function ordinal(n: number): string {
-  const s = ['th', 'st', 'nd', 'rd'];
-  const v = n % 100;
-  return n + (s[(v - 20) % 10] ?? s[v] ?? s[0]);
-}
+

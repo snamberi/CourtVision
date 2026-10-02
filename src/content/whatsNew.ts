@@ -6,6 +6,19 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2027-01-13',
+    title: 'Ten phone looks and twenty fixes',
+    items: [
+      "**Ten looks for the menu phone:** Courtside, Hardwood, Home jersey, Neon and Handheld on the Level Road; Frost, Gold, Lava, Galaxy and Diamond on the Trophy Road. Pick one under **Menu phone** in your Profile.",
+      "**Quick games on a phone:** all four games in view, a tidy era picker and record boxes that share the row.",
+      "**Player Stats:** the search and filters fit a phone, and before tip-off the page says so instead of asking you to lower the games filter. Stats pages light up League on the phone tab bar.",
+      "**Cleaner pages:** Settings tools sit flat in their cards, Graphics is three plain choices, the week's challenges line up with the game modes, and coming-soon slots stay small on phones.",
+      "**Roster:** retiring a number is tucked under one line and fills in the number he wore. Trade screens show salaries as $20.84M, not $20,839,187.",
+      "**Little words:** 21st, not 21th; 1 season, not 1 seasons; and undrafted steals say \"went undrafted\" instead of \"went th\".",
+      "**World Games mode:** Play again keeps your last twelve.",
+    ],
+  },
+  {
     id: '2027-01-06',
     title: 'The World Games',
     items: [

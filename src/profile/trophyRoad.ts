@@ -57,7 +57,7 @@ export function trophyParts(read: Read = localRead): TrophyPart[] {
 }
 export const totalTrophies = (read: Read = localRead) => trophyParts(read).reduce((n, p) => n + p.trophies, 0);
 
-export type TrophyRewardKind = 'title' | 'color' | 'icon' | 'titleColor' | 'look' | 'avatar' | 'frame' | 'floor' | 'avatarFrame';
+export type TrophyRewardKind = 'title' | 'color' | 'icon' | 'titleColor' | 'look' | 'avatar' | 'frame' | 'floor' | 'avatarFrame' | 'phone';
 /** One or two rewards every 5,000 trophies. The last stops are the rarest things in the game. */
 export const TROPHY_ROAD: [number, TrophyRewardKind, string][] = [
   [5_000, 'title', 'Contender'], [5_000, 'titleColor', 'amber'],
@@ -120,6 +120,8 @@ TROPHY_ROAD.push(
   [85_000, 'frame', 'ember'], [95_000, 'floor', 'ice'], [105_000, 'frame', 'royal'], [120_000, 'floor', 'neon'], [140_000, 'frame', 'galaxy'],
   [160_000, 'floor', 'lava'], [180_000, 'frame', 'rainbow'], [250_000, 'floor', 'gold'], [300_000, 'frame', 'legend'], [400_000, 'floor', 'galaxy'],
 );
+// Menu phone looks (see PHONES in profile.ts).
+TROPHY_ROAD.push([20_000, 'phone', 'ice'], [50_000, 'phone', 'gold'], [100_000, 'phone', 'lava'], [150_000, 'phone', 'galaxy'], [350_000, 'phone', 'diamond']);
 // Your character's pieces ride the same road (ids are "category:piece"; see AVATAR_TROPHY_ROAD in avatar.ts).
 for (const [t, cat, id] of AVATAR_TROPHY_ROAD) TROPHY_ROAD.push([t, 'avatar', `${cat}:${id}`]);
 // Profile-picture frames (avatarFrames.ts).

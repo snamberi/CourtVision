@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { plural } from '../lib/humanize';
 import type { League } from '../simulation/league';
 import type { GMLeagueExtras } from '../simulation/gm';
 import { ARCHETYPE } from '../simulation/gmRivals';
@@ -103,7 +104,7 @@ function FrontOffice({ league, extras, onChange, onToast }: Props) {
         <p className="hint-text">An interim GM is running the team. Interview three candidates:</p>
         <div className="owner-candidates">{candidates.map(c => <div key={c.id} className="owner-candidate">
           <Person look={{ ...coachLook(c.name, c.age), outfit: 'suit' }} primary={id.primary} secondary={id.secondary} px={64} />
-          <b>{c.name}</b><small>{ARCHETYPE[c.archetype].label} · {c.age}</small><span>{GM_STYLE[c.archetype].note}</span><small>{c.years} years · {money(c.salary)} a year</small>
+          <b>{c.name}</b><small>{ARCHETYPE[c.archetype].label} · {c.age}</small><span>{GM_STYLE[c.archetype].note}</span><small>{plural(c.years, 'year')} · {money(c.salary)} a year</small>
           <button className="primary" onClick={() => { apply(hireGm(league, extras, c)); onToast(`${c.name} is your general manager.`, 'success'); }}>Hire</button></div>)}</div>
       </>}
     </section>
@@ -143,7 +144,7 @@ function Arena({ league, onChange, onToast }: Props) {
         <label>Luxury suites <input type="range" min={0} max={4} value={suites} onChange={e => setSuites(Number(e.target.value))} /> <b>{suites}</b></label>
         <button className="primary" disabled={o.cash < cost} onClick={() => { const r = buildArena(league, name, suites); onChange(r.league); onToast(r.message, r.league === league ? 'error' : 'success'); }}>Build it · {money(cost)}</button></div>
       <p className="hint-text">Every arena upgrade at the top level (seats, video board, practice court, lights, a loud crowd, a mascot), your name on the building and the court, and suites that pay {money(SUITE_INCOME)} a level every season.</p>
-      {!o.arena.sponsor && <><h4>Naming rights</h4><ul className="owner-coaches">{offers.map(of => <li key={of.name}><b>{of.name}</b><small>{money(of.annual)} a year · {of.years} years</small><button onClick={() => { onChange(signNaming(league, of)); onToast(`Welcome to the ${of.name} arena.`, 'success'); }}>Sign</button></li>)}</ul></>}
+      {!o.arena.sponsor && <><h4>Naming rights</h4><ul className="owner-coaches">{offers.map(of => <li key={of.name}><b>{of.name}</b><small>{money(of.annual)} a year · {plural(of.years, 'year')}</small><button onClick={() => { onChange(signNaming(league, of)); onToast(`Welcome to the ${of.name} arena.`, 'success'); }}>Sign</button></li>)}</ul></>}
       <h4>Team colours</h4>
       <div className="owner-form"><label>Primary <input type="color" value={primary} onChange={e => setPrimary(e.target.value)} /></label><label>Secondary <input type="color" value={secondary} onChange={e => setSecondary(e.target.value)} /></label>
         <button onClick={() => { onChange(setTeamColors(league, primary, secondary)); onToast('New colours: on the court, the jerseys and the logo.', 'success'); }}>Save colours</button></div>

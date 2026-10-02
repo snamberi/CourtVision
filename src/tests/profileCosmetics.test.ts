@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { AVATAR_FRAMES } from '../profile/avatarFrames';
 import { avatarItem, type AvatarCategory } from '../profile/avatar';
 import { ICONS, SPRITES, PALETTE, NAME_COLORS, HONORS, MODE_TITLES, LEVEL_ROAD, ROAD_LOOK_NAMES, ENTITLEMENTS_KEY, isOpen, unlockContext, earnedExtraTitles, noteHonors, readHonors } from '../profile/cosmetics';
-import { equipped, equip, levelFor, levelCost, MAX_LEVEL, FRAMES, FLOORS, TITLES, unlocksBetween } from '../profile/profile';
+import { equipped, equip, levelFor, levelCost, MAX_LEVEL, FRAMES, FLOORS, PHONES, TITLES, unlocksBetween } from '../profile/profile';
 import { computeHonors } from '../../server/honors';
 
 beforeEach(() => localStorage.clear());
@@ -29,7 +29,7 @@ describe('profile cosmetics', () => {
       if (kind === 'look') { expect(ROAD_LOOK_NAMES[id], id).toBeTruthy(); continue; } // checked against the themes in themes.test
       if (kind === 'avatarFrame') { expect(AVATAR_FRAMES.find(f => f.id === id)?.level, id).toBe(lv); continue; }
       if (kind === 'avatar') { const [cat, piece] = id.split(':'); expect(avatarItem(cat as AvatarCategory, piece)?.rule, id).toEqual({ level: lv }); continue; }
-      const list = kind === 'icon' ? ICONS : kind === 'color' ? NAME_COLORS : kind === 'frame' ? FRAMES : kind === 'floor' ? FLOORS : TITLES;
+      const list = kind === 'icon' ? ICONS : kind === 'color' ? NAME_COLORS : kind === 'frame' ? FRAMES : kind === 'floor' ? FLOORS : kind === 'phone' ? PHONES : TITLES;
       const hit = list.find(x => x.id === id) as { rule?: { level?: number }; level?: number } | undefined;
       expect(hit, `${kind} ${id}`).toBeTruthy();
       expect(hit!.rule?.level ?? hit!.level, `${kind} ${id}`).toBe(lv);

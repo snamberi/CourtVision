@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { ordinal } from '../lib/humanize';
 import { fx } from './statFormat';
 import type { League } from '../simulation/league';
 import type { GMLeagueExtras } from '../simulation/gm';
@@ -25,7 +26,7 @@ type Step =
   | { kind: 'outro' };
 
 const reducedMotion = () => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-const place = (i: number) => ['1st', '2nd', '3rd'][i] ?? `${i + 1}th`;
+const place = (i: number) => ordinal(i + 1);
 
 function playerSeasonLine(league: League, extras: GMLeagueExtras | undefined, playerId: string, season: string): StatSnapshot | null {
   const p = league.teams.flatMap(t => t.seasons).find(s => s.playerId === playerId) ?? extras?.freeAgents.find(s => s.playerId === playerId)

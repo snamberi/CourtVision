@@ -2,7 +2,7 @@ import { syncNow } from '../cloud/sync';
 import { readPlayTime, formatPlayTime, topArea, AREA_LABEL, type PlayArea } from '../retention/playTime';
 import { PLAY_TIME_EVENT } from '../retention/usePlayClock';
 import { useEffect, useState, type ReactNode } from 'react';
-import { xpParts, totalXp, levelFor, equipped, equip, rankTitles, localName, setLocalName, unlockOpen, listedFor, FRAMES, FLOORS, TITLES, PROFILE_EVENT, type Unlock } from '../profile/profile';
+import { xpParts, totalXp, levelFor, equipped, equip, rankTitles, localName, setLocalName, unlockOpen, listedFor, FRAMES, FLOORS, PHONES, TITLES, PROFILE_EVENT, type Unlock } from '../profile/profile';
 import { OWNER_TITLE, SOVEREIGN_TITLE } from '../profile/ownerAccess';
 import { FOUNDING_TITLE } from '../profile/founding';
 import { ALBUM_TITLES, ICONS, NAME_COLORS, HONORS, MODE_TITLES, SUPPORTER_TITLE, unlockContext, isOpen, earnedExtraTitles, type UnlockContext } from '../profile/cosmetics';
@@ -11,7 +11,7 @@ import { LEGACY_EVENT } from '../storage/gmLegacy';
 import { PixelIcon } from './PixelIcon';
 import { ProfileIcon, NameTag } from './ProfileIcon';
 import { MyFramedAvatar } from './AvatarFrame';
-import { CourtFloorPreview, ShareFramePreview } from './ProfilePreviews';
+import { CourtFloorPreview, ShareFramePreview, PhonePreview } from './ProfilePreviews';
 import { AVATAR_FRAMES, avatarFrameOpen, avatarFrameHow } from '../profile/avatarFrames';
 import { STREAK_REWARDS } from '../retention/streak';
 import { PASS_REWARDS } from '../retention/pass';
@@ -159,6 +159,7 @@ export function ProfilePanel() {
     <table className="db-table profile-xp"><tbody>{p.parts.map(x => <tr key={x.id}><td className="col-name">{x.label}</td><td className="col-name">{x.detail}</td><td>{x.xp.toLocaleString()} XP</td></tr>)}</tbody></table>
     <p className="hint-text">XP comes from everything you finish: GM seasons, wins, titles and achievements (official leagues), careers, hunts, rebuilds, weekly challenges and daily goals. Icons, colours and titles are earned only by playing: levels, ranked seasons, achievements and leaderboard finishes (leaderboard titles arrive when you sync).</p>
     <Picker label="Share-card frame" list={listedFor(FRAMES)} level={p.level} trophies={ctx.trophies} value={eq.frame} onPick={v => equip({ frame: v })} preview={id => <ShareFramePreview frame={id} />} />
+    <Picker label="Menu phone" list={listedFor(PHONES)} level={p.level} trophies={ctx.trophies} value={eq.phone} onPick={v => equip({ phone: v })} preview={id => <PhonePreview phone={id} size={64} />} />
     <Picker label="Court floor (Watch Game)" list={listedFor(FLOORS)} level={p.level} trophies={ctx.trophies} value={eq.floor} onPick={v => equip({ floor: v })} preview={id => <CourtFloorPreview floor={id} />} />
   </section>;
 }

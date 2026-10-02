@@ -1,4 +1,5 @@
 import type { BigMoment } from '../../career/bigMoments';
+import { plural } from '../../lib/humanize';
 import { CATEGORY_BY_ID } from '../../career/categories';
 import { noteFeaturedXp } from '../../retention/modeOfWeek';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -348,7 +349,7 @@ function YearsTable({ years }: { years: CareerYear[] }) {
       <td className="col-name">{y.record ? `${y.record.w}-${y.record.l}` : ''} {y.finish ?? ''}</td>
       <td className="col-name cv-award-cell">{y.awards.map(a => a.label).join(' · ')}</td>
     </tr>; })}
-      <tr className="cv-total"><td className="col-name">Career</td><td /><td className="col-name">{years.length} seasons</td><td /><td>{tot.g}</td><td>{per(tot.pts, tot.g)}</td><td>{per(tot.reb, tot.g)}</td><td>{per(tot.ast, tot.g)}</td><td>{per(tot.stl, tot.g)}</td><td>{per(tot.blk, tot.g)}</td><td /><td /><td className="col-name">{tot.pts.toLocaleString()} pts · {tot.reb.toLocaleString()} reb · {tot.ast.toLocaleString()} ast</td><td /></tr>
+      <tr className="cv-total"><td className="col-name">Career</td><td /><td className="col-name">{plural(years.length, 'season')}</td><td /><td>{tot.g}</td><td>{per(tot.pts, tot.g)}</td><td>{per(tot.reb, tot.g)}</td><td>{per(tot.ast, tot.g)}</td><td>{per(tot.stl, tot.g)}</td><td>{per(tot.blk, tot.g)}</td><td /><td /><td className="col-name">{tot.pts.toLocaleString()} pts · {tot.reb.toLocaleString()} reb · {tot.ast.toLocaleString()} ast</td><td /></tr>
     </tbody></table></div>;
 }
 
@@ -402,7 +403,7 @@ function CareerView({ h, a, busy, tradeAsked, onPlay, onAutopilot, onTraining, o
       <span className="pixel-eyebrow">{fy(last.season)} · {last.teamName}{last.record ? ` · ${last.record.w}-${last.record.l}` : ''}{last.finish ? ` · ${last.finish}` : ''}</span>
       <StatLine s={last.stats} />
       {last.awards.length > 0 ? <ul className="cv-awards">{last.awards.map(x => <li key={x.label} className={['champion', 'mvp', 'fmvp'].includes(x.key) ? 'gold' : ''}>{x.label}</li>)}</ul> : <p className="hint-text">No awards this season.</p>}
-      {last.playoffs && <p className="hint-text">Playoffs: {last.playoffs.gamesPlayed} games, {per(last.playoffs.points, last.playoffs.gamesPlayed)} PTS · {per(last.playoffs.oreb + last.playoffs.dreb, last.playoffs.gamesPlayed)} REB · {per(last.playoffs.ast, last.playoffs.gamesPlayed)} AST</p>}
+      {last.playoffs && <p className="hint-text">Playoffs: {plural(last.playoffs.gamesPlayed, 'game')}, {per(last.playoffs.points, last.playoffs.gamesPlayed)} PTS · {per(last.playoffs.oreb + last.playoffs.dreb, last.playoffs.gamesPlayed)} REB · {per(last.playoffs.ast, last.playoffs.gamesPlayed)} AST</p>}
       <Moments moments={careerMoments(meta).filter(m => m.season === last.season)} />
     </div>}
     {current === 'plan' && <div className="cv-panel">
@@ -439,7 +440,7 @@ function Legacy({ h, meta, onNew }: { h: NbaHistory; meta: CareerMeta; onNew: ()
   const rows = list.map(e => ({ rank: e.rank, name: e.name, score: e.score, me: false }));
   if (rank) rows.splice(rank - 1, 0, { rank, name: meta.playerId, score, me: true });
   const shown = all ? rows : rank ? rows.slice(Math.max(0, rank - 6), rank + 5) : rows.slice(-5);
-  const share = [`${meta.playerId}: ${meta.years.length} seasons, ${per(r.pts, g)} PPG / ${per(r.reb, g)} RPG / ${per(r.ast, g)} APG`,
+  const share = [`${meta.playerId}: ${plural(meta.years.length, 'season')}, ${per(r.pts, g)} PPG / ${per(r.reb, g)} RPG / ${per(r.ast, g)} APG`,
     shelf.filter(([k]) => r[k] > 0).map(([k, l]) => `${r[k]}x ${l}`).join(', '),
     `Hall of Fame: ${ret.hallOfFame === 'first-ballot' ? 'first ballot' : ret.hallOfFame === 'yes' ? 'yes' : 'no'} · ${rank ? `#${rank} all time` : 'outside the all-time Top 100'} (Court Vision Career Mode)`].filter(Boolean).join('\n');
   return <section className="hunt-stage hunt-over won cv-page">
