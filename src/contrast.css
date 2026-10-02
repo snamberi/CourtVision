@@ -557,3 +557,14 @@ html.lite *, html.lite *::before, html.lite *::after { backdrop-filter: none !im
 .weekly-recap-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .weekly-recap ul { margin: 0; padding-left: 18px; display: grid; gap: 3px; }
 .weekly-recap .contest-actions { margin: 0; }
+
+/* Difficulty and view options for the run modes (ChallengeOptions). */
+.challenge-opt { display: grid; gap: 6px; }
+.challenge-toggles label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.challenge-toggles small { color: var(--c-fg-94a0b2, #94a0b2); }
+.challenge-toggles input { width: 18px; height: 18px; accent-color: var(--c-border-f47b20, #f47b20); }
+/* Rarity colours off: every card and reel row in the same neutral look. */
+.no-rarity [class*="rarity-"] { border-color: var(--c-border-2a3546, #2a3546) !important; --rarity: var(--c-border-2a3546, #2a3546); }
+.no-rarity [class*="rarity-"]::before, .no-rarity [class*="rarity-"]::after { background: none !important; box-shadow: none !important; }
+.no-rarity .p820-ovr, .no-rarity .p820-ovr-mini { color: var(--c-fg-f4f0e6, #f4f0e6) !important; background: none !important; }
+.draft-level { display: grid; gap: 6px; margin: 10px 0; }

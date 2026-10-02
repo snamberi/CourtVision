@@ -13,6 +13,7 @@ import { BOOST_IDS, type BoostId } from './boosts';
 import { BUFFS, BUFF_IDS, type BuffId } from './buffs';
 import { COACHES, COACH_BY_ID, coachRarity, type HuntCoach } from './coaches';
 import { addBox, addHighs, type RunLine, type GameHighs } from './statLines';
+import { STANDARD_VIEW, type RunView } from '../retention/challenge';
 import { rosterRating, bonusToReach } from './rating';
 import { FAV_BOOST } from '../profile/favorites';
 
@@ -107,6 +108,8 @@ export interface HuntRun {
   highs?: GameHighs;
   /** A same-spin duel: the challenger's code (retention/duel.ts), compared at the end. */
   duel?: string;
+  /** How the spins are shown (retention/challenge.ts); absent = ratings hidden until you lock, colours on. */
+  view?: RunView;
   /** The blind spins: what you took and the best on the table, per spin (overall; the coach's bonus on the coach spin). */
   picks?: { spin: number; got: number; best: number }[];
   /** Your favourite player: a reel landing on his rarity is him FAV_BOOST more often, until you lock him. */
@@ -175,7 +178,7 @@ export const opponentRating = (h: NbaHistory, run: HuntRun, s: HuntSeries) => ro
 
 // ---------------------------------------------------------------- a new run
 
-export interface NewRunOptions { deck?: DeckId; difficulty?: Difficulty; daily?: string; weekly?: string; /** Your favourite player (Profile); ignored in the Daily Legend. */ fav?: string }
+export interface NewRunOptions { deck?: DeckId; difficulty?: Difficulty; daily?: string; weekly?: string; /** Your favourite player (Profile); ignored in the Daily Legend. */ fav?: string; /** Ratings / rarity colours on the spins (the Daily and the Weekly Hunt always use the standard view). */ view?: RunView }
 
 function pickTeam(h: NbaHistory, teams: HuntTeam[], era: HuntEra, target: number, rng: RNG, used: Set<string>): HuntTeam {
   const free = teams.filter(t => !used.has(t.id));
@@ -214,7 +217,8 @@ export function newRun(h: NbaHistory, seed: number, opts: NewRunOptions = {}): H
   series.push({ teamId: bossTeam.id, eraId: eraOf(bossTeam.end).id, kind: 'boss', buffs: buffPool(3), lift: 0 });
   let run: HuntRun = { version: 3, seed, stage: 'draft', squad: SLOTS.map(() => ''), spin: 0, offer: [], reels: null, guarantees: { star: 0, great: 1 },
     lives: diff.lives, coins: START_COINS + diff.coinShift + deck.coins, items: [...deck.items], boosts: [], growth: { star: 0, sixth: 0, chemistry: 0, coach: 0 }, training: {},
-    series, seriesIndex: 0, attempts: 0, results: [], deck: deck.id, difficulty: diff.id, ...(opts.daily ? { daily: opts.daily } : opts.weekly ? { weekly: opts.weekly } : opts.fav ? { fav: opts.fav } : {}) };
+    series, seriesIndex: 0, attempts: 0, results: [], deck: deck.id, difficulty: diff.id, ...(opts.daily ? { daily: opts.daily } : opts.weekly ? { weekly: opts.weekly } : opts.fav ? { fav: opts.fav } : {}),
+    ...(!opts.daily && !opts.weekly && opts.view && (opts.view.numbers !== STANDARD_VIEW.numbers || opts.view.colors !== STANDARD_VIEW.colors) ? { view: opts.view } : {}) };
   // Lift every team that falls short of its series' rating (buffs count, so the lift is what is left).
   run = { ...run, series: run.series.map((s, i) => {
     const target = s.kind === 'boss' ? diff.bossRating : Math.min(99, TARGETS[i] + diff.shift);

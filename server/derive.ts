@@ -63,6 +63,8 @@ export function derive(blob: ProgressBlob, now = new Date()): Derived {
   for (const m of blob.careers as CareerMeta[]) {
     const r = m.retired, name = cleanName(m.playerId);
     if (m.status !== 'retired' || !r || !name || !int(Math.round(r.legacy), 0, 400) || !Array.isArray(m.years) || !int(m.years.length, 1, 25)) continue;
+    // Rookie careers (the easy setting) count for your XP but stay off the Legacy board.
+    if (m.difficulty === 'rookie') { counted.push(m); continue; }
     const res = careerResume(m), legacy = Math.round(r.legacy), g = Math.max(1, res.games);
     if (res.titles > m.years.length || res.mvp > m.years.length || res.games > 30 * 110) continue;
     const hall = ['yes', 'first-ballot'].includes(r.hallOfFame) ? r.hallOfFame : 'no';

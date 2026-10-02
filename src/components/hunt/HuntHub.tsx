@@ -1,4 +1,6 @@
 import { RecordBookPanel } from './RunStats';
+import { ViewToggles } from '../ChallengeOptions';
+import { challengePrefs, saveChallengePrefs } from '../../retention/challenge';
 import { useMemo, useState } from 'react';
 import type { NbaHistory } from '../../history/nbaHistoryData';
 import { cardPool, seasonLabel, RARITY_LABEL, type HuntCard } from '../../hunt/cards';
@@ -47,6 +49,7 @@ export function HuntHub({ h, records, onStart }: { h: NbaHistory; records: HuntR
 function NewHunt({ records, onStart }: { records: HuntRecords; onStart: (opts: NewRunOptions) => void }) {
   const [deck, setDeck] = useState<DeckId>('classic');
   const [difficulty, setDifficulty] = useState<Difficulty>('pro');
+  const [view, setView] = useState(() => challengePrefs('hunt').view);
   const d = DECKS[deck], diff = DIFFICULTIES[difficulty];
   return <div className="hunt-builder">
     <div className="hunt-builder-head"><span className="pixel-eyebrow">NEW HUNT</span><h2>Build your hunt</h2>
@@ -59,8 +62,10 @@ function NewHunt({ records, onStart }: { records: HuntRecords; onStart: (opts: N
       <div className="hunt-pills" role="radiogroup" aria-label="Difficulty">{DIFFICULTY_IDS.map(id => { const open = difficultyUnlocked(records, id); return <button key={id} role="radio" aria-checked={difficulty === id} className={`hunt-pill ${difficulty === id ? 'on' : ''}`} disabled={!open} title={open ? DIFFICULTIES[id].blurb : `Locked: ${DIFFICULTIES[id].unlock}`} onClick={() => setDifficulty(id)}>
         {!open && <PixelIcon name="lock" size={12} />} {DIFFICULTIES[id].name}</button>; })}</div>
       <p className="hunt-step-note">{diff.blurb}</p></div>
+    <div className="hunt-step"><span className="hunt-step-n">3</span><h3>Challenge yourself</h3>
+      <ViewToggles value={view} onChange={v => { setView(v); saveChallengePrefs('hunt', { view: v }); }} note="Show ratings: see every player's number on the reels before you lock. Hide rarity colours: Stars and bench players look the same. The Daily Legend and the Weekly Hunt always use the standard view." /></div>
     <div className="hunt-summary"><span><b>{d.name}</b> deck</span><span><b>{diff.name}</b></span><span><b>{diff.lives}</b> lives</span><span>Boss rated <b>{diff.bossRating}</b></span></div>
-    <button className="primary hunt-start hunt-start-big" onClick={() => onStart({ deck, difficulty })}><PixelIcon name="play" size={20} /> Start the hunt</button>
+    <button className="primary hunt-start hunt-start-big" onClick={() => onStart({ deck, difficulty, view })}><PixelIcon name="play" size={20} /> Start the hunt</button>
     {records.runs > 0 && <div className="hunt-over-stats hunt-builder-stats"><div><small>HUNTS</small><b>{records.runs}</b></div><div><small>WON</small><b>{records.wins}</b></div><div><small>FURTHEST</small><b>{records.bestStop + 1}/{SERIES_COUNT}</b></div></div>}
     <details className="hunt-how"><summary>How a hunt works</summary>
       <ul className="hunt-rules">

@@ -6,6 +6,7 @@
  */
 
 import type { PerfectMode } from '../perfect/run';
+import type { RunView } from './challenge';
 
 export type DuelMode = 'hunt' | 'perfect';
 export interface DuelResult { score: number; line: string; won: boolean }
@@ -13,6 +14,8 @@ export interface Duel {
   v: 1; m: DuelMode; s: number;
   /** League Hunt: deck and difficulty. 82-0: Quick or Franchise Spin. */
   deck?: string; diff?: string; pm?: PerfectMode;
+  /** The challenger's view (ratings shown, rarity colours): the friend plays the same way. */
+  vw?: RunView;
   /** Who sent it and how they did. */
   n: string; r: DuelResult;
 }
@@ -32,7 +35,7 @@ export function decodeDuel(code: string): Duel | null {
     const d = JSON.parse(unb64url(code.trim())) as Partial<Duel>;
     if (d.v !== 1 || (d.m !== 'hunt' && d.m !== 'perfect') || !Number.isSafeInteger(d.s) || !d.r || typeof d.r.score !== 'number' || !Number.isFinite(d.r.score)) return null;
     if (d.m === 'perfect' && d.pm !== 'quick' && d.pm !== 'franchise') return null;
-    return { v: 1, m: d.m, s: d.s!, ...(d.deck ? { deck: clean(d.deck, 20) } : {}), ...(d.diff ? { diff: clean(d.diff, 20) } : {}), ...(d.pm ? { pm: d.pm } : {}),
+    return { v: 1, m: d.m, s: d.s!, ...(d.deck ? { deck: clean(d.deck, 20) } : {}), ...(d.diff ? { diff: clean(d.diff, 20) } : {}), ...(d.pm ? { pm: d.pm } : {}), ...(d.vw && typeof d.vw === 'object' ? { vw: { numbers: !!d.vw.numbers, colors: d.vw.colors !== false } } : {}),
       n: clean(d.n, 24) || 'A friend', r: { score: Math.round(d.r.score), line: clean(d.r.line, 60), won: !!d.r.won } };
   } catch { return null; }
 }

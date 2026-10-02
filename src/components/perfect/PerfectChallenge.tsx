@@ -14,6 +14,8 @@ import { weekKey } from '../../retention/week';
 import { ClaimRankCard } from '../cloud/ClaimRankCard';
 import { DuelPanel, DuelBanner } from '../hunt/DuelPanel';
 import { takePendingDuel, encodeDuel } from '../../retention/duel';
+import { challengePrefs, saveChallengePrefs, challengeMultiplier, isLevel, LEVEL_NAME, STANDARD_VIEW, type Level, type RunView } from '../../retention/challenge';
+import { LevelPicker, ViewToggles } from '../ChallengeOptions';
 import { noteRunHighs, noteFinalsMvp } from '../../retention/recordBook';
 import { noteWeekRun, noteWeekRecords } from '../../retention/weekLog';
 import { runMvp, perGame } from '../../hunt/statLines';
@@ -73,12 +75,12 @@ export function PerfectChallenge({ onExit }: { onExit: () => void }) {
     const d = takePendingDuel('perfect');
     if (!d || !d.pm) return;
     if (run && run.stage !== 'done' && !window.confirm(`${d.n} challenged you to an 82-0 duel. Start it? Your run in progress will be replaced.`)) return;
-    setRun({ ...newPerfectRun(h, d.pm, d.s), duel: encodeDuel(d) });
+    setRun({ ...newPerfectRun(h, d.pm, d.s, undefined, { level: isLevel(d.diff) ? d.diff : 'pro', view: d.vw ?? STANDARD_VIEW }), duel: encodeDuel(d) });
   }, [h]); // eslint-disable-line react-hooks/exhaustive-deps
-  const start = (mode: PerfectMode, seed: number, daily?: string) => {
+  const start = (mode: PerfectMode, seed: number, daily?: string, opts?: { level: Level; view: RunView }) => {
     if (!h) return;
-    track('mode_start', { mode: 'perfect', variant: daily ? 'daily' : mode });
-    setRun(newPerfectRun(h, mode, seed, daily));
+    track('mode_start', { mode: 'perfect', variant: daily ? 'daily' : mode, level: daily ? 'pro' : opts?.level ?? 'pro' });
+    setRun(newPerfectRun(h, mode, seed, daily, opts));
   };
 
   const header = <header className="hunt-top">
@@ -88,9 +90,10 @@ export function PerfectChallenge({ onExit }: { onExit: () => void }) {
   </header>;
   if (error) return <div className="hunt p820">{header}<p className="empty-state">Could not load the NBA history data: {error}</p></div>;
   if (!h) return <div className="hunt p820">{header}<p className="empty-state">Loading 80 years of basketball…</p></div>;
-  return <div className="hunt p820">
+  return <div className={`hunt p820 ${run?.view && !run.view.colors && run.stage !== 'done' ? 'no-rarity' : ''}`}>
     {header}
     {run && run.stage !== 'done' && <DuelBanner duel={run.duel} />}
+    {run && (run.level || run.view) && <p className="p820-challenge-line">{LEVEL_NAME[run.level ?? 'pro']}{run.view?.numbers ? ' · ratings shown' : ''}{run.view && !run.view.colors ? ' · colours hidden' : ''} · score ×{challengeMultiplier(run.level, run.view)}</p>}
     {!run ? <Hub records={records} onStart={start} />
       : run.stage === 'draft' ? (run.mode === 'quick' ? <QuickDraft h={h} run={run} setRun={setRun} /> : <FranchiseDraft h={h} run={run} setRun={setRun} />)
       : run.stage === 'coach' ? <CoachPick h={h} run={run} setRun={setRun} />
@@ -101,13 +104,26 @@ export function PerfectChallenge({ onExit }: { onExit: () => void }) {
 
 // ---------------------------------------------------------------- the hub
 
-function Hub({ records, onStart }: { records: PerfectRecords; onStart: (mode: PerfectMode, seed: number, daily?: string) => void }) {
+const LEVEL_BLURB: Record<Level, string> = {
+  rookie: 'Every opponent plays 4 points worse. A relaxed run: scores ×0.8.',
+  pro: 'The standard 82-0 Challenge (the Daily is always Pro).',
+  legend: 'Every opponent plays 4 points better. For the brave: scores ×1.25.',
+};
+
+function Hub({ records, onStart }: { records: PerfectRecords; onStart: (mode: PerfectMode, seed: number, daily?: string, opts?: { level: Level; view: RunView }) => void }) {
   const today = todayUtc(), daily = dailyPerfect(today), todayBest = records.daily?.[today];
+  const [prefs, setPrefs] = useState(() => challengePrefs('perfect'));
+  const set = (p: Partial<typeof prefs>) => { const next = { ...prefs, ...p }; setPrefs(next); saveChallengePrefs('perfect', next); };
+  const mult = challengeMultiplier(prefs.level, prefs.view);
   return <section className="p820-hub">
     <div className="p820-hero"><span className="p820-goal">82-0</span><span className="p820-goal-plus">+ 16-0</span>
       <p>Build a ten-man team from all of NBA history, play a full 82-game season against real teams from every era, then four playoff rounds. Bosses on the schedule: {BOSS_TEAMS.map(b => b.tag).join(', ')}.</p></div>
+    <div className="p820-options">
+      <div><h3 className="hunt-subhead">Difficulty</h3><LevelPicker value={prefs.level} onChange={level => set({ level })} blurbs={LEVEL_BLURB} /></div>
+      <div><h3 className="hunt-subhead">Challenge yourself</h3><ViewToggles value={prefs.view} onChange={view => set({ view })} note={`Ratings shown: scores ×0.9. Colours hidden: scores ×1.1. This run: score ×${mult}. The Daily always uses the standard view.`} /></div>
+    </div>
     <div className="p820-modes">
-      {(['quick', 'franchise'] as PerfectMode[]).map(m => <button key={m} className="p820-mode" onClick={() => onStart(m, Math.floor(Math.random() * 1_000_000_000))}>
+      {(['quick', 'franchise'] as PerfectMode[]).map(m => <button key={m} className="p820-mode" onClick={() => onStart(m, Math.floor(Math.random() * 1_000_000_000), undefined, prefs)}>
         <span className="hunt-mode-icon"><PixelIcon name={MODE_INFO[m].icon} size={24} /></span><b>{MODE_INFO[m].name}</b><small>{MODE_INFO[m].blurb}</small><em>Start</em></button>)}
       <button className="p820-mode p820-daily" onClick={() => onStart(daily.mode, daily.seed, today)}>
         <span className="hunt-mode-icon"><PixelIcon name="calendar" size={24} /></span><b>Daily 82-0</b>
@@ -142,7 +158,7 @@ function Hub({ records, onStart }: { records: PerfectRecords; onStart: (mode: Pe
 // ---------------------------------------------------------------- cards and the squad
 
 /** Ratings stay hidden until the run is over: you pick on the name, the season and the numbers he put up. */
-const ratingsShown = (run: Pick<PerfectRun, 'stage'>) => run.stage === 'done';
+const ratingsShown = (run: Pick<PerfectRun, 'stage' | 'view'>) => run.stage === 'done' || !!run.view?.numbers;
 const HIDDEN = '?';
 
 function CardTile({ c, onPick, prime, hide }: { c: HuntCard; onPick?: () => void; prime?: boolean; hide?: boolean }) {
@@ -190,8 +206,8 @@ function QuickDraft({ h, run, setRun }: { h: NbaHistory; run: PerfectRun; setRun
       <span className="pixel-eyebrow">{run.from === 'hunt' ? `YOUR HUNT SQUAD + BENCH SPIN ${run.squad.length - 5} OF ${SQUAD - 6}` : `SPIN ${run.squad.length + 1} OF ${SQUAD}`}</span>
       <h2>{QUICK_SLOT_LABEL[slot]}</h2>
       <div className={`p820-reel ${spinning ? 'spinning' : ''} ${landed ? 'landed' : ''}`} aria-live="polite">
-        {landed ? <CardTile c={landed} hide />
-          : <div className="p820-reel-strip" style={{ transform: spinning ? `translateY(-${(strip.length - 1) * 64}px)` : 'translateY(0)' }}>{strip.map((c, i) => <div key={i} className="p820-reel-row"><b>{c.name}</b><small>{seasonLabel(c.end)} {c.team}</small><span>{HIDDEN}</span></div>)}</div>}
+        {landed ? <CardTile c={landed} hide={!ratingsShown(run)} />
+          : <div className="p820-reel-strip" style={{ transform: spinning ? `translateY(-${(strip.length - 1) * 64}px)` : 'translateY(0)' }}>{strip.map((c, i) => <div key={i} className="p820-reel-row"><b>{c.name}</b><small>{seasonLabel(c.end)} {c.team}</small><span>{ratingsShown(run) ? c.ovr : HIDDEN}</span></div>)}</div>}
       </div>
       {landed ? <button className="primary p820-big" onClick={keep}>{run.squad.length + 1 >= SQUAD ? (run.coach ? 'Keep and start the season' : 'Keep and spin the coach') : 'Keep and spin again'}</button>
         : <button className="primary p820-big" onClick={spin} disabled={spinning}>{spinning ? 'Spinning…' : 'SPIN'}</button>}
@@ -230,7 +246,7 @@ function FranchiseDraft({ h, run, setRun }: { h: NbaHistory; run: PerfectRun; se
       </div>
       {revealed && <>
         <p className="hint-text">{run.prime ? 'Absolute Prime: everyone at the best season of his career.' : `Each player at his best season with the ${name} in ${era.label.toLowerCase()}.`} Pick one.</p>
-        <div className="p820-pool">{players.map(c => <CardTile key={c.id} c={c} prime={run.prime} hide onPick={() => setRun(pickPlayer(h, run, c.id))} />)}</div>
+        <div className="p820-pool">{players.map(c => <CardTile key={c.id} c={c} prime={run.prime} hide={!ratingsShown(run)} onPick={() => setRun(pickPlayer(h, run, c.id))} />)}</div>
       </>}
     </div>
     <SquadPanel h={h} run={run} />
@@ -247,7 +263,7 @@ function CoachPick({ h, run, setRun }: { h: NbaHistory; run: PerfectRun; setRun:
       <span className="pixel-eyebrow">LAST SPIN</span><h2>{run.mode === 'quick' ? 'Spin your coach' : 'Pick your coach'}</h2>
       {!shown ? <button className="primary p820-big" onClick={() => setShown(true)}>SPIN THE COACH</button>
         : <div className="p820-coaches">{offer.map(x => <button key={x.id} className={`p820-coach rarity-${coachRarity(x)}`} onClick={() => setRun(pickCoach(h, run, x.id))}>
-          <b>{x.name}</b><span className="p820-ovr-mini" title="Coach rating hidden until the season is over">{HIDDEN}</span><small>{COACH_STYLE[x.style]}</small><small className="p820-coach-eras">{coachMatchupText(x.style)}</small><i>{x.blurb}</i><em>{run.mode === 'quick' ? 'Start the season' : 'Choose'}</em></button>)}</div>}
+          <b>{x.name}</b><span className="p820-ovr-mini" title={ratingsShown(run) ? 'Coach bonus' : 'Coach rating hidden until the season is over'}>{ratingsShown(run) ? `${x.bonus >= 0 ? '+' : ''}${x.bonus}` : HIDDEN}</span><small>{COACH_STYLE[x.style]}</small><small className="p820-coach-eras">{coachMatchupText(x.style)}</small><i>{x.blurb}</i><em>{run.mode === 'quick' ? 'Start the season' : 'Choose'}</em></button>)}</div>}
     </div>
     <SquadPanel h={h} run={run} />
   </section>;
@@ -344,7 +360,7 @@ function Finished({ h, run, records, onAgain }: { h: NbaHistory; run: PerfectRun
       {frame && <div className="p820-reward"><FramedAvatar look={look} team={team} frame={frame} size={96} /><span><b>{frame === 'perfectGold' ? 'Perfection' : 'Undefeated'}</b> title and profile frame unlocked. Equip them in your Player Profile.</span></div>}
       {!s.champion && lastSeries && teams.get(lastSeries.opp) && <p className="hint-text">Knocked out by the {teamLabel(teams.get(lastSeries.opp)!)} (their rating {teamRating(h, teams.get(lastSeries.opp)!)}).</p>}
     </div>
-    <DuelPanel setup={{ m: 'perfect', s: run.seed, pm: run.mode }} duel={run.duel}
+    <DuelPanel setup={{ m: 'perfect', s: run.seed, pm: run.mode, ...(run.level ? { diff: run.level } : {}), ...(run.view ? { vw: run.view } : {}) }} duel={run.duel}
       mine={{ score: s.score, won: s.champion, line: `${s.w}-${s.l} · playoffs ${s.pw}-${s.pl}${s.champion ? ' · champions' : ''}` }} />
     <PerfectClaim run={run} records={records} score={s.score} />
     <RunMvps run={run} />
@@ -355,6 +371,7 @@ function Finished({ h, run, records, onAgain }: { h: NbaHistory; run: PerfectRun
       {s.champion && <tr><td>Title</td><td>{SCORE.title.toLocaleString()}</td></tr>}
       {s.perfectSeason && <tr><td>82-0</td><td>{SCORE.perfectSeason.toLocaleString()}</td></tr>}
       {s.perfectPlayoffs && <tr><td>16-0</td><td>{SCORE.perfectPlayoffs.toLocaleString()}</td></tr>}
+      {s.multiplier !== 1 && <tr><td>Challenge ({LEVEL_NAME[run.level ?? 'pro']}{run.view?.numbers ? ', ratings shown' : ''}{run.view && !run.view.colors ? ', colours hidden' : ''})</td><td>×{s.multiplier}</td></tr>}
       <tr className="total"><td>Score</td><td>{s.score.toLocaleString()}</td></tr>
     </tbody></table>
     <p className="hint-text">Best ever: {records.best ? `${records.best.w}-${records.best.l}, ${records.best.score.toLocaleString()} points` : '—'} · {records.titles} title{records.titles === 1 ? '' : 's'} · {records.perfectSeasons} perfect season{records.perfectSeasons === 1 ? '' : 's'}{run.daily ? ' · Daily 82-0: your best try today counts on the weekly board.' : ''}</p>

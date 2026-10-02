@@ -149,3 +149,6 @@ button.p820-card:hover, button.p820-card:focus-visible { border-color: var(--c-b
 .p820-matchup.good { color: var(--c-fg-55c878, #55c878); border-color: var(--c-border-55c878, #55c878); }
 .p820-matchup.bad { color: var(--c-fg-e85d5d, #e85d5d); border-color: var(--c-border-e85d5d, #e85d5d); }
 .p820-pressure { color: var(--c-fg-ff9d3d, #ff9d3d); border-color: var(--c-border-ff9d3d, #ff9d3d); }
+.p820-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; margin: 12px 0; padding: 12px 14px; border: 1px solid var(--c-border-2a3546, #2a3546); background: var(--c-bg-121926, #121926); }
+.p820-options .hunt-subhead { margin: 0 0 6px; }
+.p820-challenge-line { margin: 6px 0; font-size: .85rem; color: var(--c-fg-94a0b2, #94a0b2); }

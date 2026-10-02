@@ -5,7 +5,7 @@ import { decodeDuel, duelLink, duelVerdict, type Duel, type DuelResult } from '.
 import { track } from '../../analytics/track';
 import { PixelIcon } from '../PixelIcon';
 
-type Setup = Pick<Duel, 'm' | 's' | 'deck' | 'diff' | 'pm'>;
+type Setup = Pick<Duel, 'm' | 's' | 'deck' | 'diff' | 'pm' | 'vw'>;
 
 /** Your name for a duel link: your GM name when signed in, else the profile name (never "You"). */
 function senderName(username: string | null | undefined): string {

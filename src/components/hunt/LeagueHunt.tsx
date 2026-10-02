@@ -86,7 +86,7 @@ export function LeagueHunt({ onExit }: { onExit: () => void }) {
     if (run && run.stage !== 'won' && run.stage !== 'lost' && !window.confirm(`${d.n} challenged you to a League Hunt duel. Start it? Your hunt in progress will be replaced.`)) return;
     setPlay(null);
     const deck = d.deck && d.deck in DECKS ? d.deck as DeckId : undefined, difficulty = d.diff && d.diff in DIFFICULTIES ? d.diff as Difficulty : undefined;
-    setRun({ ...newRun(h, d.s, { deck, difficulty }), duel: encodeDuel(d) });
+    setRun({ ...newRun(h, d.s, { deck, difficulty, view: d.vw }), duel: encodeDuel(d) });
   }, [h]); // eslint-disable-line react-hooks/exhaustive-deps
   const header = <header className="hunt-top">
     <button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button>
@@ -99,7 +99,7 @@ export function LeagueHunt({ onExit }: { onExit: () => void }) {
   if (error) return <div className="hunt">{header}<p className="empty-state">Could not load the NBA history data: {error}</p></div>;
   if (!h) return <div className="hunt">{header}<p className="empty-state">Loading 80 years of basketball…</p></div>;
 
-  return <div className={`hunt ${play ? `era-${play.play.era.id}` : ''}`}>
+  return <div className={`hunt ${play ? `era-${play.play.era.id}` : ''} ${run?.view?.colors === false && run.stage !== 'won' && run.stage !== 'lost' ? 'no-rarity' : ''}`}>
     {header}
     {run && run.stage !== 'won' && run.stage !== 'lost' && <DuelBanner duel={run.duel} />}
     {!run ? <HuntHub h={h} records={records} onStart={(seed, opts) => { setPlay(null); setRun(newRun(h, seed, { ...opts, fav: readFavorites().player })); }} />
@@ -128,7 +128,7 @@ function SlotBoard({ h, run, series }: { h: NbaHistory; run: HuntRun; series?: H
       <span className="hunt-slot">{slot === '6TH' ? '6TH' : slot}</span>
       {c ? <><span className="hunt-squad-ovr">{c.ovr}</span>
         {b.bonus !== 0 ? <span className={`hunt-bonus ${b.bonus > 0 ? 'up' : 'down'}`} title={b.parts.join(', ')}>{b.bonus > 0 ? '+' : ''}{b.bonus}</span> : <span className="hunt-bonus" />}
-        <span className="hunt-squad-name">{c.name} <small>'{String(c.end).slice(2)} · {c.pos} · {RARITY_LABEL[c.rarity]}{run.training[c.id] ? ` · trained +${run.training[c.id]}` : ''}</small></span></>
+        <span className="hunt-squad-name">{c.name} <small>'{String(c.end).slice(2)} · {c.pos}{run.view?.colors === false ? '' : ` · ${RARITY_LABEL[c.rarity]}`}{run.training[c.id] ? ` · trained +${run.training[c.id]}` : ''}</small></span></>
         : <span className="hunt-squad-name"><small>Waiting for the {slot === '6TH' ? 'sixth man' : slot} spin</small></span>}
     </li>; })}
       <li className={coach ? `rarity-${coachRarity(coach)}` : 'empty'}><span className="hunt-slot">COACH</span>
@@ -197,8 +197,8 @@ function SlotMachine({ h, run, onRun, onAbandon }: { h: NbaHistory; run: HuntRun
       else { const c = pool.byId.get(lockedId)!; body = <><PlayerAvatar playerId={c.name} primaryColor={posColor[c.pos] ?? '#f47b20'} secondaryColor="#f4f0e6" size={56} /><span className="hunt-reel-text"><b>{c.name}</b><small>{seasonLabel(c.end)} · {c.team}</small></span><span className={`hunt-reel-ovr rarity-${c.rarity}`}>{c.ovr}</span></>; }
     } else if (isOpen && settled(idx) && run.reels?.[k]) {
       const id = run.reels[k]!;
-      if (k === 'COACH') { const x = COACH_BY_ID.get(id)!; body = <><span className="hunt-reel-face coach">{initials(x.name)}</span><span className="hunt-reel-text"><b>{x.name}</b><small>{x.franchises.slice(0, 2).join(' · ')}</small></span></>; }
-      else { const c = pool.byId.get(id)!; const notes = cardNotes(h, c); body = <><PlayerAvatar playerId={c.name} primaryColor={posColor[c.pos] ?? '#f47b20'} secondaryColor="#f4f0e6" size={56} /><span className="hunt-reel-text"><b>{c.name}</b><small>{seasonLabel(c.end)} · {c.team}</small>{notes.length > 0 && <i>{notes.slice(0, 2).join(' · ')}</i>}</span></>; }
+      if (k === 'COACH') { const x = COACH_BY_ID.get(id)!; body = <><span className="hunt-reel-face coach">{initials(x.name)}</span><span className="hunt-reel-text"><b>{x.name}</b><small>{x.franchises.slice(0, 2).join(' · ')}</small></span>{run.view?.numbers && <span className={`hunt-reel-ovr rarity-${coachRarity(x)}`}>{x.bonus > 0 ? '+' : ''}{x.bonus}</span>}</>; }
+      else { const c = pool.byId.get(id)!; const notes = cardNotes(h, c); body = <><PlayerAvatar playerId={c.name} primaryColor={posColor[c.pos] ?? '#f47b20'} secondaryColor="#f4f0e6" size={56} /><span className="hunt-reel-text"><b>{c.name}</b><small>{seasonLabel(c.end)} · {c.team}</small>{notes.length > 0 && <i>{notes.slice(0, 2).join(' · ')}</i>}</span>{run.view?.numbers && <span className={`hunt-reel-ovr rarity-${c.rarity}`}>{c.ovr}</span>}</>; }
     } else {
       const f = faces[k][(tick + idx * 7) % faces[k].length];
       body = k === 'COACH' ? <><span className="hunt-reel-face coach">{initials(f.name)}</span><span className="hunt-reel-text"><b>{f.name}</b><small>{f.sub}</small></span></>
@@ -220,7 +220,7 @@ function SlotMachine({ h, run, onRun, onAbandon }: { h: NbaHistory; run: HuntRun
     {tile('COACH')}
     {!frozen ? <button className="hunt-stop" onClick={stop} autoFocus><span aria-hidden="true">■</span> STOP</button>
       : <p className={`hunt-lock-hint ${allSettled ? 'ready' : ''}`}><PixelIcon name="lock" size={14} /> PICK ONE TO LOCK</p>}
-    <p className="hint-text hunt-slots-odds">Ratings are hidden until you lock. Odds this round: Star {pct(w.legendary / total * 100)} · Great {pct(w.epic / total * 100)} · Good {pct(w.rare / total * 100)}; every round is a little poorer. {guaranteed && <b className="hunt-guarantee">{guaranteed}</b>}</p>
+    <p className="hint-text hunt-slots-odds">{run.view?.numbers ? 'Ratings shown (your choice).' : 'Ratings are hidden until you lock.'} Odds this round: Star {pct(w.legendary / total * 100)} · Great {pct(w.epic / total * 100)} · Good {pct(w.rare / total * 100)}; every round is a little poorer. {guaranteed && <b className="hunt-guarantee">{guaranteed}</b>}</p>
     <button className="link-button" onClick={onAbandon}>Abandon this hunt</button>
   </section>;
 }
@@ -445,7 +445,7 @@ function RunOver({ h, run, records, onNew, onExit }: { h: NbaHistory; run: HuntR
         <div><small>COINS LEFT</small><b>{run.coins}</b></div>
       </div>
     </div>
-    <DuelPanel setup={{ m: 'hunt', s: run.seed, deck: run.deck, diff: run.difficulty }} duel={run.duel}
+    <DuelPanel setup={{ m: 'hunt', s: run.seed, deck: run.deck, diff: run.difficulty, ...(run.view ? { vw: run.view } : {}) }} duel={run.duel}
       mine={{ score: huntScore({ won, stop: run.seriesIndex, wins: gamesWon, losses: gamesPlayed - gamesWon }), won, line: won ? `Beat the boss · ${gamesWon}-${gamesPlayed - gamesWon} in games` : `Reached series ${run.seriesIndex + 1} · ${gamesWon}-${gamesPlayed - gamesWon}` }} />
     <HuntClaim run={run} records={records} />
     {mvp && <div className="hunt-mvp"><PlayerAvatar playerId={mvp.name} primaryColor="#f47b20" secondaryColor="#f4f0e6" size={72} />

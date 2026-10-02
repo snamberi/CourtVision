@@ -10,6 +10,7 @@ import { COACHES, COACH_BY_ID, coachRarity, type HuntCoach, type CoachStyle } fr
 import { withRotation } from '../hunt/run';
 import { rosterRating } from '../hunt/rating';
 import { addBox, addHighs, type RunLine, type GameHighs } from '../hunt/statLines';
+import { challengeMultiplier, STANDARD_VIEW, type Level, type RunView } from '../retention/challenge';
 import type { PlayerStatLine } from '../simulation/boxscore';
 
 /*
@@ -58,6 +59,9 @@ export interface PerfectRun {
   highs?: GameHighs;
   /** A same-spin duel: the challenger's code (retention/duel.ts), compared at the end. */
   duel?: string;
+  /** Difficulty and how the spins are shown (retention/challenge.ts); absent = Pro, ratings hidden, colours on. */
+  level?: Level;
+  view?: RunView;
   /** 82 opponent team ids; `bosses` are indexes into it. */
   schedule: string[];
   bosses: number[];
@@ -180,8 +184,11 @@ function rollFor(h: NbaHistory, run: PerfectRun, keep?: { franchise?: string; er
 
 // ---------------------------------------------------------------- starting and drafting
 
-export function newPerfectRun(h: NbaHistory, mode: PerfectMode, seed: number, daily?: string): PerfectRun {
-  const run: PerfectRun = { v: 1, mode, seed, daily, stage: 'draft', squad: [], rolls: 0, rerolls: { team: 1, era: 1, prime: 1 }, schedule: [], bosses: [], games: [], playoffs: [] };
+export function newPerfectRun(h: NbaHistory, mode: PerfectMode, seed: number, daily?: string, opts: { level?: Level; view?: RunView } = {}): PerfectRun {
+  // The Daily is the standard game for everyone.
+  const level = daily ? 'pro' : opts.level ?? 'pro', view = daily ? STANDARD_VIEW : opts.view ?? STANDARD_VIEW;
+  const run: PerfectRun = { v: 1, mode, seed, daily, stage: 'draft', squad: [], rolls: 0, rerolls: { team: 1, era: 1, prime: 1 }, schedule: [], bosses: [], games: [], playoffs: [],
+    ...(level !== 'pro' ? { level } : {}), ...(view.numbers !== STANDARD_VIEW.numbers || view.colors !== STANDARD_VIEW.colors ? { view } : {}) };
   return mode === 'franchise' ? { ...run, roll: rollFor(h, run), rolls: 1 } : run;
 }
 
@@ -373,8 +380,10 @@ export const currentStreak = (run: Pick<PerfectRun, 'games' | 'playoffs'>) => {
   return n;
 };
 export const streakPressure = (run: Pick<PerfectRun, 'games' | 'playoffs'>) => Math.min(STREAK_MAX, Math.floor(currentStreak(run) / STREAK_STEP));
-export const oppEdge = (run: Pick<PerfectRun, 'mode' | 'games' | 'playoffs'>, boss: boolean, round = -1) =>
-  OPP_EDGE[run.mode] + (boss ? OPP_EDGE.boss : 0) + Math.max(0, round) * OPP_EDGE.perRound + streakPressure(run);
+/** Difficulty: how much better (or worse) every opponent plays. */
+export const LEVEL_EDGE: Record<Level, number> = { rookie: -4, pro: 0, legend: 4 };
+export const oppEdge = (run: Pick<PerfectRun, 'mode' | 'games' | 'playoffs' | 'level'>, boss: boolean, round = -1) =>
+  OPP_EDGE[run.mode] + LEVEL_EDGE[run.level ?? 'pro'] + (boss ? OPP_EDGE.boss : 0) + Math.max(0, round) * OPP_EDGE.perRound + streakPressure(run);
 
 /**
  * Coach style against the opponent's era (overall points for your team that game). With the ratings hidden, the
@@ -473,7 +482,7 @@ export function playToEnd(h: NbaHistory, run: PerfectRun, stage: 'season' | 'pla
 
 // ---------------------------------------------------------------- results and score
 
-export interface PerfectSummary { w: number; l: number; pw: number; pl: number; bossWins: number; bosses: number; rounds: number; champion: boolean; perfectSeason: boolean; perfectPlayoffs: boolean; score: number; streak: number; firstLoss: number | null }
+export interface PerfectSummary { w: number; l: number; pw: number; pl: number; bossWins: number; bosses: number; rounds: number; champion: boolean; perfectSeason: boolean; perfectPlayoffs: boolean; score: number; /** The challenge multiplier already in `score`. */ multiplier: number; streak: number; firstLoss: number | null }
 
 export function summary(run: PerfectRun): PerfectSummary {
   const w = run.games.filter(g => g.won).length, l = run.games.length - w;
@@ -494,7 +503,9 @@ export function summary(run: PerfectRun): PerfectSummary {
   if (champion) score += SCORE.title;
   if (perfectSeason) score += SCORE.perfectSeason;
   if (perfectPlayoffs) score += SCORE.perfectPlayoffs;
-  return { w, l, pw, pl, bossWins, bosses: run.bosses.length, rounds, champion, perfectSeason, perfectPlayoffs, score, streak, firstLoss: firstLossAt < 0 ? null : firstLossAt };
+  // A self-imposed challenge (harder level, hidden colours) pays more; an easier one less. The Daily is always ×1.
+  const multiplier = challengeMultiplier(run.level, run.view);
+  return { w, l, pw, pl, bossWins, bosses: run.bosses.length, rounds, champion, perfectSeason, perfectPlayoffs, score: Math.round(score * multiplier), multiplier, streak, firstLoss: firstLossAt < 0 ? null : firstLossAt };
 }
 
 /** A one-line verdict for the end screen. */

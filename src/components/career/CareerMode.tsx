@@ -30,6 +30,8 @@ import { noteCareers } from '../../profile/profile';
 import { PostScore } from '../WeeklyBoard';
 import { ClaimRankCard } from '../cloud/ClaimRankCard';
 import { noteWeekRun } from '../../retention/weekLog';
+import { challengePrefs, saveChallengePrefs, LEVEL_NAME, type Level } from '../../retention/challenge';
+import { LevelPicker } from '../ChallengeOptions';
 import { WheelBuilder, MyPlayerBuilder, IdentityView, type IdentityChoice } from './CareerCreate';
 import '../hunt/hunt.css';
 import './career.css';
@@ -119,7 +121,9 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
       const w = await pre.current.done;
       const id = `career-${Date.now()}`;
       const playerId = uniqueName(w.league, w.extras, c.name);
-      let meta = { ...newCareerMeta(id, v.seed, v.mode, { name: c.name, pos: c.pos, jersey: c.jersey }, v.prime, c.readiness, playerId, w.league.season ?? '', startProgress()), ...(draftYear ? { draftYear } : {}), ...(weekly ? { weekly } : {}) };
+      // Career of the Week is always Pro (everyone plays the same game).
+      const level = weekly ? 'pro' : challengePrefs('career').level;
+      let meta = { ...newCareerMeta(id, v.seed, v.mode, { name: c.name, pos: c.pos, jersey: c.jersey }, v.prime, c.readiness, playerId, w.league.season ?? '', startProgress()), ...(draftYear ? { draftYear } : {}), ...(weekly ? { weekly } : {}), ...(level !== 'pro' ? { difficulty: level } : {}) };
       track('mode_start', { mode: 'career', variant: weekly ? 'weekly' : v.mode, past_draft: !!draftYear });
       const joined = joinDraft(w.league, w.extras, meta);
       setBusy({ label: 'Draft night…', pct: null });
@@ -231,10 +235,17 @@ function MomentDialog({ moment, name, onChoose }: { moment: BigMoment; name: str
 const PAST_DRAFTS = Array.from({ length: 2025 - 1947 + 1 }, (_, i) => 2025 - i);
 const FAMOUS: Record<number, string> = { 1984: 'Jordan, Hakeem, Barkley', 1996: 'Kobe, Iverson, Nash, Allen', 2003: 'LeBron, Wade, Melo, Bosh', 1979: 'Magic', 1978: 'Bird', 1969: 'Kareem', 1992: 'Shaq', 1997: 'Duncan', 2009: 'Curry, Harden', 2007: 'Durant', 2014: 'Jokić, Embiid', 2018: 'Luka, Trae, SGA', 1985: 'Ewing, Karl Malone', 1987: 'Pippen, Robinson', 1998: 'Dirk, Pierce, Carter' };
 
+const CAREER_LEVEL_BLURB: Record<Level, string> = {
+  rookie: 'He grows faster and ages slower. Relaxed, but Rookie careers stay off the online Legacy board.',
+  pro: 'The standard career (Career of the Week is always Pro).',
+  legend: 'He grows slower and age hits harder. Every title is earned.',
+};
+
 function Hub({ careers, onNew, onOpen, onDelete }: { careers: CareerMeta[]; onNew: (m: Mode, draftYear: number | null, weekly?: WeeklyCareer | null) => void; onOpen: (m: CareerMeta) => void; onDelete: (id: string) => void }) {
   const [confirm, setConfirm] = useState<string | null>(null);
   const [era, setEra] = useState<number | null>(null);
   const [tab, setTab] = useState<'careers' | 'hof'>('careers');
+  const [level, setLevel] = useState(() => challengePrefs('career').level);
   const inducted = careers.filter(m => m.retired && m.retired.hallOfFame !== 'no');
   const tabs = <div className="stats-view-toggle" role="tablist" aria-label="Career Mode">
     <button role="tab" aria-selected={tab === 'careers'} className={tab === 'careers' ? 'active' : ''} onClick={() => setTab('careers')}>Careers</button>
@@ -260,6 +271,7 @@ function Hub({ careers, onNew, onOpen, onDelete }: { careers: CareerMeta[]; onNe
           <label className="cv-era-pick"><span className="sr-only">A past draft</span><select value={era ?? ''} onChange={e => setEra(e.target.value ? Number(e.target.value) : null)}><option value="">A past draft…</option>{PAST_DRAFTS.map(y => <option key={y} value={y}>{y}{FAMOUS[y] ? ` · ${FAMOUS[y]}` : ''}</option>)}</select></label></div>
       </div>
       <p className="hint-text">{era ? `The ${era - 1}-${String(era).slice(2)} season is played first, then the ${era} draft, with the real class${FAMOUS[era] ? ` (${FAMOUS[era]})` : ''}. Real players follow their real careers around him.` : 'Today\'s league with real rosters: the 2025-26 season plays out first, then your draft.'}</p>
+      <div className="cv-era-row"><span>Difficulty:</span><LevelPicker value={level} onChange={l => { setLevel(l); saveChallengePrefs('career', { level: l }); }} blurbs={CAREER_LEVEL_BLURB} /></div>
       <div className="hunt-roads cv-modes">
         <button className="hunt-road" onClick={() => onNew('wheel', era)}><span className="hunt-road-icon">⟳</span><b>Random mode</b><span>Spin the wheel of NBA history. Take Curry's three-point shot, Shaq's size, LeBron's playmaking… if the wheel lets you. Two lucky spins, each a sure Star or Great.</span></button>
         <button className="hunt-road" onClick={() => onNew('myplayer', era)}><span className="hunt-road-icon">✎</span><b>MyPlayer</b><span>Build him yourself, part by part. Your draft stock is rolled: a Starter, an All-Star, or once in a while a Generational talent.</span></button>
@@ -439,7 +451,8 @@ function Legacy({ h, meta, onNew }: { h: NbaHistory; meta: CareerMeta; onNew: ()
         <div><small>LEGACY SCORE</small><b>{score}</b></div>
         <div><small>SEASONS</small><b>{meta.years.length}</b></div>
       </div></div>
-    <ClaimRankCard id={`career:${meta.id}`} board={{ kind: 'players' }} score={Math.round(ret.legacy)} scored={`Your career scored ${ret.legacy.toFixed(1)}`} where="globally" />
+    <ClaimRankCard id={`career:${meta.id}`} board={{ kind: 'players' }} score={Math.round(ret.legacy)} scored={`Your career scored ${ret.legacy.toFixed(1)}`} where="globally" pitchOnly={meta.difficulty === 'rookie'} />
+    {meta.difficulty && <p className="hint-text">{LEVEL_NAME[meta.difficulty]} career{meta.difficulty === 'rookie' ? ': it stays off the online Legacy board.' : '.'}</p>}
     <h3 className="hunt-subhead">Career</h3>
     <div className="hunt-over-stats cv-line">
       <div><small>GAMES</small><b>{g}</b></div><div><small>POINTS</small><b>{r.pts.toLocaleString()}</b></div><div><small>REBOUNDS</small><b>{r.reb.toLocaleString()}</b></div><div><small>ASSISTS</small><b>{r.ast.toLocaleString()}</b></div>
