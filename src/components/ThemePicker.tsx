@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import './themePicker.css';
-import { THEME_EVENT, readTheme, setTheme, applyTheme, themeLevel, themeTrophies, themeOpen, visibleThemes, type ThemeId, type ThemeSpec } from '../theme/themes';
+import { Modal } from './Modal';
+import { THEME_BY_ID, THEME_EVENT, readTheme, setTheme, applyTheme, themeLevel, themeTrophies, themeOpen, visibleThemes, type ThemeId, type ThemeSpec } from '../theme/themes';
 import { totalTrophies } from '../profile/trophyRoad';
 import { levelFor, totalXp, PROFILE_EVENT } from '../profile/profile';
 
@@ -98,3 +99,19 @@ export function ThemeWelcome({ onDone }: { onDone: () => void }) {
 
 /** Whether the first-visit picker still has to be shown. */
 export const needsThemeChoice = () => readTheme() === null;
+
+/** The masthead's "Theme: <name>" chip: opens every look in a dialog. */
+export function ThemeChip() {
+  const id = useTheme();
+  const [open, setOpen] = useState(false);
+  const t = THEME_BY_ID.get(id) ?? THEME_BY_ID.get('original')!;
+  return <>
+    <button className="account-chip mh-theme" onClick={() => setOpen(true)} aria-haspopup="dialog" title="Change the app's look">
+      <i className="mh-theme-dot" aria-hidden="true" /><span className="mh-theme-label">Theme: </span>{t.name}
+    </button>
+    {open && <Modal label="App look" onClose={() => setOpen(false)} className="theme-modal">
+      <ThemeSection />
+      <button className="primary" onClick={() => setOpen(false)}>Done</button>
+    </Modal>}
+  </>;
+}

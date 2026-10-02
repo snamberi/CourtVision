@@ -17,9 +17,8 @@ import { AdBanner } from './AdBanner';
 import { SCENARIOS, loadRebuildRecords } from '../simulation/rebuildChallenge';
 import { DataCredits } from './DataCredits';
 import { weeklyRebuild, weeklyCareer, loadWeeklyRecords, weeklyStreak, weekEndsAt } from '../retention/weekly';
-import { InstallAppButton } from './InstallAppButton';
 import { WhatsNew } from './WhatsNew';
-import { ThemeWelcome, needsThemeChoice } from './ThemePicker';
+import { ThemeWelcome, ThemeChip, needsThemeChoice } from './ThemePicker';
 import { WeeklyBoardDialog } from './WeeklyBoard';
 import { cloudEnabled, useAccount } from '../cloud/account';
 import { SaveSafetyNudge } from './cloud/SaveSafetyNudge';
@@ -192,7 +191,22 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
 
   return (
     <div className="main-menu">
-      <div className="menu-masthead"><img src={logoIcon} alt="" /><span>COURT VISION<small>BASKETBALL MANAGEMENT</small></span><span className="menu-edition">THE PIXEL COURT</span>{(onProfile || onLocker) && <ProfileChip onOpen={onProfile ?? onLocker} />}{visit.v.streak.current >= 2 && <button className="account-chip streak-pill" onClick={onProfile ?? onLocker} title={`Daily streak: ${visit.v.streak.current} days in a row (best ${visit.v.streak.best})`}><PixelIcon name="flame" size={14} /> {visit.v.streak.current}</button>}{onCommunity && <AccountButton onCommunity={onCommunity} />}<InstallAppButton /><DiscordLink className="menu-discord" />{onSettings && <button className="account-chip menu-settings" onClick={onSettings} title="Settings: backups, graphics, privacy"><PixelIcon name="settings" size={14} /> Settings</button>}</div>
+      <header className="menu-masthead">
+        <div className="mh-row">
+          <span className="mh-brand"><img src={logoIcon} alt="" /><span className="mh-word">COURT VISION<small>BASKETBALL MANAGEMENT</small></span><i className="mh-led" aria-hidden="true"><small>LED</small></i></span>
+          <span className="menu-edition">THE PIXEL COURT</span>
+          <span className="mh-chips">
+            {(onProfile || onLocker) && <ProfileChip onOpen={onProfile ?? onLocker} />}
+            {visit.v.streak.current >= 2 && <button className="account-chip streak-pill" onClick={onProfile ?? onLocker} title={`Daily streak: ${visit.v.streak.current} days in a row (best ${visit.v.streak.best})`}><PixelIcon name="flame" size={14} /> {visit.v.streak.current}</button>}
+            {onCommunity && <AccountButton onCommunity={onCommunity} onProfile={onProfile ?? onLocker} />}
+            <DiscordLink className="menu-discord" />
+          </span>
+        </div>
+        <div className="mh-sub">
+          {onSettings && <button className="account-chip menu-settings" onClick={onSettings} title="Settings: backups, graphics, install, privacy"><PixelIcon name="settings" size={14} /> Settings</button>}
+          <ThemeChip />
+        </div>
+      </header>
       <SaveSafetyNudge />
       <RivalAlerts />
       <WeeklyRecap />
@@ -217,11 +231,9 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
             onClick={() => setSelectedMode(m.id)}
             aria-pressed={selectedMode === m.id}
           >
-            {m.badge && <span className={`mode-badge mode-badge-${m.badge}`}><PixelIcon name={m.badge === 'popular' ? 'flame' : 'star'} size={12} /> {BADGE_LABEL[m.badge]}</span>}
-            <span className="mode-card-kicker"><PixelIcon name={m.icon} size={24} /><span>{m.kicker}</span><span className="mode-selection-dot" /></span>
+            <span className="mode-card-kicker"><PixelIcon name={m.icon} size={24} /><span>{m.kicker}</span>{(m.badge || featured === m.id) && <span className="mode-flags">{featured === m.id && <span className="mode-xp" title="Mode of the Week: double XP for runs finished this week">2× XP</span>}{m.badge && <span className={`mode-badge mode-badge-${m.badge}`}><PixelIcon name={m.badge === 'popular' ? 'flame' : 'star'} size={12} /> {BADGE_LABEL[m.badge]}</span>}</span>}<span className="mode-selection-dot" /></span>
             <h3>{m.title}</h3>
             <p>{m.blurb}</p>
-            {featured === m.id && <span className="mode-xp" title="Mode of the Week: double XP for runs finished this week">2× XP</span>}
             {progress[m.id] && <span className="mode-continue"><PixelIcon name="play" size={12} /> In progress: {progress[m.id]}</span>}
             <span className="mode-meta"><span className="mode-time" title="How long a sitting takes"><PixelIcon name="clock" size={12} /> {m.time}</span>{m.tags.map(t => <span key={t} className="mode-tag">{t}</span>)}</span>
           </button>
