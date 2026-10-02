@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { addPlayTime, type PlayArea } from './playTime';
+import { noteWeekTime } from './weekLog';
 
 const TICK = 15;
 const IDLE_MS = 5 * 60 * 1000;
@@ -17,6 +18,7 @@ export function usePlayClock(area: PlayArea): void {
     const t = window.setInterval(() => {
       if (document.visibilityState !== 'visible' || Date.now() - last > IDLE_MS) return;
       addPlayTime(areaRef.current, TICK);
+      noteWeekTime(TICK);
       window.dispatchEvent(new Event(PLAY_TIME_EVENT));
     }, TICK * 1000);
     return () => { window.clearInterval(t); for (const e of events) window.removeEventListener(e, touch); };

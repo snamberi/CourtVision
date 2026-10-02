@@ -8,7 +8,7 @@ import { ERAS, eraOf } from '../../hunt/eras';
 import {
   newRun, stopReels, lockReel, openSpins, chooseFocus, playSeries, takeBoost, buyCard, buyCoach, buyItem, buyLife, canBuyLife, train, leaveShop, gameBonuses, squadRating, baseSquadRating, opponentRating, buffValue, coachBonus,
   cardPrice, coachPrice, maxLives, spinWeights, draftGrade, slotName, shopItems, NEUTRAL_GAME, SPINS, SLOTS, FOCUS, FOCUS_IDS, DECKS, DIFFICULTIES, SERIES_COUNT, WINS_NEEDED, LIFE_PRICE, TRAIN_PRICE, TRAIN_STEP, MAX_TRAINING, BOOST_CAP, MAX_BOOSTS,
-  type HuntRun, type HuntSeries, type SeriesPlay, type Focus, type Slot, type SpinKind,
+  type HuntRun, type HuntSeries, type SeriesPlay, type Focus, type Slot, type SpinKind, type DeckId, type Difficulty,
 } from '../../hunt/run';
 import { ITEMS, MAX_ITEMS } from '../../hunt/items';
 import { BOOSTS } from '../../hunt/boosts';
@@ -20,7 +20,10 @@ import { ghostFromRun } from '../../hunt/pvp';
 import { publishGhost, saveLocalGhost } from '../../cloud/pvp';
 import { loadRun, saveRun, clearRun, loadRecords, recordRun, huntScore, type HuntRecords } from '../../hunt/storage';
 import { ClaimRankCard } from '../cloud/ClaimRankCard';
+import { DuelPanel, DuelBanner } from './DuelPanel';
+import { takePendingDuel, encodeDuel } from '../../retention/duel';
 import { noteRunHighs } from '../../retention/recordBook';
+import { noteWeekRun, noteWeekRecords } from '../../retention/weekLog';
 import { RunStatsTable, RunHighs } from './RunStats';
 import { PlayerAvatar } from '../PlayerAvatar';
 import { PixelIcon } from '../PixelIcon';
@@ -54,7 +57,9 @@ export function LeagueHunt({ onExit }: { onExit: () => void }) {
     else saveRun(r);
     if (r && (r.stage === 'won' || r.stage === 'lost') && run?.stage !== r.stage) {
       setRecords(recordRun(r));
-      noteRunHighs('hunt', r.highs);
+      noteWeekRecords(noteRunHighs('hunt', r.highs).length);
+      { const gw = r.results.reduce((n, x) => n + x.games.filter(g => g.won).length, 0), gp = r.results.reduce((n, x) => n + x.games.length, 0);
+        noteWeekRun('hunt', { score: huntScore({ won: r.stage === 'won', stop: r.seriesIndex, wins: gw, losses: gp - gw }), line: r.stage === 'won' ? `beat the boss, ${gw}-${gp - gw}` : `series ${r.seriesIndex + 1}` }, `hunt-${r.seed}`); }
       noteFeaturedXp('legends', `hunt-${r.seed}`, XP.huntRun + (r.stage === 'won' ? XP.huntWin : 0) + (r.daily ? XP.huntDaily : 0));
       // The finished squad becomes your League Hunt PvP team (published when you are signed in).
       const ghost = ghostFromRun(r);
@@ -73,6 +78,16 @@ export function LeagueHunt({ onExit }: { onExit: () => void }) {
   };
   // While the scoreboard runs, the header still shows the lives and coins from before the series (no spoilers).
   const shown = play && !play.revealed ? play.before : run;
+  // A duel link: start the challenger's exact run (asking first if a run is going).
+  useEffect(() => {
+    if (!h) return;
+    const d = takePendingDuel('hunt');
+    if (!d) return;
+    if (run && run.stage !== 'won' && run.stage !== 'lost' && !window.confirm(`${d.n} challenged you to a League Hunt duel. Start it? Your hunt in progress will be replaced.`)) return;
+    setPlay(null);
+    const deck = d.deck && d.deck in DECKS ? d.deck as DeckId : undefined, difficulty = d.diff && d.diff in DIFFICULTIES ? d.diff as Difficulty : undefined;
+    setRun({ ...newRun(h, d.s, { deck, difficulty }), duel: encodeDuel(d) });
+  }, [h]); // eslint-disable-line react-hooks/exhaustive-deps
   const header = <header className="hunt-top">
     <button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button>
     <div className="hunt-title"><span className="pixel-eyebrow">A RUN THROUGH BASKETBALL HISTORY</span><h1>League Hunt</h1></div>
@@ -86,6 +101,7 @@ export function LeagueHunt({ onExit }: { onExit: () => void }) {
 
   return <div className={`hunt ${play ? `era-${play.play.era.id}` : ''}`}>
     {header}
+    {run && run.stage !== 'won' && run.stage !== 'lost' && <DuelBanner duel={run.duel} />}
     {!run ? <HuntHub h={h} records={records} onStart={(seed, opts) => { setPlay(null); setRun(newRun(h, seed, { ...opts, fav: readFavorites().player })); }} />
       : play ? <SeriesView h={h} run={run} play={play.play} series={play.series} index={play.index} onReveal={() => setPlay(p => (p && !p.revealed ? { ...p, revealed: true } : p))} onContinue={() => setPlay(null)} />
       : run.stage === 'draft' ? <SlotMachine key={run.seed} h={h} run={run} onRun={setRun} onAbandon={() => setRun(null)} />
@@ -429,6 +445,8 @@ function RunOver({ h, run, records, onNew, onExit }: { h: NbaHistory; run: HuntR
         <div><small>COINS LEFT</small><b>{run.coins}</b></div>
       </div>
     </div>
+    <DuelPanel setup={{ m: 'hunt', s: run.seed, deck: run.deck, diff: run.difficulty }} duel={run.duel}
+      mine={{ score: huntScore({ won, stop: run.seriesIndex, wins: gamesWon, losses: gamesPlayed - gamesWon }), won, line: won ? `Beat the boss · ${gamesWon}-${gamesPlayed - gamesWon} in games` : `Reached series ${run.seriesIndex + 1} · ${gamesWon}-${gamesPlayed - gamesWon}` }} />
     <HuntClaim run={run} records={records} />
     {mvp && <div className="hunt-mvp"><PlayerAvatar playerId={mvp.name} primaryColor="#f47b20" secondaryColor="#f4f0e6" size={72} />
       <div><span className="pixel-eyebrow">HUNT MVP</span><strong>{mvp.name}</strong><span>{per(mvp.pts, mvp.g)} PTS · {per(mvp.reb, mvp.g)} REB · {per(mvp.ast, mvp.g)} AST in {mvp.g} game{mvp.g === 1 ? '' : 's'}</span></div></div>}

@@ -544,3 +544,16 @@ html.lite *, html.lite *::before, html.lite *::after { backdrop-filter: none !im
 .sync-panel .sync-error { color: var(--c-fg-e85d5d, #e85d5d); }
 .sync-panel.error { border-color: var(--c-border-e85d5d, #e85d5d); }
 @media (max-width: 520px) { .sync-panel { flex-wrap: wrap; } }
+
+/* Friend rivalry alerts on the menu (RivalAlerts). */
+.rival-alerts { margin: 10px 0; padding: 10px 14px; border: 2px solid var(--c-border-f47b20, #f47b20); background: var(--c-bg-192333, #192333); display: grid; gap: 8px; }
+.rival-alerts ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.rival-alerts li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.rival-alerts li > span { flex: 1 1 300px; }
+.rival-alerts > .link-button { justify-self: start; }
+
+/* Last week's recap on the menu (WeeklyRecap). */
+.weekly-recap { margin: 10px 0; padding: 10px 14px; border: 2px solid var(--c-border-4da3ff, #4da3ff); background: var(--c-bg-192333, #192333); display: grid; gap: 8px; }
+.weekly-recap-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.weekly-recap ul { margin: 0; padding-left: 18px; display: grid; gap: 3px; }
+.weekly-recap .contest-actions { margin: 0; }

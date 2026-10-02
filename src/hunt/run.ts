@@ -105,6 +105,8 @@ export interface HuntRun {
   lines?: Record<string, RunLine>;
   /** The best single games of the run (the record book). */
   highs?: GameHighs;
+  /** A same-spin duel: the challenger's code (retention/duel.ts), compared at the end. */
+  duel?: string;
   /** The blind spins: what you took and the best on the table, per spin (overall; the coach's bonus on the coach spin). */
   picks?: { spin: number; got: number; best: number }[];
   /** Your favourite player: a reel landing on his rarity is him FAV_BOOST more often, until you lock him. */

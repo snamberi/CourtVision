@@ -56,6 +56,8 @@ export interface PerfectRun {
   finalsLines?: Record<string, RunLine>;
   /** The best single games of the run (the record book). */
   highs?: GameHighs;
+  /** A same-spin duel: the challenger's code (retention/duel.ts), compared at the end. */
+  duel?: string;
   /** 82 opponent team ids; `bosses` are indexes into it. */
   schedule: string[];
   bosses: number[];

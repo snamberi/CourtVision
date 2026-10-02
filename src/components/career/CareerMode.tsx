@@ -29,6 +29,7 @@ import { track, trackOnce } from '../../analytics/track';
 import { noteCareers } from '../../profile/profile';
 import { PostScore } from '../WeeklyBoard';
 import { ClaimRankCard } from '../cloud/ClaimRankCard';
+import { noteWeekRun } from '../../retention/weekLog';
 import { WheelBuilder, MyPlayerBuilder, IdentityView, type IdentityChoice } from './CareerCreate';
 import '../hunt/hunt.css';
 import './career.css';
@@ -66,6 +67,7 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
     setActive({ meta, world });
     if (meta.status === 'retired') {
       if (meta.weekly && meta.retired) recordWeekly('career', meta.weekly, { best: meta.retired.legacy, label: meta.playerId });
+      if (meta.retired) noteWeekRun('career', { score: meta.retired.legacy, line: `${meta.playerId}, Legacy ${meta.retired.legacy.toFixed(1)}` }, `career-${meta.id}`);
       trackOnce(`career-${meta.id}`, 'mode_finish', { mode: 'career', variant: meta.weekly ? 'weekly' : meta.mode, seasons: meta.years.length, legacy: meta.retired?.legacy ?? 0, hall: meta.retired?.hallOfFame ?? 'no', past_draft: !!meta.draftYear });
       saveCareer(meta).then(() => dropWorld(meta.id)).then(refresh); return;
     }

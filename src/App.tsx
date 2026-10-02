@@ -85,6 +85,8 @@ import { acceptJobOffer, becomeSpectator, ensureFrontOffice, markSandboxUse, isO
 import { JobOffersDialog, OwnerReviewDialog } from './components/FrontOfficePanels';
 import { recordLeagueLegacy } from './storage/gmLegacy';
 import { usePlayClock } from './retention/usePlayClock';
+import { noteWeekRun } from './retention/weekLog';
+import { duelFromHash, savePendingDuel } from './retention/duel';
 import { challengeProgress, recordRebuild, scenarioById } from './simulation/rebuildChallenge';
 import { weeklyRebuild, recordWeekly, TWISTS, type WeeklyRebuild } from './retention/weekly';
 import { decodeLeagueCode, encodeLeagueCode, type LeagueOrigin } from './retention/leagueCode';
@@ -325,6 +327,9 @@ function App() {
     if (!isCurrent()) return;
     const route = parseRoute(hash);
     if (!route) {
+      // A duel link: remember the run to start, then open its mode.
+      const duel = duelFromHash(hash);
+      if (duel) { savePendingDuel(duel); location.replace(duel.m === 'hunt' ? '#/hunt' : '#/82-0'); return; }
       jobs.resetAll();
       const profileMatch = hash.match(/^#\/u\/(.+)$/);
       setCommunityUser(profileMatch ? decodeURIComponent(profileMatch[1]) : null);
@@ -1060,6 +1065,7 @@ function App() {
     const p = challengeProgress(league);
     if (p) {
       recordRebuild(p, activeSaveId);
+      noteWeekRun('rebuild', { score: p.score, line: `${p.scenario.title}, ${'★'.repeat(p.stars)}${'☆'.repeat(3 - p.stars)}` }, `rebuild-${activeSaveId}`);
       if (p.config.weekly && p.official) recordWeekly('rebuild', p.config.weekly.week, { best: p.score, stars: p.stars, label: p.scenario.title, results: p.results.map(r => ({ wins: r.wins, losses: r.losses, finish: r.finish })) });
       trackOnce(`rebuild-${activeSaveId}`, 'mode_finish', { mode: 'rebuild', result: p.status, stars: p.stars, weekly: !!p.config.weekly });
     }

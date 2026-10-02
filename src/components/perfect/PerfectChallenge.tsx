@@ -12,7 +12,10 @@ import {
 import { loadPerfectRun, savePerfectRun, loadPerfectRecords, recordPerfect, dailyPerfect, perfectWeeks, type PerfectRecords } from '../../perfect/storage';
 import { weekKey } from '../../retention/week';
 import { ClaimRankCard } from '../cloud/ClaimRankCard';
+import { DuelPanel, DuelBanner } from '../hunt/DuelPanel';
+import { takePendingDuel, encodeDuel } from '../../retention/duel';
 import { noteRunHighs, noteFinalsMvp } from '../../retention/recordBook';
+import { noteWeekRun, noteWeekRecords } from '../../retention/weekLog';
 import { runMvp, perGame } from '../../hunt/statLines';
 import { RunStatsTable, RecordBookPanel, RunHighs } from '../hunt/RunStats';
 import { todayUtc } from '../../hunt/storage';
@@ -55,7 +58,8 @@ export function PerfectChallenge({ onExit }: { onExit: () => void }) {
     if (r && r.stage === 'done' && prev?.stage !== 'done') {
       setRecords(recordPerfect(r));
       const s = summary(r);
-      noteRunHighs('perfect', r.highs);
+      noteWeekRecords(noteRunHighs('perfect', r.highs).length);
+      noteWeekRun('perfect', { score: s.score, line: `${s.w}-${s.l}${s.champion ? ', champions' : ''}` }, `p820-${r.seed}-${r.mode}`);
       const fmvp = s.champion ? runMvp(r.finalsLines) : null;
       if (fmvp) noteFinalsMvp({ name: fmvp.name, record: `${s.w}-${s.l}`, pts: fmvp.pts, g: fmvp.g });
       noteFeaturedXp('perfect', `p820-${r.seed}-${r.mode}`, perfectRunXp({ champion: s.champion, perfectSeason: s.perfectSeason, perfect98: s.perfectSeason && s.perfectPlayoffs, daily: !!r.daily }));
@@ -63,6 +67,14 @@ export function PerfectChallenge({ onExit }: { onExit: () => void }) {
       trackOnce(`p820-${r.seed}-${r.mode}`, 'mode_finish', { mode: 'perfect', variant: r.mode, daily: !!r.daily, wins: s.w, champion: s.champion });
     }
   };
+  // A duel link: start the challenger's exact run (asking first if a run is going).
+  useEffect(() => {
+    if (!h) return;
+    const d = takePendingDuel('perfect');
+    if (!d || !d.pm) return;
+    if (run && run.stage !== 'done' && !window.confirm(`${d.n} challenged you to an 82-0 duel. Start it? Your run in progress will be replaced.`)) return;
+    setRun({ ...newPerfectRun(h, d.pm, d.s), duel: encodeDuel(d) });
+  }, [h]); // eslint-disable-line react-hooks/exhaustive-deps
   const start = (mode: PerfectMode, seed: number, daily?: string) => {
     if (!h) return;
     track('mode_start', { mode: 'perfect', variant: daily ? 'daily' : mode });
@@ -78,6 +90,7 @@ export function PerfectChallenge({ onExit }: { onExit: () => void }) {
   if (!h) return <div className="hunt p820">{header}<p className="empty-state">Loading 80 years of basketball…</p></div>;
   return <div className="hunt p820">
     {header}
+    {run && run.stage !== 'done' && <DuelBanner duel={run.duel} />}
     {!run ? <Hub records={records} onStart={start} />
       : run.stage === 'draft' ? (run.mode === 'quick' ? <QuickDraft h={h} run={run} setRun={setRun} /> : <FranchiseDraft h={h} run={run} setRun={setRun} />)
       : run.stage === 'coach' ? <CoachPick h={h} run={run} setRun={setRun} />
@@ -331,6 +344,8 @@ function Finished({ h, run, records, onAgain }: { h: NbaHistory; run: PerfectRun
       {frame && <div className="p820-reward"><FramedAvatar look={look} team={team} frame={frame} size={96} /><span><b>{frame === 'perfectGold' ? 'Perfection' : 'Undefeated'}</b> title and profile frame unlocked. Equip them in your Player Profile.</span></div>}
       {!s.champion && lastSeries && teams.get(lastSeries.opp) && <p className="hint-text">Knocked out by the {teamLabel(teams.get(lastSeries.opp)!)} (their rating {teamRating(h, teams.get(lastSeries.opp)!)}).</p>}
     </div>
+    <DuelPanel setup={{ m: 'perfect', s: run.seed, pm: run.mode }} duel={run.duel}
+      mine={{ score: s.score, won: s.champion, line: `${s.w}-${s.l} · playoffs ${s.pw}-${s.pl}${s.champion ? ' · champions' : ''}` }} />
     <PerfectClaim run={run} records={records} score={s.score} />
     <RunMvps run={run} />
     <table className="p820-score"><tbody>
