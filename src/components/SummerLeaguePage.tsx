@@ -43,7 +43,7 @@ export function SummerLeaguePage({ league, controlledTeamId, canPlay, busy, onPl
   const mine = controlledTeamId ? sl.games.filter(g => g.homeTeamId === controlledTeamId || g.awayTeamId === controlledTeamId || g.final) : sl.games.filter(g => g.final);
   const myPlayers = controlledTeamId ? Object.values(sl.lines).filter(l => l.teamId === controlledTeamId).sort((a, b) => b.pts - a.pts) : [];
   const final = sl.games.find(g => g.final);
-  const pg = (v: number, gp: number) => String(Math.round(v / Math.max(1, gp)));
+  const pg = (v: number, gp: number) => (v / Math.max(1, gp)).toFixed(1);
 
   return <div className="summer-league">
     {header}
@@ -66,7 +66,7 @@ export function SummerLeaguePage({ league, controlledTeamId, canPlay, busy, onPl
         {myPlayers.length ? <div className="finances-table-wrap"><table className="db-table stat-line-table">
           <thead><tr><th>Player</th><th>GP</th><th>MIN</th><th>PTS</th><th>REB</th><th>AST</th><th>FG%</th></tr></thead>
           <tbody>{myPlayers.map(l => <tr key={l.playerId}><td><button className="prospect-name" onClick={() => onSelectPlayer(l.playerId)}><PlayerNameTag playerId={l.playerId} size={20} /></button>{sl.invitees.includes(l.playerId) && <small className="hint-text"> · invite</small>}</td>
-            <td>{l.gp}</td><td>{pg(l.min, l.gp)}</td><td>{pg(l.pts, l.gp)}</td><td>{pg(l.reb, l.gp)}</td><td>{pg(l.ast, l.gp)}</td><td>{l.fga ? `${Math.round(l.fgm / l.fga * 100)}%` : '—'}</td></tr>)}</tbody>
+            <td>{l.gp}</td><td>{pg(l.min, l.gp)}</td><td>{pg(l.pts, l.gp)}</td><td>{pg(l.reb, l.gp)}</td><td>{pg(l.ast, l.gp)}</td><td>{l.fga ? `${(l.fgm / l.fga * 100).toFixed(1)}%` : '—'}</td></tr>)}</tbody>
         </table></div> : <p className="hint-text">Your team had no one eligible this summer.</p>}
         <p className="hint-text">Invited free agents are unsigned: sign the ones who impressed during free agency.</p>
       </section>}

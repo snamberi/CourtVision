@@ -18,7 +18,7 @@ import { StarIcon } from './Icons';
 import { coachStrengths, coachWeaknesses, relationshipWith, relationshipLabel, COACH_TRAIT_LABELS, type CoachTraitKey, type CoachIdentity } from '../simulation/coaching';
 import { formatSeasonYear } from '../simulation/calendar';
 import { PlayerNameTag } from './PlayerAvatar';
-import { statWhole } from './statFormat';
+import { stat1 } from './statFormat';
 
 interface Props {
   initialTeamId?: string | null;
@@ -261,12 +261,12 @@ export function TeamRosterPage({
                     </td>
                     <td>{yearsWithTeam}</td>
                     {showTradeValues && <td>{computeTradeValue(s).toFixed(0)}</td>}
-                    <td>{avg.gamesPlayed > 0 ? statWhole(avg.ppg) : '—'}</td>
+                    <td>{avg.gamesPlayed > 0 ? stat1(avg.ppg) : '—'}</td>
                     {schedule && <td><FormCell form={form?.get(s.playerId)} /></td>}
-                    <td>{avg.gamesPlayed > 0 ? statWhole(avg.rpg) : '—'}</td>
-                    <td>{avg.gamesPlayed > 0 ? statWhole(avg.apg) : '—'}</td>
-                    <td>{avg.gamesPlayed > 0 ? statWhole(avg.mpg) : '—'}</td>
-                    <td>{avg.gamesPlayed > 0 ? statWhole(avg.efficiency) : '—'}</td>
+                    <td>{avg.gamesPlayed > 0 ? stat1(avg.rpg) : '—'}</td>
+                    <td>{avg.gamesPlayed > 0 ? stat1(avg.apg) : '—'}</td>
+                    <td>{avg.gamesPlayed > 0 ? stat1(avg.mpg) : '—'}</td>
+                    <td>{avg.gamesPlayed > 0 ? stat1(avg.efficiency) : '—'}</td>
                     <MoraleCell p={s} fallback={relationshipLabel(relationshipWith(coach, s.playerId))} fallbackTitle={`Relationship with coach: ${Math.round(relationshipWith(coach, s.playerId))}/100`} />
                     <td>{isInjured ? <span className="injury-out-tag">{injury!.gamesRemaining}d</span> : ''}</td>
                     {canManage && (onRelease || onTradeAway) && (

@@ -331,8 +331,8 @@ export function HallOfFame({ careers, onOpen }: { careers: CareerMeta[]; onOpen?
 
 // ---------------------------------------------------------------- the career
 
-const per = (v: number, g: number) => (g ? String(Math.round(v / g)) : '0');
-const pct = (m: number, a: number) => (a ? `${Math.round(m / a * 100)}` : '—');
+const per = (v: number, g: number) => (g ? (v / g).toFixed(1) : '0.0');
+const pct = (m: number, a: number) => (a ? (m / a * 100).toFixed(1) : '—');
 
 function StatLine({ s }: { s: SeasonStatTotals }) {
   const g = s.gamesPlayed;

@@ -17,8 +17,8 @@ describe('Run stats', () => {
     lines = addBox(lines, { Jordan: line({ points: 30, fgm: 11, fga: 20, oreb: 1, dreb: 4, ast: 7, blk: 1 }) });
     expect(lines.Jordan).toMatchObject({ g: 2, pts: 70, reb: 11, ast: 12, min: 60, stl: 3, blk: 1, fgm: 26, fga: 45 });
     expect(lines.Bench).toBeUndefined();
-    expect(pct(26, 45)).toBe('58');
-    expect(perGame(70, 2)).toBe('35');
+    expect(pct(26, 45)).toBe('57.8');
+    expect(perGame(70, 2)).toBe('35.0');
     // An old Hunt line (games, points, rebounds, assists only) keeps counting.
     expect(addBox({ Old: { g: 3, pts: 30, reb: 9, ast: 6 } }, { Old: line({ points: 10 }) }).Old).toMatchObject({ g: 4, pts: 40, min: 30 });
     const highs = addHighs(addHighs({}, { Jordan: line({ points: 40 }) }, 'Bulls'), { Bird: line({ points: 40, ast: 12 }) }, 'Lakers');

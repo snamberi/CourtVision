@@ -5,7 +5,7 @@ import { calculateOverall } from '../simulation/engine/overall';
 import { primaryPosition } from '../simulation/teamStatus';
 import { perGameAverages } from '../simulation/careerStats';
 import { PlayerNameTag } from './PlayerAvatar';
-import { statWhole } from './statFormat';
+import { stat1 } from './statFormat';
 
 export function hashRating(id: string, salt: number): number {
   let h = salt >>> 0;
@@ -41,9 +41,9 @@ export function TradePlayerCompareTable({ title, players, showValues = false }: 
                   <td>{s.age}</td>
                   <td>{calculateOverall(s)}</td>
                   <td>{s.development.potential.toFixed(0)}</td>
-                  <td>{avg.gamesPlayed > 0 ? statWhole(avg.ppg) : '—'}</td>
-                  <td>{avg.gamesPlayed > 0 ? statWhole(avg.rpg) : '—'}</td>
-                  <td>{avg.gamesPlayed > 0 ? statWhole(avg.apg) : '—'}</td>
+                  <td>{avg.gamesPlayed > 0 ? stat1(avg.ppg) : '—'}</td>
+                  <td>{avg.gamesPlayed > 0 ? stat1(avg.rpg) : '—'}</td>
+                  <td>{avg.gamesPlayed > 0 ? stat1(avg.apg) : '—'}</td>
                   {showValues && <td>{computeTradeValue(s).toFixed(0)}</td>}
                 </tr>
               );

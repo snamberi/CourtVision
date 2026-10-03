@@ -3,7 +3,7 @@ import { TeamLink } from './TeamLink';
 import { useMemo, useState } from 'react';
 import type { League } from '../simulation/league';
 import { computeLeagueAnalytics, type PlayerRankEntry, type TeamRankEntry, type RookieEntry } from '../simulation/leagueAnalytics';
-import { statWhole } from './statFormat';
+import { stat1 } from './statFormat';
 
 interface Props {
   league: League;
@@ -74,9 +74,9 @@ function RookieTable({ rows, onSelectPlayer }: { rows: RookieEntry[]; onSelectPl
                 <td>{r.playerId}</td>
                 <td><TeamLink name={r.teamName} /></td>
                 <td>{r.overall}</td>
-                <td>{statWhole(r.ppg)}</td>
-                <td>{statWhole(r.apg)}</td>
-                <td>{statWhole(r.rpg)}</td>
+                <td>{stat1(r.ppg)}</td>
+                <td>{stat1(r.apg)}</td>
+                <td>{stat1(r.rpg)}</td>
               </tr>
             ))}
           </tbody>
