@@ -5,7 +5,7 @@ import { huntTeams, teamLabel } from '../../hunt/teams';
 import { COACH_STYLE, coachRarity } from '../../hunt/coaches';
 import { eraOf } from '../../hunt/eras';
 import {
-  newPerfectRun, pickPlayer, quickSpinCard, reelFiller, rerollTeam, rerollEra, applyPrime, pickCoach, playNext, rollPool, franchiseName, eraById, teamBonds,
+  newPerfectRun, pickPlayer, quickSpinCard, reelFiller, rerollTeam, rerollEra, applyPrime, rerollSpin, luckySpin, spinsLeft, luckyLeft, rollRerollsLeft, lineupOf, swapLineup, setLineup, ROTATION_MINUTES, pickCoach, playNext, rollPool, franchiseName, eraById, teamBonds,
   perfectRating, teamRating, summary, starCount, starCapReached, MAX_STARS, coachMatchup, coachMatchupText, streakPressure, STREAK_STEP, STREAK_MAX, OPP_EDGE, verdict, BOSS_TEAMS, QUICK_SLOTS, QUICK_SLOT_LABEL, SQUAD, SEASON_GAMES, ROUND_NAMES, WINS_NEEDED, SCORE, COACH_BY_ID,
   type PerfectRun, type PerfectMode, type PerfectGame,
 } from '../../perfect/run';
@@ -36,8 +36,8 @@ import './perfect.css';
 
 const POS_COLOR: Record<string, string> = { PG: '#4da3ff', SG: '#55c878', SF: '#f47b20', PF: '#b983ff', C: '#e85d5d', G: '#4da3ff', F: '#f47b20' };
 const MODE_INFO: Record<PerfectMode, { name: string; blurb: string; icon: string }> = {
-  quick: { name: 'Quick Spin', icon: 'play', blurb: 'Ten spins and a coach spin. Five starters by position, five off the bench. What the reel lands on is yours.' },
-  franchise: { name: 'Franchise Spin', icon: 'team', blurb: 'Each spin rolls a franchise and an era. Pick ONE player from everyone who played there. One team reroll, one era reroll, one Absolute Prime boost.' },
+  quick: { name: 'Quick Spin', icon: 'play', blurb: 'Ten spins and a coach spin. Five starters by position, five off the bench. Three rerolls and two lucky spins (a sure Great or Star).' },
+  franchise: { name: 'Franchise Spin', icon: 'team', blurb: 'Each spin rolls a franchise and an era. Pick ONE player from everyone who played there. Three team-or-era rerolls, two lucky rolls and one Absolute Prime boost.' },
 };
 
 /** The 82-0 Challenge: build a team, play all 82, then the playoffs. The goal: 82-0 and 16-0. */
@@ -145,6 +145,8 @@ function Hub({ records, onStart }: { records: PerfectRecords; onStart: (mode: Pe
         <li>Playoff win: +{SCORE.playoffWin}; a sweep: +{SCORE.sweep}; the title: +{SCORE.title.toLocaleString()}.</li>
         <li>82-0: +{SCORE.perfectSeason.toLocaleString()}. 16-0 in the playoffs too: another +{SCORE.perfectPlayoffs.toLocaleString()}.</li>
         <li>Lineups matter: start a guard and a big, and don't stack three at one position. Real teammates, franchise-mates and famous rivals add chemistry.</li>
+        <li>Your rotation: during the season, tap two players to swap them and pick your own five starters and bench order, or leave it on auto (the coach starts his best five).</li>
+        <li>Spin helpers: three rerolls (send a card back, or reroll the team or era) and two lucky spins (a sure Great or Star, or a roll with one waiting).</li>
         <li>Ratings are hidden until the season is over: pick on the name, the season and the numbers he put up. Your team rating, your coach's and the opponents' come out at the end.</li>
         <li>At most {MAX_STARS} Stars on a team: once you have {MAX_STARS}, the spins stop offering more.</li>
         <li>Streak pressure: every {STREAK_STEP} straight wins, everyone plays you harder (+1, up to +{STREAK_MAX}). A loss resets it. Franchise Spin opponents are +{OPP_EDGE.franchise} tougher, since you choose.</li>
@@ -201,6 +203,10 @@ function QuickDraft({ h, run, setRun }: { h: NbaHistory; run: PerfectRun; setRun
     window.setTimeout(() => { setSpinning(false); setLanded(target); }, reduce ? 50 : 1300);
   };
   const keep = () => { setLanded(null); setRun(pickPlayer(h, run)); };
+  // A reroll sends the card back and spins this spot again (once the new card is ready).
+  const respin = useRef(false);
+  useEffect(() => { if (respin.current) { respin.current = false; spin(); } }, [run.spinSalt]); // eslint-disable-line react-hooks/exhaustive-deps
+  const reroll = () => { respin.current = true; setLanded(null); setRun(rerollSpin(run)); };
   return <section className="p820-draft">
     <div className="p820-stage">
       <span className="pixel-eyebrow">{run.from === 'hunt' ? `YOUR HUNT SQUAD + BENCH SPIN ${run.squad.length - 5} OF ${SQUAD - 6}` : `SPIN ${run.squad.length + 1} OF ${SQUAD}`}</span>
@@ -209,8 +215,15 @@ function QuickDraft({ h, run, setRun }: { h: NbaHistory; run: PerfectRun; setRun
         {landed ? <CardTile c={landed} hide={!ratingsShown(run)} />
           : <div className="p820-reel-strip" style={{ transform: spinning ? `translateY(-${(strip.length - 1) * 64}px)` : 'translateY(0)' }}>{strip.map((c, i) => <div key={i} className="p820-reel-row"><b>{c.name}</b><small>{seasonLabel(c.end)} {c.team}</small><span>{ratingsShown(run) ? c.ovr : HIDDEN}</span></div>)}</div>}
       </div>
-      {landed ? <button className="primary p820-big" onClick={keep}>{run.squad.length + 1 >= SQUAD ? (run.coach ? 'Keep and start the season' : 'Keep and spin the coach') : 'Keep and spin again'}</button>
-        : <button className="primary p820-big" onClick={spin} disabled={spinning}>{spinning ? 'Spinning…' : 'SPIN'}</button>}
+      {run.lucky && !landed && <p className="p820-lucky-on"><PixelIcon name="star" size={12} /> Lucky spin: this reel lands on a Great or a Star{starCapReached(h, run) ? ' (a Great: you have your three Stars)' : ''}.</p>}
+      {landed ? <div className="p820-spin-actions">
+          <button className="primary p820-big" onClick={keep}>{run.squad.length + 1 >= SQUAD ? (run.coach ? 'Keep and start the season' : 'Keep and spin the coach') : 'Keep and spin again'}</button>
+          <button onClick={reroll} disabled={spinsLeft(run) < 1} title="Send this card back and spin this spot again"><PixelIcon name="shuffle" size={14} /> Reroll ({spinsLeft(run)} left)</button>
+        </div>
+        : <div className="p820-spin-actions">
+          <button className="primary p820-big" onClick={spin} disabled={spinning}>{spinning ? 'Spinning…' : run.lucky ? 'LUCKY SPIN' : 'SPIN'}</button>
+          {!run.lucky && <button onClick={() => setRun(luckySpin(h, run))} disabled={spinning || luckyLeft(run) < 1} title="The next spin lands on a Great or a Star"><PixelIcon name="star" size={14} /> Use a lucky spin ({luckyLeft(run)} left)</button>}
+        </div>}
     </div>
     <SquadPanel h={h} run={run} />
   </section>;
@@ -240,10 +253,12 @@ function FranchiseDraft({ h, run, setRun }: { h: NbaHistory; run: PerfectRun; se
         <span className="p820-roll-era">{revealed ? `${era.label} (${era.from}-${era.to})` : 'spinning…'}</span>
       </div>
       <div className="p820-tools">
-        <button onClick={() => setRun(rerollTeam(h, run))} disabled={!revealed || run.rerolls.team < 1}><PixelIcon name="trade" size={14} /> Team reroll ({run.rerolls.team})</button>
-        <button onClick={() => setRun(rerollEra(h, run))} disabled={!revealed || run.rerolls.era < 1}><PixelIcon name="calendar" size={14} /> Era reroll ({run.rerolls.era})</button>
+        <button onClick={() => setRun(rerollTeam(h, run))} disabled={!revealed || rollRerollsLeft(run, 'team') < 1}><PixelIcon name="trade" size={14} /> Team reroll ({rollRerollsLeft(run, 'team')}{run.rerolls.roll != null ? ' left' : ''})</button>
+        <button onClick={() => setRun(rerollEra(h, run))} disabled={!revealed || rollRerollsLeft(run, 'era') < 1}><PixelIcon name="calendar" size={14} /> Era reroll ({rollRerollsLeft(run, 'era')}{run.rerolls.roll != null ? ' left' : ''})</button>
+        <button onClick={() => setRun(luckySpin(h, run))} disabled={!revealed || luckyLeft(run) < 1} title="A new franchise and era with a Great or a Star waiting"><PixelIcon name="shuffle" size={14} /> Lucky roll ({luckyLeft(run)})</button>
         <button className={run.prime ? 'on' : ''} onClick={() => setRun(applyPrime(run))} disabled={!revealed || run.rerolls.prime < 1} title="This spin's players at the best season of their whole career"><PixelIcon name="star" size={14} /> {run.prime ? 'Absolute Prime ON' : `Absolute Prime (${run.rerolls.prime})`}</button>
       </div>
+      {run.rerolls.roll != null && <p className="hint-text p820-tools-note">Team and era rerolls share {run.rerolls.roll} left.</p>}
       {revealed && <>
         <p className="hint-text">{run.prime ? 'Absolute Prime: everyone at the best season of his career.' : `Each player at his best season with the ${name} in ${era.label.toLowerCase()}.`} Pick one.</p>
         <div className="p820-pool">{players.map(c => <CardTile key={c.id} c={c} prime={run.prime} hide={!ratingsShown(run)} onPick={() => setRun(pickPlayer(h, run, c.id))} />)}</div>
@@ -320,9 +335,40 @@ function Season({ h, run, setRun }: { h: NbaHistory; run: PerfectRun; setRun: (r
         {auto && <button onClick={() => setAuto(null)}>Pause</button>}
       </div>
     </div>
-    <SquadPanel h={h} run={run} />
+    <LineupPanel h={h} run={run} setRun={setRun} locked={!!auto} />
     {run.stage === 'playoffs' && run.playoffLines ? <RunStatsTable lines={run.playoffLines} title="Playoff stats" /> : <RunStatsTable lines={run.lines} title="Season stats" note={`${run.games.length} game${run.games.length === 1 ? '' : 's'}`} />}
   </section>;
+}
+
+// ---------------------------------------------------------------- your lineup
+
+/** Your rotation: tap a player, then another, to swap them. The first five start; the bench plays in order. */
+function LineupPanel({ h, run, setRun, locked }: { h: NbaHistory; run: PerfectRun; setRun: (r: PerfectRun) => void; locked: boolean }) {
+  const pool = cardPool(h);
+  const custom = lineupOf(run);
+  const order = custom ?? run.squad;
+  const [picked, setPicked] = useState<string | null>(null);
+  const bonds = teamBonds(h, run);
+  const tap = (id: string) => {
+    if (locked) return;
+    if (!picked) { setPicked(id); return; }
+    if (picked !== id) setRun(swapLineup(run, picked, id));
+    setPicked(null);
+  };
+  return <aside className="p820-squad p820-lineup">
+    <h3>Your rotation <small>{custom ? 'your lineup' : 'auto'}</small></h3>
+    <p className="hint-text">{custom ? 'The first five start; the bench comes in in order.' : 'Auto: your coach starts his best five every game.'} Tap a player, then another, to swap them{locked ? ' (pause the sim first)' : ''}.</p>
+    <ol>{order.map((id, i) => { const c = pool.byId.get(id); if (!c) return null; return <li key={id} className={`rarity-${c.rarity} ${picked === id ? 'picked' : ''} ${custom && i === 5 ? 'p820-bench-start' : ''}`}>
+      <button type="button" onClick={() => tap(id)} disabled={locked} aria-pressed={picked === id}>
+        <span className="p820-slot">{custom ? (i < 5 ? 'START' : i === 5 ? '6TH' : 'BENCH') : '—'}</span>
+        <b>{c.name}</b><small>{seasonLabel(c.end)} {c.team} · {c.pos}{custom ? ` · ${ROTATION_MINUTES[i]} min` : ''}</small>
+        <span className="p820-ovr-mini">{ratingsShown(run) ? c.ovr : HIDDEN}</span>
+      </button></li>; })}</ol>
+    {custom && <button className="link-button" disabled={locked} onClick={() => { setPicked(null); setRun(setLineup(run, null)); }}>Back to auto</button>}
+    {ratingsShown(run) && run.coach && COACH_BY_ID.get(run.coach) && <p className="p820-rating">Coach <b>{COACH_BY_ID.get(run.coach)!.name}</b> <small>({COACH_BY_ID.get(run.coach)!.bonus >= 0 ? '+' : ''}{COACH_BY_ID.get(run.coach)!.bonus})</small></p>}
+    <p className="p820-rating">Team rating <b>{ratingsShown(run) ? perfectRating(h, run) : '??'}</b> <small>{ratingsShown(run) ? '(100 = a 68-win team)' : '(revealed when the season is over)'}</small></p>
+    {bonds.length > 0 && <ul className="p820-bonds">{bonds.map((b, i) => <li key={i} className={b.bonus < 0 ? 'bad' : 'good'}>{b.bonus > 0 ? '+' : ''}{b.bonus} · {b.label}</li>)}</ul>}
+  </aside>;
 }
 
 // ---------------------------------------------------------------- the end

@@ -17,11 +17,13 @@ import type { PlayerStatLine } from '../simulation/boxscore';
  * The 82-0 Challenge: build a ten-man team and a coach, then play a whole 82-game season against real teams from
  * every era, and four best-of-seven playoff rounds. The goal is 82-0 and 16-0. Two ways to build:
  *
- *  - Quick Spin: ten spins (five starters by position, five bench spots) and a coach spin. What the reel lands on is
- *    yours.
+ *  - Quick Spin: ten spins (five starters by position, five bench spots) and a coach spin. Three rerolls send a card
+ *    back; two lucky spins land on a sure Great or Star.
  *  - Franchise Spin: each spin rolls a franchise and an era ("Warriors, the 2010s"); you pick ONE player who played
- *    there then, at his best season with them. One team reroll, one era reroll, and one Absolute Prime boost (that
- *    spin's players at the best season of their whole career).
+ *    there then, at his best season with them. Three team-or-era rerolls, two lucky rolls (a Great or a Star in the
+ *    pool) and one Absolute Prime boost (that spin's players at the best season of their whole career).
+ *
+ * In the season you can set your own rotation (starters, then the bench in order) or leave it to the coach.
  *
  * The schedule has boss teams (the 72-10 Bulls, the 73-9 Warriors and the other great teams), every game is played
  * under the rules of the opponent's era, and everything is seeded, so the Daily 82-0 is the same for everyone.
@@ -46,7 +48,17 @@ export interface PerfectRun {
   /** Franchise Spin: the current roll and how many rolls were made (it seeds the next one). */
   roll?: PerfectRoll;
   rolls: number;
-  rerolls: { team: number; era: number; prime: number };
+  /**
+   * Spin helpers. Quick Spin: `spin` rerolls the card the reel landed on, `lucky` makes the next spin a sure Great or
+   * Star. Franchise Spin: `roll` rerolls the team or the era (older runs have one of each in `team` and `era`), `lucky`
+   * rolls a franchise-era with a Great or a Star in it. Absent on older runs (see spinsLeft and friends).
+   */
+  rerolls: { team: number; era: number; prime: number; spin?: number; lucky?: number; roll?: number };
+  /** Quick Spin: how many rerolls were used (it reseeds the reel), and whether the current spin is a lucky one. */
+  spinSalt?: number;
+  lucky?: boolean;
+  /** Your rotation: all ten card ids, starters first, then the bench in order (the sixth man first). Absent = auto. */
+  lineup?: string[];
   /** The Absolute Prime boost is on for the current roll. */
   prime?: boolean;
   /** Coach choices (Franchise Spin offers three; Quick Spin spins one). */
@@ -73,6 +85,12 @@ export interface PerfectRun {
 }
 
 export const SQUAD = 10;
+/** Spin helpers each run starts with. */
+export const SPIN_REROLLS = 3, LUCKY_SPINS = 2;
+export const spinsLeft = (run: Pick<PerfectRun, 'rerolls'>) => run.rerolls.spin ?? 0;
+export const luckyLeft = (run: Pick<PerfectRun, 'rerolls'>) => run.rerolls.lucky ?? 0;
+/** Franchise Spin rerolls left for the team (or the era): the shared three, or an older run's one of each. */
+export const rollRerollsLeft = (run: Pick<PerfectRun, 'rerolls'>, kind: 'team' | 'era') => run.rerolls.roll ?? run.rerolls[kind];
 export const SEASON_GAMES = 82;
 export const PLAYOFF_ROUNDS = 4;
 export const WINS_NEEDED = 4;
@@ -161,10 +179,14 @@ const MIN_POOL = 3;
 const rngFor = (run: Pick<PerfectRun, 'seed'>, salt: number) => new RNG(run.seed * 31 + salt * 7919 + 13);
 
 /** A new franchise-and-era roll; `keep` holds the franchise or the era (the rerolls). */
-function rollFor(h: NbaHistory, run: PerfectRun, keep?: { franchise?: string; eraId?: string }): PerfectRoll {
+function rollFor(h: NbaHistory, run: PerfectRun, keep?: { franchise?: string; eraId?: string }, lucky = false): PerfectRoll {
   const rng = rngFor(run, 1000 + run.rolls);
   const idx = franchiseIndex(h);
-  const ok = (franchise: string, eraId: string) => rollPool(h, { squad: run.squad }, { franchise, eraId }).length >= MIN_POOL;
+  // A lucky roll only lands where a Great or a Star (one you are allowed) is waiting.
+  const ok = (franchise: string, eraId: string) => {
+    const pool = rollPool(h, { squad: run.squad }, { franchise, eraId });
+    return pool.length >= MIN_POOL && (!lucky || pool.some(c => c.rarity === 'epic' || c.rarity === 'legendary'));
+  };
   // Franchises that played through more eras come up more often (the Celtics more than the Waterloo Hawks).
   const franchises = [...idx.names.keys()].sort();
   const weight = new Map(franchises.map(f => [f, ROLL_ERAS.filter(e => (idx.pools.get(`${f}|${e.id}`)?.length ?? 0) >= MIN_POOL).length]));
@@ -187,7 +209,8 @@ function rollFor(h: NbaHistory, run: PerfectRun, keep?: { franchise?: string; er
 export function newPerfectRun(h: NbaHistory, mode: PerfectMode, seed: number, daily?: string, opts: { level?: Level; view?: RunView } = {}): PerfectRun {
   // The Daily is the standard game for everyone.
   const level = daily ? 'pro' : opts.level ?? 'pro', view = daily ? STANDARD_VIEW : opts.view ?? STANDARD_VIEW;
-  const run: PerfectRun = { v: 1, mode, seed, daily, stage: 'draft', squad: [], rolls: 0, rerolls: { team: 1, era: 1, prime: 1 }, schedule: [], bosses: [], games: [], playoffs: [],
+  const rerolls = mode === 'quick' ? { team: 0, era: 0, prime: 0, spin: SPIN_REROLLS, lucky: LUCKY_SPINS } : { team: 0, era: 0, prime: 1, roll: SPIN_REROLLS, lucky: LUCKY_SPINS };
+  const run: PerfectRun = { v: 1, mode, seed, daily, stage: 'draft', squad: [], rolls: 0, rerolls, schedule: [], bosses: [], games: [], playoffs: [],
     ...(level !== 'pro' ? { level } : {}), ...(view.numbers !== STANDARD_VIEW.numbers || view.colors !== STANDARD_VIEW.colors ? { view } : {}) };
   return mode === 'franchise' ? { ...run, roll: rollFor(h, run), rolls: 1 } : run;
 }
@@ -199,10 +222,11 @@ export function newPerfectRun(h: NbaHistory, mode: PerfectMode, seed: number, da
 export function newPerfectFromHunt(h: NbaHistory, seed: number, squad: string[], coach?: string): PerfectRun {
   const pool = cardPool(h);
   const ids = squad.filter(id => pool.byId.has(id)).slice(0, SQUAD);
-  return { v: 1, mode: 'quick', seed, from: 'hunt', stage: 'draft', squad: ids, ...(coach && COACH_BY_ID.has(coach) ? { coach } : {}), rolls: 0, rerolls: { team: 0, era: 0, prime: 0 }, schedule: [], bosses: [], games: [], playoffs: [] };
+  return { v: 1, mode: 'quick', seed, from: 'hunt', stage: 'draft', squad: ids, ...(coach && COACH_BY_ID.has(coach) ? { coach } : {}), rolls: 0, rerolls: { team: 0, era: 0, prime: 0, spin: SPIN_REROLLS, lucky: LUCKY_SPINS }, schedule: [], bosses: [], games: [], playoffs: [] };
 }
 
 const QUICK_WEIGHTS: Record<Rarity, number> = { common: 35, rare: 34, epic: 22, legendary: 9 };
+const LUCKY_WEIGHTS: Record<Rarity, number> = { common: 0, rare: 0, epic: 70, legendary: 30 };
 const fitsQuick = (c: HuntCard, s: QuickSlot) =>
   s === 'ANY' ? true
   : s === 'G' ? ['PG', 'SG', 'G'].includes(c.pos)
@@ -213,10 +237,12 @@ const fitsQuick = (c: HuntCard, s: QuickSlot) =>
 /** Quick Spin: the card the next reel lands on (seeded, so the Daily is the same for everyone). */
 export function quickSpinCard(h: NbaHistory, run: PerfectRun): HuntCard {
   const slot = QUICK_SLOTS[run.squad.length] ?? 'ANY';
-  const rng = rngFor(run, 50 + run.squad.length);
+  // A reroll reseeds the reel (the same rerolls give everyone the same cards, so the Daily stays fair).
+  const rng = rngFor(run, 50 + run.squad.length + (run.spinSalt ?? 0) * 101);
   const taken = new Set(run.squad.map(id => card(h, id).playerId));
-  // The star cap: with three Stars already, the reel can't land on another.
-  const weights = starCapReached(h, run) ? { ...QUICK_WEIGHTS, legendary: 0 } : QUICK_WEIGHTS;
+  // A lucky spin lands on a Great or a Star; the star cap: with three Stars already, the reel can't land on another.
+  const base = run.lucky ? LUCKY_WEIGHTS : QUICK_WEIGHTS;
+  const weights = starCapReached(h, run) ? { ...base, legendary: 0 } : base;
   const total = Object.values(weights).reduce((a, b) => a + b, 0);
   let r = rng.next() * total, rarity: Rarity = 'common';
   for (const k of Object.keys(weights) as Rarity[]) { r -= weights[k]; if (r <= 0 && weights[k] > 0) { rarity = k; break; } }
@@ -259,7 +285,7 @@ export function pickPlayer(h: NbaHistory, run: PerfectRun, cardId?: string): Per
     id = cardId;
   }
   const squad = [...run.squad, id];
-  let next: PerfectRun = { ...run, squad, prime: false };
+  let next: PerfectRun = { ...run, squad, prime: false, lucky: false };
   // A hunt squad keeps its coach and goes straight to the season.
   if (squad.length >= SQUAD && run.coach) return { ...next, stage: 'season', roll: undefined, ...buildSchedule(h, next) };
   if (squad.length >= SQUAD) return { ...next, stage: 'coach', roll: undefined, coachOffer: coachOffer(next, h) };
@@ -267,15 +293,32 @@ export function pickPlayer(h: NbaHistory, run: PerfectRun, cardId?: string): Per
   return next;
 }
 
+const spendRoll = (run: PerfectRun, kind: 'team' | 'era') => run.rerolls.roll != null ? { ...run.rerolls, roll: run.rerolls.roll - 1 } : { ...run.rerolls, [kind]: 0 };
 export function rerollTeam(h: NbaHistory, run: PerfectRun): PerfectRun {
-  if (run.mode !== 'franchise' || !run.roll || run.rerolls.team < 1) return run;
+  if (run.mode !== 'franchise' || !run.roll || rollRerollsLeft(run, 'team') < 1) return run;
   const next = { ...run, rolls: run.rolls + 1 };
-  return { ...next, roll: rollFor(h, next, { eraId: run.roll.eraId }), rerolls: { ...run.rerolls, team: 0 } };
+  return { ...next, roll: rollFor(h, next, { eraId: run.roll.eraId }), rerolls: spendRoll(run, 'team') };
 }
 export function rerollEra(h: NbaHistory, run: PerfectRun): PerfectRun {
-  if (run.mode !== 'franchise' || !run.roll || run.rerolls.era < 1) return run;
+  if (run.mode !== 'franchise' || !run.roll || rollRerollsLeft(run, 'era') < 1) return run;
   const next = { ...run, rolls: run.rolls + 1 };
-  return { ...next, roll: rollFor(h, next, { franchise: run.roll.franchise }), rerolls: { ...run.rerolls, era: 0 } };
+  return { ...next, roll: rollFor(h, next, { franchise: run.roll.franchise }), rerolls: spendRoll(run, 'era') };
+}
+
+/** Quick Spin: a new card for this spot (the landed one goes back). */
+export function rerollSpin(run: PerfectRun): PerfectRun {
+  if (run.mode !== 'quick' || run.stage !== 'draft' || spinsLeft(run) < 1) return run;
+  return { ...run, spinSalt: (run.spinSalt ?? 0) + 1, rerolls: { ...run.rerolls, spin: spinsLeft(run) - 1 } };
+}
+
+/** A lucky spin. Quick Spin: the next card is a sure Great or Star. Franchise Spin: a new roll with one waiting. */
+export function luckySpin(h: NbaHistory, run: PerfectRun): PerfectRun {
+  if (run.stage !== 'draft' || luckyLeft(run) < 1 || run.lucky) return run;
+  const rerolls = { ...run.rerolls, lucky: luckyLeft(run) - 1 };
+  if (run.mode === 'quick') return { ...run, lucky: true, rerolls };
+  if (!run.roll) return run;
+  const next = { ...run, rolls: run.rolls + 1 };
+  return { ...next, roll: rollFor(h, next, undefined, true), rerolls, prime: false };
 }
 export function applyPrime(run: PerfectRun): PerfectRun {
   if (run.mode !== 'franchise' || run.stage !== 'draft' || run.rerolls.prime < 1) return run;
@@ -328,9 +371,35 @@ function playoffOpponent(h: NbaHistory, run: PerfectRun, round: number): string 
 
 // ---------------------------------------------------------------- playing
 
+// ---------------------------------------------------------------- your lineup
+
+/** Your rotation, if you set one that still matches the team: starters first, then the bench in order. */
+export function lineupOf(run: Pick<PerfectRun, 'squad' | 'lineup'>): string[] | null {
+  const l = run.lineup;
+  if (!l || l.length !== run.squad.length || new Set(l).size !== l.length || !l.every(id => run.squad.includes(id))) return null;
+  return l;
+}
+/** Sets your rotation (any order of your ten), or `null` for auto (the coach starts his best five). */
+export function setLineup(run: PerfectRun, order: string[] | null): PerfectRun {
+  if (run.stage === 'done' || run.stage === 'draft') return run;
+  if (order == null) { const { lineup: _drop, ...rest } = run; void _drop; return rest; }
+  const next = { ...run, lineup: order };
+  return lineupOf(next) ? next : run;
+}
+/** Swaps two players in your rotation (starting from the order they were picked if you had none). */
+export function swapLineup(run: PerfectRun, a: string, b: string): PerfectRun {
+  const order = [...(lineupOf(run) ?? run.squad)];
+  const i = order.indexOf(a), j = order.indexOf(b);
+  if (i < 0 || j < 0 || i === j) return run;
+  [order[i], order[j]] = [order[j], order[i]];
+  return setLineup(run, order);
+}
+/** Minutes a game by rotation spot (the same as the auto rotation). */
+export const ROTATION_MINUTES = [34, 33, 32, 31, 29, 21, 18, 15, 14, 13];
+
 /** Lineup checks: the starters need someone to bring the ball up and someone to protect the rim. */
-export function fitBonds(cards: HuntCard[]): ChemistryBond[] {
-  const starters = [...cards].sort((a, b) => b.ovr - a.ovr).slice(0, 5);
+export function fitBonds(cards: HuntCard[], chosen?: HuntCard[]): ChemistryBond[] {
+  const starters = chosen ?? [...cards].sort((a, b) => b.ovr - a.ovr).slice(0, 5);
   const ids = starters.map(c => c.id);
   const out: ChemistryBond[] = [];
   if (!starters.some(c => ['PG', 'SG', 'G'].includes(c.pos))) out.push({ kind: 'balance', label: 'No guard starts: nobody to bring it up (−3 starters)', cards: ids, bonus: -3 });
@@ -342,13 +411,14 @@ export function fitBonds(cards: HuntCard[]): ChemistryBond[] {
 }
 
 /** Every bond on your team: chemistry from the hunt (teammates, franchise, rivals) and the lineup checks. */
-export function teamBonds(h: NbaHistory, run: Pick<PerfectRun, 'squad'>): ChemistryBond[] {
+export function teamBonds(h: NbaHistory, run: Pick<PerfectRun, 'squad' | 'lineup'>): ChemistryBond[] {
   const cards = run.squad.map(id => card(h, id));
-  return [...chemistry(cards), ...fitBonds(cards)];
+  const l = lineupOf(run);
+  return [...chemistry(cards), ...fitBonds(cards, l ? l.slice(0, 5).map(id => card(h, id)) : undefined)];
 }
 
 /** Overall bonus per card: chemistry, lineup and the coach. */
-export function squadBonuses(h: NbaHistory, run: Pick<PerfectRun, 'squad' | 'coach'>): Map<string, number> {
+export function squadBonuses(h: NbaHistory, run: Pick<PerfectRun, 'squad' | 'coach' | 'lineup'>): Map<string, number> {
   const chem = chemistryBonus(teamBonds(h, run));
   const coach = run.coach ? COACH_BY_ID.get(run.coach) : undefined;
   return new Map(run.squad.map(id => {
@@ -359,7 +429,7 @@ export function squadBonuses(h: NbaHistory, run: Pick<PerfectRun, 'squad' | 'coa
 }
 
 /** Your team's 0-100 rating (68 wins = 100) with every bonus. */
-export function perfectRating(h: NbaHistory, run: Pick<PerfectRun, 'squad' | 'coach'>): number {
+export function perfectRating(h: NbaHistory, run: Pick<PerfectRun, 'squad' | 'coach' | 'lineup'>): number {
   if (!run.squad.length) return 0;
   const b = squadBonuses(h, run);
   return rosterRating(h, run.squad.map(id => card(h, id).ovr + (b.get(id) ?? 0)));
@@ -424,12 +494,17 @@ function playGame(h: NbaHistory, run: PerfectRun, oppId: string, salt: number, b
   if (coach?.style === 'triangle') ourCoach = { ...ourCoach, offensiveSystem: 'motion', starUsage: 38 };
   const defense = coach?.style === 'defense' ? 4 : 0;
   const up = (v: number) => Math.min(99, v + defense);
-  const mine = withRotation(run.squad.map(id => {
+  const order = lineupOf(run);
+  const players = (order ?? run.squad).map(id => {
     const p = underEra(cardPlayer(h, card(h, id), 'P820', bonus.get(id) ?? 0), era);
     if (!defense) return p;
     const d = p.attributes.defense;
     return { ...p, attributes: { ...p.attributes, defense: { ...d, perimeterDefense: up(d.perimeterDefense), interiorDefense: up(d.interiorDefense), helpDefense: up(d.helpDefense), contest: up(d.contest) } } };
-  }));
+  });
+  // Your lineup as you set it; otherwise the coach starts his best five.
+  const mine = order
+    ? players.map((p, i) => ({ ...p, rotationRole: i < 5 ? 'starter' as const : 'bench' as const, minutes: { mode: 'TARGET' as const, target: ROTATION_MINUTES[i] ?? 8 } }))
+    : withRotation(players);
   const mineIds = new Set(run.squad.map(id => card(h, id).playerId));
   const oppAbbr = team.abbr === 'P820' ? 'OPP' : team.abbr;
   const theirs = withRotation(team.roster.map(id => pool.byId.get(id)!).filter(c => c && !mineIds.has(c.playerId)).map(c => underEra(cardPlayer(h, c, oppAbbr, oppEdge(run, boss, round)), era)));

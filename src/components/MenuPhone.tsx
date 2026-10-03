@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { PixelIcon } from './PixelIcon';
 import { MyAvatar } from './UserAvatar';
+import { StreakDialog } from './StreakDialog';
 import { totalXp, levelFor, equipped, PROFILE_EVENT, type PhoneId } from '../profile/profile';
 
 /*
@@ -23,6 +24,7 @@ export function MenuPhone({ onBoards, onFriends, onProfile, streak }: {
     return () => { window.removeEventListener(PROFILE_EVENT, sync); window.removeEventListener('courtvision:progress', sync); };
   }, []);
   const { level, skin } = state;
+  const [streakOpen, setStreakOpen] = useState(false);
   const days = streak.current;
   return <aside className={`menu-phone phone-skin-${skin}`} aria-label="Your phone">
     <div className="menu-phone-body">
@@ -31,12 +33,13 @@ export function MenuPhone({ onBoards, onFriends, onProfile, streak }: {
         {onBoards && <button className="menu-phone-app" onClick={onBoards}><span className="app-tile boards"><PixelIcon name="trophy" size={20} /></span><small>Boards</small></button>}
         {onFriends && <button className="menu-phone-app" onClick={onFriends}><span className="app-tile friends"><PixelIcon name="team" size={20} /></span><small>Friends</small></button>}
         {onProfile && <button className="menu-phone-app" onClick={onProfile} aria-label={`Profile, level ${level}`}><span className="app-tile profile"><MyAvatar size={26} mode="portrait" animate={false} title="" /><em>{level}</em></span><small>Profile</small></button>}
-        <button className="menu-phone-app" onClick={onProfile} aria-label={`Daily streak: ${days} day${days === 1 ? '' : 's'}, best ${streak.best}`} title={`Daily streak: ${days} day${days === 1 ? '' : 's'} in a row (best ${streak.best})`}>
+        <button className="menu-phone-app" onClick={() => setStreakOpen(true)} aria-haspopup="dialog" aria-label={`Daily streak: ${days} day${days === 1 ? '' : 's'}, best ${streak.best}`} title={`Daily streak: ${days} day${days === 1 ? '' : 's'} in a row (best ${streak.best})`}>
           <span className="app-tile streak"><PixelIcon name="flame" size={18} /><em>{days}</em></span><small>{days === 1 ? '1 day' : `${days} days`}</small>
         </button>
       </div>
       <i className="menu-phone-home" aria-hidden="true" />
     </div>
+    {streakOpen && <StreakDialog streak={streak} onClose={() => setStreakOpen(false)} onProfile={onProfile} />}
   </aside>;
 }
 

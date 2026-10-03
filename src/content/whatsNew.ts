@@ -6,6 +6,18 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2027-01-20',
+    title: 'Friends, your streak and an 82-0 lineup',
+    items: [
+      "**Friends page:** the phone's Friends app opens your crew: the GMs you follow and how you stack up, friends who passed you this week, Find a GM, and every way to play a friend.",
+      "**Your streak:** tap the Streak app for your streak, your best, and every streak reward with how many days are left.",
+      "**A cleaner header:** Settings is a gear, and once you sign in your profile lives on the phone instead of the header.",
+      "**82-0, your rotation:** pick your own five starters and bench order (tap two players to swap), or leave it to the coach.",
+      "**82-0 spin helpers:** three rerolls and two lucky spins a run. Quick Spin: send a card back, or make the next spin a sure Great or Star. Franchise Spin: three team-or-era rerolls and two lucky rolls with a Great or a Star waiting.",
+      "**Career Mode:** the Retired list shows three; Show more opens the rest.",
+    ],
+  },
+  {
     id: '2027-01-13',
     title: 'Ten phone looks and twenty fixes',
     items: [

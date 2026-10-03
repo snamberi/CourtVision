@@ -152,3 +152,19 @@ button.p820-card:hover, button.p820-card:focus-visible { border-color: var(--c-b
 .p820-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; margin: 12px 0; padding: 12px 14px; border: 1px solid var(--c-border-2a3546, #2a3546); background: var(--c-bg-121926, #121926); }
 .p820-options .hunt-subhead { margin: 0 0 6px; }
 .p820-challenge-line { margin: 6px 0; font-size: .85rem; color: var(--c-fg-94a0b2, #94a0b2); }
+/* Spin helpers: rerolls and lucky spins. */
+.p820-spin-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; }
+.p820-spin-actions > button:not(.p820-big) { display: inline-flex; align-items: center; gap: 6px; }
+.p820-lucky-on { display: inline-flex; align-items: center; gap: 6px; margin: 0; color: var(--c-fg-ffd166, #ffd166); font-size: 13px; }
+.p820-tools-note { margin: 0; text-align: center; }
+/* Your rotation: each player is a button; tap two to swap them. */
+.p820-lineup ol > li { padding: 0; }
+.p820-lineup ol > li > button { grid-column: 1 / -1; display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; grid-template-rows: auto auto; column-gap: 6px; align-items: center; width: 100%; padding: 4px 6px; text-align: left; background: transparent; border: 0; box-shadow: none; color: inherit; font: inherit; cursor: pointer; }
+.p820-lineup ol > li > button:disabled { cursor: default; opacity: 1; }
+.p820-lineup ol > li > button .p820-slot { grid-row: 1 / span 2; }
+.p820-lineup ol > li > button small { grid-column: 2; }
+.p820-lineup ol > li > button .p820-ovr-mini { grid-column: 3; grid-row: 1 / span 2; }
+.p820-lineup ol > li.picked { outline: 2px solid var(--c-border-ffd166, #ffd166); }
+.p820-lineup ol > li.p820-bench-start { margin-top: 6px; }
+.p820-lineup .hint-text { margin: 0 0 8px; font-size: 12px; }
+.p820-lineup h3 small { font: 11px var(--ff-body, 'Inter', sans-serif); text-transform: none; letter-spacing: 0; }

@@ -32,6 +32,7 @@ export function analyticsPath(hash: string): string {
   if (hash.startsWith('#/privacy')) return '/privacy';
   if (hash === '#/choose-team') return '/choose-team';
   if (hash === '#/community') return '/community';
+  if (hash === '#/friends') return '/friends';
   if (hash.startsWith('#/u/')) return '/profile'; // never the username
   if (hash === '#/profile') return '/my-profile';
   if (hash === '#/settings') return '/settings';
