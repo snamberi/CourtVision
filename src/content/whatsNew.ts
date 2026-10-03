@@ -6,6 +6,16 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2027-01-27',
+    title: 'A roomier Profile and Leaderboards',
+    items: [
+      "**Titles:** your name with the title you're looking at, a count of how many you have, an All/Unlocked/Locked filter, an icon and progress bar on every title, and long groups that open with Show all.",
+      "**Title colours:** every colour shows its full name, a swatch, and your own title in that colour (it used to show one letter).",
+      "**Profile:** every section is its own card with an unlocked count, and a bar under your card jumps straight to any of them. Phones fit more per row.",
+      "**Leaderboards:** bigger tabs, the boards grouped into All time, This week and Today, and a proper header for each board.",
+    ],
+  },
+  {
     id: '2027-01-20',
     title: 'Friends, your streak and an 82-0 lineup',
     items: [
