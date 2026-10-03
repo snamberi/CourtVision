@@ -1,4 +1,5 @@
 import { applyHistoricalRosters } from '../history/realRollover';
+import { runWorldGamesIfDue } from '../worldGames/league';
 import { signingDecision } from './freeAgentDecision';
 import { ensureUpcomingDraftClass } from './draftSeason';
 import { rosterComplianceIssues } from './rosterRequirements';
@@ -321,6 +322,11 @@ function seasonFromDraft(
   const controlledTeamDraftPicks = controlledTeamId
     ? draftResult.picks.filter((p) => p.teamId === controlledTeamId).map((p) => p.playerId)
     : [];
+
+  // The World Games, every four summers (the AI plays every country here).
+  const games = runWorldGamesIfDue(currentLeague, currentExtras.freeAgents, seed + 31_337, { forceAi: true });
+  currentLeague = games.league;
+  currentExtras = { ...currentExtras, freeAgents: games.freeAgents };
 
   // 5. Free agency - AI teams via the existing logic, your team via a matching heuristic, for the full window.
   currentExtras = { ...currentExtras, freeAgencyOpen: true, freeAgencyDaysRemaining: currentLeague.settings.freeAgencyDurationDays ?? 30 };

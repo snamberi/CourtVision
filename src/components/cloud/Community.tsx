@@ -35,9 +35,9 @@ const BOARDS: { id: BoardId; label: string }[] = [
 const day = (offset: number) => new Date(Date.now() - offset * 86_400_000).toISOString().slice(0, 10);
 
 /** Community: the online leaderboards, ranked seasons, League Hunt PvP, friends, your account and public profiles. */
-export function Community({ onExit, user, onUser }: { onExit: () => void; user: string | null; onUser: (username: string | null) => void }) {
+export function Community({ onExit, user, onUser, initialTab = 'boards' }: { onExit: () => void; user: string | null; onUser: (username: string | null) => void; initialTab?: Tab }) {
   const acct = useAccount();
-  const [tab, setTab] = useState<Tab>('boards');
+  const [tab, setTab] = useState<Tab>(initialTab);
   const tabs: [Tab, string][] = [['boards', 'Leaderboards'], ['ranked', 'Ranked'], ['pvp', 'Hunt PvP'], ['friends', 'Friends'], ['me', acct.status === 'signedIn' ? 'Your account' : 'Sign in']];
   return <div className="hunt locker community">
     <header className="hunt-top">

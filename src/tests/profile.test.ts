@@ -38,7 +38,11 @@ describe('GM Profile', () => {
     equip({ frame: 'fire', floor: 'parquet' });
     expect(equipped(1)).toMatchObject({ frame: 'classic', floor: 'team', title: 'Rookie GM' });
     expect(equipped(150)).toMatchObject({ frame: 'fire', floor: 'parquet', title: 'Showrunner' });
-    expect(unlocksBetween(15, 20)).toEqual(['the "Assistant GM" title', 'the Gold card frame']);
+    expect(unlocksBetween(15, 20)).toEqual(['the "Assistant GM" title', 'the Gold card frame', 'the Courtside phone']);
+    // Phone looks: locked ones fall back to the classic phone.
+    equip({ phone: 'neon' });
+    expect(equipped(20).phone).toBe('classic');
+    expect(equipped(140).phone).toBe('neon');
   });
 
   it('level-up note: not on the first visit, then once per new level', () => {

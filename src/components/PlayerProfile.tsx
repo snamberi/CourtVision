@@ -1,3 +1,4 @@
+import { MEDAL_ICON } from '../worldGames/league';
 import { PersonalityPanel } from './MoralePanels';
 import { familyTies, relationLabel } from '../simulation/family';
 import { scoutingReport } from '../simulation/scouting';
@@ -16,7 +17,7 @@ import { calculateRatings } from '../simulation/engine/overall';
 import { perGameAverages, computeAdvancedStats, careerSummary, careerYearRows, careerStatUnavailable, type PerGameAverages, type AdvancedStats, type CareerYearRow, type CareerSummary } from '../simulation/careerStats';
 import { currentSeasonAdvanced } from '../simulation/advancedStats';
 import type { SeasonStatTotals, SeasonMilestones, MissingStat } from '../simulation/types';
-import { fx, fpct, finiteSum, NA } from './statFormat';
+import { fx, fpct, finiteSum, NA, statWhole, perWhole, pctWhole } from './statFormat';
 import { RealPlayerFacts, AwardsByOrigin } from './RealPlayerFacts';
 import { UnanimousTag } from './UnanimousTag';
 import { ratingSourceLabel } from '../history/datasetInfo';
@@ -140,8 +141,8 @@ function StatLineRow({ label, totals, perGame, view, summary }: {
   const v = view === 'totals'
     ? { min: totals.minutes.toFixed(0), pts: totals.points, reb: totals.oreb + totals.dreb, ast: totals.ast, stl: totals.stl, blk: totals.blk, tov: totals.tov, pf: totals.pf,
         fg: `${totals.fgm}-${totals.fga}`, tp: `${totals.tpm}-${totals.tpa}`, ft: `${totals.ftm}-${totals.fta}` }
-    : { min: fx(perGame.mpg), pts: fx(perGame.ppg), reb: fx(perGame.rpg), ast: fx(perGame.apg), stl: fx(perGame.spg, 2), blk: fx(perGame.bpg, 2), tov: fx(perGame.tovPg), pf: fx(perGame.pfPg),
-        fg: `${fx(perGame.fgmPg)}-${fx(perGame.fgaPg)}`, tp: `${fx(perGame.tpmPg)}-${fx(perGame.tpaPg)}`, ft: `${fx(perGame.ftmPg)}-${fx(perGame.ftaPg)}` };
+    : { min: fx(perGame.mpg, 0), pts: fx(perGame.ppg, 0), reb: fx(perGame.rpg, 0), ast: fx(perGame.apg, 0), stl: fx(perGame.spg, 0), blk: fx(perGame.bpg, 0), tov: fx(perGame.tovPg, 0), pf: fx(perGame.pfPg, 0),
+        fg: `${fx(perGame.fgmPg, 0)}-${fx(perGame.fgaPg, 0)}`, tp: `${fx(perGame.tpmPg, 0)}-${fx(perGame.tpaPg, 0)}`, ft: `${fx(perGame.ftmPg, 0)}-${fx(perGame.ftaPg, 0)}` };
   return (
     <tr>
       <td className="col-name">{label}</td>
@@ -155,11 +156,11 @@ function StatLineRow({ label, totals, perGame, view, summary }: {
       <td>{mark('tov', v.tov)}</td>
       <td>{mark('pf', v.pf)}</td>
       <td>{mark('fga', v.fg)}</td>
-      <td>{mark('fga', fpct(perGame.fgPct))}</td>
+      <td>{mark('fga', fpct(perGame.fgPct, 0))}</td>
       <td>{mark('tpa', v.tp)}</td>
-      <td>{mark('tpa', fpct(perGame.tpPct))}</td>
+      <td>{mark('tpa', fpct(perGame.tpPct, 0))}</td>
       <td>{mark('fta', v.ft)}</td>
-      <td>{mark('fta', fpct(perGame.ftPct))}</td>
+      <td>{mark('fta', fpct(perGame.ftPct, 0))}</td>
     </tr>
   );
 }
@@ -180,15 +181,15 @@ function AdvancedStatRow({ label, advanced, milestones, summary }: { label: stri
   return (
     <tr>
       <td className="col-name">{label}</td>
-      <td>{(advanced.efgPct * 100).toFixed(1)}</td>
-      <td>{(advanced.tsPct * 100).toFixed(1)}</td>
+      <td>{pctWhole(advanced.efgPct)}</td>
+      <td>{pctWhole(advanced.tsPct)}</td>
       <td>{advanced.astToRatio.toFixed(2)}</td>
       <td>{advanced.stlToRatio.toFixed(2)}</td>
-      <td>{(advanced.ftRate * 100).toFixed(1)}</td>
-      <td>{(advanced.threePointRate * 100).toFixed(1)}</td>
-      <td>{(advanced.blockSuccessPct * 100).toFixed(1)}</td>
+      <td>{pctWhole(advanced.ftRate)}</td>
+      <td>{pctWhole(advanced.threePointRate)}</td>
+      <td>{pctWhole(advanced.blockSuccessPct)}</td>
       <td>{advanced.pointsPerShot.toFixed(2)}</td>
-      <td>{(advanced.turnoverPct * 100).toFixed(1)}</td>
+      <td>{pctWhole(advanced.turnoverPct)}</td>
       <td>{milestones.doubleDoubles}</td>
       <td>{milestones.tripleDoubles}</td>
       <td>{milestones.quadrupleDoubles}</td>
@@ -204,15 +205,15 @@ function PartialAdvancedStatRow({ label, advanced, milestones, summary }: { labe
   return (
     <tr>
       <td className="col-name">{label}</td>
-      <td>{fpct(advanced.efgPct)}</td>
-      <td>{gap('fta', 'points') ? na : fpct(advanced.tsPct)}</td>
+      <td>{fpct(advanced.efgPct, 0)}</td>
+      <td>{gap('fta', 'points') ? na : fpct(advanced.tsPct, 0)}</td>
       <td>{gap('ast', 'tov') ? na : fx(advanced.astToRatio, 2)}</td>
       <td>{gap('stl', 'tov') ? na : fx(advanced.stlToRatio, 2)}</td>
-      <td>{gap('fta') ? na : fpct(advanced.ftRate)}</td>
-      <td>{careerCell(summary, 'tpa', fpct(advanced.threePointRate))}</td>
-      <td>{gap('blkAtt', 'blk') ? na : fpct(advanced.blockSuccessPct)}</td>
+      <td>{gap('fta') ? na : fpct(advanced.ftRate, 0)}</td>
+      <td>{careerCell(summary, 'tpa', fpct(advanced.threePointRate, 0))}</td>
+      <td>{gap('blkAtt', 'blk') ? na : fpct(advanced.blockSuccessPct, 0)}</td>
       <td>{fx(advanced.pointsPerShot, 2)}</td>
-      <td>{gap('tov') ? na : fpct(advanced.turnoverPct)}</td>
+      <td>{gap('tov') ? na : fpct(advanced.turnoverPct, 0)}</td>
       <td>{careerCell(summary, 'doubleDoubles', milestones.doubleDoubles)}</td>
       <td>{careerCell(summary, 'tripleDoubles', milestones.tripleDoubles)}</td>
       <td>{careerCell(summary, 'gameHighs', milestones.quadrupleDoubles)}</td>
@@ -332,12 +333,12 @@ function PlayerCard({ season, ratings, badgeNames, awardsHistory, league, family
         <table className="db-table">
           <tbody>
             <tr><td>Overall</td><td>{ratings.overall}</td></tr>
-            <tr><td>Offensive Rating</td><td>{ratings.offensiveRating.toFixed(1)}</td></tr>
-            <tr><td>Defensive Rating</td><td>{ratings.defensiveRating.toFixed(1)}</td></tr>
-            <tr><td>Shooting Rating</td><td>{ratings.shootingRating.toFixed(1)}</td></tr>
-            <tr><td>Playmaking Rating</td><td>{ratings.playmakingRating.toFixed(1)}</td></tr>
-            <tr><td>Rebounding Rating</td><td>{ratings.reboundingRating.toFixed(1)}</td></tr>
-            <tr><td>Physical Rating</td><td>{ratings.physicalRating.toFixed(1)}</td></tr>
+            <tr><td>Offensive Rating</td><td>{statWhole(ratings.offensiveRating)}</td></tr>
+            <tr><td>Defensive Rating</td><td>{statWhole(ratings.defensiveRating)}</td></tr>
+            <tr><td>Shooting Rating</td><td>{statWhole(ratings.shootingRating)}</td></tr>
+            <tr><td>Playmaking Rating</td><td>{statWhole(ratings.playmakingRating)}</td></tr>
+            <tr><td>Rebounding Rating</td><td>{statWhole(ratings.reboundingRating)}</td></tr>
+            <tr><td>Physical Rating</td><td>{statWhole(ratings.physicalRating)}</td></tr>
           </tbody>
         </table>
         {season.real && <RealPlayerFacts player={season} league={league} />}
@@ -382,46 +383,46 @@ function PlayerCard({ season, ratings, badgeNames, awardsHistory, league, family
                   <td>{r.age || '—'}</td>
                   <td title={r.rating ? `Start-of-season Overall ${r.rating.ovr}: ${ratingSourceLabel(r.rating.source)}` : r.imported ? 'No rating on record' : undefined}>{r.overall || '—'}</td>
                   <td>{r.totals.gamesPlayed}</td>
-                  <td>{seasonCell(m, 'minutes', view === 'totals' ? r.totals.minutes.toFixed(0) : fx(r.perGame.mpg))}</td>
-                  <td>{seasonCell(m, 'points', view === 'totals' ? r.totals.points : fx(r.perGame.ppg))}</td>
-                  <td>{seasonCell(m, 'dreb', view === 'totals' ? r.totals.oreb + r.totals.dreb : fx(r.perGame.rpg))}</td>
-                  <td>{seasonCell(m, 'ast', view === 'totals' ? r.totals.ast : fx(r.perGame.apg))}</td>
-                  <td>{seasonCell(m, 'stl', view === 'totals' ? r.totals.stl : fx(r.perGame.spg, 2))}</td>
-                  <td>{seasonCell(m, 'blk', view === 'totals' ? r.totals.blk : fx(r.perGame.bpg, 2))}</td>
-                  <td>{seasonCell(m, 'tov', view === 'totals' ? r.totals.tov : fx(r.perGame.tovPg))}</td>
-                  <td>{seasonCell(m, 'fga', fpct(r.perGame.fgPct))}</td>
-                  <td>{seasonCell(m, 'tpa', fpct(r.perGame.tpPct))}</td>
-                  <td>{seasonCell(m, 'fta', fpct(r.perGame.ftPct))}</td>
+                  <td>{seasonCell(m, 'minutes', view === 'totals' ? r.totals.minutes.toFixed(0) : fx(r.perGame.mpg, 0))}</td>
+                  <td>{seasonCell(m, 'points', view === 'totals' ? r.totals.points : fx(r.perGame.ppg, 0))}</td>
+                  <td>{seasonCell(m, 'dreb', view === 'totals' ? r.totals.oreb + r.totals.dreb : fx(r.perGame.rpg, 0))}</td>
+                  <td>{seasonCell(m, 'ast', view === 'totals' ? r.totals.ast : fx(r.perGame.apg, 0))}</td>
+                  <td>{seasonCell(m, 'stl', view === 'totals' ? r.totals.stl : fx(r.perGame.spg, 0))}</td>
+                  <td>{seasonCell(m, 'blk', view === 'totals' ? r.totals.blk : fx(r.perGame.bpg, 0))}</td>
+                  <td>{seasonCell(m, 'tov', view === 'totals' ? r.totals.tov : fx(r.perGame.tovPg, 0))}</td>
+                  <td>{seasonCell(m, 'fga', fpct(r.perGame.fgPct, 0))}</td>
+                  <td>{seasonCell(m, 'tpa', fpct(r.perGame.tpPct, 0))}</td>
+                  <td>{seasonCell(m, 'fta', fpct(r.perGame.ftPct, 0))}</td>
                   <td>{seasonCell(m, 'doubleDoubles', r.milestones.doubleDoubles)}</td>
                   <td>{seasonCell(m, 'tripleDoubles', r.milestones.tripleDoubles)}</td>
                 </tr>
                 {r.splits?.map((sp, i) => <tr key={`${r.season}-${i}`} className="split-row">
                   <td>↳</td><td title={sp.teamLabel ? `${sp.teamLabel} (today: ${sp.teamId})` : undefined}>{sp.teamLabel ?? sp.teamId}</td><td /><td />
                   <td>{sp.totals.gamesPlayed}</td>
-                  <td>{seasonCell(m, 'minutes', view === 'totals' ? sp.totals.minutes.toFixed(0) : fx(sp.perGame.mpg))}</td>
-                  <td>{seasonCell(m, 'points', view === 'totals' ? sp.totals.points : fx(sp.perGame.ppg))}</td>
-                  <td>{seasonCell(m, 'dreb', view === 'totals' ? sp.totals.oreb + sp.totals.dreb : fx(sp.perGame.rpg))}</td>
-                  <td>{seasonCell(m, 'ast', view === 'totals' ? sp.totals.ast : fx(sp.perGame.apg))}</td>
-                  <td>{seasonCell(m, 'stl', view === 'totals' ? sp.totals.stl : fx(sp.perGame.spg, 2))}</td>
-                  <td>{seasonCell(m, 'blk', view === 'totals' ? sp.totals.blk : fx(sp.perGame.bpg, 2))}</td>
-                  <td>{seasonCell(m, 'tov', view === 'totals' ? sp.totals.tov : fx(sp.perGame.tovPg))}</td>
-                  <td>{seasonCell(m, 'fga', fpct(sp.perGame.fgPct))}</td><td>{seasonCell(m, 'tpa', fpct(sp.perGame.tpPct))}</td><td>{seasonCell(m, 'fta', fpct(sp.perGame.ftPct))}</td><td /><td />
+                  <td>{seasonCell(m, 'minutes', view === 'totals' ? sp.totals.minutes.toFixed(0) : fx(sp.perGame.mpg, 0))}</td>
+                  <td>{seasonCell(m, 'points', view === 'totals' ? sp.totals.points : fx(sp.perGame.ppg, 0))}</td>
+                  <td>{seasonCell(m, 'dreb', view === 'totals' ? sp.totals.oreb + sp.totals.dreb : fx(sp.perGame.rpg, 0))}</td>
+                  <td>{seasonCell(m, 'ast', view === 'totals' ? sp.totals.ast : fx(sp.perGame.apg, 0))}</td>
+                  <td>{seasonCell(m, 'stl', view === 'totals' ? sp.totals.stl : fx(sp.perGame.spg, 0))}</td>
+                  <td>{seasonCell(m, 'blk', view === 'totals' ? sp.totals.blk : fx(sp.perGame.bpg, 0))}</td>
+                  <td>{seasonCell(m, 'tov', view === 'totals' ? sp.totals.tov : fx(sp.perGame.tovPg, 0))}</td>
+                  <td>{seasonCell(m, 'fga', fpct(sp.perGame.fgPct, 0))}</td><td>{seasonCell(m, 'tpa', fpct(sp.perGame.tpPct, 0))}</td><td>{seasonCell(m, 'fta', fpct(sp.perGame.ftPct, 0))}</td><td /><td />
                 </tr>)}
               </Fragment>); })}
               {summary.seasonsPlayed > 1 && (
                 <tr className="totals-row">
                   <td className="col-name">Career</td><td /><td /><td />
                   <td>{summary.totals.gamesPlayed}</td>
-                  <td>{careerCell(summary, 'minutes', view === 'totals' ? summary.totals.minutes.toFixed(0) : fx(summary.perGame.mpg))}</td>
-                  <td>{careerCell(summary, 'points', view === 'totals' ? summary.totals.points : fx(summary.perGame.ppg))}</td>
-                  <td>{careerCell(summary, 'dreb', view === 'totals' ? summary.totals.oreb + summary.totals.dreb : fx(summary.perGame.rpg))}</td>
-                  <td>{careerCell(summary, 'ast', view === 'totals' ? summary.totals.ast : fx(summary.perGame.apg))}</td>
-                  <td>{careerCell(summary, 'stl', view === 'totals' ? summary.totals.stl : fx(summary.perGame.spg, 2))}</td>
-                  <td>{careerCell(summary, 'blk', view === 'totals' ? summary.totals.blk : fx(summary.perGame.bpg, 2))}</td>
-                  <td>{careerCell(summary, 'tov', view === 'totals' ? summary.totals.tov : fx(summary.perGame.tovPg))}</td>
-                  <td>{careerCell(summary, 'fga', fpct(summary.perGame.fgPct))}</td>
-                  <td>{careerCell(summary, 'tpa', fpct(summary.perGame.tpPct))}</td>
-                  <td>{careerCell(summary, 'fta', fpct(summary.perGame.ftPct))}</td>
+                  <td>{careerCell(summary, 'minutes', view === 'totals' ? summary.totals.minutes.toFixed(0) : fx(summary.perGame.mpg, 0))}</td>
+                  <td>{careerCell(summary, 'points', view === 'totals' ? summary.totals.points : fx(summary.perGame.ppg, 0))}</td>
+                  <td>{careerCell(summary, 'dreb', view === 'totals' ? summary.totals.oreb + summary.totals.dreb : fx(summary.perGame.rpg, 0))}</td>
+                  <td>{careerCell(summary, 'ast', view === 'totals' ? summary.totals.ast : fx(summary.perGame.apg, 0))}</td>
+                  <td>{careerCell(summary, 'stl', view === 'totals' ? summary.totals.stl : fx(summary.perGame.spg, 0))}</td>
+                  <td>{careerCell(summary, 'blk', view === 'totals' ? summary.totals.blk : fx(summary.perGame.bpg, 0))}</td>
+                  <td>{careerCell(summary, 'tov', view === 'totals' ? summary.totals.tov : fx(summary.perGame.tovPg, 0))}</td>
+                  <td>{careerCell(summary, 'fga', fpct(summary.perGame.fgPct, 0))}</td>
+                  <td>{careerCell(summary, 'tpa', fpct(summary.perGame.tpPct, 0))}</td>
+                  <td>{careerCell(summary, 'fta', fpct(summary.perGame.ftPct, 0))}</td>
                   <td>{careerCell(summary, 'doubleDoubles', summary.milestones.doubleDoubles)}</td>
                   <td>{careerCell(summary, 'tripleDoubles', summary.milestones.tripleDoubles)}</td>
                 </tr>
@@ -525,6 +526,14 @@ function PlayerCard({ season, ratings, badgeNames, awardsHistory, league, family
         )}
       </section>
 
+      {(season.worldGames?.length ?? 0) > 0 && <section className="profile-world-games">
+        <h4>World Games</h4>
+        <ul className="wg-medal-list">{season.worldGames!.map((m, i) => <li key={i} className={`wg-medal-chip ${m.medal}`} title={m.real ? 'A real result from before this league began' : 'Won in this league'}>
+          <span aria-hidden="true">{MEDAL_ICON[m.medal]}</span> <b>{m.year}</b> {m.country}{m.city ? ` · ${m.city}` : ''}{m.real ? ' (real)' : ''}
+        </li>)}</ul>
+        <p className="hint-text">National team: {season.nationality ?? 'USA'}.</p>
+      </section>}
+
       <section>
         <h4>Awards</h4>
         {awardsHistory.length > 0 && <TrophyShelf entries={awardsHistory} />}
@@ -548,7 +557,7 @@ function PlayerCard({ season, ratings, badgeNames, awardsHistory, league, family
 
 /** PER, shooting efficiency, usage, rebound/assist/steal/block rates, ratings and win shares, season by season. */
 function CareerAdvancedTable({ rows }: { rows: CareerYearRow[] }) {
-  const f1 = (v?: number) => fx(v), pct = (v?: number) => fpct(v);
+  const f1 = (v?: number) => fx(v), pct = (v?: number) => fpct(v, 0);
   const sum = (k: 'ows' | 'dws' | 'ws') => finiteSum(rows.map(r => r.adv?.[k]));
   const minutes = rows.reduce((n, r) => n + (r.adv && Number.isFinite(r.adv.ws) && !r.missing?.includes('minutes') ? r.totals.minutes : 0), 0);
   return <div className="stat-table-scroll"><table className="db-table stat-line-table">
@@ -569,11 +578,11 @@ function CareerPlayoffTable({ rows }: { rows: CareerYearRow[] }) {
   const played = rows.filter(r => (r.playoffs?.gamesPlayed ?? 0) > 0);
   const importedNote = rows.some(r => r.imported) ? <p className="hint-text">Real NBA playoff statistics from before this league's start are not in the imported data; only playoffs played in this league are listed.</p> : null;
   if (!played.length) return <>{<p className="hint-text">No playoff games on record yet.</p>}{importedNote}</>;
-  const pg = (n: number, g: number) => (n / Math.max(1, g)).toFixed(1);
+  const pg = (n: number, g: number) => perWhole(n, Math.max(1, g));
   return <div className="stat-table-scroll"><table className="db-table stat-line-table">
     <thead><tr><th>Season</th><th>GP</th><th>MIN</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>FG%</th><th>3P%</th><th>FT%</th></tr></thead>
     <tbody>{played.map(r => { const p = r.playoffs!; return <tr key={r.season}><td>{formatSeasonYear(r.season)}</td><td>{p.gamesPlayed}</td><td>{pg(p.minutes, p.gamesPlayed)}</td><td>{pg(p.points, p.gamesPlayed)}</td>
       <td>{pg(p.oreb + p.dreb, p.gamesPlayed)}</td><td>{pg(p.ast, p.gamesPlayed)}</td><td>{pg(p.stl, p.gamesPlayed)}</td><td>{pg(p.blk, p.gamesPlayed)}</td>
-      <td>{p.fga ? (p.fgm / p.fga * 100).toFixed(1) : '—'}</td><td>{p.tpa ? (p.tpm / p.tpa * 100).toFixed(1) : '—'}</td><td>{p.fta ? (p.ftm / p.fta * 100).toFixed(1) : '—'}</td></tr>; })}</tbody>
+      <td>{p.fga ? pctWhole(p.fgm / p.fga) : '—'}</td><td>{p.tpa ? pctWhole(p.tpm / p.tpa) : '—'}</td><td>{p.fta ? pctWhole(p.ftm / p.fta) : '—'}</td></tr>; })}</tbody>
   </table>{importedNote}</div>;
 }

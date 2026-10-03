@@ -286,7 +286,7 @@ function SeriesView({ h, run, play, series, index, onReveal, onContinue }: { h: 
         <small>G{i + 1}</small>{shownGame ? <><b>{x.won ? 'W' : 'L'} {x.us}-{x.them}</b><span>{x.top}</span></> : <b>{done ? '—' : '…'}</b>}</li>; })}</ol>
     {done ? <div className={`hunt-result ${play.won ? 'won' : 'lost'}`}>
       <h2>{play.won ? `Series won ${WINS_NEEDED}-${n - WINS_NEEDED}` : `Series lost ${n - WINS_NEEDED}-${WINS_NEEDED}`}</h2>
-      <p>{play.mvp ? `Series MVP: ${play.mvp.name}, ${(play.mvp.pts / play.mvp.g).toFixed(1)} PTS · ${(play.mvp.reb / play.mvp.g).toFixed(1)} REB · ${(play.mvp.ast / play.mvp.g).toFixed(1)} AST` : ''}</p>
+      <p>{play.mvp ? `Series MVP: ${play.mvp.name}, ${Math.round(play.mvp.pts / play.mvp.g)} PTS · ${Math.round(play.mvp.reb / play.mvp.g)} REB · ${Math.round(play.mvp.ast / play.mvp.g)} AST` : ''}</p>
       <p><span className="hunt-coins">+{play.coins} coins</span></p>
       <p className="hint-text">{run.stage === 'won' ? 'You beat the boss. The hunt is yours.' : run.stage === 'lost' ? 'Out of lives. The hunt ends here.' : run.stage === 'boost' ? 'Pick a boost for the road.' : run.note ?? `${run.lives} ${run.lives === 1 ? 'life' : 'lives'} left. Change your squad in the next shop, or run it back.`}</p>
       <div className="contest-actions"><button className="primary" onClick={onContinue}>Continue</button></div>
@@ -425,7 +425,7 @@ function RunOver({ h, run, records, onNew, onExit }: { h: NbaHistory; run: HuntR
   const mvp = lines[0];
   const seriesWon = run.results.filter(r => r.won).length, seriesLost = run.results.length - seriesWon;
   const gamesWon = run.results.reduce((n, r) => n + r.games.filter(g => g.won).length, 0), gamesPlayed = run.results.reduce((n, r) => n + r.games.length, 0);
-  const per = (v: number, g: number) => (g ? (v / g).toFixed(1) : '0.0');
+  const per = (v: number, g: number) => (g ? String(Math.round(v / g)) : '0');
   const wl = (r: HuntRun['results'][number]) => { const w = r.games.filter(g => g.won).length; return `${w}-${r.games.length - w}`; };
   const share = [
     `League Hunt · ${won ? 'HUNT COMPLETE 🏆' : `reached series ${run.seriesIndex + 1} of ${SERIES_COUNT}`} · series ${seriesWon}-${seriesLost}`,

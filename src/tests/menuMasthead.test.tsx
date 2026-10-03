@@ -2,40 +2,39 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { MenuMasthead } from '../components/MenuMasthead';
+import { MenuPhone } from '../components/MenuPhone';
 
-// Keep account/network state out of the responsive disclosure interaction.
-vi.mock('../components/ProfilePanel', () => ({ ProfileChip: ({ onOpen }: { onOpen: () => void }) => <button onClick={onOpen}>Profile</button> }));
-vi.mock('../components/cloud/AccountButton', () => ({ AccountButton: ({ onCommunity }: { onCommunity: () => void }) => <button onClick={onCommunity}>Leaderboards</button> }));
-vi.mock('../components/ThemePicker', () => ({ ThemeChip: () => <button>Change theme</button> }));
+// Keep account/network state out of these tests.
+vi.mock('../components/cloud/AccountButton', () => ({ AccountButton: ({ onProfile, boards }: { onProfile?: () => void; boards?: boolean }) => <>{boards !== false && <button>Leaderboards</button>}<button onClick={onProfile}>Sign in</button></> }));
+vi.mock('../components/UserAvatar', () => ({ MyAvatar: () => <i /> }));
 afterEach(cleanup);
 
-describe('compact masthead actions', () => {
-  it('closes on Escape, restores focus, and dismisses on outside clicks', () => {
-    render(<MenuMasthead streak={{ current: 2, best: 4 }} onSettings={() => {}} />);
-    const toggle = screen.getByRole('button', { name: 'Account and community' });
-    fireEvent.click(toggle);
-    expect(toggle.getAttribute('aria-expanded')).toBe('true');
-    fireEvent.keyDown(document, { key: 'Escape' });
-    expect(toggle.getAttribute('aria-expanded')).toBe('false');
-    expect(document.activeElement).toBe(toggle);
-    fireEvent.click(toggle);
-    fireEvent.pointerDown(document.body);
-    expect(toggle.getAttribute('aria-expanded')).toBe('false');
-  });
-
-  it('keeps navigation callbacks working and closes after choosing an action', () => {
-    const profile = vi.fn(), community = vi.fn(), settings = vi.fn();
-    render(<MenuMasthead streak={{ current: 1, best: 1 }} onProfile={profile} onCommunity={community} onSettings={settings} />);
-    const toggle = screen.getByRole('button', { name: 'Account and community' });
-    fireEvent.click(toggle);
-    fireEvent.click(screen.getByRole('button', { name: 'Profile' }));
-    expect(profile).toHaveBeenCalledOnce();
-    expect(toggle.getAttribute('aria-expanded')).toBe('false');
-    fireEvent.click(toggle);
-    fireEvent.click(screen.getByRole('button', { name: 'Leaderboards' }));
-    expect(community).toHaveBeenCalledOnce();
-    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+describe('menu header', () => {
+  it('holds only sign in, Settings and Discord', () => {
+    const settings = vi.fn();
+    render(<MenuMasthead onSettings={settings} onCommunity={() => {}} onProfile={() => {}} />);
+    const header = screen.getByRole('banner');
+    const labels = [...header.querySelectorAll('button, a')].map(e => e.getAttribute('aria-label') ?? e.textContent?.trim());
+    expect(labels).toHaveLength(3);
+    expect(labels).toContain('Sign in');
+    expect(labels).toContain('Settings');
+    expect(labels.some(l => /discord/i.test(l ?? ''))).toBe(true);
+    expect(screen.queryByText('Leaderboards')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
     expect(settings).toHaveBeenCalledOnce();
+  });
+});
+
+describe('menu phone', () => {
+  it('opens the boards, friends and profile, and shows the streak', () => {
+    const boards = vi.fn(), friends = vi.fn(), profile = vi.fn();
+    render(<MenuPhone onBoards={boards} onFriends={friends} onProfile={profile} streak={{ current: 6, best: 9 }} />);
+    fireEvent.click(screen.getByRole('button', { name: /Boards/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Friends/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Profile, level/ }));
+    expect(boards).toHaveBeenCalledOnce();
+    expect(friends).toHaveBeenCalledOnce();
+    expect(profile).toHaveBeenCalledOnce();
+    expect(screen.getByRole('button', { name: 'Daily streak: 6 days, best 9' })).toBeTruthy();
   });
 });

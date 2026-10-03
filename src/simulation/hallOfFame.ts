@@ -54,7 +54,10 @@ export function buildHallOfFameCase(
     .map(k => `${counts.get(k)! > 1 ? `${counts.get(k)}× ` : ''}${TROPHIES[k].short}`);
   const awardCount = awards.filter(a => a.key !== 'pow').length;
   const longevityScore = summary.seasonsPlayed * 1.5;
-  const score = Math.round(countingScore + rateScore + awardScore + longevityScore);
+  // World Games medals: gold 4, silver 2.5, bronze 1.5.
+  const medals = season.worldGames ?? [];
+  const medalScore = medals.reduce((n, m) => n + (m.medal === 'gold' ? 4 : m.medal === 'silver' ? 2.5 : 1.5), 0);
+  const score = Math.round(countingScore + rateScore + awardScore + longevityScore + medalScore);
 
   const resume: string[] = [];
   if (summary.seasonsPlayed > 0) resume.push(`${summary.seasonsPlayed} seasons, ${t.gamesPlayed} games`);
@@ -63,6 +66,8 @@ export function buildHallOfFameCase(
   resume.push(`${t.points.toLocaleString()} career points`);
   if (headline.length) resume.push(headline.join(' · '));
   else if (awardCount > 0) resume.push(`${awardCount} career award${awardCount === 1 ? '' : 's'}`);
+  const golds = medals.filter(m => m.medal === 'gold').length;
+  if (medals.length) resume.push(`World Games: ${golds ? `${golds} gold` : ''}${golds && medals.length > golds ? ', ' : ''}${medals.length > golds ? `${medals.length - golds} other medal${medals.length - golds > 1 ? 's' : ''}` : ''}`);
   if (summary.milestones.tripleDoubles > 0) resume.push(`${summary.milestones.tripleDoubles} career triple-doubles`);
   if (summary.milestones.gameHighPoints > 0) resume.push(`Career high ${summary.milestones.gameHighPoints} points`);
 

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { plural } from '../lib/humanize';
 import { answerPoach, pendingOffers } from '../simulation/staffPoaching';
 import type { League } from '../simulation/league';
 import type { CoachIdentity } from '../simulation/coaching';
@@ -12,7 +13,7 @@ export function CoachProfile({coach,role='head'}:{coach:CoachIdentity;role?:Staf
  const c=enrichCoach(coach,role),p=c.profile!;
  return <article className="coach-profile"><h3>{c.coachId}</h3><p>Age {c.age} · {p.experience} tracked seasons · Career {c.careerWins}–{c.careerLosses} · Playoffs {p.playoffWins}–{p.playoffLosses}</p><p>{c.championships} championships · {p.coyAwards} Coach of the Year awards{p.formerPlayerId?' · Former player':''}</p>
   <p>{p.personality} {p.leadership} · {p.offense} offense / {p.defense} defense · Specialties: {p.specialties.join(', ')}</p>
-  <p>Contract: ${(c.contract.annualSalary/1e6).toFixed(2)}M per year · {c.contract.yearsRemaining} years remaining</p>
+  <p>Contract: ${(c.contract.annualSalary/1e6).toFixed(2)}M per year · {plural(c.contract.yearsRemaining, 'year')} remaining</p>
   <div className="staff-attribute-grid">{COACH_ATTRIBUTES.map(k=><div key={k}><span>{k.replace(/([A-Z])/g,' $1')}</span><meter min={0} max={100} value={p.attributes[k]} /><strong>{Math.round(p.attributes[k])}</strong></div>)}</div>
   <details><summary>Career and relationships</summary><p className="hint-text">Tracking begins when the staff system is introduced; prior employment is not invented.</p><ul>{p.history.map((h,i)=><li key={i}><TeamLink teamId={h.teamId} /> · {STAFF_LABELS[h.role]} · {h.from}–{h.to??'present'}</li>)}</ul><h4>Player relationships</h4><div className="staff-relationship-list">{Object.entries(c.relationships).map(([name,n])=><span key={name}>{name}: {Math.round(n)}/100</span>)}</div><h4>Staff relationships</h4>{Object.entries(p.staffRelationships).length?Object.entries(p.staffRelationships).map(([name,n])=><p key={name}>{name}: {Math.round(n)}/100</p>):<p>No shared games recorded yet.</p>}<h4>Development record</h4>{p.developmentHistory.length?<div className="feature-table-scroll"><table className="db-table"><thead><tr><th>Player</th><th>Season</th><th>Before</th><th>After</th></tr></thead><tbody>{p.developmentHistory.slice(-100).reverse().map((h,i)=><tr key={i}><td>{h.playerId}</td><td>{h.season}</td><td>{h.before.toFixed(1)}</td><td>{h.after.toFixed(1)}</td></tr>)}</tbody></table></div>:<p>Offseason player progress will be recorded here.</p>}</details>
  </article>;

@@ -1,3 +1,4 @@
+import { realMedals } from '../worldGames/data';
 import type { NbaHistory, HistSeasonRow, HistPlayer } from './nbaHistoryData';
 import { NBA_HISTORY_DATASET } from './datasetInfo';
 import { buildRealPlayer, type RealPlayerSeed, type RealProfile, type RatingFrame } from './realPlayers';
@@ -213,7 +214,7 @@ export function retiredBeforeStart(h: NbaHistory, startYear: number, skipIds: Se
     const age = ageAt(p, endToStart(last), aggregateRow(lastRows).age);
     const finalSeason = label(endToStart(last));
     const pl = buildRealPlayer(seed, finalSeason, mapTeam(lastTeam), age, seed.rating.ovr, NBA_HISTORY_DATASET);
-    const data = { ...pl, seasonStats: undefined, careerHistory: realCareer(ctx, p), historicalAwards: realAwards(ctx, p.idx), birthDate: p.birthDate ?? undefined, jerseyNumber: realJerseyNumber(p.id, null, last) ?? pl.jerseyNumber } as PlayerSeason;
+    const data = { ...pl, seasonStats: undefined, careerHistory: realCareer(ctx, p), historicalAwards: realAwards(ctx, p.idx), ...medalsOf(p.displayName, E), birthDate: p.birthDate ?? undefined, jerseyNumber: realJerseyNumber(p.id, null, last) ?? pl.jerseyNumber } as PlayerSeason;
     out.push({ playerId: data.playerId, finalTeamId: mapTeam(lastTeam), finalTeamName: teamName(lastTeam, last), finalSeason, finalAge: age, finalOverall: calculateOverall(data), finalSeasonData: data, preStart: true, realId: p.id });
   }
   return out;
@@ -391,7 +392,7 @@ export function buildHistoricalLeague(h: NbaHistory, startYear: number, opts: { 
     const startRow = firstTeam.get(idx);
     const age = ageAt(p, startYear, startRow?.age ?? null);
     const pl = buildRealPlayer(seed, season, teamId, age, seed.rating.ovr, NBA_HISTORY_DATASET);
-    return { ...pl, careerHistory: realCareer(ctx, p), historicalAwards: realAwards(ctx, idx), birthDate: p.birthDate ?? undefined } as PlayerSeason;
+    return { ...pl, careerHistory: realCareer(ctx, p), historicalAwards: realAwards(ctx, idx), ...medalsOf(p.displayName, E), birthDate: p.birthDate ?? undefined } as PlayerSeason;
   };
 
   const usedIds = new Set<string>();
@@ -533,4 +534,10 @@ export function topUpHistoricalClasses(h: NbaHistory, league: League, extras: Pi
   if (meta.classesLoadedThrough >= target) return null;
   const added = realDraftClasses(h, meta.classesLoadedThrough + 1, target, realIdsInLeague(league, extras));
   return { ...meta, futureClasses: { ...meta.futureClasses, ...added }, classesLoadedThrough: target };
+}
+
+/** Real World Games medals won before the league's first season (E = its end year), when there are any. */
+function medalsOf(name: string, E: number): { worldGames?: ReturnType<typeof realMedals> } {
+  const m = realMedals(name, E);
+  return m.length ? { worldGames: m } : {};
 }

@@ -1,4 +1,5 @@
 import { PixelIcon } from './PixelIcon';
+import { plural } from '../lib/humanize';
 import { TeamLink } from './TeamLink';
 import { useState } from 'react';
 import type { PlayerSeason } from '../simulation/types';
@@ -14,6 +15,7 @@ import { AppearancePanel } from './AppearancePanel';
 import { PlayerAvatar } from './PlayerAvatar';
 import { calculateOverall } from '../simulation/engine/overall';
 import { primaryPosition } from '../simulation/teamStatus';
+import { statWhole, pctWhole } from './statFormat';
 
 interface Props {
   season: PlayerSeason;
@@ -77,7 +79,7 @@ export function FullPlayerEditor({ season, onChange, sandboxMode, league, extras
           <span className="badge-chip">Age {season.age}</span>
           <span className="badge-chip">OVR {overall}</span>
           <span className="badge-chip">POT {season.development.potential.toFixed(0)}</span>
-          <span className="hint-text">{avg.gamesPlayed} games played this season</span>
+          <span className="hint-text">{plural(avg.gamesPlayed, 'game')} played this season</span>
         </div>
         {avg.gamesPlayed > 0 ? (
           <div className="finances-table-wrap">
@@ -90,18 +92,18 @@ export function FullPlayerEditor({ season, onChange, sandboxMode, league, extras
               </thead>
               <tbody>
                 <tr>
-                  <td>{avg.mpg.toFixed(1)}</td>
-                  <td>{avg.ppg.toFixed(1)}</td>
-                  <td>{avg.rpg.toFixed(1)}</td>
-                  <td>{avg.apg.toFixed(1)}</td>
-                  <td>{avg.spg.toFixed(1)}</td>
-                  <td>{avg.bpg.toFixed(1)}</td>
-                  <td>{avg.tovPg.toFixed(1)}</td>
-                  <td>{(avg.fgPct * 100).toFixed(1)}%</td>
-                  <td>{(avg.tpPct * 100).toFixed(1)}%</td>
-                  <td>{(avg.ftPct * 100).toFixed(1)}%</td>
-                  <td>{(avg.tsPct * 100).toFixed(1)}%</td>
-                  <td>{avg.efficiency.toFixed(1)}</td>
+                  <td>{statWhole(avg.mpg)}</td>
+                  <td>{statWhole(avg.ppg)}</td>
+                  <td>{statWhole(avg.rpg)}</td>
+                  <td>{statWhole(avg.apg)}</td>
+                  <td>{statWhole(avg.spg)}</td>
+                  <td>{statWhole(avg.bpg)}</td>
+                  <td>{statWhole(avg.tovPg)}</td>
+                  <td>{pctWhole(avg.fgPct)}%</td>
+                  <td>{pctWhole(avg.tpPct)}%</td>
+                  <td>{pctWhole(avg.ftPct)}%</td>
+                  <td>{pctWhole(avg.tsPct)}%</td>
+                  <td>{statWhole(avg.efficiency)}</td>
                 </tr>
               </tbody>
             </table>

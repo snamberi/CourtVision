@@ -19,6 +19,7 @@ import { readPickClock, writePickClock, PICK_CLOCK_SECONDS } from '../../draft/w
 import { track } from '../../analytics/track';
 import '../hunt/hunt.css';
 import './draft.css';
+import { statWhole } from '../statFormat';
 
 type Base = { league: League; extras: GMLeagueExtras };
 const season = (end: number) => `${end - 1}-${String(end).slice(2)}`;
@@ -186,7 +187,7 @@ function Board({ h, s, onPick, onAutoRest }: { h: NbaHistory; s: DraftState; onP
           <thead><tr><th className="col-name">Player</th><th>All-time</th><th>Pos</th><th className="col-name">Best season</th><th>OVR</th><th>PPG</th><th>RPG</th><th>APG</th><th /></tr></thead>
           <tbody>{shown.map(c => <tr key={c.id}>
             <td className="col-name">{c.name}</td><td>{legendRank(h, c.playerId) ? `#${legendRank(h, c.playerId)}` : ''}</td><td>{c.pos}</td><td className="col-name">{season(c.end)} {c.teamName}</td><td><b>{c.ovr}</b></td>
-            <td>{c.ppg.toFixed(1)}</td><td>{c.rpg.toFixed(1)}</td><td>{c.apg.toFixed(1)}</td>
+            <td>{statWhole(c.ppg)}</td><td>{statWhole(c.rpg)}</td><td>{statWhole(c.apg)}</td>
             <td>{clock.teamId === me && <button className="primary" onClick={() => onPick(c.id)}>Draft</button>}</td>
           </tr>)}</tbody>
         </table></div>

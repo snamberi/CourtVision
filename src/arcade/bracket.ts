@@ -19,10 +19,23 @@ export const roundOf = (slot: number) => ROUND_SLOTS.findIndex(([a, b]) => slot 
 
 function hash(s: string): number { let h = 2166136261; for (const ch of s) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
 
-/** The week's sixteen: champions and 60-win teams, one season per franchise, best seeded first. */
-export function bracketField(h: NbaHistory, week: string): HuntTeam[] {
-  const great = huntTeams(h).filter(t => t.end >= 1960 && (t.champion || t.w >= 60));
-  const shuffled = [...great].sort((a, b) => hash(`${week}|${a.id}`) - hash(`${week}|${b.id}`));
+/** Eras for a random bracket (seasons by the year they end). */
+export const BRACKET_ERAS = [
+  { id: 'all', label: 'All eras', from: 1960, to: 9999 },
+  { id: 'old', label: '1960-1989', from: 1960, to: 1989 },
+  { id: 'mid', label: '1990-2009', from: 1990, to: 2009 },
+  { id: 'new', label: '2010 to now', from: 2010, to: 9999 },
+] as const;
+export type BracketEra = typeof BRACKET_ERAS[number]['id'];
+
+/** Sixteen champions and great teams, one season per franchise, best seeded first. `key` is the week (or a random
+ *  bracket's seed); an era narrows the field, filled out with 55-win teams when it is short. */
+export function bracketField(h: NbaHistory, key: string, era: BracketEra = 'all'): HuntTeam[] {
+  const { from, to } = BRACKET_ERAS.find(e => e.id === era) ?? BRACKET_ERAS[0];
+  const all = huntTeams(h).filter(t => t.end >= from && t.end <= to);
+  const top = all.filter(t => t.champion || t.w >= 60);
+  const great = new Set(top.map(t => t.abbr)).size >= 16 ? top : all.filter(t => t.champion || t.w >= 55);
+  const shuffled = [...great].sort((a, b) => hash(`${key}|${a.id}`) - hash(`${key}|${b.id}`));
   const field: HuntTeam[] = [], used = new Set<string>();
   for (const t of shuffled) { if (used.has(t.abbr)) continue; used.add(t.abbr); field.push(t); if (field.length === 16) break; }
   return field.sort((a, b) => b.strength - a.strength || a.id.localeCompare(b.id));

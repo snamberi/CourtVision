@@ -8,6 +8,11 @@ import { TeamIdentityProvider } from './visuals/TeamIdentityContext';
 import { SaveRecoveryPanel } from './components/SaveRecoveryPanel';
 import { parseRoute, routeHash, type Tab } from './navigation/routes';
 import type { ArcadeTab } from './components/arcade/Arcade';
+import type { Challenge, CreateChoice } from './components/FranchiseCreate';
+import type { GamesId } from './worldGames/mode';
+import { applyCreateSettings, type CreateSettings } from './menu/createSettings';
+import { runWorldGamesIfDue, resolvePending } from './worldGames/league';
+import { WorldGamesPage } from './components/worldGames/WorldGamesPage';
 import { useGameHistory } from './navigation/useGameHistory';
 import { manageCoachRosters, normalizeRosterRules, ROSTER_LIMITS } from './simulation/coachRosters';
 import { currentDraftOrder } from './simulation/gm';
@@ -139,6 +144,8 @@ const StandingsPage = lazy(() => import('./components/StandingsPage').then(m => 
 const ThreeTeamTradePage = lazy(() => import('./components/ThreeTeamTradePage').then(m => ({ default: m.ThreeTeamTradePage })));
 const ExtensionsPage = lazy(() => import('./components/ExtensionsPage').then(m => ({ default: m.ExtensionsPage })));
 const Arcade = lazy(() => import('./components/arcade/Arcade').then(m => ({ default: m.Arcade })));
+const WorldGamesMode = lazy(() => import('./components/worldGames/WorldGamesMode').then(m => ({ default: m.WorldGamesMode })));
+const FranchiseCreate = lazy(() => import('./components/FranchiseCreate').then(m => ({ default: m.FranchiseCreate })));
 const PerfectChallenge = lazy(() => import('./components/perfect/PerfectChallenge').then(m => ({ default: m.PerfectChallenge })));
 const LeagueHunt = lazy(() => import('./components/hunt/LeagueHunt').then(m => ({ default: m.LeagueHunt })));
 const CareerImportPanel = lazy(() => import('./components/career/CareerImportPanel').then(m => ({ default: m.CareerImportPanel })));
@@ -240,8 +247,8 @@ function buildInitialExtras(league: League): GMLeagueExtras {
   };
 }
 
-type Screen = 'menu' | 'chooseTeam' | 'app' | 'hunt' | 'perfect' | 'career' | 'locker' | 'profile' | 'community' | 'draft' | 'settings' | 'arcade';
-const ARCADE_HASH: Record<ArcadeTab, string> = { guess: '#/guess', hilo: '#/higher-lower', bracket: '#/bracket' };
+type Screen = 'menu' | 'chooseTeam' | 'app' | 'hunt' | 'perfect' | 'career' | 'locker' | 'profile' | 'community' | 'draft' | 'settings' | 'arcade' | 'create' | 'worldGamesMode';
+const ARCADE_HASH: Record<ArcadeTab, string> = { guess: '#/guess', hilo: '#/higher-lower', bracket: '#/bracket', quiz: '#/quiz' };
 const arcadeTabOf = (hash: string) => (Object.entries(ARCADE_HASH).find(([, h]) => h === hash)?.[0] as ArcadeTab | undefined);
 
 const debouncedSave = createDebouncedSave();
@@ -324,9 +331,12 @@ function App() {
   const [coachSession, setCoachSession] = useState<{ base: League; baseExtras: GMLeagueExtras; gameId: string; teamId: string; commands: LiveCoachingCommand[]; committed: League; openCoach?: boolean } | null>(null);
   const [communityUser, setCommunityUser] = useState<string | null>(null);
   const [arcadeTab, setArcadeTab] = useState<ArcadeTab>('guess');
+  const [createChallenge, setCreateChallenge] = useState<Challenge>('free');
+  const [communityTab, setCommunityTab] = useState<'boards' | 'friends'>('boards');
+  const [worldGamesRun, setWorldGamesRun] = useState<{ games: GamesId; country: string } | null>(null);
   const [boxscoreSource, setBoxscoreSource] = useState<'league' | 'exhibition'>('league');
 
-  const currentRoute = screen === 'menu' ? '#/menu' : screen === 'chooseTeam' ? '#/choose-team' : screen === 'hunt' ? '#/hunt' : screen === 'perfect' ? '#/82-0' : screen === 'career' ? '#/career' : screen === 'locker' ? '#/locker' : screen === 'profile' ? '#/profile' : screen === 'settings' ? '#/settings' : screen === 'draft' ? '#/draft' : screen === 'arcade' ? ARCADE_HASH[arcadeTab] : screen === 'community' ? (communityUser ? `#/u/${encodeURIComponent(communityUser)}` : '#/community')
+  const currentRoute = screen === 'menu' ? '#/menu' : screen === 'chooseTeam' ? '#/choose-team' : screen === 'hunt' ? '#/hunt' : screen === 'perfect' ? '#/82-0' : screen === 'career' ? '#/career' : screen === 'locker' ? '#/locker' : screen === 'profile' ? '#/profile' : screen === 'settings' ? '#/settings' : screen === 'create' ? '#/new-league' : screen === 'worldGamesMode' ? '#/world-games' : screen === 'draft' ? '#/draft' : screen === 'arcade' ? ARCADE_HASH[arcadeTab] : screen === 'community' ? (communityUser ? `#/u/${encodeURIComponent(communityUser)}` : '#/community')
     : activeSaveId ? routeHash({ saveId: activeSaveId, tab, player: selectedPlayerId,
       team: viewedTeamId, game: viewedGameId ?? undefined, source: boxscoreSource, sub: leagueSettingsSub }) : null;
   const { restoring, showPrivacy, closePrivacy } = useGameHistory(currentRoute, async (hash, isCurrent) => {
@@ -342,7 +352,7 @@ function App() {
       setCommunityUser(profileMatch ? decodeURIComponent(profileMatch[1]) : null);
       const arcade = arcadeTabOf(hash);
       if (arcade) setArcadeTab(arcade);
-      setScreen(arcade ? 'arcade' : hash === '#/choose-team' && pendingLeague ? 'chooseTeam' : hash === '#/hunt' ? 'hunt' : hash === '#/82-0' ? 'perfect' : hash === '#/career' ? 'career' : hash === '#/locker' ? 'locker' : hash === '#/profile' ? 'profile' : hash === '#/settings' ? 'settings' : hash === '#/community' || profileMatch ? 'community' : hash === '#/draft' ? 'draft' : 'menu');
+      setScreen(arcade ? 'arcade' : hash === '#/choose-team' && pendingLeague ? 'chooseTeam' : hash === '#/hunt' ? 'hunt' : hash === '#/82-0' ? 'perfect' : hash === '#/career' ? 'career' : hash === '#/locker' ? 'locker' : hash === '#/profile' ? 'profile' : hash === '#/settings' ? 'settings' : hash === '#/new-league' ? 'create' : hash === '#/world-games' && worldGamesRun ? 'worldGamesMode' : hash === '#/community' || profileMatch ? 'community' : hash === '#/draft' ? 'draft' : 'menu');
       refreshSaves();
       return;
     }
@@ -428,8 +438,10 @@ function App() {
 
   const [menuBusy, setMenuBusy] = useState<string | null>(null);
   /** Builds a league from its origin (a new game, the weekly challenge, or a league code) and opens it. */
-  const startFromOrigin = (origin: LeagueOrigin, o: { name: string; teamId?: string | null; weekly?: WeeklyRebuild | null }) => {
-    const openWithTeam = (league: League, extras: GMLeagueExtras) => {
+  const startFromOrigin = (origin: LeagueOrigin, o: { name: string; teamId?: string | null; weekly?: WeeklyRebuild | null; settings?: CreateSettings }) => {
+    const openWithTeam = (built: League, builtExtras: GMLeagueExtras) => {
+      // League settings picked on the New Franchise page.
+      const { league, extras } = o.settings ? applyCreateSettings(built, builtExtras, o.settings, origin.kind === 'random') : { league: built, extras: builtExtras };
       if (o.teamId && league.teams.some(t => t.teamId === o.teamId)) { enterApp(league, extras, o.teamId, o.name); setTab('dashboard'); return; }
       setPendingLeague(league);
       setPendingExtras(extras);
@@ -478,6 +490,18 @@ function App() {
       startFromOrigin(origin, { name: `Challenge ${code.trim().toUpperCase()}`, teamId });
       return null;
     } catch (e) { return e instanceof Error ? e.message : String(e); }
+  };
+
+  /** The New Franchise page's Start: a league (real, random or your own data), a Rebuild, or the All-Time Draft. */
+  const startFromCreate = (c: CreateChoice) => {
+    if (c.kind === 'draft') { track('mode_start', { mode: 'draft', variant: 'create' }); setScreen('draft'); return; }
+    if (c.kind === 'rebuild') { startGameMode('rebuild', 'normal', '', '', undefined, c.scenario); return; }
+    if (c.kind === 'worldgames') { setWorldGamesRun({ games: c.games, country: c.country }); setScreen('worldGamesMode'); return; }
+    const seed = Math.floor(Math.random() * 1_000_000);
+    track('mode_start', { mode: c.source === 'random' ? 'random' : 'real', variant: c.source });
+    if (c.source === 'random') startFromOrigin({ kind: 'random', year: parseInt(c.year, 10), seed, difficulty: c.difficulty, balanced: true }, { name: c.name, settings: c.settings });
+    else if (c.source === 'history') startFromOrigin({ kind: 'history', year: parseInt(c.year, 10), seed, difficulty: c.difficulty, ...c.real }, { name: c.name, settings: c.settings });
+    else startGameMode('real', c.difficulty, c.year, c.name, { source: 'csv', realDevelopment: true });
   };
 
   const startGameMode = (mode: GameMode, difficulty: TradeDifficulty, year: string, leagueName: string, real?: RealLeagueOptions, scenarioId?: string) => {
@@ -953,9 +977,7 @@ function App() {
   // Resign/Waive — the "I don't want to make picks by hand" fast path.
   const simEntireDraftAndContinue = () => {
     const result = simEntireDraft(league, extras);
-    setLeague(result.league);
-    setExtras(result.extras);
-    beginResignWaivePhase();
+    beginResignWaivePhase({ league: result.league, extras: result.extras });
     pushToast(`Draft complete — ${result.picks.length} picks made.`, 'success');
   };
 
@@ -1002,13 +1024,28 @@ function App() {
     setTab('draft');
   };
 
-  const beginResignWaivePhase = () => {
-    setExtras((e) => ({ ...e, draftDayOpen: false }));
-    setLeague((l) => ({ ...l, seasonPhase: 'resign_waive', calendarDate: addDays(l.calendarDate ?? '', 1) }));
-    setTab('resignWaive');
+  const [worldGamesNext, setWorldGamesNext] = useState(false);
+  const beginResignWaivePhase = (base?: { league: League; extras: GMLeagueExtras }) => {
+    const cur = base && 'league' in base ? base : { league, extras };
+    const moved: League = { ...cur.league, seasonPhase: 'resign_waive', calendarDate: addDays(cur.league.calendarDate ?? '', 1) };
+    // The World Games, every four summers right after the draft: the AI plays it now, or it waits for your twelve.
+    const games = runWorldGamesIfDue(moved, cur.extras.freeAgents, seed + 31_337);
+    setExtras({ ...cur.extras, draftDayOpen: false, freeAgents: games.freeAgents });
+    setLeague(games.league);
+    if (games.record || games.pending) {
+      setWorldGamesNext(true);
+      setTab('worldGames');
+      if (games.record) pushToast(`World Games ${games.record.year}: ${games.record.gold} take gold, ${games.record.silver} silver, ${games.record.bronze} bronze.`, 'success');
+    } else setTab('resignWaive');
   };
 
   const beginFreeAgencyPhase = () => {
+    // A World Games you were going to coach but didn't play: the AI plays it out now.
+    if (league.worldGames?.pending) {
+      const games = resolvePending(league, extras.freeAgents, seed + 31_337);
+      setExtras((e) => ({ ...e, freeAgents: games.freeAgents }));
+      setLeague({ ...games.league });
+    }
     setExtras((e) => ({ ...e, freeAgencyOpen: true, freeAgencyDaysRemaining: league.settings.freeAgencyDurationDays ?? 30 }));
     setLeague((l) => ({ ...l, seasonPhase: 'free_agency' }));
     setTab('freeAgency');
@@ -1348,17 +1385,21 @@ function App() {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening the draft room…</main>}><AllTimeDraft onExit={() => setScreen('menu')} onStart={(l, e, teamId, name) => { enterApp(l, e, teamId, name); setTab('dashboard'); }} /></Suspense></>;
   }
   if (screen === 'community') {
-    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Community…</main>}><Community onExit={() => { setCommunityUser(null); setScreen('menu'); }} user={communityUser} onUser={u => setCommunityUser(u || null)} /></Suspense></>;
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Community…</main>}><Community key={communityTab} initialTab={communityTab} onExit={() => { setCommunityUser(null); setScreen('menu'); }} user={communityUser} onUser={u => setCommunityUser(u || null)} /></Suspense></>;
   }
   // The GM Locker lives in the Player Profile now: an old #/locker link opens its Trophy room.
   if (screen === 'profile' || screen === 'locker') {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening your profile…</main>}><ProfileHub key={screen} initialTab={screen === 'locker' ? 'trophies' : 'profile'} onExit={() => setScreen('menu')} /></Suspense></>;
   }
   if (screen === 'settings') {
-    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><SettingsPage onExit={() => setScreen('menu')} backups={<>
-      <BackupPanel />
-      <SaveRecoveryPanel beforeAction={async () => { await debouncedSave.flush(); }} onOpen={async id => { jobs.resetAll(); await debouncedSave.flush(); await continueSavedUniverse(id); }} />
-    </>} /></>;
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><SettingsPage onExit={() => setScreen('menu')} backup={<BackupPanel />}
+      recovery={<SaveRecoveryPanel beforeAction={async () => { await debouncedSave.flush(); }} onOpen={async id => { jobs.resetAll(); await debouncedSave.flush(); await continueSavedUniverse(id); }} />} /></>;
+  }
+  if (screen === 'worldGamesMode' && worldGamesRun) {
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening the World Games…</main>}><WorldGamesMode key={`${worldGamesRun.games}-${worldGamesRun.country}`} games={worldGamesRun.games} country={worldGamesRun.country} onExit={() => setScreen('menu')} onNew={() => { setCreateChallenge('worldgames'); setScreen('create'); }} /></Suspense></>;
+  }
+  if (screen === 'create') {
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening New Franchise…</main>}><FranchiseCreate key={createChallenge} initial={createChallenge} busy={menuBusy} onBack={() => setScreen('menu')} onStart={startFromCreate} /></Suspense></>;
   }
   if (screen === 'arcade') {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening the quick games…</main>}><Arcade tab={arcadeTab} onTab={setArcadeTab} onExit={() => setScreen('menu')} /></Suspense></>;
@@ -1382,7 +1423,7 @@ function App() {
           onStart={startGameMode}
           onLocker={() => setScreen('locker')}
           onProfile={() => setScreen('profile')}
-          onCommunity={() => { setCommunityUser(null); setScreen('community'); }}
+          onCommunity={t => { setCommunityUser(null); setCommunityTab(t ?? 'boards'); setScreen('community'); }}
           onCode={startFromCode}
           busy={menuBusy}
           saves={saveSummaries}
@@ -1390,6 +1431,7 @@ function App() {
           onDeleteSave={handleDeleteSave}
           onSettings={() => setScreen('settings')}
           onArcade={t => { setArcadeTab(t); setScreen('arcade'); }}
+          onCreate={c => { setCreateChallenge(c ?? 'free'); setScreen('create'); }}
           onRenameSave={handleRenameSave}
         />
 
@@ -1427,7 +1469,7 @@ function App() {
         </button>
         <div className="brand">
           <img src={logoIcon} alt="" className="brand-logo" />
-          <span className="brand-word">COURTVISION</span>
+          <span className="brand-word">COURT VISION</span>
         </div>
         {controlledTeam && topbarRecord ? (
           <div className="topbar-team">
@@ -1483,7 +1525,7 @@ function App() {
         hasUpcomingDraftPick={hasUpcomingDraftPick}
         onSimToMyNextPick={simToMyNextDraftPick}
         onSimEntireDraftAndContinue={simEntireDraftAndContinue}
-        onContinueToResignWaive={beginResignWaivePhase}
+        onContinueToResignWaive={() => beginResignWaivePhase()}
         onContinueToFreeAgency={beginFreeAgencyPhase}
         freeAgencyDaysRemaining={extras.freeAgencyDaysRemaining}
         onSkipFreeAgencyAndContinue={skipFreeAgencyAndContinue}
@@ -1721,11 +1763,18 @@ function App() {
         )}
         {tab === 'summerLeague' && <SummerLeaguePage league={league} controlledTeamId={controlledTeamId} canPlay={canPlaySummerLeague(league, extras)} busy={summerBusy}
           onPlay={playSummerLeague} onSelectPlayer={selectPlayer}
-          onContinue={seasonPhase === 'draft' && !extras.draftDayOpen && extras.draftPickIndex > 0 ? beginResignWaivePhase : undefined} />}
+          onContinue={seasonPhase === 'draft' && !extras.draftDayOpen && extras.draftPickIndex > 0 ? () => beginResignWaivePhase() : undefined} />}
 
         {tab === 'staff' && <StaffPage league={league} controlledTeamId={controlledTeamId} sandboxMode={sandboxMode} onChange={setLeague} />}
         {tab === 'development' && <DevelopmentCenterPage league={league} controlledTeamId={controlledTeamId} sandboxMode={sandboxMode} onChange={setLeague} onSelectPlayer={id => { selectPlayer(id); setTab('playerDevelopment'); }} />}
         {tab === 'coaching' && <CoachingPage onOpenStaff={() => setTab('staff')} onOpenDevelopment={() => setTab('development')} sandboxMode={sandboxMode} league={league} controlledTeamId={controlledTeamId} onChange={setLeague} onOpenRoster={() => setTab('roster')} />}
+
+        {tab === 'worldGames' && (
+          <WorldGamesPage league={league} freeAgents={extras.freeAgents} controlledTeamId={controlledTeamId} seed={seed + 31_337}
+            onChange={(l, fa) => { setLeague(l); setExtras(e => ({ ...e, freeAgents: fa })); }}
+            onContinue={worldGamesNext && league.seasonPhase === 'resign_waive' && !league.worldGames?.pending ? () => { setWorldGamesNext(false); setTab('resignWaive'); } : undefined}
+            onSelectPlayer={selectPlayer} />
+        )}
 
         {tab === 'allStarWeekend' && (
           <AllStarWeekendPage
@@ -1829,7 +1878,7 @@ function App() {
         )}
 
         {(tab === 'settings' || tab === 'imports') && (
-          <div className="settings-page">
+          <div className="settings-page settings-cards">
             {league.teams.length === 0 && <section className="import-setup"><span className="pixel-eyebrow">LEAGUE SETUP</span><h2>Import your league</h2><p>Real League starts with your CSV data. Preview the players below, then build your teams to begin.</p><button onClick={() => document.getElementById('csv-league-import')?.scrollIntoView({ behavior: 'smooth' })}>Go to CSV Import</button></section>}
             <section>
               <h4>Menu</h4>
@@ -1874,7 +1923,7 @@ function App() {
               </label>
             </section>}
 
-            <section>
+            <section className="wide">
               <h4>Save / Load Universe</h4>
               <SaveRecoveryPanel saveId={activeSaveId} beforeAction={async () => { await debouncedSave.flush(); }} onOpen={async id => { jobs.resetAll(); await debouncedSave.flush(); await continueSavedUniverse(id); }} />
               <div className="code-mode-actions">
@@ -1888,7 +1937,7 @@ function App() {
               </div>
             </section>
 
-            {(sandboxMode || league.teams.length === 0) && <section>
+            {(sandboxMode || league.teams.length === 0) && <section className="wide">
               <h4 id="csv-league-import">Import Data (CSV to league/roster)</h4>
               <ImportPage teams={league.teams} onAddToTeam={addImportedPlayers} onBuildLeague={buildLeagueFromImport} />
             </section>}

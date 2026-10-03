@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { plural } from '../lib/humanize';
 import type { League } from '../simulation/league';
 import type { GMLeagueExtras } from '../simulation/gm';
 import { calculateOverall } from '../simulation/engine/overall';
@@ -65,7 +66,7 @@ export function ExtensionsPage({ league, extras, controlledTeamId, onChange, onS
         <label>Years <select value={years} onChange={e => setYears(Number(e.target.value))}>{[1, 2, 3, 4, 5].map(y => <option key={y}>{y}</option>)}</select></label>
         <button className="primary" onClick={offer}>Make offer</button>
         <button onClick={() => { onChange(league, storeExtensionTalks(extras, walkAway(talks))); setTalkingTo(null); }}>Walk away</button>
-      </div> : <p className="hint-text">{talks.status === 'agreed' ? `Extension agreed: ${talks.deal?.yearsRemaining} years at ${money(talks.deal?.annualSalary ?? 0)} a year.` : 'Talks are over for this season.'}</p>}
+      </div> : <p className="hint-text">{talks.status === 'agreed' ? `Extension agreed: ${plural(talks.deal?.yearsRemaining ?? 0, 'year')} at ${money(talks.deal?.annualSalary ?? 0)} a year.` : 'Talks are over for this season.'}</p>}
       <button className="link-button" onClick={() => setTalkingTo(null)}>Close</button>
     </section>}
   </div>;

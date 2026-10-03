@@ -1,4 +1,5 @@
 import type { League } from '../simulation/league';
+import { plural } from '../lib/humanize';
 import { computeStandings } from '../simulation/league';
 import type { Contract } from '../simulation/gm';
 import { rebuildSnapshot, type RebuildSnapshot } from '../simulation/rebuildSnapshot';
@@ -74,7 +75,7 @@ export function ChallengeBanner({ league, contracts, onMenu }: { league: League;
       <h2>{p.scenario.title}</h2>
       {!over && <p>Season <b>{p.seasonNumber}</b> of {p.config.seasons} · win a championship before the clock runs out{left === 1 ? ': this is the last season' : ''}.</p>}
       {p.status === 'won' && <p className="rb-verdict">Champions in season {p.titleIn}! The rebuild is complete.</p>}
-      {p.status === 'failed' && <p className="rb-verdict">{p.fired ? 'You were fired: the challenge is over.' : `Time is up: no title in ${p.config.seasons} seasons.`}</p>}
+      {p.status === 'failed' && <p className="rb-verdict">{p.fired ? 'You were fired: the challenge is over.' : `Time is up: no title in ${plural(p.config.seasons, 'season')}.`}</p>}
     </div>
     <div className="rb-score"><small>SCORE</small><b>{p.score.toLocaleString()}</b><Stars n={p.stars} />{best && <small>Best {best.best.toLocaleString()}</small>}</div>
     {contracts && <BeforeAfter league={league} contracts={contracts} p={p} />}
@@ -83,7 +84,7 @@ export function ChallengeBanner({ league, contracts, onMenu }: { league: League;
     {over && <div className="contest-actions"><button className="primary" onClick={onMenu}>Back to the menu</button>
       <ShareCardButton fileName={`rebuild-${p.scenario.id}.png`} text={`Rebuild Challenge: ${p.scenario.title} · ${'★'.repeat(p.stars)}${'☆'.repeat(3 - p.stars)} · ${p.score.toLocaleString()} points`} spec={{
         kicker: `${p.config.weekly ? `Rebuild of the Week ${p.config.weekly.week}` : 'Rebuild Challenge'} · ${p.scenario.difficulty}`, title: p.scenario.title, stars: p.stars,
-        subtitle: p.status === 'won' ? `Champions in season ${p.titleIn} of ${p.config.seasons}` : p.fired ? 'Fired before the job was done' : `No title in ${p.config.seasons} seasons`,
+        subtitle: p.status === 'won' ? `Champions in season ${p.titleIn} of ${p.config.seasons}` : p.fired ? 'Fired before the job was done' : `No title in ${plural(p.config.seasons, 'season')}`,
         stats: [{ label: 'Score', value: p.score.toLocaleString() }, { label: 'Seasons', value: String(p.results.length) }, { label: 'Best record', value: (() => { const b = [...p.results].sort((x, y) => y.wins - x.wins)[0]; return b ? `${b.wins}-${b.losses}` : '—'; })() }],
         lines: p.results.map((r, i) => `Year ${i + 1}: ${r.wins}-${r.losses} · ${r.finish}`), accent: p.status === 'won' ? 'gold' : 'red',
       }} /><span className="hint-text">Or keep playing: the league goes on, the score is final.</span></div>}

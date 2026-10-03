@@ -13,11 +13,29 @@ export interface GuessDay { guesses: number[]; won: boolean }
 export interface BracketResult { slot: number; high: string; low: string; wh: number; wl: number; winner: string }
 /** A week's bracket: picks lock at tip-off; then the results and the score. */
 export interface BracketWeek { picks: string[]; locked: boolean; played: boolean; score: number; champion?: string; results?: BracketResult[] }
+/** Endless play (any time, not on the weekly boards): totals and bests. */
+export interface EndlessRecords {
+  guess: { played: number; won: number; streak: number; best: number };
+  bracket: { played: number; best: number };
+  quiz: { played: number; best: number; right: number; answered: number };
+}
 export interface ArcadeRecords {
   guess: Record<string, GuessDay>;
   hilo: { best: number; runs: number; weeks: Record<string, number> };
   bracket: Record<string, BracketWeek>;
+  endless?: EndlessRecords;
 }
+export const emptyEndless = (): EndlessRecords => ({ guess: { played: 0, won: 0, streak: 0, best: 0 }, bracket: { played: 0, best: 0 }, quiz: { played: 0, best: 0, right: 0, answered: 0 } });
+const n = (v: unknown) => (Number.isFinite(Number(v)) && Number(v) >= 0 ? Math.floor(Number(v)) : 0);
+function readEndless(e: Partial<EndlessRecords> | undefined): EndlessRecords {
+  return {
+    guess: { played: n(e?.guess?.played), won: n(e?.guess?.won), streak: n(e?.guess?.streak), best: n(e?.guess?.best) },
+    bracket: { played: n(e?.bracket?.played), best: Math.min(n(e?.bracket?.best), 320) },
+    quiz: { played: n(e?.quiz?.played), best: n(e?.quiz?.best), right: n(e?.quiz?.right), answered: n(e?.quiz?.answered) },
+  };
+}
+/** This browser's endless records (never missing). */
+export const endlessOf = (r: ArcadeRecords) => r.endless ?? emptyEndless();
 
 export const GUESS_TRIES = 6;
 /** A day is over once it is solved or all six guesses are used. */
@@ -32,6 +50,7 @@ export function readArcade(read: (k: string) => string | null = k => { try { ret
       guess: r.guess && typeof r.guess === 'object' ? r.guess : {},
       hilo: { best: Number(r.hilo?.best) || 0, runs: Number(r.hilo?.runs) || 0, weeks: r.hilo?.weeks && typeof r.hilo.weeks === 'object' ? r.hilo.weeks : {} },
       bracket: r.bracket && typeof r.bracket === 'object' ? r.bracket : {},
+      endless: readEndless(r.endless),
     };
   } catch { return empty(); }
 }
@@ -50,6 +69,11 @@ export function mergeArcade(a: ArcadeRecords, b: ArcadeRecords): ArcadeRecords {
   for (const [day, d] of Object.entries(a.guess)) { const o = out.guess[day]; if (!o || (done(d) && !done(o)) || (done(d) === done(o) && d.guesses.length > o.guesses.length)) out.guess[day] = d; }
   for (const [w, s] of Object.entries(a.hilo.weeks)) out.hilo.weeks[w] = Math.max(s, out.hilo.weeks[w] ?? 0);
   for (const [w, x] of Object.entries(a.bracket)) { const o = out.bracket[w]; if (!o || (x.played && !o.played) || (x.played === o.played && x.score > o.score)) out.bracket[w] = x; }
+  // Endless totals: the larger of each (the device that has played more holds the full count).
+  if (a.endless || b.endless) {
+    const ea = endlessOf(a), eb = endlessOf(b), max = <T extends Record<string, number>>(x: T, y: T) => Object.fromEntries(Object.keys(x).map(k => [k, Math.max(x[k], y[k])])) as T;
+    out.endless = { guess: max(ea.guess, eb.guess), bracket: max(ea.bracket, eb.bracket), quiz: max(ea.quiz, eb.quiz) };
+  }
   return out;
 }
 

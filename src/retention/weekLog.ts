@@ -7,8 +7,8 @@ import { weekKey } from './week';
  */
 
 export const WEEK_LOG_KEY = 'cv-week-log';
-export type LogMode = 'hunt' | 'perfect' | 'career' | 'rebuild' | 'draft' | 'guess' | 'hilo' | 'bracket';
-export const LOG_LABEL: Record<LogMode, [string, string]> = { hunt: ['League Hunt', 'League Hunts'], perfect: ['82-0 run', '82-0 runs'], career: ['career', 'careers'], rebuild: ['rebuild', 'rebuilds'], draft: ['All-Time Draft', 'All-Time Drafts'], guess: ['Guess the Player day', 'Guess the Player days'], hilo: ['Higher or Lower run', 'Higher or Lower runs'], bracket: ['bracket', 'brackets'] };
+export type LogMode = 'hunt' | 'perfect' | 'career' | 'rebuild' | 'draft' | 'guess' | 'hilo' | 'bracket' | 'quiz';
+export const LOG_LABEL: Record<LogMode, [string, string]> = { hunt: ['League Hunt', 'League Hunts'], perfect: ['82-0 run', '82-0 runs'], career: ['career', 'careers'], rebuild: ['rebuild', 'rebuilds'], draft: ['All-Time Draft', 'All-Time Drafts'], guess: ['Guess the Player day', 'Guess the Player days'], hilo: ['Higher or Lower run', 'Higher or Lower runs'], bracket: ['bracket', 'brackets'], quiz: ['quiz round', 'quiz rounds'] };
 export interface WeekBest { score: number; line: string }
 export interface WeekEntry { seconds: number; runs: Partial<Record<LogMode, number>>; best: Partial<Record<LogMode, WeekBest>>; records: number; /** Runs already counted (a save can come through twice). */ ids?: string[] }
 export type WeekLog = Record<string, WeekEntry>;

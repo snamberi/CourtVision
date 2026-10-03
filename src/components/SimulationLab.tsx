@@ -3,6 +3,7 @@ import type { TeamInput } from '../simulation/engine/game';
 import type { GameSettings } from '../simulation/types';
 import type { BatchSimulationResult } from '../simulation/engine/batchSimulate';
 import type { WorkerOutMessage } from '../workers/simulationWorker';
+import { statWhole } from './statFormat';
 
 interface Props {
   home: TeamInput;
@@ -58,9 +59,9 @@ export function SimulationLab({ home, away, settings, focusPlayerId }: Props) {
           <table className="sim-lab-results">
             <tbody>
               <tr><td>Games</td><td>{result.games}</td></tr>
-              <tr><td>PPG</td><td>{result.ppg.toFixed(1)}</td></tr>
-              <tr><td>RPG</td><td>{result.rpg.toFixed(1)}</td></tr>
-              <tr><td>APG</td><td>{result.apg.toFixed(1)}</td></tr>
+              <tr><td>PPG</td><td>{statWhole(result.ppg)}</td></tr>
+              <tr><td>RPG</td><td>{statWhole(result.rpg)}</td></tr>
+              <tr><td>APG</td><td>{statWhole(result.apg)}</td></tr>
               <tr><td>SPG</td><td>{result.spg.toFixed(2)}</td></tr>
               <tr><td>BPG</td><td>{result.bpg.toFixed(2)}</td></tr>
               <tr><td>FG%</td><td>{(result.fgPct * 100).toFixed(1)}</td></tr>

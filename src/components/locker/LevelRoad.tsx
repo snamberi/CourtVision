@@ -1,3 +1,5 @@
+import { PhonePreview } from '../ProfilePreviews';
+import { PHONES } from '../../profile/profile';
 import { useEffect, useRef, useState } from 'react';
 import { LEVEL_ROAD, NAME_COLORS, iconDef, type RewardKind } from '../../profile/cosmetics';
 import { THEME_BY_ID, type ThemeId } from '../../theme/themes';
@@ -19,6 +21,7 @@ function Reward({ kind, id }: { kind: RewardKind; id: string }) {
     const p = t?.preview;
     return <span className="road-reward road-look-reward">{p && <i className="road-look" aria-hidden="true" style={{ background: p.bg, borderColor: p.line }}><i style={{ background: p.panel, borderColor: p.line }} /><i style={{ background: p.accent }} /></i>}<small>{t?.name ?? id} app look</small></span>;
   }
+  if (kind === 'phone') return <span className="road-reward"><PhonePreview phone={id} size={26} /><small>{PHONES.find(f => f.id === id)?.name ?? id} phone</small></span>;
   if (kind === 'frame') return <span className="road-reward"><i className={`road-frame frame-${id}`} aria-hidden="true" /><small>{FRAMES.find(f => f.id === id)?.name ?? id} card frame</small></span>;
   return <span className="road-reward"><i className={`road-floor floor-${id}`} aria-hidden="true" /><small>{FLOORS.find(f => f.id === id)?.name ?? id} court</small></span>;
 }

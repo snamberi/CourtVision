@@ -308,6 +308,8 @@ export interface PlayerSeason {
   highRatings?: boolean;
   /** Honours won in real NBA history before this league's start (imported, never simulated). */
   historicalAwards?: HistoricalAward[];
+  /** World Games medals: real ones from before the league began, then the league's own (see worldGames/). */
+  worldGames?: import('../worldGames/data').WorldMedal[];
 
   // ---- Identity / biographical (fully editable in Sandbox mode) ----
   firstName?: string;

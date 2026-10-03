@@ -17,8 +17,9 @@ interface Row { season: PlayerSeason; teamName: string; s: SeasonStatTotals; p: 
 interface Col { key: string; label: string; title?: string; value: (r: Row) => number; fmt: (v: number) => string; lowerIsBetter?: boolean }
 
 const gp = (s: SeasonStatTotals) => Math.max(1, s.gamesPlayed);
-const f1 = (v: number) => v.toFixed(1), f2 = (v: number) => v.toFixed(2), f3 = (v: number) => v.toFixed(3).replace(/^0/, ''), i0 = (v: number) => Math.round(v).toString();
-const pct = (v: number) => (v * 100).toFixed(1);
+// Per-game numbers and percentages show as whole numbers; ratios that need decimals (PTS/FGA, WS/48) keep them.
+const f1 = (v: number) => Math.round(v).toString(), f2 = (v: number) => v.toFixed(2), f3 = (v: number) => v.toFixed(3).replace(/^0/, ''), i0 = (v: number) => Math.round(v).toString();
+const pct = (v: number) => Math.round(v * 100).toString();
 const safe = (n: number, d: number) => d > 0 ? n / d : 0;
 const perGameCols = (pick: (r: Row) => SeasonStatTotals): Col[] => [
   { key: 'mpg', label: 'MIN', value: r => pick(r).minutes / gp(pick(r)), fmt: f1 },
@@ -135,7 +136,9 @@ export function PlayerStatsPage({ teams, league, onSelect }: Props) {
       </div>
       {(view === 'advanced' || view === 'winShares') && <p className="hint-text">Regular season only. PER is scaled so the league average is 15; win shares estimate how many team wins a player produced on offense (OWS) and defense (DWS).</p>}
       {rows.length === 0 ? (
-        <p className="empty-state">{view === 'playoffs' ? 'No playoff games played yet this season.' : 'No players match — try lowering the minimum games played.'}</p>
+        <p className="empty-state">{view === 'playoffs' ? 'No playoff games played yet this season.'
+          : !teams.some(t => t.seasons.some(s => (s.seasonStats?.gamesPlayed ?? 0) > 0)) ? 'No games played yet this season: stats show up after the first tip-off.'
+          : query ? `No player matches "${query}".` : 'No players match — try lowering the minimum games played.'}</p>
       ) : (
         <div className="stat-table-scroll"><table className="db-table stat-line-table">
           <thead><tr><th className="col-name">Name</th><th>Team</th>{view !== 'playoffs' && <th>GP</th>}

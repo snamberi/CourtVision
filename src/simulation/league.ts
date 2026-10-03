@@ -197,6 +197,8 @@ export interface ScheduledGame {
 export type SeasonPhase = 'regular_season' | 'all_star' | 'playoffs' | 'awards_recap' | 'draft' | 'resign_waive' | 'free_agency' | 'preseason';
 
 export interface League {
+  /** The World Games every four summers: past results, the on/off switch, and the country you coach (see worldGames/league.ts). */
+  worldGames?: import('../worldGames/league').LeagueWorldGames;
   /** The Owner's Box: you own a team and an AI GM runs it (see ownerBox.ts). */
   owner?: import('./ownerBox').OwnerState;
   /** League office: rule votes, expansion bids, relocations (see ownerBox.ts). */

@@ -25,7 +25,7 @@ function albumCounts(read: Read): { sets: number; legendary: number } {
  * achievements this browser has already announced (modeUnlocks.ts); Supporter items read the entitlements (billing).
  */
 
-export type RewardKind = 'icon' | 'color' | 'title' | 'frame' | 'floor' | 'look' | 'avatar' | 'avatarFrame';
+export type RewardKind = 'icon' | 'color' | 'title' | 'frame' | 'floor' | 'look' | 'avatar' | 'avatarFrame' | 'phone';
 export type Rule = { level: number } | { rank: number } | { honor: string } | { mode: string } | { anyHonor: true } | { supporter: true } | { trophies: number } | { album: 'sets' | 'legendary'; n: number } | { owner: number } | { staff: true };
 /** Animated cosmetics (the Trophy Road): see features.css `.anim-*` and `.icon-anim-*`. */
 export type IconAnim = 'flicker' | 'shine' | 'spin' | 'twinkle' | 'flash' | 'glow' | 'bob';
@@ -104,6 +104,8 @@ export const LEVEL_ROAD: [number, RewardKind, string][] = [
   [700, 'title', 'Legendary Ascendant'], [700, 'color', 'celestialblue'],
   [750, 'title', 'The Final Boss'], [750, 'color', 'infinity'], [750, 'icon', 'goat-gold'],
 ];
+// Menu phone looks (see PHONES in profile.ts).
+LEVEL_ROAD.push([20, 'phone', 'courtside'], [45, 'phone', 'hardwood'], [85, 'phone', 'jersey'], [140, 'phone', 'neon'], [185, 'phone', 'handheld']);
 // Profile-picture frames (avatarFrames.ts).
 LEVEL_ROAD.push([30, 'avatarFrame', 'rookie'], [120, 'avatarFrame', 'courtside'], [300, 'avatarFrame', 'neon']);
 // Your character's pieces on the road (ids are "category:piece"; see AVATAR_LEVEL_ROAD in avatar.ts).

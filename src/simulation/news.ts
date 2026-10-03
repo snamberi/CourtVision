@@ -45,6 +45,15 @@ export function generateNewsFeed(league: League, extras: GMLeagueExtras, maxItem
   const items: NewsItem[] = [];
   const add = (item: NewsItem) => items.push({ season, ...item, id: `${item.season ?? season}:${item.id}` });
   const players = [...league.teams.flatMap(t => t.seasons), ...extras.freeAgents];
+  // The latest World Games, while it is this summer's news.
+  const wg = league.worldGames?.history.at(-1);
+  if (wg && !activeSeasonPhase(league)) {
+    const final = wg.games.find(g => g.stage === 'final');
+    add({ id: `world-games:${wg.year}`, category: 'League', teamId: null, teamName: null,
+      headline: `${wg.gold} win the ${wg.year} World Games in ${wg.city}.`,
+      detail: `${final ? `Final: ${final.a} ${final.as}-${final.bs} ${final.b}. ` : ''}Silver for ${wg.silver}, bronze for ${wg.bronze}.${wg.mvp ? ` Tournament MVP: ${wg.mvp.id} (${wg.mvp.country}).` : ''}`,
+      playerId: wg.mvp?.id, order: 300_000 });
+  }
   for (const player of players) {
     (player.history ?? []).forEach((event, index) => {
       if (!['drafted', 'injury', 'traded', 'signed', 'waived', 'resigned', 'moved', 'trade_request'].includes(event.type)) return;
@@ -238,3 +247,5 @@ export function generateNewsFeed(league: League, extras: GMLeagueExtras, maxItem
   for (const item of [...(league.newsArchive ?? []), ...items]) unique.set(item.id, item);
   return [...unique.values()].sort((a, b) => (b.season ?? '').localeCompare(a.season ?? '', undefined, { numeric: true }) || (b.order ?? 0) - (a.order ?? 0) || a.id.localeCompare(b.id)).slice(0, Math.max(0, maxItems));
 }
+
+const activeSeasonPhase = (league: League) => !['draft', 'resign_waive', 'free_agency', 'preseason'].includes(league.seasonPhase ?? 'regular_season');

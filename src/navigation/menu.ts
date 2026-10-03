@@ -30,6 +30,7 @@ export const GROUPS: NavGroup[] = [
       { label: 'Playoffs', tab: 'playoffs' },
       { label: 'In-Season Cup', tab: 'cup' },
       { label: 'All-Star', tab: 'allStarWeekend' },
+      { label: 'World Games', tab: 'worldGames' },
       { label: 'Schedule', tab: 'schedule' },
       { label: 'Daily Schedule', tab: 'dailySchedule' },
       { label: 'Road Trips', tab: 'travel', requiresControlledTeam: true },

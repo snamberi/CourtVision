@@ -147,13 +147,13 @@ function ReportCard({ b, season, honors }: { b: { p: DraftProspect; report: Retu
   </div>;
 }
 
-const pct = (v: number) => `${(v * 100).toFixed(1)}%`;
+const pct = (v: number) => `${Math.round(v * 100)}%`;
 
 type CollegeKey = 'gp' | 'mpg' | 'ppg' | 'rpg' | 'apg' | 'spg' | 'bpg' | 'fgPct' | 'tpPct' | 'ftPct';
 const COLLEGE_COLS: { key: CollegeKey; label: string; fmt: (v: number) => string }[] = [
-  { key: 'gp', label: 'GP', fmt: v => `${v}` }, { key: 'mpg', label: 'MIN', fmt: v => v.toFixed(1) }, { key: 'ppg', label: 'PTS', fmt: v => v.toFixed(1) },
-  { key: 'rpg', label: 'REB', fmt: v => v.toFixed(1) }, { key: 'apg', label: 'AST', fmt: v => v.toFixed(1) }, { key: 'spg', label: 'STL', fmt: v => v.toFixed(1) },
-  { key: 'bpg', label: 'BLK', fmt: v => v.toFixed(1) }, { key: 'fgPct', label: 'FG%', fmt: pct }, { key: 'tpPct', label: '3P%', fmt: pct }, { key: 'ftPct', label: 'FT%', fmt: pct },
+  { key: 'gp', label: 'GP', fmt: v => `${v}` }, { key: 'mpg', label: 'MIN', fmt: v => String(Math.round(v)) }, { key: 'ppg', label: 'PTS', fmt: v => String(Math.round(v)) },
+  { key: 'rpg', label: 'REB', fmt: v => String(Math.round(v)) }, { key: 'apg', label: 'AST', fmt: v => String(Math.round(v)) }, { key: 'spg', label: 'STL', fmt: v => String(Math.round(v)) },
+  { key: 'bpg', label: 'BLK', fmt: v => String(Math.round(v)) }, { key: 'fgPct', label: 'FG%', fmt: pct }, { key: 'tpPct', label: '3P%', fmt: pct }, { key: 'ftPct', label: 'FT%', fmt: pct },
 ];
 
 /** Every prospect's pre-draft season, sortable. Games played follow the league calendar. */

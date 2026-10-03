@@ -35,3 +35,10 @@ export function ShareFramePreview({ frame, width = 360 }: { frame: FrameId; widt
   return url?.frame === frame ? <img className="share-preview" src={url.src} width={width} height={Math.round(width * 630 / 1200)} alt={`Share card with the ${frame} frame`} />
     : <span className="share-preview share-preview-loading" style={{ width, height: Math.round(width * 630 / 1200) }} aria-hidden="true" />;
 }
+
+/** A small menu phone in a phone look (the same skins as the menu's MenuPhone). */
+export function PhonePreview({ phone, size = 46 }: { phone: string; size?: number }) {
+  return <span className={`phone-mini phone-skin-${phone}`} style={{ width: size, height: Math.round(size * 1.7), padding: `${Math.round(size * 0.17)}px ${Math.round(size * 0.14)}px` }} aria-hidden="true">
+    <i className="phone-mini-screen"><i /><i /><i /><i /></i>
+  </span>;
+}

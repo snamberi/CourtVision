@@ -140,7 +140,7 @@ function PlayerRows({
     return acc;
   }, { fgm: 0, fga: 0, tpm: 0, tpa: 0, ftm: 0, fta: 0, oreb: 0, dreb: 0, ast: 0, tov: 0, stl: 0, blk: 0, ba: 0, pf: 0, points: 0 });
 
-  const fmtPct = (n: number, d: number) => (d > 0 ? `${((n / d) * 100).toFixed(1)}%` : '0.0%');
+  const fmtPct = (n: number, d: number) => (d > 0 ? `${Math.round((n / d) * 100)}%` : '0%');
 
   return (
     <table className="boxscore-table">
@@ -178,7 +178,7 @@ function PlayerRows({
               <td className={(pm[r.playerId] ?? 0) >= 0 ? 'plus' : 'minus'}>
                 {(pm[r.playerId] ?? 0) >= 0 ? '+' : ''}{Math.round(pm[r.playerId] ?? 0)}
               </td>
-              <td>{gameScore(r).toFixed(1)}</td>
+              <td>{Math.round(gameScore(r))}</td>
             </tr>
           );
         })}

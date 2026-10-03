@@ -4,8 +4,10 @@ import { loadHistoryForTests } from './helpers/nbaHistoryFixture';
 import { allFacts, isNotable } from '../arcade/facts';
 import { dailyAnswer, answerPool, compare, puzzleNumber, searchPlayers, guessable, shareText } from '../arcade/guess';
 import { hiloPool, nextRound, isRight, mulberry } from '../arcade/hilo';
-import { bracketField, slotTeams, playSeries, scorePicks, FIRST_ROUND } from '../arcade/bracket';
-import { guessPoints, guessWeeks, guessStreak, mergeArcade, arcadeXp, BRACKET_MAX, type ArcadeRecords } from '../arcade/storage';
+import { bracketField, slotTeams, playSeries, scorePicks, FIRST_ROUND, BRACKET_ERAS } from '../arcade/bracket';
+import { randomAnswer, endlessPool } from '../arcade/guess';
+import { quizRound, quizPoints, QUIZ_ERAS, QUIZ_LENGTH } from '../arcade/quiz';
+import { guessPoints, guessWeeks, guessStreak, mergeArcade, arcadeXp, readArcade, endlessOf, BRACKET_MAX, type ArcadeRecords } from '../arcade/storage';
 import { xpParts } from '../profile/profile';
 import { derive } from '../../server/derive';
 
@@ -160,5 +162,62 @@ describe('quick games XP', () => {
   it('shows up in the profile XP', () => {
     const store: Record<string, string> = { 'cv-arcade': JSON.stringify({ guess: { '2026-10-05': { guesses: [1], won: true } }, hilo: { best: 0, runs: 0, weeks: {} }, bracket: {} }) };
     expect(xpParts(k => store[k] ?? null).find(p => p.id === 'arcade')?.xp).toBe(20);
+  });
+});
+
+describe('endless play', () => {
+  it('draws random answers that avoid recent ones, from a famous or a deeper pool', () => {
+    const famous = endlessPool(h, 'famous'), deep = endlessPool(h, 'deep');
+    expect(deep.length).toBeGreaterThan(famous.length);
+    const rand = mulberry(3), seen = new Set<number>();
+    for (let i = 0; i < 50; i++) { const a = randomAnswer(h, 'famous', rand, seen); expect(seen.has(a.idx)).toBe(false); seen.add(a.idx); }
+  });
+  it('builds a 16-team bracket for every era, one franchise each, and the weekly field is unchanged', () => {
+    for (const era of BRACKET_ERAS) {
+      const field = bracketField(h, 'random-42', era.id);
+      expect(field).toHaveLength(16);
+      expect(new Set(field.map(t => t.abbr)).size).toBe(16);
+      expect(field.every(t => t.end >= era.from && t.end <= era.to)).toBe(true);
+    }
+    expect(bracketField(h, '2026-W41', 'all').map(t => t.id)).toEqual(bracketField(h, '2026-W41').map(t => t.id));
+    expect(bracketField(h, 'random-1').map(t => t.id)).not.toEqual(bracketField(h, 'random-2').map(t => t.id));
+  });
+  it('keeps and merges endless totals, and old records read with zeros', () => {
+    expect(endlessOf(readArcade(() => JSON.stringify({ guess: {}, hilo: { best: 1, runs: 1, weeks: {} }, bracket: {} }))).quiz).toEqual({ played: 0, best: 0, right: 0, answered: 0 });
+    const a = { ...empty(), endless: { guess: { played: 5, won: 3, streak: 2, best: 3 }, bracket: { played: 1, best: 150 }, quiz: { played: 2, best: 900, right: 14, answered: 20 } } };
+    const b = { ...empty(), endless: { guess: { played: 2, won: 2, streak: 2, best: 4 }, bracket: { played: 4, best: 90 }, quiz: { played: 1, best: 1200, right: 8, answered: 10 } } };
+    const m = mergeArcade(a, b).endless!;
+    expect(m.guess).toEqual({ played: 5, won: 3, streak: 2, best: 4 });
+    expect(m.bracket).toEqual({ played: 4, best: 150 });
+    expect(m.quiz.best).toBe(1200);
+  });
+});
+
+describe('NBA Quiz', () => {
+  it('writes ten different questions with four distinct options and one right answer, in every era', () => {
+    for (const era of QUIZ_ERAS) {
+      for (let seed = 1; seed <= 5; seed++) {
+        const round = quizRound(h, era.id, mulberry(seed * 97));
+        expect(round).toHaveLength(QUIZ_LENGTH);
+        expect(new Set(round.map(q => q.text)).size).toBe(QUIZ_LENGTH);
+        for (const q of round) {
+          expect(q.options).toHaveLength(4);
+          expect(new Set(q.options).size).toBe(4);
+          expect(q.answer).toBeGreaterThanOrEqual(0);
+          expect(q.answer).toBeLessThan(4);
+        }
+        expect(new Set(round.map(q => q.kind)).size).toBeGreaterThanOrEqual(4);
+      }
+    }
+  }, 60_000);
+  it('gets the facts right', () => {
+    const qs = Array.from({ length: 40 }, (_, i) => quizRound(h, 'all', mulberry(1000 + i))).flat();
+    const champ = qs.find(q => q.text === 'Who won the 1995-96 NBA title?');
+    if (champ) expect(champ.options[champ.answer]).toBe('Chicago');
+    const mvp = qs.find(q => q.kind === 'mvp');
+    expect(mvp).toBeDefined();
+    expect(quizPoints(true, 0)).toBe(150);
+    expect(quizPoints(true, 20_000)).toBe(100);
+    expect(quizPoints(false, 0)).toBe(0);
   });
 });

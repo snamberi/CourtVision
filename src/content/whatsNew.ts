@@ -6,6 +6,44 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2027-01-13',
+    title: 'Ten phone looks and twenty fixes',
+    items: [
+      "**Ten looks for the menu phone:** Courtside, Hardwood, Home jersey, Neon and Handheld on the Level Road; Frost, Gold, Lava, Galaxy and Diamond on the Trophy Road. Pick one under **Menu phone** in your Profile.",
+      "**Quick games on a phone:** all four games in view, a tidy era picker and record boxes that share the row.",
+      "**Player Stats:** the search and filters fit a phone, and before tip-off the page says so instead of asking you to lower the games filter. Stats pages light up League on the phone tab bar.",
+      "**Cleaner pages:** Settings tools sit flat in their cards, Graphics is three plain choices, the week's challenges line up with the game modes, and coming-soon slots stay small on phones.",
+      "**Roster:** retiring a number is tucked under one line and fills in the number he wore. Trade screens show salaries as $20.84M, not $20,839,187.",
+      "**Little words:** 21st, not 21th; 1 season, not 1 seasons; and undrafted steals say \"went undrafted\" instead of \"went th\".",
+      "**World Games mode:** Play again keeps your last twelve.",
+    ],
+  },
+  {
+    id: '2027-01-06',
+    title: 'The World Games',
+    items: [
+      "**The World Games, every four summers:** in your leagues, right after the draft, the best players go home to play for their countries: twelve national teams, three groups, then the quarterfinals, semifinals and the medal games under FIBA rules.",
+      "**Medals for good:** gold, silver and bronze stay on every player who won them, show on their profile and count for the Hall of Fame. Real players arrive with their real medals from 1992 on (Jordan's 1992 gold, LeBron's three).",
+      "**AI or you:** the AI plays every country by default. Pick a country in the league's World Games page (or in New Franchise settings) to choose its twelve and play it round by round.",
+      "**New in New Franchise: World Games mode.** Coach a national team at a real Games (Barcelona 1992 to Paris 2024) with its real players of that season, or the Fantasy Games with every player in history at his best. No contracts or free agency: pick twelve and win medals.",
+      "**Real national teams:** every international player in the NBA now plays for his real country (Jokić for Serbia, Dončić for Slovenia, Giannis for Greece).",
+      "**A cleaner menu:** the header holds just Sign in, Settings and Discord; Leaderboards, Friends, your Profile and your streak live on the new phone in the corner.",
+    ],
+  },
+  {
+    id: '2026-12-30',
+    title: 'Endless quick games, an NBA Quiz and a new way to start',
+    items: [
+      "**NBA Quiz:** ten questions a round on champions, MVPs, Finals MVPs, Rookies of the Year, No. 1 picks, scoring titles and career numbers. Pick an era, answer fast for bonus points, and play as many rounds as you like.",
+      "**Play any time:** Guess the Player has an **Endless** mode (a new player every round, famous or deep cuts) after the daily puzzle, and the Bracket Challenge has **Random brackets** from any era.",
+      "**Pick, then Play:** click a mode to pick it, then press **Play** on its card.",
+      "**New Franchise:** one page to start any GM league. Choose a real NBA league or a random one, its name, starting season and difficulty, or take the **Rebuild Challenge** or the **All-Time Draft**.",
+      "**League settings before you start:** game style, games a season, quarter length, rules era, injuries, the trade deadline, the salary cap and more.",
+      "**Roomier Settings:** every setting has its own card.",
+      "**Whole-number stats:** points, rebounds, assists, percentages and ratings now read 23, not 23.4.",
+    ],
+  },
+  {
     id: '2026-12-23',
     title: 'Quick games, five new looks and a cleaner menu',
     items: [

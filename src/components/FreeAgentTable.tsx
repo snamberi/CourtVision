@@ -1,4 +1,5 @@
 import { TeamText } from './TeamLink';
+import { shortMoney } from '../lib/humanize';
 import { Fragment, useMemo, useState } from 'react';
 import type { PlayerSeason } from '../simulation/types';
 import type { LeagueTeam } from '../simulation/league';
@@ -13,6 +14,7 @@ import type { League } from '../simulation/league';
 import type { GMLeagueExtras } from '../simulation/gm';
 import { NegotiationPanel } from './NegotiationPanel';
 import { openNegotiation } from '../simulation/agents';
+import { statWhole } from './statFormat';
 
 interface Props {
   title: string;
@@ -38,10 +40,7 @@ function moodFor(playerId: string): string {
   return MOOD_TAGS[hash % MOOD_TAGS.length];
 }
 
-function fmtMoney(n: number): string {
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
-  return `$${Math.round(n / 1000)}k`;
-}
+const fmtMoney = shortMoney;
 
 export function FreeAgentTable({ title, players, team, contracts, capSettings, canSign, disabledReason, onSign, onSelectPlayer, quote, talks }: Props) {
   const [query, setQuery] = useState('');
@@ -90,6 +89,8 @@ export function FreeAgentTable({ title, players, team, contracts, capSettings, c
     .sort((a, b) => b.overall - a.overall)
     .slice(0, perPage);
   }, [players, query, affordableOnly, perPage, capSpace, capSettings, quote, talks]);
+  // When every row is last season's (the usual case before tip-off), one line says so instead of a tag on each row.
+  const allLastSeason = rows.length > 0 && rows.every(r => r.usingLastSeason);
 
   const startNegotiation = (playerId: string, asking: number) => {
     setNegotiatingId(playerId);
@@ -114,7 +115,9 @@ export function FreeAgentTable({ title, players, team, contracts, capSettings, c
           </p>
         )}
         <p className="hint-text">Min contract: {fmtMoney(capSettings.minSalary)} &nbsp;·&nbsp; Max contract: {fmtMoney(maxSalary)}</p>
-        <p className="hint-text">Stats tagged <span className="fa-last-season-tag">Last season</span> are from last season — free agents haven't played any games yet while unsigned.</p>
+        {allLastSeason
+          ? <p className="hint-text">Every stat below is from last season: free agents haven't played any games yet while unsigned.</p>
+          : <p className="hint-text">Stats tagged <span className="fa-last-season-tag">Last season</span> are from last season — free agents haven't played any games yet while unsigned.</p>}
         {disabledReason && <p className="calendar-banner">{disabledReason}</p>}
       </div>
 
@@ -148,11 +151,11 @@ export function FreeAgentTable({ title, players, team, contracts, capSettings, c
                   <td>{r.season.age}</td>
                   <td>{r.overall}</td>
                   <td>{r.potential}</td>
-                  <td>{r.avg.mpg.toFixed(1)}{r.usingLastSeason && <span className="fa-last-season-tag" title="These stats are from last season — this player hasn't played any games while unsigned">Last season</span>}</td>
-                  <td>{r.avg.ppg.toFixed(1)}</td>
-                  <td>{r.avg.rpg.toFixed(1)}</td>
-                  <td>{r.avg.apg.toFixed(1)}</td>
-                  <td>{r.avg.efficiency.toFixed(1)}</td>
+                  <td>{statWhole(r.avg.mpg)}{r.usingLastSeason && !allLastSeason && <span className="fa-last-season-tag" title="These stats are from last season — this player hasn't played any games while unsigned">Last season</span>}</td>
+                  <td>{statWhole(r.avg.ppg)}</td>
+                  <td>{statWhole(r.avg.rpg)}</td>
+                  <td>{statWhole(r.avg.apg)}</td>
+                  <td>{statWhole(r.avg.efficiency)}</td>
                   <td className={r.verdict?.refuses ? 'fa-refuses' : ''} title={r.verdict?.reason}>{r.mood}</td>
                   <td title={r.ask ? `${r.ask.years} years${r.ask.playerOption ? ', player option' : ''}` : undefined}>{fmtMoney(r.asking)}{r.ask && <small className="fa-ask-years"> · {r.ask.years}y{r.ask.playerOption ? ' PO' : ''}</small>}</td>
                   <td>{Math.max(0, r.season.age - 19)}</td>

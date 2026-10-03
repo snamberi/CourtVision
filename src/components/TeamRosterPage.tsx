@@ -1,4 +1,5 @@
 import { LockerRoomPanel, MoraleCell } from './MoralePanels';
+import { plural } from '../lib/humanize';
 import { ChemistryWeb } from './ChemistryWeb';
 import { TeamIdentityPanel } from './TeamIdentityPanel';
 import type { TeamIdentity } from '../simulation/teamIdentity';
@@ -17,6 +18,7 @@ import { StarIcon } from './Icons';
 import { coachStrengths, coachWeaknesses, relationshipWith, relationshipLabel, COACH_TRAIT_LABELS, type CoachTraitKey, type CoachIdentity } from '../simulation/coaching';
 import { formatSeasonYear } from '../simulation/calendar';
 import { PlayerNameTag } from './PlayerAvatar';
+import { statWhole } from './statFormat';
 
 interface Props {
   initialTeamId?: string | null;
@@ -114,10 +116,16 @@ export function TeamRosterPage({
             ))}
           </div>
           {canManage && onRetireJersey && (
-            <div className="identity-grid">
+            <details className="retire-form"><summary>Retire a number</summary><div className="identity-grid">
               <label>
                 Player
-                <select value={retirePlayerId} onChange={(e) => setRetirePlayerId(e.target.value)}>
+                <select value={retirePlayerId} onChange={(e) => {
+                  const id = e.target.value;
+                  setRetirePlayerId(id);
+                  // Fill in the number he wore, when the save knows it.
+                  const worn = team.seasons.find(x => x.playerId === id)?.jerseyNumber;
+                  if (worn != null) setRetireNumber(String(worn));
+                }}>
                   <option value="">— choose —</option>
                   {team.seasons.map((s) => <option key={s.playerId} value={s.playerId}>{s.playerId} (current)</option>)}
                   {(retiredPlayers ?? []).filter((r) => r.finalTeamId === team.teamId).map((r) => (
@@ -133,7 +141,7 @@ export function TeamRosterPage({
               >
                 Retire Number
               </button>
-            </div>
+            </div></details>
           )}
         </div>
       )}
@@ -147,7 +155,7 @@ export function TeamRosterPage({
                 <span className="hint-text">
                   Rating {coach.rating} · Age {coach.age} · Career {coach.careerWins}-{coach.careerLosses}
                   {coach.championships > 0 && ` · ${coach.championships}x champion`} ·{' '}
-                  ${(coach.contract.annualSalary / 1_000_000).toFixed(1)}M/yr, {coach.contract.yearsRemaining} yr(s) left ·{' '}
+                  ${(coach.contract.annualSalary / 1_000_000).toFixed(1)}M/yr, {plural(coach.contract.yearsRemaining, 'year')} left ·{' '}
                   Hired {formatSeasonYear(coach.hiredSeason)}
                 </span>
                 <div className="coach-tags">
@@ -253,12 +261,12 @@ export function TeamRosterPage({
                     </td>
                     <td>{yearsWithTeam}</td>
                     {showTradeValues && <td>{computeTradeValue(s).toFixed(0)}</td>}
-                    <td>{avg.gamesPlayed > 0 ? avg.ppg.toFixed(1) : '—'}</td>
+                    <td>{avg.gamesPlayed > 0 ? statWhole(avg.ppg) : '—'}</td>
                     {schedule && <td><FormCell form={form?.get(s.playerId)} /></td>}
-                    <td>{avg.gamesPlayed > 0 ? avg.rpg.toFixed(1) : '—'}</td>
-                    <td>{avg.gamesPlayed > 0 ? avg.apg.toFixed(1) : '—'}</td>
-                    <td>{avg.gamesPlayed > 0 ? avg.mpg.toFixed(1) : '—'}</td>
-                    <td>{avg.gamesPlayed > 0 ? avg.efficiency.toFixed(1) : '—'}</td>
+                    <td>{avg.gamesPlayed > 0 ? statWhole(avg.rpg) : '—'}</td>
+                    <td>{avg.gamesPlayed > 0 ? statWhole(avg.apg) : '—'}</td>
+                    <td>{avg.gamesPlayed > 0 ? statWhole(avg.mpg) : '—'}</td>
+                    <td>{avg.gamesPlayed > 0 ? statWhole(avg.efficiency) : '—'}</td>
                     <MoraleCell p={s} fallback={relationshipLabel(relationshipWith(coach, s.playerId))} fallbackTitle={`Relationship with coach: ${Math.round(relationshipWith(coach, s.playerId))}/100`} />
                     <td>{isInjured ? <span className="injury-out-tag">{injury!.gamesRemaining}d</span> : ''}</td>
                     {canManage && (onRelease || onTradeAway) && (

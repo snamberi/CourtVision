@@ -1,3 +1,4 @@
+import { realNationality } from '../worldGames/data';
 import type { PlayerSeason, PositionSuitability } from '../simulation/types';
 import { makeDefaultSeason } from '../simulation/presets/samplePlayers';
 import { calculateOverall } from '../simulation/engine/overall';
@@ -177,6 +178,8 @@ export function buildRealPlayer(seed: RealPlayerSeed, season: string, teamId: st
   }
   best = build(seed, season, teamId, age, hi);
   best.real = { id: seed.id, dataset, rating: seed.rating, frames: seed.frames, appliedSeason: season, coverageEndYear: seed.frames.length ? seed.frames[seed.frames.length - 1][0] : seed.rating.startYear };
+  // His real national team (for the World Games).
+  best.nationality = realNationality(seed.name);
   // Potential follows Court Vision's usual projection from age and current level (no future real data leaks here).
   const overall = calculateOverall(best);
   const peakAge = 26;
