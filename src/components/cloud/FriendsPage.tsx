@@ -69,14 +69,18 @@ function RivalList() {
   </section>;
 }
 
-function FindGm({ onUser }: { onUser: (username: string) => void }) {
+/** Search GMs by name (shared with the Leaderboards' Friends tab). */
+export function FindGm({ onUser }: { onUser: (username: string) => void }) {
   const [q, setQ] = useState('');
   const [hits, setHits] = useState<Hit[] | null>(null);
   const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
   const search = async () => {
     if (q.trim().length < 2) return;
     setBusy(true);
-    setHits(await searchUsers(q.trim()).catch(() => []));
+    setFailed(false);
+    // A dropped connection is not "no GM by that name": say which it was.
+    setHits(await searchUsers(q.trim()).catch(() => { setFailed(true); return null; }));
     setBusy(false);
   };
   return <section className="locker-bay friends-find">
@@ -86,6 +90,7 @@ function FindGm({ onUser }: { onUser: (username: string) => void }) {
       <div><input id="friends-search" className="year-input" value={q} onChange={e => setQ(e.target.value)} placeholder="At least 2 letters" autoComplete="off" />
         <button type="submit" disabled={busy || q.trim().length < 2}>{busy ? 'Searching…' : 'Search'}</button></div>
     </form>
+    {failed && <p className="empty-state">Couldn't reach the server. Check your connection and search again.</p>}
     {hits && (hits.length
       ? <ul className="cv-saved">{hits.map(h => <li key={h.id}><div><b><NameTag name={`@${h.username}`} icon={h.icon} color={h.color} title={h.title} /></b><small>LV {h.level}</small></div><button onClick={() => onUser(h.username)}>Profile</button></li>)}</ul>
       : <p className="empty-state">No GM by that name.</p>)}

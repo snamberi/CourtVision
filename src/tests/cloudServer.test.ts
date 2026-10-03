@@ -54,6 +54,19 @@ describe('cloud endpoints', () => {
     expect(JSON.parse(JSON.parse(body)[0].data.storage['cv-hunt-album']).sort()).toEqual(['a', 'b']);
   });
 
+  it('sync: a table the database rejects is skipped, and the progress is still saved', async () => {
+    const base = fakeFetch();
+    // An older database that refuses one write (here the profile row); everything else goes through.
+    const f = (async (url: string, init?: RequestInit) => {
+      if (init?.method === 'PATCH' && String(url).includes('/profiles?') && String(init.body).includes('"level"')) return new Response('{"message":"violates check constraint"}', { status: 400 });
+      return base.f(url, init);
+    }) as unknown as typeof fetch;
+    const res = await handleSync(req('POST', { version: 1, updatedAt: 1, storage: {}, careers: [] }), env, new Date(), f);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ ok: true, skipped: ['profile'] });
+    expect(base.calls.some(c => c.startsWith('POST /rest/v1/progress'))).toBe(true);
+  });
+
   it('pvp: needs a team, rejects results that do not add up', async () => {
     const none = fakeFetch();
     expect((await (await handlePvp(req('POST', { action: 'find' }), env, new Date(), none.f)).json()).error).toMatch(/Finish a League Hunt/);

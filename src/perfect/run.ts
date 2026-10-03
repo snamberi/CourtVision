@@ -414,6 +414,8 @@ export function fitBonds(cards: HuntCard[], chosen?: HuntCard[]): ChemistryBond[
 export function teamBonds(h: NbaHistory, run: Pick<PerfectRun, 'squad' | 'lineup'>): ChemistryBond[] {
   const cards = run.squad.map(id => card(h, id));
   const l = lineupOf(run);
+  // The lineup checks wait for a full starting five: a half-built squad is not "missing a guard" yet.
+  if (cards.length < 5) return chemistry(cards);
   return [...chemistry(cards), ...fitBonds(cards, l ? l.slice(0, 5).map(id => card(h, id)) : undefined)];
 }
 

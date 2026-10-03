@@ -176,10 +176,13 @@ function CardTile({ c, onPick, prime, hide }: { c: HuntCard; onPick?: () => void
 function SquadPanel({ h, run }: { h: NbaHistory; run: PerfectRun }) {
   const pool = cardPool(h);
   const bonds = teamBonds(h, run);
+  // Once you set a lineup, the team list follows it: your five starters first, then the bench.
+  const lineup = lineupOf(run);
+  const ids = lineup ?? run.squad;
   return <aside className="p820-squad">
     <h3>Your team <small>{run.squad.length}/{SQUAD}</small></h3>
-    <ol>{Array.from({ length: SQUAD }, (_, i) => { const c = run.squad[i] ? pool.byId.get(run.squad[i]) : undefined; return <li key={i} className={c ? `rarity-${c.rarity}` : 'empty'}>
-      <span className="p820-slot">{run.mode === 'quick' && run.from !== 'hunt' ? QUICK_SLOTS[i] : run.from === 'hunt' && i < 6 ? 'HUNT' : i < 5 ? 'START' : 'BENCH'}</span>
+    <ol>{Array.from({ length: SQUAD }, (_, i) => { const c = ids[i] ? pool.byId.get(ids[i]) : undefined; return <li key={i} className={c ? `rarity-${c.rarity}` : 'empty'}>
+      <span className="p820-slot">{lineup ? i < 5 ? 'START' : 'BENCH' : run.mode === 'quick' && run.from !== 'hunt' ? QUICK_SLOTS[i] : run.from === 'hunt' && i < 6 ? 'HUNT' : i < 5 ? 'START' : 'BENCH'}</span>
       {c ? <><b>{c.name}</b><small>{seasonLabel(c.end)} {c.team} · {c.pos}</small><span className="p820-ovr-mini">{ratingsShown(run) ? c.ovr : HIDDEN}</span></> : <small>—</small>}</li>; })}</ol>
     {ratingsShown(run) && run.coach && COACH_BY_ID.get(run.coach) && <p className="p820-rating">Coach <b>{COACH_BY_ID.get(run.coach)!.name}</b> <small>({COACH_BY_ID.get(run.coach)!.bonus >= 0 ? '+' : ''}{COACH_BY_ID.get(run.coach)!.bonus})</small></p>}
     {run.squad.length >= 5 && <p className="p820-rating">Team rating <b>{ratingsShown(run) ? perfectRating(h, run) : '??'}</b> <small>{ratingsShown(run) ? '(100 = a 68-win team)' : '(revealed when the season is over)'}</small></p>}

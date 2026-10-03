@@ -80,7 +80,7 @@ export function ProfileHub({ onExit, initialTab = 'profile' }: { onExit: () => v
     </header>
     <div className="profile-tabs code-mode-actions" role="tablist" aria-label="Profile sections">{TABS.map(t => <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>{t.label}</button>)}</div>
 
-    {tab === 'profile' && <><LegacyPanel legacy={legacy} compact /><FavoritesPanel /><ProfilePanel /></>}
+    {tab === 'profile' && <ProfilePanel extras={<div className="profile-extras"><LegacyPanel legacy={legacy} compact /><FavoritesPanel /></div>} />}
     {tab === 'character' && <AvatarEditor />}
     {tab === 'season' && <SeasonPass />}
     {tab === 'road' && <LevelRoad />}

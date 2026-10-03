@@ -115,7 +115,8 @@ export async function report(targetId: string, reason: string): Promise<void> {
 
 export async function searchUsers(prefix: string) {
   const client = await supa();
-  const { data } = await client.from('lb_users').select('*').ilike('username', `${prefix.replace(/[%_]/g, '')}%`).order('xp', { ascending: false }).limit(10);
+  const { data, error } = await client.from('lb_users').select('*').ilike('username', `${prefix.replace(/[%_]/g, '')}%`).order('xp', { ascending: false }).limit(10);
+  if (error) throw error;
   return (data ?? []) as { id: string; username: string; title: string; level: number; icon?: string; color?: string; avatar?: string }[];
 }
 

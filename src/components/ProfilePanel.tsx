@@ -138,15 +138,17 @@ function TitlePicker({ ctx, name, eq }: { ctx: UnlockContext; name: string; eq: 
 const kb = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1000))} KB`);
 const ago = (at: number) => { const m = Math.round((Date.now() - at) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : `${Math.round(m / 60)} h ago`; };
 
-/** Your account's sync (it used to sit in the header): the state, when it last went up, how big it is, and Sync now. */
-function SyncPanel() {
+/**
+ * Your account's sync, as a small chip on your card: when it last went up, and Sync now. A failed sync is not shown
+ * as an error: the progress is safe on this device and the next sync carries it up.
+ */
+function SyncChip() {
   const a = useAccount(), s = a.sync;
-  const label = s.state === 'syncing' ? 'Syncing…' : s.state === 'error' ? 'Sync problem' : s.at ? `Synced ${ago(s.at)}` : 'Not synced yet';
-  return <div className={`sync-panel ${s.state}`} role="status">
-    <span className={`sync-dot ${s.state}`} aria-hidden="true" />
-    <div><b>{label}</b><small>Your level, records, character and finished careers are saved to @{a.profile?.username ?? '…'} and follow you to any device.{s.size ? ` Last upload ${kb(s.size.raw)} (${kb(s.size.wire)} sent, careers ${kb(s.size.careers)}).` : ''}</small>
-      {s.state === 'error' && s.message && <small className="sync-error">{s.message}</small>}</div>
-    <button onClick={() => void syncNow()} disabled={s.state === 'syncing'}>Sync now</button>
+  const label = s.state === 'syncing' ? 'Syncing…' : s.state === 'error' ? 'Saved on this device' : s.at ? `Synced ${ago(s.at)}` : 'Not synced yet';
+  const tip = `Your level, records, character and finished careers follow @${a.profile?.username ?? '…'} to any device.${s.size ? ` Last upload ${kb(s.size.raw)} (${kb(s.size.wire)} sent).` : ''}${s.state === 'error' ? ' It will sync again shortly.' : ''}`;
+  return <div className={`sync-chip ${s.state === 'error' ? 'waiting' : s.state}`} role="status" title={tip}>
+    <span className="sync-dot" aria-hidden="true" /><span>{label}</span>
+    <button className="link-button" onClick={() => void syncNow()} disabled={s.state === 'syncing'}>Sync now</button>
   </div>;
 }
 
@@ -165,14 +167,14 @@ function PlayTimeLine() {
 const JUMPS: [string, string][] = [['pick-frame', 'Picture frame'], ['pick-look', 'App look'], ['pick-icon', 'Icon'], ['pick-name-colour', 'Name colour'], ['pick-title-colour', 'Title colour'], ['pick-title', 'Title'], ['pick-share-card-frame', 'Share card'], ['pick-menu-phone', 'Menu phone'], ['pick-court-floor-watch-game', 'Court floor']];
 
 /** Your card (the Profile tab of the Player Profile): the card others see, your level and XP, and everything to equip. */
-export function ProfilePanel() {
+export function ProfilePanel({ extras }: { /** Shown right under your card (the GM legacy and favourites). */ extras?: ReactNode } = {}) {
   const p = useProfile();
   const account = useAccount();
   const eq = equipped(p.level);
   const ctx = unlockContext(p.level);
   const signedIn = account.status === 'signedIn' && !!account.profile?.username;
   const name = signedIn ? account.profile!.username! : localName();
-  const extras = earnedExtraTitles(ctx).length + rankTitles().length;
+  const specials = earnedExtraTitles(ctx).length + rankTitles().length;
   const titleColorList = TITLE_COLORS.filter(c => !c.staff || ctx.staff);
   const frameList = AVATAR_FRAMES.filter(f => !f.staff || ctx.staff);
   const iconList = listed(ICONS, ctx), nameColorList = listed(NAME_COLORS, ctx);
@@ -184,12 +186,13 @@ export function ProfilePanel() {
       <div className="profile-card-id">
         <NameTag name={signedIn ? `@${name}` : name} icon={null} color={eq.color} title={eq.title} titleColor={eq.titleColor} className="profile-card-name" />
         <div className="hunt-cap-bar"><i style={{ width: `${p.need ? p.into / p.need * 100 : 100}%` }} /></div>
-        <small>Level {p.level} · {p.xp.toLocaleString()} XP{p.need ? ` · ${(p.need - p.into).toLocaleString()} to level ${p.level + 1}` : ' · max level'}{extras ? ` · ${extras} special title${extras === 1 ? '' : 's'}` : ''}</small>
+        <small>Level {p.level} · {p.xp.toLocaleString()} XP{p.need ? ` · ${(p.need - p.into).toLocaleString()} to level ${p.level + 1}` : ' · max level'}{specials ? ` · ${specials} special title${specials === 1 ? '' : 's'}` : ''}</small>
+        <PlayTimeLine />
       </div>
+      {signedIn && <SyncChip />}
       {!signedIn && <label className="profile-name-edit"><span>Profile name</span><input className="year-input" value={localName() === 'You' ? '' : localName()} placeholder="You" maxLength={18} onChange={e => setLocalName(e.target.value)} /><small>Sign in to claim a GM name on the boards.</small></label>}
     </div>
-    {signedIn && <SyncPanel />}
-    <PlayTimeLine />
+    {extras}
     <nav className="profile-jump" aria-label="Jump to">{JUMPS.map(([id, l]) => <button key={id} type="button" onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>{l}</button>)}</nav>
 
     <div className="profile-picker" id="pick-frame"><h3 className="hunt-subhead">Profile picture frame <PickCount n={frameList.filter(f => avatarFrameOpen(f, ctx)).length} of={frameList.length} /></h3>

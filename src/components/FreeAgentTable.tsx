@@ -117,7 +117,7 @@ export function FreeAgentTable({ title, players, team, contracts, capSettings, c
         <p className="hint-text">Min contract: {fmtMoney(capSettings.minSalary)} &nbsp;·&nbsp; Max contract: {fmtMoney(maxSalary)}</p>
         {allLastSeason
           ? <p className="hint-text">Every stat below is from last season: free agents haven't played any games yet while unsigned.</p>
-          : <p className="hint-text">Stats tagged <span className="fa-last-season-tag">Last season</span> are from last season — free agents haven't played any games yet while unsigned.</p>}
+          : <p className="hint-text">Stats tagged <span className="fa-last-season-tag">Last season</span> (LS on a phone) are from last season — free agents haven't played any games yet while unsigned.</p>}
         {disabledReason && <p className="calendar-banner">{disabledReason}</p>}
       </div>
 
@@ -151,7 +151,7 @@ export function FreeAgentTable({ title, players, team, contracts, capSettings, c
                   <td>{r.season.age}</td>
                   <td>{r.overall}</td>
                   <td>{r.potential}</td>
-                  <td>{stat1(r.avg.mpg)}{r.usingLastSeason && !allLastSeason && <span className="fa-last-season-tag" title="These stats are from last season — this player hasn't played any games while unsigned">Last season</span>}</td>
+                  <td>{stat1(r.avg.mpg)}{r.usingLastSeason && !allLastSeason && <span className="fa-last-season-tag" title="These stats are from last season — this player hasn't played any games while unsigned"><span className="fa-tag-long">Last season</span><span className="fa-tag-short" aria-hidden="true">LS</span></span>}</td>
                   <td>{stat1(r.avg.ppg)}</td>
                   <td>{stat1(r.avg.rpg)}</td>
                   <td>{stat1(r.avg.apg)}</td>

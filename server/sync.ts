@@ -1,4 +1,4 @@
-import { ARCADE_BOARDS, derive, sanitizeBlob, publicAvatar } from './derive';
+import { derive, sanitizeBlob, publicAvatar } from './derive';
 import { mergeStorage, mergeCareers } from '../src/cloud/merge';
 import { computeHonors, pvpHonor } from './honors';
 import { getUser, rest, upsert, deleteUser, json, bearer, type SupaEnv, type Fetch } from './supabase';
@@ -82,20 +82,27 @@ export async function handleSync(req: Request, env: SupaEnv | null, now = new Da
     // Your character on the boards (a database without the avatar column yet just skips it).
     const avatar = publicAvatar(blob, d.profile.level, honors, owner);
     if (avatar) await rest(env, 'PATCH', `profiles?id=eq.${id}`, { avatar }, 'return=minimal', f).catch(() => null);
-    await Promise.all([
-      rest(env, 'PATCH', `profiles?id=eq.${id}`, { level: d.profile.level, xp: d.profile.xp, stats: { ...d.profile.stats, honors }, updated_at: now.toISOString() }, 'return=minimal', f),
-      rest(env, 'DELETE', `user_achievements?${eq}`, undefined, 'return=minimal', f).then(() => upsert(env, 'user_achievements', own(d.achievements.map(a => ({ achievement_id: a }))), 'user_id,achievement_id', f)),
-      upsert(env, 'created_players', own(d.players), 'user_id,career_id', f),
-      upsert(env, 'weekly_scores', own(d.weekly.filter(w => !ARCADE_BOARDS.includes(w.board)).map(w => ({ ...w, updated_at: now.toISOString() }))), 'board,week,user_id', f),
-      // The quick games' boards on their own: a database that does not allow them yet keeps everything else.
-      upsert(env, 'weekly_scores', own(d.weekly.filter(w => ARCADE_BOARDS.includes(w.board)).map(w => ({ ...w, updated_at: now.toISOString() }))), 'board,week,user_id', f).catch(() => null),
-      upsert(env, 'daily_legend', own(d.daily), 'day,user_id', f),
-      upsert(env, 'rebuild_records', own(d.rebuild), 'scenario,user_id', f),
-      upsert(env, 'code_results', own(d.codes.map(c => ({ ...c, updated_at: now.toISOString() }))), 'code,user_id', f),
-      upsert(env, 'ranked_events', own(d.ranked), 'user_id,event', f),
-    ]);
-    return json({ ok: true, level: d.profile.level, xp: d.profile.xp, honors, avatar, owner });
-  } catch {
+    // Each public table on its own: one a database rejects (an older schema without a newer weekly board, say) is
+    // skipped and logged, and never fails the sync: the progress itself is already saved above.
+    const stamp = now.toISOString();
+    const weeklyRow = (w: (typeof d.weekly)[number]) => ({ ...w, updated_at: stamp });
+    const writes: [string, Promise<unknown>][] = [
+      ['profile', rest(env, 'PATCH', `profiles?id=eq.${id}`, { level: d.profile.level, xp: d.profile.xp, stats: { ...d.profile.stats, honors }, updated_at: stamp }, 'return=minimal', f)],
+      ['achievements', rest(env, 'DELETE', `user_achievements?${eq}`, undefined, 'return=minimal', f).then(() => upsert(env, 'user_achievements', own(d.achievements.map(a => ({ achievement_id: a }))), 'user_id,achievement_id', f))],
+      ['created_players', upsert(env, 'created_players', own(d.players), 'user_id,career_id', f)],
+      // One write per weekly board, so a board the database does not allow yet (82-0, the quick games) skips alone.
+      ...[...new Set(d.weekly.map(w => w.board))].map((board): [string, Promise<unknown>] => [`weekly:${board}`, upsert(env, 'weekly_scores', own(d.weekly.filter(w => w.board === board).map(weeklyRow)), 'board,week,user_id', f)]),
+      ['daily_legend', upsert(env, 'daily_legend', own(d.daily), 'day,user_id', f)],
+      ['rebuild_records', upsert(env, 'rebuild_records', own(d.rebuild), 'scenario,user_id', f)],
+      ['code_results', upsert(env, 'code_results', own(d.codes.map(c => ({ ...c, updated_at: stamp }))), 'code,user_id', f)],
+      ['ranked_events', upsert(env, 'ranked_events', own(d.ranked), 'user_id,event', f)],
+    ];
+    const settled = await Promise.allSettled(writes.map(([, w]) => w));
+    const skipped = writes.map(([name], i) => (settled[i].status === 'rejected' ? name : null)).filter((n): n is string => !!n);
+    if (skipped.length) console.error('sync: skipped', skipped.join(', '), settled.filter(r => r.status === 'rejected').map(r => String((r as PromiseRejectedResult).reason)).join(' | '));
+    return json({ ok: true, level: d.profile.level, xp: d.profile.xp, honors, avatar, owner, ...(skipped.length ? { skipped } : {}) });
+  } catch (e) {
+    console.error('sync: failed', e instanceof Error ? e.message : String(e));
     return json({ error: 'Cloud sync is having trouble. Your progress is safe on this device; it will sync later.' }, 502);
   }
 }

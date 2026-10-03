@@ -1,3 +1,4 @@
+import { plural } from '../../lib/humanize';
 import { useEffect, useState, type ReactNode } from 'react';
 import { readFavorites } from '../../profile/favorites';
 import type { NbaHistory } from '../../history/nbaHistoryData';
@@ -230,7 +231,7 @@ const GRADE_WORD: Record<string, string> = { 'A+': 'Perfect read', A: 'Sharp eye
 function FocusView({ run, onChoose }: { run: HuntRun; onChoose: (f: Focus) => void }) {
   const grade = draftGrade(run);
   return <section className="hunt-stage">
-    {grade && <div className={`hunt-grade g-${grade.grade.replace('+', 'plus')}`}><span className="pixel-eyebrow">DRAFT GRADE</span><b>{grade.grade}</b><span>{GRADE_WORD[grade.grade]} · locked the best player on the reels {grade.bestPicks} of {grade.spins} times{grade.missed ? ` · ${grade.missed} points left on the table` : ''}</span></div>}
+    {grade && <div className={`hunt-grade g-${grade.grade.replace('+', 'plus')}`}><span className="pixel-eyebrow">DRAFT GRADE</span><b>{grade.grade}</b><span>{GRADE_WORD[grade.grade]} · locked the best player on the reels {grade.bestPicks} of {grade.spins} times{grade.missed ? ` · ${plural(grade.missed, 'point')} left on the table` : ''}</span></div>}
     <div><span className="pixel-eyebrow">TRAINING CAMP</span><h2>What does the team work on?</h2></div>
     <p className="hint-text">It grows with every series you win. <b>Choose carefully: the focus is set for the whole hunt and can't be changed.</b></p>
     <div className="hunt-roads">{FOCUS_IDS.map(f => <button key={f} className={`hunt-road ${run.focus === f ? 'on' : ''}`} onClick={() => onChoose(f)}><b>{FOCUS[f].name}</b><span>{FOCUS[f].blurb}</span></button>)}</div>

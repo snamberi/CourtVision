@@ -6,6 +6,17 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2027-02-03',
+    title: 'Steadier sync and twenty small fixes',
+    items: [
+      "**Cloud sync:** one leaderboard the server turns down no longer stops your whole save from syncing. Your Profile shows a quiet \"Synced 2 min ago\" line instead of a red error.",
+      "**Profile:** your card comes first, with your legacy and favourites side by side under it.",
+      "**82-0:** the lineup warnings wait until you have five players, and your team list follows the lineup you set.",
+      "**Phones:** the bracket says to swipe for later rounds, free agents' \"Last season\" tag is a short LS, keyboard hints are hidden on touch screens, and Career Mode tabs are bigger.",
+      "**Smaller things:** \"1 pick\", \"1 game\" and \"1 player\" instead of \"1 picks\", room inside the All-Time Draft panel, the World Games country picker first, and a clear message when a GM search can't reach the server.",
+    ],
+  },
+  {
     id: '2027-01-27',
     title: 'A roomier Profile and Leaderboards',
     items: [

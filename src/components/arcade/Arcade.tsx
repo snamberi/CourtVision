@@ -281,7 +281,7 @@ function HiloGame({ h }: { h: NbaHistory }) {
     <p className="hunt-lede">Two real players, one career number. Does the second one have more or less? Keep the streak going: one miss and it is over.</p>
     <div className="arcade-stats"><span><b>{best}</b><small>Best streak</small></span><span><b>{weekBest}</b><small>Best this week</small></span><span><b>{rec.hilo.runs}</b><small>Runs</small></span></div>
     <button className="primary arcade-big" onClick={start}><PixelIcon name="play" size={16} /> Play</button>
-    <p className="hint-text">Your best streak of the week goes on the weekly board. Keys: ↑ higher, ↓ lower, Enter to play. Numbers: points, rebounds and assists per game, career points, All-Star selections and championships (well-known players from 1974 on).</p>
+    <p className="hint-text">Your best streak of the week goes on the weekly board. <span className="key-hint">Keys: ↑ higher, ↓ lower, Enter to play. </span>Numbers: points, rebounds and assists per game, career points, All-Star selections and championships (well-known players from 1974 on).</p>
   </section>;
   const a = byIdx.get(round.a)!, b = byIdx.get(round.b)!, stat = statDef(round.stat);
   return <section className="arcade-hilo">
@@ -409,6 +409,7 @@ function BracketBoard({ h, keyId, era, weekly, onNew }: { h: NbaHistory; keyId: 
     <p className="hunt-lede">{weekly
       ? <>This week's sixteen: champions and 60-win teams from every era. Pick every series winner, then tip off. The same games for everyone this week; {BRACKET_POINTS.join(' / ')} points a correct pick by round, {BRACKET_MAX} for a perfect bracket.</>
       : <>A random sixteen{era === 'all' ? ' from every era' : ` from ${BRACKET_ERAS.find(x => x.id === era)!.label}`}. Pick every series, tip off, then roll a new bracket. Not on the weekly board: play as many as you like.</>} Best of seven, the better seed at home under its era's rules.</p>
+    <p className="hint-text arcade-bracket-swipe">Swipe the bracket sideways for the quarterfinals, semis and final →</p>
     <div className="arcade-bracket-cols">
       {ROUND_NAMES.map((rn, r) => <div key={rn} className="arcade-bracket-col"><h3 className="hunt-subhead">{rn} <small>{BRACKET_POINTS[r]} pts</small></h3>
         {Array.from({ length: ROUND_SLOTS[r][1] - ROUND_SLOTS[r][0] }, (_, i) => {
@@ -503,7 +504,7 @@ function QuizGame({ h }: { h: NbaHistory }) {
     <PlaySwitch value={era} options={QUIZ_ERAS.map(x => ({ id: x.id, label: x.label }))} onChange={setEra} label="Quiz era" />
     <div className="arcade-stats"><span><b>{e.best.toLocaleString()}</b><small>Best round</small></span><span><b>{e.played}</b><small>Rounds</small></span><span><b>{accuracy}%</b><small>Right answers</small></span></div>
     {!done && <button className="primary arcade-big" onClick={start}><PixelIcon name="play" size={16} /> Start the quiz</button>}
-    <p className="hint-text">Keys: 1-4 (or A-D) to answer, Enter for the next question.</p>
+    <p className="hint-text key-hint">Keys: 1-4 (or A-D) to answer, Enter for the next question.</p>
   </section>;
   const q = round[at];
   return <section className="arcade-quiz">
