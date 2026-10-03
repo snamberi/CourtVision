@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { cloudEnabled, useAccount } from '../../cloud/account';
-import { searchUsers } from '../../cloud/boards';
+import { searchUsers, friendActivity, type ActivityItem } from '../../cloud/boards';
 import { loadRivalAlerts, dismissRival, RIVAL_BOARD_LABEL, RIVAL_PLAY, type RivalAlert } from '../../cloud/rivals';
 import { openSignIn } from '../../cloud/signIn';
 import { BoardTable } from './BoardTable';
@@ -45,6 +45,7 @@ export function FriendsPage({ onExit, onUser, onCommunity, onClubs, onOnline }: 
         <button className="primary" onClick={onClubs}>Open Clubs</button>
       </section>}
       {signedIn && <RivalList />}
+      {signedIn && <ActivityFeed onUser={onUser} />}
       <FindGm onUser={onUser} />
       <section className="locker-bay friends-ways">
         <h2><PixelIcon name="trophy" size={18} /> Ways to play a friend</h2>
@@ -104,5 +105,17 @@ export function FindGm({ onUser }: { onUser: (username: string) => void }) {
     {hits && (hits.length
       ? <ul className="cv-saved">{hits.map(h => <li key={h.id}><div><b><NameTag name={`@${h.username}`} icon={h.icon} color={h.color} title={h.title} /></b><small>LV {h.level}</small></div><button onClick={() => onUser(h.username)}>Profile</button></li>)}</ul>
       : <p className="empty-state">No GM by that name.</p>)}
+  </section>;
+}
+
+const ago = (iso: string) => { const m = Math.max(1, Math.round((Date.now() - Date.parse(iso)) / 60000)); return m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`; };
+/** The activity feed: what the GMs you follow have been doing lately. */
+function ActivityFeed({ onUser }: { onUser: (username: string) => void }) {
+  const [items, setItems] = useState<ActivityItem[] | null>(null);
+  useEffect(() => { let live = true; void friendActivity().then(x => { if (live) setItems(x); }, () => { if (live) setItems([]); }); return () => { live = false; }; }, []);
+  return <section className="locker-bay friends-activity">
+    <h2><PixelIcon name="chart" size={18} /> Friend activity</h2>
+    {items == null ? <p className="hint-text">Loading…</p> : !items.length ? <p className="hint-text">Nothing yet. Follow some GMs and their results show up here.</p>
+      : <ul className="activity-feed">{items.map((a, i) => <li key={i}><button className="link-button" onClick={() => onUser(a.username)}><NameTag name={`@${a.username}`} icon={a.icon} color={a.color} /></button> <span>{a.text}</span><small>{ago(a.at)}</small></li>)}</ul>}
   </section>;
 }

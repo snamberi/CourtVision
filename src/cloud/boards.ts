@@ -125,3 +125,26 @@ export async function achievementRarity(): Promise<Record<string, number>> {
   const { data } = await client.from('achievement_rarity').select('achievement_id, pct');
   return Object.fromEntries(((data ?? []) as { achievement_id: string; pct: number }[]).map(r => [r.achievement_id, Number(r.pct)]));
 }
+
+export interface ActivityItem { at: string; username: string; icon?: string; color?: string; text: string }
+const BOARD_NAME: Record<string, string> = { hunt: 'the Weekly Hunt', perfect: 'the 82-0 Challenge', career: 'Career of the Week', rebuild: 'Rebuild of the Week', guess: 'Guess the Player', hilo: 'Higher or Lower', bracket: 'the Bracket Challenge' };
+/** What the GMs you follow have been up to: their latest weekly-board results and Daily Legend runs, newest first. */
+export async function friendActivity(limit = 20): Promise<ActivityItem[]> {
+  const me = getAccount().userId;
+  if (!me) return [];
+  const client = await supa();
+  const { data: f, error: fe } = await client.from('follows').select('target_id').eq('user_id', me);
+  if (fe) throw new Error(fe.message);
+  const ids = ((f ?? []) as { target_id: string }[]).map(x => x.target_id);
+  if (!ids.length) return [];
+  const [weekly, daily] = await Promise.all([
+    client.from('lb_weekly').select('*').in('user_id', ids).order('updated_at', { ascending: false }).limit(limit),
+    client.from('lb_daily').select('*').in('user_id', ids).order('day', { ascending: false }).limit(limit),
+  ]);
+  const items: ActivityItem[] = [];
+  for (const r of (weekly.data ?? []) as Record<string, unknown>[]) items.push({ at: String(r.updated_at ?? ''), username: String(r.username ?? ''), icon: r.icon as string | undefined, color: r.color as string | undefined,
+    text: `scored ${Number(r.score).toLocaleString()} on ${BOARD_NAME[String(r.board)] ?? String(r.board)}${r.detail ? ` (${String(r.detail).slice(0, 60)})` : ''}` });
+  for (const r of (daily.data ?? []) as Record<string, unknown>[]) items.push({ at: `${String(r.day)}T12:00:00Z`, username: String(r.username ?? ''), icon: r.icon as string | undefined, color: r.color as string | undefined,
+    text: r.won ? `won the Daily Legend (${r.wins}-${r.losses} in games)` : `reached series ${Number(r.stop) + 1} of the Daily Legend` });
+  return items.sort((a, b) => b.at.localeCompare(a.at)).slice(0, limit);
+}

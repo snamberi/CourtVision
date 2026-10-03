@@ -204,7 +204,7 @@ function trainDay(team:LeagueTeam,league:League,date:string,gameToday:boolean):L
    const tr=p.training!,delta=calculateOverall(p)-(control.reportBaseline[p.playerId]??calculateOverall(p));
    return `${p.playerId}: ${tr.plan.primary}; workload ${tr.workload.toFixed(0)}/100${reportKind==='monthly'?`; OVR ${delta>=0?'+':''}${delta.toFixed(1)}; system ${Math.round(tr.familiarity['offense:'+(team.coach?.offensiveSystem??'balanced')]??0)}%`:''}${tr.project?`; ${PROJECTS[tr.project.key].name} ${tr.project.progress.toFixed(0)}% (${tr.project.status})`:''}. ${planOpportunity(p)}`;
   })];
-  if(reportKind==='monthly')for(const p of seasons){const tr=p.training!;tr.history.push({date,season:p.season,kind:'training',text:`Monthly training: ${tr.plan.primary}; workload ${Math.round(tr.workload)}/100; ${planOpportunity(p)}`,changes:{...tr.pendingChanges}});tr.pendingChanges={};}
+  if(reportKind==='monthly')for(const p of seasons){const tr=p.training!;tr.history.push({date,season:p.season,kind:'training',text:`Monthly training: ${tr.plan.primary}; workload ${Math.round(tr.workload)}/100; ${planOpportunity(p)}`,changes:{...tr.pendingChanges}});tr.pendingChanges={};trimTraining(tr);}
   if(reportKind==='monthly'&&team.rotationReview)items.push(...team.rotationReview.changes.map(c=>`${c.playerId}: ${c.reason}`));
   control.reports=[{date,season:league.season??'',kind:reportKind as 'weekly'|'monthly',summary:`${reportKind==='weekly'?'Weekly workload and training':'Monthly development and rotation'} report. Last practice: ${session.type}, ${session.intensity}. Temporary workload is separate from permanent ratings.`,items},...control.reports].slice(0,104);
   if(reportKind==='monthly')for(const p of seasons)control.reportBaseline[p.playerId]=calculateOverall(p);
@@ -297,7 +297,7 @@ export function finishCoachingGame(league:League,result:GameResult,playoffs=fals
 export function recordOffseasonDevelopment(before:PlayerSeason,after:PlayerSeason,team:LeagueTeam,date:string,note?:string):PlayerSeason{
  const training=cloneTraining(before,team),changes:Record<string,number>={};
  for(const group of ['offense','defense','mental','physical'] as const)for(const key of Object.keys(before.attributes[group])){const path=group+'.'+key,delta=attributeValue(after,path)-attributeValue(before,path);if(Math.abs(delta)>.001)changes[path]=Math.round(delta*100)/100;}
- training.history.push({date,season:before.season,kind:'offseason',text:`OVR ${calculateOverall(before).toFixed(1)} → ${calculateOverall(after).toFixed(1)}. ${note??`Focus: ${training.plan.primary}. Permanent gains and decline; workload resets after the offseason.`}`,changes});
+ trimTraining(training);training.history.push({date,season:before.season,kind:'offseason',text:`OVR ${calculateOverall(before).toFixed(1)} → ${calculateOverall(after).toFixed(1)}. ${note??`Focus: ${training.plan.primary}. Permanent gains and decline; workload resets after the offseason.`}`,changes});
  training.workload=0;training.evidence={games:0,minutes:0,handling:0,defensiveReps:0,shots:{}};training.practiceDays=0;training.injuredDays=0;
  return {...after,training};
 }
@@ -307,3 +307,15 @@ export function offseasonTrainingCamp(league:League):League{
  const start=league.calendarDate??seasonStartDate(league.season);
  return {...league,teams:league.teams.map(original=>{let team=original;for(let day=1;day<=42;day++)team=trainDay(team,league,addDays(start,day),false);return team;})};
 }
+
+/** How much of a player's training log a save keeps: the latest entries (about two seasons). Long Dynasty saves stay small and fast. */
+export const TRAINING_HISTORY_MAX = 16;
+/** Entries older than the latest few keep their text but not the per-attribute changes (the bulk of the log). */
+export const TRAINING_DETAIL_KEEP = 4;
+export function trimTraining(tr: PlayerTraining): void {
+  if (tr.history.length > TRAINING_HISTORY_MAX) tr.history = tr.history.slice(-TRAINING_HISTORY_MAX);
+  const cut = tr.history.length - TRAINING_DETAIL_KEEP;
+  if (cut > 0 && tr.history.slice(0, cut).some(e => e.changes)) tr.history = tr.history.map((e, i) => (i < cut && e.changes ? { date: e.date, season: e.season, kind: e.kind, text: e.text } : e));
+}
+/** A retired player's record keeps who he was and his career, not his day-to-day training. */
+export function retiredData<T extends { training?: PlayerTraining }>(p: T): T { if (!p.training) return p; const { training: _gone, ...rest } = p; void _gone; return rest as T; }

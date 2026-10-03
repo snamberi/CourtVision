@@ -94,6 +94,8 @@ interface Props {
   crowdFill?: number;
   /** What the court shows beyond the game: the home arena's upgrades, Rivalry Week, strong duos. */
   court?: CourtExtras;
+  /** Series reels: play this game's best few moments straight away, then hand back. */
+  autoReel?: { maxPlays: number; label: string; onDone: () => void };
 }
 export interface CourtExtras { arena?: Partial<Record<'scoreboard'|'lights'|'crowd'|'mascot',number>>; rivalryWeek?: { hype: number } | null; duos?: Set<string>; coaches?: { home?: CoachLook; away?: CoachLook }; /** An owner's arena (Owner's Box): its name on the scorer's table, skyboxes up top. */ building?: { name: string; suites: number } }
 const SOUND_KEY='cv-watch-sound';
@@ -105,7 +107,7 @@ const BIG_KINDS=new Set<Highlight['kind']>(['gameWinner','dunk','block','clutchT
 const BIG_CALL:Partial<Record<Highlight['kind'],string>>={gameWinner:'GAME-WINNER!',dunk:'SLAM!',block:'REJECTED!',clutchThree:'BANG!',andOne:'AND ONE!'};
 const BIG_HIT_MS=1300,BIG_SLOW=.35;
 
-export function WatchGame({game,home,away,homeRoster=[],awayRoster=[],onBoxScore,startAt,coaching,rivalry,occasion,crowdFill,court}:Props) {
+export function WatchGame({game,home,away,homeRoster=[],awayRoster=[],onBoxScore,startAt,coaching,rivalry,occasion,crowdFill,court,autoReel}:Props) {
   // The game's officiating crew: the same three for the same game.
   const crew=useMemo(()=>refCrew(game.seed??`${home.teamId}-${away.teamId}`),[game.seed,home.teamId,away.teamId]);
   const occasionBoost=occasion?({game7:.4,final:.32,cupFinal:.28,elimination:.25,playoff:.15,cup:.12} as const)[occasion.stakes]:0;
@@ -213,6 +215,17 @@ export function WatchGame({game,home,away,homeRoster=[],awayRoster=[],onBoxScore
     }
   },[cursor,reel,total,stopRecording]);
   const startReel=()=>{if(!reelPlays.length)return;setReel({plays:reelPlays,pos:0});setCursor(reelPlays[0].index+.08);setSpeed(1);setPlaying(true);};
+  // A series reel: this game's best few moments (in game order), then the next game.
+  const autoStarted=useRef(false),autoDone=useRef(false);
+  useEffect(()=>{
+    if(!autoReel||autoStarted.current)return;
+    autoStarted.current=true;
+    const best=[...reelPlays].sort((a,b)=>b.score-a.score).slice(0,autoReel.maxPlays).sort((a,b)=>a.index-b.index);
+    if(!best.length){autoDone.current=true;autoReel.onDone();return;}
+    setReel({plays:best,pos:0});setCursor(best[0].index+.08);setSpeed(1);setPlaying(true);
+  },[autoReel,reelPlays]);
+  const reelSeen=useRef(false);
+  useEffect(()=>{if(reel)reelSeen.current=true;else if(autoReel&&reelSeen.current&&!autoDone.current){autoDone.current=true;autoReel.onDone();}},[reel,autoReel]);
   const shareText=()=>{
     const lines=reelPlays.map(h=>`• ${formatGameClock(h.quarter,h.clockSeconds,regulation)} — ${h.text} (${h.homeScoreAfter}–${h.awayScoreAfter})`);
     return `${home.name} ${game.homeScore}, ${away.name} ${game.awayScore} — Court Vision highlights\n${lines.join('\n')}`;
@@ -245,9 +258,14 @@ export function WatchGame({game,home,away,homeRoster=[],awayRoster=[],onBoxScore
     if(!sound||!a||!f||!entry){prev.current=null;return;}
     const p=prev.current,active=playing&&!finished;
     const offenseHome=f.offenseTeamId===home.teamId;
+    const late=entry.quarter>=regulation;
     if(active&&p){
       if(speed<=2&&f.carrier&&f.ball.z<6&&p.z>=6&&p.index===index)a.dribble();
       if(f.net>0&&p.net===0)a.swish();
+      // Sneakers squeak on hard cuts, crossovers and step-backs.
+      if(speed<=2&&f.players.some(pl=>pl.anim&&['crossover','behindBack','spin','stepback','jab','charge'].includes(pl.anim.kind)&&pl.anim.t<.3))a.squeak();
+      // A shot that wins it (or ties it) in the last seconds: the building erupts.
+      if(f.net>0&&p.net===0&&late&&entry.clockSeconds<=5&&Math.abs(score.home-score.away)<=3)a.eruption();
       if(f.net>0&&p.net===0&&f.callout?.tone==='make'){if(f.callout.text==='SLAM!')a.dunk(offenseHome);else if(f.callout.text==='+3')a.pop(offenseHome);else a.cheer(offenseHome);}
       if((f.rim??0)>0&&p.rim===0)a.rim();
       if(f.callout?.tone==='defense'&&p.callout!==f.callout.text)a.cheer(!offenseHome);
@@ -255,8 +273,9 @@ export function WatchGame({game,home,away,homeRoster=[],awayRoster=[],onBoxScore
       if(entry.quarter!==p.quarter)a.buzzer();
       if(index!==p.index&&entry.events.some(e=>e.endsWith(' timeout')))a.whistle();
     }
-    const margin=Math.abs(score.home-score.away),late=entry.quarter>=regulation;
-    a.crowd(finished?.15+rivalryBoost/2:Math.min(1,.2+rivalryBoost+(margin<=5?.25:margin<=10?.1:0)+(late?.25:0)+(f.callout?.tone==='make'&&offenseHome?.3:0)));
+    const margin=Math.abs(score.home-score.away),crunch=late&&entry.clockSeconds<=120&&margin<=6;
+    // The crowd gets louder at big moments: a close game late, and louder still in the last two minutes.
+    a.crowd(crunch?Math.min(1,.75+rivalryBoost):finished?.15+rivalryBoost/2:Math.min(1,.2+rivalryBoost+(margin<=5?.25:margin<=10?.1:0)+(late?.25:0)+(f.callout?.tone==='make'&&offenseHome?.3:0)));
     prev.current={index,net:f.net,rim:f.rim??0,z:f.ball.z,phase:f.phase,callout:f.callout?.text,quarter:entry.quarter};
   },[frame,sound,playing,finished,speed,index,entry,home.teamId,score.home,score.away,regulation,rivalryBoost]);
   const wasFinished=useRef(finished);
@@ -337,7 +356,7 @@ export function WatchGame({game,home,away,homeRoster=[],awayRoster=[],onBoxScore
     </div></div>}
     <div ref={arena} className={`watch-stage ${bigmo?`bigmo-${bigmo.phase}`:''} ${frame?.callout?.text==='SLAM!'&&playing&&(frame.callout.t??1)<.45?'slam-shake':''}`}>
       {bigmo&&<div className={`bigmo-tag ${bigmo.phase}`} role="status">{bigmo.phase==='hit'?<b>{BIG_CALL[bigmo.h.kind]??HIGHLIGHT_LABEL[bigmo.h.kind].toUpperCase()}</b>:<><b>REPLAY</b><small>slow motion · {bigmo.h.playerId}</small></>}</div>}
-      {reelNow&&<div className="watch-reel-banner" role="status"><b>HIGHLIGHT {reel!.pos+1}/{reel!.plays.length}</b><span>{HIGHLIGHT_LABEL[reelNow.kind]} · {reelNow.text}</span><button onClick={()=>{setReel(null);setPlaying(false);if(recording.current)void stopRecording();}}>{isRecording?'Stop recording':'Exit reel'}</button></div>}
+      {reelNow&&<div className="watch-reel-banner" role="status"><b>{autoReel?`${autoReel.label} · `:''}HIGHLIGHT {reel!.pos+1}/{reel!.plays.length}</b><span>{HIGHLIGHT_LABEL[reelNow.kind]} · {reelNow.text}</span><button onClick={()=>{setReel(null);setPlaying(false);if(recording.current)void stopRecording();}}>{isRecording?'Stop recording':'Exit reel'}</button></div>}
       {frame?<WatchCourt frame={frame} home={home} away={away} rosters={rosters} crowdFill={occasion?1:crowdFill} arena={court?.arena} building={court?.building} rivalry={!!court?.rivalryWeek} duos={court?.duos} coaches={court?.coaches} refs={crew.map(r=>r.number)} crew={crew} hotId={hot?.playerId} labels={labels} trail={trail} camera={camera} ghosts={ghosts} shots={shots} bug={{homeScore:score.home,awayScore:score.away,clock:finished?'FINAL':clockLabel.replace(' · ',' '),shotClock}}/>:<p className="empty-state">This saved game has no possession log. Its final box score is still available.</p>}
     </div>
     <div className="watch-call" aria-live="polite" aria-atomic="true"><span className="pixel-eyebrow">COURTSIDE CALL</span><p><TeamText text={commentary ?? ''} /></p>{run&&<strong className="watch-run">{run.home?home.name:away.name} · {run.points}–0 RUN</strong>}{hot&&<strong className="hot-hand">ON FIRE · {hot.playerId} — {hot.threes} straight made threes</strong>}{finished&&!reel&&reelPlays.length>0&&<button className="primary watch-final-reel" onClick={startReel}><PixelIcon name="play" size={14}/> Watch the {reelPlays.length}-play highlight reel</button>}</div>

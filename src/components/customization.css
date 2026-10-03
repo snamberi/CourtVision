@@ -160,3 +160,11 @@
 .studio-jersey input { width: 72px; text-align: center; font-variant-numeric: tabular-nums; }
 .studio-actions { flex-wrap: wrap; }
 .studio-actions .studio-sovereign { flex: 1 1 100%; color: var(--c-fg-9fe7ff, #9fe7ff); background: linear-gradient(90deg, var(--c-bg-060b2a, #060b2a), var(--c-bg-1f4fd9, #1f4fd9), var(--c-bg-060b2a, #060b2a)); border-color: var(--c-border-ffd166, #ffd166); box-shadow: 0 0 10px var(--c-shadow-4da3ff88, #4da3ff88); }
+
+/* Look codes: share a player's look, paste one, or use it everywhere. */
+.studio-likeness { display: grid; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--studio-border); }
+.studio-likeness h4 { margin: 0; font-size: 12px; }
+.studio-likeness-row { display: flex; gap: 6px; align-items: center; min-width: 0; }
+.studio-likeness-row code { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+.studio-likeness-row input { flex: 1; min-width: 0; }
+.studio-likeness small { color: var(--studio-muted); font-size: 11px; }

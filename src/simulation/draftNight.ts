@@ -71,3 +71,33 @@ export function tradeDownOffers(league: League, extras: GMLeagueExtras, userTeam
   }
   return offers;
 }
+
+/**
+ * Calling around to move up: for each of the next few picks before yours, what it would cost (your next pick, plus a
+ * future pick if they need more). Only deals that team's front office would sign off on.
+ */
+export function tradeUpOffers(league: League, extras: GMLeagueExtras, userTeamId: string, max = 3): (TradeProposal & { note: string })[] {
+  if (!extras.draftDayOpen) return [];
+  const order = currentDraftOrder(league, extras);
+  const made = new Set((extras.draftPicksMade ?? []).map(p => p.pickNumber));
+  const mySlot = order.findIndex((t, i) => i >= extras.draftPickIndex && t === userTeamId && !made.has(i));
+  if (mySlot < 0) return [];
+  const n = Math.max(1, league.teams.length);
+  const label = (s: number) => `R${Math.floor(s / n) + 1} #${s % n + 1}`;
+  const name = (id: string) => league.teams.find(t => t.teamId === id)?.name ?? id;
+  const mine = league.teams.find(t => t.teamId === userTeamId)?.name ?? userTeamId;
+  const myFutures = tradeableFuturePicks(extras, userTeamId).sort((a, b) => b.round - a.round || a.year - b.year);
+  const offers: (TradeProposal & { note: string })[] = [];
+  for (let slot = extras.draftPickIndex; slot < mySlot && offers.length < max; slot++) {
+    const team = order[slot];
+    if (team === userTeamId || made.has(slot)) continue;
+    for (const extra of [undefined, ...myFutures.slice(0, 4)]) {
+      const p: TradeProposal = { teamAId: team, teamBId: userTeamId, playersFromA: [], playersFromB: [], currentPicksFromA: [slot], currentPicksFromB: [mySlot], ...(extra ? { picksFromB: [extra.id] } : {}) };
+      const reasons = validateTrade(league, extras, p).reasons.filter(r => !r.startsWith(`${mine} would lose too much value`));
+      if (reasons.length) continue;
+      offers.push({ ...p, note: `${name(team)} will give you ${label(slot)} for your ${label(mySlot)}${extra ? ` and your ${extra.year} ${extra.round === 1 ? 'first' : 'second'}-rounder` : ''}.` });
+      break;
+    }
+  }
+  return offers;
+}

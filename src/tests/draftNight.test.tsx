@@ -4,7 +4,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { generateFullLeague } from '../simulation/leagueGenerator';
 import { simulateRounds } from '../simulation/league';
 import { draftOrderWithLottery, generateDraftClass, draftProspect, currentDraftOrder, buildTwoRoundDraftOrder } from '../simulation/gm';
-import { lotteryResult, consensusBoard, pickReaction, tradeDownOffers } from '../simulation/draftNight';
+import { lotteryResult, consensusBoard, pickReaction, tradeDownOffers, tradeUpOffers } from '../simulation/draftNight';
 import { DraftLotteryShow } from '../components/DraftLotteryShow';
 
 const { league: base, extras: baseExtras } = generateFullLeague(91, 16, 13, 20, '2026', { priorSeasons: false });
@@ -44,6 +44,21 @@ describe('draft night', () => {
     expect(extras.draftPicksMade).toHaveLength(3);
     expect(extras.draftPicksMade![0].reaction).toBe('Reach');
     for (const p of extras.draftPicksMade!) expect(p.boardRank).toBeGreaterThanOrEqual(0);
+  });
+
+  it('you can call around to move up before your pick', () => {
+    const draftClass = generateDraftClass(40, 6, '2027');
+    const order = buildTwoRoundDraftOrder(league, 3);
+    const extras = { ...baseExtras, draftClass, draftOrder: order, draftDayOpen: true, draftPickIndex: 0, draftPicksMade: [] as NonNullable<typeof baseExtras.draftPicksMade>, draftBoard: consensusBoard(draftClass), capSettings: { ...baseExtras.capSettings, enforceCapOnTrades: false } };
+    const me = order[10];
+    const mySlot = order.indexOf(me);
+    const offers = tradeUpOffers(league, extras, me);
+    for (const o of offers) {
+      expect(o.currentPicksFromB).toEqual([mySlot]);
+      expect(o.currentPicksFromA![0]).toBeLessThan(mySlot);
+      expect(o.teamBId).toBe(me);
+    }
+    expect(tradeUpOffers(league, { ...extras, draftDayOpen: false }, me)).toEqual([]);
   });
 
   it('the lottery show reveals envelopes from the bottom up', () => {

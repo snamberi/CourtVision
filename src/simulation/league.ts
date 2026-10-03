@@ -203,6 +203,10 @@ export interface League {
   owner?: import('./ownerBox').OwnerState;
   /** An online league shared with friends: its id and the teams people run (see cloud/onlineLeague.ts). */
   online?: { leagueId: string; code: string; humans: string[] };
+  /** GM Career: scout, assistant GM, then GM (see gmCareer.ts). */
+  gmCareer?: import('./gmCareer').GmCareer;
+  /** Locker-room moments and injury comebacks for your team (see lockerRoom.ts). */
+  lockerRoom?: import('./lockerRoom').LockerState;
   /** Dynasty Mode: owners and when the dynasty began (see dynasty.ts). */
   dynasty?: import('./dynasty').DynastyState;
   /** League office: rule votes, expansion bids, relocations (see ownerBox.ts). */

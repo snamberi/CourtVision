@@ -21,6 +21,8 @@ interface TeamMeta {
 
 interface Props {
   initialWatch?: boolean;
+  /** Series reels (see WatchGame). */
+  autoReel?: { maxPlays: number; label: string; onDone: () => void };
   /** Possession to start the replay at (news highlights). */
   watchStart?: number;
   coaching?: CoachingProps;
@@ -226,7 +228,7 @@ function teamLeaders(box: TeamBoxScore) {
 
 export function GameBoxScorePage({
   game: storedGame, home, away, homeRoster, awayRoster, onSelectPlayer, initialWatch = false, watchStart, coaching,
-  onPrev, onNext, canPrev, canNext, onSimNext, canSimNext, gamesLabel, rivalry, occasion, crowdFill, court,
+  onPrev, onNext, canPrev, canNext, onSimNext, canSimNext, gamesLabel, rivalry, occasion, crowdFill, court, autoReel,
 }: Props) {
   // Older games keep their replay log compressed; expand it only when this game is opened.
   const game = useMemo(() => withGameLog(storedGame), [storedGame]);
@@ -240,7 +242,7 @@ export function GameBoxScorePage({
   const awayLeaders = teamLeaders(game.awayBox);
   const homeWon = game.homeScore > game.awayScore;
 
-  if (watching) return <WatchGame key={`${game.homeTeamId}-${game.awayTeamId}-${game.seed}`} game={game} home={home} away={away} homeRoster={homeRoster} awayRoster={awayRoster} onBoxScore={() => setWatching(false)} startAt={watchStart} coaching={coaching} rivalry={rivalry} occasion={occasion} crowdFill={crowdFill} court={court} />;
+  if (watching) return <WatchGame key={`${game.homeTeamId}-${game.awayTeamId}-${game.seed}`} game={game} home={home} away={away} homeRoster={homeRoster} awayRoster={awayRoster} onBoxScore={() => setWatching(false)} startAt={watchStart} coaching={coaching} rivalry={rivalry} occasion={occasion} crowdFill={crowdFill} court={court} autoReel={autoReel} />;
   return (
     <div className="game-box-score">
       {occasion && <OccasionBanner occasion={occasion} />}

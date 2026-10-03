@@ -12,7 +12,7 @@ import { ScoutingBoard } from './ScoutingBoard';
 import { calculateOverall } from '../simulation/engine/overall';
 import { PlayerNameTag } from './PlayerAvatar';
 import { DraftLotteryShow } from './DraftLotteryShow';
-import { tradeDownOffers } from '../simulation/draftNight';
+import { tradeDownOffers, tradeUpOffers } from '../simulation/draftNight';
 
 const PICK_CLOCK = 60;
 
@@ -56,6 +56,9 @@ export function DraftPage({ league, extras, controlledTeamId, onChange, onSelect
   const [clockOn, setClockOn] = useState(true);
   const warRoom = myTurn && extras.draftDayOpen && !!controlledTeamId && onClock === controlledTeamId;
   const calls = useMemo(() => warRoom ? tradeDownOffers(league, extras, controlledTeamId!) : [], [warRoom, league, extras, controlledTeamId]);
+  // Draft-day trades the other way: while others are on the clock, call around to move up.
+  const [moveUpOpen, setMoveUpOpen] = useState(false);
+  const moveUps = useMemo(() => moveUpOpen && !warRoom && controlledTeamId ? tradeUpOffers(league, extras, controlledTeamId) : [], [moveUpOpen, warRoom, league, extras, controlledTeamId]);
   useEffect(() => {
     if (!warRoom || !clockOn) return;
     const t = setTimeout(() => {
@@ -70,6 +73,12 @@ export function DraftPage({ league, extras, controlledTeamId, onChange, onSelect
     const r = executeTrade(league, extras, offer);
     onChange(r.league, r.extras);
     setMessage(`Deal: you traded down with ${teamName(offer.teamAId)}.`);
+  };
+  const takeMoveUp = (offer: TradeProposal) => {
+    const r = executeTrade(league, extras, offer);
+    onChange(r.league, r.extras);
+    setMoveUpOpen(false);
+    setMessage(`Deal: you moved up with ${teamName(offer.teamAId)}.`);
   };
   const [lotterySeen, setLotterySeen] = useState(false);
   const showLottery = !!extras.lottery && !extras.lottery.revealed && !lotterySeen && extras.draftDayOpen && extras.draftPickIndex === 0;
@@ -133,6 +142,12 @@ export function DraftPage({ league, extras, controlledTeamId, onChange, onSelect
       <div className="war-room-calls"><h4>📞 Calls</h4>{calls.length ? calls.map((c, i) => <div key={i} className="war-room-call"><span><TeamText text={c.note} /></span><button onClick={() => takeCall(c)}>Accept</button></div>)
         : <p className="hint-text">Nobody's calling to move up right now. You can still call around: use "Propose trade" on any pick below.</p>}</div>
       <p className="hint-text">Make your pick from the board below before the clock hits zero, or the war room takes the best player on your board.</p>
+    </section>}
+    {extras.draftDayOpen && !warRoom && controlledTeamId && <section className="war-room war-room-up" aria-label="Move up">
+      <div className="war-room-calls"><h4>📞 Move up</h4>
+        {!moveUpOpen ? <button onClick={() => setMoveUpOpen(true)}>Call around to move up</button>
+          : moveUps.length ? moveUps.map((c, i) => <div key={i} className="war-room-call"><span><TeamText text={c.note} /></span><button onClick={() => takeMoveUp(c)}>Make the deal</button></div>)
+          : <p className="hint-text">No team ahead of you will move down for what you have right now.</p>}</div>
     </section>}
     {message && <p className="hint-text" role="status"><TeamText text={message} /></p>}
 

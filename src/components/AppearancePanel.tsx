@@ -6,6 +6,7 @@ import { teamColors } from '../simulation/teamColors';
 import { useTeamIdentity } from '../visuals/TeamIdentityContext';
 import { PlayerAvatar } from './PlayerAvatar';
 import { PixelIcon } from './PixelIcon';
+import { likenessCode, readLikenessCode, setLikeness, likenessOf, hasBuiltInLikeness } from '../visuals/likeness';
 import './customization.css';
 
 const label = (key: string) => key.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase()).replace(/ ([A-Z])/g, (_, c: string) => ` ${c.toLowerCase()}`);
@@ -58,6 +59,7 @@ export function AppearancePanel({ season, onChange }: { season: PlayerSeason; on
         </div>
         <div className="studio-actions"><button type="button" onClick={randomize}><PixelIcon name="shuffle" size={16} /> Randomize</button><button type="button" disabled={!history.length} onClick={() => { if (history.length) { onChange({ ...season, appearance: history.at(-1) }); setHistory(h => h.slice(0, -1)); setStatus('Last change undone.'); } }}>Undo</button></div>
         <button type="button" className="studio-reset" disabled={!season.appearance} onClick={() => replace(undefined, 'Original look restored.')}>Restore original look</button>
+        <LikenessCode playerId={season.playerId} look={look} onPaste={l => replace(l, 'Look code applied.')} onStatus={setStatus} />
         <div className="studio-status" role="status">{status}</div>
       </aside>
       <div className="studio-browser">
@@ -72,4 +74,20 @@ export function AppearancePanel({ season, onChange }: { season: PlayerSeason; on
       </div>
     </div>
   </section>;
+}
+
+/** The look as a short code to share, a box to paste one, and "use this look everywhere" (every league and mode on this device). */
+function LikenessCode({ playerId, look, onPaste, onStatus }: { playerId: string; look: Appearance; onPaste: (l: Appearance) => void; onStatus: (m: string) => void }) {
+  const [paste, setPaste] = useState('');
+  const full = { ...likenessOf(playerId), ...look };
+  const code = likenessCode(full);
+  return <div className="studio-likeness">
+    <h4>Look code</h4>
+    <div className="studio-likeness-row"><code title="Share this code: anyone can paste it to get this look">{code}</code>
+      <button type="button" onClick={() => { void navigator.clipboard?.writeText(code).then(() => onStatus('Look code copied.'), () => onStatus('Copy the code by hand.')); }}>Copy</button></div>
+    <div className="studio-likeness-row"><input value={paste} onChange={e => setPaste(e.target.value)} placeholder="Paste a look code (CVL1.…)" aria-label="Paste a look code" />
+      <button type="button" disabled={!paste.trim()} onClick={() => { const l = readLikenessCode(paste); if (l) { onPaste(l); setPaste(''); } else onStatus('That is not a look code.'); }}>Apply</button></div>
+    <button type="button" onClick={() => { setLikeness(playerId, full); onStatus(`${playerId} now looks like this everywhere: every league and mode on this device.`); }}>Use this look everywhere</button>
+    {hasBuiltInLikeness(playerId) && <small>{playerId} has a real-life look built in. Fix it here if it is off.</small>}
+  </div>;
 }

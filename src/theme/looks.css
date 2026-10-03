@@ -204,6 +204,10 @@
 .app-tile em { position: absolute; right: 1px; bottom: 1px; min-width: 15px; padding: 1px 3px; font: normal 700 9px/1.2 var(--look-body); text-align: center; background-color: var(--look-page); color: var(--look-text); border-radius: 4px; }
 .app-tile.streak em { position: static; padding: 0; background: none; font-size: 11px; margin-top: -4px; }
 .app-tile.streak { align-content: center; gap: 0; }
+/* Court Vision on TikTok and Instagram: the brands' own tile colours. */
+.app-tile.tiktok { background: #010101; border-color: #010101; }
+.app-tile.instagram { background: linear-gradient(45deg, #feda75 0%, #fa7e1e 25%, #d62976 50%, #962fbf 75%, #4f5bd5 100%); border-color: #962fbf; }
+a.menu-phone-app { text-decoration: none; }
 .menu-phone-home { justify-self: center; width: 34px; height: 3px; border-radius: 2px; background-color: var(--look-muted); opacity: .6; }
 
 @media (min-width: 1560px) {
@@ -215,12 +219,12 @@
   .menu-phone-body { grid-template-columns: auto 1fr; align-items: center; padding: 8px 12px; border-radius: 12px; }
   .menu-phone-status { flex-direction: column; justify-content: center; gap: 5px; padding-right: 10px; border-right: 1px solid var(--look-line); }
   .menu-phone-notch { width: 6px; height: 20px; }
-  .menu-phone-apps { grid-template-columns: repeat(4, auto); gap: 4px 14px; }
+  .menu-phone-apps { grid-template-columns: repeat(6, auto); gap: 4px 14px; }
   .menu-phone-home { display: none; }
 }
 @media (max-width: 540px) {
   .menu-phone { align-self: stretch; }
-  .menu-phone-apps { justify-content: space-between; gap: 4px 8px; }
+  .menu-phone-apps { grid-template-columns: repeat(3, 1fr); justify-content: space-between; gap: 6px 8px; }
 }
 @media (prefers-reduced-motion: reduce) { .app-tile { transition: none; } .menu-phone-app:hover .app-tile { transform: none; } }
 
@@ -527,3 +531,50 @@
 :root .online-trades { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 :root .online-trades li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; }
 :root .online-trades li span { flex: 1 1 260px; }
+
+/* Favourite player: his name and his pixel likeness. */
+:root .fav-player-card { display: flex; align-items: center; gap: 14px; padding: 8px 10px; border: var(--look-border) solid var(--look-line); background: var(--look-panel); }
+:root .fav-player-art { display: grid; place-items: end center; min-width: 72px; }
+:root .fav-player-card .fav-chosen { display: grid; gap: 4px; }
+:root .fav-player-card .fav-chosen b { font-size: 18px; }
+:root .fav-hits button { display: flex; align-items: center; gap: 8px; }
+
+/* Playoff series reel. */
+:root .series-reel-btn { margin-top: 6px; font-size: 12px; padding: 4px 10px; }
+:root .series-reel-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 10px; padding: 8px 12px; border: var(--look-border) solid var(--look-accent); background: var(--look-panel); }
+:root .series-reel-bar b { flex: 1 1 260px; }
+
+/* Locker-room moments. */
+:root .locker-moment { display: grid; gap: 8px; }
+:root .locker-event { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; }
+:root .locker-faces { display: flex; gap: 2px; }
+:root .locker-event b { display: block; margin: 2px 0 4px; }
+:root .locker-event p { margin: 0 0 8px; }
+:root .locker-choices { display: flex; flex-wrap: wrap; gap: 6px; }
+:root .locker-log ul { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 4px; font-size: 13px; }
+:root .locker-log small { color: var(--look-muted); }
+@media (max-width: 560px) { :root .locker-event { grid-template-columns: 1fr; } }
+
+/* GM Career. */
+:root .gm-career-card { display: grid; gap: 8px; }
+:root .gm-career-steps { list-style: none; margin: 0; padding: 0; display: flex; gap: 6px; flex-wrap: wrap; }
+:root .gm-career-steps li { padding: 4px 10px; border: 1px solid var(--look-line); font-size: 12px; color: var(--look-muted); }
+:root .gm-career-steps li.done { color: var(--look-text); }
+:root .gm-career-steps li.now { border-color: var(--look-accent); color: var(--look-accent); font-weight: 700; }
+:root .gm-career-offer { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 8px 10px; border: var(--look-border) solid var(--look-accent); }
+:root .gm-career-log { margin: 0; padding-left: 18px; display: grid; gap: 3px; font-size: 13px; }
+:root .gm-career-log small { color: var(--look-muted); margin-right: 4px; }
+
+/* Trophy case and tutorial quests. */
+:root .trophy-shelf { list-style: none; margin: 8px 0 0; padding: 12px; display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; background: linear-gradient(180deg, transparent calc(100% - 8px), var(--look-line) calc(100% - 8px)); }
+:root .trophy-shelf li { display: grid; justify-items: center; text-align: center; gap: 4px; padding: 10px 8px; border: var(--look-border) solid var(--look-line); background: var(--look-panel); }
+:root .trophy-shelf li.trophy-title { color: var(--c-fg-ffd166, #ffd166); }
+:root .trophy-shelf li b { color: var(--look-text); }
+:root .trophy-shelf small { color: var(--look-muted); font-size: 11px; }
+:root .trophy-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+:root .trophy-pick ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 4px 12px; max-height: 320px; overflow: auto; }
+:root .trophy-pick small { color: var(--look-muted); }
+:root .checklist-xp { font-size: 10px; color: var(--look-accent); font-weight: 700; margin-left: 4px; }
+:root .activity-feed { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
+:root .activity-feed li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; font-size: 13px; padding-bottom: 6px; border-bottom: 1px solid var(--look-line); }
+:root .activity-feed small { margin-left: auto; color: var(--look-muted); font-size: 11px; }

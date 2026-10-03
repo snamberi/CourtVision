@@ -1,4 +1,5 @@
 import type { Lesson, LessonStatus } from '../../tutorial/lessons';
+import { questXp } from '../../tutorial/quests';
 
 interface Props {
   statuses: LessonStatus[];
@@ -14,7 +15,7 @@ export function FirstSeasonChecklist({ statuses, onGo, onHide }: Props) {
   return (
     <aside className="first-season-checklist" aria-labelledby="checklist-title" data-tour="checklist">
       <div className="checklist-head">
-        <h2 id="checklist-title">First season</h2>
+        <h2 id="checklist-title">First-season quests</h2>
         <span className="checklist-count">{done} / {total}</span>
       </div>
       <div className="checklist-progress" role="progressbar" aria-label="Lessons done" aria-valuemin={0} aria-valuemax={total} aria-valuenow={done}>
@@ -28,7 +29,7 @@ export function FirstSeasonChecklist({ statuses, onGo, onHide }: Props) {
             <li key={s.lesson.id} className={`checklist-item ${s.done ? 'is-done' : ''} ${isNext ? 'is-next' : ''} ${s.lockedUntil ? 'is-locked' : ''}`}>
               <span className="checklist-box" aria-hidden="true">{s.done ? '✓' : ''}</span>
               <span className="checklist-text">
-                <span className="checklist-title">{s.lesson.title}</span>
+                <span className="checklist-title">{s.lesson.title} <small className="checklist-xp">{s.done ? '' : '+'}{questXp(s.lesson.id)} XP</small></span>
                 {!s.done && note && <span className="checklist-detail">{note}</span>}
                 <span className="sr-only">{s.done ? ' (done)' : s.lockedUntil ? '' : ' (to do)'}</span>
               </span>

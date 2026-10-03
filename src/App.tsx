@@ -37,7 +37,7 @@ import { UnlockNotice } from './components/tutorial/UnlockNotice';
 import { LessonsSettingsCard } from './components/tutorial/LessonsSettingsCard';
 import { createTutorial, markVisited, navModeOf, readPreferredNavMode, readTourSeen, rememberNavMode, rememberTourSeen, tutorialOf, updateTutorial, type NavMode, type TutorialState } from './tutorial/tutorialState';
 import { featureForTab, featureStatuses, lockedFeatures, newTabs as newFeatureTabs, pendingUnlockNotices, type Feature } from './tutorial/unlocks';
-import { lessonStatuses, type HintId, type Lesson } from './tutorial/lessons';
+import { lessonStatuses, LESSONS, type HintId, type Lesson } from './tutorial/lessons';
 import { hintStep, tourSteps } from './tutorial/guide';
 import { PHASE_NAMES, seasonRoadMap } from './tutorial/roadmap';
 import { PixelIcon } from './components/PixelIcon';
@@ -118,6 +118,11 @@ import { canPlaySummerLeague, ensureUpcomingDraftClass, simulateSummerLeague } f
 import { runLeagueAIPass, autoDraftAIPicksUntilUserTurn, simEntireDraft, runFreeAgencyAI } from './simulation/aiGM';
 import { autoRunAllStarWeekend } from './simulation/autoPlay';
 import { startDynasty } from './simulation/dynasty';
+import { collectLockerEvents } from './simulation/lockerRoom';
+import { claimQuests, questsXp } from './tutorial/quests';
+import { startGmCareer, joinTeam, aiUserTeam, ROLE_LOCKED, gmRole, takeGmOffer } from './simulation/gmCareer';
+import { GmCareerCard } from './components/GmCareerCard';
+import { LockerRoomCard } from './components/LockerRoomCard';
 import { autoGeneratePlayoffBracket, simulateFullPlayoffs, simulatePlayoffGameDay, type PlayoffBracket } from './simulation/playoffs';
 import { rosterComplianceIssues } from './simulation/rosterRequirements';
 import { PlayButton } from './components/PlayButton';
@@ -258,7 +263,7 @@ function buildInitialExtras(league: League): GMLeagueExtras {
 }
 
 type Screen = 'menu' | 'chooseTeam' | 'app' | 'hunt' | 'perfect' | 'career' | 'locker' | 'profile' | 'community' | 'draft' | 'settings' | 'arcade' | 'create' | 'worldGamesMode' | 'friends' | 'clubs' | 'online';
-const ARCADE_HASH: Record<ArcadeTab, string> = { guess: '#/guess', hilo: '#/higher-lower', bracket: '#/bracket', quiz: '#/quiz' };
+const ARCADE_HASH: Record<ArcadeTab, string> = { guess: '#/guess', hilo: '#/higher-lower', bracket: '#/bracket', quiz: '#/quiz', legends: '#/legends', street: '#/street' };
 const arcadeTabOf = (hash: string) => (Object.entries(ARCADE_HASH).find(([, h]) => h === hash)?.[0] as ArcadeTab | undefined);
 
 const debouncedSave = createDebouncedSave();
@@ -427,7 +432,7 @@ function App() {
     // Older saves: seed the record book from the games still stored this season.
     // Owners, goals and your job security; older leagues gain them here.
     // This season's In-Season Cup draw, when the league is early enough in the season to hold one.
-    const l = ensureFrontOffice(setupCup(backfillRecordBook(initializeCoaching(normalizedLeague, teamId))), teamId);
+    const l = joinTeam(ensureFrontOffice(setupCup(backfillRecordBook(initializeCoaching(normalizedLeague, teamId))), teamId), teamId);
     if (repairs.length > 0) {
       pushToast(`Fixed ${repairs.length} duplicate player name${repairs.length === 1 ? '' : 's'} so no one gets lost (${repairs.slice(0, 3).map((r) => r.newId).join(', ')}${repairs.length > 3 ? ', ...' : ''}).`, 'info');
     }
@@ -451,11 +456,11 @@ function App() {
 
   const [menuBusy, setMenuBusy] = useState<string | null>(null);
   /** Builds a league from its origin (a new game, the weekly challenge, or a league code) and opens it. */
-  const startFromOrigin = (origin: LeagueOrigin, o: { name: string; teamId?: string | null; weekly?: WeeklyRebuild | null; settings?: CreateSettings; dynasty?: boolean }) => {
+  const startFromOrigin = (origin: LeagueOrigin, o: { name: string; teamId?: string | null; weekly?: WeeklyRebuild | null; settings?: CreateSettings; dynasty?: boolean; gmCareer?: boolean }) => {
     const openWithTeam = (built: League, builtExtras: GMLeagueExtras) => {
       // League settings picked on the New Franchise page; Dynasty Mode switches on the living world.
       const set = o.settings ? applyCreateSettings(built, builtExtras, o.settings, origin.kind === 'random') : { league: built, extras: builtExtras };
-      const extras = set.extras, league = o.dynasty ? startDynasty(set.league) : set.league;
+      const extras = set.extras, dyn = o.dynasty ? startDynasty(set.league) : set.league, league = o.gmCareer ? startGmCareer(dyn) : dyn;
       if (o.teamId && league.teams.some(t => t.teamId === o.teamId)) { enterApp(league, extras, o.teamId, o.name); setTab('dashboard'); return; }
       setPendingLeague(league);
       setPendingExtras(extras);
@@ -532,8 +537,8 @@ function App() {
     if (c.kind === 'worldgames') { setWorldGamesRun({ games: c.games, country: c.country }); setScreen('worldGamesMode'); return; }
     const seed = Math.floor(Math.random() * 1_000_000);
     track('mode_start', { mode: c.source === 'random' ? 'random' : 'real', variant: c.source });
-    if (c.source === 'random') startFromOrigin({ kind: 'random', year: parseInt(c.year, 10), seed, difficulty: c.difficulty, balanced: true }, { name: c.name, settings: c.settings, dynasty: c.dynasty });
-    else if (c.source === 'history') startFromOrigin({ kind: 'history', year: parseInt(c.year, 10), seed, difficulty: c.difficulty, ...c.real }, { name: c.name, settings: c.settings, dynasty: c.dynasty });
+    if (c.source === 'random') startFromOrigin({ kind: 'random', year: parseInt(c.year, 10), seed, difficulty: c.difficulty, balanced: true }, { name: c.name, settings: c.settings, dynasty: c.dynasty, gmCareer: c.gmCareer });
+    else if (c.source === 'history') startFromOrigin({ kind: 'history', year: parseInt(c.year, 10), seed, difficulty: c.difficulty, ...c.real }, { name: c.name, settings: c.settings, dynasty: c.dynasty, gmCareer: c.gmCareer });
     else startGameMode('real', c.difficulty, c.year, c.name, { source: 'csv', realDevelopment: true });
   };
 
@@ -714,7 +719,8 @@ function App() {
       return paused;
     }
     const aiSeed = seed + 500 + nextLeague.schedule.filter((g) => g.played).length;
-    const aiResult = runLeagueAIPass(nextLeague, nextExtras, controlledTeamId, aiSeed);
+    // GM Career: as the scout, the GM above you runs your team's trades and signings.
+    const aiResult = runLeagueAIPass(nextLeague, nextExtras, aiUserTeam(nextLeague, controlledTeamId), aiSeed);
     // The season stopped on the morning of the trade deadline: Deadline Day opens (see deadlineDay.ts).
     let deadline = !silent && isDeadlineDayDue(aiResult.league) ? openDeadlineDay(aiResult.league, aiResult.extras, controlledTeamId, deadlineSeed(aiResult.league)) : null;
     // Auto Deadline Day: the whole day runs to 3 PM at once (like the automatic All-Star Weekend) and the sim goes on.
@@ -797,7 +803,7 @@ function App() {
   // Reporters line up after big results, streaks, trade requests and playoff series.
   const pressWaiting = league.press?.pending.length ?? 0;
   useEffect(() => {
-    const next = collectPress(ensureGmRivals(league, controlledTeamId), controlledTeamId);
+    const next = collectLockerEvents(collectPress(ensureGmRivals(league, controlledTeamId), controlledTeamId), controlledTeamId);
     if (next !== league) adoptLeague(next);
   }, [league.schedule, league.playoffBracket, league.teams, controlledTeamId]); // eslint-disable-line react-hooks/exhaustive-deps
   const lastPressCount = useRef(pressWaiting);
@@ -1353,10 +1359,17 @@ function App() {
   const navMode: NavMode = tutorial?.navMode ?? 'full';
   const unlockCtx = { league, controlledTeamId, pendingTradeOffers: extras.pendingTradeOffers.length };
   const locked = lockedFeatures(unlockCtx);
-  const lockedTabSet = new Set(locked.flatMap((s) => s.feature.tabs));
+  const lockedTabSet = new Set([...locked.flatMap((s) => s.feature.tabs), ...(league.gmCareer ? ROLE_LOCKED[gmRole(league)] : [])]);
   const freshTabs = newFeatureTabs(unlockCtx);
   const unlockNotice: Feature | undefined = pendingUnlockNotices(unlockCtx)[0];
   const lessons = tutorial && controlledTeamId ? lessonStatuses(unlockCtx) : [];
+  // Tutorial quests: a finished lesson pays its XP once (any league, this device and your account).
+  const doneLessons = lessons.filter(s => s.done).map(s => s.lesson.id).join(',');
+  useEffect(() => {
+    if (!doneLessons) return;
+    const fresh = claimQuests(doneLessons.split(','));
+    if (fresh.length) { pushToast(`Quest complete: ${fresh.map(id => LESSONS.find(l => l.id === id)?.title ?? id).join(', ')} (+${questsXp(fresh)} XP).`, 'success'); window.dispatchEvent(new Event('courtvision:profile')); }
+  }, [doneLessons]); // eslint-disable-line react-hooks/exhaustive-deps
   const lessonsDone = lessons.filter((s) => s.done).length;
   const changeTutorial = (patch: Partial<TutorialState> | ((t: TutorialState) => Partial<TutorialState>)) => setLeague((l) => updateTutorial(l, patch));
   const changeNavMode = (mode: NavMode) => {
@@ -2078,6 +2091,8 @@ function App() {
 
         {(tab === 'dashboard' || tab === 'database') && league.rebuildChallenge && <ChallengeBanner league={league} contracts={extras.contracts} onMenu={() => setConfirmation('exit')} />}
         {tab === 'dashboard' && controlledTeamId && <DailyGoalsCard official={isOfficialLeague(league)} />}
+        {tab === 'dashboard' && league.gmCareer && <GmCareerCard league={league} onTakeOffer={() => { const teamId = league.gmCareer?.offer?.teamId; if (teamId) { acceptOffer(teamId); setLeague(l => takeGmOffer(l)); } }} />}
+        {tab === 'dashboard' && controlledTeamId && <LockerRoomCard league={league} teamId={controlledTeamId} onChange={adoptLeague} />}
         {tab === 'dashboard' && league.origin && <LeagueCodeBox origin={league.origin} teamId={controlledTeamId} teamName={league.teams.find(t => t.teamId === controlledTeamId)?.name} />}
         {tab === 'dashboard' && (
           <DashboardPage

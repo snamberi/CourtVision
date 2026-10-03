@@ -2,7 +2,7 @@ import type { NbaHistory } from '../history/nbaHistoryData';
 import type { PlayerSeason } from '../simulation/types';
 import { RNG } from '../simulation/engine/rng';
 import { cardPool, cardPlayer, type HuntCard } from '../hunt/cards';
-import { CATEGORIES, categoryValues, type CategoryId, type CategoryValues } from './categories';
+import { CATEGORIES, categoryValues, categoryScore, type CategoryId, type CategoryValues } from './categories';
 import { legendRank } from '../draft/allTimeDraft';
 import { FAV_BOOST } from '../profile/favorites';
 
@@ -91,12 +91,13 @@ export function donor(h: NbaHistory, cardId: string): PlayerSeason {
 // ---------------------------------------------------------------- the best ever at something
 
 export const ELITE_MAX = 120;
-export const ELITE_RANKS = 60;
+/** How deep the all-time lists go: the top 100 at a skill are rated as the best. */
+export const ELITE_RANKS = 100;
 type EliteCat = 'threePoint' | 'midRange' | 'finishing' | 'playmaking' | 'perimeterD' | 'interiorD' | 'iq';
 const ELITE_CATS: EliteCat[] = ['threePoint', 'midRange', 'finishing', 'playmaking', 'perimeterD', 'interiorD', 'iq'];
 
 const elites = new WeakMap<NbaHistory, Map<string, Partial<Record<CategoryId, number>>>>();
-/** Each wheel player's all-time rank (1 = the best) in the skills he is among the top 60 at, from that season's real stats. */
+/** Each wheel player's all-time rank (1 = the best) in the skills he is among the top 100 at, from that season's real stats. */
 export function eliteRanks(h: NbaHistory): Map<string, Partial<Record<CategoryId, number>>> {
   const hit = elites.get(h);
   if (hit) return hit;
@@ -132,21 +133,63 @@ export function eliteRanks(h: NbaHistory): Map<string, Partial<Record<CategoryId
   return out;
 }
 
-/** How far past 99 an all-time rank goes: +21 for the best ever, fading to nothing at 60th. */
-export const eliteBonus = (rank: number) => Math.max(0, Math.round((ELITE_MAX - 99) * (1 - Math.log(rank) / Math.log(ELITE_RANKS + 1))));
+/**
+ * What an all-time rank is worth: the category's average rating it is raised to at least. The best ever averages 115,
+ * the top 10 about 102 and up, and 100th still 90 (so the 4th-best finisher ever is around 107, not 89).
+ */
+export const eliteTarget = (rank: number) => Math.round(90 + (ELITE_MAX - 5 - 90) * (1 - Math.log(rank) / Math.log(ELITE_RANKS + 1)));
+/** Kept for older callers: how far past 99 a rank's target goes. */
+export const eliteBonus = (rank: number) => Math.max(0, eliteTarget(rank) - 99);
+/** A Star who is not top-10 ever at anything still has one category at this average: his best one. So does a Great in the top 50 ever at a skill. */
+export const STAR_FLOOR = 100;
+export const GREAT_FLOOR_RANK = 50;
+const RATED: CategoryId[] = ['athleticism', 'finishing', 'midRange', 'threePoint', 'playmaking', 'perimeterD', 'interiorD', 'iq'];
 
-/** A category as it would be taken: his ratings, raised past 99 when he is one of the best ever at it. */
+/** Raises a category's average rating to `target`: his strong skills most, the rest part of the way, nothing past 120. */
+function raiseTo(values: CategoryValues, target: number): CategoryValues {
+  const out = { ...values };
+  const keys = Object.keys(out).filter(k => !MEASURE.has(k));
+  for (let pass = 0; pass < 3; pass++) {
+    const avg = keys.reduce((n, k) => n + out[k], 0) / Math.max(1, keys.length);
+    const need = target - avg;
+    if (need <= 0.25) break;
+    const room = keys.filter(k => out[k] < ELITE_MAX);
+    if (!room.length) break;
+    const w = (k: string) => (out[k] >= 80 ? 1 : 0.6);
+    const mean = room.reduce((n, k) => n + w(k), 0) / room.length;
+    const per = (need * keys.length) / room.length;
+    for (const k of room) out[k] = Math.min(ELITE_MAX, Math.round(out[k] + per * (w(k) / mean)));
+  }
+  return out;
+}
+
+const starBest = new Map<string, CategoryId | null>();
+/** The category a Star is best at, when none of his all-time ranks already puts a category past 100. */
+function starFloorCategory(h: NbaHistory, cardId: string): CategoryId | null {
+  if (starBest.has(cardId)) return starBest.get(cardId)!;
+  let pick: CategoryId | null = null;
+  const rarity = cardPool(h).byId.get(cardId)?.rarity;
+  const ranks = eliteRanks(h).get(cardId) ?? {};
+  const ranked = (Object.entries(ranks) as [CategoryId, number][]).sort((a, b) => a[1] - b[1]);
+  const topTarget = ranked.length ? eliteTarget(ranked[0][1]) : 0;
+  if (topTarget < STAR_FLOOR) {
+    // A Star: his best category. A Great who is top 50 ever at something (Ja's playmaking): that skill.
+    if (rarity === 'legendary') { const p = donor(h, cardId); pick = [...RATED].sort((a, b) => categoryScore(categoryValues(p, b)) - categoryScore(categoryValues(p, a)))[0]; }
+    else if (rarity === 'epic' && ranked.length && ranked[0][1] <= GREAT_FLOOR_RANK) pick = ranked[0][0];
+  }
+  if (starBest.size > 2000) starBest.clear();
+  starBest.set(cardId, pick);
+  return pick;
+}
+
+/** A category as it would be taken: his ratings, raised when he is one of the best ever at it (or it is a Star's best). */
 export function takenValues(h: NbaHistory, cardId: string, cat: CategoryId): CategoryValues {
   let base = categoryValues(donor(h, cardId), cat);
   // A Star's ratings come in a little higher.
   if (cardPool(h).byId.get(cardId)?.rarity === 'legendary') base = Object.fromEntries(Object.entries(base).map(([k, v]) => [k, MEASURE.has(k) ? v : Math.min(ELITE_MAX, v + STAR_BONUS)]));
   const rank = eliteRanks(h).get(cardId)?.[cat];
-  if (!rank) return base;
-  const bonus = eliteBonus(rank);
-  const out: CategoryValues = {};
-  // The skills he was great at carry the whole bonus; the rest of the category comes up part of the way.
-  for (const [k, v] of Object.entries(base)) out[k] = MEASURE.has(k) ? v : Math.min(ELITE_MAX, Math.round(v + bonus * (v >= 85 ? 1 : 0.5)));
-  return out;
+  const target = Math.max(rank ? eliteTarget(rank) : 0, starFloorCategory(h, cardId) === cat ? STAR_FLOOR : 0);
+  return target ? raiseTo(base, target) : base;
 }
 const MEASURE = new Set(['physical.heightInches', 'physical.wingspanInches', 'physical.standingReachInches', 'physical.weightLbs']);
 

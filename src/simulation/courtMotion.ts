@@ -1,5 +1,6 @@
 import type { PossessionLogEntry, PossessionPlayback } from './boxscore';
 import { playbackForEntry } from './gamePlayback';
+import { signatureShot } from './signatureMoves';
 import type { AnimKind, Gait } from '../visuals/actionSprites';
 
 export interface CourtPoint { x:number; y:number }
@@ -274,7 +275,8 @@ function baseFrame(entry:PossessionLogEntry,play:PossessionPlayback,progress:num
  });
 
  // The kind of shot, from the recorded type: lobs finished at the rim, step-backs, fadeaways, floaters, layups.
- const shotKind:CourtAnimKind=dunk?(assisted&&salt%2===0?'alleyOop':'dunk'):type==='stepback'?'stepback':type==='fadeaway'?'fadeaway':(type==='close'||type==='hook'||type==='postShot')?'floater':close?'layup':'jumper';
+ const sig=signatureShot(shooter,type);
+ const shotKind:CourtAnimKind=sig&&!(sig.anim==='dunk'&&!dunk)?sig.anim:dunk?(assisted&&salt%2===0?'alleyOop':'dunk'):type==='stepback'?'stepback':type==='fadeaway'?'fadeaway':(type==='close'||type==='hook'||type==='postShot')?'floater':close?'layup':'jumper';
  const pumpFake=!assisted&&!drive&&shotKind==='jumper'&&salt%4===1;
  /** The creator's dribble move to beat his man, from the possession's salt (none in transition). */
  const move:CourtAnimKind|undefined=fast||onlyFT?undefined:(['crossover','behindBack',drive?'spin':'crossover','jab',undefined] as (CourtAnimKind|undefined)[])[(salt>>2)%5];
@@ -481,7 +483,8 @@ function baseFrame(entry:PossessionLogEntry,play:PossessionPlayback,progress:num
   else if(q>=.76){
    if(play.shotMade){const t2=limit((q-.76)/.16);ball={...hoop,z:34*(1-t2*t2),spin:q*900};if(q>.92){const u=limit((q-.92)/.08);ball={...courtLerp(hoop,mirror({x:878,y:310+sign*10}),u),z:bouncing(u,12),spin:q*900};}net=Math.sin(limit((q-.76)/.1)*Math.PI);phase=dunk?'Dunk!':'Basket';
     const and1=entry.result==='AND1'||entry.events.some(e=>e.includes(' AND-1 ('));
-    callout={text:and1?'AND-1!':dunk?'SLAM!':three?'+3':'+2',x:hoop.x,y:hoop.y-60,t:window01(q,.76,1),tone:'make'};}
+    const sigMade=signatureShot(play.shooterId,play.shotType);
+    callout={text:sigMade?sigMade.call:and1?'AND-1!':dunk?'SLAM!':three?'+3':'+2',x:hoop.x,y:hoop.y-60,t:window01(q,.76,1),tone:'make'};}
    else if(play.outOfBounds&&!play.rebounderId){
     // Off the rim and out: it bounces away past the line and nobody gets it (a team rebound).
     const pop=mirror({x:900-(10+salt%8),y:310+sign*6}),out=salt%3?mirror({x:958,y:310+sign*(110+salt%60)}):mirror({x:760+salt%80,y:sign>0?556:64});

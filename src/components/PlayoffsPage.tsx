@@ -23,6 +23,8 @@ interface Props {
 export function PlayoffsPage({ league, onChange, bracket, onBracketChange, onCelebrate, controlledTeamId = null }: Props) {
   const [watched, setWatched] = useState<GameResult | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
+  // The series reel: the best moments of every game of one series, back to back.
+  const [seriesReel, setSeriesReel] = useState<{ series: PlayoffSeries; game: number } | null>(null);
   // The postseason always seeds itself from the real standings the moment you land here — no manual
   // bracket-size picker, no "generate" button. This only fires as a fallback (e.g. opening the tab
   // directly in a fresh sandbox league before the guided season flow has kicked one off).
@@ -101,6 +103,7 @@ export function PlayoffsPage({ league, onChange, bracket, onBracketChange, onCel
         </span>
         <span className="bracket-score-pill">{series.teamBWins}</span>
       </div>
+      {series.games.length >= 2 && <button className="series-reel-btn" onClick={() => setSeriesReel({ series, game: 0 })}>▶ Series reel</button>}
       {series.games.length > 0 && <details className="series-replays"><summary>Watch games ({series.games.length})</summary>{series.games.map((g,i) => <button key={i} onClick={() => setWatched(g)}>Watch Game {i+1}</button>)}</details>}
     </div>
   );
@@ -114,6 +117,14 @@ export function PlayoffsPage({ league, onChange, bracket, onBracketChange, onCel
     return ri === total - 1 ? 'Finals' : ri === total - 2 ? 'Semifinals' : `Round ${ri + 1}`;
   };
 
+  if (seriesReel) {
+    const { series, game: gi } = seriesReel, g = series.games[gi];
+    const next = () => setSeriesReel(r => r && r.game + 1 < r.series.games.length ? { ...r, game: r.game + 1 } : null);
+    return <div className="playoffs-page"><div className="series-reel-bar"><b>SERIES REEL · {teamName(series.teamAId)} vs {teamName(series.teamBId)} · Game {gi + 1} of {series.games.length}</b><button onClick={next}>{gi + 1 < series.games.length ? 'Next game' : 'Done'}</button><button onClick={() => setSeriesReel(null)}>Back to Playoffs</button></div>
+      <GameBoxScorePage key={`reel-${series.id}-${gi}`} initialWatch autoReel={{ maxPlays: 3, label: `GAME ${gi + 1}`, onDone: next }} game={g} occasion={bracket ? playoffOccasion(bracket, g, teamName) : null}
+        home={{ teamId: g.homeTeamId, name: teamName(g.homeTeamId) }} away={{ teamId: g.awayTeamId, name: teamName(g.awayTeamId) }}
+        homeRoster={league.teams.find(t => t.teamId === g.homeTeamId)?.seasons} awayRoster={league.teams.find(t => t.teamId === g.awayTeamId)?.seasons} /></div>;
+  }
   if (watched) return <div className="playoffs-page"><button onClick={() => setWatched(null)}>Back to Playoffs</button><GameBoxScorePage key={`${watched.homeTeamId}-${watched.awayTeamId}-${watched.seed}`} initialWatch game={watched} occasion={bracket ? playoffOccasion(bracket, watched, teamName) : null} home={{teamId:watched.homeTeamId,name:teamName(watched.homeTeamId)}} away={{teamId:watched.awayTeamId,name:teamName(watched.awayTeamId)}} homeRoster={league.teams.find(t=>t.teamId===watched.homeTeamId)?.seasons} awayRoster={league.teams.find(t=>t.teamId===watched.awayTeamId)?.seasons} rivalry={rivalryBadge(league,watched.homeTeamId,watched.awayTeamId)}/></div>;
   return (
     <div className="playoffs-page">

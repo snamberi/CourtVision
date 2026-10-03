@@ -19,7 +19,7 @@ import './create.css';
 export type Challenge = 'free' | 'dynasty' | 'rebuild' | 'draft' | 'worldgames';
 export type LeagueSource = 'history' | 'random' | 'csv';
 export type CreateChoice =
-  | { kind: 'league'; source: LeagueSource; name: string; year: string; difficulty: TradeDifficulty; real: { realDevelopment: boolean; forceRosters: boolean; allPlayers: boolean }; settings: CreateSettings; /** Dynasty Mode: the living world switched on (see simulation/dynasty.ts). */ dynasty?: boolean }
+  | { kind: 'league'; source: LeagueSource; name: string; year: string; difficulty: TradeDifficulty; real: { realDevelopment: boolean; forceRosters: boolean; allPlayers: boolean }; settings: CreateSettings; /** Dynasty Mode: the living world switched on (see simulation/dynasty.ts). */ dynasty?: boolean; /** GM Career: start as the scout (see simulation/gmCareer.ts). */ gmCareer?: boolean }
   | { kind: 'rebuild'; scenario: string }
   | { kind: 'draft' }
   | { kind: 'worldgames'; games: GamesId; country: string };
@@ -52,6 +52,7 @@ export function FranchiseCreate({ onBack, onStart, busy = null, initial = 'free'
   const [realDevelopment, setRealDevelopment] = useState(true);
   const [forceRosters, setForceRosters] = useState(false);
   const [allPlayers, setAllPlayers] = useState(true);
+  const [asScout, setAsScout] = useState(false);
   const [settings, setSettings] = useState<CreateSettings>(DEFAULT_CREATE);
   const [editing, setEditing] = useState(false);
   const [scenario, setScenario] = useState(SCENARIOS[0].id);
@@ -66,7 +67,7 @@ export function FranchiseCreate({ onBack, onStart, busy = null, initial = 'free'
     if (challenge === 'rebuild') onStart({ kind: 'rebuild', scenario });
     else if (challenge === 'draft') onStart({ kind: 'draft' });
     else if (challenge === 'worldgames') onStart({ kind: 'worldgames', games: wgGames, country: wgCountry });
-    else onStart({ kind: 'league', source, name: name.trim() || (challenge === 'dynasty' ? 'My Dynasty' : 'My League'), year, difficulty, real: { realDevelopment, forceRosters, allPlayers }, settings, ...(challenge === 'dynasty' ? { dynasty: true } : {}) });
+    else onStart({ kind: 'league', source, name: name.trim() || (challenge === 'dynasty' ? 'My Dynasty' : 'My League'), year, difficulty, real: { realDevelopment, forceRosters, allPlayers }, settings, ...(challenge === 'dynasty' ? { dynasty: true } : {}), ...(asScout ? { gmCareer: true } : {}) });
   };
   const sc = SCENARIOS.find(s => s.id === scenario)!;
   const startLabel = busy ?? (challenge === 'rebuild' ? `Start: ${sc.title}` : challenge === 'draft' ? 'Go to the draft room' : challenge === 'worldgames' ? `Coach ${wgCountry}` : historical ? `Start the ${seasonName(Number(historyYear))} NBA` : source === 'random' ? 'Create the random league' : 'Create the league');
@@ -146,6 +147,12 @@ export function FranchiseCreate({ onBack, onStart, busy = null, initial = 'free'
       </section>
     </>}
 
+    {(challenge === 'free' || challenge === 'dynasty') && <section className="create-step" aria-labelledby="create-step-role">
+      <h2 id="create-step-role"><span className="create-num"><PixelIcon name="up" size={14} /></span> Your role</h2>
+      <div className="create-toggles">
+        <Toggle on={asScout} set={setAsScout} title="GM Career: start as a scout" blurb={asScout ? 'Season one you run the draft and scouting while the GM above you makes the trades. Earn assistant GM, then the GM job (or take one somewhere else).' : 'You start as the general manager, with every decision yours.'} />
+      </div>
+    </section>}
     {challenge === 'rebuild' && <section className="create-step" aria-labelledby="create-step-rebuild">
       <h2 id="create-step-rebuild"><span className="create-num">2</span> Choose your rebuild</h2>
       <div className="rb-scenarios" role="radiogroup" aria-label="Rebuild scenarios">{SCENARIOS.map(s => { const rec = records[s.id]; return <button key={s.id} role="radio" aria-checked={scenario === s.id} className={`rb-scenario ${scenario === s.id ? 'selected' : ''}`} onClick={() => setScenario(s.id)}>
