@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useId } from 'react';
+import { PixelIcon } from './PixelIcon';
 import { FloorPatterns } from './WatchCourt';
 import type { FloorId, FrameId } from '../profile/profile';
 
 /** A court floor on a little court, with lines and paint (the Profile's floor picker). */
 export function CourtFloorPreview({ floor, width = 300 }: { floor: FloorId; width?: number }) {
-  const id = `pv-${floor}`, style = floor === 'team' ? 'planks' : floor;
+  const instance = useId().replace(/[^a-zA-Z0-9_-]/g, '');
+  const id = `pv-${instance}-${floor}`, style = floor === 'team' ? 'planks' : floor;
   const lines = '#f6ecd2', paint = '#c8571f';
   return <svg className="floor-preview" viewBox="0 0 300 170" width={width} height={Math.round(width * 170 / 300)} role="img" aria-label={`${floor} court floor`}>
     <defs><FloorPatterns id={id} /></defs>
@@ -39,6 +41,7 @@ export function ShareFramePreview({ frame, width = 360 }: { frame: FrameId; widt
 /** A small menu phone in a phone look (the same skins as the menu's MenuPhone). */
 export function PhonePreview({ phone, size = 46 }: { phone: string; size?: number }) {
   return <span className={`phone-mini phone-skin-${phone}`} style={{ width: size, height: Math.round(size * 1.7), padding: `${Math.round(size * 0.17)}px ${Math.round(size * 0.14)}px` }} aria-hidden="true">
-    <i className="phone-mini-screen"><i /><i /><i /><i /></i>
+    <span className="phone-case-detail" />
+    <i className="phone-mini-screen">{['trophy','team','star','flame'].map(name=><i key={name}><PixelIcon name={name} size={16} /></i>)}</i>
   </span>;
 }

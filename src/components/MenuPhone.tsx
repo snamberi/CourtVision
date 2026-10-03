@@ -28,6 +28,7 @@ export function MenuPhone({ onBoards, onFriends, onProfile, streak }: {
   const days = streak.current;
   return <aside className={`menu-phone phone-skin-${skin}`} aria-label="Your phone">
     <div className="menu-phone-body">
+      {skin !== 'classic' && <span className="phone-case-detail" aria-hidden="true" />}
       <div className="menu-phone-status" aria-hidden="true"><span>{time}</span><i className="menu-phone-notch" /><span className="menu-phone-icons"><i className="sig" /><i className="bat" /></span></div>
       <div className="menu-phone-apps">
         {onBoards && <button className="menu-phone-app" onClick={onBoards}><span className="app-tile boards"><PixelIcon name="trophy" size={20} /></span><small>Boards</small></button>}

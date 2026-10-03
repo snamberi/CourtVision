@@ -1,0 +1,111 @@
+/* Cosmetic artwork and its gallery only. Like the phone palettes in looks.css, earned
+   asset colours stay fixed across app looks and do not enter the generated app palette.
+   All gallery text and panels use the existing look variables. */
+.avf { isolation: isolate; }
+.avf-art { shape-rendering: geometricPrecision; }
+.avf-pic { box-shadow: inset 0 0 0 1px #030a14; }
+.avf-orbit { animation: cosmetic-orbit 14s linear infinite; transform-origin: 50px 50px; }
+.avf-orbit-slow { animation-duration: 24s; }
+.avf-flame { animation: cosmetic-flame 1.2s steps(3,end) infinite; transform-origin: 50px 20px; }
+.avf-flame-1 { animation-duration: 1.5s; }
+.avf-flame-2 { animation-duration: 1.8s; }
+.avf-spark { animation: cosmetic-spark 3.8s steps(4,end) infinite; transform-origin: 0 0; }
+.avf-embers { animation: cosmetic-ember 3.5s steps(8,end) infinite; }
+@keyframes cosmetic-orbit { to { transform: rotate(360deg); } }
+@keyframes cosmetic-flame { 0%,100% { transform: scaleY(.87); } 50% { transform: scaleY(1); } }
+@keyframes cosmetic-spark { 0%,60%,100% { opacity: .4; transform: scale(.65); } 75% { opacity: 1; transform: scale(1); } }
+@keyframes cosmetic-ember { 0% { opacity: 0; transform: translateY(3px); } 20%,60% { opacity: .85; } 100% { opacity: 0; transform: translateY(-8px); } }
+.avf-compact .avf-detail, .avf-compact .avf-embers { display: none; }
+.avf-compact .avf-art { filter: none; }
+.avf-compact .avf-orbit, .avf-compact .avf-flame, .avf-compact .avf-pulse { animation: none; }
+
+.profile-panel .frame-showcase { position: relative; display: grid; grid-template-columns: 192px minmax(0,1fr) 100px; align-items: center; gap: 24px; padding: 22px; margin: 14px 0 12px; background: var(--look-panel); border: 1px solid var(--look-line); border-left: 3px solid var(--frame-accent); box-shadow: inset 0 1px 0 #ffffff08; }
+.frame-showcase-art { display: grid; place-items: center; aspect-ratio: 1; background: radial-gradient(ellipse at 50% 50%,#263345 0,#121d2d 50%,#0b1420 75%); border: 1px solid #334153; box-shadow: 3px 3px 0 #03080f; }
+.frame-showcase-info { min-width: 0; }
+.cosmetic-eyebrow { font: 600 10px/1.5 var(--look-body); letter-spacing: .12em; color: var(--look-muted); }
+.frame-showcase-info h4 { margin: 6px 0; color: var(--look-text); font: 700 clamp(21px,2.5vw,30px)/1.2 var(--look-body); }
+.frame-showcase-info p { max-width: 42ch; margin: 0 0 12px; font-size: 13px; color: var(--look-muted); line-height: 1.55; }
+.frame-requirement { display: flex; align-items: center; gap: 7px; color: var(--look-text); font: 12px/1.4 var(--look-body); }
+.profile-panel .frame-equip { display: block; margin-top: 14px; padding: 8px 20px; font-size: 12px; }
+.profile-panel .frame-equip:disabled { cursor: default; opacity: .65; }
+.frame-small-preview { display: grid; justify-items: center; align-content: center; gap: 10px; padding: 14px 8px; border-left: 1px solid var(--look-line); text-align: center; }
+.frame-small-preview small { font-size: 10px; color: var(--look-muted); }
+.frame-browse-hint { margin: 8px 0 14px; color: var(--look-muted); font-size: 12px; }
+.profile-panel .avf-picks { grid-template-columns: repeat(auto-fill,minmax(144px,1fr)); gap: 10px; }
+.profile-panel .avf-pick { position: relative; align-content: start; gap: 8px; padding: 12px 9px 14px; border: 1px solid var(--look-line); background: var(--look-panel); box-shadow: 2px 2px 0 var(--look-edge); color: var(--look-text); min-width: 0; }
+.profile-panel .avf-pick > .avf { margin: 6px 0 0; background: #101b2a; border-radius: 50%; }
+.profile-panel .avf-pick.locked { opacity: 1; cursor: pointer; }
+.profile-panel .avf-pick b { font: 600 13px/1.25 var(--look-body); }
+.profile-panel .avf-pick small { color: var(--look-muted); line-height: 1.4; min-height: 2.8em; }
+.profile-panel .avf-pick:hover, .profile-panel .avf-pick.selected { border-color: var(--frame-accent); box-shadow: inset 0 -3px 0 var(--frame-accent),2px 2px 0 var(--look-edge); }
+.profile-panel .avf-pick:focus-visible { outline: 2px solid var(--frame-accent); outline-offset: 3px; }
+.frame-tile-state { display: flex; align-items: center; justify-self: start; gap: 4px; color: var(--look-muted); font: 10px/1 var(--look-body); }
+.equipped .frame-tile-state { color: var(--look-text); }
+.profile-panel .profile-icon-pick { padding: 12px 6px; gap: 7px; align-content: start; }
+.profile-panel .profile-icon-pick.locked, .profile-panel .profile-color-pick.locked { opacity: 1; }
+.profile-panel .profile-icon-pick.locked .profile-icon { filter: none; }
+.profile-icon-pick b { font: 600 11px/1.3 var(--look-body); }
+.profile-panel .profile-icon-pick small, .profile-panel .profile-color-pick small { color: var(--look-muted); }
+.name-color-sample { display: block; padding: 6px 10px; border: 1px solid #304056; background: #101926; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; font-size: 13px; }
+#pick-name-colour .profile-color-pick { grid-template-columns: 20px minmax(0,1fr); grid-template-areas: 'sw name' 'sample sample' 'how how'; gap: 7px; }
+.name-color-sample { grid-area: sample; }
+.profile-panel .profile-color-pick > i { box-shadow: inset 0 1px 0 #ffffff88,inset 0 -2px 0 #00000044; }
+.profile-icon { border-radius: 3px; }
+
+/* The miniatures and real phone share the same decorative case and screen layers. */
+.phone-mini { position: relative; isolation: isolate; box-shadow: 2px 3px 0 #050a13,inset 1px 1px 0 #ffffff70,inset -1px -1px 0 #00000050; }
+.phone-mini::before { content: ''; position: absolute; top: 5%; left: 38%; width: 24%; height: 3%; background: #122030; border: 1px solid #ffffff30; border-radius: 2px; z-index: 2; }
+.phone-mini::after { content: ''; position: absolute; bottom: 5%; left: 37%; width: 26%; height: 2%; background: var(--phone-muted,var(--look-muted)); border-radius: 2px; z-index: 2; }
+.phone-case-detail { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; pointer-events: none; z-index: 0; }
+.phone-case-detail::before { content: ''; position: absolute; inset: 4px; border: 1px solid #ffffff33; border-radius: inherit; }
+.phone-case-detail::after { content: ''; position: absolute; inset: 0; background: linear-gradient(125deg,transparent 15%,#ffffff18 16%,#ffffff05 32%,transparent 33%); }
+.menu-phone-body > :not(.phone-case-detail), .phone-mini-screen { position: relative; z-index: 1; }
+.phone-mini-screen { box-sizing: border-box; height: 100%; padding: 10%; border: 1px solid var(--phone-tile-edge,var(--look-line)); background: var(--phone-screen,#0b1423); gap: 12%; box-shadow: inset 1px 2px 0 #00000055; }
+.phone-mini-screen > i { display: grid; place-items: center; border-radius: 3px; color: var(--phone-text,var(--look-text)); box-shadow: 0 2px 0 #00000044,inset 0 1px 0 #ffffff35; }
+.phone-mini-screen > i svg { width: 65%; height: 65%; }
+.phone-mini-screen > i:first-child { color: var(--phone-on-accent,#fff); }
+.menu-phone:not(.phone-skin-classic) .menu-phone-apps { padding: 7px 4px; border: 1px solid var(--phone-tile-edge); background: var(--phone-screen,#0b1423); box-shadow: inset 0 2px 0 #00000033; }
+.menu-phone:not(.phone-skin-classic) .menu-phone-app small { color: var(--phone-screen-text,var(--phone-text)); }
+.menu-phone:not(.phone-skin-classic) .menu-phone-body { box-shadow: 3px 4px 0 #050a13,inset 1px 1px 0 #ffffff60,inset -1px -1px 0 #00000070; }
+.phone-skin-courtside { --phone-screen: #442819; --phone-screen-text: #ffe2c4; }
+.phone-skin-courtside .phone-case-detail { background: radial-gradient(#51261280 .6px,transparent 1px) 0 0/4px 4px; }
+.phone-skin-hardwood { --phone-screen: #3b2516; --phone-screen-text: #f6d29a; }
+.phone-skin-hardwood .phone-case-detail { background: repeating-linear-gradient(0deg,transparent 0 14px,#613b1a44 15px 16px,transparent 17px 29px); }
+.phone-skin-jersey { --phone-screen: #e6ebf5; }
+.phone-skin-jersey .phone-case-detail { background: radial-gradient(#172b5c35 .5px,transparent 1px) 0 0/3px 3px; }
+.phone-skin-neon { --phone-screen: repeating-linear-gradient(0deg,#211335 0 9px,#64327666 10px,#211335 11px); }
+.phone-skin-handheld { --phone-screen: repeating-linear-gradient(0deg,#90a852 0 2px,#879e49 2px 3px); }
+.phone-skin-handheld .phone-case-detail { background: repeating-linear-gradient(135deg,transparent 0 5px,#53534c14 6px 7px); }
+.phone-skin-gold { --phone-screen: #372b16; --phone-screen-text: #ffedb2; }
+.phone-skin-gold .phone-case-detail { background: repeating-linear-gradient(0deg,transparent 0 3px,#fff3b525 4px,#61400818 5px); }
+.phone-skin-frost { --phone-screen: #243f53; --phone-screen-text: #ddfaff; }
+.phone-skin-frost .phone-case-detail { background: repeating-linear-gradient(65deg,transparent 0 16px,#ffffff55 17px,transparent 18px 35px); }
+.phone-skin-lava { --phone-screen: #231416; }
+.phone-skin-lava .phone-case-detail { background: linear-gradient(65deg,transparent 24%,#ff9b3d 25%,#ca4b34 26%,transparent 28%,transparent 75%,#e56b3c 76%,transparent 79%); }
+.phone-skin-galaxy { --phone-screen: #161329; }
+.phone-skin-galaxy .phone-case-detail { background: radial-gradient(1px 1px at 15% 22%,#fff,transparent),radial-gradient(1px 1px at 78% 84%,#ffbfff,transparent),linear-gradient(145deg,transparent 20%,#da6bff33 38%,transparent 60%); }
+.phone-skin-diamond { --phone-screen: #233449; --phone-screen-text: #dbf6ff; }
+.phone-skin-diamond .phone-case-detail { background: conic-gradient(from 30deg at 30% 30%,#fff8,transparent 25%,#87bcff22 40%,transparent 70%,#fff8); }
+.phone-skin-sovereign { --phone-screen: #0c1936; --phone-screen-text: #c4eeff; }
+.phone-skin-sovereign .phone-case-detail { background: repeating-linear-gradient(130deg,transparent 0 10px,#65baff33 11px,transparent 13px); }
+
+@media (max-width: 700px) {
+  .profile-panel .frame-showcase { grid-template-columns: 138px minmax(0,1fr); gap: 16px; padding: 14px; }
+  .frame-showcase-art > .avf { transform: scale(.77); margin: -20px; }
+  .frame-small-preview { display: none; }
+  .profile-panel .frame-showcase-info h4 { font-size: 21px; }
+}
+@media (max-width: 540px) {
+  :root .profile-panel .avf-picks { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
+  .profile-panel .frame-showcase { grid-template-columns: 108px minmax(0,1fr); gap: 12px; padding: 12px; }
+  .frame-showcase-art > .avf { transform: scale(.61); margin: -33px; }
+  .frame-showcase-info p { font-size: 11px; }
+  .frame-showcase-info h4 { overflow-wrap: anywhere; }
+  .frame-requirement { font-size: 10px; }
+  .profile-panel .frame-equip { padding: 6px 12px; }
+  .profile-panel .profile-icon-pick b { font-size: 10px; }
+}
+:root.lite .avf *, :root.lite .avf-art { animation: none !important; filter: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .avf *, .avf-art { animation: none !important; filter: none !important; }
+}

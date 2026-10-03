@@ -29,6 +29,7 @@ import './design.css';
 import './features.css';
 import './theme/themes.css';
 import './theme/looks.css';
+import './theme/cosmetics.css';
 import { CoachGuide } from './components/tutorial/CoachGuide';
 import { SeasonRoadMap } from './components/tutorial/SeasonRoadMap';
 import { FirstSeasonChecklist } from './components/tutorial/FirstSeasonChecklist';

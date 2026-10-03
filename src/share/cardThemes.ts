@@ -1,3 +1,4 @@
+import { cardFrameFinish } from './cardFrameFinish';
 import type { FrameId } from '../profile/profile';
 
 /*
@@ -279,4 +280,14 @@ export const CARD_THEMES: Record<FrameId, CardTheme> = {
   },
 };
 
-export const cardTheme = (frame: FrameId | undefined): CardTheme => CARD_THEMES[frame ?? 'classic'] ?? CARD_THEMES.classic;
+const FINISHED_THEMES = Object.fromEntries(Object.entries(CARD_THEMES).map(([id, theme]) => [id, {
+  ...theme,
+  border: (ctx: Ctx, x: number, y: number, w: number, h: number) => {
+    ctx.save();
+    theme.border(ctx, x, y, w, h);
+    cardFrameFinish(ctx, id as FrameId, x, y, w, h, theme.accent, theme.accent2);
+    ctx.restore();
+  },
+}])) as Record<FrameId, CardTheme>;
+
+export const cardTheme = (frame: FrameId | undefined): CardTheme => FINISHED_THEMES[frame ?? 'classic'] ?? FINISHED_THEMES.classic;

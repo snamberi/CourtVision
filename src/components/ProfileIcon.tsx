@@ -1,7 +1,8 @@
 import { memo, useId, useMemo } from 'react';
 import { SPRITES, PALETTE, colorDef, iconDef } from '../profile/cosmetics';
 import { titleColorDef, unpackColors } from '../profile/trophyRoad';
-import { detailedSpritePaths, gridToPaths, type SpriteGrid, type SpritePath } from '../visuals/playerSprite';
+import { gridToPaths, type SpriteGrid, type SpritePath } from '../visuals/playerSprite';
+import { profileIconPaths } from '../visuals/profileIconArt';
 import { iconFx } from '../visuals/iconFx';
 
 /** A profile icon: a 10 x 10 pixel sprite on a dark tile (runs of one colour drawn as one rect). */
@@ -14,13 +15,15 @@ export const ProfileIcon = memo(function ProfileIcon({ id, size = 28, title }: {
     const grid = rows.map(row => [...row].map(ch => ch === '.' ? null : palette[ch] ?? null));
     const fxGrids = iconFx(grid, def.anim, def.fx ?? (def.base === 'crown' || def.base === 'goatcrown' ? 'gold' : 'fire'));
     const draw = (g?: SpriteGrid) => (g ? gridToPaths(g) : []);
-    return { paths: detailedSpritePaths(grid), fx: { under: draw(fxGrids.under), a: draw(fxGrids.a), b: draw(fxGrids.b) } };
+    return { paths: profileIconPaths(grid, def.base), fx: { under: draw(fxGrids.under), a: draw(fxGrids.a), b: draw(fxGrids.b) } };
   }, [def]);
   const layer = (list: SpritePath[], className: string) => list.length > 0 && <g className={className} transform="translate(-1 -1)">{list.map(p => <path key={p.fill} d={p.d} fill={p.fill} />)}</g>;
   // Trophy Road icons move: flames lick round the fireball, a glint crosses the trophy, sparkles twinkle in turn…
   return <svg className={`profile-icon${def.anim ? ` icon-anim icon-anim-${def.anim}` : ''}`} width={size} height={size} viewBox="-1 -1 12 12" shapeRendering="crispEdges" role="img" aria-label={title ?? def.name}>
     <rect x={-1} y={-1} width={12} height={12} fill="#121926" />
     <path d="M-1 -1H11V0H-1ZM-1 0H0V11H-1Z" fill="#ffffff" opacity=".12" />
+    <path d="M0 10H10V0H11V11H-1V10Z" fill="#040812" />
+    <path d="M-.5 1V-.5H1M9-.5H10.5V1M-.5 9V10.5H1M9 10.5H10.5V9" fill="none" stroke="#718ba6" strokeWidth=".25" opacity=".6" />
     {layer(fx.under, 'icon-fx-under')}
     <g className="icon-sprite">{paths.map(p => <path key={p.fill} d={p.d} fill={p.fill} />)}</g>
     {def.anim === 'shine' && <>

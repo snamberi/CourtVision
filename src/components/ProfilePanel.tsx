@@ -12,7 +12,7 @@ import { PixelIcon } from './PixelIcon';
 import { ProfileIcon, NameTag, Tinted } from './ProfileIcon';
 import { MyFramedAvatar } from './AvatarFrame';
 import { CourtFloorPreview, ShareFramePreview, PhonePreview } from './ProfilePreviews';
-import { AVATAR_FRAMES, avatarFrameOpen, avatarFrameHow } from '../profile/avatarFrames';
+import { FramePicker } from './FramePicker';
 import { STREAK_REWARDS } from '../retention/streak';
 import { PASS_REWARDS } from '../retention/pass';
 import { MISSION_TITLES } from '../retention/missions';
@@ -178,7 +178,6 @@ export function ProfilePanel({ extras }: { /** Shown right under your card (the 
   const name = signedIn ? account.profile!.username! : localName();
   const specials = earnedExtraTitles(ctx).length + rankTitles().length;
   const titleColorList = TITLE_COLORS.filter(c => !c.staff || ctx.staff);
-  const frameList = AVATAR_FRAMES.filter(f => !f.staff || ctx.staff);
   const iconList = listed(ICONS, ctx), nameColorList = listed(NAME_COLORS, ctx);
   return <section className="locker-bay profile-panel">
     <h2><PixelIcon name="star" size={18} /> Your card</h2>
@@ -197,22 +196,19 @@ export function ProfilePanel({ extras }: { /** Shown right under your card (the 
     {extras}
     <nav className="profile-jump" aria-label="Jump to">{JUMPS.map(([id, l]) => <button key={id} type="button" onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>{l}</button>)}</nav>
 
-    <div className="profile-picker" id="pick-frame"><h3 className="hunt-subhead">Profile picture frame <PickCount n={frameList.filter(f => avatarFrameOpen(f, ctx)).length} of={frameList.length} /></h3>
-      <div className="avf-picks" role="radiogroup" aria-label="Profile picture frame">{frameList.map(f => { const open = avatarFrameOpen(f, ctx); return <button key={f.id} role="radio" aria-checked={eq.avatarFrame === f.id} disabled={!open} title={f.blurb}
-        className={`avf-pick ${eq.avatarFrame === f.id ? 'selected' : ''} ${open ? '' : 'locked'}`} onClick={() => equip({ avatarFrame: f.id })}>
-        <MyFramedAvatar frame={f.id} size={76} title={f.name} /><b>{f.name}</b><small>{open ? 'Unlocked' : avatarFrameHow(f)}</small></button>; })}</div></div>
+    <FramePicker value={eq.avatarFrame} ctx={ctx} />
 
     <div id="pick-look"><ThemeSection /></div>
 
     <div className="profile-picker" id="pick-icon"><h3 className="hunt-subhead">Profile icon <PickCount n={iconList.filter(i => isOpen(i.rule, ctx)).length} of={iconList.length} /></h3>
       <div className="profile-icons" role="radiogroup" aria-label="Profile icon">{iconList.map(i => { const open = isOpen(i.rule, ctx); return <button key={i.id} role="radio" aria-checked={eq.icon === i.id} disabled={!open} title={`${i.name}${open ? '' : ` · ${i.how}`}`}
         className={`profile-icon-pick ${eq.icon === i.id ? 'selected' : ''} ${open ? '' : 'locked'}`} onClick={() => equip({ icon: i.id })}>
-        <ProfileIcon id={i.id} size={36} title={i.name} /><small>{open ? i.name : i.how}</small></button>; })}</div></div>
+        <ProfileIcon id={i.id} size={48} title={i.name} /><b>{i.name}</b><small>{open ? (eq.icon === i.id ? 'Equipped' : 'Unlocked') : i.how}</small></button>; })}</div></div>
 
     <div className="profile-picker" id="pick-name-colour"><h3 className="hunt-subhead">Name colour <PickCount n={nameColorList.filter(c => isOpen(c.rule, ctx)).length} of={nameColorList.length} /></h3>
       <div className="profile-colors" role="radiogroup" aria-label="Name colour">{nameColorList.map(c => { const open = isOpen(c.rule, ctx); return <button key={c.id} role="radio" aria-checked={eq.color === c.id} disabled={!open}
         className={`profile-color-pick ${eq.color === c.id ? 'selected' : ''} ${open ? '' : 'locked'}`} onClick={() => equip({ color: c.id })}>
-        <i className={c.anim ? `anim-${c.anim}` : undefined} style={{ background: c.css, backgroundSize: c.anim ? '200% 100%' : undefined }} aria-hidden="true" /><b>{c.name}</b><small>{open ? 'Unlocked' : c.how}</small></button>; })}</div></div>
+        <i className={c.anim ? `anim-${c.anim}` : undefined} style={{ background: c.css, backgroundSize: c.anim ? '200% 100%' : undefined }} aria-hidden="true" /><b>{c.name}</b><span className="name-color-sample"><Tinted css={c.css} anim={c.anim}>{name}</Tinted></span><small>{open ? 'Unlocked' : c.how}</small></button>; })}</div></div>
 
     <div className="profile-picker" id="pick-title-colour"><h3 className="hunt-subhead">Title colour <PickCount n={titleColorList.filter(c => titleColorOpen(c, ctx)).length} of={titleColorList.length} /> <small className="pick-note">{ctx.trophies.toLocaleString()} trophies</small></h3>
       <div className="profile-colors title-colors" role="radiogroup" aria-label="Title colour">{titleColorList.map(c => { const open = titleColorOpen(c, ctx); return <button key={c.id} role="radio" aria-checked={eq.titleColor === c.id} disabled={!open}
@@ -227,7 +223,7 @@ export function ProfilePanel({ extras }: { /** Shown right under your card (the 
     <table className="db-table profile-xp"><tbody>{p.parts.map(x => <tr key={x.id}><td className="col-name">{x.label}</td><td className="col-name">{x.detail}</td><td>{x.xp.toLocaleString()} XP</td></tr>)}</tbody></table>
     <p className="hint-text">XP comes from everything you finish: GM seasons, wins, titles and achievements (official leagues), careers, hunts, rebuilds, weekly challenges and daily goals. Icons, colours and titles are earned only by playing: levels, ranked seasons, achievements and leaderboard finishes (leaderboard titles arrive when you sync).</p>
     <Picker label="Share-card frame" list={listedFor(FRAMES)} level={p.level} trophies={ctx.trophies} value={eq.frame} onPick={v => equip({ frame: v })} preview={id => <ShareFramePreview frame={id} />} />
-    <Picker label="Menu phone" list={listedFor(PHONES)} level={p.level} trophies={ctx.trophies} value={eq.phone} onPick={v => equip({ phone: v })} preview={id => <PhonePreview phone={id} size={64} />} />
+    <Picker label="Menu phone" list={listedFor(PHONES)} level={p.level} trophies={ctx.trophies} value={eq.phone} onPick={v => equip({ phone: v })} preview={id => <PhonePreview phone={id} size={112} />} />
     <Picker label="Court floor (Watch Game)" list={listedFor(FLOORS)} level={p.level} trophies={ctx.trophies} value={eq.floor} onPick={v => equip({ floor: v })} preview={id => <CourtFloorPreview floor={id} />} />
   </section>;
 }
