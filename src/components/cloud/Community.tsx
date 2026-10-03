@@ -27,11 +27,16 @@ import '../locker/locker.css';
 
 type Tab = 'boards' | 'ranked' | 'pvp' | 'friends' | 'me';
 type BoardId = 'gms' | 'players' | 'whunt' | 'w820' | 'wrebuild' | 'wcareer' | 'wguess' | 'whilo' | 'wbracket' | 'daily' | 'rebuild' | 'friends';
-const BOARDS: { id: BoardId; label: string }[] = [
-  { id: 'gms', label: 'GMs' }, { id: 'players', label: 'Created players' }, { id: 'whunt', label: 'Weekly Hunt' }, { id: 'w820', label: 'Daily 82-0' }, { id: 'wrebuild', label: 'Rebuild of the Week' }, { id: 'wcareer', label: 'Career of the Week' },
-  { id: 'wguess', label: 'Guess the Player' }, { id: 'whilo', label: 'Higher or Lower' }, { id: 'wbracket', label: 'Bracket Challenge' },
-  { id: 'daily', label: 'Daily Legend' }, { id: 'rebuild', label: 'Rebuild records' }, { id: 'friends', label: 'Friends' },
+const BOARDS: { id: BoardId; label: string; icon: string; group: 'All time' | 'This week' | 'Today' }[] = [
+  { id: 'gms', label: 'GMs', icon: 'trophy', group: 'All time' }, { id: 'players', label: 'Created players', icon: 'jersey', group: 'All time' },
+  { id: 'rebuild', label: 'Rebuild records', icon: 'chart', group: 'All time' }, { id: 'friends', label: 'Friends', icon: 'team', group: 'All time' },
+  { id: 'whunt', label: 'Weekly Hunt', icon: 'crown', group: 'This week' }, { id: 'w820', label: 'Daily 82-0', icon: 'star', group: 'This week' },
+  { id: 'wrebuild', label: 'Rebuild of the Week', icon: 'shuffle', group: 'This week' }, { id: 'wcareer', label: 'Career of the Week', icon: 'up', group: 'This week' },
+  { id: 'wguess', label: 'Guess the Player', icon: 'search', group: 'This week' }, { id: 'whilo', label: 'Higher or Lower', icon: 'down', group: 'This week' },
+  { id: 'wbracket', label: 'Bracket Challenge', icon: 'list', group: 'This week' },
+  { id: 'daily', label: 'Daily Legend', icon: 'calendar', group: 'Today' },
 ];
+const BOARD_GROUPS = ['All time', 'This week', 'Today'] as const;
 const day = (offset: number) => new Date(Date.now() - offset * 86_400_000).toISOString().slice(0, 10);
 
 /** Community: the online leaderboards, ranked seasons, League Hunt PvP, friends, your account and public profiles. */
@@ -89,16 +94,23 @@ function Boards({ onUser }: { onUser: (u: string) => void }) {
     case 'rebuild': spec = { kind: 'rebuild', scenario }; label = 'Best'; blurb = 'Best score ever in each Rebuild scenario.'; break;
     case 'friends': spec = { kind: 'friends' }; label = 'XP'; blurb = 'You and the GMs you follow.'; break;
   }
-  return <section className="locker-bay">
-    <div className="board-picker" role="radiogroup" aria-label="Leaderboard">{BOARDS.map(b => <button key={b.id} role="radio" aria-checked={board === b.id} className={`difficulty-chip ${board === b.id ? 'selected' : ''}`} onClick={() => setBoard(b.id)}>{b.label}</button>)}</div>
+  const current = BOARDS.find(b => b.id === board)!;
+  return <section className="locker-bay boards-layout">
+    <nav className="board-nav" role="radiogroup" aria-label="Leaderboard">{BOARD_GROUPS.map(g => <div key={g} className="board-nav-group">
+      <small>{g.toUpperCase()}</small>
+      {BOARDS.filter(b => b.group === g).map(b => <button key={b.id} role="radio" aria-checked={board === b.id} className={board === b.id ? 'selected' : ''} onClick={() => setBoard(b.id)}><PixelIcon name={b.icon} size={14} /><span>{b.label}</span></button>)}
+    </div>)}</nav>
+    <div className="board-main">
+    <header className="board-head"><span className="board-head-icon"><PixelIcon name={current.icon} size={22} /></span><div><span className="pixel-eyebrow">{current.group.toUpperCase()} · RANKED BY {label.toUpperCase()}</span><h2>{current.label}</h2></div>
     <div className="board-options">
       {(board === 'wrebuild' || board === 'wcareer' || board === 'whunt' || board === 'w820' || board === 'wguess' || board === 'whilo' || board === 'wbracket') && <button aria-pressed={lastWeek} onClick={() => setLastWeek(v => !v)}>{lastWeek ? `Last week (${weeks.last})` : `This week (${weeks.now})`}</button>}
       {board === 'players' && <button aria-pressed={weeklyPlayers} onClick={() => setWeeklyPlayers(v => !v)}>{weeklyPlayers ? 'This week' : 'All time'}</button>}
       {board === 'daily' && <button aria-pressed={yesterday} onClick={() => setYesterday(v => !v)}>{yesterday ? 'Yesterday' : 'Today'}</button>}
       {board === 'rebuild' && <select className="year-input" value={scenario} onChange={e => setScenario(e.target.value)} aria-label="Scenario">{SCENARIOS.map(s => <option key={s.id} value={s.id}>{s.title} ({s.team} {s.startYear})</option>)}</select>}
-    </div>
-    <p className="hint-text">{blurb}</p>
+    </div></header>
+    <p className="board-blurb">{blurb}</p>
     <BoardTable spec={spec} scoreLabel={label} onUser={onUser} empty={board === 'friends' ? 'Follow GMs from their profile or the Friends tab to fill this board.' : 'No one on this board yet. Be the first.'} />
+    </div>
   </section>;
 }
 

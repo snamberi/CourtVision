@@ -15,7 +15,7 @@ import { AppearancePanel } from './AppearancePanel';
 import { PlayerAvatar } from './PlayerAvatar';
 import { calculateOverall } from '../simulation/engine/overall';
 import { primaryPosition } from '../simulation/teamStatus';
-import { statWhole, pctWhole } from './statFormat';
+import { stat1, pct1 } from './statFormat';
 
 interface Props {
   season: PlayerSeason;
@@ -92,18 +92,18 @@ export function FullPlayerEditor({ season, onChange, sandboxMode, league, extras
               </thead>
               <tbody>
                 <tr>
-                  <td>{statWhole(avg.mpg)}</td>
-                  <td>{statWhole(avg.ppg)}</td>
-                  <td>{statWhole(avg.rpg)}</td>
-                  <td>{statWhole(avg.apg)}</td>
-                  <td>{statWhole(avg.spg)}</td>
-                  <td>{statWhole(avg.bpg)}</td>
-                  <td>{statWhole(avg.tovPg)}</td>
-                  <td>{pctWhole(avg.fgPct)}%</td>
-                  <td>{pctWhole(avg.tpPct)}%</td>
-                  <td>{pctWhole(avg.ftPct)}%</td>
-                  <td>{pctWhole(avg.tsPct)}%</td>
-                  <td>{statWhole(avg.efficiency)}</td>
+                  <td>{stat1(avg.mpg)}</td>
+                  <td>{stat1(avg.ppg)}</td>
+                  <td>{stat1(avg.rpg)}</td>
+                  <td>{stat1(avg.apg)}</td>
+                  <td>{stat1(avg.spg)}</td>
+                  <td>{stat1(avg.bpg)}</td>
+                  <td>{stat1(avg.tovPg)}</td>
+                  <td>{pct1(avg.fgPct)}%</td>
+                  <td>{pct1(avg.tpPct)}%</td>
+                  <td>{pct1(avg.ftPct)}%</td>
+                  <td>{pct1(avg.tsPct)}%</td>
+                  <td>{stat1(avg.efficiency)}</td>
                 </tr>
               </tbody>
             </table>

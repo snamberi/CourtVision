@@ -30,7 +30,7 @@ export function OverallChart({ years }: { years: CareerYear[] }) {
         <text x={x(peak)} y={y(ovr[peak]) - 11} className="cv-peak-label" textAnchor={peak >= years.length - 2 ? 'end' : peak <= 1 ? 'start' : 'middle'}>Peak {ovr[peak]}</text>
       </svg>
       {h && <div className="cv-tip" style={{ left: `${Math.min(84, Math.max(16, (x(hover!) / W) * 100))}%` }}><b>{formatSeasonYear(h.season)} · age {h.age}</b><span>{h.overall} OVR · {h.teamName}</span>
-        <span>{Math.round(h.stats.points / Math.max(1, h.stats.gamesPlayed))} PTS · {Math.round((h.stats.oreb + h.stats.dreb) / Math.max(1, h.stats.gamesPlayed))} REB · {Math.round(h.stats.ast / Math.max(1, h.stats.gamesPlayed))} AST</span></div>}
+        <span>{(h.stats.points / Math.max(1, h.stats.gamesPlayed)).toFixed(1)} PTS · {((h.stats.oreb + h.stats.dreb) / Math.max(1, h.stats.gamesPlayed)).toFixed(1)} REB · {(h.stats.ast / Math.max(1, h.stats.gamesPlayed)).toFixed(1)} AST</span></div>}
     </div>
   </figure>;
 }

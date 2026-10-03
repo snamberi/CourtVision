@@ -12,7 +12,7 @@ import { PlayerAvatar } from '../PlayerAvatar';
  */
 
 const TIER_NAME: Record<CardTier, string> = { bronze: 'Bronze', silver: 'Silver', gold: 'Gold', holo: 'Holo', foil: 'Hall of Fame foil' };
-const per = (n: number, g: number) => (g ? String(Math.round(n / g)) : '0');
+const per = (n: number, g: number) => (g ? (n / g).toFixed(1) : '0.0');
 
 /** A season's pip colour class, by that season's overall. */
 const pipTier = (ovr: number) => (ovr >= 90 ? 'p-holo' : ovr >= 80 ? 'p-gold' : ovr >= 70 ? 'p-silver' : 'p-bronze');

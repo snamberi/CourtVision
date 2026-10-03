@@ -7,12 +7,12 @@ export const fpct = (v: number | null | undefined, digits = 1) => (isNum(v) ? (v
 export const finiteSum = (values: (number | null | undefined)[]) => values.reduce<number>((n, v) => n + (isNum(v) ? v : 0), 0);
 
 /*
- * Player stats are shown as whole numbers (23 points a game, 47% shooting, a 68 rating), not decimals. Only the
- * display rounds; every stat is kept and computed at full precision.
+ * Player stats are shown with one decimal (23.4 points a game, 47.3% shooting), never more. Ratings and attributes
+ * are whole numbers. Only the display rounds; every stat is kept and computed at full precision.
  */
-/** A per-game number or a rating: 23.4 → "23". */
-export const statWhole = (v: number) => String(Math.round(v));
-/** A per-game number from a total and games: 410 points in 18 games → "23". */
-export const perWhole = (total: number, games: number) => (games ? String(Math.round(total / games)) : '0');
-/** A percentage from a 0-1 share: 0.473 → "47". */
-export const pctWhole = (share: number) => String(Math.round(share * 100));
+/** A per-game number: 23.44 → "23.4". */
+export const stat1 = (v: number) => v.toFixed(1);
+/** A per-game number from a total and games: 410 points in 18 games → "22.8". */
+export const per1 = (total: number, games: number) => (games ? (total / games).toFixed(1) : '0.0');
+/** A percentage from a 0-1 share: 0.4733 → "47.3". */
+export const pct1 = (share: number) => (share * 100).toFixed(1);

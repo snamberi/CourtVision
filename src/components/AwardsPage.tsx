@@ -15,7 +15,7 @@ import { PlayerNameTag } from './PlayerAvatar';
 import { PixelTrophy } from './PixelTrophy';
 import { AwardsNight } from './AwardsNight';
 import { UnanimousTag } from './UnanimousTag';
-import { statWhole } from './statFormat';
+import { stat1 } from './statFormat';
 
 interface Props {
   league: League;
@@ -128,7 +128,7 @@ export function AwardsPage({ league, onSelectPlayer, awardSettings, finalsBracke
   const fmvp = finals ? finalsMVPLine(finals, league) : null;
   const archivedFmvp = archived?.fmvpPlayerId ?? null;
   const fmvpInfo = useMemo(() => fmvp ? { playerId: fmvp.winner.playerId, teamId: fmvp.winner.teamId, teamName: fmvp.winner.teamName,
-    line: `Finals: ${statWhole(fmvp.ppg)} points, ${statWhole(fmvp.rpg)} rebounds and ${statWhole(fmvp.apg)} assists a game over ${fmvp.games} games` }
+    line: `Finals: ${stat1(fmvp.ppg)} points, ${stat1(fmvp.rpg)} rebounds and ${stat1(fmvp.apg)} assists a game over ${fmvp.games} games` }
     : archivedFmvp ? { playerId: archivedFmvp, teamId: archived?.championTeamId ?? null, teamName: archived?.championTeamName ?? '' } : null,
   [fmvp?.winner.playerId, fmvp?.games, archivedFmvp]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -170,7 +170,7 @@ export function AwardsPage({ league, onSelectPlayer, awardSettings, finalsBracke
             {fmvp && (
               <p className="hint-text">
                 <PixelTrophy award="fmvp" size={14} /> Finals MVP: <span className="award-winner-inline" onClick={() => onSelectPlayer(fmvp.winner.playerId)}><PlayerNameTag playerId={fmvp.winner.playerId} teamId={fmvp.winner.teamId} size={22} /></span>
-                {' '}· {statWhole(fmvp.ppg)} PTS · {statWhole(fmvp.rpg)} REB · {statWhole(fmvp.apg)} AST
+                {' '}· {stat1(fmvp.ppg)} PTS · {stat1(fmvp.rpg)} REB · {stat1(fmvp.apg)} AST
               </p>
             )}
           </div>
@@ -188,8 +188,8 @@ export function AwardsPage({ league, onSelectPlayer, awardSettings, finalsBracke
           <tbody>{board.map((w, i) => { const a = perGameAverages(players.get(w.playerId)?.seasonStats); return <tr key={w.playerId} className={i === 0 ? 'race-leader' : undefined}>
             <td>{i + 1}</td><td><Trend value={ladderTrend(raceState, raceKey, w.playerId, i)} /></td>
             <td className="col-name"><button className="link-button" onClick={() => onSelectPlayer(w.playerId)}><PlayerNameTag playerId={w.playerId} teamId={w.teamId} size={22} /></button><small className="vote-team"><TeamLink name={w.teamName} /></small></td>
-            <td>{a.gamesPlayed}</td><td>{statWhole(a.ppg)}</td><td>{statWhole(a.rpg)}</td><td>{statWhole(a.apg)}</td>
-            {raceKey === 'dpoy' && <><td>{statWhole(a.spg)}</td><td>{statWhole(a.bpg)}</td></>}
+            <td>{a.gamesPlayed}</td><td>{stat1(a.ppg)}</td><td>{stat1(a.rpg)}</td><td>{stat1(a.apg)}</td>
+            {raceKey === 'dpoy' && <><td>{stat1(a.spg)}</td><td>{stat1(a.bpg)}</td></>}
             <td>{w.score.toFixed(1)}</td>
           </tr>; })}</tbody></table></div>}
         <p className="hint-text">Ranked by the award formulas and updated every game day; the weekly ladder is saved each week for the trend arrows. At season's end the panel also weighs team success and storylines.</p>

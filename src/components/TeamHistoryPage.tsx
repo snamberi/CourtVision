@@ -147,7 +147,7 @@ export function TeamHistoryPage({ league, extras, initialTeamId, onSelectPlayer,
             {s.reconstructed && <p className="hint-text">Rebuilt from player career logs (team record and playoff results were not archived for this season).</p>}
             {s.roster.length === 0 ? <p className="hint-text">No player lines on record.</p> : <table className="db-table stat-line-table"><thead><tr><th>#</th><th className="col-name">Player</th><th>Pos</th><th>Age</th><th>OVR</th><th>GP</th><th>MIN</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>PER</th><th>WS</th></tr></thead>
               <tbody>{s.roster.map(r => <tr key={r.playerId}><td>{r.jerseyNumber ?? ''}</td><td className="col-name"><button className="link-button" onClick={() => onSelectPlayer(r.playerId)}>{r.playerId}</button></td><td>{r.position}</td><td>{r.age}</td><td>{r.overall}</td><td>{r.gp}</td>
-                <td>{Math.round(r.min)}</td><td>{Math.round(r.pts)}</td><td>{Math.round(r.reb)}</td><td>{Math.round(r.ast)}</td><td>{Math.round(r.stl)}</td><td>{Math.round(r.blk)}</td><td>{r.per ? r.per.toFixed(1) : '—'}</td><td>{r.ws ? r.ws.toFixed(1) : '—'}</td></tr>)}</tbody></table>}
+                <td>{r.min.toFixed(1)}</td><td>{r.pts.toFixed(1)}</td><td>{r.reb.toFixed(1)}</td><td>{r.ast.toFixed(1)}</td><td>{r.stl.toFixed(1)}</td><td>{r.blk.toFixed(1)}</td><td>{r.per ? r.per.toFixed(1) : '—'}</td><td>{r.ws ? r.ws.toFixed(1) : '—'}</td></tr>)}</tbody></table>}
           </td></tr>}
         </Fragment>; })}</tbody>
       </table></div>}

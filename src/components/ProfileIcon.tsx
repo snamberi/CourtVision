@@ -33,7 +33,7 @@ export const ProfileIcon = memo(function ProfileIcon({ id, size = 28, title }: {
 });
 
 /** Text in a cosmetic colour: flat, a gradient, or an animated gradient. */
-function Tinted({ css, anim, className, children }: { css: string; anim?: string; className?: string; children: React.ReactNode }) {
+export function Tinted({ css, anim, className, children }: { css: string; anim?: string; className?: string; children: React.ReactNode }) {
   const gradient = css.startsWith('linear');
   return <span className={[className, gradient ? 'name-prism' : '', anim ? `anim-${anim}` : ''].filter(Boolean).join(' ') || undefined} style={gradient ? { backgroundImage: css } : { color: css }}>{children}</span>;
 }

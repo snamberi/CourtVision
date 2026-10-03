@@ -8,7 +8,7 @@ import { primaryPosition } from '../simulation/teamStatus';
 import { perGameAverages } from '../simulation/careerStats';
 import type { PlayerSeason } from '../simulation/types';
 import { PlayerNameTag } from './PlayerAvatar';
-import { statWhole } from './statFormat';
+import { stat1 } from './statFormat';
 
 interface Props {
   teams: LeagueTeam[];
@@ -54,9 +54,9 @@ export function WatchListPage({ teams, extras, onExtrasChange, onSelectPlayer }:
                 <td>{primaryPosition(r.season)}</td>
                 <td>{r.season.age}</td>
                 <td>{r.overall}</td>
-                <td>{statWhole(r.avg.ppg)}</td>
-                <td>{statWhole(r.avg.rpg)}</td>
-                <td>{statWhole(r.avg.apg)}</td>
+                <td>{stat1(r.avg.ppg)}</td>
+                <td>{stat1(r.avg.rpg)}</td>
+                <td>{stat1(r.avg.apg)}</td>
                 <td><button onClick={() => onExtrasChange(toggleWatchList(extras, r.season.playerId))}>Remove</button></td>
               </tr>
             ))}

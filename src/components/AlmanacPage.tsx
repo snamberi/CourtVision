@@ -19,9 +19,9 @@ import { PlayerNameTag } from './PlayerAvatar';
 import { TeamLink } from './TeamLink';
 import { TeamLogo } from './TeamLogo';
 import { fx } from './statFormat';
-import { statWhole } from './statFormat';
+import { stat1 } from './statFormat';
 
-const fmt = (v: number, f: LeaderBoard['format']) => f === 'dec3' ? v.toFixed(3) : Math.round(v).toString();
+const fmt = (v: number, f: LeaderBoard['format']) => f === 'int' ? Math.round(v).toString() : f === 'dec3' ? v.toFixed(3) : v.toFixed(1);
 const FINISH_SHORT: Record<string, string> = { Champion: 'Champion', Finals: 'Finals', 'Conference Finals': 'Conf. Finals', 'Second Round': '2nd Round', 'First Round': '1st Round', 'Play-In': 'Play-In', Playoffs: 'Playoffs', 'Missed Playoffs': '—' };
 
 /** One page per season: champion, awards with vote shares, playoff bracket, standings and stat leaders. */
@@ -46,7 +46,7 @@ export function AlmanacPage({ league, extras, awardSettings, onSelectPlayer }: {
   const fmvpId = entry.fmvpPlayerId ?? liveFinals?.winner.playerId ?? null;
   const fmvpTeam = entry.championTeamId;
   const fmvpInfo = fmvpId ? { playerId: fmvpId, teamId: fmvpTeam, teamName: champ?.name ?? '',
-    line: liveFinals ? `Finals: ${statWhole(liveFinals.ppg)} points, ${statWhole(liveFinals.rpg)} rebounds and ${statWhole(liveFinals.apg)} assists a game over ${liveFinals.games} games` : undefined } : null;
+    line: liveFinals ? `Finals: ${stat1(liveFinals.ppg)} points, ${stat1(liveFinals.rpg)} rebounds and ${stat1(liveFinals.apg)} assists a game over ${liveFinals.games} games` : undefined } : null;
   const canCelebrate = !!champ && !imported && (!record || !!record.championPlayerIds?.length);
   const award = (key: string): AwardWinner | null => (entry.awards as unknown as Record<string, AwardWinner | null> | null)?.[key] ?? null;
   const groups = conferences

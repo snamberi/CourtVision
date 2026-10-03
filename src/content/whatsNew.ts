@@ -6,6 +6,17 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2027-01-27',
+    title: 'A roomier Profile and Leaderboards',
+    items: [
+      "**Stats and ratings:** player stats are back to one decimal (24.6 points, 47.3% shooting), never more. Ratings and attributes (mid-range, speed and the rest) now show as whole numbers instead of 44.783.",
+      "**Titles:** your name with the title you're looking at, a count of how many you have, an All/Unlocked/Locked filter, an icon and progress bar on every title, and long groups that open with Show all.",
+      "**Title colours:** every colour shows its full name, a swatch, and your own title in that colour (it used to show one letter).",
+      "**Profile:** every section is its own card with an unlocked count, and a bar under your card jumps straight to any of them. Phones fit more per row.",
+      "**Leaderboards:** bigger tabs, the boards grouped into All time, This week and Today, and a proper header for each board.",
+    ],
+  },
+  {
     id: '2027-01-20',
     title: 'Friends, your streak and an 82-0 lineup',
     items: [

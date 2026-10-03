@@ -49,5 +49,5 @@ export function runMvp(lines: Record<string, RunLine> | undefined, minGames = 1)
 }
 
 /** Shown as whole numbers (23 PPG, 47%), like every player stat in the game. */
-export const perGame = (v: number | undefined, g: number) => (g && v != null ? String(Math.round(v / g)) : '—');
-export const pct = (m: number | undefined, a: number | undefined) => (a ? `${Math.round(100 * (m ?? 0) / a)}` : '—');
+export const perGame = (v: number | undefined, g: number) => (g && v != null ? (v / g).toFixed(1) : '—');
+export const pct = (m: number | undefined, a: number | undefined) => (a ? (100 * (m ?? 0) / a).toFixed(1) : '—');
