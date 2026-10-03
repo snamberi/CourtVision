@@ -2,9 +2,9 @@ import { TeamLink, TeamText } from './TeamLink';
 import { shortMoney } from '../lib/humanize';
 import { useState } from 'react';
 import type { League, LeagueTeam } from '../simulation/league';
-import type { GMLeagueExtras, FutureDraftPick } from '../simulation/gm';
+import type { GMLeagueExtras, FutureDraftPick, TradeProposal } from '../simulation/gm';
 import {
-  validateTrade, executeTrade, computeTradeValue, evaluateTradeSides, tradeTolerance, canManageTeam, isTradeDeadlinePassed,
+  validateTrade, validateTradeAssets, executeTrade, computeTradeValue, evaluateTradeSides, tradeTolerance, canManageTeam, isTradeDeadlinePassed,
   tradeableFuturePicks, computeFutureDraftPickValue, canProtectPick, setPickProtection, PICK_PROTECTION_OPTIONS,
 } from '../simulation/gm';
 import { computeTeamOverallAverage } from '../simulation/teamStatus';
@@ -21,13 +21,15 @@ interface Props {
   controlledTeamId: string | null;
   onChange: (league: League, extras: GMLeagueExtras) => void;
   onToast?: (message: string, tone?: 'info' | 'success' | 'error') => void;
+  /** Online leagues: an offer to a team a friend runs goes to that friend instead of the AI. */
+  onOnlineOffer?: (proposal: TradeProposal) => Promise<string>;
 }
 
 function pickLabel(pick: FutureDraftPick): string {
   return `${pick.year} Round ${pick.round}${pick.protection ? ` (${pick.protection.label})` : ''}`;
 }
 
-export function TradePage({ league, extras, controlledTeamId, onChange, onToast, sandboxMode = false }: Props) {
+export function TradePage({ league, extras, controlledTeamId, onChange, onToast, onOnlineOffer, sandboxMode = false }: Props) {
   const deadlinePassed = isTradeDeadlinePassed(league);
   const showValues = extras.tradeSettings.showValues === true;
   const tradingBlocked = deadlinePassed;
@@ -79,6 +81,13 @@ export function TradePage({ league, extras, controlledTeamId, onChange, onToast,
   const propose = () => {
     if (!canManageA) { setMessage('You can only propose trades involving your own team.'); return; }
     const proposal = { teamAId, teamBId, playersFromA: fromA, playersFromB: fromB, picksFromA, picksFromB };
+    // A friend's team (online league): the offer waits for them to accept it.
+    if (respondingTeam && onOnlineOffer && league.online?.humans.includes(respondingTeam.teamId)) {
+      const assets = validateTradeAssets(league, extras, proposal);
+      if (!assets.valid) { setMessage(`That trade can't be made: ${assets.reasons.join(' ')}`); return; }
+      void onOnlineOffer(proposal).then(m => { setMessage(m); resetSelection(); }, (e: Error) => setMessage(e.message));
+      return;
+    }
     if (respondingTeam && talksClosed(league, extras, respondingTeam.teamId)) { const gm = rivalOf(league, respondingTeam.teamId); setMessage(gm && rivalRefuses(league, respondingTeam.teamId) ? `${gm.name}, GM of the ${respondingTeam.name}, won't take your calls. He still hasn't forgotten your last deal (see GM Rivals).` : `${respondingTeam.name} have broken off talks for now. Try again in a few game days.`); return; }
     const validation = validateTrade(league, extras, proposal);
     if (!validation.valid) {

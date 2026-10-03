@@ -63,7 +63,9 @@ export function weakestPositions(team: LeagueTeam): (keyof PositionSuitability)[
 
 /** Teams the AI is allowed to act for — everyone except whichever team the person is controlling. */
 function aiTeamIds(league: League, controlledTeamId: string | null): string[] {
-  return league.teams.map((t) => t.teamId).filter((id) => id !== controlledTeamId);
+  // Online leagues: the other friends' teams are run by people, so the AI never signs or trades for them.
+  const humans = new Set(league.online?.humans ?? []);
+  return league.teams.map((t) => t.teamId).filter((id) => id !== controlledTeamId && !humans.has(id));
 }
 
 export interface FreeAgencySigning { teamId: string; teamName: string; playerId: string }

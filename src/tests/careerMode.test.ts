@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { loadHistoryForTests } from './helpers/nbaHistoryFixture';
 import { cardPool } from '../hunt/cards';
 import { top100, top100Rank, legacyScore, emptyResume } from '../career/legacy';
-import { newWheel, spin, respin, move, take, landed, neighbour, mustTake, canSpin, isComplete, donor, RESPINS, eliteRanks, takenValues, eliteBonus, wheelPool, ELITE_MAX, luckyLeft, sliceWeight, LUCKY_SPINS, STAR_BONUS, primeBoost, boostLeft, SURGE_SKILLS, type WheelState } from '../career/wheel';
+import { newWheel, spin, respin, move, take, landed, neighbour, mustTake, canSpin, isComplete, donor, RESPINS, eliteRanks, takenValues, eliteBonus, eliteTarget, wheelPool, ELITE_MAX, luckyLeft, sliceWeight, LUCKY_SPINS, STAR_BONUS, primeBoost, boostLeft, SURGE_SKILLS, type WheelState } from '../career/wheel';
 import { legendRank } from '../draft/allTimeDraft';
 import { resolveEffectivePlayer } from '../simulation/engine/effective';
-import { CATEGORIES, categoryValues } from '../career/categories';
+import { CATEGORIES, categoryValues, categoryScore, type CategoryId } from '../career/categories';
 import { buildPlayer, startProgress, primeOverall, primeFromBuild, capFor, suggestPosition, rollPotential, type Prime } from '../career/create';
 import { newCareerMeta, joinDraft, draftResult, landSeason, autopilotOffseason, findPlayer, uniqueName, freeAgentOffers, requestTrade, growth, careerMoments, retiredJerseys, hallOfFame, careerShelf, type CareerYear } from '../career/career';
 import { buildHistoricalLeague, topUpHistoricalClasses } from '../history/historicalLeague';
@@ -79,13 +79,17 @@ describe('Career Mode', () => {
     const pool = cardPool(h), ranks = eliteRanks(h);
     const first = (cat: 'threePoint' | 'playmaking') => pool.byId.get([...ranks].find(([, r]) => r[cat] === 1)![0])!.name;
     expect(first('threePoint')).toBe('Stephen Curry');
-    expect(eliteBonus(1)).toBe(ELITE_MAX - 99);
-    expect(eliteBonus(60)).toBe(0);
+    // The best ever averages 115 in that category, the 4th best about 107, the 100th still 90.
+    expect(eliteTarget(1)).toBe(ELITE_MAX - 5);
+    expect(eliteTarget(4)).toBeGreaterThanOrEqual(105);
+    expect(eliteTarget(100)).toBe(90);
+    expect(eliteBonus(1)).toBe(ELITE_MAX - 5 - 99);
     const curry = [...ranks].find(([, r]) => r.threePoint === 1)![0];
     const three = takenValues(h, curry, 'threePoint');
-    expect(Math.max(...Object.values(three))).toBe(ELITE_MAX);
-    // Nobody outside the top 60 of a skill goes past 99.
-    const plain = wheelPool(h).find(c => !ranks.has(c.id))!;
+    expect(Math.max(...Object.values(three))).toBeGreaterThanOrEqual(ELITE_MAX - 5);
+    expect(categoryScore(three)).toBeGreaterThanOrEqual(eliteTarget(1) - 1);
+    // Nobody outside the top 100 of a skill (and not a Star) goes past 99.
+    const plain = wheelPool(h).find(c => !ranks.has(c.id) && c.rarity !== 'legendary' && c.rarity !== 'epic')!;
     expect(Math.max(...CATEGORIES.filter(c => c.id !== 'size' && c.id !== 'body').flatMap(c => Object.values(takenValues(h, plain.id, c.id))))).toBeLessThanOrEqual(99);
     // Odds: Stars about 7%, Greats about 18%.
     const count: Record<string, number> = {}; let n = 0, s = newWheel(3);
@@ -126,7 +130,7 @@ describe('Career Mode', () => {
     const unranked = stars.find(c => !legendRank(h, c.playerId))!;
     expect(sliceWeight(h, curry)).toBeGreaterThan(sliceWeight(h, unranked) * 2);
     // A Star's ratings come in 3 higher (measurements unchanged).
-    const plainStar = stars.find(c => !eliteRanks(h).get(c.id)?.playmaking)!;
+    const plainStar = stars.find(c => !eliteRanks(h).get(c.id)?.playmaking && categoryScore(takenValues(h, c.id, 'playmaking')) < 100)!;
     const raw = categoryValues(donor(h, plainStar.id), 'playmaking'), taken = takenValues(h, plainStar.id, 'playmaking');
     for (const [k, v] of Object.entries(raw)) expect(taken[k]).toBe(Math.min(ELITE_MAX, v + STAR_BONUS));
     expect(takenValues(h, plainStar.id, 'size')['physical.heightInches']).toBe(categoryValues(donor(h, plainStar.id), 'size')['physical.heightInches']);
@@ -322,4 +326,25 @@ describe('Career Mode', () => {
     expect(onTeam.league.teams[0].seasons.some(p => p.playerId === onTeam.playerId)).toBe(true);
     expect(onTeam.extras.contracts[onTeam.playerId].teamId).toBe(league.teams[0].teamId);
   }, 120_000);
+});
+
+describe('Career Mode: all-time ranks set the ratings', () => {
+  it('top-100 players at a skill are rated 90s and up; current stars get 100+', async () => {
+    const h = await loadHistoryForTests();
+    const ranks = eliteRanks(h);
+    // Everyone ranked in a category averages at least his rank's target there.
+    let checked = 0;
+    for (const [id, r] of [...ranks].slice(0, 300)) for (const [cat, rank] of Object.entries(r) as [CategoryId, number][]) {
+      expect(categoryScore(takenValues(h, id, cat))).toBeGreaterThanOrEqual(eliteTarget(rank) - 1);
+      checked++;
+    }
+    expect(checked).toBeGreaterThan(50);
+    // Today's stars each have at least one category at 100 or more.
+    for (const name of ['Ja Morant', 'Luka Doncic', 'Giannis Antetokounmpo', 'Stephen Curry', 'Nikola Jokic']) {
+      const card = wheelPool(h).filter(c => c.name.normalize('NFD').replace(/[̀-ͯ]/g, '') === name).sort((a, b) => b.ovr - a.ovr)[0];
+      if (!card) continue;
+      const best = Math.max(...CATEGORIES.filter(c => c.id !== 'size' && c.id !== 'body').map(c => categoryScore(takenValues(h, card.id, c.id))));
+      expect(best, name).toBeGreaterThanOrEqual(100);
+    }
+  }, 180_000);
 });

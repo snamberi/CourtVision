@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { readFavorites, setFavorites, REAL_FRANCHISES, FAVORITES_EVENT, FAV_BOOST, type Favorites } from '../profile/favorites';
 import { TeamLogo } from './TeamLogo';
+import { PlayerAvatar } from './PlayerAvatar';
 
-interface Candidate { id: string; name: string; ovr: number; rarity: string }
+interface Candidate { id: string; name: string; ovr: number; rarity: string; team: string; end: number }
 const RARITY: Record<string, string> = { legendary: 'Star', epic: 'Great', rare: 'Good', common: 'Role' };
 
 /** Your favourite team and player (the Profile tab). */
@@ -19,7 +20,7 @@ export function FavoritesPanel() {
     if (players || loading) return;
     setLoading(true);
     Promise.all([import('../history/nbaHistoryData').then(m => m.loadNbaHistory()), import('../career/wheel')])
-      .then(([h, w]) => setPlayers(w.wheelPool(h).map(c => ({ id: c.playerId, name: c.name, ovr: c.ovr, rarity: c.rarity })).sort((a, b) => b.ovr - a.ovr)))
+      .then(([h, w]) => setPlayers(w.wheelPool(h).map(c => ({ id: c.playerId, name: c.name, ovr: c.ovr, rarity: c.rarity, team: c.team, end: c.end })).sort((a, b) => b.ovr - a.ovr)))
       .catch(() => setPlayers([])).finally(() => setLoading(false));
   };
   const hits = useMemo(() => {
@@ -27,6 +28,10 @@ export function FavoritesPanel() {
     return q.length < 2 || !players ? [] : players.filter(p => p.name.toLowerCase().includes(q)).slice(0, 8);
   }, [query, players]);
   const favPlayer = players?.find(p => p.id === fav.player);
+  // Older saves kept only the id: fill in his name and team the first time the list is here.
+  useEffect(() => { if (favPlayer && (!fav.playerName || !fav.playerTeam)) save({ ...fav, playerName: favPlayer.name, playerTeam: favPlayer.team }); }, [favPlayer?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (fav.player && !fav.playerName) load(); }, [fav.player]); // eslint-disable-line react-hooks/exhaustive-deps
+  const favName = favPlayer?.name ?? fav.playerName;
 
   return <section className="locker-bay favorites-panel" aria-label="Your favourites">
     <h2>Your favourites</h2>
@@ -40,12 +45,15 @@ export function FavoritesPanel() {
         <small>Picked for you when you choose a team (real leagues, the All-Time Draft). You can still pick any other.</small>
       </label>
       <div className="fav-field"><span>Favourite player</span>
-        {fav.player ? <span className="fav-chosen"><b>{favPlayer?.name ?? fav.player}</b>{favPlayer && <small>{RARITY[favPlayer.rarity]} · {favPlayer.ovr} OVR at his best</small>}
-          <button className="link-button" onClick={() => save({ ...fav, player: undefined })}>Change</button></span>
+        {fav.player ? <div className="fav-player-card">
+          <span className="fav-player-art">{favName ? <PlayerAvatar playerId={favName} teamId={fav.playerTeam ?? favPlayer?.team} size={92} title={favName} /> : <span className="hint-text">Loading…</span>}</span>
+          <span className="fav-chosen"><b>{favName ?? 'Loading…'}</b>{favPlayer && <small>{RARITY[favPlayer.rarity]} · {favPlayer.ovr} OVR at his best ({favPlayer.end - 1}-{String(favPlayer.end).slice(2)})</small>}
+            <button className="link-button" onClick={() => save({ team: fav.team })}>Change</button></span>
+        </div>
           : <>
             <input className="year-input" value={query} placeholder={loading ? 'Loading every player…' : 'Search any player in NBA history'} onFocus={load} onChange={e => { setQuery(e.target.value); load(); }} aria-label="Search for your favourite player" />
-            {hits.length > 0 && <ul className="fav-hits" role="listbox" aria-label="Players">{hits.map(p => <li key={p.id}><button role="option" aria-selected={false} onClick={() => { save({ ...fav, player: p.id }); setQuery(''); }}>
-              <b>{p.name}</b><small>{RARITY[p.rarity]} · {p.ovr}</small></button></li>)}</ul>}
+            {hits.length > 0 && <ul className="fav-hits" role="listbox" aria-label="Players">{hits.map(p => <li key={p.id}><button role="option" aria-selected={false} onClick={() => { save({ ...fav, player: p.id, playerName: p.name, playerTeam: p.team }); setQuery(''); }}>
+              <PlayerAvatar playerId={p.name} teamId={p.team} mode="portrait" size={26} /><b>{p.name}</b><small>{RARITY[p.rarity]} · {p.ovr}</small></button></li>)}</ul>}
           </>}
         <small>When a Career Mode wheel or a League Hunt reel lands on his rarity, it is him {Math.round(FAV_BOOST * 100)}% more often, until you get him once in that run. The weekly career and the Daily Legend keep the same odds for everyone.</small>
       </div>

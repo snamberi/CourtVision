@@ -57,6 +57,20 @@ export class CourtAudio {
     this.burst(.035, 1800, 'bandpass', .12, 1.4);
   }
   swish() { this.burst(.32, 3200, 'highpass', .28, .9); }
+  private lastSqueak = 0;
+  /** Sneakers on hardwood: a short high chirp on a hard cut, a crossover or a step-back. */
+  squeak() {
+    const ctx = this.ctx; if (!this.enabled || !ctx) return;
+    const now = ctx.currentTime; if (now - this.lastSqueak < 0.25) return; this.lastSqueak = now;
+    const o = ctx.createOscillator(), g = ctx.createGain(), f = ctx.createBiquadFilter();
+    o.type = 'square'; const base = 1900 + Math.random() * 700;
+    o.frequency.setValueAtTime(base, now); o.frequency.linearRampToValueAtTime(base * 1.35, now + .05); o.frequency.linearRampToValueAtTime(base * .9, now + .09);
+    f.type = 'bandpass'; f.frequency.value = 2400; f.Q.value = 3;
+    g.gain.setValueAtTime(.0001, now); g.gain.exponentialRampToValueAtTime(.09, now + .01); g.gain.exponentialRampToValueAtTime(.001, now + .1);
+    o.connect(f).connect(g).connect(this.master!); o.start(now); o.stop(now + .11);
+  }
+  /** A buzzer-beater or a game-winner: the horn, then the whole building. */
+  eruption() { this.buzzer(); this.burst(.85, 900, 'bandpass', 2.6, .5, true); this.burst(.35, 2400, 'bandpass', 1.8, .8, true); }
   rim() {
     const ctx = this.ctx; if (!this.enabled || !ctx) return;
     const now = ctx.currentTime;

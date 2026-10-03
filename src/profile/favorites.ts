@@ -12,7 +12,7 @@ export const FAVORITES_EVENT = 'courtvision:favorites';
 /** The extra chance to land your favourite player when a spin lands on his rarity. */
 export const FAV_BOOST = 0.15;
 
-export interface Favorites { team?: string; player?: string }
+export interface Favorites { team?: string; player?: string; /** His name and the team of his best season, for the profile card (older saves fill these in on the next search). */ playerName?: string; playerTeam?: string }
 
 /** Today's franchises by city (the game ships no official team names). */
 export const REAL_FRANCHISES: { id: string; city: string }[] = [
@@ -33,7 +33,11 @@ const LINEAGE: Record<string, string[]> = {
 export function readFavorites(read: Read = localRead): Favorites {
   try {
     const f = JSON.parse(read(FAVORITES_KEY) ?? '{}') as Favorites;
-    return { ...(typeof f.team === 'string' && f.team ? { team: f.team } : {}), ...(typeof f.player === 'string' && f.player ? { player: f.player } : {}) };
+    const str = (v: unknown) => typeof v === 'string' && v ? v.slice(0, 60) : undefined;
+    const out: Favorites = {};
+    if (str(f.team)) out.team = str(f.team);
+    if (str(f.player)) { out.player = str(f.player); if (str(f.playerName)) out.playerName = str(f.playerName); if (str(f.playerTeam)) out.playerTeam = str(f.playerTeam); }
+    return out;
   } catch { return {}; }
 }
 

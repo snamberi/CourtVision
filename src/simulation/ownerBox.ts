@@ -70,7 +70,7 @@ export const PROPOSALS: Record<ProposalId, ProposalDef> = {
 
 export interface ExpansionBid { id: string; city: string; nickname: string; fee: number }
 export interface VoteResult { season: string; id: string; title: string; yes: number; no: number; passed: boolean; yours?: boolean }
-export type LeagueEventKind = 'rule' | 'expansion' | 'relocation' | 'protest' | 'rival';
+export type LeagueEventKind = 'rule' | 'expansion' | 'relocation' | 'protest' | 'rival' | 'sale';
 export interface LeagueOfficeEvent { season: string; kind: LeagueEventKind; teamId?: string; text: string }
 export interface LeagueOffice {
   season: string;
@@ -120,7 +120,7 @@ export function startOwnership(league: League, extras: GMLeagueExtras, teamId: s
   return applyOwnerDials(withOwner, extras);
 }
 
-function newOffice(league: League): LeagueOffice {
+export function newOffice(league: League): LeagueOffice {
   return { season: league.season ?? '', proposals: pickProposals(league, league.season ?? ''), bids: [], votes: [], events: [] };
 }
 

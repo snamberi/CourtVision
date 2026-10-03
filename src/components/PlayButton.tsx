@@ -47,6 +47,8 @@ export interface PlayButtonProps {
   onBeginPlayoffs: () => void;
   playoffBracket: PlayoffBracket | null;
   onSimulateEntirePlayoffs: () => void;
+  /** Plays one game in every series still going. */
+  onPlayPlayoffGameDay?: () => void;
   onViewSeasonRecap: () => void;
   onContinueToDraft: () => void;
   draftPicksRemaining: number;
@@ -218,6 +220,7 @@ export function PlayButton(props: PlayButtonProps) {
               ) : (
                 <>
                   <p className="hint-text">Full round-by-round control is on the Playoffs page — this is the fast path.</p>
+                  {props.onPlayPlayoffGameDay && <button onClick={() => doAndClose(props.onPlayPlayoffGameDay!)}>Play 1 Game (every series)</button>}
                   <button className="primary" onClick={() => doAndClose(onSimulateEntirePlayoffs)}>Simulate Entire Playoffs</button>
                 </>
               )}

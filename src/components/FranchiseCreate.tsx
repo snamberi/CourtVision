@@ -16,10 +16,10 @@ import './create.css';
  * and, if you like, its settings before the first game.
  */
 
-export type Challenge = 'free' | 'rebuild' | 'draft' | 'worldgames';
+export type Challenge = 'free' | 'dynasty' | 'rebuild' | 'draft' | 'worldgames';
 export type LeagueSource = 'history' | 'random' | 'csv';
 export type CreateChoice =
-  | { kind: 'league'; source: LeagueSource; name: string; year: string; difficulty: TradeDifficulty; real: { realDevelopment: boolean; forceRosters: boolean; allPlayers: boolean }; settings: CreateSettings }
+  | { kind: 'league'; source: LeagueSource; name: string; year: string; difficulty: TradeDifficulty; real: { realDevelopment: boolean; forceRosters: boolean; allPlayers: boolean }; settings: CreateSettings; /** Dynasty Mode: the living world switched on (see simulation/dynasty.ts). */ dynasty?: boolean; /** GM Career: start as the scout (see simulation/gmCareer.ts). */ gmCareer?: boolean }
   | { kind: 'rebuild'; scenario: string }
   | { kind: 'draft' }
   | { kind: 'worldgames'; games: GamesId; country: string };
@@ -32,6 +32,7 @@ const DIFFICULTIES: { id: TradeDifficulty; label: string; blurb: string }[] = [
 ];
 const CHALLENGES: { id: Challenge; icon: string; title: string; blurb: string; time: string }[] = [
   { id: 'free', icon: 'team', title: 'Franchise', blurb: 'Run a team for as many seasons as you like: trades, drafts, free agency, owners and your own history.', time: 'Unlimited' },
+  { id: 'dynasty', icon: 'crown', title: 'Dynasty Mode', blurb: 'One league for 50 seasons and more: owners sell, teams move, sons of stars enter the draft, and a History Book writes itself.', time: 'Years' },
   { id: 'rebuild', icon: 'chart', title: 'Rebuild Challenge', blurb: 'Take a real team at its lowest point and win a title before the clock runs out. Scored and starred.', time: '10-20 min' },
   { id: 'draft', icon: 'trophy', title: 'All-Time Draft', blurb: 'Thirty teams, thirteen rounds, every player in history at his best. Then play the season.', time: '10-20 min' },
   { id: 'worldgames', icon: 'star', title: 'World Games', blurb: 'Coach a national team at a real Games (1992-2024) or the Fantasy Games. Pick twelve, win medals.', time: '10-15 min' },
@@ -51,6 +52,7 @@ export function FranchiseCreate({ onBack, onStart, busy = null, initial = 'free'
   const [realDevelopment, setRealDevelopment] = useState(true);
   const [forceRosters, setForceRosters] = useState(false);
   const [allPlayers, setAllPlayers] = useState(true);
+  const [asScout, setAsScout] = useState(false);
   const [settings, setSettings] = useState<CreateSettings>(DEFAULT_CREATE);
   const [editing, setEditing] = useState(false);
   const [scenario, setScenario] = useState(SCENARIOS[0].id);
@@ -65,7 +67,7 @@ export function FranchiseCreate({ onBack, onStart, busy = null, initial = 'free'
     if (challenge === 'rebuild') onStart({ kind: 'rebuild', scenario });
     else if (challenge === 'draft') onStart({ kind: 'draft' });
     else if (challenge === 'worldgames') onStart({ kind: 'worldgames', games: wgGames, country: wgCountry });
-    else onStart({ kind: 'league', source, name: name.trim() || 'My League', year, difficulty, real: { realDevelopment, forceRosters, allPlayers }, settings });
+    else onStart({ kind: 'league', source, name: name.trim() || (challenge === 'dynasty' ? 'My Dynasty' : 'My League'), year, difficulty, real: { realDevelopment, forceRosters, allPlayers }, settings, ...(challenge === 'dynasty' ? { dynasty: true } : {}), ...(asScout ? { gmCareer: true } : {}) });
   };
   const sc = SCENARIOS.find(s => s.id === scenario)!;
   const startLabel = busy ?? (challenge === 'rebuild' ? `Start: ${sc.title}` : challenge === 'draft' ? 'Go to the draft room' : challenge === 'worldgames' ? `Coach ${wgCountry}` : historical ? `Start the ${seasonName(Number(historyYear))} NBA` : source === 'random' ? 'Create the random league' : 'Create the league');
@@ -78,16 +80,16 @@ export function FranchiseCreate({ onBack, onStart, busy = null, initial = 'free'
 
     <section className="create-step" aria-labelledby="create-step-game">
       <h2 id="create-step-game"><span className="create-num">1</span> Choose your game</h2>
-      <div className="create-choices create-choices-4" role="radiogroup" aria-label="Game">
+      <div className="create-choices create-choices-5" role="radiogroup" aria-label="Game">
         {CHALLENGES.map(c => <button key={c.id} role="radio" aria-checked={challenge === c.id} className={`create-choice ${challenge === c.id ? 'selected' : ''}`} onClick={() => setChallenge(c.id)}>
           <span className="create-choice-head"><PixelIcon name={c.icon} size={22} /><b>{c.title}</b><small><PixelIcon name="clock" size={11} /> {c.time}</small></span>
           <span className="create-choice-blurb">{c.blurb}</span>
-          {c.id !== 'free' && <span className="create-tag">Challenge</span>}
+          {c.id === 'dynasty' ? <span className="create-tag hot">New</span> : c.id !== 'free' && <span className="create-tag">Challenge</span>}
         </button>)}
       </div>
     </section>
 
-    {challenge === 'free' && <>
+    {(challenge === 'free' || challenge === 'dynasty') && <>
       <section className="create-step" aria-labelledby="create-step-league">
         <h2 id="create-step-league"><span className="create-num">2</span> Pick a league</h2>
         <div className="create-choices create-choices-2" role="radiogroup" aria-label="League type">
@@ -145,6 +147,12 @@ export function FranchiseCreate({ onBack, onStart, busy = null, initial = 'free'
       </section>
     </>}
 
+    {(challenge === 'free' || challenge === 'dynasty') && <section className="create-step" aria-labelledby="create-step-role">
+      <h2 id="create-step-role"><span className="create-num"><PixelIcon name="up" size={14} /></span> Your role</h2>
+      <div className="create-toggles">
+        <Toggle on={asScout} set={setAsScout} title="GM Career: start as a scout" blurb={asScout ? 'Season one you run the draft and scouting while the GM above you makes the trades. Earn assistant GM, then the GM job (or take one somewhere else).' : 'You start as the general manager, with every decision yours.'} />
+      </div>
+    </section>}
     {challenge === 'rebuild' && <section className="create-step" aria-labelledby="create-step-rebuild">
       <h2 id="create-step-rebuild"><span className="create-num">2</span> Choose your rebuild</h2>
       <div className="rb-scenarios" role="radiogroup" aria-label="Rebuild scenarios">{SCENARIOS.map(s => { const rec = records[s.id]; return <button key={s.id} role="radio" aria-checked={scenario === s.id} className={`rb-scenario ${scenario === s.id ? 'selected' : ''}`} onClick={() => setScenario(s.id)}>
@@ -176,8 +184,8 @@ export function FranchiseCreate({ onBack, onStart, busy = null, initial = 'free'
     </section>}
 
     <div className="create-go">
-      <div className="create-go-text"><b>{challenge === 'free' ? `${name.trim() || 'My League'}` : challenge === 'rebuild' ? sc.title : challenge === 'worldgames' ? `World Games: ${wgCountry}` : 'All-Time Draft'}</b>
-        <small>{challenge === 'free' ? `${source === 'random' ? 'Random league' : source === 'csv' ? 'Your own data' : 'Real NBA'}${source !== 'csv' ? ` · ${seasonName(Number(year))}` : ''} · ${DIFFICULTIES.find(d => d.id === difficulty)!.label}${changed ? ` · ${changed} custom setting${changed > 1 ? 's' : ''}` : ''}` : challenge === 'rebuild' ? `${sc.team} · ${sc.seasons} seasons to win a title` : challenge === 'worldgames' ? MODE_GAMES.find(g => g.id === wgGames)?.label : 'Thirty teams, thirteen rounds'}</small></div>
+      <div className="create-go-text"><b>{challenge === 'free' || challenge === 'dynasty' ? `${challenge === 'dynasty' ? 'Dynasty: ' : ''}${name.trim() || 'My League'}` : challenge === 'rebuild' ? sc.title : challenge === 'worldgames' ? `World Games: ${wgCountry}` : 'All-Time Draft'}</b>
+        <small>{challenge === 'free' || challenge === 'dynasty' ? `${source === 'random' ? 'Random league' : source === 'csv' ? 'Your own data' : 'Real NBA'}${source !== 'csv' ? ` · ${seasonName(Number(year))}` : ''} · ${DIFFICULTIES.find(d => d.id === difficulty)!.label}${changed ? ` · ${changed} custom setting${changed > 1 ? 's' : ''}` : ''}` : challenge === 'rebuild' ? `${sc.team} · ${sc.seasons} seasons to win a title` : challenge === 'worldgames' ? MODE_GAMES.find(g => g.id === wgGames)?.label : 'Thirty teams, thirteen rounds'}</small></div>
       <button className="primary create-start" disabled={!!busy} onClick={start}><PixelIcon name="play" size={16} /> {startLabel}</button>
     </div>
 

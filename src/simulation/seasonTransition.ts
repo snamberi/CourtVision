@@ -1,6 +1,9 @@
 import { ownerSeasonEnd } from './ownerBox';
 import { rollBusinessSeason } from './business';
 import { withLegacySons } from './family';
+import { dynastySeasonEnd } from './dynasty';
+import { gmCareerSeasonEnd } from './gmCareer';
+import { retiredData } from './playerDevelopment';
 import { enforceSticky, isStuck } from './sticky';
 import { lotteryResult, consensusBoard } from './draftNight';
 import { extensionTakesOver, markContractYears } from './extensions';
@@ -107,7 +110,7 @@ export function rollFreeAgentsForward(league: League, freeAgents: PlayerSeason[]
     const leavesLeague = next.age >= 24 && (overall < 45 ? rng.chance(0.5) : overall < 52 ? rng.chance(0.2) : false);
     if (!isStuck(next) && !next.careerPlayer && (shouldRetire(next, rng, league.rulesSettings) || leavesLeague)) {
       retired.push({ playerId: next.playerId, finalTeamId: lastTeam ?? '', finalTeamName: teamName(lastTeam), finalSeason: previousSeason,
-        finalAge: next.age, finalOverall: overall, finalSeasonData: next });
+        finalAge: next.age, finalOverall: overall, finalSeasonData: retiredData(next) });
       continue;
     }
     out.push(next);
@@ -295,7 +298,7 @@ export function beginNewSeasonRoster(
           finalSeason: previousSeason,
           finalAge: withHistory.age,
           finalOverall: calculateOverall(withHistory),
-          finalSeasonData: withHistory,
+          finalSeasonData: retiredData(withHistory),
         });
         continue;
       }
@@ -445,8 +448,9 @@ export function beginNewSeasonRoster(
   return {
     // Coaches age and contracts run out, then AI owners review their head coaches (the coaching carousel).
     // The Owner's Box books the season (profit, the GM's report card) and the league office sets its agenda.
-    league: ownerSeasonEnd(offseasonCarousel(advanceStaffSeason(settled.league, previousSeason, championship?.teamId ?? undefined, seasonAwards.coy?.coachName ?? undefined), previousSeason, userTeamId,
-      new Map(settled.league.teams.map(t => [t.teamId, t.coachIdentity?.coachId]))), settled.extras, teamSeasons, previousSeason, ownerExpected),
+    // Dynasty leagues: maybe an AI owner sells.
+    league: gmCareerSeasonEnd(dynastySeasonEnd(ownerSeasonEnd(offseasonCarousel(advanceStaffSeason(settled.league, previousSeason, championship?.teamId ?? undefined, seasonAwards.coy?.coachName ?? undefined), previousSeason, userTeamId,
+      new Map(settled.league.teams.map(t => [t.teamId, t.coachIdentity?.coachId]))), settled.extras, teamSeasons, previousSeason, ownerExpected), previousSeason, userTeamId), teamSeasons, previousSeason),
     extras: settled.extras,
     summary: {
       previousSeason,

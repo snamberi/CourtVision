@@ -2,6 +2,8 @@
  * Keep the original ID hash and trait order: existing players retain their skin,
  * hair, beard and headwear choices while receiving the more detailed artwork.
  */
+import { likenessOf } from './likeness';
+
 export const SPRITE_WIDTH = 40;
 export const SPRITE_HEIGHT = 52;
 export const PORTRAIT_VIEWBOX = '8 1 24 30';
@@ -51,11 +53,13 @@ export type HatStyle = typeof HAT_STYLES[number];
 export interface Appearance { skin?: number; hairStyle?: HairStyle; hairColor?: number; beardStyle?: BeardStyle; hatStyle?: HatStyle | 'none'; hatColor?: number;
   eyeColor?: number; eyeStyle?: typeof EYE_STYLES[number]; expression?: typeof EXPRESSIONS[number];
   /** Any skin or hair colour as #rrggbb (the profile character's fantasy colours); wins over the palette index. */
-  skinHex?: string; hairHex?: string; hatHex?: string }
+  skinHex?: string; hairHex?: string; hatHex?: string;
+  /** Protective goggles (Kareem, Worthy, Horace Grant) and a shooting sleeve on the left arm (Iverson, Melo). */
+  goggles?: boolean; sleeve?: boolean }
 
 const isHex = (v: string | undefined): boolean => !!v && /^#[\da-f]{6}$/i.test(v);
 const pick = <T,>(list: readonly T[], i: number | undefined, fallback: T): T => (i != null && Number.isInteger(i) && i >= 0 && i < list.length ? list[i] : fallback);
-export function playerTraits(playerId: string, look?: Appearance) {
+export function playerTraits(playerId: string, own?: Appearance) {
   const seed = hashPlayerId(playerId);
   const base = {
     seed,
@@ -69,7 +73,16 @@ export function playerTraits(playerId: string, look?: Appearance) {
     eyeColor: EYE_COLORS[Math.floor(seed / 29) % EYE_COLORS.length],
     eyeStyle: EYE_STYLES[Math.floor(seed / 31) % EYE_STYLES.length],
     expression: EXPRESSIONS[Math.floor(seed / 37) % EXPRESSIONS.length],
+    goggles: false,
+    sleeve: false,
   };
+  // Real players look like themselves (visuals/likeness.ts); a look saved in this league goes on top.
+  const real = likenessOf(playerId);
+  return applyLook(real ? applyLook(base, real) : base, own);
+}
+type Traits = { seed: number; skin: string; hair: string; hairStyle: HairStyle; beardStyle: BeardStyle; hatStyle: HatStyle | null; hatColor: string; eyeColor: string; eyeStyle: typeof EYE_STYLES[number]; expression: typeof EXPRESSIONS[number]; goggles: boolean; sleeve: boolean };
+/** A look's valid choices over the traits below it; anything invalid or missing keeps what was there. */
+function applyLook<T extends Traits>(base: T, look?: Appearance): T {
   if (!look) return base;
   return {
     ...base,
@@ -82,6 +95,8 @@ export function playerTraits(playerId: string, look?: Appearance) {
     eyeColor: pick(EYE_COLORS, look.eyeColor, base.eyeColor),
     eyeStyle: look.eyeStyle && EYE_STYLES.includes(look.eyeStyle) ? look.eyeStyle : base.eyeStyle,
     expression: look.expression && EXPRESSIONS.includes(look.expression) ? look.expression : base.expression,
+    goggles: look.goggles ?? base.goggles,
+    sleeve: look.sleeve ?? base.sleeve,
   };
 }
 
@@ -383,6 +398,18 @@ export function buildPlayerGrid({ playerId, primary, secondary, jerseyNumber, ag
   }
 
   drawHat(rect, t.hatStyle, t.hatColor, skin);
+
+  // Goggles: a strap and two tinted lenses over the eyes.
+  if (t.goggles) {
+    rect(10, eyeY - 1, 20, 1, OUTLINE);
+    for (const x of [12, 22]) { rect(x, eyeY - 1, 6, eyeH + 2, OUTLINE); rect(x + 1, eyeY, 4, eyeH, '#9fd3e6'); rect(x + 1, eyeY, 1, 1, WHITE); }
+    rect(18, eyeY, 4, 1, OUTLINE);
+  }
+  // A shooting sleeve from the shoulder to the wrist on the left arm (standing pose).
+  if (t.sleeve && pose !== 'raise' && pose !== 'none') {
+    rect(9, 26, 4, 7, WHITE); rect(7, 29, 4, 5, WHITE); rect(4, 31, 5, 3, WHITE);
+    rect(9, 26, 1, 7, '#c9ccd1'); rect(7, 33, 4, 1, '#c9ccd1');
+  }
 
   if (age != null && age >= 36) {
     const gray = age >= 43 ? '#c6bec4' : '#a79caa';

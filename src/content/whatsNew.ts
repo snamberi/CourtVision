@@ -6,6 +6,30 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2027-02-17',
+    title: 'Real faces, 1v1 legends and 15 new things',
+    items: [
+      "**Real players look like themselves:** Curry, LeBron, Giannis, Luka, Jordan, Kareem (goggles!), Iverson (sleeve!) and about 100 more. Fix any look and share it as a code; your favourite player shows his name and character in your Profile.",
+      "**Career Mode:** the top 100 ever at a skill are rated in the 90s and up (the 4th-best finisher ever is about 107), and today's stars all have at least one skill at 100+.",
+      "**New modes:** the Legends Tournament (64 legends, 1v1 to 11, a new bracket every week), 3v3 Street (you and two legends against tougher and tougher crews) and GM Career (start as a scout, earn assistant GM, then the GM job).",
+      "**On the court:** signature moves (Curry from the logo, Dirk's one-legger, Shaq's drop step), playoff series highlight reels, sneaker squeaks and a crowd that roars in crunch time.",
+      "**Your team:** locker-room moments (mentors, clashes, a star who wants more), injury check-ins and comeback games, and moving up on draft night.",
+      "**Profile:** a trophy case you arrange, a shareable profile card, tutorial quests that pay XP, friend activity, and TikTok and Instagram on your phone. Long leagues now save smaller and sim faster.",
+    ],
+  },
+  {
+    id: '2027-02-10',
+    title: 'Online leagues, Clubs, Dynasty Mode and more',
+    items: [
+      "**Online leagues:** run a GM league with 2-8 friends. Everyone runs a team, presses Ready, and the league moves when all are ready (or the deadline passes). Trades between friends need both of you to agree. Find it under Friends.",
+      "**Clubs:** start a club (up to 20 GMs) with a name, tag and badge. Every weekly board you play adds club points; club owners can challenge another club to a one-week clash.",
+      "**Dynasty Mode:** a league for 50 seasons and more. Owners sell, teams move, sons of retired stars enter the draft, and a History Book writes a chapter every decade.",
+      "**Weekly missions:** five free missions a week in your Profile. Claim them for XP that fills your Season Pass, and earn mission titles.",
+      "**Play crunch time yourself:** when you coach a game, the last two minutes of a close game stop on every one of your trips so you call the play.",
+      "**Playoffs:** \"Play 1 Game\" now plays one game in every series at once, not just one matchup.",
+    ],
+  },
+  {
     id: '2027-02-03',
     title: 'Steadier sync and twenty small fixes',
     items: [

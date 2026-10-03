@@ -603,3 +603,6 @@ button { border-radius: 0; }
   .stats-view-toggle button { flex: 0 0 auto; white-space: nowrap; }
   .extensions-table td.hint-text { min-width: 190px; }
 }
+.coach-crunch { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px 12px; padding:8px 10px; margin:6px 0; border:1px dashed var(--cv-orange, var(--c-border-f47b20, #f47b20)); }
+.coach-crunch label { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 6px; flex:1 1 260px; }
+.coach-crunch small { color:var(--cv-text-muted, var(--c-fg-94a0b2, #94a0b2)); }

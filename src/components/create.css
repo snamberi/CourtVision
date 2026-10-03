@@ -11,6 +11,7 @@
 .create-choices-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .create-choices-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .create-choices-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.create-choices-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .create-choice { position: relative; display: grid; align-content: start; gap: 8px; min-height: 120px; padding: 14px 16px; text-align: left; background-color: var(--look-raised); color: var(--look-text); border: var(--look-border) solid var(--look-line); border-radius: var(--look-radius); box-shadow: none; transition: border-color 120ms, transform 120ms; }
 .create-choice:hover:not(:disabled) { border-color: var(--look-edge); transform: translateY(-1px); }
 .create-choice.selected { border-color: var(--look-accent); outline: 2px solid var(--look-accent); outline-offset: -1px; }
@@ -75,9 +76,11 @@
   .create-choices-3, .create-fields, .create-toggles { grid-template-columns: 1fr; }
   .create-choices-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+@media (max-width: 1180px) { .create-choices-5 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 860px) { .create-choices-5 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 620px) {
   .create-page { padding: 12px 12px 120px; }
-  .create-choices-2, .create-choices-4, .create-settings-grid { grid-template-columns: 1fr; }
+  .create-choices-2, .create-choices-4, .create-choices-5, .create-settings-grid { grid-template-columns: 1fr; }
   .create-go { bottom: 8px; }
   .create-start { width: 100%; justify-content: center; }
 }

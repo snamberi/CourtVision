@@ -229,7 +229,11 @@ export function simulateNextPlayoffGame(bracket: PlayoffBracket, league: League,
   if (playIn) return simulatePlayInGame(bracket, league, playIn, seedBase);
   const next = findNextSeries(bracket);
   if (!next) return { bracket, league };
+  return playSeriesGame(bracket, league, next, seedBase);
+}
 
+/** Plays the next game of one series and advances the bracket if that game ended it. */
+function playSeriesGame(bracket: PlayoffBracket, league: League, next: PlayoffSeries, seedBase: number): PlayoffGameStepResult {
   const gameIndex = next.teamAWins + next.teamBWins;
   const teamAHosts = [0, 1, 4, 6].includes(gameIndex);
   const played = playPostseasonGame(league, next.teamAId!, next.teamBId!, teamAHosts, seedBase + gameIndex);
@@ -259,6 +263,37 @@ export function simulateNextPlayoffGame(bracket: PlayoffBracket, league: League,
   const championTeamId = finalRound.length === 1 ? finalRound[0].winnerTeamId : null;
   const updatedBracket: PlayoffBracket = { ...bracket, rounds, championTeamId };
   return { bracket: updatedBracket, league: { ...played.league, playoffBracket: updatedBracket } };
+}
+
+/**
+ * One playoff game day: every series that can play (both teams known, not yet decided) plays its next game,
+ * so "play 1 game" moves the whole bracket along together instead of one matchup at a time. While the play-in
+ * is on, each play-in game that is ready plays instead (the play-in final waits for its day).
+ */
+export function simulatePlayoffGameDay(bracket: PlayoffBracket, league: League, seedBase = 1000): PlayoffGameStepResult & { played: GameResult[] } {
+  const played: GameResult[] = [];
+  let b = bracket, l = league;
+  if (playInPending(b)) {
+    const ready = (b.playIn ?? []).filter(g => !g.winnerTeamId && g.teamAId && g.teamBId).map(g => g.id);
+    for (const id of ready) {
+      const game = b.playIn!.find(g => g.id === id)!;
+      const step = simulatePlayInGame(b, l, game, seedBase);
+      const after = step.bracket.playIn!.find(g => g.id === id)?.result;
+      if (after) played.push(after);
+      b = step.bracket; l = step.league;
+    }
+    return { bracket: b, league: l, played };
+  }
+  const ready = b.rounds.flat().filter(sr => !sr.winnerTeamId && sr.teamAId != null && sr.teamBId != null).map(sr => sr.id);
+  for (const id of ready) {
+    const series = b.rounds.flat().find(sr => sr.id === id);
+    if (!series || series.winnerTeamId) continue;
+    const step = playSeriesGame(b, l, series, seedBase);
+    const after = step.bracket.rounds.flat().find(sr => sr.id === id);
+    if (after && after.games.length > series.games.length) played.push(after.games[after.games.length - 1]);
+    b = step.bracket; l = step.league;
+  }
+  return { bracket: b, league: l, played };
 }
 
 /** Simulates the entire bracket to completion — synchronous, use a worker for large brackets in the UI. */

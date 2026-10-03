@@ -15,6 +15,7 @@ import { LegacyPanel } from '../FrontOfficePanels';
 import { FavoritesPanel } from '../FavoritesPanel';
 import { AvatarEditor } from '../AvatarEditor';
 import { ProfilePanel } from '../ProfilePanel';
+import { TrophyCase } from '../TrophyCase';
 import { cloudEnabled } from '../../cloud/account';
 import { noteCareers } from '../../profile/profile';
 import { modeStats, MODE_ACHIEVEMENTS, isEarned } from '../../profile/modeAchievements';
@@ -80,7 +81,7 @@ export function ProfileHub({ onExit, initialTab = 'profile' }: { onExit: () => v
     </header>
     <div className="profile-tabs code-mode-actions" role="tablist" aria-label="Profile sections">{TABS.map(t => <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>{t.label}</button>)}</div>
 
-    {tab === 'profile' && <ProfilePanel extras={<div className="profile-extras"><LegacyPanel legacy={legacy} compact /><FavoritesPanel /></div>} />}
+    {tab === 'profile' && <ProfilePanel extras={<><div className="profile-extras"><LegacyPanel legacy={legacy} compact /><FavoritesPanel /></div><TrophyCase /></>} />}
     {tab === 'character' && <AvatarEditor />}
     {tab === 'season' && <SeasonPass />}
     {tab === 'road' && <LevelRoad />}
