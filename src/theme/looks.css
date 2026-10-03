@@ -210,12 +210,16 @@
 a.menu-phone-app { text-decoration: none; }
 .menu-phone-home { justify-self: center; width: 34px; height: 3px; border-radius: 2px; background-color: var(--look-muted); opacity: .6; }
 
-@media (min-width: 1560px) {
-  .menu-phone { position: fixed; left: 16px; bottom: 16px; z-index: 40; width: 118px; }
+@media (min-width: 1720px) {
+  .menu-phone { position: fixed; left: 16px; bottom: 16px; z-index: 40; width: 204px; }
+  .menu-phone-body { gap: 10px; padding: 10px 12px 12px; border-radius: 16px; }
+  .menu-phone-apps { grid-template-columns: repeat(3, 1fr); gap: 10px 6px; }
+  .menu-phone .app-tile { width: 46px; height: 46px; border-radius: 12px; }
+  .menu-phone-app small { font-size: 10px; }
   /* Level-up and streak notes sit beside the phone. */
-  .main-menu .level-up.level-up-corner { left: 150px; }
+  .main-menu .level-up.level-up-corner { left: 236px; }
 }
-@media (max-width: 1559px) {
+@media (max-width: 1719px) {
   .menu-phone-body { grid-template-columns: auto 1fr; align-items: center; padding: 8px 12px; border-radius: 12px; }
   .menu-phone-status { flex-direction: column; justify-content: center; gap: 5px; padding-right: 10px; border-right: 1px solid var(--look-line); }
   .menu-phone-notch { width: 6px; height: 20px; }
