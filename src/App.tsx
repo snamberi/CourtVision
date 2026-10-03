@@ -1,3 +1,4 @@
+import { plural } from './lib/humanize';
 import { initializeCoaching } from './simulation/staffManagement';
 import { setupCup } from './simulation/cup';
 import { advanceDeadlineHour, deadlineClock, describeDeadlineTrade, isBlockbuster, isDeadlineDayDue, isDeadlineDayOpen, openDeadlineDay, runToDeadline, scheduleDeadlineDay, tradeDeadlineEnabled, type DeadlineHourResult } from './simulation/deadlineDay';
@@ -979,7 +980,7 @@ function App() {
   const simEntireDraftAndContinue = () => {
     const result = simEntireDraft(league, extras);
     beginResignWaivePhase({ league: result.league, extras: result.extras });
-    pushToast(`Draft complete — ${result.picks.length} picks made.`, 'success');
+    pushToast(`Draft complete — ${plural(result.picks.length, 'pick')} made.`, 'success');
   };
 
   // The Play button's one-click way to leave free agency: runs the AI pass for every remaining day,

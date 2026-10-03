@@ -1,3 +1,4 @@
+import { plural } from '../lib/humanize';
 import { useMemo, useState } from 'react';
 import type { League } from '../simulation/league';
 import { homeCities, travelWalk, planTrip, TRIP_PLANS, timeZone, ZONE_NAME, type City, type RoadTrip } from '../simulation/travel';
@@ -78,7 +79,7 @@ export function RoadTripsPage({ league, controlledTeamId, onChange }: { league: 
           return <article key={t.id} className={`trip-card${t === selected ? ' active' : ''}${t === upcoming ? ' next' : ''}`}>
             <button className="trip-head" onClick={() => setSel(t.id)} aria-pressed={t === selected}>
               <b>{t === upcoming ? 'Next trip' : done ? `Trip · ${wins}-${t.legs.length - wins}` : 'Road trip'}</b>
-              <span>{t.legs.length} games · {t.miles.toLocaleString()} mi{t.zones ? ` · ${t.zones} time-zone jump${t.zones === 1 ? '' : 's'}` : ''}</span>
+              <span>{plural(t.legs.length, 'game')} · {t.miles.toLocaleString()} mi{t.zones ? ` · ${t.zones} time-zone jump${t.zones === 1 ? '' : 's'}` : ''}</span>
               <Meter v={t.peak} /></button>
             <ol>{t.legs.map((l, i) => <li key={l.gameId} className={l.played ? l.won ? 'won' : 'lost' : ''}><span>{i + 1}. @ {name(l.opponentId)}</span><small>{l.city.name} · {l.miles.toLocaleString()} mi{l.zones ? ` · ${l.zones}h` : ''}</small><Meter v={l.fatigue} /></li>)}</ol>
             <div className="trip-plans" role="radiogroup" aria-label="Trip plan">{TRIP_PLANS.map(p => <button key={p.id} role="radio" aria-checked={t.plan === p.id} className={t.plan === p.id ? 'active' : ''} disabled={started} title={p.note}

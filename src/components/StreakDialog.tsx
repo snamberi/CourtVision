@@ -12,7 +12,7 @@ export function StreakDialog({ streak, onClose, onProfile }: { streak: { current
   return <Modal label="Your daily streak" onClose={onClose} className="streak-dialog">
     <div className="streak-hero">
       <span className="streak-flame"><PixelIcon name="flame" size={40} /></span>
-      <div><b>{plural(streak.current, 'day')}</b><small>in a row · best {plural(streak.best, 'day')}</small></div>
+      <div>{streak.current > 0 ? <><b>{plural(streak.current, 'day')}</b><small>in a row · best {plural(streak.best, 'day')}</small></> : <><b>No streak yet</b><small>come back tomorrow to start one{streak.best ? ` · best ${plural(streak.best, 'day')}` : ''}</small></>}</div>
     </div>
     <p className="hint-text">Open Court Vision once a day (by UTC) to keep it going; a missed day starts it again. Rewards go by your <b>best</b> streak, so a broken streak never takes one back.</p>
     {next

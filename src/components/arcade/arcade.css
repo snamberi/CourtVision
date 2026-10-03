@@ -113,3 +113,14 @@
   .arcade-quiz-options { grid-template-columns: 1fr; }
   .arcade-quiz-q { font-size: 18px; }
 }
+
+/* Keyboard hints mean nothing on a touch screen. */
+@media (pointer: coarse) { .key-hint { display: none; } }
+/* On a phone the later rounds sit off to the right: say so, and keep each round's heading on its own lines. */
+.arcade-bracket-swipe { display: none; }
+@media (max-width: 760px) {
+  .arcade-bracket-swipe { display: block; margin: 0; }
+  .arcade-bracket-col h3 { white-space: normal; }
+  .arcade-bracket-cols { grid-template-columns: repeat(4, 200px); scroll-snap-type: x proximity; }
+  .arcade-bracket-col { scroll-snap-align: start; }
+}

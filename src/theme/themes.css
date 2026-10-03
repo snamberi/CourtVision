@@ -42,6 +42,8 @@ body { background: var(--look-page); color: var(--look-text); font-family: var(-
   border-radius: var(--look-radius); box-shadow: var(--look-shadow);
 }
 :root :is(.hunt-stage, .watch-controls) { border: var(--look-border) solid var(--look-line); }
+/* The bordered stage needs room inside it, or text runs into the frame. */
+:root .hunt-stage { padding: clamp(12px, 3vw, 20px); }
 :root :is(.dashboard-panel h5, .settings-page h4, .hunt-subhead) { color: var(--look-text); border-color: var(--look-line); }
 :root :is(.dashboard-hero, .profile-header) { border-left: 3px solid var(--look-accent); }
 :root :is(.profile-avatar-block, .locker-portrait) {

@@ -2,7 +2,7 @@ import { hasOwnerAccess } from '../../profile/ownerAccess';
 import { useEffect, useState } from 'react';
 import { cloudEnabled, useAccount, signOut, deleteAccount, updateProfile } from '../../cloud/account';
 import { syncNow } from '../../cloud/sync';
-import { loadProfile, setFollow, report, searchUsers, achievementRarity, type BoardSpec } from '../../cloud/boards';
+import { loadProfile, setFollow, report, achievementRarity, type BoardSpec } from '../../cloud/boards';
 import { currentSeason, seasonLabel, tierFor, TIERS } from '../../cloud/ranked';
 import { weekKey } from '../../retention/week';
 import { weeklyRebuild, weeklyCareer } from '../../retention/weekly';
@@ -10,6 +10,7 @@ import { SCENARIOS } from '../../simulation/rebuildScenarios';
 import { ACHIEVEMENT_BY_ID } from '../../simulation/frontOffice';
 import { TITLES, levelFor, totalXp, rankTitles, equip } from '../../profile/profile';
 import { usernameProblem } from '../../lib/names';
+import { FindGm } from './FriendsPage';
 import { BoardTable } from './BoardTable';
 import { PvpArena } from './PvpArena';
 import { openSignIn } from '../../cloud/signIn';
@@ -148,20 +149,12 @@ function Ranked({ onUser }: { onUser: (u: string) => void }) {
 
 function Friends({ onUser }: { onUser: (u: string) => void }) {
   const acct = useAccount();
-  const [q, setQ] = useState('');
-  const [hits, setHits] = useState<{ id: string; username: string; title: string; level: number; icon?: string; color?: string }[] | null>(null);
-  const search = async () => { if (q.trim().length >= 2) setHits(await searchUsers(q.trim()).catch(() => [])); };
-  return <section className="locker-bay">
+  return <><FindGm onUser={onUser} /><section className="locker-bay">
     <h2><PixelIcon name="team" size={18} /> Friends</h2>
-    <form className="signin-email" onSubmit={e => { e.preventDefault(); void search(); }}>
-      <label htmlFor="friend-search">Find a GM by name</label>
-      <div><input id="friend-search" className="year-input" value={q} onChange={e => setQ(e.target.value)} placeholder="GM name" /><button type="submit" disabled={q.trim().length < 2}>Search</button></div>
-    </form>
-    {hits && (hits.length ? <ul className="cv-saved">{hits.map(h => <li key={h.id}><div><b><NameTag name={`@${h.username}`} icon={h.icon} color={h.color} title={h.title} /></b><small>LV {h.level}</small></div><button onClick={() => onUser(h.username)}>Profile</button></li>)}</ul> : <p className="empty-state">No GM by that name.</p>)}
     <h3 className="hunt-subhead">You and the GMs you follow</h3>
     {acct.status === 'signedIn' ? <BoardTable spec={{ kind: 'friends' }} scoreLabel="XP" onUser={onUser} empty="Follow GMs from their profile to see them here." /> : <p className="hint-text">Sign in to follow GMs.</p>}
     <p className="hint-text">Challenge a friend: every league shows a league code on its dashboard. Send it; when you both finish the first season, the result shows on the code's board, side by side.</p>
-  </section>;
+  </section></>;
 }
 
 // ---------------------------------------------------------------- your account

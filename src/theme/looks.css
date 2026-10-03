@@ -433,3 +433,9 @@
 .profile-extras:has(> :nth-child(2)) > .favorites-panel .fav-row { grid-template-columns: 1fr; }
 @media (max-width: 900px) { .profile-extras { grid-template-columns: 1fr; } }
 .profile-extras > :only-child { grid-column: 1 / -1; }
+
+/* Career Mode tabs: the same size as the profile tabs, easy to hit on a phone. */
+:root .cv-tabs { gap: 6px; }
+:root .cv-tabs button { padding: 9px 16px; font-size: 13px; }
+:root .cv-tabs button.active { background-color: var(--look-accent); border-color: var(--look-accent); color: var(--look-on-accent); }
+:root .cv-hub-tabs { justify-self: start; border: 0; overflow: visible; }

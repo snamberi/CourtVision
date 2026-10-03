@@ -1,3 +1,4 @@
+import { plural } from '../lib/humanize';
 import { CoachProfile } from './StaffPage';
 import { staffMembers } from '../simulation/staffManagement';
 import { STAFF_LABELS } from '../simulation/coachingModel';
@@ -23,7 +24,7 @@ export function TeamProfilePage({ league, extras, teamId, onSelectPlayer }: { le
   return <article className="team-profile-page">
     <span className="pixel-eyebrow"><PixelIcon name="search" /> TEAM PROFILE · READ ONLY</span>
     <TeamIdentityPanel team={team} history={league.franchiseHistory} currentChampion={league.playoffBracket?.championTeamId} currentSeason={league.season} />
-    <p>{record?.wins ?? 0}–{record?.losses ?? 0} · {team.conferenceId ?? 'League'} · {team.divisionId ?? 'No division'} · {team.seasons.length} players</p>
+    <p>{record?.wins ?? 0}–{record?.losses ?? 0} · {team.conferenceId ?? 'League'} · {team.divisionId ?? 'No division'} · {plural(team.seasons.length, 'player')}</p>
     <section><h3>Coaching</h3><div className="team-profile-facts"><div><small>Head coach</small><strong>{team.coachIdentity?.coachId ?? 'Vacant'}</strong></div><div><small>Coach rating</small><strong>{team.coachIdentity?.rating ?? '—'}</strong></div><div><small>Offense</small><strong>{plan.offensiveSystem ?? 'balanced'}</strong></div><div><small>Defense</small><strong>{plan.defensiveScheme ?? 'man'}</strong></div><div><small>Training</small><strong>{plan.trainingFocus ?? 'balanced'}</strong></div><div><small>Rotation depth</small><strong>{plan.rotationDepth ?? 10}</strong></div></div>
       <dl className="team-profile-facts">{([['Pace',plan.paceTendency],['Three-point frequency',plan.threePointFrequency],['Star usage',plan.starUsage],['Defensive aggression',plan.defensiveAggression],['Double teams',plan.doubleTeamFrequency],['Bench usage',plan.benchUsage]] as const).map(([label,n]) => <div key={label}><dt>{label}</dt><dd>{n}/100</dd></div>)}</dl></section>
     <section><h3>Coaching Staff</h3>{staffMembers(team).map(s=><details key={s.role}><summary>{STAFF_LABELS[s.role]} · {s.coach.coachId}</summary><CoachProfile coach={s.coach} role={s.role}/></details>)}</section>

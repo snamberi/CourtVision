@@ -155,15 +155,15 @@ export function FranchiseCreate({ onBack, onStart, busy = null, initial = 'free'
 
     {challenge === 'worldgames' && <section className="create-step" aria-labelledby="create-step-wg">
       <h2 id="create-step-wg"><span className="create-num">2</span> Pick the Games and your country</h2>
+      <label className="create-field"><span>Your country</span>
+        <select className="year-input" value={wgCountry} onChange={e => setWgCountry(e.target.value)}>{COUNTRIES.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}</select>
+        <small>Pick from your country's real players {wgGames === 'fantasy' ? 'of all time' : 'of that season'}; empty spots go to home-league players. No contracts, trades or free agency here: pick twelve and play.</small>
+      </label>
       <div className="create-choices create-choices-3" role="radiogroup" aria-label="Which Games">
         {MODE_GAMES.map(g => <button key={String(g.id)} role="radio" aria-checked={wgGames === g.id} className={`create-choice ${wgGames === g.id ? 'selected' : ''}`} onClick={() => setWgGames(g.id)}>
           <span className="create-choice-head"><b>{g.label}</b></span><span className="create-choice-blurb">{g.blurb}</span>
         </button>)}
       </div>
-      <label className="create-field"><span>Your country</span>
-        <select className="year-input" value={wgCountry} onChange={e => setWgCountry(e.target.value)}>{COUNTRIES.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}</select>
-        <small>Pick from your country's real players {wgGames === 'fantasy' ? 'of all time' : 'of that season'}; empty spots go to home-league players. No contracts, trades or free agency here: pick twelve and play.</small>
-      </label>
     </section>}
 
     {challenge === 'draft' && <section className="create-step" aria-labelledby="create-step-draft">

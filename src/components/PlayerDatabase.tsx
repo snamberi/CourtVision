@@ -1,3 +1,4 @@
+import { plural } from '../lib/humanize';
 import { TeamLink } from './TeamLink';
 import { useMemo, useState } from 'react';
 import type { LeagueTeam } from '../simulation/league';
@@ -58,7 +59,7 @@ export function PlayerDatabase({ teams, onSelect, selectedPlayerId }: Props) {
     <div className="db-pager">
       <button onClick={() => setPage(0)} disabled={safePage === 0} aria-label="First page">«</button>
       <button onClick={() => setPage(safePage - 1)} disabled={safePage === 0}>‹ Prev</button>
-      <span className="hint-text">{firstShown}–{lastShown} of {rows.length} players · page {safePage + 1} of {pageCount}</span>
+      <span className="hint-text">{firstShown}–{lastShown} of {plural(rows.length, 'player')} · page {safePage + 1} of {pageCount}</span>
       <button onClick={() => setPage(safePage + 1)} disabled={safePage >= pageCount - 1}>Next ›</button>
       <button onClick={() => setPage(pageCount - 1)} disabled={safePage >= pageCount - 1} aria-label="Last page">»</button>
     </div>

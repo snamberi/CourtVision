@@ -252,7 +252,7 @@ function Hub({ careers, onNew, onOpen, onDelete }: { careers: CareerMeta[]; onNe
   const [tab, setTab] = useState<'careers' | 'hof'>('careers');
   const [level, setLevel] = useState(() => challengePrefs('career').level);
   const inducted = careers.filter(m => m.retired && m.retired.hallOfFame !== 'no');
-  const tabs = <div className="stats-view-toggle" role="tablist" aria-label="Career Mode">
+  const tabs = <div className="stats-view-toggle cv-tabs cv-hub-tabs" role="tablist" aria-label="Career Mode">
     <button role="tab" aria-selected={tab === 'careers'} className={tab === 'careers' ? 'active' : ''} onClick={() => setTab('careers')}>Careers</button>
     <button role="tab" aria-selected={tab === 'hof'} className={tab === 'hof' ? 'active' : ''} onClick={() => setTab('hof')}>Hall of Fame ({inducted.length})</button>
   </div>;

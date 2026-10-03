@@ -1,3 +1,4 @@
+import { plural } from '../lib/humanize';
 import { TeamLink } from './TeamLink';
 import { canEditTeam } from '../navigation/permissions';
 import { useState } from 'react';
@@ -60,7 +61,7 @@ export function InjuryReportPage({ league, controlledTeamId, onChange, onSelectP
                 <td><TeamLink name={entry.teamName} /></td>
                 <td>{SEVERITY_LABEL[entry.record.severity] ?? entry.record.severity}</td>
                 <td>{entry.record.gamesRemaining}</td>
-                <td>{entry.record.totalGames - entry.record.gamesRemaining} of {entry.record.totalGames} games missed</td>
+                <td>{entry.record.totalGames - entry.record.gamesRemaining} of {plural(entry.record.totalGames, 'game')} missed</td>
               </tr>
             ))}
           </tbody>
