@@ -1,6 +1,7 @@
 import { ownerSeasonEnd } from './ownerBox';
 import { rollBusinessSeason } from './business';
 import { withLegacySons } from './family';
+import { dynastySeasonEnd } from './dynasty';
 import { enforceSticky, isStuck } from './sticky';
 import { lotteryResult, consensusBoard } from './draftNight';
 import { extensionTakesOver, markContractYears } from './extensions';
@@ -445,8 +446,9 @@ export function beginNewSeasonRoster(
   return {
     // Coaches age and contracts run out, then AI owners review their head coaches (the coaching carousel).
     // The Owner's Box books the season (profit, the GM's report card) and the league office sets its agenda.
-    league: ownerSeasonEnd(offseasonCarousel(advanceStaffSeason(settled.league, previousSeason, championship?.teamId ?? undefined, seasonAwards.coy?.coachName ?? undefined), previousSeason, userTeamId,
-      new Map(settled.league.teams.map(t => [t.teamId, t.coachIdentity?.coachId]))), settled.extras, teamSeasons, previousSeason, ownerExpected),
+    // Dynasty leagues: maybe an AI owner sells.
+    league: dynastySeasonEnd(ownerSeasonEnd(offseasonCarousel(advanceStaffSeason(settled.league, previousSeason, championship?.teamId ?? undefined, seasonAwards.coy?.coachName ?? undefined), previousSeason, userTeamId,
+      new Map(settled.league.teams.map(t => [t.teamId, t.coachIdentity?.coachId]))), settled.extras, teamSeasons, previousSeason, ownerExpected), previousSeason, userTeamId),
     extras: settled.extras,
     summary: {
       previousSeason,

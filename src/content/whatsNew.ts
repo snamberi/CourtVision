@@ -6,6 +6,18 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2027-02-10',
+    title: 'Online leagues, Clubs, Dynasty Mode and more',
+    items: [
+      "**Online leagues:** run a GM league with 2-8 friends. Everyone runs a team, presses Ready, and the league moves when all are ready (or the deadline passes). Trades between friends need both of you to agree. Find it under Friends.",
+      "**Clubs:** start a club (up to 20 GMs) with a name, tag and badge. Every weekly board you play adds club points; club owners can challenge another club to a one-week clash.",
+      "**Dynasty Mode:** a league for 50 seasons and more. Owners sell, teams move, sons of retired stars enter the draft, and a History Book writes a chapter every decade.",
+      "**Weekly missions:** five free missions a week in your Profile. Claim them for XP that fills your Season Pass, and earn mission titles.",
+      "**Play crunch time yourself:** when you coach a game, the last two minutes of a close game stop on every one of your trips so you call the play.",
+      "**Playoffs:** \"Play 1 Game\" now plays one game in every series at once, not just one matchup.",
+    ],
+  },
+  {
     id: '2027-02-03',
     title: 'Steadier sync and twenty small fixes',
     items: [

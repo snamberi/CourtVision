@@ -120,3 +120,23 @@ describe('play-in tournament', () => {
     expect(done.bracket.championTeamId).not.toBeNull();
   });
 });
+
+describe('playoff game day', () => {
+  it('plays one game in every series still going, not just the first matchup', async () => {
+    const { simulatePlayoffGameDay } = await import('../simulation/playoffs');
+    const league = buildSeededLeague(8, 31);
+    const bracket = generatePlayoffBracket(league, 8);
+    const day = simulatePlayoffGameDay(bracket, league, 5);
+    expect(day.played).toHaveLength(4);
+    expect(day.bracket.rounds[0].every(s => s.games.length === 1)).toBe(true);
+    // Day after day the bracket finishes, and no series ever plays twice in one day.
+    let b = day.bracket, l = day.league;
+    for (let i = 0; i < 40 && !b.championTeamId; i++) {
+      const before = new Map(b.rounds.flat().map(s => [s.id, s.games.length]));
+      const next = simulatePlayoffGameDay(b, l, 5 + i);
+      for (const s of next.bracket.rounds.flat()) expect(s.games.length - (before.get(s.id) ?? 0)).toBeLessThanOrEqual(1);
+      b = next.bracket; l = next.league;
+    }
+    expect(b.championTeamId).toBeTruthy();
+  });
+});

@@ -4,7 +4,7 @@ import { GameBoxScorePage } from './GameBoxScorePage';
 import type { GameResult } from '../simulation/boxscore';
 import { useEffect, useState } from 'react';
 import type { League } from '../simulation/league';
-import { autoGeneratePlayoffBracket, simulateNextPlayoffGame, simulateFullPlayoffs, simulateCurrentPlayoffRound, playInPending, type PlayoffBracket, type PlayoffSeries } from '../simulation/playoffs';
+import { autoGeneratePlayoffBracket, simulateNextPlayoffGame, simulateFullPlayoffs, simulateCurrentPlayoffRound, simulatePlayoffGameDay, playInPending, type PlayoffBracket, type PlayoffSeries } from '../simulation/playoffs';
 import { PlayoffBracketView } from './PlayoffBracketView';
 import { StarIcon } from './Icons';
 import { playToTeamGame, playoffOccasion, roundName } from '../simulation/bigGames';
@@ -44,6 +44,13 @@ export function PlayoffsPage({ league, onChange, bracket, onBracketChange, onCel
       if (changed) setWatched(changed.games[changed.games.length - 1]);
       else if (playIn?.result) setWatched(playIn.result);
     }
+  };
+  // One game day: every series still going plays one game (not just the first matchup on the board).
+  const simDay = () => {
+    if (!bracket) return;
+    const step = simulatePlayoffGameDay(bracket, league, 1000);
+    onBracketChange(step.bracket);
+    onChange({ ...step.league, playoffBracket: step.bracket });
   };
   // Plays other series' games as they come until your team's next game is done, then opens it on the court.
   const watchMine = () => {
@@ -128,7 +135,7 @@ export function PlayoffsPage({ league, onChange, bracket, onBracketChange, onCel
       {bracket && !bracket.championTeamId && (
         <div className="league-controls">
           <button className="primary" onClick={() => simOne(true)}>Watch Next Game</button>
-          <button onClick={() => simOne()}>Simulate Next Game</button>
+          <button onClick={simDay} title="Every series still going plays its next game">{pendingPlayIn ? 'Play Next Play-In Games' : 'Play 1 Game (every series)'}</button>
           <button onClick={simRound}>{pendingPlayIn ? 'Simulate Play-In' : 'Simulate Current Round'}</button>
           <button className="primary" onClick={simAll}>Simulate Entire Playoffs</button>
         </div>

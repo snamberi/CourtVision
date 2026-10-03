@@ -14,7 +14,7 @@ import { detectHighlights, reelFor, formatGameClock, HIGHLIGHT_LABEL, HIGHLIGHT_
 import { liveBoxScore } from '../simulation/liveBox';
 import { CourtAudio } from '../audio/courtAudio';
 import { CoachPanel, HighlightsPanel, LiveBoxPanel, type CoachingProps } from './WatchPanels';
-import { currentRun, lastShotMoment } from '../simulation/coachMoments';
+import { currentRun, lastShotMoment, crunchMoment, crunchStart } from '../simulation/coachMoments';
 import { canRecordReel, startReelRecording, type ReelRecording } from './reelRecorder';
 import type { ClipWriter } from '../share/clipGif';
 import { track } from '../analytics/track';
@@ -303,9 +303,13 @@ export function WatchGame({game,home,away,homeRoster=[],awayRoster=[],onBoxScore
   const theirTeam=coaching?(coaching.teamId===home.teamId?live.away:live.home):null;
   const coachRun=useMemo(()=>currentRun(game.possessionLog,coachAt),[game,coachAt]);
   const lastShotNow=!!coaching&&!finished&&lastShotMoment(game.possessionLog,coachAt,coaching.teamId,home.teamId,regulation);
+  // Play it yourself: in crunch time (last 2:00, within 8) the tape stops on every one of your trips for a play call.
+  const [callPlays,setCallPlays]=useState(true);
+  const crunchNow=!!coaching&&callPlays&&!finished&&!lastShotNow&&crunchMoment(game.possessionLog,coachAt,coaching.teamId,regulation);
+  const crunchAt=useMemo(()=>crunchStart(game.possessionLog,regulation),[game,regulation]);
   // Game on the line: stop the tape once and hand the coach the clipboard.
   const prompted=useRef(-1);
-  useEffect(()=>{if(lastShotNow&&prompted.current!==coachAt){prompted.current=coachAt;setPlaying(false);setReel(null);setTab('coach');}},[lastShotNow,coachAt]);
+  useEffect(()=>{if((lastShotNow||crunchNow)&&prompted.current!==coachAt){prompted.current=coachAt;setPlaying(false);setReel(null);setTab('coach');}},[lastShotNow,crunchNow,coachAt]);
   const myTeam=coaching?(coaching.teamId===home.teamId?live.home:live.away):null;
   // Halftime: when you're coaching, the tape stops at the start of the third quarter for the locker-room speech.
   const halfAt=useMemo(()=>game.possessionLog.findIndex(e=>e.quarter>regulation/2),[game,regulation]);
@@ -348,7 +352,7 @@ export function WatchGame({game,home,away,homeRoster=[],awayRoster=[],onBoxScore
       </div>
       <div role="tabpanel" className="watch-tabpanel">
         {tab==='box'&&<LiveBoxPanel home={live.home} away={live.away} homeName={home.name} awayName={away.name}/>}
-        {tab==='coach'&&coaching&&myTeam&&<CoachPanel key={lastShotNow?`ls${coachAt}`:'coach'} coaching={coaching} team={myTeam} opponent={theirTeam??undefined} run={coachRun} lastShotNow={lastShotNow} atPossession={coachAt} finished={finished} clockLabel={clockLabel} onDecision={()=>{setPlaying(false);setReel(null);}}/>}
+        {tab==='coach'&&coaching&&myTeam&&<CoachPanel key={lastShotNow||crunchNow?`ls${coachAt}`:'coach'} coaching={coaching} team={myTeam} opponent={theirTeam??undefined} run={coachRun} lastShotNow={lastShotNow} crunchNow={crunchNow} callPlays={callPlays} onCallPlays={setCallPlays} crunchAt={!finished&&crunchAt>coachAt?crunchAt:undefined} onSkipToCrunch={()=>{prompted.current=-1;seek(crunchAt);}} onResume={()=>setPlaying(true)} atPossession={coachAt} finished={finished} clockLabel={clockLabel} onDecision={()=>{setPlaying(false);setReel(null);}}/>}
         {tab==='highlights'&&<HighlightsPanel highlights={highlights} completed={completed} finished={finished} regulationPeriods={regulation} onJump={jumpTo} onReel={startReel} reelCount={reelPlays.length} onShare={()=>void share()} shareStatus={shareStatus} onVideo={canRecordReel()?()=>void recordVideo():undefined} videoStatus={videoStatus} onClip={h=>void makeClip(h)} onTikTok={h=>void makeClip(h,true)} clipStatus={clip?clipStatus:clipOut?null:clipStatus}/>}
       </div>
     </div>}

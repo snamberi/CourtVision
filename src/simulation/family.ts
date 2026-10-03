@@ -104,14 +104,17 @@ export const relationLabel = (r: Relation) => ({ father: 'Son of', son: 'Father 
  * draft. Renames at most `max` fresh prospects and links them, so the bio and the news can tell the story.
  */
 export function withLegacySons<T extends { playerId: string; trueSeason: PlayerSeason }>(prospects: T[], league: League, seed: number, max = 2): T[] {
-  if (league.historical) return prospects; // real draft classes carry real names
+  // Real draft classes carry real names; generated classes in a dynasty get more legacy sons.
+  const dynasty = !!league.dynasty;
+  if (league.historical && !dynasty) return prospects;
+  if (dynasty) max = Math.max(max, 3);
   const stars = (league.retiredPlayers ?? []).filter(r => r.finalOverall >= 74 || (r.finalSeasonData?.careerHistory?.length ?? 0) >= 12)
     .filter(r => r.finalAge >= 30);
   if (!stars.length) return prospects;
   const taken = new Set([...league.teams.flatMap(t => t.seasons.map(s => s.playerId)), ...prospects.map(p => p.playerId), ...(league.retiredPlayers ?? []).map(r => r.playerId)]);
   let made = 0;
   return prospects.map((p, i) => {
-    if (made >= max || hash(`${seed}|${p.playerId}|${i}`) >= 7) return p;
+    if (made >= max || hash(`${seed}|${p.playerId}|${i}`) >= (dynasty ? 14 : 7)) return p;
     const dad = stars[hash(`${seed}|dad|${i}`) % stars.length];
     const first = p.playerId.split(' ')[0];
     const dadFirst = dad.playerId.split(' ')[0];

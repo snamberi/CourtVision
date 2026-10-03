@@ -16,7 +16,7 @@ import '../locker/locker.css';
 
 type Hit = { id: string; username: string; title: string; level: number; icon?: string; color?: string };
 
-export function FriendsPage({ onExit, onUser, onCommunity }: { onExit: () => void; onUser: (username: string) => void; onCommunity: () => void }) {
+export function FriendsPage({ onExit, onUser, onCommunity, onClubs, onOnline }: { onExit: () => void; onUser: (username: string) => void; onCommunity: () => void; onClubs?: () => void; onOnline?: () => void }) {
   const acct = useAccount();
   const signedIn = acct.status === 'signedIn';
   return <div className="hunt locker friends-page">
@@ -33,6 +33,16 @@ export function FriendsPage({ onExit, onUser, onCommunity }: { onExit: () => voi
       {signedIn && <section className="locker-bay friends-list">
         <h2><PixelIcon name="team" size={18} /> You and the GMs you follow</h2>
         <BoardTable spec={{ kind: 'friends' }} scoreLabel="XP" onUser={onUser} empty="You don't follow anyone yet. Find a GM below and press Follow on their profile." />
+      </section>}
+      {onOnline && <section className="locker-bay friends-online">
+        <h2><PixelIcon name="court" size={18} /> Online leagues</h2>
+        <p>Run a GM league with 2-8 friends: everyone runs a team, the league moves when everyone is ready, and trades between friends need both of you to agree.</p>
+        <button className="primary" onClick={onOnline}>Open online leagues</button>
+      </section>}
+      {onClubs && <section className="locker-bay friends-clubs">
+        <h2><PixelIcon name="crown" size={18} /> Clubs</h2>
+        <p>Start a club with your friends (up to 20 GMs): a name, a tag and a badge, club points from every weekly board, and one-week clashes against other clubs.</p>
+        <button className="primary" onClick={onClubs}>Open Clubs</button>
       </section>}
       {signedIn && <RivalList />}
       <FindGm onUser={onUser} />

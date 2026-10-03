@@ -86,7 +86,7 @@ import type { NbaHistory } from './history/nbaHistoryData';
 import { HistoricalSettingsCard } from './components/HistoricalSettingsCard';
 import { migrateHistoricalLeague } from './history/migrateHistorical';
 import { stripNameYears } from './history/nameYears';
-import { DEFAULT_CAP_SETTINGS, DEFAULT_TRADE_SETTINGS, DEFAULT_GM_FLAGS, generateDraftClass, pickDraftClassSize, buildTwoRoundDraftOrder, generateFutureDraftPicks, isTradeDeadlinePassed, simulateUntilTradeDeadline, waiveToFreeAgency, toggleTradeBlock, type GMLeagueExtras, type Contract, type TradeDifficulty } from './simulation/gm';
+import { DEFAULT_CAP_SETTINGS, DEFAULT_TRADE_SETTINGS, DEFAULT_GM_FLAGS, generateDraftClass, pickDraftClassSize, buildTwoRoundDraftOrder, generateFutureDraftPicks, isTradeDeadlinePassed, simulateUntilTradeDeadline, waiveToFreeAgency, toggleTradeBlock, type GMLeagueExtras, type Contract, type TradeDifficulty, type TradeProposal } from './simulation/gm';
 import { RNG } from './simulation/engine/rng';
 import { beginNewSeasonRoster, finalizeNewSeasonSchedule, type SeasonTransitionSummary } from './simulation/seasonTransition';
 import { acceptJobOffer, becomeSpectator, ensureFrontOffice, markSandboxUse, isOfficialLeague, ACHIEVEMENT_BY_ID, type OwnerReview } from './simulation/frontOffice';
@@ -100,6 +100,9 @@ import { weeklyRebuild, recordWeekly, TWISTS, type WeeklyRebuild } from './reten
 import { decodeLeagueCode, encodeLeagueCode, type LeagueOrigin } from './retention/leagueCode';
 import { recordCodeResult } from './retention/codeResults';
 import { syncSoon } from './cloud/sync';
+import { getAccount } from './cloud/account';
+import { canAdvance, type OnlineLeague } from './cloud/onlineLeague';
+import { OnlineBar, progressMark, type OnlineSession } from './components/cloud/OnlineBar';
 import { track, trackOnce } from './analytics/track';
 import { ChallengeBanner } from './components/ChallengeBanner';
 import { rebuildSnapshot } from './simulation/rebuildSnapshot';
@@ -113,7 +116,8 @@ import { BackupPanel } from './components/BackupPanel';
 import { canPlaySummerLeague, ensureUpcomingDraftClass, simulateSummerLeague } from './simulation/draftSeason';
 import { runLeagueAIPass, autoDraftAIPicksUntilUserTurn, simEntireDraft, runFreeAgencyAI } from './simulation/aiGM';
 import { autoRunAllStarWeekend } from './simulation/autoPlay';
-import { autoGeneratePlayoffBracket, simulateFullPlayoffs, type PlayoffBracket } from './simulation/playoffs';
+import { startDynasty } from './simulation/dynasty';
+import { autoGeneratePlayoffBracket, simulateFullPlayoffs, simulatePlayoffGameDay, type PlayoffBracket } from './simulation/playoffs';
 import { rosterComplianceIssues } from './simulation/rosterRequirements';
 import { PlayButton } from './components/PlayButton';
 import { addDays, formatDisplayDate, formatSeasonYear } from './simulation/calendar';
@@ -153,10 +157,13 @@ const CareerImportPanel = lazy(() => import('./components/career/CareerImportPan
 const ProfileHub = lazy(() => import('./components/locker/ProfileHub').then(m => ({ default: m.ProfileHub })));
 const AllTimeDraft = lazy(() => import('./components/draft/AllTimeDraft').then(m => ({ default: m.AllTimeDraft })));
 const Community = lazy(() => import('./components/cloud/Community').then(m => ({ default: m.Community })));
+const OnlineLeaguesPage = lazy(() => import('./components/cloud/OnlineLeaguesPage').then(m => ({ default: m.OnlineLeaguesPage })));
+const ClubsPage = lazy(() => import('./components/cloud/ClubsPage').then(m => ({ default: m.ClubsPage })));
 const FriendsPage = lazy(() => import('./components/cloud/FriendsPage').then(m => ({ default: m.FriendsPage })));
 const CareerMode = lazy(() => import('./components/career/CareerMode').then(m => ({ default: m.CareerMode })));
 const SummerCampPage = lazy(() => import('./components/SummerCampPage').then(m => ({ default: m.SummerCampPage })));
 const MedicalRoomPage = lazy(() => import('./components/MedicalRoomPage').then(m => ({ default: m.MedicalRoomPage })));
+const HistoryBookPage = lazy(() => import('./components/HistoryBookPage').then(m => ({ default: m.HistoryBookPage })));
 const FranchiseTimelinePage = lazy(() => import('./components/FranchiseTimelinePage').then(m => ({ default: m.FranchiseTimelinePage })));
 const OwnerBoxPage = lazy(() => import('./components/OwnerBoxPage').then(m => ({ default: m.OwnerBoxPage })));
 const GmRivalsPage = lazy(() => import('./components/GmRivalsPage').then(m => ({ default: m.GmRivalsPage })));
@@ -249,7 +256,7 @@ function buildInitialExtras(league: League): GMLeagueExtras {
   };
 }
 
-type Screen = 'menu' | 'chooseTeam' | 'app' | 'hunt' | 'perfect' | 'career' | 'locker' | 'profile' | 'community' | 'draft' | 'settings' | 'arcade' | 'create' | 'worldGamesMode' | 'friends';
+type Screen = 'menu' | 'chooseTeam' | 'app' | 'hunt' | 'perfect' | 'career' | 'locker' | 'profile' | 'community' | 'draft' | 'settings' | 'arcade' | 'create' | 'worldGamesMode' | 'friends' | 'clubs' | 'online';
 const ARCADE_HASH: Record<ArcadeTab, string> = { guess: '#/guess', hilo: '#/higher-lower', bracket: '#/bracket', quiz: '#/quiz' };
 const arcadeTabOf = (hash: string) => (Object.entries(ARCADE_HASH).find(([, h]) => h === hash)?.[0] as ArcadeTab | undefined);
 
@@ -335,10 +342,12 @@ function App() {
   const [arcadeTab, setArcadeTab] = useState<ArcadeTab>('guess');
   const [createChallenge, setCreateChallenge] = useState<Challenge>('free');
   const [communityTab, setCommunityTab] = useState<'boards' | 'friends'>('boards');
+  /** The online league on screen, if any (see components/cloud/OnlineBar.tsx). */
+  const [online, setOnline] = useState<OnlineSession | null>(null);
   const [worldGamesRun, setWorldGamesRun] = useState<{ games: GamesId; country: string } | null>(null);
   const [boxscoreSource, setBoxscoreSource] = useState<'league' | 'exhibition'>('league');
 
-  const currentRoute = screen === 'menu' ? '#/menu' : screen === 'chooseTeam' ? '#/choose-team' : screen === 'hunt' ? '#/hunt' : screen === 'perfect' ? '#/82-0' : screen === 'career' ? '#/career' : screen === 'locker' ? '#/locker' : screen === 'profile' ? '#/profile' : screen === 'settings' ? '#/settings' : screen === 'create' ? '#/new-league' : screen === 'worldGamesMode' ? '#/world-games' : screen === 'friends' ? '#/friends' : screen === 'draft' ? '#/draft' : screen === 'arcade' ? ARCADE_HASH[arcadeTab] : screen === 'community' ? (communityUser ? `#/u/${encodeURIComponent(communityUser)}` : '#/community')
+  const currentRoute = screen === 'menu' ? '#/menu' : screen === 'chooseTeam' ? '#/choose-team' : screen === 'hunt' ? '#/hunt' : screen === 'perfect' ? '#/82-0' : screen === 'career' ? '#/career' : screen === 'locker' ? '#/locker' : screen === 'profile' ? '#/profile' : screen === 'settings' ? '#/settings' : screen === 'create' ? '#/new-league' : screen === 'worldGamesMode' ? '#/world-games' : screen === 'friends' ? '#/friends' : screen === 'clubs' ? '#/clubs' : screen === 'online' ? '#/online' : screen === 'draft' ? '#/draft' : screen === 'arcade' ? ARCADE_HASH[arcadeTab] : screen === 'community' ? (communityUser ? `#/u/${encodeURIComponent(communityUser)}` : '#/community')
     : activeSaveId ? routeHash({ saveId: activeSaveId, tab, player: selectedPlayerId,
       team: viewedTeamId, game: viewedGameId ?? undefined, source: boxscoreSource, sub: leagueSettingsSub }) : null;
   const { restoring, showPrivacy, closePrivacy } = useGameHistory(currentRoute, async (hash, isCurrent) => {
@@ -354,7 +363,7 @@ function App() {
       setCommunityUser(profileMatch ? decodeURIComponent(profileMatch[1]) : null);
       const arcade = arcadeTabOf(hash);
       if (arcade) setArcadeTab(arcade);
-      setScreen(arcade ? 'arcade' : hash === '#/choose-team' && pendingLeague ? 'chooseTeam' : hash === '#/hunt' ? 'hunt' : hash === '#/82-0' ? 'perfect' : hash === '#/career' ? 'career' : hash === '#/locker' ? 'locker' : hash === '#/profile' ? 'profile' : hash === '#/settings' ? 'settings' : hash === '#/new-league' ? 'create' : hash === '#/world-games' && worldGamesRun ? 'worldGamesMode' : hash === '#/friends' ? 'friends' : hash === '#/community' || profileMatch ? 'community' : hash === '#/draft' ? 'draft' : 'menu');
+      setScreen(arcade ? 'arcade' : hash === '#/choose-team' && pendingLeague ? 'chooseTeam' : hash === '#/hunt' ? 'hunt' : hash === '#/82-0' ? 'perfect' : hash === '#/career' ? 'career' : hash === '#/locker' ? 'locker' : hash === '#/profile' ? 'profile' : hash === '#/settings' ? 'settings' : hash === '#/new-league' ? 'create' : hash === '#/world-games' && worldGamesRun ? 'worldGamesMode' : hash === '#/friends' ? 'friends' : hash === '#/clubs' ? 'clubs' : hash === '#/online' ? 'online' : hash === '#/community' || profileMatch ? 'community' : hash === '#/draft' ? 'draft' : 'menu');
       refreshSaves();
       return;
     }
@@ -403,6 +412,7 @@ function App() {
   const [archiveQuery, setArchiveQuery] = useState('');
 
   const enterApp = (rawLeague: League, rawExtras: GMLeagueExtras, teamId: string | null, saveName?: string, existingSaveId?: string) => {
+    setOnline(null);
     // Heal any universe that has several players sharing one id (older builds could generate them), so no one is lost.
     // Leagues made with the first NBA history data: convert ratings to Court Vision's scale and team names to city names.
     const migrated = migrateHistoricalLeague(rawLeague, rawExtras);
@@ -440,10 +450,11 @@ function App() {
 
   const [menuBusy, setMenuBusy] = useState<string | null>(null);
   /** Builds a league from its origin (a new game, the weekly challenge, or a league code) and opens it. */
-  const startFromOrigin = (origin: LeagueOrigin, o: { name: string; teamId?: string | null; weekly?: WeeklyRebuild | null; settings?: CreateSettings }) => {
+  const startFromOrigin = (origin: LeagueOrigin, o: { name: string; teamId?: string | null; weekly?: WeeklyRebuild | null; settings?: CreateSettings; dynasty?: boolean }) => {
     const openWithTeam = (built: League, builtExtras: GMLeagueExtras) => {
-      // League settings picked on the New Franchise page.
-      const { league, extras } = o.settings ? applyCreateSettings(built, builtExtras, o.settings, origin.kind === 'random') : { league: built, extras: builtExtras };
+      // League settings picked on the New Franchise page; Dynasty Mode switches on the living world.
+      const set = o.settings ? applyCreateSettings(built, builtExtras, o.settings, origin.kind === 'random') : { league: built, extras: builtExtras };
+      const extras = set.extras, league = o.dynasty ? startDynasty(set.league) : set.league;
       if (o.teamId && league.teams.some(t => t.teamId === o.teamId)) { enterApp(league, extras, o.teamId, o.name); setTab('dashboard'); return; }
       setPendingLeague(league);
       setPendingExtras(extras);
@@ -495,14 +506,33 @@ function App() {
   };
 
   /** The New Franchise page's Start: a league (real, random or your own data), a Rebuild, or the All-Time Draft. */
+  // Online leagues: load the shared league, mark every friend's team as run by a person, and show the online bar.
+  const openOnlineLeague = async (meta: OnlineLeague) => {
+    const { downloadOnlineState, onlineMembers, withHumans } = await import('./cloud/onlineLeague');
+    const [snap, members] = await Promise.all([downloadOnlineState(meta), onlineMembers(meta.id)]);
+    const me = members.find(m => m.userId === getAccount().userId);
+    enterApp(withHumans(snap.league, meta, members), snap.extras, me?.teamId ?? null);
+    setOnline({ meta, members, base: progressMark(snap.league) });
+    setTab('dashboard');
+  };
+  const sendOnlineOffer = async (proposal: TradeProposal): Promise<string> => {
+    if (!online) throw new Error('Open the online league first.');
+    const { proposeOnlineTrade } = await import('./cloud/onlineLeague');
+    const other = proposal.teamAId === controlledTeamId ? proposal.teamBId : proposal.teamAId;
+    const friend = online.members.find(m => m.teamId === other);
+    if (!friend) throw new Error('No friend runs that team.');
+    await proposeOnlineTrade(online.meta.id, friend.userId, proposal);
+    return `Offer sent to @${friend.username}. It waits for them to accept.`;
+  };
+
   const startFromCreate = (c: CreateChoice) => {
     if (c.kind === 'draft') { track('mode_start', { mode: 'draft', variant: 'create' }); setScreen('draft'); return; }
     if (c.kind === 'rebuild') { startGameMode('rebuild', 'normal', '', '', undefined, c.scenario); return; }
     if (c.kind === 'worldgames') { setWorldGamesRun({ games: c.games, country: c.country }); setScreen('worldGamesMode'); return; }
     const seed = Math.floor(Math.random() * 1_000_000);
     track('mode_start', { mode: c.source === 'random' ? 'random' : 'real', variant: c.source });
-    if (c.source === 'random') startFromOrigin({ kind: 'random', year: parseInt(c.year, 10), seed, difficulty: c.difficulty, balanced: true }, { name: c.name, settings: c.settings });
-    else if (c.source === 'history') startFromOrigin({ kind: 'history', year: parseInt(c.year, 10), seed, difficulty: c.difficulty, ...c.real }, { name: c.name, settings: c.settings });
+    if (c.source === 'random') startFromOrigin({ kind: 'random', year: parseInt(c.year, 10), seed, difficulty: c.difficulty, balanced: true }, { name: c.name, settings: c.settings, dynasty: c.dynasty });
+    else if (c.source === 'history') startFromOrigin({ kind: 'history', year: parseInt(c.year, 10), seed, difficulty: c.difficulty, ...c.real }, { name: c.name, settings: c.settings, dynasty: c.dynasty });
     else startGameMode('real', c.difficulty, c.year, c.name, { source: 'csv', realDevelopment: true });
   };
 
@@ -964,6 +994,13 @@ function App() {
     setLeague({ ...result.league, playoffBracket: result.bracket });
   };
 
+  // One playoff game day: every series still going plays its next game.
+  const playPlayoffGameDayAndUpdate = () => {
+    const bracket = playoffBracket ?? autoGeneratePlayoffBracket(league);
+    const result = simulatePlayoffGameDay(bracket, league, seed);
+    setLeague({ ...result.league, playoffBracket: result.bracket });
+  };
+
   // Auto-drafts every AI pick between here and the controlled team's next turn — leaves the draft
   // open so the person still makes their own pick by hand.
   const simToMyNextDraftPick = () => {
@@ -1389,8 +1426,14 @@ function App() {
   if (screen === 'community') {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Community…</main>}><Community key={communityTab} initialTab={communityTab} onExit={() => { setCommunityUser(null); setScreen('menu'); }} user={communityUser} onUser={u => setCommunityUser(u || null)} /></Suspense></>;
   }
+  if (screen === 'online') {
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Online Leagues…</main>}><OnlineLeaguesPage onExit={() => setScreen('menu')} onOpen={openOnlineLeague} /></Suspense></>;
+  }
+  if (screen === 'clubs') {
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Clubs…</main>}><ClubsPage onExit={() => setScreen('menu')} onUser={u => { setCommunityTab('friends'); setCommunityUser(u); setScreen('community'); }} /></Suspense></>;
+  }
   if (screen === 'friends') {
-    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Friends…</main>}><FriendsPage onExit={() => setScreen('menu')} onUser={u => { setCommunityTab('friends'); setCommunityUser(u); setScreen('community'); }} onCommunity={() => { setCommunityUser(null); setCommunityTab('boards'); setScreen('community'); }} /></Suspense></>;
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Friends…</main>}><FriendsPage onClubs={() => setScreen('clubs')} onOnline={() => setScreen('online')} onExit={() => setScreen('menu')} onUser={u => { setCommunityTab('friends'); setCommunityUser(u); setScreen('community'); }} onCommunity={() => { setCommunityUser(null); setCommunityTab('boards'); setScreen('community'); }} /></Suspense></>;
   }
   // The GM Locker lives in the Player Profile now: an old #/locker link opens its Trophy room.
   if (screen === 'profile' || screen === 'locker') {
@@ -1489,7 +1532,10 @@ function App() {
         ) : <span className="phase-tag">{league.teams.length} teams · {PHASE_NAMES[seasonPhase]}</span>}
         {league.calendarDate && <span className="calendar-date-tag">{formatDisplayDate(league.calendarDate)}</span>}
       </header>
-      {league.teams.length > 0 && <PlayButton
+      {online && <OnlineBar session={online} league={league} extras={extras} teamId={controlledTeamId} onSession={setOnline}
+        onReload={(snap, s) => { setLeague(snap.league); setExtras(snap.extras); setOnline(s); }}
+        onApply={(l, e) => { setLeague(l); setExtras(e); }} />}
+      {league.teams.length > 0 && (!online || canAdvance(online.meta, online.members).ok) && <PlayButton
         seasonPhase={seasonPhase}
         rosterIssues={rosterIssues}
         leagueUnplayedCount={leagueUnplayedCount}
@@ -1525,6 +1571,7 @@ function App() {
         onBeginPlayoffs={beginPlayoffsPhase}
         playoffBracket={playoffBracket}
         onSimulateEntirePlayoffs={simulateEntirePlayoffsAndUpdate}
+        onPlayPlayoffGameDay={playPlayoffGameDayAndUpdate}
         onViewSeasonRecap={beginAwardsRecap}
         onContinueToDraft={beginDraftPhase}
         draftPicksRemaining={draftPicksRemaining}
@@ -1726,6 +1773,7 @@ function App() {
               sandboxMode={sandboxMode}
                 league={league} extras={extras} controlledTeamId={managerId}
                 onChange={(l, e) => { setLeague(l); setExtras(e); }} onToast={pushToast}
+                onOnlineOffer={online ? sendOnlineOffer : undefined}
               />
         )}
 
@@ -1829,6 +1877,7 @@ function App() {
         )}
         {tab === 'teamHistory' && <TeamHistoryPage key={viewedTeamId || controlledTeamId || 'team'} league={league} extras={extras} initialTeamId={viewedTeamId || controlledTeamId} onSelectPlayer={selectPlayer} onOpenArchive={league.historical ? () => setTab('nbaArchive') : undefined} />}
         {tab === 'records' && <RecordsPage league={league} extras={extras} onSelectPlayer={selectPlayer} />}
+        {tab === 'historyBook' && <HistoryBookPage league={league} onSelectPlayer={selectPlayer} />}
         {tab === 'almanac' && <AlmanacPage league={league} extras={extras} awardSettings={awardSettings} onSelectPlayer={selectPlayer} />}
         {tab === 'nbaArchive' && <NbaArchivePage key={archiveQuery} league={league} extras={extras} onSelectPlayer={selectPlayer} initialQuery={archiveQuery} onLoadRetirees={loadRetirees} />}
 

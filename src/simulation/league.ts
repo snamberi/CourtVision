@@ -201,6 +201,10 @@ export interface League {
   worldGames?: import('../worldGames/league').LeagueWorldGames;
   /** The Owner's Box: you own a team and an AI GM runs it (see ownerBox.ts). */
   owner?: import('./ownerBox').OwnerState;
+  /** An online league shared with friends: its id and the teams people run (see cloud/onlineLeague.ts). */
+  online?: { leagueId: string; code: string; humans: string[] };
+  /** Dynasty Mode: owners and when the dynasty began (see dynasty.ts). */
+  dynasty?: import('./dynasty').DynastyState;
   /** League office: rule votes, expansion bids, relocations (see ownerBox.ts). */
   leagueOffice?: import('./ownerBox').LeagueOffice;
   /** How the league was built (kind, season, options, seed): its league code (see retention/leagueCode.ts). */

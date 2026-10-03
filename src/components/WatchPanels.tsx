@@ -63,7 +63,13 @@ function describeCommand(c: LiveCoachingCommand): string {
     case 'speech': return `Halftime speech → ${c.speech}`;
   }
 }
-export function CoachPanel({ coaching, team, opponent, run, lastShotNow, atPossession, finished, onDecision, clockLabel }: { coaching: CoachingProps; team: LiveTeam; opponent?: LiveTeam; run?: { teamId: string | null; points: number }; lastShotNow?: boolean; atPossession: number; finished: boolean; onDecision: () => void; clockLabel: string }) {
+export function CoachPanel({ coaching, team, opponent, run, lastShotNow, crunchNow, callPlays, onCallPlays, crunchAt, onSkipToCrunch, onResume, atPossession, finished, onDecision, clockLabel }: {
+  coaching: CoachingProps; team: LiveTeam; opponent?: LiveTeam; run?: { teamId: string | null; points: number }; lastShotNow?: boolean;
+  /** Crunch time, your ball, and you're calling the plays yourself. */
+  crunchNow?: boolean; callPlays?: boolean; onCallPlays?: (on: boolean) => void;
+  /** Where crunch time starts (when it's still ahead), and the jump there. */
+  crunchAt?: number; onSkipToCrunch?: () => void; onResume?: () => void;
+  atPossession: number; finished: boolean; onDecision: () => void; clockLabel: string }) {
   const [picked, setPicked] = useState<string[]>(() => team.lines.filter(l => l.onCourt).map(l => l.playerId));
   const [message, setMessage] = useState<string | null>(null);
   const mine = coaching.commands.filter(c => c.teamId === coaching.teamId);
@@ -91,11 +97,16 @@ export function CoachPanel({ coaching, team, opponent, run, lastShotNow, atPosse
     {finished && <p className="empty-state">The game is final. Coaching decisions are locked in.</p>}
     {theirRun > 0 && !finished && <div className="coach-alert" role="alert">They're on a {theirRun}-0 run and playing with momentum. A timeout stops it.
       <button disabled={timeoutsLeft <= 0} onClick={() => send({ kind: 'timeout', atPossession, teamId: coaching.teamId }, 'Timeout called. The run is over; your players catch their breath.')}>Call Timeout</button></div>}
-    {lastShotNow && !finished && <div className="coach-last-shot" role="group" aria-label="Draw up the last shot">
-      <b>🏀 Your ball, game on the line. Draw up the last shot.</b>
+    {onCallPlays && !finished && <div className="coach-crunch">
+      <label><input type="checkbox" checked={!!callPlays} onChange={e => onCallPlays(e.target.checked)} /> <b>Play crunch time yourself</b> <small>In the last 2:00 of a game within 8, the tape stops on every one of your trips and you call the play.</small></label>
+      {crunchAt != null && onSkipToCrunch && <button onClick={onSkipToCrunch}>Skip to crunch time</button>}
+    </div>}
+    {(lastShotNow || crunchNow) && !finished && <div className="coach-last-shot" role="group" aria-label={lastShotNow ? 'Draw up the last shot' : 'Call the play'}>
+      <b>{lastShotNow ? '🏀 Your ball, game on the line. Draw up the last shot.' : `🏀 Crunch time, ${clockLabel}. Your ball: call the play.`}</b>
       <label>Shooter<select value={shooter} onChange={e => setShooter(e.target.value)}>{onFloorLines.map(l => <option key={l.playerId} value={l.playerId}>{shortName(l.playerId)} ({l.pts} pts)</option>)}</select></label>
       <label>Shot<select value={shot} onChange={e => setShot(e.target.value as LastShotType)}>{SHOTS.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}</select></label>
       <button className="primary" disabled={!shooter} onClick={() => send({ kind: 'lastShot', atPossession, teamId: coaching.teamId, shooterId: shooter, shot }, `Play drawn up: ${shortName(shooter)}, ${SHOTS.find(s => s.id === shot)!.label.toLowerCase()}. Press Play to run it.`)}>Run it</button>
+      {crunchNow && onResume && <button onClick={() => { setMessage('Running the normal offense.'); onResume(); }}>Let the offense run</button>}
     </div>}
     <div className="coach-row">
       <button className="primary" disabled={finished || timeoutsLeft <= 0} onClick={() => send({ kind: 'timeout', atPossession, teamId: coaching.teamId }, 'Timeout called. Your players catch their breath.')}>Call Timeout ({timeoutsLeft} left)</button>

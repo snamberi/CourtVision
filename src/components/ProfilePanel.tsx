@@ -15,6 +15,7 @@ import { CourtFloorPreview, ShareFramePreview, PhonePreview } from './ProfilePre
 import { AVATAR_FRAMES, avatarFrameOpen, avatarFrameHow } from '../profile/avatarFrames';
 import { STREAK_REWARDS } from '../retention/streak';
 import { PASS_REWARDS } from '../retention/pass';
+import { MISSION_TITLES } from '../retention/missions';
 import { useAccount } from '../cloud/account';
 import { passesOnSale } from '../billing/billing';
 import { ThemeSection } from './ThemePicker';
@@ -78,6 +79,7 @@ function titleGroups(c: UnlockContext) {
     { label: 'Trophy Road', items: TROPHY_TITLES.map(t => ({ title: t.id, open: c.trophies >= t.trophies, how: `${t.trophies.toLocaleString()} trophies`, progress: c.trophies / t.trophies })) },
     { label: 'Daily streak', items: STREAK_REWARDS.filter(r => r.title).map(r => ({ title: r.title!, open: (c.streak ?? 0) >= r.days, how: `Visit ${r.days} days in a row`, progress: (c.streak ?? 0) / r.days })) },
     { label: 'Season Pass', items: PASS_REWARDS.filter(r => r.title).map(r => ({ title: r.title!, open: (c.pass ?? 0) >= r.tier, how: `Reach tier ${r.tier} of a Season Pass`, progress: (c.pass ?? 0) / r.tier })) },
+    { label: 'Missions', items: MISSION_TITLES.map(t => ({ title: t.title, open: (c.missions ?? 0) >= t.n, how: `Finish ${t.n} weekly missions`, progress: (c.missions ?? 0) / t.n })) },
     { label: 'Card album', items: ALBUM_TITLES.map(t => { const have = (t.kind === 'sets' ? c.album?.sets : c.album?.legendary) ?? 0; return { title: t.title, open: have >= t.n, how: t.kind === 'sets' ? `Complete ${t.n} team card set${t.n === 1 ? '' : 's'}` : `Collect ${t.n} legendary cards`, progress: have / t.n }; }) },
     { label: 'Account', items: [{ title: FOUNDING_TITLE, open: !!c.account, how: 'Create a free account' }] },
     ...(c.staff ? [{ label: 'Owner', items: [{ title: OWNER_TITLE, open: true, how: 'The game owner' }, { title: SOVEREIGN_TITLE, open: true, how: 'The game owner' }] }] : []),
@@ -86,7 +88,7 @@ function titleGroups(c: UnlockContext) {
 interface TitleGroup { label: string; items: { title: string; open: boolean; how: string; progress?: number }[] }
 const GROUP_ICON: Record<string, string> = {
   Levels: 'up', Ranked: 'crown', Leaderboards: 'chart', Achievements: 'check', Supporter: 'heart', 'Trophy Road': 'trophy',
-  'Daily streak': 'flame', 'Season Pass': 'calendar', 'Card album': 'list', Account: 'team', Owner: 'crown',
+  'Daily streak': 'flame', 'Season Pass': 'calendar', Missions: 'check', 'Card album': 'list', Account: 'team', Owner: 'crown',
 };
 
 /** Titles a group shows before "Show all". */

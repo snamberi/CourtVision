@@ -22,3 +22,22 @@ export function lastShotMoment(log: PossessionLogEntry[], at: number, teamId: st
   const margin = teamId === homeId ? home - away : away - home;
   return margin <= 0 && margin >= -3;
 }
+
+/** Crunch time is the last two minutes of the fourth quarter or overtime with the game within this many points. */
+export const CRUNCH_SECONDS = 120, CRUNCH_MARGIN = 8;
+/** Your ball in crunch time: the moments where "play it yourself" hands you the play call. */
+export function crunchMoment(log: PossessionLogEntry[], at: number, teamId: string, regulationPeriods: number): boolean {
+  const e = log[at];
+  if (!e || e.offenseTeamId !== teamId || e.quarter < regulationPeriods || e.clockSeconds > CRUNCH_SECONDS) return false;
+  const prev = log[at - 1];
+  const home = prev?.homeScoreAfter ?? 0, away = prev?.awayScoreAfter ?? 0;
+  return Math.abs(home - away) <= CRUNCH_MARGIN;
+}
+/** The first possession of crunch time in this game's log, or -1 if the game never got close late. */
+export function crunchStart(log: PossessionLogEntry[], regulationPeriods: number): number {
+  return log.findIndex((e, i) => {
+    if (e.quarter < regulationPeriods || e.clockSeconds > CRUNCH_SECONDS) return false;
+    const prev = log[i - 1];
+    return Math.abs((prev?.homeScoreAfter ?? 0) - (prev?.awayScoreAfter ?? 0)) <= CRUNCH_MARGIN;
+  });
+}
