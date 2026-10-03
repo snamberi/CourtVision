@@ -50,6 +50,8 @@ interface Props {
   onCommunity?: (tab?: 'boards' | 'friends') => void;
   /** Opens your player profile. */
   onProfile?: () => void;
+  /** The phone's Friends app: the Friends page. */
+  onFriends?: () => void;
   /** Opens Settings (backups, graphics, privacy). */
   onSettings?: () => void;
   /** Opens a quick game. */
@@ -141,7 +143,7 @@ function SavedLeaguesList({ saves, onContinue, onDeleteSave, onRenameSave }: Pic
   );
 }
 
-export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSave, busy = null, onLocker, onCode, onCommunity, onProfile, onSettings, onArcade, onCreate }: Props) {
+export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSave, busy = null, onLocker, onCode, onCommunity, onProfile, onFriends, onSettings, onArcade, onCreate }: Props) {
   // First visit: pick a look before anything else; What's New waits until it is picked.
   const [pickLook, setPickLook] = useState(needsThemeChoice);
   // Today's visit counts for the daily streak and the Season Pass.
@@ -190,7 +192,7 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
         </div>
       </div>
 
-      <MenuPhone onBoards={onCommunity && (() => onCommunity('boards'))} onFriends={onCommunity && (() => onCommunity('friends'))} onProfile={onProfile ?? onLocker} streak={visit.v.streak} />
+      <MenuPhone onBoards={onCommunity && (() => onCommunity('boards'))} onFriends={onFriends ?? (onCommunity && (() => onCommunity('friends')))} onProfile={onProfile ?? onLocker} streak={visit.v.streak} />
 
       <div className="menu-section-heading"><h2>Choose your game</h2><span>PICK ONE, THEN PRESS PLAY</span></div>
 

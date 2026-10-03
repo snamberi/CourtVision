@@ -152,6 +152,7 @@ const CareerImportPanel = lazy(() => import('./components/career/CareerImportPan
 const ProfileHub = lazy(() => import('./components/locker/ProfileHub').then(m => ({ default: m.ProfileHub })));
 const AllTimeDraft = lazy(() => import('./components/draft/AllTimeDraft').then(m => ({ default: m.AllTimeDraft })));
 const Community = lazy(() => import('./components/cloud/Community').then(m => ({ default: m.Community })));
+const FriendsPage = lazy(() => import('./components/cloud/FriendsPage').then(m => ({ default: m.FriendsPage })));
 const CareerMode = lazy(() => import('./components/career/CareerMode').then(m => ({ default: m.CareerMode })));
 const SummerCampPage = lazy(() => import('./components/SummerCampPage').then(m => ({ default: m.SummerCampPage })));
 const MedicalRoomPage = lazy(() => import('./components/MedicalRoomPage').then(m => ({ default: m.MedicalRoomPage })));
@@ -247,7 +248,7 @@ function buildInitialExtras(league: League): GMLeagueExtras {
   };
 }
 
-type Screen = 'menu' | 'chooseTeam' | 'app' | 'hunt' | 'perfect' | 'career' | 'locker' | 'profile' | 'community' | 'draft' | 'settings' | 'arcade' | 'create' | 'worldGamesMode';
+type Screen = 'menu' | 'chooseTeam' | 'app' | 'hunt' | 'perfect' | 'career' | 'locker' | 'profile' | 'community' | 'draft' | 'settings' | 'arcade' | 'create' | 'worldGamesMode' | 'friends';
 const ARCADE_HASH: Record<ArcadeTab, string> = { guess: '#/guess', hilo: '#/higher-lower', bracket: '#/bracket', quiz: '#/quiz' };
 const arcadeTabOf = (hash: string) => (Object.entries(ARCADE_HASH).find(([, h]) => h === hash)?.[0] as ArcadeTab | undefined);
 
@@ -336,7 +337,7 @@ function App() {
   const [worldGamesRun, setWorldGamesRun] = useState<{ games: GamesId; country: string } | null>(null);
   const [boxscoreSource, setBoxscoreSource] = useState<'league' | 'exhibition'>('league');
 
-  const currentRoute = screen === 'menu' ? '#/menu' : screen === 'chooseTeam' ? '#/choose-team' : screen === 'hunt' ? '#/hunt' : screen === 'perfect' ? '#/82-0' : screen === 'career' ? '#/career' : screen === 'locker' ? '#/locker' : screen === 'profile' ? '#/profile' : screen === 'settings' ? '#/settings' : screen === 'create' ? '#/new-league' : screen === 'worldGamesMode' ? '#/world-games' : screen === 'draft' ? '#/draft' : screen === 'arcade' ? ARCADE_HASH[arcadeTab] : screen === 'community' ? (communityUser ? `#/u/${encodeURIComponent(communityUser)}` : '#/community')
+  const currentRoute = screen === 'menu' ? '#/menu' : screen === 'chooseTeam' ? '#/choose-team' : screen === 'hunt' ? '#/hunt' : screen === 'perfect' ? '#/82-0' : screen === 'career' ? '#/career' : screen === 'locker' ? '#/locker' : screen === 'profile' ? '#/profile' : screen === 'settings' ? '#/settings' : screen === 'create' ? '#/new-league' : screen === 'worldGamesMode' ? '#/world-games' : screen === 'friends' ? '#/friends' : screen === 'draft' ? '#/draft' : screen === 'arcade' ? ARCADE_HASH[arcadeTab] : screen === 'community' ? (communityUser ? `#/u/${encodeURIComponent(communityUser)}` : '#/community')
     : activeSaveId ? routeHash({ saveId: activeSaveId, tab, player: selectedPlayerId,
       team: viewedTeamId, game: viewedGameId ?? undefined, source: boxscoreSource, sub: leagueSettingsSub }) : null;
   const { restoring, showPrivacy, closePrivacy } = useGameHistory(currentRoute, async (hash, isCurrent) => {
@@ -352,7 +353,7 @@ function App() {
       setCommunityUser(profileMatch ? decodeURIComponent(profileMatch[1]) : null);
       const arcade = arcadeTabOf(hash);
       if (arcade) setArcadeTab(arcade);
-      setScreen(arcade ? 'arcade' : hash === '#/choose-team' && pendingLeague ? 'chooseTeam' : hash === '#/hunt' ? 'hunt' : hash === '#/82-0' ? 'perfect' : hash === '#/career' ? 'career' : hash === '#/locker' ? 'locker' : hash === '#/profile' ? 'profile' : hash === '#/settings' ? 'settings' : hash === '#/new-league' ? 'create' : hash === '#/world-games' && worldGamesRun ? 'worldGamesMode' : hash === '#/community' || profileMatch ? 'community' : hash === '#/draft' ? 'draft' : 'menu');
+      setScreen(arcade ? 'arcade' : hash === '#/choose-team' && pendingLeague ? 'chooseTeam' : hash === '#/hunt' ? 'hunt' : hash === '#/82-0' ? 'perfect' : hash === '#/career' ? 'career' : hash === '#/locker' ? 'locker' : hash === '#/profile' ? 'profile' : hash === '#/settings' ? 'settings' : hash === '#/new-league' ? 'create' : hash === '#/world-games' && worldGamesRun ? 'worldGamesMode' : hash === '#/friends' ? 'friends' : hash === '#/community' || profileMatch ? 'community' : hash === '#/draft' ? 'draft' : 'menu');
       refreshSaves();
       return;
     }
@@ -1387,6 +1388,9 @@ function App() {
   if (screen === 'community') {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Community…</main>}><Community key={communityTab} initialTab={communityTab} onExit={() => { setCommunityUser(null); setScreen('menu'); }} user={communityUser} onUser={u => setCommunityUser(u || null)} /></Suspense></>;
   }
+  if (screen === 'friends') {
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Friends…</main>}><FriendsPage onExit={() => setScreen('menu')} onUser={u => { setCommunityTab('friends'); setCommunityUser(u); setScreen('community'); }} onCommunity={() => { setCommunityUser(null); setCommunityTab('boards'); setScreen('community'); }} /></Suspense></>;
+  }
   // The GM Locker lives in the Player Profile now: an old #/locker link opens its Trophy room.
   if (screen === 'profile' || screen === 'locker') {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening your profile…</main>}><ProfileHub key={screen} initialTab={screen === 'locker' ? 'trophies' : 'profile'} onExit={() => setScreen('menu')} /></Suspense></>;
@@ -1424,6 +1428,7 @@ function App() {
           onLocker={() => setScreen('locker')}
           onProfile={() => setScreen('profile')}
           onCommunity={t => { setCommunityUser(null); setCommunityTab(t ?? 'boards'); setScreen('community'); }}
+          onFriends={() => setScreen('friends')}
           onCode={startFromCode}
           busy={menuBusy}
           saves={saveSummaries}

@@ -273,3 +273,42 @@
 .hunt-builder-head .pixel-eyebrow { display: block; text-align: center; }
 /* Settings: graphics as three plain choices. */
 .hunt-pills.perf-choice { justify-content: flex-start; }
+/* ---- Menu header: Settings is a gear button ---- */
+:root .menu-masthead .menu-settings { width: 38px; min-width: 38px; padding: 0; justify-content: center; }
+/* ---- Friends page (#/friends) ---- */
+.friends-page .friends-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; max-width: 1180px; margin: 0 auto; width: 100%; }
+.friends-page .friends-grid > .friends-list, .friends-page .friends-grid > .friends-signin { grid-column: 1 / -1; }
+.friends-page .locker-bay { margin: 0; }
+.friends-signin p { margin: 0 0 12px; color: var(--look-muted); }
+.friends-ways ul { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.friends-ways li { display: grid; gap: 3px; padding: 10px 12px; background-color: var(--look-raised); border: 1px solid var(--look-line); }
+.friends-ways li span { color: var(--look-muted); font-size: 13px; }
+.friends-ways li .link-button { justify-self: start; }
+.rival-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.rival-list li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; background-color: var(--look-raised); border: 1px solid var(--look-line); }
+@media (max-width: 760px) { .friends-page .friends-grid { grid-template-columns: 1fr; } }
+/* ---- Streak pop-up ---- */
+.streak-dialog .share-box { display: grid; gap: 12px; width: min(460px, calc(100vw - 32px)); }
+.streak-hero { display: flex; align-items: center; gap: 14px; }
+.streak-flame { display: grid; place-items: center; width: 64px; height: 64px; background-color: var(--look-raised); border: 2px solid #ff9d3d; color: #ff9d3d; }
+.streak-hero b { display: block; font: 26px/1.1 var(--look-pixel); color: var(--look-text); }
+.streak-hero small { color: var(--look-muted); }
+.streak-dialog .hint-text { margin: 0; }
+.streak-next { display: grid; gap: 6px; font-size: 13px; }
+.streak-bar { display: block; height: 8px; background-color: var(--look-raised); border: 1px solid var(--look-line); }
+.streak-bar > i { display: block; height: 100%; background-color: #ff9d3d; }
+.streak-rewards { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.streak-rewards li { display: grid; grid-template-columns: 60px 1fr auto; grid-template-areas: "day what when" "day more when"; align-items: center; column-gap: 10px; padding: 7px 10px; background-color: var(--look-raised); border: 1px solid var(--look-line); }
+.streak-rewards li small { grid-area: day; font: 10px var(--look-pixel); color: var(--look-muted); }
+.streak-rewards li b { grid-area: what; }
+.streak-rewards li span { grid-area: more; font-size: 12px; color: var(--look-muted); }
+.streak-rewards li em { grid-area: when; font-style: normal; font-size: 12px; color: var(--look-muted); display: inline-flex; align-items: center; gap: 4px; }
+.streak-rewards li.got { border-color: #55c878; }
+.streak-rewards li.got em { color: #55c878; }
+.streak-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+/* Career: the Retired list shows three, then "Show more". */
+.cv-panel .cv-show-more { margin-top: 8px; }
+.cv-panel .hunt-subhead small { font-size: .7em; color: var(--look-muted); }
+.friends-page .friends-grid { align-items: start; }
+.friends-page .locker-bay { align-content: start; }
+.friends-signin button.primary { justify-self: start; min-width: 180px; }

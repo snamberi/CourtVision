@@ -3,7 +3,7 @@ import { describe, expect, it, beforeEach } from 'vitest';
 import { loadHistoryForTests } from './helpers/nbaHistoryFixture';
 import { cardPool, type HuntCard } from '../hunt/cards';
 import {
-  newPerfectRun, pickPlayer, pickCoach, rerollTeam, rerollEra, applyPrime, rollPool, playNext, playToEnd, summary, fitBonds, franchiseIndex,
+  newPerfectRun, pickPlayer, pickCoach, rerollTeam, rerollEra, applyPrime, rollPool, rerollSpin, luckySpin, quickSpinCard, swapLineup, setLineup, lineupOf, teamBonds, starCapReached, playNext, playToEnd, summary, fitBonds, franchiseIndex,
   BOSS_TEAMS, QUICK_SLOTS, SQUAD, SEASON_GAMES, WINS_NEEDED, type PerfectRun,
 } from '../perfect/run';
 import { recordPerfect, loadPerfectRecords, mergePerfectRecords, dailyPerfect, perfectWeeks, perfectTrophies, PERFECT_RECORDS_KEY } from '../perfect/storage';
@@ -34,7 +34,7 @@ describe('82-0 Challenge drafting', () => {
     expect(a.coachOffer).toHaveLength(1);
   });
 
-  it('Franchise Spin offers each player once at his best there; rerolls and Absolute Prime work once', async () => {
+  it('Franchise Spin offers each player once at his best there; three shared rerolls and Absolute Prime once', async () => {
     const h = await loadHistoryForTests();
     let r = newPerfectRun(h, 'franchise', 4242);
     const pool = rollPool(h, r, r.roll!);
@@ -45,11 +45,15 @@ describe('82-0 Challenge drafting', () => {
     r = rerollTeam(h, r);
     expect(r.roll!.eraId).toBe(before.eraId);
     expect(r.roll!.franchise).not.toBe(before.franchise);
-    expect(rerollTeam(h, r)).toBe(r); // used up
+    expect(r.rerolls.roll).toBe(2);
     const mid = r.roll!;
     r = rerollEra(h, r);
     expect(r.roll!.franchise).toBe(mid.franchise);
     expect(r.roll!.eraId).not.toBe(mid.eraId);
+    r = rerollTeam(h, r);
+    expect(r.rerolls.roll).toBe(0);
+    expect(rerollTeam(h, r)).toBe(r); // used up
+    expect(rerollEra(h, r)).toBe(r);
     r = applyPrime(r);
     const prime = rollPool(h, r, r.roll!), idx = franchiseIndex(h);
     for (const c of prime) expect(c.ovr).toBe(idx.prime.get(c.playerId)!.ovr);
@@ -60,6 +64,66 @@ describe('82-0 Challenge drafting', () => {
     expect(next.squad).toEqual([prime[0].id]);
     expect(next.prime).toBe(false);
     expect(next.rolls).toBe(r.rolls + 1);
+  });
+
+  it('Quick Spin rerolls send the card back (three times) and a lucky spin lands on a Great or a Star', async () => {
+    const h = await loadHistoryForTests();
+    let r = newPerfectRun(h, 'quick', 31337);
+    const first = quickSpinCard(h, r);
+    const seen = new Set([first.id]);
+    for (let i = 0; i < 3; i++) { r = rerollSpin(r); seen.add(quickSpinCard(h, r).id); }
+    expect(seen.size).toBeGreaterThan(1);
+    expect(rerollSpin(r)).toBe(r); // used up
+    // The same rerolls give the same card (the Daily stays fair).
+    expect(quickSpinCard(h, r).id).toBe(quickSpinCard(h, { ...newPerfectRun(h, 'quick', 31337), spinSalt: 3 }).id);
+    for (let i = 0; i < 2; i++) {
+      r = luckySpin(h, r);
+      expect(r.lucky).toBe(true);
+      expect(luckySpin(h, r)).toBe(r); // one lucky spin at a time
+      const c = quickSpinCard(h, r);
+      expect(['epic', 'legendary']).toContain(c.rarity);
+      r = pickPlayer(h, r);
+      expect(r.lucky).toBe(false);
+      expect(r.squad.at(-1)).toBe(c.id);
+    }
+    expect(luckySpin(h, r)).toBe(r); // both used
+  });
+
+  it('a lucky Franchise roll has a Great or a Star in its pool', async () => {
+    const h = await loadHistoryForTests();
+    let r = newPerfectRun(h, 'franchise', 777);
+    for (let i = 0; i < 2; i++) {
+      r = luckySpin(h, r);
+      expect(rollPool(h, r, r.roll!).some(c => c.rarity === 'epic' || (c.rarity === 'legendary' && !starCapReached(h, r)))).toBe(true);
+      r = pickPlayer(h, r, rollPool(h, r, r.roll!)[0].id);
+    }
+    expect(r.rerolls.lucky).toBe(0);
+  });
+
+  it('you can set your own rotation: swaps, starters for the lineup checks, back to auto', async () => {
+    const h = await loadHistoryForTests();
+    const drafted = await draftAll('quick', 99);
+    const drafting = newPerfectRun(h, 'quick', 5);
+    expect(swapLineup(drafting, 'a', 'b')).toBe(drafting); // not while drafting
+    let r = pickCoach(h, drafted, drafted.coachOffer![0]);
+    r = swapLineup(r, r.squad[0], r.squad[9]);
+    const l = lineupOf(r)!;
+    expect(l[0]).toBe(r.squad[9]);
+    expect(l[9]).toBe(r.squad[0]);
+    expect([...l].sort()).toEqual([...r.squad].sort());
+    expect(setLineup(r, [...l.slice(0, 9), 'nobody@1990'])).toBe(r); // must be your ten
+    // Five centres in the starting five: the lineup checks see your starters, not the best five.
+    const pool = cardPool(h);
+    const pos = (id: string) => pool.byId.get(id)!.pos;
+    const guards = r.squad.filter(id => ['PG', 'SG', 'G'].includes(pos(id)));
+    const noGuards = [...r.squad.filter(id => !guards.includes(id)), ...guards];
+    if (noGuards.slice(0, 5).every(id => !['PG', 'SG', 'G'].includes(pos(id)))) {
+      const set = setLineup(r, noGuards);
+      expect(teamBonds(h, set).some(b => /No guard starts/.test(b.label))).toBe(true);
+    }
+    const played = playNext(h, r, 3);
+    expect(played.games).toHaveLength(3);
+    expect(lineupOf(setLineup(r, null))).toBeNull();
   });
 
   it('flags lineups with no guard or no big among the starters', () => {

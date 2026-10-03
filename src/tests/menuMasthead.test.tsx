@@ -5,7 +5,7 @@ import { MenuMasthead } from '../components/MenuMasthead';
 import { MenuPhone } from '../components/MenuPhone';
 
 // Keep account/network state out of these tests.
-vi.mock('../components/cloud/AccountButton', () => ({ AccountButton: ({ onProfile, boards }: { onProfile?: () => void; boards?: boolean }) => <>{boards !== false && <button>Leaderboards</button>}<button onClick={onProfile}>Sign in</button></> }));
+vi.mock('../components/cloud/AccountButton', () => ({ AccountButton: ({ onProfile, boards, signedInChip }: { onProfile?: () => void; boards?: boolean; signedInChip?: boolean }) => <>{boards !== false && <button>Leaderboards</button>}<button onClick={onProfile} data-chip={String(signedInChip)}>Sign in</button></> }));
 vi.mock('../components/UserAvatar', () => ({ MyAvatar: () => <i /> }));
 afterEach(cleanup);
 
@@ -22,6 +22,9 @@ describe('menu header', () => {
     expect(screen.queryByText('Leaderboards')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
     expect(settings).toHaveBeenCalledOnce();
+    // Settings is just the gear; once signed in, the @name button stays off the header (the phone has the profile).
+    expect(screen.getByRole('button', { name: 'Settings' }).textContent).toBe('');
+    expect(screen.getByText('Sign in').getAttribute('data-chip')).toBe('false');
   });
 });
 
@@ -36,5 +39,20 @@ describe('menu phone', () => {
     expect(friends).toHaveBeenCalledOnce();
     expect(profile).toHaveBeenCalledOnce();
     expect(screen.getByRole('button', { name: 'Daily streak: 6 days, best 9' })).toBeTruthy();
+  });
+
+  it('the Streak app opens your streak and every reward', () => {
+    const profile = vi.fn();
+    render(<MenuPhone onProfile={profile} streak={{ current: 6, best: 9 }} />);
+    fireEvent.click(screen.getByRole('button', { name: /Daily streak/ }));
+    const dialog = screen.getByRole('dialog', { name: 'Your daily streak' });
+    expect(dialog.textContent).toContain('6 days');
+    expect(dialog.textContent).toContain('best 9 days');
+    expect(dialog.querySelectorAll('.streak-rewards li')).toHaveLength(5);
+    expect(dialog.querySelectorAll('.streak-rewards li.got')).toHaveLength(2); // days 3 and 7
+    expect(dialog.textContent).toContain('Next: day 14');
+    fireEvent.click(screen.getByRole('button', { name: 'Your profile' }));
+    expect(profile).toHaveBeenCalledOnce();
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 });

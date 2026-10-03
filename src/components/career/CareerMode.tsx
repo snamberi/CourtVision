@@ -242,8 +242,12 @@ const CAREER_LEVEL_BLURB: Record<Level, string> = {
   legend: 'He grows slower and age hits harder. Every title is earned.',
 };
 
+/** Retired careers shown before "Show more". */
+const RETIRED_SHOWN = 3;
+
 function Hub({ careers, onNew, onOpen, onDelete }: { careers: CareerMeta[]; onNew: (m: Mode, draftYear: number | null, weekly?: WeeklyCareer | null) => void; onOpen: (m: CareerMeta) => void; onDelete: (id: string) => void }) {
   const [confirm, setConfirm] = useState<string | null>(null);
+  const [allRetired, setAllRetired] = useState(false);
   const [era, setEra] = useState<number | null>(null);
   const [tab, setTab] = useState<'careers' | 'hof'>('careers');
   const [level, setLevel] = useState(() => challengePrefs('career').level);
@@ -279,7 +283,8 @@ function Hub({ careers, onNew, onOpen, onDelete }: { careers: CareerMeta[]; onNe
       </div>
     </div>
     <WeeklyCareerCard careers={careers} onPlay={w => onNew('wheel', w.draftYear, w)} />
-    {retired.length > 0 && <div className="cv-panel"><h3 className="hunt-subhead">Retired</h3><ul className="cv-saved">{retired.map(row)}</ul></div>}
+    {retired.length > 0 && <div className="cv-panel"><h3 className="hunt-subhead">Retired <small>({retired.length})</small></h3><ul className="cv-saved">{(allRetired ? retired : retired.slice(0, RETIRED_SHOWN)).map(row)}</ul>
+      {retired.length > RETIRED_SHOWN && <button className="cv-show-more" onClick={() => setAllRetired(v => !v)} aria-expanded={allRetired}>{allRetired ? 'Show fewer' : `Show ${retired.length - RETIRED_SHOWN} more`}</button>}</div>}
   </section>;
 }
 
