@@ -168,3 +168,36 @@ button.p820-card:hover, button.p820-card:focus-visible { border-color: var(--c-b
 .p820-lineup ol > li.p820-bench-start { margin-top: 6px; }
 .p820-lineup .hint-text { margin: 0 0 8px; font-size: 12px; }
 .p820-lineup h3 small { font: 11px var(--ff-body, 'Inter', sans-serif); text-transform: none; letter-spacing: 0; }
+
+/* ---------------- Category Roll and Slot Spin */
+.p820-mode { position: relative; }
+.p820-mode-new { border-color: var(--c-border-ffd166, #ffd166); }
+.p820-new-tag { position: absolute; top: -9px; right: 10px; padding: 2px 6px; font: 9px var(--ff-pixel, 'Press Start 2P', monospace); color: var(--c-fg-0b1018, #0b1018); background: var(--c-bg-ffd166, #ffd166); box-shadow: 2px 2px 0 var(--c-shadow-0b1018, #0b1018); }
+.p820-catroll { --tier: var(--c-border-f47b20, #f47b20); position: relative; width: min(560px, 100%); min-height: 132px; padding: 16px 18px; border: 3px solid var(--tier); border-radius: 4px; background: linear-gradient(135deg, var(--c-bg-1d2a40, #1d2a40), var(--c-bg-0b1018, #0b1018) 90%); box-shadow: 4px 4px 0 var(--c-shadow-03070d, #03070d), 0 0 24px color-mix(in srgb, var(--tier) 35%, transparent); display: flex; flex-direction: column; gap: 6px; text-align: left; }
+.p820-catroll.rolling { animation: p820-shake .18s linear infinite; justify-content: center; align-items: center; }
+.p820-catroll.revealed { animation: p820-pop .25s ease-out; }
+.p820-cat-group { font: 10px var(--ff-pixel, 'Press Start 2P', monospace); letter-spacing: .1em; color: var(--tier); }
+.p820-cat-name { font: 20px/1.3 var(--ff-pixel, 'Press Start 2P', monospace); color: var(--c-fg-ffffff, #ffffff); text-shadow: 2px 2px 0 var(--c-shadow-000000, #000000); padding-right: 92px; }
+.p820-cat-name.flicker { padding: 0; opacity: .85; }
+.p820-cat-blurb { color: var(--c-fg-c9d2e0, #c9d2e0); font-weight: 600; padding-right: 92px; }
+.p820-tier { position: absolute; top: 14px; right: 14px; display: grid; justify-items: center; gap: 2px; min-width: 70px; padding: 6px 8px; background: var(--c-bg-0b1018, #0b1018); border: 2px solid var(--tier); color: var(--tier); }
+.p820-tier b { font: 22px var(--ff-pixel, 'Press Start 2P', monospace); }
+.p820-tier small { font-size: .68rem; font-weight: 700; color: var(--c-fg-c9d2e0, #c9d2e0); white-space: nowrap; }
+.p820-tier.mini { position: static; min-width: 0; padding: 2px 6px; }
+.p820-tier.mini b { font-size: 11px; }
+.tier-s { --tier: var(--c-border-ffd166, #ffd166); }
+.tier-a { --tier: var(--c-border-55c878, #55c878); }
+.tier-b { --tier: var(--c-border-4da3ff, #4da3ff); }
+.tier-c { --tier: var(--c-border-b983ff, #b983ff); }
+.tier-d { --tier: var(--c-border-e85d5d, #e85d5d); }
+.p820-search { width: min(360px, 100%); }
+.p820-catbook-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 6px; }
+.p820-catbook-list li { display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: var(--c-bg-121926, #121926); border: 1px solid var(--c-border-2a3546, #2a3546); }
+.p820-catbook-list li.won { border-color: var(--c-border-ffd166, #ffd166); }
+.p820-catbook-list li small { margin-left: auto; color: var(--c-fg-94a0b2, #94a0b2); white-space: nowrap; }
+@media (max-width: 540px) {
+  .p820-cat-name { font-size: 15px; padding-right: 0; }
+  .p820-cat-blurb { padding-right: 0; }
+  .p820-tier { position: static; align-self: flex-start; grid-auto-flow: column; align-items: center; gap: 8px; }
+}
+@media (prefers-reduced-motion: reduce) { .p820-catroll.rolling, .p820-catroll.revealed { animation: none; } }

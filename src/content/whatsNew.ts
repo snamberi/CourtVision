@@ -6,6 +6,16 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2027-03-03',
+    title: 'Category Draft: 150 categories, one starting five',
+    items: [
+      "**Category Roll:** the game rolls a category (MVPs, Finals MVPs, 90s players, Duke, No. 1 picks, 7-footers, the Lakers, 30-point scorers, players named Johnson... 150 of them) and you pick ANY five as your starting five, each at his best season that fits. A second roll is your bench. Then try to go 82-0.",
+      "**Slot Spin:** every one of your ten spots spins its own category. One player from each.",
+      "**Tiers:** every category is S (stacked) to D (brutal). Weaker categories pay more, up to ×1.75: an 82-0 with second-round picks beats one with MVPs. Three category rerolls and two lucky rolls (an S or A tier) per run.",
+      "**Category Book:** your best season with every category you've started with. The Daily 82-0 now rotates through all four draft styles.",
+    ],
+  },
+  {
     id: '2027-02-24',
     title: 'Court Vision is an app now',
     items: [

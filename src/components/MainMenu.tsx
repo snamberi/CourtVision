@@ -31,7 +31,7 @@ import { TrophyUnlock } from './locker/TrophyUnlock';
 import { readArcade, guessStreak, isGuessDone, endlessOf } from '../arcade/storage';
 import { weekKey } from '../retention/week';
 
-export type GameMode = 'random' | 'real' | 'legends' | 'perfect' | 'career' | 'rebuild' | 'draft';
+export type GameMode = 'random' | 'real' | 'legends' | 'perfect' | 'category' | 'career' | 'rebuild' | 'draft';
 export interface RealLeagueOptions { source: 'history' | 'csv'; realDevelopment: boolean; forceRosters?: boolean; allPlayers?: boolean }
 
 interface Props {
@@ -62,7 +62,7 @@ interface Props {
 
 /** The cards on the menu. Franchise opens the New Franchise page (a real or random league, the Rebuild Challenge and
  *  the All-Time Draft); the others open their own setup screens. `badge` marks a highlight. */
-export type MenuMode = 'franchise' | 'legends' | 'perfect' | 'career';
+export type MenuMode = 'franchise' | 'legends' | 'perfect' | 'career' | 'category';
 const MODES: { id: MenuMode; title: string; blurb: string; kicker: string; icon: string; time: string; tags: string[]; badge?: 'popular' | 'fun' }[] = [
   {
     id: 'franchise', kicker: '01 / FRANCHISE', icon: 'court', time: 'Unlimited', tags: ['Real NBA', 'Random', 'Challenges'], badge: 'popular',
@@ -83,6 +83,11 @@ const MODES: { id: MenuMode; title: string; blurb: string; kicker: string; icon:
     id: 'career', kicker: '04 / BECOME', icon: 'star', time: '5-15 min', tags: ['Single player', 'Story', 'Spins'], badge: 'fun',
     title: 'Career Mode',
     blurb: 'Create one player (spin the wheel of NBA history or build him yourself) and live his whole career in today\'s league: draft night, training, free agency, awards, the Hall of Fame and the all-time Top 100.',
+  },
+  {
+    id: 'category', kicker: '05 / CATEGORY', icon: 'list', time: '5-10 min', tags: ['New', '150 categories', 'Go 82-0'],
+    title: 'Category Draft',
+    blurb: 'Roll a category (MVPs, 90s players, Duke, No. 1 picks, 7-footers, the Lakers...) and pick ANY five as your starters, then try to go 82-0. Or Slot Spin: every spot rolls its own category.',
   },
 ];
 /** The menu card a Mode of the Week falls under. */
@@ -218,7 +223,7 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
           </div>;
         })}
         {/* Room for the next modes. */}
-        {[5, 6].map(n => <div key={n} className="mode-card-wrap soon">
+        {[6].map(n => <div key={n} className="mode-card-wrap soon">
           <button className="mode-card mode-soon" disabled aria-label="Coming soon">
             <span className="mode-card-kicker"><PixelIcon name="lock" size={24} /><span>0{n} / SOON</span></span>
             <h3>Coming soon</h3>

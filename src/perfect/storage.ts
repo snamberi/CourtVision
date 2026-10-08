@@ -10,6 +10,8 @@ import { summary, type PerfectMode, type PerfectRun } from './run';
 export const PERFECT_RUN_KEY = 'cv-perfect-run';
 export const PERFECT_RECORDS_KEY = 'cv-perfect-records';
 
+/** The Category Book: your best season with each starting category (Category Roll). */
+export interface CategoryBest { w: number; l: number; champion: boolean }
 export interface PerfectResult { score: number; w: number; l: number; pw: number; pl: number; champion: boolean; mode: PerfectMode }
 export interface PerfectRecords {
   runs: number;
@@ -23,6 +25,8 @@ export interface PerfectRecords {
   daily?: Record<string, PerfectResult & { tries: number }>;
   /** The best season by a League Hunt squad brought over after its hunt. */
   huntSquadBest?: PerfectResult;
+  /** Category Book: the best season with each starting category, by category id. */
+  categories?: Record<string, CategoryBest>;
   lastSeed?: number;
 }
 const EMPTY: PerfectRecords = { runs: 0, titles: 0, perfectSeasons: 0, perfect98: 0, bestWins: 0 };
@@ -38,12 +42,18 @@ export function loadPerfectRecords(read: Read = localRead): PerfectRecords {
   try { return { ...EMPTY, ...(JSON.parse(read(PERFECT_RECORDS_KEY) ?? '{}') as Partial<PerfectRecords>) }; } catch { return { ...EMPTY }; }
 }
 
+/** Keeps the finished-run check apart per draft style (Quick and Franchise keep their old keys). */
+const MODE_KEY: Record<PerfectMode, number> = { quick: 0, franchise: 1, category: 0.25, slots: 0.75 };
+
+/** A title beats no title; then more wins. */
+const bestCategory = (a: CategoryBest | undefined, b: CategoryBest): CategoryBest => !a ? b : (b.champion && !a.champion) || (b.champion === a.champion && b.w > a.w) ? b : a;
+
 const better = (a: PerfectResult | undefined, b: PerfectResult) => !a || b.score > a.score;
 
 /** Counts a finished run once (by its seed and mode); a Daily 82-0 also keeps the day's best. */
 export function recordPerfect(run: PerfectRun): PerfectRecords {
   const r = loadPerfectRecords();
-  const key = run.seed * 2 + (run.mode === 'franchise' ? 1 : 0);
+  const key = run.seed * 2 + MODE_KEY[run.mode];
   if (run.stage !== 'done' || (r.lastSeed === key && !run.daily)) return r;
   const s = summary(run);
   const result: PerfectResult = { score: s.score, w: s.w, l: s.l, pw: s.pw, pl: s.pl, champion: s.champion, mode: run.mode };
@@ -52,6 +62,7 @@ export function recordPerfect(run: PerfectRun): PerfectRecords {
     perfectSeasons: r.perfectSeasons + (s.perfectSeason ? 1 : 0), perfect98: r.perfect98 + (s.perfectSeason && s.perfectPlayoffs ? 1 : 0),
     bestWins: Math.max(r.bestWins, s.w), best: better(r.best, result) ? result : r.best,
     ...(run.from === 'hunt' ? { huntSquadBest: better(r.huntSquadBest, result) ? result : r.huntSquadBest } : {}),
+    ...(run.mode === 'category' && run.cats?.[0] ? { categories: { ...(r.categories ?? {}), [run.cats[0]]: bestCategory(r.categories?.[run.cats[0]], { w: s.w, l: s.l, champion: s.champion }) } } : {}),
   };
   if (run.daily) {
     const d = r.daily?.[run.daily];
@@ -67,18 +78,21 @@ export function mergePerfectRecords(a: PerfectRecords, b: PerfectRecords): Perfe
   for (const [day, x] of Object.entries(a.daily ?? {})) { const y = daily[day]; daily[day] = !y ? x : { ...(x.score >= y.score ? x : y), tries: Math.max(x.tries, y.tries) }; }
   const best = !a.best ? b.best : !b.best ? a.best : a.best.score >= b.best.score ? a.best : b.best;
   const huntSquadBest = !a.huntSquadBest ? b.huntSquadBest : !b.huntSquadBest ? a.huntSquadBest : a.huntSquadBest.score >= b.huntSquadBest.score ? a.huntSquadBest : b.huntSquadBest;
+  const categories: Record<string, CategoryBest> = { ...(b.categories ?? {}) };
+  for (const [id, x] of Object.entries(a.categories ?? {})) categories[id] = bestCategory(categories[id], x);
   return {
+    ...(Object.keys(categories).length ? { categories } : {}),
     runs: Math.max(a.runs, b.runs), titles: Math.max(a.titles, b.titles), perfectSeasons: Math.max(a.perfectSeasons, b.perfectSeasons),
     perfect98: Math.max(a.perfect98, b.perfect98), bestWins: Math.max(a.bestWins, b.bestWins), ...(best ? { best } : {}), ...(huntSquadBest ? { huntSquadBest } : {}), ...(Object.keys(daily).length ? { daily } : {}),
   };
 }
 
-/** The Daily 82-0: today's seed and mode (Quick Spin on even days, Franchise Spin on odd ones). */
+/** The Daily 82-0: today's seed and draft style, rotating Quick Spin, Franchise Spin, Category Roll and Slot Spin. */
 export function dailyPerfect(day: string): { seed: number; mode: PerfectMode } {
   let h = 2166136261;
   for (const ch of `courtvision-82-0|${day}`) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
   const n = Math.round(Date.parse(`${day}T00:00:00Z`) / 86_400_000);
-  return { seed: (h >>> 0) % 1_000_000_000, mode: n % 2 === 0 ? 'quick' : 'franchise' };
+  return { seed: (h >>> 0) % 1_000_000_000, mode: (['quick', 'franchise', 'category', 'slots'] as const)[((n % 4) + 4) % 4] };
 }
 
 /** Your best Daily 82-0 score in each week (the online weekly board). */

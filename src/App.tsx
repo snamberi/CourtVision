@@ -571,6 +571,10 @@ function App() {
       setScreen('draft');
     } else if (mode === 'perfect') {
       setScreen('perfect');
+    } else if (mode === 'category') {
+      // The Category Draft card opens the 82-0 Challenge straight into a Category Roll (or the run in progress).
+      try { localStorage.setItem('cv-p820-start', 'category'); } catch { /* storage blocked */ }
+      setScreen('perfect');
     } else if (mode === 'career') {
       setScreen('career');
     } else {
