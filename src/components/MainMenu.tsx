@@ -28,10 +28,10 @@ import { totalXp, levelFor, takeLevelUp, unlocksBetween } from '../profile/profi
 import { noteVisit } from '../retention/streak';
 import { notePass } from '../retention/pass';
 import { TrophyUnlock } from './locker/TrophyUnlock';
-import { readArcade, guessStreak, isGuessDone, endlessOf } from '../arcade/storage';
+import { readArcade, guessStreak, isGuessDone, endlessOf, gridStreak } from '../arcade/storage';
 import { weekKey } from '../retention/week';
 
-export type GameMode = 'random' | 'real' | 'legends' | 'perfect' | 'career' | 'rebuild' | 'draft';
+export type GameMode = 'random' | 'real' | 'legends' | 'perfect' | 'category' | 'career' | 'rebuild' | 'draft';
 export interface RealLeagueOptions { source: 'history' | 'csv'; realDevelopment: boolean; forceRosters?: boolean; allPlayers?: boolean }
 
 interface Props {
@@ -55,14 +55,14 @@ interface Props {
   /** Opens Settings (backups, graphics, privacy). */
   onSettings?: () => void;
   /** Opens a quick game. */
-  onArcade?: (game: 'guess' | 'hilo' | 'bracket' | 'quiz') => void;
+  onArcade?: (game: 'grid' | 'guess' | 'hilo' | 'bracket' | 'quiz') => void;
   /** Opens the New Franchise page (with a challenge picked, for the Rebuild and the All-Time Draft). */
   onCreate?: (challenge?: 'free' | 'rebuild' | 'draft') => void;
 }
 
 /** The cards on the menu. Franchise opens the New Franchise page (a real or random league, the Rebuild Challenge and
  *  the All-Time Draft); the others open their own setup screens. `badge` marks a highlight. */
-export type MenuMode = 'franchise' | 'legends' | 'perfect' | 'career';
+export type MenuMode = 'franchise' | 'legends' | 'perfect' | 'career' | 'category';
 const MODES: { id: MenuMode; title: string; blurb: string; kicker: string; icon: string; time: string; tags: string[]; badge?: 'popular' | 'fun' }[] = [
   {
     id: 'franchise', kicker: '01 / FRANCHISE', icon: 'court', time: 'Unlimited', tags: ['Real NBA', 'Random', 'Challenges'], badge: 'popular',
@@ -83,6 +83,11 @@ const MODES: { id: MenuMode; title: string; blurb: string; kicker: string; icon:
     id: 'career', kicker: '04 / BECOME', icon: 'star', time: '5-15 min', tags: ['Single player', 'Story', 'Spins'], badge: 'fun',
     title: 'Career Mode',
     blurb: 'Create one player (spin the wheel of NBA history or build him yourself) and live his whole career in today\'s league: draft night, training, free agency, awards, the Hall of Fame and the all-time Top 100.',
+  },
+  {
+    id: 'category', kicker: '05 / CATEGORY', icon: 'list', time: '5-10 min', tags: ['New', '150 categories', 'Go 82-0'],
+    title: 'Category Draft',
+    blurb: 'Roll a category (MVPs, 90s players, Duke, No. 1 picks, 7-footers, the Lakers...) and pick ANY five as your starters, then try to go 82-0. Or Slot Spin: every spot rolls its own category.',
   },
 ];
 /** The menu card a Mode of the Week falls under. */
@@ -218,7 +223,7 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
           </div>;
         })}
         {/* Room for the next modes. */}
-        {[5, 6].map(n => <div key={n} className="mode-card-wrap soon">
+        {[6].map(n => <div key={n} className="mode-card-wrap soon">
           <button className="mode-card mode-soon" disabled aria-label="Coming soon">
             <span className="mode-card-kicker"><PixelIcon name="lock" size={24} /><span>0{n} / SOON</span></span>
             <h3>Coming soon</h3>
@@ -314,11 +319,13 @@ function CodeEntry({ busy, onCode }: { busy: string | null; onCode: (code: strin
 }
 
 /** The quick games strip under the modes: today's puzzle, your streak, this week's bracket. */
-function QuickGames({ onOpen }: { onOpen: (game: 'guess' | 'hilo' | 'bracket' | 'quiz') => void }) {
+function QuickGames({ onOpen }: { onOpen: (game: 'grid' | 'guess' | 'hilo' | 'bracket' | 'quiz') => void }) {
   const [r] = useState(readArcade);
   const today = new Date().toISOString().slice(0, 10), week = weekKey();
   const day = r.guess[today], streak = guessStreak(r, today).current, bracket = r.bracket[week], quiz = endlessOf(r).quiz;
+  const grid = r.grid?.[today], gridDone = !!grid && (grid.used >= 9 || grid.cells.every(Boolean)), gridRun = gridStreak(r, today).current;
   const games = [
+    { id: 'grid' as const, icon: 'list', title: 'Daily Grid', blurb: 'Three teams, three categories. Fill all nine squares.', status: gridDone ? `${grid!.cells.filter(Boolean).length}/9 today · endless open` : 'New grid today', extra: gridRun ? `${gridRun}-day streak` : null },
     { id: 'guess' as const, icon: 'search', title: 'Guess the Player', blurb: 'A daily player for everyone, then endless rounds.', status: isGuessDone(day) ? (day!.won ? `Solved in ${day!.guesses.length} · endless open` : 'Missed today · endless open') : 'New puzzle today', extra: streak ? `${streak}-day streak` : null },
     { id: 'hilo' as const, icon: 'up', title: 'Higher or Lower', blurb: 'Career numbers, head to head. How long can you go?', status: r.hilo.best ? `Best streak ${r.hilo.best}` : 'Set your first streak', extra: null },
     { id: 'bracket' as const, icon: 'trophy', title: 'Bracket Challenge', blurb: 'Sixteen all-time teams. Weekly, or random any time.', status: bracket?.played ? `${bracket.score} pts this week` : bracket?.locked ? 'Picks locked' : 'New bracket this week', extra: null },

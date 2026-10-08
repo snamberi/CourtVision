@@ -6,6 +6,31 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2027-03-03',
+    title: 'The Category update: Daily Grid, Draft Battle and 180 categories',
+    items: [
+      "**Daily Grid (new quick game):** three teams down the side, three categories across the top. Name a player for every square in nine guesses. Deeper cuts score more rarity points. A new grid every day, a streak, endless grids and a spoiler-free share.",
+      "**Draft Battle:** one category, two GMs, a snake draft (1-2-2-1). Eight players each, then a best-of-seven. Play Rookie Rick, Pro Paula or Legend Lou, or pass the device to a friend.",
+      "**Custom categories:** build your own from up to three (\"Lakers × 90s players × All-Stars\"), see how many players fit and its tier, draft from it, and send the code to a friend.",
+      "**Category Roll:** the game rolls a category (MVPs, 90s players, Duke, No. 1 picks, 7-footers, the Lakers, Spain, Olympians, Kobe's teammates, No. 23s... 180 of them) and you pick ANY five as your starting five. Players come in at their prime, unless the category is about a season. No ratings, stats or rarity colours while you pick. A second roll is your bench. Then try to go 82-0.",
+      "**Slot Spin:** every one of your ten spots spins its own category. One player from each.",
+      "**Tiers:** every category is S (stacked) to D (brutal). Weaker categories pay more, up to ×1.75. Three category rerolls and two lucky rolls (an S or A tier) per run, and an S-tier roll lands with a flash.",
+      "**Weekly Category Challenge:** one category for everyone, all week, with its own leaderboard.",
+      "**Options:** scouting tips (a word on each player, never a number), a 10-second shot clock, and mixed rolls (\"Lakers × 90s players\"). Each one changes your score.",
+      "**Report card:** after the run, every pick is graded against its category: steals, great picks and reaches, next to the best five you could have taken.",
+      "**Duels:** challenge a friend to the same rolls. **Category Book:** collection bars for teams, colleges, eras, awards and more, with new achievements.",
+      "**League Hunt:** a new Category Draft deck, where every round of spins draws from its own category.",
+    ],
+  },
+  {
+    id: '2027-02-24',
+    title: 'Court Vision is an app now',
+    items: [
+      "**Install it:** press **Install app** at the top of the menu. Court Vision gets its own icon and its own window on your PC (Start menu and taskbar), Android phone or iPhone. No browser bar, it plays offline, and your saves come with you.",
+      "**One click on Chrome and Edge:** other browsers get a short step-by-step guide for your device. Share courtvisiongame.com/#/install to send a friend straight to it.",
+    ],
+  },
+  {
     id: '2027-02-17',
     title: 'Real faces, 1v1 legends and 15 new things',
     items: [

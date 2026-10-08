@@ -3,6 +3,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { readFavorites } from '../../profile/favorites';
 import type { NbaHistory } from '../../history/nbaHistoryData';
 import { cardNotes } from '../../hunt/cardNotes';
+import { huntRoundCategory } from '../../hunt/categoryDeck';
 import { cardPool, seasonLabel, RARITY_LABEL, type HuntCard } from '../../hunt/cards';
 import { huntTeams, teamLabel, type HuntTeam } from '../../hunt/teams';
 import { ERAS, eraOf } from '../../hunt/eras';
@@ -179,7 +180,8 @@ function SlotMachine({ h, run, onRun, onAbandon }: { h: NbaHistory; run: HuntRun
     const t = setInterval(() => setTick(n => n + 1), TICK_MS);
     return () => clearInterval(t);
   }, [animating]);
-  const stop = () => { setTick(0); setStoppedAt(Date.now()); setJustLocked(null); onRun(stopReels(h, run)); };
+  const roundCat = huntRoundCategory(h, run, run.spin);
+  const stop = () => { setTick(0); setStoppedAt(Date.now()); setJustLocked(null); onRun(stopReels(h, run, roundCat)); };
   const lock = (k: SpinKind) => { if (!allSettled) return; setJustLocked(k); setStoppedAt(null); onRun(lockReel(h, run, k)); };
   const w = spinWeights(run.spin), total = w.common + w.rare + w.epic + w.legendary;
   const guaranteed = run.spin === run.guarantees.star ? 'A Star lands on these reels.' : run.spin === run.guarantees.great ? 'A Great player lands on these reels.' : null;
@@ -216,6 +218,7 @@ function SlotMachine({ h, run, onRun, onAbandon }: { h: NbaHistory; run: HuntRun
       <span className="pixel-eyebrow">ROUND {Math.min(run.spin + 1, SPINS.length)} OF {SPINS.length}</span>
       <ol className="hunt-slot-dots" aria-label={`${SPINS.length - open.length} of ${SPINS.length} locked`}>{SPINS.map((_, i) => <li key={i} className={i < SPINS.length - open.length ? 'on' : ''} />)}</ol>
     </div>
+    {roundCat && <div className={`hunt-round-cat tier-${roundCat.tier.toLowerCase()}`}><span className="pixel-eyebrow">THIS ROUND'S CATEGORY</span><b>{roundCat.name}</b><small>{roundCat.blurb}</small></div>}
     <p className="hunt-slots-msg" role="status">{message}</p>
     <div className="hunt-reel-grid">{SLOTS.map(s => tile(s))}</div>
     {tile('COACH')}

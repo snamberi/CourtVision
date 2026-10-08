@@ -263,7 +263,7 @@ function buildInitialExtras(league: League): GMLeagueExtras {
 }
 
 type Screen = 'menu' | 'chooseTeam' | 'app' | 'hunt' | 'perfect' | 'career' | 'locker' | 'profile' | 'community' | 'draft' | 'settings' | 'arcade' | 'create' | 'worldGamesMode' | 'friends' | 'clubs' | 'online';
-const ARCADE_HASH: Record<ArcadeTab, string> = { guess: '#/guess', hilo: '#/higher-lower', bracket: '#/bracket', quiz: '#/quiz', legends: '#/legends', street: '#/street' };
+const ARCADE_HASH: Record<ArcadeTab, string> = { grid: '#/grid', guess: '#/guess', hilo: '#/higher-lower', bracket: '#/bracket', quiz: '#/quiz', legends: '#/legends', street: '#/street' };
 const arcadeTabOf = (hash: string) => (Object.entries(ARCADE_HASH).find(([, h]) => h === hash)?.[0] as ArcadeTab | undefined);
 
 const debouncedSave = createDebouncedSave();
@@ -570,6 +570,10 @@ function App() {
     } else if (mode === 'draft') {
       setScreen('draft');
     } else if (mode === 'perfect') {
+      setScreen('perfect');
+    } else if (mode === 'category') {
+      // The Category Draft card opens the 82-0 Challenge straight into a Category Roll (or the run in progress).
+      try { localStorage.setItem('cv-p820-start', 'category'); } catch { /* storage blocked */ }
       setScreen('perfect');
     } else if (mode === 'career') {
       setScreen('career');
@@ -1479,7 +1483,6 @@ function App() {
   if (screen === 'menu') {
     return (
       <>
-        <DownloadButton />
         <ToastStack toasts={toasts} onDismiss={dismissToast} />
         <MainMenu
           onStart={startGameMode}

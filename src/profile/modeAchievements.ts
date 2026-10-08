@@ -2,7 +2,7 @@ import { localRead, type Read } from '../lib/kv';
 import type { TrophyKey } from '../simulation/trophies';
 import { readLegacy } from '../storage/gmLegacy';
 import { loadRecords } from '../hunt/storage';
-import { loadPerfectRecords } from '../perfect/storage';
+import { loadPerfectRecords, categoryTitles, categoryTeamTitles, categoryBrutal, categoryPerfect } from '../perfect/storage';
 import { loadRebuildRecords } from '../simulation/rebuildChallenge';
 import { loadWeeklyRecords } from '../retention/weekly';
 import { careerCache } from './profile';
@@ -30,6 +30,8 @@ export interface ModeStats {
   weeks: number; perfectDays: number; goalStreak: number;
   /** The 82-0 Challenge. */
   p82Wins: number; p82Titles: number; p82Perfect: number; p82Perfect98: number;
+  /** Category Draft. */
+  catTitles: number; catTeams: number; catBrutal: number; catPerfect: number;
 }
 
 export interface ModeAchievement { id: string; mode: Mode; name: string; description: string; icon: TrophyKey; progress: (s: ModeStats) => [number, number]; label?: (n: number, goal: number) => string }
@@ -58,6 +60,11 @@ export const MODE_ACHIEVEMENTS: ModeAchievement[] = [
   { id: 'perfect-title', mode: 'perfect', name: 'Ring Chaser', description: 'Win the title in the 82-0 Challenge.', icon: 'champion', progress: s => at(s.p82Titles, 1) },
   { id: 'perfect-74', mode: 'perfect', name: 'Better Than 73-9', description: 'Win 74 games in an 82-0 Challenge season.', icon: 'mvp', progress: s => at(s.p82Wins, 74) },
   { id: 'perfect-82', mode: 'perfect', name: 'Undefeated', description: 'Go 82-0 in the 82-0 Challenge.', icon: 'fmvp', progress: s => at(s.p82Perfect, 1) },
+  { id: 'cat-5', mode: 'perfect', name: 'Category Collector', description: 'Win the title with 5 different Category Roll categories.', icon: 'champion', progress: s => at(s.catTitles, 5) },
+  { id: 'cat-25', mode: 'perfect', name: 'Category Master', description: 'Win the title with 25 different categories.', icon: 'mvp', progress: s => at(s.catTitles, 25) },
+  { id: 'cat-teams', mode: 'perfect', name: 'Every Franchise', description: 'Win the title with all 30 team categories.', icon: 'fmvp', progress: s => at(s.catTeams, 30) },
+  { id: 'cat-brutal', mode: 'perfect', name: 'Brutal', description: 'Win the title with a D-tier category.', icon: 'hustle', progress: s => at(s.catBrutal, 1) },
+  { id: 'cat-82', mode: 'perfect', name: 'Perfect Category', description: 'Go 82-0 in a Category Roll.', icon: 'eoy', progress: s => at(s.catPerfect, 1) },
   { id: 'perfect-98', mode: 'perfect', name: 'Perfection', description: 'Go 82-0, then 16-0 in the playoffs.', icon: 'eoy', progress: s => at(s.p82Perfect98, 1) },
 
   { id: 'rebuild-star', mode: 'rebuild', name: 'First Star', description: 'Earn a star in a Rebuild Challenge.', icon: 'mip', progress: s => at(s.rebuildStars, 1) },
@@ -119,6 +126,7 @@ export function modeStats(read: Read = localRead, extra: Feats = {}): ModeStats 
     weeks, perfectDays: Object.values(goals).filter(g => g.done >= 3).length,
     goalStreak: longestStreak(Object.entries(goals).filter(([, g]) => g.done > 0).map(([d]) => d)),
     p82Wins: p82.bestWins, p82Titles: p82.titles, p82Perfect: p82.perfectSeasons, p82Perfect98: p82.perfect98,
+    catTitles: categoryTitles(p82), catTeams: categoryTeamTitles(p82), catBrutal: categoryBrutal(p82), catPerfect: categoryPerfect(p82),
   };
 }
 

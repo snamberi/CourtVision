@@ -113,7 +113,7 @@
 }
 /* Quick games strip on the menu (the look roles from skins.css, like the mode cards). */
 .quick-games { width: 100%; display: grid; gap: 14px; }
-.quick-games-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px 16px; }
+.quick-games-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px 16px; }
 .quick-game { display: grid; grid-template-columns: auto 1fr; grid-template-areas: 'icon title' 'icon blurb' 'icon status'; gap: 2px 12px; align-items: center; padding: 14px 16px; text-align: left; background-color: var(--look-panel); color: var(--look-text); border: var(--look-border) solid var(--look-line); border-radius: var(--look-radius); box-shadow: var(--look-shadow); }
 .quick-game:hover:not(:disabled) { background-color: var(--look-raised); border-color: var(--look-edge); }
 .quick-game .pixel-icon { grid-area: icon; color: var(--look-secondary); }

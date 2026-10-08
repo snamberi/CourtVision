@@ -11,7 +11,7 @@ export interface BoardResult { rows: BoardRow[]; total: number; you: { rank: num
 export type BoardSpec =
   | { kind: 'gms' }
   | { kind: 'players'; week?: string | null }
-  | { kind: 'weekly'; board: 'rebuild' | 'career' | 'hunt' | 'perfect' | 'guess' | 'hilo' | 'bracket'; week: string }
+  | { kind: 'weekly'; board: 'rebuild' | 'career' | 'hunt' | 'perfect' | 'category' | 'guess' | 'hilo' | 'bracket'; week: string }
   | { kind: 'daily'; day: string }
   | { kind: 'rebuild'; scenario: string }
   | { kind: 'ranked'; season: string }
@@ -127,7 +127,7 @@ export async function achievementRarity(): Promise<Record<string, number>> {
 }
 
 export interface ActivityItem { at: string; username: string; icon?: string; color?: string; text: string }
-const BOARD_NAME: Record<string, string> = { hunt: 'the Weekly Hunt', perfect: 'the 82-0 Challenge', career: 'Career of the Week', rebuild: 'Rebuild of the Week', guess: 'Guess the Player', hilo: 'Higher or Lower', bracket: 'the Bracket Challenge' };
+const BOARD_NAME: Record<string, string> = { hunt: 'the Weekly Hunt', perfect: 'the 82-0 Challenge', category: 'the Weekly Category Challenge', career: 'Career of the Week', rebuild: 'Rebuild of the Week', guess: 'Guess the Player', hilo: 'Higher or Lower', bracket: 'the Bracket Challenge' };
 /** What the GMs you follow have been up to: their latest weekly-board results and Daily Legend runs, newest first. */
 export async function friendActivity(limit = 20): Promise<ActivityItem[]> {
   const me = getAccount().userId;

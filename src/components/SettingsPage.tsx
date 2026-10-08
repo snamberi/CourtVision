@@ -47,9 +47,9 @@ export function SettingsPage({ onExit, backup, recovery }: { onExit: () => void;
       <SettingCard icon="star" title="Graphics" blurb="Lite mode stops looping animations and blur, and uses fewer simulation workers. Auto turns it on for low-memory devices.">
         <PerformanceToggle />
       </SettingCard>
-      <SettingCard icon="play" title="Install the app" blurb="Play from your home screen or desktop, offline too.">
+      <SettingCard icon="play" title="Install the app" blurb="Court Vision as a real app on your PC or phone: its own icon and window, offline too, same saves.">
         <p className="settings-install"><InstallAppButton /></p>
-        <p className="hint-text settings-install-note">Already installed, or your browser can't install apps? Use your browser's menu: "Add to Home Screen" or "Install".</p>
+        <p className="hint-text settings-install-note">You're playing the installed app.</p>
       </SettingCard>
       <SettingCard icon="team" title="Privacy" blurb="What Court Vision stores, and your cookie choices.">
         <p className="settings-links"><PrivacyLink /> · <CookieSettingsLink /></p>

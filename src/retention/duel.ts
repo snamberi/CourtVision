@@ -16,6 +16,10 @@ export interface Duel {
   deck?: string; diff?: string; pm?: PerfectMode;
   /** The challenger's view (ratings shown, rarity colours): the friend plays the same way. */
   vw?: RunView;
+  /** Category Draft options (scouting tips, shot clock, mixed rolls): the friend plays with the same ones. */
+  co?: { tips?: boolean; clock?: boolean; mixed?: boolean };
+  /** A custom category ("team-LAL+d1990"): the friend drafts from the same one. */
+  cc?: string;
   /** Who sent it and how they did. */
   n: string; r: DuelResult;
 }
@@ -34,8 +38,10 @@ export function decodeDuel(code: string): Duel | null {
   try {
     const d = JSON.parse(unb64url(code.trim())) as Partial<Duel>;
     if (d.v !== 1 || (d.m !== 'hunt' && d.m !== 'perfect') || !Number.isSafeInteger(d.s) || !d.r || typeof d.r.score !== 'number' || !Number.isFinite(d.r.score)) return null;
-    if (d.m === 'perfect' && d.pm !== 'quick' && d.pm !== 'franchise') return null;
+    if (d.m === 'perfect' && d.pm !== 'quick' && d.pm !== 'franchise' && d.pm !== 'category' && d.pm !== 'slots') return null;
     return { v: 1, m: d.m, s: d.s!, ...(d.deck ? { deck: clean(d.deck, 20) } : {}), ...(d.diff ? { diff: clean(d.diff, 20) } : {}), ...(d.pm ? { pm: d.pm } : {}), ...(d.vw && typeof d.vw === 'object' ? { vw: { numbers: !!d.vw.numbers, colors: d.vw.colors !== false } } : {}),
+      ...(typeof d.cc === 'string' && /^[a-z0-9-]+(\+[a-z0-9-]+){0,2}$/i.test(d.cc) && d.cc.length <= 80 ? { cc: d.cc } : {}),
+      ...(d.co && typeof d.co === 'object' ? { co: { ...(d.co.tips ? { tips: true } : {}), ...(d.co.clock ? { clock: true } : {}), ...(d.co.mixed ? { mixed: true } : {}) } } : {}),
       n: clean(d.n, 24) || 'A friend', r: { score: Math.round(d.r.score), line: clean(d.r.line, 60), won: !!d.r.won } };
   } catch { return null; }
 }

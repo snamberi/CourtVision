@@ -11,7 +11,7 @@ import { supa } from './account';
 
 export type ClaimBoard =
   | { kind: 'players' }
-  | { kind: 'weekly'; board: 'career' | 'hunt' | 'perfect' | 'rebuild' | 'guess' | 'hilo' | 'bracket'; week: string }
+  | { kind: 'weekly'; board: 'career' | 'hunt' | 'perfect' | 'category' | 'rebuild' | 'guess' | 'hilo' | 'bracket'; week: string }
   | { kind: 'daily'; day: string }
   | { kind: 'code'; code: string };
 

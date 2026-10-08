@@ -53,7 +53,7 @@ export function recordRun(run: HuntRun): HuntRecords {
 // ---------------------------------------------------------------- unlocks
 
 const DECK_RULE: Record<DeckId, (r: HuntRecords) => boolean> = {
-  classic: () => true, bigMen: r => r.bestStop >= 2, oldSchool: r => r.runs >= 3, paceSpace: r => r.bestStop >= 4, dynasty: r => r.wins >= 1,
+  classic: () => true, bigMen: r => r.bestStop >= 2, oldSchool: r => r.runs >= 3, paceSpace: r => r.bestStop >= 4, dynasty: r => r.wins >= 1, category: () => true,
 };
 const DIFF_RULE: Record<Difficulty, (r: HuntRecords) => boolean> = { rookie: () => true, pro: () => true, legend: r => r.wins >= 1 };
 export const deckUnlocked = (r: HuntRecords, d: DeckId) => DECK_RULE[d](r);

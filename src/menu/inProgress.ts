@@ -10,7 +10,7 @@ export type InProgress = Partial<Record<GameMode, string>>;
 const json = <T>(key: string): T | null => { try { return JSON.parse(localStorage.getItem(key) ?? 'null') as T | null; } catch { return null; } };
 
 interface HuntRunLite { version?: number; stage?: string; seriesIndex?: number; squad?: unknown[] }
-interface PerfectRunLite { v?: number; stage?: string; squad?: unknown[]; games?: { won: boolean }[]; playoffs?: { games: { won: boolean }[] }[] }
+interface PerfectRunLite { v?: number; mode?: string; stage?: string; squad?: unknown[]; games?: { won: boolean }[]; playoffs?: { games: { won: boolean }[] }[] }
 
 export function huntProgress(r: HuntRunLite | null): string | null {
   if (!r || r.version !== 3 || !r.stage || r.stage === 'won' || r.stage === 'lost') return null;
@@ -32,7 +32,8 @@ export const localProgress = (): InProgress => {
   const hunt = huntProgress(json<HuntRunLite>('cv-hunt-run'));
   if (hunt) out.legends = hunt;
   const p820 = perfectProgress(json<PerfectRunLite>('cv-perfect-run'));
-  if (p820) out.perfect = p820;
+  const p820run = json<PerfectRunLite>('cv-perfect-run');
+  if (p820) { if (p820run?.mode === 'category' || p820run?.mode === 'slots') out.category = p820; else out.perfect = p820; }
   return out;
 };
 

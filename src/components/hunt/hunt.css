@@ -501,3 +501,11 @@ button.hunt-reel.frozen:hover, button.hunt-reel.frozen:focus-visible { transform
 .duel-vs i { font-style: normal; font-family: var(--ff-pixel, 'Press Start 2P', monospace); font-size: 10px; }
 .duel-verdict { font-weight: 700; }
 .duel-banner { display: flex; align-items: center; gap: 6px; margin: 8px 0; padding: 6px 10px; border: 1px solid var(--c-border-4da3ff, #4da3ff); background: var(--c-bg-121926, #121926); font-size: .9rem; }
+.hunt-round-cat { --tier: var(--c-border-f47b20, #f47b20); display: grid; gap: 4px; justify-items: center; text-align: center; margin: 4px auto 8px; padding: 8px 14px; max-width: 520px; border: 2px solid var(--tier); background: var(--c-bg-121926, #121926); box-shadow: 2px 2px 0 var(--c-shadow-03070d, #03070d); }
+.hunt-round-cat b { font: 14px/1.4 var(--ff-pixel, 'Press Start 2P', monospace); color: var(--c-fg-ffffff, #ffffff); }
+.hunt-round-cat small { color: var(--c-fg-94a0b2, #94a0b2); }
+.hunt-round-cat.tier-s { --tier: var(--c-border-ffd166, #ffd166); }
+.hunt-round-cat.tier-a { --tier: var(--c-border-55c878, #55c878); }
+.hunt-round-cat.tier-b { --tier: var(--c-border-4da3ff, #4da3ff); }
+.hunt-round-cat.tier-c { --tier: var(--c-border-b983ff, #b983ff); }
+.hunt-round-cat.tier-d { --tier: var(--c-border-e85d5d, #e85d5d); }
