@@ -6,6 +6,14 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2027-02-24',
+    title: 'Court Vision is an app now',
+    items: [
+      "**Install it:** press **Install app** at the top of the menu. Court Vision gets its own icon and its own window on your PC (Start menu and taskbar), Android phone or iPhone. No browser bar, it plays offline, and your saves come with you.",
+      "**One click on Chrome and Edge:** other browsers get a short step-by-step guide for your device. Share courtvisiongame.com/#/install to send a friend straight to it.",
+    ],
+  },
+  {
     id: '2027-02-17',
     title: 'Real faces, 1v1 legends and 15 new things',
     items: [

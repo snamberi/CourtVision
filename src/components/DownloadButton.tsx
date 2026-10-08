@@ -1,18 +1,13 @@
 import { DownloadIcon } from './Icons';
-import { IS_DESKTOP_BUILD, WINDOWS_DOWNLOAD_FILE, WINDOWS_DOWNLOAD_URL } from '../appMode';
+import { useInstallState, startInstall } from '../pwa/pwa';
 
-/** Small icon-only button pinned to the top-right corner of every screen. Downloads the Windows package. */
+/** Pinned to the top-right corner of every screen: installs Court Vision as an app (or shows how). Hidden once installed. */
 export function DownloadButton() {
-  if (IS_DESKTOP_BUILD) return null; // the Windows build is already the thing this would download
+  const state = useInstallState();
+  if (state === 'installed') return null;
   return (
-    <a
-      className="download-fab"
-      href={WINDOWS_DOWNLOAD_URL}
-      download={WINDOWS_DOWNLOAD_FILE}
-      aria-label="Download CourtVision for Windows"
-      title="Download for Windows"
-    >
-      <DownloadIcon />
-    </a>
+    <button type="button" className="download-fab" onClick={() => void startInstall('corner')} aria-label="Install Court Vision as an app" title="Install the app">
+      <DownloadIcon /><span className="download-fab-label">Install app</span>
+    </button>
   );
 }

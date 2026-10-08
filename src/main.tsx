@@ -29,6 +29,7 @@ import App from './App.tsx'
 import { WebAnalytics } from './components/WebAnalytics'
 import { CloudRoot } from './components/cloud/CloudRoot'
 import { startPwa } from './pwa/pwa'
+import { InstallGuideHost } from './components/InstallGuide'
 import { applyPerformanceMode } from './lib/performanceMode'
 import { applyTheme, readTheme } from './theme/themes'
 import { startAccounts } from './cloud/account'
@@ -45,5 +46,6 @@ createRoot(document.getElementById('root')!).render(
     <App />
     <WebAnalytics />
     <CloudRoot />
+    <InstallGuideHost />
   </StrictMode>,
 )

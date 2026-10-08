@@ -49,7 +49,7 @@
             },
             {
               "type": "p",
-              "text": "There is also an offline Windows edition that runs without an internet connection and contains no ads."
+              "text": "You can also install Court Vision as an app on your PC or phone: it gets its own icon and window and plays offline. Open [courtvisiongame.com/#/install](./#/install) for the steps."
             }
           ]
         },
@@ -937,7 +937,7 @@
           "blocks": [
             {
               "type": "p",
-              "text": "Yes. The web version is free and supported by ads. The offline Windows edition is free and has no ads."
+              "text": "Yes. Court Vision is free, in the browser and as an installed app, and supported by ads."
             }
           ]
         },
@@ -1071,11 +1071,7 @@
           "blocks": [
             {
               "type": "p",
-              "text": "Yes, two ways. **Install the app:** on Chrome, Edge or Android, use the Install app button on the main menu (on iPhone, tap Share, then Add to Home Screen). After your first visit it opens without a connection, and any mode you have played once keeps working offline."
-            },
-            {
-              "type": "p",
-              "text": "Or [download the Windows edition](downloads/CourtVision-Windows.zip) (also the download button in the top-right corner of the game). It runs entirely offline and has no ads."
+              "text": "Yes. **Install the app:** press Install app in the top-right corner of the game. On Chrome or Edge (PC) and Chrome (Android) it installs in one click; on iPhone, tap Share, then Add to Home Screen. It gets its own icon and window, and after your first visit it opens without a connection: any mode you have played once keeps working offline."
             }
           ]
         },

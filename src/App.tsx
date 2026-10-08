@@ -1479,7 +1479,6 @@ function App() {
   if (screen === 'menu') {
     return (
       <>
-        <DownloadButton />
         <ToastStack toasts={toasts} onDismiss={dismissToast} />
         <MainMenu
           onStart={startGameMode}
