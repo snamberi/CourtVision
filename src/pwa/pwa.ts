@@ -19,9 +19,59 @@ export function startPwa(): void {
   if (IS_DESKTOP_BUILD || typeof window === 'undefined') return;
   window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferred = e as InstallPromptEvent; emit(); });
   window.addEventListener('appinstalled', () => { deferred = null; installed = true; emit(); });
+  watchStaleChunks();
   if (import.meta.env.PROD && 'serviceWorker' in navigator) {
-    window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => { /* offline play is optional */ }); });
+    // Was a worker already in charge? Then a new one taking over means a new version went live while we were open.
+    const hadController = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController) showUpdateBar(); });
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').then(reg => {
+        // An installed app has no reload button and can stay open for days: look for a new version when it comes
+        // back to the front, and every half hour.
+        const check = () => { reg.update().catch(() => { /* offline */ }); };
+        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check(); });
+        window.setInterval(check, 30 * 60 * 1000);
+      }).catch(() => { /* offline play is optional */ });
+    });
   }
+}
+
+const RELOAD_KEY = 'cv-stale-reload';
+/**
+ * After a deploy, a page still running the old version asks for screens (code chunks) the server no longer has.
+ * Reload once to get the new version instead of leaving a screen that never opens; if that already happened in the
+ * last minute (the chunk really is missing), let the error show rather than loop.
+ */
+function watchStaleChunks(): void {
+  window.addEventListener('vite:preloadError', event => {
+    let last = 0;
+    try { last = Number(sessionStorage.getItem(RELOAD_KEY) ?? 0); } catch { /* storage blocked */ }
+    if (Date.now() - last < 60_000) return;
+    try { sessionStorage.setItem(RELOAD_KEY, String(Date.now())); } catch { /* storage blocked */ }
+    event.preventDefault();
+    window.location.reload();
+  });
+}
+
+/** A new version is live: a bar offering to reload (not forced, so nothing in progress is lost). */
+function showUpdateBar(): void {
+  if (document.getElementById('cv-update-bar')) return;
+  const bar = document.createElement('div');
+  bar.id = 'cv-update-bar';
+  bar.className = 'cv-update-bar';
+  bar.setAttribute('role', 'status');
+  const text = document.createElement('span');
+  text.textContent = 'A new version of Court Vision is ready.';
+  const go = document.createElement('button');
+  go.className = 'primary';
+  go.textContent = 'Reload';
+  go.addEventListener('click', () => window.location.reload());
+  const later = document.createElement('button');
+  later.textContent = 'Later';
+  later.setAttribute('aria-label', 'Dismiss');
+  later.addEventListener('click', () => bar.remove());
+  bar.append(text, go, later);
+  document.body.append(bar);
 }
 
 export const isStandalone = () => typeof window !== 'undefined' && (window.matchMedia?.('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true);

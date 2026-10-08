@@ -2250,3 +2250,9 @@ a.ad-creative:hover .ad-cta { background: var(--c-bg-ff8f3c, #ff8f3c); }
 .wg-medal-chip.gold { border-color: var(--c-border-ffd166, #ffd166); }
 .wg-medal-chip.silver { border-color: var(--c-border-c0c7d2, #c0c7d2); }
 .wg-medal-chip.bronze { border-color: var(--c-border-cd8a4f, #cd8a4f); }
+
+/* "A new version is ready" (pwa.ts): bottom bar over everything. */
+.cv-update-bar { position: fixed; z-index: 9999; left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; max-width: calc(100vw - 32px); padding: 10px 12px 10px 16px; background: var(--c-bg-192333, #192333); color: var(--c-fg-f4f0e6, #f4f0e6); border: 2px solid var(--c-border-f47b20, #f47b20); box-shadow: 4px 4px 0 var(--c-shadow-000000, #000); font-weight: 600; }
+.cv-update-bar span { flex: 1; min-width: 0; }
+.cv-update-bar button { flex: none; padding: 6px 12px; }
+@media (max-width: 540px) { .cv-update-bar { left: 16px; right: 16px; transform: none; max-width: none; bottom: 76px; flex-wrap: wrap; } }

@@ -5,6 +5,11 @@
 # The service worker must always be fresh, or players stay on an old version.
 /sw.js
   Cache-Control: no-cache
+# The game page too: it names the current build's files, so it must never be an old copy.
+/
+  Cache-Control: no-cache
+/index.html
+  Cache-Control: no-cache
 /*
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
