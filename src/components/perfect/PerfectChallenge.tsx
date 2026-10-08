@@ -101,7 +101,8 @@ export function PerfectChallenge({ onExit }: { onExit: () => void }) {
   </header>;
   if (error) return <div className="hunt p820">{header}<p className="empty-state">Could not load the NBA history data: {error}</p></div>;
   if (!h) return <div className="hunt p820">{header}<p className="empty-state">Loading 80 years of basketball…</p></div>;
-  return <div className={`hunt p820 ${run?.view && !run.view.colors && run.stage !== 'done' ? 'no-rarity' : ''}`}>
+  // Category Draft shows no rarity colours until the run is over (you pick on the name alone).
+  return <div className={`hunt p820 ${run && run.stage !== 'done' && ((run.view && !run.view.colors) || isCategoryMode(run.mode)) ? 'no-rarity' : ''}`}>
     {header}
     {run && run.stage !== 'done' && <DuelBanner duel={run.duel} />}
     {run && (run.level || run.view) && <p className="p820-challenge-line">{LEVEL_NAME[run.level ?? 'pro']}{run.view?.numbers ? ' · ratings shown' : ''}{run.view && !run.view.colors ? ' · colours hidden' : ''} · score ×{challengeMultiplier(run.level, run.view)}</p>}
@@ -177,7 +178,13 @@ function Hub({ records, onStart }: { records: PerfectRecords; onStart: (mode: Pe
 const ratingsShown = (run: Pick<PerfectRun, 'stage' | 'view'>) => run.stage === 'done' || !!run.view?.numbers;
 const HIDDEN = '?';
 
-function CardTile({ c, onPick, prime, hide }: { c: HuntCard; onPick?: () => void; prime?: boolean; hide?: boolean }) {
+function CardTile({ c, onPick, prime, hide, bare }: { c: HuntCard; onPick?: () => void; prime?: boolean; hide?: boolean; bare?: boolean }) {
+  // Category Draft: the name, the face and the position. No season, numbers, rating or rarity to go on.
+  if (bare) {
+    const inner = <><PlayerAvatar playerId={c.name} primaryColor={POS_COLOR[c.pos] ?? '#f47b20'} secondaryColor="#f4f0e6" size={44} mode="portrait" />
+      <span className="p820-card-text"><b>{c.name}</b><small>{c.pos}</small></span></>;
+    return onPick ? <button className="p820-card p820-card-bare" onClick={onPick}>{inner}</button> : <div className="p820-card p820-card-bare">{inner}</div>;
+  }
   const body = <>
     <PlayerAvatar playerId={c.name} primaryColor={POS_COLOR[c.pos] ?? '#f47b20'} secondaryColor="#f4f0e6" size={44} mode="portrait" />
     <span className="p820-card-text"><b>{c.name}</b><small>{seasonLabel(c.end)} · {c.team} · {c.pos}</small><i>{c.ppg} pts · {c.rpg} reb · {c.apg} ast</i></span>
@@ -197,7 +204,7 @@ function SquadPanel({ h, run }: { h: NbaHistory; run: PerfectRun }) {
     <h3>Your team <small>{run.squad.length}/{SQUAD}</small></h3>
     <ol>{Array.from({ length: SQUAD }, (_, i) => { const c = ids[i] ? pool.byId.get(ids[i]) : undefined; return <li key={i} className={c ? `rarity-${c.rarity}` : 'empty'}>
       <span className="p820-slot">{lineup ? i < 5 ? 'START' : 'BENCH' : run.mode === 'quick' && run.from !== 'hunt' ? QUICK_SLOTS[i] : run.from === 'hunt' && i < 6 ? 'HUNT' : i < 5 ? 'START' : 'BENCH'}</span>
-      {c ? <><b>{c.name}</b><small>{seasonLabel(c.end)} {c.team} · {c.pos}{!lineup && run.cats?.[i] ? ` · ${categoryById(h, run.cats[i])?.name ?? ''}` : ''}</small><span className="p820-ovr-mini">{ratingsShown(run) ? c.ovr : HIDDEN}</span></> : <small>—</small>}</li>; })}</ol>
+      {c ? <><b>{c.name}</b><small>{isCategoryMode(run.mode) && run.stage !== 'done' ? c.pos : `${seasonLabel(c.end)} ${c.team} · ${c.pos}`}{!lineup && run.cats?.[i] ? ` · ${categoryById(h, run.cats[i])?.name ?? ''}` : ''}</small><span className="p820-ovr-mini">{ratingsShown(run) ? c.ovr : HIDDEN}</span></> : <small>—</small>}</li>; })}</ol>
     {ratingsShown(run) && run.coach && COACH_BY_ID.get(run.coach) && <p className="p820-rating">Coach <b>{COACH_BY_ID.get(run.coach)!.name}</b> <small>({COACH_BY_ID.get(run.coach)!.bonus >= 0 ? '+' : ''}{COACH_BY_ID.get(run.coach)!.bonus})</small></p>}
     {run.squad.length >= 5 && <p className="p820-rating">Team rating <b>{ratingsShown(run) ? perfectRating(h, run) : '??'}</b> <small>{ratingsShown(run) ? '(100 = a 68-win team)' : '(revealed when the season is over)'}</small></p>}
     {run.stage === 'draft' && !isCategoryMode(run.mode) && <p className={`p820-stars ${starCapReached(h, run) ? 'full' : ''}`}><PixelIcon name="star" size={12} /> Stars {starCount(h, run)}/{MAX_STARS}{starCapReached(h, run) ? ': no more Stars on the reels' : ''}</p>}
@@ -316,7 +323,9 @@ function CategoryDraft({ h, run, setRun }: { h: NbaHistory; run: PerfectRun; set
   const starters = run.squad.length < STARTERS;
   const left = picksFromCategory(run);
   const needle = q.trim().toLowerCase();
-  const pool = categoryPool(h, run).filter(c => !needle || c.name.toLowerCase().includes(needle));
+  // A to Z by last name, so the order gives nothing away.
+  const surname = (n: string) => n.split(' ').slice(1).join(' ') || n;
+  const pool = categoryPool(h, run).filter(c => !needle || c.name.toLowerCase().includes(needle)).sort((a, b) => surname(a.name).localeCompare(surname(b.name)) || a.name.localeCompare(b.name));
   const startPos = run.squad.slice(0, STARTERS).map(id => cardPool(h).byId.get(id)!.pos);
   const hasGuard = startPos.some(p => ['PG', 'SG', 'G'].includes(p)), hasBig = startPos.some(p => ['PF', 'C'].includes(p));
   const label = run.mode === 'slots' ? `SPOT ${run.squad.length + 1} OF ${SQUAD} · ${starters ? 'STARTER' : 'BENCH'} · ONE PLAYER`
@@ -329,6 +338,7 @@ function CategoryDraft({ h, run, setRun }: { h: NbaHistory; run: PerfectRun; set
           <span className="p820-cat-group">{cat.group.toUpperCase()}</span>
           <span className="p820-cat-name">{cat.name}</span>
           <span className="p820-cat-blurb">{cat.blurb} · {cat.size} players</span>
+          <span className="p820-cat-when">{cat.prime ? 'Every player at his prime' : 'Each player at his best season that fits'}</span>
           <TierBadge c={cat} />
         </> : <span className="p820-cat-name flicker">{flash || '? ? ?'}</span>}
       </div>
@@ -337,9 +347,9 @@ function CategoryDraft({ h, run, setRun }: { h: NbaHistory; run: PerfectRun; set
         <button onClick={() => setRun(luckySpin(h, run))} disabled={!revealed || luckyLeft(run) < 1} title="A new category from the S or A tier"><PixelIcon name="star" size={14} /> Lucky roll ({luckyLeft(run)})</button>
       </div>
       {revealed && <>
-        <p className="hint-text">{run.mode === 'slots' ? 'Take one player from this category.' : `Take any ${left} more from this category${starters ? ' for your starting five' : ' for your bench'}.`} Each player comes in at his best season that fits.{starters && run.squad.length >= 3 && (!hasGuard || !hasBig) ? ` Your starters have no ${!hasGuard ? 'guard' : 'big man'} yet.` : ''}</p>
+        <p className="hint-text">{run.mode === 'slots' ? 'Take one player from this category.' : `Take any ${left} more from this category${starters ? ' for your starting five' : ' for your bench'}.`} No numbers here: pick on what you know.{starters && run.squad.length >= 3 && (!hasGuard || !hasBig) ? ` Your starters have no ${!hasGuard ? 'guard' : 'big man'} yet.` : ''}</p>
         <input className="year-input p820-search" value={q} onChange={e => { setQ(e.target.value); setShown(PAGE); }} placeholder={`Search ${cat.size} players`} aria-label="Search this category" />
-        <div className="p820-pool">{pool.slice(0, shown).map(c => <CardTile key={c.id} c={c} hide={!ratingsShown(run)} onPick={() => setRun(pickPlayer(h, run, c.id))} />)}</div>
+        <div className="p820-pool">{pool.slice(0, shown).map(c => <CardTile key={c.id} c={c} bare onPick={() => setRun(pickPlayer(h, run, c.id))} />)}</div>
         {pool.length > shown && <button className="link-button" onClick={() => setShown(n => n + PAGE * 2)}>Show more ({pool.length - shown} left)</button>}
         {!pool.length && <p className="empty-state">Nobody by that name in this category.</p>}
       </>}

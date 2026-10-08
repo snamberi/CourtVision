@@ -3,8 +3,9 @@ import { cardPool, type HuntCard } from '../hunt/cards';
 
 /*
  * Category Draft: the categories a run rolls ("MVPs", "90s players", "Duke", "No. 1 picks", "7-footers", "Lakers"...)
- * and the players in each. A player comes in at his best season that fits: an MVP at his MVP season, a champion at a
- * title season, a Laker at his best year in purple and gold. Everything is built from the real history data.
+ * and the players in each. A player comes in at his prime (the best season of his career) unless the category is about
+ * a season: an MVP at his MVP season, a champion at a title season, a Laker at his best year in purple and gold, a 90s
+ * player at his best year of the 90s. Everything is built from the real history data.
  *
  * Categories are tiered S to D by how strong their best ten are, and a weaker category pays a bigger score: going
  * 82-0 with second-round picks beats doing it with MVPs.
@@ -12,7 +13,7 @@ import { cardPool, type HuntCard } from '../hunt/cards';
 
 export type CategoryGroup = 'Awards' | 'Titles' | 'Eras' | 'Teams' | 'Draft' | 'College' | 'Body' | 'Stats' | 'Careers' | 'Names';
 export type Tier = 'S' | 'A' | 'B' | 'C' | 'D';
-export interface Category { id: string; name: string; blurb: string; group: CategoryGroup }
+export interface Category { id: string; name: string; blurb: string; group: CategoryGroup; /** Players come in at their prime (the category isn't about a season). */ prime?: boolean }
 export interface CategoryInfo extends Category { tier: Tier; size: number; pool: HuntCard[] }
 
 /** Players a category needs to be rolled: five picks, and still a choice on the last one. */
@@ -98,7 +99,8 @@ function context(h: NbaHistory): Ctx {
 // ---------------------------------------------------------------- the categories
 
 type Test = (c: HuntCard, x: Ctx) => boolean;
-interface Def extends Category { test: Test }
+/** `prime`: the category is about the player, not a season, so he comes in at his prime (tested on that card). */
+interface Def extends Category { test: Test; prime?: boolean }
 
 const won = (award: string): Test => (c, x) => x.awards.get(award)?.has(key(c.playerId, c.end)) ?? false;
 const inSet = (pick: (x: Ctx) => Set<string>): Test => (c, x) => pick(x).has(key(c.playerId, c.end));
@@ -123,20 +125,20 @@ const AWARDS: Def[] = [
   { id: 'allrookie', name: 'All-Rookie Team', blurb: 'At their rookie season', group: 'Awards', test: inSet(x => x.allRookie) },
   { id: 'allstar', name: 'All-Stars', blurb: 'At an All-Star season', group: 'Awards', test: inSet(x => x.allStar) },
   { id: 'asgmvp', name: 'All-Star Game MVPs', blurb: 'At the season they won it', group: 'Awards', test: inSet(x => x.asgMvp) },
-  { id: 'hof', name: 'Hall of Famers', blurb: 'Every Hall of Famer at his best', group: 'Awards', test: (c, x) => !!player(c, x)?.hallOfFame },
+  { id: 'hof', prime: true, name: 'Hall of Famers', blurb: 'Every Hall of Famer at his best', group: 'Awards', test: (c, x) => !!player(c, x)?.hallOfFame },
   { id: 'scoring', name: 'Scoring champions', blurb: 'At the season they led the league in points', group: 'Awards', test: inSet(x => x.leaders.pts) },
   { id: 'rebchamp', name: 'Rebounding champions', blurb: 'At the season they led the league in boards', group: 'Awards', test: inSet(x => x.leaders.trb) },
   { id: 'astchamp', name: 'Assist champions', blurb: 'At the season they led the league in assists', group: 'Awards', test: inSet(x => x.leaders.ast) },
   { id: 'blkchamp', name: 'Block champions', blurb: 'At the season they led the league in blocks', group: 'Awards', test: (c, x) => c.end >= 1974 && x.leaders.blk.has(key(c.playerId, c.end)) },
   { id: 'stlchamp', name: 'Steals champions', blurb: 'At the season they led the league in steals', group: 'Awards', test: (c, x) => c.end >= 1974 && x.leaders.stl.has(key(c.playerId, c.end)) },
-  { id: 'nevers', name: 'Never an All-Star', blurb: '8+ seasons, never picked for one All-Star Game', group: 'Awards', test: (c, x) => !x.allStarPlayers.has(c.playerId) && (x.seasonsPlayed.get(c.playerId) ?? 0) >= 8 },
+  { id: 'nevers', prime: true, name: 'Never an All-Star', blurb: '8+ seasons, never picked for one All-Star Game', group: 'Awards', test: (c, x) => !x.allStarPlayers.has(c.playerId) && (x.seasonsPlayed.get(c.playerId) ?? 0) >= 8 },
 ];
 
 const TITLES: Def[] = [
   { id: 'champs', name: 'Champions', blurb: 'At a season they won the title', group: 'Titles', test: inSet(x => x.champs) },
-  { id: 'rings3', name: 'Three rings or more', blurb: 'Dynasty guys, at a title season', group: 'Titles', test: (c, x) => (x.ringCount.get(c.playerId) ?? 0) >= 3 && x.champs.has(key(c.playerId, c.end)) },
-  { id: 'onering', name: 'Exactly one ring', blurb: 'At their one title season', group: 'Titles', test: (c, x) => x.ringCount.get(c.playerId) === 1 && x.champs.has(key(c.playerId, c.end)) },
-  { id: 'nering', name: 'Never won a ring', blurb: 'Ringless, 10+ seasons. Win it for them.', group: 'Titles', test: (c, x) => !x.ringCount.has(c.playerId) && (x.seasonsPlayed.get(c.playerId) ?? 0) >= 10 },
+  { id: 'rings3', prime: true, name: 'Three rings or more', blurb: 'Dynasty guys, at their prime', group: 'Titles', test: (c, x) => (x.ringCount.get(c.playerId) ?? 0) >= 3 },
+  { id: 'onering', prime: true, name: 'Exactly one ring', blurb: 'One title in their career, at their prime', group: 'Titles', test: (c, x) => x.ringCount.get(c.playerId) === 1 },
+  { id: 'nering', prime: true, name: 'Never won a ring', blurb: 'Ringless, 10+ seasons. Win it for them.', group: 'Titles', test: (c, x) => !x.ringCount.has(c.playerId) && (x.seasonsPlayed.get(c.playerId) ?? 0) >= 10 },
   { id: 'finalslosers', name: 'Lost in the Finals', blurb: 'At a season they lost the Finals', group: 'Titles', test: (c, x) => x.runnerUp.has(`${c.team}|${c.end}`) },
   { id: 'win60', name: '60-win teams', blurb: 'From a team that won 60 or more', group: 'Titles', test: (c, x) => (teamRecord(c, x)?.w ?? 0) >= 60 },
   { id: 'losing', name: 'Stuck on bad teams', blurb: 'At a season their team won under 30', group: 'Titles', test: (c, x) => { const r = teamRecord(c, x); return !!r && r.w / Math.max(1, r.w + r.l) < 0.366; } },
@@ -153,36 +155,36 @@ const ERAS: Def[] = [
 ];
 
 const DRAFT: Def[] = [
-  { id: 'no1', name: 'No. 1 picks', blurb: 'Every first pick at his best', group: 'Draft', test: (c, x) => player(c, x)?.draft?.pick === 1 },
-  { id: 'top3', name: 'Top-3 picks', blurb: 'Drafted first, second or third', group: 'Draft', test: (c, x) => { const d = player(c, x)?.draft; return !!d?.pick && d.pick <= 3; } },
-  { id: 'top10', name: 'Top-10 picks', blurb: 'Drafted in the top ten', group: 'Draft', test: (c, x) => { const d = player(c, x)?.draft; return !!d?.pick && d.pick <= 10; } },
-  { id: 'lottery', name: 'Lottery picks (5-14)', blurb: 'The middle of the lottery', group: 'Draft', test: (c, x) => { const d = player(c, x)?.draft; return !!d?.pick && d.pick >= 5 && d.pick <= 14; } },
-  { id: 'late1', name: 'Late first-rounders', blurb: 'Picks 15 to 30: the steals', group: 'Draft', test: (c, x) => { const d = player(c, x)?.draft; return d?.round === 1 && !!d.pick && d.pick >= 15; } },
-  { id: 'round2', name: 'Second-round picks', blurb: 'Everyone passed on them once', group: 'Draft', test: (c, x) => player(c, x)?.draft?.round === 2 },
-  { id: 'late', name: 'Drafted in round 3 or later', blurb: 'From the old long drafts', group: 'Draft', test: (c, x) => (player(c, x)?.draft?.round ?? 0) >= 3 },
-  { id: 'undrafted', name: 'Undrafted', blurb: 'Nobody picked them. Since 1970.', group: 'Draft', test: (c, x) => { const p = player(c, x); return !!p && !p.draft && (p.firstSeason ?? 0) >= 1970; } },
-  { id: 'd1984', name: 'The 1984 draft', blurb: 'Hakeem, Jordan, Barkley, Stockton...', group: 'Draft', test: (c, x) => player(c, x)?.draft?.year === 1984 },
-  { id: 'd1996', name: 'The 1996 draft', blurb: 'Kobe, Iverson, Nash, Allen...', group: 'Draft', test: (c, x) => player(c, x)?.draft?.year === 1996 },
-  { id: 'd2003', name: 'The 2003 draft', blurb: 'LeBron, Wade, Melo, Bosh...', group: 'Draft', test: (c, x) => player(c, x)?.draft?.year === 2003 },
-  { id: 'd2009', name: 'The 2009 draft', blurb: 'Curry, Harden, Griffin, DeRozan...', group: 'Draft', test: (c, x) => player(c, x)?.draft?.year === 2009 },
-  { id: 'd2011', name: 'The 2011 draft', blurb: 'Kawhi, Kyrie, Klay, Butler...', group: 'Draft', test: (c, x) => player(c, x)?.draft?.year === 2011 },
-  { id: 'd1998', name: 'The 1998 draft', blurb: 'Dirk, Pierce, Carter, Kirilenko...', group: 'Draft', test: (c, x) => player(c, x)?.draft?.year === 1998 },
-  { id: 'd1987', name: 'The 1987 draft', blurb: 'Robinson, Pippen, Miller, Kevin Johnson...', group: 'Draft', test: (c, x) => player(c, x)?.draft?.year === 1987 },
+  { id: 'no1', prime: true, name: 'No. 1 picks', blurb: 'Every first pick at his best', group: 'Draft', test: (c, x) => player(c, x)?.draft?.pick === 1 },
+  { id: 'top3', prime: true, name: 'Top-3 picks', blurb: 'Drafted first, second or third', group: 'Draft', test: (c, x) => { const d = player(c, x)?.draft; return !!d?.pick && d.pick <= 3; } },
+  { id: 'top10', prime: true, name: 'Top-10 picks', blurb: 'Drafted in the top ten', group: 'Draft', test: (c, x) => { const d = player(c, x)?.draft; return !!d?.pick && d.pick <= 10; } },
+  { id: 'lottery', prime: true, name: 'Lottery picks (5-14)', blurb: 'The middle of the lottery', group: 'Draft', test: (c, x) => { const d = player(c, x)?.draft; return !!d?.pick && d.pick >= 5 && d.pick <= 14; } },
+  { id: 'late1', prime: true, name: 'Late first-rounders', blurb: 'Picks 15 to 30: the steals', group: 'Draft', test: (c, x) => { const d = player(c, x)?.draft; return d?.round === 1 && !!d.pick && d.pick >= 15; } },
+  { id: 'round2', prime: true, name: 'Second-round picks', blurb: 'Everyone passed on them once', group: 'Draft', test: (c, x) => player(c, x)?.draft?.round === 2 },
+  { id: 'late', prime: true, name: 'Drafted in round 3 or later', blurb: 'From the old long drafts', group: 'Draft', test: (c, x) => (player(c, x)?.draft?.round ?? 0) >= 3 },
+  { id: 'undrafted', prime: true, name: 'Undrafted', blurb: 'Nobody picked them. Since 1970.', group: 'Draft', test: (c, x) => { const p = player(c, x); return !!p && !p.draft && (p.firstSeason ?? 0) >= 1970; } },
+  { id: 'd1984', prime: true, name: 'The 1984 draft', blurb: 'Hakeem, Jordan, Barkley, Stockton...', group: 'Draft', test: (c, x) => player(c, x)?.draft?.year === 1984 },
+  { id: 'd1996', prime: true, name: 'The 1996 draft', blurb: 'Kobe, Iverson, Nash, Allen...', group: 'Draft', test: (c, x) => player(c, x)?.draft?.year === 1996 },
+  { id: 'd2003', prime: true, name: 'The 2003 draft', blurb: 'LeBron, Wade, Melo, Bosh...', group: 'Draft', test: (c, x) => player(c, x)?.draft?.year === 2003 },
+  { id: 'd2009', prime: true, name: 'The 2009 draft', blurb: 'Curry, Harden, Griffin, DeRozan...', group: 'Draft', test: (c, x) => player(c, x)?.draft?.year === 2009 },
+  { id: 'd2011', prime: true, name: 'The 2011 draft', blurb: 'Kawhi, Kyrie, Klay, Butler...', group: 'Draft', test: (c, x) => player(c, x)?.draft?.year === 2011 },
+  { id: 'd1998', prime: true, name: 'The 1998 draft', blurb: 'Dirk, Pierce, Carter, Kirilenko...', group: 'Draft', test: (c, x) => player(c, x)?.draft?.year === 1998 },
+  { id: 'd1987', prime: true, name: 'The 1987 draft', blurb: 'Robinson, Pippen, Miller, Kevin Johnson...', group: 'Draft', test: (c, x) => player(c, x)?.draft?.year === 1987 },
 ];
 
 const COLLEGES = ['Kentucky', 'Duke', 'UCLA', 'UNC', 'Kansas', 'Indiana', 'Michigan', 'Arizona', 'Louisville', 'Michigan State', 'Villanova', 'Syracuse', 'Georgetown', 'UConn', 'Ohio State', 'LSU', 'Texas', 'Florida', 'Wake Forest', 'Georgia Tech', 'Notre Dame', 'Maryland'];
 const COLLEGE: Def[] = [
-  ...COLLEGES.map(n => ({ id: `col-${n.toLowerCase().replace(/\W+/g, '')}`, name: `${n} players`, blurb: `Everyone who went to ${n}`, group: 'College' as const, test: ((c, x) => player(c, x)?.college === n) as Test })),
-  { id: 'nocollege', name: 'Skipped college', blurb: 'Straight from high school or overseas (since 1970)', group: 'College', test: (c, x) => { const p = player(c, x); return !!p && !p.college && (p.firstSeason ?? 0) >= 1970; } },
+  ...COLLEGES.map(n => ({ id: `col-${n.toLowerCase().replace(/\W+/g, '')}`, name: `${n} players`, blurb: `Everyone who went to ${n}`, group: 'College' as const, prime: true, test: ((c, x) => player(c, x)?.college === n) as Test })),
+  { id: 'nocollege', prime: true, name: 'Skipped college', blurb: 'Straight from high school or overseas (since 1970)', group: 'College', test: (c, x) => { const p = player(c, x); return !!p && !p.college && (p.firstSeason ?? 0) >= 1970; } },
 ];
 
 const BODY: Def[] = [
-  { id: 'seven', name: '7-footers', blurb: 'Seven feet and up', group: 'Body', test: (c, x) => (player(c, x)?.heightIn ?? 0) >= 84 },
-  { id: 'small', name: '6\'2" and under', blurb: 'Little guards, big games', group: 'Body', test: (c, x) => { const hgt = player(c, x)?.heightIn; return !!hgt && hgt <= 74; } },
-  { id: 'pgs', name: 'Point guards', blurb: 'Only point guards. Who rebounds?', group: 'Body', test: c => c.pos === 'PG' },
-  { id: 'centers', name: 'Centers', blurb: 'Only centers. Who brings it up?', group: 'Body', test: c => c.pos === 'C' },
-  { id: 'wings', name: 'Wings', blurb: 'Shooting guards and small forwards', group: 'Body', test: c => c.pos === 'SG' || c.pos === 'SF' },
-  { id: 'heavy', name: '260 pounds and up', blurb: 'The heavyweights', group: 'Body', test: (c, x) => (player(c, x)?.weightLb ?? 0) >= 260 },
+  { id: 'seven', prime: true, name: '7-footers', blurb: 'Seven feet and up', group: 'Body', test: (c, x) => (player(c, x)?.heightIn ?? 0) >= 84 },
+  { id: 'small', prime: true, name: '6\'2" and under', blurb: 'Little guards, big games', group: 'Body', test: (c, x) => { const hgt = player(c, x)?.heightIn; return !!hgt && hgt <= 74; } },
+  { id: 'pgs', prime: true, name: 'Point guards', blurb: 'Point guards at their prime. Who rebounds?', group: 'Body', test: c => c.pos === 'PG' },
+  { id: 'centers', prime: true, name: 'Centers', blurb: 'Centers at their prime. Who brings it up?', group: 'Body', test: c => c.pos === 'C' },
+  { id: 'wings', prime: true, name: 'Wings', blurb: 'Shooting guards and small forwards', group: 'Body', test: c => c.pos === 'SG' || c.pos === 'SF' },
+  { id: 'heavy', prime: true, name: '260 pounds and up', blurb: 'The heavyweights', group: 'Body', test: (c, x) => (player(c, x)?.weightLb ?? 0) >= 260 },
   { id: 'teens', name: 'Teenagers', blurb: 'At a season they played at 19 or younger', group: 'Body', test: (c, x) => { const a = age(c, x); return a != null && a <= 19; } },
   { id: 'over35', name: '35 and older', blurb: 'At a season they played at 35+', group: 'Body', test: (c, x) => (age(c, x) ?? 0) >= 35 },
   { id: 'young', name: '22 and younger', blurb: 'At a season they played at 22 or younger', group: 'Body', test: (c, x) => { const a = age(c, x); return a != null && a <= 22; } },
@@ -209,17 +211,17 @@ const STATS: Def[] = [
 ];
 
 const CAREERS: Def[] = [
-  { id: 'onefranchise', name: 'One-franchise careers', blurb: '10+ seasons, one team, never left', group: 'Careers', test: (c, x) => x.oneFranchise.has(c.playerId) },
-  { id: 'journeymen', name: 'Journeymen', blurb: 'Played for 7 franchises or more', group: 'Careers', test: (c, x) => (x.franchiseCount.get(c.playerId) ?? 0) >= 7 },
-  { id: 'long', name: '18-season careers', blurb: 'Played 18 seasons or more', group: 'Careers', test: (c, x) => (x.seasonsPlayed.get(c.playerId) ?? 0) >= 18 },
-  { id: 'short', name: 'Short careers', blurb: '5 seasons or fewer', group: 'Careers', test: (c, x) => (x.seasonsPlayed.get(c.playerId) ?? 99) <= 5 },
+  { id: 'onefranchise', prime: true, name: 'One-franchise careers', blurb: '10+ seasons, one team, never left', group: 'Careers', test: (c, x) => x.oneFranchise.has(c.playerId) },
+  { id: 'journeymen', prime: true, name: 'Journeymen', blurb: 'Played for 7 franchises or more', group: 'Careers', test: (c, x) => (x.franchiseCount.get(c.playerId) ?? 0) >= 7 },
+  { id: 'long', prime: true, name: '18-season careers', blurb: 'Played 18 seasons or more', group: 'Careers', test: (c, x) => (x.seasonsPlayed.get(c.playerId) ?? 0) >= 18 },
+  { id: 'short', prime: true, name: 'Short careers', blurb: '5 seasons or fewer', group: 'Careers', test: (c, x) => (x.seasonsPlayed.get(c.playerId) ?? 99) <= 5 },
 ];
 
 const NAME_LAST = ['Johnson', 'Williams', 'Jones', 'Smith', 'Brown', 'Davis', 'Thomas', 'Robinson', 'Anderson', 'Miller'];
 const NAME_FIRST = ['Michael', 'Kevin', 'Chris', 'Anthony', 'James', 'John', 'Larry', 'Tony', 'Mike', 'David'];
 const NAMES: Def[] = [
-  ...NAME_LAST.map(n => ({ id: `last-${n.toLowerCase()}`, name: `Named ${n}`, blurb: `Every ${n} in NBA history`, group: 'Names' as const, test: ((c: HuntCard) => c.name.split(' ').at(-1) === n) as Test })),
-  ...NAME_FIRST.map(n => ({ id: `first-${n.toLowerCase()}`, name: `First name ${n}`, blurb: `Every ${n} in NBA history`, group: 'Names' as const, test: ((c: HuntCard) => c.name.split(' ')[0] === n) as Test })),
+  ...NAME_LAST.map(n => ({ id: `last-${n.toLowerCase()}`, name: `Named ${n}`, blurb: `Every ${n} in NBA history`, group: 'Names' as const, prime: true, test: ((c: HuntCard) => c.name.split(' ').at(-1) === n) as Test })),
+  ...NAME_FIRST.map(n => ({ id: `first-${n.toLowerCase()}`, name: `First name ${n}`, blurb: `Every ${n} in NBA history`, group: 'Names' as const, prime: true, test: ((c: HuntCard) => c.name.split(' ')[0] === n) as Test })),
 ];
 
 const NICKNAME: Record<string, string> = {
@@ -246,16 +248,20 @@ export function categories(h: NbaHistory): CategoryInfo[] {
   const cards = cardPool(h).cards;
   const defs = [...AWARDS, ...TITLES, ...ERAS, ...teamDefs(h), ...DRAFT, ...COLLEGE, ...BODY, ...STATS, ...CAREERS, ...NAMES];
   const built: Omit<CategoryInfo, 'tier'>[] = [];
+  // Each player's prime: the best season of his career.
+  const prime = new Map<string, HuntCard>();
+  for (const c of cards) { const p = prime.get(c.playerId); if (!p || c.ovr > p.ovr) prime.set(c.playerId, c); }
+  const primes = [...prime.values()];
   for (const d of defs) {
     const best = new Map<string, HuntCard>();
-    for (const c of cards) {
+    for (const c of d.prime ? primes : cards) {
       if (!d.test(c, x)) continue;
       const cur = best.get(c.playerId);
       if (!cur || c.ovr > cur.ovr) best.set(c.playerId, c);
     }
     if (best.size < MIN_CATEGORY) continue;
     const pool = [...best.values()].sort((a, b) => b.ppg - a.ppg || b.ovr - a.ovr);
-    built.push({ id: d.id, name: d.name, blurb: d.blurb, group: d.group, size: pool.length, pool });
+    built.push({ id: d.id, name: d.name, blurb: d.blurb, group: d.group, ...(d.prime ? { prime: true } : {}), size: pool.length, pool });
   }
   // Tier by the average of the best ten: the top 15% are S, then A (25%), B (30%), C (20%) and D.
   const strength = (c: Omit<CategoryInfo, 'tier'>) => { const top = [...c.pool].sort((a, b) => b.ovr - a.ovr).slice(0, 10); return top.reduce((n, p) => n + p.ovr, 0) / top.length; };

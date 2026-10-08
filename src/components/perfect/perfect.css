@@ -201,3 +201,6 @@ button.p820-card:hover, button.p820-card:focus-visible { border-color: var(--c-b
   .p820-tier { position: static; align-self: flex-start; grid-auto-flow: column; align-items: center; gap: 8px; }
 }
 @media (prefers-reduced-motion: reduce) { .p820-catroll.rolling, .p820-catroll.revealed { animation: none; } }
+.p820-cat-when { font-size: .78rem; font-weight: 700; color: var(--tier); padding-right: 92px; }
+.p820-card-bare { grid-template-columns: 44px minmax(0, 1fr); }
+@media (max-width: 540px) { .p820-cat-when { padding-right: 0; } }

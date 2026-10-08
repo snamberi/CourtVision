@@ -25,6 +25,22 @@ describe('Category Draft categories', () => {
     expect(lakers.pool.some(p => p.name === 'Magic Johnson')).toBe(true);
     expect(lakers.pool.every(p => p.franchise === lakers.pool[0].franchise)).toBe(true);
   });
+
+  it('players come in at their prime unless the category is about a season', async () => {
+    const h = await loadHistoryForTests();
+    const primeOf = new Map<string, number>();
+    for (const c of cardPool(h).cards) primeOf.set(c.playerId, Math.max(primeOf.get(c.playerId) ?? 0, c.ovr));
+    // Not about a season: everyone at the best season of his career.
+    for (const id of ['col-duke', 'no1', 'hof', 'seven', 'last-johnson', 'rings3', 'onefranchise']) {
+      const c = categoryById(h, id)!;
+      expect(c.prime).toBe(true);
+      for (const p of c.pool) expect(p.ovr).toBe(primeOf.get(p.playerId));
+    }
+    // About a season: the season that fits (Kareem's 60s card is from 1969-70, not his 1971-72 prime).
+    expect(categoryById(h, 'd1960')!.prime).toBeUndefined();
+    expect(categoryById(h, 'd1960')!.pool.find(p => p.name === 'Kareem Abdul-Jabbar')!.end).toBe(1970);
+    expect(categoryById(h, 'mvp')!.prime).toBeUndefined();
+  });
 });
 
 describe('Category Roll and Slot Spin', () => {
