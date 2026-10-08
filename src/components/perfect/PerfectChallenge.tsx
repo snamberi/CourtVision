@@ -10,7 +10,7 @@ import {
   isCategoryMode, categoryPool, rerollCategory, categoryMultiplier, picksFromCategory, STARTERS, optionMultiplier, OPTION_MULTIPLIER, SHOT_CLOCK, autoPick, categoryLocked, bestFive, type CategoryOptions,
   type PerfectRun, type PerfectMode, type PerfectGame,
 } from '../../perfect/run';
-import { categories, categoryById, weeklyCategory, scoutTag, TIER_LABEL, TIER_MULTIPLIER, type CategoryInfo } from '../../perfect/categories';
+import { categories, categoryById, weeklyCategory, scoutTag, comboSize, TIER_LABEL, TIER_MULTIPLIER, MIN_CATEGORY, type CategoryInfo } from '../../perfect/categories';
 import { CourtAudio } from '../../audio/courtAudio';
 import { loadPerfectRun, savePerfectRun, loadPerfectRecords, recordPerfect, dailyPerfect, perfectWeeks, type PerfectRecords } from '../../perfect/storage';
 import { weekKey } from '../../retention/week';
@@ -36,6 +36,8 @@ import '../hunt/hunt.css';
 import { noteFeaturedXp } from '../../retention/modeOfWeek';
 import { perfectRunXp } from '../../profile/profile';
 import './perfect.css';
+import { DraftBattle, BattleSetup } from './DraftBattle';
+import { loadBattle, saveBattle, newBattle, recordBattle, loadBattleRecords, type Battle } from '../../perfect/battle';
 
 const POS_COLOR: Record<string, string> = { PG: '#4da3ff', SG: '#55c878', SF: '#f47b20', PF: '#b983ff', C: '#e85d5d', G: '#4da3ff', F: '#f47b20' };
 const MODE_INFO: Record<PerfectMode, { name: string; blurb: string; icon: string }> = {
@@ -74,13 +76,20 @@ export function PerfectChallenge({ onExit }: { onExit: () => void }) {
       trackOnce(`p820-${r.seed}-${r.mode}`, 'mode_finish', { mode: 'perfect', variant: r.mode, daily: !!r.daily, wins: s.w, champion: s.champion });
     }
   };
+  // Draft Battle: its own save, counted once when the series ends.
+  const [battle, setBattleState] = useState<Battle | null>(loadBattle);
+  const [battleSetup, setBattleSetup] = useState(false);
+  const setBattle = (b: Battle | null) => {
+    if (b && b.stage === 'done' && battle?.stage !== 'done') { recordBattle(b); track('mode_finish', { mode: 'perfect', variant: 'battle', rival: b.rival }); }
+    setBattleState(b); saveBattle(b);
+  };
   // A duel link: start the challenger's exact run (asking first if a run is going).
   useEffect(() => {
     if (!h) return;
     const d = takePendingDuel('perfect');
     if (!d || !d.pm) return;
     if (run && run.stage !== 'done' && !window.confirm(`${d.n} challenged you to an 82-0 duel. Start it? Your run in progress will be replaced.`)) return;
-    setRun({ ...newPerfectRun(h, d.pm, d.s, undefined, { level: isLevel(d.diff) ? d.diff : 'pro', view: d.vw ?? STANDARD_VIEW, catOpts: d.co }), duel: encodeDuel(d) });
+    setRun({ ...newPerfectRun(h, d.pm, d.s, undefined, { level: isLevel(d.diff) ? d.diff : 'pro', view: d.vw ?? STANDARD_VIEW, catOpts: d.co, custom: d.cc }), duel: encodeDuel(d) });
   }, [h]); // eslint-disable-line react-hooks/exhaustive-deps
   // From the menu's Category Draft card: start a Category Roll unless a run is going.
   useEffect(() => {
@@ -107,9 +116,12 @@ export function PerfectChallenge({ onExit }: { onExit: () => void }) {
     {header}
     {run && run.stage !== 'done' && <DuelBanner duel={run.duel} />}
     {run && run.weekly && <p className="p820-challenge-line">Weekly Category Challenge · {run.weekly}</p>}
+    {run && run.custom && <p className="p820-challenge-line">Custom category · {categoryById(h, run.custom)?.name}</p>}
     {run && run.catOpts && run.stage !== 'done' && <p className="p820-challenge-line">{[run.catOpts.tips && 'Scouting tips', run.catOpts.clock && 'Shot clock', run.catOpts.mixed && 'Mixed rolls'].filter(Boolean).join(' · ')} · score ×{optionMultiplier(run)}</p>}
     {run && (run.level || run.view) && <p className="p820-challenge-line">{LEVEL_NAME[run.level ?? 'pro']}{run.view?.numbers ? ' · ratings shown' : ''}{run.view && !run.view.colors ? ' · colours hidden' : ''} · score ×{challengeMultiplier(run.level, run.view)}</p>}
-    {!run ? <Hub h={h} records={records} onStart={start} />
+    {!run && battle ? <DraftBattle h={h} battle={battle} setBattle={setBattle} onDone={() => setBattleSetup(true)} />
+      : !run && battleSetup ? <BattleSetup onCancel={() => setBattleSetup(false)} onStart={(rival, names) => { setBattleSetup(false); track('mode_start', { mode: 'perfect', variant: 'battle', rival }); setBattle(newBattle(h, Math.floor(Math.random() * 1_000_000_000), rival, names)); }} />
+      : !run ? <Hub h={h} records={records} onStart={start} onBattle={() => setBattleSetup(true)} />
       : run.stage === 'draft' ? (run.mode === 'quick' ? <QuickDraft h={h} run={run} setRun={setRun} /> : isCategoryMode(run.mode) ? <CategoryDraft h={h} run={run} setRun={setRun} /> : <FranchiseDraft h={h} run={run} setRun={setRun} />)
       : run.stage === 'coach' ? <CoachPick h={h} run={run} setRun={setRun} />
       : run.stage === 'done' ? <Finished h={h} run={run} records={records} onAgain={() => setRun(null)} />
@@ -125,13 +137,15 @@ const LEVEL_BLURB: Record<Level, string> = {
   legend: 'Every opponent plays 4 points better. For the brave: scores ×1.25.',
 };
 
-type StartOpts = { level?: Level; view?: RunView; catOpts?: CategoryOptions; weekly?: string };
+type StartOpts = { level?: Level; view?: RunView; catOpts?: CategoryOptions; weekly?: string; custom?: string };
 const CAT_OPTS_KEY = 'cv-p820-catopts';
 const readCatOpts = (): CategoryOptions => { try { return JSON.parse(localStorage.getItem(CAT_OPTS_KEY) ?? '{}') as CategoryOptions; } catch { return {}; } };
 /** The Weekly Category Challenge's seed: the same bench rolls for everyone that week. */
 const weekSeed = (week: string) => { let x = 2166136261; for (const ch of `cat-week|${week}`) { x ^= ch.charCodeAt(0); x = Math.imul(x, 16777619); } return (x >>> 0) % 1_000_000_000; };
 
-function Hub({ h, records, onStart }: { h: NbaHistory; records: PerfectRecords; onStart: (mode: PerfectMode, seed: number, daily?: string, opts?: StartOpts) => void }) {
+function Hub({ h, records, onStart, onBattle }: { h: NbaHistory; records: PerfectRecords; onStart: (mode: PerfectMode, seed: number, daily?: string, opts?: StartOpts) => void; onBattle: () => void }) {
+  const battles = loadBattleRecords();
+  const [building, setBuilding] = useState(false);
   const [catOpts, setCatOptsState] = useState<CategoryOptions>(readCatOpts);
   const setCatOpts = (o: CategoryOptions) => { setCatOptsState(o); try { localStorage.setItem(CAT_OPTS_KEY, JSON.stringify(o)); } catch { /* storage blocked */ } };
   const week = weekKey(), weekCat = weeklyCategory(h, week), weekBest = records.weekCat?.[week];
@@ -161,11 +175,22 @@ function Hub({ h, records, onStart }: { h: NbaHistory; records: PerfectRecords; 
       {(['category', 'slots', 'quick', 'franchise'] as PerfectMode[]).map(m => <button key={m} className={`p820-mode ${isCategoryMode(m) ? 'p820-mode-new' : ''}`} onClick={() => onStart(m, Math.floor(Math.random() * 1_000_000_000), undefined, { ...prefs, catOpts })}>
         {isCategoryMode(m) && <span className="p820-new-tag">NEW</span>}
         <span className="hunt-mode-icon"><PixelIcon name={MODE_INFO[m].icon} size={24} /></span><b>{MODE_INFO[m].name}</b><small>{MODE_INFO[m].blurb}</small><em>Start</em></button>)}
+      <button className={`p820-mode p820-mode-new ${building ? 'on' : ''}`} onClick={() => setBuilding(b => !b)} aria-expanded={building}>
+        <span className="p820-new-tag">NEW</span>
+        <span className="hunt-mode-icon"><PixelIcon name="settings" size={24} /></span><b>Custom Category</b>
+        <small>Build your own: up to three categories at once ("Lakers × 90s players × All-Stars"), then draft from it and send the code to a friend.</small>
+        <em>{building ? 'Close the builder' : 'Build one'}</em></button>
+      <button className="p820-mode p820-mode-new" onClick={onBattle}>
+        <span className="p820-new-tag">NEW</span>
+        <span className="hunt-mode-icon"><PixelIcon name="trade" size={24} /></span><b>Draft Battle</b>
+        <small>One category, two GMs, a snake draft. Then your eight against theirs in a best-of-seven. Play an AI rival GM or a friend on this device.</small>
+        <em>{battles.played ? `${battles.won}-${battles.played - battles.won} in battles` : 'Start'}</em></button>
       <button className="p820-mode p820-daily" onClick={() => onStart(daily.mode, daily.seed, today)}>
         <span className="hunt-mode-icon"><PixelIcon name="calendar" size={24} /></span><b>Daily 82-0</b>
         <small>Today: {MODE_INFO[daily.mode].name}. The same spins for everyone; your best try counts on the weekly board.</small>
         <em>{todayBest ? `Best today: ${todayBest.w}-${todayBest.l} · ${todayBest.score.toLocaleString()}` : 'Play today'}</em></button>
     </div>
+    {building && <CustomBuilder h={h} onPlay={custom => onStart('category', Math.floor(Math.random() * 1_000_000_000), undefined, { ...prefs, catOpts, custom })} />}
     <div className="p820-records">
       <span><b>{records.best ? `${records.best.w}-${records.best.l}` : '—'}</b><small>Best record</small></span>
       <span><b>{records.best?.score.toLocaleString() ?? '—'}</b><small>Best score</small></span>
@@ -192,6 +217,49 @@ function Hub({ h, records, onStart }: { h: NbaHistory; records: PerfectRecords; 
         <li>Every game is played under the rules of the opponent's era, and ratings are ranked within each season, so a 1965 star and a 2016 star stand on the same scale.</li>
         <li>Rewards: the <b>Undefeated</b> title and profile frame for 82-0; the gold <b>Perfection</b> title and frame for 98-0. Trophy Road points for your best season, titles and perfect seasons.</li>
       </ul></details>
+  </section>;
+}
+
+// ---------------------------------------------------------------- custom categories
+
+const CUSTOM_PREFIX = 'CV-CAT:';
+const customGroups = (all: CategoryInfo[]) => [...new Set(all.map(c => c.group))].map(g => ({ g, list: all.filter(c => c.group === g) }));
+
+/** Build a category from up to three (each from a different group), see how many players fit, play it or copy its code. */
+function CustomBuilder({ h, onPlay }: { h: NbaHistory; onPlay: (id: string) => void }) {
+  const all = useMemo(() => categories(h), [h]);
+  const groups = useMemo(() => customGroups(all), [all]);
+  const [parts, setParts] = useState<string[]>(['', '', '']);
+  const [code, setCode] = useState('');
+  const [note, setNote] = useState<string | null>(null);
+  const ids = parts.filter(Boolean);
+  const dupGroup = new Set(ids.map(id => all.find(c => c.id === id)?.group)).size !== ids.length;
+  const size = useMemo(() => (ids.length && !dupGroup ? comboSize(h, ids) : 0), [h, ids.join('+'), dupGroup]); // eslint-disable-line react-hooks/exhaustive-deps
+  const cat = ids.length && size >= MIN_CATEGORY ? categoryById(h, ids.join('+')) : undefined;
+  const load = () => {
+    const raw = code.trim().replace(CUSTOM_PREFIX, '').trim();
+    const found = raw && categoryById(h, raw);
+    if (!found) { setNote('That code is not a category this game knows.'); return; }
+    const next = raw.split('+'); setParts([next[0] ?? '', next[1] ?? '', next[2] ?? '']); setNote(`Loaded: ${found.name}.`); setCode('');
+  };
+  return <section className="p820-custom" aria-label="Custom category builder">
+    <h3 className="hunt-subhead">Build a category</h3>
+    <div className="p820-custom-parts">{parts.map((v, i) => <label key={i}><span>{i === 0 ? 'Category' : `and (optional)`}</span>
+      <select value={v} onChange={e => setParts(p => p.map((x, j) => (j === i ? e.target.value : x)))}>
+        <option value="">{i === 0 ? 'Choose…' : 'Nothing'}</option>
+        {groups.map(({ g, list }) => <optgroup key={g} label={g}>{list.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</optgroup>)}
+      </select></label>)}</div>
+    <p className="p820-custom-status" role="status">{!ids.length ? 'Pick at least one category.'
+      : dupGroup ? 'Use each group once (two teams or two decades have almost nobody in common).'
+      : size < MIN_CATEGORY ? `Only ${size} player${size === 1 ? '' : 's'} fit. You need ${MIN_CATEGORY} or more.`
+      : cat ? <><b>{cat.name}</b> · {cat.size} players · tier {cat.tier} ({TIER_LABEL[cat.tier]}, score ×{TIER_MULTIPLIER[cat.tier]})</> : ''}</p>
+    <div className="contest-actions">
+      <button className="primary" disabled={!cat} onClick={() => cat && onPlay(cat.id)}><PixelIcon name="play" size={14} /> Draft your starters from it</button>
+      <button disabled={!cat} onClick={async () => { if (!cat) return; try { await navigator.clipboard.writeText(`${CUSTOM_PREFIX}${cat.id}`); setNote('Code copied. A friend pastes it here to play the same category.'); } catch { setNote(`Your code: ${CUSTOM_PREFIX}${cat.id}`); } }}><PixelIcon name="star" size={14} /> Copy code</button>
+    </div>
+    <div className="p820-custom-load"><input className="year-input" value={code} onChange={e => setCode(e.target.value)} placeholder={`Paste a code (${CUSTOM_PREFIX}…)`} aria-label="Paste a category code" onKeyDown={e => { if (e.key === 'Enter') load(); }} /><button onClick={load}>Load</button></div>
+    {note && <p className="hint-text" role="status">{note}</p>}
+    <p className="hint-text">Your starters come from your category; the bench rolls as usual. Finish the run to send a duel with the same category.</p>
   </section>;
 }
 
@@ -465,7 +533,8 @@ function CategoryBookList({ entries }: { entries: [string, { w: number; l: numbe
 }
 
 /** The end of a Category Draft: how your picks measured up against the best the categories had. */
-function ReportCard({ h, run }: { h: NbaHistory; run: PerfectRun }) {
+/** The report card's numbers: each pick ranked in its category, and the grade against the best five. */
+function reportOf(h: NbaHistory, run: PerfectRun) {
   if (!isCategoryMode(run.mode) || !run.cats?.length) return null;
   const pool = cardPool(h);
   const rows = run.squad.map((id, i) => {
@@ -482,6 +551,13 @@ function ReportCard({ h, run }: { h: NbaHistory; run: PerfectRun }) {
   const grade = ratio >= 0.98 ? 'A+' : ratio >= 0.95 ? 'A' : ratio >= 0.9 ? 'B' : ratio >= 0.85 ? 'C' : ratio >= 0.8 ? 'D' : 'F';
   // By rank, or by share of the category for the big ones (#79 of 2,430 is no reach).
   const verdictOf = (rank: number, of: number) => { const q = rank / Math.max(1, of); return rank <= 3 || q <= 0.01 ? 'STEAL' : rank <= 10 || q <= 0.05 ? 'GREAT PICK' : rank <= 30 || q <= 0.2 ? 'SOLID' : 'REACH'; };
+  return { rows, best, mine, top, grade, verdictOf };
+}
+
+function ReportCard({ h, run }: { h: NbaHistory; run: PerfectRun }) {
+  const rep = reportOf(h, run);
+  if (!rep || !run.cats) return null;
+  const { rows, best, mine, top, grade, verdictOf } = rep;
   return <section className="p820-report">
     <div className="p820-report-head"><span className="p820-grade">{grade}</span><div><span className="pixel-eyebrow">DRAFT REPORT CARD</span>
       <p>{top ? `Your starting five averaged ${mine.toFixed(1)}. The best five ${run.cats[0] ? categoryById(h, run.cats[0])?.name ?? 'the category' : ''} had to offer averaged ${top.toFixed(1)}.` : 'Each pick ranked against everyone in his category.'}</p></div></div>
@@ -620,6 +696,7 @@ function Finished({ h, run, records, onAgain }: { h: NbaHistory; run: PerfectRun
   const { look, team } = useAvatar();
   const teams = useMemo(() => new Map(huntTeams(h).map(t => [t.id, t])), [h]);
   const lastSeries = run.playoffs.at(-1);
+  const report = reportOf(h, run);
   const frame = s.perfectSeason && s.perfectPlayoffs ? 'perfectGold' : s.perfectSeason ? 'undefeated' : null;
   return <section className="p820-done">
     <div className={`p820-final ${s.champion ? 'champ' : ''}`}>
@@ -629,7 +706,7 @@ function Finished({ h, run, records, onAgain }: { h: NbaHistory; run: PerfectRun
       {frame && <div className="p820-reward"><FramedAvatar look={look} team={team} frame={frame} size={96} /><span><b>{frame === 'perfectGold' ? 'Perfection' : 'Undefeated'}</b> title and profile frame unlocked. Equip them in your Player Profile.</span></div>}
       {!s.champion && lastSeries && teams.get(lastSeries.opp) && <p className="hint-text">Knocked out by the {teamLabel(teams.get(lastSeries.opp)!)} (their rating {teamRating(h, teams.get(lastSeries.opp)!)}).</p>}
     </div>
-    {!run.weekly && <DuelPanel setup={{ m: 'perfect', s: run.seed, pm: run.mode, ...(run.level ? { diff: run.level } : {}), ...(run.view ? { vw: run.view } : {}), ...(run.catOpts ? { co: run.catOpts } : {}) }} duel={run.duel}
+    {!run.weekly && <DuelPanel setup={{ m: 'perfect', s: run.seed, pm: run.mode, ...(run.level ? { diff: run.level } : {}), ...(run.view ? { vw: run.view } : {}), ...(run.catOpts ? { co: run.catOpts } : {}), ...(run.custom ? { cc: run.custom } : {}) }} duel={run.duel}
       mine={{ score: s.score, won: s.champion, line: `${s.w}-${s.l} · playoffs ${s.pw}-${s.pl}${s.champion ? ' · champions' : ''}` }} />}
     <PerfectClaim run={run} records={records} score={s.score} />
     <RunMvps run={run} />
@@ -655,10 +732,10 @@ function Finished({ h, run, records, onAgain }: { h: NbaHistory; run: PerfectRun
         kicker: `82-0 Challenge · ${run.mode === 'category' && run.cats?.[0] ? categoryById(h, run.cats[0])?.name ?? MODE_INFO[run.mode].name : MODE_INFO[run.mode].name}${run.daily ? ` · Daily ${run.daily}` : run.from === 'hunt' ? ' · Hunt squad' : ''}`,
         title: `${s.w}-${s.l}`,
         subtitle: `${s.champion ? 'Champions' : `Out in the ${ROUND_NAMES[lastSeries?.round ?? 0].toLowerCase()}`} · playoffs ${s.pw}-${s.pl} · score ${s.score.toLocaleString()}`,
-        badge: s.perfectSeason && s.perfectPlayoffs ? 'PERFECTION · 98-0' : s.perfectSeason ? 'UNDEFEATED · 82-0' : s.bossWins === s.bosses && s.bosses > 0 ? 'EVERY BOSS BEATEN' : undefined,
+        badge: s.perfectSeason && s.perfectPlayoffs ? 'PERFECTION · 98-0' : s.perfectSeason ? 'UNDEFEATED · 82-0' : report ? `DRAFT GRADE ${report.grade}${run.tiers?.[0] ? ` · TIER ${run.tiers[0]} CATEGORY` : ''}` : s.bossWins === s.bosses && s.bosses > 0 ? 'EVERY BOSS BEATEN' : undefined,
         stats: [{ label: 'Record', value: `${s.w}-${s.l}` }, { label: 'Playoffs', value: `${s.pw}-${s.pl}` }, { label: 'Bosses', value: `${s.bossWins}/${s.bosses}` }, { label: 'Score', value: s.score.toLocaleString() }],
         results: run.games.map(g => ({ won: g.won, boss: g.boss })),
-        lines: [...(() => { const m = runMvp(run.lines, 20); return m ? [`Run MVP: ${m.name} ${perGame(m.pts, m.g)} PPG`] : []; })(), ...[...run.squad].map(id => cardPool(h).byId.get(id)!).sort((a, b) => b.ovr - a.ovr).map(c => `${c.name} ${seasonLabel(c.end)} · ${c.ovr}`)],
+        lines: report ? [...(() => { const m = runMvp(run.lines, 20); return m ? [`Run MVP: ${m.name} ${perGame(m.pts, m.g)} PPG`] : []; })(), ...report.rows.slice(0, STARTERS).map(r => `${r.c.name} · #${r.rank} of ${r.of} · ${report.verdictOf(r.rank, r.of)}`)] : [...(() => { const m = runMvp(run.lines, 20); return m ? [`Run MVP: ${m.name} ${perGame(m.pts, m.g)} PPG`] : []; })(), ...[...run.squad].map(id => cardPool(h).byId.get(id)!).sort((a, b) => b.ovr - a.ovr).map(c => `${c.name} ${seasonLabel(c.end)} · ${c.ovr}`)],
         avatar: (() => { const top = [...run.squad].map(id => cardPool(h).byId.get(id)!).sort((a, b) => b.ovr - a.ovr)[0]; return top ? { playerId: top.name, primary: POS_COLOR[top.pos] } : undefined; })(),
         accent: s.perfectSeason ? 'gold' : s.champion ? 'green' : 'orange',
       }} /></div>

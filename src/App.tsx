@@ -263,7 +263,7 @@ function buildInitialExtras(league: League): GMLeagueExtras {
 }
 
 type Screen = 'menu' | 'chooseTeam' | 'app' | 'hunt' | 'perfect' | 'career' | 'locker' | 'profile' | 'community' | 'draft' | 'settings' | 'arcade' | 'create' | 'worldGamesMode' | 'friends' | 'clubs' | 'online';
-const ARCADE_HASH: Record<ArcadeTab, string> = { guess: '#/guess', hilo: '#/higher-lower', bracket: '#/bracket', quiz: '#/quiz', legends: '#/legends', street: '#/street' };
+const ARCADE_HASH: Record<ArcadeTab, string> = { grid: '#/grid', guess: '#/guess', hilo: '#/higher-lower', bracket: '#/bracket', quiz: '#/quiz', legends: '#/legends', street: '#/street' };
 const arcadeTabOf = (hash: string) => (Object.entries(ARCADE_HASH).find(([, h]) => h === hash)?.[0] as ArcadeTab | undefined);
 
 const debouncedSave = createDebouncedSave();

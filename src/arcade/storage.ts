@@ -24,6 +24,8 @@ export interface ArcadeRecords {
   hilo: { best: number; runs: number; weeks: Record<string, number> };
   bracket: Record<string, BracketWeek>;
   endless?: EndlessRecords;
+  /** The Daily Grid: each day's squares (player ids) and guesses used. */
+  grid?: Record<string, { cells: string[]; used: number }>;
 }
 export const emptyEndless = (): EndlessRecords => ({ guess: { played: 0, won: 0, streak: 0, best: 0 }, bracket: { played: 0, best: 0 }, quiz: { played: 0, best: 0, right: 0, answered: 0 } });
 const n = (v: unknown) => (Number.isFinite(Number(v)) && Number(v) >= 0 ? Math.floor(Number(v)) : 0);
@@ -33,6 +35,28 @@ function readEndless(e: Partial<EndlessRecords> | undefined): EndlessRecords {
     bracket: { played: n(e?.bracket?.played), best: Math.min(n(e?.bracket?.best), 320) },
     quiz: { played: n(e?.quiz?.played), best: n(e?.quiz?.best), right: n(e?.quiz?.right), answered: n(e?.quiz?.answered) },
   };
+}
+/** Grid days, keeping only well-formed ones. */
+function readGrid(g: Record<string, unknown>): Record<string, { cells: string[]; used: number }> {
+  const out: Record<string, { cells: string[]; used: number }> = {};
+  for (const [day, d] of Object.entries(g)) {
+    const x = d as { cells?: unknown; used?: unknown } | null;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !x || !Array.isArray(x.cells) || x.cells.length !== 9) continue;
+    out[day] = { cells: x.cells.map(c => (typeof c === 'string' ? c.slice(0, 20) : '')), used: Math.min(9, n(x.used)) };
+  }
+  return out;
+}
+/** Grid days that count: solved squares and a score. */
+export const gridDays = (r: ArcadeRecords) => Object.entries(r.grid ?? {}).filter(([, d]) => d.used >= 9 || d.cells.every(Boolean));
+/** Days in a row (to `today`) with a finished grid. */
+export function gridStreak(r: ArcadeRecords, today: string): { current: number; best: number } {
+  const done = new Set(gridDays(r).map(([d]) => d));
+  const step = (d: string, k: number) => new Date(Date.parse(`${d}T00:00:00Z`) + k * 86_400_000).toISOString().slice(0, 10);
+  let current = 0;
+  for (let d = done.has(today) ? today : step(today, -1); done.has(d); d = step(d, -1)) current++;
+  let best = 0, run = 0, prev = '';
+  for (const d of [...done].sort()) { run = prev && step(prev, 1) === d ? run + 1 : 1; best = Math.max(best, run); prev = d; }
+  return { current, best };
 }
 /** This browser's endless records (never missing). */
 export const endlessOf = (r: ArcadeRecords) => r.endless ?? emptyEndless();
@@ -51,6 +75,7 @@ export function readArcade(read: (k: string) => string | null = k => { try { ret
       hilo: { best: Number(r.hilo?.best) || 0, runs: Number(r.hilo?.runs) || 0, weeks: r.hilo?.weeks && typeof r.hilo.weeks === 'object' ? r.hilo.weeks : {} },
       bracket: r.bracket && typeof r.bracket === 'object' ? r.bracket : {},
       endless: readEndless(r.endless),
+      ...(r.grid && typeof r.grid === 'object' ? { grid: readGrid(r.grid) } : {}),
     };
   } catch { return empty(); }
 }
@@ -69,6 +94,12 @@ export function mergeArcade(a: ArcadeRecords, b: ArcadeRecords): ArcadeRecords {
   for (const [day, d] of Object.entries(a.guess)) { const o = out.guess[day]; if (!o || (done(d) && !done(o)) || (done(d) === done(o) && d.guesses.length > o.guesses.length)) out.guess[day] = d; }
   for (const [w, s] of Object.entries(a.hilo.weeks)) out.hilo.weeks[w] = Math.max(s, out.hilo.weeks[w] ?? 0);
   for (const [w, x] of Object.entries(a.bracket)) { const o = out.bracket[w]; if (!o || (x.played && !o.played) || (x.played === o.played && x.score > o.score)) out.bracket[w] = x; }
+  // Grid days: the one with more squares filled, then more guesses used.
+  if (a.grid || b.grid) {
+    const grid = { ...(b.grid ?? {}) };
+    for (const [day, d] of Object.entries(a.grid ?? {})) { const o = grid[day], f = (x: typeof d) => x.cells.filter(Boolean).length; if (!o || f(d) > f(o) || (f(d) === f(o) && d.used > o.used)) grid[day] = d; }
+    out.grid = grid;
+  }
   // Endless totals: the larger of each (the device that has played more holds the full count).
   if (a.endless || b.endless) {
     const ea = endlessOf(a), eb = endlessOf(b), max = <T extends Record<string, number>>(x: T, y: T) => Object.fromEntries(Object.keys(x).map(k => [k, Math.max(x[k], y[k])])) as T;

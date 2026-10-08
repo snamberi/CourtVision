@@ -325,31 +325,54 @@ function tierFor(h: NbaHistory, pool: HuntCard[]): Tier {
 
 const mixCache = new WeakMap<NbaHistory, Map<string, CategoryInfo | null>>();
 /** Both categories at once: players who fit both (at a season that fits both, or their prime when neither is about a season). */
-export function mixedCategory(h: NbaHistory, a: string, b: string): CategoryInfo | null {
-  const id = `${a}+${b}`;
+export const mixedCategory = (h: NbaHistory, a: string, b: string): CategoryInfo | null => comboCategory(h, [a, b]);
+
+/**
+ * Two or three categories at once (mixed rolls, custom categories): players who fit all of them, at a season that fits
+ * every season rule, or at their prime when none is about a season. Each part from a different group.
+ */
+export function comboCategory(h: NbaHistory, ids: string[]): CategoryInfo | null {
+  const id = ids.join('+');
   const cache = mixCache.get(h) ?? mixCache.set(h, new Map()).get(h)!;
   if (cache.has(id)) return cache.get(id)!;
-  const da = allDefs(h).find(d => d.id === a), db = allDefs(h).find(d => d.id === b);
+  const defs = ids.map(x => allDefs(h).find(d => d.id === x));
   let out: CategoryInfo | null = null;
-  if (da && db && da.group !== db.group) {
+  if (ids.length >= 2 && ids.length <= 3 && defs.every(Boolean) && new Set(defs.map(d => d!.group)).size === defs.length) {
+    const ds = defs as Def[];
     const x = context(h);
-    const prime = !!da.prime && !!db.prime;
+    const prime = ds.every(d => d.prime);
     const best = new Map<string, HuntCard>();
     const cards = prime ? [...primeCards(h).values()] : cardPool(h).cards;
     for (const c of cards) {
       // A prime-only rule checks the player's prime card; a season rule checks this season.
       const pc = primeCards(h).get(c.playerId) ?? c;
-      if (!(da.prime ? da.test(pc, x) : da.test(c, x)) || !(db.prime ? db.test(pc, x) : db.test(c, x))) continue;
+      if (!ds.every(d => (d.prime ? d.test(pc, x) : d.test(c, x)))) continue;
       const cur = best.get(c.playerId);
       if (!cur || c.ovr > cur.ovr) best.set(c.playerId, c);
     }
     if (best.size >= MIN_CATEGORY) {
       const pool = [...best.values()].sort((p, q) => q.ppg - p.ppg);
-      out = { id, name: `${da.name} × ${db.name}`, blurb: `${da.blurb}, and ${db.blurb.charAt(0).toLowerCase()}${db.blurb.slice(1)}`, group: 'Mixed', ...(prime ? { prime: true } : {}), size: pool.length, pool, tier: tierFor(h, pool) };
+      const lower = (t: string) => `${t.charAt(0).toLowerCase()}${t.slice(1)}`;
+      out = { id, name: ds.map(d => d.name).join(' × '), blurb: ds.map((d, i) => (i ? lower(d.blurb) : d.blurb)).join(', and '), group: 'Mixed', ...(prime ? { prime: true } : {}), size: pool.length, pool, tier: tierFor(h, pool) };
     }
   }
   cache.set(id, out);
   return out;
+}
+
+/** How many players a combination would have (0 when it can't be built), for the custom category builder. */
+export function comboSize(h: NbaHistory, ids: string[]): number {
+  if (ids.length === 1) return categories(h).find(c => c.id === ids[0])?.size ?? 0;
+  const defs = ids.map(x => allDefs(h).find(d => d.id === x));
+  if (!defs.every(Boolean) || new Set(defs.map(d => d!.group)).size !== defs.length) return 0;
+  const ds = defs as Def[], x = context(h), prime = ds.every(d => d.prime);
+  const seen = new Set<string>();
+  for (const c of prime ? [...primeCards(h).values()] : cardPool(h).cards) {
+    if (seen.has(c.playerId)) continue;
+    const pc = primeCards(h).get(c.playerId) ?? c;
+    if (ds.every(d => (d.prime ? d.test(pc, x) : d.test(c, x)))) seen.add(c.playerId);
+  }
+  return seen.size;
 }
 const primeCache = new WeakMap<NbaHistory, Map<string, HuntCard>>();
 function primeCards(h: NbaHistory): Map<string, HuntCard> {
@@ -363,7 +386,7 @@ function primeCards(h: NbaHistory): Map<string, HuntCard> {
 
 /** A category or a mixed one (`a+b`). */
 export const categoryById = (h: NbaHistory, id: string): CategoryInfo | undefined => {
-  if (id.includes('+')) { const [a, b] = id.split('+'); return mixedCategory(h, a, b) ?? undefined; }
+  if (id.includes('+')) return comboCategory(h, id.split('+')) ?? undefined;
   return categories(h).find(c => c.id === id);
 };
 

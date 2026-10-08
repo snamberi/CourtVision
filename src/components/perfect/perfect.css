@@ -247,3 +247,38 @@ button.p820-card:hover, button.p820-card:focus-visible { border-color: var(--c-b
 .p820-report .verdict-reach { border-left-color: var(--c-border-e85d5d, #e85d5d); } .p820-report .verdict-reach em { color: var(--c-fg-e85d5d, #e85d5d); }
 @media (prefers-reduced-motion: reduce) { .p820-flash { animation: none; } .p820-catroll.mini, .p820-clock span { transition: none; } }
 .p820-weekly small strong { color: var(--c-fg-ffd166, #ffd166); font-weight: 700; }
+
+/* Draft Battle */
+.p820-battle-setup, .p820-battle { display: grid; gap: 12px; justify-items: stretch; }
+.p820-battle-setup h2 { margin: 0; }
+.p820-battle-names { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; padding: 10px 12px; background: var(--c-bg-121926, #121926); border: 1px solid var(--c-border-2a3546, #2a3546); }
+.p820-battle-names label { display: grid; gap: 4px; font-weight: 600; }
+.p820-mode.on { border-color: var(--c-border-f47b20, #f47b20); }
+.p820-battle .p820-catroll { width: 100%; min-height: 0; }
+.p820-battle-teams { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 10px; align-items: start; }
+.p820-battle-vs { align-self: center; font: 14px var(--ff-pixel, 'Press Start 2P', monospace); color: var(--c-fg-ffd166, #ffd166); text-align: center; white-space: nowrap; }
+.p820-battle-side { padding: 10px; background: var(--c-bg-121926, #121926); border: 2px solid var(--c-border-2a3546, #2a3546); }
+.p820-battle-side.on-clock { border-color: var(--c-border-f47b20, #f47b20); }
+.p820-battle-side.winner { border-color: var(--c-border-ffd166, #ffd166); box-shadow: 0 0 18px color-mix(in srgb, var(--c-border-ffd166, #ffd166) 35%, transparent); }
+.p820-battle-name { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; margin-bottom: 6px; }
+.p820-battle-name span { color: var(--c-fg-94a0b2, #94a0b2); font-size: 13px; }
+.p820-battle-name em { font: normal 9px var(--ff-pixel, 'Press Start 2P', monospace); color: var(--c-fg-f47b20, #f47b20); }
+.p820-battle-side ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
+.p820-battle-side li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; padding: 4px 6px; background: var(--c-bg-0b1018, #0b1018); min-height: 28px; }
+.p820-battle-side li small { color: var(--c-fg-94a0b2, #94a0b2); }
+.p820-battle-games { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.p820-battle-games li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; padding: 6px 10px; background: var(--c-bg-121926, #121926); border-left: 3px solid var(--c-border-55c878, #55c878); }
+.p820-battle-games li.b { border-left-color: var(--c-border-e85d5d, #e85d5d); }
+.p820-battle-games li small { color: var(--c-fg-94a0b2, #94a0b2); }
+@media (max-width: 640px) { .p820-battle-teams { grid-template-columns: minmax(0, 1fr); } .p820-battle-vs { padding: 4px 0; } }
+
+/* Custom categories */
+.p820-custom { display: grid; gap: 10px; margin: 12px 0; padding: 12px; background: var(--c-bg-121926, #121926); border: 2px solid var(--c-border-f47b20, #f47b20); }
+.p820-custom-parts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.p820-custom-parts label { display: grid; gap: 4px; font-weight: 600; }
+.p820-custom-parts label span { font-size: 12px; color: var(--c-fg-94a0b2, #94a0b2); }
+.p820-custom-parts select { width: 100%; min-width: 0; }
+.p820-custom-status { margin: 0; }
+.p820-custom-load { display: flex; gap: 8px; }
+.p820-custom-load input { flex: 1; min-width: 0; }
+@media (max-width: 640px) { .p820-custom-parts { grid-template-columns: minmax(0, 1fr); } }

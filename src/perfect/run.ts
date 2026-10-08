@@ -65,6 +65,8 @@ export interface PerfectRun {
   catOpts?: CategoryOptions;
   /** The Weekly Category Challenge (week key): everyone's starters come from the same category. */
   weekly?: string;
+  /** A custom category (built from up to three, or one picked from the list): the starters come from it. */
+  custom?: string;
   /** Franchise Spin: the current roll and how many rolls were made (it seeds the next one). */
   roll?: PerfectRoll;
   rolls: number;
@@ -226,7 +228,7 @@ function rollFor(h: NbaHistory, run: PerfectRun, keep?: { franchise?: string; er
 
 // ---------------------------------------------------------------- starting and drafting
 
-export function newPerfectRun(h: NbaHistory, mode: PerfectMode, seed: number, daily?: string, opts: { level?: Level; view?: RunView; catOpts?: CategoryOptions; weekly?: string } = {}): PerfectRun {
+export function newPerfectRun(h: NbaHistory, mode: PerfectMode, seed: number, daily?: string, opts: { level?: Level; view?: RunView; catOpts?: CategoryOptions; weekly?: string; custom?: string } = {}): PerfectRun {
   // The Daily is the standard game for everyone.
   const level = daily ? 'pro' : opts.level ?? 'pro', view = daily ? STANDARD_VIEW : opts.view ?? STANDARD_VIEW;
   const rerolls = mode === 'quick' ? { team: 0, era: 0, prime: 0, spin: SPIN_REROLLS, lucky: LUCKY_SPINS } : { team: 0, era: 0, prime: mode === 'franchise' ? 1 : 0, roll: SPIN_REROLLS, lucky: LUCKY_SPINS };
@@ -236,6 +238,7 @@ export function newPerfectRun(h: NbaHistory, mode: PerfectMode, seed: number, da
     const catOpts = opts.catOpts && Object.values(opts.catOpts).some(Boolean) ? opts.catOpts : undefined;
     const base: PerfectRun = { ...run, cats: [], tiers: [], rolls: 1, ...(catOpts ? { catOpts } : {}) };
     // The Weekly Category Challenge: this week's category for the starters, the Pro game for everyone.
+    if (opts.custom && mode === 'category' && categoryById(h, opts.custom)) return { ...base, custom: opts.custom, cat: opts.custom };
     if (opts.weekly && mode === 'category') return { ...base, level: undefined, view: undefined, weekly: opts.weekly, cat: weeklyCategory(h, opts.weekly).id };
     return { ...base, cat: rollCategory(h, base).id };
   }
@@ -294,7 +297,7 @@ export function autoPick(h: NbaHistory, run: PerfectRun): PerfectRun {
 }
 
 /** The Weekly Category Challenge keeps its starting category: no rerolls until the bench. */
-export const categoryLocked = (run: Pick<PerfectRun, 'weekly' | 'squad'>) => !!run.weekly && run.squad.length < STARTERS;
+export const categoryLocked = (run: Pick<PerfectRun, 'weekly' | 'custom' | 'squad'>) => (!!run.weekly || !!run.custom) && run.squad.length < STARTERS;
 
 /** The options' score multiplier (tips cost, the shot clock and mixed rolls pay). */
 export function optionMultiplier(run: Pick<PerfectRun, 'catOpts'>): number {

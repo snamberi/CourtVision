@@ -28,7 +28,7 @@ import { totalXp, levelFor, takeLevelUp, unlocksBetween } from '../profile/profi
 import { noteVisit } from '../retention/streak';
 import { notePass } from '../retention/pass';
 import { TrophyUnlock } from './locker/TrophyUnlock';
-import { readArcade, guessStreak, isGuessDone, endlessOf } from '../arcade/storage';
+import { readArcade, guessStreak, isGuessDone, endlessOf, gridStreak } from '../arcade/storage';
 import { weekKey } from '../retention/week';
 
 export type GameMode = 'random' | 'real' | 'legends' | 'perfect' | 'category' | 'career' | 'rebuild' | 'draft';
@@ -55,7 +55,7 @@ interface Props {
   /** Opens Settings (backups, graphics, privacy). */
   onSettings?: () => void;
   /** Opens a quick game. */
-  onArcade?: (game: 'guess' | 'hilo' | 'bracket' | 'quiz') => void;
+  onArcade?: (game: 'grid' | 'guess' | 'hilo' | 'bracket' | 'quiz') => void;
   /** Opens the New Franchise page (with a challenge picked, for the Rebuild and the All-Time Draft). */
   onCreate?: (challenge?: 'free' | 'rebuild' | 'draft') => void;
 }
@@ -319,11 +319,13 @@ function CodeEntry({ busy, onCode }: { busy: string | null; onCode: (code: strin
 }
 
 /** The quick games strip under the modes: today's puzzle, your streak, this week's bracket. */
-function QuickGames({ onOpen }: { onOpen: (game: 'guess' | 'hilo' | 'bracket' | 'quiz') => void }) {
+function QuickGames({ onOpen }: { onOpen: (game: 'grid' | 'guess' | 'hilo' | 'bracket' | 'quiz') => void }) {
   const [r] = useState(readArcade);
   const today = new Date().toISOString().slice(0, 10), week = weekKey();
   const day = r.guess[today], streak = guessStreak(r, today).current, bracket = r.bracket[week], quiz = endlessOf(r).quiz;
+  const grid = r.grid?.[today], gridDone = !!grid && (grid.used >= 9 || grid.cells.every(Boolean)), gridRun = gridStreak(r, today).current;
   const games = [
+    { id: 'grid' as const, icon: 'list', title: 'Daily Grid', blurb: 'Three teams, three categories. Fill all nine squares.', status: gridDone ? `${grid!.cells.filter(Boolean).length}/9 today · endless open` : 'New grid today', extra: gridRun ? `${gridRun}-day streak` : null },
     { id: 'guess' as const, icon: 'search', title: 'Guess the Player', blurb: 'A daily player for everyone, then endless rounds.', status: isGuessDone(day) ? (day!.won ? `Solved in ${day!.guesses.length} · endless open` : 'Missed today · endless open') : 'New puzzle today', extra: streak ? `${streak}-day streak` : null },
     { id: 'hilo' as const, icon: 'up', title: 'Higher or Lower', blurb: 'Career numbers, head to head. How long can you go?', status: r.hilo.best ? `Best streak ${r.hilo.best}` : 'Set your first streak', extra: null },
     { id: 'bracket' as const, icon: 'trophy', title: 'Bracket Challenge', blurb: 'Sixteen all-time teams. Weekly, or random any time.', status: bracket?.played ? `${bracket.score} pts this week` : bracket?.locked ? 'Picks locked' : 'New bracket this week', extra: null },
