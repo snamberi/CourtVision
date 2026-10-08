@@ -11,8 +11,11 @@ const SHELL = __SHELL__;
 const CACHE = `cv-${VERSION}`;
 const RUNTIME = 'cv-runtime';
 
+// One missing file must not block the update (addAll fails on any error), so each is cached on its own.
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  event.waitUntil(caches.open(CACHE)
+    .then(c => Promise.all(SHELL.map(u => fetch(u, { cache: 'no-cache' }).then(res => (okFor(u, res) ? c.put(u, res) : undefined)).catch(() => {}))))
+    .then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', event => {
@@ -21,7 +24,13 @@ self.addEventListener('activate', event => {
     .then(() => self.clients.claim()));
 });
 
-const put = (name, req, res) => { if (res && res.ok && res.type === 'basic') caches.open(name).then(c => c.put(req, res)); };
+/*
+ * The host answers a missing file with the game page (single-page fallback), so a deleted old build file comes back
+ * as HTML with a 200. Never keep HTML for a script, style or data file: it would break that page for good.
+ */
+const isHtml = res => (res.headers.get('content-type') || '').includes('text/html');
+const okFor = (url, res) => !!res && res.ok && res.type === 'basic' && (!isHtml(res) || new URL(url, self.location.origin).pathname === '/');
+const put = (name, req, res) => { if (okFor(req.url, res)) caches.open(name).then(c => c.put(req, res)); };
 
 self.addEventListener('fetch', event => {
   const req = event.request;
@@ -30,16 +39,24 @@ self.addEventListener('fetch', event => {
   if (url.origin !== self.location.origin || url.pathname.startsWith('/_vercel') || url.pathname.startsWith('/api/') || url.pathname.startsWith('/downloads/') || url.pathname === '/sw.js') return;
 
   if (req.mode === 'navigate') {
-    event.respondWith(fetch(req).then(res => { put(RUNTIME, req, res.clone()); return res; })
+    // Pages: always the newest from the server (past the browser's own cache), the saved copy only when offline.
+    // (A copy of the request keeps its redirect handling, so a redirected page still works.)
+    event.respondWith(fetch(new Request(req, { cache: 'no-cache' })).then(res => { if (res.ok) caches.open(RUNTIME).then(c => c.put(req, res.clone())); return res; })
       .catch(() => caches.match(req).then(hit => hit || caches.match('/', { ignoreSearch: true }))));
     return;
   }
   if (url.pathname.startsWith('/assets/')) {
-    event.respondWith(caches.match(req).then(hit => hit || fetch(req).then(res => { put(RUNTIME, req, res.clone()); return res; })));
+    event.respondWith(caches.match(req).then(hit => {
+      if (hit && !isHtml(hit)) return hit;
+      // A bad copy from an older worker: drop it and ask the server again.
+      if (hit) caches.open(RUNTIME).then(c => c.delete(req));
+      return fetch(req).then(res => { put(RUNTIME, req, res.clone()); return res; });
+    }));
     return;
   }
   // Everything else of ours (history data, icons, fonts): cached copy now, fresh copy for next time.
-  event.respondWith(caches.match(req).then(hit => {
+  event.respondWith(caches.match(req).then(found => {
+    const hit = found && !isHtml(found) ? found : undefined;
     const fresh = fetch(req).then(res => { put(RUNTIME, req, res.clone()); return res; });
     if (hit) { fresh.catch(() => {}); return hit; }
     return fresh;
