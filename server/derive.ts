@@ -27,7 +27,7 @@ import { readArcade, guessWeeks, BRACKET_MAX, GUESS_TRIES } from '../src/arcade/
  * here and anything implausible is dropped: the browser's copy is never trusted as-is.
  */
 
-export type WeeklyBoard = 'rebuild' | 'career' | 'hunt' | 'perfect' | 'guess' | 'hilo' | 'bracket';
+export type WeeklyBoard = 'rebuild' | 'career' | 'hunt' | 'perfect' | 'category' | 'guess' | 'hilo' | 'bracket';
 /** The quick games' boards (added later: a database without them yet keeps the others). */
 export const ARCADE_BOARDS: readonly WeeklyBoard[] = ['guess', 'hilo', 'bracket'];
 
@@ -117,9 +117,15 @@ export function derive(blob: ProgressBlob, now = new Date()): Derived {
     weekly.push({ board: 'hunt', week, score: huntScore({ ...w, won }), detail: won ? `Beat the boss · ${w.wins}-${w.losses} in games` : `Reached series ${w.stop + 1} · ${w.wins}-${w.losses}` });
   }
   // The Daily 82-0: your best day of each week.
-  for (const [week, d] of Object.entries(perfectWeeks(loadPerfectRecords(read)))) {
-    if (!/^\d{4}-W\d{2}$/.test(week) || week < FIRST_WEEK || week > thisWeek || !int(d.score, 0, 30_000) || !int(d.w, 0, 82) || !int(d.l, 0, 82) || d.w + d.l > 82 || !int(d.pw, 0, 16) || !int(d.pl, 0, 12)) continue;
+  const p82 = loadPerfectRecords(read);
+  for (const [week, d] of Object.entries(perfectWeeks(p82))) {
+    if (!/^\d{4}-W\d{2}$/.test(week) || week < FIRST_WEEK || week > thisWeek || !int(d.score, 0, 60_000) || !int(d.w, 0, 82) || !int(d.l, 0, 82) || d.w + d.l > 82 || !int(d.pw, 0, 16) || !int(d.pl, 0, 12)) continue;
     weekly.push({ board: 'perfect', week, score: d.score, detail: `${d.w}-${d.l}${d.pw + d.pl ? ` · playoffs ${d.pw}-${d.pl}` : ''}${d.champion ? ' · champions' : ''}` });
+  }
+  // The Weekly Category Challenge: your best try each week (Category Draft scores run higher: tiers pay up to ×1.75).
+  for (const [week, d] of Object.entries(p82.weekCat ?? {})) {
+    if (!/^\d{4}-W\d{2}$/.test(week) || week < FIRST_WEEK || week > thisWeek || !d || !int(d.score, 0, 60_000) || !int(d.w, 0, 82) || !int(d.l, 0, 82) || d.w + d.l > 82 || !int(d.pw, 0, 16) || !int(d.pl, 0, 12)) continue;
+    weekly.push({ board: 'category', week, score: d.score, detail: `${d.w}-${d.l}${d.pw + d.pl ? ` · playoffs ${d.pw}-${d.pl}` : ''}${d.champion ? ' · champions' : ''}` });
   }
   // The quick games: Guess the Player (the week's days), Higher or Lower (best streak), the Bracket Challenge.
   const arcade = readArcade(read);

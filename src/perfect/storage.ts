@@ -11,7 +11,7 @@ export const PERFECT_RUN_KEY = 'cv-perfect-run';
 export const PERFECT_RECORDS_KEY = 'cv-perfect-records';
 
 /** The Category Book: your best season with each starting category (Category Roll). */
-export interface CategoryBest { w: number; l: number; champion: boolean }
+export interface CategoryBest { w: number; l: number; champion: boolean; /** The category's tier (for the Brutal achievement). */ tier?: string }
 export interface PerfectResult { score: number; w: number; l: number; pw: number; pl: number; champion: boolean; mode: PerfectMode }
 export interface PerfectRecords {
   runs: number;
@@ -27,6 +27,8 @@ export interface PerfectRecords {
   huntSquadBest?: PerfectResult;
   /** Category Book: the best season with each starting category, by category id. */
   categories?: Record<string, CategoryBest>;
+  /** The Weekly Category Challenge: your best try each week. */
+  weekCat?: Record<string, PerfectResult & { tries: number }>;
   lastSeed?: number;
 }
 const EMPTY: PerfectRecords = { runs: 0, titles: 0, perfectSeasons: 0, perfect98: 0, bestWins: 0 };
@@ -62,8 +64,12 @@ export function recordPerfect(run: PerfectRun): PerfectRecords {
     perfectSeasons: r.perfectSeasons + (s.perfectSeason ? 1 : 0), perfect98: r.perfect98 + (s.perfectSeason && s.perfectPlayoffs ? 1 : 0),
     bestWins: Math.max(r.bestWins, s.w), best: better(r.best, result) ? result : r.best,
     ...(run.from === 'hunt' ? { huntSquadBest: better(r.huntSquadBest, result) ? result : r.huntSquadBest } : {}),
-    ...(run.mode === 'category' && run.cats?.[0] ? { categories: { ...(r.categories ?? {}), [run.cats[0]]: bestCategory(r.categories?.[run.cats[0]], { w: s.w, l: s.l, champion: s.champion }) } } : {}),
+    ...(run.mode === 'category' && run.cats?.[0] ? { categories: { ...(r.categories ?? {}), [run.cats[0]]: bestCategory(r.categories?.[run.cats[0]], { w: s.w, l: s.l, champion: s.champion, ...(run.tiers?.[0] ? { tier: run.tiers[0] } : {}) }) } } : {}),
   };
+  if (run.weekly) {
+    const d = r.weekCat?.[run.weekly];
+    next.weekCat = { ...(r.weekCat ?? {}), [run.weekly]: { ...(better(d, result) ? result : d!), tries: (d?.tries ?? 0) + 1 } };
+  }
   if (run.daily) {
     const d = r.daily?.[run.daily];
     next.daily = { ...(r.daily ?? {}), [run.daily]: { ...(better(d, result) ? result : d!), tries: (d?.tries ?? 0) + 1 } };
@@ -80,8 +86,11 @@ export function mergePerfectRecords(a: PerfectRecords, b: PerfectRecords): Perfe
   const huntSquadBest = !a.huntSquadBest ? b.huntSquadBest : !b.huntSquadBest ? a.huntSquadBest : a.huntSquadBest.score >= b.huntSquadBest.score ? a.huntSquadBest : b.huntSquadBest;
   const categories: Record<string, CategoryBest> = { ...(b.categories ?? {}) };
   for (const [id, x] of Object.entries(a.categories ?? {})) categories[id] = bestCategory(categories[id], x);
+  const weekCat: Record<string, PerfectResult & { tries: number }> = { ...(b.weekCat ?? {}) };
+  for (const [wk, x] of Object.entries(a.weekCat ?? {})) { const y = weekCat[wk]; weekCat[wk] = !y ? x : { ...(x.score >= y.score ? x : y), tries: Math.max(x.tries, y.tries) }; }
   return {
     ...(Object.keys(categories).length ? { categories } : {}),
+    ...(Object.keys(weekCat).length ? { weekCat } : {}),
     runs: Math.max(a.runs, b.runs), titles: Math.max(a.titles, b.titles), perfectSeasons: Math.max(a.perfectSeasons, b.perfectSeasons),
     perfect98: Math.max(a.perfect98, b.perfect98), bestWins: Math.max(a.bestWins, b.bestWins), ...(best ? { best } : {}), ...(huntSquadBest ? { huntSquadBest } : {}), ...(Object.keys(daily).length ? { daily } : {}),
   };
@@ -108,4 +117,11 @@ export function perfectWeeks(r: PerfectRecords): Record<string, PerfectResult> {
 }
 
 /** Trophy Road points: your best season, your titles and the perfect seasons. */
-export const perfectTrophies = (r: PerfectRecords) => r.bestWins * 10 + Math.min(r.titles, 50) * 60 + r.perfectSeasons * 1500 + r.perfect98 * 3000;
+export const perfectTrophies = (r: PerfectRecords) => r.bestWins * 10 + Math.min(r.titles, 50) * 60 + r.perfectSeasons * 1500 + r.perfect98 * 3000 + categoryTitles(r) * 100;
+
+/** Categories you have won the title with (Category Roll starters). */
+export const categoryTitles = (r: Pick<PerfectRecords, 'categories'>) => Object.values(r.categories ?? {}).filter(x => x.champion).length;
+/** Team categories won (out of 30), a D-tier title, an 82-0 with a category. */
+export const categoryTeamTitles = (r: Pick<PerfectRecords, 'categories'>) => Object.entries(r.categories ?? {}).filter(([id, x]) => id.startsWith('team-') && x.champion).length;
+export const categoryBrutal = (r: Pick<PerfectRecords, 'categories'>) => Object.values(r.categories ?? {}).filter(x => x.champion && x.tier === 'D').length;
+export const categoryPerfect = (r: Pick<PerfectRecords, 'categories'>) => Object.values(r.categories ?? {}).filter(x => x.l === 0 && x.w >= 82).length;

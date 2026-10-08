@@ -5,6 +5,7 @@ import type { PlayerSeason } from '../simulation/types';
 import { DEFAULT_GAME_SETTINGS, ERA_PRESETS } from '../simulation/types';
 import { calculateOverall } from '../simulation/engine/overall';
 import { cardPool, cardPlayer, type HuntCard, type Rarity } from './cards';
+import type { CategoryInfo } from '../perfect/categories';
 import { huntTeams, type HuntTeam } from './teams';
 import { ERAS, eraCoach, eraOf, eraRules, underEra, type HuntEra } from './eras';
 import { chemistry, chemistryBonus, type ChemistryBond } from './chemistry';
@@ -116,7 +117,7 @@ export interface HuntRun {
   fav?: string;
 }
 
-export type DeckId = 'classic' | 'bigMen' | 'oldSchool' | 'paceSpace' | 'dynasty';
+export type DeckId = 'classic' | 'bigMen' | 'oldSchool' | 'paceSpace' | 'dynasty' | 'category';
 export type Difficulty = 'rookie' | 'pro' | 'legend';
 export interface HuntDeck { id: DeckId; name: string; blurb: string; coins: number; items: ItemId[]; draft?: (c: HuntCard) => boolean; unlock: string }
 export const DECKS: Record<DeckId, HuntDeck> = {
@@ -125,6 +126,7 @@ export const DECKS: Record<DeckId, HuntDeck> = {
   oldSchool: { id: 'oldSchool', name: 'Old School', blurb: 'Only players from before 1980, and 50 more coins to start.', coins: 50, items: [], draft: c => c.end < 1980, unlock: 'Play 3 hunts.' },
   paceSpace: { id: 'paceSpace', name: 'Pace & Space', blurb: 'Only players from 2010 on, and you start with Seven Seconds or Less.', coins: 0, items: ['sevenSeconds'], draft: c => c.end >= 2010, unlock: 'Reach series 5 in any hunt.' },
   dynasty: { id: 'dynasty', name: 'Dynasty', blurb: 'Every spin after the first shows a real teammate of someone you drafted.', coins: 0, items: [], unlock: 'Win a hunt.' },
+  category: { id: 'category', name: 'Category Draft', blurb: 'Every round of spins rolls a category ("MVPs", "Lakers", "Duke"...) and the reels only show players from it, at their prime unless the category is about a season. 30 more coins to start.', coins: 30, items: [], unlock: 'Always open.' },
 };
 export interface HuntDifficulty { id: Difficulty; name: string; blurb: string; shift: number; /** Buffs each team brings beyond Pro's. */ buffs: number; lives: number; bossPool: number; bossRating: number; coinShift: number; unlock: string }
 export const DIFFICULTIES: Record<Difficulty, HuntDifficulty> = {
@@ -251,6 +253,16 @@ export function spinWeights(i: number): Record<Rarity, number> {
 
 const ORDER: Rarity[] = ['common', 'rare', 'epic', 'legendary'];
 
+/** A player from the round's category for this reel: the rarity asked for when the category has one, else the nearest. */
+function drawFromCategory(cat: CategoryInfo, taken: Set<string>, rng: RNG, fits: (c: HuntCard) => boolean, want: Rarity): string | undefined {
+  const open = cat.pool.filter(c => c.ovr >= MIN_OFFER_OVR && fits(c) && !taken.has(c.playerId));
+  if (!open.length) return undefined;
+  const at = ORDER.indexOf(want);
+  const byDistance = [...ORDER].sort((a, b) => Math.abs(ORDER.indexOf(a) - at) - Math.abs(ORDER.indexOf(b) - at));
+  for (const r of byDistance) { const list = open.filter(c => c.rarity === r); if (list.length) return list[rng.nextInt(list.length)].id; }
+  return undefined;
+}
+
 function drawPlayers(h: NbaHistory, taken: Set<string>, rng: RNG, count: number, fits: (c: HuntCard) => boolean, rarityFor: (k: number) => Rarity): string[] {
   const pool = cardPool(h);
   const out: HuntCard[] = [];
@@ -292,8 +304,12 @@ function favOnReel(h: NbaHistory, run: HuntRun, taken: Set<string>, fits: (c: Hu
   return mine.sort((a, b) => b.ovr - a.ovr)[0];
 }
 
-/** STOP: every slot still spinning lands on a card (a coach on the coach reel). Seeded by the round, so a reload shows the same. */
-export function stopReels(h: NbaHistory, run: HuntRun): HuntRun {
+/**
+ * STOP: every slot still spinning lands on a card (a coach on the coach reel). Seeded by the round, so a reload shows the same.
+ * `cat` is the Category Draft deck's category for this round (hunt/categoryDeck.ts), kept out of here so the server
+ * bundle doesn't carry the categories.
+ */
+export function stopReels(h: NbaHistory, run: HuntRun, cat: CategoryInfo | null = null): HuntRun {
   if (run.stage !== 'draft' || run.reels) return run;
   const open = openSpins(run);
   const round = run.spin;
@@ -328,9 +344,11 @@ export function stopReels(h: NbaHistory, run: HuntRun): HuntRun {
     if (!id) {
       const bigMen = deck.id === 'bigMen' && (k === 'PF' || k === 'C');
       const want = k === forcedAt ? forced! : bigMen ? (rng.next() < 0.25 ? 'legendary' : 'epic') : pick();
-      id = drawPlayers(h, taken, rng, 1, fits, () => want)[0];
+      // Category Draft: the round's category first; a reel it can't fill (no centers among the sharpshooters) draws from everyone.
+      if (cat) id = drawFromCategory(cat, taken, rng, fits, want);
+      id ??= drawPlayers(h, taken, rng, 1, fits, () => want)[0];
       // Your favourite player: on his rarity, a FAV_BOOST chance the reel shows him instead (until you lock him).
-      const fav = favOnReel(h, run, taken, fits, want);
+      const fav = cat ? undefined : favOnReel(h, run, taken, fits, want);
       if (fav && rng.next() < FAV_BOOST) id = fav.id;
     }
     if (id) { reels[k] = id; taken.add(pool.byId.get(id)!.playerId); }

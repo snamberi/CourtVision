@@ -7,12 +7,16 @@ export interface Release { id: string; title: string; items: string[] }
 export const RELEASES: Release[] = [
   {
     id: '2027-03-03',
-    title: 'Category Draft: 150 categories, one starting five',
+    title: 'Category Draft: 180 categories, one starting five',
     items: [
-      "**Category Roll:** the game rolls a category (MVPs, Finals MVPs, 90s players, Duke, No. 1 picks, 7-footers, the Lakers, 30-point scorers, players named Johnson... 150 of them) and you pick ANY five as your starting five, each at his best season that fits. A second roll is your bench. Then try to go 82-0.",
+      "**Category Roll:** the game rolls a category (MVPs, 90s players, Duke, No. 1 picks, 7-footers, the Lakers, Spain, Olympians, Kobe's teammates, No. 23s... 180 of them) and you pick ANY five as your starting five. Players come in at their prime, unless the category is about a season. No ratings, stats or rarity colours while you pick. A second roll is your bench. Then try to go 82-0.",
       "**Slot Spin:** every one of your ten spots spins its own category. One player from each.",
-      "**Tiers:** every category is S (stacked) to D (brutal). Weaker categories pay more, up to ×1.75: an 82-0 with second-round picks beats one with MVPs. Three category rerolls and two lucky rolls (an S or A tier) per run.",
-      "**Category Book:** your best season with every category you've started with. The Daily 82-0 now rotates through all four draft styles.",
+      "**Tiers:** every category is S (stacked) to D (brutal). Weaker categories pay more, up to ×1.75. Three category rerolls and two lucky rolls (an S or A tier) per run, and an S-tier roll lands with a flash.",
+      "**Weekly Category Challenge:** one category for everyone, all week, with its own leaderboard.",
+      "**Options:** scouting tips (a word on each player, never a number), a 10-second shot clock, and mixed rolls (\"Lakers × 90s players\"). Each one changes your score.",
+      "**Report card:** after the run, every pick is graded against its category: steals, great picks and reaches, next to the best five you could have taken.",
+      "**Duels:** challenge a friend to the same rolls. **Category Book:** collection bars for teams, colleges, eras, awards and more, with new achievements.",
+      "**League Hunt:** a new Category Draft deck, where every round of spins draws from its own category.",
     ],
   },
   {

@@ -1,5 +1,8 @@
 import type { NbaHistory, HistSeasonRow } from '../history/nbaHistoryData';
 import { cardPool, type HuntCard } from '../hunt/cards';
+import { realNationality, REAL_GAMES, COUNTRIES, norm } from '../worldGames/data';
+import { realJerseyNumber } from '../history/jerseyNumbers';
+import { RNG } from '../simulation/engine/rng';
 
 /*
  * Category Draft: the categories a run rolls ("MVPs", "90s players", "Duke", "No. 1 picks", "7-footers", "Lakers"...)
@@ -11,7 +14,7 @@ import { cardPool, type HuntCard } from '../hunt/cards';
  * 82-0 with second-round picks beats doing it with MVPs.
  */
 
-export type CategoryGroup = 'Awards' | 'Titles' | 'Eras' | 'Teams' | 'Draft' | 'College' | 'Body' | 'Stats' | 'Careers' | 'Names';
+export type CategoryGroup = 'Awards' | 'Titles' | 'Eras' | 'Teams' | 'Draft' | 'College' | 'Body' | 'Stats' | 'Careers' | 'Names' | 'World' | 'Teammates' | 'Jerseys' | 'Mixed';
 export type Tier = 'S' | 'A' | 'B' | 'C' | 'D';
 export interface Category { id: string; name: string; blurb: string; group: CategoryGroup; /** Players come in at their prime (the category isn't about a season). */ prime?: boolean }
 export interface CategoryInfo extends Category { tier: Tier; size: number; pool: HuntCard[] }
@@ -35,6 +38,10 @@ interface Ctx {
   teamRec: Map<string, { w: number; l: number }>;
   leaders: Record<'pts' | 'trb' | 'ast' | 'blk' | 'stl', Set<string>>;
   franchiseCount: Map<string, number>; oneFranchise: Set<string>; seasonsPlayed: Map<string, number>;
+  /** Olympic medalists by normalized name, and the 1992 and 2008 USA rosters. */
+  olympians: Set<string>; dream: Set<string>; redeem: Set<string>;
+  /** team|season stints of every player, for the teammates categories. */
+  stints: Map<string, Set<string>>;
 }
 
 const key = (pid: string, season: number) => `${pid}|${season}`;
@@ -83,6 +90,10 @@ function context(h: NbaHistory): Ctx {
       if (best) leaders[stat].add(key(best.pid, season));
     }
   }
+  const stints = new Map<string, Set<string>>();
+  for (const p of h.players) for (const r of h.seasonsByPlayer.get(p.idx) ?? []) if (!r.isAggregate && (r.league === 'NBA' || r.league === 'BAA')) (stints.get(p.id) ?? stints.set(p.id, new Set()).get(p.id)!).add(`${r.team}|${r.season}`);
+  const olympians = new Set<string>(), roster = (year: number) => new Set((REAL_GAMES.find(g => g.year === year)?.rosters.USA ?? []).map(norm));
+  for (const g of REAL_GAMES) for (const names of Object.values(g.rosters)) for (const n of names ?? []) olympians.add(norm(n));
   const franchiseCount = new Map([...franchises].map(([k, v]) => [k, v.size]));
   const oneFranchise = new Set([...franchises].filter(([p, v]) => v.size === 1 && (seasonsPlayed.get(p) ?? 0) >= 10).map(([p]) => p));
   const ctx: Ctx = {
@@ -91,6 +102,7 @@ function context(h: NbaHistory): Ctx {
     allDef1: set(a => a.award === 'allDefense' && a.rank === 1), allDef: set(a => a.award === 'allDefense'), allRookie: set(a => a.award === 'allRookie'),
     allStar: new Set(h.allStars.map(a => key(pid(a.player), a.season))), allStarPlayers: new Set(h.allStars.map(a => pid(a.player))), asgMvp: new Set(h.allStarMvp.map(a => key(pid(a.player), a.season))),
     champs, finalsMvp, ringCount, runnerUp, teamRec, leaders, franchiseCount, oneFranchise, seasonsPlayed,
+    olympians, dream: roster(1992), redeem: roster(2008), stints,
   };
   ctxCache.set(h, ctx);
   return ctx;
@@ -229,6 +241,23 @@ const NICKNAME: Record<string, string> = {
   HOU: 'Rockets', IND: 'Pacers', LAC: 'Clippers', LAL: 'Lakers', MEM: 'Grizzlies', MIA: 'Heat', MIL: 'Bucks', MIN: 'Timberwolves', NOP: 'Pelicans', NYK: 'Knicks',
   OKC: 'Thunder', ORL: 'Magic', PHI: '76ers', PHO: 'Suns', POR: 'Trail Blazers', SAC: 'Kings', SAS: 'Spurs', TOR: 'Raptors', UTA: 'Jazz', WAS: 'Wizards',
 };
+const WORLD: Def[] = [
+  { id: 'intl', prime: true, name: 'International players', blurb: 'Born to play for another country', group: 'World', test: c => realNationality(c.name) !== 'USA' },
+  ...COUNTRIES.filter(c => c.name !== 'USA').map(k => ({ id: `country-${k.code.toLowerCase()}`, prime: true, name: `${k.name} players`, blurb: `Everyone from ${k.name} who made the NBA`, group: 'World' as const, test: ((c: HuntCard) => realNationality(c.name) === k.name) as Test })),
+  { id: 'olympic', prime: true, name: 'Olympic medalists', blurb: 'NBA players with a medal from 1992 on', group: 'World', test: (c, x) => x.olympians.has(norm(c.name)) },
+  { id: 'dream', prime: true, name: 'The 1992 Dream Team', blurb: 'Jordan, Magic, Bird and the rest', group: 'World', test: (c, x) => x.dream.has(norm(c.name)) },
+  { id: 'redeem', prime: true, name: 'The 2008 Redeem Team', blurb: 'LeBron, Kobe, Wade and the rest', group: 'World', test: (c, x) => x.redeem.has(norm(c.name)) },
+];
+
+/** Everyone who shared a locker room with a legend, at a season they played together. */
+const ICONS: [string, string][] = [['jordami01', 'Michael Jordan'], ['jamesle01', 'LeBron James'], ['bryanko01', 'Kobe Bryant'], ['abdulka01', 'Kareem Abdul-Jabbar'], ['russebi01', 'Bill Russell'], ['duncati01', 'Tim Duncan'], ['johnsma02', 'Magic Johnson'], ['onealsh01', "Shaquille O'Neal"], ['curryst01', 'Stephen Curry'], ['birdla01', 'Larry Bird'], ['chambwi01', 'Wilt Chamberlain'], ['nowitdi01', 'Dirk Nowitzki']];
+const TEAMMATES: Def[] = ICONS.map(([id, name]) => ({ id: `mate-${id}`, name: `${name}'s teammates`, blurb: `At a season they played with ${name.split(' ').slice(-1)[0]}`, group: 'Teammates' as const,
+  test: ((c, x) => c.playerId !== id && (x.stints.get(id)?.has(`${c.team}|${c.end}`) ?? false)) as Test }));
+
+/** Numbers from the real jersey table (only the ones it knows enough players for are kept). */
+const JERSEYS: Def[] = [23, 33, 32, 3, 34, 24, 8, 1, 6, 11, 21, 0].map(n => ({ id: `num-${n}`, name: `Wore #${n}`, blurb: `At a season they wore number ${n}`, group: 'Jerseys' as const,
+  test: ((c: HuntCard) => realJerseyNumber(c.playerId, c.team, c.end) === n) as Test }));
+
 /** One per franchise still playing: its best players at their best season there. */
 function teamDefs(h: NbaHistory): Def[] {
   const latest = Math.max(...h.teams.map(t => t.season));
@@ -246,7 +275,7 @@ export function categories(h: NbaHistory): CategoryInfo[] {
   if (hit) return hit;
   const x = context(h);
   const cards = cardPool(h).cards;
-  const defs = [...AWARDS, ...TITLES, ...ERAS, ...teamDefs(h), ...DRAFT, ...COLLEGE, ...BODY, ...STATS, ...CAREERS, ...NAMES];
+  const defs = allDefs(h);
   const built: Omit<CategoryInfo, 'tier'>[] = [];
   // Each player's prime: the best season of his career.
   const prime = new Map<string, HuntCard>();
@@ -269,8 +298,104 @@ export function categories(h: NbaHistory): CategoryInfo[] {
   const tierAt = (i: number): Tier => { const q = i / ranked.length; return q < 0.15 ? 'S' : q < 0.4 ? 'A' : q < 0.7 ? 'B' : q < 0.9 ? 'C' : 'D'; };
   const tiers = new Map(ranked.map((c, i) => [c.id, tierAt(i)]));
   const out = built.map(c => ({ ...c, tier: tiers.get(c.id)! }));
+  // The strength at each tier line, for mixed categories built later.
+  const at = (q: number) => strength(ranked[Math.min(ranked.length - 1, Math.floor(ranked.length * q))]);
+  cuts.set(h, { S: at(0.15), A: at(0.4), B: at(0.7), C: at(0.9) });
   infoCache.set(h, out);
   return out;
 }
 
-export const categoryById = (h: NbaHistory, id: string) => categories(h).find(c => c.id === id);
+const defsCache = new WeakMap<NbaHistory, Def[]>();
+function allDefs(h: NbaHistory): Def[] {
+  const hit = defsCache.get(h);
+  if (hit) return hit;
+  const d = [...AWARDS, ...TITLES, ...ERAS, ...teamDefs(h), ...DRAFT, ...COLLEGE, ...BODY, ...STATS, ...CAREERS, ...NAMES, ...WORLD, ...TEAMMATES, ...JERSEYS];
+  defsCache.set(h, d);
+  return d;
+}
+const cuts = new WeakMap<NbaHistory, Record<'S' | 'A' | 'B' | 'C', number>>();
+const strengthOf = (pool: HuntCard[]) => { const top = [...pool].sort((a, b) => b.ovr - a.ovr).slice(0, 10); return top.reduce((n, p) => n + p.ovr, 0) / Math.max(1, top.length); };
+function tierFor(h: NbaHistory, pool: HuntCard[]): Tier {
+  categories(h);
+  const c = cuts.get(h)!, v = strengthOf(pool);
+  return v >= c.S ? 'S' : v >= c.A ? 'A' : v >= c.B ? 'B' : v >= c.C ? 'C' : 'D';
+}
+
+// ---------------------------------------------------------------- mixed categories ("Lakers × 90s players")
+
+const mixCache = new WeakMap<NbaHistory, Map<string, CategoryInfo | null>>();
+/** Both categories at once: players who fit both (at a season that fits both, or their prime when neither is about a season). */
+export function mixedCategory(h: NbaHistory, a: string, b: string): CategoryInfo | null {
+  const id = `${a}+${b}`;
+  const cache = mixCache.get(h) ?? mixCache.set(h, new Map()).get(h)!;
+  if (cache.has(id)) return cache.get(id)!;
+  const da = allDefs(h).find(d => d.id === a), db = allDefs(h).find(d => d.id === b);
+  let out: CategoryInfo | null = null;
+  if (da && db && da.group !== db.group) {
+    const x = context(h);
+    const prime = !!da.prime && !!db.prime;
+    const best = new Map<string, HuntCard>();
+    const cards = prime ? [...primeCards(h).values()] : cardPool(h).cards;
+    for (const c of cards) {
+      // A prime-only rule checks the player's prime card; a season rule checks this season.
+      const pc = primeCards(h).get(c.playerId) ?? c;
+      if (!(da.prime ? da.test(pc, x) : da.test(c, x)) || !(db.prime ? db.test(pc, x) : db.test(c, x))) continue;
+      const cur = best.get(c.playerId);
+      if (!cur || c.ovr > cur.ovr) best.set(c.playerId, c);
+    }
+    if (best.size >= MIN_CATEGORY) {
+      const pool = [...best.values()].sort((p, q) => q.ppg - p.ppg);
+      out = { id, name: `${da.name} × ${db.name}`, blurb: `${da.blurb}, and ${db.blurb.charAt(0).toLowerCase()}${db.blurb.slice(1)}`, group: 'Mixed', ...(prime ? { prime: true } : {}), size: pool.length, pool, tier: tierFor(h, pool) };
+    }
+  }
+  cache.set(id, out);
+  return out;
+}
+const primeCache = new WeakMap<NbaHistory, Map<string, HuntCard>>();
+function primeCards(h: NbaHistory): Map<string, HuntCard> {
+  const hit = primeCache.get(h);
+  if (hit) return hit;
+  const m = new Map<string, HuntCard>();
+  for (const c of cardPool(h).cards) { const p = m.get(c.playerId); if (!p || c.ovr > p.ovr) m.set(c.playerId, c); }
+  primeCache.set(h, m);
+  return m;
+}
+
+/** A category or a mixed one (`a+b`). */
+export const categoryById = (h: NbaHistory, id: string): CategoryInfo | undefined => {
+  if (id.includes('+')) { const [a, b] = id.split('+'); return mixedCategory(h, a, b) ?? undefined; }
+  return categories(h).find(c => c.id === id);
+};
+
+// ---------------------------------------------------------------- scouting tips
+
+/**
+ * A scout's word on a player, without numbers: what he was at that season. For players who don't know the old names.
+ * Using tips costs a little score (the run options).
+ */
+export function scoutTag(h: NbaHistory, c: HuntCard): string {
+  const x = context(h), r = x.row.get(key(c.playerId, c.end)), g = Math.max(1, r?.stats.g ?? 1);
+  const blk = (r?.stats.blk ?? 0) / g, stl = (r?.stats.stl ?? 0) / g, threes = (r?.stats.x3p ?? 0) / g;
+  if (c.ppg >= 27) return 'Go-to scorer';
+  if (c.apg >= 8) return 'Floor general';
+  if (c.rpg >= 12) return 'Glass cleaner';
+  if (blk >= 2) return 'Rim protector';
+  if (c.ppg >= 20 && c.apg >= 5) return 'Shot creator';
+  if (threes >= 2.2) return 'Sharpshooter';
+  if (stl >= 1.8) return 'Ball hawk';
+  if (c.ppg >= 18) return 'Scorer';
+  if (c.rpg >= 8 && blk >= 1) return 'Two-way big';
+  if (c.apg >= 5) return 'Playmaker';
+  if (c.ppg >= 12) return 'Solid starter';
+  return c.rarity === 'legendary' || c.rarity === 'epic' ? 'Quiet impact' : 'Role player';
+}
+
+// ---------------------------------------------------------------- the Weekly Category Challenge
+
+/** This week's category for everyone: a tough one (B to D tier), seeded by the week. */
+export function weeklyCategory(h: NbaHistory, week: string): CategoryInfo {
+  let seed = 2166136261;
+  for (const ch of `courtvision-category|${week}`) { seed ^= ch.charCodeAt(0); seed = Math.imul(seed, 16777619); }
+  const list = categories(h).filter(c => (c.tier === 'B' || c.tier === 'C' || c.tier === 'D') && c.group !== 'Names');
+  return list[Math.floor(new RNG(seed >>> 0).next() * list.length)];
+}

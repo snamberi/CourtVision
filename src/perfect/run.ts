@@ -12,7 +12,7 @@ import { rosterRating } from '../hunt/rating';
 import { addBox, addHighs, type RunLine, type GameHighs } from '../hunt/statLines';
 import { challengeMultiplier, STANDARD_VIEW, type Level, type RunView } from '../retention/challenge';
 import type { PlayerStatLine } from '../simulation/boxscore';
-import { categories, categoryById, TIER_MULTIPLIER, type CategoryInfo, type Tier } from './categories';
+import { categories, categoryById, mixedCategory, weeklyCategory, TIER_MULTIPLIER, type CategoryInfo, type Tier } from './categories';
 
 /*
  * The 82-0 Challenge: build a ten-man team and a coach, then play a whole 82-game season against real teams from
@@ -38,6 +38,10 @@ import { categories, categoryById, TIER_MULTIPLIER, type CategoryInfo, type Tier
 
 export type PerfectMode = 'quick' | 'franchise' | 'category' | 'slots';
 export const isCategoryMode = (m: PerfectMode) => m === 'category' || m === 'slots';
+export interface CategoryOptions { tips?: boolean; clock?: boolean; mixed?: boolean }
+export const OPTION_MULTIPLIER = { tips: 0.9, clock: 1.1, mixed: 1.1 } as const;
+/** Seconds per pick with the shot clock on. */
+export const SHOT_CLOCK = 10;
 export type PerfectStage = 'draft' | 'coach' | 'season' | 'playoffs' | 'done';
 export interface PerfectGame { opp: string; us: number; them: number; won: boolean; top: string; boss?: boolean }
 export interface PerfectSeries { round: number; opp: string; games: PerfectGame[] }
@@ -57,6 +61,10 @@ export interface PerfectRun {
   cat?: string;
   cats?: string[];
   tiers?: Tier[];
+  /** Category Draft options: scouting tips (×0.9), a ten-second shot clock per pick (×1.1), mixed two-category rolls (×1.1). */
+  catOpts?: CategoryOptions;
+  /** The Weekly Category Challenge (week key): everyone's starters come from the same category. */
+  weekly?: string;
   /** Franchise Spin: the current roll and how many rolls were made (it seeds the next one). */
   roll?: PerfectRoll;
   rolls: number;
@@ -218,13 +226,19 @@ function rollFor(h: NbaHistory, run: PerfectRun, keep?: { franchise?: string; er
 
 // ---------------------------------------------------------------- starting and drafting
 
-export function newPerfectRun(h: NbaHistory, mode: PerfectMode, seed: number, daily?: string, opts: { level?: Level; view?: RunView } = {}): PerfectRun {
+export function newPerfectRun(h: NbaHistory, mode: PerfectMode, seed: number, daily?: string, opts: { level?: Level; view?: RunView; catOpts?: CategoryOptions; weekly?: string } = {}): PerfectRun {
   // The Daily is the standard game for everyone.
   const level = daily ? 'pro' : opts.level ?? 'pro', view = daily ? STANDARD_VIEW : opts.view ?? STANDARD_VIEW;
   const rerolls = mode === 'quick' ? { team: 0, era: 0, prime: 0, spin: SPIN_REROLLS, lucky: LUCKY_SPINS } : { team: 0, era: 0, prime: mode === 'franchise' ? 1 : 0, roll: SPIN_REROLLS, lucky: LUCKY_SPINS };
   const run: PerfectRun = { v: 1, mode, seed, daily, stage: 'draft', squad: [], rolls: 0, rerolls, schedule: [], bosses: [], games: [], playoffs: [],
     ...(level !== 'pro' ? { level } : {}), ...(view.numbers !== STANDARD_VIEW.numbers || view.colors !== STANDARD_VIEW.colors ? { view } : {}) };
-  if (isCategoryMode(mode)) return { ...run, cat: rollCategory(h, run).id, cats: [], tiers: [], rolls: 1 };
+  if (isCategoryMode(mode)) {
+    const catOpts = opts.catOpts && Object.values(opts.catOpts).some(Boolean) ? opts.catOpts : undefined;
+    const base: PerfectRun = { ...run, cats: [], tiers: [], rolls: 1, ...(catOpts ? { catOpts } : {}) };
+    // The Weekly Category Challenge: this week's category for the starters, the Pro game for everyone.
+    if (opts.weekly && mode === 'category') return { ...base, level: undefined, view: undefined, weekly: opts.weekly, cat: weeklyCategory(h, opts.weekly).id };
+    return { ...base, cat: rollCategory(h, base).id };
+  }
   return mode === 'franchise' ? { ...run, roll: rollFor(h, run), rolls: 1 } : run;
 }
 
@@ -250,9 +264,21 @@ export function categoryPool(h: NbaHistory, run: Pick<PerfectRun, 'squad' | 'cat
 function rollCategory(h: NbaHistory, run: PerfectRun, lucky = false): CategoryInfo {
   const rng = rngFor(run, 3000 + run.rolls);
   const used = new Set([...(run.cats ?? []), ...(run.cat ? [run.cat] : [])]);
-  const taken = new Set(run.squad.map(id => card(h, id).playerId));
-  const need = picksFromCategory(run) + 3;
-  const ok = categories(h).filter(c => !used.has(c.id) && (!lucky || c.tier === 'S' || c.tier === 'A') && c.pool.filter(x => !taken.has(x.playerId)).length >= need);
+  // Big enough for the picks plus anyone already taken. Not on who you took, so the same seed rolls the same
+  // categories for everyone (a duel or the Daily is fair whatever each player picks).
+  const need = picksFromCategory(run) + SQUAD;
+  const singles = categories(h).filter(c => !used.has(c.id) && c.pool.length >= need);
+  // Mixed rolls (an option): every other roll, two categories at once.
+  if (run.catOpts?.mixed && !lucky && rng.next() < 0.5) {
+    const big = singles.filter(c => c.pool.length >= 30);
+    for (let tries = 0; tries < 40 && big.length > 1; tries++) {
+      const a = big[Math.floor(rng.next() * big.length)], b = big[Math.floor(rng.next() * big.length)];
+      if (a.group === b.group) continue;
+      const m = mixedCategory(h, a.id, b.id);
+      if (m && !used.has(m.id) && m.size >= need) return m;
+    }
+  }
+  const ok = singles.filter(c => !lucky || c.tier === 'S' || c.tier === 'A');
   const list = ok.length ? ok : categories(h).filter(c => !used.has(c.id));
   const groups = [...new Set(list.map(c => c.group))].sort();
   const group = groups[Math.floor(rng.next() * groups.length)];
@@ -260,9 +286,30 @@ function rollCategory(h: NbaHistory, run: PerfectRun, lucky = false): CategoryIn
   return inGroup[Math.floor(rng.next() * inGroup.length)];
 }
 
+/** The shot clock ran out: a random player from the category (seeded, so it is the same for everyone). */
+export function autoPick(h: NbaHistory, run: PerfectRun): PerfectRun {
+  const pool = categoryPool(h, run);
+  if (!pool.length) return run;
+  return pickPlayer(h, run, pool[Math.floor(rngFor(run, 7000 + run.squad.length).next() * pool.length)].id);
+}
+
+/** The Weekly Category Challenge keeps its starting category: no rerolls until the bench. */
+export const categoryLocked = (run: Pick<PerfectRun, 'weekly' | 'squad'>) => !!run.weekly && run.squad.length < STARTERS;
+
+/** The options' score multiplier (tips cost, the shot clock and mixed rolls pay). */
+export function optionMultiplier(run: Pick<PerfectRun, 'catOpts'>): number {
+  const o = run.catOpts ?? {};
+  return Math.round((o.tips ? OPTION_MULTIPLIER.tips : 1) * (o.clock ? OPTION_MULTIPLIER.clock : 1) * (o.mixed ? OPTION_MULTIPLIER.mixed : 1) * 100) / 100;
+}
+
+/** The best five a category had to offer (by rating): what your starting five is measured against at the end. */
+export function bestFive(h: NbaHistory, catId: string): HuntCard[] {
+  return [...(categoryById(h, catId)?.pool ?? [])].sort((a, b) => b.ovr - a.ovr).slice(0, STARTERS);
+}
+
 /** Category Draft: a new category for this spot (the rolled one goes back). */
 export function rerollCategory(h: NbaHistory, run: PerfectRun): PerfectRun {
-  if (!isCategoryMode(run.mode) || run.stage !== 'draft' || (run.rerolls.roll ?? 0) < 1) return run;
+  if (!isCategoryMode(run.mode) || run.stage !== 'draft' || (run.rerolls.roll ?? 0) < 1 || categoryLocked(run)) return run;
   const next = { ...run, rolls: run.rolls + 1 };
   return { ...next, cat: rollCategory(h, next).id, rerolls: { ...run.rerolls, roll: (run.rerolls.roll ?? 0) - 1 } };
 }
@@ -388,7 +435,7 @@ export function luckySpin(h: NbaHistory, run: PerfectRun): PerfectRun {
   if (run.stage !== 'draft' || luckyLeft(run) < 1 || run.lucky) return run;
   const rerolls = { ...run.rerolls, lucky: luckyLeft(run) - 1 };
   if (run.mode === 'quick') return { ...run, lucky: true, rerolls };
-  if (isCategoryMode(run.mode)) { const n2 = { ...run, rolls: run.rolls + 1 }; return { ...n2, cat: rollCategory(h, n2, true).id, rerolls }; }
+  if (isCategoryMode(run.mode)) { if (categoryLocked(run)) return run; const n2 = { ...run, rolls: run.rolls + 1 }; return { ...n2, cat: rollCategory(h, n2, true).id, rerolls }; }
   if (!run.roll) return run;
   const next = { ...run, rolls: run.rolls + 1 };
   return { ...next, roll: rollFor(h, next, undefined, true), rerolls, prime: false };
@@ -654,7 +701,7 @@ export function summary(run: PerfectRun): PerfectSummary {
   if (perfectSeason) score += SCORE.perfectSeason;
   if (perfectPlayoffs) score += SCORE.perfectPlayoffs;
   // A self-imposed challenge (harder level, hidden colours) pays more; an easier one less. The Daily is always ×1.
-  const multiplier = Math.round(challengeMultiplier(run.level, run.view) * categoryMultiplier(run) * 100) / 100;
+  const multiplier = Math.round(challengeMultiplier(run.level, run.view) * categoryMultiplier(run) * optionMultiplier(run) * 100) / 100;
   return { w, l, pw, pl, bossWins, bosses: run.bosses.length, rounds, champion, perfectSeason, perfectPlayoffs, score: Math.round(score * multiplier), multiplier, streak, firstLoss: firstLossAt < 0 ? null : firstLossAt };
 }
 

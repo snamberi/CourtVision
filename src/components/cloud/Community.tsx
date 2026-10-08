@@ -27,7 +27,7 @@ import '../hunt/hunt.css';
 import '../locker/locker.css';
 
 type Tab = 'boards' | 'ranked' | 'pvp' | 'friends' | 'me';
-type BoardId = 'gms' | 'players' | 'whunt' | 'w820' | 'wrebuild' | 'wcareer' | 'wguess' | 'whilo' | 'wbracket' | 'daily' | 'rebuild' | 'friends';
+type BoardId = 'gms' | 'players' | 'whunt' | 'w820' | 'wcat' | 'wrebuild' | 'wcareer' | 'wguess' | 'whilo' | 'wbracket' | 'daily' | 'rebuild' | 'friends';
 const BOARDS: { id: BoardId; label: string; icon: string; group: 'All time' | 'This week' | 'Today' }[] = [
   { id: 'gms', label: 'GMs', icon: 'trophy', group: 'All time' }, { id: 'players', label: 'Created players', icon: 'jersey', group: 'All time' },
   { id: 'rebuild', label: 'Rebuild records', icon: 'chart', group: 'All time' }, { id: 'friends', label: 'Friends', icon: 'team', group: 'All time' },
@@ -35,6 +35,7 @@ const BOARDS: { id: BoardId; label: string; icon: string; group: 'All time' | 'T
   { id: 'wrebuild', label: 'Rebuild of the Week', icon: 'shuffle', group: 'This week' }, { id: 'wcareer', label: 'Career of the Week', icon: 'up', group: 'This week' },
   { id: 'wguess', label: 'Guess the Player', icon: 'search', group: 'This week' }, { id: 'whilo', label: 'Higher or Lower', icon: 'down', group: 'This week' },
   { id: 'wbracket', label: 'Bracket Challenge', icon: 'list', group: 'This week' },
+  { id: 'wcat', label: 'Category Challenge', icon: 'list', group: 'This week' },
   { id: 'daily', label: 'Daily Legend', icon: 'calendar', group: 'Today' },
 ];
 const BOARD_GROUPS = ['All time', 'This week', 'Today'] as const;
@@ -90,6 +91,7 @@ function Boards({ onUser }: { onUser: (u: string) => void }) {
     case 'wcareer': spec = { kind: 'weekly', board: 'career', week }; label = 'Legacy'; blurb = 'The same wheel and draft class for everyone this week.'; break;
     case 'wguess': spec = { kind: 'weekly', board: 'guess', week }; label = 'Points'; blurb = 'The daily Guess the Player, added up over the week: 600 for a first-guess solve, 100 less for each extra guess.'; break;
     case 'whilo': spec = { kind: 'weekly', board: 'hilo', week }; label = 'Streak'; blurb = 'Your best Higher or Lower streak this week.'; break;
+    case 'wcat': spec = { kind: 'weekly', board: 'category', week }; label = 'Score'; blurb = 'The same starting category for everyone this week (Category Roll). Your best try counts.'; break;
     case 'wbracket': spec = { kind: 'weekly', board: 'bracket', week }; label = 'Points'; blurb = 'The same sixteen all-time teams for everyone this week. 10, 20, 40 and 80 points a right pick by round; 320 is perfect.'; break;
     case 'daily': spec = { kind: 'daily', day: yesterday ? day(1) : day(0) }; label = 'Score'; blurb = 'Everyone plays the same hunt each day. Winning it beats everything; then how far you got.'; break;
     case 'rebuild': spec = { kind: 'rebuild', scenario }; label = 'Best'; blurb = 'Best score ever in each Rebuild scenario.'; break;
@@ -104,7 +106,7 @@ function Boards({ onUser }: { onUser: (u: string) => void }) {
     <div className="board-main">
     <header className="board-head"><span className="board-head-icon"><PixelIcon name={current.icon} size={22} /></span><div><span className="pixel-eyebrow">{current.group.toUpperCase()} · RANKED BY {label.toUpperCase()}</span><h2>{current.label}</h2></div>
     <div className="board-options">
-      {(board === 'wrebuild' || board === 'wcareer' || board === 'whunt' || board === 'w820' || board === 'wguess' || board === 'whilo' || board === 'wbracket') && <button aria-pressed={lastWeek} onClick={() => setLastWeek(v => !v)}>{lastWeek ? `Last week (${weeks.last})` : `This week (${weeks.now})`}</button>}
+      {(board === 'wrebuild' || board === 'wcareer' || board === 'whunt' || board === 'w820' || board === 'wcat' || board === 'wguess' || board === 'whilo' || board === 'wbracket') && <button aria-pressed={lastWeek} onClick={() => setLastWeek(v => !v)}>{lastWeek ? `Last week (${weeks.last})` : `This week (${weeks.now})`}</button>}
       {board === 'players' && <button aria-pressed={weeklyPlayers} onClick={() => setWeeklyPlayers(v => !v)}>{weeklyPlayers ? 'This week' : 'All time'}</button>}
       {board === 'daily' && <button aria-pressed={yesterday} onClick={() => setYesterday(v => !v)}>{yesterday ? 'Yesterday' : 'Today'}</button>}
       {board === 'rebuild' && <select className="year-input" value={scenario} onChange={e => setScenario(e.target.value)} aria-label="Scenario">{SCENARIOS.map(s => <option key={s.id} value={s.id}>{s.title} ({s.team} {s.startYear})</option>)}</select>}
