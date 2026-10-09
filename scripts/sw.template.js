@@ -40,9 +40,18 @@ self.addEventListener('fetch', event => {
 
   if (req.mode === 'navigate') {
     // Pages: always the newest from the server (past the browser's own cache), the saved copy only when offline.
-    // (A copy of the request keeps its redirect handling, so a redirected page still works.)
-    event.respondWith(fetch(new Request(req, { cache: 'no-cache' })).then(res => { if (res.ok) caches.open(RUNTIME).then(c => c.put(req, res.clone())); return res; })
-      .catch(() => caches.match(req).then(hit => hit || caches.match('/', { ignoreSearch: true }))));
+    // (A copy of the request keeps its redirect handling, so a redirected page still works.) Never answer with
+    // nothing: that shows the browser's "site may be down" page even when only this worker had a problem.
+    event.respondWith((async () => {
+      try {
+        const res = await fetch(new Request(req, { cache: 'no-cache' })).catch(() => fetch(req));
+        if (res.ok) caches.open(RUNTIME).then(c => c.put(req, res.clone()));
+        return res;
+      } catch {
+        const hit = await caches.match(req) || await caches.match('/', { ignoreSearch: true });
+        return hit || new Response('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Court Vision</title><body style="font:16px system-ui;background:#0b1018;color:#f4f0e6;padding:24px"><h1>Court Vision can\'t be reached</h1><p>Check your connection, then <a style="color:#f47b20" href="/">try again</a>.</p>', { status: 503, headers: { 'content-type': 'text/html; charset=utf-8' } });
+      }
+    })());
     return;
   }
   if (url.pathname.startsWith('/assets/')) {
