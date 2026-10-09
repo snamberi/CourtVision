@@ -62,7 +62,7 @@ interface Props {
 
 /** The cards on the menu. Franchise opens the New Franchise page (a real or random league, the Rebuild Challenge and
  *  the All-Time Draft); the others open their own setup screens. `badge` marks a highlight. */
-export type MenuMode = 'franchise' | 'legends' | 'perfect' | 'career' | 'category';
+export type MenuMode = 'franchise' | 'legends' | 'perfect' | 'career';
 const MODES: { id: MenuMode; title: string; blurb: string; kicker: string; icon: string; time: string; tags: string[]; badge?: 'popular' | 'fun' }[] = [
   {
     id: 'franchise', kicker: '01 / FRANCHISE', icon: 'court', time: 'Unlimited', tags: ['Real NBA', 'Random', 'Challenges'], badge: 'popular',
@@ -75,23 +75,18 @@ const MODES: { id: MenuMode; title: string; blurb: string; kicker: string; icon:
     blurb: 'Spin a six-man squad and a coach from all of history, then win ten best-of-seven series against the great teams of every era. A semi-boss, a boss, three boosts.',
   },
   {
-    id: 'perfect', kicker: '03 / PERFECT', icon: 'star', time: '5-10 min', tags: ['Spins', 'Quick', 'Bragging rights'], badge: 'fun',
+    id: 'perfect', kicker: '03 / PERFECT', icon: 'star', time: '5-10 min', tags: ['Spins', 'Categories', 'Quick'], badge: 'fun',
     title: '82-0 Challenge',
-    blurb: 'Spin ten players and a coach (or pick one player from each franchise-and-era roll), play all 82 against real teams and the 72-10 Bulls and 73-9 Warriors, then the playoffs. Go 82-0. Then 16-0.',
+    blurb: 'Spin ten players and a coach, pick one from each franchise-and-era roll, or draft from a category (MVPs, 90s players, the Lakers...). Play all 82 against real teams and the 72-10 Bulls and 73-9 Warriors, then the playoffs. Go 82-0. Then 16-0.',
   },
   {
     id: 'career', kicker: '04 / BECOME', icon: 'star', time: '5-15 min', tags: ['Single player', 'Story', 'Spins'], badge: 'fun',
     title: 'Career Mode',
     blurb: 'Create one player (spin the wheel of NBA history or build him yourself) and live his whole career in today\'s league: draft night, training, free agency, awards, the Hall of Fame and the all-time Top 100.',
   },
-  {
-    id: 'category', kicker: '05 / CATEGORY', icon: 'list', time: '5-10 min', tags: ['New', '150 categories', 'Go 82-0'],
-    title: 'Category Draft',
-    blurb: 'Roll a category (MVPs, 90s players, Duke, No. 1 picks, 7-footers, the Lakers...) and pick ANY five as your starters, then try to go 82-0. Or Slot Spin: every spot rolls its own category.',
-  },
 ];
 /** The menu card a Mode of the Week falls under. */
-const cardOf = (m: string): MenuMode => (m === 'rebuild' || m === 'draft' || m === 'real' || m === 'random' ? 'franchise' : m as MenuMode);
+const cardOf = (m: string): MenuMode => (m === 'rebuild' || m === 'draft' || m === 'real' || m === 'random' ? 'franchise' : m === 'category' ? 'perfect' : m as MenuMode);
 const BADGE_LABEL = { popular: 'Most popular', fun: 'Most fun' } as const;
 
 function formatWhen(ts: number): string {
@@ -223,7 +218,7 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
           </div>;
         })}
         {/* Room for the next modes. */}
-        {[6].map(n => <div key={n} className="mode-card-wrap soon">
+        {[5].map(n => <div key={n} className="mode-card-wrap soon">
           <button className="mode-card mode-soon" disabled aria-label="Coming soon">
             <span className="mode-card-kicker"><PixelIcon name="lock" size={24} /><span>0{n} / SOON</span></span>
             <h3>Coming soon</h3>

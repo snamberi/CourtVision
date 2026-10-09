@@ -7,13 +7,20 @@ export interface Release { id: string; title: string; items: string[] }
 export const RELEASES: Release[] = [
   {
     id: '2027-03-10',
-    title: 'Career balance: every rating past 99 does something',
+    title: 'Balance update: superstar traits, season goals and closer games',
     items: [
       "**Athleticism:** a career player past 99 tires slower, needs fewer breaks and gets hurt less. At 110 he plays the whole game, close to 48 minutes.",
       "**Body:** he owns the paint. More of his shots come at the rim and he finishes them at a much higher rate, with fewer injuries.",
       "**Height:** every inch past 7'0\" means more rebounds and blocks. A 7'8\" giant grabs about 7 more boards and 3 more blocks than a 6'8\" big.",
       "**IQ & Clutch:** he runs the offense. The ball finds him, he sets teammates up (about 8 more assists at 110), takes better shots, and everyone shoots better with him on the floor. That means more wins and more titles.",
       "**Balance:** even a maxed-out legend has limits. No more 40 rebounds or 85% shooting: he tops out around Wilt's numbers.",
+      "**Closer games everywhere:** big leads shrink now (the trailing team plays with urgency, the leader eases off), so far fewer 30-point blowouts. Every team's best players play more (about 36 minutes) and stars get the ball back more often.",
+      "**Superstar traits:** your career player's Ratings tab shows Iron Man, Paint Beast, Skyscraper and Floor General: what each one does now, and how far you are from full power at 110.",
+      "**Season goals:** three goals every season, set from your last one (score more, make the All-Star team, win MVP...). See how you did after the season, and your career total on the Career stats tab.",
+      "**League ranks:** the season recap shows where you finished in the league in points, rebounds, assists, steals and blocks.",
+      "**Career highs:** your best single games and your double- and triple-double counts.",
+      "**All-time ranks:** where your career totals rank against every NBA player since 1946, and how many points you need to pass the next legend.",
+      "**82-0 Challenge:** Category Draft now lives inside the 82-0 Challenge (Category Roll and Slot Spin), not as its own card on the menu.",
     ],
   },
   {

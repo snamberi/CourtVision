@@ -27,6 +27,8 @@ export class LiveRotation {
   private hasExact: boolean;
   /** Athleticism past 99 (superstar.ts): 0 for everyone else; at 1 (110) he plays the whole game. */
   private motor: Record<string, number> = {};
+  /** Coaches ride their best players through some fatigue: 0.35 for the team's best, 0.2 for the second. */
+  private grit: Record<string, number> = {};
   constructor(roster: PlayerSeason[], totalSeconds: number, coach: CoachTendencies,
     rules: LeagueRulesSettings | undefined, rng: RNG, order: string[] = [], playoffs = false, opponent: PlayerSeason[] = []) {
     this.opponent = opponent; this.roster = roster; this.totalSeconds = totalSeconds; this.coach = coach; this.rules = rules;
@@ -38,6 +40,10 @@ export class LiveRotation {
     });
     this.starters = sorted.slice(0, 5).map(s => s.playerId);
     this.depth = Math.max(5, Math.min(roster.length, coach.rotationPolicy?.mode==='playoff' && playoffs ? Math.min(8,coach.rotationDepth??8) : coach.rotationDepth ?? 10));
+    // The best players play the most: an NBA team's best starter logs ~36 minutes, its third-best ~32.
+    const byRating = [...roster].sort((a, b) => (b.overall.overall ?? 0) - (a.overall.overall ?? 0)).map(s => s.playerId);
+    const starFloor = [36, 34, 32].map(m => m / 48 * totalSeconds);
+    byRating.slice(0, 2).forEach((id, i) => { this.grit[id] = i === 0 ? 0.35 : 0.2; });
     for (const s of sorted) {
       this.seconds[s.playerId] = 0;
       this.stint[s.playerId] = 0;
@@ -69,6 +75,18 @@ export class LiveRotation {
       }
       for (const s of capped) { this.targets[s.playerId] = totalSeconds; remaining -= totalSeconds; }
       flexible = flexible.filter(s => !capped.includes(s));
+    }
+    // After the split, the team's best starters are raised to their floor; the rest of the AI-run rotation gives it up.
+    const auto = sorted.filter(s => s.minutes.mode === 'AI' && this.targets[s.playerId] > 0 && !iron.includes(s));
+    const playing = byRating.filter(id => this.targets[id] > 0);
+    const lift = (s: PlayerSeason) => this.starters.includes(s.playerId) ? Math.max(0, (starFloor[playing.indexOf(s.playerId)] ?? 0) - this.targets[s.playerId]) : 0;
+    const stars = auto.filter(s => lift(s) > 0);
+    const extra = stars.reduce((n, s) => n + lift(s), 0);
+    const givers = auto.filter(s => !stars.includes(s));
+    const pool = givers.reduce((n, s) => n + this.targets[s.playerId], 0);
+    if (extra > 0 && pool > extra * 4) {
+      for (const s of stars) this.targets[s.playerId] += lift(s);
+      for (const s of givers) this.targets[s.playerId] *= 1 - extra / pool;
     }
   }
   private exactRemaining(s: PlayerSeason, q: number, qSeconds: number): number {
@@ -126,7 +144,7 @@ export class LiveRotation {
       if (playing && stint < stintLimit) value += 1.1;
       const motor = Math.min(1, this.motor[id] ?? 0);
       if (playing && stint > stintLimit) value -= (stint - stintLimit) / 100 * (1 - motor);
-      if (this.coach.rotationPolicy?.allowOverrides !== false) value -= (fatigue[id]?.level ?? 0) * 2 * (1 - motor);
+      if (this.coach.rotationPolicy?.allowOverrides !== false) value -= (fatigue[id]?.level ?? 0) * 2 * (1 - motor) * (1 - (this.grit[id] ?? 0));
       if (clutch) value += starter ? this.coach.starUsage / 35 : 0;
       const policy=this.coach.rotationPolicy;
       if (clutch && policy?.closing.includes(id)) value += 7;

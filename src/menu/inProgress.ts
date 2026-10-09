@@ -32,8 +32,7 @@ export const localProgress = (): InProgress => {
   const hunt = huntProgress(json<HuntRunLite>('cv-hunt-run'));
   if (hunt) out.legends = hunt;
   const p820 = perfectProgress(json<PerfectRunLite>('cv-perfect-run'));
-  const p820run = json<PerfectRunLite>('cv-perfect-run');
-  if (p820) { if (p820run?.mode === 'category' || p820run?.mode === 'slots') out.category = p820; else out.perfect = p820; }
+  if (p820) out.perfect = p820;
   return out;
 };
 

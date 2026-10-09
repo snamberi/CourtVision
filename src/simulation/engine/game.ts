@@ -60,6 +60,8 @@ export type LiveCoachingCommand =
 export const TIMEOUTS_PER_GAME = 7;
 /** A run this long (unanswered points) gives the scoring team momentum; the other bench calls timeout at RUN_TIMEOUT. */
 export const MOMENTUM_RUN = 8, RUN_TIMEOUT = 10;
+/** Past this lead the game starts pulling back together (see the lead edge in the possession loop). */
+export const BLOWOUT_START = 10;
 const PACE_DURATION: Record<LivePace, number> = { slow: 1.22, normal: 1, fast: 0.8 };
 
 function possessionsPerQuarter(quarterLengthMinutes: number, pacePreset: GameSettings['pacePreset'], paceModifier: number, rulesPaceMultiplier = 1): number {
@@ -300,6 +302,10 @@ export function simulateGame(opts: SimulateGameOptions): GameResult {
       // A team on a run plays with a little extra confidence.
       let possessionMods = offenseIsHome ? hMods : aMods;
       if (run.teamId === offenseTeamId && run.points >= MOMENTUM_RUN) possessionMods = { ...possessionMods, shot: { ...possessionMods.shot, offensiveEfficiency: possessionMods.shot.offensiveEfficiency * (1 + Math.min(0.03, (run.points - 6) * 0.004)) } };
+      // Big leads shrink: the trailing team plays with urgency and the leader eases off (fewer 30-point blowouts).
+      const lead = offenseBox.points - (offenseIsHome ? awayBox.points : homeBox.points);
+      const leadEdge = lead < -BLOWOUT_START ? Math.min(0.12, (-lead - BLOWOUT_START) * 0.009) : lead > BLOWOUT_START ? -Math.min(0.1, (lead - BLOWOUT_START) * 0.007) : 0;
+      if (leadEdge) possessionMods = { ...possessionMods, shot: { ...possessionMods.shot, offensiveEfficiency: possessionMods.shot.offensiveEfficiency * (1 + leadEdge) } };
 
       const result = simulatePossession({
         offense: offenseOnCourt,

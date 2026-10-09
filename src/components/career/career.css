@@ -282,3 +282,27 @@ div.mp-callout { cursor: default; }
 .cv-moment-choices button small { color: var(--c-fg-55c878, #55c878); }
 .cv-moment-result { padding: 10px 12px; background: var(--c-bg-192333, #192333); border-left: 3px solid var(--c-border-f47b20, #f47b20); text-align: left; }
 .cv-moment .primary { justify-self: center; min-width: 180px; }
+
+/* Superstar traits, season goals, league ranks, career highs and all-time ranks. */
+.cv-traits { list-style: none; padding: 0; margin: 6px 0 0; display: grid; gap: 8px; }
+.cv-traits li { display: grid; grid-template-columns: minmax(12em, 16em) 1fr; gap: 4px 10px; align-items: center; padding: 6px 8px; border: 1px solid var(--c-border-2a3546, #2a3546); background: var(--c-bg-121926, #121926); }
+.cv-traits li > small { grid-column: 1 / -1; color: var(--c-fg-94a0b2, #94a0b2); }
+.cv-traits li.on { border-color: var(--c-border-ffd166, #ffd166); }
+.cv-traits li.on > small { color: var(--c-fg-f4f0e6, #f4f0e6); }
+.cv-traits .cv-trait-name { display: inline-flex; align-items: center; gap: 6px; }
+.cv-traits .cv-trait-name small { color: var(--c-fg-94a0b2, #94a0b2); font-variant-numeric: tabular-nums; }
+.cv-traits .hunt-cap-bar i.elite { background: var(--c-bg-ffd166, #ffd166); }
+.cv-goals ul { list-style: none; padding: 0; margin: 0 0 8px; display: grid; gap: 3px; }
+.cv-goals li { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.cv-goals li small { color: var(--c-fg-94a0b2, #94a0b2); }
+.cv-goals li.hit { color: var(--c-fg-55c878, #55c878); }
+.cv-goals li.miss { color: var(--c-fg-94a0b2, #94a0b2); }
+.cv-ranks { list-style: none; padding: 0; margin: 6px 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.cv-ranks li { padding: 3px 8px; border: 1px solid var(--c-border-2a3546, #2a3546); font-size: 12px; background: var(--c-bg-121926, #121926); }
+.cv-ranks li.top { border-color: var(--c-border-4da3ff, #4da3ff); }
+.cv-ranks li.gold { border-color: var(--c-border-ffd166, #ffd166); color: var(--c-fg-ffd166, #ffd166); }
+.cv-ranks li small { color: var(--c-fg-94a0b2, #94a0b2); }
+.cv-extras { display: grid; gap: 10px; margin-top: 10px; }
+.cv-alltime { list-style: none; padding: 0; margin: 0; display: grid; gap: 4px; font-size: 13px; }
+.cv-alltime b { font-variant-numeric: tabular-nums; }
+@media (max-width: 560px) { .cv-traits li { grid-template-columns: 1fr; } }

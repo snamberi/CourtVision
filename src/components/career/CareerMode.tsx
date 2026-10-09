@@ -17,6 +17,7 @@ import {
   OFFER_LABEL, type CareerMeta, type CareerMode as Mode, type CareerYear, type TradeWish,
 } from '../../career/career';
 import { legacyScore, top100, top100Rank } from '../../career/legacy';
+import { superstarTraits, seasonGoals, gradeGoals, goalRecord, leagueRanks, careerHighs, allTimeRanks } from '../../career/insights';
 import { listCareers, loadWorld, saveCareer, dropWorld, deleteCareer, type CareerWorld } from '../../career/storage';
 import { runCareerStep } from '../../career/runner';
 import { PixelIcon } from '../PixelIcon';
@@ -407,11 +408,14 @@ function CareerView({ h, a, busy, tradeAsked, onPlay, onAutopilot, onTraining, o
     {current === 'season' && last && <div className="cv-recap">
       <span className="pixel-eyebrow">{fy(last.season)} · {last.teamName}{last.record ? ` · ${last.record.w}-${last.record.l}` : ''}{last.finish ? ` · ${last.finish}` : ''}</span>
       <StatLine s={last.stats} />
+      <LeagueRanks ranks={leagueRanks(world.league, world.extras, meta.playerId, last.season)} />
+      <GoalList title="Season goals" results={gradeGoals(seasonGoals(meta.years.at(-2)), last)} />
       {last.awards.length > 0 ? <ul className="cv-awards">{last.awards.map(x => <li key={x.label} className={['champion', 'mvp', 'fmvp'].includes(x.key) ? 'gold' : ''}>{x.label}</li>)}</ul> : <p className="hint-text">No awards this season.</p>}
       {last.playoffs && <p className="hint-text">Playoffs: {plural(last.playoffs.gamesPlayed, 'game')}, {per(last.playoffs.points, last.playoffs.gamesPlayed)} PTS · {per(last.playoffs.oreb + last.playoffs.dreb, last.playoffs.gamesPlayed)} REB · {per(last.playoffs.ast, last.playoffs.gamesPlayed)} AST</p>}
       <Moments moments={careerMoments(meta).filter(m => m.season === last.season)} />
     </div>}
     {current === 'plan' && <div className="cv-panel">
+      <GoalList title={`Goals for ${offseason ? 'next' : 'this'} season`} goals={seasonGoals(last)} />
       <h3 className="hunt-subhead">Training focus <small>(pick two; they grow faster and can pass his prime)</small></h3>
       <div className="hunt-replace">{CATEGORIES.filter(c => c.id !== 'size').map(c => <button key={c.id} aria-pressed={meta.training.includes(c.id)} className={meta.training.includes(c.id) ? 'active' : ''} disabled={busy} onClick={() => toggle(c.id)}>{c.name}</button>)}</div>
       {offers.length > 0 && <><h3 className="hunt-subhead">Free agency: pick your team</h3>
@@ -420,12 +424,53 @@ function CareerView({ h, a, busy, tradeAsked, onPlay, onAutopilot, onTraining, o
       {offseason && found?.teamId && !tradeAsked && <><h3 className="hunt-subhead">Ask for a trade?</h3>
         <div className="hunt-replace"><button disabled={busy} onClick={() => onTrade('contender')}>To a contender</button><button disabled={busy} onClick={() => onTrade('role')}>For a bigger role</button><button disabled={busy} onClick={() => onTrade('anywhere')}>Anywhere but here</button></div></>}
     </div>}
-    {current === 'ratings' && <div className="cv-panel"><h3 className="hunt-subhead">Ratings <small>(now / prime; green = training focus)</small></h3><Ratings meta={meta} /></div>}
-    {current === 'history' && <><OverallChart years={meta.years} />{meta.years.length ? <YearsTable years={meta.years} /> : <p className="empty-state">No seasons played yet.</p>}</>}
+    {current === 'ratings' && <div className="cv-panel"><h3 className="hunt-subhead">Ratings <small>(now / prime; green = training focus)</small></h3><Ratings meta={meta} />{p && <Traits p={p} />}</div>}
+    {current === 'history' && <><OverallChart years={meta.years} />{meta.years.length ? <><YearsTable years={meta.years} /><CareerExtras h={h} years={meta.years} /></> : <p className="empty-state">No seasons played yet.</p>}</>}
   </section>;
 }
 
 type CareerTab = 'plan' | 'season' | 'ratings' | 'history';
+
+/** What each rating past 99 (and height past 7'0") does for him; locked ones show what to train toward. */
+function Traits({ p }: { p: import('../../simulation/types').PlayerSeason }) {
+  return <><h3 className="hunt-subhead">Superstar traits <small>(ratings past 99 unlock them; full power at 110)</small></h3>
+    <ul className="cv-traits">{superstarTraits(p.attributes).map(t => <li key={t.id} className={t.active ? 'on' : ''}>
+      <span className="cv-trait-name"><PixelIcon name={t.active ? 'star' : 'lock'} size={14} /> <b>{t.name}</b> <small>{t.category} {t.id === 'tower' ? `${Math.floor(t.rating / 12)}'${t.rating % 12}"` : t.rating}</small></span>
+      <div className="hunt-cap-bar" aria-label={`${Math.round(t.progress * 100)}% of full power`}><i className={t.active ? 'elite' : ''} style={{ width: `${Math.round(t.progress * 100)}%` }} /></div>
+      <small>{t.effect}</small>
+    </li>)}</ul></>;
+}
+
+function GoalList({ title, goals, results }: { title: string; goals?: { id: string; text: string }[]; results?: { id: string; text: string; hit: boolean; got: string }[] }) {
+  const rows = results ?? goals ?? [];
+  if (!rows.length) return null;
+  const hit = results?.filter(r => r.hit).length;
+  return <div className="cv-goals"><h3 className="hunt-subhead">{title}{results && <small> ({hit} of {results.length} hit)</small>}</h3>
+    <ul>{rows.map(g => { const r = results?.find(x => x.id === g.id); return <li key={g.id} className={r ? (r.hit ? 'hit' : 'miss') : ''}>
+      <PixelIcon name={r ? (r.hit ? 'check' : 'cross') : 'star'} size={12} /> {g.text}{r && <small> · {r.got}</small>}</li>; })}</ul></div>;
+}
+
+function LeagueRanks({ ranks }: { ranks: { stat: string; rank: number; value: number }[] }) {
+  const top = ranks.filter(r => r.rank <= 15);
+  if (!top.length) return null;
+  return <ul className="cv-ranks" aria-label="League ranks">{top.map(r => <li key={r.stat} className={r.rank === 1 ? 'gold' : r.rank <= 5 ? 'top' : ''}>
+    <b>#{r.rank}</b> in {r.stat} <small>({r.value.toFixed(1)})</small></li>)}</ul>;
+}
+
+function CareerExtras({ h, years }: { h: NbaHistory; years: CareerYear[] }) {
+  const hi = careerHighs(years), goals = goalRecord(years), all = allTimeRanks(h, years);
+  return <div className="cv-extras">
+    <div className="cv-panel"><h3 className="hunt-subhead">Career highs <small>(one game)</small></h3>
+      <div className="hunt-over-stats cv-line">
+        <div><small>PTS</small><b>{hi.points}</b></div><div><small>REB</small><b>{hi.rebounds}</b></div><div><small>AST</small><b>{hi.assists}</b></div>
+        <div><small>STL</small><b>{hi.steals}</b></div><div><small>BLK</small><b>{hi.blocks}</b></div><div><small>DBL-DBL</small><b>{hi.doubleDoubles}</b></div><div><small>TRP-DBL</small><b>{hi.tripleDoubles}</b></div>
+        <div><small>GOALS</small><b>{goals.hit}/{goals.total}</b></div>
+      </div></div>
+    <div className="cv-panel"><h3 className="hunt-subhead">All-time NBA ranks <small>(regular season, every player since 1946)</small></h3>
+      <ul className="cv-alltime">{all.map(r => <li key={r.stat}><b>#{r.rank.toLocaleString()}</b> in {r.stat.toLowerCase()} <small>({r.total.toLocaleString()})</small>
+        {r.next && <span className="hint-text"> · {(r.next.total - r.total + 1).toLocaleString()} more to pass {r.next.name}</span>}{r.rank === 1 && <span className="cv-elite"> · the all-time leader</span>}</li>)}</ul></div>
+  </div>;
+}
 
 function Moments({ moments, title = 'Moments' }: { moments: Moment[]; title?: string }) {
   if (!moments.length) return null;

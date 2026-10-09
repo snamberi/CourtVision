@@ -237,7 +237,8 @@ export function simulatePossession(input: PossessionInput): PossessionResult {
       const defender = defense[defenderIdx];
       // Lower defender contest/closeout = more "open" = more likely to be the pass target.
       const openness = defender ? Math.max(5, 100 - (defender.attributes.defense.contest + defender.attributes.defense.closeout) / 2) : 40;
-      return 1 + p.role.spotUpShooter * 0.35 + p.role.catchAndShoot * 0.35 + p.role.cutter * 0.15 + openness * 0.5;
+      // Go-to scorers want it back: the swing pass finds the team's star more often (NBA top scorers use ~30% of trips).
+      return 1 + p.role.spotUpShooter * 0.35 + p.role.catchAndShoot * 0.35 + p.role.cutter * 0.15 + openness * 0.5 + Math.max(0, p.ballDominance - 50) * 0.7;
     });
     shooter = teammates[rng.weightedPick(weights)];
     assistCandidate = bh;
