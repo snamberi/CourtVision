@@ -53,6 +53,7 @@ export function SettingsPage({ onExit, backup, recovery }: { onExit: () => void;
       </SettingCard>
       <SettingCard icon="team" title="Privacy" blurb="What Court Vision stores, and your cookie choices.">
         <p className="settings-links"><PrivacyLink /> · <CookieSettingsLink /></p>
+        {import.meta.env.VITE_BUILD_STAMP && <p className="hint-text settings-build">Version {import.meta.env.VITE_BUILD_STAMP}</p>}
       </SettingCard>
       {!IS_DESKTOP_BUILD && <SettingCard icon="settings" title="Advanced" blurb="Checks the online services (accounts and leaderboards).">
         <details className="settings-advanced"><summary>Online status</summary><OnlineStatus /></details>
