@@ -1,7 +1,8 @@
+import { superFactor, bodyOf, iqOf } from './superstar';
 import type { Attributes, PlayerId, PositionSuitability, RoleTendencies, PassingTendencies } from '../types';
 import type { AggregatedFlags } from './effective';
 import type { RNG } from './rng';
-import { chooseBallHandler, computeBlockProbability, type BallHandlerCandidate } from './ballHandler';
+import { chooseBallHandler, computeBlockProbability, blockLength, type BallHandlerCandidate } from './ballHandler';
 import { chooseShotType, rollContestLevel, resolveShot, resolveFreeThrow, foulDrawProbability, andOneProbability, THREE_POINT_TYPES, RIM_TYPES, type ShotType } from './shot';
 import { resolveTurnover, type TurnoverContext } from './turnover';
 import { resolveRebound, type RebounderCandidate } from './rebound';
@@ -127,11 +128,15 @@ export function simulatePossession(input: PossessionInput): PossessionResult {
   const events: string[] = [];
   const statDeltas: Record<PlayerId, Partial<PlayerStatLine>> = {};
 
-  const bhCandidates: BallHandlerCandidate[] = offense.map((p) => ({
+  // IQ & Clutch past 99 (superstar.ts): 0 for ordinary players, so their possessions play exactly as before.
+  const iqs = offense.map(p => Math.min(1, superFactor(iqOf(p.attributes))));
+  const floorGeneral = Math.max(0, ...iqs);
+  const bhCandidates: BallHandlerCandidate[] = offense.map((p, i) => ({
     playerId: p.playerId,
     priority: p.ballHandlerPriority,
     fatigueLevel: p.fatigue.level,
     onCourt: true,
+    iq: iqs[i],
   }));
   const call = input.playCall;
   const focus = call?.focusId ? offense.find(p => p.playerId === call.focusId) : undefined;
@@ -163,6 +168,7 @@ export function simulatePossession(input: PossessionInput): PossessionResult {
   passFrequency -= Math.max(0, bh.ballDominance - 60) * 0.35; // go-to scorers still shoot it themselves more often
   if (doubleTeamed) passFrequency += 20; // giving it up under pressure is the smart read
   if (call?.kind === 'threes') passFrequency += 10; // swing it for the open three
+  passFrequency += iqs[offense.indexOf(bh)] * 25; // a floor general sets teammates up
   passFrequency = Math.max(12, Math.min(90, passFrequency));
   // A called isolation, post-up or last shot stays with the man it was drawn up for (unless he's doubled).
   const keepIt = !!focus && focus === bh && !doubleTeamed && (call!.kind === 'iso' || call!.kind === 'post' || call!.kind === 'lastShot');
@@ -242,7 +248,7 @@ export function simulatePossession(input: PossessionInput): PossessionResult {
   const rawShotWeights = shooter.shotTendencies;
   const overridden = applyThreePointOverride(rawShotWeights, shooter.threePointTarget);
   const adjustedShotWeights = call ? calledShotWeights(overridden as Record<ShotType, number>, call) : overridden;
-  const shotType = chooseShotType(adjustedShotWeights as any, shooter.attributes.offense, rng, mods.shotTypeWeight);
+  const shotType = chooseShotType(adjustedShotWeights as any, shooter.attributes.offense, rng, mods.shotTypeWeight, Math.min(1, superFactor(bodyOf(shooter.attributes))));
   const isThree = THREE_POINT_TYPES.includes(shotType);
 
   const contest = rollContestLevel(
@@ -314,7 +320,10 @@ export function simulatePossession(input: PossessionInput): PossessionResult {
     {
       type: shotType, contest, fatigueLevel: shooter.fatigue.level, isClutch: input.isClutch, isPlayoffs: input.isPlayoffs,
       shootingVariance: input.shootingVariance, action, wasAssisted: assistCandidate != null,
-      defenderDefensiveIQ: shooterDefender.attributes.defense.defensiveIQ, ruleMods: deep ? { ...mods.shot, threePointDifficulty: mods.shot.threePointDifficulty + FOUR_POINT_DIFFICULTY } : mods.shot,
+      defenderDefensiveIQ: shooterDefender.attributes.defense.defensiveIQ,
+      // His own shots are better picks; everyone gets better looks with him on the floor.
+      superBoost: iqs[offense.indexOf(shooter)] * 0.05 + floorGeneral * 0.04,
+      ruleMods: deep ? { ...mods.shot, threePointDifficulty: mods.shot.threePointDifficulty + FOUR_POINT_DIFFICULTY } : mods.shot,
     },
     shooter.flags,
     rng,
@@ -343,7 +352,7 @@ export function simulatePossession(input: PossessionInput): PossessionResult {
     }
 
     if (assistCandidate) {
-      const assistChance = Math.min(0.94, (0.63 + assistCandidate.attributes.offense.passingIQ * 0.005 + assistCandidate.role.primaryBallHandler * 0.0012) * mods.assistFrequency);
+      const assistChance = Math.min(0.94, (0.63 + assistCandidate.attributes.offense.passingIQ * 0.005 + assistCandidate.role.primaryBallHandler * 0.0012) * mods.assistFrequency + iqs[offense.indexOf(assistCandidate)] * 0.15);
       if (assistCandidate.flags.automaticAssist || rng.chance(assistChance)) {
         addDelta(statDeltas, assistCandidate.playerId, { ast: 1 });
         events.push(`${assistCandidate.playerId} AST`);
@@ -372,7 +381,7 @@ export const BONUS_SHARE = 0.28;
 export const HELP_BLOCK_SHARE = 0.38;
 function blockSkill(p: OnCourtPlayer): number {
   const d = p.attributes.defense;
-  return d.block * 0.35 + d.rimProtection * 0.2 + d.blockIQ * 0.15 + d.blockTiming * 0.15 + p.attributes.physical.vertical * 0.15;
+  return (d.block * 0.35 + d.rimProtection * 0.2 + d.blockIQ * 0.15 + d.blockTiming * 0.15 + p.attributes.physical.vertical * 0.15) * blockLength(p.attributes.physical.heightInches);
 }
 
 /** Share of missed shots that end as uncredited team rebounds: out of bounds, tipped loose (NBA: roughly one in ten).

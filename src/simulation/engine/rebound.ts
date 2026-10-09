@@ -24,7 +24,9 @@ export function resolveRebound(
   const weights = candidates.map((c) => {
     const reb = c.isOffense ? c.attributes.offense.offensiveRebounding : c.attributes.defense.defensiveRebounding;
     // Size wins rebounds: weight scales with height to the 7th power around 6'7" (a 7-footer ~1.5x, a 6'2" guard ~0.64x).
-    const height = Math.pow(Math.max(66, Math.min(92, c.attributes.physical.heightInches || HEIGHT_PIVOT)) / HEIGHT_PIVOT, HEIGHT_POWER);
+    // Past 7'0" each inch counts a little less (a 7'8" giant gets about 7 more boards than a 6'8" big, not 9).
+    const rawHeight = Math.max(66, Math.min(96, c.attributes.physical.heightInches || HEIGHT_PIVOT));
+    const height = Math.pow((rawHeight > 84 ? 84 + (rawHeight - 84) * 0.7 : rawHeight) / HEIGHT_PIVOT, HEIGHT_POWER);
     const vertical = c.attributes.physical.vertical * 0.05;
     const threeBonus = missWasThree && !c.isOffense ? 2 : 0; // long rebounds skew slightly toward defense
     // Superlinear so strong rebounders (usually bigs) clearly out-rebound guards, but not so steep that one big takes
@@ -35,6 +37,12 @@ export function resolveRebound(
     if (!c.isOffense) w *= DEFENSIVE_POSITION_EDGE;
     w *= c.isOffense ? offenseFrequencyMult : defenseFrequencyMult;
     return Math.max(0.01, w);
+  });
+  // A rebounder rated past 99 (Career Mode) still can't take every board: at most about a third of the misses.
+  const total = weights.reduce((a, b) => a + b, 0);
+  candidates.forEach((c, i) => {
+    const reb = c.isOffense ? c.attributes.offense.offensiveRebounding : c.attributes.defense.defensiveRebounding;
+    if (reb > 99 && c.flags.reboundMultiplier === 1) weights[i] = Math.min(weights[i], 0.45 * (total - weights[i]));
   });
   const idx = rng.weightedPick(weights);
   return candidates[idx].playerId;

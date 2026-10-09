@@ -9,6 +9,7 @@ export interface BallHandlerCandidate {
   priority: number; // 0-100, from PlayerSeason.ballHandlerPriority (user-overridable)
   fatigueLevel: number;
   onCourt: boolean;
+  iq?: number; // superFactor of IQ past 99 (superstar.ts): a floor general gets the ball more
 }
 
 /** Explicitly determines which on-court player has the ball this possession.
@@ -16,10 +17,17 @@ export interface BallHandlerCandidate {
  * team's touches than a role player, mirroring how usage rate concentrates on top options in real ball. */
 export function chooseBallHandler(candidates: BallHandlerCandidate[], rng: RNG): string {
   const onCourt = candidates.filter((c) => c.onCourt);
-  const weights = onCourt.map((c) => Math.max(0.3, Math.pow(c.priority / 100, 1.7) * 100) * (1 - c.fatigueLevel * 0.15));
+  const weights = onCourt.map((c) => {
+    // A floor general runs the offense whatever his position: his priority climbs toward 100.
+    const priority = c.priority + (100 - c.priority) * 0.8 * (c.iq ?? 0);
+    return Math.max(0.3, Math.pow(priority / 100, 1.7) * 100) * (1 - c.fatigueLevel * 0.15) * (1 + (c.iq ?? 0));
+  });
   const idx = rng.weightedPick(weights);
   return onCourt[idx].playerId;
 }
+
+/** Extra block reach from height past 7'0" (1 = no change). */
+export const blockLength = (heightInches: number) => 1 + Math.max(0, Math.min(96, heightInches || 0) - 84) * 0.17;
 
 export function computeBlockProbability(
   defense: Attributes,
@@ -48,6 +56,9 @@ export function computeBlockProbability(
   // Around the rim: about 8% for an average defender, 15-18% for an elite rim protector (NBA teams block about
   // 5 shots a game). Good finishers get their shot off more often.
   let p = 0.02 + talent * 0.215 - (shooterFinishing - 50) * 0.0007;
+  // Length: past 7'0" every inch reaches more shots (a 7'8" giant blocks about two and a half times as many).
+  p *= blockLength(defense.physical.heightInches);
   p *= blockFrequencyMult;
-  return Math.max(0.005, Math.min(0.35, p));
+  // The usual ceiling, raised for giants: their reach gets to shots nobody else can.
+  return Math.max(0.005, Math.min(0.35 * Math.min(1.15, blockLength(defense.physical.heightInches)), p));
 }

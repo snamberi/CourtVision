@@ -29,6 +29,8 @@ export function rollInjury(
   probability *= 1 + fatigueLevel * 1.5;
   probability *= 1 + Math.max(0, 60 - durability) * 0.01;
   probability *= 1 + injuryRisk * 0.01;
+  // A body past 99 (Career Mode) rarely breaks down: half the risk at 110.
+  probability *= 1 - 0.5 * Math.min(1, Math.max(0, (durability - 99) / 11));
 
   if (!rng.chance(probability)) return { occurred: false };
 

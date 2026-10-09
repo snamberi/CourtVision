@@ -4,6 +4,7 @@ import type { LeagueRulesSettings } from '../leagueRules';
 import type { PlayerStatLine } from '../boxscore';
 import type { FatigueState } from './fatigue';
 import { RNG } from './rng';
+import { superFactor, athleticismOf } from './superstar';
 
 /** A clock-based rotation. Targets are a coach's plan; EXACT budgets are protected when feasible. */
 export class LiveRotation {
@@ -24,6 +25,8 @@ export class LiveRotation {
   private rules: LeagueRulesSettings | undefined;
   /** Whether anyone has an EXACT minutes budget. Without one, the budget checks below always pass, so they are skipped. */
   private hasExact: boolean;
+  /** Athleticism past 99 (superstar.ts): 0 for everyone else; at 1 (110) he plays the whole game. */
+  private motor: Record<string, number> = {};
   constructor(roster: PlayerSeason[], totalSeconds: number, coach: CoachTendencies,
     rules: LeagueRulesSettings | undefined, rng: RNG, order: string[] = [], playoffs = false, opponent: PlayerSeason[] = []) {
     this.opponent = opponent; this.roster = roster; this.totalSeconds = totalSeconds; this.coach = coach; this.rules = rules;
@@ -45,11 +48,18 @@ export class LiveRotation {
       const variation = s.minutes.mode === 'EXACT' ? 1 : 1 + (rng.next() - 0.5) * 0.24 * spread;
       const usage = explicit ? 1 : isStarter ? 1 + (coach.starUsage - 50) / 250 : 1 + (coach.benchUsage - 50) / 150;
       this.targets[s.playerId] = inRotation ? Math.max(0, s.minutes.target * 60 * variation * usage) : 0;
+      // Athleticism past 99: he wants more of the game, all of it at 110 (an explicit minutes plan still wins).
+      const motor = superFactor(athleticismOf(s.attributes));
+      this.motor[s.playerId] = motor;
+      if (motor > 0 && !explicit && this.targets[s.playerId] > 0) this.targets[s.playerId] += (totalSeconds - this.targets[s.playerId]) * Math.sqrt(Math.min(1, motor));
     }
     // Scale flexible budgets to the available five-player clock. Water-fill caps at a full game.
     const exact = sorted.filter(s => s.minutes.mode === 'EXACT');
     let remaining = Math.min(5, roster.length) * totalSeconds - exact.reduce((n, s) => n + Math.min(totalSeconds, this.targets[s.playerId]), 0);
-    let flexible = sorted.filter(s => s.minutes.mode !== 'EXACT' && this.targets[s.playerId] > 0);
+    // Iron men (athleticism 110+) keep their full game before everyone else shares what is left.
+    const iron = sorted.filter(s => s.minutes.mode !== 'EXACT' && (this.motor[s.playerId] ?? 0) >= 1 && this.targets[s.playerId] > 0);
+    for (const s of iron) { this.targets[s.playerId] = totalSeconds; remaining -= totalSeconds; }
+    let flexible = sorted.filter(s => s.minutes.mode !== 'EXACT' && this.targets[s.playerId] > 0 && !iron.includes(s));
     while (flexible.length) {
       const sum = flexible.reduce((n, s) => n + this.targets[s.playerId], 0);
       const capped = flexible.filter(s => this.targets[s.playerId] / sum * remaining > totalSeconds);
@@ -114,8 +124,9 @@ export class LiveRotation {
       let value = (desired - played) / 100 + target / this.totalSeconds;
       if (q === 0 && elapsed === 0 && starter) value += 100;
       if (playing && stint < stintLimit) value += 1.1;
-      if (playing && stint > stintLimit) value -= (stint - stintLimit) / 100;
-      if (this.coach.rotationPolicy?.allowOverrides !== false) value -= (fatigue[id]?.level ?? 0) * 2;
+      const motor = Math.min(1, this.motor[id] ?? 0);
+      if (playing && stint > stintLimit) value -= (stint - stintLimit) / 100 * (1 - motor);
+      if (this.coach.rotationPolicy?.allowOverrides !== false) value -= (fatigue[id]?.level ?? 0) * 2 * (1 - motor);
       if (clutch) value += starter ? this.coach.starUsage / 35 : 0;
       const policy=this.coach.rotationPolicy;
       if (clutch && policy?.closing.includes(id)) value += 7;
@@ -124,8 +135,8 @@ export class LiveRotation {
       if (policy?.backupHandler===id && !pool.some(p=>p.playerId!==id&&this.starters.includes(p.playerId)&&p.ballHandlerPriority>70)) value+=1.5;
       if (policy?.mode==='development' && s.age<=24 && s.minutes.mode==='AI' && !clutch) value+=.7;
       if (policy?.mode==='matchup') { const perimeter=this.opponent.reduce((n,p)=>n+p.attributes.offense.threePoint-p.attributes.offense.postControl,0)>=0; value+=((perimeter?s.attributes.defense.perimeterDefense+s.attributes.physical.agility:s.attributes.defense.interiorDefense+s.attributes.physical.strength)-120)/120; }
-      if (garbage) value +=  starter ? -6 : 4;
-      if (this.coach.rotationPolicy?.allowOverrides !== false && stats[id].pf >= Math.min(foulLimit - 1, q + 2) && left > 360) value -= 4;
+      if (garbage) value += (starter ? -6 : 4) * (1 - motor);
+      if (this.coach.rotationPolicy?.allowOverrides !== false && stats[id].pf >= Math.min(foulLimit - 1, q + 2) && left > 360) value -= 4 * (1 - motor);
       if (s.minutes.mode === 'EXACT') {
         const budgetLeft = this.exactRemaining(s, q, qSeconds);
         const periodLeft = s.minutes.perQuarter?.[q] != null ? clock : left;

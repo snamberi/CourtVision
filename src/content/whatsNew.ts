@@ -6,6 +6,17 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2027-03-10',
+    title: 'Career balance: every rating past 99 does something',
+    items: [
+      "**Athleticism:** a career player past 99 tires slower, needs fewer breaks and gets hurt less. At 110 he plays the whole game, close to 48 minutes.",
+      "**Body:** he owns the paint. More of his shots come at the rim and he finishes them at a much higher rate, with fewer injuries.",
+      "**Height:** every inch past 7'0\" means more rebounds and blocks. A 7'8\" giant grabs about 7 more boards and 3 more blocks than a 6'8\" big.",
+      "**IQ & Clutch:** he runs the offense. The ball finds him, he sets teammates up (about 8 more assists at 110), takes better shots, and everyone shoots better with him on the floor. That means more wins and more titles.",
+      "**Balance:** even a maxed-out legend has limits. No more 40 rebounds or 85% shooting: he tops out around Wilt's numbers.",
+    ],
+  },
+  {
     id: '2027-03-03',
     title: 'The Category update: Daily Grid, Draft Battle and 180 categories',
     items: [

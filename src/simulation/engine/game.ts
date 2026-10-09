@@ -10,6 +10,7 @@ import { resolveEffectivePlayer } from './effective';
 import { simulatePossession, type OnCourtPlayer, type PlayCall, type LastShotType } from './possession';
 import { computeMatchups } from './matchups';
 import { LiveRotation } from './liveRotation';
+import { superFactor, athleticismOf } from './superstar';
 import { applyCoachingPlan } from './coachingPlan';
 import { freshFatigue, updateFatigue, type FatigueState } from './fatigue';
 import { rollInjury } from './injuries';
@@ -344,12 +345,13 @@ export function simulateGame(opts: SimulateGameOptions): GameResult {
         const current = fatigue[s.playerId];
         // A rested bench player stays at zero: keep his state rather than allocating a new one.
         if (!onCourt && current && current.level === 0) { /* unchanged */ }
-        else fatigue[s.playerId] = settings.fatigueEnabled ? updateFatigue(current, onCourt, fatigueLoad.get(s.playerId)!, s.attributes.physical.stamina, flags ?? noFlags, secondsPerPossession) : freshFatigue();
+        else fatigue[s.playerId] = settings.fatigueEnabled ? updateFatigue(current, onCourt, fatigueLoad.get(s.playerId)!, s.attributes.physical.stamina, flags ?? noFlags, secondsPerPossession, superFactor(athleticismOf(s.attributes))) : freshFatigue();
 
         if (settings.injuriesEnabled && onCourt && onCourtPlayer && !injuredPlayers.has(s.playerId)) {
           const outcome = rollInjury(
             fatigue[s.playerId].level, s.attributes.physical.durability, s.development.injuryRisk,
-            settings.injuryFrequencyMultiplier, onCourtPlayer.flags, rng,
+            // Athleticism past 99: the extra minutes don't come with extra injuries.
+            settings.injuryFrequencyMultiplier * (1 - 0.6 * Math.min(1, superFactor(athleticismOf(s.attributes)))), onCourtPlayer.flags, rng,
           );
           if (outcome.occurred) {
             injuredPlayers.add(s.playerId);
