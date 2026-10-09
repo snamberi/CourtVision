@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process'
 import react from '@vitejs/plugin-react'
 import { readFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
@@ -64,6 +65,19 @@ const siteMaps = (): Plugin => ({
   },
 })
 
+/** This build's stamp ("4e4292c · 2026-10-09 12:30 UTC"): shown in Settings and in the page (<meta name="cv-build">), so
+ *  you can tell which version an address is serving. Cloudflare Workers Builds gives the commit; locally, git does. */
+const buildCommit = (() => {
+  const ci = process.env.WORKERS_CI_COMMIT_SHA || process.env.CF_PAGES_COMMIT_SHA || process.env.VERCEL_GIT_COMMIT_SHA
+  if (ci) return ci.slice(0, 7)
+  try { return execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim() } catch { return 'local' }
+})()
+const buildStamp = `${buildCommit} · ${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC`
+const buildStampPlugin = (): Plugin => ({
+  name: 'build-stamp',
+  transformIndexHtml: html => html.replace('</head>', `  <meta name="cv-build" content="${buildStamp}">\n  </head>`),
+})
+
 /** The production domain, for share-card footers (a preview deployment's address changes with every deploy). */
 const siteHost = (process.env.SITE_URL || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : '')).replace(/^https?:\/\//, '').replace(/\/$/, '')
 
@@ -71,6 +85,7 @@ const siteHost = (process.env.SITE_URL || (process.env.VERCEL_PROJECT_PRODUCTION
 export default defineConfig(({ mode }) => ({
   define: mode === 'desktop' ? {} : {
     'import.meta.env.VITE_SITE_HOST': JSON.stringify(siteHost),
+    'import.meta.env.VITE_BUILD_STAMP': JSON.stringify(buildStamp),
     // Which host built this (Vercel sets VERCEL, Cloudflare Pages CF_PAGES, Cloudflare Workers Builds WORKERS_CI): Vercel's own analytics only runs there.
     'import.meta.env.VITE_HOST_PLATFORM': JSON.stringify(process.env.VERCEL ? 'vercel' : process.env.CF_PAGES || process.env.WORKERS_CI ? 'cloudflare' : ''),
     // Accounts: the Supabase address and public key (safe to ship; row level security guards the data).
@@ -80,7 +95,7 @@ export default defineConfig(({ mode }) => ({
     'import.meta.env.VITE_LEMONSQUEEZY_NO_ADS_URL': JSON.stringify(process.env.VITE_LEMONSQUEEZY_NO_ADS_URL || process.env.LEMONSQUEEZY_NO_ADS_URL || ''),
     'import.meta.env.VITE_LEMONSQUEEZY_SUPPORTER_URL': JSON.stringify(process.env.VITE_LEMONSQUEEZY_SUPPORTER_URL || process.env.LEMONSQUEEZY_SUPPORTER_URL || ''),
   },
-  plugins: mode === 'desktop' ? [react(), stripAdsense()] : [react(), siteMaps(), serviceWorker()],
+  plugins: mode === 'desktop' ? [react(), stripAdsense()] : [react(), siteMaps(), serviceWorker(), buildStampPlugin()],
   // `--mode desktop` is the offline Windows package: relative asset paths, its own output folder.
   base: mode === 'desktop' ? './' : '/',
   build: {
