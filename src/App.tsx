@@ -119,6 +119,8 @@ import { runLeagueAIPass, autoDraftAIPicksUntilUserTurn, simEntireDraft, runFree
 import { autoRunAllStarWeekend, autoFinishSeason } from './simulation/autoPlay';
 import { autoHandleDesk, hasDeskWork } from './simulation/handsOff';
 import { tickOwnerDemand, demandProgress } from './simulation/ownerDemand';
+import { hasSecret } from './relics/relics';
+import { rewardRun, FRANCHISE_TITLE_SPINS } from './relics/rewards';
 import { startDynasty } from './simulation/dynasty';
 import { collectLockerEvents } from './simulation/lockerRoom';
 import { claimQuests, questsXp } from './tutorial/quests';
@@ -160,6 +162,7 @@ const Arcade = lazy(() => import('./components/arcade/Arcade').then(m => ({ defa
 const WorldGamesMode = lazy(() => import('./components/worldGames/WorldGamesMode').then(m => ({ default: m.WorldGamesMode })));
 const FranchiseCreate = lazy(() => import('./components/FranchiseCreate').then(m => ({ default: m.FranchiseCreate })));
 const Survival = lazy(() => import('./components/survival/Survival').then(m => ({ default: m.Survival })));
+const RelicVault = lazy(() => import('./components/relics/RelicVault').then(m => ({ default: m.RelicVault })));
 const StoryMode = lazy(() => import('./components/story/StoryMode').then(m => ({ default: m.StoryMode })));
 const PerfectChallenge = lazy(() => import('./components/perfect/PerfectChallenge').then(m => ({ default: m.PerfectChallenge })));
 const LeagueHunt = lazy(() => import('./components/hunt/LeagueHunt').then(m => ({ default: m.LeagueHunt })));
@@ -266,7 +269,7 @@ function buildInitialExtras(league: League): GMLeagueExtras {
   };
 }
 
-type Screen = 'menu' | 'chooseTeam' | 'app' | 'hunt' | 'perfect' | 'survival' | 'story' | 'career' | 'locker' | 'profile' | 'community' | 'draft' | 'settings' | 'arcade' | 'create' | 'worldGamesMode' | 'friends' | 'clubs' | 'online';
+type Screen = 'menu' | 'chooseTeam' | 'app' | 'hunt' | 'perfect' | 'survival' | 'story' | 'relics' | 'career' | 'locker' | 'profile' | 'community' | 'draft' | 'settings' | 'arcade' | 'create' | 'worldGamesMode' | 'friends' | 'clubs' | 'online';
 const ARCADE_HASH: Record<ArcadeTab, string> = { grid: '#/grid', guess: '#/guess', hilo: '#/higher-lower', bracket: '#/bracket', quiz: '#/quiz', legends: '#/legends', street: '#/street' };
 const arcadeTabOf = (hash: string) => (Object.entries(ARCADE_HASH).find(([, h]) => h === hash)?.[0] as ArcadeTab | undefined);
 
@@ -357,7 +360,7 @@ function App() {
   const [worldGamesRun, setWorldGamesRun] = useState<{ games: GamesId; country: string } | null>(null);
   const [boxscoreSource, setBoxscoreSource] = useState<'league' | 'exhibition'>('league');
 
-  const currentRoute = screen === 'menu' ? '#/menu' : screen === 'chooseTeam' ? '#/choose-team' : screen === 'hunt' ? '#/hunt' : screen === 'perfect' ? '#/82-0' : screen === 'survival' ? '#/survival' : screen === 'story' ? '#/story' : screen === 'career' ? '#/career' : screen === 'locker' ? '#/locker' : screen === 'profile' ? '#/profile' : screen === 'settings' ? '#/settings' : screen === 'create' ? '#/new-league' : screen === 'worldGamesMode' ? '#/world-games' : screen === 'friends' ? '#/friends' : screen === 'clubs' ? '#/clubs' : screen === 'online' ? '#/online' : screen === 'draft' ? '#/draft' : screen === 'arcade' ? ARCADE_HASH[arcadeTab] : screen === 'community' ? (communityUser ? `#/u/${encodeURIComponent(communityUser)}` : '#/community')
+  const currentRoute = screen === 'menu' ? '#/menu' : screen === 'chooseTeam' ? '#/choose-team' : screen === 'hunt' ? '#/hunt' : screen === 'perfect' ? '#/82-0' : screen === 'survival' ? '#/survival' : screen === 'story' ? '#/story' : screen === 'relics' ? '#/relics' : screen === 'career' ? '#/career' : screen === 'locker' ? '#/locker' : screen === 'profile' ? '#/profile' : screen === 'settings' ? '#/settings' : screen === 'create' ? '#/new-league' : screen === 'worldGamesMode' ? '#/world-games' : screen === 'friends' ? '#/friends' : screen === 'clubs' ? '#/clubs' : screen === 'online' ? '#/online' : screen === 'draft' ? '#/draft' : screen === 'arcade' ? ARCADE_HASH[arcadeTab] : screen === 'community' ? (communityUser ? `#/u/${encodeURIComponent(communityUser)}` : '#/community')
     : activeSaveId ? routeHash({ saveId: activeSaveId, tab, player: selectedPlayerId,
       team: viewedTeamId, game: viewedGameId ?? undefined, source: boxscoreSource, sub: leagueSettingsSub }) : null;
   const { restoring, showPrivacy, closePrivacy } = useGameHistory(currentRoute, async (hash, isCurrent) => {
@@ -373,7 +376,7 @@ function App() {
       setCommunityUser(profileMatch ? decodeURIComponent(profileMatch[1]) : null);
       const arcade = arcadeTabOf(hash);
       if (arcade) setArcadeTab(arcade);
-      setScreen(arcade ? 'arcade' : hash === '#/choose-team' && pendingLeague ? 'chooseTeam' : hash === '#/hunt' ? 'hunt' : hash === '#/82-0' ? 'perfect' : hash === '#/survival' ? 'survival' : hash === '#/story' ? 'story' : hash === '#/career' ? 'career' : hash === '#/locker' ? 'locker' : hash === '#/profile' ? 'profile' : hash === '#/settings' ? 'settings' : hash === '#/new-league' ? 'create' : hash === '#/world-games' && worldGamesRun ? 'worldGamesMode' : hash === '#/friends' ? 'friends' : hash === '#/clubs' ? 'clubs' : hash === '#/online' ? 'online' : hash === '#/community' || profileMatch ? 'community' : hash === '#/draft' ? 'draft' : 'menu');
+      setScreen(arcade ? 'arcade' : hash === '#/choose-team' && pendingLeague ? 'chooseTeam' : hash === '#/hunt' ? 'hunt' : hash === '#/82-0' ? 'perfect' : hash === '#/survival' ? 'survival' : hash === '#/story' ? 'story' : hash === '#/relics' ? 'relics' : hash === '#/career' ? 'career' : hash === '#/locker' ? 'locker' : hash === '#/profile' ? 'profile' : hash === '#/settings' ? 'settings' : hash === '#/new-league' ? 'create' : hash === '#/world-games' && worldGamesRun ? 'worldGamesMode' : hash === '#/friends' ? 'friends' : hash === '#/clubs' ? 'clubs' : hash === '#/online' ? 'online' : hash === '#/community' || profileMatch ? 'community' : hash === '#/draft' ? 'draft' : 'menu');
       refreshSaves();
       return;
     }
@@ -833,6 +836,11 @@ function App() {
       const got = m.awardSeasonCards(league, activeSaveId, controlledTeamId);
       if (got && (got.added || got.packs)) pushToast(`Card album: ${got.added} new card${got.added === 1 ? '' : 's'} from your roster and ${got.packs} pack${got.packs === 1 ? '' : 's'} to open.`, 'success');
     });
+    // A title for your team earns a Relic Spin (not in leagues where Sandbox was used).
+    const last = league.franchiseHistory?.at(-1);
+    if (last && controlledTeamId && last.championTeamId === controlledTeamId && !league.frontOffice?.sandboxUsed && !sandboxMode) {
+      if (rewardRun(`gm-title:${activeSaveId}:${last.season}`, FRANCHISE_TITLE_SPINS)) pushToast('Champions! A Relic Spin is waiting in the Relic Vault (main menu).', 'success');
+    }
   }, [archivedSeasons, activeSaveId, screen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reporters line up after big results, streaks, trade requests and playoff series.
@@ -851,7 +859,7 @@ function App() {
   const teamGamesPlayed = controlledTeamId ? league.schedule.filter(g => g.played && (g.homeTeamId === controlledTeamId || g.awayTeamId === controlledTeamId)).length : 0;
   useEffect(() => {
     if (screen !== 'app' || jobs.busy) return;
-    const t = tickOwnerDemand(league);
+    const t = tickOwnerDemand(league, { favorite: hasSecret('ownersFavorite') });
     if (t.league !== league) { adoptLeague(t.league); if (t.news) pushToast(t.news.text, t.news.tone === 'good' ? 'success' : t.news.tone === 'bad' ? 'error' : 'info'); }
   }, [teamGamesPlayed, screen]); // eslint-disable-line react-hooks/exhaustive-deps
   const lastPressCount = useRef(pressWaiting);
@@ -1522,6 +1530,9 @@ function App() {
   if (screen === 'survival') {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Survival…</main>}><Survival onExit={() => setScreen('menu')} /></Suspense></>;
   }
+  if (screen === 'relics') {
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening the Relic Vault…</main>}><RelicVault onExit={() => setScreen('menu')} /></Suspense></>;
+  }
   if (screen === 'story') {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Story Mode…</main>}><StoryMode onExit={() => setScreen('menu')} /></Suspense></>;
   }
@@ -1539,6 +1550,7 @@ function App() {
         <MainMenu
           onStart={startGameMode}
           onLocker={() => setScreen('locker')}
+          onRelics={() => setScreen('relics')}
           onProfile={() => setScreen('profile')}
           onCommunity={t => { setCommunityUser(null); setCommunityTab(t ?? 'boards'); setScreen('community'); }}
           onFriends={() => setScreen('friends')}

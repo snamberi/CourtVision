@@ -11,6 +11,8 @@ import { ShareCardButton } from '../ShareCardButton';
 import { track, trackOnce } from '../../analytics/track';
 import { noteWeekRun } from '../../retention/weekLog';
 import '../hunt/hunt.css';
+import { relicRunOpts } from '../../relics/apply';
+import { rewardRun, storySpins } from '../../relics/rewards';
 import './story.css';
 
 const SITE = 'https://courtvisiongame.com';
@@ -32,6 +34,7 @@ export function StoryMode({ onExit }: { onExit: () => void }) {
     saveStory(s);
     if (s && s.done && prev && !prev.done) {
       setEndings(recordEnding(s));
+      rewardRun(`story:${s.seed}`, storySpins(ending(s).tier));
       noteWeekRun('story', { score: Math.round(overall(s) * 10 + s.games.filter(g => g.won).length * 50), line: ending(s).title }, `story-${s.seed}`);
       trackOnce(`story-${s.seed}`, 'mode_finish', { mode: 'story', ending: ending(s).tier });
     }
@@ -49,7 +52,7 @@ export function StoryMode({ onExit }: { onExit: () => void }) {
   </header>;
   return <div className="hunt story">
     {header}
-    {!story ? <Create endings={endings} onStart={(name, style, town) => { track('mode_start', { mode: 'story', style }); setStory(newStory(newSeed(), name, style, town)); }} />
+    {!story ? <Create endings={endings} onStart={(name, style, town) => { track('mode_start', { mode: 'story', style }); setStory(newStory(newSeed(), name, style, town, relicRunOpts())); }} />
       : story.done ? <Ending s={story} endings={endings} onNew={() => { setStory(null); setLastGame(null); }} onExit={onExit} />
       : <div className="story-layout">
           <HeroPanel s={story} />

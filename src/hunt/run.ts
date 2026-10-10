@@ -12,6 +12,7 @@ import { chemistry, chemistryBonus, type ChemistryBond } from './chemistry';
 import { ITEMS, ITEM_IDS, MAX_ITEMS, type ItemId } from './items';
 import { BOOST_IDS, type BoostId } from './boosts';
 import { BUFFS, BUFF_IDS, type BuffId } from './buffs';
+import { luckMultiplier } from '../relics/relics';
 import { COACHES, COACH_BY_ID, coachRarity, type HuntCoach } from './coaches';
 import { addBox, addHighs, type RunLine, type GameHighs } from './statLines';
 import { STANDARD_VIEW, type RunView } from '../retention/challenge';
@@ -109,6 +110,8 @@ export interface HuntRun {
   lines?: Record<string, RunLine>;
   /** The best single games of the run (the record book). */
   highs?: GameHighs;
+  /** Relic luck when the hunt began (relics.ts). */
+  luck?: number;
   /** Beat the secret 11th series. */
   immortal?: boolean;
   /** A same-spin duel: the challenger's code (retention/duel.ts), compared at the end. */
@@ -184,7 +187,7 @@ export const opponentRating = (h: NbaHistory, run: HuntRun, s: HuntSeries) => ro
 
 // ---------------------------------------------------------------- a new run
 
-export interface NewRunOptions { deck?: DeckId; difficulty?: Difficulty; daily?: string; weekly?: string; /** Your favourite player (Profile); ignored in the Daily Legend. */ fav?: string; /** Ratings / rarity colours on the spins (the Daily and the Weekly Hunt always use the standard view). */ view?: RunView }
+export interface NewRunOptions { /** Relic luck (0-0.3) and secret relics; ignored by the Daily and the Weekly Hunt. */ luck?: number; secondWind?: boolean; goldenTouch?: boolean; deck?: DeckId; difficulty?: Difficulty; daily?: string; weekly?: string; /** Your favourite player (Profile); ignored in the Daily Legend. */ fav?: string; /** Ratings / rarity colours on the spins (the Daily and the Weekly Hunt always use the standard view). */ view?: RunView }
 
 function pickTeam(h: NbaHistory, teams: HuntTeam[], era: HuntEra, target: number, rng: RNG, used: Set<string>): HuntTeam {
   const free = teams.filter(t => !used.has(t.id));
@@ -198,6 +201,8 @@ function pickTeam(h: NbaHistory, teams: HuntTeam[], era: HuntEra, target: number
 /** A new run: the spins, then ten series (the fifth a semi-boss, the tenth the boss). */
 export function newRun(h: NbaHistory, seed: number, opts: NewRunOptions = {}): HuntRun {
   const deck = DECKS[opts.deck ?? 'classic'], diff = DIFFICULTIES[opts.difficulty ?? 'pro'];
+  // Shared-seed hunts (the Daily and the Weekly) are the same for everyone: no relics.
+  const shared = !!opts.daily || !!opts.weekly;
   const rng = new RNG(seed);
   const teams = huntTeams(h);
   const used = new Set<string>();
@@ -222,7 +227,7 @@ export function newRun(h: NbaHistory, seed: number, opts: NewRunOptions = {}): H
   }
   series.push({ teamId: bossTeam.id, eraId: eraOf(bossTeam.end).id, kind: 'boss', buffs: buffPool(3), lift: 0 });
   let run: HuntRun = { version: 3, seed, stage: 'draft', squad: SLOTS.map(() => ''), spin: 0, offer: [], reels: null, guarantees: { star: 0, great: 1 },
-    lives: diff.lives, coins: START_COINS + diff.coinShift + deck.coins, items: [...deck.items], boosts: [], growth: { star: 0, sixth: 0, chemistry: 0, coach: 0 }, training: {},
+    lives: diff.lives + (shared ? 0 : opts.secondWind ? 1 : 0), coins: START_COINS + diff.coinShift + deck.coins + (shared ? 0 : opts.goldenTouch ? 30 : 0), ...(!shared && opts.luck ? { luck: opts.luck } : {}), items: [...deck.items], boosts: [], growth: { star: 0, sixth: 0, chemistry: 0, coach: 0 }, training: {},
     series, seriesIndex: 0, attempts: 0, results: [], deck: deck.id, difficulty: diff.id, ...(opts.daily ? { daily: opts.daily } : opts.weekly ? { weekly: opts.weekly } : opts.fav ? { fav: opts.fav } : {}),
     ...(!opts.daily && !opts.weekly && opts.view && (opts.view.numbers !== STANDARD_VIEW.numbers || opts.view.colors !== STANDARD_VIEW.colors) ? { view: opts.view } : {}) };
   // Lift every team that falls short of its series' rating (buffs count, so the lift is what is left).
@@ -249,9 +254,11 @@ export const SQUAD_EDGE = 3;
 const fitsSlot = (c: HuntCard, s: SpinKind) => s === '6TH' || c.pos === s || (c.pos === 'G' && (s === 'PG' || s === 'SG')) || (c.pos === 'F' && (s === 'SF' || s === 'PF'));
 
 /** Rarity odds for spin `i`: every spin is a little poorer than the one before. */
-export function spinWeights(i: number): Record<Rarity, number> {
-  // Seven points more on the good cards than before (Star +1, Great +2, Good +4), every round.
-  const legendary = Math.max(0.2, 1.5 - 0.2 * i) + 1, epic = Math.max(1.5, 6 - 0.8 * i) + 2, rare = Math.max(10, 20 - 1.8 * i) + 4;
+export function spinWeights(i: number, luck = 0): Record<Rarity, number> {
+  // Seven points more on the good cards than before (Star +1, Great +2, Good +4), every round. Relic luck (relics.ts)
+  // makes Stars and Greats that much more likely.
+  const lucky = luckMultiplier(luck);
+  const legendary = (Math.max(0.2, 1.5 - 0.2 * i) + 1) * lucky, epic = (Math.max(1.5, 6 - 0.8 * i) + 2) * lucky, rare = Math.max(10, 20 - 1.8 * i) + 4;
   return { legendary, epic, rare, common: Math.max(10, 100 - legendary - epic - rare) };
 }
 
@@ -318,7 +325,7 @@ export function stopReels(h: NbaHistory, run: HuntRun, cat: CategoryInfo | null 
   const open = openSpins(run);
   const round = run.spin;
   const rng = new RNG(run.seed * 31 + round * 7717 + 3);
-  const weights = spinWeights(round);
+  const weights = spinWeights(round, run.luck);
   const pick = () => ORDER[rng.weightedPick(ORDER.map(r => weights[r]))];
   const deck = DECKS[run.deck ?? 'classic'];
   const pool = cardPool(h);

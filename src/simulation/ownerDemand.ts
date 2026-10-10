@@ -43,7 +43,7 @@ export function demandProgress(league: League, d: OwnerDemand, teamId: string): 
   return { won: window.filter(Boolean).length, played: window.length };
 }
 
-export function tickOwnerDemand(league: League): { league: League; news?: { text: string; tone: 'good' | 'bad' | 'info' } } {
+export function tickOwnerDemand(league: League, opts: { /** Owner's Favorite (a secret relic): one fewer win demanded. */ favorite?: boolean } = {}): { league: League; news?: { text: string; tone: 'good' | 'bad' | 'info' } } {
   const fo = league.frontOffice;
   if (!fo || fo.status !== 'employed' || !fo.teamId || (league.seasonPhase ?? 'regular_season') !== 'regular_season' || !league.season) return { league };
   const teamId = fo.teamId;
@@ -74,7 +74,7 @@ export function tickOwnerDemand(league: League): { league: League; news?: { text
   for (let i = results.length - 1; i >= 0 && !results[i]; i--) skid++;
   const losing = wins / played < 0.45, sliding = skid >= 5, shaky = fo.security < 40;
   if (!losing && !sliding && !shaky) return { league };
-  const need = wins / played >= 0.5 ? 7 : 6;
+  const need = (wins / played >= 0.5 ? 7 : 6) - (opts.favorite ? 1 : 0);
   const why = sliding ? `${skid} straight losses` : losing ? `${wins}-${losses}` : 'what I\'m seeing';
   const text = `${owner}: "${why[0].toUpperCase()}${why.slice(1)}. That's not acceptable. Win ${need} of the next ${WINDOW}, or we'll be having a different conversation."`;
   const demand: OwnerDemand = { season: league.season, issuedAt: played, games: WINDOW, need, status: 'active', text };

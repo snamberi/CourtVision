@@ -9,6 +9,9 @@ import { modeOfWeek, FEATURED_NAME, WEEKLY_BONUS_CAP } from '../retention/modeOf
 import { PlayerAvatar } from './PlayerAvatar';
 import { MyAvatar } from './UserAvatar';
 import { PixelBall, PixelIcon } from './PixelIcon';
+import { loadRelics, luckPercent, collectionProgress, RELICS_EVENT } from '../relics/relics';
+import { claimAchievementSpins } from '../relics/rewards';
+import './relics/relics.css';
 import type { TradeDifficulty } from '../simulation/gm';
 import type { SaveSummary } from '../storage/saves';
 import { formatSeasonYear } from '../simulation/calendar';
@@ -58,6 +61,8 @@ interface Props {
   onArcade?: (game: 'grid' | 'guess' | 'hilo' | 'bracket' | 'quiz') => void;
   /** Opens the New Franchise page (with a challenge picked, for the Rebuild and the All-Time Draft). */
   onCreate?: (challenge?: 'free' | 'rebuild' | 'draft') => void;
+  /** Opens the Relic Vault. */
+  onRelics?: () => void;
 }
 
 /** The cards on the menu. Franchise opens the New Franchise page (a real or random league, the Rebuild Challenge and
@@ -153,7 +158,7 @@ function SavedLeaguesList({ saves, onContinue, onDeleteSave, onRenameSave }: Pic
   );
 }
 
-export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSave, busy = null, onLocker, onCode, onCommunity, onProfile, onFriends, onSettings, onArcade, onCreate }: Props) {
+export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSave, busy = null, onLocker, onCode, onCommunity, onProfile, onFriends, onSettings, onArcade, onCreate, onRelics }: Props) {
   // First visit: pick a look before anything else; What's New waits until it is picked.
   const [pickLook, setPickLook] = useState(needsThemeChoice);
   // Today's visit counts for the daily streak and the Season Pass.
@@ -237,6 +242,8 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
           </button>
         </div>)}
       </div>
+
+      {onRelics && <RelicStrip onOpen={onRelics} />}
 
       {onArcade && <QuickGames onOpen={onArcade} />}
 
@@ -341,5 +348,23 @@ function QuickGames({ onOpen }: { onOpen: (game: 'grid' | 'guess' | 'hilo' | 'br
     <div className="quick-games-grid">{games.map(g => <button key={g.id} className="quick-game" onClick={() => onOpen(g.id)}>
       <PixelIcon name={g.icon} size={24} /><b>{g.title}</b><small>{g.blurb}</small><em>{g.status}{g.extra ? ` · ${g.extra}` : ''}</em>
     </button>)}</div>
+  </section>;
+}
+
+/** The Relic Vault entry: spins waiting, luck and coins. */
+function RelicStrip({ onOpen }: { onOpen: () => void }) {
+  const [s, setS] = useState(loadRelics);
+  useEffect(() => {
+    let live = true;
+    claimAchievementSpins().then(n => { if (live && n) setS(loadRelics()); }, () => {});
+    const on = () => setS(loadRelics());
+    window.addEventListener(RELICS_EVENT, on);
+    return () => { live = false; window.removeEventListener(RELICS_EVENT, on); };
+  }, []);
+  const p = collectionProgress(s);
+  return <section className={`menu-relics ${s.spins ? 'ready' : ''}`} aria-label="Relic Vault">
+    <PixelIcon name="crown" size={28} />
+    <span><b>Relic Vault{s.spins ? ` · ${s.spins} spin${s.spins === 1 ? '' : 's'} waiting` : ''}</b><small>+{luckPercent(s)}% luck · {s.coins.toLocaleString()} coins · {p.owned}/{p.total} relics{p.secrets ? ` · ${p.secrets} secret${p.secrets === 1 ? '' : 's'}` : ''}</small></span>
+    <button className={s.spins ? 'primary' : ''} onClick={onOpen}>{s.spins ? 'Spin now' : 'Open the vault'}</button>
   </section>;
 }

@@ -29,6 +29,8 @@ import { teamColors } from '../../simulation/teamColors';
 import { FEATS_EVENT } from '../../profile/feats';
 import { track, trackOnce } from '../../analytics/track';
 import { PlayerAvatar } from '../PlayerAvatar';
+import { relicRunOpts } from '../../relics/apply';
+import { rewardRun, perfectSpins } from '../../relics/rewards';
 import { PixelIcon } from '../PixelIcon';
 import { ShareCardButton } from '../ShareCardButton';
 import { FramedAvatar } from '../AvatarFrame';
@@ -68,6 +70,7 @@ export function PerfectChallenge({ onExit }: { onExit: () => void }) {
     if (r && r.stage === 'done' && prev?.stage !== 'done') {
       setRecords(recordPerfect(r));
       const s = summary(r);
+      rewardRun(`p820:${r.seed}:${r.mode}:${r.daily ?? ''}`, perfectSpins(s));
       noteWeekRecords(noteRunHighs('perfect', r.highs).length);
       noteWeekRun('perfect', { score: s.score, line: `${s.w}-${s.l}${s.champion ? ', champions' : ''}` }, `p820-${r.seed}-${r.mode}`);
       const fmvp = s.champion ? runMvp(r.finalsLines) : null;
@@ -102,7 +105,8 @@ export function PerfectChallenge({ onExit }: { onExit: () => void }) {
   const start = (mode: PerfectMode, seed: number, daily?: string, opts?: StartOpts) => {
     if (!h) return;
     track('mode_start', { mode: 'perfect', variant: opts?.weekly ? 'weekly-category' : daily ? 'daily' : mode, level: daily ? 'pro' : opts?.level ?? 'pro' });
-    setRun(newPerfectRun(h, mode, seed, daily, { ...opts, catOpts: isCategoryMode(mode) ? opts?.catOpts ?? readCatOpts() : undefined }));
+    const relic = relicRunOpts();
+    setRun(newPerfectRun(h, mode, seed, daily, { ...opts, luck: relic.luck, extraPick: relic.extraPick, catOpts: isCategoryMode(mode) ? opts?.catOpts ?? readCatOpts() : undefined }));
   };
 
   const header = <header className="hunt-top">

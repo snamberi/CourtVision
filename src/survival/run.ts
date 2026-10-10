@@ -61,9 +61,12 @@ const posGroup = (pos: string) => (pos.includes('C') ? 'C' : pos.includes('G') ?
 const card = (h: NbaHistory, id: string) => cardPool(h).byId.get(id)!;
 
 /** Fourteen greats from all of history, one season each, with a playable spread: five guards, five forwards, four centers. */
-export function dealLegends(h: NbaHistory, seed: number): string[] {
+export function dealLegends(h: NbaHistory, seed: number, luck = 0): string[] {
   const pool = cardPool(h);
   const rng = new RNG(seed * 31 + 5);
+  // Relic luck (relics.ts): a chance at a second legendary at each position, from its own dice so the deal is otherwise the same.
+  const luckRng = new RNG(seed * 97 + 41);
+  const extraLegend = (i: number) => luck > 0 && i === 1 && luckRng.next() < luck;
   const out: HuntCard[] = [];
   const want: Record<'G' | 'F' | 'C', number> = { G: 5, F: 5, C: 4 };
   const pick = (list: HuntCard[], group: 'G' | 'F' | 'C') => {
@@ -73,15 +76,17 @@ export function dealLegends(h: NbaHistory, seed: number): string[] {
   // One legendary season at each position, the rest epic.
   for (const group of ['G', 'F', 'C'] as const) {
     for (let i = 0; i < want[group]; i++) {
-      const c = pick(i < 1 ? pool.byRarity.legendary : pool.byRarity.epic, group) ?? pick(pool.byRarity.epic, group);
+      const c = pick(i < 1 || extraLegend(i) ? pool.byRarity.legendary : pool.byRarity.epic, group) ?? pick(pool.byRarity.epic, group);
       if (c) out.push(c);
     }
   }
   return out.sort((a, b) => b.ovr - a.ovr).map(c => c.id);
 }
 
-export function newSurvivalRun(h: NbaHistory, seed: number, level: SurvivalLevel = 'pro', daily?: string): SurvivalRun {
-  return { v: 1, seed, level, ...(daily ? { daily } : {}), dealt: dealLegends(h, seed), roster: [], franchise: null, shields: 1, games: [], faced: [], next: null, stage: 'draft' };
+export function newSurvivalRun(h: NbaHistory, seed: number, level: SurvivalLevel = 'pro', daily?: string, relics?: { luck?: number; ironWill?: boolean }): SurvivalRun {
+  // The Daily Survival is the same for everyone: no relics there.
+  const r = daily ? undefined : relics;
+  return { v: 1, seed, level, ...(daily ? { daily } : {}), dealt: dealLegends(h, seed, r?.luck ?? 0), roster: [], franchise: null, shields: 1 + (r?.ironWill ? 1 : 0), games: [], faced: [], next: null, stage: 'draft' };
 }
 
 /** Keep ten of the fourteen. */

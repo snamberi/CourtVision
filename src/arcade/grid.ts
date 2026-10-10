@@ -17,10 +17,11 @@ export const FIRST_GRID_DAY = '2026-10-08';
 
 export interface Grid { key: string; rows: CategoryInfo[]; cols: CategoryInfo[] }
 /** A grid in play: who went in each square (player id, '' while empty) and the guesses used. */
-export interface GridPlay { cells: string[]; used: number }
+export interface GridPlay { cells: string[]; used: number; /** Guesses allowed (The Last Look relic adds one on Endless grids); absent = GRID_GUESSES. */ max?: number }
 
-export const emptyPlay = (): GridPlay => ({ cells: Array(GRID_SIZE * GRID_SIZE).fill(''), used: 0 });
-export const isGridDone = (p: GridPlay | undefined) => !!p && (p.used >= GRID_GUESSES || p.cells.every(Boolean));
+export const emptyPlay = (max?: number): GridPlay => ({ cells: Array(GRID_SIZE * GRID_SIZE).fill(''), used: 0, ...(max && max !== GRID_GUESSES ? { max } : {}) });
+export const guessesAllowed = (p: GridPlay) => p.max ?? GRID_GUESSES;
+export const isGridDone = (p: GridPlay | undefined) => !!p && (p.used >= guessesAllowed(p) || p.cells.every(Boolean));
 export const gridNumber = (day: string) => Math.floor((Date.parse(`${day}T00:00:00Z`) - Date.parse(`${FIRST_GRID_DAY}T00:00:00Z`)) / 86_400_000) + 1;
 
 /** Categories that make good columns: about the player, not a team, and not trivially tied to one. */
@@ -131,7 +132,7 @@ export function guessCell(grid: Grid, play: GridPlay, i: number, playerId: strin
   if (isGridDone(play) || play.cells[i]) return { play, right: false };
   const row = grid.rows[Math.floor(i / GRID_SIZE)], col = grid.cols[i % GRID_SIZE];
   const right = !play.cells.includes(playerId) && playersOf(row).has(playerId) && playersOf(col).has(playerId);
-  return { play: { cells: right ? play.cells.map((x, j) => (j === i ? playerId : x)) : play.cells, used: play.used + 1 }, right };
+  return { play: { ...play, cells: right ? play.cells.map((x, j) => (j === i ? playerId : x)) : play.cells, used: play.used + 1 }, right };
 }
 
 /** The score: 100 for every filled square plus its rarity (a perfect, deep grid is near 1,800). */

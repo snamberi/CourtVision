@@ -36,6 +36,8 @@ import { challengePrefs, saveChallengePrefs, LEVEL_NAME, type Level } from '../.
 import { LevelPicker } from '../ChallengeOptions';
 import { WheelBuilder, MyPlayerBuilder, IdentityView, type IdentityChoice } from './CareerCreate';
 import '../hunt/hunt.css';
+import { relicRunOpts } from '../../relics/apply';
+import { rewardRun, careerSpins } from '../../relics/rewards';
 import './career.css';
 
 type View = { k: 'hub' } | { k: 'wheel'; seed: number } | { k: 'myplayer'; seed: number } | { k: 'identity'; seed: number; prime: Prime; mode: Mode } | { k: 'career' };
@@ -71,6 +73,7 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
     setActive({ meta, world });
     if (meta.status === 'retired') {
       if (meta.weekly && meta.retired) recordWeekly('career', meta.weekly, { best: meta.retired.legacy, label: meta.playerId });
+      if (meta.retired) rewardRun(`career:${meta.id}`, careerSpins(meta.retired.hallOfFame));
       if (meta.retired) noteWeekRun('career', { score: meta.retired.legacy, line: `${meta.playerId}, Legacy ${meta.retired.legacy.toFixed(1)}` }, `career-${meta.id}`);
       trackOnce(`career-${meta.id}`, 'mode_finish', { mode: 'career', variant: meta.weekly ? 'weekly' : meta.mode, seasons: meta.years.length, legacy: meta.retired?.legacy ?? 0, hall: meta.retired?.hallOfFame ?? 'no', past_draft: !!meta.draftYear });
       saveCareer(meta).then(() => dropWorld(meta.id)).then(refresh); return;
@@ -199,7 +202,7 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
     {busy && <div className="cv-busy" role="status"><span>{busy.label}</span>{busy.pct != null && <div className="hunt-cap-bar"><i style={{ width: `${busy.pct}%` }} /></div>}
       {active?.meta.autopilot && <button className="link-button" onClick={() => setActive(a => (a ? { ...a, meta: { ...a.meta, autopilot: false } } : a))}>Stop autopilot after this season</button>}</div>}
     {view.k === 'hub' ? <Hub careers={careers} onNew={startNew} onOpen={open} onDelete={id => deleteCareer(id).then(refresh)} />
-      : view.k === 'wheel' ? <WheelBuilder h={h} seed={view.seed} fav={weekly ? undefined : readFavorites().player} onBack={() => setView({ k: 'hub' })} onDone={prime => setView({ k: 'identity', seed: view.seed, prime, mode: 'wheel' })} />
+      : view.k === 'wheel' ? <WheelBuilder h={h} seed={view.seed} fav={weekly ? undefined : readFavorites().player} relics={weekly ? undefined : relicRunOpts()} onBack={() => setView({ k: 'hub' })} onDone={prime => setView({ k: 'identity', seed: view.seed, prime, mode: 'wheel' })} />
       : view.k === 'myplayer' ? <MyPlayerBuilder seed={view.seed} onBack={() => setView({ k: 'hub' })} onDone={prime => setView({ k: 'identity', seed: view.seed, prime, mode: 'myplayer' })} />
       : view.k === 'identity' ? (busy ? null : <IdentityView prime={view.prime} seed={view.seed} ready={preReady} pct={prePct} onBack={() => setView({ k: view.mode === 'wheel' ? 'wheel' : 'myplayer', seed: view.seed })} onDone={c => enterDraft(view, c)} />)
       : active ? <CareerView h={h} a={active} busy={!!busy} tradeAsked={tradeAsked}

@@ -12,6 +12,7 @@ import { rosterRating } from '../hunt/rating';
 import { addBox, addHighs, type RunLine, type GameHighs } from '../hunt/statLines';
 import { challengeMultiplier, STANDARD_VIEW, type Level, type RunView } from '../retention/challenge';
 import type { PlayerStatLine } from '../simulation/boxscore';
+import { luckMultiplier } from '../relics/relics';
 import { categories, categoryById, mixedCategory, weeklyCategory, TIER_MULTIPLIER, type CategoryInfo, type Tier } from './categories';
 
 /*
@@ -96,6 +97,8 @@ export interface PerfectRun {
   /** Difficulty and how the spins are shown (retention/challenge.ts); absent = Pro, ratings hidden, colours on. */
   level?: Level;
   view?: RunView;
+  /** Relic luck when the run began (relics.ts). */
+  luck?: number;
   /** The All-Star break trade (after game 41): three players you could trade for, and whether it's done. */
   trade?: { offers: string[]; done: boolean; made?: { out: string; in: string } };
   /** Injured players (card id -> games still out). */
@@ -234,11 +237,13 @@ function rollFor(h: NbaHistory, run: PerfectRun, keep?: { franchise?: string; er
 
 // ---------------------------------------------------------------- starting and drafting
 
-export function newPerfectRun(h: NbaHistory, mode: PerfectMode, seed: number, daily?: string, opts: { level?: Level; view?: RunView; catOpts?: CategoryOptions; weekly?: string; custom?: string } = {}): PerfectRun {
+export function newPerfectRun(h: NbaHistory, mode: PerfectMode, seed: number, daily?: string, opts: { level?: Level; view?: RunView; catOpts?: CategoryOptions; weekly?: string; custom?: string; /** Relic luck and The Extra Pick (relics.ts); ignored by the Daily and the Weekly. */ luck?: number; extraPick?: boolean } = {}): PerfectRun {
   // The Daily is the standard game for everyone.
   const level = daily ? 'pro' : opts.level ?? 'pro', view = daily ? STANDARD_VIEW : opts.view ?? STANDARD_VIEW;
-  const rerolls = mode === 'quick' ? { team: 0, era: 0, prime: 0, spin: SPIN_REROLLS, lucky: LUCKY_SPINS } : { team: 0, era: 0, prime: mode === 'franchise' ? 1 : 0, roll: SPIN_REROLLS, lucky: LUCKY_SPINS };
-  const run: PerfectRun = { v: 1, mode, seed, daily, stage: 'draft', squad: [], rolls: 0, rerolls, schedule: [], bosses: [], games: [], playoffs: [],
+  const shared = !!daily || !!opts.weekly;
+  const extra = !shared && opts.extraPick ? 1 : 0;
+  const rerolls = mode === 'quick' ? { team: 0, era: 0, prime: 0, spin: SPIN_REROLLS + extra, lucky: LUCKY_SPINS } : { team: 0, era: 0, prime: mode === 'franchise' ? 1 : 0, roll: SPIN_REROLLS + extra, lucky: LUCKY_SPINS };
+  const run: PerfectRun = { v: 1, mode, seed, daily, stage: 'draft', squad: [], rolls: 0, rerolls, schedule: [], bosses: [], games: [], playoffs: [], ...(!shared && opts.luck ? { luck: opts.luck } : {}),
     ...(level !== 'pro' ? { level } : {}), ...(view.numbers !== STANDARD_VIEW.numbers || view.colors !== STANDARD_VIEW.colors ? { view } : {}) };
   if (isCategoryMode(mode)) {
     const catOpts = opts.catOpts && Object.values(opts.catOpts).some(Boolean) ? opts.catOpts : undefined;
@@ -358,7 +363,10 @@ export function quickSpinCard(h: NbaHistory, run: PerfectRun): HuntCard {
   const rng = rngFor(run, 50 + run.squad.length + (run.spinSalt ?? 0) * 101);
   const taken = new Set(run.squad.map(id => card(h, id).playerId));
   // A lucky spin lands on a Great or a Star; the star cap: with three Stars already, the reel can't land on another.
-  const base = run.lucky ? LUCKY_WEIGHTS : QUICK_WEIGHTS;
+  const raw = run.lucky ? LUCKY_WEIGHTS : QUICK_WEIGHTS;
+  // Relic luck: Stars and Greats come up that much more often.
+  const lucky = luckMultiplier(run.luck);
+  const base = lucky === 1 ? raw : { ...raw, legendary: raw.legendary * lucky, epic: raw.epic * lucky };
   const weights = starCapReached(h, run) ? { ...base, legendary: 0 } : base;
   const total = Object.values(weights).reduce((a, b) => a + b, 0);
   let r = rng.next() * total, rarity: Rarity = 'common';

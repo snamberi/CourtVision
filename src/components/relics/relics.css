@@ -1,0 +1,40 @@
+/* The Relic Vault. Built on the League Hunt page styles (hunt.css). */
+.relic-vault { --r-common: #94a0b2; --r-rare: #4da3ff; --r-epic: #b07cff; --r-legendary: #ffd166; --r-mythic: #ff5fa2; --r-secret: #f47b20; }
+.relic-vault > section { max-width: 900px; margin: 0 auto 16px; }
+.relic-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.relic-stats > div { display: grid; gap: 2px; padding: 10px; background: var(--c-bg-121926, #121926); border: 2px solid var(--c-border-2a3546, #2a3546); }
+.relic-stats span { color: var(--c-fg-94a0b2, #94a0b2); font-size: 12px; text-transform: uppercase; }
+.relic-stats b { font-size: 22px; font-variant-numeric: tabular-nums; }
+.relic-stats small { color: var(--c-fg-94a0b2, #94a0b2); font-size: 11px; }
+.relic-note { max-width: 900px; margin: 0 auto 12px; color: var(--c-fg-55c878, #55c878); }
+.relic-machine { display: grid; justify-items: center; gap: 10px; }
+.relic-slot { width: min(100%, 420px); min-height: 170px; display: grid; place-items: center; align-content: center; gap: 6px; padding: 16px; text-align: center; background: var(--c-bg-121926, #121926); border: 2px solid var(--c-border-2a3546, #2a3546); box-shadow: 2px 2px 0 var(--c-border-2a3546, #2a3546); }
+.relic-slot b { font-size: 18px; }
+.relic-slot small { color: var(--c-fg-94a0b2, #94a0b2); }
+.relic-slot.rolling svg { animation: relic-shake 0.15s steps(2) infinite; }
+@keyframes relic-shake { 50% { transform: translateX(3px); } }
+@media (prefers-reduced-motion: reduce) { .relic-slot.rolling svg { animation: none; } }
+.relic-slot.r-common, .relic-card.r-common:not(.missing) { border-color: var(--r-common); }
+.relic-slot.r-rare, .relic-card.r-rare:not(.missing) { border-color: var(--r-rare); }
+.relic-slot.r-epic, .relic-card.r-epic:not(.missing) { border-color: var(--r-epic); }
+.relic-slot.r-legendary, .relic-card.r-legendary:not(.missing) { border-color: var(--r-legendary); }
+.relic-slot.r-mythic, .relic-card.r-mythic:not(.missing) { border-color: var(--r-mythic); box-shadow: 2px 2px 0 var(--r-mythic); }
+.relic-slot.r-secret, .relic-card.r-secret:not(.missing) { border-color: var(--r-secret); box-shadow: 2px 2px 0 var(--r-secret); }
+.relic-spin { min-width: 200px; }
+.relic-section h2 { margin: 0 0 6px; }
+.relic-help { margin: 0 0 10px; color: var(--c-fg-94a0b2, #94a0b2); font-size: 14px; }
+.relic-tier h3 { margin: 12px 0 6px; font-size: 15px; }
+.relic-tier h3 small { color: var(--c-fg-94a0b2, #94a0b2); font-weight: normal; font-size: 12px; }
+h3.r-common { color: var(--r-common); } h3.r-rare { color: var(--r-rare); } h3.r-epic { color: var(--r-epic); } h3.r-legendary { color: var(--r-legendary); } h3.r-mythic { color: var(--r-mythic); }
+.relic-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px; }
+.relic-card { display: flex; gap: 8px; align-items: flex-start; padding: 8px; background: var(--c-bg-121926, #121926); border: 2px solid var(--c-border-2a3546, #2a3546); }
+.relic-card span { display: grid; gap: 2px; min-width: 0; }
+.relic-card small { color: var(--c-fg-94a0b2, #94a0b2); font-size: 12px; }
+.relic-card em { font-style: normal; font-size: 12px; color: var(--c-fg-ffd166, #ffd166); }
+.relic-card.missing { opacity: 0.6; }
+.relic-earn { margin: 0 0 8px; padding-left: 20px; display: grid; gap: 4px; font-size: 14px; }
+.menu-relics { width: 100%; box-sizing: border-box; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0; padding: 10px 12px; background: var(--c-bg-121926, #121926); border: 2px solid var(--c-border-2a3546, #2a3546); }
+.menu-relics.ready { border-color: var(--c-border-ffd166, #ffd166); }
+.menu-relics > span { display: grid; flex: 1; min-width: 180px; }
+.menu-relics small { color: var(--c-fg-94a0b2, #94a0b2); }
+@media (max-width: 720px) { .relic-stats { grid-template-columns: repeat(2, 1fr); } }

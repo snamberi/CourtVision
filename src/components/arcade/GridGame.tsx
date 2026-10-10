@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { NbaHistory } from '../../history/nbaHistoryData';
 import { PixelIcon } from '../PixelIcon';
+import { relicRunOpts } from '../../relics/apply';
 import { track } from '../../analytics/track';
 import { noteWeekRun } from '../../retention/weekLog';
 import { todayUtc } from '../../hunt/storage';
 import { readArcade, updateArcade, gridStreak, ARCADE_EVENT } from '../../arcade/storage';
-import { dailyGrid, codeGrid, newGridCode, cleanGridCode, isGridCode, gridTheme, emptyPlay, isGridDone, guessCell, gridScore, rarity, answers, gridNumber, gridShareText, gridCandidates, searchCandidates, GRID_SIZE, GRID_GUESSES, type Grid, type GridPlay } from '../../arcade/grid';
+import { dailyGrid, codeGrid, newGridCode, cleanGridCode, isGridCode, gridTheme, emptyPlay, guessesAllowed, isGridDone, guessCell, gridScore, rarity, answers, gridNumber, gridShareText, gridCandidates, searchCandidates, GRID_SIZE, GRID_GUESSES, type Grid, type GridPlay } from '../../arcade/grid';
 
 const SITE = 'https://courtvisiongame.com';
 type Mode = 'daily' | 'endless';
@@ -56,7 +57,8 @@ function DailyGrid({ h }: { h: NbaHistory }) {
 
 function EndlessGrid({ h, code, onNew }: { h: NbaHistory; code: string; onNew: () => void }) {
   const grid = useMemo(() => codeGrid(h, code), [h, code]);
-  const [play, setPlay] = useState<GridPlay>(emptyPlay);
+  // The Last Look (a secret relic): one more guess on Endless grids.
+  const [play, setPlay] = useState<GridPlay>(() => emptyPlay(relicRunOpts().lastLook ? GRID_GUESSES + 1 : undefined));
   return <GridBoard h={h} grid={grid} play={play} onPlay={setPlay} title="Endless grid" shareDay={null} onNew={onNew} />;
 }
 
@@ -87,7 +89,7 @@ function GridBoard({ h, grid, play, onPlay, title, shareDay, extra, onNew }: { h
   const rowOf = (i: number) => grid.rows[Math.floor(i / GRID_SIZE)], colOf = (i: number) => grid.cols[i % GRID_SIZE];
   return <div className="cv-grid-wrap">
     <div className="cv-grid-head"><span className="pixel-eyebrow">{title}</span>
-      <span className="cv-grid-left" aria-live="polite">{done ? 'Grid finished' : `${GRID_GUESSES - play.used} guesses left`}</span></div>
+      <span className="cv-grid-left" aria-live="polite">{done ? 'Grid finished' : `${guessesAllowed(play) - play.used} guesses left`}</span></div>
     <div className="cv-grid" role="grid" aria-label="The grid">
       <div className="cv-grid-corner" aria-hidden="true"><PixelIcon name="star" size={22} /></div>
       {grid.cols.map(c => <div key={c.id} className="cv-grid-label col" role="columnheader" title={c.blurb}><small>{c.group}</small><b>{c.name}</b><i>{c.blurb}</i></div>)}

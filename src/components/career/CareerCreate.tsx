@@ -99,8 +99,8 @@ function WheelBoard({ h, s, settled, onTake }: { h: NbaHistory; s: WheelState; s
     <BodyBoard heightIn={heightIn} name="" cells={cells} onSelect={offered ? onTake : undefined} label="Your player's build from the wheel" /></div>;
 }
 
-export function WheelBuilder({ h, seed, fav, onDone, onBack }: { h: NbaHistory; seed: number; /** Your favourite player (not in the weekly career). */ fav?: string; onDone: (prime: Prime) => void; onBack: () => void }) {
-  const [s, setS] = useState<WheelState>(() => newWheel(seed, fav));
+export function WheelBuilder({ h, seed, fav, relics, onDone, onBack }: { h: NbaHistory; seed: number; /** Your favourite player (not in the weekly career). */ fav?: string; /** Relic luck and The Eternal Spin (not in the weekly career). */ relics?: { luck: number; eternalSpin: boolean }; onDone: (prime: Prime) => void; onBack: () => void }) {
+  const [s, setS] = useState<WheelState>(() => newWheel(seed, fav, relics));
   /** The spin whose wheels have stopped: nothing about where they landed shows before that. */
   const [settledSpin, setSettledSpin] = useState(0);
   const settle = useCallback((spinCount: number) => setSettledSpin(n => Math.max(n, spinCount)), []);

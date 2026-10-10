@@ -38,6 +38,8 @@ import { noteFeaturedXp } from '../../retention/modeOfWeek';
 import { newPerfectFromHunt } from '../../perfect/run';
 import { savePerfectRun } from '../../perfect/storage';
 import { XP } from '../../profile/profile';
+import { relicRunOpts } from '../../relics/apply';
+import { rewardRun, huntSpins } from '../../relics/rewards';
 import './hunt.css';
 
 /** League Hunt: spin a six-man squad and a coach from all of basketball history, then win ten best-of-seven series. */
@@ -59,6 +61,7 @@ export function LeagueHunt({ onExit }: { onExit: () => void }) {
     else saveRun(r);
     if (r && (r.stage === 'won' || r.stage === 'lost') && run?.stage !== r.stage) {
       setRecords(recordRun(r));
+      rewardRun(`hunt:${r.seed}:${r.difficulty ?? 'pro'}`, huntSpins(r));
       noteWeekRecords(noteRunHighs('hunt', r.highs).length);
       { const gw = r.results.reduce((n, x) => n + x.games.filter(g => g.won).length, 0), gp = r.results.reduce((n, x) => n + x.games.length, 0);
         noteWeekRun('hunt', { score: huntScore({ won: r.stage === 'won', stop: r.seriesIndex, wins: gw, losses: gp - gw }), line: r.stage === 'won' ? `beat the boss, ${gw}-${gp - gw}` : `series ${r.seriesIndex + 1}` }, `hunt-${r.seed}`); }
@@ -104,13 +107,13 @@ export function LeagueHunt({ onExit }: { onExit: () => void }) {
   return <div className={`hunt ${play ? `era-${play.play.era.id}` : ''} ${run?.view?.colors === false && run.stage !== 'won' && run.stage !== 'lost' ? 'no-rarity' : ''}`}>
     {header}
     {run && run.stage !== 'won' && run.stage !== 'lost' && <DuelBanner duel={run.duel} />}
-    {!run ? <HuntHub h={h} records={records} onStart={(seed, opts) => { setPlay(null); setRun(newRun(h, seed, { ...opts, fav: readFavorites().player })); }} />
+    {!run ? <HuntHub h={h} records={records} onStart={(seed, opts) => { setPlay(null); setRun(newRun(h, seed, { ...opts, ...relicRunOpts(), fav: readFavorites().player })); }} />
       : play ? <SeriesView h={h} run={run} play={play.play} series={play.series} index={play.index} onReveal={() => setPlay(p => (p && !p.revealed ? { ...p, revealed: true } : p))} onContinue={() => setPlay(null)} />
       : run.stage === 'draft' ? <SlotMachine key={run.seed} h={h} run={run} onRun={setRun} onAbandon={() => setRun(null)} />
       : run.stage === 'focus' ? <FocusView run={run} onChoose={f => setRun(chooseFocus(h, run, f))} />
       : run.stage === 'shop' ? <HuntBase h={h} run={run} onRun={setRun} onPlay={startSeries} onAbandon={() => setRun(null)} />
       : run.stage === 'boost' ? <BoostPick h={h} run={run} onTake={b => setRun(takeBoost(h, run, b))} />
-      : run.stage === 'won' || run.stage === 'lost' ? <RunOver h={h} run={run} records={records} onNew={() => { setPlay(null); setRun(newRun(h, Math.floor(Math.random() * 1_000_000_000), { deck: run.deck, difficulty: run.difficulty, fav: readFavorites().player })); }} onExit={() => { setRun(null); onExit(); }} />
+      : run.stage === 'won' || run.stage === 'lost' ? <RunOver h={h} run={run} records={records} onNew={() => { setPlay(null); setRun(newRun(h, Math.floor(Math.random() * 1_000_000_000), { deck: run.deck, difficulty: run.difficulty, ...relicRunOpts(), fav: readFavorites().player })); }} onExit={() => { setRun(null); onExit(); }} />
       : <HuntBase h={h} run={run} onRun={setRun} onPlay={startSeries} onAbandon={() => setRun(null)} />}
   </div>;
 }
@@ -183,7 +186,7 @@ function SlotMachine({ h, run, onRun, onAbandon }: { h: NbaHistory; run: HuntRun
   const roundCat = huntRoundCategory(h, run, run.spin);
   const stop = () => { setTick(0); setStoppedAt(Date.now()); setJustLocked(null); onRun(stopReels(h, run, roundCat)); };
   const lock = (k: SpinKind) => { if (!allSettled) return; setJustLocked(k); setStoppedAt(null); onRun(lockReel(h, run, k)); };
-  const w = spinWeights(run.spin), total = w.common + w.rare + w.epic + w.legendary;
+  const w = spinWeights(run.spin, run.luck), total = w.common + w.rare + w.epic + w.legendary;
   const guaranteed = run.spin === run.guarantees.star ? 'A Star lands on these reels.' : run.spin === run.guarantees.great ? 'A Great player lands on these reels.' : null;
   const message = !frozen ? <>Everything is spinning. Hit <b className="hunt-stop-word">STOP</b> when you are ready</>
     : !allSettled ? <>Stopping…</>

@@ -6,6 +6,16 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2027-03-24',
+    title: 'Relics: your own collection, across every mode',
+    items: [
+      "**Relic Vault (main menu):** win runs and unlock achievements to earn Relic Spins. Each spin lands a relic: Common, Rare, Epic, Legendary or the 0.07% Mythic.",
+      "**Luck:** every relic you own adds 1-5% luck (up to +30%), making the best results likelier in League Hunt, the 82-0 Challenge, the Career wheel and the Survival deal. Dailies, Weeklies and duels ignore luck.",
+      "**Coins:** land a relic you already own and it pays coins instead, more for rarer relics. Something to spend them on is coming.",
+      "**Eight secret relics:** hidden behind a tiny chance on any spin, each a permanent ability: an extra Career respin, an extra Hunt life, an extra Survival Shield, an extra 82-0 reroll and more.",
+    ],
+  },
+  {
     id: '2027-03-17',
     title: 'Two new game modes: Survival and Story Mode',
     items: [

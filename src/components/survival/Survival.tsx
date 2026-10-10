@@ -14,6 +14,8 @@ import { PixelIcon } from '../PixelIcon';
 import { ShareCardButton } from '../ShareCardButton';
 import { track, trackOnce } from '../../analytics/track';
 import { noteWeekRun } from '../../retention/weekLog';
+import { relicRunOpts } from '../../relics/apply';
+import { rewardRun, survivalSpins } from '../../relics/rewards';
 import '../hunt/hunt.css';
 import './survival.css';
 
@@ -40,6 +42,7 @@ export function Survival({ onExit }: { onExit: () => void }) {
     saveSurvivalRun(r);
     if (r && r.stage === 'over' && prev?.stage !== 'over') {
       setRecords(recordSurvival(r));
+      rewardRun(`surv:${r.seed}:${r.level}`, survivalSpins(wins(r)));
       const w = wins(r);
       noteWeekRun('survival', { score: survivalScore(r), line: `${w} win${w === 1 ? '' : 's'}` }, `surv-${r.seed}-${r.level}`);
       trackOnce(`surv-${r.seed}-${r.level}`, 'mode_finish', { mode: 'survival', level: r.level, daily: !!r.daily, wins: w });
@@ -48,7 +51,7 @@ export function Survival({ onExit }: { onExit: () => void }) {
   const start = (level: SurvivalLevel, daily?: string) => {
     if (!h) return;
     track('mode_start', { mode: 'survival', level, daily: !!daily });
-    setRun(newSurvivalRun(h, daily ? dailySeed(daily) : newSeed(), daily ? 'pro' : level, daily));
+    setRun(newSurvivalRun(h, daily ? dailySeed(daily) : newSeed(), daily ? 'pro' : level, daily, relicRunOpts()));
   };
 
   const header = <header className="hunt-top">

@@ -244,9 +244,10 @@ export const TRAINABLE: CategoryId[] = ['finishing', 'midRange', 'threePoint', '
 
 // ---------------------------------------------------------------- flow
 
-export function newStory(seed: number, name: string, style: StoryStyle, hometown: string): StoryState {
+export function newStory(seed: number, name: string, style: StoryStyle, hometown: string, relics?: { clutchGene?: boolean }): StoryState {
   const clean = name.trim().replace(/\s+/g, ' ').slice(0, 24) || 'Jaylen Carter';
-  return { v: 1, seed, name: clean, style, hometown, hero: createHero(seed, clean, style), hype: 0, grit: 0, bonds: { dre: 1, ray: 0, ice: 0 }, flags: [], at: 0, games: [], points: 0, done: false };
+  // The Clutch Gene (a secret relic): two grit before the first page.
+  return { v: 1, seed, name: clean, style, hometown, hero: createHero(seed, clean, style), hype: 0, grit: relics?.clutchGene ? 2 : 0, bonds: { dre: 1, ray: 0, ice: 0 }, flags: [], at: 0, games: [], points: 0, done: false };
 }
 
 /** The beat you're on (skipping scenes whose condition doesn't hold). */
