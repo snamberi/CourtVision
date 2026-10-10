@@ -5,7 +5,7 @@ import { track } from '../../analytics/track';
 import { noteWeekRun } from '../../retention/weekLog';
 import { todayUtc } from '../../hunt/storage';
 import { readArcade, updateArcade, gridStreak, ARCADE_EVENT } from '../../arcade/storage';
-import { dailyGrid, makeGrid, emptyPlay, isGridDone, guessCell, gridScore, rarity, answers, gridNumber, gridShareText, gridCandidates, searchCandidates, GRID_SIZE, GRID_GUESSES, type Grid, type GridPlay } from '../../arcade/grid';
+import { dailyGrid, codeGrid, newGridCode, cleanGridCode, isGridCode, gridTheme, emptyPlay, isGridDone, guessCell, gridScore, rarity, answers, gridNumber, gridShareText, gridCandidates, searchCandidates, GRID_SIZE, GRID_GUESSES, type Grid, type GridPlay } from '../../arcade/grid';
 
 const SITE = 'https://courtvisiongame.com';
 type Mode = 'daily' | 'endless';
@@ -18,12 +18,18 @@ async function share(text: string): Promise<'shared' | 'copied' | 'failed'> {
 /** The Daily Grid (one a day, the same for everyone) and endless random grids. */
 export function GridGame({ h }: { h: NbaHistory }) {
   const [mode, setMode] = useState<Mode>('daily');
-  const [endlessKey, setEndlessKey] = useState(() => `free|${Date.now()}`);
+  const [endlessCode, setEndlessCode] = useState(() => newGridCode());
+  const [codeInput, setCodeInput] = useState('');
   return <section className="arcade-gridgame">
     <div className="arcade-switch" role="radiogroup" aria-label="Grid mode">
       {(['daily', 'endless'] as Mode[]).map(m => <button key={m} role="radio" aria-checked={mode === m} className={mode === m ? 'selected' : ''} onClick={() => setMode(m)}>{m === 'daily' ? 'Daily Grid' : 'Endless grids'}</button>)}
     </div>
-    {mode === 'daily' ? <DailyGrid h={h} /> : <EndlessGrid key={endlessKey} h={h} seed={endlessKey} onNew={() => setEndlessKey(`free|${Date.now()}`)} />}
+    {mode === 'daily' ? <DailyGrid h={h} /> : <>
+      <div className="cv-grid-code"><span>Grid code <b>{endlessCode}</b>: send it to a friend and compare scores.</span>
+        <label><input className="year-input" value={codeInput} maxLength={8} placeholder="Friend's code" aria-label="A friend's grid code" onChange={e => setCodeInput(cleanGridCode(e.target.value))} />
+          <button disabled={!isGridCode(codeInput)} onClick={() => { setEndlessCode(codeInput); setCodeInput(''); }}>Play it</button></label></div>
+      <EndlessGrid key={endlessCode} h={h} code={endlessCode} onNew={() => setEndlessCode(newGridCode())} />
+    </>}
     <p className="hint-text">Each square needs a player who played for the team on its row <b>and</b> fits the column at any point in his career (a Laker who won MVP in Houston counts). Each player once. {GRID_GUESSES} guesses, right or wrong. Rarity: how deep a cut your answer is among everyone who fits the square (100 = the deepest).</p>
   </section>;
 }
@@ -43,12 +49,13 @@ function DailyGrid({ h }: { h: NbaHistory }) {
     }
   };
   const streak = gridStreak(rec, today);
-  return <GridBoard h={h} grid={grid} play={play} onPlay={onPlay} title={`Grid #${gridNumber(today)}`} shareDay={today}
-    extra={<><span><b>{streak.current}</b><small>Streak</small></span><span><b>{streak.best}</b><small>Best streak</small></span></>} />;
+  const theme = gridTheme(today);
+  return <>{theme && <p className="cv-grid-theme"><b>{theme.name}</b> {theme.blurb}</p>}<GridBoard h={h} grid={grid} play={play} onPlay={onPlay} title={`Grid #${gridNumber(today)}`} shareDay={today}
+    extra={<><span><b>{streak.current}</b><small>Streak</small></span><span><b>{streak.best}</b><small>Best streak</small></span></>} /></>;
 }
 
-function EndlessGrid({ h, seed, onNew }: { h: NbaHistory; seed: string; onNew: () => void }) {
-  const grid = useMemo(() => makeGrid(h, seed), [h, seed]);
+function EndlessGrid({ h, code, onNew }: { h: NbaHistory; code: string; onNew: () => void }) {
+  const grid = useMemo(() => codeGrid(h, code), [h, code]);
   const [play, setPlay] = useState<GridPlay>(emptyPlay);
   return <GridBoard h={h} grid={grid} play={play} onPlay={setPlay} title="Endless grid" shareDay={null} onNew={onNew} />;
 }

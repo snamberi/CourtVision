@@ -183,3 +183,10 @@ button.cv-grid-cell:hover:not(:disabled), .cv-grid-cell.active { border-color: v
 @media (prefers-reduced-motion: reduce) { .cv-grid-cell.ok, .cv-grid-cell.no { animation: none; } }
 .cv-grid-label i { font: normal 11px/1.25 var(--font-data); color: var(--text-dim); }
 @media (max-width: 540px) { .cv-grid-label i { display: none; } }
+/* Grid codes (Endless) and the week's theme (Daily). */
+.cv-grid-code { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin: 8px 0; font-size: 13px; }
+.cv-grid-code b { font-family: var(--ff-mono, monospace); letter-spacing: 0.1em; color: var(--c-fg-ffd166, #ffd166); }
+.cv-grid-code label { display: flex; gap: 6px; }
+.cv-grid-code input { width: 9em; text-transform: uppercase; }
+.cv-grid-theme { margin: 6px 0; padding: 6px 10px; border-left: 4px solid var(--c-border-f47b20, #f47b20); background: var(--c-bg-121926, #121926); font-size: 13px; }
+.cv-grid-theme b { color: var(--c-fg-f47b20, #f47b20); margin-right: 6px; }
