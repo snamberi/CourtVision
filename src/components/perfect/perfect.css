@@ -282,3 +282,15 @@ button.p820-card:hover, button.p820-card:focus-visible { border-color: var(--c-b
 .p820-custom-load { display: flex; gap: 8px; }
 .p820-custom-load input { flex: 1; min-width: 0; }
 @media (max-width: 640px) { .p820-custom-parts { grid-template-columns: minmax(0, 1fr); } }
+
+/* The All-Star break trade window and the injury line. */
+.p820-trade { margin: 12px 0; padding: 12px; border: 2px solid var(--c-border-ffd166, #ffd166); background: var(--c-bg-121926, #121926); display: grid; gap: 8px; }
+.p820-trade h3 { margin: 0; }
+.p820-trade-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.p820-trade-cols > div { display: grid; gap: 4px; align-content: start; }
+.p820-trade-cols > div > small { color: var(--c-fg-94a0b2, #94a0b2); letter-spacing: 0.08em; }
+.p820-trade-cols button { text-align: left; padding: 6px 8px; }
+.p820-trade-cols button small { color: var(--c-fg-94a0b2, #94a0b2); }
+.p820-trade-cols button.selected { border-color: var(--c-border-f47b20, #f47b20); box-shadow: 2px 2px 0 var(--c-shadow-f47b20, #f47b20); }
+.p820-injuries { display: flex; align-items: center; gap: 6px; color: var(--c-fg-e85d5d, #e85d5d); font-size: 13px; margin: 6px 0; }
+@media (max-width: 640px) { .p820-trade-cols { grid-template-columns: 1fr; } }

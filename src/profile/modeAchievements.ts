@@ -15,10 +15,10 @@ import { readFeats, type Feats } from './feats';
  * can count them for rarity. They are trophies only: the modes already give XP for the same results.
  */
 
-export type Mode = 'career' | 'hunt' | 'perfect' | 'rebuild' | 'draft' | 'pvp' | 'ranked' | 'weekly' | 'daily';
+export type Mode = 'career' | 'hunt' | 'perfect' | 'rebuild' | 'draft' | 'pvp' | 'ranked' | 'weekly' | 'daily' | 'survival' | 'story';
 export const MODE_LABELS: Record<Mode, string> = {
   career: 'Career Mode', hunt: 'League Hunt', perfect: '82-0 Challenge', rebuild: 'Rebuild Challenge', draft: 'All-Time Draft',
-  pvp: 'Hunt PvP', ranked: 'Ranked', weekly: 'Weekly challenges', daily: 'Daily goals',
+  pvp: 'Hunt PvP', ranked: 'Ranked', weekly: 'Weekly challenges', daily: 'Daily goals', survival: 'Survival', story: 'Story Mode',
 };
 
 export interface ModeStats {
@@ -32,6 +32,8 @@ export interface ModeStats {
   p82Wins: number; p82Titles: number; p82Perfect: number; p82Perfect98: number;
   /** Category Draft. */
   catTitles: number; catTeams: number; catBrutal: number; catPerfect: number;
+  /** Survival and Story Mode (their own records in this browser). */
+  survivalBest: number; survivalBosses: number; storyFinished: number; storyLegend: number; storyEndings: number;
 }
 
 export interface ModeAchievement { id: string; mode: Mode; name: string; description: string; icon: TrophyKey; progress: (s: ModeStats) => [number, number]; label?: (n: number, goal: number) => string }
@@ -65,7 +67,15 @@ export const MODE_ACHIEVEMENTS: ModeAchievement[] = [
   { id: 'cat-teams', mode: 'perfect', name: 'Every Franchise', description: 'Win the title with all 30 team categories.', icon: 'fmvp', progress: s => at(s.catTeams, 30) },
   { id: 'cat-brutal', mode: 'perfect', name: 'Brutal', description: 'Win the title with a D-tier category.', icon: 'hustle', progress: s => at(s.catBrutal, 1) },
   { id: 'cat-82', mode: 'perfect', name: 'Perfect Category', description: 'Go 82-0 in a Category Roll.', icon: 'eoy', progress: s => at(s.catPerfect, 1) },
+  { id: 'cat-82x5', mode: 'perfect', name: 'Category King', description: 'Go 82-0 with 5 different Category Roll categories.', icon: 'mvp', progress: s => at(s.catPerfect, 5) },
   { id: 'perfect-98', mode: 'perfect', name: 'Perfection', description: 'Go 82-0, then 16-0 in the playoffs.', icon: 'eoy', progress: s => at(s.p82Perfect98, 1) },
+
+  { id: 'survival-5', mode: 'survival', name: 'Still Standing', description: 'Win 5 rounds in one Survival run.', icon: 'ironMan', progress: s => at(s.survivalBest, 5) },
+  { id: 'survival-15', mode: 'survival', name: 'Last One Standing', description: 'Win 15 rounds in one Survival run.', icon: 'mvp', progress: s => at(s.survivalBest, 15) },
+  { id: 'survival-bosses', mode: 'survival', name: 'Giant Killer', description: 'Beat 5 Survival bosses (real champions).', icon: 'champion', progress: s => at(s.survivalBosses, 5) },
+  { id: 'story-done', mode: 'story', name: 'Street to the League', description: 'Finish Story Mode.', icon: 'allRookie1', progress: s => at(s.storyFinished, 1) },
+  { id: 'story-legend', mode: 'story', name: 'Street Legend', description: 'Reach the ending "The Legend Begins".', icon: 'roy', progress: s => at(s.storyLegend, 1) },
+  { id: 'story-all', mode: 'story', name: 'Every Road', description: 'See all four Story Mode endings.', icon: 'eoy', progress: s => at(s.storyEndings, 4) },
 
   { id: 'rebuild-star', mode: 'rebuild', name: 'First Star', description: 'Earn a star in a Rebuild Challenge.', icon: 'mip', progress: s => at(s.rebuildStars, 1) },
   { id: 'rebuild-title', mode: 'rebuild', name: 'Rebuilt', description: 'Rebuild a team into champions.', icon: 'champion', progress: s => at(s.rebuildTitles, 1) },
@@ -113,6 +123,8 @@ export function modeStats(read: Read = localRead, extra: Feats = {}): ModeStats 
   const goals = json<Record<string, { done: number }>>(read, 'cv-daily-history', {});
   const rankedLocal = RANK_ORDER.indexOf(read('cv-ranked-best') ?? '');
   const p82 = loadPerfectRecords(read);
+  const surv = json<{ best?: Record<string, { wins: number } | undefined>; bossesBeaten?: number }>(read, 'cv-survival-records', {});
+  const story = json<{ finished?: number; tiers?: Record<string, number> }>(read, 'cv-story-endings', {});
   return {
     retired: c.retired, hallOfFame: c.hallOfFame, firstBallot: c.firstBallot ?? 0, top10: c.top10 ?? 0, mvpCareers: c.mvpCareers ?? 0, mostTitles: c.mostTitles ?? 0, mostPoints: c.mostPoints ?? 0,
     huntWins: hunt.wins, huntLegendWins: feats.huntLegendWins ?? 0, dailyPlayed: daily.length, dailyWins: daily.filter(d => d.won).length,
@@ -127,6 +139,8 @@ export function modeStats(read: Read = localRead, extra: Feats = {}): ModeStats 
     goalStreak: longestStreak(Object.entries(goals).filter(([, g]) => g.done > 0).map(([d]) => d)),
     p82Wins: p82.bestWins, p82Titles: p82.titles, p82Perfect: p82.perfectSeasons, p82Perfect98: p82.perfect98,
     catTitles: categoryTitles(p82), catTeams: categoryTeamTitles(p82), catBrutal: categoryBrutal(p82), catPerfect: categoryPerfect(p82),
+    survivalBest: Math.max(0, ...Object.values(surv.best ?? {}).map(b => b?.wins ?? 0)), survivalBosses: surv.bossesBeaten ?? 0,
+    storyFinished: story.finished ?? 0, storyLegend: story.tiers?.legend ?? 0, storyEndings: Object.keys(story.tiers ?? {}).length,
   };
 }
 

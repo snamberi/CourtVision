@@ -96,6 +96,12 @@ export interface PerfectRun {
   /** Difficulty and how the spins are shown (retention/challenge.ts); absent = Pro, ratings hidden, colours on. */
   level?: Level;
   view?: RunView;
+  /** The All-Star break trade (after game 41): three players you could trade for, and whether it's done. */
+  trade?: { offers: string[]; done: boolean; made?: { out: string; in: string } };
+  /** Injured players (card id -> games still out). */
+  injured?: Record<string, number>;
+  /** Injuries so far this run, for the recap. */
+  injuries?: { id: string; games: number; at: number }[];
   /** 82 opponent team ids; `bosses` are indexes into it. */
   schedule: string[];
   bosses: number[];
@@ -619,8 +625,11 @@ function playGame(h: NbaHistory, run: PerfectRun, oppId: string, salt: number, b
   if (coach?.style === 'triangle') ourCoach = { ...ourCoach, offensiveSystem: 'motion', starUsage: 38 };
   const defense = coach?.style === 'defense' ? 4 : 0;
   const up = (v: number) => Math.min(99, v + defense);
-  const order = lineupOf(run);
-  const players = (order ?? run.squad).map(id => {
+  // Injured players sit (as long as eight are healthy).
+  const out = new Set(Object.entries(run.injured ?? {}).filter(([, g]) => g > 0).map(([id]) => id));
+  const healthy = (ids: string[]) => (ids.filter(id => !out.has(id)).length >= 8 ? ids.filter(id => !out.has(id)) : ids);
+  const order = lineupOf(run) ? healthy(lineupOf(run)!) : null;
+  const players = (order ?? healthy(run.squad)).map(id => {
     const p = underEra(cardPlayer(h, card(h, id), 'P820', bonus.get(id) ?? 0), era);
     if (!defense) return p;
     const d = p.attributes.defense;
@@ -650,14 +659,17 @@ export function playNext(h: NbaHistory, run: PerfectRun, n = 1): PerfectRun {
   let r = run;
   for (let i = 0; i < n; i++) {
     if (r.stage === 'season') {
+      if (tradePending(r)) break;
       const g = r.games.length;
       const { game, box, vs } = playGame(h, r, r.schedule[g], g + 1, r.bosses.includes(g));
       const games = [...r.games, game];
-      r = { ...r, games, lines: addBox(r.lines ?? {}, box), highs: addHighs(r.highs ?? {}, box, vs) };
+      r = afterGameInjuries({ ...r, games, lines: addBox(r.lines ?? {}, box), highs: addHighs(r.highs ?? {}, box, vs) }, g);
+      if (games.length === TRADE_AT && canTrade(r)) r = { ...r, trade: { offers: tradeOffers(h, r), done: false } };
       if (games.length >= SEASON_GAMES) r = { ...r, stage: 'playoffs', playoffs: [{ round: 0, opp: playoffOpponent(h, r, 0), games: [] }] };
     } else if (r.stage === 'playoffs') {
       const s = r.playoffs[r.playoffs.length - 1];
       const { game, box, vs } = playGame(h, r, s.opp, 1000 + s.round * 10 + s.games.length, false, s.round);
+      r = healOneGame(r);
       const series = { ...s, games: [...s.games, game] };
       const playoffs = [...r.playoffs.slice(0, -1), series];
       const w = series.games.filter(x => x.won).length, l = series.games.length - w;
@@ -676,8 +688,72 @@ export function playNext(h: NbaHistory, run: PerfectRun, n = 1): PerfectRun {
 /** Plays straight to the end of the regular season, or of the playoffs. */
 export function playToEnd(h: NbaHistory, run: PerfectRun, stage: 'season' | 'playoffs'): PerfectRun {
   let r = run;
-  while (r.stage === stage) r = playNext(h, r);
+  while (r.stage === stage && !tradePending(r)) r = playNext(h, r);
   return r;
+}
+
+// ---------------------------------------------------------------- the All-Star break trade
+
+/** The trade window opens after this many games (the All-Star break). */
+export const TRADE_AT = 41;
+/** Category runs keep their category: no trades there (nor for squads brought from a Hunt). */
+export const canTrade = (r: Pick<PerfectRun, 'mode' | 'from'>) => !isCategoryMode(r.mode) && r.from !== 'hunt';
+export const tradePending = (r: Pick<PerfectRun, 'trade' | 'stage'>) => r.stage === 'season' && !!r.trade && !r.trade.done;
+/** How much better the incoming player may be than the one you send (rough salary matching). */
+export const TRADE_UP = 4;
+
+/** Three players on the market at the break: around your rotation's level, never someone you already have. */
+export function tradeOffers(h: NbaHistory, r: PerfectRun): string[] {
+  const pool = cardPool(h);
+  const have = new Set(r.squad.map(id => card(h, id).playerId));
+  const ovrs = r.squad.map(id => card(h, id).ovr).sort((a, b) => b - a);
+  const lo = ovrs[Math.min(7, ovrs.length - 1)] - 2, hi = ovrs[2] + 2;
+  const rng = new RNG(r.seed * 61 + 41);
+  const fits = pool.cards.filter(c => c.ovr >= lo && c.ovr <= hi && !have.has(c.playerId));
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (let guard = 0; out.length < 3 && guard < 400 && fits.length; guard++) {
+    const c = fits[rng.nextInt(fits.length)];
+    if (seen.has(c.playerId)) continue;
+    seen.add(c.playerId); out.push(c.id);
+  }
+  return out.sort((a, b) => card(h, b).ovr - card(h, a).ovr);
+}
+
+/** Can `outId` go for `inId`? The incoming player may be at most TRADE_UP better. */
+export const tradeFits = (h: NbaHistory, outId: string, inId: string) => card(h, inId).ovr <= card(h, outId).ovr + TRADE_UP;
+
+/** Make the trade (or pass with nulls). The new man takes the old one's place in your lineup. */
+export function makeTrade(h: NbaHistory, r: PerfectRun, outId: string | null, inId: string | null): PerfectRun {
+  if (!tradePending(r)) return r;
+  if (!outId || !inId) return { ...r, trade: { ...r.trade!, done: true } };
+  if (!r.squad.includes(outId) || !r.trade!.offers.includes(inId) || !tradeFits(h, outId, inId)) return r;
+  const swap = (ids: string[]) => ids.map(id => (id === outId ? inId : id));
+  const injured = { ...(r.injured ?? {}) };
+  delete injured[outId];
+  return { ...r, squad: swap(r.squad), ...(r.lineup ? { lineup: swap(r.lineup) } : {}), injured, trade: { ...r.trade!, done: true, made: { out: outId, in: inId } } };
+}
+
+// ---------------------------------------------------------------- injuries
+
+/** About one injury a season; most cost a few games, some a couple of weeks. */
+const INJURY_CHANCE = 0.013;
+function healOneGame(r: PerfectRun): PerfectRun {
+  if (!r.injured) return r;
+  const injured: Record<string, number> = {};
+  for (const [id, g] of Object.entries(r.injured)) if (g > 1) injured[id] = g - 1;
+  return { ...r, injured };
+}
+function afterGameInjuries(r: PerfectRun, g: number): PerfectRun {
+  let next = healOneGame(r);
+  const rng = new RNG(r.seed * 389 + g * 977 + 13);
+  if (rng.next() >= INJURY_CHANCE) return next;
+  const healthy = next.squad.filter(id => !(next.injured ?? {})[id]);
+  if (healthy.length <= 8) return next;
+  const id = healthy[rng.nextInt(healthy.length)];
+  const games = 2 + rng.nextInt(rng.next() < 0.25 ? 14 : 6);
+  next = { ...next, injured: { ...(next.injured ?? {}), [id]: games }, injuries: [...(next.injuries ?? []), { id, games, at: g + 1 }] };
+  return next;
 }
 
 // ---------------------------------------------------------------- results and score

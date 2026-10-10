@@ -5,6 +5,7 @@ import { huntTeams, teamLabel } from '../../hunt/teams';
 import { COACH_STYLE, coachRarity } from '../../hunt/coaches';
 import { eraOf } from '../../hunt/eras';
 import {
+  makeTrade, tradePending, tradeFits, TRADE_UP,
   newPerfectRun, pickPlayer, quickSpinCard, reelFiller, rerollTeam, rerollEra, applyPrime, rerollSpin, luckySpin, spinsLeft, luckyLeft, rollRerollsLeft, lineupOf, swapLineup, setLineup, ROTATION_MINUTES, pickCoach, playNext, rollPool, franchiseName, eraById, teamBonds,
   perfectRating, teamRating, summary, starCount, starCapReached, MAX_STARS, coachMatchup, coachMatchupText, streakPressure, STREAK_STEP, STREAK_MAX, OPP_EDGE, verdict, BOSS_TEAMS, QUICK_SLOTS, QUICK_SLOT_LABEL, SQUAD, SEASON_GAMES, ROUND_NAMES, WINS_NEEDED, SCORE, COACH_BY_ID,
   isCategoryMode, categoryPool, rerollCategory, categoryMultiplier, picksFromCategory, STARTERS, optionMultiplier, OPTION_MULTIPLIER, SHOT_CLOCK, autoPick, categoryLocked, bestFive, type CategoryOptions,
@@ -585,6 +586,25 @@ function CoachPick({ h, run, setRun }: { h: NbaHistory; run: PerfectRun; setRun:
 
 // ---------------------------------------------------------------- the season and the playoffs
 
+/** The All-Star break: trade one of your ten for one of three players on the market (or keep the team). */
+function TradePanel({ h, run, onTrade }: { h: NbaHistory; run: PerfectRun; onTrade: (outId: string | null, inId: string | null) => void }) {
+  const pool = cardPool(h);
+  const [inId, setIn] = useState<string | null>(null);
+  const [outId, setOut] = useState<string | null>(null);
+  const showOvr = run.view?.numbers ?? STANDARD_VIEW.numbers;
+  const fits = inId && outId ? tradeFits(h, outId, inId) : false;
+  return <div className="p820-trade" role="region" aria-label="All-Star break trade">
+    <span className="pixel-eyebrow">ALL-STAR BREAK · TRADE WINDOW</span>
+    <h3>One trade, then the second half</h3>
+    <p className="hint-text">Pick a player on the market and one of yours to send. The new man can be at most {TRADE_UP} better than the one you give up.</p>
+    <div className="p820-trade-cols">
+      <div><small>ON THE MARKET</small>{run.trade!.offers.map(id => { const c = pool.byId.get(id)!; return <button key={id} className={inId === id ? 'selected' : ''} aria-pressed={inId === id} onClick={() => setIn(id)}><b>{c.name}</b> <small>{seasonLabel(c.end)} · {c.pos}{showOvr ? ` · ${c.ovr}` : ''}</small></button>; })}</div>
+      <div><small>YOU SEND</small>{run.squad.map(id => { const c = pool.byId.get(id)!; const ok = !inId || tradeFits(h, id, inId); return <button key={id} disabled={!ok} className={outId === id ? 'selected' : ''} aria-pressed={outId === id} onClick={() => setOut(id)}><b>{c.name}</b> <small>{c.pos}{showOvr ? ` · ${c.ovr}` : ''}</small></button>; })}</div>
+    </div>
+    <div className="p820-actions"><button className="primary" disabled={!fits} onClick={() => onTrade(outId, inId)}>Make the trade</button><button onClick={() => onTrade(null, null)}>Keep the team</button></div>
+  </div>;
+}
+
 function GameDot({ g, n, boss }: { g?: PerfectGame; n: number; boss: boolean }) {
   return <li className={`${g ? (g.won ? 'w' : 'l') : ''} ${boss ? 'boss' : ''}`} title={g ? `Game ${n}: ${g.won ? 'W' : 'L'} ${g.us}-${g.them}` : `Game ${n}${boss ? ' (boss)' : ''}`}>{boss && !g ? '★' : ''}</li>;
 }
@@ -634,6 +654,9 @@ function Season({ h, run, setRun }: { h: NbaHistory; run: PerfectRun; setRun: (r
         {auto && <button onClick={() => setAuto(null)}>Pause</button>}
       </div>
     </div>
+    {tradePending(run) && <TradePanel h={h} run={run} onTrade={(o, i) => setRun(makeTrade(h, run, o, i))} />}
+    {run.trade?.made && <p className="hint-text">All-Star break trade: {cardPool(h).byId.get(run.trade.made.out)?.name} for {cardPool(h).byId.get(run.trade.made.in)?.name}.</p>}
+    {Object.keys(run.injured ?? {}).length > 0 && <p className="p820-injuries"><PixelIcon name="warning" size={14} /> Out: {Object.entries(run.injured!).map(([id, g]) => `${cardPool(h).byId.get(id)?.name ?? id} (${g} game${g === 1 ? '' : 's'})`).join(' · ')}</p>}
     <LineupPanel h={h} run={run} setRun={setRun} locked={!!auto} />
     {run.stage === 'playoffs' && run.playoffLines ? <RunStatsTable lines={run.playoffLines} title="Playoff stats" /> : <RunStatsTable lines={run.lines} title="Season stats" note={`${run.games.length} game${run.games.length === 1 ? '' : 's'}`} />}
   </section>;
