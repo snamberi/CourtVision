@@ -294,3 +294,14 @@ button.p820-card:hover, button.p820-card:focus-visible { border-color: var(--c-b
 .p820-trade-cols button.selected { border-color: var(--c-border-f47b20, #f47b20); box-shadow: 2px 2px 0 var(--c-shadow-f47b20, #f47b20); }
 .p820-injuries { display: flex; align-items: center; gap: 6px; color: var(--c-fg-e85d5d, #e85d5d); font-size: 13px; margin: 6px 0; }
 @media (max-width: 640px) { .p820-trade-cols { grid-template-columns: 1fr; } }
+
+/* All in Their Prime: the picker's before/after list */
+.p820-prime-pick { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.p820-prime-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px; }
+.p820-prime-list li { display: grid; gap: 2px; padding: 6px 8px; background: var(--c-bg-192333, #192333); border-left: 3px solid var(--c-border-2a3546, #2a3546); }
+.p820-prime-list li.rarity-rare { border-left-color: var(--c-border-4da3ff, #4da3ff); }
+.p820-prime-list li.rarity-epic { border-left-color: var(--c-border-b983ff, #b983ff); }
+.p820-prime-list li.rarity-legendary { border-left-color: var(--c-border-ffd166, #ffd166); }
+.p820-prime-list small, .p820-prime-same { color: var(--c-fg-94a0b2, #94a0b2); font-size: 12px; }
+.p820-prime-up { color: var(--c-fg-55c878, #55c878); font-size: 12px; font-weight: 600; }
+@media (max-width: 560px) { .p820-prime-pick { grid-template-columns: 1fr; } }

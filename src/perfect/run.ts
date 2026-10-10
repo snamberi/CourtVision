@@ -30,6 +30,8 @@ import { categories, categoryById, mixedCategory, weeklyCategory, TIER_MULTIPLIE
  *    category rerolls, two lucky rolls (an S or A tier category).
  *  - Slot Spin: every one of the ten spots rolls its own category and you take one player from each.
  *  Weaker categories pay more (categories.ts tiers), so a title with second-round picks outscores one with MVPs.
+ *  - All in Their Prime: pick any real team-season. Its ten are there, every one at the best season of his whole
+ *    career, and they play that same year again: 82 games and the playoffs against the real teams of that season.
  *
  * In the season you can set your own rotation (starters, then the bench in order) or leave it to the coach.
  *
@@ -37,7 +39,7 @@ import { categories, categoryById, mixedCategory, weeklyCategory, TIER_MULTIPLIE
  * under the rules of the opponent's era, and everything is seeded, so the Daily 82-0 is the same for everyone.
  */
 
-export type PerfectMode = 'quick' | 'franchise' | 'category' | 'slots';
+export type PerfectMode = 'quick' | 'franchise' | 'category' | 'slots' | 'prime';
 export const isCategoryMode = (m: PerfectMode) => m === 'category' || m === 'slots';
 export interface CategoryOptions { tips?: boolean; clock?: boolean; mixed?: boolean }
 export const OPTION_MULTIPLIER = { tips: 0.9, clock: 1.1, mixed: 1.1 } as const;
@@ -115,6 +117,8 @@ export interface PerfectRun {
   result?: 'champion' | 'eliminated';
   /** A League Hunt squad brought over after winning its hunt (its own records). */
   from?: 'hunt';
+  /** All in Their Prime: the real team-season (HuntTeam id) whose players these are, and whose year is replayed. */
+  primeTeam?: string;
 }
 
 export const SQUAD = 10;
@@ -365,6 +369,42 @@ export function newPerfectFromHunt(h: NbaHistory, seed: number, squad: string[],
   return { v: 1, mode: 'quick', seed, from: 'hunt', stage: 'draft', squad: ids, ...(coach && COACH_BY_ID.has(coach) ? { coach } : {}), rolls: 0, rerolls: { team: 0, era: 0, prime: 0, spin: SPIN_REROLLS, lucky: LUCKY_SPINS }, schedule: [], bosses: [], games: [], playoffs: [] };
 }
 
+// ---------------------------------------------------------------- All in Their Prime
+
+const bestCards = new WeakMap<NbaHistory, Map<string, HuntCard>>();
+/** A player's best season of his whole career (his highest-rated card). */
+export function primeCard(h: NbaHistory, playerId: string): HuntCard | undefined {
+  let m = bestCards.get(h);
+  if (!m) {
+    m = new Map();
+    for (const c of cardPool(h).cards) { const b = m.get(c.playerId); if (!b || c.ovr > b.ovr) m.set(c.playerId, c); }
+    bestCards.set(h, m);
+  }
+  return m.get(playerId);
+}
+/** The team's rotation as it really was that year, each player's card beside his prime card (best prime first; a tie keeps that year). */
+export function primeRoster(h: NbaHistory, teamId: string): { then: HuntCard; prime: HuntCard }[] {
+  const t = teamById(h)(teamId);
+  if (!t) return [];
+  return t.roster.map(id => card(h, id)).filter(Boolean).map(then => { const best = primeCard(h, then.playerId); return { then, prime: best && best.ovr > then.ovr ? best : then }; }).sort((a, b) => b.prime.ovr - a.prime.ovr).slice(0, SQUAD);
+}
+/** Season end years with teams to pick, newest first. */
+export const primeYears = (h: NbaHistory) => [...new Set(huntTeams(h).map(t => t.end))].sort((a, b) => b - a);
+/** That year's teams, best record first. */
+export const primeTeamsOf = (h: NbaHistory, end: number) => huntTeams(h).filter(t => t.end === end).sort((a, b) => winPct(b) - winPct(a) || b.strength - a.strength);
+/** The same year's other teams: the whole schedule and every playoff opponent. */
+const sameYear = (h: NbaHistory, teamId: string) => { const t = teamById(h)(teamId); return t ? huntTeams(h).filter(x => x.end === t.end && x.id !== t.id) : []; };
+
+/** All in Their Prime: the team's real rotation, every man at his career-best season, then pick a coach. */
+export function newPrimeRun(h: NbaHistory, seed: number, teamId: string, opts: { level?: Level; view?: RunView; luck?: number } = {}): PerfectRun | null {
+  const roster = primeRoster(h, teamId);
+  if (roster.length < 8 || !sameYear(h, teamId).length) return null;
+  const level = opts.level ?? 'pro', view = opts.view ?? STANDARD_VIEW;
+  const run: PerfectRun = { v: 1, mode: 'prime', seed, stage: 'coach', primeTeam: teamId, squad: roster.map(r => r.prime.id), rolls: 0, rerolls: { team: 0, era: 0, prime: 0 }, schedule: [], bosses: [], games: [], playoffs: [],
+    ...(opts.luck ? { luck: opts.luck } : {}), ...(level !== 'pro' ? { level } : {}), ...(view.numbers !== STANDARD_VIEW.numbers || view.colors !== STANDARD_VIEW.colors ? { view } : {}) };
+  return { ...run, coachOffer: coachOffer(run, h) };
+}
+
 const QUICK_WEIGHTS: Record<Rarity, number> = { common: 35, rare: 34, epic: 22, legendary: 9 };
 const LUCKY_WEIGHTS: Record<Rarity, number> = { common: 0, rare: 0, epic: 70, legendary: 30 };
 const fitsQuick = (c: HuntCard, s: QuickSlot) =>
@@ -412,7 +452,8 @@ function coachOffer(run: PerfectRun, h: NbaHistory): string[] {
   };
   if (run.mode === 'quick') return [pickOne(COACHES).id];
   // Franchise Spin: three to choose from, one of them tied to a franchise you drafted from when there is one.
-  const franchises = new Set(run.squad.map(id => card(h, id).franchise));
+  const real = run.primeTeam ? teamById(h)(run.primeTeam) : undefined;
+  const franchises = new Set(real ? real.roster.slice(0, 1).map(id => card(h, id).franchise) : run.squad.map(id => card(h, id).franchise));
   const tied = COACHES.filter(x => x.franchises.some(f => franchises.has(f)));
   const out: string[] = [];
   if (tied.length) out.push(pickOne(tied).id);
@@ -494,6 +535,7 @@ export function pickCoach(h: NbaHistory, run: PerfectRun, coachId: string): Perf
 const winPct = (t: HuntTeam) => t.w / Math.max(1, t.w + t.l);
 
 function buildSchedule(h: NbaHistory, run: PerfectRun): { schedule: string[]; bosses: number[] } {
+  if (run.primeTeam) return primeSchedule(h, run, run.primeTeam);
   const rng = rngFor(run, 4242);
   const byId = teamById(h);
   const bossIds = BOSS_TEAMS.map(b => b.id).filter(id => byId(id));
@@ -513,8 +555,42 @@ function buildSchedule(h: NbaHistory, run: PerfectRun): { schedule: string[]; bo
   return { schedule, bosses };
 }
 
+/**
+ * All in Their Prime: only that year's teams. The year's two best are the bosses (at the usual boss games); everyone
+ * else comes round in turn, in a seeded order, so the schedule is spread across the whole league like a real one.
+ */
+function primeSchedule(h: NbaHistory, run: PerfectRun, teamId: string): { schedule: string[]; bosses: number[] } {
+  const rng = rngFor(run, 4242);
+  const field = sameYear(h, teamId).sort((a, b) => b.strength - a.strength);
+  const bossIds = field.slice(0, field.length > 3 ? 2 : 1).map(t => t.id);
+  const rest = field.length > bossIds.length ? field.filter(t => !bossIds.includes(t.id)) : field;
+  const order = rest.map(t => ({ t, k: rng.next() })).sort((a, b) => a.k - b.k).map(x => x.t.id);
+  const schedule: string[] = [], bosses: number[] = [];
+  for (let g = 0, i = 0; g < SEASON_GAMES; g++) {
+    const b = BOSS_GAMES.indexOf(g + 1);
+    if (b >= 0) { schedule.push(bossIds[b % bossIds.length]); bosses.push(g); continue; }
+    schedule.push(order[i++ % order.length]);
+  }
+  return { schedule, bosses };
+}
+
+/** All in Their Prime playoffs, that year's teams by strength: a playoff team, a good one, the runner-up level, then that year's real champion. */
+function primePlayoffOpponent(h: NbaHistory, run: PerfectRun, teamId: string, round: number): string {
+  const rng = rngFor(run, 9000 + round);
+  const met = new Set(run.playoffs.map(s => s.opp));
+  const left = sameYear(h, teamId).filter(t => !met.has(t.id)).sort((a, b) => b.strength - a.strength);
+  if (!left.length) return sameYear(h, teamId)[0].id;
+  const champ = left.find(t => t.champion);
+  if (round >= PLAYOFF_ROUNDS - 1 && champ) return champ.id;
+  const [from, to] = ([[4, 8], [2, 4], [1, 2], [0, 1]] as const)[round] ?? [0, 1];
+  const band = left.slice(Math.min(from, left.length - 1), Math.max(Math.min(to, left.length), Math.min(from, left.length - 1) + 1)).filter(t => round >= PLAYOFF_ROUNDS - 1 || t !== champ || left.length === 1);
+  const pick = band.length ? band : left;
+  return pick[Math.floor(rng.next() * pick.length)].id;
+}
+
 /** Playoff opponents by round: a good team, a very good one, a champion, then a boss-level champion. */
 function playoffOpponent(h: NbaHistory, run: PerfectRun, round: number): string {
+  if (run.primeTeam) return primePlayoffOpponent(h, run, run.primeTeam, round);
   const rng = rngFor(run, 9000 + round);
   const met = new Set(run.playoffs.map(s => s.opp));
   const teams = huntTeams(h).filter(t => !met.has(t.id));
@@ -599,7 +675,7 @@ export const teamRating = (h: NbaHistory, t: HuntTeam) => rosterRating(h, t.rost
  * How much stronger the real teams play (overall points). Franchise Spin lets you choose, so its opponents are
  * tougher; bosses and each playoff round add more. Tuned so a stacked team goes about 70-78 wins and 82-0 is rare.
  */
-export const OPP_EDGE = { quick: 0, franchise: 8, category: 15, slots: 19, boss: 3, perRound: 1 };
+export const OPP_EDGE = { quick: 0, franchise: 8, category: 15, slots: 19, prime: 6, boss: 3, perRound: 1 };
 /** Streak pressure: every 10 straight wins, everyone is gunning for you (+1, up to +4). A loss resets it. */
 export const STREAK_STEP = 10, STREAK_MAX = 4;
 export const currentStreak = (run: Pick<PerfectRun, 'games' | 'playoffs'>) => {
@@ -725,7 +801,7 @@ export function playToEnd(h: NbaHistory, run: PerfectRun, stage: 'season' | 'pla
 /** The trade window opens after this many games (the All-Star break). */
 export const TRADE_AT = 41;
 /** Category runs keep their category: no trades there (nor for squads brought from a Hunt). */
-export const canTrade = (r: Pick<PerfectRun, 'mode' | 'from'>) => !isCategoryMode(r.mode) && r.from !== 'hunt';
+export const canTrade = (r: Pick<PerfectRun, 'mode' | 'from'>) => !isCategoryMode(r.mode) && r.mode !== 'prime' && r.from !== 'hunt';
 export const tradePending = (r: Pick<PerfectRun, 'trade' | 'stage'>) => r.stage === 'season' && !!r.trade && !r.trade.done;
 /** How much better the incoming player may be than the one you send (rough salary matching). */
 export const TRADE_UP = 4;

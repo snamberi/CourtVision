@@ -6,6 +6,16 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2027-04-14',
+    title: '82-0: All in Their Prime',
+    items: [
+      "**All in Their Prime (82-0 Challenge):** pick any real team from any season, from the 1947 Warriors to last year. Every player on it shows up at the best season of his whole career, and they play that same year again.",
+      "**The real league that year:** all 82 games and the playoffs are against the actual teams of that season. That year's two best teams are the bosses, and the Finals are against the real champion (unless that was you).",
+      "**See the glow-up first:** the picker shows each player's season that year beside his prime season, so you know who gets better before you tip off.",
+      "**Your best with every team:** the best record you've had with each team is saved (and synced with your account).",
+    ],
+  },
+  {
     id: '2027-04-07',
     title: 'CourtChat: your players have opinions (and so do you)',
     items: [
