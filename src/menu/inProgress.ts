@@ -33,6 +33,10 @@ export const localProgress = (): InProgress => {
   if (hunt) out.legends = hunt;
   const p820 = perfectProgress(json<PerfectRunLite>('cv-perfect-run'));
   if (p820) out.perfect = p820;
+  const surv = json<{ v?: number; stage?: string; games?: unknown[] }>('cv-survival-run');
+  if (surv && surv.v === 1 && surv.stage && surv.stage !== 'over') out.survival = surv.stage === 'draft' || surv.stage === 'tag' ? 'Picking your legends' : `Round ${(surv.games?.length ?? 0) + 1}`;
+  const story = json<{ v?: number; done?: boolean; name?: string; games?: unknown[] }>('cv-story');
+  if (story && story.v === 1 && !story.done) out.story = `${story.name ?? 'Your story'}, ${(story.games?.length ?? 0)} games in`;
   return out;
 };
 

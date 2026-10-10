@@ -31,7 +31,7 @@ import { TrophyUnlock } from './locker/TrophyUnlock';
 import { readArcade, guessStreak, isGuessDone, endlessOf, gridStreak } from '../arcade/storage';
 import { weekKey } from '../retention/week';
 
-export type GameMode = 'random' | 'real' | 'legends' | 'perfect' | 'category' | 'career' | 'rebuild' | 'draft';
+export type GameMode = 'random' | 'real' | 'legends' | 'perfect' | 'category' | 'career' | 'rebuild' | 'draft' | 'survival' | 'story' | 'timeMachine';
 export interface RealLeagueOptions { source: 'history' | 'csv'; realDevelopment: boolean; forceRosters?: boolean; allPlayers?: boolean }
 
 interface Props {
@@ -62,7 +62,7 @@ interface Props {
 
 /** The cards on the menu. Franchise opens the New Franchise page (a real or random league, the Rebuild Challenge and
  *  the All-Time Draft); the others open their own setup screens. `badge` marks a highlight. */
-export type MenuMode = 'franchise' | 'legends' | 'perfect' | 'career';
+export type MenuMode = 'franchise' | 'legends' | 'perfect' | 'career' | 'survival' | 'story';
 const MODES: { id: MenuMode; title: string; blurb: string; kicker: string; icon: string; time: string; tags: string[]; badge?: 'popular' | 'fun' }[] = [
   {
     id: 'franchise', kicker: '01 / FRANCHISE', icon: 'court', time: 'Unlimited', tags: ['Real NBA', 'Random', 'Challenges'], badge: 'popular',
@@ -84,9 +84,19 @@ const MODES: { id: MenuMode; title: string; blurb: string; kicker: string; icon:
     title: 'Career Mode',
     blurb: 'Create one player (spin the wheel of NBA history or build him yourself) and live his whole career in today\'s league: draft night, training, free agency, awards, the Hall of Fame and the all-time Top 100.',
   },
+  {
+    id: 'survival', kicker: '05 / SURVIVE', icon: 'flame', time: '10-20 min', tags: ['New', 'Roguelike', 'Daily'],
+    title: 'Survival',
+    blurb: 'Start with ten all-time greats. Beat a real team from history and they take one of your best; sign one of theirs. Tougher teams every round, a champion every fifth. One loss and it\'s over. How long can you last?',
+  },
+  {
+    id: 'story', kicker: '06 / STORY', icon: 'calendar', time: '20-40 min', tags: ['New', 'Story', 'Choices'],
+    title: 'Story Mode',
+    blurb: 'Street to the League: from a park with no nets to your NBA rookie season. Five chapters, real choices, key games on the real engine, a best friend, a mentor, a rival named Ice, and four endings.',
+  },
 ];
 /** The menu card a Mode of the Week falls under. */
-const cardOf = (m: string): MenuMode => (m === 'rebuild' || m === 'draft' || m === 'real' || m === 'random' ? 'franchise' : m === 'category' ? 'perfect' : m as MenuMode);
+const cardOf = (m: string): MenuMode => (m === 'rebuild' || m === 'draft' || m === 'real' || m === 'random' || m === 'timeMachine' ? 'franchise' : m === 'category' ? 'perfect' : m as MenuMode);
 const BADGE_LABEL = { popular: 'Most popular', fun: 'Most fun' } as const;
 
 function formatWhen(ts: number): string {
@@ -218,7 +228,7 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
           </div>;
         })}
         {/* Room for the next modes. */}
-        {[5].map(n => <div key={n} className="mode-card-wrap soon">
+        {[7].map(n => <div key={n} className="mode-card-wrap soon">
           <button className="mode-card mode-soon" disabled aria-label="Coming soon">
             <span className="mode-card-kicker"><PixelIcon name="lock" size={24} /><span>0{n} / SOON</span></span>
             <h3>Coming soon</h3>

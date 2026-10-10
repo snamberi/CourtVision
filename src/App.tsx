@@ -158,6 +158,8 @@ const ExtensionsPage = lazy(() => import('./components/ExtensionsPage').then(m =
 const Arcade = lazy(() => import('./components/arcade/Arcade').then(m => ({ default: m.Arcade })));
 const WorldGamesMode = lazy(() => import('./components/worldGames/WorldGamesMode').then(m => ({ default: m.WorldGamesMode })));
 const FranchiseCreate = lazy(() => import('./components/FranchiseCreate').then(m => ({ default: m.FranchiseCreate })));
+const Survival = lazy(() => import('./components/survival/Survival').then(m => ({ default: m.Survival })));
+const StoryMode = lazy(() => import('./components/story/StoryMode').then(m => ({ default: m.StoryMode })));
 const PerfectChallenge = lazy(() => import('./components/perfect/PerfectChallenge').then(m => ({ default: m.PerfectChallenge })));
 const LeagueHunt = lazy(() => import('./components/hunt/LeagueHunt').then(m => ({ default: m.LeagueHunt })));
 const CareerImportPanel = lazy(() => import('./components/career/CareerImportPanel').then(m => ({ default: m.CareerImportPanel })));
@@ -263,7 +265,7 @@ function buildInitialExtras(league: League): GMLeagueExtras {
   };
 }
 
-type Screen = 'menu' | 'chooseTeam' | 'app' | 'hunt' | 'perfect' | 'career' | 'locker' | 'profile' | 'community' | 'draft' | 'settings' | 'arcade' | 'create' | 'worldGamesMode' | 'friends' | 'clubs' | 'online';
+type Screen = 'menu' | 'chooseTeam' | 'app' | 'hunt' | 'perfect' | 'survival' | 'story' | 'career' | 'locker' | 'profile' | 'community' | 'draft' | 'settings' | 'arcade' | 'create' | 'worldGamesMode' | 'friends' | 'clubs' | 'online';
 const ARCADE_HASH: Record<ArcadeTab, string> = { grid: '#/grid', guess: '#/guess', hilo: '#/higher-lower', bracket: '#/bracket', quiz: '#/quiz', legends: '#/legends', street: '#/street' };
 const arcadeTabOf = (hash: string) => (Object.entries(ARCADE_HASH).find(([, h]) => h === hash)?.[0] as ArcadeTab | undefined);
 
@@ -354,7 +356,7 @@ function App() {
   const [worldGamesRun, setWorldGamesRun] = useState<{ games: GamesId; country: string } | null>(null);
   const [boxscoreSource, setBoxscoreSource] = useState<'league' | 'exhibition'>('league');
 
-  const currentRoute = screen === 'menu' ? '#/menu' : screen === 'chooseTeam' ? '#/choose-team' : screen === 'hunt' ? '#/hunt' : screen === 'perfect' ? '#/82-0' : screen === 'career' ? '#/career' : screen === 'locker' ? '#/locker' : screen === 'profile' ? '#/profile' : screen === 'settings' ? '#/settings' : screen === 'create' ? '#/new-league' : screen === 'worldGamesMode' ? '#/world-games' : screen === 'friends' ? '#/friends' : screen === 'clubs' ? '#/clubs' : screen === 'online' ? '#/online' : screen === 'draft' ? '#/draft' : screen === 'arcade' ? ARCADE_HASH[arcadeTab] : screen === 'community' ? (communityUser ? `#/u/${encodeURIComponent(communityUser)}` : '#/community')
+  const currentRoute = screen === 'menu' ? '#/menu' : screen === 'chooseTeam' ? '#/choose-team' : screen === 'hunt' ? '#/hunt' : screen === 'perfect' ? '#/82-0' : screen === 'survival' ? '#/survival' : screen === 'story' ? '#/story' : screen === 'career' ? '#/career' : screen === 'locker' ? '#/locker' : screen === 'profile' ? '#/profile' : screen === 'settings' ? '#/settings' : screen === 'create' ? '#/new-league' : screen === 'worldGamesMode' ? '#/world-games' : screen === 'friends' ? '#/friends' : screen === 'clubs' ? '#/clubs' : screen === 'online' ? '#/online' : screen === 'draft' ? '#/draft' : screen === 'arcade' ? ARCADE_HASH[arcadeTab] : screen === 'community' ? (communityUser ? `#/u/${encodeURIComponent(communityUser)}` : '#/community')
     : activeSaveId ? routeHash({ saveId: activeSaveId, tab, player: selectedPlayerId,
       team: viewedTeamId, game: viewedGameId ?? undefined, source: boxscoreSource, sub: leagueSettingsSub }) : null;
   const { restoring, showPrivacy, closePrivacy } = useGameHistory(currentRoute, async (hash, isCurrent) => {
@@ -370,7 +372,7 @@ function App() {
       setCommunityUser(profileMatch ? decodeURIComponent(profileMatch[1]) : null);
       const arcade = arcadeTabOf(hash);
       if (arcade) setArcadeTab(arcade);
-      setScreen(arcade ? 'arcade' : hash === '#/choose-team' && pendingLeague ? 'chooseTeam' : hash === '#/hunt' ? 'hunt' : hash === '#/82-0' ? 'perfect' : hash === '#/career' ? 'career' : hash === '#/locker' ? 'locker' : hash === '#/profile' ? 'profile' : hash === '#/settings' ? 'settings' : hash === '#/new-league' ? 'create' : hash === '#/world-games' && worldGamesRun ? 'worldGamesMode' : hash === '#/friends' ? 'friends' : hash === '#/clubs' ? 'clubs' : hash === '#/online' ? 'online' : hash === '#/community' || profileMatch ? 'community' : hash === '#/draft' ? 'draft' : 'menu');
+      setScreen(arcade ? 'arcade' : hash === '#/choose-team' && pendingLeague ? 'chooseTeam' : hash === '#/hunt' ? 'hunt' : hash === '#/82-0' ? 'perfect' : hash === '#/survival' ? 'survival' : hash === '#/story' ? 'story' : hash === '#/career' ? 'career' : hash === '#/locker' ? 'locker' : hash === '#/profile' ? 'profile' : hash === '#/settings' ? 'settings' : hash === '#/new-league' ? 'create' : hash === '#/world-games' && worldGamesRun ? 'worldGamesMode' : hash === '#/friends' ? 'friends' : hash === '#/clubs' ? 'clubs' : hash === '#/online' ? 'online' : hash === '#/community' || profileMatch ? 'community' : hash === '#/draft' ? 'draft' : 'menu');
       refreshSaves();
       return;
     }
@@ -572,6 +574,10 @@ function App() {
       setScreen('draft');
     } else if (mode === 'perfect') {
       setScreen('perfect');
+    } else if (mode === 'survival') {
+      setScreen('survival');
+    } else if (mode === 'story') {
+      setScreen('story');
     } else if (mode === 'category') {
       // The Category Draft card opens the 82-0 Challenge straight into a Category Roll (or the run in progress).
       try { localStorage.setItem('cv-p820-start', 'category'); } catch { /* storage blocked */ }
@@ -1487,6 +1493,12 @@ function App() {
   }
   if (screen === 'career') {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Career Mode…</main>}><CareerMode onExit={() => setScreen('menu')} /></Suspense></>;
+  }
+  if (screen === 'survival') {
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Survival…</main>}><Survival onExit={() => setScreen('menu')} /></Suspense></>;
+  }
+  if (screen === 'story') {
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Story Mode…</main>}><StoryMode onExit={() => setScreen('menu')} /></Suspense></>;
   }
   if (screen === 'perfect') {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening the 82-0 Challenge…</main>}><PerfectChallenge onExit={() => setScreen('menu')} /></Suspense></>;
