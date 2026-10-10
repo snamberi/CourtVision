@@ -10,6 +10,8 @@ import { resolveEffectivePlayer } from './effective';
 import { simulatePossession, type OnCourtPlayer, type PlayCall, type LastShotType } from './possession';
 import { computeMatchups } from './matchups';
 import { LiveRotation } from './liveRotation';
+import { superFactor, athleticismOf, starLift, STAR_DEFENSE_SHARE } from './superstar';
+import { calculateOverall } from './overall';
 import { applyCoachingPlan } from './coachingPlan';
 import { freshFatigue, updateFatigue, type FatigueState } from './fatigue';
 import { rollInjury } from './injuries';
@@ -59,6 +61,8 @@ export type LiveCoachingCommand =
 export const TIMEOUTS_PER_GAME = 7;
 /** A run this long (unanswered points) gives the scoring team momentum; the other bench calls timeout at RUN_TIMEOUT. */
 export const MOMENTUM_RUN = 8, RUN_TIMEOUT = 10;
+/** Past this lead the game starts pulling back together (see the lead edge in the possession loop). */
+export const BLOWOUT_START = 10;
 const PACE_DURATION: Record<LivePace, number> = { slow: 1.22, normal: 1, fast: 0.8 };
 
 function possessionsPerQuarter(quarterLengthMinutes: number, pacePreset: GameSettings['pacePreset'], paceModifier: number, rulesPaceMultiplier = 1): number {
@@ -139,6 +143,10 @@ export function simulateGame(opts: SimulateGameOptions): GameResult {
   const paceModifier = (homeCoach.paceTendency + awayCoach.paceTendency) / 2;
   const homeChemMod = settings.teamChemistryEnabled ? (((home.chemistry ?? 70) - 50) / 50) * 6 : 0;
   const awayChemMod = settings.teamChemistryEnabled ? (((away.chemistry ?? 70) - 50) / 50) * 6 : 0;
+  // Franchise stars (superstar.ts): each player's lift, fixed for the game (0 for everyone below a superstar).
+  const lifts = new Map<PlayerId, number>();
+  for (const s of [...home.seasons, ...away.seasons]) { const l = starLift(calculateOverall(s)); if (l > 0) lifts.set(s.playerId, l); }
+  const liftOf = (ids: PlayerId[]) => { let m = 0; for (const id of ids) m = Math.max(m, lifts.get(id) ?? 0); return m; };
 
   const numQuarters = settings.era.numberOfQuarters;
   const qLen = settings.era.quarterLengthMinutes;
@@ -299,6 +307,13 @@ export function simulateGame(opts: SimulateGameOptions): GameResult {
       // A team on a run plays with a little extra confidence.
       let possessionMods = offenseIsHome ? hMods : aMods;
       if (run.teamId === offenseTeamId && run.points >= MOMENTUM_RUN) possessionMods = { ...possessionMods, shot: { ...possessionMods.shot, offensiveEfficiency: possessionMods.shot.offensiveEfficiency * (1 + Math.min(0.03, (run.points - 6) * 0.004)) } };
+      // Big leads shrink: the trailing team plays with urgency and the leader eases off (fewer 30-point blowouts).
+      const lead = offenseBox.points - (offenseIsHome ? awayBox.points : homeBox.points);
+      const leadEdge = lead < -BLOWOUT_START ? Math.min(0.12, (-lead - BLOWOUT_START) * 0.009) : lead > BLOWOUT_START ? -Math.min(0.1, (lead - BLOWOUT_START) * 0.007) : 0;
+      if (leadEdge) possessionMods = { ...possessionMods, shot: { ...possessionMods.shot, offensiveEfficiency: possessionMods.shot.offensiveEfficiency * (1 + leadEdge) } };
+      // A franchise star on the floor lifts his team's offense, and his defense makes the other team's worse.
+      const starEdge = lifts.size ? (1 + liftOf(offenseIds)) / (1 + liftOf(defenseIds) * STAR_DEFENSE_SHARE) : 1;
+      if (starEdge !== 1) possessionMods = { ...possessionMods, shot: { ...possessionMods.shot, offensiveEfficiency: possessionMods.shot.offensiveEfficiency * starEdge } };
 
       const result = simulatePossession({
         offense: offenseOnCourt,
@@ -344,12 +359,13 @@ export function simulateGame(opts: SimulateGameOptions): GameResult {
         const current = fatigue[s.playerId];
         // A rested bench player stays at zero: keep his state rather than allocating a new one.
         if (!onCourt && current && current.level === 0) { /* unchanged */ }
-        else fatigue[s.playerId] = settings.fatigueEnabled ? updateFatigue(current, onCourt, fatigueLoad.get(s.playerId)!, s.attributes.physical.stamina, flags ?? noFlags, secondsPerPossession) : freshFatigue();
+        else fatigue[s.playerId] = settings.fatigueEnabled ? updateFatigue(current, onCourt, fatigueLoad.get(s.playerId)!, s.attributes.physical.stamina, flags ?? noFlags, secondsPerPossession, superFactor(athleticismOf(s.attributes))) : freshFatigue();
 
         if (settings.injuriesEnabled && onCourt && onCourtPlayer && !injuredPlayers.has(s.playerId)) {
           const outcome = rollInjury(
             fatigue[s.playerId].level, s.attributes.physical.durability, s.development.injuryRisk,
-            settings.injuryFrequencyMultiplier, onCourtPlayer.flags, rng,
+            // Athleticism past 99: the extra minutes don't come with extra injuries.
+            settings.injuryFrequencyMultiplier * (1 - 0.6 * Math.min(1, superFactor(athleticismOf(s.attributes)))), onCourtPlayer.flags, rng,
           );
           if (outcome.occurred) {
             injuredPlayers.add(s.playerId);

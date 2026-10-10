@@ -13,10 +13,11 @@ import { DEFAULT_AWARD_SETTINGS } from '../../simulation/awards';
 import { CATEGORIES, categoryScore, type CategoryId } from '../../career/categories';
 import { startProgress, valuesAt, primeOverall, type Prime } from '../../career/create';
 import {
-  newCareerMeta, joinDraft, draftResult, landSeason, chooseMoment, careerMoments, careerShelf, type Moment, autopilotOffseason, findPlayer, freeAgentOffers, signOffer, requestTrade, retire, uniqueName, careerResume,
+  newCareerMeta, isSandboxCareer, joinDraft, draftResult, landSeason, chooseMoment, careerMoments, careerShelf, type Moment, autopilotOffseason, findPlayer, freeAgentOffers, signOffer, requestTrade, retire, uniqueName, careerResume,
   OFFER_LABEL, type CareerMeta, type CareerMode as Mode, type CareerYear, type TradeWish,
 } from '../../career/career';
 import { legacyScore, top100, top100Rank } from '../../career/legacy';
+import { superstarTraits, seasonGoals, gradeGoals, goalRecord, leagueRanks, careerHighs, allTimeRanks, draftRival, type DraftRival } from '../../career/insights';
 import { listCareers, loadWorld, saveCareer, dropWorld, deleteCareer, type CareerWorld } from '../../career/storage';
 import { runCareerStep } from '../../career/runner';
 import { PixelIcon } from '../PixelIcon';
@@ -33,11 +34,14 @@ import { ClaimRankCard } from '../cloud/ClaimRankCard';
 import { noteWeekRun } from '../../retention/weekLog';
 import { challengePrefs, saveChallengePrefs, LEVEL_NAME, type Level } from '../../retention/challenge';
 import { LevelPicker } from '../ChallengeOptions';
-import { WheelBuilder, MyPlayerBuilder, IdentityView, type IdentityChoice } from './CareerCreate';
+import { WheelBuilder, MyPlayerBuilder, SandboxBuilder, IdentityView, type IdentityChoice } from './CareerCreate';
 import '../hunt/hunt.css';
+import { relicRunOpts } from '../../relics/apply';
+import { rewardRun, careerSpins, careerSecret, careerRewardKey } from '../../relics/rewards';
+import { RelicReward, RelicCase } from '../relics/RelicReward';
 import './career.css';
 
-type View = { k: 'hub' } | { k: 'wheel'; seed: number } | { k: 'myplayer'; seed: number } | { k: 'identity'; seed: number; prime: Prime; mode: Mode } | { k: 'career' };
+type View = { k: 'hub' } | { k: 'wheel'; seed: number } | { k: 'myplayer'; seed: number } | { k: 'sandbox'; seed: number } | { k: 'identity'; seed: number; prime: Prime; mode: Mode } | { k: 'career' };
 interface Active { meta: CareerMeta; world: CareerWorld | null }
 const newSeed = () => Math.floor(Math.random() * 1_000_000_000);
 
@@ -68,8 +72,13 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
   const refresh = () => listCareers().then(c => { noteCareers(c); setCareers(c); });
   const persist = useCallback((meta: CareerMeta, world: CareerWorld | null) => {
     setActive({ meta, world });
+    if (meta.status === 'retired' && isSandboxCareer(meta)) {
+      trackOnce(`career-${meta.id}`, 'mode_finish', { mode: 'career', variant: 'sandbox', seasons: meta.years.length, legacy: meta.retired?.legacy ?? 0 });
+      saveCareer(meta).then(() => dropWorld(meta.id)).then(refresh); return;
+    }
     if (meta.status === 'retired') {
       if (meta.weekly && meta.retired) recordWeekly('career', meta.weekly, { best: meta.retired.legacy, label: meta.playerId });
+      if (meta.retired) rewardRun(careerRewardKey(meta), careerSpins(meta.retired.hallOfFame), { secret: careerSecret(meta.retired.hallOfFame), why: 'Career Mode' });
       if (meta.retired) noteWeekRun('career', { score: meta.retired.legacy, line: `${meta.playerId}, Legacy ${meta.retired.legacy.toFixed(1)}` }, `career-${meta.id}`);
       trackOnce(`career-${meta.id}`, 'mode_finish', { mode: 'career', variant: meta.weekly ? 'weekly' : meta.mode, seasons: meta.years.length, legacy: meta.retired?.legacy ?? 0, hall: meta.retired?.hallOfFame ?? 'no', past_draft: !!meta.draftYear });
       saveCareer(meta).then(() => dropWorld(meta.id)).then(refresh); return;
@@ -109,7 +118,7 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
     const warm = pre.current && !weekly && draftYear == null && pre.current.draftYear == null ? pre.current : null;
     const seed = weekly ? weekly.seed : warm ? warm.seed : newSeed();
     setWeekly(weekly?.week ?? null);
-    setView(mode === 'wheel' ? { k: 'wheel', seed } : { k: 'myplayer', seed });
+    setView(mode === 'wheel' ? { k: 'wheel', seed } : mode === 'sandbox' ? { k: 'sandbox', seed } : { k: 'myplayer', seed });
     setDraftYear(draftYear);
     if (!warm) await launchPre(seed, draftYear);
   };
@@ -198,16 +207,17 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
     {busy && <div className="cv-busy" role="status"><span>{busy.label}</span>{busy.pct != null && <div className="hunt-cap-bar"><i style={{ width: `${busy.pct}%` }} /></div>}
       {active?.meta.autopilot && <button className="link-button" onClick={() => setActive(a => (a ? { ...a, meta: { ...a.meta, autopilot: false } } : a))}>Stop autopilot after this season</button>}</div>}
     {view.k === 'hub' ? <Hub careers={careers} onNew={startNew} onOpen={open} onDelete={id => deleteCareer(id).then(refresh)} />
-      : view.k === 'wheel' ? <WheelBuilder h={h} seed={view.seed} fav={weekly ? undefined : readFavorites().player} onBack={() => setView({ k: 'hub' })} onDone={prime => setView({ k: 'identity', seed: view.seed, prime, mode: 'wheel' })} />
+      : view.k === 'wheel' ? <WheelBuilder h={h} seed={view.seed} fav={weekly ? undefined : readFavorites().player} relics={weekly ? undefined : relicRunOpts()} onBack={() => setView({ k: 'hub' })} onDone={prime => setView({ k: 'identity', seed: view.seed, prime, mode: 'wheel' })} />
       : view.k === 'myplayer' ? <MyPlayerBuilder seed={view.seed} onBack={() => setView({ k: 'hub' })} onDone={prime => setView({ k: 'identity', seed: view.seed, prime, mode: 'myplayer' })} />
-      : view.k === 'identity' ? (busy ? null : <IdentityView prime={view.prime} seed={view.seed} ready={preReady} pct={prePct} onBack={() => setView({ k: view.mode === 'wheel' ? 'wheel' : 'myplayer', seed: view.seed })} onDone={c => enterDraft(view, c)} />)
+      : view.k === 'sandbox' ? <SandboxBuilder onBack={() => setView({ k: 'hub' })} onDone={prime => setView({ k: 'identity', seed: view.seed, prime, mode: 'sandbox' })} />
+      : view.k === 'identity' ? (busy ? null : <IdentityView prime={view.prime} seed={view.seed} ready={preReady} pct={prePct} sandbox={view.mode === 'sandbox'} onBack={() => setView({ k: view.mode, seed: view.seed })} onDone={c => enterDraft(view, c)} />)
       : active ? <CareerView h={h} a={active} busy={!!busy} tradeAsked={tradeAsked}
           onPlay={() => playSeason(active)}
           onAutopilot={on => setActive({ ...active, meta: { ...active.meta, autopilot: on } })}
           onTraining={training => persist({ ...active.meta, training }, active.world)}
           onSign={offerIdx => { const w = active.world!; const offers = freeAgentOffers(w.league, w.extras, active.meta); const o = offers[offerIdx]; if (!o) return; const r = signOffer(w.league, w.extras, active.meta, o); persist({ ...active.meta, notes: [...active.meta.notes, r.note] }, { ...w, league: r.league, extras: r.extras }); }}
           onTrade={wish => { const w = active.world!; const r = requestTrade(w.league, w.extras, active.meta, wish); setTradeAsked(r.note); persist({ ...active.meta, notes: [...active.meta.notes, r.note] }, { ...w, league: r.league, extras: r.extras }); }}
-          onRetire={() => { const w = active.world!; const f = findPlayer(w.league, w.extras, active.meta.playerId); const done = retire(active.meta, h, w.league.season ?? '', f?.player.age ?? 0); if (done.retired) noteFeaturedXp('career', `career-${done.id}`, 150 + done.retired.legacy + (done.retired.hallOfFame !== 'no' ? 150 : 0)); persist(done, null); }}
+          onRetire={() => { const w = active.world!; const f = findPlayer(w.league, w.extras, active.meta.playerId); const done = retire(active.meta, h, w.league.season ?? '', f?.player.age ?? 0); if (done.retired && !isSandboxCareer(done)) noteFeaturedXp('career', `career-${done.id}`, 150 + done.retired.legacy + (done.retired.hallOfFame !== 'no' ? 150 : 0)); persist(done, null); }}
           onNew={() => setView({ k: 'hub' })} />
       : null}
     {active?.meta.pendingMoment && active.world && !busy && view.k !== 'hub' && <MomentDialog moment={active.meta.pendingMoment} name={active.meta.identity.name}
@@ -279,6 +289,7 @@ function Hub({ careers, onNew, onOpen, onDelete }: { careers: CareerMeta[]; onNe
       <div className="cv-era-row"><span>Difficulty:</span><LevelPicker value={level} onChange={l => { setLevel(l); saveChallengePrefs('career', { level: l }); }} blurbs={CAREER_LEVEL_BLURB} /></div>
       <div className="hunt-roads cv-modes">
         <button className="hunt-road" onClick={() => onNew('wheel', era)}><span className="hunt-road-icon">⟳</span><b>Random mode</b><span>Spin the wheel of NBA history. Take Curry's three-point shot, Shaq's size, LeBron's playmaking… if the wheel lets you. Two lucky spins, each a sure Star or Great.</span></button>
+        <button className="hunt-road cv-sandbox-road" onClick={() => onNew('sandbox', era)}><span className="hunt-road-icon">∞</span><b>Create Anything</b><span>Every rating from 1 to 120, any height, no limits: make the greatest player ever (or the worst). Just for fun: it never counts for leaderboards, XP or rewards.</span></button>
         <button className="hunt-road" onClick={() => onNew('myplayer', era)}><span className="hunt-road-icon">✎</span><b>MyPlayer</b><span>Build him yourself, part by part. Your draft stock is rolled: a Starter, an All-Star, or once in a while a Generational talent.</span></button>
       </div>
     </div>
@@ -407,11 +418,14 @@ function CareerView({ h, a, busy, tradeAsked, onPlay, onAutopilot, onTraining, o
     {current === 'season' && last && <div className="cv-recap">
       <span className="pixel-eyebrow">{fy(last.season)} · {last.teamName}{last.record ? ` · ${last.record.w}-${last.record.l}` : ''}{last.finish ? ` · ${last.finish}` : ''}</span>
       <StatLine s={last.stats} />
+      <LeagueRanks ranks={leagueRanks(world.league, world.extras, meta.playerId, last.season)} />
+      <GoalList title="Season goals" results={gradeGoals(seasonGoals(meta.years.at(-2)), last)} />
       {last.awards.length > 0 ? <ul className="cv-awards">{last.awards.map(x => <li key={x.label} className={['champion', 'mvp', 'fmvp'].includes(x.key) ? 'gold' : ''}>{x.label}</li>)}</ul> : <p className="hint-text">No awards this season.</p>}
       {last.playoffs && <p className="hint-text">Playoffs: {plural(last.playoffs.gamesPlayed, 'game')}, {per(last.playoffs.points, last.playoffs.gamesPlayed)} PTS · {per(last.playoffs.oreb + last.playoffs.dreb, last.playoffs.gamesPlayed)} REB · {per(last.playoffs.ast, last.playoffs.gamesPlayed)} AST</p>}
       <Moments moments={careerMoments(meta).filter(m => m.season === last.season)} />
     </div>}
     {current === 'plan' && <div className="cv-panel">
+      <GoalList title={`Goals for ${offseason ? 'next' : 'this'} season`} goals={seasonGoals(last)} />
       <h3 className="hunt-subhead">Training focus <small>(pick two; they grow faster and can pass his prime)</small></h3>
       <div className="hunt-replace">{CATEGORIES.filter(c => c.id !== 'size').map(c => <button key={c.id} aria-pressed={meta.training.includes(c.id)} className={meta.training.includes(c.id) ? 'active' : ''} disabled={busy} onClick={() => toggle(c.id)}>{c.name}</button>)}</div>
       {offers.length > 0 && <><h3 className="hunt-subhead">Free agency: pick your team</h3>
@@ -420,12 +434,65 @@ function CareerView({ h, a, busy, tradeAsked, onPlay, onAutopilot, onTraining, o
       {offseason && found?.teamId && !tradeAsked && <><h3 className="hunt-subhead">Ask for a trade?</h3>
         <div className="hunt-replace"><button disabled={busy} onClick={() => onTrade('contender')}>To a contender</button><button disabled={busy} onClick={() => onTrade('role')}>For a bigger role</button><button disabled={busy} onClick={() => onTrade('anywhere')}>Anywhere but here</button></div></>}
     </div>}
-    {current === 'ratings' && <div className="cv-panel"><h3 className="hunt-subhead">Ratings <small>(now / prime; green = training focus)</small></h3><Ratings meta={meta} /></div>}
-    {current === 'history' && <><OverallChart years={meta.years} />{meta.years.length ? <YearsTable years={meta.years} /> : <p className="empty-state">No seasons played yet.</p>}</>}
+    {current === 'ratings' && <div className="cv-panel"><h3 className="hunt-subhead">Ratings <small>(now / prime; green = training focus)</small></h3><Ratings meta={meta} />{p && <Traits p={p} />}</div>}
+    {current === 'history' && <><OverallChart years={meta.years} />{meta.years.length ? <><YearsTable years={meta.years} /><RivalPanel r={draftRival(world.league, world.extras, meta.playerId)} /><CareerExtras h={h} years={meta.years} /></> : <p className="empty-state">No seasons played yet.</p>}</>}
   </section>;
 }
 
 type CareerTab = 'plan' | 'season' | 'ratings' | 'history';
+
+/** What each rating past 99 (and height past 7'0") does for him; locked ones show what to train toward. */
+function Traits({ p }: { p: import('../../simulation/types').PlayerSeason }) {
+  return <><h3 className="hunt-subhead">Superstar traits <small>(ratings past 99 unlock them; full power at 110)</small></h3>
+    <ul className="cv-traits">{superstarTraits(p.attributes).map(t => <li key={t.id} className={t.active ? 'on' : ''}>
+      <span className="cv-trait-name"><PixelIcon name={t.active ? 'star' : 'lock'} size={14} /> <b>{t.name}</b> <small>{t.category} {t.id === 'tower' ? `${Math.floor(t.rating / 12)}'${t.rating % 12}"` : t.rating}</small></span>
+      <div className="hunt-cap-bar" aria-label={`${Math.round(t.progress * 100)}% of full power`}><i className={t.active ? 'elite' : ''} style={{ width: `${Math.round(t.progress * 100)}%` }} /></div>
+      <small>{t.effect}</small>
+      <small className={`cv-signature ${t.signed ? 'on' : ''}`}>{t.signed ? `Signature move unlocked: ${t.signature}` : `Full power unlocks the signature move "${t.signature}"`}</small>
+    </li>)}</ul></>;
+}
+
+function GoalList({ title, goals, results }: { title: string; goals?: { id: string; text: string }[]; results?: { id: string; text: string; hit: boolean; got: string }[] }) {
+  const rows = results ?? goals ?? [];
+  if (!rows.length) return null;
+  const hit = results?.filter(r => r.hit).length;
+  return <div className="cv-goals"><h3 className="hunt-subhead">{title}{results && <small> ({hit} of {results.length} hit)</small>}</h3>
+    <ul>{rows.map(g => { const r = results?.find(x => x.id === g.id); return <li key={g.id} className={r ? (r.hit ? 'hit' : 'miss') : ''}>
+      <PixelIcon name={r ? (r.hit ? 'check' : 'cross') : 'star'} size={12} /> {g.text}{r && <small> · {r.got}</small>}</li>; })}</ul></div>;
+}
+
+function LeagueRanks({ ranks }: { ranks: { stat: string; rank: number; value: number }[] }) {
+  const top = ranks.filter(r => r.rank <= 15);
+  if (!top.length) return null;
+  return <ul className="cv-ranks" aria-label="League ranks">{top.map(r => <li key={r.stat} className={r.rank === 1 ? 'gold' : r.rank <= 5 ? 'top' : ''}>
+    <b>#{r.rank}</b> in {r.stat} <small>({r.value.toFixed(1)})</small></li>)}</ul>;
+}
+
+/** Your draft class's number one (or number two, if you went first), on career totals. */
+function RivalPanel({ r }: { r: DraftRival | null }) {
+  if (!r || (!r.you.seasons && !r.rival.seasons)) return null;
+  const pg = (n: number, g: number) => (g ? (n / g).toFixed(1) : '0.0');
+  const row = (x: DraftRival['you'], label: string) => <tr><td className="col-name">{label}</td><td className="col-name">{x.name}</td><td>{x.pick ? `#${x.pick}` : '—'}</td><td>{x.ovr}</td><td>{x.g}</td><td>{pg(x.pts, x.g)}</td><td>{pg(x.reb, x.g)}</td><td>{pg(x.ast, x.g)}</td><td>{x.pts.toLocaleString()}</td></tr>;
+  const ahead = r.you.pts >= r.rival.pts;
+  return <div className="cv-panel"><h3 className="hunt-subhead">Draft-class rival <small>({r.draftYear} draft · {ahead ? 'you lead on career points' : 'he leads on career points'})</small></h3>
+    <div className="feature-table-scroll"><table className="db-table"><thead><tr><th className="col-name" /><th className="col-name">Player</th><th>Pick</th><th>OVR</th><th>GP</th><th>PTS</th><th>REB</th><th>AST</th><th>Total PTS</th></tr></thead>
+      <tbody>{row(r.you, 'You')}{row(r.rival, 'Rival')}</tbody></table></div></div>;
+}
+
+function CareerExtras({ h, years }: { h: NbaHistory; years: CareerYear[] }) {
+  const hi = careerHighs(years), goals = goalRecord(years), all = allTimeRanks(h, years);
+  return <div className="cv-extras">
+    <div className="cv-panel"><h3 className="hunt-subhead">Career highs <small>(one game)</small></h3>
+      <div className="hunt-over-stats cv-line">
+        <div><small>PTS</small><b>{hi.points}</b></div><div><small>REB</small><b>{hi.rebounds}</b></div><div><small>AST</small><b>{hi.assists}</b></div>
+        <div><small>STL</small><b>{hi.steals}</b></div><div><small>BLK</small><b>{hi.blocks}</b></div><div><small>DBL-DBL</small><b>{hi.doubleDoubles}</b></div><div><small>TRP-DBL</small><b>{hi.tripleDoubles}</b></div>
+        <div><small>GOALS</small><b>{goals.hit}/{goals.total}</b></div>
+      </div></div>
+    <div className="cv-panel"><h3 className="hunt-subhead">All-time NBA ranks <small>(regular season, every player since 1946)</small></h3>
+      <ul className="cv-alltime">{all.map(r => <li key={r.stat}><b>#{r.rank.toLocaleString()}</b> in {r.stat.toLowerCase()} <small>({r.total.toLocaleString()})</small>
+        {r.next && <span className="hint-text"> · {(r.next.total - r.total + 1).toLocaleString()} more to pass {r.next.name}</span>}{r.rank === 1 && <span className="cv-elite"> · the all-time leader</span>}</li>)}</ul></div>
+  </div>;
+}
 
 function Moments({ moments, title = 'Moments' }: { moments: Moment[]; title?: string }) {
   if (!moments.length) return null;
@@ -450,6 +517,8 @@ function Legacy({ h, meta, onNew }: { h: NbaHistory; meta: CareerMeta; onNew: ()
     `Hall of Fame: ${ret.hallOfFame === 'first-ballot' ? 'first ballot' : ret.hallOfFame === 'yes' ? 'yes' : 'no'} · ${rank ? `#${rank} all time` : 'outside the all-time Top 100'} (Court Vision Career Mode)`].filter(Boolean).join('\n');
   return <section className="hunt-stage hunt-over won cv-page">
     <div className="cv-legacy-card"><CareerCard meta={meta} overall={meta.years.reduce((m, y) => Math.max(m, y.overall), 0)} teamName={meta.years.at(-1)?.teamName ?? ''} /></div>
+    {!isSandboxCareer(meta) && <><RelicReward rewardKey={careerRewardKey(meta)} />
+    <RelicCase /></>}
     <div className="hunt-over-banner"><span className="pixel-eyebrow">RETIRED AT {ret.age} · {fy(ret.season)}</span><h2>The legacy of {meta.playerId}</h2>
       <div className="hunt-over-stats">
         <div><small>ALL-TIME RANK</small><b>{rank ? `#${rank}` : '—'}</b></div>
@@ -457,7 +526,7 @@ function Legacy({ h, meta, onNew }: { h: NbaHistory; meta: CareerMeta; onNew: ()
         <div><small>LEGACY SCORE</small><b>{score}</b></div>
         <div><small>SEASONS</small><b>{meta.years.length}</b></div>
       </div></div>
-    <ClaimRankCard id={`career:${meta.id}`} board={{ kind: 'players' }} score={Math.round(ret.legacy)} scored={`Your career scored ${ret.legacy.toFixed(1)}`} where="globally" pitchOnly={meta.difficulty === 'rookie'} />
+    {isSandboxCareer(meta) ? <p className="hint-text">A Create Anything career: just for fun, so it stays off the leaderboards, XP and rewards.</p> : <ClaimRankCard id={`career:${meta.id}`} board={{ kind: 'players' }} score={Math.round(ret.legacy)} scored={`Your career scored ${ret.legacy.toFixed(1)}`} where="globally" pitchOnly={meta.difficulty === 'rookie'} />}
     {meta.difficulty && <p className="hint-text">{LEVEL_NAME[meta.difficulty]} career{meta.difficulty === 'rookie' ? ': it stays off the online Legacy board.' : '.'}</p>}
     <h3 className="hunt-subhead">Career</h3>
     <div className="hunt-over-stats cv-line">

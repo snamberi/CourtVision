@@ -20,6 +20,7 @@ import { loadPerfectRecords, mergePerfectRecords } from '../perfect/storage';
 import { readBonusLog, mergeBonusLog } from '../retention/modeOfWeek';
 import { readMissions, mergeMissions } from '../retention/missions';
 import { readQuests, mergeQuests } from '../tutorial/quests';
+import { loadRelics, mergeRelics } from '../relics/relics';
 
 /** The stored values that belong to the account (everything else is per device). */
 export const SYNC_KEYS = [
@@ -27,6 +28,7 @@ export const SYNC_KEYS = [
   'cv-weekly-records', 'cv-daily-history', 'cv-profile-equip', 'cv-code-results', 'cv-feats',
   'cv-legend-records', 'cv-card-album', 'cv-card-sets', 'cv-avatar', 'cv-streak', 'cv-pass',
   'cv-perfect-records', 'cv-bonus-xp', 'cv-record-book', 'cv-play-time', 'cv-arcade', 'cv-missions', 'cv-quests', 'cv-trophy-case',
+  'cv-relics',
 ] as const;
 export type SyncKey = typeof SYNC_KEYS[number];
 
@@ -112,6 +114,7 @@ export function mergeValue(key: SyncKey, local: string | null | undefined, cloud
     case 'cv-play-time': return JSON.stringify(mergePlayTime(readPlayTime(() => local), readPlayTime(() => cloud)));
     case 'cv-arcade': return JSON.stringify(mergeArcade(readArcade(() => local), readArcade(() => cloud)));
     case 'cv-pass': return JSON.stringify(mergePass(readPass(() => local), readPass(() => cloud)));
+    case 'cv-relics': return JSON.stringify(mergeRelics(loadRelics(() => local), loadRelics(() => cloud)));
     case 'cv-legend-records': {
       // Best score and stars per Legend Challenge; attempts from whichever device played more.
       type Rec = { best: number; stars: number; attempts: number };

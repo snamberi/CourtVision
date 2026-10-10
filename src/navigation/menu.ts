@@ -43,6 +43,7 @@ export const GROUPS: NavGroup[] = [
       { label: 'Transactions', tab: 'transactions' },
       { label: 'News Feed', tab: 'news' },
       { label: 'Storylines', tab: 'storylines' },
+      { label: 'CourtChat', tab: 'courtChat' },
       { label: 'Press Room', tab: 'press', requiresControlledTeam: true },
       { label: 'Card Album', tab: 'cards' },
     ],
@@ -124,7 +125,7 @@ export const GROUPS: NavGroup[] = [
 
 export const NAV_ICONS: Record<string, string> = {
   travel: 'calendar', cards: 'star', gmRivals: 'trade', timeline: 'trophy', ownerBox: 'star',
-  cup: 'trophy', deadline: 'clock', yearInReview: 'star', press: 'list', medical: 'warning', extensions: 'list', threeTeam: 'trade', summerCamp: 'star', storylines: 'list', gmOffice: 'star', summerLeague: 'play', coaching: 'list', allStarWeekend: 'trophy', dashboard: 'court', standings: 'chart', playoffs: 'trophy', schedule: 'calendar',
+  cup: 'trophy', deadline: 'clock', yearInReview: 'star', press: 'list', medical: 'warning', extensions: 'list', threeTeam: 'trade', summerCamp: 'star', storylines: 'list', courtChat: 'phone', gmOffice: 'star', summerLeague: 'play', coaching: 'list', allStarWeekend: 'trophy', dashboard: 'court', standings: 'chart', playoffs: 'trophy', schedule: 'calendar',
   dailySchedule: 'calendar', finances: 'chart', history: 'list', powerRankings: 'chart',
   transactions: 'trade', news: 'list', yourTeam: 'team', roster: 'team', freeAgency: 'team',
   trade: 'trade', tradeBlock: 'trade', tradeOffers: 'trade', draft: 'team', compare: 'chart',

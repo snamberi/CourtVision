@@ -64,7 +64,7 @@
 .phone-mini-screen > i { display: grid; place-items: center; border-radius: 3px; color: var(--phone-text,var(--look-text)); box-shadow: 0 2px 0 #00000044,inset 0 1px 0 #ffffff35; }
 .phone-mini-screen > i svg { width: 65%; height: 65%; }
 .phone-mini-screen > i:first-child { color: var(--phone-on-accent,#fff); }
-.menu-phone:not(.phone-skin-classic) .menu-phone-apps { padding: 7px 4px; border: 1px solid var(--phone-tile-edge); background: var(--phone-screen,#0b1423); box-shadow: inset 0 2px 0 #00000033; }
+.menu-phone:not(.phone-skin-classic) .menu-phone-pages { padding: 7px 4px; border: 1px solid var(--phone-tile-edge); background: var(--phone-screen,#0b1423); box-shadow: inset 0 2px 0 #00000033; }
 .menu-phone:not(.phone-skin-classic) .menu-phone-app small { color: var(--phone-screen-text,var(--phone-text)); }
 .menu-phone:not(.phone-skin-classic) .menu-phone-body { box-shadow: 3px 4px 0 #050a13,inset 1px 1px 0 #ffffff60,inset -1px -1px 0 #00000070; }
 .phone-skin-courtside { --phone-screen: #442819; --phone-screen-text: #ffe2c4; }

@@ -1,0 +1,55 @@
+/* Story Mode: a hero panel beside the story, chapter title cards, scenes and choices. Built on hunt.css. */
+.story-create { display: grid; gap: 14px; max-width: 860px; margin: 0 auto; }
+.story-pitch h2 { margin: 4px 0 8px; }
+.story-pitch p { max-width: 70ch; line-height: 1.55; }
+.story-field { display: grid; gap: 4px; margin: 8px 0; max-width: 320px; }
+.story-field span { font-size: 12px; color: var(--c-fg-94a0b2, #94a0b2); }
+.story-styles, .story-paths { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; }
+.story-styles button, .story-paths button { display: grid; gap: 4px; text-align: left; padding: 10px; background: var(--c-bg-121926, #121926); border: 2px solid var(--c-border-2a3546, #2a3546); color: inherit; font: inherit; cursor: pointer; }
+.story-styles button small, .story-paths button small { color: var(--c-fg-94a0b2, #94a0b2); font-size: 12px; }
+.story-paths button i { font-style: normal; font-size: 12px; color: var(--c-fg-ffd166, #ffd166); }
+.story-styles button.active, .story-styles button:hover, .story-paths button:hover, .story-styles button:focus-visible, .story-paths button:focus-visible { border-color: var(--c-border-f47b20, #f47b20); }
+.story-layout { display: grid; grid-template-columns: 260px 1fr; gap: 16px; align-items: start; }
+.story-hero { display: grid; gap: 8px; justify-items: start; padding: 12px; background: var(--c-bg-121926, #121926); border: 2px solid var(--c-border-2a3546, #2a3546); position: sticky; top: 8px; }
+.story-hero-name { display: grid; }
+.story-hero-name small { color: var(--c-fg-94a0b2, #94a0b2); font-size: 12px; }
+.story-ovr { display: flex; align-items: baseline; gap: 6px; }
+.story-meter { display: grid; grid-template-columns: 3.5em 1fr 2em; gap: 6px; align-items: center; width: 100%; font-size: 12px; }
+.story-meter b { text-align: right; font-variant-numeric: tabular-nums; }
+.story-bonds { list-style: none; padding: 0; margin: 0; display: grid; gap: 3px; width: 100%; font-size: 13px; }
+.story-bonds li { display: grid; grid-template-columns: auto 1fr auto; gap: 6px; align-items: baseline; }
+.story-bonds small { color: var(--c-fg-94a0b2, #94a0b2); font-size: 11px; }
+.story-bonds span { color: var(--c-fg-ffd166, #ffd166); font-size: 12px; }
+.story-acts { list-style: none; padding: 0; margin: 4px 0 0; display: grid; gap: 2px; font-size: 12px; color: var(--c-fg-94a0b2, #94a0b2); }
+.story-acts li.done { color: var(--c-fg-55c878, #55c878); }
+.story-acts li.now { color: var(--c-fg-f47b20, #f47b20); font-weight: 700; }
+.story-main { display: grid; gap: 12px; min-width: 0; }
+.story-last { padding: 10px 12px; border-left: 4px solid var(--c-border-4da3ff, #4da3ff); background: var(--c-bg-121926, #121926); }
+.story-last.won { border-left-color: var(--c-border-55c878, #55c878); }
+.story-last.lost { border-left-color: var(--c-border-e85d5d, #e85d5d); }
+.story-last p { margin: 6px 0 0; line-height: 1.5; }
+.story-gameline { display: grid; gap: 2px; font-size: 13px; }
+.story-gameline b { font-size: 16px; }
+.story-grade { font-weight: 700; }
+.story-grade.grade-A { color: var(--c-fg-ffd166, #ffd166); } .story-grade.grade-B { color: var(--c-fg-55c878, #55c878); } .story-grade.grade-D, .story-grade.grade-F { color: var(--c-fg-e85d5d, #e85d5d); }
+.story-chapter { text-align: center; padding: 28px 16px; border: 2px solid var(--c-border-2a3546, #2a3546); background: var(--c-bg-121926, #121926); display: grid; gap: 10px; justify-items: center; }
+.story-act { font: 14px var(--ff-display, 'Oswald', sans-serif); letter-spacing: 0.2em; color: var(--c-fg-f47b20, #f47b20); }
+.story-chapter h2 { margin: 0; font-size: 34px; }
+.story-chapter p { max-width: 60ch; line-height: 1.6; margin: 0; }
+.story-scene, .story-game { padding: 14px; border: 2px solid var(--c-border-2a3546, #2a3546); background: var(--c-bg-121926, #121926); display: grid; gap: 10px; }
+.story-scene h2, .story-game h2 { margin: 0; }
+.story-scene > p, .story-game > p { margin: 0; line-height: 1.6; max-width: 72ch; }
+.story-game.key { border-color: var(--c-border-ffd166, #ffd166); }
+.story-game .hunt-play-big { justify-self: start; }
+.story-choices { display: grid; gap: 6px; }
+.story-choices button { text-align: left; padding: 10px 12px; background: var(--c-bg-192333, #192333); border: 2px solid var(--c-border-2a3546, #2a3546); color: inherit; font: inherit; cursor: pointer; }
+.story-choices button:hover, .story-choices button:focus-visible { border-color: var(--c-border-f47b20, #f47b20); }
+.story-points { margin: 0; color: var(--c-fg-ffd166, #ffd166); display: flex; gap: 6px; align-items: center; }
+.story-train { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+.story-train button { display: flex; justify-content: space-between; align-items: baseline; padding: 8px 10px; background: var(--c-bg-192333, #192333); border: 2px solid var(--c-border-2a3546, #2a3546); color: inherit; font: inherit; cursor: pointer; }
+.story-train button small { font-variant-numeric: tabular-nums; color: var(--c-fg-f47b20, #f47b20); }
+.story-train button:hover, .story-train button:focus-visible { border-color: var(--c-border-f47b20, #f47b20); }
+.story-ending-text p { margin: 4px 0; line-height: 1.55; max-width: 70ch; }
+@media (max-width: 760px) { .story-layout { grid-template-columns: 1fr; } .story-hero { position: static; } .story-chapter h2 { font-size: 26px; } }
+.story-y2 { display: grid; gap: 4px; justify-items: start; margin: 12px 0; padding: 12px; border: 2px solid var(--c-border-ffd166, #ffd166); background: var(--c-bg-121926, #121926); }
+.story-y2 p { margin: 0; color: var(--c-fg-94a0b2, #94a0b2); }

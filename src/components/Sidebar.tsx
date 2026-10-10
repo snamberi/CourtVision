@@ -21,6 +21,8 @@ interface Props {
   seasonPhase?: SeasonPhase;
   /** Shown as a badge on the "Trade Offers" nav item. */
   pendingTradeOfferCount?: number;
+  /** Your team's games since you last opened CourtChat (a badge on its menu item). */
+  courtChatNew?: number;
   /** The league was started from the built-in NBA history (shows the NBA History archive). */
   historical?: boolean;
   /** Simple shows five places to go; Full (the default) is the complete menu. */
@@ -50,7 +52,7 @@ function ModeSwitch({ mode, onChange }: { mode: NavMode; onChange: (mode: NavMod
 export function Sidebar(props: Props) {
   const {
     tab, onNavigate, onNavigateLeagueSettings, sandboxMode = false, onMainMenu, collapsed, hasControlledTeam, seasonPhase,
-    pendingTradeOfferCount = 0, historical = false, navMode = 'full', onNavModeChange,
+    pendingTradeOfferCount = 0, courtChatNew = 0, historical = false, navMode = 'full', onNavModeChange,
   } = props;
   const [lastHub, setLastHub] = useState<HubId>('home');
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -123,7 +125,7 @@ export function Sidebar(props: Props) {
             <div className="simple-hub-items">
               {subItems.map((item) => {
                 const current = tab === item.tab;
-                const badge = item.tab === 'tradeOffers' ? pendingTradeOfferCount : 0;
+                const badge = item.tab === 'tradeOffers' ? pendingTradeOfferCount : item.tab === 'courtChat' ? courtChatNew : 0;
                 return (
                   <button
                     key={item.label}
@@ -184,7 +186,7 @@ export function Sidebar(props: Props) {
           <div className="sidebar-group" key={group.title} data-tour={DATA_TOUR_FULL[group.title]}>
             {!collapsed && <div className="sidebar-group-title">{group.title}</div>}
             {visibleItems.map((item) => {
-              const badge = item.tab === 'tradeOffers' ? pendingTradeOfferCount : 0;
+              const badge = item.tab === 'tradeOffers' ? pendingTradeOfferCount : item.tab === 'courtChat' ? courtChatNew : 0;
               return (
                 <button
                   key={`${group.title}-${item.label}`}

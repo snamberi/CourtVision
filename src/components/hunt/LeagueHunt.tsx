@@ -38,6 +38,9 @@ import { noteFeaturedXp } from '../../retention/modeOfWeek';
 import { newPerfectFromHunt } from '../../perfect/run';
 import { savePerfectRun } from '../../perfect/storage';
 import { XP } from '../../profile/profile';
+import { relicRunOpts } from '../../relics/apply';
+import { rewardRun, huntSpins, huntSecret, huntRewardKey } from '../../relics/rewards';
+import { RelicReward, LuckChip } from '../relics/RelicReward';
 import './hunt.css';
 
 /** League Hunt: spin a six-man squad and a coach from all of basketball history, then win ten best-of-seven series. */
@@ -59,6 +62,7 @@ export function LeagueHunt({ onExit }: { onExit: () => void }) {
     else saveRun(r);
     if (r && (r.stage === 'won' || r.stage === 'lost') && run?.stage !== r.stage) {
       setRecords(recordRun(r));
+      rewardRun(huntRewardKey(r), huntSpins(r), { secret: huntSecret(r), why: 'League Hunt' });
       noteWeekRecords(noteRunHighs('hunt', r.highs).length);
       { const gw = r.results.reduce((n, x) => n + x.games.filter(g => g.won).length, 0), gp = r.results.reduce((n, x) => n + x.games.length, 0);
         noteWeekRun('hunt', { score: huntScore({ won: r.stage === 'won', stop: r.seriesIndex, wins: gw, losses: gp - gw }), line: r.stage === 'won' ? `beat the boss, ${gw}-${gp - gw}` : `series ${r.seriesIndex + 1}` }, `hunt-${r.seed}`); }
@@ -104,13 +108,13 @@ export function LeagueHunt({ onExit }: { onExit: () => void }) {
   return <div className={`hunt ${play ? `era-${play.play.era.id}` : ''} ${run?.view?.colors === false && run.stage !== 'won' && run.stage !== 'lost' ? 'no-rarity' : ''}`}>
     {header}
     {run && run.stage !== 'won' && run.stage !== 'lost' && <DuelBanner duel={run.duel} />}
-    {!run ? <HuntHub h={h} records={records} onStart={(seed, opts) => { setPlay(null); setRun(newRun(h, seed, { ...opts, fav: readFavorites().player })); }} />
+    {!run ? <HuntHub h={h} records={records} onStart={(seed, opts) => { setPlay(null); setRun(newRun(h, seed, { ...opts, ...relicRunOpts(), fav: readFavorites().player })); }} />
       : play ? <SeriesView h={h} run={run} play={play.play} series={play.series} index={play.index} onReveal={() => setPlay(p => (p && !p.revealed ? { ...p, revealed: true } : p))} onContinue={() => setPlay(null)} />
       : run.stage === 'draft' ? <SlotMachine key={run.seed} h={h} run={run} onRun={setRun} onAbandon={() => setRun(null)} />
       : run.stage === 'focus' ? <FocusView run={run} onChoose={f => setRun(chooseFocus(h, run, f))} />
       : run.stage === 'shop' ? <HuntBase h={h} run={run} onRun={setRun} onPlay={startSeries} onAbandon={() => setRun(null)} />
       : run.stage === 'boost' ? <BoostPick h={h} run={run} onTake={b => setRun(takeBoost(h, run, b))} />
-      : run.stage === 'won' || run.stage === 'lost' ? <RunOver h={h} run={run} records={records} onNew={() => { setPlay(null); setRun(newRun(h, Math.floor(Math.random() * 1_000_000_000), { deck: run.deck, difficulty: run.difficulty, fav: readFavorites().player })); }} onExit={() => { setRun(null); onExit(); }} />
+      : run.stage === 'won' || run.stage === 'lost' ? <RunOver h={h} run={run} records={records} onNew={() => { setPlay(null); setRun(newRun(h, Math.floor(Math.random() * 1_000_000_000), { deck: run.deck, difficulty: run.difficulty, ...relicRunOpts(), fav: readFavorites().player })); }} onExit={() => { setRun(null); onExit(); }} />
       : <HuntBase h={h} run={run} onRun={setRun} onPlay={startSeries} onAbandon={() => setRun(null)} />}
   </div>;
 }
@@ -183,7 +187,7 @@ function SlotMachine({ h, run, onRun, onAbandon }: { h: NbaHistory; run: HuntRun
   const roundCat = huntRoundCategory(h, run, run.spin);
   const stop = () => { setTick(0); setStoppedAt(Date.now()); setJustLocked(null); onRun(stopReels(h, run, roundCat)); };
   const lock = (k: SpinKind) => { if (!allSettled) return; setJustLocked(k); setStoppedAt(null); onRun(lockReel(h, run, k)); };
-  const w = spinWeights(run.spin), total = w.common + w.rare + w.epic + w.legendary;
+  const w = spinWeights(run.spin, run.luck), total = w.common + w.rare + w.epic + w.legendary;
   const guaranteed = run.spin === run.guarantees.star ? 'A Star lands on these reels.' : run.spin === run.guarantees.great ? 'A Great player lands on these reels.' : null;
   const message = !frozen ? <>Everything is spinning. Hit <b className="hunt-stop-word">STOP</b> when you are ready</>
     : !allSettled ? <>Stopping…</>
@@ -193,7 +197,8 @@ function SlotMachine({ h, run, onRun, onAbandon }: { h: NbaHistory; run: HuntRun
   const tile = (k: SpinKind) => {
     const isOpen = open.includes(k), idx = open.indexOf(k);
     const lockedId = k === 'COACH' ? run.coach : run.squad[SLOTS.indexOf(k as Slot)];
-    const cls = ['hunt-reel', k === 'COACH' ? 'coach' : '', !isOpen ? 'locked' : settled(idx) ? 'frozen' : 'spinning', justLocked === k && !isOpen ? 'just-locked' : ''].filter(Boolean).join(' ');
+    const lucky = isOpen && settled(idx) && !!run.reels?.[k] && !!run.luckyReels?.includes(k);
+    const cls = ['hunt-reel', k === 'COACH' ? 'coach' : '', !isOpen ? 'locked' : settled(idx) ? 'frozen' : 'spinning', justLocked === k && !isOpen ? 'just-locked' : '', lucky ? 'lucky' : ''].filter(Boolean).join(' ');
     let body: ReactNode;
     if (!isOpen && lockedId) {
       if (k === 'COACH') { const x = COACH_BY_ID.get(lockedId)!; body = <><span className="hunt-reel-face coach">{initials(x.name)}</span><span className="hunt-reel-text"><b>{x.name}</b><small>{COACH_STYLE[x.style]}</small></span><span className={`hunt-reel-ovr rarity-${coachRarity(x)}`}>{x.bonus > 0 ? '+' : ''}{x.bonus}</span></>; }
@@ -207,7 +212,7 @@ function SlotMachine({ h, run, onRun, onAbandon }: { h: NbaHistory; run: HuntRun
       body = k === 'COACH' ? <><span className="hunt-reel-face coach">{initials(f.name)}</span><span className="hunt-reel-text"><b>{f.name}</b><small>{f.sub}</small></span></>
         : <><PlayerAvatar playerId={f.name} primaryColor="#3a3f4a" secondaryColor="#f4f0e6" size={56} /><span className="hunt-reel-text"><b>{f.name}</b><small>{f.sub}</small></span></>;
     }
-    const label = <span className="hunt-reel-pos">{REEL_LABEL[k]}{!isOpen && <em>LOCKED</em>}</span>;
+    const label = <><span className="hunt-reel-pos">{REEL_LABEL[k]}{!isOpen && <em>LOCKED</em>}</span>{lucky && <span className="hunt-reel-lucky" title="Relic luck turned this reel into a better player">LUCKY</span>}</>;
     return isOpen && allSettled
       ? <button key={k} className={cls} onClick={() => lock(k)} aria-label={`Lock ${REEL_LABEL[k]}`}>{label}{body}</button>
       : <div key={k} className={cls} aria-hidden={isOpen && !settled(idx) ? true : undefined}>{label}{body}</div>;
@@ -219,7 +224,7 @@ function SlotMachine({ h, run, onRun, onAbandon }: { h: NbaHistory; run: HuntRun
       <ol className="hunt-slot-dots" aria-label={`${SPINS.length - open.length} of ${SPINS.length} locked`}>{SPINS.map((_, i) => <li key={i} className={i < SPINS.length - open.length ? 'on' : ''} />)}</ol>
     </div>
     {roundCat && <div className={`hunt-round-cat tier-${roundCat.tier.toLowerCase()}`}><span className="pixel-eyebrow">THIS ROUND'S CATEGORY</span><b>{roundCat.name}</b><small>{roundCat.blurb}</small></div>}
-    <p className="hunt-slots-msg" role="status">{message}</p>
+    <p className="hunt-slots-msg" role="status">{message} <LuckChip luck={run.luck} /></p>
     <div className="hunt-reel-grid">{SLOTS.map(s => tile(s))}</div>
     {tile('COACH')}
     {!frozen ? <button className="hunt-stop" onClick={stop} autoFocus><span aria-hidden="true">■</span> STOP</button>
@@ -246,7 +251,7 @@ function Bonds({ bonds }: { bonds: ChemistryBond[] }) {
   return <ul className="hunt-bonds">{bonds.map(b => <li key={b.label} className={b.bonus < 0 ? 'down' : ''}><b>{b.bonus > 0 ? '+' : ''}{b.bonus}</b> {b.label} <small>({b.cards.length})</small></li>)}</ul>;
 }
 
-const kindLabel = (s: HuntSeries, i: number) => (s.kind === 'boss' ? 'BOSS' : s.kind === 'semi' ? 'SEMI-BOSS' : `SERIES ${i + 1}`);
+const kindLabel = (s: HuntSeries, i: number) => (s.secret ? 'SECRET BOSS' : s.kind === 'boss' ? 'BOSS' : s.kind === 'semi' ? 'SEMI-BOSS' : `SERIES ${i + 1}`);
 
 const SERIES_MS = 10_000;
 const reducedMotion = () => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -440,7 +445,8 @@ function RunOver({ h, run, records, onNew, onExit }: { h: NbaHistory; run: HuntR
   return <section className={`hunt-stage hunt-over ${won ? 'won' : 'lost'}`}>
     <div className="hunt-over-banner">
       <span className="pixel-eyebrow">{won ? 'HUNT COMPLETE' : 'HUNT OVER'}</span>
-      <h2>{won ? 'You conquered basketball history' : `You reached series ${run.seriesIndex + 1} of ${SERIES_COUNT}`}</h2>
+      <h2>{won ? (run.immortal ? 'You beat the Immortals' : 'You conquered basketball history') : `You reached series ${run.seriesIndex + 1} of ${SERIES_COUNT}`}</h2>
+      {won && run.note && <p>{run.note}</p>}
       <div className="hunt-over-stats">
         <div><small>SERIES</small><b>{seriesWon}-{seriesLost}</b></div>
         <div><small>GAMES</small><b>{gamesWon}-{gamesPlayed - gamesWon}</b></div>
@@ -448,6 +454,7 @@ function RunOver({ h, run, records, onNew, onExit }: { h: NbaHistory; run: HuntR
         {draftGrade(run) && <div><small>DRAFT GRADE</small><b>{draftGrade(run)!.grade}</b></div>}
         <div><small>COINS LEFT</small><b>{run.coins}</b></div>
       </div>
+    <RelicReward rewardKey={huntRewardKey(run)} />
     </div>
     <DuelPanel setup={{ m: 'hunt', s: run.seed, deck: run.deck, diff: run.difficulty, ...(run.view ? { vw: run.view } : {}) }} duel={run.duel}
       mine={{ score: huntScore({ won, stop: run.seriesIndex, wins: gamesWon, losses: gamesPlayed - gamesWon }), won, line: won ? `Beat the boss · ${gamesWon}-${gamesPlayed - gamesWon} in games` : `Reached series ${run.seriesIndex + 1} · ${gamesWon}-${gamesPlayed - gamesWon}` }} />

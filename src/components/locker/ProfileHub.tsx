@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { listCareers } from '../../career/storage';
-import { careerShelf, careerResume, type CareerMeta } from '../../career/career';
+import { careerShelf, careerResume, isSandboxCareer, type CareerMeta } from '../../career/career';
 import { loadRecords, loadAlbum, type HuntRecords } from '../../hunt/storage';
 import { readLegacy, legacyTotals, LEGACY_EVENT, type GmLegacy } from '../../storage/gmLegacy';
 import { ACHIEVEMENTS } from '../../simulation/frontOffice';
@@ -61,7 +61,8 @@ export function ProfileHub({ onExit, initialTab = 'profile' }: { onExit: () => v
     return () => { live = false; for (const e of events) window.removeEventListener(e, onLegacy); };
   }, []);
 
-  const all = careers ?? [];
+  // Create Anything careers are just for fun: not on your shelf or in your Hall of Fame.
+  const all = (careers ?? []).filter(m => !isSandboxCareer(m));
   const shelf = all.flatMap(careerShelf);
   const count = (k: string) => shelf.filter(e => e.key === k).length;
   const best = [...all].filter(m => m.retired).sort((a, b) => b.retired!.legacy - a.retired!.legacy)[0];

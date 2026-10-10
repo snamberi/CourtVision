@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
+import type { TimeMachinePick } from './TimeMachinePicker';
+const TimeMachinePicker = lazy(() => import('./TimeMachinePicker').then(m => ({ default: m.TimeMachinePicker })));
 import type { TradeDifficulty } from '../simulation/gm';
 import { nbaHistoryYearRange } from '../simulation/calendar';
 import { SCENARIOS, loadRebuildRecords } from '../simulation/rebuildChallenge';
@@ -16,13 +18,14 @@ import './create.css';
  * and, if you like, its settings before the first game.
  */
 
-export type Challenge = 'free' | 'dynasty' | 'rebuild' | 'draft' | 'worldgames';
+export type Challenge = 'free' | 'dynasty' | 'rebuild' | 'draft' | 'worldgames' | 'timeMachine';
 export type LeagueSource = 'history' | 'random' | 'csv';
 export type CreateChoice =
   | { kind: 'league'; source: LeagueSource; name: string; year: string; difficulty: TradeDifficulty; real: { realDevelopment: boolean; forceRosters: boolean; allPlayers: boolean }; settings: CreateSettings; /** Dynasty Mode: the living world switched on (see simulation/dynasty.ts). */ dynasty?: boolean; /** GM Career: start as the scout (see simulation/gmCareer.ts). */ gmCareer?: boolean }
   | { kind: 'rebuild'; scenario: string }
   | { kind: 'draft' }
-  | { kind: 'worldgames'; games: GamesId; country: string };
+  | { kind: 'worldgames'; games: GamesId; country: string }
+  | { kind: 'timeMachine'; from: string; year: number; replace: string };
 
 const HISTORY_START_YEARS: number[] = Array.from({ length: 2025 - 1946 + 1 }, (_, i) => 2025 - i);
 const DIFFICULTIES: { id: TradeDifficulty; label: string; blurb: string }[] = [
@@ -35,6 +38,7 @@ const CHALLENGES: { id: Challenge; icon: string; title: string; blurb: string; t
   { id: 'dynasty', icon: 'crown', title: 'Dynasty Mode', blurb: 'One league for 50 seasons and more: owners sell, teams move, sons of stars enter the draft, and a History Book writes itself.', time: 'Years' },
   { id: 'rebuild', icon: 'chart', title: 'Rebuild Challenge', blurb: 'Take a real team at its lowest point and win a title before the clock runs out. Scored and starred.', time: '10-20 min' },
   { id: 'draft', icon: 'trophy', title: 'All-Time Draft', blurb: 'Thirty teams, thirteen rounds, every player in history at his best. Then play the season.', time: '10-20 min' },
+  { id: 'timeMachine', icon: 'clock', title: 'Time Machine', blurb: 'Take any real team (the \'96 Bulls, the \'16 Warriors, the \'67 76ers) to any season in NBA history and run it there.', time: 'Unlimited' },
   { id: 'worldgames', icon: 'star', title: 'World Games', blurb: 'Coach a national team at a real Games (1992-2024) or the Fantasy Games. Pick twelve, win medals.', time: '10-15 min' },
 ];
 const NAMES = ['My Dynasty', 'The Pixel League', 'Banner Season', 'Hardwood Kings', 'Dynasty Mode', 'Court Vision League', 'The Long Rebuild', 'Ring Chasers', 'Next Era', 'Title Town'];
@@ -59,6 +63,7 @@ export function FranchiseCreate({ onBack, onStart, busy = null, initial = 'free'
   const [records] = useState(() => loadRebuildRecords());
   const [wgGames, setWgGames] = useState<GamesId>(2024);
   const [wgCountry, setWgCountry] = useState('USA');
+  const [tm, setTm] = useState<TimeMachinePick | null>(null);
   const historical = source === 'history';
   const year = historical ? historyYear : randomYear;
   const changed = changedCount(settings);
@@ -67,10 +72,11 @@ export function FranchiseCreate({ onBack, onStart, busy = null, initial = 'free'
     if (challenge === 'rebuild') onStart({ kind: 'rebuild', scenario });
     else if (challenge === 'draft') onStart({ kind: 'draft' });
     else if (challenge === 'worldgames') onStart({ kind: 'worldgames', games: wgGames, country: wgCountry });
+    else if (challenge === 'timeMachine') { if (tm?.replace) onStart({ kind: 'timeMachine', from: tm.from, year: tm.year, replace: tm.replace }); }
     else onStart({ kind: 'league', source, name: name.trim() || (challenge === 'dynasty' ? 'My Dynasty' : 'My League'), year, difficulty, real: { realDevelopment, forceRosters, allPlayers }, settings, ...(challenge === 'dynasty' ? { dynasty: true } : {}), ...(asScout ? { gmCareer: true } : {}) });
   };
   const sc = SCENARIOS.find(s => s.id === scenario)!;
-  const startLabel = busy ?? (challenge === 'rebuild' ? `Start: ${sc.title}` : challenge === 'draft' ? 'Go to the draft room' : challenge === 'worldgames' ? `Coach ${wgCountry}` : historical ? `Start the ${seasonName(Number(historyYear))} NBA` : source === 'random' ? 'Create the random league' : 'Create the league');
+  const startLabel = busy ?? (challenge === 'rebuild' ? `Start: ${sc.title}` : challenge === 'draft' ? 'Go to the draft room' : challenge === 'worldgames' ? `Coach ${wgCountry}` : challenge === 'timeMachine' ? (tm ? `Travel to ${seasonName(tm.year)}` : 'Loading NBA history…') : historical ? `Start the ${seasonName(Number(historyYear))} NBA` : source === 'random' ? 'Create the random league' : 'Create the league');
 
   return <div className="create-page">
     <header className="create-top">
@@ -80,7 +86,7 @@ export function FranchiseCreate({ onBack, onStart, busy = null, initial = 'free'
 
     <section className="create-step" aria-labelledby="create-step-game">
       <h2 id="create-step-game"><span className="create-num">1</span> Choose your game</h2>
-      <div className="create-choices create-choices-5" role="radiogroup" aria-label="Game">
+      <div className="create-choices create-choices-6" role="radiogroup" aria-label="Game">
         {CHALLENGES.map(c => <button key={c.id} role="radio" aria-checked={challenge === c.id} className={`create-choice ${challenge === c.id ? 'selected' : ''}`} onClick={() => setChallenge(c.id)}>
           <span className="create-choice-head"><PixelIcon name={c.icon} size={22} /><b>{c.title}</b><small><PixelIcon name="clock" size={11} /> {c.time}</small></span>
           <span className="create-choice-blurb">{c.blurb}</span>
@@ -174,6 +180,11 @@ export function FranchiseCreate({ onBack, onStart, busy = null, initial = 'free'
       </div>
     </section>}
 
+    {challenge === 'timeMachine' && <section className="create-step" aria-labelledby="create-step-tm">
+      <h2 id="create-step-tm"><span className="create-num">2</span> Pick a team and a year</h2>
+      <Suspense fallback={<p className="hint-text">Loading NBA history…</p>}><TimeMachinePicker onChange={setTm} /></Suspense>
+    </section>}
+
     {challenge === 'draft' && <section className="create-step" aria-labelledby="create-step-draft">
       <h2 id="create-step-draft"><span className="create-num">2</span> How it works</h2>
       <ol className="create-steps-list">
@@ -184,9 +195,9 @@ export function FranchiseCreate({ onBack, onStart, busy = null, initial = 'free'
     </section>}
 
     <div className="create-go">
-      <div className="create-go-text"><b>{challenge === 'free' || challenge === 'dynasty' ? `${challenge === 'dynasty' ? 'Dynasty: ' : ''}${name.trim() || 'My League'}` : challenge === 'rebuild' ? sc.title : challenge === 'worldgames' ? `World Games: ${wgCountry}` : 'All-Time Draft'}</b>
-        <small>{challenge === 'free' || challenge === 'dynasty' ? `${source === 'random' ? 'Random league' : source === 'csv' ? 'Your own data' : 'Real NBA'}${source !== 'csv' ? ` · ${seasonName(Number(year))}` : ''} · ${DIFFICULTIES.find(d => d.id === difficulty)!.label}${changed ? ` · ${changed} custom setting${changed > 1 ? 's' : ''}` : ''}` : challenge === 'rebuild' ? `${sc.team} · ${sc.seasons} seasons to win a title` : challenge === 'worldgames' ? MODE_GAMES.find(g => g.id === wgGames)?.label : 'Thirty teams, thirteen rounds'}</small></div>
-      <button className="primary create-start" disabled={!!busy} onClick={start}><PixelIcon name="play" size={16} /> {startLabel}</button>
+      <div className="create-go-text"><b>{challenge === 'free' || challenge === 'dynasty' ? `${challenge === 'dynasty' ? 'Dynasty: ' : ''}${name.trim() || 'My League'}` : challenge === 'rebuild' ? sc.title : challenge === 'worldgames' ? `World Games: ${wgCountry}` : challenge === 'timeMachine' ? `Time Machine${tm ? `: ${tm.label}` : ''}` : 'All-Time Draft'}</b>
+        <small>{challenge === 'free' || challenge === 'dynasty' ? `${source === 'random' ? 'Random league' : source === 'csv' ? 'Your own data' : 'Real NBA'}${source !== 'csv' ? ` · ${seasonName(Number(year))}` : ''} · ${DIFFICULTIES.find(d => d.id === difficulty)!.label}${changed ? ` · ${changed} custom setting${changed > 1 ? 's' : ''}` : ''}` : challenge === 'rebuild' ? `${sc.team} · ${sc.seasons} seasons to win a title` : challenge === 'worldgames' ? MODE_GAMES.find(g => g.id === wgGames)?.label : challenge === 'timeMachine' ? (tm ? `to the ${seasonName(tm.year)} NBA, in place of the ${tm.replaceName}` : '') : 'Thirty teams, thirteen rounds'}</small></div>
+      <button className="primary create-start" disabled={!!busy || (challenge === 'timeMachine' && !tm?.replace)} onClick={start}><PixelIcon name="play" size={16} /> {startLabel}</button>
     </div>
 
     {editing && <SettingsDialog value={settings} random={source === 'random'} onDone={s => { setSettings(s); setEditing(false); }} onCancel={() => setEditing(false)} />}

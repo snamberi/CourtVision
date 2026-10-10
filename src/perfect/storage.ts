@@ -1,6 +1,6 @@
 import { localRead, type Read } from '../lib/kv';
 import { weekKey } from '../retention/week';
-import { summary, type PerfectMode, type PerfectRun } from './run';
+import { summary, isFreeMode, type PerfectMode, type PerfectRun, type WhatIf } from './run';
 
 /*
  * The 82-0 Challenge keeps its run and records in this browser (records follow the account through cloud sync).
@@ -29,6 +29,8 @@ export interface PerfectRecords {
   categories?: Record<string, CategoryBest>;
   /** The Weekly Category Challenge: your best try each week. */
   weekCat?: Record<string, PerfectResult & { tries: number }>;
+  /** What If runs (unranked, kept apart): your best season with each choice (see whatIfKey). */
+  whatIf?: Record<string, CategoryBest>;
   lastSeed?: number;
 }
 const EMPTY: PerfectRecords = { runs: 0, titles: 0, perfectSeasons: 0, perfect98: 0, bestWins: 0 };
@@ -45,12 +47,18 @@ export function loadPerfectRecords(read: Read = localRead): PerfectRecords {
 }
 
 /** Keeps the finished-run check apart per draft style (Quick and Franchise keep their old keys). */
-const MODE_KEY: Record<PerfectMode, number> = { quick: 0, franchise: 1, category: 0.25, slots: 0.75 };
+const MODE_KEY: Record<PerfectMode, number> = { quick: 0, franchise: 1, category: 0.25, slots: 0.75, whatif: 0.5, fun: 0.6 };
 
 /** A title beats no title; then more wins. */
 const bestCategory = (a: CategoryBest | undefined, b: CategoryBest): CategoryBest => !a ? b : (b.champion && !a.champion) || (b.champion === a.champion && b.w > a.w) ? b : a;
 
 const better = (a: PerfectResult | undefined, b: PerfectResult) => !a || b.score > a.score;
+
+/** The What If book's key: the kind, the team or franchise, the league year. Null for one-offs (Fun runs). */
+export function whatIfKey(w: WhatIf): string | null {
+  if (w.kind === 'create' || w.kind === 'super' || w.kind === 'chaos') return null;
+  return `${w.kind}|${w.team ?? w.franchise ?? ''}|${w.kind === 'star' ? `${w.star}|` : ''}${w.year ?? 'all'}`;
+}
 
 /** Counts a finished run once (by its seed and mode); a Daily 82-0 also keeps the day's best. */
 export function recordPerfect(run: PerfectRun): PerfectRecords {
@@ -58,6 +66,13 @@ export function recordPerfect(run: PerfectRun): PerfectRecords {
   const key = run.seed * 2 + MODE_KEY[run.mode];
   if (run.stage !== 'done' || (r.lastSeed === key && !run.daily)) return r;
   const s = summary(run);
+  // What If and Fun runs never count: only their own little book of best seasons (for the choices that repeat).
+  if (isFreeMode(run.mode)) {
+    const k = run.whatIf ? whatIfKey(run.whatIf) : null;
+    const next: PerfectRecords = { ...r, lastSeed: key, ...(k ? { whatIf: { ...(r.whatIf ?? {}), [k]: bestCategory(r.whatIf?.[k], { w: s.w, l: s.l, champion: s.champion }) } } : {}) };
+    try { localStorage.setItem(PERFECT_RECORDS_KEY, JSON.stringify(next)); } catch { /* storage blocked */ }
+    return next;
+  }
   const result: PerfectResult = { score: s.score, w: s.w, l: s.l, pw: s.pw, pl: s.pl, champion: s.champion, mode: run.mode };
   const next: PerfectRecords = {
     ...r, lastSeed: key, runs: r.runs + 1, titles: r.titles + (s.champion ? 1 : 0),
@@ -86,11 +101,14 @@ export function mergePerfectRecords(a: PerfectRecords, b: PerfectRecords): Perfe
   const huntSquadBest = !a.huntSquadBest ? b.huntSquadBest : !b.huntSquadBest ? a.huntSquadBest : a.huntSquadBest.score >= b.huntSquadBest.score ? a.huntSquadBest : b.huntSquadBest;
   const categories: Record<string, CategoryBest> = { ...(b.categories ?? {}) };
   for (const [id, x] of Object.entries(a.categories ?? {})) categories[id] = bestCategory(categories[id], x);
+  const whatIf: Record<string, CategoryBest> = { ...(b.whatIf ?? {}) };
+  for (const [id, x] of Object.entries(a.whatIf ?? {})) whatIf[id] = bestCategory(whatIf[id], x);
   const weekCat: Record<string, PerfectResult & { tries: number }> = { ...(b.weekCat ?? {}) };
   for (const [wk, x] of Object.entries(a.weekCat ?? {})) { const y = weekCat[wk]; weekCat[wk] = !y ? x : { ...(x.score >= y.score ? x : y), tries: Math.max(x.tries, y.tries) }; }
   return {
     ...(Object.keys(categories).length ? { categories } : {}),
     ...(Object.keys(weekCat).length ? { weekCat } : {}),
+    ...(Object.keys(whatIf).length ? { whatIf } : {}),
     runs: Math.max(a.runs, b.runs), titles: Math.max(a.titles, b.titles), perfectSeasons: Math.max(a.perfectSeasons, b.perfectSeasons),
     perfect98: Math.max(a.perfect98, b.perfect98), bestWins: Math.max(a.bestWins, b.bestWins), ...(best ? { best } : {}), ...(huntSquadBest ? { huntSquadBest } : {}), ...(Object.keys(daily).length ? { daily } : {}),
   };

@@ -1,5 +1,5 @@
 import { applyHistoricalRosters } from '../history/realRollover';
-import { runWorldGamesIfDue } from '../worldGames/league';
+import { runWorldGamesIfDue, resolvePending } from '../worldGames/league';
 import { signingDecision } from './freeAgentDecision';
 import { ensureUpcomingDraftClass } from './draftSeason';
 import { rosterComplianceIssues } from './rosterRequirements';
@@ -7,7 +7,7 @@ import { manageCoachRosters } from './coachRosters';
 import { lockAllStarVoting, currentAllStarWeekend } from './allStarVoting';
 import type { League } from './league';
 import { simulateRemainingSeason, simulateFullRound, isAllStarBreakPending } from './league';
-import { simulateFullPlayoffs, autoGeneratePlayoffBracket } from './playoffs';
+import { simulateFullPlayoffs, autoGeneratePlayoffBracket, type PlayoffBracket } from './playoffs';
 import { awardOptions as optionsFrom, computeFinalsMVP, computeSeasonAwards, type AwardSettings, type SeasonAwards } from './awards';
 import {
   beginNewSeasonRoster, finalizeNewSeasonSchedule, type ChampionshipInfo,
@@ -276,13 +276,15 @@ export function autoPlayFromDraft(league: League, extras: GMLeagueExtras, contro
 
 function seasonToDraft(
   league: League, extras: GMLeagueExtras, controlledTeamId: string | null, awardSettings: AwardSettings, seed: number, weekend: AllStarOutcome,
+  /** Playoffs already under way (or finished): they continue from here instead of starting over. */
+  existingBracket?: PlayoffBracket | null,
 ): { league: League; extras: GMLeagueExtras; controlledTeamId: string | null; partial: AutoPlayHalfSeason } {
   let currentLeague = league;
   let currentExtras = extras;
   const { allStarGameMVPPlayerId, threePointChampionId, dunkChampionId } = weekend;
 
   // 2. Playoffs.
-  const bracket = autoGeneratePlayoffBracket(currentLeague);
+  const bracket = existingBracket ?? autoGeneratePlayoffBracket(currentLeague);
   const playoffResult = simulateFullPlayoffs(bracket, currentLeague, seed + 1000);
   currentLeague = playoffResult.league;
   const finals = playoffResult.bracket.rounds[playoffResult.bracket.rounds.length - 1]?.[0];
@@ -311,6 +313,8 @@ function seasonToDraft(
 
 function seasonFromDraft(
   league: League, extras: GMLeagueExtras, controlledTeamId: string | null, seed: number, partial: AutoPlayHalfSeason,
+  /** Free-agency days still to run (the full window when omitted; 0 once it is over). */
+  faDays?: number,
 ): { league: League; extras: GMLeagueExtras; summary: AutoPlaySeasonSummary; draftPicks: { playerId: string; teamId: string }[] } {
   let currentLeague = league;
   let currentExtras = extras;
@@ -327,11 +331,17 @@ function seasonFromDraft(
   const games = runWorldGamesIfDue(currentLeague, currentExtras.freeAgents, seed + 31_337, { forceAi: true });
   currentLeague = games.league;
   currentExtras = { ...currentExtras, freeAgents: games.freeAgents };
+  // A World Games you were going to coach yourself: nobody is at the desk, so the AI plays it.
+  if (currentLeague.worldGames?.pending) {
+    const done = resolvePending(currentLeague, currentExtras.freeAgents, seed + 31_337);
+    currentLeague = done.league;
+    currentExtras = { ...currentExtras, freeAgents: done.freeAgents };
+  }
 
   // 5. Free agency - AI teams via the existing logic, your team via a matching heuristic, for the full window.
-  currentExtras = { ...currentExtras, freeAgencyOpen: true, freeAgencyDaysRemaining: currentLeague.settings.freeAgencyDurationDays ?? 30 };
+  const days = faDays ?? currentLeague.settings.freeAgencyDurationDays ?? 30;
+  currentExtras = { ...currentExtras, freeAgencyOpen: true, freeAgencyDaysRemaining: days };
   const controlledTeamSignings: string[] = [];
-  const days = currentExtras.freeAgencyDaysRemaining ?? 30;
   for (let day = 0; day < days; day++) {
     const aiResult = runFreeAgencyAI(currentLeague, currentExtras, controlledTeamId, seed + 20_000 + day);
     currentLeague = aiResult.league;
@@ -362,4 +372,26 @@ function seasonFromDraft(
     summary: { ...partial, controlledTeamDraftPicks, controlledTeamSignings },
     draftPicks: draftResult.picks.map((p) => ({ playerId: p.playerId, teamId: p.teamId })),
   };
+}
+
+/**
+ * Finishes the season you're in, from wherever it stands, and opens the next one: the rest of the regular season,
+ * the playoffs (continuing a bracket already under way), the rollover, the draft, the World Games, free agency and
+ * the new schedule. Each step that has already happened is skipped. This is how Auto Play starts from the
+ * playoffs or the offseason, where the guided flow would otherwise stop for you at every phase.
+ */
+export function autoFinishSeason(
+  league: League, extras: GMLeagueExtras, controlledTeamId: string | null, awardSettings: AwardSettings, seed: number,
+  bracket: PlayoffBracket | null,
+): { league: League; extras: GMLeagueExtras; summary: AutoPlaySeasonSummary } {
+  const phase = league.seasonPhase ?? 'regular_season';
+  if (phase === 'regular_season' || phase === 'all_star') return autoPlayOneSeason(league, extras, controlledTeamId, awardSettings, seed);
+  const weekend: AllStarOutcome = { allStarGameMVPPlayerId: null, threePointChampionId: null, dunkChampionId: null };
+  if (phase === 'playoffs' || phase === 'awards_recap') {
+    const half = seasonToDraft({ ...league, playoffBracket: undefined }, extras, controlledTeamId, awardSettings, seed, weekend, bracket ?? league.playoffBracket ?? null);
+    return seasonFromDraft(half.league, half.extras, half.controlledTeamId, seed, half.partial);
+  }
+  const partial: AutoPlayHalfSeason = { season: league.franchiseHistory?.at(-1)?.season ?? league.season ?? '', championTeamName: null, mvpPlayerId: null, allStarGameMVPPlayerId: null, threePointChampionId: null, dunkChampionId: null };
+  const faDays = phase === 'free_agency' ? extras.freeAgencyDaysRemaining ?? 0 : phase === 'preseason' ? 0 : undefined;
+  return seasonFromDraft({ ...league, playoffBracket: undefined }, extras, controlledTeamId, seed, partial, faDays);
 }

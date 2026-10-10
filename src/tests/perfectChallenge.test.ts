@@ -3,7 +3,7 @@ import { describe, expect, it, beforeEach } from 'vitest';
 import { loadHistoryForTests } from './helpers/nbaHistoryFixture';
 import { cardPool, type HuntCard } from '../hunt/cards';
 import {
-  newPerfectRun, pickPlayer, pickCoach, rerollTeam, rerollEra, applyPrime, rollPool, rerollSpin, luckySpin, quickSpinCard, swapLineup, setLineup, lineupOf, teamBonds, starCapReached, playNext, playToEnd, summary, fitBonds, franchiseIndex,
+  newPerfectRun, pickPlayer, pickCoach, rerollTeam, rerollEra, applyPrime, rollPool, rerollSpin, luckySpin, quickSpinCard, swapLineup, setLineup, lineupOf, teamBonds, starCapReached, playNext, playToEnd, summary, fitBonds, franchiseIndex, makeTrade, tradePending, tradeFits, TRADE_AT,
   BOSS_TEAMS, QUICK_SLOTS, SQUAD, SEASON_GAMES, WINS_NEEDED, type PerfectRun,
 } from '../perfect/run';
 import { recordPerfect, loadPerfectRecords, mergePerfectRecords, dailyPerfect, perfectWeeks, perfectTrophies, PERFECT_RECORDS_KEY } from '../perfect/storage';
@@ -149,6 +149,12 @@ describe('82-0 Challenge season', () => {
     expect(one.games).toHaveLength(1);
     expect(playNext(h, r)).toEqual(one); // seeded
     r = playToEnd(h, r, 'season');
+    // The All-Star break: the season waits for the trade window (pass here, then play on).
+    expect(r.games).toHaveLength(TRADE_AT);
+    expect(tradePending(r)).toBe(true);
+    expect(r.trade!.offers.length).toBe(3);
+    r = makeTrade(h, r, null, null);
+    r = playToEnd(h, r, 'season');
     expect(r.games).toHaveLength(SEASON_GAMES);
     expect(r.stage).toBe('playoffs');
     r = playToEnd(h, r, 'playoffs');
@@ -203,6 +209,29 @@ describe('82-0 Challenge records and rewards', () => {
     expect(avatarFrameOpen(undefeated, ctx(['perfect-82']))).toBe(true);
     expect(avatarFrameOpen(gold, ctx(['perfect-82']))).toBe(false);
     expect(avatarFrameOpen(gold, ctx(['perfect-98']))).toBe(true);
-    expect(MODE_ACHIEVEMENTS.filter(a => a.mode === 'perfect').map(a => a.id)).toEqual(['perfect-60', 'perfect-title', 'perfect-74', 'perfect-82', 'cat-5', 'cat-25', 'cat-teams', 'cat-brutal', 'cat-82', 'perfect-98']);
+    expect(MODE_ACHIEVEMENTS.filter(a => a.mode === 'perfect').map(a => a.id)).toEqual(['perfect-60', 'perfect-title', 'perfect-74', 'perfect-82', 'cat-5', 'cat-25', 'cat-teams', 'cat-brutal', 'cat-82', 'cat-82x5', 'perfect-98']);
   });
+});
+
+describe('82-0 trade window and injuries', () => {
+  it('trades one player at the break for one that fits, and the new man plays', async () => {
+    const h = await loadHistoryForTests();
+    let r = await draftAll('quick', 11);
+    r = pickCoach(h, r, r.coachOffer![0]);
+    r = playToEnd(h, r, 'season');
+    expect(tradePending(r)).toBe(true);
+    const inId = r.trade!.offers[0];
+    const outId = r.squad.find(id => tradeFits(h, id, inId))!;
+    const tooWeak = r.squad.find(id => !tradeFits(h, id, inId));
+    if (tooWeak) expect(makeTrade(h, r, tooWeak, inId)).toBe(r); // no salary dumps for a much better player
+    r = makeTrade(h, r, outId, inId);
+    expect(r.squad).toContain(inId);
+    expect(r.squad).not.toContain(outId);
+    expect(r.trade?.made).toEqual({ out: outId, in: inId });
+    r = playToEnd(h, r, 'season');
+    expect(r.games).toHaveLength(SEASON_GAMES);
+    expect(Object.keys(r.lines ?? {}).some(n => n.startsWith(cardPool(h).byId.get(inId)!.name))).toBe(true);
+    // Injuries happen now and then, and never leave fewer than eight healthy.
+    for (const inj of r.injuries ?? []) { expect(r.squad.concat(outId)).toContain(inj.id); expect(inj.games).toBeGreaterThanOrEqual(2); }
+  }, 120_000);
 });

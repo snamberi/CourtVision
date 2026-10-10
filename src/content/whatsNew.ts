@@ -6,6 +6,98 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2027-04-21',
+    title: 'Create Anything, and superstars carry their teams',
+    items: [
+      "**Create Anything (Career Mode):** set every rating anywhere from 1 to 120 (each category, or every single rating one by one), any height from 5'0\" to 8'4\", any weight. Play him exactly as built from day one, or let him grow into it. Just for fun: these careers never count for leaderboards, XP, achievements or rewards.",
+      "**Franchise stars:** a true superstar now lifts his whole team on both ends. A 100-rated MVP takes even the league's worst roster from a handful of wins to the play-in hunt, so no more unanimous MVPs on 20-win teams. Only the very best one or two players in today's league are good enough to trigger it.",
+    ],
+  },
+  {
+    id: '2027-04-14',
+    title: '82-0: What If and Fun modes',
+    items: [
+      "**What If (82-0 Challenge):** rewrite history. All in Their Prime (a real team, everyone at his career best, in that same year's league), Time Travel (send the 1996 Bulls to the 2016 league), Franchise Legends (a franchise's ten best ever on one team), Rookie Year (everyone back in his first season) and Add a Star (what if Jordan joined the 2016 Warriors?).",
+      "**Fun:** Create-a-Player (Curry's shooting, LeBron's finishing, Magic's passing, Rodman's rebounding: name him and drop him on any team), Superteam (any ten players you want, any season) and Chaos Spin (ten random players in a random season).",
+      "**Play what you want:** What If and Fun runs are normal difficulty and just for fun, so they never count for records, leaderboards or rewards. Your best with each What If is still saved.",
+      "**One-season leagues:** when you play a single year, every game is against that season's real teams: its two best are the bosses and the Finals are against that year's champion.",
+    ],
+  },
+  {
+    id: '2027-04-07',
+    title: 'CourtChat: your players have opinions (and so do you)',
+    items: [
+      "**Post as the GM:** hype the team, praise a player, call one out or trash-talk a rival (three posts between games). Players answer in character: praise lifts morale (star egos love it), call-outs sting hotheads and fire up competitors, for 15 games. Rivals clap back and fans chime in.",
+      "**Fan approval:** a meter of what your fans think of you, from your record and how your posts land.",
+      "**Way more to read:** 45-point nights and quadruple-doubles, playoff series wins and eliminations, champions, award winners, rookies on draft night, free-agent signings, cryptic trade-request posts, retirements, pre-game trash talk before rivalry games, fan accounts and the Court Insider breaking injuries, rumors and trade requests. Now over 2,800 different posts.",
+      "**Feed tools:** Trending hashtags, Post of the Week, follow and mute players, search, verified stars, copy a post, filters for big moments and GM posts.",
+      "**Everywhere:** a CourtChat card on your dashboard, a badge on the menu for games you haven't caught up on, and each player's latest posts on his profile.",
+      "**CourtChat (Franchise, under League / Home):** the league's own social feed. After every game players post in their own voice: Leaders lift the team, Hotheads roast, Star Egos brag, Mercenaries talk money, Competitors are never satisfied, Loyal players love their city.",
+      "**Roasts and clapbacks:** shoot 4-for-17 and someone on the other team will let you know. Sometimes the roasted player fires back, and teammates hype each other's big nights.",
+      "**Over 2,000 different posts:** wins, blowouts, bad shooting nights, win and losing streaks, injuries, trades and rivalry games. Filter by your team, roasts or big nights.",
+    ],
+  },
+  {
+    id: '2027-03-31',
+    title: 'Relic slots, pity, Year Two and a phone you can arrange',
+    items: [
+      "**Relic slots:** only the relics in your slots add luck. Ten to start, five more in the shop (1,000 to 8,000 coins). New relics drop into a free slot by themselves.",
+      "**No one gets left out:** an Epic is guaranteed within 10 spins, a Legendary within 50 and a Mythic within 200, with counters in the vault. Every 10th Lucky Spin lands Legendary or better.",
+      "**Coins from playing:** every finished run pays coins (more when it earns spins), plus 25 coins a day for visiting. Each end screen shows what you earned, with a button to the vault.",
+      "**Relic sets, Spin 10, coin history and big reveals:** seven themed sets give bonus luck; open ten spins at once; a log shows where your coins went; Legendary, Mythic and secret pulls get a full-screen moment you can share.",
+      "**Secret relic hints:** every hidden relic has a riddle, and five answer to a feat (a Legend Hunt win, 15 Survival wins, the legend Story ending, a first-ballot Career, an 82-0 season).",
+      "**Luck you can see:** your relic luck shows on the spin screens, and a League Hunt reel that luck upgraded says LUCKY. Luck can even open the Hunt's secret door after one lost series.",
+      "**Story Mode, Chapter 6: Year Two** (after any ending), **Survival emergency signings** with run cash, an **82-0 weekly era rule** (Legends Only, the 90s or the Modern Era), and a **relic case** on your Career player's page.",
+      "**Menu phone:** a third page (Settings, What's New, Achievements, Season Pass), red dots when something is new, and hold an app to rearrange them.",
+      "**New achievements and titles:** Collector, Set Builder, Mythic Hunter and Keeper of Secrets.",
+    ],
+  },
+  {
+    id: '2027-03-24',
+    title: 'Relics: your own collection, across every mode',
+    items: [
+      "**Relic Vault (main menu):** win runs and unlock achievements to earn Relic Spins. Each spin lands a relic: Common, Rare, Epic, Legendary or the 0.07% Mythic.",
+      "**59 relics, luck:** every relic you own adds 1-5% luck (up to +50%), making the best results likelier in League Hunt, the 82-0 Challenge, the Career wheel and the Survival deal. Dailies, Weeklies and duels ignore luck.",
+      "**Stacking relics:** ten relics stack: +1% for every copy, up to five copies (+5%).",
+      "**Coins and the shop:** a relic you already own pays coins, more for rarer relics. Spend them on a Relic Spin (200), a Lucky Spin (500: 2x luck, no Commons), three daily relics (from 750 coins for a Common, up with rarity), or upgrades (+50% luck for any relic that doesn't stack).",
+      "**Eight secret relics:** hidden behind a tiny chance on any spin, each a permanent ability: an extra Career respin, an extra Hunt life, an extra Survival Shield, an extra 82-0 reroll and more.",
+    ],
+  },
+  {
+    id: '2027-03-17',
+    title: 'Two new game modes: Survival and Story Mode',
+    items: [
+      "**Survival (new mode):** start with ten all-time greats. Beat a real team from history and they claim one of your best; sign one of theirs. Tougher teams every round, a real champion every fifth (beat it for a Shield). One loss and it's over. Daily Survival, three difficulties, share card.",
+      "**Story Mode (new mode):** Street to the League. From a park with no nets to your NBA rookie season in five chapters: choices that matter, key games played on the real engine with you on the floor, your best friend Dre, Coach Ray, your rival Marcus \"Ice\" Vance, and four endings.",
+      "**Time Machine (Franchise):** take any real team (the '96 Bulls, the '16 Warriors, the '67 76ers) to any season in NBA history and run it there, against that year's real league.",
+      "**Hands-off Franchise:** one switch in the Play menu handles everything for you: All-Star Weekend, Deadline Day, press conferences, injury calls, staff calls, locker-room moments, the Year in Review and the owner's verdict. Auto Play now works from any point of the season, playoffs and offseason included.",
+      "**Owner's demands:** losing? The owner sets a short ultimatum (win 6 of the next 10). Meet it and your job is safer; miss it and you're on the hot seat.",
+      "**League Hunt:** win a hunt without losing a series and a secret 11th series opens, against the greatest team ever assembled.",
+      "**82-0 Challenge:** a trade window at the All-Star break, and injuries (about one a season) to play through.",
+      "**Career Mode:** your draft-class rival, a comeback story after a long injury, and a signature move when a superstar trait reaches full power.",
+      "**Daily Grid:** themed weeks (Awards Week, Draft Week, Ring Week...) and grid codes: send a friend your endless grid and compare scores.",
+      "**New achievements and titles:** Category King, Last One Standing, Street Legend and more.",
+    ],
+  },
+  {
+    id: '2027-03-10',
+    title: 'Balance update: superstar traits, season goals and closer games',
+    items: [
+      "**Athleticism:** a career player past 99 tires slower, needs fewer breaks and gets hurt less. At 110 he plays the whole game, close to 48 minutes.",
+      "**Body:** he owns the paint. More of his shots come at the rim and he finishes them at a much higher rate, with fewer injuries.",
+      "**Height:** every inch past 7'0\" means more rebounds and blocks. A 7'8\" giant grabs about 7 more boards and 3 more blocks than a 6'8\" big.",
+      "**IQ & Clutch:** he runs the offense. The ball finds him, he sets teammates up (about 8 more assists at 110), takes better shots, and everyone shoots better with him on the floor. That means more wins and more titles.",
+      "**Balance:** even a maxed-out legend has limits. No more 40 rebounds or 85% shooting: he tops out around Wilt's numbers.",
+      "**Closer games everywhere:** big leads shrink now (the trailing team plays with urgency, the leader eases off), so far fewer 30-point blowouts. Every team's best players play more (about 36 minutes) and stars get the ball back more often.",
+      "**Superstar traits:** your career player's Ratings tab shows Iron Man, Paint Beast, Skyscraper and Floor General: what each one does now, and how far you are from full power at 110.",
+      "**Season goals:** three goals every season, set from your last one (score more, make the All-Star team, win MVP...). See how you did after the season, and your career total on the Career stats tab.",
+      "**League ranks:** the season recap shows where you finished in the league in points, rebounds, assists, steals and blocks.",
+      "**Career highs:** your best single games and your double- and triple-double counts.",
+      "**All-time ranks:** where your career totals rank against every NBA player since 1946, and how many points you need to pass the next legend.",
+      "**82-0 Challenge:** Category Draft now lives inside the 82-0 Challenge (Category Roll and Slot Spin), not as its own card on the menu.",
+    ],
+  },
+  {
     id: '2027-03-03',
     title: 'The Category update: Daily Grid, Draft Battle and 180 categories',
     items: [

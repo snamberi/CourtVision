@@ -17,10 +17,11 @@ export const FIRST_GRID_DAY = '2026-10-08';
 
 export interface Grid { key: string; rows: CategoryInfo[]; cols: CategoryInfo[] }
 /** A grid in play: who went in each square (player id, '' while empty) and the guesses used. */
-export interface GridPlay { cells: string[]; used: number }
+export interface GridPlay { cells: string[]; used: number; /** Guesses allowed (The Last Look relic adds one on Endless grids); absent = GRID_GUESSES. */ max?: number }
 
-export const emptyPlay = (): GridPlay => ({ cells: Array(GRID_SIZE * GRID_SIZE).fill(''), used: 0 });
-export const isGridDone = (p: GridPlay | undefined) => !!p && (p.used >= GRID_GUESSES || p.cells.every(Boolean));
+export const emptyPlay = (max?: number): GridPlay => ({ cells: Array(GRID_SIZE * GRID_SIZE).fill(''), used: 0, ...(max && max !== GRID_GUESSES ? { max } : {}) });
+export const guessesAllowed = (p: GridPlay) => p.max ?? GRID_GUESSES;
+export const isGridDone = (p: GridPlay | undefined) => !!p && (p.used >= guessesAllowed(p) || p.cells.every(Boolean));
 export const gridNumber = (day: string) => Math.floor((Date.parse(`${day}T00:00:00Z`) - Date.parse(`${FIRST_GRID_DAY}T00:00:00Z`)) / 86_400_000) + 1;
 
 /** Categories that make good columns: about the player, not a team, and not trivially tied to one. */
@@ -44,17 +45,24 @@ export function answers(row: CategoryInfo, col: CategoryInfo): string[] {
 
 function hash(s: string): number { let h = 2166136261; for (const ch of s) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
 
-/** A grid from a seed: three teams, three columns from different groups, every square with enough answers. */
-export function makeGrid(h: NbaHistory, seedKey: string): Grid {
+/** A grid from a seed: three teams, three columns from different groups, every square with enough answers.
+ *  `theme` makes one of the columns come from that group (themed weeks). */
+export function makeGrid(h: NbaHistory, seedKey: string, theme?: string): Grid {
   const all = categories(h);
   const teams = all.filter(c => c.group === 'Teams');
   const cols = all.filter(c => COL_GROUPS.has(c.group) && c.size >= 40);
+  const themed = theme ? cols.filter(c => c.group === theme) : [];
   const rng = new RNG(hash(`cv-grid|${seedKey}`));
   const pick = <T,>(list: T[]) => list[rng.nextInt(list.length)];
   for (let attempt = 0; attempt < 400; attempt++) {
     const rows: CategoryInfo[] = [];
     while (rows.length < GRID_SIZE) { const t = pick(teams); if (!rows.includes(t)) rows.push(t); }
     const chosen: CategoryInfo[] = [];
+    // The week's theme takes the first column (when it fits these rows).
+    if (themed.length && attempt < 300) {
+      const t = pick(themed);
+      if (rows.every(r => answers(r, t).length >= MIN_ANSWERS)) chosen.push(t); else continue;
+    }
     for (let tries = 0; chosen.length < GRID_SIZE && tries < 60; tries++) {
       const c = pick(cols);
       if (chosen.some(x => x.id === c.id || x.group === c.group)) continue;
@@ -67,7 +75,33 @@ export function makeGrid(h: NbaHistory, seedKey: string): Grid {
   return { key: seedKey, rows, cols: [...cols].sort((a, b) => b.size - a.size).filter((c, i, l) => l.findIndex(x => x.group === c.group) === i).slice(0, GRID_SIZE) };
 }
 
-export const dailyGrid = (h: NbaHistory, day: string) => makeGrid(h, `day|${day}`);
+export const dailyGrid = (h: NbaHistory, day: string) => makeGrid(h, `day|${day}`, gridTheme(day)?.group);
+
+/** Themed weeks (from THEMES_FROM): every daily grid that week has one column from the week's group. */
+export const THEMES_FROM = '2026-10-19';
+export const GRID_THEMES: { group: string; name: string; blurb: string }[] = [
+  { group: 'Awards', name: 'Awards Week', blurb: 'MVPs, DPOYs, All-Stars: one column is always an award.' },
+  { group: 'Draft', name: 'Draft Week', blurb: 'No. 1 picks, lottery picks, steals: one column is always about the draft.' },
+  { group: 'Stats', name: 'Stat Week', blurb: 'Scoring titles and big numbers: one column is always a stat.' },
+  { group: 'Eras', name: 'Decades Week', blurb: 'One column is always a decade.' },
+  { group: 'Titles', name: 'Ring Week', blurb: 'One column is always about championships.' },
+  { group: 'Body', name: 'Measurements Week', blurb: 'Seven-footers, small guards: one column is always about size.' },
+];
+/** The week's theme (ISO weeks from Monday), or null before themes began. */
+export function gridTheme(day: string): (typeof GRID_THEMES)[number] | null {
+  if (day < THEMES_FROM) return null;
+  const weeks = Math.floor((Date.parse(`${day}T00:00:00Z`) - Date.parse(`${THEMES_FROM}T00:00:00Z`)) / (7 * 86_400_000));
+  return GRID_THEMES[((weeks % GRID_THEMES.length) + GRID_THEMES.length) % GRID_THEMES.length];
+}
+
+/** Grid codes: six characters that rebuild the same endless grid on a friend's device. */
+const CODE_CHARS = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+export function newGridCode(rand: () => number = Math.random): string {
+  return Array.from({ length: 6 }, () => CODE_CHARS[Math.floor(rand() * CODE_CHARS.length)]).join('');
+}
+export const cleanGridCode = (raw: string) => raw.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0, 6);
+export const isGridCode = (code: string) => code.length === 6 && [...code].every(ch => CODE_CHARS.includes(ch));
+export const codeGrid = (h: NbaHistory, code: string) => makeGrid(h, `code|${code}`);
 
 /** How well-known a player is: his best card and his All-Star seasons (from the cards). */
 function fameMap(h: NbaHistory): Map<string, number> {
@@ -98,7 +132,7 @@ export function guessCell(grid: Grid, play: GridPlay, i: number, playerId: strin
   if (isGridDone(play) || play.cells[i]) return { play, right: false };
   const row = grid.rows[Math.floor(i / GRID_SIZE)], col = grid.cols[i % GRID_SIZE];
   const right = !play.cells.includes(playerId) && playersOf(row).has(playerId) && playersOf(col).has(playerId);
-  return { play: { cells: right ? play.cells.map((x, j) => (j === i ? playerId : x)) : play.cells, used: play.used + 1 }, right };
+  return { play: { ...play, cells: right ? play.cells.map((x, j) => (j === i ? playerId : x)) : play.cells, used: play.used + 1 }, right };
 }
 
 /** The score: 100 for every filled square plus its rarity (a perfect, deep grid is near 1,800). */
@@ -119,7 +153,8 @@ export function gridShareText(day: string | null, h: NbaHistory, grid: Grid, pla
       return v >= 75 ? '🟪' : v >= 40 ? '🟦' : '🟩';
     }).join(''));
   }
-  return `Court Vision Grid${day ? ` #${gridNumber(day)}` : ''}: ${s.filled}/9 · ${s.score} points\n${lines.join('\n')}\n${site}/#/grid`;
+  const code = grid.key.startsWith('code|') ? grid.key.slice(5) : null;
+  return `Court Vision Grid${day ? ` #${gridNumber(day)}` : code ? ` code ${code}` : ''}: ${s.filled}/9 · ${s.score} points\n${lines.join('\n')}\n${code ? `Beat my score: enter code ${code} in Endless grids. ` : ''}${site}/#/grid`;
 }
 
 /** Players worth suggesting: everyone with a card, best known first when names tie. */

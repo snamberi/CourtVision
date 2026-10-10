@@ -215,11 +215,15 @@ export interface League {
   origin?: import('../retention/leagueCode').LeagueOrigin;
   /** Rebuild Challenge: the scenario this league is playing (see rebuildChallenge.ts). */
   rebuildChallenge?: import('./rebuildChallenge').RebuildChallengeConfig;
+  /** Time Machine: the real team-season that travelled into this league, and whose place it took. */
+  timeMachine?: import('../history/timeMachine').TimeMachineInfo;
   coachingVersion?: 1;
   coachingUserTeamId?: string | null;
   staffMarket?: CoachIdentity[];
   coachingSettings?: import('./coachingModel').CoachingSettings;
   newsArchive?: import('./news').NewsItem[];
+  /** CourtChat: what you posted as the GM (the players' posts are derived from the league; see social/courtChat.ts). */
+  courtChat?: import('../social/gmPosts').CourtChatState;
   rivalries?: Record<string, import('./rivalry').RivalryRecord>;
   /** Present when this league was started from real NBA history (see history/historicalLeague.ts). */
   /** Set on leagues made by the All-Time Draft. */

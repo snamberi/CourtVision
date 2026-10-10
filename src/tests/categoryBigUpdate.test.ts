@@ -136,3 +136,22 @@ describe('Custom categories', () => {
     expect(newPerfectRun(h, 'category', 9, undefined, { custom: 'nope+nada' }).custom).toBeUndefined();
   });
 });
+
+describe('Grid themes and codes', () => {
+  it('themed weeks put the week\'s group in a column; codes rebuild the same grid', async () => {
+    const { gridTheme, THEMES_FROM, codeGrid, newGridCode, cleanGridCode, isGridCode } = await import('../arcade/grid');
+    const h = await loadHistoryForTests();
+    expect(gridTheme('2026-10-12')).toBeNull();
+    const day = '2026-10-21';
+    expect(day >= THEMES_FROM).toBe(true);
+    const theme = gridTheme(day)!;
+    expect(dailyGrid(h, day).cols.some(c => c.group === theme.group)).toBe(true);
+    // A new theme each week.
+    expect(gridTheme('2026-10-28')!.name).not.toBe(theme.name);
+    const code = newGridCode(() => 0.37);
+    expect(isGridCode(code)).toBe(true);
+    expect(isGridCode(cleanGridCode(code.toLowerCase() + '!'))).toBe(true);
+    expect(codeGrid(h, code).cols.map(c => c.id)).toEqual(codeGrid(h, code).cols.map(c => c.id));
+    expect(gridShareText(null, h, codeGrid(h, code), emptyPlay(), 'https://x')).toContain(code);
+  });
+});

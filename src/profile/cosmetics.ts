@@ -267,6 +267,12 @@ export const MODE_TITLES: { mode: string; title: string; how: string }[] = [
   { mode: 'goals-streak', title: 'The Grinder', how: 'Daily goals seven days in a row' },
   { mode: 'perfect-82', title: 'Undefeated', how: 'Go 82-0 in the 82-0 Challenge' },
   { mode: 'perfect-98', title: 'Perfection', how: 'Go 82-0 and 16-0 in the 82-0 Challenge' },
+  { mode: 'cat-82x5', title: 'Category King', how: 'Go 82-0 with 5 different Category Roll categories' },
+  { mode: 'survival-15', title: 'Last One Standing', how: 'Win 15 rounds in one Survival run' },
+  { mode: 'story-legend', title: 'Street Legend', how: 'Reach "The Legend Begins" in Story Mode' },
+  { mode: 'relic-collector', title: 'Collector', how: 'Own every Common relic' },
+  { mode: 'relic-mythic', title: 'Mythic Hunter', how: 'Find a Mythic relic' },
+  { mode: 'relic-secrets', title: 'Keeper of Secrets', how: 'Uncover all eight secret relics' },
 ];
 
 export const HONORS_KEY = 'cv-board-honors';

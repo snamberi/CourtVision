@@ -21,12 +21,14 @@ export function updateFatigue(
   stamina: number, // 0-99 (or higher in sandbox)
   flags: AggregatedFlags,
   elapsedSeconds = 15,
+  /** Athleticism past 99 (superstar.ts): at 1 he barely tires. */
+  motor = 0,
 ): FatigueState {
   if (flags.infiniteStamina) return { level: 0 };
 
   const staminaFactor = Math.max(0.2, 1 - stamina / 130); // higher stamina => slower fatigue buildup
   if (onCourt) {
-    const gain = workload * 0.02 * (1 + staminaFactor) * elapsedSeconds / 15;
+    const gain = workload * 0.02 * (1 + staminaFactor) * elapsedSeconds / 15 * (1 - 0.8 * Math.min(1, motor));
     return { level: Math.min(1, state.level + gain) };
   }
   // recovery while on the bench

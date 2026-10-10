@@ -11,7 +11,7 @@ import { assignGMPersonalities } from './aiGM';
 import type { PlayerSeason } from './types';
 import { DEFAULT_GAME_SETTINGS } from './types';
 import { generatePlayerOrigin, type PlayerOrigin } from './names';
-import { pickArchetype } from './archetypes';
+import { archetypeByKey, pickArchetype } from './archetypes';
 import { compressElitePotential, syncPotential } from './engine/potential';
 import { calculateOverall } from './engine/overall';
 import { primaryPosition } from './teamStatus';
@@ -56,10 +56,11 @@ export function generatePlayer(
   age: number,
   archetypeSeed: number,
   rng: RNG,
-  opts: { caliber?: number; origin?: PlayerOrigin; prospect?: boolean } = {},
+  opts: { caliber?: number; origin?: PlayerOrigin; prospect?: boolean; /** Force a play style (an archetype key). */ archetype?: string } = {},
 ): PlayerSeason {
   const s = makeDefaultSeason(id, season, teamId, age);
-  const arch = pickArchetype(((archetypeSeed % 1000) / 1000 + rng.next()) % 1);
+  const roll = ((archetypeSeed % 1000) / 1000 + rng.next()) % 1;
+  const arch = (opts.archetype ? archetypeByKey(opts.archetype) : undefined) ?? pickArchetype(roll);
   const g = arch.groups;
 
   // Caliber is the player's general level before the archetype shapes it. Most of the league sits in

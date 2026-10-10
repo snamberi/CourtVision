@@ -183,16 +183,40 @@
 :root button.mode-card.mode-soon :is(h3, p, .mode-card-kicker) { color: var(--look-muted); }
 :root button.mode-card.mode-soon .pixel-icon { color: var(--look-muted); }
 
-/* The menu phone: floats in the bottom-left corner when there is room beside the menu, otherwise it lies in the
-   page as a landscape phone with the four apps in a row. */
-.menu-phone { align-self: flex-start; }
+/* The menu phone: floats in the bottom-left corner when there is room beside the menu, otherwise it sits in the
+   page. Apps come six to a page (two columns, three rows) on a pager you swipe sideways. */
+.menu-phone { align-self: flex-start; width: 196px; max-width: 100%; }
 .menu-phone-body { position: relative; display: grid; gap: 8px; padding: 8px 10px 10px; background: var(--phone-body, var(--look-raised)); color: var(--phone-text, var(--look-text)); border: 3px solid var(--phone-edge, var(--look-edge)); border-radius: 14px; box-shadow: var(--look-shadow), inset 0 0 0 2px var(--phone-inner, var(--look-page)); }
 .menu-phone-status { display: flex; align-items: center; justify-content: space-between; gap: 6px; font: 700 9px/1 var(--look-body); color: var(--phone-muted, var(--look-muted)); }
 .menu-phone-notch { width: 26px; height: 6px; background-color: var(--look-page); border-radius: 3px; }
 .menu-phone-icons { display: inline-flex; align-items: center; gap: 3px; }
 .menu-phone-icons .sig { width: 9px; height: 7px; background: linear-gradient(90deg, currentColor 2px, transparent 2px 3px, currentColor 3px 5px, transparent 5px 6px, currentColor 6px); clip-path: polygon(0 100%, 100% 0, 100% 100%); }
 .menu-phone-icons .bat { width: 13px; height: 7px; border: 1px solid currentColor; border-radius: 1px; background: linear-gradient(90deg, var(--look-accent) 70%, transparent 70%); }
-.menu-phone-apps { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 6px; }
+.menu-phone-pages { display: flex; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; touch-action: pan-x pan-y; cursor: grab; }
+.menu-phone-pages::-webkit-scrollbar { display: none; }
+.menu-phone-apps { flex: 0 0 100%; box-sizing: border-box; scroll-snap-align: start; display: grid; grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(3, auto); align-content: start; gap: 10px 6px; padding: 4px 0; }
+.menu-phone-dots { display: flex; justify-content: center; gap: 6px; }
+.menu-phone-dots button { width: 7px; height: 7px; min-height: 0; padding: 0; border-radius: 50%; border: 0; box-shadow: none; background-color: var(--phone-muted, var(--look-muted)); opacity: .45; cursor: pointer; }
+.menu-phone-dots button.on { opacity: 1; background-color: var(--look-accent); }
+.menu-phone-dots button:focus-visible { outline: 2px solid var(--look-accent); outline-offset: 2px; }
+.app-tile.relics { color: var(--c-fg-ffd166, #ffd166); }
+.app-tile.news, .app-tile.pass { color: var(--look-secondary); }
+.app-tile.achievements { color: var(--look-accent); }
+.app-dot { position: absolute; top: 2px; left: 2px; width: 8px; height: 8px; border-radius: 50%; background-color: var(--c-bg-e85d5d, #e85d5d); box-shadow: 0 0 0 2px var(--phone-tile, var(--look-panel)); }
+.menu-phone-slot { display: grid; min-width: 0; }
+.menu-phone.editing .menu-phone-slot .app-tile { animation: phone-wiggle 260ms steps(2) infinite alternate; }
+.menu-phone.editing .menu-phone-slot:nth-child(2n) .app-tile { animation-delay: -130ms; }
+.menu-phone-slot.picked .app-tile { outline: 2px solid var(--look-accent); outline-offset: 2px; animation: none !important; }
+@keyframes phone-wiggle { from { transform: rotate(-3deg); } to { transform: rotate(3deg); } }
+.menu-phone-edit { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.menu-phone-edit small { font: 600 9px/1.2 var(--look-body); color: var(--phone-muted, var(--look-muted)); }
+.menu-phone-edit button { min-height: 0; padding: 3px 8px; font-size: 11px; }
+.menu-phone .menu-phone-arrange { justify-self: center; min-height: 0; padding: 0; font: 600 9px/1.2 var(--look-body); text-decoration: none; color: var(--phone-muted, var(--look-muted)); background: none; border: 0; box-shadow: none; }
+.menu-phone .menu-phone-arrange:hover, .menu-phone .menu-phone-arrange:focus-visible { color: var(--look-text); text-decoration: underline; }
+.menu-phone-pages.hint > .menu-phone-apps:first-child { animation: phone-nudge 900ms ease-in-out 900ms 2; }
+@keyframes phone-nudge { 0%, 100% { transform: translateX(0); } 45% { transform: translateX(-26px); } }
+.app-tile.shop { color: var(--look-accent); }
+.app-tile em.app-badge { top: 1px; right: 1px; bottom: auto; background-color: var(--look-accent); color: var(--look-on-accent); }
 .menu-phone-app { display: grid; justify-items: center; gap: 3px; min-width: 0; padding: 2px; background: transparent; border: 0; box-shadow: none; color: var(--phone-text, var(--look-text)); cursor: pointer; }
 .menu-phone-app small { font: 600 9px/1.2 var(--look-body); color: var(--phone-muted, var(--look-muted)); white-space: nowrap; }
 .menu-phone-app:hover small, .menu-phone-app:focus-visible small { color: var(--look-text); }
@@ -213,24 +237,15 @@ a.menu-phone-app { text-decoration: none; }
 @media (min-width: 1720px) {
   .menu-phone { position: fixed; left: 16px; bottom: 16px; z-index: 40; width: 204px; }
   .menu-phone-body { gap: 10px; padding: 10px 12px 12px; border-radius: 16px; }
-  .menu-phone-apps { grid-template-columns: repeat(3, 1fr); gap: 10px 6px; }
   .menu-phone .app-tile { width: 46px; height: 46px; border-radius: 12px; }
   .menu-phone-app small { font-size: 10px; }
   /* Level-up and streak notes sit beside the phone. */
   .main-menu .level-up.level-up-corner { left: 236px; }
 }
-@media (max-width: 1719px) {
-  .menu-phone-body { grid-template-columns: auto 1fr; align-items: center; padding: 8px 12px; border-radius: 12px; }
-  .menu-phone-status { flex-direction: column; justify-content: center; gap: 5px; padding-right: 10px; border-right: 1px solid var(--look-line); }
-  .menu-phone-notch { width: 6px; height: 20px; }
-  .menu-phone-apps { grid-template-columns: repeat(6, auto); gap: 4px 14px; }
-  .menu-phone-home { display: none; }
-}
-@media (max-width: 540px) {
-  .menu-phone { align-self: stretch; }
-  .menu-phone-apps { grid-template-columns: repeat(3, 1fr); justify-content: space-between; gap: 6px 8px; }
-}
-@media (prefers-reduced-motion: reduce) { .app-tile { transition: none; } .menu-phone-app:hover .app-tile { transform: none; } }
+/* Below the floating size the phone sits in the hero, beside the scene; on narrow screens, under it. */
+@media (min-width: 761px) and (max-width: 1719px) { :root .menu-hero:has(> .menu-phone) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; } }
+@media (max-width: 760px) { .menu-hero > .menu-phone { justify-self: center; } }
+@media (prefers-reduced-motion: reduce) { .app-tile { transition: none; } .menu-phone-app:hover .app-tile { transform: none; } .menu-phone-pages { scroll-behavior: auto; } .menu-phone.editing .menu-phone-slot .app-tile, .menu-phone-pages.hint > .menu-phone-apps:first-child { animation: none; } }
 
 /* Phone looks (Level Road and Trophy Road rewards; the picker is in the Profile). Each sets the phone's own colours. */
 .phone-skin-courtside { --phone-body: linear-gradient(90deg, #e8762b 0 7%, #241812 7% 9%, #e8762b 9% 91%, #241812 91% 93%, #e8762b 93%); --phone-edge: #241812; --phone-inner: #9c4413; --phone-text: #fff6ea; --phone-muted: #ffe2c4; --phone-tile: #b8561c; --phone-tile-edge: #241812; --phone-accent: #241812; --phone-on-accent: #ffb070; }

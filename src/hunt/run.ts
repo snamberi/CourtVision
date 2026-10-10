@@ -12,6 +12,7 @@ import { chemistry, chemistryBonus, type ChemistryBond } from './chemistry';
 import { ITEMS, ITEM_IDS, MAX_ITEMS, type ItemId } from './items';
 import { BOOST_IDS, type BoostId } from './boosts';
 import { BUFFS, BUFF_IDS, type BuffId } from './buffs';
+import { luckMultiplier } from '../relics/relics';
 import { COACHES, COACH_BY_ID, coachRarity, type HuntCoach } from './coaches';
 import { addBox, addHighs, type RunLine, type GameHighs } from './statLines';
 import { STANDARD_VIEW, type RunView } from '../retention/challenge';
@@ -64,7 +65,9 @@ export const FOCUS_IDS = Object.keys(FOCUS) as Focus[];
 
 export type HuntStage = 'draft' | 'focus' | 'shop' | 'series' | 'boost' | 'won' | 'lost';
 export type SeriesKind = 'normal' | 'semi' | 'boss';
-export interface HuntSeries { teamId: string; eraId: string; kind: SeriesKind; buffs: BuffId[]; /** A flat bonus for all their players (the semi-boss and boss reach their rating). */ lift: number }
+export interface HuntSeries { teamId: string; eraId: string; kind: SeriesKind; buffs: BuffId[]; /** A flat bonus for all their players (the semi-boss and boss reach their rating). */ lift: number;
+  /** The secret 11th series: the greatest team ever, only for a hunt won without losing a series. */
+  secret?: boolean }
 export interface SeriesGame { us: number; them: number; won: boolean; top: string }
 export interface SeriesResult { index: number; teamId: string; games: SeriesGame[]; won: boolean; coins: number }
 export interface HuntShop { cards: { id: string; slot: number }[]; coach?: string; items: ItemId[]; sold: string[]; lifeBought?: boolean }
@@ -81,6 +84,8 @@ export interface HuntRun {
   offer: string[];
   /** The frozen reels waiting for you to lock one (null while everything spins). */
   reels?: Partial<Record<SpinKind, string>> | null;
+  /** Reels whose rarity relic luck bumped up on the last stop (the "lucky" sparkle). */
+  luckyReels?: SpinKind[];
   /** Which rounds are guaranteed a Star and a Great on the reels. */
   guarantees: { star: number; great: number };
   lives: number;
@@ -107,6 +112,10 @@ export interface HuntRun {
   lines?: Record<string, RunLine>;
   /** The best single games of the run (the record book). */
   highs?: GameHighs;
+  /** Relic luck when the hunt began (relics.ts). */
+  luck?: number;
+  /** Beat the secret 11th series. */
+  immortal?: boolean;
   /** A same-spin duel: the challenger's code (retention/duel.ts), compared at the end. */
   duel?: string;
   /** How the spins are shown (retention/challenge.ts); absent = ratings hidden until you lock, colours on. */
@@ -180,7 +189,7 @@ export const opponentRating = (h: NbaHistory, run: HuntRun, s: HuntSeries) => ro
 
 // ---------------------------------------------------------------- a new run
 
-export interface NewRunOptions { deck?: DeckId; difficulty?: Difficulty; daily?: string; weekly?: string; /** Your favourite player (Profile); ignored in the Daily Legend. */ fav?: string; /** Ratings / rarity colours on the spins (the Daily and the Weekly Hunt always use the standard view). */ view?: RunView }
+export interface NewRunOptions { /** Relic luck (0-0.3) and secret relics; ignored by the Daily and the Weekly Hunt. */ luck?: number; secondWind?: boolean; goldenTouch?: boolean; deck?: DeckId; difficulty?: Difficulty; daily?: string; weekly?: string; /** Your favourite player (Profile); ignored in the Daily Legend. */ fav?: string; /** Ratings / rarity colours on the spins (the Daily and the Weekly Hunt always use the standard view). */ view?: RunView }
 
 function pickTeam(h: NbaHistory, teams: HuntTeam[], era: HuntEra, target: number, rng: RNG, used: Set<string>): HuntTeam {
   const free = teams.filter(t => !used.has(t.id));
@@ -194,6 +203,8 @@ function pickTeam(h: NbaHistory, teams: HuntTeam[], era: HuntEra, target: number
 /** A new run: the spins, then ten series (the fifth a semi-boss, the tenth the boss). */
 export function newRun(h: NbaHistory, seed: number, opts: NewRunOptions = {}): HuntRun {
   const deck = DECKS[opts.deck ?? 'classic'], diff = DIFFICULTIES[opts.difficulty ?? 'pro'];
+  // Shared-seed hunts (the Daily and the Weekly) are the same for everyone: no relics.
+  const shared = !!opts.daily || !!opts.weekly;
   const rng = new RNG(seed);
   const teams = huntTeams(h);
   const used = new Set<string>();
@@ -218,7 +229,7 @@ export function newRun(h: NbaHistory, seed: number, opts: NewRunOptions = {}): H
   }
   series.push({ teamId: bossTeam.id, eraId: eraOf(bossTeam.end).id, kind: 'boss', buffs: buffPool(3), lift: 0 });
   let run: HuntRun = { version: 3, seed, stage: 'draft', squad: SLOTS.map(() => ''), spin: 0, offer: [], reels: null, guarantees: { star: 0, great: 1 },
-    lives: diff.lives, coins: START_COINS + diff.coinShift + deck.coins, items: [...deck.items], boosts: [], growth: { star: 0, sixth: 0, chemistry: 0, coach: 0 }, training: {},
+    lives: diff.lives + (shared ? 0 : opts.secondWind ? 1 : 0), coins: START_COINS + diff.coinShift + deck.coins + (shared ? 0 : opts.goldenTouch ? 30 : 0), ...(!shared && opts.luck ? { luck: opts.luck } : {}), items: [...deck.items], boosts: [], growth: { star: 0, sixth: 0, chemistry: 0, coach: 0 }, training: {},
     series, seriesIndex: 0, attempts: 0, results: [], deck: deck.id, difficulty: diff.id, ...(opts.daily ? { daily: opts.daily } : opts.weekly ? { weekly: opts.weekly } : opts.fav ? { fav: opts.fav } : {}),
     ...(!opts.daily && !opts.weekly && opts.view && (opts.view.numbers !== STANDARD_VIEW.numbers || opts.view.colors !== STANDARD_VIEW.colors) ? { view: opts.view } : {}) };
   // Lift every team that falls short of its series' rating (buffs count, so the lift is what is left).
@@ -245,9 +256,11 @@ export const SQUAD_EDGE = 3;
 const fitsSlot = (c: HuntCard, s: SpinKind) => s === '6TH' || c.pos === s || (c.pos === 'G' && (s === 'PG' || s === 'SG')) || (c.pos === 'F' && (s === 'SF' || s === 'PF'));
 
 /** Rarity odds for spin `i`: every spin is a little poorer than the one before. */
-export function spinWeights(i: number): Record<Rarity, number> {
-  // Seven points more on the good cards than before (Star +1, Great +2, Good +4), every round.
-  const legendary = Math.max(0.2, 1.5 - 0.2 * i) + 1, epic = Math.max(1.5, 6 - 0.8 * i) + 2, rare = Math.max(10, 20 - 1.8 * i) + 4;
+export function spinWeights(i: number, luck = 0): Record<Rarity, number> {
+  // Seven points more on the good cards than before (Star +1, Great +2, Good +4), every round. Relic luck (relics.ts)
+  // makes Stars and Greats that much more likely.
+  const lucky = luckMultiplier(luck);
+  const legendary = (Math.max(0.2, 1.5 - 0.2 * i) + 1) * lucky, epic = (Math.max(1.5, 6 - 0.8 * i) + 2) * lucky, rare = Math.max(10, 20 - 1.8 * i) + 4;
   return { legendary, epic, rare, common: Math.max(10, 100 - legendary - epic - rare) };
 }
 
@@ -314,8 +327,12 @@ export function stopReels(h: NbaHistory, run: HuntRun, cat: CategoryInfo | null 
   const open = openSpins(run);
   const round = run.spin;
   const rng = new RNG(run.seed * 31 + round * 7717 + 3);
-  const weights = spinWeights(round);
-  const pick = () => ORDER[rng.weightedPick(ORDER.map(r => weights[r]))];
+  const weights = spinWeights(round, run.luck), plain = spinWeights(round);
+  // The same draw as rng.weightedPick; also notes when relic luck turned it into a better rarity than it would have been.
+  const at = (w: Record<Rarity, number>, u: number) => { const list = ORDER.map(r => Math.max(0, w[r])); let x = u * list.reduce((a, b) => a + b, 0); for (let i = 0; i < list.length; i++) { x -= list[i]; if (x <= 0) return i; } return list.length - 1; };
+  const luckyReels: SpinKind[] = [];
+  let reelNow: SpinKind | null = null;
+  const pick = () => { const u = rng.next(), i = at(weights, u); if (run.luck && i > at(plain, u) && reelNow && !luckyReels.includes(reelNow)) luckyReels.push(reelNow); return ORDER[i]; };
   const deck = DECKS[run.deck ?? 'classic'];
   const pool = cardPool(h);
   const locked = run.squad.filter(Boolean);
@@ -327,6 +344,7 @@ export function stopReels(h: NbaHistory, run: HuntRun, cat: CategoryInfo | null 
   const mateAt = deck.id === 'dynasty' && locked.length && playerReels.length ? playerReels[rng.nextInt(playerReels.length)] : null;
   const reels: Partial<Record<SpinKind, string>> = {};
   for (const k of open) {
+    reelNow = k;
     if (k === 'COACH') {
       for (let tries = 0; !reels.COACH && tries < 50; tries++) {
         const list = COACHES.filter(x => coachRarity(x) === pick());
@@ -353,7 +371,7 @@ export function stopReels(h: NbaHistory, run: HuntRun, cat: CategoryInfo | null 
     }
     if (id) { reels[k] = id; taken.add(pool.byId.get(id)!.playerId); }
   }
-  return { ...run, reels };
+  return { ...run, reels, luckyReels: luckyReels.filter(k => reels[k]) };
 }
 
 /** Locks one frozen reel; the others spin again. Once every slot is locked, on to training camp. */
@@ -570,14 +588,36 @@ export function playSeries(h: NbaHistory, run: HuntRun): { run: HuntRun; play: S
   const next: HuntRun = { ...run, results, lines, highs, coins: run.coins + coins, note: undefined };
   if (won) {
     const growth = run.focus ? { ...run.growth, [run.focus]: run.growth[run.focus] + 1 } : run.growth;
-    if (s.kind === 'boss') return { run: { ...next, growth, stage: 'won' }, play };
+    if (s.secret) return { run: { ...next, growth, stage: 'won', immortal: true, note: 'You beat the greatest team ever assembled. Nobody will believe you.' }, play };
+    if (s.kind === 'boss') {
+      // A flawless hunt (no series lost) opens the secret door: one more series, against the Immortals.
+      const flawless = results.every(r => r.won);
+      // Relic luck (never in a Daily or Weekly, which carry no luck): one lost series can still find the door, at a luck-sized chance.
+      const luckyDoor = !flawless && results.filter(r => !r.won).length === 1 && !!run.luck && new RNG(run.seed * 13 + 777).next() < run.luck;
+      const secret = (flawless || luckyDoor) && !run.series.some(x => x.secret) ? secretSeries(h, run) : null;
+      if (secret) return { run: { ...next, growth, series: [...run.series, secret], seriesIndex: run.seriesIndex + 1, attempts: 0, stage: 'series', note: flawless
+        ? 'A flawless hunt. A door you didn\'t know about opens: one more series, against the greatest team ever assembled. Win or lose, your hunt is already won.'
+        : 'Your relics found a door you didn\'t know about: one more series, against the greatest team ever assembled. Win or lose, your hunt is already won.' }, play };
+      return { run: { ...next, growth, stage: 'won' }, play };
+    }
     // With the boost slots full, the road goes straight on.
     if (run.boosts.length >= MAX_BOOSTS) return { run: advance(h, { ...next, growth }), play };
     return { run: { ...next, growth, stage: 'boost', attempts: 0, boostOffer: boostOffer(run) }, play };
   }
+  // The secret series is a bonus: losing it ends the hunt as a win.
+  if (s.secret) return { run: { ...next, stage: 'won', note: 'The Immortals were too much. Your hunt still counts as won.' }, play };
   if (run.items.includes('insurance')) return { run: { ...next, items: run.items.filter(i => i !== 'insurance'), attempts: run.attempts + 1, note: 'Injury Insurance paid out: no life lost.' }, play };
   if (run.lives - 1 <= 0) return { run: { ...next, lives: 0, stage: 'lost' }, play };
   return { run: { ...next, lives: run.lives - 1, attempts: run.attempts + 1 }, play };
+}
+
+/** The secret series: the strongest champion in history not already faced, lifted past the boss. */
+export function secretSeries(h: NbaHistory, run: HuntRun): HuntSeries {
+  const faced = new Set(run.series.map(x => x.teamId));
+  const team = huntTeams(h).filter(t => t.champion && !faced.has(t.id)).sort((a, b) => teamBaseRating(h, b) - teamBaseRating(h, a))[0];
+  const diff = DIFFICULTIES[run.difficulty ?? 'pro'];
+  const base: HuntSeries = { teamId: team.id, eraId: eraOf(team.end).id, kind: 'boss', buffs: [...BUFF_IDS].slice(0, 3), lift: 0, secret: true };
+  return { ...base, lift: bonusToReach(h, theirStaticOvrs(h, run, base, 0), diff.bossRating + 3, true) + ENEMY_EDGE };
 }
 
 // ---------------------------------------------------------------- boosts and the shop

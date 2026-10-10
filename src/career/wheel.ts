@@ -1,3 +1,4 @@
+import { luckMultiplier } from '../relics/relics';
 import type { NbaHistory } from '../history/nbaHistoryData';
 import type { PlayerSeason } from '../simulation/types';
 import { RNG } from '../simulation/engine/rng';
@@ -54,9 +55,12 @@ export interface WheelState {
   /** Your favourite player (Profile): when a spin lands on his rarity, FAV_BOOST more chance it is him, until he comes up once. */
   fav?: string;
   favLanded?: boolean;
+  /** Relic luck (relics.ts): Stars and Greats come up that much more often on ordinary spins. */
+  relicLuck?: number;
 }
 
-export const newWheel = (seed: number, fav?: string): WheelState => ({ seed, spinCount: 0, current: null, takenFrom: [], picks: {}, moves: { left: true, right: true }, respins: RESPINS, triple: true, lucky: LUCKY_SPINS, ...(fav ? { fav } : {}) });
+export const newWheel = (seed: number, fav?: string, relics?: { luck?: number; eternalSpin?: boolean }): WheelState => ({ seed, spinCount: 0, current: null, takenFrom: [], picks: {}, moves: { left: true, right: true },
+  respins: RESPINS + (relics?.eternalSpin ? 1 : 0), triple: true, lucky: LUCKY_SPINS, ...(fav ? { fav } : {}), ...(relics?.luck ? { relicLuck: Math.round(relics.luck * 100) / 100 } : {}) });
 export const luckyLeft = (s: WheelState) => s.lucky ?? LUCKY_SPINS;
 export const boostLeft = (s: WheelState) => s.boost ?? PRIME_BOOSTS;
 
@@ -264,7 +268,7 @@ function noteFav(h: NbaHistory, s: WheelState): WheelState {
 
 function makeWheels(h: NbaHistory, s: WheelState, count: number, lucky = false): Wheel[] {
   const rng = new RNG(s.seed * 7919 + s.spinCount * 104_729 + 17);
-  const luck = lucky ? LUCK : 1;
+  const luck = lucky ? LUCK : luckMultiplier(s.relicLuck);
   return Array.from({ length: count }, () => {
     const reel = Array.from({ length: REEL_LENGTH }, () => pickCard(h, rng, luck).id), stop = rng.nextInt(REEL_LENGTH);
     // A lucky spin always lands on a Star or a Great.

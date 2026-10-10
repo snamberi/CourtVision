@@ -12,6 +12,8 @@ import { rosterRating } from '../hunt/rating';
 import { addBox, addHighs, type RunLine, type GameHighs } from '../hunt/statLines';
 import { challengeMultiplier, STANDARD_VIEW, type Level, type RunView } from '../retention/challenge';
 import type { PlayerStatLine } from '../simulation/boxscore';
+import { luckMultiplier } from '../relics/relics';
+import { hybridPlayer, validHybrid, type Hybrid } from './hybrid';
 import { categories, categoryById, mixedCategory, weeklyCategory, TIER_MULTIPLIER, type CategoryInfo, type Tier } from './categories';
 
 /*
@@ -30,13 +32,35 @@ import { categories, categoryById, mixedCategory, weeklyCategory, TIER_MULTIPLIE
  *  - Slot Spin: every one of the ten spots rolls its own category and you take one player from each.
  *  Weaker categories pay more (categories.ts tiers), so a title with second-round picks outscores one with MVPs.
  *
+ * What If and Fun runs (unranked: no records, leaderboards or rewards, and no extra opponent edge): All in Their Prime,
+ * Time Travel, Franchise Legends, Rookie Year, Add a Star; Create-a-Player, Superteam and Chaos Spin. Most of them
+ * play one real season's league (`whatIf.year`): only that year's teams, its two best as bosses, its champion last.
+ *
  * In the season you can set your own rotation (starters, then the bench in order) or leave it to the coach.
  *
  * The schedule has boss teams (the 72-10 Bulls, the 73-9 Warriors and the other great teams), every game is played
  * under the rules of the opponent's era, and everything is seeded, so the Daily 82-0 is the same for everyone.
  */
 
-export type PerfectMode = 'quick' | 'franchise' | 'category' | 'slots';
+export type PerfectMode = 'quick' | 'franchise' | 'category' | 'slots' | 'whatif' | 'fun';
+/** What If and Fun runs: play what you want; they never count for records, leaderboards or rewards. */
+export const isFreeMode = (m: PerfectMode) => m === 'whatif' || m === 'fun';
+export type WhatIfKind = 'prime' | 'travel' | 'legends' | 'rookies' | 'star' | 'create' | 'super' | 'chaos';
+export interface WhatIf {
+  kind: WhatIfKind;
+  /** The real team-season (HuntTeam id) the squad comes from. */
+  team?: string;
+  /** The season (end year) whose league you play; null = teams from all of history (the usual 82-0 schedule). */
+  year: number | null;
+  /** Franchise Legends: the franchise. */
+  franchise?: string;
+  /** Add a Star: the card added to the team. */
+  star?: string;
+  /** Create-a-Player: the made-up player (he takes his base card's spot). */
+  hybrid?: Hybrid;
+  /** Superteam: the ten cards you chose. */
+  picks?: string[];
+}
 export const isCategoryMode = (m: PerfectMode) => m === 'category' || m === 'slots';
 export interface CategoryOptions { tips?: boolean; clock?: boolean; mixed?: boolean }
 export const OPTION_MULTIPLIER = { tips: 0.9, clock: 1.1, mixed: 1.1 } as const;
@@ -96,6 +120,16 @@ export interface PerfectRun {
   /** Difficulty and how the spins are shown (retention/challenge.ts); absent = Pro, ratings hidden, colours on. */
   level?: Level;
   view?: RunView;
+  /** Relic luck when the run began (relics.ts). */
+  luck?: number;
+  /** This week's era rule (Quick Spin): every reel lands in that era. */
+  rule?: EraRule;
+  /** The All-Star break trade (after game 41): three players you could trade for, and whether it's done. */
+  trade?: { offers: string[]; done: boolean; made?: { out: string; in: string } };
+  /** Injured players (card id -> games still out). */
+  injured?: Record<string, number>;
+  /** Injuries so far this run, for the recap. */
+  injuries?: { id: string; games: number; at: number }[];
   /** 82 opponent team ids; `bosses` are indexes into it. */
   schedule: string[];
   bosses: number[];
@@ -104,6 +138,8 @@ export interface PerfectRun {
   result?: 'champion' | 'eliminated';
   /** A League Hunt squad brought over after winning its hunt (its own records). */
   from?: 'hunt';
+  /** What If and Fun runs: what was chosen (see WhatIf). */
+  whatIf?: WhatIf;
 }
 
 export const SQUAD = 10;
@@ -228,11 +264,13 @@ function rollFor(h: NbaHistory, run: PerfectRun, keep?: { franchise?: string; er
 
 // ---------------------------------------------------------------- starting and drafting
 
-export function newPerfectRun(h: NbaHistory, mode: PerfectMode, seed: number, daily?: string, opts: { level?: Level; view?: RunView; catOpts?: CategoryOptions; weekly?: string; custom?: string } = {}): PerfectRun {
+export function newPerfectRun(h: NbaHistory, mode: PerfectMode, seed: number, daily?: string, opts: { level?: Level; view?: RunView; catOpts?: CategoryOptions; weekly?: string; custom?: string; rule?: EraRule; /** Relic luck and The Extra Pick (relics.ts); ignored by the Daily and the Weekly. */ luck?: number; extraPick?: boolean } = {}): PerfectRun {
   // The Daily is the standard game for everyone.
   const level = daily ? 'pro' : opts.level ?? 'pro', view = daily ? STANDARD_VIEW : opts.view ?? STANDARD_VIEW;
-  const rerolls = mode === 'quick' ? { team: 0, era: 0, prime: 0, spin: SPIN_REROLLS, lucky: LUCKY_SPINS } : { team: 0, era: 0, prime: mode === 'franchise' ? 1 : 0, roll: SPIN_REROLLS, lucky: LUCKY_SPINS };
-  const run: PerfectRun = { v: 1, mode, seed, daily, stage: 'draft', squad: [], rolls: 0, rerolls, schedule: [], bosses: [], games: [], playoffs: [],
+  const shared = !!daily || !!opts.weekly;
+  const extra = !shared && opts.extraPick ? 1 : 0;
+  const rerolls = mode === 'quick' ? { team: 0, era: 0, prime: 0, spin: SPIN_REROLLS + extra, lucky: LUCKY_SPINS } : { team: 0, era: 0, prime: mode === 'franchise' ? 1 : 0, roll: SPIN_REROLLS + extra, lucky: LUCKY_SPINS };
+  const run: PerfectRun = { v: 1, mode, seed, daily, stage: 'draft', squad: [], rolls: 0, rerolls, schedule: [], bosses: [], games: [], playoffs: [], ...(!shared && opts.luck ? { luck: opts.luck } : {}),
     ...(level !== 'pro' ? { level } : {}), ...(view.numbers !== STANDARD_VIEW.numbers || view.colors !== STANDARD_VIEW.colors ? { view } : {}) };
   if (isCategoryMode(mode)) {
     const catOpts = opts.catOpts && Object.values(opts.catOpts).some(Boolean) ? opts.catOpts : undefined;
@@ -242,8 +280,24 @@ export function newPerfectRun(h: NbaHistory, mode: PerfectMode, seed: number, da
     if (opts.weekly && mode === 'category') return { ...base, level: undefined, view: undefined, weekly: opts.weekly, cat: weeklyCategory(h, opts.weekly).id };
     return { ...base, cat: rollCategory(h, base).id };
   }
-  return mode === 'franchise' ? { ...run, roll: rollFor(h, run), rolls: 1 } : run;
+  return mode === 'franchise' ? { ...run, roll: rollFor(h, run), rolls: 1 } : mode === 'quick' && opts.rule && !daily ? { ...run, rule: opts.rule } : run;
 }
+
+// ---------------------------------------------------------------- the weekly era rule (Quick Spin)
+
+export type EraRule = 'legends' | 'nineties' | 'modern';
+export const ERA_RULES: Record<EraRule, { name: string; blurb: string; from: number; to: number }> = {
+  legends: { name: 'Legends Only', blurb: 'every reel is a season from before 1990', from: 0, to: 1989 },
+  nineties: { name: 'The 90s', blurb: 'every reel is a season from 1990 to 1999', from: 1990, to: 1999 },
+  modern: { name: 'Modern Era', blurb: 'every reel is a season from 2010 on', from: 2010, to: 9999 },
+};
+/** This week's rule: Legends Only every other week, the 90s and the Modern Era in between. */
+export function weeklyRule(week: string): EraRule {
+  const n = [...week].reduce((a, ch) => a + ch.charCodeAt(0) * 7, 0) + Number(week.replace(/\D/g, '').slice(-2) || 0);
+  const order: EraRule[] = ['legends', 'nineties', 'legends', 'modern'];
+  return order[n % order.length];
+}
+const inRule = (run: Pick<PerfectRun, 'rule'>, c: HuntCard) => !run.rule || (c.end >= ERA_RULES[run.rule].from && c.end <= ERA_RULES[run.rule].to);
 
 // ---------------------------------------------------------------- Category Draft
 
@@ -336,6 +390,100 @@ export function newPerfectFromHunt(h: NbaHistory, seed: number, squad: string[],
   return { v: 1, mode: 'quick', seed, from: 'hunt', stage: 'draft', squad: ids, ...(coach && COACH_BY_ID.has(coach) ? { coach } : {}), rolls: 0, rerolls: { team: 0, era: 0, prime: 0, spin: SPIN_REROLLS, lucky: LUCKY_SPINS }, schedule: [], bosses: [], games: [], playoffs: [] };
 }
 
+// ---------------------------------------------------------------- All in Their Prime
+
+const bestCards = new WeakMap<NbaHistory, Map<string, HuntCard>>();
+/** A player's best season of his whole career (his highest-rated card). */
+export function primeCard(h: NbaHistory, playerId: string): HuntCard | undefined {
+  let m = bestCards.get(h);
+  if (!m) {
+    m = new Map();
+    for (const c of cardPool(h).cards) { const b = m.get(c.playerId); if (!b || c.ovr > b.ovr) m.set(c.playerId, c); }
+    bestCards.set(h, m);
+  }
+  return m.get(playerId);
+}
+/** The team's rotation as it really was that year, each player's card beside his prime card (best prime first; a tie keeps that year). */
+export function primeRoster(h: NbaHistory, teamId: string): { then: HuntCard; prime: HuntCard }[] {
+  const t = teamById(h)(teamId);
+  if (!t) return [];
+  return t.roster.map(id => card(h, id)).filter(Boolean).map(then => { const best = primeCard(h, then.playerId); return { then, prime: best && best.ovr > then.ovr ? best : then }; }).sort((a, b) => b.prime.ovr - a.prime.ovr).slice(0, SQUAD);
+}
+/** Season end years with teams to pick, newest first. */
+export const primeYears = (h: NbaHistory) => [...new Set(huntTeams(h).map(t => t.end))].sort((a, b) => b - a);
+/** That year's teams, best record first. */
+export const primeTeamsOf = (h: NbaHistory, end: number) => huntTeams(h).filter(t => t.end === end).sort((a, b) => winPct(b) - winPct(a) || b.strength - a.strength);
+/** One season's teams (but your own): the whole schedule and every playoff opponent of a one-year run. */
+export const yearField = (h: NbaHistory, year: number, exclude?: string) => huntTeams(h).filter(x => x.end === year && x.id !== exclude);
+
+/** A player's first season with a card (his rookie year, or the first one with 25 games). */
+export function rookieCard(h: NbaHistory, playerId: string): HuntCard | undefined {
+  let best: HuntCard | undefined;
+  for (const c of cardPool(h).cards) if (c.playerId === playerId && (!best || c.end < best.end)) best = c;
+  return best;
+}
+/** Franchise Legends: the franchise's ten best players ever, each at his best season there. */
+export function franchiseLegends(h: NbaHistory, franchise: string): HuntCard[] {
+  const best = new Map<string, HuntCard>();
+  for (const c of cardPool(h).cards) if (c.franchise === franchise) { const b = best.get(c.playerId); if (!b || c.ovr > b.ovr) best.set(c.playerId, c); }
+  return [...best.values()].sort((a, b) => b.ovr - a.ovr).slice(0, SQUAD);
+}
+/** Franchises to pick from (by their latest name). */
+export const legendFranchises = (h: NbaHistory) => [...franchiseIndex(h).names].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+/** Someone joins a team: he goes in first, the team's weakest (and the man himself, if he was there) make room. */
+function joinTeam(h: NbaHistory, teamId: string, cardId: string): string[] {
+  const t = teamById(h)(teamId), c = cardPool(h).byId.get(cardId);
+  if (!t || !c) return [];
+  const rest = t.roster.filter(id => card(h, id).playerId !== c.playerId).slice(0, SQUAD - 1);
+  return [cardId, ...rest];
+}
+/** Chaos Spin: ten random players from all of history (a Star or two likely) and a random season's league. */
+function chaosPick(h: NbaHistory, seed: number): { picks: string[]; year: number } {
+  const rng = new RNG(seed * 13 + 99);
+  const pool = cardPool(h).cards.filter(c => c.ovr >= 55);
+  const picks: HuntCard[] = [];
+  while (picks.length < SQUAD) { const c = pool[Math.floor(rng.next() * pool.length)]; if (!picks.some(p => p.playerId === c.playerId)) picks.push(c); }
+  const years = primeYears(h);
+  return { picks: picks.sort((a, b) => b.ovr - a.ovr).map(c => c.id), year: years[Math.floor(rng.next() * years.length)] };
+}
+
+/** The ten (or as many as the team had) for a What If / Fun choice; null if the choice can't be played. */
+export function whatIfSquad(h: NbaHistory, w: WhatIf): string[] | null {
+  const ids = (() => {
+    switch (w.kind) {
+      case 'prime': return w.team ? primeRoster(h, w.team).map(r => r.prime.id) : [];
+      case 'travel': return (w.team && teamById(h)(w.team)?.roster) || [];
+      case 'rookies': return w.team ? (teamById(h)(w.team)?.roster ?? []).map(id => rookieCard(h, card(h, id).playerId)?.id ?? id).sort((a, b) => card(h, b).ovr - card(h, a).ovr) : [];
+      case 'legends': return w.franchise ? franchiseLegends(h, w.franchise).map(c => c.id) : [];
+      case 'star': return w.team && w.star ? joinTeam(h, w.team, w.star) : [];
+      case 'create': return w.team && validHybrid(h, w.hybrid) ? joinTeam(h, w.team, w.hybrid.base) : [];
+      case 'super': case 'chaos': {
+        const seen = new Set<string>();
+        return (w.picks ?? []).filter(id => { const c = cardPool(h).byId.get(id); if (!c || seen.has(c.playerId)) return false; seen.add(c.playerId); return true; }).slice(0, SQUAD);
+      }
+    }
+  })();
+  return ids.length >= 8 ? ids.slice(0, SQUAD) : null;
+}
+const WHAT_IF_MODE: Record<WhatIfKind, PerfectMode> = { prime: 'whatif', travel: 'whatif', legends: 'whatif', rookies: 'whatif', star: 'whatif', create: 'fun', super: 'fun', chaos: 'fun' };
+
+/** Starts a What If or Fun run: the squad is set, so it goes straight to the coach pick. */
+export function newWhatIfRun(h: NbaHistory, seed: number, choice: WhatIf, opts: { level?: Level; view?: RunView } = {}): PerfectRun | null {
+  const w: WhatIf = choice.kind === 'chaos' ? { kind: 'chaos', ...chaosPick(h, seed) } : choice;
+  const squad = whatIfSquad(h, w);
+  if (!squad) return null;
+  if (w.year != null && !yearField(h, w.year, w.team).length) return null;
+  const level = opts.level ?? 'pro', view = opts.view ?? STANDARD_VIEW;
+  const run: PerfectRun = { v: 1, mode: WHAT_IF_MODE[w.kind], seed, stage: 'coach', whatIf: w, squad, rolls: 0, rerolls: { team: 0, era: 0, prime: 0 }, schedule: [], bosses: [], games: [], playoffs: [],
+    ...(level !== 'pro' ? { level } : {}), ...(view.numbers !== STANDARD_VIEW.numbers || view.colors !== STANDARD_VIEW.colors ? { view } : {}) };
+  return { ...run, coachOffer: coachOffer(run, h) };
+}
+/** All in Their Prime (kept for its tests and callers). */
+export const newPrimeRun = (h: NbaHistory, seed: number, teamId: string, opts: { level?: Level; view?: RunView } = {}) => {
+  const t = teamById(h)(teamId);
+  return t ? newWhatIfRun(h, seed, { kind: 'prime', team: teamId, year: t.end }, opts) : null;
+};
+
 const QUICK_WEIGHTS: Record<Rarity, number> = { common: 35, rare: 34, epic: 22, legendary: 9 };
 const LUCKY_WEIGHTS: Record<Rarity, number> = { common: 0, rare: 0, epic: 70, legendary: 30 };
 const fitsQuick = (c: HuntCard, s: QuickSlot) =>
@@ -352,13 +500,18 @@ export function quickSpinCard(h: NbaHistory, run: PerfectRun): HuntCard {
   const rng = rngFor(run, 50 + run.squad.length + (run.spinSalt ?? 0) * 101);
   const taken = new Set(run.squad.map(id => card(h, id).playerId));
   // A lucky spin lands on a Great or a Star; the star cap: with three Stars already, the reel can't land on another.
-  const base = run.lucky ? LUCKY_WEIGHTS : QUICK_WEIGHTS;
+  const raw = run.lucky ? LUCKY_WEIGHTS : QUICK_WEIGHTS;
+  // Relic luck: Stars and Greats come up that much more often.
+  const lucky = luckMultiplier(run.luck);
+  const base = lucky === 1 ? raw : { ...raw, legendary: raw.legendary * lucky, epic: raw.epic * lucky };
   const weights = starCapReached(h, run) ? { ...base, legendary: 0 } : base;
   const total = Object.values(weights).reduce((a, b) => a + b, 0);
   let r = rng.next() * total, rarity: Rarity = 'common';
   for (const k of Object.keys(weights) as Rarity[]) { r -= weights[k]; if (r <= 0 && weights[k] > 0) { rarity = k; break; } }
-  const pool = cardPool(h).byRarity[rarity].filter(c => fitsQuick(c, slot) && !taken.has(c.playerId) && c.ovr >= 45);
-  return pool[Math.floor(rng.next() * pool.length)] ?? cardPool(h).cards.find(c => !taken.has(c.playerId) && (rarity === 'legendary' || c.rarity !== 'legendary'))!;
+  const pool = cardPool(h).byRarity[rarity].filter(c => fitsQuick(c, slot) && !taken.has(c.playerId) && c.ovr >= 45 && inRule(run, c));
+  // An era rule with no one at this rarity and spot: the best fit from the era instead.
+  const ruled = run.rule && !pool.length ? cardPool(h).cards.filter(c => fitsQuick(c, slot) && !taken.has(c.playerId) && inRule(run, c) && (rarity === 'legendary' || c.rarity !== 'legendary')) : [];
+  return pool[Math.floor(rng.next() * pool.length)] ?? ruled[Math.floor(rng.next() * ruled.length)] ?? cardPool(h).cards.find(c => !taken.has(c.playerId) && (rarity === 'legendary' || c.rarity !== 'legendary'))!;
 }
 
 /** Random cards for the reel to scroll past before it stops (cosmetic only). */
@@ -378,7 +531,8 @@ function coachOffer(run: PerfectRun, h: NbaHistory): string[] {
   };
   if (run.mode === 'quick') return [pickOne(COACHES).id];
   // Franchise Spin: three to choose from, one of them tied to a franchise you drafted from when there is one.
-  const franchises = new Set(run.squad.map(id => card(h, id).franchise));
+  const real = run.whatIf?.team ? teamById(h)(run.whatIf.team) : undefined;
+  const franchises = new Set(run.whatIf?.franchise ? [run.whatIf.franchise] : real ? real.roster.slice(0, 1).map(id => card(h, id).franchise) : run.squad.map(id => card(h, id).franchise));
   const tied = COACHES.filter(x => x.franchises.some(f => franchises.has(f)));
   const out: string[] = [];
   if (tied.length) out.push(pickOne(tied).id);
@@ -460,6 +614,7 @@ export function pickCoach(h: NbaHistory, run: PerfectRun, coachId: string): Perf
 const winPct = (t: HuntTeam) => t.w / Math.max(1, t.w + t.l);
 
 function buildSchedule(h: NbaHistory, run: PerfectRun): { schedule: string[]; bosses: number[] } {
+  if (run.whatIf && run.whatIf.year != null) return yearSchedule(run, yearField(h, run.whatIf.year, run.whatIf.team));
   const rng = rngFor(run, 4242);
   const byId = teamById(h);
   const bossIds = BOSS_TEAMS.map(b => b.id).filter(id => byId(id));
@@ -479,8 +634,42 @@ function buildSchedule(h: NbaHistory, run: PerfectRun): { schedule: string[]; bo
   return { schedule, bosses };
 }
 
+/**
+ * A one-season run: only that year's teams. The year's two best are the bosses (at the usual boss games); everyone
+ * else comes round in turn, in a seeded order, so the schedule is spread across the whole league like a real one.
+ */
+function yearSchedule(run: PerfectRun, teams: HuntTeam[]): { schedule: string[]; bosses: number[] } {
+  const rng = rngFor(run, 4242);
+  const field = [...teams].sort((a, b) => b.strength - a.strength);
+  const bossIds = field.slice(0, field.length > 3 ? 2 : 1).map(t => t.id);
+  const rest = field.length > bossIds.length ? field.filter(t => !bossIds.includes(t.id)) : field;
+  const order = rest.map(t => ({ t, k: rng.next() })).sort((a, b) => a.k - b.k).map(x => x.t.id);
+  const schedule: string[] = [], bosses: number[] = [];
+  for (let g = 0, i = 0; g < SEASON_GAMES; g++) {
+    const b = BOSS_GAMES.indexOf(g + 1);
+    if (b >= 0) { schedule.push(bossIds[b % bossIds.length]); bosses.push(g); continue; }
+    schedule.push(order[i++ % order.length]);
+  }
+  return { schedule, bosses };
+}
+
+/** One-season playoffs, that year's teams by strength: a playoff team, a good one, the runner-up level, then that year's real champion. */
+function yearPlayoffOpponent(run: PerfectRun, teams: HuntTeam[], round: number): string {
+  const rng = rngFor(run, 9000 + round);
+  const met = new Set(run.playoffs.map(s => s.opp));
+  const left = teams.filter(t => !met.has(t.id)).sort((a, b) => b.strength - a.strength);
+  if (!left.length) return teams[0].id;
+  const champ = left.find(t => t.champion);
+  if (round >= PLAYOFF_ROUNDS - 1 && champ) return champ.id;
+  const [from, to] = ([[4, 8], [2, 4], [1, 2], [0, 1]] as const)[round] ?? [0, 1];
+  const band = left.slice(Math.min(from, left.length - 1), Math.max(Math.min(to, left.length), Math.min(from, left.length - 1) + 1)).filter(t => round >= PLAYOFF_ROUNDS - 1 || t !== champ || left.length === 1);
+  const pick = band.length ? band : left;
+  return pick[Math.floor(rng.next() * pick.length)].id;
+}
+
 /** Playoff opponents by round: a good team, a very good one, a champion, then a boss-level champion. */
 function playoffOpponent(h: NbaHistory, run: PerfectRun, round: number): string {
+  if (run.whatIf && run.whatIf.year != null) return yearPlayoffOpponent(run, yearField(h, run.whatIf.year, run.whatIf.team), round);
   const rng = rngFor(run, 9000 + round);
   const met = new Set(run.playoffs.map(s => s.opp));
   const teams = huntTeams(h).filter(t => !met.has(t.id));
@@ -565,7 +754,7 @@ export const teamRating = (h: NbaHistory, t: HuntTeam) => rosterRating(h, t.rost
  * How much stronger the real teams play (overall points). Franchise Spin lets you choose, so its opponents are
  * tougher; bosses and each playoff round add more. Tuned so a stacked team goes about 70-78 wins and 82-0 is rare.
  */
-export const OPP_EDGE = { quick: 0, franchise: 8, category: 15, slots: 19, boss: 3, perRound: 1 };
+export const OPP_EDGE = { quick: 0, franchise: 8, category: 15, slots: 19, whatif: 0, fun: 0, boss: 3, perRound: 1 };
 /** Streak pressure: every 10 straight wins, everyone is gunning for you (+1, up to +4). A loss resets it. */
 export const STREAK_STEP = 10, STREAK_MAX = 4;
 export const currentStreak = (run: Pick<PerfectRun, 'games' | 'playoffs'>) => {
@@ -619,9 +808,13 @@ function playGame(h: NbaHistory, run: PerfectRun, oppId: string, salt: number, b
   if (coach?.style === 'triangle') ourCoach = { ...ourCoach, offensiveSystem: 'motion', starUsage: 38 };
   const defense = coach?.style === 'defense' ? 4 : 0;
   const up = (v: number) => Math.min(99, v + defense);
-  const order = lineupOf(run);
-  const players = (order ?? run.squad).map(id => {
-    const p = underEra(cardPlayer(h, card(h, id), 'P820', bonus.get(id) ?? 0), era);
+  // Injured players sit (as long as eight are healthy).
+  const out = new Set(Object.entries(run.injured ?? {}).filter(([, g]) => g > 0).map(([id]) => id));
+  const healthy = (ids: string[]) => (ids.filter(id => !out.has(id)).length >= 8 ? ids.filter(id => !out.has(id)) : ids);
+  const order = lineupOf(run) ? healthy(lineupOf(run)!) : null;
+  const hybrid = run.whatIf?.hybrid;
+  const players = (order ?? healthy(run.squad)).map(id => {
+    const p = underEra(hybrid && id === hybrid.base ? hybridPlayer(h, hybrid, 'P820', bonus.get(id) ?? 0) : cardPlayer(h, card(h, id), 'P820', bonus.get(id) ?? 0), era);
     if (!defense) return p;
     const d = p.attributes.defense;
     return { ...p, attributes: { ...p.attributes, defense: { ...d, perimeterDefense: up(d.perimeterDefense), interiorDefense: up(d.interiorDefense), helpDefense: up(d.helpDefense), contest: up(d.contest) } } };
@@ -650,14 +843,17 @@ export function playNext(h: NbaHistory, run: PerfectRun, n = 1): PerfectRun {
   let r = run;
   for (let i = 0; i < n; i++) {
     if (r.stage === 'season') {
+      if (tradePending(r)) break;
       const g = r.games.length;
       const { game, box, vs } = playGame(h, r, r.schedule[g], g + 1, r.bosses.includes(g));
       const games = [...r.games, game];
-      r = { ...r, games, lines: addBox(r.lines ?? {}, box), highs: addHighs(r.highs ?? {}, box, vs) };
+      r = afterGameInjuries({ ...r, games, lines: addBox(r.lines ?? {}, box), highs: addHighs(r.highs ?? {}, box, vs) }, g);
+      if (games.length === TRADE_AT && canTrade(r)) r = { ...r, trade: { offers: tradeOffers(h, r), done: false } };
       if (games.length >= SEASON_GAMES) r = { ...r, stage: 'playoffs', playoffs: [{ round: 0, opp: playoffOpponent(h, r, 0), games: [] }] };
     } else if (r.stage === 'playoffs') {
       const s = r.playoffs[r.playoffs.length - 1];
       const { game, box, vs } = playGame(h, r, s.opp, 1000 + s.round * 10 + s.games.length, false, s.round);
+      r = healOneGame(r);
       const series = { ...s, games: [...s.games, game] };
       const playoffs = [...r.playoffs.slice(0, -1), series];
       const w = series.games.filter(x => x.won).length, l = series.games.length - w;
@@ -676,8 +872,72 @@ export function playNext(h: NbaHistory, run: PerfectRun, n = 1): PerfectRun {
 /** Plays straight to the end of the regular season, or of the playoffs. */
 export function playToEnd(h: NbaHistory, run: PerfectRun, stage: 'season' | 'playoffs'): PerfectRun {
   let r = run;
-  while (r.stage === stage) r = playNext(h, r);
+  while (r.stage === stage && !tradePending(r)) r = playNext(h, r);
   return r;
+}
+
+// ---------------------------------------------------------------- the All-Star break trade
+
+/** The trade window opens after this many games (the All-Star break). */
+export const TRADE_AT = 41;
+/** Category runs keep their category: no trades there (nor for squads brought from a Hunt). */
+export const canTrade = (r: Pick<PerfectRun, 'mode' | 'from'>) => !isCategoryMode(r.mode) && !isFreeMode(r.mode) && r.from !== 'hunt';
+export const tradePending = (r: Pick<PerfectRun, 'trade' | 'stage'>) => r.stage === 'season' && !!r.trade && !r.trade.done;
+/** How much better the incoming player may be than the one you send (rough salary matching). */
+export const TRADE_UP = 4;
+
+/** Three players on the market at the break: around your rotation's level, never someone you already have. */
+export function tradeOffers(h: NbaHistory, r: PerfectRun): string[] {
+  const pool = cardPool(h);
+  const have = new Set(r.squad.map(id => card(h, id).playerId));
+  const ovrs = r.squad.map(id => card(h, id).ovr).sort((a, b) => b - a);
+  const lo = ovrs[Math.min(7, ovrs.length - 1)] - 2, hi = ovrs[2] + 2;
+  const rng = new RNG(r.seed * 61 + 41);
+  const fits = pool.cards.filter(c => c.ovr >= lo && c.ovr <= hi && !have.has(c.playerId));
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (let guard = 0; out.length < 3 && guard < 400 && fits.length; guard++) {
+    const c = fits[rng.nextInt(fits.length)];
+    if (seen.has(c.playerId)) continue;
+    seen.add(c.playerId); out.push(c.id);
+  }
+  return out.sort((a, b) => card(h, b).ovr - card(h, a).ovr);
+}
+
+/** Can `outId` go for `inId`? The incoming player may be at most TRADE_UP better. */
+export const tradeFits = (h: NbaHistory, outId: string, inId: string) => card(h, inId).ovr <= card(h, outId).ovr + TRADE_UP;
+
+/** Make the trade (or pass with nulls). The new man takes the old one's place in your lineup. */
+export function makeTrade(h: NbaHistory, r: PerfectRun, outId: string | null, inId: string | null): PerfectRun {
+  if (!tradePending(r)) return r;
+  if (!outId || !inId) return { ...r, trade: { ...r.trade!, done: true } };
+  if (!r.squad.includes(outId) || !r.trade!.offers.includes(inId) || !tradeFits(h, outId, inId)) return r;
+  const swap = (ids: string[]) => ids.map(id => (id === outId ? inId : id));
+  const injured = { ...(r.injured ?? {}) };
+  delete injured[outId];
+  return { ...r, squad: swap(r.squad), ...(r.lineup ? { lineup: swap(r.lineup) } : {}), injured, trade: { ...r.trade!, done: true, made: { out: outId, in: inId } } };
+}
+
+// ---------------------------------------------------------------- injuries
+
+/** About one injury a season; most cost a few games, some a couple of weeks. */
+const INJURY_CHANCE = 0.013;
+function healOneGame(r: PerfectRun): PerfectRun {
+  if (!r.injured) return r;
+  const injured: Record<string, number> = {};
+  for (const [id, g] of Object.entries(r.injured)) if (g > 1) injured[id] = g - 1;
+  return { ...r, injured };
+}
+function afterGameInjuries(r: PerfectRun, g: number): PerfectRun {
+  let next = healOneGame(r);
+  const rng = new RNG(r.seed * 389 + g * 977 + 13);
+  if (rng.next() >= INJURY_CHANCE) return next;
+  const healthy = next.squad.filter(id => !(next.injured ?? {})[id]);
+  if (healthy.length <= 8) return next;
+  const id = healthy[rng.nextInt(healthy.length)];
+  const games = 2 + rng.nextInt(rng.next() < 0.25 ? 14 : 6);
+  next = { ...next, injured: { ...(next.injured ?? {}), [id]: games }, injuries: [...(next.injuries ?? []), { id, games, at: g + 1 }] };
+  return next;
 }
 
 // ---------------------------------------------------------------- results and score

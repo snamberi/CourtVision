@@ -1,3 +1,4 @@
+import { superFactor, bodyOf } from './superstar';
 import type { Attributes, ShotTendencies } from '../types';
 import type { AggregatedFlags } from './effective';
 import type { RNG } from './rng';
@@ -24,6 +25,7 @@ export interface ShotContext {
   wasAssisted?: boolean; // for shotCreationDifficulty (self-created) / catchAndShootBonus
   defenderDefensiveIQ?: number; // for defensiveIQImpact
   ruleMods?: ShotRuleMods; // League Rules multipliers - see ruleMods.ts; omitted entirely => identical to pre-League-Rules behavior
+  superBoost?: number; // IQ past 99 (superstar.ts): added to the make chance; 0 or omitted for ordinary players
 }
 
 function abilityForType(offense: Attributes['offense'], type: ShotType): number {
@@ -104,7 +106,7 @@ function shotTypeWeightMultiplier(type: ShotType, mods: ShotTypeWeightMods): num
  * toward shots the player is actually good at — a tendency to post up doesn't mean a bad post player
  * forces the issue there as often as the raw dial alone would imply.
  */
-export function chooseShotType(tendencies: ShotTendencies, offense: Attributes['offense'], rng: RNG, weightMods?: ShotTypeWeightMods): ShotType {
+export function chooseShotType(tendencies: ShotTendencies, offense: Attributes['offense'], rng: RNG, weightMods?: ShotTypeWeightMods, paint = 0): ShotType {
   const entries = Object.entries(tendencies) as [ShotType, number][];
   const weights = entries.map(([type, w]) => {
     const ability = abilityForType(offense, type);
@@ -112,7 +114,9 @@ export function chooseShotType(tendencies: ShotTendencies, offense: Attributes['
     const frequencyMult = weightMods ? shotTypeWeightMultiplier(type, weightMods) : 1;
     // Modern shot diets: about 40% of attempts are threes (NBA ~35 of 89 a game).
     const era = THREE_POINT_TYPES.includes(type) ? THREE_POINT_VOLUME : 1;
-    return Math.max(0, w) * qualityFactor * frequencyMult * era;
+    // Body past 99 (superstar.ts): he lives in the paint, up to twice as many rim shots at 110.
+    const inside = paint > 0 && RIM_TYPES.includes(type) ? 1 + paint : 1;
+    return Math.max(0, w) * qualityFactor * frequencyMult * era * inside;
   });
   const idx = rng.weightedPick(weights);
   return entries[idx][0];
@@ -204,6 +208,13 @@ export function computeMakeProbability(
   // Blocks are rolled separately and are now at NBA levels (about 5 a game); this keeps finishing at the rim near
   // the NBA's ~65% so overall field-goal percentage stays around 47%.
   if (category === 'rim') p -= RIM_FINISH_CALIBRATION;
+  // Past 99 (superstar.ts): Body owns the rim (up to +16 points at 110), IQ picks better shots and lifts teammates.
+  const superAdd = (category === 'rim' ? 0.16 * superFactor(bodyOf(offense)) : 0) + (ctx.superBoost ?? 0);
+  if (superAdd > 0) {
+    p += superAdd;
+    // Even a superstar misses: past 70% each extra point counts less (a maxed-out career big lands near Wilt's 72%).
+    if (p > 0.7) p = 0.7 + (p - 0.7) * 0.35;
+  }
 
   const floor = category === 'rim' ? 0.12 : 0.06;
   return Math.max(floor, Math.min(0.98, p));

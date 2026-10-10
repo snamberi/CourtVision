@@ -9,6 +9,9 @@ import { modeOfWeek, FEATURED_NAME, WEEKLY_BONUS_CAP } from '../retention/modeOf
 import { PlayerAvatar } from './PlayerAvatar';
 import { MyAvatar } from './UserAvatar';
 import { PixelBall, PixelIcon } from './PixelIcon';
+import { loadRelics, saveRelics, collectDailyCoins, luckPercent, collectionProgress, RELICS_EVENT } from '../relics/relics';
+import { claimAchievementSpins } from '../relics/rewards';
+import './relics/relics.css';
 import type { TradeDifficulty } from '../simulation/gm';
 import type { SaveSummary } from '../storage/saves';
 import { formatSeasonYear } from '../simulation/calendar';
@@ -31,7 +34,7 @@ import { TrophyUnlock } from './locker/TrophyUnlock';
 import { readArcade, guessStreak, isGuessDone, endlessOf, gridStreak } from '../arcade/storage';
 import { weekKey } from '../retention/week';
 
-export type GameMode = 'random' | 'real' | 'legends' | 'perfect' | 'category' | 'career' | 'rebuild' | 'draft';
+export type GameMode = 'random' | 'real' | 'legends' | 'perfect' | 'category' | 'career' | 'rebuild' | 'draft' | 'survival' | 'story' | 'timeMachine';
 export interface RealLeagueOptions { source: 'history' | 'csv'; realDevelopment: boolean; forceRosters?: boolean; allPlayers?: boolean }
 
 interface Props {
@@ -58,16 +61,20 @@ interface Props {
   onArcade?: (game: 'grid' | 'guess' | 'hilo' | 'bracket' | 'quiz') => void;
   /** Opens the New Franchise page (with a challenge picked, for the Rebuild and the All-Time Draft). */
   onCreate?: (challenge?: 'free' | 'rebuild' | 'draft') => void;
+  /** Opens the Relic Vault. */
+  onRelics?: () => void;
+  /** Opens your profile at a tab (the phone's Achievements and Season Pass apps). */
+  onProfileTab?: (tab: 'achievements' | 'season') => void;
 }
 
 /** The cards on the menu. Franchise opens the New Franchise page (a real or random league, the Rebuild Challenge and
  *  the All-Time Draft); the others open their own setup screens. `badge` marks a highlight. */
-export type MenuMode = 'franchise' | 'legends' | 'perfect' | 'career' | 'category';
+export type MenuMode = 'franchise' | 'legends' | 'perfect' | 'career' | 'survival' | 'story';
 const MODES: { id: MenuMode; title: string; blurb: string; kicker: string; icon: string; time: string; tags: string[]; badge?: 'popular' | 'fun' }[] = [
   {
     id: 'franchise', kicker: '01 / FRANCHISE', icon: 'court', time: 'Unlimited', tags: ['Real NBA', 'Random', 'Challenges'], badge: 'popular',
     title: 'Franchise',
-    blurb: 'Run a team in real NBA history from any season since 1946, or in a brand-new random league. Also here: the Rebuild Challenge, the All-Time Draft and the World Games.',
+    blurb: 'Run a team in real NBA history from any season since 1946, or in a brand-new random league. Also here: the Rebuild Challenge, the All-Time Draft, Time Machine and the World Games.',
   },
   {
     id: 'legends', kicker: '02 / REIMAGINE', icon: 'trophy', time: '15-30 min a run', tags: ['Roguelike', 'Spins', 'Ranked'], badge: 'popular',
@@ -75,9 +82,9 @@ const MODES: { id: MenuMode; title: string; blurb: string; kicker: string; icon:
     blurb: 'Spin a six-man squad and a coach from all of history, then win ten best-of-seven series against the great teams of every era. A semi-boss, a boss, three boosts.',
   },
   {
-    id: 'perfect', kicker: '03 / PERFECT', icon: 'star', time: '5-10 min', tags: ['Spins', 'Quick', 'Bragging rights'], badge: 'fun',
+    id: 'perfect', kicker: '03 / PERFECT', icon: 'star', time: '5-10 min', tags: ['Spins', 'Categories', 'Quick'], badge: 'fun',
     title: '82-0 Challenge',
-    blurb: 'Spin ten players and a coach (or pick one player from each franchise-and-era roll), play all 82 against real teams and the 72-10 Bulls and 73-9 Warriors, then the playoffs. Go 82-0. Then 16-0.',
+    blurb: 'Spin ten players and a coach, pick one from each franchise-and-era roll, or draft from a category (MVPs, 90s players, the Lakers...). Play all 82 against real teams and the 72-10 Bulls and 73-9 Warriors, then the playoffs. Go 82-0. Then 16-0.',
   },
   {
     id: 'career', kicker: '04 / BECOME', icon: 'star', time: '5-15 min', tags: ['Single player', 'Story', 'Spins'], badge: 'fun',
@@ -85,13 +92,18 @@ const MODES: { id: MenuMode; title: string; blurb: string; kicker: string; icon:
     blurb: 'Create one player (spin the wheel of NBA history or build him yourself) and live his whole career in today\'s league: draft night, training, free agency, awards, the Hall of Fame and the all-time Top 100.',
   },
   {
-    id: 'category', kicker: '05 / CATEGORY', icon: 'list', time: '5-10 min', tags: ['New', '150 categories', 'Go 82-0'],
-    title: 'Category Draft',
-    blurb: 'Roll a category (MVPs, 90s players, Duke, No. 1 picks, 7-footers, the Lakers...) and pick ANY five as your starters, then try to go 82-0. Or Slot Spin: every spot rolls its own category.',
+    id: 'survival', kicker: '05 / SURVIVE', icon: 'flame', time: '10-20 min', tags: ['New', 'Roguelike', 'Daily'],
+    title: 'Survival',
+    blurb: 'Start with ten all-time greats. Beat a real team from history and they take one of your best; sign one of theirs. Tougher teams every round, a champion every fifth. One loss and it\'s over. How long can you last?',
+  },
+  {
+    id: 'story', kicker: '06 / STORY', icon: 'calendar', time: '20-40 min', tags: ['New', 'Story', 'Choices'],
+    title: 'Story Mode',
+    blurb: 'Street to the League: from a park with no nets to your NBA rookie season. Five chapters, real choices, key games on the real engine, a best friend, a mentor, a rival named Ice, and four endings.',
   },
 ];
 /** The menu card a Mode of the Week falls under. */
-const cardOf = (m: string): MenuMode => (m === 'rebuild' || m === 'draft' || m === 'real' || m === 'random' ? 'franchise' : m as MenuMode);
+const cardOf = (m: string): MenuMode => (m === 'rebuild' || m === 'draft' || m === 'real' || m === 'random' || m === 'timeMachine' ? 'franchise' : m === 'category' ? 'perfect' : m as MenuMode);
 const BADGE_LABEL = { popular: 'Most popular', fun: 'Most fun' } as const;
 
 function formatWhen(ts: number): string {
@@ -148,7 +160,8 @@ function SavedLeaguesList({ saves, onContinue, onDeleteSave, onRenameSave }: Pic
   );
 }
 
-export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSave, busy = null, onLocker, onCode, onCommunity, onProfile, onFriends, onSettings, onArcade, onCreate }: Props) {
+export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSave, busy = null, onLocker, onCode, onCommunity, onProfile, onFriends, onSettings, onArcade, onCreate, onRelics, onProfileTab }: Props) {
+  const [newsOpen, setNewsOpen] = useState(false);
   // First visit: pick a look before anything else; What's New waits until it is picked.
   const [pickLook, setPickLook] = useState(needsThemeChoice);
   // Today's visit counts for the daily streak and the Season Pass.
@@ -195,9 +208,9 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
           <PlayerAvatar playerId="Court Vision Center" primaryColor="#ec852b" secondaryColor="#fcdfad" jerseyNumber={23} size={100} />
           <PixelBall size={48} />
         </div>
+        <MenuPhone onBoards={onCommunity && (() => onCommunity('boards'))} onFriends={onFriends ?? (onCommunity && (() => onCommunity('friends')))} onProfile={onProfile ?? onLocker} onRelics={onRelics} onSettings={onSettings} onWhatsNew={() => setNewsOpen(true)}
+          onAchievements={onProfileTab && (() => onProfileTab('achievements'))} onSeasonPass={onProfileTab && (() => onProfileTab('season'))} streak={visit.v.streak} />
       </div>
-
-      <MenuPhone onBoards={onCommunity && (() => onCommunity('boards'))} onFriends={onFriends ?? (onCommunity && (() => onCommunity('friends')))} onProfile={onProfile ?? onLocker} streak={visit.v.streak} />
 
       <div className="menu-section-heading"><h2>Choose your game</h2><span>PICK ONE, THEN PRESS PLAY</span></div>
 
@@ -223,7 +236,7 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
           </div>;
         })}
         {/* Room for the next modes. */}
-        {[6].map(n => <div key={n} className="mode-card-wrap soon">
+        {[7].map(n => <div key={n} className="mode-card-wrap soon">
           <button className="mode-card mode-soon" disabled aria-label="Coming soon">
             <span className="mode-card-kicker"><PixelIcon name="lock" size={24} /><span>0{n} / SOON</span></span>
             <h3>Coming soon</h3>
@@ -232,6 +245,8 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
           </button>
         </div>)}
       </div>
+
+      {onRelics && <RelicStrip onOpen={onRelics} />}
 
       {onArcade && <QuickGames onOpen={onArcade} />}
 
@@ -249,7 +264,7 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
       <StreakNote visit={visit} onProfile={onProfile ?? onLocker} />
       <TrophyUnlock onProfile={onProfile ?? onLocker} />
       <ConsentBanner />
-      {pickLook ? <ThemeWelcome onDone={() => setPickLook(false)} /> : showSignIn ? <WelcomeSignIn onDone={() => setAskSignIn(false)} /> : <WhatsNew />}
+      {pickLook ? <ThemeWelcome onDone={() => setPickLook(false)} /> : showSignIn ? <WelcomeSignIn onDone={() => setAskSignIn(false)} /> : newsOpen ? <WhatsNew key="forced" force onClose={() => setNewsOpen(false)} /> : <WhatsNew />}
     </div>
   );
 }
@@ -336,5 +351,24 @@ function QuickGames({ onOpen }: { onOpen: (game: 'grid' | 'guess' | 'hilo' | 'br
     <div className="quick-games-grid">{games.map(g => <button key={g.id} className="quick-game" onClick={() => onOpen(g.id)}>
       <PixelIcon name={g.icon} size={24} /><b>{g.title}</b><small>{g.blurb}</small><em>{g.status}{g.extra ? ` · ${g.extra}` : ''}</em>
     </button>)}</div>
+  </section>;
+}
+
+/** The Relic Vault entry: spins waiting, luck and coins. */
+function RelicStrip({ onOpen }: { onOpen: () => void }) {
+  // The daily coins are paid on the first menu visit of the day.
+  const [s, setS] = useState(() => { const r = loadRelics(), c = collectDailyCoins(r); if (c !== r) saveRelics(c); return c; });
+  useEffect(() => {
+    let live = true;
+    claimAchievementSpins().then(n => { if (live && n) setS(loadRelics()); }, () => {});
+    const on = () => setS(loadRelics());
+    window.addEventListener(RELICS_EVENT, on);
+    return () => { live = false; window.removeEventListener(RELICS_EVENT, on); };
+  }, []);
+  const p = collectionProgress(s);
+  return <section className={`menu-relics ${s.spins ? 'ready' : ''}`} aria-label="Relic Vault">
+    <PixelIcon name="crown" size={28} />
+    <span><b>Relic Vault{s.spins ? ` · ${s.spins} spin${s.spins === 1 ? '' : 's'} waiting` : ''}</b><small>+{+luckPercent(s).toFixed(1)}% luck · {s.coins.toLocaleString()} coins · {p.owned}/{p.total} relics{p.secrets ? ` · ${p.secrets} secret${p.secrets === 1 ? '' : 's'}` : ''}</small></span>
+    <button className={s.spins ? 'primary' : ''} onClick={onOpen}>{s.spins ? 'Spin now' : 'Open the vault'}</button>
   </section>;
 }

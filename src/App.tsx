@@ -116,7 +116,13 @@ import { DAILY_EVENT } from './profile/dailyGoals';
 import { BackupPanel } from './components/BackupPanel';
 import { canPlaySummerLeague, ensureUpcomingDraftClass, simulateSummerLeague } from './simulation/draftSeason';
 import { runLeagueAIPass, autoDraftAIPicksUntilUserTurn, simEntireDraft, runFreeAgencyAI } from './simulation/aiGM';
-import { autoRunAllStarWeekend } from './simulation/autoPlay';
+import { autoRunAllStarWeekend, autoFinishSeason } from './simulation/autoPlay';
+import { autoHandleDesk, hasDeskWork } from './simulation/handsOff';
+import { tickOwnerDemand, demandProgress } from './simulation/ownerDemand';
+import { hasSecret } from './relics/relics';
+import { rewardRun, FRANCHISE_TITLE_SPINS } from './relics/rewards';
+import { teamGamesPlayed as chatTeamGames } from './social/gmPosts';
+import { readChatSeen, markChatSeen } from './social/prefs';
 import { startDynasty } from './simulation/dynasty';
 import { collectLockerEvents } from './simulation/lockerRoom';
 import { claimQuests, questsXp } from './tutorial/quests';
@@ -157,6 +163,9 @@ const ExtensionsPage = lazy(() => import('./components/ExtensionsPage').then(m =
 const Arcade = lazy(() => import('./components/arcade/Arcade').then(m => ({ default: m.Arcade })));
 const WorldGamesMode = lazy(() => import('./components/worldGames/WorldGamesMode').then(m => ({ default: m.WorldGamesMode })));
 const FranchiseCreate = lazy(() => import('./components/FranchiseCreate').then(m => ({ default: m.FranchiseCreate })));
+const Survival = lazy(() => import('./components/survival/Survival').then(m => ({ default: m.Survival })));
+const RelicVault = lazy(() => import('./components/relics/RelicVault').then(m => ({ default: m.RelicVault })));
+const StoryMode = lazy(() => import('./components/story/StoryMode').then(m => ({ default: m.StoryMode })));
 const PerfectChallenge = lazy(() => import('./components/perfect/PerfectChallenge').then(m => ({ default: m.PerfectChallenge })));
 const LeagueHunt = lazy(() => import('./components/hunt/LeagueHunt').then(m => ({ default: m.LeagueHunt })));
 const CareerImportPanel = lazy(() => import('./components/career/CareerImportPanel').then(m => ({ default: m.CareerImportPanel })));
@@ -221,6 +230,8 @@ const WatchListPage = lazy(() => import('./components/WatchListPage').then(m => 
 const TeamStatsPage = lazy(() => import('./components/TeamStatsPage').then(m => ({ default: m.TeamStatsPage })));
 const DailySchedulePage = lazy(() => import('./components/DailySchedulePage').then(m => ({ default: m.DailySchedulePage })));
 const StorylinesPage = lazy(() => import('./components/StorylinesPage').then(m => ({ default: m.StorylinesPage })));
+const CourtChatPage = lazy(() => import('./components/social/CourtChatPage').then(m => ({ default: m.CourtChatPage })));
+const CourtChatCard = lazy(() => import('./components/social/CourtChatCard').then(m => ({ default: m.CourtChatCard })));
 const NewsFeedPage = lazy(() => import('./components/NewsFeedPage').then(m => ({ default: m.NewsFeedPage })));
 const HallOfFamePage = lazy(() => import('./components/HallOfFamePage').then(m => ({ default: m.HallOfFamePage })));
 const GameBoxScorePage = lazy(() => import('./components/GameBoxScorePage').then(m => ({ default: m.GameBoxScorePage })));
@@ -262,7 +273,7 @@ function buildInitialExtras(league: League): GMLeagueExtras {
   };
 }
 
-type Screen = 'menu' | 'chooseTeam' | 'app' | 'hunt' | 'perfect' | 'career' | 'locker' | 'profile' | 'community' | 'draft' | 'settings' | 'arcade' | 'create' | 'worldGamesMode' | 'friends' | 'clubs' | 'online';
+type Screen = 'menu' | 'chooseTeam' | 'app' | 'hunt' | 'perfect' | 'survival' | 'story' | 'relics' | 'career' | 'locker' | 'profile' | 'community' | 'draft' | 'settings' | 'arcade' | 'create' | 'worldGamesMode' | 'friends' | 'clubs' | 'online';
 const ARCADE_HASH: Record<ArcadeTab, string> = { grid: '#/grid', guess: '#/guess', hilo: '#/higher-lower', bracket: '#/bracket', quiz: '#/quiz', legends: '#/legends', street: '#/street' };
 const arcadeTabOf = (hash: string) => (Object.entries(ARCADE_HASH).find(([, h]) => h === hash)?.[0] as ArcadeTab | undefined);
 
@@ -270,6 +281,8 @@ const debouncedSave = createDebouncedSave();
 
 function App() {
   const [screen, setScreen] = useState<Screen>('menu');
+  // The profile tab the menu phone asked for (Achievements, Season Pass); Profile opens on its first tab.
+  const [profileTab, setProfileTab] = useState<'profile' | 'achievements' | 'season'>('profile');
   const [saveSummaries, setSaveSummaries] = useState<SaveSummary[]>([]);
   const [activeSaveId, setActiveSaveId] = useState<string | null>(null);
   const [pendingLeagueName, setPendingLeagueName] = useState('My League');
@@ -353,7 +366,7 @@ function App() {
   const [worldGamesRun, setWorldGamesRun] = useState<{ games: GamesId; country: string } | null>(null);
   const [boxscoreSource, setBoxscoreSource] = useState<'league' | 'exhibition'>('league');
 
-  const currentRoute = screen === 'menu' ? '#/menu' : screen === 'chooseTeam' ? '#/choose-team' : screen === 'hunt' ? '#/hunt' : screen === 'perfect' ? '#/82-0' : screen === 'career' ? '#/career' : screen === 'locker' ? '#/locker' : screen === 'profile' ? '#/profile' : screen === 'settings' ? '#/settings' : screen === 'create' ? '#/new-league' : screen === 'worldGamesMode' ? '#/world-games' : screen === 'friends' ? '#/friends' : screen === 'clubs' ? '#/clubs' : screen === 'online' ? '#/online' : screen === 'draft' ? '#/draft' : screen === 'arcade' ? ARCADE_HASH[arcadeTab] : screen === 'community' ? (communityUser ? `#/u/${encodeURIComponent(communityUser)}` : '#/community')
+  const currentRoute = screen === 'menu' ? '#/menu' : screen === 'chooseTeam' ? '#/choose-team' : screen === 'hunt' ? '#/hunt' : screen === 'perfect' ? '#/82-0' : screen === 'survival' ? '#/survival' : screen === 'story' ? '#/story' : screen === 'relics' ? '#/relics' : screen === 'career' ? '#/career' : screen === 'locker' ? '#/locker' : screen === 'profile' ? '#/profile' : screen === 'settings' ? '#/settings' : screen === 'create' ? '#/new-league' : screen === 'worldGamesMode' ? '#/world-games' : screen === 'friends' ? '#/friends' : screen === 'clubs' ? '#/clubs' : screen === 'online' ? '#/online' : screen === 'draft' ? '#/draft' : screen === 'arcade' ? ARCADE_HASH[arcadeTab] : screen === 'community' ? (communityUser ? `#/u/${encodeURIComponent(communityUser)}` : '#/community')
     : activeSaveId ? routeHash({ saveId: activeSaveId, tab, player: selectedPlayerId,
       team: viewedTeamId, game: viewedGameId ?? undefined, source: boxscoreSource, sub: leagueSettingsSub }) : null;
   const { restoring, showPrivacy, closePrivacy } = useGameHistory(currentRoute, async (hash, isCurrent) => {
@@ -369,7 +382,7 @@ function App() {
       setCommunityUser(profileMatch ? decodeURIComponent(profileMatch[1]) : null);
       const arcade = arcadeTabOf(hash);
       if (arcade) setArcadeTab(arcade);
-      setScreen(arcade ? 'arcade' : hash === '#/choose-team' && pendingLeague ? 'chooseTeam' : hash === '#/hunt' ? 'hunt' : hash === '#/82-0' ? 'perfect' : hash === '#/career' ? 'career' : hash === '#/locker' ? 'locker' : hash === '#/profile' ? 'profile' : hash === '#/settings' ? 'settings' : hash === '#/new-league' ? 'create' : hash === '#/world-games' && worldGamesRun ? 'worldGamesMode' : hash === '#/friends' ? 'friends' : hash === '#/clubs' ? 'clubs' : hash === '#/online' ? 'online' : hash === '#/community' || profileMatch ? 'community' : hash === '#/draft' ? 'draft' : 'menu');
+      setScreen(arcade ? 'arcade' : hash === '#/choose-team' && pendingLeague ? 'chooseTeam' : hash === '#/hunt' ? 'hunt' : hash === '#/82-0' ? 'perfect' : hash === '#/survival' ? 'survival' : hash === '#/story' ? 'story' : hash === '#/relics' ? 'relics' : hash === '#/career' ? 'career' : hash === '#/locker' ? 'locker' : hash === '#/profile' ? 'profile' : hash === '#/settings' ? 'settings' : hash === '#/new-league' ? 'create' : hash === '#/world-games' && worldGamesRun ? 'worldGamesMode' : hash === '#/friends' ? 'friends' : hash === '#/clubs' ? 'clubs' : hash === '#/online' ? 'online' : hash === '#/community' || profileMatch ? 'community' : hash === '#/draft' ? 'draft' : 'menu');
       refreshSaves();
       return;
     }
@@ -535,6 +548,23 @@ function App() {
     if (c.kind === 'draft') { track('mode_start', { mode: 'draft', variant: 'create' }); setScreen('draft'); return; }
     if (c.kind === 'rebuild') { startGameMode('rebuild', 'normal', '', '', undefined, c.scenario); return; }
     if (c.kind === 'worldgames') { setWorldGamesRun({ games: c.games, country: c.country }); setScreen('worldGamesMode'); return; }
+    if (c.kind === 'timeMachine') {
+      // Time Machine: the real league of the season you travel to, with your team-season in place of one franchise.
+      const tmSeed = Math.floor(Math.random() * 1_000_000);
+      track('mode_start', { mode: 'real', variant: 'timeMachine' });
+      setMenuBusy('Loading NBA history…');
+      Promise.all([historyTools(), import('./history/timeMachine')]).then(([{ h, buildHistoricalLeague }, tm]) => new Promise<void>(resolve => setTimeout(() => {
+        setMenuBusy('Firing up the time machine…');
+        const built = buildHistoricalLeague(h, c.year, { realDevelopment: true, difficulty: 'normal', seed: tmSeed, allPlayers: true });
+        const moved = tm.applyTimeMachine(h, built.league, built.extras, c.from, c.replace, tmSeed);
+        const ready = manageCoachRosters(moved.league, moved.extras);
+        enterApp(ready.league, ready.extras, moved.teamId, `Time Machine: ${moved.league.timeMachine?.fromLabel ?? 'Your team'} in ${c.year}-${String(c.year + 1).slice(2)}`);
+        setTab('dashboard');
+        pushToast(`The ${moved.league.timeMachine?.fromLabel} have arrived in the ${c.year}-${String(c.year + 1).slice(2)} NBA. Good luck.`, 'success');
+        resolve();
+      }, 30))).catch((err: unknown) => pushToast(`Time Machine failed: ${err instanceof Error ? err.message : String(err)}`, 'error')).finally(() => setMenuBusy(null));
+      return;
+    }
     const seed = Math.floor(Math.random() * 1_000_000);
     track('mode_start', { mode: c.source === 'random' ? 'random' : 'real', variant: c.source });
     if (c.source === 'random') startFromOrigin({ kind: 'random', year: parseInt(c.year, 10), seed, difficulty: c.difficulty, balanced: true }, { name: c.name, settings: c.settings, dynasty: c.dynasty, gmCareer: c.gmCareer });
@@ -571,6 +601,10 @@ function App() {
       setScreen('draft');
     } else if (mode === 'perfect') {
       setScreen('perfect');
+    } else if (mode === 'survival') {
+      setScreen('survival');
+    } else if (mode === 'story') {
+      setScreen('story');
     } else if (mode === 'category') {
       // The Category Draft card opens the 82-0 Challenge straight into a Category Roll (or the run in progress).
       try { localStorage.setItem('cv-p820-start', 'category'); } catch { /* storage blocked */ }
@@ -688,6 +722,12 @@ function App() {
   const [autoDeadline, setAutoDeadline] = useState(() => { try { return localStorage.getItem('cv-auto-deadline') === 'on'; } catch { return false; } });
   const autoDeadlineRef = useRef(autoDeadline);
   autoDeadlineRef.current = autoDeadline;
+  // Hands-off: everything that would stop the season (All-Star, Deadline Day, press, injury calls, staff calls,
+  // the Year in Review and the owner's verdict) is handled for you.
+  const [handsOff, setHandsOff] = useState(() => { try { return localStorage.getItem('cv-hands-off') === 'on'; } catch { return false; } });
+  const toggleHandsOff = (on: boolean) => { setHandsOff(on); try { localStorage.setItem('cv-hands-off', on ? 'on' : 'off'); } catch { /* keep the in-memory choice */ } };
+  autoAllStarRef.current = autoAllStar || handsOff;
+  autoDeadlineRef.current = autoDeadline || handsOff;
   const toggleAutoDeadline = (on: boolean) => { setAutoDeadline(on); try { localStorage.setItem('cv-auto-deadline', on ? 'on' : 'off'); } catch { /* keep the in-memory choice */ } };
   const toggleAutoAllStar = (on: boolean) => { setAutoAllStar(on); try { localStorage.setItem('cv-auto-allstar', on ? 'on' : 'off'); } catch { /* keep the in-memory choice */ } };
   /** What the current multi-day simulation was asked to reach, so it can resume after an automatic All-Star Weekend. */
@@ -802,17 +842,40 @@ function App() {
       const got = m.awardSeasonCards(league, activeSaveId, controlledTeamId);
       if (got && (got.added || got.packs)) pushToast(`Card album: ${got.added} new card${got.added === 1 ? '' : 's'} from your roster and ${got.packs} pack${got.packs === 1 ? '' : 's'} to open.`, 'success');
     });
+    // A title for your team earns a Relic Spin (not in leagues where Sandbox was used).
+    const last = league.franchiseHistory?.at(-1);
+    if (last && controlledTeamId && last.championTeamId === controlledTeamId && !league.frontOffice?.sandboxUsed && !sandboxMode) {
+      if (rewardRun(`gm-title:${activeSaveId}:${last.season}`, FRANCHISE_TITLE_SPINS)) pushToast('Champions! A Relic Spin is waiting in the Relic Vault (main menu).', 'success');
+    }
   }, [archivedSeasons, activeSaveId, screen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reporters line up after big results, streaks, trade requests and playoff series.
   const pressWaiting = league.press?.pending.length ?? 0;
+  // CourtChat's menu badge: your team's games since you last opened it (counted from the first visit on).
+  const ccPlayed = controlledTeamId ? chatTeamGames(league, controlledTeamId) : 0;
+  const ccSeen = activeSaveId ? readChatSeen(activeSaveId) : null;
+  const courtChatNew = tab === 'courtChat' || ccSeen == null ? 0 : Math.max(0, ccPlayed - ccSeen);
+  useEffect(() => { if (activeSaveId && (tab === 'courtChat' || readChatSeen(activeSaveId) == null)) markChatSeen(activeSaveId, ccPlayed); }, [tab, activeSaveId, ccPlayed]);
   useEffect(() => {
     const next = collectLockerEvents(collectPress(ensureGmRivals(league, controlledTeamId), controlledTeamId), controlledTeamId);
     if (next !== league) adoptLeague(next);
   }, [league.schedule, league.playoffBracket, league.teams, controlledTeamId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const deskWork = handsOff && screen === 'app' && hasDeskWork(league, controlledTeamId);
+  useEffect(() => {
+    if (!deskWork) return;
+    const done = autoHandleDesk(league, controlledTeamId);
+    if (done.league !== league) { adoptLeague(done.league); if (done.notes.length) pushToast(`Hands-off: ${done.notes.join(', ')}.`, 'info'); }
+  }, [deskWork, league]); // eslint-disable-line react-hooks/exhaustive-deps
+  // The owner's mid-season demand: issued when you're losing, decided after ten games.
+  const teamGamesPlayed = controlledTeamId ? league.schedule.filter(g => g.played && (g.homeTeamId === controlledTeamId || g.awayTeamId === controlledTeamId)).length : 0;
+  useEffect(() => {
+    if (screen !== 'app' || jobs.busy) return;
+    const t = tickOwnerDemand(league, { favorite: hasSecret('ownersFavorite') });
+    if (t.league !== league) { adoptLeague(t.league); if (t.news) pushToast(t.news.text, t.news.tone === 'good' ? 'success' : t.news.tone === 'bad' ? 'error' : 'info'); }
+  }, [teamGamesPlayed, screen]); // eslint-disable-line react-hooks/exhaustive-deps
   const lastPressCount = useRef(pressWaiting);
   useEffect(() => {
-    if (pressWaiting > lastPressCount.current) {
+    if (pressWaiting > lastPressCount.current && !handsOff) {
       const skipped = league.press?.lastSkipped ?? 0;
       pushToast(`${pressWaiting} reporter${pressWaiting === 1 ? '' : 's'} want a word in the Press Room.${skipped ? ` ${skipped} earlier question${skipped === 1 ? '' : 's'} went unanswered ("no comment"), which the fans noticed.` : ''}`, 'info');
     }
@@ -1055,7 +1118,7 @@ function App() {
   const beginAwardsRecap = () => {
     setLeague((l) => ({ ...l, seasonPhase: 'awards_recap' }));
     // The Year in Review show opens first for the team you run; the awards follow it.
-    setTab(controlledTeamId ? 'yearInReview' : 'awards');
+    setTab(controlledTeamId && !handsOff ? 'yearInReview' : 'awards');
   };
 
   const beginDraftPhase = () => {
@@ -1135,7 +1198,9 @@ function App() {
     if (!known || known.saveId !== activeSaveId) return; // a league just opened: nothing is new
     const fresh = [...ids].filter(id => !known.ids.has(id));
     const review = frontOffice.reviews.length > known.reviews ? frontOffice.reviews.at(-1) : undefined;
-    if (review) { setOwnerVerdict({ review, newAchievements: fresh }); return; }
+    // Hands-off: the verdict is a toast, unless you were fired (then the job offers need you).
+    if (review && (!handsOff || review.outcome === 'fired')) { setOwnerVerdict({ review, newAchievements: fresh }); return; }
+    if (review) pushToast(`Owner's review: ${review.note}`, 'info');
     for (const id of fresh) {
       const a = ACHIEVEMENT_BY_ID.get(id);
       if (a) pushToast(`Achievement unlocked: ${a.name}. ${a.description}`, 'success');
@@ -1455,7 +1520,7 @@ function App() {
   }
   // The GM Locker lives in the Player Profile now: an old #/locker link opens its Trophy room.
   if (screen === 'profile' || screen === 'locker') {
-    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening your profile…</main>}><ProfileHub key={screen} initialTab={screen === 'locker' ? 'trophies' : 'profile'} onExit={() => setScreen('menu')} /></Suspense></>;
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening your profile…</main>}><ProfileHub key={`${screen}-${profileTab}`} initialTab={screen === 'locker' ? 'trophies' : profileTab} onExit={() => setScreen('menu')} /></Suspense></>;
   }
   if (screen === 'settings') {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><SettingsPage onExit={() => setScreen('menu')} backup={<BackupPanel />}
@@ -1473,6 +1538,15 @@ function App() {
   if (screen === 'career') {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Career Mode…</main>}><CareerMode onExit={() => setScreen('menu')} /></Suspense></>;
   }
+  if (screen === 'survival') {
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Survival…</main>}><Survival onExit={() => setScreen('menu')} /></Suspense></>;
+  }
+  if (screen === 'relics') {
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening the Relic Vault…</main>}><RelicVault onExit={() => setScreen('menu')} /></Suspense></>;
+  }
+  if (screen === 'story') {
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Story Mode…</main>}><StoryMode onExit={() => setScreen('menu')} /></Suspense></>;
+  }
   if (screen === 'perfect') {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening the 82-0 Challenge…</main>}><PerfectChallenge onExit={() => setScreen('menu')} /></Suspense></>;
   }
@@ -1487,7 +1561,9 @@ function App() {
         <MainMenu
           onStart={startGameMode}
           onLocker={() => setScreen('locker')}
-          onProfile={() => setScreen('profile')}
+          onRelics={() => setScreen('relics')}
+          onProfileTab={t => { setProfileTab(t); setScreen('profile'); }}
+          onProfile={() => { setProfileTab('profile'); setScreen('profile'); }}
           onCommunity={t => { setCommunityUser(null); setCommunityTab(t ?? 'boards'); setScreen('community'); }}
           onFriends={() => setScreen('friends')}
           onCode={startFromCode}
@@ -1566,6 +1642,8 @@ function App() {
         onToggleAutoAllStar={toggleAutoAllStar}
         autoDeadline={autoDeadline}
         onToggleAutoDeadline={toggleAutoDeadline}
+        handsOff={handsOff}
+        onToggleHandsOff={toggleHandsOff}
         onSkipDeadline={skipDeadline}
         onSimulateGames={simulateGamesCount}
         onSimulateToDeadline={simulateToTradeDeadline}
@@ -1581,7 +1659,21 @@ function App() {
         autoPlayJob={{
           running: jobs.autoPlay.running,
           progress: jobs.autoPlay.progress,
-          start: (years) => { const ready = prepareRegularSeason(false); if (ready) jobs.autoPlay.start({ league: ready.league, extras: ready.extras, controlledTeamId, awardSettings, years, seedBase: seed + 555_000 }); },
+          start: (years) => {
+            // From the playoffs or the offseason: finish this season right here (every step it still needs), then
+            // Auto Play the rest from opening night.
+            if (seasonPhase !== 'regular_season' && seasonPhase !== 'all_star') {
+              try {
+                const done = autoFinishSeason(league, extras, controlledTeamId, awardSettings, seed + 554_000, playoffBracket);
+                setLeague(withCurrentTutorial(done.league)); setExtras(done.extras); setGameResult(null);
+                pushToast(`Season finished automatically${done.summary.championTeamName ? `: ${done.summary.championTeamName} won the title` : ''}. Next season is ready.`, 'success');
+                if (years > 1) jobs.autoPlay.start({ league: done.league, extras: done.extras, controlledTeamId, awardSettings, years: years - 1, seedBase: seed + 555_000 });
+                else setTab('standings');
+              } catch (err) { pushToast(`Auto Play stopped: ${err instanceof Error ? err.message : String(err)}`, 'error'); }
+              return;
+            }
+            const ready = prepareRegularSeason(false); if (ready) jobs.autoPlay.start({ league: ready.league, extras: ready.extras, controlledTeamId, awardSettings, years, seedBase: seed + 555_000 });
+          },
           cancel: jobs.autoPlay.cancel,
         }}
         seasonComplete={seasonComplete}
@@ -1657,6 +1749,7 @@ function App() {
           seasonPhase={seasonPhase}
           onNavigateLeagueSettings={(sub) => { setLeagueSettingsSub(sub); setTab('leagueSettings'); }}
           pendingTradeOfferCount={extras.pendingTradeOffers.length}
+          courtChatNew={courtChatNew}
         />
         <main tabIndex={0} aria-label="Game content">
         <AdBanner slot="top" refreshKey={tab} />
@@ -1863,6 +1956,7 @@ function App() {
         {tab === 'threeTeam' && <ThreeTeamTradePage league={league} extras={extras} controlledTeamId={controlledTeamId} onChange={(l, e) => { setLeague(l); setExtras(e); }} />}
         {tab === 'extensions' && <ExtensionsPage league={league} extras={extras} controlledTeamId={controlledTeamId} onChange={(l, e) => { setLeague(l); setExtras(e); }} onSelectPlayer={selectPlayer} />}
         {tab === 'storylines' && <StorylinesPage league={league} extras={extras} controlledTeamId={controlledTeamId} onSelectPlayer={selectPlayer} />}
+        {tab === 'courtChat' && <CourtChatPage league={league} extras={extras} controlledTeamId={controlledTeamId} onSelectPlayer={selectPlayer} onChange={setLeague} />}
         {tab === 'summerCamp' && <SummerCampPage league={league} controlledTeamId={controlledTeamId} onChange={setLeague} onSelectPlayer={selectPlayer} />}
         {tab === 'medical' && <MedicalRoomPage league={league} controlledTeamId={controlledTeamId} onChange={setLeague} onSelectPlayer={selectPlayer} />}
         {tab === 'press' && <PressRoomPage league={league} extras={extras} controlledTeamId={controlledTeamId} onChange={setLeague} />}
@@ -2092,10 +2186,13 @@ function App() {
           );
         })()}
 
+        {tab === 'dashboard' && controlledTeamId && league.frontOffice?.demand?.status === 'active' && league.frontOffice.demand.season === league.season && (() => { const d = league.frontOffice!.demand!, pr = demandProgress(league, d, controlledTeamId); return <div className="tm-banner demand-banner" role="note"><PixelIcon name="warning" size={16} /> <b>Owner's demand</b> Win {d.need} of {d.games}: {pr.won}-{pr.played - pr.won} so far, {d.games - pr.played} to play. <small>{d.text}</small></div>; })()}
+        {tab === 'dashboard' && league.timeMachine && <div className="tm-banner" role="note"><PixelIcon name="clock" size={16} /> <b>Time Machine</b> The {league.timeMachine.fromLabel} in the {league.timeMachine.year}-{String(league.timeMachine.year + 1).slice(2)} NBA, in place of the {league.timeMachine.replaced}.</div>}
         {(tab === 'dashboard' || tab === 'database') && league.rebuildChallenge && <ChallengeBanner league={league} contracts={extras.contracts} onMenu={() => setConfirmation('exit')} />}
         {tab === 'dashboard' && controlledTeamId && <DailyGoalsCard official={isOfficialLeague(league)} />}
         {tab === 'dashboard' && league.gmCareer && <GmCareerCard league={league} onTakeOffer={() => { const teamId = league.gmCareer?.offer?.teamId; if (teamId) { acceptOffer(teamId); setLeague(l => takeGmOffer(l)); } }} />}
         {tab === 'dashboard' && controlledTeamId && <LockerRoomCard league={league} teamId={controlledTeamId} onChange={adoptLeague} />}
+        {tab === 'dashboard' && controlledTeamId && <CourtChatCard league={league} teamId={controlledTeamId} onOpen={() => setTab('courtChat')} onSelectPlayer={selectPlayer} />}
         {tab === 'dashboard' && league.origin && <LeagueCodeBox origin={league.origin} teamId={controlledTeamId} teamName={league.teams.find(t => t.teamId === controlledTeamId)?.name} />}
         {tab === 'dashboard' && (
           <DashboardPage
