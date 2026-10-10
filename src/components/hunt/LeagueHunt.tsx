@@ -39,7 +39,8 @@ import { newPerfectFromHunt } from '../../perfect/run';
 import { savePerfectRun } from '../../perfect/storage';
 import { XP } from '../../profile/profile';
 import { relicRunOpts } from '../../relics/apply';
-import { rewardRun, huntSpins } from '../../relics/rewards';
+import { rewardRun, huntSpins, huntSecret, huntRewardKey } from '../../relics/rewards';
+import { RelicReward, LuckChip } from '../relics/RelicReward';
 import './hunt.css';
 
 /** League Hunt: spin a six-man squad and a coach from all of basketball history, then win ten best-of-seven series. */
@@ -61,7 +62,7 @@ export function LeagueHunt({ onExit }: { onExit: () => void }) {
     else saveRun(r);
     if (r && (r.stage === 'won' || r.stage === 'lost') && run?.stage !== r.stage) {
       setRecords(recordRun(r));
-      rewardRun(`hunt:${r.seed}:${r.difficulty ?? 'pro'}`, huntSpins(r));
+      rewardRun(huntRewardKey(r), huntSpins(r), { secret: huntSecret(r), why: 'League Hunt' });
       noteWeekRecords(noteRunHighs('hunt', r.highs).length);
       { const gw = r.results.reduce((n, x) => n + x.games.filter(g => g.won).length, 0), gp = r.results.reduce((n, x) => n + x.games.length, 0);
         noteWeekRun('hunt', { score: huntScore({ won: r.stage === 'won', stop: r.seriesIndex, wins: gw, losses: gp - gw }), line: r.stage === 'won' ? `beat the boss, ${gw}-${gp - gw}` : `series ${r.seriesIndex + 1}` }, `hunt-${r.seed}`); }
@@ -196,7 +197,8 @@ function SlotMachine({ h, run, onRun, onAbandon }: { h: NbaHistory; run: HuntRun
   const tile = (k: SpinKind) => {
     const isOpen = open.includes(k), idx = open.indexOf(k);
     const lockedId = k === 'COACH' ? run.coach : run.squad[SLOTS.indexOf(k as Slot)];
-    const cls = ['hunt-reel', k === 'COACH' ? 'coach' : '', !isOpen ? 'locked' : settled(idx) ? 'frozen' : 'spinning', justLocked === k && !isOpen ? 'just-locked' : ''].filter(Boolean).join(' ');
+    const lucky = isOpen && settled(idx) && !!run.reels?.[k] && !!run.luckyReels?.includes(k);
+    const cls = ['hunt-reel', k === 'COACH' ? 'coach' : '', !isOpen ? 'locked' : settled(idx) ? 'frozen' : 'spinning', justLocked === k && !isOpen ? 'just-locked' : '', lucky ? 'lucky' : ''].filter(Boolean).join(' ');
     let body: ReactNode;
     if (!isOpen && lockedId) {
       if (k === 'COACH') { const x = COACH_BY_ID.get(lockedId)!; body = <><span className="hunt-reel-face coach">{initials(x.name)}</span><span className="hunt-reel-text"><b>{x.name}</b><small>{COACH_STYLE[x.style]}</small></span><span className={`hunt-reel-ovr rarity-${coachRarity(x)}`}>{x.bonus > 0 ? '+' : ''}{x.bonus}</span></>; }
@@ -210,7 +212,7 @@ function SlotMachine({ h, run, onRun, onAbandon }: { h: NbaHistory; run: HuntRun
       body = k === 'COACH' ? <><span className="hunt-reel-face coach">{initials(f.name)}</span><span className="hunt-reel-text"><b>{f.name}</b><small>{f.sub}</small></span></>
         : <><PlayerAvatar playerId={f.name} primaryColor="#3a3f4a" secondaryColor="#f4f0e6" size={56} /><span className="hunt-reel-text"><b>{f.name}</b><small>{f.sub}</small></span></>;
     }
-    const label = <span className="hunt-reel-pos">{REEL_LABEL[k]}{!isOpen && <em>LOCKED</em>}</span>;
+    const label = <><span className="hunt-reel-pos">{REEL_LABEL[k]}{!isOpen && <em>LOCKED</em>}</span>{lucky && <span className="hunt-reel-lucky" title="Relic luck turned this reel into a better player">LUCKY</span>}</>;
     return isOpen && allSettled
       ? <button key={k} className={cls} onClick={() => lock(k)} aria-label={`Lock ${REEL_LABEL[k]}`}>{label}{body}</button>
       : <div key={k} className={cls} aria-hidden={isOpen && !settled(idx) ? true : undefined}>{label}{body}</div>;
@@ -222,7 +224,7 @@ function SlotMachine({ h, run, onRun, onAbandon }: { h: NbaHistory; run: HuntRun
       <ol className="hunt-slot-dots" aria-label={`${SPINS.length - open.length} of ${SPINS.length} locked`}>{SPINS.map((_, i) => <li key={i} className={i < SPINS.length - open.length ? 'on' : ''} />)}</ol>
     </div>
     {roundCat && <div className={`hunt-round-cat tier-${roundCat.tier.toLowerCase()}`}><span className="pixel-eyebrow">THIS ROUND'S CATEGORY</span><b>{roundCat.name}</b><small>{roundCat.blurb}</small></div>}
-    <p className="hunt-slots-msg" role="status">{message}</p>
+    <p className="hunt-slots-msg" role="status">{message} <LuckChip luck={run.luck} /></p>
     <div className="hunt-reel-grid">{SLOTS.map(s => tile(s))}</div>
     {tile('COACH')}
     {!frozen ? <button className="hunt-stop" onClick={stop} autoFocus><span aria-hidden="true">■</span> STOP</button>
@@ -452,6 +454,7 @@ function RunOver({ h, run, records, onNew, onExit }: { h: NbaHistory; run: HuntR
         {draftGrade(run) && <div><small>DRAFT GRADE</small><b>{draftGrade(run)!.grade}</b></div>}
         <div><small>COINS LEFT</small><b>{run.coins}</b></div>
       </div>
+    <RelicReward rewardKey={huntRewardKey(run)} />
     </div>
     <DuelPanel setup={{ m: 'hunt', s: run.seed, deck: run.deck, diff: run.difficulty, ...(run.view ? { vw: run.view } : {}) }} duel={run.duel}
       mine={{ score: huntScore({ won, stop: run.seriesIndex, wins: gamesWon, losses: gamesPlayed - gamesWon }), won, line: won ? `Beat the boss · ${gamesWon}-${gamesPlayed - gamesWon} in games` : `Reached series ${run.seriesIndex + 1} · ${gamesWon}-${gamesPlayed - gamesWon}` }} />

@@ -84,6 +84,8 @@ export interface HuntRun {
   offer: string[];
   /** The frozen reels waiting for you to lock one (null while everything spins). */
   reels?: Partial<Record<SpinKind, string>> | null;
+  /** Reels whose rarity relic luck bumped up on the last stop (the "lucky" sparkle). */
+  luckyReels?: SpinKind[];
   /** Which rounds are guaranteed a Star and a Great on the reels. */
   guarantees: { star: number; great: number };
   lives: number;
@@ -325,8 +327,12 @@ export function stopReels(h: NbaHistory, run: HuntRun, cat: CategoryInfo | null 
   const open = openSpins(run);
   const round = run.spin;
   const rng = new RNG(run.seed * 31 + round * 7717 + 3);
-  const weights = spinWeights(round, run.luck);
-  const pick = () => ORDER[rng.weightedPick(ORDER.map(r => weights[r]))];
+  const weights = spinWeights(round, run.luck), plain = spinWeights(round);
+  // The same draw as rng.weightedPick; also notes when relic luck turned it into a better rarity than it would have been.
+  const at = (w: Record<Rarity, number>, u: number) => { const list = ORDER.map(r => Math.max(0, w[r])); let x = u * list.reduce((a, b) => a + b, 0); for (let i = 0; i < list.length; i++) { x -= list[i]; if (x <= 0) return i; } return list.length - 1; };
+  const luckyReels: SpinKind[] = [];
+  let reelNow: SpinKind | null = null;
+  const pick = () => { const u = rng.next(), i = at(weights, u); if (run.luck && i > at(plain, u) && reelNow && !luckyReels.includes(reelNow)) luckyReels.push(reelNow); return ORDER[i]; };
   const deck = DECKS[run.deck ?? 'classic'];
   const pool = cardPool(h);
   const locked = run.squad.filter(Boolean);
@@ -338,6 +344,7 @@ export function stopReels(h: NbaHistory, run: HuntRun, cat: CategoryInfo | null 
   const mateAt = deck.id === 'dynasty' && locked.length && playerReels.length ? playerReels[rng.nextInt(playerReels.length)] : null;
   const reels: Partial<Record<SpinKind, string>> = {};
   for (const k of open) {
+    reelNow = k;
     if (k === 'COACH') {
       for (let tries = 0; !reels.COACH && tries < 50; tries++) {
         const list = COACHES.filter(x => coachRarity(x) === pick());
@@ -364,7 +371,7 @@ export function stopReels(h: NbaHistory, run: HuntRun, cat: CategoryInfo | null 
     }
     if (id) { reels[k] = id; taken.add(pool.byId.get(id)!.playerId); }
   }
-  return { ...run, reels };
+  return { ...run, reels, luckyReels: luckyReels.filter(k => reels[k]) };
 }
 
 /** Locks one frozen reel; the others spin again. Once every slot is locked, on to training camp. */
@@ -585,8 +592,12 @@ export function playSeries(h: NbaHistory, run: HuntRun): { run: HuntRun; play: S
     if (s.kind === 'boss') {
       // A flawless hunt (no series lost) opens the secret door: one more series, against the Immortals.
       const flawless = results.every(r => r.won);
-      const secret = flawless && !run.series.some(x => x.secret) ? secretSeries(h, run) : null;
-      if (secret) return { run: { ...next, growth, series: [...run.series, secret], seriesIndex: run.seriesIndex + 1, attempts: 0, stage: 'series', note: 'A flawless hunt. A door you didn\'t know about opens: one more series, against the greatest team ever assembled. Win or lose, your hunt is already won.' }, play };
+      // Relic luck (never in a Daily or Weekly, which carry no luck): one lost series can still find the door, at a luck-sized chance.
+      const luckyDoor = !flawless && results.filter(r => !r.won).length === 1 && !!run.luck && new RNG(run.seed * 13 + 777).next() < run.luck;
+      const secret = (flawless || luckyDoor) && !run.series.some(x => x.secret) ? secretSeries(h, run) : null;
+      if (secret) return { run: { ...next, growth, series: [...run.series, secret], seriesIndex: run.seriesIndex + 1, attempts: 0, stage: 'series', note: flawless
+        ? 'A flawless hunt. A door you didn\'t know about opens: one more series, against the greatest team ever assembled. Win or lose, your hunt is already won.'
+        : 'Your relics found a door you didn\'t know about: one more series, against the greatest team ever assembled. Win or lose, your hunt is already won.' }, play };
       return { run: { ...next, growth, stage: 'won' }, play };
     }
     // With the boost slots full, the road goes straight on.

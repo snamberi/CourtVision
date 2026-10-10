@@ -7,7 +7,7 @@ import { todayUtc } from '../../hunt/storage';
 import {
   newSurvivalRun, keepTen, tagFranchise, playRound, answerClaim, signPlayer, opponentOf, survivalRating, wins, roundNo, isBossRound,
   survivalScore, survivalShareText, opponentRating, oppLift, loadSurvivalRun, saveSurvivalRun, loadSurvivalRecords, recordSurvival, dailySeed, targetStrength,
-  SURVIVAL_LEVELS, ROSTER, BOSS_EVERY, MAX_SHIELDS, type SurvivalRun, type SurvivalRecords, type SurvivalLevel,
+  emergencyOffer, emergencySign, EMERGENCY_PRICE, WIN_CASH, SURVIVAL_LEVELS, ROSTER, BOSS_EVERY, MAX_SHIELDS, type SurvivalRun, type SurvivalRecords, type SurvivalLevel,
 } from '../../survival/run';
 import { PlayerAvatar } from '../PlayerAvatar';
 import { PixelIcon } from '../PixelIcon';
@@ -15,7 +15,8 @@ import { ShareCardButton } from '../ShareCardButton';
 import { track, trackOnce } from '../../analytics/track';
 import { noteWeekRun } from '../../retention/weekLog';
 import { relicRunOpts } from '../../relics/apply';
-import { rewardRun, survivalSpins } from '../../relics/rewards';
+import { rewardRun, survivalSpins, survivalSecret, survivalRewardKey } from '../../relics/rewards';
+import { RelicReward, LuckChip } from '../relics/RelicReward';
 import '../hunt/hunt.css';
 import './survival.css';
 
@@ -42,7 +43,7 @@ export function Survival({ onExit }: { onExit: () => void }) {
     saveSurvivalRun(r);
     if (r && r.stage === 'over' && prev?.stage !== 'over') {
       setRecords(recordSurvival(r));
-      rewardRun(`surv:${r.seed}:${r.level}`, survivalSpins(wins(r)));
+      rewardRun(survivalRewardKey(r), survivalSpins(wins(r)), { secret: survivalSecret(wins(r)), why: 'Survival' });
       const w = wins(r);
       noteWeekRun('survival', { score: survivalScore(r), line: `${w} win${w === 1 ? '' : 's'}` }, `surv-${r.seed}-${r.level}`);
       trackOnce(`surv-${r.seed}-${r.level}`, 'mode_finish', { mode: 'survival', level: r.level, daily: !!r.daily, wins: w });
@@ -66,7 +67,7 @@ export function Survival({ onExit }: { onExit: () => void }) {
     {!run ? <Hub records={records} onStart={start} />
       : run.stage === 'draft' ? <DraftView h={h} run={run} onKeep={ids => setRun(keepTen(run, ids))} />
       : run.stage === 'tag' ? <TagView h={h} run={run} onTag={id => setRun(tagFranchise(h, run, id))} />
-      : run.stage === 'pregame' ? <Pregame h={h} run={run} onPlay={() => setRun(playRound(h, run))} />
+      : run.stage === 'pregame' ? <Pregame h={h} run={run} onPlay={() => setRun(playRound(h, run))} onSign={id => setRun(emergencySign(h, run, id))} />
       : run.stage === 'claim' ? <ClaimView h={h} run={run} onAnswer={shield => setRun(answerClaim(h, run, shield))} />
       : run.stage === 'sign' ? <SignView h={h} run={run} onSign={id => setRun(signPlayer(h, run, id))} />
       : <Over h={h} run={run} records={records} onNew={() => setRun(null)} onExit={onExit} />}
@@ -123,7 +124,7 @@ function DraftView({ h, run, onKeep }: { h: NbaHistory; run: SurvivalRun; onKeep
   const toggle = (id: string) => setKeep(k => (k.includes(id) ? k.filter(x => x !== id) : k.length < ROSTER ? [...k, id] : k));
   const guards = keep.filter(id => pool.byId.get(id)!.pos.includes('G')).length, bigs = keep.filter(id => pool.byId.get(id)!.pos.includes('C')).length;
   return <section className="hunt-stage">
-    <div className="hunt-next"><span className="pixel-eyebrow">THE DEAL · KEEP {ROSTER} OF {run.dealt.length}</span><h2>Your legends</h2>
+    <div className="hunt-next"><span className="pixel-eyebrow">THE DEAL · KEEP {ROSTER} OF {run.dealt.length}</span><h2>Your legends <LuckChip luck={run.luck} /></h2>
       <small>Team rating {survivalRating(h, keep)} · {keep.length}/{ROSTER} kept · {guards} guards · {bigs} centers</small></div>
     <p className="hint-text">Every win costs you one of your best, so depth matters as much as stars. Positions matter too: a team with no center gets punished on the boards.</p>
     <div className="surv-grid">{run.dealt.map(id => <CardTile key={id} c={pool.byId.get(id)!} selected={keep.includes(id)} onClick={() => toggle(id)} />)}</div>
@@ -145,7 +146,7 @@ function Strip({ run }: { run: SurvivalRun }) {
   return <ol className="surv-strip" aria-label="Your run so far">{run.games.map(g => <li key={g.round} className={g.won ? (g.boss ? 'boss' : 'won') : 'lost'} title={`Round ${g.round}: ${g.won ? 'W' : 'L'} ${g.us}-${g.them} vs ${g.oppName}`}>{g.boss ? <PixelIcon name="crown" size={10} /> : g.round}</li>)}</ol>;
 }
 
-function Pregame({ h, run, onPlay }: { h: NbaHistory; run: SurvivalRun; onPlay: () => void }) {
+function Pregame({ h, run, onPlay, onSign }: { h: NbaHistory; run: SurvivalRun; onPlay: () => void; onSign: (id: string) => void }) {
   const pool = cardPool(h);
   const opp = opponentOf(h, run)!;
   const era = eraOf(opp.end);
@@ -166,12 +167,26 @@ function Pregame({ h, run, onPlay }: { h: NbaHistory; run: SurvivalRun; onPlay: 
       <button className="primary hunt-play-big" onClick={onPlay}><PixelIcon name="play" size={22} /> PLAY</button>
       <div><small>THEM</small><b className="hunt-rating">{them}</b></div></div>
     <p className="hint-text hunt-odds">{odds >= 4 ? 'You are the favourite.' : odds <= -4 ? 'You are the underdog. One game: anything can happen.' : 'A coin flip.'} Era rules: {era.blurb}</p>
+    <Emergency h={h} run={run} onSign={onSign} />
     <div className="surv-two">
       <div><h3 className="hunt-subhead">Your ten</h3><div className="surv-list">{roster.map(c => <CardTile key={c.id} c={c} small franchise={c.id === run.franchise} />)}</div></div>
       <div><h3 className="hunt-subhead">Their rotation</h3><ol className="hunt-their">{theirs.map(c => <li key={c.id}><b>{c.ovr}</b> {c.name} <small>{c.pos}</small></li>)}</ol>
         <p className="hint-text">{oppLift(round) ? `They play +${oppLift(round)} harder this deep into a run. ` : ''}Next round's teams are around {Math.round(targetStrength(round + 1, run.level) + oppLift(round + 1))}.</p></div>
     </div>
   </section>;
+}
+
+/** Before a round: spend run cash on a free agent (one a round). */
+function Emergency({ h, run, onSign }: { h: NbaHistory; run: SurvivalRun; onSign: (id: string) => void }) {
+  const pool = cardPool(h);
+  const offer = emergencyOffer(h, run), cash = run.cash ?? 0;
+  if (!offer.length) return null;
+  const weakest = run.roster.filter(id => id !== run.franchise).map(id => pool.byId.get(id)!).sort((a, b) => a.ovr - b.ovr)[0];
+  return <details className="surv-emergency">
+    <summary><b>Emergency signing</b> · {cash} cash ({EMERGENCY_PRICE} to sign) · +{WIN_CASH} a win, twice for a boss</summary>
+    <p className="hint-text">{run.roster.length >= ROSTER && weakest ? `Signing one replaces your lowest-rated player (${weakest.name}, ${weakest.ovr}).` : 'Signing one fills your empty spot.'} One signing a round.</p>
+    <div className="surv-grid">{offer.map(id => { const c = pool.byId.get(id)!; return <div key={id} className="surv-emergency-card"><CardTile c={c} small /><button onClick={() => onSign(id)} disabled={cash < EMERGENCY_PRICE}>Sign ({EMERGENCY_PRICE})</button></div>; })}</div>
+  </details>;
 }
 
 function LastGame({ run }: { run: SurvivalRun }) {
@@ -235,6 +250,7 @@ function Over({ h, run, records, onNew, onExit }: { h: NbaHistory; run: Survival
         <div><small>BEST</small><b>{best?.wins ?? w}</b></div>
       </div>
     </div>
+    <RelicReward rewardKey={survivalRewardKey(run)} />
     <Strip run={run} />
     {franchise && <div className="hunt-mvp"><PlayerAvatar playerId={franchise.name} primaryColor="#f47b20" secondaryColor="#f4f0e6" size={72} />
       <div><span className="pixel-eyebrow">FRANCHISE PLAYER</span><strong>{franchise.name}</strong><span>{seasonLabel(franchise.end)} · there to the end</span></div></div>}

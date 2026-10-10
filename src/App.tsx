@@ -277,6 +277,8 @@ const debouncedSave = createDebouncedSave();
 
 function App() {
   const [screen, setScreen] = useState<Screen>('menu');
+  // The profile tab the menu phone asked for (Achievements, Season Pass); Profile opens on its first tab.
+  const [profileTab, setProfileTab] = useState<'profile' | 'achievements' | 'season'>('profile');
   const [saveSummaries, setSaveSummaries] = useState<SaveSummary[]>([]);
   const [activeSaveId, setActiveSaveId] = useState<string | null>(null);
   const [pendingLeagueName, setPendingLeagueName] = useState('My League');
@@ -1509,7 +1511,7 @@ function App() {
   }
   // The GM Locker lives in the Player Profile now: an old #/locker link opens its Trophy room.
   if (screen === 'profile' || screen === 'locker') {
-    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening your profile…</main>}><ProfileHub key={screen} initialTab={screen === 'locker' ? 'trophies' : 'profile'} onExit={() => setScreen('menu')} /></Suspense></>;
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening your profile…</main>}><ProfileHub key={`${screen}-${profileTab}`} initialTab={screen === 'locker' ? 'trophies' : profileTab} onExit={() => setScreen('menu')} /></Suspense></>;
   }
   if (screen === 'settings') {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><SettingsPage onExit={() => setScreen('menu')} backup={<BackupPanel />}
@@ -1551,7 +1553,8 @@ function App() {
           onStart={startGameMode}
           onLocker={() => setScreen('locker')}
           onRelics={() => setScreen('relics')}
-          onProfile={() => setScreen('profile')}
+          onProfileTab={t => { setProfileTab(t); setScreen('profile'); }}
+          onProfile={() => { setProfileTab('profile'); setScreen('profile'); }}
           onCommunity={t => { setCommunityUser(null); setCommunityTab(t ?? 'boards'); setScreen('community'); }}
           onFriends={() => setScreen('friends')}
           onCode={startFromCode}

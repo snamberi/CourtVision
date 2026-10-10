@@ -6,7 +6,7 @@ import { COACH_STYLE, coachRarity } from '../../hunt/coaches';
 import { eraOf } from '../../hunt/eras';
 import {
   makeTrade, tradePending, tradeFits, TRADE_UP,
-  newPerfectRun, pickPlayer, quickSpinCard, reelFiller, rerollTeam, rerollEra, applyPrime, rerollSpin, luckySpin, spinsLeft, luckyLeft, rollRerollsLeft, lineupOf, swapLineup, setLineup, ROTATION_MINUTES, pickCoach, playNext, rollPool, franchiseName, eraById, teamBonds,
+  newPerfectRun, weeklyRule, ERA_RULES, type EraRule, pickPlayer, quickSpinCard, reelFiller, rerollTeam, rerollEra, applyPrime, rerollSpin, luckySpin, spinsLeft, luckyLeft, rollRerollsLeft, lineupOf, swapLineup, setLineup, ROTATION_MINUTES, pickCoach, playNext, rollPool, franchiseName, eraById, teamBonds,
   perfectRating, teamRating, summary, starCount, starCapReached, MAX_STARS, coachMatchup, coachMatchupText, streakPressure, STREAK_STEP, STREAK_MAX, OPP_EDGE, verdict, BOSS_TEAMS, QUICK_SLOTS, QUICK_SLOT_LABEL, SQUAD, SEASON_GAMES, ROUND_NAMES, WINS_NEEDED, SCORE, COACH_BY_ID,
   isCategoryMode, categoryPool, rerollCategory, categoryMultiplier, picksFromCategory, STARTERS, optionMultiplier, OPTION_MULTIPLIER, SHOT_CLOCK, autoPick, categoryLocked, bestFive, type CategoryOptions,
   type PerfectRun, type PerfectMode, type PerfectGame,
@@ -30,7 +30,8 @@ import { FEATS_EVENT } from '../../profile/feats';
 import { track, trackOnce } from '../../analytics/track';
 import { PlayerAvatar } from '../PlayerAvatar';
 import { relicRunOpts } from '../../relics/apply';
-import { rewardRun, perfectSpins } from '../../relics/rewards';
+import { rewardRun, perfectSpins, perfectSecret, perfectRewardKey } from '../../relics/rewards';
+import { RelicReward, LuckChip } from '../relics/RelicReward';
 import { PixelIcon } from '../PixelIcon';
 import { ShareCardButton } from '../ShareCardButton';
 import { FramedAvatar } from '../AvatarFrame';
@@ -70,7 +71,7 @@ export function PerfectChallenge({ onExit }: { onExit: () => void }) {
     if (r && r.stage === 'done' && prev?.stage !== 'done') {
       setRecords(recordPerfect(r));
       const s = summary(r);
-      rewardRun(`p820:${r.seed}:${r.mode}:${r.daily ?? ''}`, perfectSpins(s));
+      rewardRun(perfectRewardKey(r), perfectSpins(s), { secret: perfectSecret(s), why: '82-0 Challenge' });
       noteWeekRecords(noteRunHighs('perfect', r.highs).length);
       noteWeekRun('perfect', { score: s.score, line: `${s.w}-${s.l}${s.champion ? ', champions' : ''}` }, `p820-${r.seed}-${r.mode}`);
       const fmvp = s.champion ? runMvp(r.finalsLines) : null;
@@ -142,7 +143,7 @@ const LEVEL_BLURB: Record<Level, string> = {
   legend: 'Every opponent plays 4 points better. For the brave: scores ×1.25.',
 };
 
-type StartOpts = { level?: Level; view?: RunView; catOpts?: CategoryOptions; weekly?: string; custom?: string };
+type StartOpts = { level?: Level; view?: RunView; catOpts?: CategoryOptions; weekly?: string; custom?: string; rule?: EraRule };
 const CAT_OPTS_KEY = 'cv-p820-catopts';
 const readCatOpts = (): CategoryOptions => { try { return JSON.parse(localStorage.getItem(CAT_OPTS_KEY) ?? '{}') as CategoryOptions; } catch { return {}; } };
 /** The Weekly Category Challenge's seed: the same bench rolls for everyone that week. */
@@ -153,7 +154,7 @@ function Hub({ h, records, onStart, onBattle }: { h: NbaHistory; records: Perfec
   const [building, setBuilding] = useState(false);
   const [catOpts, setCatOptsState] = useState<CategoryOptions>(readCatOpts);
   const setCatOpts = (o: CategoryOptions) => { setCatOptsState(o); try { localStorage.setItem(CAT_OPTS_KEY, JSON.stringify(o)); } catch { /* storage blocked */ } };
-  const week = weekKey(), weekCat = weeklyCategory(h, week), weekBest = records.weekCat?.[week];
+  const week = weekKey(), weekCat = weeklyCategory(h, week), weekBest = records.weekCat?.[week], weekRule = weeklyRule(week);
   const today = todayUtc(), daily = dailyPerfect(today), todayBest = records.daily?.[today];
   const [prefs, setPrefs] = useState(() => challengePrefs('perfect'));
   const set = (p: Partial<typeof prefs>) => { const next = { ...prefs, ...p }; setPrefs(next); saveChallengePrefs('perfect', next); };
@@ -177,6 +178,10 @@ function Hub({ h, records, onStart, onBattle }: { h: NbaHistory; records: Perfec
         <span className="hunt-mode-icon"><PixelIcon name="calendar" size={24} /></span><b>Weekly Category Challenge</b>
         <small>Everyone's starters come from <strong>{weekCat.name}</strong> (tier {weekCat.tier}, ×{TIER_MULTIPLIER[weekCat.tier]}). Same bench rolls for everyone; your best try counts on the weekly board.</small>
         <em>{weekBest ? `Best this week: ${weekBest.w}-${weekBest.l} · ${weekBest.score.toLocaleString()}` : 'Play this week'}</em></button>
+      <button className="p820-mode p820-weekly" onClick={() => onStart('quick', Math.floor(Math.random() * 1_000_000_000), undefined, { ...prefs, rule: weekRule })}>
+        <span className="p820-new-tag">WEEKLY RULE</span>
+        <span className="hunt-mode-icon"><PixelIcon name="clock" size={24} /></span><b>Quick Spin: {ERA_RULES[weekRule].name}</b>
+        <small>This week, {ERA_RULES[weekRule].blurb}. A new rule every Monday.</small><em>Start</em></button>
       {(['category', 'slots', 'quick', 'franchise'] as PerfectMode[]).map(m => <button key={m} className={`p820-mode ${isCategoryMode(m) ? 'p820-mode-new' : ''}`} onClick={() => onStart(m, Math.floor(Math.random() * 1_000_000_000), undefined, { ...prefs, catOpts })}>
         {isCategoryMode(m) && <span className="p820-new-tag">NEW</span>}
         <span className="hunt-mode-icon"><PixelIcon name={MODE_INFO[m].icon} size={24} /></span><b>{MODE_INFO[m].name}</b><small>{MODE_INFO[m].blurb}</small><em>Start</em></button>)}
@@ -330,7 +335,7 @@ function QuickDraft({ h, run, setRun }: { h: NbaHistory; run: PerfectRun; setRun
   return <section className="p820-draft">
     <div className="p820-stage">
       <span className="pixel-eyebrow">{run.from === 'hunt' ? `YOUR HUNT SQUAD + BENCH SPIN ${run.squad.length - 5} OF ${SQUAD - 6}` : `SPIN ${run.squad.length + 1} OF ${SQUAD}`}</span>
-      <h2>{QUICK_SLOT_LABEL[slot]}</h2>
+      <h2>{QUICK_SLOT_LABEL[slot]} <LuckChip luck={run.luck} /></h2>
       <div className={`p820-reel ${spinning ? 'spinning' : ''} ${landed ? 'landed' : ''}`} aria-live="polite">
         {landed ? <CardTile c={landed} hide={!ratingsShown(run)} />
           : <div className="p820-reel-strip" style={{ transform: spinning ? `translateY(-${(strip.length - 1) * 64}px)` : 'translateY(0)' }}>{strip.map((c, i) => <div key={i} className="p820-reel-row"><b>{c.name}</b><small>{seasonLabel(c.end)} {c.team}</small><span>{ratingsShown(run) ? c.ovr : HIDDEN}</span></div>)}</div>}
@@ -735,6 +740,7 @@ function Finished({ h, run, records, onAgain }: { h: NbaHistory; run: PerfectRun
     </div>
     {!run.weekly && <DuelPanel setup={{ m: 'perfect', s: run.seed, pm: run.mode, ...(run.level ? { diff: run.level } : {}), ...(run.view ? { vw: run.view } : {}), ...(run.catOpts ? { co: run.catOpts } : {}), ...(run.custom ? { cc: run.custom } : {}) }} duel={run.duel}
       mine={{ score: s.score, won: s.champion, line: `${s.w}-${s.l} · playoffs ${s.pw}-${s.pl}${s.champion ? ' · champions' : ''}` }} />}
+    <RelicReward rewardKey={perfectRewardKey(run)} />
     <PerfectClaim run={run} records={records} score={s.score} />
     <RunMvps run={run} />
     <ReportCard h={h} run={run} />

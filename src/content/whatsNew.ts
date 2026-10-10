@@ -6,6 +6,21 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2027-03-31',
+    title: 'Relic slots, pity, Year Two and a phone you can arrange',
+    items: [
+      "**Relic slots:** only the relics in your slots add luck. Ten to start, five more in the shop (1,000 to 8,000 coins). New relics drop into a free slot by themselves.",
+      "**No one gets left out:** an Epic is guaranteed within 10 spins, a Legendary within 50 and a Mythic within 200, with counters in the vault. Every 10th Lucky Spin lands Legendary or better.",
+      "**Coins from playing:** every finished run pays coins (more when it earns spins), plus 25 coins a day for visiting. Each end screen shows what you earned, with a button to the vault.",
+      "**Relic sets, Spin 10, coin history and big reveals:** seven themed sets give bonus luck; open ten spins at once; a log shows where your coins went; Legendary, Mythic and secret pulls get a full-screen moment you can share.",
+      "**Secret relic hints:** every hidden relic has a riddle, and five answer to a feat (a Legend Hunt win, 15 Survival wins, the legend Story ending, a first-ballot Career, an 82-0 season).",
+      "**Luck you can see:** your relic luck shows on the spin screens, and a League Hunt reel that luck upgraded says LUCKY. Luck can even open the Hunt's secret door after one lost series.",
+      "**Story Mode, Chapter 6: Year Two** (after any ending), **Survival emergency signings** with run cash, an **82-0 weekly era rule** (Legends Only, the 90s or the Modern Era), and a **relic case** on your Career player's page.",
+      "**Menu phone:** a third page (Settings, What's New, Achievements, Season Pass), red dots when something is new, and hold an app to rearrange them.",
+      "**New achievements and titles:** Collector, Set Builder, Mythic Hunter and Keeper of Secrets.",
+    ],
+  },
+  {
     id: '2027-03-24',
     title: 'Relics: your own collection, across every mode',
     items: [

@@ -99,6 +99,8 @@ export interface PerfectRun {
   view?: RunView;
   /** Relic luck when the run began (relics.ts). */
   luck?: number;
+  /** This week's era rule (Quick Spin): every reel lands in that era. */
+  rule?: EraRule;
   /** The All-Star break trade (after game 41): three players you could trade for, and whether it's done. */
   trade?: { offers: string[]; done: boolean; made?: { out: string; in: string } };
   /** Injured players (card id -> games still out). */
@@ -237,7 +239,7 @@ function rollFor(h: NbaHistory, run: PerfectRun, keep?: { franchise?: string; er
 
 // ---------------------------------------------------------------- starting and drafting
 
-export function newPerfectRun(h: NbaHistory, mode: PerfectMode, seed: number, daily?: string, opts: { level?: Level; view?: RunView; catOpts?: CategoryOptions; weekly?: string; custom?: string; /** Relic luck and The Extra Pick (relics.ts); ignored by the Daily and the Weekly. */ luck?: number; extraPick?: boolean } = {}): PerfectRun {
+export function newPerfectRun(h: NbaHistory, mode: PerfectMode, seed: number, daily?: string, opts: { level?: Level; view?: RunView; catOpts?: CategoryOptions; weekly?: string; custom?: string; rule?: EraRule; /** Relic luck and The Extra Pick (relics.ts); ignored by the Daily and the Weekly. */ luck?: number; extraPick?: boolean } = {}): PerfectRun {
   // The Daily is the standard game for everyone.
   const level = daily ? 'pro' : opts.level ?? 'pro', view = daily ? STANDARD_VIEW : opts.view ?? STANDARD_VIEW;
   const shared = !!daily || !!opts.weekly;
@@ -253,8 +255,24 @@ export function newPerfectRun(h: NbaHistory, mode: PerfectMode, seed: number, da
     if (opts.weekly && mode === 'category') return { ...base, level: undefined, view: undefined, weekly: opts.weekly, cat: weeklyCategory(h, opts.weekly).id };
     return { ...base, cat: rollCategory(h, base).id };
   }
-  return mode === 'franchise' ? { ...run, roll: rollFor(h, run), rolls: 1 } : run;
+  return mode === 'franchise' ? { ...run, roll: rollFor(h, run), rolls: 1 } : mode === 'quick' && opts.rule && !daily ? { ...run, rule: opts.rule } : run;
 }
+
+// ---------------------------------------------------------------- the weekly era rule (Quick Spin)
+
+export type EraRule = 'legends' | 'nineties' | 'modern';
+export const ERA_RULES: Record<EraRule, { name: string; blurb: string; from: number; to: number }> = {
+  legends: { name: 'Legends Only', blurb: 'every reel is a season from before 1990', from: 0, to: 1989 },
+  nineties: { name: 'The 90s', blurb: 'every reel is a season from 1990 to 1999', from: 1990, to: 1999 },
+  modern: { name: 'Modern Era', blurb: 'every reel is a season from 2010 on', from: 2010, to: 9999 },
+};
+/** This week's rule: Legends Only every other week, the 90s and the Modern Era in between. */
+export function weeklyRule(week: string): EraRule {
+  const n = [...week].reduce((a, ch) => a + ch.charCodeAt(0) * 7, 0) + Number(week.replace(/\D/g, '').slice(-2) || 0);
+  const order: EraRule[] = ['legends', 'nineties', 'legends', 'modern'];
+  return order[n % order.length];
+}
+const inRule = (run: Pick<PerfectRun, 'rule'>, c: HuntCard) => !run.rule || (c.end >= ERA_RULES[run.rule].from && c.end <= ERA_RULES[run.rule].to);
 
 // ---------------------------------------------------------------- Category Draft
 
@@ -371,8 +389,10 @@ export function quickSpinCard(h: NbaHistory, run: PerfectRun): HuntCard {
   const total = Object.values(weights).reduce((a, b) => a + b, 0);
   let r = rng.next() * total, rarity: Rarity = 'common';
   for (const k of Object.keys(weights) as Rarity[]) { r -= weights[k]; if (r <= 0 && weights[k] > 0) { rarity = k; break; } }
-  const pool = cardPool(h).byRarity[rarity].filter(c => fitsQuick(c, slot) && !taken.has(c.playerId) && c.ovr >= 45);
-  return pool[Math.floor(rng.next() * pool.length)] ?? cardPool(h).cards.find(c => !taken.has(c.playerId) && (rarity === 'legendary' || c.rarity !== 'legendary'))!;
+  const pool = cardPool(h).byRarity[rarity].filter(c => fitsQuick(c, slot) && !taken.has(c.playerId) && c.ovr >= 45 && inRule(run, c));
+  // An era rule with no one at this rarity and spot: the best fit from the era instead.
+  const ruled = run.rule && !pool.length ? cardPool(h).cards.filter(c => fitsQuick(c, slot) && !taken.has(c.playerId) && inRule(run, c) && (rarity === 'legendary' || c.rarity !== 'legendary')) : [];
+  return pool[Math.floor(rng.next() * pool.length)] ?? ruled[Math.floor(rng.next() * ruled.length)] ?? cardPool(h).cards.find(c => !taken.has(c.playerId) && (rarity === 'legendary' || c.rarity !== 'legendary'))!;
 }
 
 /** Random cards for the reel to scroll past before it stops (cosmetic only). */

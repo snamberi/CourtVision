@@ -2,8 +2,7 @@ import { useRef, useState } from 'react';
 import {
   newStory, currentBeat, continueStory, choose, spendTraining, choosePath, runDraft, playStoryGame, ending, overall, storyShareText, chapterOf, ordinal,
   loadStory, saveStory, loadEndings, recordEnding, STYLES, HOMETOWNS, PATHS, TRAINABLE, TRAIN_STEP, SCRIPT,
-  type StoryState, type StoryStyle, type StoryGame, type Path, type StoryEndings,
-} from '../../story/story';
+  type StoryState, type StoryStyle, type StoryGame, type Path, type StoryEndings, inYearTwo, canStartYearTwo, startYearTwo } from '../../story/story';
 import { CATEGORY_BY_ID, categoryScore, categoryValues } from '../../career/categories';
 import { PlayerAvatar } from '../PlayerAvatar';
 import { PixelIcon } from '../PixelIcon';
@@ -12,11 +11,13 @@ import { track, trackOnce } from '../../analytics/track';
 import { noteWeekRun } from '../../retention/weekLog';
 import '../hunt/hunt.css';
 import { relicRunOpts } from '../../relics/apply';
-import { rewardRun, storySpins } from '../../relics/rewards';
+import { rewardRun, storySpins, storySecret, storyRewardKey } from '../../relics/rewards';
+import { RelicReward } from '../relics/RelicReward';
 import './story.css';
 
 const SITE = 'https://courtvisiongame.com';
-const ACTS = SCRIPT.filter(b => b.kind === 'chapter').length;
+// The five acts of the main story (Chapter 6, Year Two, is a bonus after any ending).
+const ACTS = SCRIPT.slice(0, SCRIPT.findIndex(b => b.id === 'end')).filter(b => b.kind === 'chapter').length;
 const newSeed = () => Math.floor(Math.random() * 1_000_000_000);
 const BOND_LABEL = (n: number) => (n >= 5 ? 'Family' : n >= 3 ? 'Close' : n >= 1 ? 'Friendly' : n >= -1 ? 'Distant' : 'Cold');
 const RIVAL_LABEL = (n: number) => (n >= 2 ? 'Respect' : n >= 0 ? 'Rivals' : n >= -2 ? 'Bad blood' : 'Enemies');
@@ -33,8 +34,8 @@ export function StoryMode({ onExit }: { onExit: () => void }) {
     setStoryState(s);
     saveStory(s);
     if (s && s.done && prev && !prev.done) {
-      setEndings(recordEnding(s));
-      rewardRun(`story:${s.seed}`, storySpins(ending(s).tier));
+      if (!inYearTwo(s)) setEndings(recordEnding(s));
+      rewardRun(storyRewardKey(s), storySpins(ending(s).tier), { secret: storySecret(ending(s).tier), why: 'Story Mode' });
       noteWeekRun('story', { score: Math.round(overall(s) * 10 + s.games.filter(g => g.won).length * 50), line: ending(s).title }, `story-${s.seed}`);
       trackOnce(`story-${s.seed}`, 'mode_finish', { mode: 'story', ending: ending(s).tier });
     }
@@ -47,13 +48,13 @@ export function StoryMode({ onExit }: { onExit: () => void }) {
   };
   const header = <header className="hunt-top">
     <button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button>
-    <div className="hunt-title"><span className="pixel-eyebrow">{story && !story.done ? `ACT ${chapterOf(story)?.act ?? 1} OF ${ACTS} · ${(chapterOf(story)?.title ?? '').toUpperCase()}` : 'STREET TO THE LEAGUE'}</span><h1>Story Mode</h1></div>
+    <div className="hunt-title"><span className="pixel-eyebrow">{story && !story.done ? (inYearTwo(story) ? `BONUS CHAPTER · ${(chapterOf(story)?.title ?? '').toUpperCase()}` : `ACT ${chapterOf(story)?.act ?? 1} OF ${ACTS} · ${(chapterOf(story)?.title ?? '').toUpperCase()}`) : 'STREET TO THE LEAGUE'}</span><h1>Story Mode</h1></div>
     {story && !story.done && <button className="hunt-exit" onClick={() => { if (window.confirm('Start over? This story will be lost.')) { setStory(null); setLastGame(null); } }}>Start over</button>}
   </header>;
   return <div className="hunt story">
     {header}
     {!story ? <Create endings={endings} onStart={(name, style, town) => { track('mode_start', { mode: 'story', style }); setStory(newStory(newSeed(), name, style, town, relicRunOpts())); }} />
-      : story.done ? <Ending s={story} endings={endings} onNew={() => { setStory(null); setLastGame(null); }} onExit={onExit} />
+      : story.done ? <Ending s={story} endings={endings} onNew={() => { setStory(null); setLastGame(null); }} onYearTwo={() => { setLastGame(null); setStory(startYearTwo(story)); }} onExit={onExit} />
       : <div className="story-layout">
           <HeroPanel s={story} />
           <main className="story-main">
@@ -155,7 +156,7 @@ function BeatView({ s, act }: { s: StoryState; act: (fn: (s: StoryState) => Stor
   return null;
 }
 
-function Ending({ s, endings, onNew, onExit }: { s: StoryState; endings: StoryEndings; onNew: () => void; onExit: () => void }) {
+function Ending({ s, endings, onNew, onYearTwo, onExit }: { s: StoryState; endings: StoryEndings; onNew: () => void; onYearTwo: () => void; onExit: () => void }) {
   const e = ending(s);
   const [copied, setCopied] = useState(false);
   const wins = s.games.filter(g => g.won).length;
@@ -174,10 +175,12 @@ function Ending({ s, endings, onNew, onExit }: { s: StoryState; endings: StoryEn
         <div><small>HYPE</small><b>{s.hype}</b></div>
       </div>
     </div>
+    <RelicReward rewardKey={storyRewardKey(s)} />
     <ol className="hunt-log">{s.games.map((g, i) => <li key={i} className={g.won ? 'won' : 'lost'}>{g.won ? 'W' : 'L'} {g.us}-{g.them} · {g.title} vs {g.opp} <small>· {g.line.pts} PTS, {g.line.reb} REB, {g.line.ast} AST · grade {g.grade}</small></li>)}</ol>
     <p className="hint-text">Endings seen: {Object.keys(endings.tiers).length} of 4 (The Legend Begins, A Star Is Born, A Pro, The Long Way Up). Different choices, a different path or a different game style tell a different story.</p>
+    {canStartYearTwo(s) && <div className="story-y2"><span className="pixel-eyebrow">BONUS CHAPTER UNLOCKED</span><b>Chapter 6: Year Two</b><p>The shoe deal, Coach Ray, the Rising Stars game and a Conference Finals against Ice. Your player, your bonds and your hype carry over.</p><button className="primary" onClick={onYearTwo}>Play Year Two</button></div>}
     <div className="contest-actions">
-      <button className="primary" onClick={onNew}>New story</button>
+      <button className={canStartYearTwo(s) ? '' : 'primary'} onClick={onNew}>New story</button>
       <ShareCardButton tall fileName="story-mode.png" text={text} spec={{
         kicker: `Story Mode · ${s.hometown}`, title: e.title, subtitle: `${s.name} · ${s.draft?.pick ? `#${s.draft.pick} pick` : 'undrafted'} · ${PATHS[s.path ?? 'midmajor'].name}`,
         stats: [{ label: 'OVR', value: String(overall(s)) }, { label: 'Big games', value: `${wins}-${s.games.length - wins}` }, { label: 'PPG', value: per('pts') }],

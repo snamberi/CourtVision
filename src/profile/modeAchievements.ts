@@ -7,6 +7,7 @@ import { loadRebuildRecords } from '../simulation/rebuildChallenge';
 import { loadWeeklyRecords } from '../retention/weekly';
 import { careerCache } from './profile';
 import { readFeats, type Feats } from './feats';
+import { loadRelics, setComplete, RELICS, RELIC_SETS, SECRET_RELICS } from '../relics/relics';
 
 /*
  * Achievements for the modes outside the GM front office: Career Mode, League Hunt, the Rebuild Challenge, the
@@ -15,10 +16,10 @@ import { readFeats, type Feats } from './feats';
  * can count them for rarity. They are trophies only: the modes already give XP for the same results.
  */
 
-export type Mode = 'career' | 'hunt' | 'perfect' | 'rebuild' | 'draft' | 'pvp' | 'ranked' | 'weekly' | 'daily' | 'survival' | 'story';
+export type Mode = 'career' | 'hunt' | 'perfect' | 'rebuild' | 'draft' | 'pvp' | 'ranked' | 'weekly' | 'daily' | 'survival' | 'story' | 'relics';
 export const MODE_LABELS: Record<Mode, string> = {
   career: 'Career Mode', hunt: 'League Hunt', perfect: '82-0 Challenge', rebuild: 'Rebuild Challenge', draft: 'All-Time Draft',
-  pvp: 'Hunt PvP', ranked: 'Ranked', weekly: 'Weekly challenges', daily: 'Daily goals', survival: 'Survival', story: 'Story Mode',
+  pvp: 'Hunt PvP', ranked: 'Ranked', weekly: 'Weekly challenges', daily: 'Daily goals', survival: 'Survival', story: 'Story Mode', relics: 'Relics',
 };
 
 export interface ModeStats {
@@ -34,6 +35,8 @@ export interface ModeStats {
   catTitles: number; catTeams: number; catBrutal: number; catPerfect: number;
   /** Survival and Story Mode (their own records in this browser). */
   survivalBest: number; survivalBosses: number; storyFinished: number; storyLegend: number; storyEndings: number;
+  /** The Relic Vault. */
+  relicCommons: number; relicMythics: number; relicSecrets: number; relicSets: number;
 }
 
 export interface ModeAchievement { id: string; mode: Mode; name: string; description: string; icon: TrophyKey; progress: (s: ModeStats) => [number, number]; label?: (n: number, goal: number) => string }
@@ -75,6 +78,10 @@ export const MODE_ACHIEVEMENTS: ModeAchievement[] = [
   { id: 'survival-bosses', mode: 'survival', name: 'Giant Killer', description: 'Beat 5 Survival bosses (real champions).', icon: 'champion', progress: s => at(s.survivalBosses, 5) },
   { id: 'story-done', mode: 'story', name: 'Street to the League', description: 'Finish Story Mode.', icon: 'allRookie1', progress: s => at(s.storyFinished, 1) },
   { id: 'story-legend', mode: 'story', name: 'Street Legend', description: 'Reach the ending "The Legend Begins".', icon: 'roy', progress: s => at(s.storyLegend, 1) },
+  { id: 'relic-collector', mode: 'relics', name: 'Collector', description: 'Own every Common relic.', icon: 'allStar', progress: s => at(s.relicCommons, RELICS.filter(r => r.rarity === 'common').length) },
+  { id: 'relic-set', mode: 'relics', name: 'Set Builder', description: 'Complete a relic set.', icon: 'champion', progress: s => at(s.relicSets, 1) },
+  { id: 'relic-mythic', mode: 'relics', name: 'Mythic Hunter', description: 'Find a Mythic relic.', icon: 'mvp', progress: s => at(s.relicMythics, 1) },
+  { id: 'relic-secrets', mode: 'relics', name: 'Keeper of Secrets', description: 'Uncover all eight secret relics.', icon: 'fmvp', progress: s => at(s.relicSecrets, SECRET_RELICS.length) },
   { id: 'story-all', mode: 'story', name: 'Every Road', description: 'See all four Story Mode endings.', icon: 'eoy', progress: s => at(s.storyEndings, 4) },
 
   { id: 'rebuild-star', mode: 'rebuild', name: 'First Star', description: 'Earn a star in a Rebuild Challenge.', icon: 'mip', progress: s => at(s.rebuildStars, 1) },
@@ -125,6 +132,8 @@ export function modeStats(read: Read = localRead, extra: Feats = {}): ModeStats 
   const p82 = loadPerfectRecords(read);
   const surv = json<{ best?: Record<string, { wins: number } | undefined>; bossesBeaten?: number }>(read, 'cv-survival-records', {});
   const story = json<{ finished?: number; tiers?: Record<string, number> }>(read, 'cv-story-endings', {});
+  const relics = loadRelics(read);
+  const has = (id: string) => (relics.owned[id] ?? 0) > 0;
   return {
     retired: c.retired, hallOfFame: c.hallOfFame, firstBallot: c.firstBallot ?? 0, top10: c.top10 ?? 0, mvpCareers: c.mvpCareers ?? 0, mostTitles: c.mostTitles ?? 0, mostPoints: c.mostPoints ?? 0,
     huntWins: hunt.wins, huntLegendWins: feats.huntLegendWins ?? 0, dailyPlayed: daily.length, dailyWins: daily.filter(d => d.won).length,
@@ -141,6 +150,8 @@ export function modeStats(read: Read = localRead, extra: Feats = {}): ModeStats 
     catTitles: categoryTitles(p82), catTeams: categoryTeamTitles(p82), catBrutal: categoryBrutal(p82), catPerfect: categoryPerfect(p82),
     survivalBest: Math.max(0, ...Object.values(surv.best ?? {}).map(b => b?.wins ?? 0)), survivalBosses: surv.bossesBeaten ?? 0,
     storyFinished: story.finished ?? 0, storyLegend: story.tiers?.legend ?? 0, storyEndings: Object.keys(story.tiers ?? {}).length,
+    relicCommons: RELICS.filter(r => r.rarity === 'common' && has(r.id)).length, relicMythics: RELICS.filter(r => r.rarity === 'mythic' && has(r.id)).length,
+    relicSecrets: relics.secrets.length, relicSets: RELIC_SETS.filter(st => setComplete(relics, st)).length,
   };
 }
 

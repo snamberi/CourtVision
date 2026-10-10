@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { unseenReleases, markReleasesSeen } from '../content/whatsNew';
+import { unseenReleases, markReleasesSeen, RELEASES } from '../content/whatsNew';
 import { IS_DESKTOP_BUILD } from '../appMode';
 import { track } from '../analytics/track';
 
@@ -7,12 +7,12 @@ import { track } from '../analytics/track';
 const rich = (t: string) => t.split(/(\*\*[^*]+\*\*)/).map((part, i) => part.startsWith('**') ? <b key={i}>{part.slice(2, -2)}</b> : part);
 
 /** "What's new": once per update, on the main menu, for returning players. A click or tap anywhere closes it (the list scrolls if it is taller than the screen). */
-export function WhatsNew() {
-  const [releases] = useState(() => unseenReleases());
+export function WhatsNew({ force = false, onClose }: { /** Opened on purpose (the phone's What's New app): the latest updates, read or not. */ force?: boolean; onClose?: () => void } = {}) {
+  const [releases] = useState(() => (force ? RELEASES.slice(0, 2) : unseenReleases()));
   const [open, setOpen] = useState(releases.length > 0);
   const closeRef = useRef<HTMLButtonElement>(null);
   const [touch] = useState(() => typeof window !== 'undefined' && window.matchMedia?.('(hover: none)').matches);
-  const close = () => { markReleasesSeen(); setOpen(false); };
+  const close = () => { markReleasesSeen(); setOpen(false); onClose?.(); };
   useEffect(() => {
     if (!open) return;
     track('whats_new', { release: releases[0].id });

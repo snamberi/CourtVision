@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   RELIC_RARITY, RARITY_ORDER, RELICS, SECRET_RELICS, SECRET_CHANCE, MAX_LUCK, rarityFor, spinRelic, grantSpins, luckPercent, luckMultiplier, loadRelics,
-  LUCKY_ODDS, STACK_MAX, SPIN_PRICE, LUCKY_SPIN_PRICE, RELIC_PRICE, UPGRADE_PRICE, buySpin, luckySpin, refreshShop, buyRelic, upgradeRelic, canGain,
+  autoEquip, PITY, LUCKY_PITY, SLOT_PRICES, BASE_SLOTS, EXTRA_SLOTS, RELIC_SETS, slotCount, buySlot, equipRelic, unequipRelic, setBonus, spinMany,
+  grantReward, rewardOf, collectDailyCoins, DAILY_COINS, LUCKY_ODDS, STACK_MAX, SPIN_PRICE, LUCKY_SPIN_PRICE, RELIC_PRICE, UPGRADE_PRICE, buySpin, luckySpin, refreshShop, buyRelic, upgradeRelic, canGain,
   type RelicState,
 } from '../relics/relics';
 import { relicRunOpts } from '../relics/apply';
@@ -10,7 +11,10 @@ import { spinWeights, newRun } from '../hunt/run';
 import { emptyPlay, guessesAllowed, GRID_GUESSES } from '../arcade/grid';
 import { loadHistoryForTests } from './helpers/nbaHistoryFixture';
 
-const base = (over: Partial<RelicState> = {}): RelicState => ({ v: 1, spins: 0, coins: 0, owned: {}, secrets: [], granted: [], history: [], upgraded: [], ...over });
+const base = (over: Partial<RelicState> = {}): RelicState => {
+  const s: RelicState = { v: 1, spins: 0, coins: 0, owned: {}, secrets: [], granted: [], history: [], upgraded: [], equipped: [], slotsBought: 0, pity: { epic: 0, legendary: 0, mythic: 0, lucky: 0 }, opens: 0, ledger: [], rewards: [], ...over };
+  return over.equipped ? s : { ...s, equipped: autoEquip(s) };
+};
 const seq = (...xs: number[]) => { let i = 0; return () => xs[i++ % xs.length]; };
 
 describe('relics', () => {
@@ -171,6 +175,103 @@ describe('relic shop, stacks and upgrades', () => {
   });
 });
 
+describe('slots, pity, sets and coins', () => {
+  // Rolls: secret miss, the worst common, the first relic.
+  const bad = () => seq(0.5, 0.999, 0);
+
+  it('epic, legendary and mythic pity end unlucky streaks', () => {
+    let s = base({ spins: 400, secretPityDone: true });
+    const got: string[] = [];
+    for (let i = 0; i < PITY.mythic; i++) { const o = spinRelic(s, bad())!; s = o.state; got.push(o.result.rarity); }
+    expect(got[PITY.epic - 1]).toBe('epic');
+    expect(got.slice(0, PITY.epic - 1).every(r => r === 'common')).toBe(true);
+    expect(got[PITY.legendary - 1]).toBe('legendary');
+    expect(got[PITY.mythic - 1]).toBe('mythic');
+    expect(s.pity).toMatchObject({ epic: 0, legendary: 0, mythic: 0 });
+  });
+
+  it('every 10th Lucky Spin lands Legendary or better', () => {
+    let s = base({ coins: LUCKY_SPIN_PRICE * LUCKY_PITY });
+    const got: string[] = [];
+    for (let i = 0; i < LUCKY_PITY; i++) { const o = luckySpin(s, seq(0.5, 0.999, 0))!; s = o.state; got.push(o.result.rarity); }
+    expect(got.slice(0, -1).every(r => r === 'rare' || r === 'epic')).toBe(true);
+    expect(got.at(-1)).toBe('legendary');
+  });
+
+  it('the 50th spin ever opened uncovers a secret, once', () => {
+    let s = base({ spins: 120 });
+    const secrets: number[] = [];
+    for (let i = 1; i <= 120; i++) { const o = spinRelic(s, bad())!; s = o.state; if (o.result.kind === 'secret') secrets.push(i); }
+    expect(secrets).toEqual([50]);
+    expect(s.secretPityDone).toBe(true);
+    expect(s.opens).toBe(120);
+  });
+
+  it('only relics in your slots add luck; ten slots, five more to buy', () => {
+    const owned = Object.fromEntries(RELICS.slice(0, 20).map(r => [r.id, 1]));
+    const s = base({ owned, coins: 100_000 });
+    expect(s.equipped).toHaveLength(BASE_SLOTS);
+    const luck = luckPercent(s);
+    const off = unequipRelic(s, s.equipped[0]);
+    expect(luckPercent(off)).toBeLessThan(luck);
+    expect(equipRelic(s, RELICS[19].id)).toBeNull();
+    let t = s;
+    for (let i = 0; i < EXTRA_SLOTS; i++) t = buySlot(t)!;
+    expect(slotCount(t)).toBe(BASE_SLOTS + EXTRA_SLOTS);
+    expect(t.coins).toBe(100_000 - SLOT_PRICES.reduce((a, b) => a + b, 0));
+    expect(buySlot(t)).toBeNull();
+    // Each bought slot took the best spare relic; full again now.
+    expect(t.equipped).toHaveLength(BASE_SLOTS + EXTRA_SLOTS);
+    expect(luckPercent(t)).toBeGreaterThan(luck);
+    const spare = RELICS.slice(0, 20).find(r => !t.equipped.includes(r.id))!.id;
+    expect(equipRelic(t, spare)).toBeNull();
+    expect(equipRelic(unequipRelic(t, t.equipped[0]), spare)!.equipped).toContain(spare);
+    expect(equipRelic(s, 'notOwned')).toBeNull();
+  });
+
+  it('new relics fill a free slot', () => {
+    const o = spinRelic(base({ spins: 1 }), bad())!;
+    expect(o.state.equipped).toEqual([o.result.id]);
+  });
+
+  it('a complete set adds its bonus', () => {
+    const set = RELIC_SETS[0];
+    const part = Object.fromEntries(set.relics.slice(1).map(id => [id, 1]));
+    expect(setBonus({ owned: part })).toBe(0);
+    expect(setBonus({ owned: { ...part, [set.relics[0]]: 1 } })).toBe(set.bonus);
+    for (const st of RELIC_SETS) for (const id of st.relics) expect(RELICS.some(r => r.id === id)).toBe(true);
+  });
+
+  it('logs coins, pays the daily coins once a day', () => {
+    const s = collectDailyCoins(base(), '2026-10-10');
+    expect(s.coins).toBe(DAILY_COINS);
+    expect(collectDailyCoins(s, '2026-10-10')).toBe(s);
+    const b = buySpin({ ...s, coins: SPIN_PRICE })!;
+    expect(b.ledger.at(-1)).toMatchObject({ amount: -SPIN_PRICE, why: 'Relic Spin' });
+  });
+
+  it('a run pays spins, coins and its feat secret once', () => {
+    const s = grantReward(base(), 'hunt:1', { spins: 2, coins: 125, secret: 'secondWind' });
+    expect(s).toMatchObject({ spins: 2, coins: 125, secrets: ['secondWind'] });
+    expect(rewardOf(s, 'hunt:1')).toMatchObject({ spins: 2, coins: 125, secret: 'secondWind' });
+    expect(grantReward(s, 'hunt:1', { spins: 2, coins: 125 })).toBe(s);
+    expect(rewardOf(grantReward(s, 'hunt:2', { spins: 0, coins: 25, secret: 'secondWind' }), 'hunt:2')?.secret).toBeUndefined();
+  });
+
+  it('spins many at once', () => {
+    const out = spinMany(base({ spins: 3 }), 10, bad());
+    expect(out.results).toHaveLength(3);
+    expect(out.state.spins).toBe(0);
+  });
+
+  it('old saves get their best relics slotted', () => {
+    const owned = Object.fromEntries(RELICS.map(r => [r.id, 1]));
+    const s = loadRelics(() => JSON.stringify({ v: 1, spins: 0, coins: 0, owned, secrets: [], granted: [], history: [] }));
+    expect(s.equipped).toHaveLength(BASE_SLOTS);
+    expect(s.equipped.map(id => RELICS.find(r => r.id === id)!.rarity).slice(0, 5)).toEqual(['mythic', 'mythic', 'mythic', 'mythic', 'mythic']);
+  });
+});
+
 describe('relic hooks', () => {
   it('luck makes the best hunt cards likelier', () => {
     const plain = spinWeights(0), lucky = spinWeights(0, 0.2);
@@ -194,5 +295,16 @@ describe('relic hooks', () => {
   it('The Last Look adds an endless grid guess', () => {
     expect(guessesAllowed(emptyPlay())).toBe(GRID_GUESSES);
     expect(guessesAllowed(emptyPlay(GRID_GUESSES + 1))).toBe(GRID_GUESSES + 1);
+  });
+});
+
+describe('a bought slot', () => {
+  it('fills itself with your best spare relic', async () => {
+    const { buySlot: buy, RELICS: all, loadRelics: load } = await import('../relics/relics');
+    const owned = Object.fromEntries(all.slice(0, 12).map(r => [r.id, 1]));
+    const s = load(() => JSON.stringify({ v: 1, spins: 0, coins: 5000, owned, secrets: [], granted: [], history: [] }));
+    expect(s.equipped).toHaveLength(10);
+    const t = buy(s)!;
+    expect(t.equipped).toHaveLength(11);
   });
 });

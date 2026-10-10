@@ -37,7 +37,8 @@ import { LevelPicker } from '../ChallengeOptions';
 import { WheelBuilder, MyPlayerBuilder, IdentityView, type IdentityChoice } from './CareerCreate';
 import '../hunt/hunt.css';
 import { relicRunOpts } from '../../relics/apply';
-import { rewardRun, careerSpins } from '../../relics/rewards';
+import { rewardRun, careerSpins, careerSecret, careerRewardKey } from '../../relics/rewards';
+import { RelicReward, RelicCase } from '../relics/RelicReward';
 import './career.css';
 
 type View = { k: 'hub' } | { k: 'wheel'; seed: number } | { k: 'myplayer'; seed: number } | { k: 'identity'; seed: number; prime: Prime; mode: Mode } | { k: 'career' };
@@ -73,7 +74,7 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
     setActive({ meta, world });
     if (meta.status === 'retired') {
       if (meta.weekly && meta.retired) recordWeekly('career', meta.weekly, { best: meta.retired.legacy, label: meta.playerId });
-      if (meta.retired) rewardRun(`career:${meta.id}`, careerSpins(meta.retired.hallOfFame));
+      if (meta.retired) rewardRun(careerRewardKey(meta), careerSpins(meta.retired.hallOfFame), { secret: careerSecret(meta.retired.hallOfFame), why: 'Career Mode' });
       if (meta.retired) noteWeekRun('career', { score: meta.retired.legacy, line: `${meta.playerId}, Legacy ${meta.retired.legacy.toFixed(1)}` }, `career-${meta.id}`);
       trackOnce(`career-${meta.id}`, 'mode_finish', { mode: 'career', variant: meta.weekly ? 'weekly' : meta.mode, seasons: meta.years.length, legacy: meta.retired?.legacy ?? 0, hall: meta.retired?.hallOfFame ?? 'no', past_draft: !!meta.draftYear });
       saveCareer(meta).then(() => dropWorld(meta.id)).then(refresh); return;
@@ -510,6 +511,8 @@ function Legacy({ h, meta, onNew }: { h: NbaHistory; meta: CareerMeta; onNew: ()
     `Hall of Fame: ${ret.hallOfFame === 'first-ballot' ? 'first ballot' : ret.hallOfFame === 'yes' ? 'yes' : 'no'} · ${rank ? `#${rank} all time` : 'outside the all-time Top 100'} (Court Vision Career Mode)`].filter(Boolean).join('\n');
   return <section className="hunt-stage hunt-over won cv-page">
     <div className="cv-legacy-card"><CareerCard meta={meta} overall={meta.years.reduce((m, y) => Math.max(m, y.overall), 0)} teamName={meta.years.at(-1)?.teamName ?? ''} /></div>
+    <RelicReward rewardKey={careerRewardKey(meta)} />
+    <RelicCase />
     <div className="hunt-over-banner"><span className="pixel-eyebrow">RETIRED AT {ret.age} · {fy(ret.season)}</span><h2>The legacy of {meta.playerId}</h2>
       <div className="hunt-over-stats">
         <div><small>ALL-TIME RANK</small><b>{rank ? `#${rank}` : '—'}</b></div>

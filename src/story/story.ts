@@ -203,6 +203,36 @@ export const SCRIPT: Beat[] = [
     loss: (_, g) => `Your season ends ${g.them}-${g.us}, one game short. On the plane home Darius Cole says: "Now you know what it feels like. Remember it."`,
     reward: { win: { hype: 3, flag: 'game7' }, loss: { grit: 1 } } },
   { kind: 'ending', id: 'end' },
+
+  // ---------------------------------------------------------------- Chapter 6 (bonus, after any ending): Year Two
+  { kind: 'chapter', id: 'c6', act: 6, age: 22, title: 'Year Two', text: s => `Summer again. ${s.hype >= 8 ? 'Your face is on a billboard on the highway home.' : 'Nobody stops you at the airport yet.'} Year two is when the league stops being surprised by you and starts scouting you. Ice put up 30 in the last game of his rookie year. He made sure you saw it.` },
+  { kind: 'scene', id: 'y2-deal', title: 'The Offer', text: () => 'Your agent slides two papers across the table. A sneaker company wants you as the face of a new line. A smaller deal would let you spend the summer in the gym instead of on a press tour.',
+    choices: () => [
+      { id: 'shoe', label: 'Sign the shoe deal.', result: 'Your logo, your colorway, your name on a box. You spend June on planes, not on the court.', effects: { hype: 3, grit: -1 } },
+      { id: 'gym', label: 'Take the small deal. Gym all summer.', result: 'Six a.m. every day at Carver Park. The kids start showing up at 5:45 to watch.', effects: { grit: 2, train: { athleticism: 1, body: 1 } } },
+      { id: 'dre', label: 'Make Dre your business manager first.', result: 'Dre negotiates like he plays defense: annoying and effective. The deal gets better.', effects: { bond: { dre: 2 }, hype: 1 } },
+    ] },
+  { kind: 'train', id: 't6', title: 'The Second Summer', points: 3, text: () => 'Every scout in the league has a file on you now. Add something they haven\'t seen.' },
+  { kind: 'game', id: 'y2-open', title: 'Year Two Opener', level: 'nba', minutes: s => minutesForRookie(s, 24), opp: () => 'the Milwaukee Bucks', stakes: s => `Opening night, year two. ${s.flags.includes('game7') ? 'The banner from last spring hangs over the floor.' : 'Last season ended early. This one starts tonight.'}`,
+    win: (_, g) => `${g.us}-${g.them}. ${g.line.pts >= 20 ? `${g.line.pts} points: the league notices.` : 'A win to start the year. That\'s the job.'}`,
+    loss: (_, g) => `${g.them}-${g.us}. The sophomore slump headlines are ready. You read every one.`,
+    reward: { win: { hype: 1 }, loss: { grit: 1 } } },
+  { kind: 'scene', id: 'y2-ray', title: 'Coach Ray', text: s => `Ray is in the hospital. Nothing serious, the doctors say, but he's seventy-one. ${s.bonds.ray >= 2 ? 'He asks the nurses to put your game on.' : 'He doesn\'t call you. Dre does.'}`,
+    choices: s => [
+      { id: 'visit', label: 'Fly home between games.', result: 'Two flights, no sleep, an hour at his bedside. He talks about your footwork the whole time.', effects: { bond: { ray: 2 }, grit: 1 } },
+      { id: 'game', label: 'Dedicate the next game to him.', result: 'You write his name on your shoes. The cameras find it.', effects: { hype: 1, flag: 'forRay' } },
+      ...(s.bonds.ray < 1 ? [{ id: 'later', label: 'Tell yourself you\'ll call after the road trip.', result: 'The road trip is twelve days long.', effects: { bond: { ray: -1 }, train: { iq: 1 } } }] : []),
+    ] },
+  { kind: 'game', id: 'y2-ice', title: 'Rising Stars', level: 'nbaRival', key: true, minutes: s => minutesForRookie(s, 26), opp: s => `Team Ice (${s.draft?.iceTeam ?? 'Ice Vance'})`, stakes: s => `All-Star Weekend. The league made you and Ice captains of the Rising Stars game. ${s.flags.includes('beatIce') ? 'He wants the rematch.' : 'You want the rematch.'}${s.flags.includes('forRay') ? ' Ray\'s name is still on your shoes.' : ''}`,
+    win: (s, g) => `${g.us}-${g.them}. Your team wins the Rising Stars game${g.line.pts >= 18 ? ` and you take MVP with ${g.line.pts}` : ''}. ${s.bonds.ice >= 1 ? 'Ice laughs the whole handshake line.' : 'Ice doesn\'t stay for the trophy.'}`,
+    loss: (_, g) => `${g.them}-${g.us}. Ice lifts the trophy and points it at you. Fine. The real season is still going.`,
+    reward: { win: { hype: 2, flag: 'risingMvp' }, loss: { grit: 2 } } },
+  { kind: 'train', id: 't7', title: 'The Stretch Run', points: 2, text: () => 'Twenty games left and a playoff seed on the line. Sharpen one thing.' },
+  { kind: 'game', id: 'y2-final', title: 'Conference Finals', level: 'nbaPlayoff', key: true, minutes: s => minutesForRookie(s, 30), opp: s => s.draft?.iceTeam ?? 'Ice\'s team', stakes: s => `Conference Finals, Game 6, and of course it's Ice. Win and you're in the Finals in year two. ${s.bonds.dre >= 3 ? 'Dre flew in. He\'s wearing your shoe.' : 'The whole of Carver Park is watching at the rec center.'}`,
+    win: (_, g) => `${g.us}-${g.them}. You're going to the NBA Finals in your second season. Ice waits at half court and hugs you. "Go get it," he says.`,
+    loss: (_, g) => `${g.them}-${g.us}. Ice goes to the Finals. You sit in the locker room in your jersey for an hour. Year three starts tomorrow.`,
+    reward: { win: { hype: 3, flag: 'finals' }, loss: { grit: 2 } } },
+  { kind: 'ending', id: 'end2' },
 ];
 
 export const minutesForRookie = (s: StoryState, base: number) => Math.min(36, Math.max(10, Math.round(base + (overall(s) - 64) * 0.9 + (s.draft?.pick && s.draft.pick <= 5 ? 4 : 0))));
@@ -389,6 +419,7 @@ export function playStoryGame(s: StoryState): StoryState {
 export interface Ending { id: string; title: string; text: string; tier: 'legend' | 'star' | 'pro' | 'grinder' }
 
 export function ending(s: StoryState): Ending {
+  if (inYearTwo(s)) return yearTwoEnding(s);
   const key = s.games.filter(g => g.won && SCRIPT.some(b => b.id === g.beat && b.kind === 'game' && b.key)).length;
   const ovr = overall(s);
   const avg = s.games.length ? s.games.reduce((n, g) => n + gameScore(g.line), 0) / s.games.length : 0;
@@ -405,6 +436,33 @@ export function ending(s: StoryState): Ending {
   const ray = s.bonds.ray >= 4 ? 'Coach Ray sits courtside at every home game, in the seat you bought for him.' : s.bonds.ray >= 1 ? 'Ray watches every game from the rec-center office, on a TV with bad reception.' : 'Coach Ray tells the kids at the rec center about you. He leaves out the parts where you stopped calling.';
   const ice = s.flags.includes('beatIce') ? (s.bonds.ice >= 0 ? 'Ice calls it the best rivalry in the league. So do you.' : 'Ice has your next game circled. So do you.') : 'Ice got the first win in the NBA. You have a long memory.';
   return { id: tier, title: base.title, text: `${base.text}\n\n${dre}\n${ray}\n${ice}`, tier };
+}
+
+/** Chapter 6 (Year Two): open once you've reached any ending. */
+export const inYearTwo = (s: Pick<StoryState, 'flags'>) => s.flags.includes('yearTwo');
+const YEAR_TWO_AT = SCRIPT.findIndex(b => b.id === 'c6');
+export const canStartYearTwo = (s: StoryState) => s.done && !inYearTwo(s) && YEAR_TWO_AT > 0;
+export function startYearTwo(s: StoryState): StoryState {
+  if (!canStartYearTwo(s)) return s;
+  const b = SCRIPT[YEAR_TWO_AT] as Extract<Beat, { kind: 'chapter' }>;
+  return { ...s, done: false, at: YEAR_TWO_AT, last: undefined, flags: [...s.flags, 'yearTwo', `rookie:${ending({ ...s, flags: s.flags }).tier}`], hero: growUp(s.hero, Math.max(0, b.age - s.hero.age)) };
+}
+function yearTwoEnding(s: StoryState): Ending {
+  const y2 = s.games.filter(g => g.beat.startsWith('y2-'));
+  const key = y2.filter(g => g.won && (g.beat === 'y2-ice' || g.beat === 'y2-final')).length;
+  const avg = y2.length ? y2.reduce((n, g) => n + gameScore(g.line), 0) / y2.length : 0;
+  const pts = (overall(s) - 64) * 1.5 + key * 6 + s.hype * 0.6 + avg * 0.3;
+  const tier: Ending['tier'] = pts >= 36 ? 'legend' : pts >= 24 ? 'star' : pts >= 12 ? 'pro' : 'grinder';
+  const name = first(s);
+  const base = {
+    legend: { title: 'The MVP Conversation', text: `${s.flags.includes('finals') ? `The Finals in year two. ` : ''}By April, the national shows argue about whether ${name} is already the best player in the conference. Nobody laughs at the question.` },
+    star: { title: 'All-Star', text: `${name} is an All-Star in year two. The billboard on the highway home gets bigger.` },
+    pro: { title: 'Starter', text: `${name} starts 70 games and the team is better when ${name} plays. That's the league's quiet way of saying: you belong.` },
+    grinder: { title: 'Still Climbing', text: `A sophomore slump the papers loved. ${name} spent the last month of the season in the gym at midnight. Year three will be different.` },
+  }[tier];
+  const ray = s.bonds.ray >= 3 ? 'Ray is out of the hospital and back in his courtside seat.' : 'Ray watches from home now. He still calls after every game.';
+  const ice = s.flags.includes('finals') ? 'Ice sends a text the night you reach the Finals: one word, "Finally."' : 'Ice is still ahead in the rivalry. For now.';
+  return { id: `y2-${tier}`, title: base.title, text: `${base.text}\n\n${ray}\n${ice}`, tier };
 }
 
 export function storyShareText(s: StoryState, site: string): string {

@@ -9,7 +9,7 @@ import { modeOfWeek, FEATURED_NAME, WEEKLY_BONUS_CAP } from '../retention/modeOf
 import { PlayerAvatar } from './PlayerAvatar';
 import { MyAvatar } from './UserAvatar';
 import { PixelBall, PixelIcon } from './PixelIcon';
-import { loadRelics, luckPercent, collectionProgress, RELICS_EVENT } from '../relics/relics';
+import { loadRelics, saveRelics, collectDailyCoins, luckPercent, collectionProgress, RELICS_EVENT } from '../relics/relics';
 import { claimAchievementSpins } from '../relics/rewards';
 import './relics/relics.css';
 import type { TradeDifficulty } from '../simulation/gm';
@@ -63,6 +63,8 @@ interface Props {
   onCreate?: (challenge?: 'free' | 'rebuild' | 'draft') => void;
   /** Opens the Relic Vault. */
   onRelics?: () => void;
+  /** Opens your profile at a tab (the phone's Achievements and Season Pass apps). */
+  onProfileTab?: (tab: 'achievements' | 'season') => void;
 }
 
 /** The cards on the menu. Franchise opens the New Franchise page (a real or random league, the Rebuild Challenge and
@@ -158,7 +160,8 @@ function SavedLeaguesList({ saves, onContinue, onDeleteSave, onRenameSave }: Pic
   );
 }
 
-export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSave, busy = null, onLocker, onCode, onCommunity, onProfile, onFriends, onSettings, onArcade, onCreate, onRelics }: Props) {
+export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSave, busy = null, onLocker, onCode, onCommunity, onProfile, onFriends, onSettings, onArcade, onCreate, onRelics, onProfileTab }: Props) {
+  const [newsOpen, setNewsOpen] = useState(false);
   // First visit: pick a look before anything else; What's New waits until it is picked.
   const [pickLook, setPickLook] = useState(needsThemeChoice);
   // Today's visit counts for the daily streak and the Season Pass.
@@ -205,7 +208,8 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
           <PlayerAvatar playerId="Court Vision Center" primaryColor="#ec852b" secondaryColor="#fcdfad" jerseyNumber={23} size={100} />
           <PixelBall size={48} />
         </div>
-        <MenuPhone onBoards={onCommunity && (() => onCommunity('boards'))} onFriends={onFriends ?? (onCommunity && (() => onCommunity('friends')))} onProfile={onProfile ?? onLocker} onRelics={onRelics} streak={visit.v.streak} />
+        <MenuPhone onBoards={onCommunity && (() => onCommunity('boards'))} onFriends={onFriends ?? (onCommunity && (() => onCommunity('friends')))} onProfile={onProfile ?? onLocker} onRelics={onRelics} onSettings={onSettings} onWhatsNew={() => setNewsOpen(true)}
+          onAchievements={onProfileTab && (() => onProfileTab('achievements'))} onSeasonPass={onProfileTab && (() => onProfileTab('season'))} streak={visit.v.streak} />
       </div>
 
       <div className="menu-section-heading"><h2>Choose your game</h2><span>PICK ONE, THEN PRESS PLAY</span></div>
@@ -260,7 +264,7 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
       <StreakNote visit={visit} onProfile={onProfile ?? onLocker} />
       <TrophyUnlock onProfile={onProfile ?? onLocker} />
       <ConsentBanner />
-      {pickLook ? <ThemeWelcome onDone={() => setPickLook(false)} /> : showSignIn ? <WelcomeSignIn onDone={() => setAskSignIn(false)} /> : <WhatsNew />}
+      {pickLook ? <ThemeWelcome onDone={() => setPickLook(false)} /> : showSignIn ? <WelcomeSignIn onDone={() => setAskSignIn(false)} /> : newsOpen ? <WhatsNew key="forced" force onClose={() => setNewsOpen(false)} /> : <WhatsNew />}
     </div>
   );
 }
@@ -352,7 +356,8 @@ function QuickGames({ onOpen }: { onOpen: (game: 'grid' | 'guess' | 'hilo' | 'br
 
 /** The Relic Vault entry: spins waiting, luck and coins. */
 function RelicStrip({ onOpen }: { onOpen: () => void }) {
-  const [s, setS] = useState(loadRelics);
+  // The daily coins are paid on the first menu visit of the day.
+  const [s, setS] = useState(() => { const r = loadRelics(), c = collectDailyCoins(r); if (c !== r) saveRelics(c); return c; });
   useEffect(() => {
     let live = true;
     claimAchievementSpins().then(n => { if (live && n) setS(loadRelics()); }, () => {});

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { LuckChip } from '../relics/RelicReward';
 import type { NbaHistory } from '../../history/nbaHistoryData';
 import { cardPool, seasonLabel, RARITY_LABEL } from '../../hunt/cards';
 import { CATEGORIES, categoryLabel, categoryScore, feetInches, type CategoryId, type CategoryValues } from '../../career/categories';
@@ -112,7 +113,7 @@ export function WheelBuilder({ h, seed, fav, relics, onDone, onBack }: { h: NbaH
   const busy = !settled;
   return <section className="hunt-stage cv-builder">
     <CreateSteps step={0} />
-    <div className="cv-builder-head"><span className="pixel-eyebrow">RANDOM MODE · SPIN {s.spinCount}</span><h2>{done ? 'Your player is built' : busy ? 'Spinning…' : mustTake(s) ? 'Take one category' : 'Spin the wheel'}</h2></div>
+    <div className="cv-builder-head"><span className="pixel-eyebrow">RANDOM MODE · SPIN {s.spinCount}</span> <LuckChip luck={relics?.luck} /><h2>{done ? 'Your player is built' : busy ? 'Spinning…' : mustTake(s) ? 'Take one category' : 'Spin the wheel'}</h2></div>
     <div className="cv-tools">
       <button className="primary cv-spin-btn" disabled={!canSpin(s)} onClick={() => setS(spin(h, s))}>Spin</button>
       <button className="cv-lucky-btn" disabled={!canSpin(s) || luckyLeft(s) <= 0} onClick={() => setS(spin(h, s, false, true))} title="Always lands on a Star or a Great">Lucky Spin ({luckyLeft(s)})</button>

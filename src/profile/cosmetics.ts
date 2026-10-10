@@ -270,6 +270,9 @@ export const MODE_TITLES: { mode: string; title: string; how: string }[] = [
   { mode: 'cat-82x5', title: 'Category King', how: 'Go 82-0 with 5 different Category Roll categories' },
   { mode: 'survival-15', title: 'Last One Standing', how: 'Win 15 rounds in one Survival run' },
   { mode: 'story-legend', title: 'Street Legend', how: 'Reach "The Legend Begins" in Story Mode' },
+  { mode: 'relic-collector', title: 'Collector', how: 'Own every Common relic' },
+  { mode: 'relic-mythic', title: 'Mythic Hunter', how: 'Find a Mythic relic' },
+  { mode: 'relic-secrets', title: 'Keeper of Secrets', how: 'Uncover all eight secret relics' },
 ];
 
 export const HONORS_KEY = 'cv-board-honors';

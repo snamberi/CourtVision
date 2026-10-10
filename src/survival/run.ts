@@ -39,6 +39,8 @@ export interface SurvivalGame {
 export interface SurvivalRun {
   v: 1;
   seed: number;
+  /** Relic luck when the run began (not in the Daily). */
+  luck?: number;
   level: SurvivalLevel;
   /** "2026-10-10" for the Daily Survival. */
   daily?: string;
@@ -54,6 +56,10 @@ export interface SurvivalRun {
   next: string | null;
   /** After a win: the player they want, and three of theirs to choose from. */
   claim?: { cardId: string; offer: string[] };
+  /** Run cash: paid for every win, spent on an emergency signing. */
+  cash?: number;
+  /** The round of the last emergency signing (one a round). */
+  emergencyRound?: number;
   stage: 'draft' | 'tag' | 'pregame' | 'claim' | 'sign' | 'over';
 }
 
@@ -86,7 +92,7 @@ export function dealLegends(h: NbaHistory, seed: number, luck = 0): string[] {
 export function newSurvivalRun(h: NbaHistory, seed: number, level: SurvivalLevel = 'pro', daily?: string, relics?: { luck?: number; ironWill?: boolean }): SurvivalRun {
   // The Daily Survival is the same for everyone: no relics there.
   const r = daily ? undefined : relics;
-  return { v: 1, seed, level, ...(daily ? { daily } : {}), dealt: dealLegends(h, seed, r?.luck ?? 0), roster: [], franchise: null, shields: 1 + (r?.ironWill ? 1 : 0), games: [], faced: [], next: null, stage: 'draft' };
+  return { v: 1, seed, level, ...(daily ? { daily } : {}), ...(r?.luck ? { luck: r.luck } : {}), dealt: dealLegends(h, seed, r?.luck ?? 0), roster: [], franchise: null, shields: 1 + (r?.ironWill ? 1 : 0), games: [], faced: [], next: null, stage: 'draft' };
 }
 
 /** Keep ten of the fourteen. */
@@ -166,7 +172,8 @@ export function playRound(h: NbaHistory, run: SurvivalRun): SurvivalRun {
   const next: SurvivalRun = { ...run, games: [...run.games, game], faced: [...run.faced, opp.id] };
   if (!won) return { ...next, stage: 'over', next: null };
   const shields = game.boss ? Math.min(MAX_SHIELDS, run.shields + 1) : run.shields;
-  return { ...next, shields, stage: 'claim', claim: { cardId: claimTarget(h, next), offer: signOffer(h, next, opp) } };
+  const cash = (run.cash ?? 0) + (game.boss ? WIN_CASH * 2 : WIN_CASH);
+  return { ...next, shields, cash, stage: 'claim', claim: { cardId: claimTarget(h, next), offer: signOffer(h, next, opp) } };
 }
 
 /** The player the beaten team wants: one of your best (not the Franchise Player); harder levels take the very best. */
@@ -210,6 +217,34 @@ export function signPlayer(h: NbaHistory, run: SurvivalRun, cardId: string | nul
   const roster = cardId ? [...run.roster, cardId] : run.roster;
   const games = cardId ? [...run.games.slice(0, -1), { ...last, signed: cardId }] : run.games;
   return openRound(h, { ...run, roster, games });
+}
+
+// ---------------------------------------------------------------- emergency signing
+
+/** Cash for a win (twice for a boss), and the price of an emergency signing. */
+export const WIN_CASH = 25;
+export const EMERGENCY_PRICE = 60;
+/** Three free agents you could sign before a round: legends a little below your average, never someone you have. */
+export function emergencyOffer(h: NbaHistory, run: SurvivalRun): string[] {
+  if (run.stage !== 'pregame' || run.emergencyRound === roundNo(run)) return [];
+  const pool = cardPool(h);
+  const have = new Set(run.roster.map(id => card(h, id).playerId));
+  const avg = run.roster.reduce((n, id) => n + card(h, id).ovr, 0) / Math.max(1, run.roster.length);
+  const options = pool.cards.filter(c => !have.has(c.playerId) && c.ovr >= avg - 6 && c.ovr <= avg - 1);
+  const rng = new RNG(run.seed * 263 + roundNo(run) * 41);
+  const out: string[] = [];
+  while (out.length < 3 && options.length) out.push(options.splice(rng.nextInt(options.length), 1)[0].id);
+  return out.sort((a, b) => card(h, b).ovr - card(h, a).ovr);
+}
+/** Pays for one of the offer: fills an empty spot, or replaces your lowest-rated player (never the Franchise Player). */
+export function emergencySign(h: NbaHistory, run: SurvivalRun, cardId: string): SurvivalRun {
+  if (!emergencyOffer(h, run).includes(cardId) || (run.cash ?? 0) < EMERGENCY_PRICE) return run;
+  let roster = run.roster;
+  if (roster.length >= ROSTER) {
+    const worst = roster.filter(id => id !== run.franchise).sort((a, b) => card(h, a).ovr - card(h, b).ovr)[0];
+    roster = roster.filter(id => id !== worst);
+  }
+  return { ...run, roster: [...roster, cardId], cash: (run.cash ?? 0) - EMERGENCY_PRICE, emergencyRound: roundNo(run) };
 }
 
 // ---------------------------------------------------------------- score and records

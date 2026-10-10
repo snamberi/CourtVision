@@ -27,3 +27,6 @@ button.surv-card:hover, button.surv-card:focus-visible { border-color: var(--c-b
 .surv-claim h2 { margin: 0; }
 .surv-claim .surv-card { width: 100%; }
 @media (max-width: 720px) { .surv-two { grid-template-columns: 1fr; } }
+.surv-emergency { margin: 10px 0; padding: 8px 12px; background: var(--c-bg-121926, #121926); border: 2px dashed var(--c-border-ffd166, #ffd166); }
+.surv-emergency summary { cursor: pointer; }
+.surv-emergency-card { display: grid; gap: 4px; }
