@@ -1,4 +1,5 @@
 import { MEDAL_ICON } from '../worldGames/league';
+import { PlayerChatPosts } from './social/PlayerChatPosts';
 import { PersonalityPanel } from './MoralePanels';
 import { familyTies, relationLabel } from '../simulation/family';
 import { scoutingReport } from '../simulation/scouting';
@@ -126,6 +127,7 @@ export function PlayerProfile({ season, teamName, onChange, sandboxMode, onLookC
         />
       ) : (
         <>{league && extras && !prospect && <PersonalityPanel p={season} league={league} extras={extras} />}
+        {league && <PlayerChatPosts league={league} playerId={season.playerId} controlledTeamId={controlledTeamId} />}
         <PlayerCard season={season} ratings={ratings} badgeNames={badgeNames} awardsHistory={awardsHistory} league={league} family={family} /></>
       )}
     </div>

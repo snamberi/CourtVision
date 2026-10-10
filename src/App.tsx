@@ -121,6 +121,8 @@ import { autoHandleDesk, hasDeskWork } from './simulation/handsOff';
 import { tickOwnerDemand, demandProgress } from './simulation/ownerDemand';
 import { hasSecret } from './relics/relics';
 import { rewardRun, FRANCHISE_TITLE_SPINS } from './relics/rewards';
+import { teamGamesPlayed as chatTeamGames } from './social/gmPosts';
+import { readChatSeen, markChatSeen } from './social/prefs';
 import { startDynasty } from './simulation/dynasty';
 import { collectLockerEvents } from './simulation/lockerRoom';
 import { claimQuests, questsXp } from './tutorial/quests';
@@ -229,6 +231,7 @@ const TeamStatsPage = lazy(() => import('./components/TeamStatsPage').then(m => 
 const DailySchedulePage = lazy(() => import('./components/DailySchedulePage').then(m => ({ default: m.DailySchedulePage })));
 const StorylinesPage = lazy(() => import('./components/StorylinesPage').then(m => ({ default: m.StorylinesPage })));
 const CourtChatPage = lazy(() => import('./components/social/CourtChatPage').then(m => ({ default: m.CourtChatPage })));
+const CourtChatCard = lazy(() => import('./components/social/CourtChatCard').then(m => ({ default: m.CourtChatCard })));
 const NewsFeedPage = lazy(() => import('./components/NewsFeedPage').then(m => ({ default: m.NewsFeedPage })));
 const HallOfFamePage = lazy(() => import('./components/HallOfFamePage').then(m => ({ default: m.HallOfFamePage })));
 const GameBoxScorePage = lazy(() => import('./components/GameBoxScorePage').then(m => ({ default: m.GameBoxScorePage })));
@@ -848,6 +851,11 @@ function App() {
 
   // Reporters line up after big results, streaks, trade requests and playoff series.
   const pressWaiting = league.press?.pending.length ?? 0;
+  // CourtChat's menu badge: your team's games since you last opened it (counted from the first visit on).
+  const ccPlayed = controlledTeamId ? chatTeamGames(league, controlledTeamId) : 0;
+  const ccSeen = activeSaveId ? readChatSeen(activeSaveId) : null;
+  const courtChatNew = tab === 'courtChat' || ccSeen == null ? 0 : Math.max(0, ccPlayed - ccSeen);
+  useEffect(() => { if (activeSaveId && (tab === 'courtChat' || readChatSeen(activeSaveId) == null)) markChatSeen(activeSaveId, ccPlayed); }, [tab, activeSaveId, ccPlayed]);
   useEffect(() => {
     const next = collectLockerEvents(collectPress(ensureGmRivals(league, controlledTeamId), controlledTeamId), controlledTeamId);
     if (next !== league) adoptLeague(next);
@@ -1741,6 +1749,7 @@ function App() {
           seasonPhase={seasonPhase}
           onNavigateLeagueSettings={(sub) => { setLeagueSettingsSub(sub); setTab('leagueSettings'); }}
           pendingTradeOfferCount={extras.pendingTradeOffers.length}
+          courtChatNew={courtChatNew}
         />
         <main tabIndex={0} aria-label="Game content">
         <AdBanner slot="top" refreshKey={tab} />
@@ -1947,7 +1956,7 @@ function App() {
         {tab === 'threeTeam' && <ThreeTeamTradePage league={league} extras={extras} controlledTeamId={controlledTeamId} onChange={(l, e) => { setLeague(l); setExtras(e); }} />}
         {tab === 'extensions' && <ExtensionsPage league={league} extras={extras} controlledTeamId={controlledTeamId} onChange={(l, e) => { setLeague(l); setExtras(e); }} onSelectPlayer={selectPlayer} />}
         {tab === 'storylines' && <StorylinesPage league={league} extras={extras} controlledTeamId={controlledTeamId} onSelectPlayer={selectPlayer} />}
-        {tab === 'courtChat' && <CourtChatPage league={league} controlledTeamId={controlledTeamId} onSelectPlayer={selectPlayer} />}
+        {tab === 'courtChat' && <CourtChatPage league={league} extras={extras} controlledTeamId={controlledTeamId} onSelectPlayer={selectPlayer} onChange={setLeague} />}
         {tab === 'summerCamp' && <SummerCampPage league={league} controlledTeamId={controlledTeamId} onChange={setLeague} onSelectPlayer={selectPlayer} />}
         {tab === 'medical' && <MedicalRoomPage league={league} controlledTeamId={controlledTeamId} onChange={setLeague} onSelectPlayer={selectPlayer} />}
         {tab === 'press' && <PressRoomPage league={league} extras={extras} controlledTeamId={controlledTeamId} onChange={setLeague} />}
@@ -2183,6 +2192,7 @@ function App() {
         {tab === 'dashboard' && controlledTeamId && <DailyGoalsCard official={isOfficialLeague(league)} />}
         {tab === 'dashboard' && league.gmCareer && <GmCareerCard league={league} onTakeOffer={() => { const teamId = league.gmCareer?.offer?.teamId; if (teamId) { acceptOffer(teamId); setLeague(l => takeGmOffer(l)); } }} />}
         {tab === 'dashboard' && controlledTeamId && <LockerRoomCard league={league} teamId={controlledTeamId} onChange={adoptLeague} />}
+        {tab === 'dashboard' && controlledTeamId && <CourtChatCard league={league} teamId={controlledTeamId} onOpen={() => setTab('courtChat')} onSelectPlayer={selectPlayer} />}
         {tab === 'dashboard' && league.origin && <LeagueCodeBox origin={league.origin} teamId={controlledTeamId} teamName={league.teams.find(t => t.teamId === controlledTeamId)?.name} />}
         {tab === 'dashboard' && (
           <DashboardPage

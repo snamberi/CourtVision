@@ -222,6 +222,8 @@ export interface League {
   staffMarket?: CoachIdentity[];
   coachingSettings?: import('./coachingModel').CoachingSettings;
   newsArchive?: import('./news').NewsItem[];
+  /** CourtChat: what you posted as the GM (the players' posts are derived from the league; see social/courtChat.ts). */
+  courtChat?: import('../social/gmPosts').CourtChatState;
   rivalries?: Record<string, import('./rivalry').RivalryRecord>;
   /** Present when this league was started from real NBA history (see history/historicalLeague.ts). */
   /** Set on leagues made by the All-Time Draft. */

@@ -7,8 +7,13 @@ export interface Release { id: string; title: string; items: string[] }
 export const RELEASES: Release[] = [
   {
     id: '2027-04-07',
-    title: 'CourtChat: your players have opinions',
+    title: 'CourtChat: your players have opinions (and so do you)',
     items: [
+      "**Post as the GM:** hype the team, praise a player, call one out or trash-talk a rival (three posts between games). Players answer in character: praise lifts morale (star egos love it), call-outs sting hotheads and fire up competitors, for 15 games. Rivals clap back and fans chime in.",
+      "**Fan approval:** a meter of what your fans think of you, from your record and how your posts land.",
+      "**Way more to read:** 45-point nights and quadruple-doubles, playoff series wins and eliminations, champions, award winners, rookies on draft night, free-agent signings, cryptic trade-request posts, retirements, pre-game trash talk before rivalry games, fan accounts and the Court Insider breaking injuries, rumors and trade requests. Now over 2,800 different posts.",
+      "**Feed tools:** Trending hashtags, Post of the Week, follow and mute players, search, verified stars, copy a post, filters for big moments and GM posts.",
+      "**Everywhere:** a CourtChat card on your dashboard, a badge on the menu for games you haven't caught up on, and each player's latest posts on his profile.",
       "**CourtChat (Franchise, under League / Home):** the league's own social feed. After every game players post in their own voice: Leaders lift the team, Hotheads roast, Star Egos brag, Mercenaries talk money, Competitors are never satisfied, Loyal players love their city.",
       "**Roasts and clapbacks:** shoot 4-for-17 and someone on the other team will let you know. Sometimes the roasted player fires back, and teammates hype each other's big nights.",
       "**Over 2,000 different posts:** wins, blowouts, bad shooting nights, win and losing streaks, injuries, trades and rivalry games. Filter by your team, roasts or big nights.",

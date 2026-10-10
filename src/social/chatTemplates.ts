@@ -8,11 +8,17 @@ import type { PersonalityType } from '../simulation/personality';
  *   {team}              the poster's team         {target}  the player being roasted (@handle)
  *   {mate}              a teammate (@handle)      {streak}  games in a row
  *   {games}             games out (injury)        {newTeam} / {oldTeam}  after a trade
+ *   {award}             "MVP"                     {round}   "the second round"
+ *   {pick}              draft pick number         {player}  a player's @handle (insiders, the GM)
+ *   {gm}                the GM's @handle          {years}   seasons played
  * Every combination of alternatives is a different post: `variantCount()` counts them (well over 2,000).
  * The roasting is trash talk between pros: sharp, never cruel, nothing a kid can't read.
  */
 
-export type ChatKind = 'bigNight' | 'win' | 'loss' | 'blowoutLoss' | 'badNight' | 'roast' | 'clapback' | 'hype' | 'winStreak' | 'loseStreak' | 'injury' | 'traded' | 'rivalry';
+export type ChatKind = 'bigNight' | 'win' | 'loss' | 'blowoutLoss' | 'badNight' | 'roast' | 'clapback' | 'hype' | 'winStreak' | 'loseStreak' | 'injury' | 'traded' | 'rivalry'
+  | 'milestone' | 'seriesWin' | 'eliminated' | 'champion' | 'award' | 'rookie' | 'signed' | 'tradeRequest' | 'retired' | 'pregame'
+  | 'fanWin' | 'fanLoss' | 'insiderInjury' | 'insiderRumor' | 'insiderRequest'
+  | 'gmHype' | 'gmPraise' | 'gmCallout' | 'gmRival' | 'gmPraiseReply' | 'gmCalloutReply' | 'gmHypeReply' | 'gmRivalReply' | 'fanGmReply';
 type P = PersonalityType;
 export type Library = Record<ChatKind, Partial<Record<P | 'any', string[]>>>;
 
@@ -326,6 +332,177 @@ export const LIBRARY: Library = {
     Competitor: ['[Circled this one on the calendar.|Been waiting for the {opp}.] [{score}.|Won the war.|Not done with them.]'],
     Loyal: ['[{team} vs {opp}.|Our house, our rivalry.] [{team} always.|The {opp} will never be us.]'],
     Professional: ['[Always a battle with the {opp}.|Good rivalry game.] [{score}.|Respect to them.]'],
+  },
+
+  // ---------------------------------------------------------------- big moments
+  milestone: {
+    any: [
+      '[{pts} POINTS.|I just scored {pts}.|{pts}-{reb}-{ast}. Write it down.] [Never done that before.|Career night.|Pinch me.] [For everybody who believed.|Ball goes in the trophy case.|I\'ll remember this forever.]',
+      '[Did that really happen?|Still shaking.|Can\'t sleep.] [{pts} against the {opp}.|{pts} points tonight.] [Thank you to my teammates.|The basket was the size of a pool.|God is good.]',
+    ],
+    'Star Ego': ['[{pts}. Historic.|{pts}. Make it a holiday.] [Write my name in the record book.|Somebody call the Hall of Fame.|Just me being me.]'],
+    Leader: ['[{pts} tonight, but look at the assists we had as a team.|{pts}, and I\'m proudest of the defense.] [This group is special.|Love these guys.]'],
+    Hothead: ['[{pts} on the {opp}.|{pts}. Somebody tell the {opp}.] [I warned them.|Should have double-teamed me.|That\'s what happens.]'],
+  },
+  seriesWin: {
+    any: [
+      '[Series over.|Onto the next round.|Moving on.] [Beat the {opp} in {round}.|{opp}, good series.] [Not done yet.|Four more.|We want more.]',
+      '[Advance.|Next round, let\'s go!|Survive and advance.] [Credit to the {opp}.|{opp} pushed us.] [Long way to go.|Sleep, then work.]',
+    ],
+    Hothead: ['[Bye, {opp}.|Send the {opp} home.] [Who\'s next?|Next victim.|Book their vacation.]'],
+    'Star Ego': ['[Carried us out of {round}.|Another series, another win for me.] [Next.|Too easy.]'],
+    Competitor: ['[One round down.|Good. Not satisfied.] [Still three to go.|Back to the gym.]'],
+  },
+  eliminated: {
+    any: [
+      '[Season\'s over.|That\'s it for this year.|It hurts.] [{opp} were better.|Lost to the {opp} in {round}.] [We\'ll be back.|Summer of work starts now.|Thank you, {team} fans.]',
+      '[Tough way to end it.|Not the ending we wanted.] [Proud of this group anyway.|Learned a lot this year.] [Next year.|See you in the fall.]',
+    ],
+    Hothead: ['[Can\'t believe it.|So mad right now.] [{opp} better enjoy it.|Next year they\'re mine.]'],
+    Loyal: ['[Sorry, {team}.|We let you down, {team}.] [Not leaving. We\'ll get it done here.|This city deserves a title.]'],
+  },
+  champion: {
+    any: [
+      '[CHAMPIONS!|WE DID IT!|RINGS!] [{team} on top of the world.|Best team in the league.|Nobody can take this away.] [Parade time!|Love every one of you.|Tears everywhere.]',
+      '[Dreamed about this as a kid.|Since I was six years old.|Every summer, every 6 AM workout.] [Champion.|For this.|Worth it.] [Thank you, {team}.|Let\'s celebrate.]',
+    ],
+    'Star Ego': ['[Told you.|Ring #1 of many.|The best player on the best team.] [Bow down.|Put it on my finger.]'],
+    Leader: ['[Every single guy on this roster.|This is what team looks like.] [Champions.|Proud doesn\'t cover it.]'],
+    Mercenary: ['[Ring and a bonus.|Title bonus hits different.] [Champions.|Worth every penny.]'],
+  },
+  award: {
+    any: [
+      '[{award}!|Just won {award}.|Honored to be the {award}.] [Thank you to my teammates.|Couldn\'t do it without the coaches.|Family, this is for you.] [Back to work.|Next goal: the ring.|Grateful.]',
+      '[Wow. {award}.|Never thought I\'d say "{award}".] [Big thanks to {team}.|Shoutout everyone who voted.] [Let\'s keep going.|Hungry for more.]',
+    ],
+    'Star Ego': ['[{award}. Obviously.|{award}. Was there any doubt?] [Should have been unanimous.|Next year too.]'],
+  },
+  rookie: {
+    any: [
+      '[Dream come true.|Pinch me.|It\'s real.] [Drafted by {team}!|{team}, I\'m coming!] [Mom, we made it.|Can\'t wait to get to work.|Day one starts now.]',
+      '[Rookie season starts now.|Ready, {team}.] [Work hard, stay humble.|Gonna carry the vets\' bags with a smile.] [Let\'s go!|Grateful.]',
+    ],
+    'Star Ego': ['[Rookie of the Year starts now.|Draft class MVP checking in.] [{team} got the steal.|Remember the teams that passed.]'],
+  },
+  signed: {
+    any: [
+      '[New team, who dis?|Signed with {newTeam}!|Officially part of {newTeam}.] [Grateful for the opportunity.|Let\'s get to work.|Can\'t wait to meet the fans.] [New chapter.|Here we go.]',
+    ],
+    Mercenary: ['[Signed. Bag secured.|{newTeam} paid up.] [Business is business.|Grateful for the money... I mean, the opportunity.]'],
+    Loyal: ['[Proud to call {newTeam} home.|{newTeam}, I\'m here for the long run.] [Let\'s build something.|Loyalty starts today.]'],
+  },
+  tradeRequest: {
+    any: [
+      '[Time for a change.|Sometimes you need a new start.|Thinking about my future.] [...|No comment.|We\'ll see.]',
+      '[Grateful for everything here, but|Love the fans, but] [it\'s time.|I need something new.] [...]',
+    ],
+    Hothead: ['[I\'m done.|Get me out of here.|Enough is enough.] [...|You heard me.]'],
+    Mercenary: ['[Contract talks? Let\'s just say I\'m listening.|My phone is on.] [Agent has the details.|Open to offers.]'],
+  },
+  retired: {
+    any: [
+      '[After {years} seasons,|{years} years.|What a ride.] [I\'m hanging them up.|It\'s time to say goodbye.] [Thank you, basketball.|Thank you, {team}.|Forever grateful.]',
+      '[Last game is in the books.|The shoes are retired.] [{years} seasons I\'ll never forget.|Every teammate, every coach: thank you.] [See you on the other side.|Time for the next chapter.]',
+    ],
+  },
+  pregame: {
+    any: [
+      '[{opp} tomorrow.|Rivalry week.|Big one next.] [Been waiting for this.|Circle it.|You know what time it is.] [See you soon.|Bring it.]',
+    ],
+    Hothead: ['[{opp}, I hope you\'re ready.|Got the {opp} next. Good.] [Last time was a warning.|Somebody hide their best player.|Bring snacks, it\'s gonna be a show.]'],
+    'Star Ego': ['[{opp} game tomorrow.|Next up: the {opp}.] [They know what\'s coming.|50 loading.|Easy night.]'],
+    Competitor: ['[{opp} next.|Locked in for the {opp}.] [Film all night.|This one matters.]'],
+  },
+
+  // ---------------------------------------------------------------- fans and the insider
+  fanWin: {
+    any: [
+      '[WHAT A GAME!|LET\'S GOOOO!|{team} WIN!] [{score} over the {opp}!|Beat the {opp}!] [Best team in the league!|Playoffs here we come!|I love this team!]',
+      '[Section 112 was rocking!|Still hoarse from yelling.|My voice is gone.] [{team} {score}.|W!] [Worth every penny of my ticket.|See you next game!]',
+      '[{player} for MVP.|Give {player} a statue.|{player} is HIM.] [{pts} tonight!|What a night!]',
+    ],
+  },
+  fanLoss: {
+    any: [
+      '[Not again.|Why do I do this to myself.|My poor heart.] [{score} to the {opp}.|Lost to the {opp}.] [Trade everyone.|Fire somebody.|Still love you though.]',
+      '[I\'m not mad.|I\'m fine. Totally fine.|Who needs sleep anyway.] [{team} lost.|{opp} again?] [Next game we bounce back.|Same time next game.]',
+      '[GM, please make a trade.|Somebody call the front office.|{gm}, we need help.] [This roster needs work.|Bench is empty.]',
+    ],
+  },
+  insiderInjury: {
+    any: [
+      '[Sources:|Injury update:|Per team sources,] {player} [will miss about {games} games|is out roughly {games} games] [with a {award} injury.|({award}).] [More soon.|Developing.]',
+    ],
+  },
+  insiderRumor: {
+    any: [
+      '[Sources:|Hearing that|Per league sources,] [{team} are shopping {player}.|teams are calling {team} about {player}.|{player} is on the trade block in {team}.] [Developing.|More to come.|Deadline is getting interesting.]',
+    ],
+  },
+  insiderRequest: {
+    any: [
+      '[BREAKING:|Sources:|Per league sources,] {player} [has asked {team} for a trade.|wants out of {team}.] [Developing.|Expect calls.|Front office is listening.]',
+    ],
+  },
+
+  // ---------------------------------------------------------------- the GM and the reactions
+  gmHype: {
+    any: [
+      '[Proud of this group.|Big things coming.|This team is special.] [{team} basketball is back.|Let\'s fill the arena!|We\'re just getting started.] [See you at the next game!|Bring the noise!]',
+      '[Love the effort lately.|The work is showing.] [Keep stacking wins.|Every night, together.] [Go {team}!]',
+    ],
+  },
+  gmPraise: {
+    any: [
+      '[Shoutout to {player}.|Huge credit to {player}.|Can\'t say enough about {player}.] [Doing everything for this team.|A true pro.|Worth every dollar.] [Proud of you.|Keep going.]',
+    ],
+  },
+  gmCallout: {
+    any: [
+      '[{player}, we need more.|Expecting more from {player}.|{player}, it\'s time to step up.] [Every night counts.|We believe in you, so show it.|The standard is higher.]',
+    ],
+  },
+  gmRival: {
+    any: [
+      '[See you soon, {opp}.|Hey {opp}, we\'re coming.|{opp}: circle the date.] [Our building, our rules.|Bring your best.|It\'s our turn.]',
+    ],
+  },
+  gmPraiseReply: {
+    Leader: ['[Appreciate you, {gm}.|Thanks {gm}.] [It\'s all about the team though.|The whole group earned it.]'],
+    Hothead: ['[Finally some respect.|About time, {gm}.] [Let\'s keep it rolling.|Watch what I do next.]'],
+    'Star Ego': ['[Glad you noticed, {gm}.|Just stating facts, {gm}.] [Put it on a billboard.|Contract talks soon?]'],
+    Mercenary: ['[Kind words, {gm}.|Thanks {gm}.] [Kind words are nice. Extensions are nicer.|Let\'s talk numbers.]'],
+    Competitor: ['[Thanks {gm}.|Appreciate it.] [Not satisfied yet.|Still a lot left to prove.]'],
+    Loyal: ['[Love you, {gm}!|Means a lot, {gm}.] [Never leaving {team}.|This is home.]'],
+    Professional: ['[Thank you, {gm}.|Appreciate it, {gm}.] [Just doing my job.|Back to work.]'],
+  },
+  gmCalloutReply: {
+    Leader: ['[Fair, {gm}.|Heard you, {gm}.] [That\'s on me. I\'ll be better.|I\'ll lead by example.]'],
+    Hothead: ['[Really, {gm}? On here?|Wow {gm}. In public?] [Could have texted me.|We\'ll talk in your office.|Watch me prove you wrong.]'],
+    'Star Ego': ['[Delete this, {gm}.|Bold of you, {gm}.] [Check my stats.|Remember who sells the tickets.]'],
+    Mercenary: ['[Noted, {gm}.|Okay {gm}.] [My agent saw that.|Keep that in mind at contract time.]'],
+    Competitor: ['[Say less, {gm}.|Message received, {gm}.] [Watch the next game.|Motivation.]'],
+    Loyal: ['[That hurts, {gm}.|Didn\'t expect that from you, {gm}.] [I\'ll show you I belong here.|Still love this team.]'],
+    Professional: ['[Fair point, {gm}.|Understood, {gm}.] [I\'ll keep working.|Better days coming.]'],
+  },
+  gmHypeReply: {
+    any: [
+      '[Let\'s gooo!|We hear you, {gm}!|That\'s right!] [{team} up!|Together.|Big things.]',
+      '[Ready.|Locked in.|Can\'t wait.] [Next game is a statement.|Fill it up!]',
+    ],
+  },
+  gmRivalReply: {
+    any: [
+      '[Cute, {gm}.|Bold words from the front office.|{gm} talking big.] [Tell your team to show up first.|See you on the floor.|We\'ll be waiting.]',
+    ],
+    Hothead: ['[{gm}, who are you?|Front office trash talk now?] [Your players are next.|I\'ll make it personal.]'],
+  },
+  fanGmReply: {
+    any: [
+      '[YES GM!|Love this GM.|Best GM in the league.] [Make it happen!|Let\'s go!|Season tickets renewed!]',
+      '[Less posting, more trading.|Big talk, GM.|Prove it, GM.] [We want wins.|Fix the bench first.]',
+      '[Ratioed.|L post.|W post.] [Haha.|No comment.]',
+    ],
   },
 };
 
