@@ -17,7 +17,7 @@ import {
   OFFER_LABEL, type CareerMeta, type CareerMode as Mode, type CareerYear, type TradeWish,
 } from '../../career/career';
 import { legacyScore, top100, top100Rank } from '../../career/legacy';
-import { superstarTraits, seasonGoals, gradeGoals, goalRecord, leagueRanks, careerHighs, allTimeRanks } from '../../career/insights';
+import { superstarTraits, seasonGoals, gradeGoals, goalRecord, leagueRanks, careerHighs, allTimeRanks, draftRival, type DraftRival } from '../../career/insights';
 import { listCareers, loadWorld, saveCareer, dropWorld, deleteCareer, type CareerWorld } from '../../career/storage';
 import { runCareerStep } from '../../career/runner';
 import { PixelIcon } from '../PixelIcon';
@@ -425,7 +425,7 @@ function CareerView({ h, a, busy, tradeAsked, onPlay, onAutopilot, onTraining, o
         <div className="hunt-replace"><button disabled={busy} onClick={() => onTrade('contender')}>To a contender</button><button disabled={busy} onClick={() => onTrade('role')}>For a bigger role</button><button disabled={busy} onClick={() => onTrade('anywhere')}>Anywhere but here</button></div></>}
     </div>}
     {current === 'ratings' && <div className="cv-panel"><h3 className="hunt-subhead">Ratings <small>(now / prime; green = training focus)</small></h3><Ratings meta={meta} />{p && <Traits p={p} />}</div>}
-    {current === 'history' && <><OverallChart years={meta.years} />{meta.years.length ? <><YearsTable years={meta.years} /><CareerExtras h={h} years={meta.years} /></> : <p className="empty-state">No seasons played yet.</p>}</>}
+    {current === 'history' && <><OverallChart years={meta.years} />{meta.years.length ? <><YearsTable years={meta.years} /><RivalPanel r={draftRival(world.league, world.extras, meta.playerId)} /><CareerExtras h={h} years={meta.years} /></> : <p className="empty-state">No seasons played yet.</p>}</>}
   </section>;
 }
 
@@ -438,6 +438,7 @@ function Traits({ p }: { p: import('../../simulation/types').PlayerSeason }) {
       <span className="cv-trait-name"><PixelIcon name={t.active ? 'star' : 'lock'} size={14} /> <b>{t.name}</b> <small>{t.category} {t.id === 'tower' ? `${Math.floor(t.rating / 12)}'${t.rating % 12}"` : t.rating}</small></span>
       <div className="hunt-cap-bar" aria-label={`${Math.round(t.progress * 100)}% of full power`}><i className={t.active ? 'elite' : ''} style={{ width: `${Math.round(t.progress * 100)}%` }} /></div>
       <small>{t.effect}</small>
+      <small className={`cv-signature ${t.signed ? 'on' : ''}`}>{t.signed ? `Signature move unlocked: ${t.signature}` : `Full power unlocks the signature move "${t.signature}"`}</small>
     </li>)}</ul></>;
 }
 
@@ -455,6 +456,17 @@ function LeagueRanks({ ranks }: { ranks: { stat: string; rank: number; value: nu
   if (!top.length) return null;
   return <ul className="cv-ranks" aria-label="League ranks">{top.map(r => <li key={r.stat} className={r.rank === 1 ? 'gold' : r.rank <= 5 ? 'top' : ''}>
     <b>#{r.rank}</b> in {r.stat} <small>({r.value.toFixed(1)})</small></li>)}</ul>;
+}
+
+/** Your draft class's number one (or number two, if you went first), on career totals. */
+function RivalPanel({ r }: { r: DraftRival | null }) {
+  if (!r || (!r.you.seasons && !r.rival.seasons)) return null;
+  const pg = (n: number, g: number) => (g ? (n / g).toFixed(1) : '0.0');
+  const row = (x: DraftRival['you'], label: string) => <tr><td className="col-name">{label}</td><td className="col-name">{x.name}</td><td>{x.pick ? `#${x.pick}` : '—'}</td><td>{x.ovr}</td><td>{x.g}</td><td>{pg(x.pts, x.g)}</td><td>{pg(x.reb, x.g)}</td><td>{pg(x.ast, x.g)}</td><td>{x.pts.toLocaleString()}</td></tr>;
+  const ahead = r.you.pts >= r.rival.pts;
+  return <div className="cv-panel"><h3 className="hunt-subhead">Draft-class rival <small>({r.draftYear} draft · {ahead ? 'you lead on career points' : 'he leads on career points'})</small></h3>
+    <div className="feature-table-scroll"><table className="db-table"><thead><tr><th className="col-name" /><th className="col-name">Player</th><th>Pick</th><th>OVR</th><th>GP</th><th>PTS</th><th>REB</th><th>AST</th><th>Total PTS</th></tr></thead>
+      <tbody>{row(r.you, 'You')}{row(r.rival, 'Rival')}</tbody></table></div></div>;
 }
 
 function CareerExtras({ h, years }: { h: NbaHistory; years: CareerYear[] }) {

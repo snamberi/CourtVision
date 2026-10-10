@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { loadHistoryForTests } from './helpers/nbaHistoryFixture';
-import { superstarTraits, seasonGoals, gradeGoals, goalRecord, careerHighs, allTimeRanks } from '../career/insights';
+import { superstarTraits, seasonGoals, gradeGoals, goalRecord, careerHighs, allTimeRanks, draftRival } from '../career/insights';
+import { generateFullLeague } from '../simulation/leagueGenerator';
 import { emptySeasonStatTotals, emptySeasonMilestones, type Attributes } from '../simulation/types';
 import type { CareerYear } from '../career/career';
 
@@ -18,6 +19,8 @@ describe('Career insights', () => {
     expect(superstarTraits(maxed).every(t => t.active && t.progress === 1)).toBe(true);
     expect(superstarTraits(maxed).find(t => t.id === 'iron')!.effect).toMatch(/whole game/);
     expect(superstarTraits(plain).some(t => t.active)).toBe(false);
+    expect(superstarTraits(maxed).every(t => t.signed && t.signature)).toBe(true);
+    expect(superstarTraits(plain).some(t => t.signed)).toBe(false);
   });
 
   it('season goals come from last season and are graded against the next', () => {
@@ -45,5 +48,17 @@ describe('Career insights', () => {
     expect(pts.rank).toBeLessThanOrEqual(3);
     const rookie = allTimeRanks(h, [year('2026', 10, 2, 1, 1)])[0];
     expect(rookie.next?.total).toBeGreaterThan(rookie.total);
+  });
+});
+
+describe('Draft-class rival', () => {
+  it('is the top pick of your class (the second when you went first)', () => {
+    const { league, extras } = generateFullLeague(5, 30, 13, 10, '2026');
+    const [a, b, c] = [league.teams[0].seasons[0], league.teams[1].seasons[0], league.teams[2].seasons[0]];
+    const tag = (id: string, pick: number) => ({ draftYear: '2024-25', draftPick: pick, id });
+    const set = new Map([tag(a.playerId, 3), tag(b.playerId, 1), tag(c.playerId, 2)].map(x => [x.id, x]));
+    const l = { ...league, teams: league.teams.map(t => ({ ...t, seasons: t.seasons.map(p => (set.has(p.playerId) ? { ...p, draftYear: '2024-25', draftPick: set.get(p.playerId)!.draftPick } : { ...p, draftYear: null })) })) };
+    expect(draftRival(l, extras, a.playerId)?.rival.name).toBe(b.playerId);
+    expect(draftRival(l, extras, b.playerId)?.rival.name).toBe(c.playerId);
   });
 });

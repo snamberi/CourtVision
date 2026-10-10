@@ -13,7 +13,7 @@ const year = (points: number, awards: string[] = []) => ({ stats: { points }, aw
 describe('mode achievements', () => {
   it('ids are unique and every mode has some', () => {
     expect(new Set(MODE_ACHIEVEMENTS.map(a => a.id)).size).toBe(MODE_ACHIEVEMENTS.length);
-    expect(new Set(MODE_ACHIEVEMENTS.map(a => a.mode)).size).toBe(9);
+    expect(new Set(MODE_ACHIEVEMENTS.map(a => a.mode)).size).toBe(11);
   });
 
   it('career summary: first ballot, Top 10, MVP careers, most titles and points', () => {

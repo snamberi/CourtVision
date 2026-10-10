@@ -306,3 +306,5 @@ div.mp-callout { cursor: default; }
 .cv-alltime { list-style: none; padding: 0; margin: 0; display: grid; gap: 4px; font-size: 13px; }
 .cv-alltime b { font-variant-numeric: tabular-nums; }
 @media (max-width: 560px) { .cv-traits li { grid-template-columns: 1fr; } }
+.cv-traits .cv-signature { grid-column: 1 / -1; font-size: 11px; color: var(--c-fg-94a0b2, #94a0b2); }
+.cv-traits .cv-signature.on { color: var(--c-fg-ffd166, #ffd166); font-weight: 700; }

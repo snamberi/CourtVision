@@ -17,14 +17,17 @@ import type { CareerYear } from './career';
 
 // ---------------------------------------------------------------- superstar traits
 
-export interface Trait { id: 'iron' | 'paint' | 'tower' | 'general'; name: string; category: string; rating: number; unlockAt: number; fullAt: number; active: boolean; progress: number; effect: string }
+export interface Trait { id: 'iron' | 'paint' | 'tower' | 'general'; name: string; category: string; rating: number; unlockAt: number; fullAt: number; active: boolean; progress: number; effect: string;
+  /** The signature move a trait at full power (110, or 7'8") unlocks. */
+  signature: string; signed: boolean }
+const SIGNATURE: Record<Trait['id'], string> = { iron: 'Perpetual Motion', paint: 'The Bulldozer', tower: 'No Fly Zone', general: 'The Maestro' };
 
 const pctOf = (n: number) => `${Math.round(n * 100)}%`;
 export function superstarTraits(a: Attributes): Trait[] {
   const ath = athleticismOf(a), body = bodyOf(a), iq = iqOf(a), h = a.physical.heightInches || 0;
   const fa = Math.min(1, superFactor(ath)), fb = Math.min(1, superFactor(body)), fi = Math.min(1, superFactor(iq));
   const prog = (v: number, from: number, to: number) => Math.max(0, Math.min(1, (v - from) / (to - from)));
-  return [
+  return withSignatures([
     { id: 'iron', name: 'Iron Man', category: 'Athleticism', rating: Math.round(ath), unlockAt: 100, fullAt: 110, active: fa > 0, progress: prog(ath, 99, 110),
       effect: fa >= 1 ? 'Never needs a rest: plays the whole game.' : fa > 0 ? `Tires ${pctOf(0.8 * fa)} slower and gets hurt ${pctOf(0.6 * fa)} less.` : 'Past 99, he tires slower and plays more minutes (all 48 at 110).' },
     { id: 'paint', name: 'Paint Beast', category: 'Body', rating: Math.round(body), unlockAt: 100, fullAt: 110, active: fb > 0, progress: prog(body, 99, 110),
@@ -33,7 +36,10 @@ export function superstarTraits(a: Attributes): Trait[] {
       effect: h > 84 ? `Blocks reach ×${blockLength(h).toFixed(1)}, and more rebounds every inch.` : 'Over 7\'0", every inch adds rebounds and blocks.' },
     { id: 'general', name: 'Floor General', category: 'IQ & Clutch', rating: Math.round(iq), unlockAt: 100, fullAt: 110, active: fi > 0, progress: prog(iq, 99, 110),
       effect: fi > 0 ? `Runs the offense: ${pctOf(0.25 * fi)} more passes, and teammates shoot +${Math.round(4 * fi)} points better with him on the floor.` : 'Past 99, the offense runs through him: assists, better shots, more wins.' },
-  ];
+  ]);
+}
+function withSignatures(list: Omit<Trait, 'signature' | 'signed'>[]): Trait[] {
+  return list.map(t => ({ ...t, signature: SIGNATURE[t.id], signed: t.progress >= 1 }));
 }
 
 // ---------------------------------------------------------------- season goals
@@ -161,4 +167,32 @@ export function allTimeRanks(h: NbaHistory, years: CareerYear[]): AllTimeRank[] 
     }
     return { stat, total: mine[k], rank, next };
   });
+}
+
+// ---------------------------------------------------------------- the draft-class rival
+
+export interface RivalLine { name: string; pick: number | null; teamName: string; ovr: number; seasons: number; g: number; pts: number; reb: number; ast: number }
+export interface DraftRival { rival: RivalLine; you: RivalLine; draftYear: string }
+
+function lineOf(p: PlayerSeason, teamName: string): RivalLine {
+  const rows = p.careerHistory ?? [];
+  const sum = rows.reduce((t, r) => ({ g: t.g + r.stats.gamesPlayed, pts: t.pts + r.stats.points, reb: t.reb + r.stats.oreb + r.stats.dreb, ast: t.ast + r.stats.ast }), { g: 0, pts: 0, reb: 0, ast: 0 });
+  return { name: p.playerId, pick: p.draftPick ?? null, teamName, ovr: Math.round(p.overall.overall ?? 0), seasons: rows.length, ...sum };
+}
+
+/**
+ * Your draft class's measuring stick: the #1 pick (or the #2 when you went first). Compared on career totals
+ * (finished seasons only), so it is fair at any point of the year.
+ */
+export function draftRival(league: League, extras: GMLeagueExtras, playerId: string): DraftRival | null {
+  const all: { p: PlayerSeason; team: string }[] = [
+    ...league.teams.flatMap(t => t.seasons.map(p => ({ p, team: t.name }))),
+    ...extras.freeAgents.map(p => ({ p, team: 'Free agent' })),
+  ];
+  const me = all.find(x => x.p.playerId === playerId);
+  if (!me || !me.p.draftYear) return null;
+  const classmates = all.filter(x => x.p.playerId !== playerId && x.p.draftYear === me.p.draftYear && x.p.draftPick != null).sort((a, b) => (a.p.draftPick ?? 99) - (b.p.draftPick ?? 99));
+  const rival = classmates[0];
+  if (!rival) return null;
+  return { rival: lineOf(rival.p, rival.team), you: lineOf(me.p, me.team), draftYear: me.p.draftYear };
 }

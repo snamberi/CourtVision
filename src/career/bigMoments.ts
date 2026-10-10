@@ -42,6 +42,12 @@ export function seasonMoment(year: CareerYear, seasonsPlayed: number, picked: Mo
     { label: 'Take the blame', result: 'Leaders own it. Teammates notice.', legacy: 1 },
     { label: 'Add a new move this summer', result: 'You come back with a deadly step-back.', train: tr('midRange', 0.12) },
   ]);
+  // A long injury: the comeback is its own story.
+  const gp = year.stats.gamesPlayed;
+  if (seasonsPlayed > 1 && gp > 0 && gp <= 50 && first(`comeback-${year.season}`)) return m(`comeback-${year.season}`, 'The long way back', `An injury cost you most of the season: just ${gp} games for the ${year.teamName}. The doctors say you'll be fine. The doubters say you'll never be the same.`, [
+    { label: 'Rehab the right way, every day', result: 'A summer of boring, perfect work. You come back stronger than before.', train: tr('body', 0.14) },
+    { label: 'Tape every doubter\'s quote to your locker', result: 'Comeback Player of the Year talk starts in October. The city is behind you.', legacy: 1.5 },
+  ]);
   if (seasonsPlayed === 1) return m('rookie', 'The rookie wall', 'Eighty-two games is a lot more than college. Your legs felt it. What now?', [
     { label: 'Hire a personal trainer', result: 'Stronger, fitter, ready for year two.', train: tr('body', 0.12) },
     { label: 'Study film with a veteran', result: 'You see the game slow down.', train: tr('iq', 0.12) },
