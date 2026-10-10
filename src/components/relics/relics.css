@@ -1,5 +1,5 @@
 /* The Relic Vault. Built on the League Hunt page styles (hunt.css). */
-.relic-vault { --r-common: #94a0b2; --r-rare: #4da3ff; --r-epic: #b07cff; --r-legendary: #ffd166; --r-mythic: #ff5fa2; --r-secret: #f47b20; }
+.relic-vault { --r-common: var(--c-any-94a0b2, #94a0b2); --r-rare: var(--c-any-4da3ff, #4da3ff); --r-epic: var(--c-any-b07cff, #b07cff); --r-legendary: var(--c-any-ffd166, #ffd166); --r-mythic: var(--c-any-ff5fa2, #ff5fa2); --r-secret: var(--c-any-f47b20, #f47b20); }
 .relic-vault > section { max-width: 900px; margin: 0 auto 16px; }
 .relic-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .relic-stats > div { display: grid; gap: 2px; padding: 10px; background: var(--c-bg-121926, #121926); border: 2px solid var(--c-border-2a3546, #2a3546); }
@@ -32,6 +32,18 @@ h3.r-common { color: var(--r-common); } h3.r-rare { color: var(--r-rare); } h3.r
 .relic-card small { color: var(--c-fg-94a0b2, #94a0b2); font-size: 12px; }
 .relic-card em { font-style: normal; font-size: 12px; color: var(--c-fg-ffd166, #ffd166); }
 .relic-card.missing { opacity: 0.6; }
+.relic-shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 6px; }
+.relic-offer { display: flex; align-items: center; gap: 8px; padding: 8px; background: var(--c-bg-121926, #121926); border: 2px solid var(--c-border-2a3546, #2a3546); }
+.relic-offer > span { display: grid; gap: 2px; flex: 1; min-width: 0; }
+.relic-offer small { color: var(--c-fg-94a0b2, #94a0b2); font-size: 12px; }
+.relic-offer > button { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.relic-offer.r-common { border-color: var(--r-common); } .relic-offer.r-rare { border-color: var(--r-rare); } .relic-offer.r-epic { border-color: var(--r-epic); }
+.relic-offer.r-legendary { border-color: var(--r-legendary); } .relic-offer.r-mythic { border-color: var(--r-mythic); }
+.relic-odds { margin: 6px 0 0; font-size: 12px; }
+.relic-daily-title { margin: 12px 0 6px; font-size: 15px; }
+.relic-daily-title small { color: var(--c-fg-94a0b2, #94a0b2); font-weight: normal; font-size: 12px; }
+.relic-upgrade { justify-self: start; font-size: 12px; padding: 0; }
+.relic-card.upgraded { box-shadow: 2px 2px 0 var(--c-shadow-ffd166, #ffd166); }
 .relic-earn { margin: 0 0 8px; padding-left: 20px; display: grid; gap: 4px; font-size: 14px; }
 .menu-relics { width: 100%; box-sizing: border-box; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0; padding: 10px 12px; background: var(--c-bg-121926, #121926); border: 2px solid var(--c-border-2a3546, #2a3546); }
 .menu-relics.ready { border-color: var(--c-border-ffd166, #ffd166); }

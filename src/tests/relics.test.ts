@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   RELIC_RARITY, RARITY_ORDER, RELICS, SECRET_RELICS, SECRET_CHANCE, MAX_LUCK, rarityFor, spinRelic, grantSpins, luckPercent, luckMultiplier, loadRelics,
+  LUCKY_ODDS, STACK_MAX, SPIN_PRICE, LUCKY_SPIN_PRICE, RELIC_PRICE, UPGRADE_PRICE, buySpin, luckySpin, refreshShop, buyRelic, upgradeRelic, canGain,
   type RelicState,
 } from '../relics/relics';
 import { relicRunOpts } from '../relics/apply';
@@ -9,7 +10,7 @@ import { spinWeights, newRun } from '../hunt/run';
 import { emptyPlay, guessesAllowed, GRID_GUESSES } from '../arcade/grid';
 import { loadHistoryForTests } from './helpers/nbaHistoryFixture';
 
-const base = (over: Partial<RelicState> = {}): RelicState => ({ v: 1, spins: 0, coins: 0, owned: {}, secrets: [], granted: [], history: [], ...over });
+const base = (over: Partial<RelicState> = {}): RelicState => ({ v: 1, spins: 0, coins: 0, owned: {}, secrets: [], granted: [], history: [], upgraded: [], ...over });
 const seq = (...xs: number[]) => { let i = 0; return () => xs[i++ % xs.length]; };
 
 describe('relics', () => {
@@ -83,6 +84,90 @@ describe('relics', () => {
     expect(survivalSpins(12)).toBe(2);
     expect(storySpins('legend')).toBe(2);
     expect(careerSpins('first-ballot')).toBe(2);
+  });
+});
+
+describe('relic shop, stacks and upgrades', () => {
+  it('has 59 relics with unique ids, some stacking', () => {
+    expect(RELICS).toHaveLength(59);
+    expect(new Set(RELICS.map(r => r.id)).size).toBe(RELICS.length);
+    expect(RELICS.filter(r => r.stack).length).toBe(10);
+  });
+
+  it('a stacking relic adds 1% a copy up to five, then pays coins', () => {
+    let s = base({ spins: 7 });
+    // Rolls: secret miss, common, the luckyPenny slot in the common pool.
+    const commons = RELICS.filter(r => r.rarity === 'common');
+    const at = commons.findIndex(r => r.id === 'luckyPenny');
+    const pick = (at + 0.5) / commons.length;
+    for (let i = 1; i <= STACK_MAX; i++) {
+      const out = spinRelic(s, seq(0.5, 0.9, pick))!;
+      expect(out.result).toMatchObject({ id: 'luckyPenny', duplicate: false, stack: i, coins: 0 });
+      s = out.state;
+      expect(luckPercent(s)).toBe(i);
+    }
+    const extra = spinRelic(s, seq(0.5, 0.9, pick))!;
+    expect(extra.result).toMatchObject({ duplicate: true, coins: RELIC_RARITY.common.coins });
+    expect(luckPercent(extra.state)).toBe(STACK_MAX);
+  });
+
+  it('upgrades add 50% luck to relics that do not stack, once', () => {
+    const s = base({ coins: 10_000, owned: { whistle: 1, luckyPenny: 2 } });
+    expect(luckPercent(s)).toBe(4);
+    const up = upgradeRelic(s, 'whistle')!;
+    expect(up.coins).toBe(10_000 - UPGRADE_PRICE.rare);
+    expect(luckPercent(up)).toBe(5);
+    expect(upgradeRelic(up, 'whistle')).toBeNull();
+    expect(upgradeRelic(s, 'luckyPenny')).toBeNull();
+    expect(upgradeRelic(s, 'ring')).toBeNull();
+    expect(upgradeRelic(base({ owned: { whistle: 1 } }), 'whistle')).toBeNull();
+  });
+
+  it('sells spins and Lucky Spins for coins', () => {
+    expect(buySpin(base({ coins: SPIN_PRICE - 1 }))).toBeNull();
+    expect(buySpin(base({ coins: SPIN_PRICE }))).toMatchObject({ coins: 0, spins: 1 });
+    expect(luckySpin(base({ coins: LUCKY_SPIN_PRICE - 1 }))).toBeNull();
+    const lucky = luckySpin(base({ coins: LUCKY_SPIN_PRICE }), seq(0.5, 0.99, 0))!;
+    expect(lucky.state.coins).toBe(0);
+    expect(lucky.result.rarity).not.toBe('common');
+    expect(lucky.result.lucky).toBe(true);
+  });
+
+  it('Lucky Spins never land a Common and double the top odds', () => {
+    expect(LUCKY_ODDS.common).toBe(0);
+    expect(Object.values(LUCKY_ODDS).reduce((a, b) => a + b, 0)).toBeCloseTo(1, 9);
+    expect(LUCKY_ODDS.mythic / LUCKY_ODDS.rare).toBeCloseTo((RELIC_RARITY.mythic.odds * 2) / RELIC_RARITY.rare.odds);
+    for (let i = 0; i < 1000; i++) expect(rarityFor(i / 1000, true)).not.toBe('common');
+  });
+
+  it('rolls three daily relics once a day and sells each once', () => {
+    const s = refreshShop(base({ coins: 100_000, salt: 7 }), '2026-10-10');
+    expect(s.shop!.offers).toHaveLength(3);
+    expect(refreshShop(s, '2026-10-10')).toBe(s);
+    expect(refreshShop(base({ salt: 7 }), '2026-10-10').shop!.offers).toEqual(s.shop!.offers);
+    expect(refreshShop(s, '2026-10-11').shop!.offers).not.toEqual(s.shop!.offers);
+    const id = s.shop!.offers[0], r = RELICS.find(x => x.id === id)!;
+    const bought = buyRelic(s, id)!;
+    expect(bought.coins).toBe(100_000 - RELIC_PRICE[r.rarity]);
+    expect(bought.owned[id]).toBe(1);
+    expect(buyRelic(bought, id)).toBeNull();
+    expect(buyRelic(s, 'notInShop')).toBeNull();
+    expect(buyRelic({ ...s, coins: 0 }, id)).toBeNull();
+    expect(RELIC_PRICE.common).toBe(750);
+  });
+
+  it('never offers a relic you cannot gain from', () => {
+    const owned = Object.fromEntries(RELICS.filter(r => r.rarity !== 'mythic').map(r => [r.id, STACK_MAX]));
+    const s = refreshShop(base({ owned, salt: 1 }), '2026-10-10');
+    for (const id of s.shop!.offers) expect(canGain(s, RELICS.find(r => r.id === id)!)).toBe(true);
+  });
+
+  it('old saves load with no upgrades or shop', () => {
+    const old = { v: 1, spins: 2, coins: 5, owned: { ring: 1 }, secrets: [], granted: [], history: [] };
+    const s = loadRelics(() => JSON.stringify(old));
+    expect(s.upgraded).toEqual([]);
+    expect(s.shop).toBeUndefined();
+    expect(luckPercent(s)).toBe(4);
   });
 });
 

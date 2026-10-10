@@ -10,8 +10,9 @@ export const RELEASES: Release[] = [
     title: 'Relics: your own collection, across every mode',
     items: [
       "**Relic Vault (main menu):** win runs and unlock achievements to earn Relic Spins. Each spin lands a relic: Common, Rare, Epic, Legendary or the 0.07% Mythic.",
-      "**Luck:** every relic you own adds 1-5% luck (up to +30%), making the best results likelier in League Hunt, the 82-0 Challenge, the Career wheel and the Survival deal. Dailies, Weeklies and duels ignore luck.",
-      "**Coins:** land a relic you already own and it pays coins instead, more for rarer relics. Something to spend them on is coming.",
+      "**59 relics, luck:** every relic you own adds 1-5% luck (up to +50%), making the best results likelier in League Hunt, the 82-0 Challenge, the Career wheel and the Survival deal. Dailies, Weeklies and duels ignore luck.",
+      "**Stacking relics:** ten relics stack: +1% for every copy, up to five copies (+5%).",
+      "**Coins and the shop:** a relic you already own pays coins, more for rarer relics. Spend them on a Relic Spin (200), a Lucky Spin (500: 2x luck, no Commons), three daily relics (from 750 coins for a Common, up with rarity), or upgrades (+50% luck for any relic that doesn't stack).",
       "**Eight secret relics:** hidden behind a tiny chance on any spin, each a permanent ability: an extra Career respin, an extra Hunt life, an extra Survival Shield, an extra 82-0 reroll and more.",
     ],
   },
