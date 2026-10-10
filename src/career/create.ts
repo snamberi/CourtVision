@@ -19,18 +19,22 @@ export const START_AGE = 19;
 
 export interface Identity { name: string; pos: Position; jersey: number; hometown?: string }
 /** How much of his prime a rookie brings: late bloomers start further back and peak a little higher. */
-export type Readiness = 'raw' | 'balanced' | 'ready';
+export type Readiness = 'raw' | 'balanced' | 'ready' | 'exact';
 export const READINESS: Record<Readiness, { name: string; blurb: string; start: number; primeBonus: number }> = {
   raw: { name: 'Late bloomer', blurb: 'Starts at 72% of his prime; his prime is 3 higher.', start: 0.72, primeBonus: 3 },
   balanced: { name: 'Balanced', blurb: 'Starts at 80% of his prime.', start: 0.8, primeBonus: 0 },
   ready: { name: 'NBA-ready', blurb: 'Starts at 88% of his prime; his prime is 2 lower.', start: 0.88, primeBonus: -2 },
+  exact: { name: 'Exactly as built', blurb: 'Create Anything only: he plays at the ratings you chose from day one, and keeps them.', start: 1, primeBonus: 0 },
 };
+/** The readiness choices a normal career offers (Exactly as built is for Create Anything). */
+export const NORMAL_READINESS: Readiness[] = ['raw', 'balanced', 'ready'];
 
 const clamp = (v: number, lo = 20, hi = 99) => Math.max(lo, Math.min(hi, Math.round(v)));
 
 /** The values of each category at a given progress. */
 export function valuesAt(prime: Prime, progress: Progress, readiness: Readiness): Prime {
   const r = READINESS[readiness];
+  const exact = readiness === 'exact';
   const out = {} as Prime;
   for (const c of CATEGORIES) {
     const p = progress[c.id] ?? 0;
@@ -39,12 +43,12 @@ export function valuesAt(prime: Prime, progress: Progress, readiness: Readiness)
       const field = path.split('.')[1];
       if (MEASUREMENTS.has(field)) {
         // Rookies are a little lighter; everything else is fixed.
-        vals[path] = field === 'weightLbs' ? Math.round(target - 10 * Math.max(0, 1 - p)) : target;
+        vals[path] = field === 'weightLbs' && !exact ? Math.round(target - 10 * Math.max(0, 1 - p)) : target;
         continue;
       }
       const top = target + r.primeBonus;
       // Ratings top out at 120 (the best ever at something, see wheel.ts).
-      vals[path] = clamp(top * (r.start + (1 - r.start) * p), 20, 120);
+      vals[path] = clamp(top * (r.start + (1 - r.start) * p), exact ? 1 : 20, 120);
     }
     out[c.id] = vals;
   }
@@ -122,6 +126,42 @@ export function primeOverall(prime: Prime, readiness: Readiness, pos: Position):
   const vals = valuesAt(prime, Object.fromEntries(CATEGORIES.map(c => [c.id, 1])) as Progress, readiness);
   for (const c of CATEGORIES) p = withCategory(p, vals[c.id]);
   return calculateOverall({ ...p, positions: positionsFrom(pos, prime.size['physical.heightInches']) });
+}
+
+// ---------------------------------------------------------------- Create Anything (unranked)
+
+/** Create Anything: every rating 1-120, any height. Values are "group.field" → rating, set per field. */
+export interface SandboxBuild { heightIn: number; wingspanIn: number; weightLbs: number; values: Record<string, number> }
+export const SANDBOX_MIN = 1, SANDBOX_MAX = 120;
+export const SANDBOX_HEIGHT = { min: 60, max: 100 } as const;
+export const SANDBOX_WEIGHT = { min: 130, max: 400 } as const;
+
+/** A starting point: every rating at `rating`. */
+export function sandboxBuild(rating = 75, heightIn = 79): SandboxBuild {
+  const values: Record<string, number> = {};
+  for (const c of CATEGORIES) for (const [g, k] of c.fields) if (!MEASUREMENTS.has(k)) values[`${g}.${k}`] = rating;
+  return { heightIn, wingspanIn: heightIn + 4, weightLbs: 220, values };
+}
+/** Sets every rating of a category (or one field) to a value in 1-120. */
+export const setSandbox = (b: SandboxBuild, paths: string[], v: number): SandboxBuild =>
+  ({ ...b, values: { ...b.values, ...Object.fromEntries(paths.map(p => [p, Math.max(SANDBOX_MIN, Math.min(SANDBOX_MAX, Math.round(v)))])) } });
+export const categoryPaths = (id: CategoryId) => CATEGORY_BY_ID.get(id)!.fields.filter(([, k]) => !MEASUREMENTS.has(k)).map(([g, k]) => `${g}.${k}`);
+
+export function primeFromSandbox(b: SandboxBuild): Prime {
+  const h = Math.max(SANDBOX_HEIGHT.min, Math.min(SANDBOX_HEIGHT.max, Math.round(b.heightIn)));
+  const span = Math.max(h - 12, Math.min(h + 18, Math.round(b.wingspanIn)));
+  const prime = {} as Prime;
+  for (const c of CATEGORIES) {
+    const vals: CategoryValues = {};
+    for (const [g, k] of c.fields) {
+      const path = `${g}.${k}`;
+      vals[path] = k === 'heightInches' ? h : k === 'wingspanInches' ? span : k === 'standingReachInches' ? Math.round(h * 1.32 + (span - h) * 0.6)
+        : k === 'weightLbs' ? Math.max(SANDBOX_WEIGHT.min, Math.min(SANDBOX_WEIGHT.max, Math.round(b.weightLbs)))
+        : Math.max(SANDBOX_MIN, Math.min(SANDBOX_MAX, Math.round(b.values[path] ?? 75)));
+    }
+    prime[c.id] = vals;
+  }
+  return prime;
 }
 
 // ---------------------------------------------------------------- MyPlayer: build him yourself

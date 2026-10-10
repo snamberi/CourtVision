@@ -28,3 +28,14 @@ export const iqOf = (a: Attributes) => avg(a.mental.basketballIQ, a.mental.clutc
 export function superFactors(a: Attributes): { athleticism: number; body: number; iq: number } {
   return { athleticism: superFactor(athleticismOf(a)), body: superFactor(bodyOf(a)), iq: superFactor(iqOf(a)) };
 }
+
+/**
+ * The franchise star: a true superstar lifts everyone on the floor with him, on both ends (gravity, the defense built
+ * around him, the reads he makes). 0 below STAR_FROM overall, so ordinary lineups play exactly as before (in today's
+ * league only the very best one or two players reach it); +7% team efficiency at 98, +14% from 108 (a unanimous MVP's
+ * team wins: a 100-rated star takes the league's worst roster from a handful of wins to the play-in hunt).
+ */
+export const STAR_FROM = 88, STAR_PER_POINT = 0.007, STAR_MAX = 0.14;
+export const starLift = (overall: number) => Math.max(0, Math.min(STAR_MAX, (overall - STAR_FROM) * STAR_PER_POINT));
+/** How much of the lift shows up on defense (the other team's efficiency is divided by 1 + this share of it). */
+export const STAR_DEFENSE_SHARE = 0.6;

@@ -16,8 +16,8 @@ const { league: generated, extras } = generateFullLeague(71, 30, 13, 40, '2026')
 const base: League = { ...generated, rulesSettings: { ...DEFAULT_LEAGUE_RULES, allStarEnabled: false } };
 const me = base.teams[0].teamId;
 
-/** The season played up to the morning of Deadline Day. */
-const morning = (() => simulateRemainingSeason(scheduleDeadlineDay(base, me), 5))();
+/** The season played up to the morning of Deadline Day (a seed where your team is in the market: other GMs call). */
+const morning = (() => simulateRemainingSeason(scheduleDeadlineDay(base, me), 6))();
 
 function rosterIntegrity(league: League, ex: GMLeagueExtras) {
   const seen = new Map<string, string>();

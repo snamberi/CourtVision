@@ -5,7 +5,8 @@ import { cardPool, seasonLabel, RARITY_LABEL } from '../../hunt/cards';
 import { CATEGORIES, categoryLabel, categoryScore, feetInches, type CategoryId, type CategoryValues } from '../../career/categories';
 import { eliteRanks, newWheel, spin, respin, move, take, landed, neighbour, wheelCategories, primeBoost, mustTake, canSpin, isComplete, openWheels, luckyLeft, boostLeft, REEL_LENGTH, STAR_BONUS, ELITE_MAX, SURGE_SKILLS, type WheelState, type Wheel } from '../../career/wheel';
 import {
-  READINESS, suggestPosition, primeOverall, projectedPrime, buildPlayer, startProgress, primeFromBuild, capFor, buildSpent, rollPotential, RATING_CATEGORIES, BUILD_MIN, START_AGE, POTENTIAL_REROLLS,
+  READINESS, NORMAL_READINESS, sandboxBuild, setSandbox, primeFromSandbox, categoryPaths, SANDBOX_MIN, SANDBOX_MAX, SANDBOX_HEIGHT, SANDBOX_WEIGHT, type SandboxBuild,
+  suggestPosition, primeOverall, projectedPrime, buildPlayer, startProgress, primeFromBuild, capFor, buildSpent, rollPotential, RATING_CATEGORIES, BUILD_MIN, START_AGE, POTENTIAL_REROLLS,
   type Prime, type Readiness, type Position, type Build,
 } from '../../career/create';
 import { MyPlayerBoard, BodyBoard, type BoardCell } from './MyPlayerBoard';
@@ -217,6 +218,50 @@ export function MyPlayerBuilder({ seed, onDone, onBack }: { seed: number; onDone
   </section>;
 }
 
+// ---------------------------------------------------------------- Create Anything (unranked)
+
+const FIELD_LABEL = (k: string) => k.replace(/([A-Z0-9])/g, ' $1').replace(/^./, c => c.toUpperCase()).replace(/ I Q/g, ' IQ').replace(/ 3$/, ' 3');
+const avgOf = (b: SandboxBuild, paths: string[]) => Math.round(paths.reduce((n, p) => n + (b.values[p] ?? 0), 0) / Math.max(1, paths.length));
+
+/** Create Anything: every rating 1-120, any size, no budget. Just for fun: it never counts anywhere. */
+export function SandboxBuilder({ onDone, onBack }: { onDone: (prime: Prime) => void; onBack: () => void }) {
+  const [b, setB] = useState<SandboxBuild>(() => sandboxBuild(75));
+  const [open, setOpen] = useState<CategoryId | null>(null);
+  const prime = primeFromSandbox(b);
+  const pos = suggestPosition(prime);
+  const rated = CATEGORIES.filter(c => c.id !== 'size');
+  const setAll = (v: number) => setB(x => rated.reduce((acc, c) => setSandbox(acc, categoryPaths(c.id), v), x));
+  return <section className="hunt-stage cv-builder cv-sandbox">
+    <CreateSteps step={0} />
+    <div className="hunt-stage-head"><div><span className="pixel-eyebrow">CREATE ANYTHING</span><h2>Make him whatever you want</h2></div>
+      <div className="cv-budget"><span>PRIME OVERALL</span><b>{primeOverall(prime, 'exact', pos)}</b></div></div>
+    <p className="hint-text">Every rating from {SANDBOX_MIN} to {SANDBOX_MAX}, any height, no points to spend. <b>Just for fun:</b> this career never counts for leaderboards, XP, achievements or rewards.</p>
+    <div className="cv-sandbox-presets" role="group" aria-label="Set every rating">
+      <span>Set everything to</span>{[1, 50, 75, 99, 120].map(v => <button key={v} type="button" onClick={() => setAll(v)}>{v}</button>)}
+    </div>
+    <div className="cv-sliders cv-sandbox-size">
+      <label><span>Height <b>{feetInches(b.heightIn)}</b></span><input type="range" min={SANDBOX_HEIGHT.min} max={SANDBOX_HEIGHT.max} value={b.heightIn} onChange={e => { const h = Number(e.target.value); setB({ ...b, heightIn: h, wingspanIn: b.wingspanIn + (h - b.heightIn) }); }} /></label>
+      <label><span>Wingspan <b>{feetInches(prime.size['physical.wingspanInches'])}</b></span><input type="range" min={b.heightIn - 12} max={b.heightIn + 18} value={b.wingspanIn} onChange={e => setB({ ...b, wingspanIn: Number(e.target.value) })} /></label>
+      <label><span>Weight <b>{b.weightLbs} lb</b></span><input type="range" min={SANDBOX_WEIGHT.min} max={SANDBOX_WEIGHT.max} value={b.weightLbs} onChange={e => setB({ ...b, weightLbs: Number(e.target.value) })} /></label>
+    </div>
+    <ul className="cv-sandbox-cats">{rated.map(c => { const paths = categoryPaths(c.id), v = avgOf(b, paths);
+      return <li key={c.id}>
+        <label><span><b>{c.name}</b> <small>{c.blurb}</small></span>
+          <span className="mp-stepper">
+            <button type="button" aria-label={`Lower ${c.name}`} onClick={() => setB(setSandbox(b, paths, v - 1))}>−</button>
+            <input type="range" min={SANDBOX_MIN} max={SANDBOX_MAX} value={v} onChange={e => setB(setSandbox(b, paths, Number(e.target.value)))} aria-label={c.name} />
+            <button type="button" aria-label={`Raise ${c.name}`} onClick={() => setB(setSandbox(b, paths, v + 1))}>+</button>
+            <input className="year-input cv-sandbox-num" type="number" min={SANDBOX_MIN} max={SANDBOX_MAX} value={v} onChange={e => setB(setSandbox(b, paths, Number(e.target.value) || SANDBOX_MIN))} aria-label={`${c.name} value`} />
+          </span></label>
+        <button type="button" className="link-button" aria-expanded={open === c.id} onClick={() => setOpen(open === c.id ? null : c.id)}>{open === c.id ? 'Hide each rating' : `Fine-tune ${paths.length} ratings`}</button>
+        {open === c.id && <div className="cv-sandbox-fields">{paths.map(p => <label key={p}><span>{FIELD_LABEL(p.split('.')[1])} <b>{b.values[p]}</b></span>
+          <input type="range" min={SANDBOX_MIN} max={SANDBOX_MAX} value={b.values[p]} onChange={e => setB(setSandbox(b, [p], Number(e.target.value)))} /></label>)}</div>}
+      </li>; })}</ul>
+    <p>Suggested position: <b>{pos}</b> · prime overall <b>{primeOverall(prime, 'exact', pos)}</b> <small className="hint-text">(over 99 a rating unlocks superstar effects: 110 athleticism plays all 48 minutes, 110 body owns the paint, 110 IQ lifts the team)</small></p>
+    <div className="contest-actions"><button className="primary" onClick={() => onDone(prime)}>Next: name your player</button><button className="link-button" onClick={onBack}>Back</button></div>
+  </section>;
+}
+
 // ---------------------------------------------------------------- name, position, number
 
 const FIRST = ['Marcus', 'Jalen', 'Andre', 'Tyrese', 'Devin', 'Malik', 'Isaiah', 'Caleb', 'Darius', 'Jordan', 'Cam', 'Trey', 'Xavier', 'Elijah', 'Kobe', 'Zion'];
@@ -224,11 +269,11 @@ const LAST = ['Carter', 'Hayes', 'Brooks', 'Walker', 'Ellis', 'Grant', 'Mitchell
 
 export interface IdentityChoice { name: string; pos: Position; jersey: number; readiness: Readiness }
 
-export function IdentityView({ prime, seed, onDone, onBack, ready, pct }: { prime: Prime; seed: number; onDone: (c: IdentityChoice) => void; onBack: () => void; ready: boolean; pct: number | null }) {
+export function IdentityView({ prime, seed, onDone, onBack, ready, pct, sandbox }: { prime: Prime; seed: number; onDone: (c: IdentityChoice) => void; onBack: () => void; ready: boolean; pct: number | null; /** Create Anything: "Exactly as built" is offered (and picked). */ sandbox?: boolean }) {
   const [name, setName] = useState(() => `${FIRST[seed % FIRST.length]} ${LAST[Math.floor(seed / 7) % LAST.length]}`);
   const [pos, setPos] = useState<Position>(() => suggestPosition(prime));
   const [jersey, setJersey] = useState(() => (seed % 50) + 1);
-  const [readiness, setReadiness] = useState<Readiness>('balanced');
+  const [readiness, setReadiness] = useState<Readiness>(sandbox ? 'exact' : 'balanced');
   const rookie = calculateOverall(buildPlayer({ name: 'x', pos, jersey }, prime, startProgress(), readiness, '2025-26', START_AGE, seed));
   const primeOvr = primeOverall(prime, readiness, pos);
   const h = prime.size['physical.heightInches'];
@@ -244,7 +289,7 @@ export function IdentityView({ prime, seed, onDone, onBack, ready, pct }: { prim
       </div>
     </div>
     <h3 className="hunt-subhead">How ready is he?</h3>
-    <div className="hunt-choices">{(Object.keys(READINESS) as Readiness[]).map(r => <button key={r} className={`hunt-choice ${readiness === r ? 'on' : ''}`} aria-pressed={readiness === r} onClick={() => setReadiness(r)}><b>{READINESS[r].name}</b><span>{READINESS[r].blurb}</span></button>)}</div>
+    <div className="hunt-choices">{(sandbox ? ['exact', ...NORMAL_READINESS] as Readiness[] : NORMAL_READINESS).map(r => <button key={r} className={`hunt-choice ${readiness === r ? 'on' : ''}`} aria-pressed={readiness === r} onClick={() => setReadiness(r)}><b>{READINESS[r].name}</b><span>{READINESS[r].blurb}</span></button>)}</div>
     <div className="hunt-versus"><div><small>ROOKIE</small><b className="hunt-rating">{rookie}</b></div><span>→</span><div><small>PRIME</small><b className="hunt-rating">{primeOvr}</b></div><span className="hint-text">{feetInches(h)} · {prime.body['physical.weightLbs']} lb · age {START_AGE}</span></div>
     <div className="contest-actions">
       <button className="primary hunt-play" disabled={!name.trim()} onClick={() => onDone({ name: name.trim(), pos, jersey, readiness })}>{ready ? 'Enter the draft' : `Enter the draft (the season before is being played${pct != null ? `: ${pct}%` : ''})`}</button>

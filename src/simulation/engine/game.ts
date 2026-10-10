@@ -10,7 +10,8 @@ import { resolveEffectivePlayer } from './effective';
 import { simulatePossession, type OnCourtPlayer, type PlayCall, type LastShotType } from './possession';
 import { computeMatchups } from './matchups';
 import { LiveRotation } from './liveRotation';
-import { superFactor, athleticismOf } from './superstar';
+import { superFactor, athleticismOf, starLift, STAR_DEFENSE_SHARE } from './superstar';
+import { calculateOverall } from './overall';
 import { applyCoachingPlan } from './coachingPlan';
 import { freshFatigue, updateFatigue, type FatigueState } from './fatigue';
 import { rollInjury } from './injuries';
@@ -142,6 +143,10 @@ export function simulateGame(opts: SimulateGameOptions): GameResult {
   const paceModifier = (homeCoach.paceTendency + awayCoach.paceTendency) / 2;
   const homeChemMod = settings.teamChemistryEnabled ? (((home.chemistry ?? 70) - 50) / 50) * 6 : 0;
   const awayChemMod = settings.teamChemistryEnabled ? (((away.chemistry ?? 70) - 50) / 50) * 6 : 0;
+  // Franchise stars (superstar.ts): each player's lift, fixed for the game (0 for everyone below a superstar).
+  const lifts = new Map<PlayerId, number>();
+  for (const s of [...home.seasons, ...away.seasons]) { const l = starLift(calculateOverall(s)); if (l > 0) lifts.set(s.playerId, l); }
+  const liftOf = (ids: PlayerId[]) => { let m = 0; for (const id of ids) m = Math.max(m, lifts.get(id) ?? 0); return m; };
 
   const numQuarters = settings.era.numberOfQuarters;
   const qLen = settings.era.quarterLengthMinutes;
@@ -306,6 +311,9 @@ export function simulateGame(opts: SimulateGameOptions): GameResult {
       const lead = offenseBox.points - (offenseIsHome ? awayBox.points : homeBox.points);
       const leadEdge = lead < -BLOWOUT_START ? Math.min(0.12, (-lead - BLOWOUT_START) * 0.009) : lead > BLOWOUT_START ? -Math.min(0.1, (lead - BLOWOUT_START) * 0.007) : 0;
       if (leadEdge) possessionMods = { ...possessionMods, shot: { ...possessionMods.shot, offensiveEfficiency: possessionMods.shot.offensiveEfficiency * (1 + leadEdge) } };
+      // A franchise star on the floor lifts his team's offense, and his defense makes the other team's worse.
+      const starEdge = lifts.size ? (1 + liftOf(offenseIds)) / (1 + liftOf(defenseIds) * STAR_DEFENSE_SHARE) : 1;
+      if (starEdge !== 1) possessionMods = { ...possessionMods, shot: { ...possessionMods.shot, offensiveEfficiency: possessionMods.shot.offensiveEfficiency * starEdge } };
 
       const result = simulatePossession({
         offense: offenseOnCourt,

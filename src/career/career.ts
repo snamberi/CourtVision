@@ -22,7 +22,9 @@ import type { NbaHistory } from '../history/nbaHistoryData';
  * may ask for a trade, and eventually retires.
  */
 
-export type CareerMode = 'wheel' | 'myplayer';
+export type CareerMode = 'wheel' | 'myplayer' | 'sandbox';
+/** Create Anything careers (every rating 1-120, chosen freely): just for fun, never on boards, XP or rewards. */
+export const isSandboxCareer = (m: { mode?: string }) => m.mode === 'sandbox';
 export interface CareerAward { key: TrophyKey; label: string }
 export interface CareerYear {
   season: string; age: number; teamId: string | null; teamName: string; overall: number;

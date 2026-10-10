@@ -308,3 +308,21 @@ div.mp-callout { cursor: default; }
 @media (max-width: 560px) { .cv-traits li { grid-template-columns: 1fr; } }
 .cv-traits .cv-signature { grid-column: 1 / -1; font-size: 11px; color: var(--c-fg-94a0b2, #94a0b2); }
 .cv-traits .cv-signature.on { color: var(--c-fg-ffd166, #ffd166); font-weight: 700; }
+
+/* Create Anything */
+.cv-sandbox-road { border-color: var(--c-border-ffd166, #ffd166); }
+.cv-sandbox-presets { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0; }
+.cv-sandbox-presets button { min-width: 44px; }
+.cv-sandbox-size { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 8px 0 12px; }
+.cv-sandbox-cats { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.cv-sandbox-cats > li { display: grid; gap: 4px; padding: 8px 10px; background: var(--c-bg-121926, #121926); border: 1px solid var(--c-border-2a3546, #2a3546); }
+.cv-sandbox-cats label { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 4px 12px; align-items: center; }
+.cv-sandbox-cats label small { color: var(--c-fg-94a0b2, #94a0b2); font-size: 12px; }
+.cv-sandbox-cats .mp-stepper input[type="range"] { flex: 1; min-width: 0; }
+.cv-sandbox-num { width: 64px; }
+.cv-sandbox-cats > li > .link-button { justify-self: start; font-size: 12px; }
+.cv-sandbox-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px 12px; }
+.cv-sandbox-fields label { display: grid; grid-template-columns: 1fr; gap: 2px; font-size: 12px; }
+@media (max-width: 640px) {
+  .cv-sandbox-size, .cv-sandbox-cats label { grid-template-columns: 1fr; }
+}

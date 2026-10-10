@@ -13,7 +13,7 @@ import { DEFAULT_AWARD_SETTINGS } from '../../simulation/awards';
 import { CATEGORIES, categoryScore, type CategoryId } from '../../career/categories';
 import { startProgress, valuesAt, primeOverall, type Prime } from '../../career/create';
 import {
-  newCareerMeta, joinDraft, draftResult, landSeason, chooseMoment, careerMoments, careerShelf, type Moment, autopilotOffseason, findPlayer, freeAgentOffers, signOffer, requestTrade, retire, uniqueName, careerResume,
+  newCareerMeta, isSandboxCareer, joinDraft, draftResult, landSeason, chooseMoment, careerMoments, careerShelf, type Moment, autopilotOffseason, findPlayer, freeAgentOffers, signOffer, requestTrade, retire, uniqueName, careerResume,
   OFFER_LABEL, type CareerMeta, type CareerMode as Mode, type CareerYear, type TradeWish,
 } from '../../career/career';
 import { legacyScore, top100, top100Rank } from '../../career/legacy';
@@ -34,14 +34,14 @@ import { ClaimRankCard } from '../cloud/ClaimRankCard';
 import { noteWeekRun } from '../../retention/weekLog';
 import { challengePrefs, saveChallengePrefs, LEVEL_NAME, type Level } from '../../retention/challenge';
 import { LevelPicker } from '../ChallengeOptions';
-import { WheelBuilder, MyPlayerBuilder, IdentityView, type IdentityChoice } from './CareerCreate';
+import { WheelBuilder, MyPlayerBuilder, SandboxBuilder, IdentityView, type IdentityChoice } from './CareerCreate';
 import '../hunt/hunt.css';
 import { relicRunOpts } from '../../relics/apply';
 import { rewardRun, careerSpins, careerSecret, careerRewardKey } from '../../relics/rewards';
 import { RelicReward, RelicCase } from '../relics/RelicReward';
 import './career.css';
 
-type View = { k: 'hub' } | { k: 'wheel'; seed: number } | { k: 'myplayer'; seed: number } | { k: 'identity'; seed: number; prime: Prime; mode: Mode } | { k: 'career' };
+type View = { k: 'hub' } | { k: 'wheel'; seed: number } | { k: 'myplayer'; seed: number } | { k: 'sandbox'; seed: number } | { k: 'identity'; seed: number; prime: Prime; mode: Mode } | { k: 'career' };
 interface Active { meta: CareerMeta; world: CareerWorld | null }
 const newSeed = () => Math.floor(Math.random() * 1_000_000_000);
 
@@ -72,6 +72,10 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
   const refresh = () => listCareers().then(c => { noteCareers(c); setCareers(c); });
   const persist = useCallback((meta: CareerMeta, world: CareerWorld | null) => {
     setActive({ meta, world });
+    if (meta.status === 'retired' && isSandboxCareer(meta)) {
+      trackOnce(`career-${meta.id}`, 'mode_finish', { mode: 'career', variant: 'sandbox', seasons: meta.years.length, legacy: meta.retired?.legacy ?? 0 });
+      saveCareer(meta).then(() => dropWorld(meta.id)).then(refresh); return;
+    }
     if (meta.status === 'retired') {
       if (meta.weekly && meta.retired) recordWeekly('career', meta.weekly, { best: meta.retired.legacy, label: meta.playerId });
       if (meta.retired) rewardRun(careerRewardKey(meta), careerSpins(meta.retired.hallOfFame), { secret: careerSecret(meta.retired.hallOfFame), why: 'Career Mode' });
@@ -114,7 +118,7 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
     const warm = pre.current && !weekly && draftYear == null && pre.current.draftYear == null ? pre.current : null;
     const seed = weekly ? weekly.seed : warm ? warm.seed : newSeed();
     setWeekly(weekly?.week ?? null);
-    setView(mode === 'wheel' ? { k: 'wheel', seed } : { k: 'myplayer', seed });
+    setView(mode === 'wheel' ? { k: 'wheel', seed } : mode === 'sandbox' ? { k: 'sandbox', seed } : { k: 'myplayer', seed });
     setDraftYear(draftYear);
     if (!warm) await launchPre(seed, draftYear);
   };
@@ -205,14 +209,15 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
     {view.k === 'hub' ? <Hub careers={careers} onNew={startNew} onOpen={open} onDelete={id => deleteCareer(id).then(refresh)} />
       : view.k === 'wheel' ? <WheelBuilder h={h} seed={view.seed} fav={weekly ? undefined : readFavorites().player} relics={weekly ? undefined : relicRunOpts()} onBack={() => setView({ k: 'hub' })} onDone={prime => setView({ k: 'identity', seed: view.seed, prime, mode: 'wheel' })} />
       : view.k === 'myplayer' ? <MyPlayerBuilder seed={view.seed} onBack={() => setView({ k: 'hub' })} onDone={prime => setView({ k: 'identity', seed: view.seed, prime, mode: 'myplayer' })} />
-      : view.k === 'identity' ? (busy ? null : <IdentityView prime={view.prime} seed={view.seed} ready={preReady} pct={prePct} onBack={() => setView({ k: view.mode === 'wheel' ? 'wheel' : 'myplayer', seed: view.seed })} onDone={c => enterDraft(view, c)} />)
+      : view.k === 'sandbox' ? <SandboxBuilder onBack={() => setView({ k: 'hub' })} onDone={prime => setView({ k: 'identity', seed: view.seed, prime, mode: 'sandbox' })} />
+      : view.k === 'identity' ? (busy ? null : <IdentityView prime={view.prime} seed={view.seed} ready={preReady} pct={prePct} sandbox={view.mode === 'sandbox'} onBack={() => setView({ k: view.mode, seed: view.seed })} onDone={c => enterDraft(view, c)} />)
       : active ? <CareerView h={h} a={active} busy={!!busy} tradeAsked={tradeAsked}
           onPlay={() => playSeason(active)}
           onAutopilot={on => setActive({ ...active, meta: { ...active.meta, autopilot: on } })}
           onTraining={training => persist({ ...active.meta, training }, active.world)}
           onSign={offerIdx => { const w = active.world!; const offers = freeAgentOffers(w.league, w.extras, active.meta); const o = offers[offerIdx]; if (!o) return; const r = signOffer(w.league, w.extras, active.meta, o); persist({ ...active.meta, notes: [...active.meta.notes, r.note] }, { ...w, league: r.league, extras: r.extras }); }}
           onTrade={wish => { const w = active.world!; const r = requestTrade(w.league, w.extras, active.meta, wish); setTradeAsked(r.note); persist({ ...active.meta, notes: [...active.meta.notes, r.note] }, { ...w, league: r.league, extras: r.extras }); }}
-          onRetire={() => { const w = active.world!; const f = findPlayer(w.league, w.extras, active.meta.playerId); const done = retire(active.meta, h, w.league.season ?? '', f?.player.age ?? 0); if (done.retired) noteFeaturedXp('career', `career-${done.id}`, 150 + done.retired.legacy + (done.retired.hallOfFame !== 'no' ? 150 : 0)); persist(done, null); }}
+          onRetire={() => { const w = active.world!; const f = findPlayer(w.league, w.extras, active.meta.playerId); const done = retire(active.meta, h, w.league.season ?? '', f?.player.age ?? 0); if (done.retired && !isSandboxCareer(done)) noteFeaturedXp('career', `career-${done.id}`, 150 + done.retired.legacy + (done.retired.hallOfFame !== 'no' ? 150 : 0)); persist(done, null); }}
           onNew={() => setView({ k: 'hub' })} />
       : null}
     {active?.meta.pendingMoment && active.world && !busy && view.k !== 'hub' && <MomentDialog moment={active.meta.pendingMoment} name={active.meta.identity.name}
@@ -284,6 +289,7 @@ function Hub({ careers, onNew, onOpen, onDelete }: { careers: CareerMeta[]; onNe
       <div className="cv-era-row"><span>Difficulty:</span><LevelPicker value={level} onChange={l => { setLevel(l); saveChallengePrefs('career', { level: l }); }} blurbs={CAREER_LEVEL_BLURB} /></div>
       <div className="hunt-roads cv-modes">
         <button className="hunt-road" onClick={() => onNew('wheel', era)}><span className="hunt-road-icon">⟳</span><b>Random mode</b><span>Spin the wheel of NBA history. Take Curry's three-point shot, Shaq's size, LeBron's playmaking… if the wheel lets you. Two lucky spins, each a sure Star or Great.</span></button>
+        <button className="hunt-road cv-sandbox-road" onClick={() => onNew('sandbox', era)}><span className="hunt-road-icon">∞</span><b>Create Anything</b><span>Every rating from 1 to 120, any height, no limits: make the greatest player ever (or the worst). Just for fun: it never counts for leaderboards, XP or rewards.</span></button>
         <button className="hunt-road" onClick={() => onNew('myplayer', era)}><span className="hunt-road-icon">✎</span><b>MyPlayer</b><span>Build him yourself, part by part. Your draft stock is rolled: a Starter, an All-Star, or once in a while a Generational talent.</span></button>
       </div>
     </div>
@@ -511,8 +517,8 @@ function Legacy({ h, meta, onNew }: { h: NbaHistory; meta: CareerMeta; onNew: ()
     `Hall of Fame: ${ret.hallOfFame === 'first-ballot' ? 'first ballot' : ret.hallOfFame === 'yes' ? 'yes' : 'no'} · ${rank ? `#${rank} all time` : 'outside the all-time Top 100'} (Court Vision Career Mode)`].filter(Boolean).join('\n');
   return <section className="hunt-stage hunt-over won cv-page">
     <div className="cv-legacy-card"><CareerCard meta={meta} overall={meta.years.reduce((m, y) => Math.max(m, y.overall), 0)} teamName={meta.years.at(-1)?.teamName ?? ''} /></div>
-    <RelicReward rewardKey={careerRewardKey(meta)} />
-    <RelicCase />
+    {!isSandboxCareer(meta) && <><RelicReward rewardKey={careerRewardKey(meta)} />
+    <RelicCase /></>}
     <div className="hunt-over-banner"><span className="pixel-eyebrow">RETIRED AT {ret.age} · {fy(ret.season)}</span><h2>The legacy of {meta.playerId}</h2>
       <div className="hunt-over-stats">
         <div><small>ALL-TIME RANK</small><b>{rank ? `#${rank}` : '—'}</b></div>
@@ -520,7 +526,7 @@ function Legacy({ h, meta, onNew }: { h: NbaHistory; meta: CareerMeta; onNew: ()
         <div><small>LEGACY SCORE</small><b>{score}</b></div>
         <div><small>SEASONS</small><b>{meta.years.length}</b></div>
       </div></div>
-    <ClaimRankCard id={`career:${meta.id}`} board={{ kind: 'players' }} score={Math.round(ret.legacy)} scored={`Your career scored ${ret.legacy.toFixed(1)}`} where="globally" pitchOnly={meta.difficulty === 'rookie'} />
+    {isSandboxCareer(meta) ? <p className="hint-text">A Create Anything career: just for fun, so it stays off the leaderboards, XP and rewards.</p> : <ClaimRankCard id={`career:${meta.id}`} board={{ kind: 'players' }} score={Math.round(ret.legacy)} scored={`Your career scored ${ret.legacy.toFixed(1)}`} where="globally" pitchOnly={meta.difficulty === 'rookie'} />}
     {meta.difficulty && <p className="hint-text">{LEVEL_NAME[meta.difficulty]} career{meta.difficulty === 'rookie' ? ': it stays off the online Legacy board.' : '.'}</p>}
     <h3 className="hunt-subhead">Career</h3>
     <div className="hunt-over-stats cv-line">

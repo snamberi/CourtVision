@@ -68,6 +68,8 @@ export function derive(blob: ProgressBlob, now = new Date()): Derived {
   for (const m of blob.careers as CareerMeta[]) {
     const r = m.retired, name = cleanName(m.playerId);
     if (m.status !== 'retired' || !r || !name || !int(Math.round(r.legacy), 0, 400) || !Array.isArray(m.years) || !int(m.years.length, 1, 25)) continue;
+    // Create Anything careers (every rating chosen freely) count for nothing.
+    if (m.mode === 'sandbox') continue;
     // Rookie careers (the easy setting) count for your XP but stay off the Legacy board.
     if (m.difficulty === 'rookie') { counted.push(m); continue; }
     const res = careerResume(m), legacy = Math.round(r.legacy), g = Math.max(1, res.games);
@@ -80,7 +82,7 @@ export function derive(blob: ProgressBlob, now = new Date()): Derived {
     counted.push(m);
     if (!best || legacy > best.legacy) best = { name, legacy };
   }
-  const careerCache: CareerXpCache = { ...careerCacheOf(counted), careers: blob.careers.length, retired: players.length, legacy: legacySum, hallOfFame: hof };
+  const careerCache: CareerXpCache = { ...careerCacheOf(counted), careers: (blob.careers as CareerMeta[]).filter(c => c && c.mode !== 'sandbox').length, retired: players.length, legacy: legacySum, hallOfFame: hof };
   const readWithCareers = (k: string) => (k === 'cv-profile-careers' ? JSON.stringify(careerCache) : read(k));
 
   // Weekly results.

@@ -6,6 +6,14 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2027-04-21',
+    title: 'Create Anything, and superstars carry their teams',
+    items: [
+      "**Create Anything (Career Mode):** set every rating anywhere from 1 to 120 (each category, or every single rating one by one), any height from 5'0\" to 8'4\", any weight. Play him exactly as built from day one, or let him grow into it. Just for fun: these careers never count for leaderboards, XP, achievements or rewards.",
+      "**Franchise stars:** a true superstar now lifts his whole team on both ends. A 100-rated MVP takes even the league's worst roster from a handful of wins to the play-in hunt, so no more unanimous MVPs on 20-win teams. Only the very best one or two players in today's league are good enough to trigger it.",
+    ],
+  },
+  {
     id: '2027-04-14',
     title: '82-0: What If and Fun modes',
     items: [

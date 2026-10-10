@@ -32,9 +32,11 @@ export interface CareerXpCache {
   firstBallot?: number; top10?: number; mvpCareers?: number; mostTitles?: number; mostPoints?: number;
 }
 const CAREER_KEY = 'cv-profile-careers';
-type CareerLike = { retired?: { legacy: number; hallOfFame: string; rank?: number | null }; years?: { stats?: { points?: number }; awards?: { key: string }[] }[] };
+type CareerLike = { mode?: string; retired?: { legacy: number; hallOfFame: string; rank?: number | null }; years?: { stats?: { points?: number }; awards?: { key: string }[] }[] };
 /** The career summary behind XP and the Career achievements (the server builds the same one from synced careers). */
-export function careerCacheOf(metas: CareerLike[]): CareerXpCache {
+export function careerCacheOf(all: CareerLike[]): CareerXpCache {
+  // Create Anything careers are just for fun: no XP, achievements or Trophy Road.
+  const metas = all.filter(m => m.mode !== 'sandbox');
   const retired = metas.filter(m => m.retired);
   const awards = (m: CareerLike, key: string) => (m.years ?? []).reduce((n, y) => n + (y.awards ?? []).filter(a => a.key === key).length, 0);
   const points = (m: CareerLike) => (m.years ?? []).reduce((n, y) => n + (y.stats?.points ?? 0), 0);
