@@ -31,6 +31,9 @@ export interface PlayButtonProps {
   onToggleAutoAllStar?: (on: boolean) => void;
   autoDeadline?: boolean;
   onToggleAutoDeadline?: (on: boolean) => void;
+  /** Hands-off: All-Star, Deadline Day, press, injury and staff calls, the Year in Review and the owner's verdict all run themselves. */
+  handsOff?: boolean;
+  onToggleHandsOff?: (on: boolean) => void;
   /** Runs Deadline Day to the 3 PM deadline in one go. */
   onSkipDeadline?: () => void;
   onSimulateGames: (count: number) => void; // simulates up to `count` scheduled rounds
@@ -199,10 +202,25 @@ export function PlayButton(props: PlayButtonProps) {
             </div>
           )}
 
-          {!anyJobRunning && (seasonPhase === 'regular_season' || seasonPhase === 'all_star') && props.onToggleAutoAllStar && (
+          {!blocked && !anyJobRunning && seasonPhase !== 'regular_season' && (
+            <div className="play-menu-section">
+              <label className="play-menu-custom">
+                Auto Play:
+                <input type="number" min={1} max={50} value={autoPlaySeasons} onChange={(e) => setAutoPlaySeasons(Math.max(1, Math.min(50, Number(e.target.value) || 1)))} />
+                season{autoPlaySeasons === 1 ? '' : 's'}
+                <button onClick={() => doAndClose(() => autoPlayJob.start(autoPlaySeasons))}>Go</button>
+              </label>
+              <p className="hint-text">Finishes this season for you ({seasonPhase === 'playoffs' ? 'playoffs, ' : ''}draft, free agency and all), then plays on{autoPlaySeasons > 1 ? ` for ${autoPlaySeasons - 1} more` : ' to next opening night'}.</p>
+            </div>
+          )}
+
+          {!anyJobRunning && props.onToggleHandsOff && (
+            <label className="play-menu-custom play-menu-toggle"><input type="checkbox" checked={!!props.handsOff} onChange={e => props.onToggleHandsOff!(e.target.checked)} /> Hands-off: handle everything for me (All-Star, Deadline Day, press, injuries, staff calls, recaps)</label>
+          )}
+          {!anyJobRunning && !props.handsOff && (seasonPhase === 'regular_season' || seasonPhase === 'all_star') && props.onToggleAutoAllStar && (
             <label className="play-menu-custom play-menu-toggle"><input type="checkbox" checked={!!props.autoAllStar} onChange={e => props.onToggleAutoAllStar!(e.target.checked)} /> Auto-play All-Star Weekend when the break arrives</label>
           )}
-          {!anyJobRunning && seasonPhase === 'regular_season' && props.onToggleAutoDeadline && (
+          {!anyJobRunning && !props.handsOff && seasonPhase === 'regular_season' && props.onToggleAutoDeadline && (
             <label className="play-menu-custom play-menu-toggle"><input type="checkbox" checked={!!props.autoDeadline} onChange={e => props.onToggleAutoDeadline!(e.target.checked)} /> Auto-sim Trade Deadline Day when it arrives</label>
           )}
 

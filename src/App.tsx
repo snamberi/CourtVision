@@ -116,7 +116,8 @@ import { DAILY_EVENT } from './profile/dailyGoals';
 import { BackupPanel } from './components/BackupPanel';
 import { canPlaySummerLeague, ensureUpcomingDraftClass, simulateSummerLeague } from './simulation/draftSeason';
 import { runLeagueAIPass, autoDraftAIPicksUntilUserTurn, simEntireDraft, runFreeAgencyAI } from './simulation/aiGM';
-import { autoRunAllStarWeekend } from './simulation/autoPlay';
+import { autoRunAllStarWeekend, autoFinishSeason } from './simulation/autoPlay';
+import { autoHandleDesk, hasDeskWork } from './simulation/handsOff';
 import { startDynasty } from './simulation/dynasty';
 import { collectLockerEvents } from './simulation/lockerRoom';
 import { claimQuests, questsXp } from './tutorial/quests';
@@ -688,6 +689,12 @@ function App() {
   const [autoDeadline, setAutoDeadline] = useState(() => { try { return localStorage.getItem('cv-auto-deadline') === 'on'; } catch { return false; } });
   const autoDeadlineRef = useRef(autoDeadline);
   autoDeadlineRef.current = autoDeadline;
+  // Hands-off: everything that would stop the season (All-Star, Deadline Day, press, injury calls, staff calls,
+  // the Year in Review and the owner's verdict) is handled for you.
+  const [handsOff, setHandsOff] = useState(() => { try { return localStorage.getItem('cv-hands-off') === 'on'; } catch { return false; } });
+  const toggleHandsOff = (on: boolean) => { setHandsOff(on); try { localStorage.setItem('cv-hands-off', on ? 'on' : 'off'); } catch { /* keep the in-memory choice */ } };
+  autoAllStarRef.current = autoAllStar || handsOff;
+  autoDeadlineRef.current = autoDeadline || handsOff;
   const toggleAutoDeadline = (on: boolean) => { setAutoDeadline(on); try { localStorage.setItem('cv-auto-deadline', on ? 'on' : 'off'); } catch { /* keep the in-memory choice */ } };
   const toggleAutoAllStar = (on: boolean) => { setAutoAllStar(on); try { localStorage.setItem('cv-auto-allstar', on ? 'on' : 'off'); } catch { /* keep the in-memory choice */ } };
   /** What the current multi-day simulation was asked to reach, so it can resume after an automatic All-Star Weekend. */
@@ -810,9 +817,15 @@ function App() {
     const next = collectLockerEvents(collectPress(ensureGmRivals(league, controlledTeamId), controlledTeamId), controlledTeamId);
     if (next !== league) adoptLeague(next);
   }, [league.schedule, league.playoffBracket, league.teams, controlledTeamId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const deskWork = handsOff && screen === 'app' && hasDeskWork(league, controlledTeamId);
+  useEffect(() => {
+    if (!deskWork) return;
+    const done = autoHandleDesk(league, controlledTeamId);
+    if (done.league !== league) { adoptLeague(done.league); if (done.notes.length) pushToast(`Hands-off: ${done.notes.join(', ')}.`, 'info'); }
+  }, [deskWork, league]); // eslint-disable-line react-hooks/exhaustive-deps
   const lastPressCount = useRef(pressWaiting);
   useEffect(() => {
-    if (pressWaiting > lastPressCount.current) {
+    if (pressWaiting > lastPressCount.current && !handsOff) {
       const skipped = league.press?.lastSkipped ?? 0;
       pushToast(`${pressWaiting} reporter${pressWaiting === 1 ? '' : 's'} want a word in the Press Room.${skipped ? ` ${skipped} earlier question${skipped === 1 ? '' : 's'} went unanswered ("no comment"), which the fans noticed.` : ''}`, 'info');
     }
@@ -1055,7 +1068,7 @@ function App() {
   const beginAwardsRecap = () => {
     setLeague((l) => ({ ...l, seasonPhase: 'awards_recap' }));
     // The Year in Review show opens first for the team you run; the awards follow it.
-    setTab(controlledTeamId ? 'yearInReview' : 'awards');
+    setTab(controlledTeamId && !handsOff ? 'yearInReview' : 'awards');
   };
 
   const beginDraftPhase = () => {
@@ -1135,7 +1148,9 @@ function App() {
     if (!known || known.saveId !== activeSaveId) return; // a league just opened: nothing is new
     const fresh = [...ids].filter(id => !known.ids.has(id));
     const review = frontOffice.reviews.length > known.reviews ? frontOffice.reviews.at(-1) : undefined;
-    if (review) { setOwnerVerdict({ review, newAchievements: fresh }); return; }
+    // Hands-off: the verdict is a toast, unless you were fired (then the job offers need you).
+    if (review && (!handsOff || review.outcome === 'fired')) { setOwnerVerdict({ review, newAchievements: fresh }); return; }
+    if (review) pushToast(`Owner's review: ${review.note}`, 'info');
     for (const id of fresh) {
       const a = ACHIEVEMENT_BY_ID.get(id);
       if (a) pushToast(`Achievement unlocked: ${a.name}. ${a.description}`, 'success');
@@ -1566,6 +1581,8 @@ function App() {
         onToggleAutoAllStar={toggleAutoAllStar}
         autoDeadline={autoDeadline}
         onToggleAutoDeadline={toggleAutoDeadline}
+        handsOff={handsOff}
+        onToggleHandsOff={toggleHandsOff}
         onSkipDeadline={skipDeadline}
         onSimulateGames={simulateGamesCount}
         onSimulateToDeadline={simulateToTradeDeadline}
@@ -1581,7 +1598,21 @@ function App() {
         autoPlayJob={{
           running: jobs.autoPlay.running,
           progress: jobs.autoPlay.progress,
-          start: (years) => { const ready = prepareRegularSeason(false); if (ready) jobs.autoPlay.start({ league: ready.league, extras: ready.extras, controlledTeamId, awardSettings, years, seedBase: seed + 555_000 }); },
+          start: (years) => {
+            // From the playoffs or the offseason: finish this season right here (every step it still needs), then
+            // Auto Play the rest from opening night.
+            if (seasonPhase !== 'regular_season' && seasonPhase !== 'all_star') {
+              try {
+                const done = autoFinishSeason(league, extras, controlledTeamId, awardSettings, seed + 554_000, playoffBracket);
+                setLeague(withCurrentTutorial(done.league)); setExtras(done.extras); setGameResult(null);
+                pushToast(`Season finished automatically${done.summary.championTeamName ? `: ${done.summary.championTeamName} won the title` : ''}. Next season is ready.`, 'success');
+                if (years > 1) jobs.autoPlay.start({ league: done.league, extras: done.extras, controlledTeamId, awardSettings, years: years - 1, seedBase: seed + 555_000 });
+                else setTab('standings');
+              } catch (err) { pushToast(`Auto Play stopped: ${err instanceof Error ? err.message : String(err)}`, 'error'); }
+              return;
+            }
+            const ready = prepareRegularSeason(false); if (ready) jobs.autoPlay.start({ league: ready.league, extras: ready.extras, controlledTeamId, awardSettings, years, seedBase: seed + 555_000 });
+          },
           cancel: jobs.autoPlay.cancel,
         }}
         seasonComplete={seasonComplete}
