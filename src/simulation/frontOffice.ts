@@ -67,6 +67,8 @@ export interface FrontOfficeState {
   /** Sandbox (God Mode) was switched on at some point in this league: achievements stop unlocking and the career
    * is unofficial, left out of the all-leagues record. Never cleared. */
   sandboxUsed?: boolean;
+  /** The owner's current (or last) mid-season demand (ownerDemand.ts). */
+  demand?: import('./ownerDemand').OwnerDemand;
 }
 
 export const OWNER_STYLE_LABEL: Record<OwnerStyle, string> = { win_now: 'Win-Now', patient: 'Patient Builder', money: 'Money-First' };

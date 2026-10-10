@@ -491,3 +491,6 @@ button.tcard:hover, button.tcard:focus-visible { transform: translateY(-3px); ou
 /* Time Machine: a note on the dashboard of a league your team travelled into. */
 .tm-banner { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 12px; padding: 8px 12px; border: 2px solid var(--c-border-f47b20, #f47b20); background: var(--c-bg-121926, #121926); font-size: 14px; }
 .tm-banner b { color: var(--c-fg-f47b20, #f47b20); text-transform: uppercase; letter-spacing: 0.05em; }
+.demand-banner { border-color: var(--c-border-e85d5d, #e85d5d); }
+.demand-banner b { color: var(--c-fg-e85d5d, #e85d5d); }
+.demand-banner small { flex-basis: 100%; color: var(--c-fg-94a0b2, #94a0b2); }

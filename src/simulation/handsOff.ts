@@ -2,6 +2,7 @@ import type { League } from './league';
 import { pressState, answerPress } from './press';
 import { pendingDecisions, chooseTreatment } from './medical';
 import { pendingOffers, answerPoach } from './staffPoaching';
+import { lockerState, answerLocker } from './lockerRoom';
 
 /*
  * Hands-off mode (Franchise): for players who just want to watch the seasons roll by. Everything that would wait for
@@ -11,6 +12,7 @@ import { pendingOffers, answerPoach } from './staffPoaching';
  *  - Press conferences: the answer with the best overall effect (no "no comment" penalty with the fans).
  *  - Injuries: the doctors' standard recovery; surgery for a severe injury to a player under 30.
  *  - Staff poaching calls: keep the assistant with a raise when it fits the budget, otherwise let him go.
+ *  - Locker-room moments: the first (steady, by-the-book) choice.
  */
 
 export interface DeskResult { league: League; notes: string[] }
@@ -20,7 +22,7 @@ const effectScore = (e: Record<string, number | undefined>) =>
 
 export function hasDeskWork(league: League, teamId: string | null): boolean {
   if (!teamId) return false;
-  return (league.press?.pending.length ?? 0) > 0 || pendingDecisions(league, teamId).length > 0 || pendingOffers(league, teamId).length > 0;
+  return (league.press?.pending.length ?? 0) > 0 || pendingDecisions(league, teamId).length > 0 || pendingOffers(league, teamId).length > 0 || lockerState(league).pending.length > 0;
 }
 
 export function autoHandleDesk(league: League, teamId: string | null): DeskResult {
@@ -48,6 +50,10 @@ export function autoHandleDesk(league: League, teamId: string | null): DeskResul
     next = kept.league.staffOffers?.some(x => x.coachId === o.coachId && x.status === 'pending') ? answerPoach(next, o.coachId, false).league : kept.league;
   }
   if (offers.length) notes.push(`${offers.length} staff call${offers.length === 1 ? '' : 's'} answered`);
+
+  const moments = lockerState(next).pending;
+  for (const m of moments) if (m.choices[0]) next = answerLocker(next, m.id, m.choices[0].id).league;
+  if (moments.length) notes.push(`${moments.length} locker-room moment${moments.length === 1 ? '' : 's'} handled`);
 
   return { league: next, notes };
 }

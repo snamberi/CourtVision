@@ -118,6 +118,7 @@ import { canPlaySummerLeague, ensureUpcomingDraftClass, simulateSummerLeague } f
 import { runLeagueAIPass, autoDraftAIPicksUntilUserTurn, simEntireDraft, runFreeAgencyAI } from './simulation/aiGM';
 import { autoRunAllStarWeekend, autoFinishSeason } from './simulation/autoPlay';
 import { autoHandleDesk, hasDeskWork } from './simulation/handsOff';
+import { tickOwnerDemand, demandProgress } from './simulation/ownerDemand';
 import { startDynasty } from './simulation/dynasty';
 import { collectLockerEvents } from './simulation/lockerRoom';
 import { claimQuests, questsXp } from './tutorial/quests';
@@ -846,6 +847,13 @@ function App() {
     const done = autoHandleDesk(league, controlledTeamId);
     if (done.league !== league) { adoptLeague(done.league); if (done.notes.length) pushToast(`Hands-off: ${done.notes.join(', ')}.`, 'info'); }
   }, [deskWork, league]); // eslint-disable-line react-hooks/exhaustive-deps
+  // The owner's mid-season demand: issued when you're losing, decided after ten games.
+  const teamGamesPlayed = controlledTeamId ? league.schedule.filter(g => g.played && (g.homeTeamId === controlledTeamId || g.awayTeamId === controlledTeamId)).length : 0;
+  useEffect(() => {
+    if (screen !== 'app' || jobs.busy) return;
+    const t = tickOwnerDemand(league);
+    if (t.league !== league) { adoptLeague(t.league); if (t.news) pushToast(t.news.text, t.news.tone === 'good' ? 'success' : t.news.tone === 'bad' ? 'error' : 'info'); }
+  }, [teamGamesPlayed, screen]); // eslint-disable-line react-hooks/exhaustive-deps
   const lastPressCount = useRef(pressWaiting);
   useEffect(() => {
     if (pressWaiting > lastPressCount.current && !handsOff) {
@@ -2152,6 +2160,7 @@ function App() {
           );
         })()}
 
+        {tab === 'dashboard' && controlledTeamId && league.frontOffice?.demand?.status === 'active' && league.frontOffice.demand.season === league.season && (() => { const d = league.frontOffice!.demand!, pr = demandProgress(league, d, controlledTeamId); return <div className="tm-banner demand-banner" role="note"><PixelIcon name="warning" size={16} /> <b>Owner's demand</b> Win {d.need} of {d.games}: {pr.won}-{pr.played - pr.won} so far, {d.games - pr.played} to play. <small>{d.text}</small></div>; })()}
         {tab === 'dashboard' && league.timeMachine && <div className="tm-banner" role="note"><PixelIcon name="clock" size={16} /> <b>Time Machine</b> The {league.timeMachine.fromLabel} in the {league.timeMachine.year}-{String(league.timeMachine.year + 1).slice(2)} NBA, in place of the {league.timeMachine.replaced}.</div>}
         {(tab === 'dashboard' || tab === 'database') && league.rebuildChallenge && <ChallengeBanner league={league} contracts={extras.contracts} onMenu={() => setConfirmation('exit')} />}
         {tab === 'dashboard' && controlledTeamId && <DailyGoalsCard official={isOfficialLeague(league)} />}
