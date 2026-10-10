@@ -5,7 +5,7 @@ import { localRead, type Read } from '../lib/kv';
  * (winning a League Hunt, a title in the 82-0 Challenge, a long Survival run, finishing Story Mode, a Career, a
  * Franchise title) and by unlocking achievements. Each spin lands on a relic:
  *
- *   Common 55% (+1% luck) · Rare 28% (+2%) · Epic 12.43% (+3%) · Legendary 4.5% (+4%) · Mythic 0.07% (+5%)
+ *   Common 54.87% (+1% luck) · Rare 28% (+2%) · Epic 12.43% (+3%) · Legendary 4.5% (+4%) · Mythic 0.2% (+5%)
  *
  * Every relic you own adds its luck once; luck makes the good outcomes of a spin more likely in every spin-based mode
  * (League Hunt reels, 82-0 spins, the Career wheel, the Survival deal). A relic you already own pays out coins instead
@@ -20,11 +20,11 @@ import { localRead, type Read } from '../lib/kv';
 export type RelicRarity = 'common' | 'rare' | 'epic' | 'legendary' | 'mythic';
 export const RARITY_ORDER: RelicRarity[] = ['common', 'rare', 'epic', 'legendary', 'mythic'];
 export const RELIC_RARITY: Record<RelicRarity, { name: string; odds: number; luck: number; coins: number }> = {
-  common: { name: 'Common', odds: 0.55, luck: 1, coins: 50 },
+  common: { name: 'Common', odds: 0.5487, luck: 1, coins: 50 },
   rare: { name: 'Rare', odds: 0.28, luck: 2, coins: 100 },
   epic: { name: 'Epic', odds: 0.1243, luck: 3, coins: 250 },
   legendary: { name: 'Legendary', odds: 0.045, luck: 4, coins: 600 },
-  mythic: { name: 'Mythic', odds: 0.0007, luck: 5, coins: 3000 },
+  mythic: { name: 'Mythic', odds: 0.002, luck: 5, coins: 3000 },
 };
 
 /** Stacking relics: +1% luck per copy, up to this many copies. */
@@ -114,8 +114,8 @@ export const SECRET_RELICS: SecretRelic[] = [
   { id: 'lastLook', name: 'The Last Look', mode: 'Daily Grid', ability: 'One extra guess on Endless grids.', hint: 'Luck alone gives you one more look at the board.' },
 ];
 export const SECRET_BY_ID = new Map(SECRET_RELICS.map(r => [r.id, r]));
-/** The chance any spin uncovers a secret relic you don't have yet. */
-export const SECRET_CHANCE = 0.002;
+/** The chance any spin uncovers a secret relic you don't have yet (rarer than a Mythic: a secret is a permanent ability). */
+export const SECRET_CHANCE = 0.0007;
 /** Luck tops out here, however many relics you hold. */
 export const MAX_LUCK = 50;
 
