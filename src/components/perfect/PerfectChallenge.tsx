@@ -8,7 +8,7 @@ import {
   makeTrade, tradePending, tradeFits, TRADE_UP,
   newPerfectRun, weeklyRule, ERA_RULES, type EraRule, pickPlayer, quickSpinCard, reelFiller, rerollTeam, rerollEra, applyPrime, rerollSpin, luckySpin, spinsLeft, luckyLeft, rollRerollsLeft, lineupOf, swapLineup, setLineup, ROTATION_MINUTES, pickCoach, playNext, rollPool, franchiseName, eraById, teamBonds,
   perfectRating, teamRating, summary, starCount, starCapReached, MAX_STARS, coachMatchup, coachMatchupText, streakPressure, STREAK_STEP, STREAK_MAX, OPP_EDGE, verdict, BOSS_TEAMS, QUICK_SLOTS, QUICK_SLOT_LABEL, SQUAD, SEASON_GAMES, ROUND_NAMES, WINS_NEEDED, SCORE, COACH_BY_ID,
-  newPrimeRun, primeRoster, primeYears, primeTeamsOf,
+  newWhatIfRun, isFreeMode, type WhatIf, type WhatIfKind,
   isCategoryMode, categoryPool, rerollCategory, categoryMultiplier, picksFromCategory, STARTERS, optionMultiplier, OPTION_MULTIPLIER, SHOT_CLOCK, autoPick, categoryLocked, bestFive, type CategoryOptions,
   type PerfectRun, type PerfectMode, type PerfectGame,
 } from '../../perfect/run';
@@ -34,6 +34,8 @@ import { relicRunOpts } from '../../relics/apply';
 import { rewardRun, perfectSpins, perfectSecret, perfectRewardKey } from '../../relics/rewards';
 import { RelicReward, LuckChip } from '../relics/RelicReward';
 import { PixelIcon } from '../PixelIcon';
+import { WhatIfRows, WhatIfSetup } from './WhatIfModes';
+import { whatIfTitle } from '../../perfect/whatIfInfo';
 import { ShareCardButton } from '../ShareCardButton';
 import { FramedAvatar } from '../AvatarFrame';
 import { useAvatar } from '../UserAvatar';
@@ -49,7 +51,8 @@ const MODE_INFO: Record<PerfectMode, { name: string; blurb: string; icon: string
   quick: { name: 'Quick Spin', icon: 'play', blurb: 'Ten spins and a coach spin. Five starters by position, five off the bench. Three rerolls and two lucky spins (a sure Great or Star).' },
   franchise: { name: 'Franchise Spin', icon: 'team', blurb: 'Each spin rolls a franchise and an era. Pick ONE player from everyone who played there. Three team-or-era rerolls, two lucky rolls and one Absolute Prime boost.' },
   category: { name: 'Category Roll', icon: 'trophy', blurb: 'Roll a category (MVPs, 90s players, Duke, No. 1 picks, 7-footers, the Lakers... 150 of them) and take ANY five as your starters. A second roll is your bench. Weaker categories score more.' },
-  prime: { name: 'All in Their Prime', icon: 'star', blurb: "Pick any real team from any year. Its players are all there, every one at the best season of his whole career, and they play that same year again: the real teams of that season, 82 games and the playoffs." },
+  whatif: { name: 'What If', icon: 'clock', blurb: 'Rewrite history: unranked, normal difficulty.' },
+  fun: { name: 'Fun', icon: 'flame', blurb: 'Do whatever you want: unranked, normal difficulty.' },
   slots: { name: 'Slot Spin', icon: 'shuffle', blurb: 'Every one of your ten spots spins its own category. Take one player from each. Three category rerolls and two lucky rolls (an S or A tier category).' },
 };
 
@@ -70,7 +73,12 @@ export function PerfectChallenge({ onExit }: { onExit: () => void }) {
     current.current = r;
     setRunState(r);
     savePerfectRun(r);
-    if (r && r.stage === 'done' && prev?.stage !== 'done') {
+    if (r && r.stage === 'done' && prev?.stage !== 'done' && isFreeMode(r.mode)) {
+      // What If and Fun: just for fun. Their own best-season book, nothing else.
+      setRecords(recordPerfect(r));
+      const s = summary(r);
+      trackOnce(`p820-${r.seed}-${r.mode}`, 'mode_finish', { mode: 'perfect', variant: r.whatIf?.kind ?? r.mode, wins: s.w, champion: s.champion });
+    } else if (r && r.stage === 'done' && prev?.stage !== 'done') {
       setRecords(recordPerfect(r));
       const s = summary(r);
       rewardRun(perfectRewardKey(r), perfectSpins(s), { secret: perfectSecret(s), why: '82-0 Challenge' });
@@ -111,11 +119,11 @@ export function PerfectChallenge({ onExit }: { onExit: () => void }) {
     const relic = relicRunOpts();
     setRun(newPerfectRun(h, mode, seed, daily, { ...opts, luck: relic.luck, extraPick: relic.extraPick, catOpts: isCategoryMode(mode) ? opts?.catOpts ?? readCatOpts() : undefined }));
   };
-  const startPrime = (teamId: string, opts?: StartOpts) => {
+  const startWhatIf = (w: WhatIf, opts?: StartOpts) => {
     if (!h) return;
-    const r = newPrimeRun(h, Math.floor(Math.random() * 1_000_000_000), teamId, { level: opts?.level, view: opts?.view, luck: relicRunOpts().luck });
+    const r = newWhatIfRun(h, Math.floor(Math.random() * 1_000_000_000), w, { level: opts?.level, view: opts?.view });
     if (!r) return;
-    track('mode_start', { mode: 'perfect', variant: 'prime', level: opts?.level ?? 'pro' });
+    track('mode_start', { mode: 'perfect', variant: w.kind, level: opts?.level ?? 'pro' });
     setRun(r);
   };
 
@@ -131,13 +139,13 @@ export function PerfectChallenge({ onExit }: { onExit: () => void }) {
     {header}
     {run && run.stage !== 'done' && <DuelBanner duel={run.duel} />}
     {run && run.weekly && <p className="p820-challenge-line">Weekly Category Challenge · {run.weekly}</p>}
-    {run && run.primeTeam && (() => { const t = huntTeams(h).find(x => x.id === run.primeTeam); return t ? <p className="p820-challenge-line">All in Their Prime · the {teamLabel(t)} ({t.w}-{t.l} for real), every player at his best · only {seasonLabel(t.end)} teams on the schedule</p> : null; })()}
+    {run && run.whatIf && <p className="p820-challenge-line">{whatIfTitle(h, run.whatIf, id => { const t = huntTeams(h).find(x => x.id === id); return t ? teamLabel(t) : id; })} · {run.whatIf.year != null ? `only ${seasonLabel(run.whatIf.year)} teams on the schedule` : 'teams from all of history'} · unranked</p>}
     {run && run.custom && <p className="p820-challenge-line">Custom category · {categoryById(h, run.custom)?.name}</p>}
     {run && run.catOpts && run.stage !== 'done' && <p className="p820-challenge-line">{[run.catOpts.tips && 'Scouting tips', run.catOpts.clock && 'Shot clock', run.catOpts.mixed && 'Mixed rolls'].filter(Boolean).join(' · ')} · score ×{optionMultiplier(run)}</p>}
     {run && (run.level || run.view) && <p className="p820-challenge-line">{LEVEL_NAME[run.level ?? 'pro']}{run.view?.numbers ? ' · ratings shown' : ''}{run.view && !run.view.colors ? ' · colours hidden' : ''} · score ×{challengeMultiplier(run.level, run.view)}</p>}
     {!run && battle ? <DraftBattle h={h} battle={battle} setBattle={setBattle} onDone={() => setBattleSetup(true)} />
       : !run && battleSetup ? <BattleSetup onCancel={() => setBattleSetup(false)} onStart={(rival, names) => { setBattleSetup(false); track('mode_start', { mode: 'perfect', variant: 'battle', rival }); setBattle(newBattle(h, Math.floor(Math.random() * 1_000_000_000), rival, names)); }} />
-      : !run ? <Hub h={h} records={records} onStart={start} onPrime={startPrime} onBattle={() => setBattleSetup(true)} />
+      : !run ? <Hub h={h} records={records} onStart={start} onWhatIf={startWhatIf} onBattle={() => setBattleSetup(true)} />
       : run.stage === 'draft' ? (run.mode === 'quick' ? <QuickDraft h={h} run={run} setRun={setRun} /> : isCategoryMode(run.mode) ? <CategoryDraft h={h} run={run} setRun={setRun} /> : <FranchiseDraft h={h} run={run} setRun={setRun} />)
       : run.stage === 'coach' ? <CoachPick h={h} run={run} setRun={setRun} />
       : run.stage === 'done' ? <Finished h={h} run={run} records={records} onAgain={() => setRun(null)} />
@@ -159,10 +167,10 @@ const readCatOpts = (): CategoryOptions => { try { return JSON.parse(localStorag
 /** The Weekly Category Challenge's seed: the same bench rolls for everyone that week. */
 const weekSeed = (week: string) => { let x = 2166136261; for (const ch of `cat-week|${week}`) { x ^= ch.charCodeAt(0); x = Math.imul(x, 16777619); } return (x >>> 0) % 1_000_000_000; };
 
-function Hub({ h, records, onStart, onPrime, onBattle }: { h: NbaHistory; records: PerfectRecords; onStart: (mode: PerfectMode, seed: number, daily?: string, opts?: StartOpts) => void; onPrime: (teamId: string, opts?: StartOpts) => void; onBattle: () => void }) {
+function Hub({ h, records, onStart, onWhatIf, onBattle }: { h: NbaHistory; records: PerfectRecords; onStart: (mode: PerfectMode, seed: number, daily?: string, opts?: StartOpts) => void; onWhatIf: (w: WhatIf, opts?: StartOpts) => void; onBattle: () => void }) {
   const battles = loadBattleRecords();
   const [building, setBuilding] = useState(false);
-  const [priming, setPriming] = useState(false);
+  const [whatIf, setWhatIf] = useState<WhatIfKind | null>(null);
   const [catOpts, setCatOptsState] = useState<CategoryOptions>(readCatOpts);
   const setCatOpts = (o: CategoryOptions) => { setCatOptsState(o); try { localStorage.setItem(CAT_OPTS_KEY, JSON.stringify(o)); } catch { /* storage blocked */ } };
   const week = weekKey(), weekCat = weeklyCategory(h, week), weekBest = records.weekCat?.[week], weekRule = weeklyRule(week);
@@ -196,12 +204,7 @@ function Hub({ h, records, onStart, onPrime, onBattle }: { h: NbaHistory; record
       {(['category', 'slots', 'quick', 'franchise'] as PerfectMode[]).map(m => <button key={m} className={`p820-mode ${isCategoryMode(m) ? 'p820-mode-new' : ''}`} onClick={() => onStart(m, Math.floor(Math.random() * 1_000_000_000), undefined, { ...prefs, catOpts })}>
         {isCategoryMode(m) && <span className="p820-new-tag">NEW</span>}
         <span className="hunt-mode-icon"><PixelIcon name={MODE_INFO[m].icon} size={24} /></span><b>{MODE_INFO[m].name}</b><small>{MODE_INFO[m].blurb}</small><em>Start</em></button>)}
-      <button className={`p820-mode p820-mode-new ${priming ? 'on' : ''}`} onClick={() => { setPriming(b => !b); setBuilding(false); }} aria-expanded={priming}>
-        <span className="p820-new-tag">NEW</span>
-        <span className="hunt-mode-icon"><PixelIcon name={MODE_INFO.prime.icon} size={24} /></span><b>{MODE_INFO.prime.name}</b>
-        <small>{MODE_INFO.prime.blurb}</small>
-        <em>{priming ? 'Close the picker' : 'Pick a team'}</em></button>
-      <button className={`p820-mode p820-mode-new ${building ? 'on' : ''}`} onClick={() => { setBuilding(b => !b); setPriming(false); }} aria-expanded={building}>
+      <button className={`p820-mode p820-mode-new ${building ? 'on' : ''}`} onClick={() => setBuilding(b => !b)} aria-expanded={building}>
         <span className="p820-new-tag">NEW</span>
         <span className="hunt-mode-icon"><PixelIcon name="settings" size={24} /></span><b>Custom Category</b>
         <small>Build your own: up to three categories at once ("Lakers × 90s players × All-Stars"), then draft from it and send the code to a friend.</small>
@@ -216,8 +219,9 @@ function Hub({ h, records, onStart, onPrime, onBattle }: { h: NbaHistory; record
         <small>Today: {MODE_INFO[daily.mode].name}. The same spins for everyone; your best try counts on the weekly board.</small>
         <em>{todayBest ? `Best today: ${todayBest.w}-${todayBest.l} · ${todayBest.score.toLocaleString()}` : 'Play today'}</em></button>
     </div>
-    {priming && <PrimePicker h={h} records={records} numbers={!!prefs.view?.numbers} onPlay={id => onPrime(id, prefs)} />}
     {building && <CustomBuilder h={h} onPlay={custom => onStart('category', Math.floor(Math.random() * 1_000_000_000), undefined, { ...prefs, catOpts, custom })} />}
+    <WhatIfRows open={whatIf} onOpen={setWhatIf} />
+    {whatIf && <WhatIfSetup key={whatIf} h={h} kind={whatIf} records={records} numbers={!!prefs.view?.numbers} onPlay={w => onWhatIf(w, prefs)} />}
     <div className="p820-records">
       <span><b>{records.best ? `${records.best.w}-${records.best.l}` : '—'}</b><small>Best record</small></span>
       <span><b>{records.best?.score.toLocaleString() ?? '—'}</b><small>Best score</small></span>
@@ -244,38 +248,6 @@ function Hub({ h, records, onStart, onPrime, onBattle }: { h: NbaHistory; record
         <li>Every game is played under the rules of the opponent's era, and ratings are ranked within each season, so a 1965 star and a 2016 star stand on the same scale.</li>
         <li>Rewards: the <b>Undefeated</b> title and profile frame for 82-0; the gold <b>Perfection</b> title and frame for 98-0. Trophy Road points for your best season, titles and perfect seasons.</li>
       </ul></details>
-  </section>;
-}
-
-// ---------------------------------------------------------------- All in Their Prime
-
-const PRIME_PICK_KEY = 'cv-p820-prime-pick';
-/** Pick a year and a team; see who they become at their best; play that year again. */
-function PrimePicker({ h, records, numbers, onPlay }: { h: NbaHistory; records: PerfectRecords; numbers: boolean; onPlay: (teamId: string) => void }) {
-  const years = useMemo(() => primeYears(h), [h]);
-  const saved = (() => { try { return localStorage.getItem(PRIME_PICK_KEY) ?? ''; } catch { return ''; } })();
-  const [year, setYear] = useState(() => { const y = Number(saved.split('@')[1]); return years.includes(y) ? y : years.includes(1996) ? 1996 : years[0]; });
-  const teams = useMemo(() => primeTeamsOf(h, year), [h, year]);
-  const [teamId, setTeamId] = useState(() => (teams.some(t => t.id === saved) ? saved : teams[0]?.id ?? ''));
-  const team = teams.find(t => t.id === teamId) ?? teams[0];
-  const roster = useMemo(() => (team ? primeRoster(h, team.id) : []), [h, team]);
-  const remember = (id: string) => { try { localStorage.setItem(PRIME_PICK_KEY, id); } catch { /* storage blocked */ } };
-  const chooseYear = (y: number) => { setYear(y); const first = primeTeamsOf(h, y)[0]; if (first) { setTeamId(first.id); remember(first.id); } };
-  const best = team ? records.prime?.[team.id] : undefined;
-  const ups = roster.filter(r => r.prime.id !== r.then.id).length;
-  return <section className="p820-custom p820-prime" aria-label="All in Their Prime: pick a team">
-    <div className="p820-custom-parts p820-prime-pick">
-      <label><span>Season</span><select value={year} onChange={e => chooseYear(Number(e.target.value))}>{years.map(y => <option key={y} value={y}>{seasonLabel(y)}</option>)}</select></label>
-      <label><span>Team ({teams.length} that year)</span><select value={team?.id ?? ''} onChange={e => { setTeamId(e.target.value); remember(e.target.value); }}>{teams.map(t => <option key={t.id} value={t.id}>{t.name} ({t.w}-{t.l}{t.champion ? ', champions' : ''})</option>)}</select></label>
-    </div>
-    {team && <>
-      <p className="p820-custom-status"><b>{teamLabel(team)}</b>: {team.w}-{team.l} for real{team.champion ? ', and champions' : ''}. In their prime, {ups} of {roster.length} play a better season than this one. They face the other {teams.length - 1} teams of {seasonLabel(team.end)}; the two best are the bosses, the playoffs end with that year's champion.</p>
-      <ol className="p820-prime-list">{roster.map(({ then, prime }) => <li key={then.playerId} className={`rarity-${prime.rarity}`}>
-        <b>{prime.name}</b><small>{prime.pos} · this year {numbers ? `${then.ovr} · ` : ''}{then.ppg} ppg</small>
-        <span className={prime.id === then.id ? 'p820-prime-same' : 'p820-prime-up'}>{prime.id === then.id ? 'Already his prime' : `Prime: ${seasonLabel(prime.end)} ${prime.team}${numbers ? ` · ${prime.ovr}` : ''} · ${prime.ppg} ppg`}</span></li>)}</ol>
-      {best && <p className="hint-text">Your best with them: {best.w}-{best.l}{best.champion ? ' and the title' : ''}.</p>}
-      <button className="primary p820-big" onClick={() => onPlay(team.id)}>Play {seasonLabel(team.end)} again</button>
-    </>}
   </section>;
 }
 
@@ -327,6 +299,8 @@ function CustomBuilder({ h, onPlay }: { h: NbaHistory; onPlay: (id: string) => v
 /** Ratings stay hidden until the run is over: you pick on the name, the season and the numbers he put up. */
 const ratingsShown = (run: Pick<PerfectRun, 'stage' | 'view'>) => run.stage === 'done' || !!run.view?.numbers;
 const HIDDEN = '?';
+/** A card's name on your team (your created player goes by his own name). */
+const nameIn = (run: PerfectRun, c: HuntCard) => (run.whatIf?.hybrid?.base === c.id ? run.whatIf.hybrid.name : c.name);
 
 function CardTile({ c, onPick, prime, hide, bare, tip }: { c: HuntCard; onPick?: () => void; prime?: boolean; hide?: boolean; bare?: boolean; tip?: string }) {
   // Category Draft: the name, the face and the position. No season, numbers, rating or rarity to go on.
@@ -354,7 +328,7 @@ function SquadPanel({ h, run }: { h: NbaHistory; run: PerfectRun }) {
     <h3>Your team <small>{run.squad.length}/{SQUAD}</small></h3>
     <ol>{Array.from({ length: SQUAD }, (_, i) => { const c = ids[i] ? pool.byId.get(ids[i]) : undefined; return <li key={i} className={c ? `rarity-${c.rarity}` : 'empty'}>
       <span className="p820-slot">{lineup ? i < 5 ? 'START' : 'BENCH' : run.mode === 'quick' && run.from !== 'hunt' ? QUICK_SLOTS[i] : run.from === 'hunt' && i < 6 ? 'HUNT' : i < 5 ? 'START' : 'BENCH'}</span>
-      {c ? <><b>{c.name}</b><small>{isCategoryMode(run.mode) && run.stage !== 'done' ? c.pos : `${seasonLabel(c.end)} ${c.team} · ${c.pos}`}{!lineup && run.cats?.[i] ? ` · ${categoryById(h, run.cats[i])?.name ?? ''}` : ''}</small><span className="p820-ovr-mini">{ratingsShown(run) ? c.ovr : HIDDEN}</span></> : <small>—</small>}</li>; })}</ol>
+      {c ? <><b>{nameIn(run, c)}</b><small>{isCategoryMode(run.mode) && run.stage !== 'done' ? c.pos : `${run.whatIf?.hybrid?.base === c.id ? 'Created player' : `${seasonLabel(c.end)} ${c.team}`} · ${c.pos}`}{!lineup && run.cats?.[i] ? ` · ${categoryById(h, run.cats[i])?.name ?? ''}` : ''}</small><span className="p820-ovr-mini">{ratingsShown(run) ? c.ovr : HIDDEN}</span></> : <small>—</small>}</li>; })}</ol>
     {ratingsShown(run) && run.coach && COACH_BY_ID.get(run.coach) && <p className="p820-rating">Coach <b>{COACH_BY_ID.get(run.coach)!.name}</b> <small>({COACH_BY_ID.get(run.coach)!.bonus >= 0 ? '+' : ''}{COACH_BY_ID.get(run.coach)!.bonus})</small></p>}
     {run.squad.length >= 5 && <p className="p820-rating">Team rating <b>{ratingsShown(run) ? perfectRating(h, run) : '??'}</b> <small>{ratingsShown(run) ? '(100 = a 68-win team)' : '(revealed when the season is over)'}</small></p>}
     {run.stage === 'draft' && !isCategoryMode(run.mode) && <p className={`p820-stars ${starCapReached(h, run) ? 'full' : ''}`}><PixelIcon name="star" size={12} /> Stars {starCount(h, run)}/{MAX_STARS}{starCapReached(h, run) ? ': no more Stars on the reels' : ''}</p>}
@@ -689,7 +663,7 @@ function Season({ h, run, setRun }: { h: NbaHistory; run: PerfectRun; setRun: (r
   }, [auto]); // eslint-disable-line react-hooks/exhaustive-deps
   const last = run.stage === 'playoffs' ? run.playoffs.flatMap(x => x.games).at(-1) : run.games.at(-1);
   const nextOpp = run.stage === 'season' ? teams.get(run.schedule[run.games.length]) : teams.get(run.playoffs.at(-1)?.opp ?? '');
-  const nextBoss = run.stage === 'season' && run.bosses.includes(run.games.length) ? (run.primeTeam ? { tag: `Best of ${seasonLabel(nextOpp?.end ?? 0)}` } : BOSS_TEAMS.find(b => b.id === run.schedule[run.games.length])) : undefined;
+  const nextBoss = run.stage === 'season' && run.bosses.includes(run.games.length) ? (run.whatIf?.year != null ? { tag: `Best of ${seasonLabel(nextOpp?.end ?? 0)}` } : BOSS_TEAMS.find(b => b.id === run.schedule[run.games.length])) : undefined;
   const alive = s.l === 0 && run.games.length > 0;
   return <section className="p820-season">
     <div className="p820-scoreboard">
@@ -741,7 +715,7 @@ function LineupPanel({ h, run, setRun, locked }: { h: NbaHistory; run: PerfectRu
     <ol>{order.map((id, i) => { const c = pool.byId.get(id); if (!c) return null; return <li key={id} className={`rarity-${c.rarity} ${picked === id ? 'picked' : ''} ${custom && i === 5 ? 'p820-bench-start' : ''}`}>
       <button type="button" onClick={() => tap(id)} disabled={locked} aria-pressed={picked === id}>
         <span className="p820-slot">{custom ? (i < 5 ? 'START' : i === 5 ? '6TH' : 'BENCH') : '—'}</span>
-        <b>{c.name}</b><small>{seasonLabel(c.end)} {c.team} · {c.pos}{custom ? ` · ${ROTATION_MINUTES[i]} min` : ''}</small>
+        <b>{nameIn(run, c)}</b><small>{run.whatIf?.hybrid?.base === c.id ? 'Created player' : `${seasonLabel(c.end)} ${c.team}`} · {c.pos}{custom ? ` · ${ROTATION_MINUTES[i]} min` : ''}</small>
         <span className="p820-ovr-mini">{ratingsShown(run) ? c.ovr : HIDDEN}</span>
       </button></li>; })}</ol>
     {custom && <button className="link-button" disabled={locked} onClick={() => { setPicked(null); setRun(setLineup(run, null)); }}>Back to auto</button>}
@@ -778,7 +752,8 @@ function Finished({ h, run, records, onAgain }: { h: NbaHistory; run: PerfectRun
   const teams = useMemo(() => new Map(huntTeams(h).map(t => [t.id, t])), [h]);
   const lastSeries = run.playoffs.at(-1);
   const report = reportOf(h, run);
-  const frame = s.perfectSeason && s.perfectPlayoffs ? 'perfectGold' : s.perfectSeason ? 'undefeated' : null;
+  const free = isFreeMode(run.mode);
+  const frame = free ? null : s.perfectSeason && s.perfectPlayoffs ? 'perfectGold' : s.perfectSeason ? 'undefeated' : null;
   return <section className="p820-done">
     <div className={`p820-final ${s.champion ? 'champ' : ''}`}>
       <span className="pixel-eyebrow">{s.champion ? 'CHAMPIONS' : `OUT IN THE ${ROUND_NAMES[lastSeries?.round ?? 0].toUpperCase()}`}</span>
@@ -787,10 +762,11 @@ function Finished({ h, run, records, onAgain }: { h: NbaHistory; run: PerfectRun
       {frame && <div className="p820-reward"><FramedAvatar look={look} team={team} frame={frame} size={96} /><span><b>{frame === 'perfectGold' ? 'Perfection' : 'Undefeated'}</b> title and profile frame unlocked. Equip them in your Player Profile.</span></div>}
       {!s.champion && lastSeries && teams.get(lastSeries.opp) && <p className="hint-text">Knocked out by the {teamLabel(teams.get(lastSeries.opp)!)} (their rating {teamRating(h, teams.get(lastSeries.opp)!)}).</p>}
     </div>
-    {!run.weekly && !run.primeTeam && <DuelPanel setup={{ m: 'perfect', s: run.seed, pm: run.mode, ...(run.level ? { diff: run.level } : {}), ...(run.view ? { vw: run.view } : {}), ...(run.catOpts ? { co: run.catOpts } : {}), ...(run.custom ? { cc: run.custom } : {}) }} duel={run.duel}
+    {!run.weekly && !isFreeMode(run.mode) && <DuelPanel setup={{ m: 'perfect', s: run.seed, pm: run.mode, ...(run.level ? { diff: run.level } : {}), ...(run.view ? { vw: run.view } : {}), ...(run.catOpts ? { co: run.catOpts } : {}), ...(run.custom ? { cc: run.custom } : {}) }} duel={run.duel}
       mine={{ score: s.score, won: s.champion, line: `${s.w}-${s.l} · playoffs ${s.pw}-${s.pl}${s.champion ? ' · champions' : ''}` }} />}
-    <RelicReward rewardKey={perfectRewardKey(run)} />
-    <PerfectClaim run={run} records={records} score={s.score} />
+    {free ? <p className="hint-text p820-unranked">{run.mode === 'fun' ? 'A Fun run' : 'A What If run'}: just for fun, so it doesn't count for records, leaderboards or rewards.</p>
+      : <><RelicReward rewardKey={perfectRewardKey(run)} />
+        <PerfectClaim run={run} records={records} score={s.score} /></>}
     <RunMvps run={run} />
     <ReportCard h={h} run={run} />
     <table className="p820-score"><tbody>
@@ -810,7 +786,7 @@ function Finished({ h, run, records, onAgain }: { h: NbaHistory; run: PerfectRun
     <RunStatsTable lines={run.playoffLines} title="Playoff stats" />
     <RunHighs highs={run.highs} mode="perfect" />
     <div className="p820-actions p820-end-actions"><button className="primary p820-big" onClick={onAgain}>Play again</button>
-      <ShareCardButton tall fileName="82-0-challenge.png" label="Share card" text={`I went ${s.w}-${s.l}${s.champion ? ' and won the title' : ''} in the 82-0 Challenge${run.mode === 'category' && run.cats?.[0] ? ` with a starting five of ${categoryById(h, run.cats[0])?.name ?? 'one category'}` : ''}${run.primeTeam && teams.get(run.primeTeam) ? ` with the ${teamLabel(teams.get(run.primeTeam)!)}, every player in his prime` : ''} (score ${s.score.toLocaleString()}). Can you go 82-0?`} spec={{
+      <ShareCardButton tall fileName="82-0-challenge.png" label="Share card" text={`I went ${s.w}-${s.l}${s.champion ? ' and won the title' : ''} in the 82-0 Challenge${run.mode === 'category' && run.cats?.[0] ? ` with a starting five of ${categoryById(h, run.cats[0])?.name ?? 'one category'}` : ''}${run.whatIf ? ` (${whatIfTitle(h, run.whatIf, id => (teams.get(id) ? teamLabel(teams.get(id)!) : id))})` : ''} (score ${s.score.toLocaleString()}). Can you go 82-0?`} spec={{
         kicker: `82-0 Challenge · ${run.mode === 'category' && run.cats?.[0] ? categoryById(h, run.cats[0])?.name ?? MODE_INFO[run.mode].name : MODE_INFO[run.mode].name}${run.daily ? ` · Daily ${run.daily}` : run.from === 'hunt' ? ' · Hunt squad' : ''}`,
         title: `${s.w}-${s.l}`,
         subtitle: `${s.champion ? 'Champions' : `Out in the ${ROUND_NAMES[lastSeries?.round ?? 0].toLowerCase()}`} · playoffs ${s.pw}-${s.pl} · score ${s.score.toLocaleString()}`,

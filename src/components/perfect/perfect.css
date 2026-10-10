@@ -305,3 +305,28 @@ button.p820-card:hover, button.p820-card:focus-visible { border-color: var(--c-b
 .p820-prime-list small, .p820-prime-same { color: var(--c-fg-94a0b2, #94a0b2); font-size: 12px; }
 .p820-prime-up { color: var(--c-fg-55c878, #55c878); font-size: 12px; font-weight: 600; }
 @media (max-width: 560px) { .p820-prime-pick { grid-template-columns: 1fr; } }
+
+/* What If and Fun */
+.p820-group { margin-top: 14px; }
+.p820-group .hunt-subhead small { font-weight: 400; color: var(--c-fg-94a0b2, #94a0b2); margin-left: 6px; }
+.p820-unranked { color: var(--c-fg-94a0b2, #94a0b2); font-style: normal; }
+.p820-whatif-year { display: grid; gap: 4px; font-weight: 600; max-width: 420px; }
+.p820-whatif-year span { font-size: 12px; color: var(--c-fg-94a0b2, #94a0b2); }
+.p820-whatif-year select, .p820-whatif-year input { width: 100%; min-width: 0; }
+.p820-search { display: grid; gap: 4px; max-width: 420px; }
+.p820-search input { width: 100%; }
+.p820-search-hits { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; border: 1px solid var(--c-border-2a3546, #2a3546); background: var(--c-bg-0b1018, #0b1018); }
+.p820-search-hits button { display: grid; width: 100%; text-align: left; gap: 1px; padding: 6px 8px; background: none; border: 0; color: inherit; cursor: pointer; }
+.p820-search-hits button:hover, .p820-search-hits button:focus-visible { background: var(--c-bg-192333, #192333); }
+.p820-search-hits small { color: var(--c-fg-94a0b2, #94a0b2); font-size: 12px; }
+.p820-create { display: grid; gap: 8px; }
+.p820-create-row { display: grid; grid-template-columns: 160px 1fr; gap: 2px 10px; align-items: start; padding: 6px 0; border-top: 1px solid var(--c-border-2a3546, #2a3546); }
+.p820-create-row > small { grid-column: 1; color: var(--c-fg-94a0b2, #94a0b2); font-size: 12px; }
+.p820-create-row > .p820-search, .p820-create-row > .p820-chip { grid-column: 2; grid-row: 1 / span 2; }
+.p820-chip { display: inline-flex; gap: 8px; align-items: baseline; padding: 4px 8px; background: var(--c-bg-192333, #192333); border-left: 3px solid var(--c-border-f47b20, #f47b20); }
+.p820-create-ovr { margin: 4px 0; }
+.p820-create-ovr b { color: var(--c-fg-ffd166, #ffd166); font-size: 1.2rem; }
+@media (max-width: 560px) {
+  .p820-create-row { grid-template-columns: 1fr; }
+  .p820-create-row > .p820-search, .p820-create-row > .p820-chip { grid-column: 1; grid-row: auto; }
+}

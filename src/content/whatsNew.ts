@@ -7,12 +7,12 @@ export interface Release { id: string; title: string; items: string[] }
 export const RELEASES: Release[] = [
   {
     id: '2027-04-14',
-    title: '82-0: All in Their Prime',
+    title: '82-0: What If and Fun modes',
     items: [
-      "**All in Their Prime (82-0 Challenge):** pick any real team from any season, from the 1947 Warriors to last year. Every player on it shows up at the best season of his whole career, and they play that same year again.",
-      "**The real league that year:** all 82 games and the playoffs are against the actual teams of that season. That year's two best teams are the bosses, and the Finals are against the real champion (unless that was you).",
-      "**See the glow-up first:** the picker shows each player's season that year beside his prime season, so you know who gets better before you tip off.",
-      "**Your best with every team:** the best record you've had with each team is saved (and synced with your account).",
+      "**What If (82-0 Challenge):** rewrite history. All in Their Prime (a real team, everyone at his career best, in that same year's league), Time Travel (send the 1996 Bulls to the 2016 league), Franchise Legends (a franchise's ten best ever on one team), Rookie Year (everyone back in his first season) and Add a Star (what if Jordan joined the 2016 Warriors?).",
+      "**Fun:** Create-a-Player (Curry's shooting, LeBron's finishing, Magic's passing, Rodman's rebounding: name him and drop him on any team), Superteam (any ten players you want, any season) and Chaos Spin (ten random players in a random season).",
+      "**Play what you want:** What If and Fun runs are normal difficulty and just for fun, so they never count for records, leaderboards or rewards. Your best with each What If is still saved.",
+      "**One-season leagues:** when you play a single year, every game is against that season's real teams: its two best are the bosses and the Finals are against that year's champion.",
     ],
   },
   {
