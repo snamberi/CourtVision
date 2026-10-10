@@ -538,6 +538,23 @@ function App() {
     if (c.kind === 'draft') { track('mode_start', { mode: 'draft', variant: 'create' }); setScreen('draft'); return; }
     if (c.kind === 'rebuild') { startGameMode('rebuild', 'normal', '', '', undefined, c.scenario); return; }
     if (c.kind === 'worldgames') { setWorldGamesRun({ games: c.games, country: c.country }); setScreen('worldGamesMode'); return; }
+    if (c.kind === 'timeMachine') {
+      // Time Machine: the real league of the season you travel to, with your team-season in place of one franchise.
+      const tmSeed = Math.floor(Math.random() * 1_000_000);
+      track('mode_start', { mode: 'real', variant: 'timeMachine' });
+      setMenuBusy('Loading NBA history…');
+      Promise.all([historyTools(), import('./history/timeMachine')]).then(([{ h, buildHistoricalLeague }, tm]) => new Promise<void>(resolve => setTimeout(() => {
+        setMenuBusy('Firing up the time machine…');
+        const built = buildHistoricalLeague(h, c.year, { realDevelopment: true, difficulty: 'normal', seed: tmSeed, allPlayers: true });
+        const moved = tm.applyTimeMachine(h, built.league, built.extras, c.from, c.replace, tmSeed);
+        const ready = manageCoachRosters(moved.league, moved.extras);
+        enterApp(ready.league, ready.extras, moved.teamId, `Time Machine: ${moved.league.timeMachine?.fromLabel ?? 'Your team'} in ${c.year}-${String(c.year + 1).slice(2)}`);
+        setTab('dashboard');
+        pushToast(`The ${moved.league.timeMachine?.fromLabel} have arrived in the ${c.year}-${String(c.year + 1).slice(2)} NBA. Good luck.`, 'success');
+        resolve();
+      }, 30))).catch((err: unknown) => pushToast(`Time Machine failed: ${err instanceof Error ? err.message : String(err)}`, 'error')).finally(() => setMenuBusy(null));
+      return;
+    }
     const seed = Math.floor(Math.random() * 1_000_000);
     track('mode_start', { mode: c.source === 'random' ? 'random' : 'real', variant: c.source });
     if (c.source === 'random') startFromOrigin({ kind: 'random', year: parseInt(c.year, 10), seed, difficulty: c.difficulty, balanced: true }, { name: c.name, settings: c.settings, dynasty: c.dynasty, gmCareer: c.gmCareer });
@@ -2135,6 +2152,7 @@ function App() {
           );
         })()}
 
+        {tab === 'dashboard' && league.timeMachine && <div className="tm-banner" role="note"><PixelIcon name="clock" size={16} /> <b>Time Machine</b> The {league.timeMachine.fromLabel} in the {league.timeMachine.year}-{String(league.timeMachine.year + 1).slice(2)} NBA, in place of the {league.timeMachine.replaced}.</div>}
         {(tab === 'dashboard' || tab === 'database') && league.rebuildChallenge && <ChallengeBanner league={league} contracts={extras.contracts} onMenu={() => setConfirmation('exit')} />}
         {tab === 'dashboard' && controlledTeamId && <DailyGoalsCard official={isOfficialLeague(league)} />}
         {tab === 'dashboard' && league.gmCareer && <GmCareerCard league={league} onTakeOffer={() => { const teamId = league.gmCareer?.offer?.teamId; if (teamId) { acceptOffer(teamId); setLeague(l => takeGmOffer(l)); } }} />}

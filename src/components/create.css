@@ -89,3 +89,14 @@
   .create-go { bottom: max(8px, env(safe-area-inset-bottom)); }
 }
 @media (prefers-reduced-motion: reduce) { .create-choice, .create-switch i { transition: none; } .create-choice:hover:not(:disabled) { transform: none; } }
+.create-choices-6 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 860px) { .create-choices-6 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .create-choices-6 { grid-template-columns: 1fr; } }
+/* Time Machine picker */
+.tm-famous { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 12px; }
+.tm-famous button { padding: 5px 9px; font-size: 13px; }
+.tm-famous button.selected { border-color: var(--c-border-f47b20, #f47b20); color: var(--c-fg-f47b20, #f47b20); }
+.tm-preview { margin-top: 12px; padding: 10px 12px; border-left: 4px solid var(--c-border-f47b20, #f47b20); background: var(--c-bg-121926, #121926); }
+.tm-preview ol { margin: 6px 0 0; padding-left: 20px; columns: 2; font-size: 13px; }
+.tm-preview b { color: var(--c-fg-ffd166, #ffd166); }
+@media (max-width: 560px) { .tm-preview ol { columns: 1; } }

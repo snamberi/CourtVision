@@ -215,6 +215,8 @@ export interface League {
   origin?: import('../retention/leagueCode').LeagueOrigin;
   /** Rebuild Challenge: the scenario this league is playing (see rebuildChallenge.ts). */
   rebuildChallenge?: import('./rebuildChallenge').RebuildChallengeConfig;
+  /** Time Machine: the real team-season that travelled into this league, and whose place it took. */
+  timeMachine?: import('../history/timeMachine').TimeMachineInfo;
   coachingVersion?: 1;
   coachingUserTeamId?: string | null;
   staffMarket?: CoachIdentity[];
