@@ -6,6 +6,22 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2027-03-17',
+    title: 'Two new game modes: Survival and Story Mode',
+    items: [
+      "**Survival (new mode):** start with ten all-time greats. Beat a real team from history and they claim one of your best; sign one of theirs. Tougher teams every round, a real champion every fifth (beat it for a Shield). One loss and it's over. Daily Survival, three difficulties, share card.",
+      "**Story Mode (new mode):** Street to the League. From a park with no nets to your NBA rookie season in five chapters: choices that matter, key games played on the real engine with you on the floor, your best friend Dre, Coach Ray, your rival Marcus \"Ice\" Vance, and four endings.",
+      "**Time Machine (Franchise):** take any real team (the '96 Bulls, the '16 Warriors, the '67 76ers) to any season in NBA history and run it there, against that year's real league.",
+      "**Hands-off Franchise:** one switch in the Play menu handles everything for you: All-Star Weekend, Deadline Day, press conferences, injury calls, staff calls, locker-room moments, the Year in Review and the owner's verdict. Auto Play now works from any point of the season, playoffs and offseason included.",
+      "**Owner's demands:** losing? The owner sets a short ultimatum (win 6 of the next 10). Meet it and your job is safer; miss it and you're on the hot seat.",
+      "**League Hunt:** win a hunt without losing a series and a secret 11th series opens, against the greatest team ever assembled.",
+      "**82-0 Challenge:** a trade window at the All-Star break, and injuries (about one a season) to play through.",
+      "**Career Mode:** your draft-class rival, a comeback story after a long injury, and a signature move when a superstar trait reaches full power.",
+      "**Daily Grid:** themed weeks (Awards Week, Draft Week, Ring Week...) and grid codes: send a friend your endless grid and compare scores.",
+      "**New achievements and titles:** Category King, Last One Standing, Street Legend and more.",
+    ],
+  },
+  {
     id: '2027-03-10',
     title: 'Balance update: superstar traits, season goals and closer games',
     items: [
