@@ -1,0 +1,27 @@
+/* CourtChat: a compact social feed in the league's colors. */
+.courtchat-page { display: grid; gap: 12px; max-width: 760px; }
+.cc-head h2 { margin: 2px 0 4px; }
+.cc-head p { margin: 0; }
+.cc-feed { display: grid; gap: 8px; }
+.cc-post { display: grid; grid-template-columns: auto 1fr; gap: 10px; padding: 10px 12px; background: var(--c-bg-121926, #121926); border: 2px solid var(--c-border-2a3546, #2a3546); }
+.cc-post.roast { border-left: 4px solid var(--c-border-f47b20, #f47b20); }
+.cc-post.cc-bigNight { border-left: 4px solid var(--c-border-ffd166, #ffd166); }
+.cc-post.reply { padding: 8px 0 0; background: none; border: 0; border-top: 1px solid var(--c-border-2a3546, #2a3546); border-radius: 0; }
+.cc-avatar { padding: 0; background: none; border: 0; box-shadow: none; cursor: pointer; align-self: start; }
+.cc-body { min-width: 0; display: grid; gap: 3px; }
+.cc-body header { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.cc-name { font-weight: 700; padding: 0; }
+.cc-handle { color: var(--c-fg-94a0b2, #94a0b2); font-size: 12px; }
+.cc-type { padding: 1px 5px; font-size: 9px; font-weight: 700; letter-spacing: .05em; border: 1px solid currentColor; color: var(--c-fg-94a0b2, #94a0b2); }
+.cc-type-hothead { color: var(--c-fg-e85d5d, #e85d5d); } .cc-type-starego { color: var(--c-fg-ffd166, #ffd166); } .cc-type-leader { color: var(--c-fg-55c878, #55c878); }
+.cc-type-competitor { color: var(--c-fg-f47b20, #f47b20); } .cc-type-mercenary { color: var(--c-fg-b07cff, #b07cff); } .cc-type-loyal { color: var(--c-fg-4da3ff, #4da3ff); }
+.cc-yours { padding: 1px 5px; font-size: 9px; font-weight: 700; background: var(--c-bg-f47b20, #f47b20); color: var(--c-fg-0b1018, #0b1018); }
+.cc-context { color: var(--c-fg-94a0b2, #94a0b2); font-size: 11px; display: inline-flex; align-items: center; gap: 3px; flex-wrap: wrap; }
+.cc-text { margin: 2px 0; font-size: 14px; line-height: 1.45; overflow-wrap: anywhere; }
+.cc-body footer { display: flex; gap: 14px; font-size: 12px; color: var(--c-fg-94a0b2, #94a0b2); }
+.cc-body footer > * { display: inline-flex; align-items: center; gap: 4px; }
+.cc-like { padding: 0; min-height: 0; background: none; border: 0; box-shadow: none; color: inherit; font: inherit; cursor: pointer; }
+.cc-like.on, .cc-like:hover { color: var(--c-fg-e85d5d, #e85d5d); }
+.cc-replies { display: grid; gap: 6px; margin-top: 6px; }
+.cc-more { justify-self: center; }
+@media (max-width: 540px) { .cc-post { padding: 8px; gap: 8px; } }

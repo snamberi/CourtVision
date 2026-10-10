@@ -6,6 +6,15 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2027-04-07',
+    title: 'CourtChat: your players have opinions',
+    items: [
+      "**CourtChat (Franchise, under League / Home):** the league's own social feed. After every game players post in their own voice: Leaders lift the team, Hotheads roast, Star Egos brag, Mercenaries talk money, Competitors are never satisfied, Loyal players love their city.",
+      "**Roasts and clapbacks:** shoot 4-for-17 and someone on the other team will let you know. Sometimes the roasted player fires back, and teammates hype each other's big nights.",
+      "**Over 2,000 different posts:** wins, blowouts, bad shooting nights, win and losing streaks, injuries, trades and rivalry games. Filter by your team, roasts or big nights.",
+    ],
+  },
+  {
     id: '2027-03-31',
     title: 'Relic slots, pity, Year Two and a phone you can arrange',
     items: [

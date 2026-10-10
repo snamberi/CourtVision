@@ -34,6 +34,7 @@ export const SIMPLE_HUBS: SimpleHub[] = [
       { label: 'Preseason', tab: 'preseason', onlyDuringPhase: 'preseason' },
       { label: 'News', tab: 'news' },
       { label: 'Storylines', tab: 'storylines' },
+      { label: 'CourtChat', tab: 'courtChat' },
       { label: 'Press room', tab: 'press' },
       { label: 'Schedule', tab: 'schedule' },
       { label: 'Daily schedule', tab: 'dailySchedule' },
