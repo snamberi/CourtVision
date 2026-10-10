@@ -18,10 +18,12 @@ const base = (over: Partial<RelicState> = {}): RelicState => {
 const seq = (...xs: number[]) => { let i = 0; return () => xs[i++ % xs.length]; };
 
 describe('relics', () => {
-  it('odds add up to 1, mythic is 0.07% and luck runs 1-5%', () => {
+  it('odds add up to 1, mythic is 0.2% (secrets rarer, 0.07%) and luck runs 1-5%', () => {
     const total = RARITY_ORDER.reduce((n, r) => n + RELIC_RARITY[r].odds, 0);
     expect(total).toBeCloseTo(1, 9);
-    expect(RELIC_RARITY.mythic.odds).toBe(0.0007);
+    expect(RELIC_RARITY.mythic.odds).toBe(0.002);
+    expect(SECRET_CHANCE).toBe(0.0007);
+    expect(SECRET_CHANCE).toBeLessThan(RELIC_RARITY.mythic.odds);
     expect(RARITY_ORDER.map(r => RELIC_RARITY[r].luck)).toEqual([1, 2, 3, 4, 5]);
     for (const r of RARITY_ORDER) expect(RELICS.some(x => x.rarity === r)).toBe(true);
     expect(SECRET_RELICS).toHaveLength(8);
@@ -29,12 +31,12 @@ describe('relics', () => {
 
   it('maps rolls to rarities, rarest first', () => {
     expect(rarityFor(0)).toBe('mythic');
-    expect(rarityFor(0.0006)).toBe('mythic');
-    expect(rarityFor(0.001)).toBe('legendary');
+    expect(rarityFor(0.0019)).toBe('mythic');
+    expect(rarityFor(0.0021)).toBe('legendary');
     expect(rarityFor(0.999)).toBe('common');
     let mythic = 0;
     for (let i = 0; i < 100_000; i++) if (rarityFor(i / 100_000) === 'mythic') mythic++;
-    expect(mythic).toBe(70);
+    expect(mythic).toBe(200);
   });
 
   it('a spin costs a spin; a duplicate pays coins by rarity', () => {

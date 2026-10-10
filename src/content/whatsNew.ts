@@ -6,6 +6,14 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2027-04-28',
+    title: 'Relic odds: Mythics up, secrets rarer',
+    items: [
+      "**Mythic relics are more common:** 0.2% a spin (was 0.07%), and Lucky Spins still double it.",
+      "**Secret relics are rarer:** 0.07% a spin (was 0.2%). They're permanent abilities, so they should be the rarest thing in the vault. Feats still unlock their secrets as before.",
+    ],
+  },
+  {
     id: '2027-04-21',
     title: 'Create Anything, and superstars carry their teams',
     items: [
