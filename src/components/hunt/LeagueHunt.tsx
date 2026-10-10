@@ -246,7 +246,7 @@ function Bonds({ bonds }: { bonds: ChemistryBond[] }) {
   return <ul className="hunt-bonds">{bonds.map(b => <li key={b.label} className={b.bonus < 0 ? 'down' : ''}><b>{b.bonus > 0 ? '+' : ''}{b.bonus}</b> {b.label} <small>({b.cards.length})</small></li>)}</ul>;
 }
 
-const kindLabel = (s: HuntSeries, i: number) => (s.kind === 'boss' ? 'BOSS' : s.kind === 'semi' ? 'SEMI-BOSS' : `SERIES ${i + 1}`);
+const kindLabel = (s: HuntSeries, i: number) => (s.secret ? 'SECRET BOSS' : s.kind === 'boss' ? 'BOSS' : s.kind === 'semi' ? 'SEMI-BOSS' : `SERIES ${i + 1}`);
 
 const SERIES_MS = 10_000;
 const reducedMotion = () => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -440,7 +440,8 @@ function RunOver({ h, run, records, onNew, onExit }: { h: NbaHistory; run: HuntR
   return <section className={`hunt-stage hunt-over ${won ? 'won' : 'lost'}`}>
     <div className="hunt-over-banner">
       <span className="pixel-eyebrow">{won ? 'HUNT COMPLETE' : 'HUNT OVER'}</span>
-      <h2>{won ? 'You conquered basketball history' : `You reached series ${run.seriesIndex + 1} of ${SERIES_COUNT}`}</h2>
+      <h2>{won ? (run.immortal ? 'You beat the Immortals' : 'You conquered basketball history') : `You reached series ${run.seriesIndex + 1} of ${SERIES_COUNT}`}</h2>
+      {won && run.note && <p>{run.note}</p>}
       <div className="hunt-over-stats">
         <div><small>SERIES</small><b>{seriesWon}-{seriesLost}</b></div>
         <div><small>GAMES</small><b>{gamesWon}-{gamesPlayed - gamesWon}</b></div>

@@ -64,7 +64,9 @@ export const FOCUS_IDS = Object.keys(FOCUS) as Focus[];
 
 export type HuntStage = 'draft' | 'focus' | 'shop' | 'series' | 'boost' | 'won' | 'lost';
 export type SeriesKind = 'normal' | 'semi' | 'boss';
-export interface HuntSeries { teamId: string; eraId: string; kind: SeriesKind; buffs: BuffId[]; /** A flat bonus for all their players (the semi-boss and boss reach their rating). */ lift: number }
+export interface HuntSeries { teamId: string; eraId: string; kind: SeriesKind; buffs: BuffId[]; /** A flat bonus for all their players (the semi-boss and boss reach their rating). */ lift: number;
+  /** The secret 11th series: the greatest team ever, only for a hunt won without losing a series. */
+  secret?: boolean }
 export interface SeriesGame { us: number; them: number; won: boolean; top: string }
 export interface SeriesResult { index: number; teamId: string; games: SeriesGame[]; won: boolean; coins: number }
 export interface HuntShop { cards: { id: string; slot: number }[]; coach?: string; items: ItemId[]; sold: string[]; lifeBought?: boolean }
@@ -107,6 +109,8 @@ export interface HuntRun {
   lines?: Record<string, RunLine>;
   /** The best single games of the run (the record book). */
   highs?: GameHighs;
+  /** Beat the secret 11th series. */
+  immortal?: boolean;
   /** A same-spin duel: the challenger's code (retention/duel.ts), compared at the end. */
   duel?: string;
   /** How the spins are shown (retention/challenge.ts); absent = ratings hidden until you lock, colours on. */
@@ -570,14 +574,32 @@ export function playSeries(h: NbaHistory, run: HuntRun): { run: HuntRun; play: S
   const next: HuntRun = { ...run, results, lines, highs, coins: run.coins + coins, note: undefined };
   if (won) {
     const growth = run.focus ? { ...run.growth, [run.focus]: run.growth[run.focus] + 1 } : run.growth;
-    if (s.kind === 'boss') return { run: { ...next, growth, stage: 'won' }, play };
+    if (s.secret) return { run: { ...next, growth, stage: 'won', immortal: true, note: 'You beat the greatest team ever assembled. Nobody will believe you.' }, play };
+    if (s.kind === 'boss') {
+      // A flawless hunt (no series lost) opens the secret door: one more series, against the Immortals.
+      const flawless = results.every(r => r.won);
+      const secret = flawless && !run.series.some(x => x.secret) ? secretSeries(h, run) : null;
+      if (secret) return { run: { ...next, growth, series: [...run.series, secret], seriesIndex: run.seriesIndex + 1, attempts: 0, stage: 'series', note: 'A flawless hunt. A door you didn\'t know about opens: one more series, against the greatest team ever assembled. Win or lose, your hunt is already won.' }, play };
+      return { run: { ...next, growth, stage: 'won' }, play };
+    }
     // With the boost slots full, the road goes straight on.
     if (run.boosts.length >= MAX_BOOSTS) return { run: advance(h, { ...next, growth }), play };
     return { run: { ...next, growth, stage: 'boost', attempts: 0, boostOffer: boostOffer(run) }, play };
   }
+  // The secret series is a bonus: losing it ends the hunt as a win.
+  if (s.secret) return { run: { ...next, stage: 'won', note: 'The Immortals were too much. Your hunt still counts as won.' }, play };
   if (run.items.includes('insurance')) return { run: { ...next, items: run.items.filter(i => i !== 'insurance'), attempts: run.attempts + 1, note: 'Injury Insurance paid out: no life lost.' }, play };
   if (run.lives - 1 <= 0) return { run: { ...next, lives: 0, stage: 'lost' }, play };
   return { run: { ...next, lives: run.lives - 1, attempts: run.attempts + 1 }, play };
+}
+
+/** The secret series: the strongest champion in history not already faced, lifted past the boss. */
+export function secretSeries(h: NbaHistory, run: HuntRun): HuntSeries {
+  const faced = new Set(run.series.map(x => x.teamId));
+  const team = huntTeams(h).filter(t => t.champion && !faced.has(t.id)).sort((a, b) => teamBaseRating(h, b) - teamBaseRating(h, a))[0];
+  const diff = DIFFICULTIES[run.difficulty ?? 'pro'];
+  const base: HuntSeries = { teamId: team.id, eraId: eraOf(team.end).id, kind: 'boss', buffs: [...BUFF_IDS].slice(0, 3), lift: 0, secret: true };
+  return { ...base, lift: bonusToReach(h, theirStaticOvrs(h, run, base, 0), diff.bossRating + 3, true) + ENEMY_EDGE };
 }
 
 // ---------------------------------------------------------------- boosts and the shop
