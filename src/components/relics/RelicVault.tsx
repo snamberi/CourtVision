@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   loadRelics, saveRelics, spinRelic, luckySpin, buySpin, buyRelic, upgradeRelic, refreshShop, canUpgrade, canGain, relicLuck, luckPercent,
   collectionProgress, RELICS, RELIC_BY_ID, RELIC_RARITY, RARITY_ORDER, LUCKY_ODDS, SECRET_RELICS, SECRET_BY_ID, SECRET_CHANCE, MAX_LUCK,
-  RELICS_EVENT, SPIN_PRICE, LUCKY_SPIN_PRICE, RELIC_PRICE, UPGRADE_PRICE, STACK_MAX, type RelicState, type SpinResult, type Relic,
+  RELICS_EVENT, RELICS_FOCUS_KEY, SPIN_PRICE, LUCKY_SPIN_PRICE, RELIC_PRICE, UPGRADE_PRICE, STACK_MAX, type RelicState, type SpinResult, type Relic,
 } from '../../relics/relics';
 import { claimAchievementSpins } from '../../relics/rewards';
 import { PixelIcon } from '../PixelIcon';
@@ -26,6 +26,10 @@ export function RelicVault({ onExit }: { onExit: () => void }) {
     claimAchievementSpins().then(n => { if (live && n) { setClaimed(n); setState(loadRelics()); } }, () => {});
     const on = () => setState(loadRelics());
     window.addEventListener(RELICS_EVENT, on);
+    // Opened from the phone's Shop app: jump to the shop.
+    let focus: string | null = null;
+    try { focus = sessionStorage.getItem(RELICS_FOCUS_KEY); sessionStorage.removeItem(RELICS_FOCUS_KEY); } catch { /* storage blocked */ }
+    if (focus === 'shop') window.requestAnimationFrame(() => document.getElementById('relic-shop')?.scrollIntoView({ block: 'start' }));
     return () => { live = false; window.removeEventListener(RELICS_EVENT, on); window.clearTimeout(timer.current); };
   }, []);
 

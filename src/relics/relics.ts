@@ -140,6 +140,8 @@ export interface RelicState {
 
 export const RELICS_KEY = 'cv-relics';
 export const RELICS_EVENT = 'cv-relics-changed';
+/** Set before opening the vault to land on a section (read once, from sessionStorage). */
+export const RELICS_FOCUS_KEY = 'cv-relics-focus';
 const empty = (): RelicState => ({ v: 1, spins: 0, coins: 0, owned: {}, secrets: [], granted: [], history: [], upgraded: [] });
 
 export function loadRelics(read: Read = localRead): RelicState {
