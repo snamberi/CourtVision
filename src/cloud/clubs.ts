@@ -118,6 +118,24 @@ export async function challengeClub(target: string, week = weekKey()): Promise<v
   if (error) fail(error);
 }
 
+/* ---- Weekend Showdown: every weekend each club meets the club next to it on the week's board (1v2, 3v4...). ---- */
+
+/** Friday, Saturday or Sunday (UTC): showdown time. */
+export const isShowdownWeekend = (now = new Date()) => [5, 6, 0].includes(now.getUTCDay());
+/** Your club and its showdown rival on a week's board (clubs paired by place), or null without a rival. */
+export function showdownPair(board: ClubWeekRow[], clubId: string): { me: ClubWeekRow; rival: ClubWeekRow } | null {
+  const i = board.findIndex(r => r.clubId === clubId);
+  if (i < 0) return null;
+  const j = i % 2 === 0 ? i + 1 : i - 1;
+  return board[j] ? { me: board[i], rival: board[j] } : null;
+}
+/** Last week's showdown, settled: won, lost or level (by the week's club points). */
+export function showdownResult(board: ClubWeekRow[], clubId: string): { me: ClubWeekRow; rival: ClubWeekRow; outcome: 'won' | 'lost' | 'level' } | null {
+  const p = showdownPair(board, clubId);
+  if (!p) return null;
+  return { ...p, outcome: p.me.points > p.rival.points ? 'won' : p.me.points < p.rival.points ? 'lost' : 'level' };
+}
+
 /* ---- The club pass: every member's XP fills one shared bar; banners unlock for the whole club. ---- */
 
 export const CLUB_PASS_TIER_XP = 5000, CLUB_PASS_TIERS = 50;

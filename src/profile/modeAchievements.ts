@@ -40,7 +40,7 @@ export interface ModeStats {
   /** The Relic Vault. */
   relicCommons: number; relicMythics: number; relicSecrets: number; relicSets: number;
   /** Shop and secret cosmetics owned, the best Season Pass tier, and friend gifts. */
-  shopCosmetics: number; secretCosmetics: number; seasonBest: number; giftsSent: number; giftsCollected: number;
+  shopCosmetics: number; secretCosmetics: number; seasonBest: number; giftsSent: number; giftsCollected: number; showdownWins: number;
 }
 
 export interface ModeAchievement { id: string; mode: Mode; name: string; description: string; icon: TrophyKey; progress: (s: ModeStats) => [number, number]; label?: (n: number, goal: number) => string }
@@ -94,6 +94,7 @@ export const MODE_ACHIEVEMENTS: ModeAchievement[] = [
   { id: 'social-shop-10', mode: 'social', name: 'Fashion Icon', description: 'Own 10 shop cosmetics.', icon: 'mvp', progress: s => at(s.shopCosmetics, 10) },
   { id: 'social-secret-1', mode: 'social', name: 'Lucky Find', description: 'Find a secret cosmetic in a spin.', icon: 'pow', progress: s => at(s.secretCosmetics, 1) },
   { id: 'social-secret-8', mode: 'social', name: 'Hidden Wardrobe', description: 'Find all eight secret cosmetics.', icon: 'fmvp', progress: s => at(s.secretCosmetics, SECRET_COSMETIC_KEYS.length) },
+  { id: 'social-showdown', mode: 'social', name: 'Weekend Warriors', description: 'Win a Weekend Showdown with your club.', icon: 'champion', progress: s => at(s.showdownWins, 1) },
   { id: 'social-pass-100', mode: 'social', name: 'Pass Master', description: 'Reach tier 100 of a Season Pass.', icon: 'champion', progress: s => at(s.seasonBest, 100) },
   { id: 'story-all', mode: 'story', name: 'Every Road', description: 'See all four Story Mode endings.', icon: 'eoy', progress: s => at(s.storyEndings, 4) },
 
@@ -166,7 +167,7 @@ export function modeStats(read: Read = localRead, extra: Feats = {}): ModeStats 
     relicCommons: RELICS.filter(r => r.rarity === 'common' && has(r.id)).length, relicMythics: RELICS.filter(r => r.rarity === 'mythic' && has(r.id)).length,
     relicSecrets: relics.secrets.length, relicSets: RELIC_SETS.filter(st => setComplete(relics, st)).length,
     shopCosmetics: (relics.cosmetics ?? []).filter(k => k.startsWith('shop-')).length, secretCosmetics: (relics.cosmetics ?? []).filter(k => k.startsWith('secret-')).length,
-    seasonBest: Math.max(0, ...Object.values(readPass(read).seasons ?? {}).map(x => x.tier)), giftsSent: feats.giftsSent ?? 0, giftsCollected: feats.giftsCollected ?? 0,
+    seasonBest: Math.max(0, ...Object.values(readPass(read).seasons ?? {}).map(x => x.tier)), giftsSent: feats.giftsSent ?? 0, giftsCollected: feats.giftsCollected ?? 0, showdownWins: feats.showdownWins ?? 0,
   };
 }
 
