@@ -9,6 +9,24 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2027-05-26',
+    title: 'Season 3: INFERNO, free gifts for friends, a Closet, and new phone navigation',
+    items: [
+      "**Free gifts for friends:** open the new **Friend list** app on the phone and send each friend 150 coins and a Lucky Spin every day. It costs you nothing, and you can gift up to 10 friends a day.",
+      "**The Closet:** your character and every cosmetic now live in their own phone app. Your profile is just your card, achievements and trophies.",
+      "**Season 3: INFERNO.** A brand-new fire Season Pass with magma armour, ember beards, a flame crown, a flame cape and more.",
+      "**Phone navigation:** a bar along the bottom with Home, Compete, a big Play button, Ranks and Me. Play shows every mode and sub-mode as a card with its own artwork.",
+      "**Gold Arcade style:** play 24 hours in total to unlock a chunky gold menu style in Settings.",
+      "**Easier difficulty picking:** every mode shows difficulty as cards that say what changes. Settings has a default difficulty for every mode.",
+      "**GM Tournament:** 16 GMs, one bracket, one week. Draft three legends under a budget; a round opens Monday, Wednesday, Friday and Sunday.",
+      "**Weekend Showdown:** every weekend your club faces the club next to it on the board.",
+      "**Weekly events, a wish list and profile visitors:** a new twist each week (Coin Rush, Spin Storm and more), stars on shop items you want, and a count of who visited your profile.",
+      "**Live games:** a momentum meter, plus foul-trouble alerts with a one-tap \"sit him\".",
+      "**Smarter trades and stories:** veteran stars refuse trades to losing teams, and Storylines follow the rookies (the Rookie of the Year race, draft steals, the rookie wall).",
+      "**Faster loading:** the game's first download is about 15% smaller.",
+    ],
+  },
+  {
     id: '2027-05-19',
     title: 'Shop cosmetics, secret cosmetics and last seen',
     items: [

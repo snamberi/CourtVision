@@ -74,14 +74,15 @@ import { IS_DESKTOP_BUILD } from './appMode';
 import { MenuBottomBar, type BarTab } from './components/MenuBottomBar';
 import type { ModeEntry } from './menu/modeCatalog';
 import { MainMenu, type GameMode, type RealLeagueOptions } from './components/MainMenu';
-import { SettingsPage } from './components/SettingsPage';
+const SettingsPage = lazy(() => import('./components/SettingsPage').then(m => ({ default: m.SettingsPage })));
 import { ChooseTeamScreen } from './components/ChooseTeamScreen';
 import { retireJerseyNumber, unretireJerseyNumber } from './simulation/league';
 import { collectPlayerIds, withUniquePlayerId } from './simulation/playerIds';
 import { repairDuplicatePlayerIds } from './simulation/playerIntegrity';
 import { syncLeaguePotentials } from './simulation/potentialMigration';
 import { backfillRecordBook } from './simulation/records';
-import { LeagueSettingsPage, type AwardSettings } from './components/LeagueSettingsPage';
+import type { AwardSettings } from './components/LeagueSettingsPage';
+const LeagueSettingsPage = lazy(() => import('./components/LeagueSettingsPage').then(m => ({ default: m.LeagueSettingsPage })));
 import { DEFAULT_LEAGUE_RULES } from './simulation/leagueRules';
 import { rivalryBadge } from './simulation/rivalry';
 import { rivalryWeekGame, rivalryHype } from './simulation/rivalryWeek';
@@ -99,7 +100,8 @@ import { DEFAULT_CAP_SETTINGS, DEFAULT_TRADE_SETTINGS, DEFAULT_GM_FLAGS, generat
 import { RNG } from './simulation/engine/rng';
 import { beginNewSeasonRoster, finalizeNewSeasonSchedule, type SeasonTransitionSummary } from './simulation/seasonTransition';
 import { acceptJobOffer, becomeSpectator, ensureFrontOffice, markSandboxUse, isOfficialLeague, ACHIEVEMENT_BY_ID, type OwnerReview } from './simulation/frontOffice';
-import { JobOffersDialog, OwnerReviewDialog } from './components/FrontOfficePanels';
+const JobOffersDialog = lazy(() => import('./components/FrontOfficePanels').then(m => ({ default: m.JobOffersDialog })));
+const OwnerReviewDialog = lazy(() => import('./components/FrontOfficePanels').then(m => ({ default: m.OwnerReviewDialog })));
 import { recordLeagueLegacy } from './storage/gmLegacy';
 import { usePlayClock } from './retention/usePlayClock';
 import { noteWeekRun } from './retention/weekLog';
@@ -113,7 +115,7 @@ import { getAccount } from './cloud/account';
 import { canAdvance, type OnlineLeague } from './cloud/onlineLeague';
 import { OnlineBar, progressMark, type OnlineSession } from './components/cloud/OnlineBar';
 import { track, trackOnce } from './analytics/track';
-import { ChallengeBanner } from './components/ChallengeBanner';
+const ChallengeBanner = lazy(() => import('./components/ChallengeBanner').then(m => ({ default: m.ChallengeBanner })));
 import { rebuildSnapshot } from './simulation/rebuildSnapshot';
 import { DailyGoalsCard } from './components/DailyGoalsCard';
 import { LeagueCodeBox } from './components/LeagueCodeBox';
@@ -1592,8 +1594,8 @@ function App() {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} />{menuBar}<Suspense fallback={<main role="status" className="navigation-loading">Opening your profile…</main>}><ProfileHub key={`${screen}-${profileTab}`} initialTab={screen === 'locker' ? 'trophies' : profileTab} onExit={() => setScreen('menu')} onCloset={() => setScreen('closet')} /></Suspense></>;
   }
   if (screen === 'settings') {
-    return <><ToastStack toasts={toasts} onDismiss={dismissToast} />{menuBar}<SettingsPage onExit={() => setScreen('menu')} backup={<BackupPanel />}
-      recovery={<SaveRecoveryPanel beforeAction={async () => { await debouncedSave.flush(); }} onOpen={async id => { jobs.resetAll(); await debouncedSave.flush(); await continueSavedUniverse(id); }} />} /></>;
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} />{menuBar}<Suspense fallback={<main role="status" className="navigation-loading">Opening Settings…</main>}><SettingsPage onExit={() => setScreen('menu')} backup={<BackupPanel />}
+      recovery={<SaveRecoveryPanel beforeAction={async () => { await debouncedSave.flush(); }} onOpen={async id => { jobs.resetAll(); await debouncedSave.flush(); await continueSavedUniverse(id); }} />} /></Suspense></>;
   }
   if (screen === 'worldGamesMode' && worldGamesRun) {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening the World Games…</main>}><WorldGamesMode key={`${worldGamesRun.games}-${worldGamesRun.country}`} games={worldGamesRun.games} country={worldGamesRun.country} onExit={() => setScreen('menu')} onNew={() => { setCreateChallenge('worldgames'); setScreen('create'); }} /></Suspense></>;
@@ -1794,9 +1796,9 @@ function App() {
         </div>
       )}
 
-      {ownerVerdict && <OwnerReviewDialog review={ownerVerdict.review} newAchievements={ownerVerdict.newAchievements} onClose={() => setOwnerVerdict(null)} />}
+      {ownerVerdict && <Suspense fallback={null}><OwnerReviewDialog review={ownerVerdict.review} newAchievements={ownerVerdict.newAchievements} onClose={() => setOwnerVerdict(null)} /></Suspense>}
       {!ownerVerdict && frontOffice?.status === 'unemployed' && frontOffice.offers.length > 0 &&
-        <JobOffersDialog league={league} onAccept={acceptOffer} onSpectate={spectate} />}
+        <Suspense fallback={null}><JobOffersDialog league={league} onAccept={acceptOffer} onSpectate={spectate} /></Suspense>}
       <ToastStack toasts={toasts} onDismiss={dismissToast} />
       {celebration && <ChampionshipCelebration league={league} info={celebration} onClose={() => setCelebration(null)} onSelectPlayer={id => { setCelebration(null); selectPlayer(id); }} />}
       {tourActive && tourStep != null && (
@@ -2116,7 +2118,7 @@ function App() {
               <button className={leagueSettingsSub === 'awards' ? 'active' : ''} onClick={() => setLeagueSettingsSub('awards')}>Award Formulas</button>
               <button className={leagueSettingsSub === 'rules' ? 'active' : ''} onClick={() => setLeagueSettingsSub('rules')}>League Rules</button>
             </nav>
-            {leagueSettingsSub === 'awards' && <LeagueSettingsPage settings={awardSettings} onChange={setAwardSettings} seasonGames={seasonGamesPerTeam(league)} onSave={() => { handleSaveNow(); pushToast('Award settings saved.', 'success'); }} />}
+            {leagueSettingsSub === 'awards' && <Suspense fallback={<p className="empty-state page-loading" role="status">Loading…</p>}><LeagueSettingsPage settings={awardSettings} onChange={setAwardSettings} seasonGames={seasonGamesPerTeam(league)} onSave={() => { handleSaveNow(); pushToast('Award settings saved.', 'success'); }} /></Suspense>}
             {leagueSettingsSub === 'rules' && (
               <><HistoricalSettingsCard league={league} extras={extras} onChange={setLeague} /><section className="settings-card">
                 <h4>Roster and trade rules</h4><p className="hint-text">10–18 players for regular-season games. Coaches sign or waive players to meet the limits. Draft and offseason moves can temporarily exceed them.</p>
@@ -2276,7 +2278,7 @@ function App() {
 
         {tab === 'dashboard' && controlledTeamId && league.frontOffice?.demand?.status === 'active' && league.frontOffice.demand.season === league.season && (() => { const d = league.frontOffice!.demand!, pr = demandProgress(league, d, controlledTeamId); return <div className="tm-banner demand-banner" role="note"><PixelIcon name="warning" size={16} /> <b>Owner's demand</b> Win {d.need} of {d.games}: {pr.won}-{pr.played - pr.won} so far, {d.games - pr.played} to play. <small>{d.text}</small></div>; })()}
         {tab === 'dashboard' && league.timeMachine && <div className="tm-banner" role="note"><PixelIcon name="clock" size={16} /> <b>Time Machine</b> The {league.timeMachine.fromLabel} in the {league.timeMachine.year}-{String(league.timeMachine.year + 1).slice(2)} NBA, in place of the {league.timeMachine.replaced}.</div>}
-        {(tab === 'dashboard' || tab === 'database') && league.rebuildChallenge && <ChallengeBanner league={league} contracts={extras.contracts} onMenu={() => setConfirmation('exit')} />}
+        {(tab === 'dashboard' || tab === 'database') && league.rebuildChallenge && <Suspense fallback={null}><ChallengeBanner league={league} contracts={extras.contracts} onMenu={() => setConfirmation('exit')} /></Suspense>}
         {tab === 'dashboard' && controlledTeamId && <DailyGoalsCard official={isOfficialLeague(league)} />}
         {tab === 'dashboard' && league.gmCareer && <GmCareerCard league={league} onTakeOffer={() => { const teamId = league.gmCareer?.offer?.teamId; if (teamId) { acceptOffer(teamId); setLeague(l => takeGmOffer(l)); } }} />}
         {tab === 'dashboard' && controlledTeamId && <LockerRoomCard league={league} teamId={controlledTeamId} onChange={adoptLeague} />}

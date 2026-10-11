@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { FRAMES, FLOORS, PHONES } from '../../profile/profile';
-import { PhonePreview } from '../ProfilePreviews';
 import { totalTrophies, takeTrophyUp, TITLE_COLORS, type TrophyRewardKind } from '../../profile/trophyRoad';
 import { NAME_COLORS, iconDef } from '../../profile/cosmetics';
 import { THEME_BY_ID, type ThemeId } from '../../theme/themes';
 import { ProfileIcon, NameTag } from '../ProfileIcon';
 import { AvatarPiece } from '../UserAvatar';
 import { FrameReward } from '../AvatarFrame';
+/** The phone preview pulls in the court floor art: loaded only when a phone unlocks. */
+const PhonePreview = lazy(() => import('../ProfilePreviews').then(m => ({ default: m.PhonePreview })));
 
 function Big({ kind, id }: { kind: TrophyRewardKind; id: string }) {
   if (kind === 'icon') return <div className="tu-reward"><ProfileIcon id={id} size={84} /><b>{iconDef(id).name}</b><small>Animated icon</small></div>;
@@ -14,7 +15,7 @@ function Big({ kind, id }: { kind: TrophyRewardKind; id: string }) {
   if (kind === 'titleColor') return <div className="tu-reward"><NameTag name="" icon={null} title={TITLE_COLORS.find(c => c.id === id)?.name ?? id} titleColor={id} className="tu-name" /><small>Title colour</small></div>;
   if (kind === 'avatar') return <div className="tu-reward"><AvatarPiece piece={id} size={84} /></div>;
   if (kind === 'avatarFrame') return <div className="tu-reward"><FrameReward id={id} size={96} /></div>;
-  if (kind === 'phone') return <div className="tu-reward"><PhonePreview phone={id} size={56} /><b>{PHONES.find(f => f.id === id)?.name ?? id}</b><small>Menu phone</small></div>;
+  if (kind === 'phone') return <div className="tu-reward"><Suspense fallback={null}><PhonePreview phone={id} size={56} /></Suspense><b>{PHONES.find(f => f.id === id)?.name ?? id}</b><small>Menu phone</small></div>;
   if (kind === 'frame' || kind === 'floor') return <div className="tu-reward"><i className={`road-${kind} ${kind}-${id} tu-swatch`} aria-hidden="true" /><b>{(kind === 'frame' ? FRAMES : FLOORS).find(f => f.id === id)?.name ?? id}</b><small>{kind === 'frame' ? 'Share-card frame' : 'Court floor'}</small></div>;
   if (kind === 'title') return <div className="tu-reward"><b className="tu-title">{id}</b><small>Legendary title</small></div>;
   const t = THEME_BY_ID.get(id as ThemeId), p = t?.preview;
