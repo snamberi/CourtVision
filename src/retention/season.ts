@@ -1,5 +1,6 @@
 import { localRead, type Read } from '../lib/kv';
 import { readPass, PASS_KEY, type PassSeason } from './pass';
+import { isEvent } from './weeklyEvent';
 
 /*
  * Seasons: a named, themed Season Pass that runs for a few months. Every XP you earn while it runs (any mode) fills
@@ -148,7 +149,7 @@ export function claimStreakBonus(streak: number, totalXp: number, now = new Date
   if (seasonEnded(season, now) || day < season.start) return 0;
   noteSeason(totalXp, now);
   const p = readPass(), s = p.seasons?.[season.id];
-  const add = streakBonus(streak);
+  const add = streakBonus(streak) * (isEvent('passBoost', now) ? 2 : 1);
   if (!s || s.bonusDay === day || add <= 0) return 0;
   try { localStorage.setItem(PASS_KEY, JSON.stringify({ ...p, seasons: { ...p.seasons, [season.id]: { ...s, bonus: (s.bonus ?? 0) + add, bonusDay: day } } })); } catch { return 0; }
   return add;

@@ -5,7 +5,8 @@ import { MyAvatar } from './UserAvatar';
 import { StreakDialog } from './StreakDialog';
 import { totalXp, levelFor, equipped, PROFILE_EVENT, type PhoneId } from '../profile/profile';
 import { cloudEnabled, useAccount } from '../cloud/account';
-import { loadRelics, RELICS_EVENT, RELICS_FOCUS_KEY, SHOP_SEEN_KEY } from '../relics/relics';
+import { loadRelics, refreshCosmeticShop, wishedToday, RELICS_EVENT, RELICS_FOCUS_KEY, SHOP_SEEN_KEY, type RelicState } from '../relics/relics';
+import { SHOP_COSMETIC_WEIGHTS } from '../relics/shopCosmetics';
 
 /*
  * The menu phone: a small pixel phone in the bottom-left corner of the main menu with its apps (Leaderboards,
@@ -60,9 +61,11 @@ export function MenuPhone({ onFriendList, onCloset, onBoards, onFriends, onProfi
   const [streakOpen, setStreakOpen] = useState(false);
   const days = streak.current;
   // Spins waiting and coins, for the Relics and Shop badges.
-  const [relics, setRelics] = useState(() => { const r = loadRelics(); return { spins: r.spins, coins: r.coins, lucky: r.luckySpins ?? 0 }; });
+  /** Starred shop cosmetics on sale today (worked out from today's roll, without saving it). */
+  const wishes = (r: RelicState) => (r.salt == null ? 0 : wishedToday(refreshCosmeticShop(r, SHOP_COSMETIC_WEIGHTS)).length);
+  const [relics, setRelics] = useState(() => { const r = loadRelics(); return { spins: r.spins, coins: r.coins, lucky: r.luckySpins ?? 0, wish: wishes(r) }; });
   useEffect(() => {
-    const sync = () => { const r = loadRelics(); setRelics({ spins: r.spins, coins: r.coins, lucky: r.luckySpins ?? 0 }); };
+    const sync = () => { const r = loadRelics(); setRelics({ spins: r.spins, coins: r.coins, lucky: r.luckySpins ?? 0, wish: wishes(r) }); };
     window.addEventListener(RELICS_EVENT, sync); return () => window.removeEventListener(RELICS_EVENT, sync);
   }, []);
   // Notification dots: a new shop today, an update not read yet.
@@ -104,7 +107,7 @@ export function MenuPhone({ onFriendList, onCloset, onBoards, onFriends, onProfi
     { key: 'tiktok', node: <a className="menu-phone-app" href={SOCIALS.tiktok} target="_blank" rel="noopener noreferrer" aria-label="Court Vision on TikTok (opens a new tab)"><span className="app-tile tiktok"><TikTokGlyph /></span><small>TikTok</small></a> },
     { key: 'instagram', node: <a className="menu-phone-app" href={SOCIALS.instagram} target="_blank" rel="noopener noreferrer" aria-label="Court Vision on Instagram (opens a new tab)"><span className="app-tile instagram"><InstagramGlyph /></span><small>Instagram</small></a> },
     onRelics && { key: 'relics', node: <button className="menu-phone-app" onClick={onRelics} aria-label={`Relic Vault${relics.spins ? `, ${relics.spins} spin${relics.spins === 1 ? '' : 's'} waiting` : ''}`}><span className="app-tile relics"><PixelIcon name="crown" size={20} />{relics.spins > 0 && <em className="app-badge">{relics.spins}</em>}</span><small>Relics</small></button> },
-    (onShop || onRelics) && { key: 'shop', node: <button className="menu-phone-app" onClick={openShop} aria-label={`Relic Shop, ${relics.coins} coins${shopNew ? ', new relics today' : ''}`}><span className="app-tile shop"><PixelIcon name="star" size={20} /><em>{relics.coins >= 1000 ? `${Math.floor(relics.coins / 1000)}k` : relics.coins}</em>{shopNew && dot}</span><small>Shop</small></button> },
+    (onShop || onRelics) && { key: 'shop', node: <button className="menu-phone-app" onClick={openShop} aria-label={`Relic Shop, ${relics.coins} coins${relics.wish ? `, ${relics.wish} starred cosmetic${relics.wish === 1 ? '' : 's'} on sale today` : shopNew ? ', new relics today' : ''}`}><span className="app-tile shop"><PixelIcon name="star" size={20} /><em>{relics.coins >= 1000 ? `${Math.floor(relics.coins / 1000)}k` : relics.coins}</em>{relics.wish > 0 ? <em className="app-badge wish" aria-hidden="true">★</em> : shopNew && dot}</span><small>Shop</small></button> },
     onSettings && { key: 'settings', node: <button className="menu-phone-app" onClick={onSettings}><span className="app-tile settings"><PixelIcon name="gear" size={20} /></span><small>Settings</small></button> },
     onWhatsNew && { key: 'news', node: <button className="menu-phone-app" onClick={onWhatsNew} aria-label={`What's new${newsNew ? ' (unread)' : ''}`}><span className="app-tile news"><PixelIcon name="list" size={20} />{newsNew && dot}</span><small>What's new</small></button> },
     onAchievements && { key: 'achievements', node: <button className="menu-phone-app" onClick={onAchievements}><span className="app-tile achievements"><PixelIcon name="check" size={20} /></span><small>Achievements</small></button> },

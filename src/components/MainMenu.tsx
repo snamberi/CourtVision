@@ -14,6 +14,7 @@ import { claimAchievementSpins, paySeasonRewards } from '../relics/rewards';
 import { claimStreakBonus, noteSeason, daysLeft, nextSeason, daysUntil, SEASON_TIERS } from '../retention/season';
 import './roads/menuSeason.css';
 import { UpdateBanner } from './UpdateBanner';
+import { weeklyEvent } from '../retention/weeklyEvent';
 // Loaded only when a tier unlocks something (it pulls in every cosmetic preview).
 const SeasonTierUp = lazy(() => import('./roads/SeasonTierUp').then(m => ({ default: m.SeasonTierUp })));
 import './relics/relics.css';
@@ -304,6 +305,7 @@ function ThisWeek({ busy, onRebuild, onCareer, onHunt, onCommunity, onFeatured }
   return <section className="this-week" aria-label="This week's challenges">
     <div className="this-week-head"><h2>This week</h2><span>{rb.week} · new challenges in {days} day{days === 1 ? '' : 's'}{streak > 1 ? ` · ${streak}-week streak` : ''}</span>{cloudEnabled && <button className="link-button" onClick={() => setBoard(true)}>Leaderboard</button>}</div>
     {board && <WeeklyBoardDialog onClose={() => setBoard(false)} onCommunity={onCommunity} />}
+    <article className="mode-of-week weekly-event"><span className="pixel-eyebrow">WEEKLY EVENT · ENDS IN {days} DAY{days === 1 ? '' : 'S'}</span><b>{weeklyEvent(now).name}</b><p>{weeklyEvent(now).blurb} A new event every Monday.</p></article>
     <article className="mode-of-week"><span className="pixel-eyebrow">MODE OF THE WEEK · DOUBLE XP</span><b>{FEATURED_NAME[featured]}</b>
       <p>Every {FEATURED_NAME[featured]} run you finish this week earns its XP twice (up to {WEEKLY_BONUS_CAP.toLocaleString()} bonus XP). A new mode every Monday.</p>
       <button className="primary" onClick={onFeatured}>Play {FEATURED_NAME[featured]}</button></article>

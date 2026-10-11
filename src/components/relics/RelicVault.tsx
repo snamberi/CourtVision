@@ -13,6 +13,7 @@ import './relics.css';
 import { ShopCosmetics } from './ShopCosmetics';
 import { SecretCosmeticFound, SecretCosmeticsSection } from './SecretCosmetics';
 import { SHOP_COSMETIC_WEIGHTS } from '../../relics/shopCosmetics';
+import { weeklyEvent } from '../../retention/weeklyEvent';
 
 const pct = (odds: number) => `${+(odds * 100).toFixed(2)}%`;
 const fmtLuck = (n: number) => `+${+n.toFixed(1)}%`;
@@ -91,6 +92,7 @@ export function RelicVault({ onExit, view = 'vault', onSwitch }: { onExit: () =>
       <div><span>Coins</span><b>{state.coins.toLocaleString()}</b><small>+{DAILY_COINS} every day you visit</small></div>
       <div><span>Collection</span><b>{prog.owned}/{prog.total}</b><small>{prog.secrets}/{SECRET_RELICS.length} secrets</small></div>
     </section>
+    <p className="relic-note relic-event"><PixelIcon name="flame" size={14} /> <b>Weekly Event: {weeklyEvent().name}.</b> {weeklyEvent().blurb}</p>
     {claimed > 0 && <p className="relic-note" role="status">Your achievements earned {claimed} Relic Spin{claimed === 1 ? '' : 's'}.</p>}
 
     {(!shop || rolling || result || batch) && <section className="relic-machine" aria-live="polite">

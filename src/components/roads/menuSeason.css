@@ -24,3 +24,6 @@
 .menu-quick button:hover, .menu-quick button:focus-visible { border-color: var(--c-border-f47b20, #f47b20); }
 @media (max-width: 720px) { .menu-quick { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; } .menu-quick button { flex: none; } }
 #menu-modes, #menu-daily, #menu-saves { scroll-margin-top: 12px; }
+
+/* The Weekly Event, next to Mode of the Week. */
+.mode-of-week.weekly-event { background: var(--c-bg-2a1a0c, #2a1a0c); border-color: var(--c-border-f47b20, #f47b20); grid-template-areas: 'eyebrow' 'title' 'text'; grid-template-columns: 1fr; }

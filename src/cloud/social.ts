@@ -4,6 +4,8 @@
  */
 import { accessToken, getAccount, supa } from './account';
 import { earn, grantLuckySpins, loadRelics, saveRelics } from '../relics/relics';
+import { isEvent } from '../retention/weeklyEvent';
+import { noteFeat } from '../profile/feats';
 
 export interface Friend { userId: string; username: string; level: number; icon?: string; color?: string; title?: string; avatar?: string; lastSeen?: string }
 export interface WaitingGift { id: string; from: string; coins: number; lucky: number; at: string }
@@ -33,12 +35,19 @@ export async function loadFriends(): Promise<Friend[]> {
 }
 
 export const loadGifts = () => call<GiftStatus>({ action: 'gifts' });
-export const sendGift = (to: string) => call<{ ok: true; left: number }>({ action: 'send', to });
+export async function sendGift(to: string): Promise<{ ok: true; left: number }> {
+  const out = await call<{ ok: true; left: number }>({ action: 'send', to });
+  noteFeat('giftsSent', 1);
+  return out;
+}
 
 /** Collects every waiting gift into the Relic Vault. Returns what came in. */
 export async function claimGifts(): Promise<{ coins: number; lucky: number; from: string[] }> {
   const got = await call<{ coins: number; lucky: number; from: string[] }>({ action: 'claim' });
+  // Gift Week: collected gifts pay double coins.
+  if (isEvent('giftWeek')) got.coins *= 2;
   if (got.coins || got.lucky) {
+    noteFeat('giftsCollected', got.from.length || 1);
     const who = got.from.length === 1 ? got.from[0] : `${got.from.length} friends`;
     saveRelics(grantLuckySpins(earn(loadRelics(), got.coins, `Gift from ${who}`), got.lucky));
   }

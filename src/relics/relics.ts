@@ -1,5 +1,6 @@
 import { localRead, type Read } from '../lib/kv';
 import { SECRET_COSMETIC_CHANCE, SECRET_COSMETIC_KEYS } from './secretCosmetics';
+import { isEvent } from '../retention/weeklyEvent';
 
 /*
  * Relics: a collection that belongs to you, the player, across every mode. You earn Relic Spins by finishing things
@@ -163,6 +164,8 @@ export interface RelicState {
   cosmetics?: string[];
   /** Today's cosmetic offers: three shop cosmetics a day. */
   cosmeticShop?: { day: string; offers: string[] };
+  /** Shop cosmetics you starred: the phone's Shop app tells you the day one is on offer. */
+  wishlist?: string[];
 }
 
 export const RELICS_KEY = 'cv-relics';
@@ -404,7 +407,7 @@ function roll(state: RelicState, rand: () => number, lucky: boolean): { state: R
   if (lucky) result = { ...result, lucky: true };
   // Any spin can also drop a secret cosmetic (a separate draw, after the relic).
   const lockedLooks = SECRET_COSMETIC_KEYS.filter(k => !(next.cosmetics ?? []).includes(k));
-  if (lockedLooks.length && rand() < SECRET_COSMETIC_CHANCE * (lucky ? 2 : 1)) {
+  if (lockedLooks.length && rand() < SECRET_COSMETIC_CHANCE * (lucky ? 2 : 1) * (isEvent('secretWeek') ? 3 : 1)) {
     const key = lockedLooks[Math.floor(rand() * lockedLooks.length)] ?? lockedLooks[0];
     result = { ...result, cosmetic: key };
     next = { ...next, cosmetics: [...(next.cosmetics ?? []), key] };
@@ -502,6 +505,12 @@ export function buyCosmetic(state: RelicState, key: string, price: number, name:
   return { ...spend(state, price, name), cosmetics: [...(state.cosmetics ?? []), key] };
 }
 
+/** Stars or unstars a shop cosmetic. */
+export const toggleWish = (state: RelicState, key: string): RelicState =>
+  ({ ...state, wishlist: (state.wishlist ?? []).includes(key) ? (state.wishlist ?? []).filter(k => k !== key) : [...(state.wishlist ?? []), key] });
+/** Starred cosmetics on offer today that you don't own yet. */
+export const wishedToday = (state: RelicState): string[] => (state.cosmeticShop?.offers ?? []).filter(k => (state.wishlist ?? []).includes(k) && !(state.cosmetics ?? []).includes(k));
+
 export const canUpgrade = (state: RelicState, relic: Relic) => !relic.stack && (state.owned[relic.id] ?? 0) > 0 && !state.upgraded.includes(relic.id);
 /** Upgrades a relic you own that doesn't stack: +50% luck. */
 export function upgradeRelic(state: RelicState, id: string): RelicState | null {
@@ -523,7 +532,7 @@ export function mergeRelics(a: RelicState, b: RelicState): RelicState {
   for (const [id, n] of Object.entries(base.owned)) owned[id] = Math.max(n, owned[id] ?? 0);
   const uniq = <T,>(xs: T[]) => [...new Set(xs)];
   const merged: RelicState = { ...base, owned, secrets: uniq([...base.secrets, ...other.secrets]), granted: uniq([...base.granted, ...other.granted]).slice(-2000),
-    upgraded: uniq([...base.upgraded, ...other.upgraded]), fused: mergeMax(base.fused, other.fused), cosmetics: uniq([...(base.cosmetics ?? []), ...(other.cosmetics ?? [])]), opens: Math.max(a.opens, b.opens), secretPityDone: !!(a.secretPityDone || b.secretPityDone), achSeeded: !!(a.achSeeded || b.achSeeded) };
+    upgraded: uniq([...base.upgraded, ...other.upgraded]), fused: mergeMax(base.fused, other.fused), cosmetics: uniq([...(base.cosmetics ?? []), ...(other.cosmetics ?? [])]), wishlist: uniq([...(base.wishlist ?? []), ...(other.wishlist ?? [])]), opens: Math.max(a.opens, b.opens), secretPityDone: !!(a.secretPityDone || b.secretPityDone), achSeeded: !!(a.achSeeded || b.achSeeded) };
   return { ...merged, equipped: merged.equipped.filter(id => (owned[id] ?? 0) > 0).slice(0, slotCount(merged)) };
 }
 

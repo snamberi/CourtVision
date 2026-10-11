@@ -168,3 +168,6 @@ button.relic-socket:hover, button.relic-socket:focus-visible { border-color: var
 .shop-cosmetic-art .road-reward small { display: none; }
 .secret-found-art { transform: scale(1.6); margin: 18px 0; }
 #secret-looks small { font-size: 13px; color: var(--c-fg-94a0b2, #94a0b2); margin-left: 6px; }
+.shop-wishlist { margin-top: 10px; }
+.shop-wishlist summary { cursor: pointer; font-weight: 600; padding: 6px 0; }
+.shop-cosmetic.owned { opacity: .6; }
