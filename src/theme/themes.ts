@@ -26,7 +26,7 @@ export type ThemeId = 'original' | 'cartridge' | 'scoreboard' | 'prodark' | 'ter
   // The game owner's (hidden from everyone else).
   | 'sovereign'
   // Season Pass looks (retention/season.ts).
-  | 'glitch' | 'frozen';
+  | 'glitch' | 'frozen' | 'inferno';
 type Family = 'red' | 'orange' | 'gold' | 'green' | 'blue' | 'purple';
 type Stop = [number, string];
 type Role = 'bg' | 'fg' | 'border' | 'shadow' | 'any';
@@ -311,6 +311,13 @@ THEMES.push(
     shadow: '#03101c',
     accent: { red: '#ff7a8a', orange: '#9fd8ff', gold: '#e8f6ff', green: '#7fe0c4', blue: '#6db8ff', purple: '#b8a8ff' },
     preview: { bg: '#071827', panel: '#0d2438', line: '#4d86b3', text: '#f2fbff', dim: '#cfe6f5', accent: '#9fd8ff', onAccent: '#071827', hi: '#ffffff', display: "'Oswald', sans-serif", body: "'Inter', sans-serif" },
+  },
+  {
+    id: 'inferno', name: 'Inferno', blurb: 'Season 3: scorched basalt, molten edges and embers drifting up behind everything.', season: seasonRule('look', 'inferno', 'inferno'),
+    ramps: darkRamps({ floor: '#140604', panel: '#22100a', panel2: '#2a140c', panel3: '#33180e', raised: '#3d1d10', line: '#5a2a14', lineMid: '#a8401c', lineStrong: '#ffb347', dim: '#f2c9a8', text: '#fff1e6', bright: '#ffffff', ink: '#140604' }),
+    shadow: '#070201',
+    accent: { red: '#ff4d2e', orange: '#ff6b2d', gold: '#ffe066', green: '#c8e05a', blue: '#ffb347', purple: '#ff7a8a' },
+    preview: { bg: '#140604', panel: '#22100a', line: '#a8401c', text: '#fff1e6', dim: '#f2c9a8', accent: '#ff6b2d', onAccent: '#140604', hi: '#ffe066', display: "'Oswald', sans-serif", body: "'Inter', sans-serif" },
   },
 
 );

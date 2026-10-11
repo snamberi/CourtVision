@@ -9,7 +9,7 @@ import { REAL_FRANCHISES } from '../profile/favorites';
 import { outfitKit } from '../visuals/avatarSprite';
 
 /** Colour items drawn as a pattern rather than one colour. */
-const PATTERNS = new Set(['rainbow', 'glitch', 'frozen']);
+const PATTERNS = new Set(['rainbow', 'glitch', 'frozen', 'inferno']);
 import './customization.css';
 
 const HEAD: AvatarCategory[] = ['hair', 'hairColor', 'beard', 'hat', 'eyes'];

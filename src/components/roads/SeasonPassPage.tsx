@@ -88,7 +88,7 @@ export function SeasonPassPage({ onExit, onRelics }: { onExit: () => void; onRel
         kicker: `SEASON ${p.season.number} · ${p.season.name.toUpperCase()}`, title: `Tier ${p.tier}`, subtitle: p.tier >= SEASON_TIERS ? 'The whole pass, done.' : `${SEASON_TIERS - p.tier} tiers to go`,
         stats: [{ label: 'Tier', value: `${p.tier}` }, { label: 'Lucky Spins', value: `${p.paid}` }, { label: 'Cosmetics', value: `${got}/${rewards.length}` }, { label: 'XP', value: p.xp.toLocaleString() }],
         lines: [bestName ? `Best relic pulled: ${bestName}` : 'No relics pulled yet', ...rewards.filter(r => r.tier <= p.tier).slice(-3).map(r => `Unlocked: ${r.name} (${r.label.toLowerCase()})`)],
-        frame: (['glitch', 'frozen'].includes(p.season.id) ? p.season.id : 'classic') as FrameId, accent: 'gold',
+        frame: (['glitch', 'frozen', 'inferno'].includes(p.season.id) ? p.season.id : 'classic') as FrameId, accent: 'gold',
       }} />
     </div>}
 

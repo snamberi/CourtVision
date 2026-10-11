@@ -31,6 +31,7 @@ import './theme/looks.css';
 import './theme/cosmetics.css';
 import './theme/glitch.css';
 import './theme/frozen.css';
+import './theme/inferno.css';
 import { CoachGuide } from './components/tutorial/CoachGuide';
 import { SeasonRoadMap } from './components/tutorial/SeasonRoadMap';
 import { FirstSeasonChecklist } from './components/tutorial/FirstSeasonChecklist';

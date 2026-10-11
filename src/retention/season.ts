@@ -9,12 +9,14 @@ import { readPass, PASS_KEY, type PassSeason } from './pass';
  *
  * Season 1 is GLITCH: everything comes corrupted, with cyan and magenta channel splits and torn pixels.
  * Season 2 is FROZEN: ice, frost and falling snow (January to March 2027).
+ * Season 3 is INFERNO: lava, embers and heat haze (April to June 2027).
  */
 
 export interface Season { id: string; number: number; name: string; tagline: string; /** First day (UTC). */ start: string; /** Day after the last (UTC). */ end: string }
 export const SEASONS: Season[] = [
   { id: 'glitch', number: 1, name: 'Glitch', tagline: 'Reality is buffering. Your gear is corrupted. Wear it anyway.', start: '2026-10-01', end: '2027-01-01' },
   { id: 'frozen', number: 2, name: 'Frozen', tagline: 'The court froze over. Lace up your skates and play through the blizzard.', start: '2027-01-01', end: '2027-04-01' },
+  { id: 'inferno', number: 3, name: 'Inferno', tagline: 'The floor is lava. The rims are glowing. Play hot or get burned.', start: '2027-04-01', end: '2027-07-01' },
 ];
 export const SEASON_TIERS = 100, SEASON_TIER_XP = 100, SEASON_COSMETIC_EVERY = 5;
 
@@ -79,7 +81,30 @@ export const FROZEN_REWARDS: SeasonCosmetic[] = [
   c(95, 'aura', 'blizzard', 'Blizzard', 'Aura'),
   c(100, 'title', 'Absolute Zero', 'Absolute Zero', 'Final title'),
 ];
-export const SEASON_REWARDS: Record<string, SeasonCosmetic[]> = { glitch: GLITCH_REWARDS, frozen: FROZEN_REWARDS };
+/** The Inferno pass: lava, embers and flame, the whole set by tier 100. */
+export const INFERNO_REWARDS: SeasonCosmetic[] = [
+  c(5, 'icon', 'inferno', 'Molten Ball', 'Profile icon'),
+  c(10, 'color', 'magma', 'Magma', 'Name colour'),
+  c(15, 'skin', 'inferno', 'Molten', 'Body colour'),
+  c(20, 'frame', 'inferno', 'Inferno', 'Share card frame'),
+  c(25, 'hairColor', 'inferno', 'Ember', 'Hair colour'),
+  c(30, 'title', 'Scorched', 'Scorched', 'Title'),
+  c(35, 'hair', 'magmaSpikes', 'Magma spikes', 'Hair'),
+  c(40, 'floor', 'inferno', 'Lava court', 'Court floor'),
+  c(45, 'beard', 'emberBeard', 'Ember beard', 'Beard'),
+  c(50, 'phone', 'inferno', 'Inferno', 'Menu phone'),
+  c(55, 'eyes', 'lavaGoggles', 'Lava goggles', 'Eyewear'),
+  c(60, 'titleColor', 'inferno', 'Inferno', 'Title colour'),
+  c(65, 'outfit', 'magmaArmor', 'Magma armour', 'Outfit'),
+  c(70, 'hat', 'flameCrown', 'Flame crown', 'Headwear'),
+  c(75, 'avatarFrame', 'inferno', 'Inferno', 'Picture frame'),
+  c(80, 'shoes', 'magmaBoots', 'Magma boots', 'Shoes'),
+  c(85, 'neck', 'flameCape', 'Flame cape', 'Neck & back'),
+  c(90, 'look', 'inferno', 'Inferno', 'App look'),
+  c(95, 'aura', 'inferno', 'Inferno aura', 'Aura'),
+  c(100, 'title', 'Living Inferno', 'Living Inferno', 'Final title'),
+];
+export const SEASON_REWARDS: Record<string, SeasonCosmetic[]> = { glitch: GLITCH_REWARDS, frozen: FROZEN_REWARDS, inferno: INFERNO_REWARDS };
 /** The season after this one, if it's announced. */
 export const nextSeason = (now = new Date()) => SEASONS.find(s => s.start > now.toISOString().slice(0, 10));
 /** Days until a season starts. */

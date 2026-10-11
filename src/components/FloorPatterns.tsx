@@ -40,6 +40,8 @@ export function FloorPatterns({id}:{id:string}){
    <pattern id={`${id}-galaxy`} width="80" height="80" patternUnits="userSpaceOnUse" shapeRendering="crispEdges"><rect width="80" height="80" fill="#160d33"/><rect x="0" y="0" width="80" height="80" fill="#3b1d82" opacity=".25"/>{[[8,12,'#ffffff'],[40,30,'#ff7ad9'],[66,8,'#6fd3ff'],[20,58,'#ffffff'],[58,62,'#ffd166'],[34,74,'#ffffff']].map(([x,y,c])=><rect key={`${x}-${y}`} x={x as number} y={y as number} width="2" height="2" fill={c as string}/>)}<FloorInlay material="galaxy" /></pattern>
    {/* Season 2: Frozen. Pale ice with a faint red line through it. */}
    <pattern id={`${id}-frozen`} width="48" height="48" patternUnits="userSpaceOnUse" shapeRendering="crispEdges"><rect width="48" height="48" fill="#e6f6ff"/><rect y="20" width="48" height="8" fill="#dcefff"/><path d="M0 24H48" stroke="#c8102e" strokeOpacity=".25"/><FloorInlay material="frozen" /></pattern>
+   {/* Season 3: Inferno. Black basalt with glowing lava seams. */}
+   <pattern id={`${id}-inferno`} width="48" height="48" patternUnits="userSpaceOnUse" shapeRendering="crispEdges"><rect width="48" height="48" fill="#1c0b07"/><rect width="24" height="24" fill="#241009"/><rect x="24" y="24" width="24" height="24" fill="#241009"/><FloorInlay material="inferno" /></pattern>
    {/* Season 1: Glitch. Black tiles, dead pixels and torn cyan and magenta lines. */}
    <pattern id={`${id}-glitch`} width="48" height="48" patternUnits="userSpaceOnUse" shapeRendering="crispEdges"><rect width="48" height="48" fill="#08080f"/><rect width="24" height="24" fill="#0d0d1a"/><rect x="24" y="24" width="24" height="24" fill="#0d0d1a"/><FloorInlay material="glitch" /></pattern>
    {/* The game owner's: a starfield laced with blue fire and gold crowns. */}

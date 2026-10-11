@@ -31,7 +31,7 @@ const serviceWorker = (): Plugin => ({
     }
     for (const [file, item] of Object.entries(bundle)) if (item.type === 'chunk' && item.isEntry) add(file)
     // The scene collection is small and bundled: every look also works on the first offline switch.
-    const sceneNames = new Set(['glitch', 'frozen', 'original', 'cartridge', 'scoreboard', 'prodark', 'terminal', 'frontoffice', 'hardwood', 'blacktop', 'playbook', 'handheld', 'broadcast', 'neongrid', 'arcade', 'comicpop', 'championship', 'aurora', 'royalcourt', 'galaxy', 'hallowed', 'eclipse', 'immortal', 'sovereign'])
+    const sceneNames = new Set(['glitch', 'frozen', 'inferno', 'original', 'cartridge', 'scoreboard', 'prodark', 'terminal', 'frontoffice', 'hardwood', 'blacktop', 'playbook', 'handheld', 'broadcast', 'neongrid', 'arcade', 'comicpop', 'championship', 'aurora', 'royalcourt', 'galaxy', 'hallowed', 'eclipse', 'immortal', 'sovereign'])
     for (const [file, item] of Object.entries(bundle)) if (item.type === 'asset' && file.endsWith('.svg') && sceneNames.has(file.split('/').pop()!.split('-')[0])) shell.add(`/${file}`)
     // Relic illustrations are local collectibles: discoveries also work offline.
     for (const [file, item] of Object.entries(bundle)) if (item.type === 'asset' && file.endsWith('.svg') && file.split('/').pop()!.startsWith('relic-')) shell.add(`/${file}`)

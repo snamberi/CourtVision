@@ -195,6 +195,7 @@ export const ICONS: IconDef[] = [
   { id: 'card-legend', name: 'Legendary card', base: 'card', recolor: { b: '#ffd166', B: '#c9971f' }, anim: 'glow' as IconAnim, rule: { album: 'legendary', n: 10 } as Rule, how: albumHow({ album: 'legendary', n: 10 }) },
   // Season 2: Frozen.
   { id: 'frozen', name: 'Frozen Ball', base: 'ball', recolor: { o: '#dff4ff', O: '#6db8ff' }, anim: 'twinkle' as IconAnim, rule: seasonRule('icon', 'frozen', 'frozen'), how: seasonHow(seasonRule('icon', 'frozen', 'frozen')) },
+  { id: 'inferno', name: 'Molten Ball', base: 'fireball', recolor: { o: '#ff6b2d', O: '#7a1010' }, anim: 'flicker' as IconAnim, rule: seasonRule('icon', 'inferno', 'inferno'), how: seasonHow(seasonRule('icon', 'inferno', 'inferno')) },
   // The Relic Shop: bought with coins, three cosmetics a day (relics/shopCosmetics.ts).
   ...([
     ['shop-ball-obsidian', 'Obsidian ball', 'ball', { o: '#2a2238', O: '#b983ff' }, 'glow'],
@@ -255,6 +256,7 @@ export const NAME_COLORS: (Cosmetic & { css: string; anim?: ColorAnim })[] = [
   animated('divine', 'Divine', 'linear-gradient(90deg, #fff3c4, #ffd166, #ffffff, #9fe7ff, #ffffff, #ffd166, #fff3c4)', 'shimmer'),
   { id: 'glitch', name: 'Glitch', css: 'linear-gradient(90deg, #00f0ff, #ffffff, #ff2bd6, #00f0ff, #ffffff, #ff2bd6)', anim: 'glitch' as ColorAnim, rule: seasonRule('color', 'glitch'), how: seasonHow(seasonRule('color', 'glitch')) },
   { id: 'frost', name: 'Frostbite', css: 'linear-gradient(90deg, #6db8ff, #ffffff, #bfe6ff, #ffffff, #6db8ff)', anim: 'shimmer' as ColorAnim, rule: seasonRule('color', 'frost', 'frozen'), how: seasonHow(seasonRule('color', 'frost', 'frozen')) },
+  { id: 'magma', name: 'Magma', css: 'linear-gradient(90deg, #7a1010, #ff4d2e, #ffb347, #ffe066, #ffb347, #ff4d2e, #7a1010)', anim: 'flow' as ColorAnim, rule: seasonRule('color', 'magma', 'inferno'), how: seasonHow(seasonRule('color', 'magma', 'inferno')) },
   // The Relic Shop.
   ...([
     ['shop-aurora', 'Aurora', 'linear-gradient(90deg, #4fd38a, #4da3ff, #b983ff, #4da3ff, #4fd38a)', 'flow'],

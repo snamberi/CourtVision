@@ -1,0 +1,29 @@
+/* Season 3: Inferno. Lava, embers and heat. Motion is off for reduced motion. */
+.avf-flame { animation: avf-flame 1.2s ease-in-out infinite alternate; transform-origin: 50% 100%; transform-box: fill-box; }
+@keyframes avf-flame { from { transform: scaleY(1); opacity: 1; } to { transform: scaleY(1.25); opacity: .8; } }
+
+/* Previews on the roads and in the pickers. */
+.road-frame.frame-inferno { border-color: #ff6b2d; box-shadow: inset 0 0 0 2px #ffe066; background: linear-gradient(#3a1208, #120402); }
+.road-floor.floor-inferno { background: linear-gradient(135deg, #1c0b07 0 40%, #ff6b2d 40% 44%, #241009 44% 70%, #ffb347 70% 73%, #1c0b07 73%); box-shadow: inset 0 0 0 2px #5a2a14; }
+.profile-card-big.frame-inferno { border-color: #ff6b2d; box-shadow: 0 0 0 3px #7a1010, 0 0 16px #ff6b2d66; }
+.phone-skin-inferno { --phone-body: linear-gradient(160deg, #ffb347, #ff4d2e 55%, #7a1010); --phone-edge: #ffe066; --phone-inner: #3a1208; --phone-text: #fff1e6; --phone-muted: #f2c9a8; --phone-tile: #22100a; --phone-tile-edge: #ff6b2d; --phone-accent: #ff6b2d; --phone-on-accent: #140604; --phone-screen: #140604; }
+.phone-skin-inferno .menu-phone-body { box-shadow: 0 0 0 2px #ffe066, 0 0 18px #ff6b2d88; }
+.studio-color-chip.inferno { background: linear-gradient(135deg, #7a1010, #ff4d2e 40%, #ffb347 70%, #ffe066); }
+
+/* The Inferno app look: embers drifting up behind everything, glowing headings. */
+:root[data-cv-theme='inferno'] body { background-image: radial-gradient(circle at 20% 30%, #ff6b2d33 0 1px, transparent 2px), radial-gradient(circle at 70% 60%, #ffe0662a 0 1px, transparent 2px), radial-gradient(circle at 45% 85%, #ff4d2e33 0 1.5px, transparent 2px); background-size: 140px 140px, 190px 190px, 230px 230px; animation: inferno-embers 24s linear infinite; }
+@keyframes inferno-embers { from { background-position: 0 0, 0 0, 0 0; } to { background-position: -30px -560px, 20px -760px, -10px -920px; } }
+:root[data-cv-theme='inferno'] h1, :root[data-cv-theme='inferno'] h2 { text-shadow: 0 0 10px #ff6b2d66, 0 2px 0 #070201; }
+
+/* The season banner and menu strip. */
+.sp-banner.season-inferno { background: linear-gradient(160deg, #5a1a0a, #140604); border-color: #ff6b2d; }
+.sp-banner.season-inferno .sp-season, .sp-banner.season-inferno small { color: #ffb347; }
+.sp-banner.season-inferno .sp-name { text-shadow: 0 0 12px #ff6b2d, 0 3px 0 #070201; }
+.sp-banner.season-inferno .sp-name::after { display: none; }
+.menu-season.season-inferno { background: #22100a; border-color: #ff6b2d; box-shadow: 0 0 0 1px #7a1010; }
+.menu-season.season-inferno .menu-season-bar { background: #33180e; }
+.menu-season.season-inferno .menu-season-bar i { background: linear-gradient(90deg, #ff4d2e, #ffe066); }
+
+@media (prefers-reduced-motion: reduce) {
+  .avf-flame, :root[data-cv-theme='inferno'] body { animation: none; }
+}
