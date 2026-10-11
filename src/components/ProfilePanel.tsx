@@ -169,11 +169,9 @@ function PlayTimeLine() {
     <ul>{areas.map(([k, v]) => <li key={k}><small>{AREA_LABEL[k]}</small> {formatPlayTime(v)}</li>)}</ul></div>;
 }
 
-/** The customisation sections, for the jump bar under your card. */
-const JUMPS: [string, string][] = [['pick-frame', 'Picture frame'], ['pick-look', 'App look'], ['pick-icon', 'Icon'], ['pick-name-colour', 'Name colour'], ['pick-title-colour', 'Title colour'], ['pick-title', 'Title'], ['pick-share-card-frame', 'Share card'], ['pick-menu-phone', 'Menu phone'], ['pick-court-floor-watch-game', 'Court floor']];
 
 /** Your card (the Profile tab of the Player Profile): the card others see, your level and XP, and everything to equip. */
-export function ProfilePanel({ extras }: { /** Shown right under your card (the GM legacy and favourites). */ extras?: ReactNode } = {}) {
+export function ProfilePanel({ extras, onCloset }: { /** Shown right under your card (the GM legacy and favourites). */ extras?: ReactNode; /** Opens the Closet (your character and every cosmetic). */ onCloset?: () => void } = {}) {
   const p = useProfile();
   const account = useAccount();
   const eq = equipped(p.level);
@@ -181,8 +179,6 @@ export function ProfilePanel({ extras }: { /** Shown right under your card (the 
   const signedIn = account.status === 'signedIn' && !!account.profile?.username;
   const name = signedIn ? account.profile!.username! : localName();
   const specials = earnedExtraTitles(ctx).length + rankTitles().length;
-  const titleColorList = TITLE_COLORS.filter(c => !c.staff || ctx.staff);
-  const iconList = listed(ICONS, ctx), nameColorList = listed(NAME_COLORS, ctx);
   return <section className="locker-bay profile-panel">
     <h2><PixelIcon name="star" size={18} /> Your card</h2>
     <div className={`profile-card-big frame-${eq.frame}`}>
@@ -198,12 +194,30 @@ export function ProfilePanel({ extras }: { /** Shown right under your card (the 
       {!signedIn && <label className="profile-name-edit"><span>Profile name</span><input className="year-input" value={localName() === 'You' ? '' : localName()} placeholder="You" maxLength={18} onChange={e => setLocalName(e.target.value)} /><small>Sign in to claim a GM name on the boards.</small></label>}
     </div>
     {extras}
-    <nav className="profile-jump" aria-label="Jump to">{JUMPS.map(([id, l]) => <button key={id} type="button" onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>{l}</button>)}</nav>
+    {onCloset && <p className="profile-closet-link"><button className="primary" onClick={onCloset}><PixelIcon name="star" size={14} /> Open your Closet</button> <small>Your character, picture frame, icon, colours, titles, card frame, court, phone and app look all live in the Closet.</small></p>}
+    <table className="db-table profile-xp"><tbody>{p.parts.map(x => <tr key={x.id}><td className="col-name">{x.label}</td><td className="col-name">{x.detail}</td><td>{x.xp.toLocaleString()} XP</td></tr>)}</tbody></table>
+    <p className="hint-text">XP comes from everything you finish: GM seasons, wins, titles and achievements (official leagues), careers, hunts, rebuilds, weekly challenges and daily goals. Icons, colours and titles are earned only by playing: levels, ranked seasons, achievements and leaderboard finishes (leaderboard titles arrive when you sync).</p>
+  </section>;
+}
 
-    <FramePicker value={eq.avatarFrame} ctx={ctx} />
+export type ClosetTab = 'character' | 'name' | 'frames' | 'look';
+export const CLOSET_TABS: { id: ClosetTab; label: string }[] = [
+  { id: 'character', label: 'Character' }, { id: 'name', label: 'Icon, colours & title' }, { id: 'frames', label: 'Frames, court & phone' }, { id: 'look', label: 'App look' },
+];
 
-    <div id="pick-look"><ThemeSection /></div>
-
+/** The Closet's cosmetic pickers (the character itself is the AvatarEditor). */
+export function ClosetPickers({ tab }: { tab: Exclude<ClosetTab, 'character'> }) {
+  const p = useProfile();
+  const account = useAccount();
+  const eq = equipped(p.level);
+  const ctx = unlockContext(p.level);
+  const signedIn = account.status === 'signedIn' && !!account.profile?.username;
+  const name = signedIn ? account.profile!.username! : localName();
+  const titleColorList = TITLE_COLORS.filter(c => !c.staff || ctx.staff);
+  const iconList = listed(ICONS, ctx), nameColorList = listed(NAME_COLORS, ctx);
+  return <section className="locker-bay profile-panel closet-panel">
+    {tab === 'name' && <>
+      <div className="closet-preview"><NameTag name={signedIn ? `@${name}` : name} icon={eq.icon} color={eq.color} title={eq.title} titleColor={eq.titleColor} size={22} /></div>
     <div className="profile-picker" id="pick-icon"><h3 className="hunt-subhead">Profile icon <PickCount n={iconList.filter(i => isOpen(i.rule, ctx)).length} of={iconList.length} /></h3>
       <div className="profile-icons" role="radiogroup" aria-label="Profile icon">{iconList.map(i => { const open = isOpen(i.rule, ctx); return <button key={i.id} role="radio" aria-checked={eq.icon === i.id} disabled={!open} title={`${i.name}${open ? '' : ` · ${i.how}`}`}
         className={`profile-icon-pick ${eq.icon === i.id ? 'selected' : ''} ${open ? '' : 'locked'}`} onClick={() => equip({ icon: i.id })}>
@@ -224,10 +238,18 @@ export function ProfilePanel({ extras }: { /** Shown right under your card (the 
 
     <TitlePicker ctx={ctx} name={signedIn ? `@${name}` : name} eq={eq} />
 
-    <table className="db-table profile-xp"><tbody>{p.parts.map(x => <tr key={x.id}><td className="col-name">{x.label}</td><td className="col-name">{x.detail}</td><td>{x.xp.toLocaleString()} XP</td></tr>)}</tbody></table>
-    <p className="hint-text">XP comes from everything you finish: GM seasons, wins, titles and achievements (official leagues), careers, hunts, rebuilds, weekly challenges and daily goals. Icons, colours and titles are earned only by playing: levels, ranked seasons, achievements and leaderboard finishes (leaderboard titles arrive when you sync).</p>
+    </>}
+    {tab === 'frames' && <>
+
+    <FramePicker value={eq.avatarFrame} ctx={ctx} />
+
     <Picker label="Share-card frame" list={listedFor(FRAMES)} level={p.level} trophies={ctx.trophies} value={eq.frame} onPick={v => equip({ frame: v })} preview={id => <ShareFramePreview frame={id} />} />
     <Picker label="Menu phone" list={listedFor(PHONES)} level={p.level} trophies={ctx.trophies} value={eq.phone} onPick={v => equip({ phone: v })} preview={id => <PhonePreview phone={id} size={112} />} />
     <Picker label="Court floor (Watch Game)" list={listedFor(FLOORS)} level={p.level} trophies={ctx.trophies} value={eq.floor} onPick={v => equip({ floor: v })} preview={id => <CourtFloorPreview floor={id} />} />
+    </>}
+    {tab === 'look' && <>
+    <div id="pick-look"><ThemeSection /></div>
+
+    </>}
   </section>;
 }

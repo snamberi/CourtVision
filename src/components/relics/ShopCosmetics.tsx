@@ -23,6 +23,6 @@ export function ShopCosmetics({ state, commit, busy }: { state: RelicState; comm
           : <button className={c.rarity === 'legendary' ? 'primary' : ''} onClick={() => commit(s => buyCosmetic(s, c.key, c.price, c.name))} disabled={busy || state.coins < c.price}>{c.price.toLocaleString()} coins</button>}
       </div>;
     })}{!offers.length && <p className="relic-help">You own every shop cosmetic. Nothing left to sell you.</p>}</div>
-    <p className="relic-help">Shop cosmetics are yours for good: character pieces, profile icons, name colours and title colours you can't get anywhere else. Change them any time on your Profile.</p>
+    <p className="relic-help">Shop cosmetics are yours for good: character pieces, profile icons, name colours and title colours you can't get anywhere else. Change them any time in your Closet.</p>
   </>;
 }

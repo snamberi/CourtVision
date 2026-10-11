@@ -116,7 +116,7 @@ export function SeasonPassPage({ onExit, onRelics }: { onExit: () => void; onRel
         })}</ol>
       </div>
     </div>
-    <p className="hint-text">Every XP you earn this season, in any mode, fills the pass ({p.need} XP a tier), and your daily streak adds a bonus every day. Every tier pays a free Lucky Spin for the Relic Vault (2× luck, no Commons), and every {SEASON_COSMETIC_EVERY} tiers unlocks a {shown.name} cosmetic for good: icon, name colour, title and title colour, card frame, court, phone, app look, picture frame and a whole character set. Equip them on your Profile.</p>
+    <p className="hint-text">Every XP you earn this season, in any mode, fills the pass ({p.need} XP a tier), and your daily streak adds a bonus every day. Every tier pays a free Lucky Spin for the Relic Vault (2× luck, no Commons), and every {SEASON_COSMETIC_EVERY} tiers unlocks a {shown.name} cosmetic for good: icon, name colour, title and title colour, card frame, court, phone, app look, picture frame and a whole character set. Wear them from your Closet.</p>
     {unlocked.length > 0 && <SeasonTierUp cosmetics={unlocked} spins={0} onClose={() => setUnlocked([])} />}
 
     <SeasonPass />

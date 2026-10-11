@@ -13,7 +13,6 @@ import { PlayerAvatar } from '../PlayerAvatar';
 import { HallOfFame } from '../career/CareerMode';
 import { LegacyPanel } from '../FrontOfficePanels';
 import { FavoritesPanel } from '../FavoritesPanel';
-import { AvatarEditor } from '../AvatarEditor';
 import { ProfilePanel } from '../ProfilePanel';
 import { TrophyCase } from '../TrophyCase';
 import { RelicShelf } from '../relics/RelicShelf';
@@ -29,10 +28,10 @@ import '../hunt/hunt.css';
 import '../career/career.css';
 import './locker.css';
 
-export type ProfileTab = 'profile' | 'character' | 'trophies' | 'achievements' | 'passes';
+export type ProfileTab = 'profile' | 'trophies' | 'achievements' | 'passes';
 const TABS: { id: ProfileTab; label: string }[] = ([
-  { id: 'profile', label: 'Profile' }, { id: 'character', label: 'Your character' }, { id: 'trophies', label: 'Trophy room' },
-  { id: 'achievements', label: 'Achievements' }, { id: 'passes', label: 'Passes' },
+  { id: 'profile', label: 'Profile' }, { id: 'achievements', label: 'Achievements' }, { id: 'trophies', label: 'Trophy room' },
+  { id: 'passes', label: 'Passes' },
 // The Passes tab appears only once checkout links are configured (docs/BILLING_SETUP.md).
 ] satisfies { id: ProfileTab; label: string }[]).filter(t => t.id !== 'passes' || passesOnSale());
 
@@ -40,7 +39,7 @@ const TABS: { id: ProfileTab; label: string }[] = ([
  * Your player profile: your card and cosmetics, the level road, and everything you have won in this browser (what the
  * GM Locker used to be), across Career Mode, League Hunt, the Rebuild Challenge and your GM leagues.
  */
-export function ProfileHub({ onExit, initialTab = 'profile' }: { onExit: () => void; initialTab?: ProfileTab }) {
+export function ProfileHub({ onExit, onCloset, initialTab = 'profile' }: { onExit: () => void; onCloset?: () => void; initialTab?: ProfileTab }) {
   const [tab, setTab] = useState<ProfileTab>(initialTab);
   const [careers, setCareers] = useState<CareerMeta[] | null>(null);
   const [hunt] = useState<HuntRecords>(() => loadRecords());
@@ -76,12 +75,12 @@ export function ProfileHub({ onExit, initialTab = 'profile' }: { onExit: () => v
   return <div className="hunt locker">
     <header className="hunt-top">
       <button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button>
-      <div className="hunt-title"><span className="pixel-eyebrow">YOUR CARD, YOUR ROAD, YOUR TROPHIES</span><h1>Player Profile</h1></div>
+      <div className="hunt-title"><span className="pixel-eyebrow">YOUR CARD, ACHIEVEMENTS AND TROPHIES</span><h1>Player Profile</h1></div>
+      {onCloset && <button className="relic-switch" onClick={onCloset}><PixelIcon name="star" size={16} /> Closet</button>}
     </header>
     <div className="profile-tabs code-mode-actions" role="tablist" aria-label="Profile sections">{TABS.map(t => <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>{t.label}</button>)}</div>
 
-    {tab === 'profile' && <ProfilePanel extras={<><div className="profile-extras"><LegacyPanel legacy={legacy} compact /><FavoritesPanel /></div><TrophyCase /><RelicShelf /></>} />}
-    {tab === 'character' && <AvatarEditor />}
+    {tab === 'profile' && <ProfilePanel onCloset={onCloset} extras={<><div className="profile-extras"><LegacyPanel legacy={legacy} compact /><FavoritesPanel /></div><TrophyCase /><RelicShelf /></>} />}
     {tab === 'passes' && <PassesPanel />}
     {tab === 'achievements' && <ModeAchievements stats={modes} rarity={rarity} />}
 

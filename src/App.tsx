@@ -179,6 +179,7 @@ const StoryMode = lazy(() => import('./components/story/StoryMode').then(m => ({
 const PerfectChallenge = lazy(() => import('./components/perfect/PerfectChallenge').then(m => ({ default: m.PerfectChallenge })));
 const LeagueHunt = lazy(() => import('./components/hunt/LeagueHunt').then(m => ({ default: m.LeagueHunt })));
 const CareerImportPanel = lazy(() => import('./components/career/CareerImportPanel').then(m => ({ default: m.CareerImportPanel })));
+const ClosetPage = lazy(() => import('./components/locker/ClosetPage').then(m => ({ default: m.ClosetPage })));
 const FriendListPage = lazy(() => import('./components/cloud/FriendListPage').then(m => ({ default: m.FriendListPage })));
 const ProfileHub = lazy(() => import('./components/locker/ProfileHub').then(m => ({ default: m.ProfileHub })));
 const AllTimeDraft = lazy(() => import('./components/draft/AllTimeDraft').then(m => ({ default: m.AllTimeDraft })));
@@ -1562,6 +1563,9 @@ function App() {
   if (screen === 'clubs') {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Clubs…</main>}><ClubsPage onExit={() => setScreen('menu')} onUser={u => { setCommunityTab('friends'); setCommunityUser(u); setScreen('community'); }} /></Suspense></>;
   }
+  if (screen === 'closet') {
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening your Closet…</main>}><ClosetPage onExit={() => setScreen('menu')} onProfile={() => { setProfileTab('profile'); setScreen('profile'); }} /></Suspense></>;
+  }
   if (screen === 'friendList') {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening your friend list…</main>}><FriendListPage onExit={() => setScreen('menu')} onFind={() => setScreen('friends')} onUser={u => { setCommunityTab('friends'); setCommunityUser(u); setScreen('community'); }} /></Suspense></>;
   }
@@ -1570,7 +1574,7 @@ function App() {
   }
   // The GM Locker lives in the Player Profile now: an old #/locker link opens its Trophy room.
   if (screen === 'profile' || screen === 'locker') {
-    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening your profile…</main>}><ProfileHub key={`${screen}-${profileTab}`} initialTab={screen === 'locker' ? 'trophies' : profileTab} onExit={() => setScreen('menu')} /></Suspense></>;
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening your profile…</main>}><ProfileHub key={`${screen}-${profileTab}`} initialTab={screen === 'locker' ? 'trophies' : profileTab} onExit={() => setScreen('menu')} onCloset={() => setScreen('closet')} /></Suspense></>;
   }
   if (screen === 'settings') {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><SettingsPage onExit={() => setScreen('menu')} backup={<BackupPanel />}
