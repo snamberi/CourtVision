@@ -24,6 +24,7 @@ import { OfficeRoom } from './OfficeRoom';
 import { PixelIcon } from './PixelIcon';
 import { LeagueTicker } from './LeagueTicker';
 import { CoachIdentityCard } from './CoachIdentityCard';
+import { DecadeCard } from './DecadeCard';
 import { stat1 } from './statFormat';
 
 interface Props {
@@ -103,6 +104,7 @@ export function DashboardPage({ league, extras, controlledTeamId, seasonPhase, o
         <div className="dashboard-heading-actions">{headerExtra}<button onClick={() => onGoTo('roster')}><PixelIcon name="team" size={16} /> Manage roster</button></div>
       </div>
       <LeagueTicker league={league} extras={extras} />
+      <DecadeCard league={league} teamId={controlledTeamId} />
       {controlledTeamId && <CoachIdentityCard league={league} teamId={controlledTeamId} onCoaching={() => onGoTo('coaching')} />}
       {controlledTeamId && <OfficeRoom league={league} extras={extras} teamId={controlledTeamId} onGoTo={onGoTo} />}
       {(roadMap || checklist) && <div className={`home-top ${checklist ? 'with-checklist' : ''}`}>{roadMap}{checklist}</div>}

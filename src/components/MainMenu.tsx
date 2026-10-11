@@ -9,7 +9,7 @@ import { modeOfWeek, FEATURED_NAME, WEEKLY_BONUS_CAP } from '../retention/modeOf
 import { PlayerAvatar } from './PlayerAvatar';
 import { MyAvatar } from './UserAvatar';
 import { PixelBall, PixelIcon } from './PixelIcon';
-import { loadRelics, saveRelics, collectDailyCoins, totalLuck, collectionProgress, RELICS_EVENT } from '../relics/relics';
+import { grantLuckySpins, loadRelics, saveRelics, collectDailyCoins, totalLuck, collectionProgress, RELICS_EVENT } from '../relics/relics';
 import { claimAchievementSpins, paySeasonRewards } from '../relics/rewards';
 import { claimStreakBonus, noteSeason, daysLeft, nextSeason, daysUntil, SEASON_TIERS } from '../retention/season';
 import './roads/menuSeason.css';
@@ -36,6 +36,7 @@ import { noteVisit } from '../retention/streak';
 import { notePass } from '../retention/pass';
 import { TrophyUnlock } from './locker/TrophyUnlock';
 import { readArcade, guessStreak, isGuessDone, endlessOf, gridStreak } from '../arcade/storage';
+import { challengeFor, challengeStreak, claimChallenge, readChallenge, today as challengeToday, CHALLENGE_INFO, type ChallengeMode } from '../retention/dailyChallenge';
 import { weekKey } from '../retention/week';
 
 export type GameMode = 'random' | 'real' | 'legends' | 'perfect' | 'category' | 'career' | 'rebuild' | 'draft' | 'survival' | 'story' | 'timeMachine';
@@ -261,6 +262,7 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
       {onRelics && <RelicStrip onOpen={onRelics} />}
       {seasonPay.cosmetics.length > 0 && <Suspense fallback={null}><SeasonTierUp cosmetics={seasonPay.cosmetics} spins={seasonPay.spins} onClose={() => setSeasonPay({ spins: 0, cosmetics: [] })} onOpenPass={onRoad && (() => onRoad('season'))} /></Suspense>}
 
+      <DailyChallengeCard onPlay={m => m === 'perfect' ? onStart('perfect', 'normal', '', '') : m === 'hunt' ? onStart('legends', 'normal', '', '') : onArcade?.(m)} />
       {onArcade && <QuickGames onOpen={onArcade} />}
 
       <SavedLeaguesList saves={saves} onContinue={onContinue} onDeleteSave={onDeleteSave} onRenameSave={onRenameSave} />
@@ -380,6 +382,20 @@ function SeasonStrip({ onOpen }: { onOpen: () => void }) {
       <i className="menu-season-bar" aria-label={`${pct}% to tier ${p.tier + 1}`}><i style={{ width: `${pct}%` }} /></i>
       <small>{p.tier >= SEASON_TIERS ? 'Pass complete' : `${p.need - p.into} XP to tier ${p.tier + 1}`} · {left > 0 ? `${left} days left` : up ? `Season ${up.number}: ${up.name} in ${daysUntil(up)} days` : 'season over'}</small></span>
     <button onClick={onOpen}>Open the pass</button>
+  </section>;
+}
+
+/** Today's Daily Challenge: the featured daily, its reward and your challenge streak. */
+function DailyChallengeCard({ onPlay }: { onPlay: (m: ChallengeMode) => void }) {
+  const day = challengeToday(), mode = challengeFor(day), info = CHALLENGE_INFO[mode];
+  // Finishing it pays a free Lucky Spin, once (checked each time you're back on the menu).
+  const [paid] = useState(() => { if (!claimChallenge(day)) return false; saveRelics(grantLuckySpins(loadRelics(), 1)); return true; });
+  const s = readChallenge(), done = s.days.includes(day), streak = challengeStreak(s, day);
+  return <section className={`daily-challenge ${done ? 'done' : ''}`} aria-label="Daily Challenge">
+    <span className="pixel-eyebrow">DAILY CHALLENGE · THE SAME FOR EVERYONE</span>
+    <b>{info.title}</b><small>{info.blurb}</small>
+    <span className="daily-challenge-meta">{done ? (paid ? 'Done! +1 free Lucky Spin' : 'Done for today: back tomorrow') : 'Reward: 1 free Lucky Spin'}{streak > 1 ? ` · ${streak}-day challenge streak` : ''}</span>
+    {!done && <button className="primary" onClick={() => onPlay(mode)}>Play today's challenge</button>}
   </section>;
 }
 

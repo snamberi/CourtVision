@@ -127,6 +127,7 @@ import { rewardRun, FRANCHISE_TITLE_SPINS } from './relics/rewards';
 import { teamGamesPlayed as chatTeamGames } from './social/gmPosts';
 import { readChatSeen, markChatSeen } from './social/prefs';
 import { startDynasty } from './simulation/dynasty';
+import { startDecade } from './simulation/decadeChallenge';
 import { collectLockerEvents } from './simulation/lockerRoom';
 import { claimQuests, questsXp } from './tutorial/quests';
 import { startGmCareer, joinTeam, aiUserTeam, ROLE_LOCKED, gmRole, takeGmOffer } from './simulation/gmCareer';
@@ -474,11 +475,11 @@ function App() {
 
   const [menuBusy, setMenuBusy] = useState<string | null>(null);
   /** Builds a league from its origin (a new game, the weekly challenge, or a league code) and opens it. */
-  const startFromOrigin = (origin: LeagueOrigin, o: { name: string; teamId?: string | null; weekly?: WeeklyRebuild | null; settings?: CreateSettings; dynasty?: boolean; gmCareer?: boolean }) => {
+  const startFromOrigin = (origin: LeagueOrigin, o: { name: string; teamId?: string | null; weekly?: WeeklyRebuild | null; settings?: CreateSettings; dynasty?: boolean; decade?: boolean; gmCareer?: boolean }) => {
     const openWithTeam = (built: League, builtExtras: GMLeagueExtras) => {
       // League settings picked on the New Franchise page; Dynasty Mode switches on the living world.
       const set = o.settings ? applyCreateSettings(built, builtExtras, o.settings, origin.kind === 'random') : { league: built, extras: builtExtras };
-      const extras = set.extras, dyn = o.dynasty ? startDynasty(set.league) : set.league, league = o.gmCareer ? startGmCareer(dyn) : dyn;
+      const extras = set.extras, dyn0 = o.dynasty ? startDynasty(set.league) : set.league, dyn = o.decade ? startDecade(dyn0) : dyn0, league = o.gmCareer ? startGmCareer(dyn) : dyn;
       if (o.teamId && league.teams.some(t => t.teamId === o.teamId)) { enterApp(league, extras, o.teamId, o.name); setTab('dashboard'); return; }
       setPendingLeague(league);
       setPendingExtras(extras);
@@ -572,8 +573,8 @@ function App() {
     }
     const seed = Math.floor(Math.random() * 1_000_000);
     track('mode_start', { mode: c.source === 'random' ? 'random' : 'real', variant: c.source });
-    if (c.source === 'random') startFromOrigin({ kind: 'random', year: parseInt(c.year, 10), seed, difficulty: c.difficulty, balanced: true }, { name: c.name, settings: c.settings, dynasty: c.dynasty, gmCareer: c.gmCareer });
-    else if (c.source === 'history') startFromOrigin({ kind: 'history', year: parseInt(c.year, 10), seed, difficulty: c.difficulty, ...c.real }, { name: c.name, settings: c.settings, dynasty: c.dynasty, gmCareer: c.gmCareer });
+    if (c.source === 'random') startFromOrigin({ kind: 'random', year: parseInt(c.year, 10), seed, difficulty: c.difficulty, balanced: true }, { name: c.name, settings: c.settings, dynasty: c.dynasty, decade: c.decade, gmCareer: c.gmCareer });
+    else if (c.source === 'history') startFromOrigin({ kind: 'history', year: parseInt(c.year, 10), seed, difficulty: c.difficulty, ...c.real }, { name: c.name, settings: c.settings, dynasty: c.dynasty, decade: c.decade, gmCareer: c.gmCareer });
     else startGameMode('real', c.difficulty, c.year, c.name, { source: 'csv', realDevelopment: true });
   };
 

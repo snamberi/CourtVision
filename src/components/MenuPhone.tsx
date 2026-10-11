@@ -4,6 +4,7 @@ import { PixelIcon } from './PixelIcon';
 import { MyAvatar } from './UserAvatar';
 import { StreakDialog } from './StreakDialog';
 import { totalXp, levelFor, equipped, PROFILE_EVENT, type PhoneId } from '../profile/profile';
+import { cloudEnabled, useAccount } from '../cloud/account';
 import { loadRelics, RELICS_EVENT, RELICS_FOCUS_KEY, SHOP_SEEN_KEY } from '../relics/relics';
 
 /*
@@ -14,6 +15,7 @@ import { loadRelics, RELICS_EVENT, RELICS_FOCUS_KEY, SHOP_SEEN_KEY } from '../re
  * On smaller screens it sits in the page.
  */
 const ORDER_KEY = 'cv-phone-order';
+const ACTIVITY_SEEN_KEY = 'cv-activity-seen';
 const HINT_KEY = 'cv-phone-hint';
 const today = () => new Date().toISOString().slice(0, 10);
 const read = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
@@ -68,11 +70,22 @@ export function MenuPhone({ onBoards, onFriends, onProfile, onRelics, onShop, on
   const [newsNew] = useState(() => { try { return unseenReleases().length > 0; } catch { return false; } });
   const openShop = onShop ?? (() => { try { sessionStorage.setItem(RELICS_FOCUS_KEY, 'shop'); } catch { /* storage blocked */ } onRelics?.(); });
   const luckySpins = relics.lucky;
+  // Friend activity: new results from the GMs you follow since you last looked (signed-in accounts only).
+  const account = useAccount();
+  const [activity, setActivity] = useState(0);
+  useEffect(() => {
+    if (!cloudEnabled || account.status !== 'signedIn' || !onFriends) return;
+    let live = true;
+    void import('../cloud/boards').then(m => m.friendActivity(20)).then(items => { if (live) { const seen = read(ACTIVITY_SEEN_KEY) ?? ''; setActivity(items.filter(i => i.at > seen).length); } }, () => {});
+    return () => { live = false; };
+  }, [account.status, onFriends]);
+  const openActivity = () => { write(ACTIVITY_SEEN_KEY, new Date().toISOString()); setActivity(0); onFriends?.(); };
   const dot = <i className="app-dot" aria-hidden="true" />;
 
   type App = { key: string; node: ReactNode };
   const all: App[] = ([
     onBoards && { key: 'boards', node: <button className="menu-phone-app" onClick={onBoards}><span className="app-tile boards"><PixelIcon name="trophy" size={20} /></span><small>Boards</small></button> },
+    onFriends && cloudEnabled && account.status === 'signedIn' && { key: 'activity', node: <button className="menu-phone-app" onClick={openActivity} aria-label={`Friend activity${activity ? `, ${activity} new` : ''}`}><span className="app-tile activity"><PixelIcon name="list" size={20} />{activity > 0 && <em className="app-badge">{activity > 9 ? '9+' : activity}</em>}</span><small>Activity</small></button> },
     onFriends && { key: 'friends', node: <button className="menu-phone-app" onClick={onFriends}><span className="app-tile friends"><PixelIcon name="team" size={20} /></span><small>Friends</small></button> },
     onProfile && { key: 'profile', node: <button className="menu-phone-app" onClick={onProfile} aria-label={`Profile, level ${level}`}><span className="app-tile profile"><MyAvatar size={26} mode="portrait" animate={false} title="" /><em>{level}</em></span><small>Profile</small></button> },
     { key: 'streak', node: <button className="menu-phone-app" onClick={() => setStreakOpen(true)} aria-haspopup="dialog" aria-label={`Daily streak: ${days} day${days === 1 ? '' : 's'}, best ${streak.best}`} title={`Daily streak: ${days} day${days === 1 ? '' : 's'} in a row (best ${streak.best})`}>

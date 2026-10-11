@@ -209,6 +209,8 @@ export interface League {
   lockerRoom?: import('./lockerRoom').LockerState;
   /** Dynasty Mode: owners and when the dynasty began (see dynasty.ts). */
   dynasty?: import('./dynasty').DynastyState;
+  /** Build a Dynasty in 10 Seasons: when the clock started (see decadeChallenge.ts). */
+  decade?: import('./decadeChallenge').DecadeChallenge;
   /** League office: rule votes, expansion bids, relocations (see ownerBox.ts). */
   leagueOffice?: import('./ownerBox').LeagueOffice;
   /** How the league was built (kind, season, options, seed): its league code (see retention/leagueCode.ts). */

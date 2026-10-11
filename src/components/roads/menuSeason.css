@@ -10,3 +10,10 @@
 .menu-season-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--c-bg-00b8d4, #00b8d4), var(--c-bg-5ff7ff, #5ff7ff)); }
 .menu-season.season-frozen .menu-season-bar { background: var(--c-bg-16334d, #16334d); }
 .menu-season.season-frozen .menu-season-bar i { background: linear-gradient(90deg, var(--c-bg-6db8ff, #6db8ff), var(--c-bg-ffffff, #ffffff)); }
+
+/* The Daily Challenge card on the main menu. */
+.daily-challenge { display: grid; gap: 4px; padding: 10px 12px; border: 2px solid var(--c-border-f47b20, #f47b20); background: var(--c-bg-121926, #121926); }
+.daily-challenge.done { border-color: var(--c-border-55c878, #55c878); }
+.daily-challenge small { color: var(--c-fg-94a0b2, #94a0b2); }
+.daily-challenge-meta { font-size: .8rem; color: var(--c-fg-ffd166, #ffd166); }
+.daily-challenge button { justify-self: start; }
