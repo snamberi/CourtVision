@@ -8,6 +8,8 @@ import { PixelIcon } from '../PixelIcon';
 import { totalXp, levelFor, localName } from '../../profile/profile';
 import { weekEndsAt } from '../../retention/week';
 import { noteWeekRun } from '../../retention/weekLog';
+import { noteFeat } from '../../profile/feats';
+import { aiTeams, canAfford, roundDay, roundsOpen, runTournament, teamCost, tourCost, tourPool, TOUR_BUDGET, TOUR_PICKS, TOUR_ROUNDS, flipGame, type TourGame, type TourTeam } from '../../arcade/gmTournament';
 
 /*
  * Two street games on real history: the Legends Tournament (pick one of the 64 greatest, win six 1v1 games to 11)
@@ -125,6 +127,67 @@ export function StreetGame({ h }: { h: NbaHistory }) {
       {game && <LiveScore game={game.g} left={<span className="street-trio">{[me(), ...team].map(b => <span key={b.id}>{face(b, 34)}</span>)}</span>} right={<span className="street-trio">{game.crew.map(b => <span key={b.id}>{face(b, 34)}</span>)}</span>} onDone={() => setRevealed(true)} />}
       {!lost && (!game || revealed) && <button className="primary" onClick={play}>{streak ? `Next crew (${streak} in a row)` : 'Check ball'}</button>}
       {lost && revealed && <><p className="empty-state">Your run ends at {streak} win{streak === 1 ? '' : 's'}.</p><button className="primary" onClick={restart}>New run</button></>}
+    </>}
+  </section>;
+}
+
+// ---------------------------------------------------------------- GM Tournament (16 GMs, one week)
+
+const TOUR_KEY = 'cv-gm-tour';
+interface TourRun { week: string; picks: string[]; revealed: number }
+const readTour = (week: string): TourRun | null => { try { const r = JSON.parse(localStorage.getItem(TOUR_KEY) ?? 'null') as TourRun | null; return r && r.week === week ? r : null; } catch { return null; } };
+const writeTour = (r: TourRun) => { try { localStorage.setItem(TOUR_KEY, JSON.stringify(r)); } catch { /* storage blocked */ } };
+
+export function GmTournament({ h }: { h: NbaHistory }) {
+  const week = tournamentWeek();
+  const pool = useMemo(() => tourPool(h, week), [h, week]);
+  const ai = useMemo(() => aiTeams(pool, week), [pool, week]);
+  const [run, setRun] = useState<TourRun | null>(() => readTour(week));
+  const [picked, setPicked] = useState<Baller[]>([]);
+  const [live, setLive] = useState<TourGame | null>(null);
+  const [revealed, setRevealed] = useState(true);
+  const mine: TourTeam | null = run ? { gm: localName(), you: true, players: run.picks.map(id => pool.find(b => b.id === id)).filter((b): b is Baller => !!b) } : null;
+  const result = useMemo(() => mine && mine.players.length === TOUR_PICKS ? runTournament(mine, ai, week) : null, [run, ai, week]); // eslint-disable-line react-hooks/exhaustive-deps
+  const open = roundsOpen();
+  const face = (b: Baller, size = 34) => <PlayerAvatar playerId={b.name} teamId={b.team} size={size} title={b.name} />;
+  const lockIn = () => { const r = { week, picks: picked.map(b => b.id), revealed: 0 }; writeTour(r); setRun(r); };
+  const myGame = (round: number) => result?.games.find(g => g.round === round && (g.a.you || g.b.you)) ?? null;
+  const out = result ? result.games.find(g => (g.a.you || g.b.you) && !g.winner.you) : undefined;
+  const next = run && result && run.revealed < TOUR_ROUNDS.length && !(out && out.round < run.revealed) ? run.revealed : null;
+  const reveal = () => {
+    if (!run || next == null || next >= open) return;
+    const g = myGame(next);
+    const r = { ...run, revealed: next + 1 };
+    writeTour(r); setRun(r);
+    if (g) { setLive(g); setRevealed(false); }
+    const lost = g && !g.winner.you, champ = g?.winner.you && next === TOUR_ROUNDS.length - 1;
+    if (lost || champ) {
+      noteWeekRun('bracket', { score: (next + (champ ? 1 : 0)) * 10, line: `GM Tournament: ${champ ? 'champion' : `out in the ${TOUR_ROUNDS[next]}`}` }, `gm-tour-${week}`);
+      if (champ) noteFeat('tourTitles', 1);
+    }
+  };
+  const team = (t: TourTeam) => <span className={`tour-team${t.you ? ' you' : ''}`}><span className="street-trio">{t.players.map(b => <span key={b.id}>{face(b, 22)}</span>)}</span><b>{t.you ? `${t.gm} (you)` : t.gm}</b></span>;
+  return <section className="street-game gm-tour">
+    <p className="hunt-lede">Sixteen GMs, one bracket, one week. Draft three legends under a {TOUR_BUDGET}-point budget, then win four 3v3 games to 21: the Round of 16 opens Monday, the quarterfinals Wednesday, the semifinals Friday and the final Sunday (UTC).</p>
+    {!run ? <>
+      <h3 className="hunt-subhead">Your draft ({picked.length}/{TOUR_PICKS}) · budget {teamCost(picked)}/{TOUR_BUDGET}</h3>
+      <i className="tour-budget" aria-hidden="true"><i style={{ width: `${Math.min(100, teamCost(picked) / TOUR_BUDGET * 100)}%` }} /></i>
+      <ul className="street-pick">{pool.map(b => { const on = picked.some(p => p.id === b.id); return <li key={b.id}><button aria-pressed={on} disabled={!on && !canAfford(pool, picked, b)} onClick={() => setPicked(cur => on ? cur.filter(p => p.id !== b.id) : [...cur, b])}>{face(b, 40)}<b>{b.name}</b><small>{b.ovr} OVR · costs {tourCost(b)}</small></button></li>; })}</ul>
+      <button className="primary" disabled={picked.length !== TOUR_PICKS} onClick={lockIn}>Lock in my three</button>
+      <p className="hint-text">Once you lock in, your team is set for the week. Stars cost more: you can't take three of the best.</p>
+    </> : result && <>
+      <div className="street-path">{TOUR_ROUNDS.map((n, i) => { const g = myGame(i); const shown = i < run.revealed; return <span key={n} className={shown && g ? (g.winner.you ? 'won' : 'lost') : i === next ? 'next' : ''}>{n}{i >= open ? ` · ${roundDay(i)}` : ''}</span>; })}</div>
+      {live && <LiveScore game={live.a.you ? live.game : flipGame(live.game)} left={team(live.a.you ? live.a : live.b)} right={team(live.a.you ? live.b : live.a)} onDone={() => setRevealed(true)} />}
+      {next != null && revealed && (next < open
+        ? <button className="primary" onClick={reveal}>Play the {TOUR_ROUNDS[next]}{(() => { const g = myGame(next); const o = g && (g.a.you ? g.b : g.a); return o ? ` vs ${o.gm}` : ''; })()}</button>
+        : <p className="hint-text">The {TOUR_ROUNDS[next]} opens {roundDay(next)} (UTC). Come back then.</p>)}
+      {out && out.round < run.revealed && revealed && <p className="empty-state">Knocked out in the {TOUR_ROUNDS[out.round]}. A new tournament starts Monday.</p>}
+      {run.revealed >= TOUR_ROUNDS.length && result.champion.you && revealed && <p className="street-champ"><PixelIcon name="trophy" size={18} /> You win the GM Tournament!</p>}
+      <div className="tour-bracket">{TOUR_ROUNDS.map((n, r) => <div key={n} className="tour-round"><h4>{n}</h4>
+        {r < run.revealed || (out && out.round < run.revealed && r < open) ? result.games.filter(g => g.round === r).map((g, i) => <p key={i} className={g.a.you || g.b.you ? 'mine' : ''}>
+          <span className={g.winner === g.a ? 'w' : ''}>{g.a.you ? 'You' : g.a.gm} {g.score[0]}</span><span className={g.winner === g.b ? 'w' : ''}>{g.b.you ? 'You' : g.b.gm} {g.score[1]}</span></p>)
+          : <p className="hint-text">{r < open ? 'Play your game to see it.' : `Opens ${roundDay(r)}`}</p>}
+      </div>)}</div>
     </>}
   </section>;
 }

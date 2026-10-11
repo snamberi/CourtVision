@@ -190,3 +190,16 @@ button.cv-grid-cell:hover:not(:disabled), .cv-grid-cell.active { border-color: v
 .cv-grid-code input { width: 9em; text-transform: uppercase; }
 .cv-grid-theme { margin: 6px 0; padding: 6px 10px; border-left: 4px solid var(--c-border-f47b20, #f47b20); background: var(--c-bg-121926, #121926); font-size: 13px; }
 .cv-grid-theme b { color: var(--c-fg-f47b20, #f47b20); margin-right: 6px; }
+
+/* GM Tournament */
+.tour-budget { display: block; height: 8px; margin: 4px 0 10px; background: var(--cv-bg, var(--c-bg-0b1018, #0b1018)); border: 1px solid var(--line); }
+.tour-budget > i { display: block; height: 100%; background: var(--cv-orange, var(--c-bg-f47b20, #f47b20)); }
+.tour-team { display: inline-flex; flex-direction: column; align-items: center; gap: 4px; }
+.tour-team.you b { color: var(--cv-gold, var(--c-fg-ffd166, #ffd166)); }
+.tour-bracket { display: grid; grid-template-columns: repeat(4, minmax(140px, 1fr)); gap: 10px; margin-top: 14px; overflow-x: auto; }
+.tour-round h4 { margin: 0 0 6px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-dim); }
+.tour-round p { display: grid; gap: 2px; margin: 0 0 6px; padding: 4px 6px; border: 1px solid var(--line); font-size: 12px; }
+.tour-round p span { display: flex; justify-content: space-between; gap: 6px; color: var(--text-dim); }
+.tour-round p span.w { color: var(--text); font-weight: 700; }
+.tour-round p.mine { border-color: var(--cv-orange, var(--c-border-f47b20, #f47b20)); }
+@media (max-width: 600px) { .tour-bracket { grid-template-columns: repeat(4, 150px); } }

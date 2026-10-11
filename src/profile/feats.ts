@@ -8,7 +8,7 @@ import { localRead, type Read } from '../lib/kv';
 
 export const FEATS_KEY = 'cv-feats';
 export const FEATS_EVENT = 'courtvision:progress';
-export type FeatId = 'huntLegendWins' | 'pvpWins' | 'pvpBest' | 'rankedTier' | 'drafts' | 'draftTop' | 'giftsSent' | 'giftsCollected' | 'showdownWins';
+export type FeatId = 'huntLegendWins' | 'pvpWins' | 'pvpBest' | 'rankedTier' | 'drafts' | 'draftTop' | 'giftsSent' | 'giftsCollected' | 'showdownWins' | 'tourTitles';
 export type Feats = Partial<Record<FeatId, number>>;
 
 export function readFeats(read: Read = localRead): Feats {
