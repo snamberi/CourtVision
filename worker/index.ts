@@ -3,6 +3,7 @@ import { handlePvp } from '../server/pvp';
 import { handleBilling, billingEnv } from '../server/billing';
 import { supaEnv, json } from '../server/supabase';
 import { handleHealth } from '../server/health';
+import { handleSocial } from '../server/social';
 import { BUILD_ENV, BUILD_INFO } from './buildEnv.generated';
 
 /*
@@ -20,6 +21,7 @@ export default {
     if (pathname === '/api/sync' && (method === 'POST' || method === 'DELETE')) return handleSync(request, supaEnv(vars));
     if (pathname === '/api/pvp' && method === 'POST') return handlePvp(request, supaEnv(vars));
     if (pathname === '/api/billing' && method === 'POST') return handleBilling(request, supaEnv(vars), billingEnv(vars));
+    if (pathname === '/api/social' && method === 'POST') return handleSocial(request, supaEnv(vars));
     if (pathname === '/api/health' && method === 'GET') return handleHealth(vars);
     // Which build this Worker is: compare it with the cv-build line in the page to tell whether an address serves it.
     if (pathname === '/api/version' && method === 'GET') return new Response(JSON.stringify({ worker: 'courtvision', ...BUILD_INFO, host: new URL(request.url).host }), { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });

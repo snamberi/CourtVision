@@ -61,6 +61,10 @@ interface Props {
   onProfile?: () => void;
   /** The phone's Friends app: the Friends page. */
   onFriends?: () => void;
+  /** The phone's Friend list app (friends and free daily gifts). */
+  onFriendList?: () => void;
+  /** The phone's Closet app (your character and every cosmetic). */
+  onCloset?: () => void;
   /** Opens Settings (backups, graphics, privacy). */
   onSettings?: () => void;
   /** Opens a quick game. */
@@ -170,7 +174,7 @@ function SavedLeaguesList({ saves, onContinue, onDeleteSave, onRenameSave }: Pic
   );
 }
 
-export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSave, busy = null, onLocker, onCode, onCommunity, onProfile, onFriends, onSettings, onArcade, onCreate, onRelics, onShop, onRoad, onProfileTab }: Props) {
+export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSave, busy = null, onLocker, onCode, onCommunity, onProfile, onFriends, onFriendList, onCloset, onSettings, onArcade, onCreate, onRelics, onShop, onRoad, onProfileTab }: Props) {
   const [newsOpen, setNewsOpen] = useState(false);
   // First visit: pick a look before anything else; What's New waits until it is picked.
   const [pickLook, setPickLook] = useState(needsThemeChoice);
@@ -222,11 +226,11 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
           <PlayerAvatar playerId="Court Vision Center" primaryColor="#ec852b" secondaryColor="#fcdfad" jerseyNumber={23} size={100} />
           <PixelBall size={48} />
         </div>
-        <MenuPhone onBoards={onCommunity && (() => onCommunity('boards'))} onFriends={onFriends ?? (onCommunity && (() => onCommunity('friends')))} onProfile={onProfile ?? onLocker} onRelics={onRelics} onShop={onShop} onRoad={onRoad} onSettings={onSettings} onWhatsNew={() => setNewsOpen(true)}
+        <MenuPhone onFriendList={onFriendList} onCloset={onCloset} onBoards={onCommunity && (() => onCommunity('boards'))} onFriends={onFriends ?? (onCommunity && (() => onCommunity('friends')))} onProfile={onProfile ?? onLocker} onRelics={onRelics} onShop={onShop} onRoad={onRoad} onSettings={onSettings} onWhatsNew={() => setNewsOpen(true)}
           onAchievements={onProfileTab && (() => onProfileTab('achievements'))} streak={visit.v.streak} />
       </div>
 
-      <MenuQuickLinks hasSaves={saves.length > 0} onRoad={onRoad} onRelics={onRelics} onProfile={onProfile ?? onLocker} onFriends={onFriends} onSettings={onSettings} />
+      <MenuQuickLinks hasSaves={saves.length > 0} onRoad={onRoad} onRelics={onRelics} onProfile={onProfile ?? onLocker} onFriends={onFriendList ?? onFriends} onCloset={onCloset} onSettings={onSettings} />
 
       <div className="menu-section-heading"><h2>Choose your game</h2><span>PICK ONE, THEN PRESS PLAY</span></div>
 
@@ -375,7 +379,7 @@ function QuickGames({ onOpen }: { onOpen: (game: 'grid' | 'guess' | 'hilo' | 'br
 
 /** One row of the places people look for most: jumps down the menu (modes, today's challenge, saved leagues) and opens
  *  the pages that otherwise live only in the phone (Season Pass, Relic Vault, the roads, profile, friends, settings). */
-function MenuQuickLinks({ hasSaves, onRoad, onRelics, onProfile, onFriends, onSettings }: { hasSaves: boolean; onRoad?: (r: 'level' | 'trophy' | 'season') => void; onRelics?: () => void; onProfile?: () => void; onFriends?: () => void; onSettings?: () => void }) {
+function MenuQuickLinks({ hasSaves, onRoad, onRelics, onProfile, onFriends, onCloset, onSettings }: { hasSaves: boolean; onRoad?: (r: 'level' | 'trophy' | 'season') => void; onRelics?: () => void; onProfile?: () => void; onFriends?: () => void; onCloset?: () => void; onSettings?: () => void }) {
   const go = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   const links: [string, string, (() => void) | undefined][] = [
     ['play', 'Modes', () => go('menu-modes')],
@@ -386,6 +390,7 @@ function MenuQuickLinks({ hasSaves, onRoad, onRelics, onProfile, onFriends, onSe
     ['chart', 'Level Road', onRoad && (() => onRoad('level'))],
     ['trophy', 'Trophy Road', onRoad && (() => onRoad('trophy'))],
     ['team', 'Profile', onProfile],
+    ['star', 'Closet', onCloset],
     ['phone', 'Friends', onFriends],
     ['settings', 'Settings', onSettings],
   ];

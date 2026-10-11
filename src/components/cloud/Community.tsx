@@ -29,6 +29,7 @@ import { RELIC_BY_ID, RELIC_RARITY } from '../../relics/relics';
 import '../relics/relics.css';
 import '../locker/locker.css';
 import { lastSeenLabel } from '../../cloud/lastSeen';
+import { loadVisitors, noteProfileView } from '../../cloud/social';
 import { myAvatarCode } from '../../profile/avatarCode';
 
 type Tab = 'boards' | 'ranked' | 'pvp' | 'friends' | 'me';
@@ -213,13 +214,16 @@ function ProfileView({ username, onUser }: { username: string; onUser: (u: strin
   const [rarity, setRarity] = useState<Record<string, number>>({});
   const [following, setFollowing] = useState<boolean | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [visitors, setVisitors] = useState<{ today: number; week: number } | null>(null);
   useEffect(() => {
     let live = true;
-    loadProfile(username).then(p => { if (live) setData({ key: username, p }); }, () => { if (live) setData({ key: username, p: null }); });
+    loadProfile(username).then(p => { if (live) setData({ key: username, p }); if (p && p.profile.id !== acct.userId) noteProfileView(p.profile.id); }, () => { if (live) setData({ key: username, p: null }); });
     achievementRarity().then(r => { if (live) setRarity(r); }, () => {});
     return () => { live = false; };
   }, [username, acct.userId]);
   const d = data?.key === username ? data.p : undefined;
+  const mine = !!d && acct.userId === d.profile.id;
+  useEffect(() => { if (!mine) return; let live = true; loadVisitors().then(v => { if (live) setVisitors(v); }, () => {}); return () => { live = false; }; }, [mine]);
   if (d === undefined) return <p className="hint-text" role="status">Loading the profile…</p>;
   if (!d) return <p className="empty-state">No GM called @{username}.</p>;
   const s = d.profile.stats as Record<string, unknown> & { bestPlayer?: { name: string; legacy: number } | null; ranked?: Record<string, number>; relicShelf?: { ids: string[]; secrets: number }; showcase?: string[] };
@@ -240,6 +244,7 @@ function ProfileView({ username, onUser }: { username: string; onUser: (u: strin
       <div className="showcase-facts">
         <span className="pixel-eyebrow">SHOWCASE</span>
         <h2><NameTag name={`@${d.profile.username}`} icon={d.profile.icon} color={d.profile.color} title={d.profile.title} /></h2>
+        {isMe && visitors && <p className="last-seen"><i aria-hidden="true" /> {visitors.today} visitor{visitors.today === 1 ? '' : 's'} today · {visitors.week} this week</p>}
         {(() => { const seen = isMe ? 'Online now' : lastSeenLabel(s.lastSeen); return seen && <p className={`last-seen ${seen === 'Online now' ? 'online' : ''}`}><i aria-hidden="true" /> {seen === 'Online now' ? 'Online now' : `Last seen ${seen}`}</p>; })()}
         <ul className="showcase-list">
           <li><small>BEST LEAGUE HUNT</small><b>{Number(s.huntWins ?? 0) > 0 ? `Won ${Number(s.huntWins)} hunt${Number(s.huntWins) === 1 ? '' : 's'}` : huntBest > 0 ? `Reached series ${huntBest + 1}` : '—'}</b></li>

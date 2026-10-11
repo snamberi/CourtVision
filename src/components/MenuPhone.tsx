@@ -41,8 +41,8 @@ const InstagramGlyph = () => <svg viewBox="0 0 16 16" width="20" height="20" sha
 
 const clock = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 
-export function MenuPhone({ onBoards, onFriends, onProfile, onRelics, onShop, onRoad, onSettings, onWhatsNew, onAchievements, streak }: {
-  onBoards?: () => void; onFriends?: () => void; onProfile?: () => void; onRelics?: () => void; onShop?: () => void;
+export function MenuPhone({ onFriendList, onCloset, onBoards, onFriends, onProfile, onRelics, onShop, onRoad, onSettings, onWhatsNew, onAchievements, streak }: {
+  onFriendList?: () => void; onCloset?: () => void; onBoards?: () => void; onFriends?: () => void; onProfile?: () => void; onRelics?: () => void; onShop?: () => void;
   onRoad?: (road: 'level' | 'trophy' | 'season') => void;
   onSettings?: () => void; onWhatsNew?: () => void; onAchievements?: () => void;
   streak: { current: number; best: number };
@@ -79,6 +79,14 @@ export function MenuPhone({ onBoards, onFriends, onProfile, onRelics, onShop, on
     void import('../cloud/boards').then(m => m.friendActivity(20)).then(items => { if (live) { const seen = read(ACTIVITY_SEEN_KEY) ?? ''; setActivity(items.filter(i => i.at > seen).length); } }, () => {});
     return () => { live = false; };
   }, [account.status, onFriends]);
+  // Gifts from friends waiting to be collected: a badge on the Friend list app.
+  const [giftsWaiting, setGiftsWaiting] = useState(0);
+  useEffect(() => {
+    if (!cloudEnabled || account.status !== 'signedIn' || !onFriendList) return;
+    let live = true;
+    import('../cloud/social').then(m => m.loadGifts()).then(g => { if (live) setGiftsWaiting(g.waiting.length); }, () => {});
+    return () => { live = false; };
+  }, [account.status, onFriendList]);
   const openActivity = () => { write(ACTIVITY_SEEN_KEY, new Date().toISOString()); setActivity(0); onFriends?.(); };
   const dot = <i className="app-dot" aria-hidden="true" />;
 
@@ -86,6 +94,8 @@ export function MenuPhone({ onBoards, onFriends, onProfile, onRelics, onShop, on
   const all: App[] = ([
     onBoards && { key: 'boards', node: <button className="menu-phone-app" onClick={onBoards}><span className="app-tile boards"><PixelIcon name="trophy" size={20} /></span><small>Boards</small></button> },
     onFriends && cloudEnabled && account.status === 'signedIn' && { key: 'activity', node: <button className="menu-phone-app" onClick={openActivity} aria-label={`Friend activity${activity ? `, ${activity} new` : ''}`}><span className="app-tile activity"><PixelIcon name="list" size={20} />{activity > 0 && <em className="app-badge">{activity > 9 ? '9+' : activity}</em>}</span><small>Activity</small></button> },
+    onFriendList && { key: 'friendlist', node: <button className="menu-phone-app" onClick={onFriendList} aria-label={`Friend list${giftsWaiting ? `, ${giftsWaiting} gift${giftsWaiting === 1 ? '' : 's'} waiting` : ''}`}><span className="app-tile friendlist"><PixelIcon name="heart" size={20} />{giftsWaiting > 0 && <em className="app-badge">{giftsWaiting > 9 ? '9+' : giftsWaiting}</em>}</span><small>Friend list</small></button> },
+    onCloset && { key: 'closet', node: <button className="menu-phone-app" onClick={onCloset}><span className="app-tile closet"><MyAvatar size={26} mode="full" animate={false} title="" /></span><small>Closet</small></button> },
     onFriends && { key: 'friends', node: <button className="menu-phone-app" onClick={onFriends}><span className="app-tile friends"><PixelIcon name="team" size={20} /></span><small>Friends</small></button> },
     onProfile && { key: 'profile', node: <button className="menu-phone-app" onClick={onProfile} aria-label={`Profile, level ${level}`}><span className="app-tile profile"><MyAvatar size={26} mode="portrait" animate={false} title="" /><em>{level}</em></span><small>Profile</small></button> },
     { key: 'streak', node: <button className="menu-phone-app" onClick={() => setStreakOpen(true)} aria-haspopup="dialog" aria-label={`Daily streak: ${days} day${days === 1 ? '' : 's'}, best ${streak.best}`} title={`Daily streak: ${days} day${days === 1 ? '' : 's'} in a row (best ${streak.best})`}>
