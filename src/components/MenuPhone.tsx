@@ -9,7 +9,7 @@ import { loadRelics, RELICS_EVENT, RELICS_FOCUS_KEY, SHOP_SEEN_KEY } from '../re
 /*
  * The menu phone: a small pixel phone in the bottom-left corner of the main menu with its apps (Leaderboards,
  * Friends, your Profile, your daily Streak, Court Vision on TikTok and Instagram, the Relic Vault and its Shop,
- * Settings, What's New, Achievements and the Season Pass). Apps sit six to a page (two columns, three rows); swipe,
+ * Settings, What's New, Achievements, the Season Pass, the Level Road and the Trophy Road). Apps sit six to a page (two columns, three rows); swipe,
  * drag or tap the dots for the next page. Hold an app to rearrange them (drag one onto another, or tap two to swap).
  * On smaller screens it sits in the page.
  */
@@ -39,9 +39,10 @@ const InstagramGlyph = () => <svg viewBox="0 0 16 16" width="20" height="20" sha
 
 const clock = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 
-export function MenuPhone({ onBoards, onFriends, onProfile, onRelics, onSettings, onWhatsNew, onAchievements, onSeasonPass, streak }: {
-  onBoards?: () => void; onFriends?: () => void; onProfile?: () => void; onRelics?: () => void;
-  onSettings?: () => void; onWhatsNew?: () => void; onAchievements?: () => void; onSeasonPass?: () => void;
+export function MenuPhone({ onBoards, onFriends, onProfile, onRelics, onShop, onRoad, onSettings, onWhatsNew, onAchievements, streak }: {
+  onBoards?: () => void; onFriends?: () => void; onProfile?: () => void; onRelics?: () => void; onShop?: () => void;
+  onRoad?: (road: 'level' | 'trophy' | 'season') => void;
+  onSettings?: () => void; onWhatsNew?: () => void; onAchievements?: () => void;
   streak: { current: number; best: number };
 }) {
   const [time, setTime] = useState(clock);
@@ -57,15 +58,16 @@ export function MenuPhone({ onBoards, onFriends, onProfile, onRelics, onSettings
   const [streakOpen, setStreakOpen] = useState(false);
   const days = streak.current;
   // Spins waiting and coins, for the Relics and Shop badges.
-  const [relics, setRelics] = useState(() => { const r = loadRelics(); return { spins: r.spins, coins: r.coins }; });
+  const [relics, setRelics] = useState(() => { const r = loadRelics(); return { spins: r.spins, coins: r.coins, lucky: r.luckySpins ?? 0 }; });
   useEffect(() => {
-    const sync = () => { const r = loadRelics(); setRelics({ spins: r.spins, coins: r.coins }); };
+    const sync = () => { const r = loadRelics(); setRelics({ spins: r.spins, coins: r.coins, lucky: r.luckySpins ?? 0 }); };
     window.addEventListener(RELICS_EVENT, sync); return () => window.removeEventListener(RELICS_EVENT, sync);
   }, []);
   // Notification dots: a new shop today, an update not read yet.
   const [shopNew] = useState(() => read(SHOP_SEEN_KEY) !== today());
   const [newsNew] = useState(() => { try { return unseenReleases().length > 0; } catch { return false; } });
-  const openShop = () => { try { sessionStorage.setItem(RELICS_FOCUS_KEY, 'shop'); } catch { /* storage blocked */ } onRelics?.(); };
+  const openShop = onShop ?? (() => { try { sessionStorage.setItem(RELICS_FOCUS_KEY, 'shop'); } catch { /* storage blocked */ } onRelics?.(); });
+  const luckySpins = relics.lucky;
   const dot = <i className="app-dot" aria-hidden="true" />;
 
   type App = { key: string; node: ReactNode };
@@ -79,11 +81,13 @@ export function MenuPhone({ onBoards, onFriends, onProfile, onRelics, onSettings
     { key: 'tiktok', node: <a className="menu-phone-app" href={SOCIALS.tiktok} target="_blank" rel="noopener noreferrer" aria-label="Court Vision on TikTok (opens a new tab)"><span className="app-tile tiktok"><TikTokGlyph /></span><small>TikTok</small></a> },
     { key: 'instagram', node: <a className="menu-phone-app" href={SOCIALS.instagram} target="_blank" rel="noopener noreferrer" aria-label="Court Vision on Instagram (opens a new tab)"><span className="app-tile instagram"><InstagramGlyph /></span><small>Instagram</small></a> },
     onRelics && { key: 'relics', node: <button className="menu-phone-app" onClick={onRelics} aria-label={`Relic Vault${relics.spins ? `, ${relics.spins} spin${relics.spins === 1 ? '' : 's'} waiting` : ''}`}><span className="app-tile relics"><PixelIcon name="crown" size={20} />{relics.spins > 0 && <em className="app-badge">{relics.spins}</em>}</span><small>Relics</small></button> },
-    onRelics && { key: 'shop', node: <button className="menu-phone-app" onClick={openShop} aria-label={`Relic Shop, ${relics.coins} coins${shopNew ? ', new relics today' : ''}`}><span className="app-tile shop"><PixelIcon name="star" size={20} /><em>{relics.coins >= 1000 ? `${Math.floor(relics.coins / 1000)}k` : relics.coins}</em>{shopNew && dot}</span><small>Shop</small></button> },
+    (onShop || onRelics) && { key: 'shop', node: <button className="menu-phone-app" onClick={openShop} aria-label={`Relic Shop, ${relics.coins} coins${shopNew ? ', new relics today' : ''}`}><span className="app-tile shop"><PixelIcon name="star" size={20} /><em>{relics.coins >= 1000 ? `${Math.floor(relics.coins / 1000)}k` : relics.coins}</em>{shopNew && dot}</span><small>Shop</small></button> },
     onSettings && { key: 'settings', node: <button className="menu-phone-app" onClick={onSettings}><span className="app-tile settings"><PixelIcon name="gear" size={20} /></span><small>Settings</small></button> },
     onWhatsNew && { key: 'news', node: <button className="menu-phone-app" onClick={onWhatsNew} aria-label={`What's new${newsNew ? ' (unread)' : ''}`}><span className="app-tile news"><PixelIcon name="list" size={20} />{newsNew && dot}</span><small>What's new</small></button> },
     onAchievements && { key: 'achievements', node: <button className="menu-phone-app" onClick={onAchievements}><span className="app-tile achievements"><PixelIcon name="check" size={20} /></span><small>Achievements</small></button> },
-    onSeasonPass && { key: 'pass', node: <button className="menu-phone-app" onClick={onSeasonPass}><span className="app-tile pass"><PixelIcon name="calendar" size={20} /></span><small>Season Pass</small></button> },
+    onRoad && { key: 'pass', node: <button className="menu-phone-app" onClick={() => onRoad('season')} aria-label={`Season Pass${luckySpins ? `, ${luckySpins} free Lucky Spin${luckySpins === 1 ? '' : 's'}` : ''}`}><span className="app-tile pass"><PixelIcon name="calendar" size={20} />{luckySpins > 0 && <em className="app-badge">{luckySpins}</em>}</span><small>Season Pass</small></button> },
+    onRoad && { key: 'levelroad', node: <button className="menu-phone-app" onClick={() => onRoad('level')} aria-label={`Level Road, level ${level}`}><span className="app-tile levelroad"><PixelIcon name="chart" size={20} /><em>{level}</em></span><small>Level Road</small></button> },
+    onRoad && { key: 'trophyroad', node: <button className="menu-phone-app" onClick={() => onRoad('trophy')}><span className="app-tile trophyroad"><PixelIcon name="trophy" size={20} /></span><small>Trophy Road</small></button> },
   ] as (App | false | undefined)[]).filter((x): x is App => !!x);
 
   // Your order (saved), then any app it doesn't know yet.

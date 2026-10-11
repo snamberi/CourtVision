@@ -37,6 +37,7 @@ export const THEME_SKINS: Record<ThemeId, ThemeSkin> = {
   eclipse: skin(['#100e0c','#1c1713','#2d211a','#66483b','#b37753','#f7eddf','#d1c2b5','#ed9970','#28140c','#daba93'], { shadow: '0 3px 0 #070606' }),
   immortal: skin(['#0b101a','#131d2b','#202d40','#667387','#abbcd0','#f1f3fa','#c3cbd8','#f2cf91','#24221c','#9ad6e3'], { shadow: '0 3px 0 #050811' }),
   sovereign: skin(['#071525','#10273e','#1a3853','#7a6d4f','#ccb174','#fcf2db','#c3d5e4','#dfc17e','#172433','#99d4ed'], { border: '2px', shadow: 'inset 0 1px 0 #375477, 3px 4px 0 #040d16' }),
+  glitch: skin(['#07080d','#0f1119','#181b28','#3a2a55','#00f0ff','#eefcff','#a9b4c8','#00f0ff','#06121a','#ff2bd6'], { shadow: '-2px 0 0 #ff2bd6, 2px 2px 0 #00f0ff' }),
 };
 
 export function themeScene(id: ThemeId): string {

@@ -1,3 +1,4 @@
+import { seasonTier, seasonRule, seasonHow } from '../retention/season';
 import { readLegacy, legacyTotals } from '../storage/gmLegacy';
 import { trophyNeed } from './trophyRoad';
 import { avatarItem, type AvatarCategory } from './avatar';
@@ -114,13 +115,17 @@ export function levelFor(xp: number): { level: number; into: number; need: numbe
 // ---------------------------------------------------------------- cosmetics
 
 export type FrameId = 'classic' | 'gold' | 'hardwood' | 'neon' | 'banner' | 'fire'
-  | 'diamond' | 'jade' | 'pixel' | 'ice' | 'lightning' | 'ember' | 'royal' | 'galaxy' | 'rainbow' | 'legend' | 'sovereign';
+  | 'diamond' | 'jade' | 'pixel' | 'ice' | 'lightning' | 'ember' | 'royal' | 'galaxy' | 'rainbow' | 'legend' | 'sovereign' | 'glitch';
 export type FloorId = 'team' | 'planks' | 'parquet' | 'blonde' | 'midnight' | 'asphalt'
-  | 'cherry' | 'sand' | 'retro' | 'herringbone' | 'ebony' | 'ice' | 'neon' | 'lava' | 'gold' | 'galaxy' | 'celestial';
-export type PhoneId = 'classic' | 'courtside' | 'hardwood' | 'jersey' | 'neon' | 'handheld' | 'ice' | 'gold' | 'lava' | 'galaxy' | 'diamond';
-export interface Unlock<T extends string> { id: T; name: string; level: number; blurb: string; /** Opened on the Trophy Road at this many trophies instead of a level. */ trophies?: number; /** The game owner's account only (ownerAccess.ts); hidden from everyone else. */ staff?: boolean }
-/** Whether a level-road or Trophy Road unlock is open. */
-export const unlockOpen = (u: { level: number; trophies?: number; staff?: boolean }, level: number, trophies: number) => hasOwnerAccess() || (!u.staff && (u.trophies != null ? trophies >= u.trophies : u.level <= level));
+  | 'cherry' | 'sand' | 'retro' | 'herringbone' | 'ebony' | 'ice' | 'neon' | 'lava' | 'gold' | 'galaxy' | 'celestial' | 'glitch';
+export type PhoneId = 'classic' | 'courtside' | 'hardwood' | 'jersey' | 'neon' | 'handheld' | 'ice' | 'gold' | 'lava' | 'galaxy' | 'diamond' | 'glitch';
+export interface Unlock<T extends string> { id: T; name: string; level: number; blurb: string; /** Opened on the Trophy Road at this many trophies instead of a level. */ trophies?: number; /** The game owner's account only (ownerAccess.ts); hidden from everyone else. */ staff?: boolean;
+  /** Opened at this tier of a season's pass (season.ts) instead. */ season?: { season: string; tier: number } }
+/** Whether a level-road, Trophy Road or Season Pass unlock is open. */
+export const unlockOpen = (u: { level: number; trophies?: number; staff?: boolean; season?: { season: string; tier: number } }, level: number, trophies: number) =>
+  hasOwnerAccess() || (!u.staff && (u.season ? seasonTier(u.season.season) >= u.season.tier : u.trophies != null ? trophies >= u.trophies : u.level <= level));
+/** How a locked unlock opens, for the pickers. */
+export const unlockHow = (u: { level: number; trophies?: number; season?: { season: string; tier: number } }) => (u.season ? seasonHow(u.season) : u.trophies != null ? `${u.trophies.toLocaleString()} trophies` : `Level ${u.level}`);
 /** Owner-only items are listed only for the owner. */
 export const listedFor = <T extends { staff?: boolean }>(list: T[]) => (hasOwnerAccess() ? list : list.filter(u => !u.staff));
 
@@ -140,6 +145,7 @@ export const FRAMES: Unlock<FrameId>[] = [
     ['legend', 'Legend', 'Gold and white with stars: the rarest frame.']] as [FrameId, string, string][]).map(([id, name, blurb]) => ({ id, name, blurb, level: 1, trophies: trophyNeed('frame', id) ?? 750_000 })),
   // The game owner's.
   { id: 'sovereign', name: 'Celestial Sovereign', level: 1, staff: true, blurb: 'Deep space, blue fire and a king\'s crown. Game Owner only.' },
+  { id: 'glitch', name: 'Glitch', level: 1, season: seasonRule('frame', 'glitch'), blurb: 'Torn scanlines and a cyan-magenta channel split. Season 1.' },
 ];
 export const FLOORS: Unlock<FloorId>[] = [
   { id: 'team', name: "Home team's floor", level: 1, blurb: 'Each arena keeps its own floor.' },
@@ -154,6 +160,7 @@ export const FLOORS: Unlock<FloorId>[] = [
     ['neon', 'Neon grid', 'A dark floor with glowing lines.'], ['lava', 'Lava floor', 'Cooled rock with glowing cracks.'], ['gold', 'Gold rush', 'Polished gold planks.'],
     ['galaxy', 'Galaxy court', 'Play among the stars.']] as [FloorId, string, string][]).map(([id, name, blurb]) => ({ id, name, blurb, level: 1, trophies: trophyNeed('floor', id) ?? 750_000 })),
   { id: 'celestial', name: 'Celestial throne', level: 1, staff: true, blurb: 'A starfield floor laced with blue fire. Game Owner only.' },
+  { id: 'glitch', name: 'Corrupted court', level: 1, season: seasonRule('floor', 'glitch'), blurb: 'Black tiles, dead pixels and cyan error lines. Season 1.' },
 ];
 /** Looks for the phone on the main menu: five on the level road, five on the Trophy Road. */
 export const PHONES: Unlock<PhoneId>[] = [
@@ -166,6 +173,7 @@ export const PHONES: Unlock<PhoneId>[] = [
   ...([['ice', 'Frost', 'Pale blue ice with frosted corners.'], ['gold', 'Gold', 'Polished gold, for champions.'], ['lava', 'Lava', 'Black rock with glowing cracks.'],
     ['galaxy', 'Galaxy', 'Deep space and drifting stars.'], ['diamond', 'Diamond', 'Cut crystal that catches the light.']] as [PhoneId, string, string][])
     .map(([id, name, blurb]) => ({ id, name, blurb, level: 1, trophies: trophyNeed('phone', id) ?? 750_000 })),
+  { id: 'glitch', name: 'Glitch', level: 1, season: seasonRule('phone', 'glitch'), blurb: 'A cracked black screen that never stops glitching. Season 1.' },
 ];
 export const TITLES: Unlock<string>[] = ROAD_TITLES.map(id => ({ id, name: id, level: id === 'Rookie GM' ? 1 : road('title', id), blurb: '' }));
 

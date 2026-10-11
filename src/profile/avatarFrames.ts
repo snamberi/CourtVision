@@ -1,5 +1,6 @@
 import { trophyNeed } from './trophyRoad';
 import { roadLevel } from './cosmetics';
+import { seasonTier, seasonRule, seasonHow } from '../retention/season';
 
 /*
  * Profile-picture frames: an ornate border around your character's portrait, wherever it shows (your profile chip,
@@ -9,7 +10,7 @@ import { roadLevel } from './cosmetics';
  * The list is append-only: a frame's place in it is part of the look code (avatarCode.ts).
  */
 
-export type AvatarFrameId = 'none' | 'rookie' | 'courtside' | 'neon' | 'blaze' | 'dragon' | 'celestial' | 'bronzeCrest' | 'silverWings' | 'goldCrown' | 'undefeated' | 'perfectGold' | 'sovereign' | 'founding';
+export type AvatarFrameId = 'none' | 'rookie' | 'courtside' | 'neon' | 'blaze' | 'dragon' | 'celestial' | 'bronzeCrest' | 'silverWings' | 'goldCrown' | 'undefeated' | 'perfectGold' | 'sovereign' | 'founding' | 'glitch';
 export interface AvatarFrameDef {
   id: AvatarFrameId; name: string; blurb: string;
   /** How it opens: a level, trophies, or one of these leaderboard honors. */
@@ -20,6 +21,8 @@ export interface AvatarFrameDef {
   staff?: boolean;
   /** Anyone with a free account (the Founding GM reward). */
   account?: boolean;
+  /** A Season Pass tier (season.ts). */
+  season?: { season: string; tier: number };
 }
 
 const lvl = (id: AvatarFrameId) => roadLevel('avatarFrame', id) ?? 750;
@@ -39,6 +42,7 @@ export const AVATAR_FRAMES: AvatarFrameDef[] = [
   { id: 'perfectGold', name: 'Perfection', blurb: 'Gold laurels and 98-0: 82-0, then 16-0 in the playoffs.', modes: ['perfect-98'] },
   { id: 'sovereign', name: 'Sovereign', blurb: 'Black wings, blue fire and a royal crown. Game Owner only.', staff: true },
   { id: 'founding', name: 'Founding GM', blurb: 'An orange-and-cream crest with the Founder banner: for making a free account.', account: true },
+  { id: 'glitch', name: 'Glitch', blurb: 'A corrupted ring that splits into cyan and magenta and tears apart. Season 1.', season: seasonRule('avatarFrame', 'glitch') },
 ];
 export const avatarFrameDef = (id: string | null | undefined) => AVATAR_FRAMES.find(f => f.id === id) ?? AVATAR_FRAMES[0];
 
@@ -46,9 +50,10 @@ export function avatarFrameOpen(f: AvatarFrameDef, ctx: { level: number; trophie
   if (ctx.staff) return true;
   if (f.staff) return false;
   if (f.account) return !!ctx.account;
+  if (f.season) return seasonTier(f.season.season) >= f.season.tier;
   if (f.modes) return f.modes.some(m => ctx.modes?.includes(m));
   if (f.honors) return f.honors.some(h => ctx.honors.includes(h));
   if (f.trophies != null) return ctx.trophies >= f.trophies;
   return ctx.level >= (f.level ?? 1);
 }
-export const avatarFrameHow = (f: AvatarFrameDef) => f.staff ? 'Game Owner only' : f.account ? 'Create a free account' : f.modes ? (f.id === 'perfectGold' ? 'Go 98-0' : 'Go 82-0') : f.honors ? f.blurb.split(': ')[1] ?? 'Ranked' : f.trophies != null ? `${f.trophies.toLocaleString()} trophies` : f.level && f.level > 1 ? `Level ${f.level}` : 'Everyone';
+export const avatarFrameHow = (f: AvatarFrameDef) => f.season ? seasonHow(f.season) : f.staff ? 'Game Owner only' : f.account ? 'Create a free account' : f.modes ? (f.id === 'perfectGold' ? 'Go 98-0' : 'Go 82-0') : f.honors ? f.blurb.split(': ')[1] ?? 'Ranked' : f.trophies != null ? `${f.trophies.toLocaleString()} trophies` : f.level && f.level > 1 ? `Level ${f.level}` : 'Everyone';

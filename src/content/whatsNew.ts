@@ -6,6 +6,17 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2027-05-05',
+    title: 'Season 1: GLITCH, the new Season Pass',
+    items: [
+      "**Season 1 · Glitch** is live: a free 100-tier Season Pass that every XP you earn fills (100 XP a tier). **Every tier pays a free Lucky Spin** for the Relic Vault, and **every 5 tiers unlocks a Glitch cosmetic** for good.",
+      "**The Glitch set:** a corrupted profile icon, a channel-splitting Glitch name colour and title colour, the Glitched and Corrupted Legend titles, a torn share-card frame, a Corrupted court floor, a Glitch phone, a Glitch picture frame, the Glitch app look, and a whole character: corrupted body and hair colour, glitch spikes, a pixel beard, a corrupted suit, an error halo, a glitch visor, data wings, glitch kicks and a glitch aura.",
+      "**Season Pass page:** the season banner and your tier, the cosmetics on top, the tier track in the middle and a Lucky Spin under every tier. Weekly missions, the monthly pass and your streak are underneath.",
+      "**Level Road and Trophy Road** have their own pages (and phone apps) now, built like a real trophy road: reward cards, an orange progress bar with every stop's value, and a marker showing exactly where you are. They're no longer tabs on your profile.",
+      "**Relic Vault and Relic Shop** are separate pages: spins and your collection in the Vault, coins in the Shop, each a tap from the other. Free Lucky Spins from the pass have their own button in the Vault.",
+    ],
+  },
+  {
     id: '2027-04-28',
     title: 'Relic odds: Mythics up, secrets rarer',
     items: [

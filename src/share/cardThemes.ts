@@ -235,6 +235,23 @@ export const CARD_THEMES: Record<FrameId, CardTheme> = {
     },
     border: (ctx, x0, y0, w, h) => { box(ctx, x0, y0, w, h, '#3b1d82', 6); box(ctx, x0, y0, w, h, '#b983ff', 2, 10); },
   },
+  glitch: { ...base, panel: 'rgba(6,6,14,.62)', box: 'rgba(3,3,8,.86)', line: '#2b2b48', accent: '#00f0ff', accent2: '#ff2bd6',
+    background: (ctx, W, H) => {
+      vgrad(ctx, W, H, [[0, '#0a0a16'], [1, '#030308']]);
+      // Scanlines, then torn bands shifted sideways in cyan and magenta, then dead pixels.
+      ctx.fillStyle = 'rgba(255,255,255,.035)'; for (let y = 0; y < H; y += 6) ctx.fillRect(0, y, W, 2);
+      for (let i = 0; i < 14; i++) {
+        const y = Math.floor(rnd(70 + i) * H), h = 6 + Math.floor(rnd(90 + i) * 26), dx = (rnd(110 + i) - 0.5) * 60;
+        ctx.fillStyle = i % 2 ? 'rgba(0,240,255,.16)' : 'rgba(255,43,214,.15)'; ctx.fillRect(dx, y, W, h);
+        ctx.fillStyle = 'rgba(255,255,255,.06)'; ctx.fillRect(dx + W * rnd(130 + i), y, 40 + rnd(150 + i) * 160, 3);
+      }
+      for (let i = 0; i < 90; i++) { ctx.fillStyle = ['#00f0ff', '#ff2bd6', '#ffffff', '#7dff5a'][i % 4]; const s2 = rnd(200 + i) > 0.8 ? 6 : 3; ctx.fillRect(Math.floor(rnd(300 + i) * W / 3) * 3, Math.floor(rnd(400 + i) * H / 3) * 3, s2, s2); }
+    },
+    border: (ctx, x0, y0, w, h) => {
+      box(ctx, x0 - 3, y0, w, h, '#00f0ff', 4); box(ctx, x0 + 3, y0, w, h, '#ff2bd6', 4); box(ctx, x0, y0, w, h, '#ffffff', 2, 6);
+      for (let i = 0; i < 6; i++) { const yy = y0 + rnd(500 + i) * h; ctx.fillStyle = i % 2 ? '#00f0ff' : '#ff2bd6'; ctx.fillRect(x0 - 12 + rnd(600 + i) * 20, yy, 30 + rnd(700 + i) * 50, 4); }
+    },
+  },
   rainbow: { ...base, accent: '#ffd166', accent2: '#ff7ad9',
     background: (ctx, W, H) => {
       vgrad(ctx, W, H, [[0, '#101624'], [1, '#080c14']]);

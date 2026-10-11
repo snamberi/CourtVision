@@ -132,7 +132,7 @@ export const TROPHY_TITLES = TROPHY_ROAD.filter(([, k]) => k === 'title').map(([
 
 // ---------------------------------------------------------------- title colours
 /** A title's colour: flat, a gradient, or animated (flow/shimmer/pulse; see features.css `.anim-*`). */
-export interface TitleColor { id: string; name: string; css: string; anim?: 'flow' | 'shimmer' | 'pulse'; /** Opened by an owner legacy (the Owner's Box) instead of the Trophy Road. */ ownerLegacy?: number; /** Game Owner only. */ staff?: boolean }
+export interface TitleColor { id: string; name: string; css: string; anim?: 'flow' | 'shimmer' | 'pulse' | 'glitch'; /** Opened at a Season Pass tier (season.ts). */ season?: { season: string; tier: number }; /** Opened by an owner legacy (the Owner's Box) instead of the Trophy Road. */ ownerLegacy?: number; /** Game Owner only. */ staff?: boolean }
 export const TITLE_COLORS: TitleColor[] = [
   { id: 'plain', name: 'Plain', css: '#94a0b2' },
   { id: 'amber', name: 'Amber', css: '#ffb347' },
@@ -153,10 +153,11 @@ export const TITLE_COLORS: TitleColor[] = [
   { id: 'divine', name: 'Divine', css: 'linear-gradient(90deg, #fff3c4, #ffd166, #ffffff, #9fe7ff, #ffffff, #ffd166, #fff3c4)', anim: 'shimmer' },
   { id: 'sovereign', name: 'Sovereign', css: 'linear-gradient(90deg, #0a1f7a, #4da3ff, #ffffff, #ffd166, #ffffff, #4da3ff, #0a1f7a)', anim: 'flow', staff: true },
   { id: 'immortal', name: 'Immortal', css: 'linear-gradient(90deg, #ff4d2e, #ffd166, #6fdc93, #4fd6d6, #c79bff, #ff4dd2, #ff4d2e)', anim: 'flow' },
+  { id: 'glitch', name: 'Glitch', css: 'linear-gradient(90deg, #ff2bd6, #ffffff, #00f0ff, #ff2bd6, #ffffff, #00f0ff)', anim: 'glitch', season: { season: 'glitch', tier: 60 } },
 ];
 /** Whether a title colour is open: the Trophy Road's, or an owner legacy for the Owner's Box one. */
-export const titleColorOpen = (c: TitleColor, ctx: { trophies: number; owner?: number; staff?: boolean }) =>
-  c.id === 'plain' || !!ctx.staff || (!c.staff && (c.ownerLegacy != null ? (ctx.owner ?? 0) >= c.ownerLegacy : ctx.trophies >= (trophyNeed('titleColor', c.id) ?? Infinity)));
+export const titleColorOpen = (c: TitleColor, ctx: { trophies: number; owner?: number; staff?: boolean; seasons?: Record<string, number> }) =>
+  c.id === 'plain' || !!ctx.staff || (!c.staff && (c.season ? (ctx.seasons?.[c.season.season] ?? 0) >= c.season.tier : c.ownerLegacy != null ? (ctx.owner ?? 0) >= c.ownerLegacy : ctx.trophies >= (trophyNeed('titleColor', c.id) ?? Infinity)));
 export const titleColorDef = (id: string | null | undefined) => TITLE_COLORS.find(c => c.id === id) ?? TITLE_COLORS[0];
 
 // ---------------------------------------------------------------- stored as "nameColour|titleColour"

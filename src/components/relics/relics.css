@@ -110,3 +110,5 @@ button.relic-socket:hover, button.relic-socket:focus-visible { border-color: var
 .hunt-reel-lucky { position: absolute; top: 4px; right: 4px; z-index: 2; padding: 1px 5px; font-size: 10px; font-weight: 700; color: var(--c-fg-0b1018, #0b1018); background: var(--c-bg-ffd166, #ffd166); animation: relic-glint 900ms steps(3) 2; }
 @keyframes relic-glint { 50% { filter: brightness(1.6); } }
 @media (prefers-reduced-motion: reduce) { .hunt-reel-lucky { animation: none; } }
+.relic-switch { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; }
+.relic-free-lucky { display: inline-flex; align-items: center; gap: 6px; border-color: var(--c-border-ffd166, #ffd166); color: var(--c-fg-ffd166, #ffd166); }

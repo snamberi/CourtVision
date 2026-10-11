@@ -1,0 +1,95 @@
+/* The Level Road, the Trophy Road and the Season Pass pages. */
+.road-page { max-width: 1180px; margin: 0 auto; }
+.road-panel { display: grid; gap: 14px; }
+.road-summary { display: flex; align-items: center; gap: 14px; }
+.road-summary > div:last-child { display: grid; gap: 4px; min-width: 0; }
+.road-summary small { color: var(--c-fg-94a0b2, #94a0b2); }
+.road-big { display: grid; place-items: center; min-width: 92px; padding: 8px 12px; background: var(--c-bg-192333, #192333); border: 2px solid var(--c-border-f47b20, #f47b20); box-shadow: 3px 3px 0 var(--c-shadow-0b1018, #0b1018); }
+.road-big small { font: 9px var(--ff-pixel, 'Press Start 2P', monospace); color: var(--c-fg-94a0b2, #94a0b2); }
+.road-big b { font: 24px var(--ff-pixel, 'Press Start 2P', monospace); color: var(--c-fg-f4f0e6, #f4f0e6); }
+.road-big.trophy { border-color: var(--c-border-ffd166, #ffd166); }
+.road-big.trophy b { font-size: 16px; color: var(--c-fg-ffd166, #ffd166); }
+.road-sub { margin: 6px 0 0; font-size: 16px; }
+
+/* ---------------------------------------------------------------- the road: cards, bar, ticks */
+.brawl-road { overflow-x: auto; overflow-y: hidden; padding: 10px 0 6px; background: linear-gradient(180deg, var(--c-bg-0f1a2b, #0f1a2b), var(--c-bg-0b1018, #0b1018)); border: 2px solid var(--c-border-2a3546, #2a3546); scrollbar-color: var(--c-border-f47b20, #f47b20) var(--c-border-121926, #121926); }
+.brawl-road:focus-visible { outline: 2px solid var(--c-border-ff9d3d, #ff9d3d); outline-offset: 2px; }
+.brawl-inner { position: relative; display: grid; gap: 0; }
+.brawl-cards { list-style: none; margin: 0; padding: 18px 0 0; display: grid; grid-auto-flow: column; grid-auto-columns: var(--road-col); align-items: end; }
+.brawl-card { position: relative; display: grid; align-content: center; min-height: 116px; margin: 0 7px; padding: 12px 8px 10px; background: var(--c-bg-1b2a42, #1b2a42); border: 2px solid var(--c-border-3a4d6b, #3a4d6b); box-shadow: inset 0 -4px 0 var(--c-shadow-13203a, #13203a); }
+.brawl-card.major { border-top: 4px solid var(--c-border-ffd166, #ffd166); }
+.brawl-card.got { background: var(--c-bg-1d3550, #1d3550); border-color: var(--c-border-4da3ff, #4da3ff); }
+.brawl-card.latest { background: var(--c-bg-ffd166, #ffd166); border-color: var(--c-border-fff0b3, #fff0b3); box-shadow: inset 0 -4px 0 var(--c-shadow-d9a43a, #d9a43a), 0 0 0 2px var(--c-shadow-0b1018, #0b1018); color: var(--c-fg-20180a, #20180a); }
+.brawl-card.latest .road-reward small, .brawl-card.latest .road-title { color: var(--c-fg-20180a, #20180a); }
+.brawl-card.next { border-color: var(--c-border-ff9d3d, #ff9d3d); box-shadow: inset 0 -4px 0 var(--c-shadow-13203a, #13203a), 0 0 0 2px var(--c-shadow-f47b2066, #f47b2066); }
+.brawl-card.ahead { opacity: .72; }
+.brawl-card-body { display: grid; gap: 8px; justify-items: center; text-align: center; }
+.brawl-card-body .road-reward { flex-direction: column; gap: 4px; }
+.brawl-card-body .road-reward small { font-size: 10px; line-height: 1.2; }
+.brawl-tag { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); padding: 3px 7px; font: 8px var(--ff-pixel, 'Press Start 2P', monospace); white-space: nowrap; border: 2px solid var(--c-border-0b1018, #0b1018); }
+.brawl-tag.new { background: var(--c-bg-55c878, #55c878); color: var(--c-fg-0b1018, #0b1018); }
+.brawl-tag.goal { background: var(--c-bg-0b1018, #0b1018); color: var(--c-fg-ff9d3d, #ff9d3d); border-color: var(--c-border-ff9d3d, #ff9d3d); }
+.brawl-check, .brawl-lock { position: absolute; bottom: -9px; right: -7px; display: grid; place-items: center; width: 20px; height: 20px; border: 2px solid var(--c-border-0b1018, #0b1018); }
+.brawl-check { background: var(--c-bg-55c878, #55c878); color: var(--c-fg-0b1018, #0b1018); }
+.brawl-lock { background: var(--c-bg-2a3546, #2a3546); color: var(--c-fg-94a0b2, #94a0b2); }
+
+.brawl-track { position: relative; height: 18px; margin: 18px 0 0; background: var(--c-bg-5a1f2a, #5a1f2a); border-top: 2px solid var(--c-border-3a121b, #3a121b); border-bottom: 2px solid var(--c-border-3a121b, #3a121b); }
+.brawl-fill { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(180deg, var(--c-bg-ffb35a, #ffb35a), var(--c-bg-f47b20, #f47b20) 60%, var(--c-bg-c95a12, #c95a12)); }
+.brawl-node { position: absolute; top: 50%; width: 10px; height: 10px; transform: translate(-50%, -50%) rotate(45deg); background: var(--c-bg-3a121b, #3a121b); border: 2px solid var(--c-border-8a3346, #8a3346); }
+.brawl-node.got { background: var(--c-bg-fff0b3, #fff0b3); border-color: var(--c-border-c95a12, #c95a12); }
+.brawl-marker { position: absolute; top: 50%; display: grid; place-items: center; width: 30px; height: 30px; transform: translate(-50%, -50%); background: var(--c-bg-ffd166, #ffd166); color: var(--c-fg-20180a, #20180a); border: 3px solid var(--c-border-0b1018, #0b1018); box-shadow: 0 0 0 2px var(--c-shadow-ffd166, #ffd166); z-index: 1; }
+.brawl-ticks { position: relative; height: 44px; }
+.brawl-ticks small { position: absolute; top: 8px; transform: translateX(-50%); font: 9px var(--ff-pixel, 'Press Start 2P', monospace); color: var(--c-fg-94a0b2, #94a0b2); white-space: nowrap; }
+.brawl-value { position: absolute; top: 4px; transform: translateX(-50%); padding: 5px 8px; font: 11px var(--ff-pixel, 'Press Start 2P', monospace); color: var(--c-fg-f4f0e6, #f4f0e6); background: var(--c-bg-0b1018, #0b1018); border: 2px solid var(--c-border-ffd166, #ffd166); white-space: nowrap; z-index: 2; }
+
+/* ---------------------------------------------------------------- the Season Pass */
+.sp-banner { position: relative; display: flex; align-items: stretch; gap: 14px; justify-content: space-between; padding: 16px 18px; background: var(--c-bg-12141f, #12141f); border: 2px solid var(--c-border-00f0ff, #00f0ff); box-shadow: -3px 0 0 var(--c-shadow-ff2bd6, #ff2bd6), 3px 3px 0 var(--c-shadow-0b1018, #0b1018); overflow: hidden; }
+.sp-banner::before { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(180deg, transparent 0 3px, var(--c-bg-ffffff0d, #ffffff0d) 3px 4px); pointer-events: none; }
+.sp-banner-text { position: relative; display: grid; gap: 4px; min-width: 0; }
+.sp-season { font: 10px var(--ff-pixel, 'Press Start 2P', monospace); color: var(--c-fg-00f0ff, #00f0ff); letter-spacing: 2px; }
+.sp-name { position: relative; margin: 0; font: 34px/1.1 var(--ff-pixel, 'Press Start 2P', monospace); color: var(--c-fg-eefcff, #eefcff); text-shadow: -3px 0 var(--c-shadow-ff2bd6, #ff2bd6), 3px 0 var(--c-shadow-00f0ff, #00f0ff); }
+.sp-name::after { content: attr(data-text); position: absolute; left: 0; top: 0; color: var(--c-fg-eefcff, #eefcff); clip-path: inset(40% 0 40% 0); transform: translateX(6px); text-shadow: -2px 0 var(--c-shadow-00f0ff, #00f0ff); animation: sp-tear 2.4s steps(1) infinite; }
+@keyframes sp-tear { 0%, 70%, 100% { clip-path: inset(40% 0 40% 0); transform: translateX(6px); } 75% { clip-path: inset(10% 0 70% 0); transform: translateX(-8px); } 85% { clip-path: inset(70% 0 10% 0); transform: translateX(4px); } 90% { clip-path: inset(0 0 100% 0); } }
+.sp-banner p { margin: 2px 0 0; color: var(--c-fg-a9b4c8, #a9b4c8); }
+.sp-banner small { color: var(--c-fg-ff2bd6, #ff2bd6); font-weight: 700; }
+.sp-tier-box { position: relative; display: grid; align-content: center; justify-items: center; gap: 4px; min-width: 128px; padding: 8px 12px; background: var(--c-bg-0b1018, #0b1018); border: 2px solid var(--c-border-ffd166, #ffd166); }
+.sp-tier-box small { font: 8px var(--ff-pixel, 'Press Start 2P', monospace); color: var(--c-fg-94a0b2, #94a0b2); }
+.sp-tier-box b { font: 30px var(--ff-pixel, 'Press Start 2P', monospace); color: var(--c-fg-ffd166, #ffd166); }
+.sp-tier-bar { display: block; width: 100%; height: 8px; background: var(--c-bg-5a1f2a, #5a1f2a); }
+.sp-tier-bar i { display: block; height: 100%; background: var(--c-bg-f47b20, #f47b20); }
+
+.sp-road { overflow-x: auto; overflow-y: hidden; padding: 14px 0 10px; background: linear-gradient(180deg, var(--c-bg-161b2e, #161b2e), var(--c-bg-0b1018, #0b1018)); border: 2px solid var(--c-border-2a3546, #2a3546); scrollbar-color: var(--c-border-00f0ff, #00f0ff) var(--c-border-121926, #121926); }
+.sp-road:focus-visible { outline: 2px solid var(--c-border-00f0ff, #00f0ff); outline-offset: 2px; }
+.sp-inner { position: relative; display: grid; }
+.sp-top { list-style: none; margin: 0; padding: 0; display: grid; grid-auto-flow: column; grid-auto-columns: calc(var(--sp-col) * 5); }
+.sp-card { position: relative; display: grid; gap: 6px; justify-items: center; align-content: center; min-height: 150px; margin: 0 8px; padding: 22px 8px 12px; text-align: center; background: var(--c-bg-1a1d33, #1a1d33); border: 2px solid var(--c-border-3a2a55, #3a2a55); box-shadow: inset 0 -5px 0 var(--c-shadow-10122a, #10122a); opacity: .78; }
+.sp-card.got { opacity: 1; background: var(--c-bg-142a3a, #142a3a); border-color: var(--c-border-00f0ff, #00f0ff); box-shadow: inset 0 -5px 0 var(--c-shadow-0a1a26, #0a1a26), -2px 0 0 var(--c-shadow-ff2bd6, #ff2bd6); }
+.sp-card.next { opacity: 1; border-color: var(--c-border-ff9d3d, #ff9d3d); }
+.sp-card.final { border-color: var(--c-border-ffd166, #ffd166); background: var(--c-bg-2a2140, #2a2140); }
+.sp-card .road-reward { flex-direction: column; gap: 4px; }
+.sp-card .road-reward small { font-size: 10px; }
+.sp-card-tier { position: absolute; top: 6px; left: 8px; font: 8px var(--ff-pixel, 'Press Start 2P', monospace); color: var(--c-fg-00f0ff, #00f0ff); }
+.sp-card-label { font: 700 11px var(--ff-display, 'Oswald', sans-serif); letter-spacing: 1px; text-transform: uppercase; color: var(--c-fg-ff2bd6, #ff2bd6); }
+.sp-track { position: relative; height: 34px; margin: 14px 0; background: var(--c-bg-3a1530, #3a1530); border-top: 2px solid var(--c-border-22091c, #22091c); border-bottom: 2px solid var(--c-border-22091c, #22091c); }
+.sp-fill { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(180deg, var(--c-bg-5ff7ff, #5ff7ff), var(--c-bg-00b8d4, #00b8d4) 60%, var(--c-bg-007a8f, #007a8f)); }
+.sp-node { position: absolute; top: 50%; display: grid; place-items: center; width: 24px; height: 24px; transform: translate(-50%, -50%); font: 8px var(--ff-pixel, 'Press Start 2P', monospace); color: var(--c-fg-94a0b2, #94a0b2); background: var(--c-bg-12141f, #12141f); border: 2px solid var(--c-border-3a2a55, #3a2a55); }
+.sp-node.big { width: 30px; height: 30px; border-color: var(--c-border-ff2bd6, #ff2bd6); color: var(--c-fg-eefcff, #eefcff); }
+.sp-node.got { background: var(--c-bg-eefcff, #eefcff); color: var(--c-fg-12141f, #12141f); border-color: var(--c-border-00f0ff, #00f0ff); }
+.sp-bottom { list-style: none; margin: 0; padding: 0; display: grid; grid-auto-flow: column; grid-auto-columns: var(--sp-col); }
+.sp-spin { display: grid; justify-items: center; gap: 3px; margin: 0 4px; padding: 8px 2px; background: var(--c-bg-1a1d33, #1a1d33); border: 2px solid var(--c-border-2a3546, #2a3546); color: var(--c-fg-ff9d3d, #ff9d3d); }
+.sp-spin small { font-size: 9px; color: var(--c-fg-94a0b2, #94a0b2); white-space: nowrap; }
+.sp-spin.got { background: var(--c-bg-1e2f24, #1e2f24); border-color: var(--c-border-55c878, #55c878); color: var(--c-fg-55c878, #55c878); }
+
+@media (max-width: 640px) {
+  .sp-banner { flex-direction: column; }
+  .sp-name { font-size: 24px; }
+  .sp-tier-box { min-width: 0; }
+  .road-summary { align-items: flex-start; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sp-name::after { animation: none; }
+}
+.sp-card .road-reward > :first-child, .brawl-card .road-reward > :first-child { transform: scale(1.35); margin: 6px 0; }
+.sp-card .road-avatar-reward > :first-child, .brawl-card .road-avatar-reward > :first-child { transform: none; margin: 0; }
+.brawl-more { font: 8px var(--ff-pixel, 'Press Start 2P', monospace); color: var(--c-fg-ffd166, #ffd166); }
+.brawl-card.latest .brawl-more { color: var(--c-fg-20180a, #20180a); }

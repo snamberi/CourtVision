@@ -154,6 +154,8 @@ export interface RelicState {
   dailyCoins?: string;
   /** Rewards from finished runs, for the end screens. */
   rewards: { key: string; spins: number; coins: number; secret?: SecretId }[];
+  /** Free Lucky Spins waiting (the Season Pass pays one a tier). */
+  luckySpins?: number;
 }
 
 export const RELICS_KEY = 'cv-relics';
@@ -169,7 +171,7 @@ export function loadRelics(read: Read = localRead): RelicState {
     const r = JSON.parse(read(RELICS_KEY) ?? 'null') as RelicState | null;
     if (r && r.v === 1) {
       const base: RelicState = { ...empty(), ...r, owned: r.owned ?? {}, secrets: (r.secrets ?? []).filter(s => SECRET_BY_ID.has(s)), granted: r.granted ?? [], history: r.history ?? [],
-        upgraded: (r.upgraded ?? []).filter(id => RELIC_BY_ID.has(id)), pity: { ...empty().pity, ...r.pity }, ledger: r.ledger ?? [], rewards: r.rewards ?? [], slotsBought: Math.max(0, Math.min(EXTRA_SLOTS, r.slotsBought ?? 0)), opens: r.opens ?? 0, equipped: [] };
+        upgraded: (r.upgraded ?? []).filter(id => RELIC_BY_ID.has(id)), pity: { ...empty().pity, ...r.pity }, ledger: r.ledger ?? [], rewards: r.rewards ?? [], slotsBought: Math.max(0, Math.min(EXTRA_SLOTS, r.slotsBought ?? 0)), opens: r.opens ?? 0, equipped: [], luckySpins: Math.max(0, Math.floor(Number(r.luckySpins) || 0)) };
       // Saves from before slots: the best relics you own go in.
       return { ...base, equipped: Array.isArray(r.equipped) ? r.equipped.filter(id => (base.owned[id] ?? 0) > 0 && RELIC_BY_ID.has(id)).slice(0, slotCount(base)) : autoEquip(base) };
     }
@@ -371,6 +373,13 @@ const SHOP_WEIGHTS: Record<RelicRarity, number> = { common: 45, rare: 30, epic: 
 export function buySpin(state: RelicState): RelicState | null {
   if (state.coins < SPIN_PRICE) return null;
   return spend({ ...state, spins: state.spins + 1 }, SPIN_PRICE, 'Relic Spin');
+}
+/** Adds free Lucky Spins (the Season Pass). */
+export const grantLuckySpins = (state: RelicState, n: number): RelicState => (n > 0 ? { ...state, luckySpins: (state.luckySpins ?? 0) + n } : state);
+/** Uses a free Lucky Spin, if you have one. */
+export function freeLuckySpin(state: RelicState, rand: () => number = Math.random): { state: RelicState; result: SpinResult } | null {
+  if ((state.luckySpins ?? 0) <= 0) return null;
+  return roll({ ...state, luckySpins: (state.luckySpins ?? 0) - 1 }, rand, true);
 }
 /** Pays for a Lucky Spin and spins it straight away. */
 export function luckySpin(state: RelicState, rand: () => number = Math.random): { state: RelicState; result: SpinResult } | null {

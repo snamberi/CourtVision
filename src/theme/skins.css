@@ -439,3 +439,23 @@
   --look-veil: #071525eb;
   --look-page-wash: #071525b8;
 }
+:root[data-cv-theme="glitch"], [data-theme-preview="glitch"] {
+  --look-page: #07080d;
+  --look-panel: #0f1119;
+  --look-raised: #181b28;
+  --look-line: #3a2a55;
+  --look-edge: #00f0ff;
+  --look-text: #eefcff;
+  --look-muted: #a9b4c8;
+  --look-accent: #00f0ff;
+  --look-on-accent: #06121a;
+  --look-secondary: #ff2bd6;
+  --look-shadow: -2px 0 0 #ff2bd6, 2px 2px 0 #00f0ff;
+  --look-radius: 0px;
+  --look-border: 1px;
+  --look-pixel: 'Press Start 2P', monospace;
+  --look-body: 'Inter', sans-serif;
+  --look-scene: url('../assets/looks/scenes/glitch.svg');
+  --look-veil: #07080deb;
+  --look-page-wash: #07080db8;
+}

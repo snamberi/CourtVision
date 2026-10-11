@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  loadRelics, saveRelics, spinRelic, spinMany, luckySpin, buySpin, buyRelic, buySlot, upgradeRelic, equipRelic, unequipRelic, refreshShop, canUpgrade,
+  loadRelics, saveRelics, spinRelic, spinMany, luckySpin, freeLuckySpin, buySpin, buyRelic, buySlot, upgradeRelic, equipRelic, unequipRelic, refreshShop, canUpgrade,
   canGain, relicLuck, luckPercent, collectionProgress, collectDailyCoins, slotCount, setComplete, setBonus, RELICS, RELIC_BY_ID, RELIC_RARITY,
   RARITY_ORDER, RELIC_SETS, LUCKY_ODDS, SECRET_RELICS, SECRET_BY_ID, SECRET_CHANCE, MAX_LUCK, PITY, LUCKY_PITY, BASE_SLOTS, EXTRA_SLOTS, SLOT_PRICES,
   DAILY_COINS, RELICS_EVENT, RELICS_FOCUS_KEY, SHOP_SEEN_KEY, SPIN_PRICE, LUCKY_SPIN_PRICE, RELIC_PRICE, UPGRADE_PRICE, STACK_MAX,
@@ -19,8 +19,12 @@ const isBig = (r: SpinResult) => r.kind === 'secret' || r.rarity === 'legendary'
 const nameOf = (r: SpinResult) => (r.kind === 'secret' ? SECRET_BY_ID.get(r.id as never)?.name : RELIC_BY_ID.get(r.id)?.name) ?? r.id;
 const rarityName = (r: SpinResult) => (r.kind === 'secret' ? 'Secret' : RELIC_RARITY[r.rarity as keyof typeof RELIC_RARITY].name);
 
-/** The Relic Vault: spend Relic Spins, see your collection, luck and coins. */
-export function RelicVault({ onExit }: { onExit: () => void }) {
+/**
+ * The Relic Vault (spend Relic Spins and free Lucky Spins, your slots, sets and collection) and, as its own page, the
+ * Relic Shop (spend coins). Each links to the other.
+ */
+export function RelicVault({ onExit, view = 'vault', onSwitch }: { onExit: () => void; view?: 'vault' | 'shop'; onSwitch?: () => void }) {
+  const shop = view === 'shop';
   // Today's shop is rolled, and the daily coins paid, on the first visit of the day.
   const [state, setState] = useState<RelicState>(() => { const s = loadRelics(), r = collectDailyCoins(refreshShop(s)); if (r !== s) saveRelics(r); return r; });
   const [result, setResult] = useState<SpinResult | null>(null);
@@ -34,19 +38,16 @@ export function RelicVault({ onExit }: { onExit: () => void }) {
     claimAchievementSpins().then(n => { if (live && n) { setClaimed(n); setState(loadRelics()); } }, () => {});
     const on = () => setState(loadRelics());
     window.addEventListener(RELICS_EVENT, on);
-    try { localStorage.setItem(SHOP_SEEN_KEY, new Date().toISOString().slice(0, 10)); } catch { /* storage blocked */ }
-    // Opened from the phone's Shop app: jump to the shop.
-    let focus: string | null = null;
-    try { focus = sessionStorage.getItem(RELICS_FOCUS_KEY); sessionStorage.removeItem(RELICS_FOCUS_KEY); } catch { /* storage blocked */ }
-    if (focus === 'shop') window.requestAnimationFrame(() => document.getElementById('relic-shop')?.scrollIntoView({ block: 'start' }));
+    if (shop) try { localStorage.setItem(SHOP_SEEN_KEY, new Date().toISOString().slice(0, 10)); } catch { /* storage blocked */ }
+    try { sessionStorage.removeItem(RELICS_FOCUS_KEY); } catch { /* storage blocked */ }
     return () => { live = false; window.removeEventListener(RELICS_EVENT, on); window.clearTimeout(timer.current); };
-  }, []);
+  }, [shop]);
 
   /** Saves a purchase or upgrade made on the latest stored state. */
   const commit = (fn: (s: RelicState) => RelicState | null) => { const next = fn(loadRelics()); if (next) { saveRelics(next); setState(next); } };
-  const spin = (lucky = false) => {
+  const spin = (lucky: boolean | 'free' = false) => {
     if (rolling) return;
-    const out = lucky ? luckySpin(loadRelics()) : spinRelic(loadRelics());
+    const out = lucky === 'free' ? freeLuckySpin(loadRelics()) : lucky ? luckySpin(loadRelics()) : spinRelic(loadRelics());
     if (!out) return;
     saveRelics(out.state);
     setResult(null); setBatch(null);
@@ -74,35 +75,37 @@ export function RelicVault({ onExit }: { onExit: () => void }) {
   return <div className="hunt relic-vault">
     <header className="hunt-top">
       <button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button>
-      <div className="hunt-title"><span className="pixel-eyebrow">YOUR COLLECTION · EVERY MODE</span><h1>Relic Vault</h1></div>
+      <div className="hunt-title"><span className="pixel-eyebrow">{shop ? 'SPEND YOUR COINS · NEW RELICS EVERY DAY' : 'YOUR COLLECTION · EVERY MODE'}</span><h1>{shop ? 'Relic Shop' : 'Relic Vault'}</h1></div>
+      {onSwitch && <button className="relic-switch" onClick={onSwitch}><PixelIcon name={shop ? 'crown' : 'star'} size={16} /> {shop ? 'Relic Vault' : 'Shop'}</button>}
     </header>
 
     <section className="relic-stats" aria-label="Your relics">
-      <div><span>Relic Spins</span><b>{state.spins}</b></div>
+      <div><span>Relic Spins</span><b>{state.spins}</b>{(state.luckySpins ?? 0) > 0 && <small>+{state.luckySpins} free Lucky Spin{state.luckySpins === 1 ? '' : 's'}</small>}</div>
       <div><span>Luck</span><b>{fmtLuck(luck)}</b><small>{state.equipped.length}/{slots} slots · max +{MAX_LUCK}%</small></div>
       <div><span>Coins</span><b>{state.coins.toLocaleString()}</b><small>+{DAILY_COINS} every day you visit</small></div>
       <div><span>Collection</span><b>{prog.owned}/{prog.total}</b><small>{prog.secrets}/{SECRET_RELICS.length} secrets</small></div>
     </section>
     {claimed > 0 && <p className="relic-note" role="status">Your achievements earned {claimed} Relic Spin{claimed === 1 ? '' : 's'}.</p>}
 
-    <section className="relic-machine" aria-live="polite">
+    {(!shop || rolling || result || batch) && <section className="relic-machine" aria-live="polite">
       <div className={`relic-slot ${rolling ? 'rolling' : ''} ${result ? `r-${result.rarity}` : ''}`}>
         {rolling ? <><PixelIcon name="shuffle" size={40} /><b>Spinning…</b></>
           : batch ? <BatchSummary results={batch} />
           : result ? <Reveal result={result} />
           : <><PixelIcon name="lock" size={40} /><b>{state.spins ? 'A spin is waiting' : 'No spins yet'}</b><small>{state.spins ? 'Press Spin to open it.' : 'Win runs and unlock achievements to earn spins.'}</small></>}
       </div>
-      <div className="relic-spin-row">
+      {!shop && <><div className="relic-spin-row">
         <button className="primary relic-spin" onClick={() => spin()} disabled={rolling || state.spins <= 0}>
           <PixelIcon name="star" size={16} /> {state.spins > 0 ? `Spin (${state.spins} left)` : 'No spins left'}
         </button>
-        {state.spins > 1 && <button onClick={spinAll} disabled={rolling}>Spin {Math.min(10, state.spins)} at once</button>}
+        {!shop && state.spins > 1 && <button onClick={spinAll} disabled={rolling}>Spin {Math.min(10, state.spins)} at once</button>}
+        {(state.luckySpins ?? 0) > 0 && <button className="relic-free-lucky" onClick={() => spin('free')} disabled={rolling}><PixelIcon name="flame" size={16} /> Free Lucky Spin ({state.luckySpins})</button>}
       </div>
-      <p className="relic-pity" aria-label="Guarantees">Guaranteed: <b>Epic</b> within {toEpic} spin{toEpic === 1 ? '' : 's'} · <b>Legendary</b> within {toLegendary} · <b>Mythic</b> within {toMythic} · Lucky Spins: <b>Legendary</b> within {toLucky}</p>
-    </section>
+      <p className="relic-pity" aria-label="Guarantees">Guaranteed: <b>Epic</b> within {toEpic} spin{toEpic === 1 ? '' : 's'} · <b>Legendary</b> within {toLegendary} · <b>Mythic</b> within {toMythic} · Lucky Spins: <b>Legendary</b> within {toLucky}</p></>}
+    </section>}
     {big && <BigReveal result={big} onClose={() => setBig(null)} />}
 
-    <section className="relic-section" aria-labelledby="relic-shop">
+    {shop && <section className="relic-section" aria-labelledby="relic-shop">
       <h2 id="relic-shop">Shop</h2>
       <p className="relic-help">You have <b>{state.coins.toLocaleString()} coins</b>. Earn them from every finished run, duplicates and a daily visit.</p>
       <div className="relic-shop-grid">
@@ -128,8 +131,9 @@ export function RelicVault({ onExit }: { onExit: () => void }) {
           <button onClick={() => commit(s => buyRelic(s, id))} disabled={rolling || sold || full || state.coins < price}>{sold ? 'Bought' : full ? 'Owned' : `${price.toLocaleString()} coins`}</button>
         </div>;
       })}{!state.shop?.offers.length && <p className="relic-help">Nothing left to sell you today. Impressive.</p>}</div>
-    </section>
+    </section>}
 
+    {!shop && <>
     <section className="relic-section" aria-labelledby="relic-slots">
       <h2 id="relic-slots">Your slots <small className="relic-count">{state.equipped.length}/{slots}</small></h2>
       <p className="relic-help">Only relics in your slots add luck. New relics go into a free slot by themselves; swap them in the collection below. {BASE_SLOTS} slots to start, {EXTRA_SLOTS} more in the shop.</p>
@@ -192,15 +196,17 @@ export function RelicVault({ onExit }: { onExit: () => void }) {
         <li><b>Achievements</b>: one spin for every mode achievement.</li>
         <li><b>Coins</b>: every finished run pays {runCoins(0)} coins, plus {runCoins(1) - runCoins(0)} for each spin it earned. {DAILY_COINS} coins a day for visiting. Duplicates pay by rarity.</li>
         <li><b>The shop</b>: {SPIN_PRICE} coins a spin, {LUCKY_SPIN_PRICE} for a Lucky Spin.</li>
+        <li><b>Season Pass</b>: a free Lucky Spin for every tier you reach.</li>
       </ul>
     </section>
+    </>}
 
-    <section className="relic-section">
+    {shop && <section className="relic-section">
       <details className="relic-ledger"><summary>Coin history</summary>
         {state.ledger.length ? <ul>{[...state.ledger].reverse().slice(0, 20).map((e, i) => <li key={i}><span>{e.why}</span><small>{new Date(e.at).toLocaleDateString()}</small><b className={e.amount < 0 ? 'out' : 'in'}>{e.amount > 0 ? '+' : '−'}{Math.abs(e.amount).toLocaleString()}</b></li>)}</ul>
           : <p className="relic-help">No coins in or out yet.</p>}
       </details>
-    </section>
+    </section>}
   </div>;
 }
 

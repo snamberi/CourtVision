@@ -9,7 +9,7 @@ import { weekKey, weekEndsAt } from '../../retention/week';
 
 const monthLabel = (m: string) => new Date(`${m}-01T00:00:00Z`).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 
-/** The free Season Pass (XP earned this month fills 30 tiers) and the daily streak. */
+/** The weekly missions, the free monthly pass (XP earned this month fills 30 tiers) and the daily streak. */
 export function SeasonPass() {
   const [, setTick] = useState(0);
   useEffect(() => { const bump = () => setTick(t => t + 1); window.addEventListener(PROFILE_EVENT, bump); window.addEventListener('courtvision:progress', bump); return () => { window.removeEventListener(PROFILE_EVENT, bump); window.removeEventListener('courtvision:progress', bump); }; }, []);
@@ -23,7 +23,7 @@ export function SeasonPass() {
   return <>
     <WeeklyMissions />
     <section className="locker-bay level-road season-pass">
-      <h2><PixelIcon name="star" size={18} /> Season Pass · {monthLabel(pass.month)}</h2>
+      <h2><PixelIcon name="star" size={18} /> Monthly pass · {monthLabel(pass.month)}</h2>
       <div className="road-head">
         <div className="profile-level"><small>TIER</small><b>{pass.tier}</b></div>
         <div className="profile-progress"><strong>{pass.tier >= PASS_TIERS ? 'Pass complete: every tier is yours' : `${PASS_TIER_XP - into} XP to tier ${pass.tier + 1}`}</strong>

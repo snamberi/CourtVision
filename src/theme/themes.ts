@@ -2,6 +2,7 @@ import { hasOwnerAccess } from '../profile/ownerAccess';
 import { PALETTE } from './palette.gen';
 import { roadLevel } from '../profile/cosmetics';
 import { trophyNeed } from '../profile/trophyRoad';
+import { seasonTier, seasonRule } from '../retention/season';
 
 /*
  * App themes. Every colour in the stylesheets is a variable named by its role and original value
@@ -23,7 +24,9 @@ export type ThemeId = 'original' | 'cartridge' | 'scoreboard' | 'prodark' | 'ter
   // Unlocked on the Trophy Road (profile/trophyRoad.ts).
   | 'aurora' | 'royalcourt' | 'galaxy' | 'hallowed' | 'eclipse' | 'immortal'
   // The game owner's (hidden from everyone else).
-  | 'sovereign';
+  | 'sovereign'
+  // Season Pass looks (retention/season.ts).
+  | 'glitch';
 type Family = 'red' | 'orange' | 'gold' | 'green' | 'blue' | 'purple';
 type Stop = [number, string];
 type Role = 'bg' | 'fg' | 'border' | 'shadow' | 'any';
@@ -46,6 +49,8 @@ export interface ThemeSpec {
   loadFonts?: () => Promise<unknown>;
   /** Game Owner only (profile/ownerAccess.ts): hidden from everyone else. */
   staff?: boolean;
+  /** Opened at a Season Pass tier (retention/season.ts). */
+  season?: { season: string; tier: number };
   /** Colours for the picker's preview card. */
   preview: { bg: string; panel: string; line: string; text: string; dim: string; accent: string; onAccent: string; hi: string; display: string; body: string };
 }
@@ -292,6 +297,15 @@ THEMES.push(
     loadFonts: fontsOf(() => import('@fontsource/cinzel/latin-600.css'), () => import('@fontsource/cinzel/latin-700.css')),
     preview: { bg: '#03061a', panel: '#071033', line: '#3a62d8', text: '#f4f8ff', dim: '#c4d6ff', accent: '#ffd166', onAccent: '#03061a', hi: '#6fd3ff', display: "'Cinzel', serif", body: "'Inter', sans-serif" },
   },
+  {
+    id: 'glitch', name: 'Glitch', blurb: 'Season 1: black glass, scanlines and a cyan-magenta channel split on every heading.', season: seasonRule('look', 'glitch'),
+    ramps: darkRamps({ floor: '#05050b', panel: '#0c0c18', panel2: '#10101f', panel3: '#141428', raised: '#1a1a33', line: '#24244a', lineMid: '#3c3c7a', lineStrong: '#00f0ff', dim: '#bfeaff', text: '#f2fbff', bright: '#ffffff', ink: '#05050b' }),
+    shadow: '#000000',
+    accent: { red: '#ff3d6e', orange: '#ff2bd6', gold: '#f4ff5a', green: '#7dff5a', blue: '#00f0ff', purple: '#b06bff' },
+    fonts: { display: "'Press Start 2P', 'Oswald', monospace" },
+    preview: { bg: '#05050b', panel: '#0c0c18', line: '#00f0ff', text: '#f2fbff', dim: '#bfeaff', accent: '#ff2bd6', onAccent: '#05050b', hi: '#00f0ff', display: "'Press Start 2P', monospace", body: "'Inter', sans-serif" },
+  },
+
 );
 
 /** The level a look opens at: the Level Road for the ten road looks, everyone for the rest. */
@@ -299,7 +313,12 @@ export const themeLevel = (id: ThemeId) => roadLevel('look', id) ?? 1;
 /** Trophies a look needs (the Trophy Road looks), or 0. */
 export const themeTrophies = (id: ThemeId) => trophyNeed('look', id) ?? 0;
 /** Whether a look is open at this level and trophy count. */
-export const themeOpen = (id: ThemeId, level: number, trophies: number) => hasOwnerAccess() || (!THEME_BY_ID.get(id)?.staff && level >= themeLevel(id) && trophies >= themeTrophies(id));
+export const themeOpen = (id: ThemeId, level: number, trophies: number) => {
+  const t = THEME_BY_ID.get(id);
+  if (hasOwnerAccess()) return true;
+  if (t?.season) return seasonTier(t.season.season) >= t.season.tier;
+  return !t?.staff && level >= themeLevel(id) && trophies >= themeTrophies(id);
+};
 /** The looks this browser can see (Game Owner looks only for the owner). */
 export const visibleThemes = () => (hasOwnerAccess() ? THEMES : THEMES.filter(t => !t.staff));
 

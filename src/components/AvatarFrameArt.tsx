@@ -153,6 +153,14 @@ export function frameArtwork(id: AvatarFrameId): { under?: ReactNode; over: Reac
     case 'perfectGold': return { under:<Laurels metal={gold} />, over:<><Ring metal={gold} rivets />{around(6,34,(x,y)=><Gem x={x} y={y} color="#d9f5ff" size={2} />,30)}<Crown /><Label text="98-0" metal={gold} /><Spark x={21} y={28} size={.7} delay={1} /><Spark x={83} y={63} size={.6} delay={2} /></> };
     case 'founding': return { under:<><path d="M50 8L80 19L90 50L77 80L50 95L23 80L10 50L20 19Z" fill="#693926" stroke={INK} strokeWidth="1.5" /><path d="M50 12L77 22L86 50L74 77L50 91L26 77L14 50L23 22Z" fill="#a2512b" stroke="#e7ba88" strokeDasharray="2 2" /></>, over:<><Ring metal={copper} rivets /><Ball x={50} y={11} r={8} /><Label text="FOUNDER" metal={{...copper,base:'#f9ddb0',light:'#fff3de'}} /></> };
     case 'sovereign': return { under:<><Wings metal={{base:'#38435f',dark:'#111d35',light:'#687b98',gem:'#6dcfff'}} count={7} /><Flames blueFire /></>, over:<><Ring metal={blue} rivets />{around(4,34,(x,y)=><Gem x={x} y={y} color="#80deff" size={2.5} />,45)}<Crown sapphire /><Label text="GM" metal={gold} dark /><Spark x={13} y={28} color="#a2eaff" size={.65} /><Spark x={86} y={58} color="#a2eaff" delay={1.5} size={.65} /></> };
+    // Season 1: a corrupted ring, split into cyan and magenta, with torn slices and dead pixels.
+    case 'glitch': return { under:<><circle cx="50" cy="50" r="41" fill="#07070f" stroke="#1c1c33" strokeWidth="1" />{[[16,'#00f0ff',-3],[30,'#ff2bd6',4],[62,'#00f0ff',3],[76,'#ff2bd6',-4]].map(([y,c,dx])=><rect key={y as number} x={10+(dx as number)} y={y as number} width="80" height="3" fill={c as string} opacity=".55" />)}</>, over:<>
+      <g className="avf-glitch-a"><circle cx="48.5" cy="50" r="36" fill="none" stroke="#00f0ff" strokeWidth="3" opacity=".9" /></g>
+      <g className="avf-glitch-b"><circle cx="51.5" cy="50" r="36" fill="none" stroke="#ff2bd6" strokeWidth="3" opacity=".9" /></g>
+      <circle cx="50" cy="50" r="36" fill="none" stroke="#f4f4ff" strokeWidth="1.2" strokeDasharray="9 3 2 3" />
+      {[[14,22,'#00f0ff'],[84,30,'#ff2bd6'],[20,74,'#ffffff'],[80,80,'#7dff5a'],[50,9,'#ff2bd6'],[47,91,'#00f0ff']].map(([x,y,c])=><rect key={`${x}-${y}`} x={x as number} y={y as number} width="3" height="3" fill={c as string} />)}
+      <g className="avf-glitch-tear"><rect x="6" y="44" width="30" height="4" fill="#00f0ff" opacity=".8" /><rect x="66" y="56" width="28" height="4" fill="#ff2bd6" opacity=".8" /></g>
+    </> };
     default: return { over:<circle cx="50" cy="50" r="32" fill="none" stroke="#3a4a5f" strokeWidth="1.5" /> };
   }
 }
