@@ -14,7 +14,7 @@ import { detectHighlights, reelFor, formatGameClock, HIGHLIGHT_LABEL, HIGHLIGHT_
 import { liveBoxScore } from '../simulation/liveBox';
 import { CourtAudio } from '../audio/courtAudio';
 import { CoachPanel, HighlightsPanel, LiveBoxPanel, type CoachingProps } from './WatchPanels';
-import { currentRun, lastShotMoment, crunchMoment, crunchStart } from '../simulation/coachMoments';
+import { currentRun, lastShotMoment, crunchMoment, crunchStart, momentum } from '../simulation/coachMoments';
 import { canRecordReel, startReelRecording, type ReelRecording } from './reelRecorder';
 import type { ClipWriter } from '../share/clipGif';
 import { track } from '../analytics/track';
@@ -60,6 +60,13 @@ function scoringRun(log:PossessionLogEntry[],completed:number):{home:boolean;poi
   for(let i=completed-1;i>=0;i--){const prev=log[i-1],h=log[i].homeScoreAfter-(prev?.homeScoreAfter??0),a=log[i].awayScoreAfter-(prev?.awayScoreAfter??0);
     if(h>0&&away>0||a>0&&home>0)break;home+=h;away+=a;}
   const points=Math.max(home,away);return points>=7?{home:home>away,points}:null;
+}
+/** Who has the game's momentum right now: the last dozen possessions, with a timeout wiping the slate. */
+function MomentumMeter({value,homeName,awayName}:{value:number;homeName:string;awayName:string}){
+  const who=Math.abs(value)<15?'Even':value>0?homeName:awayName,label=Math.abs(value)>=70?'ON FIRE':Math.abs(value)>=35?'ROLLING':Math.abs(value)>=15?'EDGE':'';
+  return <div className="watch-momentum" role="meter" aria-label="Momentum" aria-valuemin={-100} aria-valuemax={100} aria-valuenow={value} aria-valuetext={who==='Even'?'Even':`${who}, ${label.toLowerCase()}`}>
+    <small>MOMENTUM</small><i className="watch-momentum-bar"><i className={value>0?'home':'away'} style={{width:`${Math.abs(value)/2}%`,[value>0?'right':'left']:'50%'}}/></i>
+    <small>{who==='Even'?'EVEN':`${label} · ${who}`}</small></div>;
 }
 const GameFlow=memo(function GameFlow({log,completed,total,onSeek,homeName,awayName,markers}:{log:PossessionLogEntry[];completed:number;total:number;onSeek:(v:number)=>void;homeName:string;awayName:string;markers:Highlight[]}){
   const shown=log.slice(0,completed),max=Math.max(8,...shown.map(e=>Math.abs(e.homeScoreAfter-e.awayScoreAfter)));
@@ -159,6 +166,7 @@ export function WatchGame({game,home,away,homeRoster=[],awayRoster=[],onBoxScore
   const shots=useMemo(()=>shotChart?allShots.slice(0,completed).filter(s=>s!==null):[],[allShots,completed,shotChart]);
   const ghosts=useMemo(()=>trail&&entry?[1,2,3,4].map(k=>progress-k*.012).filter(v=>v>=0).map(v=>courtFrame(entry,v,home.teamId,away.teamId,regulation,game.possessionLog[index-1]).ball):[],[trail,entry,progress,home.teamId,away.teamId,regulation,game,index]);
   const run=useMemo(()=>scoringRun(game.possessionLog,completed),[game,completed]);
+  const mo=useMemo(()=>momentum(game.possessionLog,completed),[game,completed]);
   const shotClock=useMemo(()=>{if(!entry||finished||frame?.phase.startsWith('Free throw'))return undefined;const next=game.possessionLog[index+1];const dur=entry.durationSeconds??(next?.quarter===entry.quarter?Math.max(0,entry.clockSeconds-next.clockSeconds):Math.min(24,entry.clockSeconds));return Math.max(0,Math.min(24,Math.ceil(24-dur*progress)));},[entry,finished,frame,game,index,progress]);
   const rosters=useMemo(()=>[...homeRoster,...awayRoster],[homeRoster,awayRoster]);
   const highlights=useMemo(()=>detectHighlights(game.possessionLog,regulation),[game,regulation]);
@@ -342,6 +350,7 @@ export function WatchGame({game,home,away,homeRoster=[],awayRoster=[],onBoxScore
     {occasion&&(occasion.stakes==='game7'||occasion.stakes==='final'||occasion.stakes==='cupFinal')&&<OccasionBanner occasion={occasion} />}<div className="watch-heading"><div><span className="pixel-eyebrow">{occasion?occasion.eyebrow:coaching?'COURTSIDE / COACHING LIVE':'COURTSIDE / POSSESSION REPLAY'}</span><h2>{occasion?occasion.title:'Watch Game'}</h2></div>{court?.rivalryWeek?<span className="watch-rivalry watch-rivalry-week" title={rivalry?.seriesText}><PixelIcon name="flame" size={14}/> RIVALRY WEEK · HYPE {court.rivalryWeek.hype}</span>:rivalry&&<span className="watch-rivalry" title={rivalry.seriesText}><PixelIcon name="flame" size={14}/> RIVALRY · {rivalry.level.toUpperCase()}</span>}<span className="watch-status">{reel?'HIGHLIGHTS':finished?'FINAL':playing?'PLAYING':'PAUSED'}</span></div>
     <div className="watch-live-header"><div className="watch-controls"><button className="primary" disabled={finished} onClick={()=>setPlaying(p=>!p)}>{playing&&!finished?'Pause':'Play'}</button><label>Speed<select aria-label="Playback speed" value={speed} onChange={e=>setSpeed(+e.target.value)}>{[.5,1,2,4,8].map(v=><option key={v} value={v}>{v}×</option>)}</select></label><button disabled={cursor===0} onClick={()=>{setPlaying(false);setReel(null);setCursor(c=>Math.max(0,Math.floor(c)-1));}}>Previous Possession</button><button disabled={finished} onClick={()=>{setPlaying(false);setReel(null);setCursor(c=>Math.min(total,Math.floor(c)+1));}}>Next Possession</button><button disabled={!nextHighlight} onClick={()=>nextHighlight&&jumpTo(nextHighlight)}>Next Highlight</button><button disabled={finished} onClick={()=>{setCursor(total);setPlaying(false);setReel(null);}}>Sim to End</button><button onClick={()=>{setReel(null);setCursor(0);setPlaying(true);}}>Restart Replay</button><button aria-pressed={sound} className={sound?'sound-on':''} onClick={()=>void toggleSound()}>{sound?'Sound: On':'Sound: Off'}</button><button onClick={onBoxScore}>{finished?'View Box Score':'Skip to Box Score'}</button></div>
     <div className="watch-scoreboard"><div><small>HOME</small><strong><TeamLink name={home.name} /></strong><b data-testid="watch-home-score">{score.home}</b></div><div className="watch-clock"><strong>{clockLabel}</strong><small>POSSESSION {Math.min(total,index+1)} / {total}</small></div><div><small>AWAY</small><strong><TeamLink name={away.name} /></strong><b data-testid="watch-away-score">{score.away}</b></div></div>
+    <MomentumMeter value={mo} homeName={home.name} awayName={away.name}/>
     </div>
     {soundNote&&!sound&&<p className="hint-text watch-sound-note">{soundNote}</p>}
     {halftimeOpen&&coaching&&<HalftimeSpeech teamName={coaching.teamName} roster={coaching.roster} starters={starters} margin={myMargin}
@@ -371,7 +380,7 @@ export function WatchGame({game,home,away,homeRoster=[],awayRoster=[],onBoxScore
       </div>
       <div role="tabpanel" className="watch-tabpanel">
         {tab==='box'&&<LiveBoxPanel home={live.home} away={live.away} homeName={home.name} awayName={away.name}/>}
-        {tab==='coach'&&coaching&&myTeam&&<CoachPanel key={lastShotNow||crunchNow?`ls${coachAt}`:'coach'} coaching={coaching} team={myTeam} opponent={theirTeam??undefined} run={coachRun} lastShotNow={lastShotNow} crunchNow={crunchNow} callPlays={callPlays} onCallPlays={setCallPlays} crunchAt={!finished&&crunchAt>coachAt?crunchAt:undefined} onSkipToCrunch={()=>{prompted.current=-1;seek(crunchAt);}} onResume={()=>setPlaying(true)} atPossession={coachAt} finished={finished} clockLabel={clockLabel} onDecision={()=>{setPlaying(false);setReel(null);}}/>}
+        {tab==='coach'&&coaching&&myTeam&&<CoachPanel key={lastShotNow||crunchNow?`ls${coachAt}`:'coach'} coaching={coaching} team={myTeam} opponent={theirTeam??undefined} run={coachRun} lastShotNow={lastShotNow} crunchNow={crunchNow} callPlays={callPlays} onCallPlays={setCallPlays} crunchAt={!finished&&crunchAt>coachAt?crunchAt:undefined} onSkipToCrunch={()=>{prompted.current=-1;seek(crunchAt);}} onResume={()=>setPlaying(true)} atPossession={coachAt} quarter={game.possessionLog[Math.min(coachAt,total-1)]?.quarter??1} regulation={regulation} finished={finished} clockLabel={clockLabel} onDecision={()=>{setPlaying(false);setReel(null);}}/>}
         {tab==='highlights'&&<HighlightsPanel highlights={highlights} completed={completed} finished={finished} regulationPeriods={regulation} onJump={jumpTo} onReel={startReel} reelCount={reelPlays.length} onShare={()=>void share()} shareStatus={shareStatus} onVideo={canRecordReel()?()=>void recordVideo():undefined} videoStatus={videoStatus} onClip={h=>void makeClip(h)} onTikTok={h=>void makeClip(h,true)} clipStatus={clip?clipStatus:clipOut?null:clipStatus}/>}
       </div>
     </div>}

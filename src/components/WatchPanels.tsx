@@ -6,6 +6,7 @@ import { TIMEOUTS_PER_GAME, MOMENTUM_RUN, type LiveCoachingCommand, type LiveDef
 import type { LastShotType } from '../simulation/engine/possession';
 import type { PlayerSeason } from '../simulation/types';
 import { primaryPosition } from '../simulation/teamStatus';
+import { foulTroubleAt } from '../simulation/coachMoments';
 
 const mmss = (seconds: number) => `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
 const shortName = (id: string) => { const parts = id.split(/\s+/); return parts.length > 1 ? `${parts[0][0]}. ${parts.slice(1).join(' ')}` : id; };
@@ -63,13 +64,13 @@ function describeCommand(c: LiveCoachingCommand): string {
     case 'speech': return `Halftime speech → ${c.speech}`;
   }
 }
-export function CoachPanel({ coaching, team, opponent, run, lastShotNow, crunchNow, callPlays, onCallPlays, crunchAt, onSkipToCrunch, onResume, atPossession, finished, onDecision, clockLabel }: {
+export function CoachPanel({ coaching, team, opponent, run, lastShotNow, crunchNow, callPlays, onCallPlays, crunchAt, onSkipToCrunch, onResume, atPossession, quarter = 1, regulation = 4, finished, onDecision, clockLabel }: {
   coaching: CoachingProps; team: LiveTeam; opponent?: LiveTeam; run?: { teamId: string | null; points: number }; lastShotNow?: boolean;
   /** Crunch time, your ball, and you're calling the plays yourself. */
   crunchNow?: boolean; callPlays?: boolean; onCallPlays?: (on: boolean) => void;
   /** Where crunch time starts (when it's still ahead), and the jump there. */
   crunchAt?: number; onSkipToCrunch?: () => void; onResume?: () => void;
-  atPossession: number; finished: boolean; onDecision: () => void; clockLabel: string }) {
+  atPossession: number; /** The period now, for foul trouble. */ quarter?: number; regulation?: number; finished: boolean; onDecision: () => void; clockLabel: string }) {
   const [picked, setPicked] = useState<string[]>(() => team.lines.filter(l => l.onCourt).map(l => l.playerId));
   const [message, setMessage] = useState<string | null>(null);
   const mine = coaching.commands.filter(c => c.teamId === coaching.teamId);
@@ -85,6 +86,16 @@ export function CoachPanel({ coaching, team, opponent, run, lastShotNow, crunchN
   const [shot, setShot] = useState<LastShotType>('three');
   const theirRun = run && run.teamId && run.teamId !== coaching.teamId && run.points >= MOMENTUM_RUN ? run.points : 0;
   const available = coaching.roster.filter(p => lines.has(p.playerId));
+  // Foul trouble: your player on the floor with too many fouls for this point of the game, and who'd come in for him.
+  const trouble = foulTroubleAt(quarter, regulation);
+  const inTrouble = finished ? undefined : onFloorLines.filter(l => l.pf >= trouble && l.pf < 6).sort((a, b) => b.pf - a.pf)[0];
+  const sub = inTrouble && (() => {
+    const me = available.find(p => p.playerId === inTrouble.playerId), pos = me ? primaryPosition(me) : '';
+    const bench = available.filter(p => { const l = lines.get(p.playerId)!; return !l.onCourt && l.pf < trouble; })
+      .sort((a, b) => (+(primaryPosition(b) === pos) - +(primaryPosition(a) === pos)) || (lines.get(b.playerId)!.seconds - lines.get(a.playerId)!.seconds));
+    return bench[0]?.playerId;
+  })();
+  const theirTrouble = finished ? undefined : (opponent?.lines ?? []).filter(l => l.onCourt && l.pf >= trouble && l.pf < 6).sort((a, b) => b.pf - a.pf)[0];
   const send = (command: LiveCoachingCommand, done: string) => {
     onDecision();
     const error = coaching.onCommand(command);
@@ -97,6 +108,9 @@ export function CoachPanel({ coaching, team, opponent, run, lastShotNow, crunchN
     {finished && <p className="empty-state">The game is final. Coaching decisions are locked in.</p>}
     {theirRun > 0 && !finished && <div className="coach-alert" role="alert">They're on a {theirRun}-0 run and playing with momentum. A timeout stops it.
       <button disabled={timeoutsLeft <= 0} onClick={() => send({ kind: 'timeout', atPossession, teamId: coaching.teamId }, 'Timeout called. The run is over; your players catch their breath.')}>Call Timeout</button></div>}
+    {inTrouble && <div className="coach-alert coach-foul" role="alert"><b>Foul trouble:</b> {shortName(inTrouble.playerId)} has {inTrouble.pf} fouls{quarter <= regulation ? ` in the ${['1st', '2nd', '3rd', '4th'][quarter - 1] ?? `${quarter}th`} quarter` : ' in overtime'}. One more and {inTrouble.pf >= 5 ? 'he fouls out' : 'he is in real danger'}.
+      {sub && <button onClick={() => { const five = onFloorLines.map(l => l.playerId === inTrouble.playerId ? sub : l.playerId); setPicked(five); send({ kind: 'lineup', atPossession, teamId: coaching.teamId, lineup: five }, `${shortName(inTrouble.playerId)} sits; ${shortName(sub)} checks in.`); }}>Sit him · bring in {shortName(sub)}</button>}</div>}
+    {theirTrouble && !inTrouble && <p className="coach-tip"><b>Their foul trouble:</b> {shortName(theirTrouble.playerId)} has {theirTrouble.pf} fouls. Attack him: a post-up or drives at him can send him to the bench.</p>}
     {onCallPlays && !finished && <div className="coach-crunch">
       <label><input type="checkbox" checked={!!callPlays} onChange={e => onCallPlays(e.target.checked)} /> <b>Play crunch time yourself</b> <small>In the last 2:00 of a game within 8, the tape stops on every one of your trips and you call the play.</small></label>
       {crunchAt != null && onSkipToCrunch && <button onClick={onSkipToCrunch}>Skip to crunch time</button>}
