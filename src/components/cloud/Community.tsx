@@ -171,7 +171,7 @@ function Me({ onUser }: { onUser: (u: string) => void }) {
   const [name, setName] = useState('');
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [sure, setSure] = useState(false);
-  if (acct.status !== 'signedIn') return <section className="locker-bay"><h2>Sign in</h2><p className="hint-text">A free account keeps your level, trophies, records and retired careers on every device and puts you on the online leaderboards. Sign in with Discord, Google or an email link.</p><button className="primary" onClick={openSignIn}>Sign in</button></section>;
+  if (acct.status !== 'signedIn') return <section className="locker-bay"><h2>Sign in</h2><p className="hint-text">A free account keeps your level, trophies, records and retired careers on every device and puts you on the online leaderboards. Sign in with Discord or Google.</p><button className="primary" onClick={openSignIn}>Sign in</button></section>;
   const p = acct.profile;
   const level = levelFor(totalXp()).level;
   const titles = [...TITLES.filter(t => t.level <= level || hasOwnerAccess()).map(t => t.id), ...rankTitles()];

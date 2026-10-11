@@ -16,6 +16,7 @@ export const RELEASES: Release[] = [
       "**8 secret cosmetics:** every Relic Vault spin has a small chance to also drop one (double on a Lucky Spin). They can't be bought. See which you've found in the Vault.",
       "**Last seen:** public profiles show when a GM was last online, or \"Online now\".",
       "**Fixed:** your own character now shows on the leaderboards, including the \"your rank\" bar at the bottom.",
+      "**Sign-in is more reliable:** Continue with Google always lets you pick your account, explains what went wrong if a sign-in doesn't finish (and reopens so you can try again), and no longer gets stuck on \"Opening Google…\". Sign-in is now Discord or Google only.",
     ],
   },
   {

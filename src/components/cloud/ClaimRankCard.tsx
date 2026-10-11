@@ -60,7 +60,7 @@ export function ClaimRankCard({ id, board, score, scored, where, pitchOnly }: Pr
     <div className="claim-rank-head"><MyFramedAvatar frame="founding" size={popup ? 72 : 44} title="You with the Founding GM frame" /><div>
       {!pitchOnly && place && <span className="pixel-eyebrow">{placeLabel(place).replace(/^in the /, '').toUpperCase()}{place.rank <= 100 ? ' ON THE BOARD' : ''}</span>}
       <b className="claim-rank-line">{headline}</b>
-      <span className="hint-text">{ask} Free, with Discord, Google or an email link: you also get the <b>Founding GM</b> title and frame. Your result is kept and goes up as soon as you sign in.</span>
+      <span className="hint-text">{ask} Free, with Discord or Google: you also get the <b>Founding GM</b> title and frame. Your result is kept and goes up as soon as you sign in.</span>
     </div></div>
     <div className="contest-actions"><button className="primary" onClick={signUp}>Create free account</button><button onClick={notNow}>Not now</button><button className="link-button" onClick={week}>Don't ask for a week</button></div>
   </>;
