@@ -13,6 +13,7 @@ export const RELEASES: Release[] = [
       "**The Glitch set:** a corrupted profile icon, a channel-splitting Glitch name colour and title colour, the Glitched and Corrupted Legend titles, a torn share-card frame, a Corrupted court floor, a Glitch phone, a Glitch picture frame, the Glitch app look, and a whole character: corrupted body and hair colour, glitch spikes, a pixel beard, a corrupted suit, an error halo, a glitch visor, data wings, glitch kicks and a glitch aura.",
       "**Season Pass page:** the season banner and your tier, the cosmetics on top, the tier track in the middle and a Lucky Spin under every tier. Weekly missions, the monthly pass and your streak are underneath.",
       "**Level Road and Trophy Road** have their own pages (and phone apps) now, built like a real trophy road: reward cards, an orange progress bar with every stop's value, and a marker showing exactly where you are. They're no longer tabs on your profile.",
+      "**Download for Windows works in every browser:** in Opera, Opera GX and Firefox (which can't install web apps), the Download button now downloads the Windows edition straight away and shows how to start it.",
       "**Relic Vault and Relic Shop** are separate pages: spins and your collection in the Vault, coins in the Shop, each a tap from the other. Free Lucky Spins from the pass have their own button in the Vault.",
     ],
   },

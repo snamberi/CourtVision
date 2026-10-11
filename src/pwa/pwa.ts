@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import { IS_DESKTOP_BUILD } from '../appMode';
+import { IS_DESKTOP_BUILD, WINDOWS_DOWNLOAD_FILE, WINDOWS_DOWNLOAD_URL } from '../appMode';
 import { track } from '../analytics/track';
 
 /*
@@ -97,11 +97,11 @@ export async function promptInstall(): Promise<boolean> {
 }
 
 export type InstallDevice = 'pc' | 'android' | 'ios';
-export type InstallBrowser = 'chrome' | 'edge' | 'samsung' | 'firefox' | 'safari' | 'other';
+export type InstallBrowser = 'chrome' | 'edge' | 'opera' | 'samsung' | 'firefox' | 'safari' | 'other';
 /** Which install steps to show first. */
 export function installDevice(ua = typeof navigator === 'undefined' ? '' : navigator.userAgent): { device: InstallDevice; browser: InstallBrowser } {
   const device: InstallDevice = /iphone|ipad|ipod/i.test(ua) ? 'ios' : /android/i.test(ua) ? 'android' : 'pc';
-  const browser: InstallBrowser = /edg\//i.test(ua) ? 'edge' : /samsungbrowser/i.test(ua) ? 'samsung' : /firefox|fxios/i.test(ua) ? 'firefox'
+  const browser: InstallBrowser = /edg\//i.test(ua) ? 'edge' : /\bOPR\/|\bOPX\/|opera/i.test(ua) ? 'opera' : /samsungbrowser/i.test(ua) ? 'samsung' : /firefox|fxios/i.test(ua) ? 'firefox'
     : /crios|chrome/i.test(ua) ? 'chrome' : /safari/i.test(ua) ? 'safari' : 'other';
   return { device, browser };
 }
@@ -114,12 +114,35 @@ export const closeInstallGuide = () => { guideOpen = false; guideListeners.forEa
 export const useInstallGuideOpen = () => useSyncExternalStore(cb => { guideListeners.add(cb); return () => guideListeners.delete(cb); }, () => guideOpen, () => false);
 
 /** Install buttons: the browser's dialog when it has one, otherwise the step-by-step guide. */
+/** Windows, and the browser has no install dialog: the Install buttons download the Windows edition. */
+export const downloadsWindows = (state: InstallState) => state === 'manual' && !IS_DESKTOP_BUILD && typeof navigator !== 'undefined' && /windows/i.test(navigator.userAgent);
+
 export async function startInstall(where: string): Promise<void> {
+  const hadPrompt = !!deferred;
   if (deferred) {
     const ok = await promptInstall();
     track('app_install', { outcome: ok ? 'accepted' : 'dismissed', where });
     if (ok) return;
   }
+  // A Windows browser with no install dialog (Opera and Opera GX, Firefox…): download the Windows edition instead, and
+  // the guide says how to start it.
+  if (!hadPrompt && !IS_DESKTOP_BUILD && /windows/i.test(navigator.userAgent)) {
+    downloadWindows();
+    openInstallGuide();
+    track('app_install', { outcome: 'download', where });
+    return;
+  }
   openInstallGuide();
   track('app_install', { outcome: 'guide', where });
+}
+
+// Set when the Windows zip was just handed out, so the guide opens on how to start it.
+let downloaded = false;
+export const windowsDownloadStarted = () => downloaded;
+/** Starts the download of the Windows edition (a zip; see scripts/package-windows.mjs). */
+export function downloadWindows(): void {
+  downloaded = true;
+  const a = document.createElement('a');
+  a.href = WINDOWS_DOWNLOAD_URL; a.download = WINDOWS_DOWNLOAD_FILE; a.rel = 'noopener';
+  document.body.appendChild(a); a.click(); a.remove();
 }
