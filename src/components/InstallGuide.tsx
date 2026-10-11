@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { closeInstallGuide, installDevice, openInstallGuide, promptInstall, useInstallGuideOpen, useInstallState, type InstallDevice } from '../pwa/pwa';
+import { closeInstallGuide, downloadWindows, installDevice, openInstallGuide, promptInstall, useInstallGuideOpen, useInstallState, windowsDownloadStarted, type InstallDevice } from '../pwa/pwa';
+import { IS_DESKTOP_BUILD } from '../appMode';
 import { Modal } from './Modal';
 import { PixelIcon } from './PixelIcon';
 
@@ -16,7 +17,8 @@ const GUIDES: Record<InstallDevice, Steps> = {
     ways: [
       { browser: 'Chrome', steps: ['Click the install icon at the right end of the address bar (a small screen with an arrow).', 'Or open the ⋮ menu → Cast, save and share → Install page as app.', 'Click Install.'] },
       { browser: 'Edge', steps: ['Click the install icon at the right end of the address bar.', 'Or open the … menu → Apps → Install this site as an app.', 'Click Install.'] },
-      { browser: 'Firefox', steps: ['Firefox on PC can\'t install apps. Open courtvisiongame.com in Chrome or Edge and follow those steps.'] },
+      { browser: 'Opera', steps: ['Opera and Opera GX can\'t install web apps. Use Download for Windows above instead, or open courtvisiongame.com in Chrome or Edge.'] },
+      { browser: 'Firefox', steps: ['Firefox on PC can\'t install apps. Use Download for Windows above instead, or open courtvisiongame.com in Chrome or Edge.'] },
     ],
   },
   android: {
@@ -33,7 +35,7 @@ const GUIDES: Record<InstallDevice, Steps> = {
   },
 };
 const ORDER: InstallDevice[] = ['pc', 'android', 'ios'];
-const BROWSER_NAME = { chrome: 'Chrome', edge: 'Edge', samsung: 'Samsung Internet', firefox: 'Firefox', safari: 'Safari', other: '' } as const;
+const BROWSER_NAME = { chrome: 'Chrome', edge: 'Edge', opera: 'Opera', samsung: 'Samsung Internet', firefox: 'Firefox', safari: 'Safari', other: '' } as const;
 
 export function InstallGuideHost() {
   const open = useInstallGuideOpen();
@@ -46,6 +48,7 @@ function InstallGuide() {
   const state = useInstallState();
   const { device, browser } = installDevice();
   const [shown, setShown] = useState<InstallDevice>(device);
+  const [started, setStarted] = useState(windowsDownloadStarted);
   const guide = GUIDES[shown];
   const mine = BROWSER_NAME[browser];
   // Your own browser's steps first.
@@ -64,6 +67,17 @@ function InstallGuide() {
     <div className="install-tabs" role="tablist" aria-label="Your device">
       {ORDER.map(d => <button key={d} role="tab" aria-selected={shown === d} className={shown === d ? 'active' : ''} onClick={() => setShown(d)}>{GUIDES[d].title}{d === device ? ' (this one)' : ''}</button>)}
     </div>
+    {shown === 'pc' && !IS_DESKTOP_BUILD && <section className="install-way install-windows mine">
+      <h3>Download for Windows</h3>
+      {started ? <p className="install-done">Your download has started (CourtVision-Windows.zip).</p>
+        : <button className="primary install-now" onClick={() => { downloadWindows(); setStarted(true); }}>Download for Windows (.zip)</button>}
+      <ol>
+        <li>Right-click the zip and choose Extract All (don't run it from inside the zip).</li>
+        <li>Open the CourtVision folder and double-click Start CourtVision.bat.</li>
+        <li>If Windows says "Windows protected your PC", click More info, then Run anyway.</li>
+      </ol>
+      <small className="hint-text">Saves made in the download stay in the download; use Settings → Backup everything to move a league between the website and it.</small>
+    </section>}
     <div className="install-ways">
       {ways.map(w => <section key={w.browser} className={`install-way ${shown === device && w.browser === mine ? 'mine' : ''}`}>
         <h3>{w.browser}{shown === device && w.browser === mine && <small> · your browser</small>}</h3>

@@ -48,7 +48,7 @@ export function ThemePicker({ value, onPick, level, trophies = totalTrophies(), 
       const need = themeLevel(t.id), cups = themeTrophies(t.id), locked = !themeOpen(t.id, level, trophies), on = value === t.id;
       return <button key={t.id} type="button" role="radio" aria-checked={on} disabled={locked} title={t.blurb}
         className={`theme-card ${on ? 'selected' : ''} ${locked ? 'locked' : ''}`} onClick={() => onPick(t.id)}>
-        <span className={`theme-preview-wrap ${on || locked ? 'tagged' : ''}`}><Preview t={t} />{on ? <i className="theme-tag on">In use</i> : locked ? <i className="theme-tag">{cups ? `${cups / 1000}K TROPHIES` : `LV ${need}`}</i> : null}</span>
+        <span className={`theme-preview-wrap ${on || locked ? 'tagged' : ''}`}><Preview t={t} />{on ? <i className="theme-tag on">In use</i> : locked ? <i className="theme-tag">{t.season ? `SEASON TIER ${t.season.tier}` : cups ? `${cups / 1000}K TROPHIES` : `LV ${need}`}</i> : null}</span>
         <span className="theme-card-head"><b>{t.name}</b></span>
         <span className="theme-card-blurb">{t.blurb}</span>
       </button>;

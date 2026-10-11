@@ -7,6 +7,7 @@ import type { League } from '../simulation/league';
 import { autoGeneratePlayoffBracket, simulateNextPlayoffGame, simulateFullPlayoffs, simulateCurrentPlayoffRound, simulatePlayoffGameDay, playInPending, type PlayoffBracket, type PlayoffSeries } from '../simulation/playoffs';
 import { PlayoffBracketView } from './PlayoffBracketView';
 import { StarIcon } from './Icons';
+import { SeriesPreview } from './SeriesPreview';
 import { playToTeamGame, playoffOccasion, roundName } from '../simulation/bigGames';
 
 interface Props {
@@ -142,6 +143,7 @@ export function PlayoffsPage({ league, onChange, bracket, onBracketChange, onCel
         })}</div>
         {myAlive && !bracket?.championTeamId && <button className="primary" onClick={watchMine}>▶ Watch your next game live</button>}
       </section>}
+      {mySeries && mySeries.games.length === 0 && !mySeries.winnerTeamId && <SeriesPreview league={league} series={mySeries} round={roundName(bracket!, mySeries.round)} />}
 
       {bracket && !bracket.championTeamId && (
         <div className="league-controls">

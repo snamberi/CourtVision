@@ -1,45 +1,42 @@
 import { useEffect, useState } from 'react';
 import { closeSignIn, useSignInOpen } from '../../cloud/signIn';
 import { Modal } from '../Modal';
-import { cloudEnabled, signInWith, signInWithEmail, updateProfile, useAccount, type Provider } from '../../cloud/account';
+import { cloudEnabled, explainAuthError, inAppBrowser, setAuthError, signInWith, updateProfile, useAccount, useAuthError, type Provider } from '../../cloud/account';
 import { usernameProblem } from '../../lib/names';
 import { track } from '../../analytics/track';
 
 /* Sign-in and first-time username dialogs, mounted once at the root so any screen can ask for them. */
 
 function SignInDialog() {
-  const [email, setEmail] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
-  const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+  const lastError = useAuthError();
+  const inApp = inAppBrowser();
+  // Coming back with the browser's Back button (or a cancelled sign-in) restores this page as it was: free the buttons.
+  useEffect(() => {
+    const reset = () => setBusy(null);
+    window.addEventListener('pageshow', reset);
+    const t = busy ? window.setTimeout(reset, 15_000) : undefined;
+    return () => { window.removeEventListener('pageshow', reset); window.clearTimeout(t); };
+  }, [busy]);
   const go = async (p: Provider) => {
     setBusy(p); setMsg(null);
     track('account', { action: 'sign_in', method: p });
-    try { await signInWith(p); } catch (e) { setMsg({ text: e instanceof Error ? e.message : String(e), ok: false }); setBusy(null); }
+    try { await signInWith(p); } catch (e) { setMsg(explainAuthError(e instanceof Error ? e.message : String(e))); setBusy(null); }
   };
-  const mail = async () => {
-    if (!/^\S+@\S+\.\S+$/.test(email.trim())) { setMsg({ text: 'Enter your email address.', ok: false }); return; }
-    setBusy('email'); setMsg(null);
-    track('account', { action: 'sign_in', method: 'email' });
-    try { await signInWithEmail(email); setMsg({ text: `Check ${email.trim()}: we sent a sign-in link. Open it on this device.`, ok: true }); }
-    catch (e) { setMsg({ text: e instanceof Error ? e.message : String(e), ok: false }); }
-    setBusy(null);
-  };
+  const problem = msg ?? lastError;
   return <Modal label="Sign in" onClose={closeSignIn}>
     <span className="pixel-eyebrow">COURT VISION ACCOUNT</span>
     <h2>Sign in</h2>
     <p className="hint-text">Keep your level, trophies, records and retired careers on every device, and get on the online leaderboards. Free, and optional: the game works the same without it.</p>
+    {inApp && <p className="backup-msg err" role="alert">You're inside another app's browser, where Google sign-in is blocked. Open courtvisiongame.com in Chrome, Safari or Edge to sign in with Google (Discord works here).</p>}
     <div className="signin-options">
       <button className="signin-discord" disabled={!!busy} onClick={() => void go('discord')}><DiscordMark /> {busy === 'discord' ? 'Opening Discord…' : 'Continue with Discord'}</button>
       <button className="signin-google" disabled={!!busy} onClick={() => void go('google')}><GoogleMark /> {busy === 'google' ? 'Opening Google…' : 'Continue with Google'}</button>
     </div>
-    <form className="signin-email" onSubmit={e => { e.preventDefault(); void mail(); }}>
-      <label htmlFor="signin-email">Or get a sign-in link by email</label>
-      <div><input id="signin-email" className="year-input" type="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" />
-        <button type="submit" disabled={!!busy}>{busy === 'email' ? 'Sending…' : 'Send link'}</button></div>
-    </form>
-    {msg && <p className={`backup-msg ${msg.ok ? 'ok' : 'err'}`} role="status">{msg.text}</p>}
-    <p className="hint-text signin-fine">No password to remember. Your GM leagues stay on this device (they are too big to sync); use Backup everything to move them. See the <a href="/privacy.html">Privacy Policy</a>.</p>
-    <div className="contest-actions"><button className="link-button" onClick={closeSignIn}>Not now</button></div>
+    {problem && <p className="backup-msg err" role="alert">{problem}</p>}
+    <p className="hint-text signin-fine">No password to remember. Finish signing in in the same tab you started it. Your GM leagues stay on this device (they are too big to sync); use Backup everything to move them. See the <a href="/privacy.html">Privacy Policy</a>.</p>
+    <div className="contest-actions"><button className="link-button" onClick={() => { setAuthError(null); closeSignIn(); }}>Not now</button></div>
   </Modal>;
 }
 
@@ -72,7 +69,7 @@ function NotReadyDialog() {
   return <Modal label="Sign in" onClose={closeSignIn}>
     <span className="pixel-eyebrow">COURT VISION ACCOUNT</span>
     <h2>Accounts are almost here</h2>
-    <p className="hint-text">Sign-in with Discord, Google or an email link is switching on soon. Your progress is safe in this browser in the meantime, and it will move to your account the first time you sign in.</p>
+    <p className="hint-text">Sign-in with Discord or Google is switching on soon. Your progress is safe in this browser in the meantime, and it will move to your account the first time you sign in.</p>
     <div className="contest-actions"><button className="primary" onClick={closeSignIn}>OK</button></div>
   </Modal>;
 }

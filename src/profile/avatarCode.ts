@@ -1,4 +1,4 @@
-import { AVATAR_CATEGORIES, DEFAULT_AVATAR, cleanAvatar, type AvatarCategory, type AvatarLook } from './avatar';
+import { AVATAR_CATEGORIES, DEFAULT_AVATAR, cleanAvatar, readAvatar, type AvatarCategory, type AvatarLook } from './avatar';
 import { AVATAR_FRAMES, type AvatarFrameId } from './avatarFrames';
 import { REAL_FRANCHISES } from './favorites';
 
@@ -38,4 +38,9 @@ export function decodeAvatar(code: string | null | undefined): { look: AvatarLoo
   if (number > 0) raw.kitNumber = number - 1;
   const frame = AVATAR_FRAMES[n(rest[ORDER.length + 2])]?.id ?? 'none';
   return { look: cleanAvatar(raw), frame };
+}
+
+/** Your own character and picture frame as a code, from this device (what your profile shows). */
+export function myAvatarCode(frame: string = 'none'): string | null {
+  try { return encodeAvatar(readAvatar(), frame); } catch { return null; }
 }

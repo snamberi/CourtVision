@@ -2,7 +2,7 @@ import { syncNow } from '../cloud/sync';
 import { readPlayTime, formatPlayTime, topArea, AREA_LABEL, type PlayArea } from '../retention/playTime';
 import { PLAY_TIME_EVENT } from '../retention/usePlayClock';
 import { useEffect, useState, type ReactNode } from 'react';
-import { xpParts, totalXp, levelFor, equipped, equip, rankTitles, localName, setLocalName, unlockOpen, listedFor, FRAMES, FLOORS, PHONES, TITLES, PROFILE_EVENT, type Unlock } from '../profile/profile';
+import { xpParts, totalXp, levelFor, equipped, equip, rankTitles, localName, setLocalName, unlockOpen, unlockHow, listedFor, FRAMES, FLOORS, PHONES, TITLES, PROFILE_EVENT, type Unlock } from '../profile/profile';
 import { OWNER_TITLE, SOVEREIGN_TITLE } from '../profile/ownerAccess';
 import { FOUNDING_TITLE } from '../profile/founding';
 import { ALBUM_TITLES, ICONS, NAME_COLORS, HONORS, MODE_TITLES, SUPPORTER_TITLE, unlockContext, isOpen, earnedExtraTitles, type UnlockContext } from '../profile/cosmetics';
@@ -19,6 +19,7 @@ import { MISSION_TITLES } from '../retention/missions';
 import { useAccount } from '../cloud/account';
 import { passesOnSale } from '../billing/billing';
 import { ThemeSection } from './ThemePicker';
+import { seasonHow, SEASON_REWARDS } from '../retention/season';
 import { TITLE_COLORS, TROPHY_TITLES, trophyNeed, titleColorOpen } from '../profile/trophyRoad';
 
 function useProfile() {
@@ -51,10 +52,10 @@ function Picker<T extends string>({ label, list, level, trophies = 0, value, onP
   const shown = (peek ?? value) as T, shownDef = list.find(u => u.id === shown);
   const openCount = list.filter(u => unlockOpen(u, level, trophies)).length;
   return <div className="profile-picker" id={pickerId(label)}><h3 className="hunt-subhead">{label} <PickCount n={openCount} of={list.length} /></h3>
-    {preview && <div className="profile-preview">{preview(shown)}<small>{shownDef?.name}{peek && peek !== value ? (shownDef && unlockOpen(shownDef, level, trophies) ? ' · preview' : ` · preview (${shownDef?.trophies != null ? `${shownDef.trophies.toLocaleString()} trophies` : `level ${shownDef?.level}`})`) : ' · equipped'}</small></div>}
+    {preview && <div className="profile-preview">{preview(shown)}<small>{shownDef?.name}{peek && peek !== value ? (shownDef && unlockOpen(shownDef, level, trophies) ? ' · preview' : ` · preview (${shownDef ? unlockHow(shownDef).toLowerCase() : ''})`) : ' · equipped'}</small></div>}
     <div role="radiogroup" aria-label={label}>{list.map(u => { const open = unlockOpen(u, level, trophies); return <button key={u.id} role="radio" aria-checked={value === u.id} aria-disabled={!open}
       className={`profile-unlock ${value === u.id ? 'selected' : ''} ${open ? '' : 'locked'} ${peek === u.id ? 'peeking' : ''} unlock-${u.id.replace(/\s+/g, '-').toLowerCase()}`} onMouseEnter={() => preview && setHover(u.id)} onFocus={() => preview && setHover(u.id)} onMouseLeave={() => setHover(null)} onBlur={() => setHover(null)} onClick={() => { if (open) { onPick(u.id); setPinned(null); setHover(null); } else setPinned(u.id); }}>
-      <b>{u.name}</b><small>{open ? u.blurb || 'Unlocked' : u.trophies != null ? `${u.trophies.toLocaleString()} trophies` : `Level ${u.level}`}</small></button>; })}</div></div>;
+      <b>{u.name}</b><small>{open ? u.blurb || 'Unlocked' : unlockHow(u)}</small></button>; })}</div></div>;
 }
 
 /** "4 of 21 unlocked", next to a picker's heading. */
@@ -78,7 +79,10 @@ function titleGroups(c: UnlockContext) {
     { label: 'Supporter', items: [{ title: SUPPORTER_TITLE, open: c.supporter, how: 'Supporter pass' }] },
     { label: 'Trophy Road', items: TROPHY_TITLES.map(t => ({ title: t.id, open: c.trophies >= t.trophies, how: `${t.trophies.toLocaleString()} trophies`, progress: c.trophies / t.trophies })) },
     { label: 'Daily streak', items: STREAK_REWARDS.filter(r => r.title).map(r => ({ title: r.title!, open: (c.streak ?? 0) >= r.days, how: `Visit ${r.days} days in a row`, progress: (c.streak ?? 0) / r.days })) },
-    { label: 'Season Pass', items: PASS_REWARDS.filter(r => r.title).map(r => ({ title: r.title!, open: (c.pass ?? 0) >= r.tier, how: `Reach tier ${r.tier} of a Season Pass`, progress: (c.pass ?? 0) / r.tier })) },
+    { label: 'Season Pass', items: [
+      ...Object.entries(SEASON_REWARDS).flatMap(([id, list]) => list.filter(r => r.kind === 'title').map(r => ({ title: r.id, open: (c.seasons?.[id] ?? 0) >= r.tier, how: seasonHow({ season: id, tier: r.tier }), progress: (c.seasons?.[id] ?? 0) / r.tier }))),
+      ...PASS_REWARDS.filter(r => r.title).map(r => ({ title: r.title!, open: (c.pass ?? 0) >= r.tier, how: `Reach tier ${r.tier} of a monthly pass`, progress: (c.pass ?? 0) / r.tier })),
+    ] },
     { label: 'Missions', items: MISSION_TITLES.map(t => ({ title: t.title, open: (c.missions ?? 0) >= t.n, how: `Finish ${t.n} weekly missions`, progress: (c.missions ?? 0) / t.n })) },
     { label: 'Card album', items: ALBUM_TITLES.map(t => { const have = (t.kind === 'sets' ? c.album?.sets : c.album?.legendary) ?? 0; return { title: t.title, open: have >= t.n, how: t.kind === 'sets' ? `Complete ${t.n} team card set${t.n === 1 ? '' : 's'}` : `Collect ${t.n} legendary cards`, progress: have / t.n }; }) },
     { label: 'Account', items: [{ title: FOUNDING_TITLE, open: !!c.account, how: 'Create a free account' }] },
@@ -216,7 +220,7 @@ export function ProfilePanel({ extras }: { /** Shown right under your card (the 
         <i className={c.anim ? `anim-${c.anim}` : undefined} style={{ background: c.css, backgroundSize: c.anim ? '200% 100%' : undefined }} aria-hidden="true" />
         <b><Tinted css={c.css} anim={c.anim}>{c.name}</Tinted></b>
         <em><Tinted css={c.css} anim={c.anim}>{eq.title}</Tinted></em>
-        <small>{open ? (eq.titleColor === c.id ? 'Equipped' : 'Unlocked') : c.ownerLegacy != null ? `Owner legacy ${c.ownerLegacy}` : `${(trophyNeed('titleColor', c.id) ?? 0).toLocaleString()} trophies`}</small></button>; })}</div></div>
+        <small>{open ? (eq.titleColor === c.id ? 'Equipped' : 'Unlocked') : c.shop ? (c.shop.startsWith('secret-') ? 'Secret · from spins' : 'Relic Shop') : c.season ? seasonHow(c.season) : c.ownerLegacy != null ? `Owner legacy ${c.ownerLegacy}` : `${(trophyNeed('titleColor', c.id) ?? 0).toLocaleString()} trophies`}</small></button>; })}</div></div>
 
     <TitlePicker ctx={ctx} name={signedIn ? `@${name}` : name} eq={eq} />
 

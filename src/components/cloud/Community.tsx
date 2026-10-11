@@ -8,7 +8,7 @@ import { weekKey } from '../../retention/week';
 import { weeklyRebuild, weeklyCareer } from '../../retention/weekly';
 import { SCENARIOS } from '../../simulation/rebuildScenarios';
 import { ACHIEVEMENT_BY_ID } from '../../simulation/frontOffice';
-import { TITLES, levelFor, totalXp, rankTitles, equip } from '../../profile/profile';
+import { TITLES, levelFor, totalXp, rankTitles, equip, equipped } from '../../profile/profile';
 import { usernameProblem } from '../../lib/names';
 import { FindGm } from './FriendsPage';
 import { BoardTable } from './BoardTable';
@@ -24,7 +24,12 @@ import { FriendlyMatch } from './FriendlyMatch';
 /** The leaderboard honors on a public profile (server-granted, in its stats). */
 const honorTitles = (s: Record<string, unknown>) => (Array.isArray(s.honors) ? s.honors : []).map(h => HONORS.find(x => x.id === h)?.title).filter((t): t is string => !!t);
 import '../hunt/hunt.css';
+import { RelicArt } from '../relics/RelicArt';
+import { RELIC_BY_ID, RELIC_RARITY } from '../../relics/relics';
+import '../relics/relics.css';
 import '../locker/locker.css';
+import { lastSeenLabel } from '../../cloud/lastSeen';
+import { myAvatarCode } from '../../profile/avatarCode';
 
 type Tab = 'boards' | 'ranked' | 'pvp' | 'friends' | 'me';
 type BoardId = 'gms' | 'players' | 'whunt' | 'w820' | 'wcat' | 'wrebuild' | 'wcareer' | 'wguess' | 'whilo' | 'wbracket' | 'daily' | 'rebuild' | 'friends';
@@ -166,7 +171,7 @@ function Me({ onUser }: { onUser: (u: string) => void }) {
   const [name, setName] = useState('');
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [sure, setSure] = useState(false);
-  if (acct.status !== 'signedIn') return <section className="locker-bay"><h2>Sign in</h2><p className="hint-text">A free account keeps your level, trophies, records and retired careers on every device and puts you on the online leaderboards. Sign in with Discord, Google or an email link.</p><button className="primary" onClick={openSignIn}>Sign in</button></section>;
+  if (acct.status !== 'signedIn') return <section className="locker-bay"><h2>Sign in</h2><p className="hint-text">A free account keeps your level, trophies, records and retired careers on every device and puts you on the online leaderboards. Sign in with Discord or Google.</p><button className="primary" onClick={openSignIn}>Sign in</button></section>;
   const p = acct.profile;
   const level = levelFor(totalXp()).level;
   const titles = [...TITLES.filter(t => t.level <= level || hasOwnerAccess()).map(t => t.id), ...rankTitles()];
@@ -217,8 +222,10 @@ function ProfileView({ username, onUser }: { username: string; onUser: (u: strin
   const d = data?.key === username ? data.p : undefined;
   if (d === undefined) return <p className="hint-text" role="status">Loading the profile…</p>;
   if (!d) return <p className="empty-state">No GM called @{username}.</p>;
-  const s = d.profile.stats as Record<string, unknown> & { bestPlayer?: { name: string; legacy: number } | null; ranked?: Record<string, number> };
+  const s = d.profile.stats as Record<string, unknown> & { bestPlayer?: { name: string; legacy: number } | null; ranked?: Record<string, number>; relicShelf?: { ids: string[]; secrets: number }; showcase?: string[] };
   const isMe = acct.userId === d.profile.id;
+  // Your own profile shows your character as it is on this device (the online copy updates when you sync).
+  const avatar = (isMe ? myAvatarCode(equipped().avatarFrame) : null) ?? d.profile.avatar;
   const follows = following ?? d.following;
   const season = tierFor((s.ranked ?? {})[currentSeason()] ?? 0).tier;
   const followerCount = d.followers + (following == null || following === d.following ? 0 : following ? 1 : -1);
@@ -227,18 +234,21 @@ function ProfileView({ username, onUser }: { username: string; onUser: (u: strin
   return <>
     <section className="locker-bay profile-showcase">
       <div className="showcase-stage">
-        {d.profile.avatar ? <><CodeAvatar code={d.profile.avatar} size={132} title={`${d.profile.username}'s portrait`} /><CodeAvatar code={d.profile.avatar} full size={150} title={`${d.profile.username}'s character`} /></>
+        {avatar ? <><CodeAvatar code={avatar} size={132} title={`${d.profile.username}'s portrait`} /><CodeAvatar code={avatar} full size={150} title={`${d.profile.username}'s character`} /></>
           : <p className="hint-text">No character online yet.</p>}
       </div>
       <div className="showcase-facts">
         <span className="pixel-eyebrow">SHOWCASE</span>
         <h2><NameTag name={`@${d.profile.username}`} icon={d.profile.icon} color={d.profile.color} title={d.profile.title} /></h2>
+        {(() => { const seen = isMe ? 'Online now' : lastSeenLabel(s.lastSeen); return seen && <p className={`last-seen ${seen === 'Online now' ? 'online' : ''}`}><i aria-hidden="true" /> {seen === 'Online now' ? 'Online now' : `Last seen ${seen}`}</p>; })()}
         <ul className="showcase-list">
           <li><small>BEST LEAGUE HUNT</small><b>{Number(s.huntWins ?? 0) > 0 ? `Won ${Number(s.huntWins)} hunt${Number(s.huntWins) === 1 ? '' : 's'}` : huntBest > 0 ? `Reached series ${huntBest + 1}` : '—'}</b></li>
           <li><small>RANKED THIS MONTH</small><b style={{ color: season.color }}>{season.name}</b></li>
           <li><small>HUNT PVP</small><b>{d.pvp ? `${d.pvp.rating} (${d.pvp.wins}-${d.pvp.losses})` : '—'}</b></li>
           <li><small>GREATEST PLAYER</small><b>{s.bestPlayer ? `${s.bestPlayer.name} · ${s.bestPlayer.legacy}` : '—'}</b></li>
         </ul>
+        {(s.showcase ?? []).length > 0 && <><small className="showcase-sub">PICKED FOR THE SHOWCASE</small><ul className="achievement-chips showcase-picks">{(s.showcase ?? []).slice(0, 3).map(t => <li key={t}><b>{t}</b></li>)}</ul></>}
+        {(s.relicShelf?.ids ?? []).length > 0 && <><small className="showcase-sub">RELIC MUSEUM{s.relicShelf!.secrets ? ` · ${s.relicShelf!.secrets} SECRET${s.relicShelf!.secrets === 1 ? '' : 'S'}` : ''}</small><ul className="relic-museum">{s.relicShelf!.ids.filter(id => RELIC_BY_ID.has(id)).map(id => { const r = RELIC_BY_ID.get(id)!; return <li key={id} className={`r-${r.rarity}`} title={`${r.name} (${RELIC_RARITY[r.rarity].name})`}><RelicArt id={id} size={44} /><small>{r.name}</small></li>; })}</ul></>}
         {rarest.length > 0 && <><small className="showcase-sub">RAREST ACHIEVEMENTS</small><ul className="achievement-chips showcase-rare">{rarest.map(id => <li key={id}><b>{ACHIEVEMENT_BY_ID.get(id)?.name ?? id.replace(/^mode-/, '')}</b><small>{rarity[id]}% of GMs</small></li>)}</ul></>}
         {!isMe && d.pvp?.squad != null && <FriendlyMatch theirs={d.pvp.squad} username={d.profile.username} />}
       </div>

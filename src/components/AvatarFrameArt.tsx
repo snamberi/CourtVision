@@ -153,6 +153,21 @@ export function frameArtwork(id: AvatarFrameId): { under?: ReactNode; over: Reac
     case 'perfectGold': return { under:<Laurels metal={gold} />, over:<><Ring metal={gold} rivets />{around(6,34,(x,y)=><Gem x={x} y={y} color="#d9f5ff" size={2} />,30)}<Crown /><Label text="98-0" metal={gold} /><Spark x={21} y={28} size={.7} delay={1} /><Spark x={83} y={63} size={.6} delay={2} /></> };
     case 'founding': return { under:<><path d="M50 8L80 19L90 50L77 80L50 95L23 80L10 50L20 19Z" fill="#693926" stroke={INK} strokeWidth="1.5" /><path d="M50 12L77 22L86 50L74 77L50 91L26 77L14 50L23 22Z" fill="#a2512b" stroke="#e7ba88" strokeDasharray="2 2" /></>, over:<><Ring metal={copper} rivets /><Ball x={50} y={11} r={8} /><Label text="FOUNDER" metal={{...copper,base:'#f9ddb0',light:'#fff3de'}} /></> };
     case 'sovereign': return { under:<><Wings metal={{base:'#38435f',dark:'#111d35',light:'#687b98',gem:'#6dcfff'}} count={7} /><Flames blueFire /></>, over:<><Ring metal={blue} rivets />{around(4,34,(x,y)=><Gem x={x} y={y} color="#80deff" size={2.5} />,45)}<Crown sapphire /><Label text="GM" metal={gold} dark /><Spark x={13} y={28} color="#a2eaff" size={.65} /><Spark x={86} y={58} color="#a2eaff" delay={1.5} size={.65} /></> };
+    // Season 1: a corrupted ring, split into cyan and magenta, with torn slices and dead pixels.
+    case 'glitch': return { under:<><circle cx="50" cy="50" r="41" fill="#07070f" stroke="#1c1c33" strokeWidth="1" />{[[16,'#00f0ff',-3],[30,'#ff2bd6',4],[62,'#00f0ff',3],[76,'#ff2bd6',-4]].map(([y,c,dx])=><rect key={y as number} x={10+(dx as number)} y={y as number} width="80" height="3" fill={c as string} opacity=".55" />)}</>, over:<>
+      <g className="avf-glitch-a"><circle cx="48.5" cy="50" r="36" fill="none" stroke="#00f0ff" strokeWidth="3" opacity=".9" /></g>
+      <g className="avf-glitch-b"><circle cx="51.5" cy="50" r="36" fill="none" stroke="#ff2bd6" strokeWidth="3" opacity=".9" /></g>
+      <circle cx="50" cy="50" r="36" fill="none" stroke="#f4f4ff" strokeWidth="1.2" strokeDasharray="9 3 2 3" />
+      {[[14,22,'#00f0ff'],[84,30,'#ff2bd6'],[20,74,'#ffffff'],[80,80,'#7dff5a'],[50,9,'#ff2bd6'],[47,91,'#00f0ff']].map(([x,y,c])=><rect key={`${x}-${y}`} x={x as number} y={y as number} width="3" height="3" fill={c as string} />)}
+      <g className="avf-glitch-tear"><rect x="6" y="44" width="30" height="4" fill="#00f0ff" opacity=".8" /><rect x="66" y="56" width="28" height="4" fill="#ff2bd6" opacity=".8" /></g>
+    </> };
+    // Season 2: a ring of packed ice with icicles hanging below and snowflakes drifting round it.
+    case 'frozen': return { under:<><circle cx="50" cy="50" r="41" fill="#123a5c" stroke="#0a2238" strokeWidth="1.5" />{around(8,40,(x,y,i)=><circle key={i} cx={x} cy={y} r="1.6" fill="#ffffff" opacity=".8" />,0)}</>, over:<>
+      <circle cx="50" cy="50" r="36" fill="none" stroke="#dff4ff" strokeWidth="4.5" />
+      <circle cx="50" cy="50" r="36" fill="none" stroke="#6db8ff" strokeWidth="1.2" strokeDasharray="3 4" />
+      {[30,38,46,54,62,70].map((x,i)=><path key={x} d={`M${x-3} ${83-Math.abs(50-x)*0.35}L${x+3} ${83-Math.abs(50-x)*0.35}L${x} ${92+(i%2)*4-Math.abs(50-x)*0.3}Z`} fill="#eaf8ff" stroke="#6db8ff" strokeWidth=".6" />)}
+      <g className="avf-snow">{[[16,20],[84,26],[12,60],[88,66],[50,6]].map(([x,y])=><path key={`${x}-${y}`} d={`M${x-3} ${y}H${x+3}M${x} ${y-3}V${y+3}M${x-2} ${y-2}L${x+2} ${y+2}M${x+2} ${y-2}L${x-2} ${y+2}`} stroke="#ffffff" strokeWidth="1" />)}</g>
+    </> };
     default: return { over:<circle cx="50" cy="50" r="32" fill="none" stroke="#3a4a5f" strokeWidth="1.5" /> };
   }
 }

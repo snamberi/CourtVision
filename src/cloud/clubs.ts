@@ -117,3 +117,21 @@ export async function challengeClub(target: string, week = weekKey()): Promise<v
   const { error } = await client.rpc('challenge_club', { p_target: target, p_week: week });
   if (error) fail(error);
 }
+
+/* ---- The club pass: every member's XP fills one shared bar; banners unlock for the whole club. ---- */
+
+export const CLUB_PASS_TIER_XP = 5000, CLUB_PASS_TIERS = 50;
+export const CLUB_BANNERS: { tier: number; name: string; colors: [string, string] }[] = [
+  { tier: 5, name: 'Rookie banner', colors: ['#2a3546', '#94a0b2'] },
+  { tier: 10, name: 'Hardwood banner', colors: ['#8a5530', '#f2d27a'] },
+  { tier: 20, name: 'Playoff banner', colors: ['#1d428a', '#ffffff'] },
+  { tier: 30, name: 'Conference banner', colors: ['#552583', '#fdb927'] },
+  { tier: 40, name: 'Finals banner', colors: ['#0b1018', '#f47b20'] },
+  { tier: 50, name: 'Dynasty banner', colors: ['#ffd166', '#0b1018'] },
+];
+/** Where a club's shared pass stands, from its members' total XP. */
+export function clubPass(xp: number): { tier: number; into: number; need: number; banners: typeof CLUB_BANNERS; next: (typeof CLUB_BANNERS)[number] | null } {
+  const tier = Math.min(CLUB_PASS_TIERS, Math.floor(Math.max(0, xp) / CLUB_PASS_TIER_XP));
+  return { tier, into: tier >= CLUB_PASS_TIERS ? CLUB_PASS_TIER_XP : Math.max(0, xp) - tier * CLUB_PASS_TIER_XP, need: CLUB_PASS_TIER_XP,
+    banners: CLUB_BANNERS.filter(b => b.tier <= tier), next: CLUB_BANNERS.find(b => b.tier > tier) ?? null };
+}

@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import type { League, LeagueTeam } from '../simulation/league';
 import type { GMLeagueExtras } from '../simulation/gm';
 import type { PlayerSeason } from '../simulation/types';
-import { lockerRoom, moraleLabel, personalityOf, playerMorale, PERSONALITY_BLURB } from '../simulation/personality';
+import { lockerRoom, moraleLabel, personalityOf, playerMorale, teamRoles, ROLE_LABEL, PERSONALITY_BLURB } from '../simulation/personality';
 
 /** Compact mood cell for roster tables: stored morale snapshot, personality type and any trade request. */
 export function MoraleCell({ p, fallback, fallbackTitle }: { p: PlayerSeason; fallback: string; fallbackTitle: string }) {
@@ -17,6 +17,7 @@ export function MoraleCell({ p, fallback, fallbackTitle }: { p: PlayerSeason; fa
 /** Who meshes and who clashes on a roster, and where team chemistry stands. */
 export function LockerRoomPanel({ team }: { team: LeagueTeam }) {
   const { links, chemistryDelta } = useMemo(() => lockerRoom(team), [team]);
+  const roles = useMemo(() => teamRoles(team), [team]);
   const requests = team.seasons.filter(p => p.morale?.tradeRequest && p.morale.teamId === team.teamId);
   const scores = team.seasons.map(p => p.morale?.teamId === team.teamId ? p.morale.score : null).filter((v): v is number => v != null);
   const avg = scores.length ? Math.round(scores.reduce((n, v) => n + v, 0) / scores.length) : null;
@@ -27,6 +28,8 @@ export function LockerRoomPanel({ team }: { team: LeagueTeam }) {
       {avg != null && <span>Avg morale <b>{avg}</b> ({moraleLabel(avg)})</span>}
       <span>Fit <b className={chemistryDelta >= 0 ? 'delta-up' : 'delta-down'}>{chemistryDelta > 0 ? '+' : ''}{chemistryDelta.toFixed(1)}</b></span>
     </div>
+    <ul className="locker-roles" aria-label="Roles">{(Object.keys(ROLE_LABEL) as (keyof typeof ROLE_LABEL)[]).map(k => <li key={k} className={`locker-role role-${k}`}>
+      <small>{ROLE_LABEL[k]}</small><b>{roles[k] ?? '—'}</b><em>{k === 'leader' ? '+3 morale for everyone else' : k === 'sixthMan' ? '+4 morale for him (18+ minutes off the bench)' : '-3 morale for everyone else: trade him or win him over'}</em></li>)}</ul>
     {requests.length > 0 && <p className="locker-requests">⚑ Trade request{requests.length > 1 ? 's' : ''}: {requests.map(p => p.playerId).join(', ')}. Unhappy players drag chemistry down until they're moved or won back.</p>}
     {links.length ? <ul className="locker-links">{links.slice(0, 8).map((l, i) => <li key={i} className={`locker-${l.kind}`}>
       <span aria-hidden="true">{l.kind === 'clash' ? '✕' : '♥'}</span> <b>{l.a}</b> {l.kind === 'clash' ? 'vs' : '&'} <b>{l.b}</b> <small>{l.reason}</small></li>)}</ul>

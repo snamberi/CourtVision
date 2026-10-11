@@ -4,9 +4,10 @@ import { InstallAppButton } from './InstallAppButton';
 import { ThemeChip } from './ThemePicker';
 import { OnlineStatus } from './cloud/OnlineStatus';
 import { CookieSettingsLink } from '../consent/ConsentBanner';
-import { PrivacyLink } from './PrivacyPolicyPage';
+import { PrivacyLink } from './PrivacyLink';
 import { IS_DESKTOP_BUILD } from '../appMode';
 import { liteMode, performanceSetting, setPerformanceSetting, type PerformanceSetting } from '../lib/performanceMode';
+import { colourSafe, setColourSafe, setTextSize, textSize, type TextSize } from '../lib/accessibility';
 import './locker/locker.css';
 import './hunt/hunt.css';
 
@@ -18,6 +19,20 @@ export function PerformanceToggle() {
     {options.map(o => <button key={o.id} role="radio" aria-checked={setting === o.id} className={`hunt-pill ${setting === o.id ? 'on' : ''}`}
       onClick={() => { setPerformanceSetting(o.id); setSetting(o.id); }}>{o.label}</button>)}
   </div>;
+}
+
+/** Accessibility: text size and colour-blind-safe rarity colours. */
+export function AccessibilityToggles() {
+  const [size, setSize] = useState<TextSize>(() => textSize());
+  const [safe, setSafe] = useState(() => colourSafe());
+  const sizes: { id: TextSize; label: string }[] = [{ id: 'normal', label: 'Normal' }, { id: 'large', label: 'Large' }, { id: 'larger', label: 'Larger' }];
+  return <>
+    <div className="hunt-pills perf-choice" role="radiogroup" aria-label="Text size">
+      {sizes.map(o => <button key={o.id} role="radio" aria-checked={size === o.id} className={`hunt-pill ${size === o.id ? 'on' : ''}`}
+        onClick={() => { setTextSize(o.id); setSize(o.id); }}>{o.label} text</button>)}
+    </div>
+    <label className="settings-check"><input type="checkbox" checked={safe} onChange={e => { setColourSafe(e.target.checked); setSafe(e.target.checked); }} /> Colour-blind-safe rarity colours</label>
+  </>;
 }
 
 function SettingCard({ icon, title, blurb, wide, children }: { icon: string; title: string; blurb?: string; wide?: boolean; children: ReactNode }) {
@@ -36,7 +51,7 @@ export function SettingsPage({ onExit, backup, recovery }: { onExit: () => void;
   return <div className="hunt locker settings-page settings-menu">
     <header className="hunt-top">
       <button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button>
-      <div className="hunt-title"><span className="pixel-eyebrow">LOOK, BACKUPS, GRAPHICS, INSTALL, PRIVACY</span><h1>Settings</h1></div>
+      <div className="hunt-title"><span className="pixel-eyebrow">LOOK, BACKUPS, GRAPHICS, ACCESSIBILITY, INSTALL, PRIVACY</span><h1>Settings</h1></div>
     </header>
     <div className="setting-cards">
       <SettingCard icon="star" title="Look" blurb="The colours, fonts and menu art of the whole game. Pick from every look.">
@@ -46,6 +61,9 @@ export function SettingsPage({ onExit, backup, recovery }: { onExit: () => void;
       <SettingCard icon="chart" title="League recovery">{recovery}</SettingCard>
       <SettingCard icon="star" title="Graphics" blurb="Lite mode stops looping animations and blur, and uses fewer simulation workers. Auto turns it on for low-memory devices.">
         <PerformanceToggle />
+      </SettingCard>
+      <SettingCard icon="search" title="Accessibility" blurb="Bigger text for the whole game, and rarity colours that stay easy to tell apart with colour blindness. Press ? in a league for keyboard shortcuts.">
+        <AccessibilityToggles />
       </SettingCard>
       <SettingCard icon="play" title="Install the app" blurb="Court Vision as a real app on your PC or phone: its own icon and window, offline too, same saves.">
         <p className="settings-install"><InstallAppButton /></p>

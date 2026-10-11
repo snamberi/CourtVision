@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { loadRelics, rewardOf, luckPercent, RELIC_BY_ID, SECRET_BY_ID, RELICS_EVENT } from '../../relics/relics';
+import { loadRelics, rewardOf, totalLuck, RELIC_BY_ID, SECRET_BY_ID, RELICS_EVENT } from '../../relics/relics';
 import { PixelIcon } from '../PixelIcon';
+import { RelicArt } from './RelicArt';
 import './relics.css';
 
 const openVault = () => { window.location.hash = '#/relics'; };
@@ -16,7 +17,7 @@ export function RelicReward({ rewardKey }: { rewardKey: string }) {
   if (!r) return null;
   const secret = r.secret ? SECRET_BY_ID.get(r.secret) : undefined;
   return <div className={`relic-reward ${secret ? 'secret' : ''}`} role="status">
-    <PixelIcon name={secret ? 'crown' : r.spins ? 'star' : 'chart'} size={20} />
+    {secret ? <RelicArt id={secret.id} size={48} /> : <PixelIcon name={r.spins ? 'star' : 'chart'} size={20} />}
     <span>
       <b>{[r.spins ? `+${r.spins} Relic Spin${r.spins === 1 ? '' : 's'}` : '', `+${r.coins} coins`].filter(Boolean).join(' · ')}</b>
       {secret && <small>Secret relic uncovered: <b>{secret.name}</b> ({secret.ability})</small>}
@@ -31,10 +32,10 @@ export function RelicCase() {
   const relics = s.equipped.map(id => RELIC_BY_ID.get(id)).filter(r => !!r);
   if (!relics.length && !s.secrets.length) return null;
   return <section className="relic-case" aria-label="Relic case">
-    <span className="pixel-eyebrow">RELIC CASE · +{luckPercent(s)}% LUCK</span>
+    <span className="pixel-eyebrow">RELIC CASE · +{totalLuck(s)}% LUCK</span>
     <ul>
-      {relics.map(r => <li key={r.id} className={`r-${r.rarity}`} title={`${r.name}: ${r.blurb}`}><PixelIcon name={r.icon} size={18} /><small>{r.name}</small></li>)}
-      {s.secrets.map(id => <li key={id} className="r-secret" title={SECRET_BY_ID.get(id)?.ability}><PixelIcon name="crown" size={18} /><small>{SECRET_BY_ID.get(id)?.name}</small></li>)}
+      {relics.map(r => <li key={r.id} className={`r-${r.rarity}`} title={`${r.name}: ${r.blurb}`}><RelicArt id={r.id} size={48} /><small>{r.name}</small></li>)}
+      {s.secrets.map(id => <li key={id} className="r-secret" title={SECRET_BY_ID.get(id)?.ability}><RelicArt id={id} size={48} /><small>{SECRET_BY_ID.get(id)?.name}</small></li>)}
     </ul>
   </section>;
 }

@@ -1,4 +1,5 @@
-import { loadRelics, saveRelics, grantReward, earn, type SecretId } from './relics';
+import { loadRelics, saveRelics, grantReward, grantLuckySpins, earn, type SecretId } from './relics';
+import { noteSeason, markSeasonPaid, SEASON_REWARDS, type SeasonCosmetic } from '../retention/season';
 
 /*
  * Relic Spins for finishing things. Each result pays out once (keyed by its run), so reloading a finished run, or a
@@ -29,6 +30,18 @@ export function rewardRun(key: string, n: number, opts: { secret?: SecretId; why
   if (after === before) return 0;
   saveRelics(after);
   return after.spins - before.spins;
+}
+
+/** The Season Pass: one free Lucky Spin for every tier reached and not yet paid. Returns how many were paid. */
+export const paySeasonSpins = (totalXp: number, now = new Date()): number => paySeasonRewards(totalXp, now).spins;
+/** The same, plus the season cosmetics those new tiers unlocked (for the tier-up pop-up). */
+export function paySeasonRewards(totalXp: number, now = new Date()): { spins: number; cosmetics: SeasonCosmetic[] } {
+  const p = noteSeason(totalXp, now);
+  const before = p.paid;
+  const n = markSeasonPaid(p.season.id, p.tier);
+  if (n > 0) saveRelics(grantLuckySpins(loadRelics(), n));
+  const cosmetics = n > 0 ? (SEASON_REWARDS[p.season.id] ?? []).filter(r => r.tier > before && r.tier <= before + n) : [];
+  return { spins: n, cosmetics };
 }
 
 /** Coins for each achievement earned before relics existed (paid once, the first time). */

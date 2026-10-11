@@ -24,7 +24,7 @@ export function WelcomeSignIn({ onDone }: { onDone: () => void }) {
     <div className="welcome-signin-head"><MyFramedAvatar frame="founding" size={88} title="You with the Founding GM frame" /><div>
       <span className="pixel-eyebrow">WELCOME, GM</span>
       <h2>Sign in to save your progress</h2>
-      <p className="hint-text">Keep your level, trophies, character and records on every device, and play the leaderboards, ranked seasons and League Hunt PvP. Discord, Google or an email link, free, and you get the Founding GM title and profile frame.</p>
+      <p className="hint-text">Keep your level, trophies, character and records on every device, and play the leaderboards, ranked seasons and League Hunt PvP. Discord or Google, free, and you get the Founding GM title and profile frame.</p>
     </div></div>
     <div className="contest-actions">
       <button className="primary" onClick={() => { remember(); setOpen(false); openSignIn(); onDone(); }}>Sign in</button>

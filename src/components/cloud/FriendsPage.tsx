@@ -7,6 +7,7 @@ import { BoardTable } from './BoardTable';
 import { NameTag } from '../ProfileIcon';
 import { PixelIcon } from '../PixelIcon';
 import '../hunt/hunt.css';
+import { readWeeklyRival, setWeeklyRival, loadHeadToHead, loadFollowing, H2H_LABEL, type WeeklyRival } from '../../cloud/rivals';
 import '../locker/locker.css';
 
 /*
@@ -30,6 +31,7 @@ export function FriendsPage({ onExit, onUser, onCommunity, onClubs, onOnline }: 
         <p>Sign in to follow GMs, see how you stack up, get told when a friend passes you and challenge them to a 1v1.</p>
         <button className="primary" disabled={acct.status === 'loading'} onClick={openSignIn}>{acct.status === 'loading' ? 'Signing in…' : 'Sign in'}</button>
       </section>}
+      {signedIn && <WeeklyRivalCard onUser={onUser} />}
       {signedIn && <section className="locker-bay friends-list">
         <h2><PixelIcon name="team" size={18} /> You and the GMs you follow</h2>
         <BoardTable spec={{ kind: 'friends' }} scoreLabel="XP" onUser={onUser} empty="You don't follow anyone yet. Find a GM below and press Follow on their profile." />
@@ -61,6 +63,30 @@ export function FriendsPage({ onExit, onUser, onCommunity, onClubs, onOnline }: 
 }
 
 /** Friends ahead of you this week (all of them, not just the three on the menu). */
+/** Rivals Mode: pick one friend to take on all week, board by board. */
+function WeeklyRivalCard({ onUser }: { onUser: (username: string) => void }) {
+  const [rival, setRival] = useState(readWeeklyRival);
+  const [friends, setFriends] = useState<WeeklyRival[] | null>(null);
+  const [h2h, setH2h] = useState<Awaited<ReturnType<typeof loadHeadToHead>>>(null);
+  useEffect(() => { let live = true; void loadFollowing().then(f => { if (live) setFriends(f); }, () => { if (live) setFriends([]); }); return () => { live = false; }; }, []);
+  useEffect(() => { if (!rival) { setH2h(null); return; } let live = true; void loadHeadToHead(rival).then(x => { if (live) setH2h(x); }, () => {}); return () => { live = false; }; }, [rival]);
+  const pick = (id: string) => { const f = friends?.find(x => x.userId === id) ?? null; setWeeklyRival(f); setRival(f); };
+  return <section className="locker-bay friends-rival-week">
+    <h2><PixelIcon name="flame" size={18} /> Weekly rival</h2>
+    <p>Pick one friend and take them on all week: every weekly board is a round, and the most rounds wins the week.</p>
+    <select className="year-input" value={rival?.userId ?? ''} onChange={e => pick(e.target.value)} aria-label="Your weekly rival">
+      <option value="">{friends?.length === 0 ? 'Follow a GM first' : 'Choose a rival…'}</option>
+      {(friends ?? []).map(f => <option key={f.userId} value={f.userId}>@{f.username}</option>)}
+    </select>
+    {rival && h2h && <>
+      <p className="rival-score"><b>You {h2h.wins}</b> – <b>{h2h.losses} <button className="link-button" onClick={() => onUser(rival.username)}>@{rival.username}</button></b> {h2h.wins > h2h.losses ? '· you lead the week' : h2h.wins < h2h.losses ? '· they lead the week' : '· all square'}</p>
+      <table className="db-table rival-table"><thead><tr><th>Board</th><th>You</th><th>@{rival.username}</th></tr></thead>
+        <tbody>{h2h.boards.map(b => <tr key={b.board} className={(b.mine ?? -1) > (b.theirs ?? -1) ? 'won' : (b.theirs ?? -1) > (b.mine ?? -1) ? 'lost' : ''}>
+          <td>{H2H_LABEL[b.board]}</td><td>{b.mine?.toLocaleString() ?? '—'}</td><td>{b.theirs?.toLocaleString() ?? '—'}</td></tr>)}</tbody></table>
+    </>}
+  </section>;
+}
+
 function RivalList() {
   const a = useAccount();
   const [alerts, setAlerts] = useState<RivalAlert[] | null>(null);

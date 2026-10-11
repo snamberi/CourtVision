@@ -7,6 +7,7 @@ import { ICONS, NAME_COLORS } from '../../profile/cosmetics';
 import { ProfileIcon, NameTag, Tinted } from '../ProfileIcon';
 import { PixelIcon } from '../PixelIcon';
 import '../hunt/hunt.css';
+import { clubPass, CLUB_BANNERS, CLUB_PASS_TIERS } from '../../cloud/clubs';
 import '../locker/locker.css';
 
 /*
@@ -91,6 +92,7 @@ function MyClub({ club, onUser, onChange }: { club: Club; onUser: (u: string) =>
       <div><h2>{club.name}</h2>{club.motto && <p className="club-motto">"{club.motto}"</p>}<small>{club.members}/{CLUB_MAX} GMs · {club.xp.toLocaleString()} XP in all</small></div>
       <div className="club-points"><small>THIS WEEK</small><b>{total.toLocaleString()}</b><small>club points</small></div>
     </div>
+    <ClubPassBar xp={club.xp} />
     {clash === undefined ? null : clash && mine && theirs
       ? <div className={`club-clash ${mine.points > theirs.points ? 'ahead' : mine.points < theirs.points ? 'behind' : ''}`}>
         <span className="pixel-eyebrow">CLUB CLASH · {days} DAY{days === 1 ? '' : 'S'} LEFT</span>
@@ -177,4 +179,16 @@ function ClubBoard({ mine, onJoined, canJoin }: { mine: Club | null; onJoined: (
     </li>)}</ul> : <p className="empty-state">No club by that name.</p>)}
     {msg && <p className="hint-text" role="status">{msg}</p>}
   </section>;
+}
+
+/** The club pass: everyone's XP fills one bar, and banners unlock for the whole club. */
+function ClubPassBar({ xp }: { xp: number }) {
+  const p = clubPass(xp);
+  return <div className="club-pass" aria-label={`Club pass tier ${p.tier} of ${CLUB_PASS_TIERS}`}>
+    <span className="pixel-eyebrow">CLUB PASS · TIER {p.tier}/{CLUB_PASS_TIERS}</span>
+    <i className="club-pass-bar"><i style={{ width: `${(p.into / p.need) * 100}%` }} /></i>
+    <small>{p.tier >= CLUB_PASS_TIERS ? 'Every banner is yours.' : `${(p.need - p.into).toLocaleString()} XP to tier ${p.tier + 1}${p.next ? ` · next: ${p.next.name} at tier ${p.next.tier}` : ''}`}</small>
+    <ul className="club-banners">{CLUB_BANNERS.map(b => <li key={b.tier} className={b.tier <= p.tier ? 'got' : ''} title={`${b.name} (tier ${b.tier})`}>
+      <i style={{ background: `linear-gradient(${b.colors[0]}, ${b.colors[0]} 70%, ${b.colors[1]})`, borderColor: b.colors[1] }} /><small>{b.tier}</small></li>)}</ul>
+  </div>;
 }

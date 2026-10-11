@@ -6,7 +6,7 @@ import type { SpriteGrid } from './playerSprite';
  * and a halo. `under` sits behind the sprite, `a` and `b` are the two alternating frames on top of it.
  */
 export interface IconFx { under?: SpriteGrid; a?: SpriteGrid; b?: SpriteGrid }
-export type IconAnimKind = 'flicker' | 'shine' | 'spin' | 'twinkle' | 'flash' | 'glow' | 'bob';
+export type IconAnimKind = 'flicker' | 'shine' | 'spin' | 'twinkle' | 'flash' | 'glow' | 'bob' | 'glitch';
 
 const N = 12;
 const blank = (): SpriteGrid => Array.from({ length: N }, () => Array<string | null>(N).fill(null));
@@ -70,6 +70,14 @@ export function iconFx(sprite: SpriteGrid, anim: IconAnimKind | undefined, palet
   if (!anim) return {};
   const s = silhouette(sprite);
   switch (anim) {
+    case 'glitch': {
+      // Channel split: a cyan copy a pixel left and a magenta copy a pixel right, under the sprite; torn rows flash on top.
+      const under = blank(), a = blank(), b = blank();
+      sprite.forEach((row, y) => row.forEach((c, x) => { if (!c) return; if (!under[y + 1][x]) under[y + 1][x] = '#00f0ff'; under[y + 1][x + 2] = '#ff2bd6'; }));
+      for (const [y, x0, len] of [[3, 0, 6], [7, 4, 7]] as const) for (let x = x0; x < Math.min(12, x0 + len); x++) a[y][x] = '#00f0ff';
+      for (const [y, x0, len] of [[5, 3, 8], [9, 0, 5]] as const) for (let x = x0; x < Math.min(12, x0 + len); x++) b[y][x] = '#ff2bd6';
+      return { under, a, b };
+    }
     case 'flicker': return flames(s, palette === 'gold' ? ['#c9971f', '#ffb300', '#ffe066', '#fffbe6'] : palette === 'blue' ? ['#1f4fd9', '#4da3ff', '#9fe7ff', '#ffffff'] : ['#e8322e', '#ff9d3d', '#ffd166', '#fff3c4']);
     case 'twinkle': {
       const a = blank(), b = blank();

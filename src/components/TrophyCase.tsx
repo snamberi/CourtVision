@@ -66,7 +66,7 @@ export function TrophyCase() {
       <button className="primary" onClick={() => void share()}>Share my profile card</button>
       {status && <span className="hint-text" role="status">{status}</span>}
     </div>
-    {editing && <div className="trophy-pick"><p className="hint-text">Pick up to {SHELF_SIZE} ({shelf.length}/{SHELF_SIZE}).</p>
+    {editing && <div className="trophy-pick"><p className="hint-text">Pick up to {SHELF_SIZE} ({shelf.length}/{SHELF_SIZE}). Your first three titles and runs are your showcase: they show on your public profile.</p>
       <ul>{options.map(o => <li key={o.id}><label><input type="checkbox" checked={shelf.includes(o.id)} disabled={!shelf.includes(o.id) && shelf.length >= SHELF_SIZE} onChange={() => toggle(o.id)} /> <b>{o.label}</b> <small>{o.detail}</small></label></li>)}</ul></div>}
   </section>;
 }

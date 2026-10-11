@@ -50,7 +50,7 @@
         {
           "type": "ul",
           "items": [
-            "your name, postal address or phone number, and any password (sign-in uses Discord, Google or an email link, so we never see or store a password);",
+            "your name, postal address or phone number, and any password (sign-in uses Discord or Google, so we never see or store a password);",
             "payment information (CourtVision is free and has no purchases);",
             "your GM leagues, rosters, trades, notes, custom players, or careers still in progress (they stay in your browser even with an account);",
             "your precise location, contacts, photos, microphone, or camera data;",
@@ -268,7 +268,7 @@
         },
         {
           "type": "p",
-          "text": "**Accounts, cloud progress and leaderboards (web version only, optional).** If you create an account, sign-in is handled by Supabase Auth using Discord, Google or a one-time email link. We receive and store your email address, the provider you used and its account identifier, and the GM name you choose. While you are signed in, your game progress is synced to our database hosted by Supabase: your GM Profile level and cosmetics, achievements, League Hunt, Rebuild and weekly results, daily goals, retired Career Mode players, league-code results and your League Hunt PvP squad and matches. GM leagues and careers still in progress are not uploaded. Your GM name, title, level, public statistics, retired created players, leaderboard results, PvP rating and the GMs you follow are shown publicly on leaderboards and your profile page. Reports you file about a name are seen only by us. Your data is kept while your account exists. You can delete your account at any time in Community → Your account; this permanently deletes your account, profile, cloud progress and every leaderboard entry (progress stored on your device is not affected). See [Supabase's privacy policy](https://supabase.com/privacy)."
+          "text": "**Accounts, cloud progress and leaderboards (web version only, optional).** If you create an account, sign-in is handled by Supabase Auth using Discord or Google. We receive and store your email address, the provider you used and its account identifier, and the GM name you choose. While you are signed in, your game progress is synced to our database hosted by Supabase: your GM Profile level and cosmetics, achievements, League Hunt, Rebuild and weekly results, daily goals, retired Career Mode players, league-code results and your League Hunt PvP squad and matches. GM leagues and careers still in progress are not uploaded. Your GM name, title, level, public statistics, retired created players, leaderboard results, PvP rating and the GMs you follow are shown publicly on leaderboards and your profile page. Reports you file about a name are seen only by us. Your data is kept while your account exists. You can delete your account at any time in Community → Your account; this permanently deletes your account, profile, cloud progress and every leaderboard entry (progress stored on your device is not affected). See [Supabase's privacy policy](https://supabase.com/privacy)."
         },
         {
           "type": "p",

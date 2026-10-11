@@ -10,7 +10,7 @@ const founding = AVATAR_FRAMES.find(f => f.id === 'founding')!;
 
 describe('Founding GM', () => {
   it('opens the title and the frame once this browser has signed in, and keeps them', () => {
-    expect(AVATAR_FRAMES.at(-1)?.id).toBe('founding'); // the list is append-only (look codes)
+    expect(AVATAR_FRAMES.findIndex(f => f.id === 'founding')).toBe(13); // the list is append-only (look codes)
     expect(hasFoundingAccount()).toBe(false);
     expect(earnedExtraTitles(unlockContext(1))).not.toContain(FOUNDING_TITLE);
     expect(avatarFrameOpen(founding, unlockContext(1))).toBe(false);

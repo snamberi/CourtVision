@@ -981,3 +981,8 @@ ins.adsbygoogle[data-ad-status="unfilled"] { display: none !important; }
 @media (prefers-reduced-motion: reduce) {
   .court-led, .court-spot-0, .court-spot-1, .court-mascot, .court-tshirt, .court-foam { animation: none; }
 }
+.locker-roles { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px; }
+.locker-role { display: grid; gap: 1px; padding: 6px 8px; border: 1px solid var(--c-border-2a3546, #2a3546); background: var(--c-bg-121926, #121926); }
+.locker-role small { font-size: .65rem; letter-spacing: .06em; text-transform: uppercase; color: var(--c-fg-94a0b2, #94a0b2); }
+.locker-role em { font-style: normal; font-size: .72rem; color: var(--c-fg-94a0b2, #94a0b2); }
+.locker-role.role-leader b { color: var(--c-fg-55c878, #55c878); } .locker-role.role-badApple b { color: var(--c-fg-e85d5d, #e85d5d); } .locker-role.role-sixthMan b { color: var(--c-fg-4da3ff, #4da3ff); }

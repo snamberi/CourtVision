@@ -13,7 +13,6 @@ import type { Challenge, CreateChoice } from './components/FranchiseCreate';
 import type { GamesId } from './worldGames/mode';
 import { applyCreateSettings, type CreateSettings } from './menu/createSettings';
 import { runWorldGamesIfDue, resolvePending } from './worldGames/league';
-import { WorldGamesPage } from './components/worldGames/WorldGamesPage';
 import { useGameHistory } from './navigation/useGameHistory';
 import { manageCoachRosters, normalizeRosterRules, ROSTER_LIMITS } from './simulation/coachRosters';
 import { currentDraftOrder } from './simulation/gm';
@@ -30,6 +29,8 @@ import './features.css';
 import './theme/themes.css';
 import './theme/looks.css';
 import './theme/cosmetics.css';
+import './theme/glitch.css';
+import './theme/frozen.css';
 import { CoachGuide } from './components/tutorial/CoachGuide';
 import { SeasonRoadMap } from './components/tutorial/SeasonRoadMap';
 import { FirstSeasonChecklist } from './components/tutorial/FirstSeasonChecklist';
@@ -55,11 +56,15 @@ import { followsRealDevelopment } from './simulation/realDevelopmentGate';
 import { applyHistoricalRosters } from './history/realRollover';
 import { enforceSticky } from './simulation/sticky';
 import { collectPress } from './simulation/press';
-import { pendingDecisions } from './simulation/medical';
+import { pendingDecisions, chooseTreatment } from './simulation/medical';
+import { InjuryDecisionDialog } from './components/InjuryDecisionDialog';
+import { QuickJump, ShortcutHelp } from './components/QuickJump';
+import { typingIn, type JumpItem } from './navigation/quickJump';
+import { GROUPS } from './navigation/menu';
 import { crowdFill, arenaLevels } from './simulation/business';
 import { useBackgroundJobs } from './workers/useBackgroundJobs';
 import { ToastStack, type ToastData } from './components/ToastStack';
-import { PrivacyPolicyPage, PrivacyLink } from './components/PrivacyPolicyPage';
+import { PrivacyLink } from './components/PrivacyLink';
 import { ConsentBanner, CookieSettingsLink } from './consent/ConsentBanner';
 import { AD_CONFIG } from './ads/adConfig';
 import { loadGoogleConsentTool } from './ads/adsense';
@@ -124,6 +129,7 @@ import { rewardRun, FRANCHISE_TITLE_SPINS } from './relics/rewards';
 import { teamGamesPlayed as chatTeamGames } from './social/gmPosts';
 import { readChatSeen, markChatSeen } from './social/prefs';
 import { startDynasty } from './simulation/dynasty';
+import { startDecade } from './simulation/decadeChallenge';
 import { collectLockerEvents } from './simulation/lockerRoom';
 import { claimQuests, questsXp } from './tutorial/quests';
 import { startGmCareer, joinTeam, aiUserTeam, ROLE_LOCKED, gmRole, takeGmOffer } from './simulation/gmCareer';
@@ -150,6 +156,8 @@ import {
 // Pages load on demand (code-split): the first paint only needs the shell, sidebar and Play button.
 import { needsRetireeData } from './history/retirees';
 import { pendingOffers } from './simulation/staffPoaching';
+const PrivacyPolicyPage = lazy(() => import('./components/PrivacyPolicyPage').then(m => ({ default: m.PrivacyPolicyPage })));
+const WorldGamesPage = lazy(() => import('./components/worldGames/WorldGamesPage').then(m => ({ default: m.WorldGamesPage })));
 const StaffPage = lazy(() => import('./components/StaffPage').then(m => ({ default: m.StaffPage })));
 const TeamProfilePage = lazy(() => import('./components/TeamProfilePage').then(m => ({ default: m.TeamProfilePage })));
 const SandboxPage = lazy(() => import('./components/SandboxPage').then(m => ({ default: m.SandboxPage })));
@@ -164,6 +172,8 @@ const Arcade = lazy(() => import('./components/arcade/Arcade').then(m => ({ defa
 const WorldGamesMode = lazy(() => import('./components/worldGames/WorldGamesMode').then(m => ({ default: m.WorldGamesMode })));
 const FranchiseCreate = lazy(() => import('./components/FranchiseCreate').then(m => ({ default: m.FranchiseCreate })));
 const Survival = lazy(() => import('./components/survival/Survival').then(m => ({ default: m.Survival })));
+const RoadPage = lazy(() => import('./components/roads/RoadPage').then(m => ({ default: m.RoadPage })));
+const SeasonPassPage = lazy(() => import('./components/roads/SeasonPassPage').then(m => ({ default: m.SeasonPassPage })));
 const RelicVault = lazy(() => import('./components/relics/RelicVault').then(m => ({ default: m.RelicVault })));
 const StoryMode = lazy(() => import('./components/story/StoryMode').then(m => ({ default: m.StoryMode })));
 const PerfectChallenge = lazy(() => import('./components/perfect/PerfectChallenge').then(m => ({ default: m.PerfectChallenge })));
@@ -273,7 +283,7 @@ function buildInitialExtras(league: League): GMLeagueExtras {
   };
 }
 
-type Screen = 'menu' | 'chooseTeam' | 'app' | 'hunt' | 'perfect' | 'survival' | 'story' | 'relics' | 'career' | 'locker' | 'profile' | 'community' | 'draft' | 'settings' | 'arcade' | 'create' | 'worldGamesMode' | 'friends' | 'clubs' | 'online';
+type Screen = 'menu' | 'chooseTeam' | 'app' | 'hunt' | 'perfect' | 'survival' | 'story' | 'relics' | 'shop' | 'levelRoad' | 'trophyRoad' | 'seasonPass' | 'career' | 'locker' | 'profile' | 'community' | 'draft' | 'settings' | 'arcade' | 'create' | 'worldGamesMode' | 'friends' | 'clubs' | 'online';
 const ARCADE_HASH: Record<ArcadeTab, string> = { grid: '#/grid', guess: '#/guess', hilo: '#/higher-lower', bracket: '#/bracket', quiz: '#/quiz', legends: '#/legends', street: '#/street' };
 const arcadeTabOf = (hash: string) => (Object.entries(ARCADE_HASH).find(([, h]) => h === hash)?.[0] as ArcadeTab | undefined);
 
@@ -282,7 +292,7 @@ const debouncedSave = createDebouncedSave();
 function App() {
   const [screen, setScreen] = useState<Screen>('menu');
   // The profile tab the menu phone asked for (Achievements, Season Pass); Profile opens on its first tab.
-  const [profileTab, setProfileTab] = useState<'profile' | 'achievements' | 'season'>('profile');
+  const [profileTab, setProfileTab] = useState<'profile' | 'achievements'>('profile');
   const [saveSummaries, setSaveSummaries] = useState<SaveSummary[]>([]);
   const [activeSaveId, setActiveSaveId] = useState<string | null>(null);
   const [pendingLeagueName, setPendingLeagueName] = useState('My League');
@@ -296,6 +306,8 @@ function App() {
   // Turning Sandbox on marks the league for good: its GM record and achievements stop counting.
   const setSandboxMode = (enabled: boolean) => setLeague(l => markSandboxUse({ ...l, settings: { ...l.settings, sandboxMode: enabled } }));
   const [confirmation, setConfirmation] = useState<'sandbox' | 'exit' | null>(null);
+  /** League keyboard shortcuts (Ctrl+K, ?, N, D, R...): set each render so it sees the current league. */
+  const shortcutRef = useRef<((e: KeyboardEvent) => void) | null>(null);
   const [viewedTeamId, setViewedTeamId] = useState<string>('');
   const managerId = sandboxMode ? null : controlledTeamId ?? '__spectator__';
   const [seed, setSeed] = useState(1234);
@@ -366,7 +378,7 @@ function App() {
   const [worldGamesRun, setWorldGamesRun] = useState<{ games: GamesId; country: string } | null>(null);
   const [boxscoreSource, setBoxscoreSource] = useState<'league' | 'exhibition'>('league');
 
-  const currentRoute = screen === 'menu' ? '#/menu' : screen === 'chooseTeam' ? '#/choose-team' : screen === 'hunt' ? '#/hunt' : screen === 'perfect' ? '#/82-0' : screen === 'survival' ? '#/survival' : screen === 'story' ? '#/story' : screen === 'relics' ? '#/relics' : screen === 'career' ? '#/career' : screen === 'locker' ? '#/locker' : screen === 'profile' ? '#/profile' : screen === 'settings' ? '#/settings' : screen === 'create' ? '#/new-league' : screen === 'worldGamesMode' ? '#/world-games' : screen === 'friends' ? '#/friends' : screen === 'clubs' ? '#/clubs' : screen === 'online' ? '#/online' : screen === 'draft' ? '#/draft' : screen === 'arcade' ? ARCADE_HASH[arcadeTab] : screen === 'community' ? (communityUser ? `#/u/${encodeURIComponent(communityUser)}` : '#/community')
+  const currentRoute = screen === 'menu' ? '#/menu' : screen === 'chooseTeam' ? '#/choose-team' : screen === 'hunt' ? '#/hunt' : screen === 'perfect' ? '#/82-0' : screen === 'survival' ? '#/survival' : screen === 'story' ? '#/story' : screen === 'relics' ? '#/relics' : screen === 'shop' ? '#/shop' : screen === 'levelRoad' ? '#/level-road' : screen === 'trophyRoad' ? '#/trophy-road' : screen === 'seasonPass' ? '#/season-pass' : screen === 'career' ? '#/career' : screen === 'locker' ? '#/locker' : screen === 'profile' ? '#/profile' : screen === 'settings' ? '#/settings' : screen === 'create' ? '#/new-league' : screen === 'worldGamesMode' ? '#/world-games' : screen === 'friends' ? '#/friends' : screen === 'clubs' ? '#/clubs' : screen === 'online' ? '#/online' : screen === 'draft' ? '#/draft' : screen === 'arcade' ? ARCADE_HASH[arcadeTab] : screen === 'community' ? (communityUser ? `#/u/${encodeURIComponent(communityUser)}` : '#/community')
     : activeSaveId ? routeHash({ saveId: activeSaveId, tab, player: selectedPlayerId,
       team: viewedTeamId, game: viewedGameId ?? undefined, source: boxscoreSource, sub: leagueSettingsSub }) : null;
   const { restoring, showPrivacy, closePrivacy } = useGameHistory(currentRoute, async (hash, isCurrent) => {
@@ -382,7 +394,7 @@ function App() {
       setCommunityUser(profileMatch ? decodeURIComponent(profileMatch[1]) : null);
       const arcade = arcadeTabOf(hash);
       if (arcade) setArcadeTab(arcade);
-      setScreen(arcade ? 'arcade' : hash === '#/choose-team' && pendingLeague ? 'chooseTeam' : hash === '#/hunt' ? 'hunt' : hash === '#/82-0' ? 'perfect' : hash === '#/survival' ? 'survival' : hash === '#/story' ? 'story' : hash === '#/relics' ? 'relics' : hash === '#/career' ? 'career' : hash === '#/locker' ? 'locker' : hash === '#/profile' ? 'profile' : hash === '#/settings' ? 'settings' : hash === '#/new-league' ? 'create' : hash === '#/world-games' && worldGamesRun ? 'worldGamesMode' : hash === '#/friends' ? 'friends' : hash === '#/clubs' ? 'clubs' : hash === '#/online' ? 'online' : hash === '#/community' || profileMatch ? 'community' : hash === '#/draft' ? 'draft' : 'menu');
+      setScreen(arcade ? 'arcade' : hash === '#/choose-team' && pendingLeague ? 'chooseTeam' : hash === '#/hunt' ? 'hunt' : hash === '#/82-0' ? 'perfect' : hash === '#/survival' ? 'survival' : hash === '#/story' ? 'story' : hash === '#/relics' ? 'relics' : hash === '#/shop' ? 'shop' : hash === '#/level-road' ? 'levelRoad' : hash === '#/trophy-road' ? 'trophyRoad' : hash === '#/season-pass' ? 'seasonPass' : hash === '#/career' ? 'career' : hash === '#/locker' ? 'locker' : hash === '#/profile' ? 'profile' : hash === '#/settings' ? 'settings' : hash === '#/new-league' ? 'create' : hash === '#/world-games' && worldGamesRun ? 'worldGamesMode' : hash === '#/friends' ? 'friends' : hash === '#/clubs' ? 'clubs' : hash === '#/online' ? 'online' : hash === '#/community' || profileMatch ? 'community' : hash === '#/draft' ? 'draft' : 'menu');
       refreshSaves();
       return;
     }
@@ -469,11 +481,11 @@ function App() {
 
   const [menuBusy, setMenuBusy] = useState<string | null>(null);
   /** Builds a league from its origin (a new game, the weekly challenge, or a league code) and opens it. */
-  const startFromOrigin = (origin: LeagueOrigin, o: { name: string; teamId?: string | null; weekly?: WeeklyRebuild | null; settings?: CreateSettings; dynasty?: boolean; gmCareer?: boolean }) => {
+  const startFromOrigin = (origin: LeagueOrigin, o: { name: string; teamId?: string | null; weekly?: WeeklyRebuild | null; settings?: CreateSettings; dynasty?: boolean; decade?: boolean; gmCareer?: boolean }) => {
     const openWithTeam = (built: League, builtExtras: GMLeagueExtras) => {
       // League settings picked on the New Franchise page; Dynasty Mode switches on the living world.
       const set = o.settings ? applyCreateSettings(built, builtExtras, o.settings, origin.kind === 'random') : { league: built, extras: builtExtras };
-      const extras = set.extras, dyn = o.dynasty ? startDynasty(set.league) : set.league, league = o.gmCareer ? startGmCareer(dyn) : dyn;
+      const extras = set.extras, dyn0 = o.dynasty ? startDynasty(set.league) : set.league, dyn = o.decade ? startDecade(dyn0) : dyn0, league = o.gmCareer ? startGmCareer(dyn) : dyn;
       if (o.teamId && league.teams.some(t => t.teamId === o.teamId)) { enterApp(league, extras, o.teamId, o.name); setTab('dashboard'); return; }
       setPendingLeague(league);
       setPendingExtras(extras);
@@ -567,8 +579,8 @@ function App() {
     }
     const seed = Math.floor(Math.random() * 1_000_000);
     track('mode_start', { mode: c.source === 'random' ? 'random' : 'real', variant: c.source });
-    if (c.source === 'random') startFromOrigin({ kind: 'random', year: parseInt(c.year, 10), seed, difficulty: c.difficulty, balanced: true }, { name: c.name, settings: c.settings, dynasty: c.dynasty, gmCareer: c.gmCareer });
-    else if (c.source === 'history') startFromOrigin({ kind: 'history', year: parseInt(c.year, 10), seed, difficulty: c.difficulty, ...c.real }, { name: c.name, settings: c.settings, dynasty: c.dynasty, gmCareer: c.gmCareer });
+    if (c.source === 'random') startFromOrigin({ kind: 'random', year: parseInt(c.year, 10), seed, difficulty: c.difficulty, balanced: true }, { name: c.name, settings: c.settings, dynasty: c.dynasty, decade: c.decade, gmCareer: c.gmCareer });
+    else if (c.source === 'history') startFromOrigin({ kind: 'history', year: parseInt(c.year, 10), seed, difficulty: c.difficulty, ...c.real }, { name: c.name, settings: c.settings, dynasty: c.dynasty, decade: c.decade, gmCareer: c.gmCareer });
     else startGameMode('real', c.difficulty, c.year, c.name, { source: 'csv', realDevelopment: true });
   };
 
@@ -681,7 +693,9 @@ function App() {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
         e.preventDefault();
         handleExport();
+        return;
       }
+      shortcutRef.current?.(e);
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
@@ -822,8 +836,11 @@ function App() {
   // The doctors want a decision when one of your players gets hurt.
   const injuryDecisions = pendingDecisions(league, controlledTeamId).length;
   const lastDecisions = useRef(injuryDecisions);
+  // New injuries ask straight away (a pop-up with the doctors' options); "Decide later" leaves them in the Medical Room.
+  const [injuryLater, setInjuryLater] = useState(false);
+  const [overlay, setOverlay] = useState<'jump' | 'keys' | null>(null);
   useEffect(() => {
-    if (injuryDecisions > lastDecisions.current) pushToast(`Injury: the doctors need your call in the Medical Room (${injuryDecisions} waiting).`, 'error');
+    if (injuryDecisions > lastDecisions.current) { if (handsOff) pushToast(`Injury: the doctors need your call in the Medical Room (${injuryDecisions} waiting).`, 'error'); else setInjuryLater(false); }
     lastDecisions.current = injuryDecisions;
   }, [injuryDecisions]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1430,6 +1447,35 @@ function App() {
   const locked = lockedFeatures(unlockCtx);
   const lockedTabSet = new Set([...locked.flatMap((s) => s.feature.tabs), ...(league.gmCareer ? ROLE_LOCKED[gmRole(league)] : [])]);
   const freshTabs = newFeatureTabs(unlockCtx);
+  // Every page you can open right now, for the Ctrl+K quick jump (same rules as the sidebar, locked pages left out).
+  const jumpItems: JumpItem[] = [
+    ...GROUPS.flatMap(g => g.items.filter(i => !(i.requiresControlledTeam && !controlledTeam) && !(i.onlyDuringPhase && i.onlyDuringPhase !== seasonPhase)
+      && !(i.requiresHistorical && !league.historical) && !lockedTabSet.has(i.tab)).map(i => ({ label: i.label, tab: i.tab, group: g.title, sub: i.leagueSettingsSub }))),
+    { label: 'Main Menu', tab: 'mainMenu', group: 'Leave' },
+  ];
+  const jumpTo = (item: JumpItem) => {
+    if (item.tab === 'mainMenu') { setConfirmation('exit'); return; }
+    if (item.sub) setLeagueSettingsSub(item.sub);
+    navigateFromMenu(item.tab);
+  };
+  shortcutRef.current = (e: KeyboardEvent) => {
+    if (screen !== 'app' || league.teams.length === 0 || confirmation) return;
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'k') { e.preventDefault(); setOverlay(o => o === 'jump' ? null : 'jump'); return; }
+    if (e.ctrlKey || e.metaKey || e.altKey || overlay || typingIn(e.target) || document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+    const key = e.key.toLowerCase();
+    if (e.key === '?') { e.preventDefault(); setOverlay('keys'); return; }
+    if (e.key === '/') { e.preventDefault(); setOverlay('jump'); return; }
+    const pages: Record<string, string> = { d: 'dashboard', r: 'roster', t: 'trade', s: 'standings', f: 'freeAgency', p: 'playerStats' };
+    if (pages[key]) { if (!lockedTabSet.has(pages[key])) { e.preventDefault(); navigateFromMenu(pages[key]); } return; }
+    if (key === 'n') {
+      e.preventDefault();
+      if (seasonPhase !== 'regular_season' || leagueUnplayedCount === 0) pushToast('No regular-season games to sim right now. Use the Play button.', 'info');
+      else if (jobs.busy) pushToast('A simulation is already running.', 'info');
+      else if (rosterIssues.length > 0) pushToast('Some rosters are out of compliance. Open the Play button to see which.', 'error');
+      else if (isDeadlineDayOpen(league)) { setTab('deadline'); pushToast('Trade Deadline Day is open: finish it first.', 'info'); }
+      else simulateGamesCount(1);
+    }
+  };
   const unlockNotice: Feature | undefined = pendingUnlockNotices(unlockCtx)[0];
   const lessons = tutorial && controlledTeamId ? lessonStatuses(unlockCtx) : [];
   // Tutorial quests: a finished lesson pays its XP once (any league, this device and your account).
@@ -1501,7 +1547,7 @@ function App() {
   }, []);
 
   if (restoring) return <main role="status" className="navigation-loading">Opening your league…</main>;
-  if (showPrivacy) return <PrivacyPolicyPage onClose={closePrivacy} />;
+  if (showPrivacy) return <Suspense fallback={<p className="empty-state page-loading" role="status">Loading…</p>}><PrivacyPolicyPage onClose={closePrivacy} /></Suspense>;
 
   if (screen === 'draft') {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening the draft room…</main>}><AllTimeDraft onExit={() => setScreen('menu')} onStart={(l, e, teamId, name) => { enterApp(l, e, teamId, name); setTab('dashboard'); }} /></Suspense></>;
@@ -1541,8 +1587,14 @@ function App() {
   if (screen === 'survival') {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Survival…</main>}><Survival onExit={() => setScreen('menu')} /></Suspense></>;
   }
-  if (screen === 'relics') {
-    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening the Relic Vault…</main>}><RelicVault onExit={() => setScreen('menu')} /></Suspense></>;
+  if (screen === 'relics' || screen === 'shop') {
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening the Relic {screen === 'shop' ? 'Shop' : 'Vault'}…</main>}><RelicVault key={screen} view={screen === 'shop' ? 'shop' : 'vault'} onSwitch={() => setScreen(screen === 'shop' ? 'relics' : 'shop')} onExit={() => setScreen('menu')} /></Suspense></>;
+  }
+  if (screen === 'levelRoad' || screen === 'trophyRoad') {
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening the road…</main>}><RoadPage key={screen} road={screen === 'levelRoad' ? 'level' : 'trophy'} onSwitch={() => setScreen(screen === 'levelRoad' ? 'trophyRoad' : 'levelRoad')} onExit={() => setScreen('menu')} /></Suspense></>;
+  }
+  if (screen === 'seasonPass') {
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening the Season Pass…</main>}><SeasonPassPage onExit={() => setScreen('menu')} onRelics={() => setScreen('relics')} /></Suspense></>;
   }
   if (screen === 'story') {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Story Mode…</main>}><StoryMode onExit={() => setScreen('menu')} /></Suspense></>;
@@ -1562,6 +1614,8 @@ function App() {
           onStart={startGameMode}
           onLocker={() => setScreen('locker')}
           onRelics={() => setScreen('relics')}
+          onShop={() => setScreen('shop')}
+          onRoad={r => setScreen(r === 'level' ? 'levelRoad' : r === 'trophy' ? 'trophyRoad' : 'seasonPass')}
           onProfileTab={t => { setProfileTab(t); setScreen('profile'); }}
           onProfile={() => { setProfileTab('profile'); setScreen('profile'); }}
           onCommunity={t => { setCommunityUser(null); setCommunityTab(t ?? 'boards'); setScreen('community'); }}
@@ -1605,6 +1659,10 @@ function App() {
   return (
     <TeamLinksProvider teams={league.teams} saveId={activeSaveId}><TeamIdentityProvider teams={league.teams} freeAgents={extras.freeAgents}><div className="app-shell">
       <DownloadButton />
+      {screen === 'app' && !handsOff && !injuryLater && injuryDecisions > 0 && <InjuryDecisionDialog league={league} teamId={controlledTeamId}
+        onChoose={(id, t) => { setLeague(l => chooseTreatment(l, id, t)); pushToast(`Treatment set for ${id}.`, 'success'); }} onLater={() => setInjuryLater(true)} />}
+      {overlay === 'jump' && <QuickJump items={jumpItems} onPick={jumpTo} onClose={() => setOverlay(null)} />}
+      {overlay === 'keys' && <ShortcutHelp onClose={() => setOverlay(null)} />}
       <header className="topbar">
         <button className="sidebar-toggle" onClick={() => setSidebarCollapsed((v) => !v)} aria-label="Toggle navigation" aria-expanded={!sidebarCollapsed} aria-controls="game-navigation" title="Toggle navigation">
           <PixelIcon name="menu" />
@@ -1613,6 +1671,9 @@ function App() {
           <img src={logoIcon} alt="" className="brand-logo" />
           <span className="brand-word">COURT VISION</span>
         </div>
+        {league.teams.length > 0 && <button className="topbar-jump" onClick={() => setOverlay('jump')} title="Go to any page (Ctrl+K)" aria-keyshortcuts="Control+K">
+          <PixelIcon name="search" size={14} /><span>Go to…</span><kbd>Ctrl K</kbd>
+        </button>}
         {controlledTeam && topbarRecord ? (
           <div className="topbar-team">
             <TeamLogo team={controlledTeam} size={32} />

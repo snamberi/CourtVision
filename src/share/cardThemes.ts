@@ -235,6 +235,38 @@ export const CARD_THEMES: Record<FrameId, CardTheme> = {
     },
     border: (ctx, x0, y0, w, h) => { box(ctx, x0, y0, w, h, '#3b1d82', 6); box(ctx, x0, y0, w, h, '#b983ff', 2, 10); },
   },
+  glitch: { ...base, panel: 'rgba(6,6,14,.62)', box: 'rgba(3,3,8,.86)', line: '#2b2b48', accent: '#00f0ff', accent2: '#ff2bd6',
+    background: (ctx, W, H) => {
+      vgrad(ctx, W, H, [[0, '#0a0a16'], [1, '#030308']]);
+      // Scanlines, then torn bands shifted sideways in cyan and magenta, then dead pixels.
+      ctx.fillStyle = 'rgba(255,255,255,.035)'; for (let y = 0; y < H; y += 6) ctx.fillRect(0, y, W, 2);
+      for (let i = 0; i < 14; i++) {
+        const y = Math.floor(rnd(70 + i) * H), h = 6 + Math.floor(rnd(90 + i) * 26), dx = (rnd(110 + i) - 0.5) * 60;
+        ctx.fillStyle = i % 2 ? 'rgba(0,240,255,.16)' : 'rgba(255,43,214,.15)'; ctx.fillRect(dx, y, W, h);
+        ctx.fillStyle = 'rgba(255,255,255,.06)'; ctx.fillRect(dx + W * rnd(130 + i), y, 40 + rnd(150 + i) * 160, 3);
+      }
+      for (let i = 0; i < 90; i++) { ctx.fillStyle = ['#00f0ff', '#ff2bd6', '#ffffff', '#7dff5a'][i % 4]; const s2 = rnd(200 + i) > 0.8 ? 6 : 3; ctx.fillRect(Math.floor(rnd(300 + i) * W / 3) * 3, Math.floor(rnd(400 + i) * H / 3) * 3, s2, s2); }
+    },
+    border: (ctx, x0, y0, w, h) => {
+      box(ctx, x0 - 3, y0, w, h, '#00f0ff', 4); box(ctx, x0 + 3, y0, w, h, '#ff2bd6', 4); box(ctx, x0, y0, w, h, '#ffffff', 2, 6);
+      for (let i = 0; i < 6; i++) { const yy = y0 + rnd(500 + i) * h; ctx.fillStyle = i % 2 ? '#00f0ff' : '#ff2bd6'; ctx.fillRect(x0 - 12 + rnd(600 + i) * 20, yy, 30 + rnd(700 + i) * 50, 4); }
+    },
+  },
+  frozen: { ...base, panel: 'rgba(14,34,54,.55)', box: 'rgba(8,22,38,.82)', line: '#5a8fb8', accent: '#dff4ff', accent2: '#6db8ff',
+    background: (ctx, W, H) => {
+      vgrad(ctx, W, H, [[0, '#1d4a72'], [0.6, '#0f2a44'], [1, '#081826']]);
+      // A snowbank along the bottom, icicles along the top, and falling snow.
+      ctx.fillStyle = 'rgba(232,247,255,.9)';
+      for (let x = 0; x < W; x += 18) { const len = 18 + rnd(x + 3) * 70; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + 12, 0); ctx.lineTo(x + 6, len); ctx.closePath(); ctx.fill(); }
+      ctx.fillStyle = 'rgba(240,250,255,.85)';
+      ctx.beginPath(); ctx.moveTo(0, H); for (let x = 0; x <= W; x += 40) ctx.lineTo(x, H - 40 - rnd(x + 9) * 30); ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+      for (let i = 0; i < 120; i++) { ctx.fillStyle = `rgba(255,255,255,${0.35 + rnd(800 + i) * 0.6})`; const s2 = rnd(900 + i) > 0.85 ? 6 : 3; ctx.fillRect(Math.floor(rnd(1000 + i) * W / 3) * 3, Math.floor(rnd(1100 + i) * H / 3) * 3, s2, s2); }
+    },
+    border: (ctx, x0, y0, w, h) => {
+      box(ctx, x0, y0, w, h, '#dff4ff', 5); box(ctx, x0, y0, w, h, '#6db8ff', 2, 8);
+      ctx.fillStyle = '#ffffff'; for (let x = x0 + 10; x < x0 + w - 10; x += 22) { ctx.beginPath(); ctx.moveTo(x, y0 + h); ctx.lineTo(x + 8, y0 + h); ctx.lineTo(x + 4, y0 + h + 14 + rnd(x) * 12); ctx.closePath(); ctx.fill(); }
+    },
+  },
   rainbow: { ...base, accent: '#ffd166', accent2: '#ff7ad9',
     background: (ctx, W, H) => {
       vgrad(ctx, W, H, [[0, '#101624'], [1, '#080c14']]);

@@ -16,24 +16,22 @@ import { FavoritesPanel } from '../FavoritesPanel';
 import { AvatarEditor } from '../AvatarEditor';
 import { ProfilePanel } from '../ProfilePanel';
 import { TrophyCase } from '../TrophyCase';
+import { RelicShelf } from '../relics/RelicShelf';
 import { cloudEnabled } from '../../cloud/account';
 import { noteCareers } from '../../profile/profile';
 import { modeStats, MODE_ACHIEVEMENTS, isEarned } from '../../profile/modeAchievements';
 import { FEATS_EVENT } from '../../profile/feats';
 import { DAILY_EVENT } from '../../profile/dailyGoals';
 import { ModeAchievements } from './ModeAchievements';
-import { LevelRoad } from './LevelRoad';
-import { TrophyRoad } from './TrophyRoad';
-import { SeasonPass } from './SeasonPass';
 import { PassesPanel } from './PassesPanel';
 import { passesOnSale } from '../../billing/billing';
 import '../hunt/hunt.css';
 import '../career/career.css';
 import './locker.css';
 
-export type ProfileTab = 'profile' | 'character' | 'season' | 'road' | 'trophyroad' | 'trophies' | 'achievements' | 'passes';
+export type ProfileTab = 'profile' | 'character' | 'trophies' | 'achievements' | 'passes';
 const TABS: { id: ProfileTab; label: string }[] = ([
-  { id: 'profile', label: 'Profile' }, { id: 'character', label: 'Your character' }, { id: 'season', label: 'Season pass' }, { id: 'road', label: 'Level road' }, { id: 'trophyroad', label: 'Trophy road' }, { id: 'trophies', label: 'Trophy room' },
+  { id: 'profile', label: 'Profile' }, { id: 'character', label: 'Your character' }, { id: 'trophies', label: 'Trophy room' },
   { id: 'achievements', label: 'Achievements' }, { id: 'passes', label: 'Passes' },
 // The Passes tab appears only once checkout links are configured (docs/BILLING_SETUP.md).
 ] satisfies { id: ProfileTab; label: string }[]).filter(t => t.id !== 'passes' || passesOnSale());
@@ -82,11 +80,8 @@ export function ProfileHub({ onExit, initialTab = 'profile' }: { onExit: () => v
     </header>
     <div className="profile-tabs code-mode-actions" role="tablist" aria-label="Profile sections">{TABS.map(t => <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>{t.label}</button>)}</div>
 
-    {tab === 'profile' && <ProfilePanel extras={<><div className="profile-extras"><LegacyPanel legacy={legacy} compact /><FavoritesPanel /></div><TrophyCase /></>} />}
+    {tab === 'profile' && <ProfilePanel extras={<><div className="profile-extras"><LegacyPanel legacy={legacy} compact /><FavoritesPanel /></div><TrophyCase /><RelicShelf /></>} />}
     {tab === 'character' && <AvatarEditor />}
-    {tab === 'season' && <SeasonPass />}
-    {tab === 'road' && <LevelRoad />}
-    {tab === 'trophyroad' && <TrophyRoad />}
     {tab === 'passes' && <PassesPanel />}
     {tab === 'achievements' && <ModeAchievements stats={modes} rarity={rarity} />}
 

@@ -1,0 +1,26 @@
+/* The Season Pass strip on the main menu. */
+.menu-season { width: 100%; box-sizing: border-box; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 12px; background: var(--c-bg-12141f, #12141f); border: 2px solid var(--c-border-00f0ff, #00f0ff); box-shadow: -3px 0 0 var(--c-shadow-ff2bd6, #ff2bd6); }
+.menu-season.season-frozen { background: var(--c-bg-0d2438, #0d2438); border-color: var(--c-border-bfe6ff, #bfe6ff); box-shadow: 0 0 0 1px var(--c-shadow-6db8ff, #6db8ff); }
+.menu-season-tier { display: grid; place-items: center; min-width: 54px; padding: 4px 6px; background: var(--c-bg-0b1018, #0b1018); border: 2px solid var(--c-border-ffd166, #ffd166); }
+.menu-season-tier small { font: 7px var(--ff-pixel, 'Press Start 2P', monospace); color: var(--c-fg-94a0b2, #94a0b2); }
+.menu-season-tier b { font: 16px var(--ff-pixel, 'Press Start 2P', monospace); color: var(--c-fg-ffd166, #ffd166); }
+.menu-season-text { display: grid; gap: 4px; flex: 1; min-width: 180px; }
+.menu-season-text small { color: var(--c-fg-94a0b2, #94a0b2); }
+.menu-season-bar { display: block; height: 8px; background: var(--c-bg-3a1530, #3a1530); }
+.menu-season-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--c-bg-00b8d4, #00b8d4), var(--c-bg-5ff7ff, #5ff7ff)); }
+.menu-season.season-frozen .menu-season-bar { background: var(--c-bg-16334d, #16334d); }
+.menu-season.season-frozen .menu-season-bar i { background: linear-gradient(90deg, var(--c-bg-6db8ff, #6db8ff), var(--c-bg-ffffff, #ffffff)); }
+
+/* The Daily Challenge card on the main menu. */
+.daily-challenge { display: grid; gap: 4px; padding: 10px 12px; border: 2px solid var(--c-border-f47b20, #f47b20); background: var(--c-bg-121926, #121926); }
+.daily-challenge.done { border-color: var(--c-border-55c878, #55c878); }
+.daily-challenge small { color: var(--c-fg-94a0b2, #94a0b2); }
+.daily-challenge-meta { font-size: .8rem; color: var(--c-fg-ffd166, #ffd166); }
+.daily-challenge button { justify-self: start; }
+
+/* Quick links: the places people look for most, one row under the hero. */
+.menu-quick { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 4px; }
+.menu-quick button { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 6px 10px; font-size: 13px; background: var(--c-bg-121926, #121926); border: 1px solid var(--c-border-2a3546, #2a3546); color: var(--c-fg-f4f0e6, #f4f0e6); box-shadow: 2px 2px 0 var(--c-shadow-000000, #000); cursor: pointer; }
+.menu-quick button:hover, .menu-quick button:focus-visible { border-color: var(--c-border-f47b20, #f47b20); }
+@media (max-width: 720px) { .menu-quick { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; } .menu-quick button { flex: none; } }
+#menu-modes, #menu-daily, #menu-saves { scroll-margin-top: 12px; }

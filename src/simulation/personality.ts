@@ -66,17 +66,34 @@ export function lockerRoom(team: LeagueTeam): { links: LockerLink[]; chemistryDe
   return { links, chemistryDelta: clamp(delta, -6, 6) };
 }
 
+/**
+ * Roles on a roster: the locker-room leader (the oldest, most respected voice, who lifts everyone), the sixth man (the
+ * best player off the bench, proud of it when he gets real minutes) and the bad apple (a high-ego hothead who drags the
+ * room down). Each team has at most one of each.
+ */
+export interface TeamRoles { leader: string | null; sixthMan: string | null; badApple: string | null }
+export function teamRoles(team: LeagueTeam): TeamRoles {
+  const players = team.seasons.map(p => ({ p, per: personalityOf(p), ovr: calculateOverall(p) }));
+  const leader = players.filter(x => x.per.leadership >= 70 && x.p.age >= 27).sort((a, b) => b.per.leadership - a.per.leadership || b.ovr - a.ovr)[0]?.p.playerId ?? null;
+  const badApple = players.filter(x => x.p.playerId !== leader && x.per.temper >= 68 && x.per.ego >= 68).sort((a, b) => (b.per.temper + b.per.ego) - (a.per.temper + a.per.ego))[0]?.p.playerId ?? null;
+  const byMinutes = [...players].sort((a, b) => (b.p.minutes?.target ?? 0) - (a.p.minutes?.target ?? 0));
+  const sixth = byMinutes[5];
+  const sixthMan = sixth && (sixth.p.minutes?.target ?? 0) >= 18 ? sixth.p.playerId : null;
+  return { leader, sixthMan, badApple };
+}
+export const ROLE_LABEL = { leader: 'Locker-room leader', sixthMan: 'Sixth man', badApple: 'Bad apple' } as const;
+
 export interface MoraleFactor { label: string; delta: number }
 export interface MoraleView { score: number; label: string; factors: MoraleFactor[]; personality: Personality }
 export const moraleLabel = (score: number) => score >= 80 ? 'Thrilled' : score >= 65 ? 'Happy' : score >= 45 ? 'Content' : score >= 30 ? 'Frustrated' : 'Unhappy';
 const EXPECTED_MPG = [34, 33, 31, 29, 27, 22, 19, 16, 12, 9];
 
-interface TeamContext { winPct: number | null; rank: Map<string, number>; links: LockerLink[] }
+interface TeamContext { winPct: number | null; rank: Map<string, number>; links: LockerLink[]; roles: TeamRoles }
 function teamContext(league: League, team: LeagueTeam, standings = computeStandings(league)): TeamContext {
   const row = standings.find(r => r.teamId === team.teamId);
   const games = row ? row.wins + row.losses : 0;
   const rank = new Map([...team.seasons].sort((a, b) => calculateOverall(b) - calculateOverall(a)).map((p, i) => [p.playerId, i]));
-  return { winPct: games >= 8 ? row!.winPct : null, rank, links: lockerRoom(team).links };
+  return { winPct: games >= 8 ? row!.winPct : null, rank, links: lockerRoom(team).links, roles: teamRoles(team) };
 }
 
 /** Current morale for a rostered player, with the reasons behind it. */
@@ -109,6 +126,12 @@ export function playerMorale(p: PlayerSeason, team: LeagueTeam, league: League, 
     const other = l.a === p.playerId ? l.b : l.a;
     add(`${l.kind === 'clash' ? 'Clashes with' : 'Gets along with'} ${other}`, l.kind === 'clash' ? -6 : 4);
   }
+  // The room's roles: a leader lifts everyone else, a bad apple drags them down, and a sixth man with minutes is proud.
+  const { leader, badApple, sixthMan } = ctx.roles ?? teamRoles(team);
+  if (leader && leader !== p.playerId) add(`Locker-room leader: ${leader}`, 3);
+  if (leader === p.playerId) add('Leads the locker room', 2);
+  if (badApple && badApple !== p.playerId) add(`Bad apple in the room: ${badApple}`, -3);
+  if (sixthMan === p.playerId) add('Proud sixth man', 4);
   const score = Math.round(clamp(57 + factors.reduce((n, f) => n + f.delta, 0)));
   return { score, label: moraleLabel(score), factors: factors.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta)), personality: per };
 }

@@ -19,6 +19,10 @@ const OUTLINE = '#080d19';
 const WHITE = '#fff3df';
 /** Stand-ins for rainbow skin and hair, recoloured row by row at the end. */
 const SKIN_KEY = '#fe01fe', HAIR_KEY = '#01fefe';
+/** Season 1's glitch colours: cyan and magenta channels, a dark screen, white noise. */
+const G_CYAN = '#00f0ff', G_MAGENTA = '#ff2bd6', G_DARK = '#12141f', G_WHITE = '#eefcff';
+/** Season 2's ice colours: deep ice, ice, frost and snow white. */
+const I_DEEP = '#4d86b3', I_ICE = '#9fd8ff', I_FROST = '#dff4ff', I_SNOW = '#ffffff';
 
 type Rect = (x: number, y: number, w: number, h: number, c: string) => void;
 interface Shade { c: string; l: string; d: string }
@@ -219,6 +223,8 @@ function drawShoes(r: Rect, id: string, o: Outfit, skin: Shade) {
   for (const x of [12, 23]) {
     if (id === 'sandals') { r(x - 1, 46, 7, 2, skin.c); r(x - 1, 48, 7, 1, '#8a5a2b'); r(x - 1, 49, 7, 1, '#5a3a1a'); r(x + 1, 46, 1, 2, '#c8102e'); continue; }
     if (id === 'cosmicBoots') { r(x - 1, 41, 7, 8, '#0e1a5a'); r(x - 1, 41, 7, 1, '#ffd166'); r(x, 43, 1, 5, '#4da3ff'); r(x + 4, 42, 2, 7, '#060b2a'); r(x - 1, 49, 7, 1, '#6fd3ff'); r(x, 50, 5, 1, '#9fe7ff'); continue; }
+    if (id === 'iceSkates') { r(x - 1, 44, 7, 5, I_FROST); r(x - 1, 44, 7, 1, I_SNOW); r(x + 4, 45, 2, 4, I_ICE); r(x, 46, 4, 1, I_DEEP); r(x - 2, 49, 9, 1, '#c9d1dc'); r(x - 2, 50, 9, 1, '#8a93a3'); continue; }
+    if (id === 'glitch') { r(x - 1, 46, 7, 3, G_DARK); r(x - 1, 46, 3, 1, G_CYAN); r(x + 3, 47, 3, 1, G_MAGENTA); r(x + 1, 46, 1, 2, G_WHITE); r(x - 1, 49, 7, 1, G_CYAN); r(x + 2, 49, 2, 1, G_MAGENTA); continue; }
     if (id === 'warriorBoots') { r(x - 1, 41, 7, 8, '#f4f6fa'); r(x - 1, 41, 7, 2, '#e8b84a'); r(x + 4, 43, 2, 6, '#c9d1dc'); r(x - 1, 49, 7, 1, '#5b6b82'); continue; }
     if (id === 'boots' || id === 'heroBoots') {
       const c = shade(id === 'boots' ? '#6b4423' : '#e8322e');
@@ -282,11 +288,34 @@ function drawHair(r: Rect, id: string, hair: Shade) {
       h(11, 4, 18, 7); h(9, 7, 4, 10); h(27, 7, 4, 10); h(8, 14, 3, 8); h(29, 14, 3, 8); h(7, 20, 2, 4); h(31, 20, 2, 4);
       for (const [x, top] of [[10, 2], [13, 0], [17, 0], [21, 0], [25, 1], [28, 3]] as const) { h(x, top + 1, 3, 5 - top); h(x + 1, top, 1, 1); }
       r(14, 1, 1, 6, '#ffffff'); r(22, 1, 1, 6, '#9fe7ff'); r(10, 9, 1, 10, hair.l); r(29, 9, 1, 10, hair.d); r(18, 3, 1, 4, '#ffffff'); return;
+    case 'iceSpikes':
+      // Hair frozen into icicles pointing up, with frost on the tips.
+      h(11, 5, 18, 6); h(10, 8, 3, 5); h(27, 8, 3, 5);
+      for (const [x, top] of [[11, 2], [14, 0], [17, 1], [20, 0], [23, 1], [26, 2]] as const) { h(x, top + 1, 2, 5 - top); r(x, top, 1, 1, I_SNOW); }
+      r(13, 6, 12, 1, hair.l); r(15, 2, 1, 4, I_SNOW); r(21, 1, 1, 4, I_SNOW); r(9, 9, 1, 3, I_ICE); r(30, 9, 1, 3, I_ICE); return;
+    case 'glitchSpikes':
+      // Square pixel spikes, torn sideways, with the colour channels split off the edges.
+      h(11, 5, 18, 6); h(10, 8, 3, 5); h(27, 8, 3, 5);
+      for (const [x, top] of [[11, 1], [15, 2], [18, 0], [22, 2], [25, 1]] as const) h(x, top, 3, 6 - top);
+      h(7, 4, 3, 2); h(30, 6, 3, 2); h(13, 10, 4, 2); h(21, 10, 3, 3);
+      r(10, 1, 1, 5, G_CYAN); r(9, 8, 1, 4, G_CYAN); r(28, 1, 1, 5, G_MAGENTA); r(30, 8, 1, 4, G_MAGENTA);
+      r(12, 6, 6, 1, G_WHITE); r(20, 3, 7, 1, hair.d); r(26, 4, 4, 1, G_CYAN); r(16, 0, 2, 1, G_MAGENTA); return;
   }
 }
 
 function drawBeard(r: Rect, id: string, hair: Shade) {
   if (id === 'stardust') { for (const [x, y] of [[14, 20], [17, 22], [20, 21], [23, 22], [25, 20], [19, 24], [16, 25], [22, 25]] as const) r(x, y, 1, 1, (x + y) % 2 ? '#9fe7ff' : '#ffffff'); return; }
+  if (id === 'frostBeard') {
+    // A beard frosted white, with little icicles hanging off it.
+    r(12, 18, 3, 4, I_FROST); r(25, 18, 3, 4, I_FROST); r(14, 21, 12, 5, I_FROST); r(16, 25, 8, 2, I_FROST); r(17, 20, 7, 1, '#351c29');
+    for (const x of [15, 18, 21, 24]) { r(x, 27, 1, 2, I_ICE); r(x, 29, 1, 1, I_SNOW); }
+    r(14, 22, 1, 3, I_SNOW); r(25, 22, 1, 3, I_ICE); return;
+  }
+  if (id === 'glitchBeard') {
+    // A blocky pixel beard, half of it out of sync.
+    for (let y = 19; y < 28; y += 2) for (let x = 13 + Math.max(0, y - 23); x < 27 - Math.max(0, y - 23); x += 2) r(x, y, 2, 2, (x + y) % 4 ? hair.c : hair.d);
+    r(17, 20, 7, 1, '#351c29'); r(12, 21, 1, 3, G_CYAN); r(27, 23, 1, 3, G_MAGENTA); r(15, 27, 4, 1, G_CYAN); r(22, 25, 3, 1, G_MAGENTA); return;
+  }
   if (id === 'flameBeard') {
     r(12, 19, 3, 3, '#ff9d3d'); r(25, 19, 3, 3, '#ff9d3d'); r(14, 21, 12, 5, '#ff9d3d'); r(15, 23, 10, 5, '#e8322e'); r(17, 26, 6, 3, '#ffd166'); r(19, 28, 2, 2, '#ff9d3d');
     r(17, 20, 7, 1, '#351c29'); return;
@@ -320,6 +349,15 @@ function drawCustomHat(r: Rect, id: string, hairHex: string) {
       r(11, 8, 18, 1, '#ffd166'); r(11, 4, 18, 1, '#ffd166'); r(12, 5, 6, 1, b.l);
       r(14, 6, 2, 1, '#9fe7ff'); r(19, 5, 2, 2, '#ffffff'); r(24, 6, 2, 1, '#9fe7ff'); r(19, 0, 2, 1, '#ffffff'); return;
     }
+    case 'iceCrown':
+      // A crown of ice crystals.
+      r(12, 5, 16, 3, I_ICE); r(12, 7, 16, 1, I_DEEP); r(12, 5, 16, 1, I_FROST);
+      for (const [x, hgt] of [[12, 3], [15, 4], [19, 5], [23, 4], [26, 3]] as const) { r(x, 5 - hgt, 2, hgt, I_FROST); r(x, 5 - hgt, 1, hgt, I_SNOW); }
+      r(19, 6, 2, 1, I_SNOW); return;
+    case 'glitchHalo':
+      // A halo that failed to load: broken segments, split colours and an error block.
+      r(13, 1, 4, 1, G_CYAN); r(18, 1, 3, 1, G_WHITE); r(23, 1, 4, 1, G_MAGENTA); r(15, 0, 3, 1, G_MAGENTA); r(21, 0, 4, 1, G_CYAN); r(14, 2, 2, 1, G_WHITE); r(24, 2, 3, 1, G_CYAN);
+      r(29, 0, 2, 2, G_MAGENTA); r(9, 2, 1, 1, G_CYAN); return;
     case 'halo': r(13, 1, 14, 1, '#ffe066'); r(15, 0, 10, 1, '#fff6c4'); r(15, 2, 10, 1, '#e6b800'); return;
     case 'ninjaBand': r(11, 9, 18, 3, '#1d428a'); r(15, 9, 10, 3, '#c9ccd1'); r(15, 9, 10, 1, '#eef1f6'); r(19, 10, 2, 1, '#5b6b82'); r(18, 11, 4, 1, '#8a93a3'); r(28, 10, 4, 2, '#1d428a'); r(30, 12, 2, 6, '#1d428a'); return;
     case 'strawHat': r(12, 3, 16, 6, '#f2d27a'); r(13, 3, 14, 1, '#fff0b3'); r(12, 7, 16, 2, '#c8102e'); r(6, 9, 28, 2, '#e8c46a'); r(6, 10, 28, 1, '#b8923a'); return;
@@ -357,6 +395,8 @@ function drawEyes(r: Rect, id: string) {
       r(12, 10, 1, 12, '#1f4fd9'); r(27, 10, 1, 12, '#1f4fd9');
       for (const [x, yy, c] of [[15, 12, '#ffffff'], [24, 13, '#9fe7ff'], [19, 16, '#b8a8ff'], [17, 19, '#ffffff'], [23, 18, '#6fd3ff'], [21, 11, '#ffffff']] as const) r(x, yy, 1, 1, c);
       return;
+    case 'snowGoggles': r(10, y - 1, 20, 6, '#2b4b6b'); r(12, y, 6, 4, I_ICE); r(22, y, 6, 4, I_ICE); r(12, y, 6, 1, I_SNOW); r(22, y, 6, 1, I_SNOW); r(13, y + 2, 2, 1, I_FROST); r(23, y + 2, 2, 1, I_FROST); r(18, y + 1, 4, 2, '#2b4b6b'); return;
+    case 'glitchVisor': r(11, y, 19, 3, G_DARK); r(10, y + 1, 19, 1, G_MAGENTA); r(12, y + 1, 19, 1, G_CYAN); r(14, y, 3, 1, G_WHITE); r(24, y + 2, 4, 1, G_CYAN); r(29, y - 1, 2, 5, '#3a2a55'); return;
     case 'blindfold': r(11, y - 1, 18, 5, '#161a24'); r(11, y - 1, 18, 1, '#3a3f4a'); r(28, y + 3, 2, 3, '#161a24'); return;
     case 'scouter': r(22, y - 1, 6, 5, '#7dff9b'); r(22, y - 1, 6, 1, '#b8ffcc'); r(28, 11, 3, 8, '#e8322e'); r(29, 12, 1, 6, '#ff9d9d'); return;
     case 'glowRed': for (const x of [16, 25]) { r(x, y, 2, 4, '#ff2d2d'); r(x, y, 1, 1, '#ffd166'); } r(13, y + 1, 1, 1, '#ff2d2d'); return;
@@ -366,6 +406,7 @@ function drawEyes(r: Rect, id: string) {
 
 function drawNeck(r: Rect, id: string) {
   switch (id) {
+    case 'frostCape': r(11, 24, 3, 2, I_FROST); r(26, 24, 3, 2, I_FROST); r(19, 25, 2, 1, I_SNOW); r(13, 23, 14, 1, I_SNOW); return;
     case 'goldChain': case 'silverChain': { const c = id === 'goldChain' ? '#ffd166' : '#d7dde6'; r(16, 27, 1, 3, c); r(23, 27, 1, 3, c); r(17, 30, 1, 1, c); r(22, 30, 1, 1, c); r(18, 31, 4, 1, c); r(19, 32, 2, 2, c); return; }
     case 'headphones': r(13, 24, 14, 2, '#2b2f3a'); r(12, 24, 3, 3, '#e8322e'); r(25, 24, 3, 3, '#e8322e'); return;
     case 'whistle': r(18, 27, 1, 4, '#c8102e'); r(21, 27, 1, 4, '#c8102e'); r(19, 31, 3, 2, '#c9d1dc'); return;
@@ -405,6 +446,18 @@ function drawBack(grid: SpriteGrid, id: string) {
         for (let x = x0 + 1; x < x0 + w - 1; x++) back(x, y, 1, 1, (x + y) % 7 === 0 ? '#ffe08a' : (y + s) % 6 === 0 ? '#c9971f' : '#ffd166');
       }
       return;
+    case 'frostCape':
+      // A pale blue cape, frosted at the edges, ending in icicles.
+      for (let y = 25; y < 48; y++) { const sp = Math.floor((y - 25) / 5); back(10 - sp, y, 20 + sp * 2, 1, (y + sp) % 6 === 0 ? I_FROST : I_ICE); back(10 - sp, y, 1, 1, I_SNOW); back(29 + sp, y, 1, 1, I_SNOW); }
+      for (let x = 6; x < 34; x += 3) back(x, 48 + (x % 2), 1, 2, I_SNOW);
+      return;
+    case 'glitchWings':
+      // Wings made of data: rows of pixel blocks in cyan and magenta, some missing.
+      for (const [x0, dir] of [[9, -1], [30, 1]] as const) for (let i = 0; i < 10; i++) {
+        const x = dir < 0 ? x0 - i : x0 + i, top = 16 + Math.floor(i * 0.7), len = 18 - i;
+        for (let y = top; y < top + len; y += 2) if ((x * 7 + y * 3) % 5) back(x, y, 1, 2, (i + Math.floor(y / 2)) % 3 === 0 ? G_WHITE : i % 2 ? G_MAGENTA : G_CYAN);
+      }
+      return;
     case 'angelWings': for (const [x0, dir] of [[9, -1], [30, 1]] as const) for (let i = 0; i < 9; i++) { const x = dir < 0 ? x0 - i : x0 + i; back(x, 20 + Math.floor(i / 2), 1, 16 - i, i % 3 === 2 ? '#dfe6f0' : '#f8fbff'); } return;
     case 'batWings': for (const [x0, dir] of [[9, -1], [30, 1]] as const) for (let i = 0; i < 9; i++) { const x = dir < 0 ? x0 - i : x0 + i; back(x, 20 + i, 1, 10 - (i % 3) * 2, i % 3 === 0 ? '#3b1d5a' : '#5a2d82'); } return;
     case 'jetpack': back(7, 26, 5, 12, '#8a93a3'); back(28, 26, 5, 12, '#8a93a3'); back(8, 26, 3, 1, '#c9d1dc'); back(29, 26, 3, 1, '#c9d1dc'); back(8, 38, 3, 3, '#ff9d3d'); back(29, 38, 3, 3, '#ff9d3d'); back(9, 41, 1, 2, '#ffd166'); back(30, 41, 1, 2, '#ffd166'); return;
@@ -438,6 +491,8 @@ const AURA_COLORS: Record<string, string[]> = {
   superWarrior: ['#ffe14d', '#fff6b0', '#ffc400', '#ffffff'], storm: ['#7b4dff', '#c9b3ff', '#3b1d9a'],
   sakura: ['#ffb7d5', '#ff8fc0', '#fff0f6'], hunter: ['#e8322e', '#ffd166', '#ff9d3d', '#7a1010'], cursed: ['#2a2f8a', '#4d6bff', '#9fb3ff', '#0b0f3a'],
   cosmicFire: ['#9fe7ff', '#1f4fd9', '#6fd3ff', '#ffffff', '#4a2fbf', '#0a1f7a'],
+  glitch: [G_CYAN, G_MAGENTA, G_WHITE],
+  blizzard: [I_SNOW, I_FROST, I_ICE],
 };
 function auraCells(grid: SpriteGrid, kind: string): SpriteGrid {
   const H = grid.length, W = grid[0].length;
@@ -457,6 +512,19 @@ function auraCells(grid: SpriteGrid, kind: string): SpriteGrid {
   const crackle = kind === 'superWarrior' || kind === 'storm' || kind === 'cursed' || kind === 'cosmicFire';
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     if (grid[y][x]) continue;
+    if (kind === 'blizzard') {
+      // A snowstorm: a pale frost haze close to the body and snowflakes swirling further out.
+      if (near(x, y, 1, 1, 1)) { if (noise(x, y) % 3 === 0) out[y][x] = colors[2]; continue; }
+      if (near(x, y, 5, 5, 5) && noise(x, y) % 7 === 0) out[y][x] = colors[noise(y, x) % 2];
+      continue;
+    }
+    if (kind === 'glitch') {
+      // Torn scanlines: whole rows shift sideways in one colour channel, with stray dead pixels further out.
+      const row = noise(7, y) % 5, shift = row === 0 ? -2 : row === 1 ? 2 : 0;
+      if (shift && near(x - shift, y, 0, 0, 0)) { out[y][x] = shift < 0 ? colors[0] : colors[1]; continue; }
+      if (!near(x, y, 1, 1, 1) && near(x, y, 4, 4, 4) && noise(x, y) % 13 === 0) out[y][x] = colors[noise(y, x) % 3];
+      continue;
+    }
     if (kind === 'sparkles' || kind === 'hearts' || kind === 'sakura') {
       // Bits floating in the margin around the body.
       if (near(x, y, 1, 1, 1) || !near(x, y, 3, 3, 3) || noise(x, y) % 9) continue;
@@ -482,6 +550,21 @@ function auraCells(grid: SpriteGrid, kind: string): SpriteGrid {
 // ---------------------------------------------------------------- the whole character
 
 const rainbowAt = (x: number, y: number) => RAINBOW[Math.floor((x + y) / 4) % RAINBOW.length];
+/** Glitch skin and hair: a dark screen with torn cyan and magenta rows and the odd white pixel. */
+const glitchAt = (x: number, y: number, base: string) => {
+  const row = ((y * 2654435761) >>> 0) % 7, cell = ((x * 73856093) ^ (y * 19349663)) >>> 0;
+  if (row === 0) return G_CYAN;
+  if (row === 1 && x % 3) return G_MAGENTA;
+  return cell % 23 === 0 ? G_WHITE : base;
+};
+/** Frozen skin and hair: ice with frost veins and sparkles. */
+const frozenAt = (x: number, y: number) => {
+  const cell = ((x * 73856093) ^ (y * 19349663)) >>> 0;
+  if (cell % 29 === 0) return I_SNOW;
+  return (x + y * 2) % 9 === 0 ? I_FROST : (x * 3 + y) % 11 < 4 ? I_ICE : '#b8e2fb';
+};
+const patterned = (hex: string) => hex === 'rainbow' || hex === 'glitch' || hex === 'frozen';
+const patternAt = (hex: string, x: number, y: number, base: string) => hex === 'glitch' ? glitchAt(x, y, base) : hex === 'frozen' ? frozenAt(x, y) : rainbowAt(x, y);
 
 /** An outfit's colours and number: a jersey can wear any team's colours and any number (your favourite team's for "Your team"). */
 export function outfitKit(look: AvatarLook, team?: AvatarOptions['team']): { primary: string; secondary: string; number: number | null } {
@@ -494,7 +577,7 @@ export function outfitKit(look: AvatarLook, team?: AvatarOptions['team']): { pri
 export function buildAvatarGrid({ look, team }: AvatarOptions): { grid: SpriteGrid; aura: SpriteGrid } {
   const o = outfitDef(look.outfit);
   const skinHex = colorHex(SKINS, look.skin), hairHex = colorHex(HAIR_COLORS, look.hairColor);
-  const skinBase = skinHex === 'rainbow' ? SKIN_KEY : skinHex, hairBase = hairHex === 'rainbow' ? HAIR_KEY : hairHex;
+  const skinBase = patterned(skinHex) ? SKIN_KEY : skinHex, hairBase = patterned(hairHex) ? HAIR_KEY : hairHex;
   const classicHair = (HAIR_STYLES as readonly string[]).includes(look.hair), classicBeard = (BEARD_STYLES as readonly string[]).includes(look.beard);
   const kit = outfitKit(look, team);
   const kitMain = kit.primary, kitTrim = kit.secondary;
@@ -517,18 +600,20 @@ export function buildAvatarGrid({ look, team }: AvatarOptions): { grid: SpriteGr
   drawNeck(r, look.neck);
   drawBack(grid, look.neck);
 
-  // Rainbow skin and hair: every shade of the stand-in colour takes the rainbow at that spot, keeping its shading.
-  if (skinHex === 'rainbow' || hairHex === 'rainbow') {
-    const shades = new Map<string, (c: string) => string>();
-    const add = (key: string, toward: string, amt: number) => shades.set(mix(key, toward, amt), c => mix(c, toward, amt));
-    if (skinHex === 'rainbow') { shades.set(SKIN_KEY, c => c); add(SKIN_KEY, '#ffe9cb', 0.25); add(SKIN_KEY, '#542c30', 0.35); add(SKIN_KEY, '#351c29', 0.55); add(SKIN_KEY, WHITE, 0.25); add(SKIN_KEY, OUTLINE, 0.4); }
-    if (hairHex === 'rainbow') { shades.set(HAIR_KEY, c => c); add(HAIR_KEY, '#a8a0b4', 0.3); add(HAIR_KEY, OUTLINE, 0.4); }
+  // Rainbow and glitch skin and hair: every shade of the stand-in colour takes the pattern at that spot, keeping its shading.
+  if (patterned(skinHex) || patterned(hairHex)) {
+    type Recolor = (x: number, y: number) => string;
+    const shades = new Map<string, Recolor>();
+    const skinAt: Recolor = (x, y) => patternAt(skinHex, x, y, '#4a5478'), hairAt: Recolor = (x, y) => patternAt(hairHex, x, y, G_DARK);
+    const add = (key: string, at: Recolor, toward: string, amt: number) => shades.set(mix(key, toward, amt), (x, y) => mix(at(x, y), toward, amt));
+    if (patterned(skinHex)) { shades.set(SKIN_KEY, skinAt); add(SKIN_KEY, skinAt, '#ffe9cb', 0.25); add(SKIN_KEY, skinAt, '#542c30', 0.35); add(SKIN_KEY, skinAt, '#351c29', 0.55); add(SKIN_KEY, skinAt, WHITE, 0.25); add(SKIN_KEY, skinAt, OUTLINE, 0.4); }
+    if (patterned(hairHex)) { shades.set(HAIR_KEY, hairAt); add(HAIR_KEY, hairAt, '#a8a0b4', 0.3); add(HAIR_KEY, hairAt, OUTLINE, 0.4); }
     // Stubble blends skin and hair.
-    shades.set(mix(skinBase, hairBase, 0.5), c => mix(skinHex === 'rainbow' ? c : skinBase, hairHex === 'rainbow' ? c : hairBase, 0.5));
+    shades.set(mix(skinBase, hairBase, 0.5), (x, y) => mix(patterned(skinHex) ? skinAt(x, y) : skinBase, patterned(hairHex) ? hairAt(x, y) : hairBase, 0.5));
     for (let y = 0; y < grid.length; y++) for (let x = 0; x < grid[0].length; x++) {
       const c = grid[y][x];
       const f = c ? shades.get(c) : undefined;
-      if (f) grid[y][x] = f(rainbowAt(x, y));
+      if (f) grid[y][x] = f(x, y);
     }
   }
 

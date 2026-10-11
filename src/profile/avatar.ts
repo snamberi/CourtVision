@@ -2,6 +2,8 @@ import { localRead, type Read } from '../lib/kv';
 import { HAIR_STYLES, BEARD_STYLES, HAT_STYLES } from '../visuals/playerSprite';
 import type { Rule } from './cosmetics';
 import { REAL_FRANCHISES } from './favorites';
+import { seasonRule, seasonHow } from '../retention/season';
+import { isSecretCosmetic, SECRET_HOW } from '../relics/secretCosmetics';
 
 /*
  * Your character: a pixel player everyone gets (random on the first visit) and can dress however they like on the
@@ -16,7 +18,7 @@ export type AvatarCategory = 'skin' | 'hair' | 'hairColor' | 'beard' | 'outfit' 
 export interface AvatarLook { skin: string; hair: string; hairColor: string; beard: string; outfit: string; hat: string; eyes: string; neck: string; shoes: string; aura: string;
   /** A jersey's team (a real franchise id: its colours) and number; leave out for the jersey's own. */
   kitTeam?: string; kitNumber?: number }
-export interface AvatarItem { id: string; name: string; rule: Rule; /** Colour for colour items (#rrggbb, or 'rainbow'). */ hex?: string; tag?: string }
+export interface AvatarItem { id: string; name: string; rule: Rule; /** Colour for colour items (#rrggbb, or a pattern: 'rainbow', 'glitch' or 'frozen'). */ hex?: string; tag?: string }
 
 export const AVATAR_KEY = 'cv-avatar';
 export const AVATAR_EVENT = 'courtvision:avatar';
@@ -59,6 +61,13 @@ const road = (cat: AvatarCategory, id: string): Rule | undefined => {
   const lvl = AVATAR_LEVEL_ROAD.find(([, c, i]) => c === cat && i === id);
   return lvl ? { level: lvl[0] } : undefined;
 };
+/** A Season Pass piece (see retention/season.ts). */
+const season = (cat: AvatarCategory, id: string, s = 'glitch'): Rule => seasonRule(cat, id, s);
+const frozen = (cat: AvatarCategory, id: string): Rule => season(cat, id, 'frozen');
+/** A Relic Shop piece: bought with coins (relics/shopCosmetics.ts). Its key is shop-<category>-<id>. */
+const shop = (cat: AvatarCategory, id: string): Rule => ({ shop: `shop-${cat}-${id}` });
+/** A secret piece: only a Relic Vault spin can drop it (relics/secretCosmetics.ts). */
+const secret = (cat: AvatarCategory, id: string): Rule => ({ shop: `secret-${cat}-${id}` });
 const item = (cat: AvatarCategory, id: string, name: string, rule: Rule = FREE, extra: Partial<AvatarItem> = {}): AvatarItem => ({ id, name, rule: road(cat, id) ?? rule, ...extra });
 
 // ---------------------------------------------------------------- body and hair colours
@@ -75,6 +84,11 @@ export const SKINS: AvatarItem[] = [
   item('skin', 'rainbow', 'Rainbow', FREE, { hex: 'rainbow' }),
   item('skin', 'diamond', 'Diamond', FREE, { hex: '#bfe9ff' }),
   item('skin', 'abyss', 'Abyss blue', OWNER, { hex: '#1a2a78' }),
+  item('skin', 'glitch', 'Corrupted', season('skin', 'glitch'), { hex: 'glitch' }),
+  item('skin', 'frozen', 'Ice', frozen('skin', 'frozen'), { hex: 'frozen' }),
+  item('skin', 'obsidian', 'Obsidian', shop('skin', 'obsidian'), { hex: '#2a2238' }), item('skin', 'jade', 'Jade', shop('skin', 'jade'), { hex: '#2fae8a' }),
+  item('skin', 'coral', 'Coral', shop('skin', 'coral'), { hex: '#ff7a6b' }),
+  item('skin', 'nebula', 'Nebula', secret('skin', 'nebula'), { hex: '#5b3fd6' }),
 ];
 
 export const HAIR_COLORS: AvatarItem[] = [
@@ -87,6 +101,11 @@ export const HAIR_COLORS: AvatarItem[] = [
   item('hairColor', 'silver', 'Silver', lv(110), { hex: '#c9d1dc' }), item('hairColor', 'rainbow', 'Rainbow', FREE, { hex: 'rainbow' }),
   item('hairColor', 'superBlue', 'Super blue', FREE, { hex: '#3fc8ff' }), item('hairColor', 'ember', 'Ember', FREE, { hex: '#ff5a1f' }), item('hairColor', 'platinumGlow', 'Platinum glow', FREE, { hex: '#fff4c9' }),
   item('hairColor', 'blueFire', 'Blue fire', OWNER, { hex: '#3fa9ff' }),
+  item('hairColor', 'glitch', 'Glitch', season('hairColor', 'glitch'), { hex: 'glitch' }),
+  item('hairColor', 'frozen', 'Frost white', frozen('hairColor', 'frozen'), { hex: 'frozen' }),
+  item('hairColor', 'sunset', 'Sunset', shop('hairColor', 'sunset'), { hex: '#ff7e5f' }), item('hairColor', 'mint', 'Mint', shop('hairColor', 'mint'), { hex: '#6ff0c2' }),
+  item('hairColor', 'lilac', 'Lilac', shop('hairColor', 'lilac'), { hex: '#c9a0ff' }),
+  item('hairColor', 'phantom', 'Phantom', secret('hairColor', 'phantom'), { hex: '#9fffe0' }),
 ];
 
 // ---------------------------------------------------------------- hair and beards
@@ -100,6 +119,8 @@ export const HAIRS: AvatarItem[] = [
   ...HAIR_STYLES.map(id => item('hair', id, LABEL(id))),
   ...NEW_HAIR.map(id => item('hair', id, HAIR_NAMES[id] ?? LABEL(id), lv(HAIR_LEVELS[id] ?? 1))),
   item('hair', 'sovereignFlame', 'Sovereign flame', OWNER),
+  item('hair', 'glitchSpikes', 'Glitch spikes', season('hair', 'glitchSpikes')),
+  item('hair', 'iceSpikes', 'Icicle hair', frozen('hair', 'iceSpikes')),
 ];
 export const NEW_BEARDS = ['wizard', 'viking', 'handlebar', 'sideburns', 'flameBeard'] as const;
 const BEARD_LEVELS: Record<string, number> = { wizard: 120, viking: 95, handlebar: 35, sideburns: 18, flameBeard: 140 };
@@ -107,6 +128,8 @@ export const BEARDS: AvatarItem[] = [
   ...BEARD_STYLES.map(id => item('beard', id, id === 'none' ? 'Clean shaven' : LABEL(id))),
   ...NEW_BEARDS.map(id => item('beard', id, id === 'flameBeard' ? 'Flame beard' : id === 'wizard' ? 'Wizard beard' : id === 'viking' ? 'Viking braids' : LABEL(id), lv(BEARD_LEVELS[id]))),
   item('beard', 'stardust', 'Stardust', OWNER),
+  item('beard', 'glitchBeard', 'Pixel beard', season('beard', 'glitchBeard')),
+  item('beard', 'frostBeard', 'Frost beard', frozen('beard', 'frostBeard')),
 ];
 
 // ---------------------------------------------------------------- outfits (50)
@@ -157,6 +180,18 @@ export const OUTFITS: Outfit[] = [
   // The game owner's.
   fit('sovereign', 'Sovereign robe', 'royal', '#0e1a5a', '#6fd3ff', OWNER),
   fit('sovereignGold', 'Sovereign gold robe', 'sovereign', '#1a3fb8', '#ffd166', OWNER),
+  // Season 1: Glitch.
+  fit('glitchSuit', 'Corrupted suit', 'plugsuit', '#12141f', '#00f0ff', season('outfit', 'glitchSuit')),
+  // Season 2: Frozen.
+  fit('frostParka', 'Frost parka', 'hoodie', '#dff4ff', '#4d86b3', frozen('outfit', 'frostParka')),
+  // The Relic Shop.
+  fit('royalTux', 'Royal tux', 'tux', '#2a1a4a', '#ffd166', shop('outfit', 'royalTux')),
+  fit('neonTrack', 'Neon tracksuit', 'track', '#0f1020', '#7dff5a', shop('outfit', 'neonTrack')),
+  fit('crimsonSuit', 'Crimson suit', 'suit', '#8a1020', '#f4f0e6', shop('outfit', 'crimsonSuit')),
+  fit('oceanHoodie', 'Ocean hoodie', 'hoodie', '#1f6fb5', '#9fe7ff', shop('outfit', 'oceanHoodie')),
+  fit('goldVarsity', 'Gold varsity jacket', 'varsity', '#1a1f2a', '#ffd166', shop('outfit', 'goldVarsity')),
+  // Secret: dropped by a spin.
+  fit('shadowTux', 'Shadow tux', 'tux', '#0b0b12', '#b983ff', secret('outfit', 'shadowTux')),
 ];
 
 // ---------------------------------------------------------------- headwear, eyewear, neck and back, shoes, aura
@@ -168,6 +203,8 @@ export const HATS: AvatarItem[] = [
   ...HAT_STYLES.map(id => item('hat', id, LABEL(id))),
   ...NEW_HATS.map(id => item('hat', id, ({ ninjaBand: 'Ninja headband', strawHat: 'Straw hat', foxMask: 'Fox spirit mask', guardMask: 'Guard mask' } as Record<string, string>)[id] ?? LABEL(id), lv(HAT_LEVELS[id] ?? 1))),
   item('hat', 'blueCrown', "Sovereign's blue crown", OWNER),
+  item('hat', 'glitchHalo', 'Error halo', season('hat', 'glitchHalo')),
+  item('hat', 'iceCrown', 'Ice crown', frozen('hat', 'iceCrown')),
 ];
 export const EYES: AvatarItem[] = [
   item('eyes', 'none', 'Nothing'), item('eyes', 'glasses', 'Glasses'), item('eyes', 'shades', 'Shades'),
@@ -176,6 +213,8 @@ export const EYES: AvatarItem[] = [
   item('eyes', 'cyberVisor', 'Cyber visor', lv(160)), item('eyes', 'scouter', 'Power scouter'), item('eyes', 'glowRed', 'Crimson eyes'), item('eyes', 'sparkle', 'Sparkle eyes'),
   item('eyes', 'starEyes', 'Idol star eyes'), item('eyes', 'sharingan', 'Spinning red eyes'), item('eyes', 'blindfold', 'Sorcerer blindfold'),
   item('eyes', 'voidFace', 'Faceless void', OWNER),
+  item('eyes', 'glitchVisor', 'Glitch visor', season('eyes', 'glitchVisor')),
+  item('eyes', 'snowGoggles', 'Snow goggles', frozen('eyes', 'snowGoggles')),
 ];
 export const NECKS: AvatarItem[] = [
   item('neck', 'none', 'Nothing'), item('neck', 'goldChain', 'Gold chain'), item('neck', 'headphones', 'Headphones'),
@@ -186,6 +225,8 @@ export const NECKS: AvatarItem[] = [
   item('neck', 'weightedCape', 'Weighted cape'), item('neck', 'tail', 'Warrior tail'), item('neck', 'capeGold', 'Gold cape'), item('neck', 'katana', 'Katana'),
   item('neck', 'blackWings', 'Black angel wings', OWNER),
   item('neck', 'sovereignCape', 'Sovereign golden cape', OWNER),
+  item('neck', 'glitchWings', 'Data wings', season('neck', 'glitchWings')),
+  item('neck', 'frostCape', 'Frost cape', frozen('neck', 'frostCape')),
 ];
 export const SHOES: AvatarItem[] = [
   item('shoes', 'team', 'Match the outfit'), item('shoes', 'white', 'White', FREE, { hex: '#f4f6fa' }), item('shoes', 'black', 'Black', FREE, { hex: '#1a1f2a' }),
@@ -193,6 +234,11 @@ export const SHOES: AvatarItem[] = [
   item('shoes', 'gold', 'Gold', lv(90), { hex: '#ffd166' }), item('shoes', 'neon', 'Neon', lv(62), { hex: '#7dff5a' }), item('shoes', 'boots', 'Boots', lv(34)),
   item('shoes', 'sandals', 'Wooden sandals', lv(48)), item('shoes', 'heroBoots', 'Hero boots', lv(135)), item('shoes', 'rocket', 'Rocket boots'), item('shoes', 'warriorBoots', 'Warrior boots'),
   item('shoes', 'cosmicBoots', 'Blue fire boots', OWNER),
+  item('shoes', 'glitch', 'Glitch kicks', season('shoes', 'glitch'), { hex: '#00f0ff' }),
+  item('shoes', 'iceSkates', 'Ice skates', frozen('shoes', 'iceSkates'), { hex: '#dff4ff' }),
+  item('shoes', 'lava', 'Lava runners', shop('shoes', 'lava'), { hex: '#ff4d1a' }), item('shoes', 'midnight', 'Midnight kicks', shop('shoes', 'midnight'), { hex: '#262b6b' }),
+  item('shoes', 'chrome', 'Chrome kicks', shop('shoes', 'chrome'), { hex: '#d8dee8' }),
+  item('shoes', 'stardust', 'Stardust kicks', secret('shoes', 'stardust'), { hex: '#ffe7a3' }),
 ];
 export const AURAS: AvatarItem[] = [
   item('aura', 'none', 'Nothing'), item('aura', 'sparkles', 'Sparkles', lv(32)), item('aura', 'hearts', 'Hearts', lv(64)), item('aura', 'ice', 'Frost', lv(96)),
@@ -201,6 +247,8 @@ export const AURAS: AvatarItem[] = [
   item('aura', 'sakura', 'Cherry blossoms'), item('aura', 'cursed', 'Cursed energy'),
   item('aura', 'hunter', "Hunter's flames", { honor: 'hunt-week-10' }),
   item('aura', 'cosmicFire', 'Cosmic blue fire', OWNER),
+  item('aura', 'glitch', 'Glitch aura', season('aura', 'glitch')),
+  item('aura', 'blizzard', 'Blizzard', frozen('aura', 'blizzard')),
 ];
 
 export const AVATAR_CATEGORIES: { id: AvatarCategory; label: string; items: AvatarItem[] }[] = [
@@ -273,5 +321,7 @@ export function avatarHow(i: AvatarItem): string {
   if ('trophies' in r) return `${r.trophies.toLocaleString()} trophies`;
   if ('honor' in r && r.honor === 'hunt-week-10') return 'Top 10% of a Weekly Hunt';
   if ('staff' in r) return 'Game Owner only';
+  if ('season' in r) return seasonHow(r);
+  if ('shop' in r) return isSecretCosmetic(r.shop) ? SECRET_HOW : 'Relic Shop';
   return 'Special';
 }
