@@ -8,6 +8,7 @@ import {
 } from '../../relics/relics';
 import { claimAchievementSpins, runCoins } from '../../relics/rewards';
 import { PixelIcon } from '../PixelIcon';
+import { RelicArt } from './RelicArt';
 import '../hunt/hunt.css';
 import './relics.css';
 
@@ -127,7 +128,7 @@ export function RelicVault({ onExit, view = 'vault', onSwitch }: { onExit: () =>
       <div className="relic-shop-grid">{(state.shop?.offers ?? []).map(id => {
         const r = RELIC_BY_ID.get(id)!, sold = state.shop!.bought.includes(id), price = RELIC_PRICE[r.rarity], full = !canGain(state, r);
         return <div key={id} className={`relic-offer r-${r.rarity}`}>
-          <PixelIcon name={r.icon} size={24} /><span><b>{r.name}</b><small>{RELIC_RARITY[r.rarity].name}{r.stack ? ` · stacks (+1% a copy, up to ${STACK_MAX})` : ` · +${RELIC_RARITY[r.rarity].luck}% luck`}</small></span>
+          <RelicArt id={r.id} size={56} /><span><b>{r.name}</b><small>{RELIC_RARITY[r.rarity].name}{r.stack ? ` · stacks (+1% a copy, up to ${STACK_MAX})` : ` · +${RELIC_RARITY[r.rarity].luck}% luck`}</small></span>
           <button onClick={() => commit(s => buyRelic(s, id))} disabled={rolling || sold || full || state.coins < price}>{sold ? 'Bought' : full ? 'Owned' : `${price.toLocaleString()} coins`}</button>
         </div>;
       })}{!state.shop?.offers.length && <p className="relic-help">Nothing left to sell you today. Impressive.</p>}</div>
@@ -143,7 +144,7 @@ export function RelicVault({ onExit, view = 'vault', onSwitch }: { onExit: () =>
           if (i >= slots) return <div key={i} className="relic-socket locked" title={`Buy in the shop: ${SLOT_PRICES[i - BASE_SLOTS].toLocaleString()} coins`}><PixelIcon name="lock" size={16} /><small>{SLOT_PRICES[i - BASE_SLOTS].toLocaleString()}</small></div>;
           if (!r) return <div key={i} className="relic-socket empty"><small>Empty</small></div>;
           return <button key={id} className={`relic-socket r-${r.rarity}`} onClick={() => commit(st => unequipRelic(st, id))} title={`${r.name}: ${fmtLuck(relicLuck(r, state.owned[id] ?? 0, state.upgraded.includes(id)))} luck. Click to take it out.`} aria-label={`${r.name}, in a slot. Take it out`}>
-            <PixelIcon name={r.icon} size={20} /><small>{fmtLuck(relicLuck(r, state.owned[id] ?? 0, state.upgraded.includes(id)))}</small>
+            <RelicArt id={r.id} size={48} /><small>{fmtLuck(relicLuck(r, state.owned[id] ?? 0, state.upgraded.includes(id)))}</small>
           </button>;
         })}
       </div>
@@ -156,6 +157,7 @@ export function RelicVault({ onExit, view = 'vault', onSwitch }: { onExit: () =>
         const have = set.relics.filter(id => (state.owned[id] ?? 0) > 0).length, done = setComplete(state, set);
         return <div key={set.id} className={`relic-set ${done ? 'done' : ''}`}>
           <b>{set.name} <em>+{set.bonus}%</em></b>
+          <div className="relic-set-art">{set.relics.map(id => <span key={id} className={`r-${RELIC_BY_ID.get(id)!.rarity}`} title={(state.owned[id] ?? 0) > 0 ? RELIC_BY_ID.get(id)!.name : 'Undiscovered relic'}><RelicArt id={id} size={36} locked={!(state.owned[id] ?? 0)} /></span>)}</div>
           <small>{set.relics.map(id => ((state.owned[id] ?? 0) > 0 ? RELIC_BY_ID.get(id)!.name : '???')).join(' · ')}</small>
           <span className="relic-set-bar" aria-label={`${have} of ${set.relics.length}`}><i style={{ width: `${(have / set.relics.length) * 100}%` }} /></span>
         </div>;
@@ -178,7 +180,7 @@ export function RelicVault({ onExit, view = 'vault', onSwitch }: { onExit: () =>
       <div className="relic-grid">{SECRET_RELICS.map(s => {
         const got = state.secrets.includes(s.id);
         return <div key={s.id} className={`relic-card r-secret ${got ? '' : 'missing'}`}>
-          <PixelIcon name={got ? 'crown' : 'lock'} size={24} />
+          <RelicArt id={got ? s.id : undefined} locked={!got} />
           <span><b>{got ? s.name : '???'}</b><small>{got ? `${s.mode}: ${s.ability}` : <><i>"{s.hint}"</i> ({s.mode})</>}</small></span>
         </div>;
       })}</div>
@@ -214,7 +216,7 @@ function RelicCard({ relic: x, state, onUpgrade, onToggle }: { relic: Relic; sta
   const n = state.owned[x.id] ?? 0, up = state.upgraded.includes(x.id), cost = UPGRADE_PRICE[x.rarity], on = state.equipped.includes(x.id);
   const full = !on && state.equipped.length >= slotCount(state);
   return <div className={`relic-card r-${x.rarity} ${n ? '' : 'missing'} ${up ? 'upgraded' : ''} ${on ? 'equipped' : ''}`}>
-    <PixelIcon name={n ? x.icon : 'lock'} size={24} />
+    <RelicArt id={x.id} locked={!n} />
     <span><b>{n ? x.name : '???'}{up && <em> ★</em>}</b><small>{n ? x.blurb : x.stack ? 'A stacking relic. Not found yet.' : 'Not found yet.'}</small>
       {n > 0 && <em>{x.stack ? `${Math.min(n, STACK_MAX)}/${STACK_MAX} stacked · ${fmtLuck(relicLuck(x, n))} luck` : `${fmtLuck(relicLuck(x, n, up))} luck${up ? ' (upgraded)' : ''}${n > 1 ? ` · found ×${n}` : ''}`}</em>}
       {n > 0 && <button className="link-button relic-upgrade" onClick={onToggle} disabled={full} title={full ? 'Your slots are full: take a relic out first' : undefined}>{on ? 'In a slot · take out' : full ? 'Slots full' : 'Put in a slot'}</button>}
@@ -226,12 +228,12 @@ function RelicCard({ relic: x, state, onUpgrade, onToggle }: { relic: Relic; sta
 function Reveal({ result }: { result: SpinResult }) {
   if (result.kind === 'secret') {
     const s = SECRET_BY_ID.get(result.id as never)!;
-    return <><PixelIcon name="crown" size={40} /><span className="pixel-eyebrow">SECRET RELIC</span><b>{s.name}</b><small>{s.mode}: {s.ability}</small></>;
+    return <><RelicArt id={s.id} size={128} /><span className="pixel-eyebrow">SECRET RELIC</span><b>{s.name}</b><small>{s.mode}: {s.ability}</small></>;
   }
   const r = RELIC_BY_ID.get(result.id)!;
   const rar = RELIC_RARITY[r.rarity];
   const tag = result.duplicate ? ' · DUPLICATE' : result.stack && result.stack > 1 ? ` · STACK ${result.stack}/${STACK_MAX}` : ' · NEW';
-  return <><PixelIcon name={r.icon} size={40} /><span className="pixel-eyebrow">{result.lucky ? 'LUCKY SPIN · ' : ''}{rar.name.toUpperCase()}{tag}</span><b>{r.name}</b>
+  return <><RelicArt id={r.id} size={128} /><span className="pixel-eyebrow">{result.lucky ? 'LUCKY SPIN · ' : ''}{rar.name.toUpperCase()}{tag}</span><b>{r.name}</b>
     <small>{result.duplicate ? `${r.stack ? 'Fully stacked already' : 'You already had it'}: +${result.coins} coins.` : r.stack ? `+1% luck (${result.stack}/${STACK_MAX} stacked). ${r.blurb}` : `+${rar.luck}% luck. ${r.blurb}`}</small></>;
 }
 
@@ -242,7 +244,7 @@ function BatchSummary({ results }: { results: SpinResult[] }) {
   const best = [...results].sort((a, b) => rank(b) - rank(a));
   return <div className="relic-batch">
     <span className="pixel-eyebrow">{results.length} SPINS</span>
-    <ul>{best.map((r, i) => <li key={i} className={`r-${r.rarity}`}><b>{nameOf(r)}</b> <small>{rarityName(r)}{r.duplicate ? ` · +${r.coins} coins` : r.stack ? ` · stack ${r.stack}/${STACK_MAX}` : ' · new'}</small></li>)}</ul>
+    <ul>{best.map((r, i) => <li key={i} className={`r-${r.rarity}`}><RelicArt id={r.id} size={40} /><span><b>{nameOf(r)}</b><small>{rarityName(r)}{r.duplicate ? ` · +${r.coins} coins` : r.stack ? ` · stack ${r.stack}/${STACK_MAX}` : ' · new'}</small></span></li>)}</ul>
     {coins > 0 && <small>+{coins} coins from duplicates</small>}
   </div>;
 }
@@ -270,7 +272,7 @@ function BigReveal({ result, onClose }: { result: SpinResult; onClose: () => voi
   return <div className="relic-big-backdrop" onClick={onClose}>
     <div className={`relic-big r-${result.rarity}`} role="dialog" aria-modal="true" aria-label={`${rarity} relic: ${name}`} onClick={e => e.stopPropagation()}>
       <div className="relic-big-rays" aria-hidden="true" />
-      <PixelIcon name={relic?.icon ?? 'crown'} size={72} />
+      <RelicArt id={result.id} size={192} />
       <span className="pixel-eyebrow">{result.kind === 'secret' ? 'SECRET RELIC UNCOVERED' : `${rarity.toUpperCase()} RELIC`}</span>
       <h2>{name}</h2>
       <p>{secret ? `${secret.mode}: ${secret.ability}` : relic?.blurb}</p>

@@ -33,6 +33,8 @@ const serviceWorker = (): Plugin => ({
     // The scene collection is small and bundled: every look also works on the first offline switch.
     const sceneNames = new Set(['original', 'cartridge', 'scoreboard', 'prodark', 'terminal', 'frontoffice', 'hardwood', 'blacktop', 'playbook', 'handheld', 'broadcast', 'neongrid', 'arcade', 'comicpop', 'championship', 'aurora', 'royalcourt', 'galaxy', 'hallowed', 'eclipse', 'immortal', 'sovereign'])
     for (const [file, item] of Object.entries(bundle)) if (item.type === 'asset' && file.endsWith('.svg') && sceneNames.has(file.split('/').pop()!.split('-')[0])) shell.add(`/${file}`)
+    // Relic illustrations are local collectibles: discoveries also work offline.
+    for (const [file, item] of Object.entries(bundle)) if (item.type === 'asset' && file.endsWith('.svg') && file.split('/').pop()!.startsWith('relic-')) shell.add(`/${file}`)
     const version = createHash('sha256').update(Object.keys(bundle).sort().join('|')).digest('hex').slice(0, 12)
     const source = readFileSync(new URL('./scripts/sw.template.js', import.meta.url), 'utf8')
       .replace('__VERSION__', version).replace('__SHELL__', JSON.stringify([...shell], null, 2))
