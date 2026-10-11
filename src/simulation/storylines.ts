@@ -4,6 +4,7 @@ import type { GMLeagueExtras } from './gm';
 import { seasonRows } from './records';
 import { rivalryKey, rivalryTable } from './rivalry';
 import { perGameAverages } from './careerStats';
+import { isRookieEligible } from './rookieEligibility';
 
 /*
  * Storylines: what the league is talking about right now, all derived from the save (nothing stored).
@@ -12,9 +13,10 @@ import { perGameAverages } from './careerStats';
  *  - Revenge games: a player about to face a team he left in the last two seasons.
  *  - Rivalry games coming up, with a line of trash talk from the rivalry's history.
  *  - Streaks, the scoring-title race and the race for the top seed.
+ *  - Rookies: the Rookie of the Year race, a rookie sensation, a late pick outplaying the lottery, a top pick hitting the wall.
  */
 
-export type StorylineKind = 'chase' | 'revenge' | 'rivalry' | 'streak' | 'race';
+export type StorylineKind = 'chase' | 'revenge' | 'rivalry' | 'streak' | 'race' | 'rookie';
 export interface Storyline { id: string; kind: StorylineKind; headline: string; detail: string; weight: number; playerId?: string; teamIds: string[] }
 
 const MILESTONES = { points: [10000, 15000, 20000, 25000, 30000, 35000, 40000], reb: [5000, 10000, 15000], ast: [5000, 7500, 10000, 12500], stl: [1500, 2000, 2500], blk: [1500, 2000, 2500, 3000], tpm: [1000, 2000, 3000, 4000] };
@@ -164,6 +166,34 @@ function races(league: League, out: Storyline[]) {
   }
 }
 
+function rookies(league: League, out: Storyline[]) {
+  const name = (id: string) => league.teams.find(t => t.teamId === id)?.name ?? id;
+  const pickText = (n?: number | null) => (n ? `No. ${n} pick` : 'undrafted');
+  const list = league.teams.flatMap(t => t.seasons.map(p => ({ p, teamId: t.teamId })))
+    .filter(({ p }) => (p.seasonStats?.gamesPlayed ?? 0) >= 8 && p.age <= 25 && isRookieEligible(p))
+    .map(({ p, teamId }) => {
+      const s = p.seasonStats!, g = s.gamesPlayed;
+      const ppg = s.points / g, rpg = (s.oreb + s.dreb) / g, apg = s.ast / g;
+      return { p, teamId, ppg, rpg, apg, games: g, score: ppg + rpg * 0.6 + apg * 0.8 };
+    }).sort((a, b) => b.score - a.score);
+  if (!list.length) return;
+  const line = (r: typeof list[number]) => `${r.ppg.toFixed(1)} points, ${r.rpg.toFixed(1)} rebounds and ${r.apg.toFixed(1)} assists a game`;
+  const [lead, next] = list;
+  if (next) out.push({ id: `rookie:roy:${lead.p.playerId}`, kind: 'rookie', playerId: lead.p.playerId, teamIds: [lead.teamId, next.teamId], weight: 34 + Math.min(10, lead.score / 3),
+    headline: `Rookie of the Year race: ${lead.p.playerId} leads ${next.p.playerId}`,
+    detail: `${lead.p.playerId} (${name(lead.teamId)}, ${pickText(lead.p.draftPick)}): ${line(lead)}. ${next.p.playerId} (${name(next.teamId)}): ${line(next)}.` });
+  for (const r of list.filter(r => r.ppg >= 18).slice(0, 2)) out.push({ id: `rookie:hot:${r.p.playerId}`, kind: 'rookie', playerId: r.p.playerId, teamIds: [r.teamId], weight: 30 + r.ppg,
+    headline: `Rookie sensation: ${r.p.playerId} is scoring ${r.ppg.toFixed(1)} a night`,
+    detail: `The ${pickText(r.p.draftPick)} is already a go-to scorer for ${name(r.teamId)}: ${line(r)} over ${r.games} games.` });
+  const steal = list.slice(0, 3).find(r => !r.p.draftPick || r.p.draftPick >= 15);
+  if (steal) out.push({ id: `rookie:steal:${steal.p.playerId}`, kind: 'rookie', playerId: steal.p.playerId, teamIds: [steal.teamId], weight: 38,
+    headline: `Draft steal: the ${pickText(steal.p.draftPick)} is outplaying the lottery`,
+    detail: `${steal.p.playerId} is one of the three best rookies in the league for ${name(steal.teamId)}: ${line(steal)}. Fourteen teams passed on him.` });
+  for (const r of list.filter(r => r.p.draftPick && r.p.draftPick <= 3 && r.games >= 15 && r.ppg < 8)) out.push({ id: `rookie:wall:${r.p.playerId}`, kind: 'rookie', playerId: r.p.playerId, teamIds: [r.teamId], weight: 28,
+    headline: `Rookie wall: No. ${r.p.draftPick} pick ${r.p.playerId} is struggling`,
+    detail: `Only ${r.ppg.toFixed(1)} points a game over ${r.games} games for ${name(r.teamId)}. Patience, or a bust in the making?` });
+}
+
 /** Everything worth talking about right now, most interesting first. `teamId` floats your own team's stories up. */
 export function storylines(league: League, extras?: GMLeagueExtras, teamId?: string | null): Storyline[] {
   const phase = league.seasonPhase ?? 'regular_season';
@@ -174,6 +204,7 @@ export function storylines(league: League, extras?: GMLeagueExtras, teamId?: str
   rivalryGames(league, out);
   streaks(league, out);
   races(league, out);
+  rookies(league, out);
   const mine = (s: Storyline) => (teamId && s.teamIds.includes(teamId) ? 25 : 0);
   const unique = new Map(out.map(s => [s.id, s]));
   const sorted = [...unique.values()].sort((a, b) => b.weight + mine(b) - (a.weight + mine(a)));

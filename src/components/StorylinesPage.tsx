@@ -7,7 +7,7 @@ import { TeamLink } from './TeamLink';
 
 interface Props { league: League; extras: GMLeagueExtras; controlledTeamId: string | null; onSelectPlayer: (id: string) => void }
 
-const KIND_LABEL: Record<StorylineKind, string> = { chase: 'CHASE', revenge: 'REVENGE GAME', rivalry: 'RIVALRY', streak: 'STREAK', race: 'RACE' };
+const KIND_LABEL: Record<StorylineKind, string> = { chase: 'CHASE', revenge: 'REVENGE GAME', rivalry: 'RIVALRY', streak: 'STREAK', race: 'RACE', rookie: 'ROOKIE WATCH' };
 
 /** What the league is talking about: chases, revenge games, rivalry nights, streaks and races, plus the rivalry table. */
 export function StorylinesPage({ league, extras, controlledTeamId, onSelectPlayer }: Props) {
@@ -19,7 +19,7 @@ export function StorylinesPage({ league, extras, controlledTeamId, onSelectPlaye
   return <div className="storylines-page">
     <header><span className="pixel-eyebrow">AROUND THE LEAGUE</span><h2>Storylines</h2></header>
     <div className="stats-view-toggle" role="tablist" aria-label="Storyline kinds">
-      {(['all', 'chase', 'revenge', 'rivalry', 'streak', 'race'] as const).map(k => <button key={k} role="tab" aria-selected={kind === k} className={kind === k ? 'active' : ''} onClick={() => setKind(k)}>{k === 'all' ? `All (${list.length})` : `${KIND_LABEL[k][0]}${KIND_LABEL[k].slice(1).toLowerCase()} (${list.filter(s => s.kind === k).length})`}</button>)}
+      {(['all', 'chase', 'revenge', 'rivalry', 'streak', 'race', 'rookie'] as const).map(k => <button key={k} role="tab" aria-selected={kind === k} className={kind === k ? 'active' : ''} onClick={() => setKind(k)}>{k === 'all' ? `All (${list.length})` : `${KIND_LABEL[k][0]}${KIND_LABEL[k].slice(1).toLowerCase()} (${list.filter(s => s.kind === k).length})`}</button>)}
     </div>
     {shown.length === 0 ? <p className="empty-state">{(league.seasonPhase ?? 'regular_season') === 'regular_season' || league.seasonPhase === 'playoffs' ? 'Nothing brewing yet. Stories build as the season is played.' : 'Storylines return when the season tips off.'}</p>
       : <ol className="storyline-list">{shown.map(s => <li key={s.id} className={`storyline storyline-${s.kind}${controlledTeamId && s.teamIds.includes(controlledTeamId) ? ' mine' : ''}`}>
