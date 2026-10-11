@@ -20,6 +20,9 @@ import { AVATAR_EVENT } from '../profile/avatar';
 export const PROGRESS_EVENT = 'courtvision:progress';
 let running: Promise<void> | null = null;
 let lastPushed = '';
+/** When this device last pushed: an unchanged save is pushed again after SEEN_EVERY, so "last seen" stays fresh. */
+let lastPushAt = 0;
+const SEEN_EVERY = 15 * 60_000;
 /** The site answered 503 (its Supabase settings are missing): stop posting until the page reloads. */
 let serverOff = false;
 let timer: ReturnType<typeof setTimeout> | null = null;
@@ -84,7 +87,7 @@ export function syncNow(): Promise<void> {
       const blob: ProgressBlob = { version: 1, updatedAt: Date.now(), storage, careers };
       const body = JSON.stringify(blob);
       const fingerprint = JSON.stringify({ userId, storage, careers: careers.map(c => [c.id, c.updatedAt]) });
-      if (fingerprint !== lastPushed && !serverOff) {
+      if ((fingerprint !== lastPushed || Date.now() - lastPushAt > SEEN_EVERY) && !serverOff) {
         // Gzip on the way up (game data shrinks about ten times); browsers without it send plain JSON.
         const packed = await gzip(body);
         const res = await fetch('/api/sync', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken() ?? token}`, ...(packed ? { 'X-Sync-Encoding': 'gzip' } : {}) }, body: packed ?? body });
@@ -94,6 +97,7 @@ export function syncNow(): Promise<void> {
         if (res.status === 503) serverOff = true;
         if (!res.ok) throw new Error(out?.error ?? `Sync failed (${res.status}).`);
         lastPushed = fingerprint;
+        lastPushAt = Date.now();
         lastSize = { raw: body.length, wire: packed?.byteLength ?? body.length, careers: JSON.stringify(careers).length };
         await refreshProfile(client);
       }
@@ -133,4 +137,6 @@ export function startSync(): void {
     if (e.title !== p.title || e.frame !== p.frame || (p.icon ?? 'ball') !== e.icon || (p.color ?? 'cream') !== packed) void updateProfile({ title: e.title, frame: e.frame, icon: e.icon, color: packed });
   });
   document.addEventListener('visibilitychange', () => { if (document.hidden && getAccount().status === 'signedIn') void syncNow(); });
+  // While the game is open, a quiet check-in now and then keeps "last seen" on your public profile current.
+  window.setInterval(() => { if (!document.hidden && getAccount().status === 'signedIn' && Date.now() - lastPushAt > SEEN_EVERY) void syncNow(); }, 60_000);
 }

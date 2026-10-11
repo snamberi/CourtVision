@@ -4,13 +4,15 @@ import {
   canGain, relicLuck, collectionProgress, collectDailyCoins, slotCount, setComplete, setBonus, RELICS, RELIC_BY_ID, RELIC_RARITY,
   RARITY_ORDER, RELIC_SETS, LUCKY_ODDS, SECRET_RELICS, SECRET_BY_ID, SECRET_CHANCE, MAX_LUCK, PITY, LUCKY_PITY, BASE_SLOTS, EXTRA_SLOTS, SLOT_PRICES,
   DAILY_COINS, RELICS_EVENT, RELICS_FOCUS_KEY, SHOP_SEEN_KEY, SPIN_PRICE, LUCKY_SPIN_PRICE, RELIC_PRICE, UPGRADE_PRICE, STACK_MAX,
-  type RelicState, type SpinResult, type Relic,
-} from '../../relics/relics';
+  type RelicState, type SpinResult, type Relic, refreshCosmeticShop } from '../../relics/relics';
 import { claimAchievementSpins, runCoins } from '../../relics/rewards';
 import { PixelIcon } from '../PixelIcon';
 import { RelicArt } from './RelicArt';
 import '../hunt/hunt.css';
 import './relics.css';
+import { ShopCosmetics } from './ShopCosmetics';
+import { SecretCosmeticFound, SecretCosmeticsSection } from './SecretCosmetics';
+import { SHOP_COSMETIC_WEIGHTS } from '../../relics/shopCosmetics';
 
 const pct = (odds: number) => `${+(odds * 100).toFixed(2)}%`;
 const fmtLuck = (n: number) => `+${+n.toFixed(1)}%`;
@@ -27,11 +29,12 @@ const rarityName = (r: SpinResult) => (r.kind === 'secret' ? 'Secret' : RELIC_RA
 export function RelicVault({ onExit, view = 'vault', onSwitch }: { onExit: () => void; view?: 'vault' | 'shop'; onSwitch?: () => void }) {
   const shop = view === 'shop';
   // Today's shop is rolled, and the daily coins paid, on the first visit of the day.
-  const [state, setState] = useState<RelicState>(() => { const s = loadRelics(), r = collectDailyCoins(refreshShop(s)); if (r !== s) saveRelics(r); return r; });
+  const [state, setState] = useState<RelicState>(() => { const s = loadRelics(), r = refreshCosmeticShop(collectDailyCoins(refreshShop(s)), SHOP_COSMETIC_WEIGHTS); if (r !== s) saveRelics(r); return r; });
   const [result, setResult] = useState<SpinResult | null>(null);
   const [batch, setBatch] = useState<SpinResult[] | null>(null);
   const [big, setBig] = useState<SpinResult | null>(null);
   const [rolling, setRolling] = useState(false);
+  const [secretLook, setSecretLook] = useState<string | null>(null);
   const [claimed, setClaimed] = useState(0);
   const timer = useRef<number | undefined>(undefined);
   useEffect(() => {
@@ -53,7 +56,7 @@ export function RelicVault({ onExit, view = 'vault', onSwitch }: { onExit: () =>
     saveRelics(out.state);
     setResult(null); setBatch(null);
     setRolling(true);
-    timer.current = window.setTimeout(() => { setState(out.state); setResult(out.result); setRolling(false); if (isBig(out.result)) setBig(out.result); }, reduceMotion() ? 0 : 900);
+    timer.current = window.setTimeout(() => { setState(out.state); setResult(out.result); setRolling(false); if (isBig(out.result)) setBig(out.result); if (out.result.cosmetic) setSecretLook(out.result.cosmetic); }, reduceMotion() ? 0 : 900);
   };
   /** Opens up to ten spins at once. */
   const spinAll = () => {
@@ -67,6 +70,8 @@ export function RelicVault({ onExit, view = 'vault', onSwitch }: { onExit: () =>
       setState(out.state); setBatch(out.results); setRolling(false);
       const best = [...out.results].sort((a, b) => rank(b) - rank(a))[0];
       if (best && isBig(best)) setBig(best);
+      const look = out.results.find(r => r.cosmetic)?.cosmetic;
+      if (look) setSecretLook(look);
     }, reduceMotion() ? 0 : 1100);
   };
 
@@ -104,7 +109,9 @@ export function RelicVault({ onExit, view = 'vault', onSwitch }: { onExit: () =>
       </div>
       <p className="relic-pity" aria-label="Guarantees">Guaranteed: <b>Epic</b> within {toEpic} spin{toEpic === 1 ? '' : 's'} · <b>Legendary</b> within {toLegendary} · <b>Mythic</b> within {toMythic} · Lucky Spins: <b>Legendary</b> within {toLucky}</p></>}
     </section>}
-    {big && <BigReveal result={big} onClose={() => setBig(null)} />}
+    {big ? <BigReveal result={big} onClose={() => setBig(null)} /> : secretLook && <SecretCosmeticFound keyId={secretLook} onClose={() => setSecretLook(null)} />}
+
+    {!shop && <SecretCosmeticsSection owned={state.cosmetics ?? []} />}
 
     {!shop && <section className="relic-section relic-weekly" aria-labelledby="relic-weekly">
       <h2 id="relic-weekly">Relic of the week</h2>
@@ -153,6 +160,7 @@ export function RelicVault({ onExit, view = 'vault', onSwitch }: { onExit: () =>
           <button onClick={() => commit(s => buyRelic(s, id))} disabled={rolling || sold || full || state.coins < price}>{sold ? 'Bought' : full ? 'Owned' : `${price.toLocaleString()} coins`}</button>
         </div>;
       })}{!state.shop?.offers.length && <p className="relic-help">Nothing left to sell you today. Impressive.</p>}</div>
+      <ShopCosmetics state={state} commit={commit} busy={rolling} />
     </section>}
 
     {!shop && <>

@@ -19,6 +19,7 @@ import { careerResume } from '../src/career/career';
 import { AVATAR_CATEGORIES, DEFAULT_AVATAR, cleanAvatar, type AvatarLook } from '../src/profile/avatar';
 import { avatarFrameDef } from '../src/profile/avatarFrames';
 import { encodeAvatar } from '../src/profile/avatarCode';
+import { shopOwned } from '../src/relics/shopOwned';
 import { readArcade, guessWeeks, BRACKET_MAX, GUESS_TRIES } from '../src/arcade/storage';
 import { loadRelics, RELIC_BY_ID, RARITY_ORDER } from '../src/relics/relics';
 import { unlockContext, earnedExtraTitles } from '../src/profile/cosmetics';
@@ -236,9 +237,10 @@ export function publicAvatar(blob: ProgressBlob, level: number, honors: string[]
   if (!raw) return null;
   let look: AvatarLook;
   try { look = cleanAvatar(JSON.parse(raw) as Partial<AvatarLook>); } catch { return null; }
+  const bought = shopOwned(read);
   for (const c of owner ? [] : AVATAR_CATEGORIES) {
     const r = c.items.find(i => i.id === look[c.id])?.rule;
-    if (r && ('staff' in r || ('honor' in r && !honors.includes(r.honor)) || ('level' in r && r.level > level))) look = { ...look, [c.id]: DEFAULT_AVATAR[c.id] };
+    if (r && ('staff' in r || ('honor' in r && !honors.includes(r.honor)) || ('level' in r && r.level > level) || ('shop' in r && !bought.includes(r.shop)))) look = { ...look, [c.id]: DEFAULT_AVATAR[c.id] };
   }
   let frame: string | undefined;
   try { frame = (JSON.parse(read('cv-profile-equip') ?? '{}') as { avatarFrame?: string }).avatarFrame; } catch { /* none */ }

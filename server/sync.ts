@@ -87,7 +87,7 @@ export async function handleSync(req: Request, env: SupaEnv | null, now = new Da
     const stamp = now.toISOString();
     const weeklyRow = (w: (typeof d.weekly)[number]) => ({ ...w, updated_at: stamp });
     const writes: [string, Promise<unknown>][] = [
-      ['profile', rest(env, 'PATCH', `profiles?id=eq.${id}`, { level: d.profile.level, xp: d.profile.xp, stats: { ...d.profile.stats, honors }, updated_at: stamp }, 'return=minimal', f)],
+      ['profile', rest(env, 'PATCH', `profiles?id=eq.${id}`, { level: d.profile.level, xp: d.profile.xp, stats: { ...d.profile.stats, honors, lastSeen: stamp }, updated_at: stamp }, 'return=minimal', f)],
       ['achievements', rest(env, 'DELETE', `user_achievements?${eq}`, undefined, 'return=minimal', f).then(() => upsert(env, 'user_achievements', own(d.achievements.map(a => ({ achievement_id: a }))), 'user_id,achievement_id', f))],
       ['created_players', upsert(env, 'created_players', own(d.players), 'user_id,career_id', f)],
       // One write per weekly board, so a board the database does not allow yet (82-0, the quick games) skips alone.

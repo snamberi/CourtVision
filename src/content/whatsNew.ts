@@ -9,6 +9,16 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2027-05-19',
+    title: 'Shop cosmetics, secret cosmetics and last seen',
+    items: [
+      "**The Relic Shop sells cosmetics:** 30 pieces you can't get anywhere else (body and hair colours, shoes, outfits, profile icons, name colours and title colours). **Three are on offer each day**, and they're pricey: 4,000 to 12,000 coins. Save up!",
+      "**8 secret cosmetics:** every Relic Vault spin has a small chance to also drop one (double on a Lucky Spin). They can't be bought. See which you've found in the Vault.",
+      "**Last seen:** public profiles show when a GM was last online, or \"Online now\".",
+      "**Fixed:** your own character now shows on the leaderboards, including the \"your rank\" bar at the bottom.",
+    ],
+  },
+  {
     id: '2027-05-12',
     title: 'Season 2: FROZEN, plus 25 upgrades and easier navigation',
     items: [

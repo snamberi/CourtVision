@@ -1,4 +1,5 @@
 import { localRead, type Read } from '../lib/kv';
+import { SECRET_COSMETIC_CHANCE, SECRET_COSMETIC_KEYS } from './secretCosmetics';
 
 /*
  * Relics: a collection that belongs to you, the player, across every mode. You earn Relic Spins by finishing things
@@ -119,7 +120,7 @@ export const SECRET_CHANCE = 0.0007;
 /** Luck tops out here, however many relics you hold. */
 export const MAX_LUCK = 50;
 
-export interface SpinResult { kind: 'relic' | 'secret'; id: string; rarity: RelicRarity | 'secret'; duplicate: boolean; coins: number; /** A stacking relic: copies now held (capped at STACK_MAX). */ stack?: number; /** From a Lucky Spin. */ lucky?: boolean }
+export interface SpinResult { kind: 'relic' | 'secret'; id: string; rarity: RelicRarity | 'secret'; duplicate: boolean; coins: number; /** A stacking relic: copies now held (capped at STACK_MAX). */ stack?: number; /** From a Lucky Spin. */ lucky?: boolean; /** A secret cosmetic this spin also dropped (secretCosmetics.ts). */ cosmetic?: string }
 export interface RelicState {
   v: 1;
   spins: number;
@@ -158,6 +159,10 @@ export interface RelicState {
   luckySpins?: number;
   /** Duplicate copies already fused away, per relic (see fuseDuplicates). */
   fused?: Record<string, number>;
+  /** Cosmetics bought in the Relic Shop (their shop keys, see shopCosmetics.ts): yours for good. */
+  cosmetics?: string[];
+  /** Today's cosmetic offers: three shop cosmetics a day. */
+  cosmeticShop?: { day: string; offers: string[] };
 }
 
 export const RELICS_KEY = 'cv-relics';
@@ -397,6 +402,13 @@ function roll(state: RelicState, rand: () => number, lucky: boolean): { state: R
     next = fillSlot({ ...earn(next, coins, `Duplicate ${relic.name}`), owned: { ...next.owned, [relic.id]: count }, pity: nextPity(next.pity, rarity, lucky) }, relic.id);
   }
   if (lucky) result = { ...result, lucky: true };
+  // Any spin can also drop a secret cosmetic (a separate draw, after the relic).
+  const lockedLooks = SECRET_COSMETIC_KEYS.filter(k => !(next.cosmetics ?? []).includes(k));
+  if (lockedLooks.length && rand() < SECRET_COSMETIC_CHANCE * (lucky ? 2 : 1)) {
+    const key = lockedLooks[Math.floor(rand() * lockedLooks.length)] ?? lockedLooks[0];
+    result = { ...result, cosmetic: key };
+    next = { ...next, cosmetics: [...(next.cosmetics ?? []), key] };
+  }
   next = { ...next, history: [...next.history, { ...result, at: Date.now() }].slice(-50) };
   return { state: next, result };
 }
@@ -466,6 +478,30 @@ export function buyRelic(state: RelicState, id: string): RelicState | null {
   if (state.coins < price) return null;
   return fillSlot({ ...spend(state, price, relic.name), owned: { ...state.owned, [id]: (state.owned[id] ?? 0) + 1 }, shop: { ...state.shop, bought: [...state.shop.bought, id] } }, id);
 }
+/* ---- Shop cosmetics: three a day, priced high (the list and prices live in shopCosmetics.ts). ---- */
+
+export const COSMETIC_SHOP_SIZE = 3;
+/** Today's three cosmetics, from the ones you don't own yet (rolled once a day; the same all day). */
+export function refreshCosmeticShop(state: RelicState, catalog: { key: string; weight: number }[], day = shopDay(), rand: () => number = Math.random): RelicState {
+  if (state.cosmeticShop?.day === day) return state;
+  const salt = state.salt ?? Math.floor(rand() * 1e9);
+  const r = seeded(hash(`cosmetics:${day}:${salt}`));
+  const pool = catalog.filter(c => !(state.cosmetics ?? []).includes(c.key));
+  const offers: string[] = [];
+  while (offers.length < COSMETIC_SHOP_SIZE && offers.length < pool.length) {
+    const left = pool.filter(c => !offers.includes(c.key));
+    let x = r() * left.reduce((n, c) => n + c.weight, 0);
+    const pick = left.find(c => (x -= c.weight) < 0) ?? left[left.length - 1];
+    offers.push(pick.key);
+  }
+  return { ...state, salt, cosmeticShop: { day, offers } };
+}
+/** Buys one of today's cosmetics for good. Null when it isn't on offer, already yours, or too dear. */
+export function buyCosmetic(state: RelicState, key: string, price: number, name: string): RelicState | null {
+  if (!state.cosmeticShop?.offers.includes(key) || (state.cosmetics ?? []).includes(key) || state.coins < price) return null;
+  return { ...spend(state, price, name), cosmetics: [...(state.cosmetics ?? []), key] };
+}
+
 export const canUpgrade = (state: RelicState, relic: Relic) => !relic.stack && (state.owned[relic.id] ?? 0) > 0 && !state.upgraded.includes(relic.id);
 /** Upgrades a relic you own that doesn't stack: +50% luck. */
 export function upgradeRelic(state: RelicState, id: string): RelicState | null {
@@ -487,7 +523,7 @@ export function mergeRelics(a: RelicState, b: RelicState): RelicState {
   for (const [id, n] of Object.entries(base.owned)) owned[id] = Math.max(n, owned[id] ?? 0);
   const uniq = <T,>(xs: T[]) => [...new Set(xs)];
   const merged: RelicState = { ...base, owned, secrets: uniq([...base.secrets, ...other.secrets]), granted: uniq([...base.granted, ...other.granted]).slice(-2000),
-    upgraded: uniq([...base.upgraded, ...other.upgraded]), fused: mergeMax(base.fused, other.fused), opens: Math.max(a.opens, b.opens), secretPityDone: !!(a.secretPityDone || b.secretPityDone), achSeeded: !!(a.achSeeded || b.achSeeded) };
+    upgraded: uniq([...base.upgraded, ...other.upgraded]), fused: mergeMax(base.fused, other.fused), cosmetics: uniq([...(base.cosmetics ?? []), ...(other.cosmetics ?? [])]), opens: Math.max(a.opens, b.opens), secretPityDone: !!(a.secretPityDone || b.secretPityDone), achSeeded: !!(a.achSeeded || b.achSeeded) };
   return { ...merged, equipped: merged.equipped.filter(id => (owned[id] ?? 0) > 0).slice(0, slotCount(merged)) };
 }
 

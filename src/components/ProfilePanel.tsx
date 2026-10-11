@@ -220,7 +220,7 @@ export function ProfilePanel({ extras }: { /** Shown right under your card (the 
         <i className={c.anim ? `anim-${c.anim}` : undefined} style={{ background: c.css, backgroundSize: c.anim ? '200% 100%' : undefined }} aria-hidden="true" />
         <b><Tinted css={c.css} anim={c.anim}>{c.name}</Tinted></b>
         <em><Tinted css={c.css} anim={c.anim}>{eq.title}</Tinted></em>
-        <small>{open ? (eq.titleColor === c.id ? 'Equipped' : 'Unlocked') : c.season ? seasonHow(c.season) : c.ownerLegacy != null ? `Owner legacy ${c.ownerLegacy}` : `${(trophyNeed('titleColor', c.id) ?? 0).toLocaleString()} trophies`}</small></button>; })}</div></div>
+        <small>{open ? (eq.titleColor === c.id ? 'Equipped' : 'Unlocked') : c.shop ? (c.shop.startsWith('secret-') ? 'Secret · from spins' : 'Relic Shop') : c.season ? seasonHow(c.season) : c.ownerLegacy != null ? `Owner legacy ${c.ownerLegacy}` : `${(trophyNeed('titleColor', c.id) ?? 0).toLocaleString()} trophies`}</small></button>; })}</div></div>
 
     <TitlePicker ctx={ctx} name={signedIn ? `@${name}` : name} eq={eq} />
 

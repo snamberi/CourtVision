@@ -4,6 +4,8 @@ import { baseline, loadRankHistory, rankChange, recordRanks, saveRankHistory, YO
 import { NameTag } from '../ProfileIcon';
 import { PixelIcon } from '../PixelIcon';
 import { CodeAvatar } from '../AvatarFrame';
+import { myAvatarCode } from '../../profile/avatarCode';
+import { equipped } from '../../profile/profile';
 
 /** Boards that last long enough for rank changes to mean something (not a single day, week or league code). */
 const trackedBoard = (spec: BoardSpec): string | null =>
@@ -48,7 +50,11 @@ export function BoardTable({ spec, scoreLabel, onUser, empty = 'No one on this b
   if (!d.rows.length) return <p className="empty-state">{empty}</p>;
   const base = cur.base ?? null;
   const since = cur.since ?? 'last week';
-  const tag = (r: BoardRow) => <><CodeAvatar code={r.avatar} size={26} /><NameTag name={r.username} icon={r.icon} color={r.color} title={r.title} /></>;
+  // Your own rows always show your character as it is on this device: the server's copy only updates when you sync,
+  // and is missing until your first sync after changing it.
+  const mineCode = myAvatarCode(equipped().avatarFrame);
+  const look = (r: BoardRow) => (r.you ? mineCode ?? r.avatar : r.avatar);
+  const tag = (r: BoardRow) => <><CodeAvatar code={look(r)} size={26} /><NameTag name={r.username} icon={r.icon} color={r.color} title={r.title} /></>;
   const name = (r: BoardRow) => onUser && r.username ? <button className="link-button name-link" onClick={() => onUser(r.username)}>{tag(r)}</button> : <span className="name-link">{tag(r)}</span>;
   const podium = d.rows.filter(r => r.rank <= 3).slice(0, 3);
   const rest = d.rows.filter(r => !podium.includes(r));
@@ -56,7 +62,7 @@ export function BoardTable({ spec, scoreLabel, onUser, empty = 'No one on this b
   const you = d.you ?? (mine ? { rank: mine.rank, score: mine.score } : null);
   return <>
     {podium.length > 0 && <ol className="wb-podium" aria-label="Top three">{[podium[1], podium[0], podium[2]].map(r => r && <li key={r.userId} className={`wb-step p${r.rank} ${r.you ? 'wb-you' : ''}`}>
-      {r.avatar && <span className="wb-character"><CodeAvatar code={r.avatar} full size={r.rank === 1 ? 70 : 56} title={`${r.username}'s character`} /></span>}
+      {look(r) && <span className="wb-character"><CodeAvatar code={look(r)} full size={r.rank === 1 ? 70 : 56} title={`${r.username}'s character`} /></span>}
       <span className="wb-who">{name(r)}{r.you ? <small> (you)</small> : null}</span>
       <b className="wb-pscore">{r.score.toLocaleString()} <small>{scoreLabel}</small></b>
       <Move since={since} change={rankChange(base, r.userId, r.rank)} />
@@ -72,7 +78,7 @@ export function BoardTable({ spec, scoreLabel, onUser, empty = 'No one on this b
     </table></div>}
     {you && <div className="wb-pinned" role="status">
       <span className="wb-pin-rank">#{you.rank.toLocaleString()}</span>
-      <span className="wb-pin-name">{mine ? name(mine) : 'You'}</span>
+      <span className="wb-pin-name">{mine ? name(mine) : <span className="name-link"><CodeAvatar code={mineCode} size={26} /> You</span>}</span>
       <Move since={since} change={rankChange(base, YOU, you.rank)} />
       <b>{you.score.toLocaleString()} <small>{scoreLabel}</small></b>
       <small className="wb-pin-of">of {d.total.toLocaleString()}</small>

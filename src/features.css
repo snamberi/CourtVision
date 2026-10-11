@@ -494,3 +494,9 @@ button.tcard:hover, button.tcard:focus-visible { transform: translateY(-3px); ou
 .demand-banner { border-color: var(--c-border-e85d5d, #e85d5d); }
 .demand-banner b { color: var(--c-fg-e85d5d, #e85d5d); }
 .demand-banner small { flex-basis: 100%; color: var(--c-fg-94a0b2, #94a0b2); }
+
+/* Last seen, under the name on a public profile. */
+.last-seen { display: flex; align-items: center; gap: 6px; margin: 2px 0 6px; font-size: 13px; color: var(--c-fg-94a0b2, #94a0b2); }
+.last-seen i { width: 8px; height: 8px; background: var(--c-bg-94a0b2, #94a0b2); }
+.last-seen.online { color: var(--c-fg-55c878, #55c878); }
+.last-seen.online i { background: var(--c-bg-55c878, #55c878); }

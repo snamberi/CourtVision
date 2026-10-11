@@ -132,7 +132,7 @@ export const TROPHY_TITLES = TROPHY_ROAD.filter(([, k]) => k === 'title').map(([
 
 // ---------------------------------------------------------------- title colours
 /** A title's colour: flat, a gradient, or animated (flow/shimmer/pulse; see features.css `.anim-*`). */
-export interface TitleColor { id: string; name: string; css: string; anim?: 'flow' | 'shimmer' | 'pulse' | 'glitch'; /** Opened at a Season Pass tier (season.ts). */ season?: { season: string; tier: number }; /** Opened by an owner legacy (the Owner's Box) instead of the Trophy Road. */ ownerLegacy?: number; /** Game Owner only. */ staff?: boolean }
+export interface TitleColor { id: string; name: string; css: string; anim?: 'flow' | 'shimmer' | 'pulse' | 'glitch'; /** Opened at a Season Pass tier (season.ts). */ season?: { season: string; tier: number }; /** Opened by an owner legacy (the Owner's Box) instead of the Trophy Road. */ ownerLegacy?: number; /** Game Owner only. */ staff?: boolean; /** Bought in the Relic Shop (its shop key). */ shop?: string }
 export const TITLE_COLORS: TitleColor[] = [
   { id: 'plain', name: 'Plain', css: '#94a0b2' },
   { id: 'amber', name: 'Amber', css: '#ffb347' },
@@ -155,10 +155,17 @@ export const TITLE_COLORS: TitleColor[] = [
   { id: 'immortal', name: 'Immortal', css: 'linear-gradient(90deg, #ff4d2e, #ffd166, #6fdc93, #4fd6d6, #c79bff, #ff4dd2, #ff4d2e)', anim: 'flow' },
   { id: 'glitch', name: 'Glitch', css: 'linear-gradient(90deg, #ff2bd6, #ffffff, #00f0ff, #ff2bd6, #ffffff, #00f0ff)', anim: 'glitch', season: { season: 'glitch', tier: 60 } },
   { id: 'frozen', name: 'Frozen', css: 'linear-gradient(90deg, #bfe6ff, #ffffff, #6db8ff, #ffffff, #bfe6ff)', anim: 'shimmer', season: { season: 'frozen', tier: 60 } },
+  // The Relic Shop.
+  { id: 'shop-emerald', name: 'Emerald', css: 'linear-gradient(90deg, #1f8a55, #4fd38a, #c8ffe0, #4fd38a, #1f8a55)', anim: 'shimmer', shop: 'shop-tc-emerald' },
+  { id: 'shop-magma', name: 'Magma', css: 'linear-gradient(90deg, #2a1a16, #ff6b2d, #ffd166, #ff6b2d, #2a1a16)', anim: 'flow', shop: 'shop-tc-magma' },
+  { id: 'shop-candy', name: 'Candy', css: 'linear-gradient(90deg, #ff9fc8, #ffffff, #9fe7ff, #ffffff, #ff9fc8)', anim: 'flow', shop: 'shop-tc-candy' },
+  { id: 'shop-void', name: 'Void', css: 'linear-gradient(90deg, #120c24, #6a2fd6, #ff4fd8, #6a2fd6, #120c24)', anim: 'pulse', shop: 'shop-tc-void' },
+  // Secret: dropped by a Relic Vault spin.
+  { id: 'secret-eclipse', name: 'Eclipse', css: 'linear-gradient(90deg, #000000, #ffd166, #ffffff, #ffd166, #000000)', anim: 'shimmer', shop: 'secret-tc-eclipse' },
 ];
 /** Whether a title colour is open: the Trophy Road's, or an owner legacy for the Owner's Box one. */
-export const titleColorOpen = (c: TitleColor, ctx: { trophies: number; owner?: number; staff?: boolean; seasons?: Record<string, number> }) =>
-  c.id === 'plain' || !!ctx.staff || (!c.staff && (c.season ? (ctx.seasons?.[c.season.season] ?? 0) >= c.season.tier : c.ownerLegacy != null ? (ctx.owner ?? 0) >= c.ownerLegacy : ctx.trophies >= (trophyNeed('titleColor', c.id) ?? Infinity)));
+export const titleColorOpen = (c: TitleColor, ctx: { trophies: number; owner?: number; staff?: boolean; seasons?: Record<string, number>; shop?: string[] }) =>
+  c.id === 'plain' || !!ctx.staff || (!c.staff && (c.shop ? (ctx.shop ?? []).includes(c.shop) : c.season ? (ctx.seasons?.[c.season.season] ?? 0) >= c.season.tier : c.ownerLegacy != null ? (ctx.owner ?? 0) >= c.ownerLegacy : ctx.trophies >= (trophyNeed('titleColor', c.id) ?? Infinity)));
 export const titleColorDef = (id: string | null | undefined) => TITLE_COLORS.find(c => c.id === id) ?? TITLE_COLORS[0];
 
 // ---------------------------------------------------------------- stored as "nameColour|titleColour"

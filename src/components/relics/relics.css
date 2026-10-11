@@ -161,3 +161,10 @@ button.relic-socket:hover, button.relic-socket:focus-visible { border-color: var
 .relic-museum { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
 .relic-museum li { display: grid; justify-items: center; gap: 2px; width: 72px; text-align: center; }
 .relic-museum li small { font-size: 10px; line-height: 1.15; color: var(--c-fg-94a0b2, #94a0b2); }
+
+/* Shop cosmetics: a bigger preview of the piece. */
+.shop-cosmetic { align-items: center; }
+.shop-cosmetic-art { display: grid; place-items: center; min-width: 64px; }
+.shop-cosmetic-art .road-reward small { display: none; }
+.secret-found-art { transform: scale(1.6); margin: 18px 0; }
+#secret-looks small { font-size: 13px; color: var(--c-fg-94a0b2, #94a0b2); margin-left: 6px; }
