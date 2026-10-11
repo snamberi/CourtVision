@@ -20,6 +20,10 @@ import { AVATAR_CATEGORIES, DEFAULT_AVATAR, cleanAvatar, type AvatarLook } from 
 import { avatarFrameDef } from '../src/profile/avatarFrames';
 import { encodeAvatar } from '../src/profile/avatarCode';
 import { readArcade, guessWeeks, BRACKET_MAX, GUESS_TRIES } from '../src/arcade/storage';
+import { loadRelics, RELIC_BY_ID, RARITY_ORDER } from '../src/relics/relics';
+import { unlockContext, earnedExtraTitles } from '../src/profile/cosmetics';
+import { TITLES } from '../src/profile/profile';
+import { readStreak } from '../src/retention/streak';
 
 /*
  * Turns a player's synced progress into their public rows: profile level and stats, achievements, created players,
@@ -189,11 +193,36 @@ export function derive(blob: ProgressBlob, now = new Date()): Derived {
     rebuildStars: rebuild.reduce((n, r) => n + r.stars, 0), rebuildTitles: rebuild.filter(r => r.title_in != null).length,
     careers: players.length, hallOfFame: hof, bestPlayer: best, xpParts: Object.fromEntries(parts.map(p => [p.id, p.xp])),
     summary: `${plural(gm.titles, 'title')} · ${plural(hof, 'Hall of Famer')} · ${plural(hunt.wins, 'hunt')} won`,
+    relicShelf: relicShelf(read), showcase: showcase(read, levelFor(xp).level, hunt.wins),
   };
   // Mode achievements count for rarity too, as mode-<id>.
   const modes = earnedModeAchievements(readWithCareers, { rankedTier: TIERS.findIndex(t => t.id === stats.rankedBest) }).map(id => `mode-${id}`);
   return { profile: { level: levelFor(xp).level, xp, stats: { ...stats, modeAchievements: modes.length } }, achievements: [...Object.keys(legacy.achievements).filter(a => /^[\w-]{1,40}$/.test(a)).slice(0, 200), ...modes],
     players, weekly, daily, rebuild, codes, ranked };
+}
+
+/** The relic museum on a public profile: up to six relics you own, rarest first, and how many secrets. */
+function relicShelf(read: (k: string) => string | null): { ids: string[]; secrets: number } {
+  const s = loadRelics(read);
+  const ids = Object.keys(s.owned).filter(id => (s.owned[id] ?? 0) > 0 && RELIC_BY_ID.has(id))
+    .sort((a, b) => RARITY_ORDER.indexOf(RELIC_BY_ID.get(b)!.rarity) - RARITY_ORDER.indexOf(RELIC_BY_ID.get(a)!.rarity) || a.localeCompare(b)).slice(0, 6);
+  return { ids, secrets: s.secrets.length };
+}
+/** The first three things on your trophy shelf that the server can check (titles you've earned, runs from your records). */
+function showcase(read: (k: string) => string | null, level: number, huntWins: number): string[] {
+  let shelf: string[] = [];
+  try { const v = JSON.parse(read('cv-trophy-case') ?? '[]') as unknown; if (Array.isArray(v)) shelf = v.filter((x): x is string => typeof x === 'string'); } catch { /* none */ }
+  const titles = new Set([...TITLES.filter(t => t.level <= level).map(t => t.name), ...earnedExtraTitles(unlockContext(level, read))]);
+  const perfect = loadPerfectRecords(read), streak = readStreak(read);
+  const out: string[] = [];
+  for (const id of shelf) {
+    if (out.length >= 3) break;
+    if (id.startsWith('title:') && titles.has(id.slice(6))) out.push(id.slice(6));
+    else if (id === 'run:hunt' && huntWins > 0) out.push(`${huntWins} League Hunt win${huntWins === 1 ? '' : 's'}`);
+    else if (id === 'run:perfect' && perfect.titles > 0) out.push(`${perfect.titles} 82-0 title${perfect.titles === 1 ? '' : 's'}`);
+    else if (id === 'run:streak' && streak.best >= 3) out.push(`${streak.best}-day streak`);
+  }
+  return out;
 }
 
 /**

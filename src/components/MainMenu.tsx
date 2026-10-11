@@ -9,7 +9,7 @@ import { modeOfWeek, FEATURED_NAME, WEEKLY_BONUS_CAP } from '../retention/modeOf
 import { PlayerAvatar } from './PlayerAvatar';
 import { MyAvatar } from './UserAvatar';
 import { PixelBall, PixelIcon } from './PixelIcon';
-import { loadRelics, saveRelics, collectDailyCoins, luckPercent, collectionProgress, RELICS_EVENT } from '../relics/relics';
+import { loadRelics, saveRelics, collectDailyCoins, totalLuck, collectionProgress, RELICS_EVENT } from '../relics/relics';
 import { claimAchievementSpins, paySeasonRewards } from '../relics/rewards';
 import { claimStreakBonus, noteSeason, daysLeft, nextSeason, daysUntil, SEASON_TIERS } from '../retention/season';
 import './roads/menuSeason.css';
@@ -396,7 +396,7 @@ function RelicStrip({ onOpen }: { onOpen: () => void }) {
   const p = collectionProgress(s);
   return <section className={`menu-relics ${s.spins ? 'ready' : ''}`} aria-label="Relic Vault">
     <PixelIcon name="crown" size={28} />
-    <span><b>Relic Vault{s.spins ? ` · ${s.spins} spin${s.spins === 1 ? '' : 's'} waiting` : ''}</b><small>+{+luckPercent(s).toFixed(1)}% luck · {s.coins.toLocaleString()} coins · {p.owned}/{p.total} relics{p.secrets ? ` · ${p.secrets} secret${p.secrets === 1 ? '' : 's'}` : ''}</small></span>
+    <span><b>Relic Vault{s.spins ? ` · ${s.spins} spin${s.spins === 1 ? '' : 's'} waiting` : ''}</b><small>+{+totalLuck(s).toFixed(1)}% luck · {s.coins.toLocaleString()} coins · {p.owned}/{p.total} relics{p.secrets ? ` · ${p.secrets} secret${p.secrets === 1 ? '' : 's'}` : ''}</small></span>
     <button className={s.spins ? 'primary' : ''} onClick={onOpen}>{s.spins ? 'Spin now' : 'Open the vault'}</button>
   </section>;
 }

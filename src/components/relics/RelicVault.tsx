@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  loadRelics, saveRelics, spinRelic, spinMany, luckySpin, freeLuckySpin, buySpin, buyRelic, buySlot, upgradeRelic, equipRelic, unequipRelic, refreshShop, canUpgrade,
-  canGain, relicLuck, luckPercent, collectionProgress, collectDailyCoins, slotCount, setComplete, setBonus, RELICS, RELIC_BY_ID, RELIC_RARITY,
+  loadRelics, saveRelics, spinRelic, spinMany, luckySpin, freeLuckySpin, fuseDuplicates, spareCopies, relicOfWeek, weeklyLuck, totalLuck, FUSE_COST, WEEKLY_BOOST, buySpin, buyRelic, buySlot, upgradeRelic, equipRelic, unequipRelic, refreshShop, canUpgrade,
+  canGain, relicLuck, collectionProgress, collectDailyCoins, slotCount, setComplete, setBonus, RELICS, RELIC_BY_ID, RELIC_RARITY,
   RARITY_ORDER, RELIC_SETS, LUCKY_ODDS, SECRET_RELICS, SECRET_BY_ID, SECRET_CHANCE, MAX_LUCK, PITY, LUCKY_PITY, BASE_SLOTS, EXTRA_SLOTS, SLOT_PRICES,
   DAILY_COINS, RELICS_EVENT, RELICS_FOCUS_KEY, SHOP_SEEN_KEY, SPIN_PRICE, LUCKY_SPIN_PRICE, RELIC_PRICE, UPGRADE_PRICE, STACK_MAX,
   type RelicState, type SpinResult, type Relic,
@@ -70,7 +70,7 @@ export function RelicVault({ onExit, view = 'vault', onSwitch }: { onExit: () =>
     }, reduceMotion() ? 0 : 1100);
   };
 
-  const luck = luckPercent(state), prog = collectionProgress(state), slots = slotCount(state);
+  const luck = totalLuck(state), weekly = weeklyLuck(state), star = relicOfWeek(), prog = collectionProgress(state), slots = slotCount(state);
   const toEpic = PITY.epic - state.pity.epic, toLegendary = PITY.legendary - state.pity.legendary, toMythic = PITY.mythic - state.pity.mythic;
   const toLucky = LUCKY_PITY - (state.pity.lucky % LUCKY_PITY);
   return <div className="hunt relic-vault">
@@ -82,7 +82,7 @@ export function RelicVault({ onExit, view = 'vault', onSwitch }: { onExit: () =>
 
     <section className="relic-stats" aria-label="Your relics">
       <div><span>Relic Spins</span><b>{state.spins}</b>{(state.luckySpins ?? 0) > 0 && <small>+{state.luckySpins} free Lucky Spin{state.luckySpins === 1 ? '' : 's'}</small>}</div>
-      <div><span>Luck</span><b>{fmtLuck(luck)}</b><small>{state.equipped.length}/{slots} slots · max +{MAX_LUCK}%</small></div>
+      <div><span>Luck</span><b>{fmtLuck(luck)}</b><small>{state.equipped.length}/{slots} slots{weekly ? ` · ${fmtLuck(weekly)} relic of the week` : ''} · max +{MAX_LUCK}%</small></div>
       <div><span>Coins</span><b>{state.coins.toLocaleString()}</b><small>+{DAILY_COINS} every day you visit</small></div>
       <div><span>Collection</span><b>{prog.owned}/{prog.total}</b><small>{prog.secrets}/{SECRET_RELICS.length} secrets</small></div>
     </section>
@@ -90,7 +90,7 @@ export function RelicVault({ onExit, view = 'vault', onSwitch }: { onExit: () =>
 
     {(!shop || rolling || result || batch) && <section className="relic-machine" aria-live="polite">
       <div className={`relic-slot ${rolling ? 'rolling' : ''} ${result ? `r-${result.rarity}` : ''}`}>
-        {rolling ? <><PixelIcon name="shuffle" size={40} /><b>Spinning…</b></>
+        {rolling ? <><SpinReel /><b>Spinning…</b></>
           : batch ? <BatchSummary results={batch} />
           : result ? <Reveal result={result} />
           : <><PixelIcon name="lock" size={40} /><b>{state.spins ? 'A spin is waiting' : 'No spins yet'}</b><small>{state.spins ? 'Press Spin to open it.' : 'Win runs and unlock achievements to earn spins.'}</small></>}
@@ -105,6 +105,27 @@ export function RelicVault({ onExit, view = 'vault', onSwitch }: { onExit: () =>
       <p className="relic-pity" aria-label="Guarantees">Guaranteed: <b>Epic</b> within {toEpic} spin{toEpic === 1 ? '' : 's'} · <b>Legendary</b> within {toLegendary} · <b>Mythic</b> within {toMythic} · Lucky Spins: <b>Legendary</b> within {toLucky}</p></>}
     </section>}
     {big && <BigReveal result={big} onClose={() => setBig(null)} />}
+
+    {!shop && <section className="relic-section relic-weekly" aria-labelledby="relic-weekly">
+      <h2 id="relic-weekly">Relic of the week</h2>
+      <div className={`relic-card r-${star.rarity} ${(state.owned[star.id] ?? 0) ? '' : 'missing'}`}>
+        <RelicArt id={star.id} size={72} locked={!(state.owned[star.id] ?? 0)} />
+        <span><b>{state.owned[star.id] ? star.name : `${star.name} (not found yet)`}</b>
+          <small>{RELIC_RARITY[star.rarity].name} · +{WEEKLY_BOOST * 100}% luck this week while it's in a slot{weekly ? `: you're getting ${fmtLuck(weekly)} extra` : state.owned[star.id] ? ': put it in a slot to get the boost' : ''}. A new one every Monday.</small></span>
+      </div>
+    </section>}
+
+    {!shop && <section className="relic-section" aria-labelledby="relic-fuse">
+      <h2 id="relic-fuse">Fuse duplicates</h2>
+      <p className="relic-help">Every copy after your first is a spare. Fuse {FUSE_COST} spares of one rarity into a relic one rarity higher (a new one while there are any left). Stacking relics can't be fused.</p>
+      <div className="relic-shop-grid">{RARITY_ORDER.slice(0, -1).map((r, i) => {
+        const have = spareCopies(state, r), up = RARITY_ORDER[i + 1];
+        return <div key={r} className={`relic-offer r-${up}`}>
+          <PixelIcon name="shuffle" size={24} /><span><b>{RELIC_RARITY[r].name} → {RELIC_RARITY[up].name}</b><small>{have} spare{have === 1 ? '' : 's'} · needs {FUSE_COST}</small></span>
+          <button onClick={() => { const out = fuseDuplicates(loadRelics(), r); if (!out) return; saveRelics(out.state); setState(out.state); setBatch(null); setResult(out.result); if (isBig(out.result)) setBig(out.result); }} disabled={rolling || have < FUSE_COST}>Fuse</button>
+        </div>;
+      })}</div>
+    </section>}
 
     {shop && <section className="relic-section" aria-labelledby="relic-shop">
       <h2 id="relic-shop">Shop</h2>
@@ -210,6 +231,14 @@ export function RelicVault({ onExit, view = 'vault', onSwitch }: { onExit: () =>
       </details>
     </section>}
   </div>;
+}
+
+/** While a spin rolls: relic art flicking past like a slot machine reel. */
+function SpinReel() {
+  const [i, setI] = useState(() => Math.floor(Math.random() * RELICS.length));
+  useEffect(() => { if (reduceMotion()) return; const t = window.setInterval(() => setI(n => (n + 7) % RELICS.length), 80); return () => window.clearInterval(t); }, []);
+  const r = RELICS[i];
+  return <span className={`relic-reel r-${r.rarity}`}><RelicArt id={r.id} size={96} /></span>;
 }
 
 function RelicCard({ relic: x, state, onUpgrade, onToggle }: { relic: Relic; state: RelicState; onUpgrade: () => void; onToggle: () => void }) {

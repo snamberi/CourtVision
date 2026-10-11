@@ -153,3 +153,11 @@ button.relic-socket:hover, button.relic-socket:focus-visible { border-color: var
   .relic-offer > span:not(.relic-art) { min-width: 130px; }
   .relic-offer > button { margin-left: auto; }
 }
+.relic-reel { display: inline-grid; animation: relic-reel 80ms steps(2) infinite; }
+@keyframes relic-reel { from { transform: translateY(-3px); } to { transform: translateY(3px); } }
+.relic-weekly .relic-card { max-width: 560px; align-items: center; }
+@media (prefers-reduced-motion: reduce) { .relic-reel { animation: none; } }
+/* The relic museum: a shelf of relic art on profiles. */
+.relic-museum { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.relic-museum li { display: grid; justify-items: center; gap: 2px; width: 72px; text-align: center; }
+.relic-museum li small { font-size: 10px; line-height: 1.15; color: var(--c-fg-94a0b2, #94a0b2); }

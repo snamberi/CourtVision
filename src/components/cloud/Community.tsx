@@ -24,6 +24,9 @@ import { FriendlyMatch } from './FriendlyMatch';
 /** The leaderboard honors on a public profile (server-granted, in its stats). */
 const honorTitles = (s: Record<string, unknown>) => (Array.isArray(s.honors) ? s.honors : []).map(h => HONORS.find(x => x.id === h)?.title).filter((t): t is string => !!t);
 import '../hunt/hunt.css';
+import { RelicArt } from '../relics/RelicArt';
+import { RELIC_BY_ID, RELIC_RARITY } from '../../relics/relics';
+import '../relics/relics.css';
 import '../locker/locker.css';
 
 type Tab = 'boards' | 'ranked' | 'pvp' | 'friends' | 'me';
@@ -217,7 +220,7 @@ function ProfileView({ username, onUser }: { username: string; onUser: (u: strin
   const d = data?.key === username ? data.p : undefined;
   if (d === undefined) return <p className="hint-text" role="status">Loading the profile…</p>;
   if (!d) return <p className="empty-state">No GM called @{username}.</p>;
-  const s = d.profile.stats as Record<string, unknown> & { bestPlayer?: { name: string; legacy: number } | null; ranked?: Record<string, number> };
+  const s = d.profile.stats as Record<string, unknown> & { bestPlayer?: { name: string; legacy: number } | null; ranked?: Record<string, number>; relicShelf?: { ids: string[]; secrets: number }; showcase?: string[] };
   const isMe = acct.userId === d.profile.id;
   const follows = following ?? d.following;
   const season = tierFor((s.ranked ?? {})[currentSeason()] ?? 0).tier;
@@ -239,6 +242,8 @@ function ProfileView({ username, onUser }: { username: string; onUser: (u: strin
           <li><small>HUNT PVP</small><b>{d.pvp ? `${d.pvp.rating} (${d.pvp.wins}-${d.pvp.losses})` : '—'}</b></li>
           <li><small>GREATEST PLAYER</small><b>{s.bestPlayer ? `${s.bestPlayer.name} · ${s.bestPlayer.legacy}` : '—'}</b></li>
         </ul>
+        {(s.showcase ?? []).length > 0 && <><small className="showcase-sub">PICKED FOR THE SHOWCASE</small><ul className="achievement-chips showcase-picks">{(s.showcase ?? []).slice(0, 3).map(t => <li key={t}><b>{t}</b></li>)}</ul></>}
+        {(s.relicShelf?.ids ?? []).length > 0 && <><small className="showcase-sub">RELIC MUSEUM{s.relicShelf!.secrets ? ` · ${s.relicShelf!.secrets} SECRET${s.relicShelf!.secrets === 1 ? '' : 'S'}` : ''}</small><ul className="relic-museum">{s.relicShelf!.ids.filter(id => RELIC_BY_ID.has(id)).map(id => { const r = RELIC_BY_ID.get(id)!; return <li key={id} className={`r-${r.rarity}`} title={`${r.name} (${RELIC_RARITY[r.rarity].name})`}><RelicArt id={id} size={44} /><small>{r.name}</small></li>; })}</ul></>}
         {rarest.length > 0 && <><small className="showcase-sub">RAREST ACHIEVEMENTS</small><ul className="achievement-chips showcase-rare">{rarest.map(id => <li key={id}><b>{ACHIEVEMENT_BY_ID.get(id)?.name ?? id.replace(/^mode-/, '')}</b><small>{rarity[id]}% of GMs</small></li>)}</ul></>}
         {!isMe && d.pvp?.squad != null && <FriendlyMatch theirs={d.pvp.squad} username={d.profile.username} />}
       </div>
