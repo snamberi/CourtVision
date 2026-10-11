@@ -8,11 +8,11 @@ import { CombineDrills } from './CombineDrills';
 import { PlayerNameTag } from './PlayerAvatar';
 import { TeamLink } from './TeamLink';
 import { classHonors, collegeSeason, collegeSeasonToDate, type CollegeSeason } from '../simulation/collegeSeason';
-import { mockDraft, seasonProgress } from '../simulation/draftSeason';
+import { mockDraft, draftRumors, seasonProgress } from '../simulation/draftSeason';
 import { assignScout, scoutDept, prospectRegion, EYE_LABEL, scoutVerdict } from '../simulation/scoutDept';
 
 const ftIn = (inches: number) => `${Math.floor(inches / 12)}′ ${(inches % 12).toFixed(inches % 1 ? 2 : 0).replace(/\.?0+$/, '')}″`;
-type View = 'board' | 'scouts' | 'college' | 'mock' | 'combine' | 'drills' | 'workouts';
+type View = 'board' | 'scouts' | 'college' | 'mock' | 'rumors' | 'combine' | 'drills' | 'workouts';
 type CombineKey = keyof CombineResults;
 const COMBINE_COLS: { key: CombineKey; label: string; fmt: (v: number) => string; lowerIsBetter?: boolean }[] = [
   { key: 'heightNoShoes', label: 'Ht (no shoes)', fmt: ftIn }, { key: 'wingspan', label: 'Wingspan', fmt: ftIn },
@@ -54,6 +54,7 @@ export function ScoutingBoard({ league, extras, controlledTeamId, myTurn, onDraf
   const college = useMemo(() => new Map(extras.draftClass.map(p => [p.playerId, collegeSeasonToDate(collegeSeason(p.trueSeason), progress)])), [extras.draftClass, progress]);
   const honors = useMemo(() => progress >= 1 ? classHonors(extras.draftClass) : new Map<string, string[]>(), [extras.draftClass, progress]);
   const mock = useMemo(() => view === 'mock' ? mockDraft(league, extras) : [], [view, league, extras]);
+  const rumors = useMemo(() => view === 'rumors' ? draftRumors(league, extras) : [], [view, league, extras]);
   const teamName = (id: string) => league.teams.find(t => t.teamId === id)?.name ?? id;
   const rows = view === 'workouts' ? board.filter(b => workouts.includes(b.p.playerId)) : board;
   const combineRows = [...board].sort((a, b) => (a.combine[sort.key] - b.combine[sort.key]) * sort.dir);
@@ -69,13 +70,21 @@ export function ScoutingBoard({ league, extras, controlledTeamId, myTurn, onDraf
     </header>
     <p className="hint-text">Potential shows as your scouts' range. A bigger scouting budget narrows it and adds workout slots; a workout nearly removes the guesswork and reveals character. Other front offices draft from their own reads.</p>
     <div className="stats-view-toggle" role="tablist" aria-label="Scouting views">
-      {(['board', ...(team ? ['scouts' as View] : []), 'college', 'mock', 'combine', ...(team ? ['drills' as View] : []), 'workouts'] as View[]).map(v => <button key={v} role="tab" aria-selected={view === v} className={view === v ? 'active' : ''} onClick={() => setView(v)}>{v === 'board' ? 'Big Board' : v === 'scouts' ? 'Scouts' : v === 'college' ? 'College Stats' : v === 'mock' ? 'Mock Draft' : v === 'combine' ? 'Draft Combine' : v === 'drills' ? `Combine Drills (${Object.keys(drillsFor(extras, team)).length}/${COMBINE_TESTS})` : `Workouts (${workouts.length})`}</button>)}
+      {(['board', ...(team ? ['scouts' as View] : []), 'college', 'mock', 'rumors', 'combine', ...(team ? ['drills' as View] : []), 'workouts'] as View[]).map(v => <button key={v} role="tab" aria-selected={view === v} className={view === v ? 'active' : ''} onClick={() => setView(v)}>{v === 'board' ? 'Big Board' : v === 'scouts' ? 'Scouts' : v === 'college' ? 'College Stats' : v === 'mock' ? 'Mock Draft' : v === 'rumors' ? 'Rumour Mill' : v === 'combine' ? 'Draft Combine' : v === 'drills' ? `Combine Drills (${Object.keys(drillsFor(extras, team)).length}/${COMBINE_TESTS})` : `Workouts (${workouts.length})`}</button>)}
     </div>
     {note && <p className="hint-text" role="status">{note}</p>}
 
     {view === 'drills' && team ? <CombineDrills league={league} extras={extras} teamId={team} board={board} onChange={onChange} onSelectPlayer={onSelectPlayer} />
       : view === 'scouts' && team ? <ScoutsPanel league={league} extras={extras} team={team} board={board} onChange={onChange} onSelectPlayer={onSelectPlayer} />
       : view === 'college' ? <CollegeTable board={board} college={college} honors={honors} progress={progress} onSelectPlayer={onSelectPlayer} />
+      : view === 'rumors' ? <div className="rumor-mill">
+        <ul>{rumors.map(r => <li key={r.pick} className={`rumor ${r.source === 'Smokescreen?' ? 'smoke' : ''} ${r.teamId === team ? 'mine' : ''}`}>
+          <span className="rumor-pick">#{r.pick}</span>
+          <span className="rumor-body"><small>{r.source.toUpperCase()}</small><span>{r.text}</span>
+            <button className="prospect-name" onClick={() => onSelectPlayer(r.prospectId)}><PlayerNameTag playerId={r.prospectId} size={20} /></button></span>
+        </li>)}</ul>
+        <p className="hint-text">Front-office sources are usually right; agents push their own players; rival scouts guess; and some teams leak smokescreens on purpose. The real draft is decided by each team's private board.</p>
+      </div>
       : view === 'mock' ? <div className="finances-table-wrap"><table className="db-table mock-draft-table">
         <thead><tr><th>Pick</th><th>Team</th><th>Player</th><th>Pos</th><th>School / club</th><th>Why</th><th>Slot salary</th></tr></thead>
         <tbody>{mock.map(m => <tr key={m.pick} className={m.teamId === team ? 'current-season-row' : undefined}>

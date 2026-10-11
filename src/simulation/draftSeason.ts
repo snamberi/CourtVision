@@ -97,6 +97,34 @@ export function mockDraft(league: League, extras: GMLeagueExtras): MockPick[] {
   return out;
 }
 
+// ---- Draft rumours ----
+
+export type RumorSource = 'Front-office source' | 'Agent chatter' | 'Rival scout' | 'Smokescreen?';
+export interface DraftRumor { pick: number; teamId: string; prospectId: string; source: RumorSource; text: string }
+/**
+ * The rumour mill before the draft: for the first-round picks, who each team is "high on". Most rumours point at the
+ * mock pick, some at another prospect the team really likes, and a few are smokescreens a team leaks on purpose.
+ * The same every time you look (seeded by season and pick), so they don't change when you refresh.
+ */
+export function draftRumors(league: League, extras: GMLeagueExtras, count = league.teams.length): DraftRumor[] {
+  const mock = mockDraft(league, extras).filter(m => m.pick <= count);
+  const pool = mock.map(m => m.prospectId);
+  return mock.map(m => {
+    const rng = new RNG(hash(`rumor|${league.season}|${m.pick}|${m.teamId}`));
+    const roll = rng.next();
+    const other = pool[Math.min(pool.length - 1, Math.max(0, pool.indexOf(m.prospectId) + 1 + Math.floor(rng.next() * 6)))] ?? m.prospectId;
+    const [source, target]: [RumorSource, string] = roll < 0.55 ? ['Front-office source', m.prospectId] : roll < 0.75 ? ['Agent chatter', m.prospectId] : roll < 0.9 ? ['Rival scout', other] : ['Smokescreen?', other];
+    const team = league.teams.find(t => t.teamId === m.teamId)?.name ?? m.teamId;
+    const lines: Record<RumorSource, string> = {
+      'Front-office source': `${team} have ${target} at the top of their board.`,
+      'Agent chatter': `${target}'s camp expects a promise from ${team}.`,
+      'Rival scout': `${team} worked ${target} out twice and loved what they saw.`,
+      'Smokescreen?': `${team} keep telling everyone they love ${target}. Nobody believes them.`,
+    };
+    return { pick: m.pick, teamId: m.teamId, prospectId: target, source, text: lines[source] };
+  });
+}
+
 // ---- Summer League ----
 
 export interface SummerLine { playerId: string; teamId: string; gp: number; min: number; pts: number; reb: number; ast: number; stl: number; blk: number; fgm: number; fga: number; tpm: number; tpa: number }

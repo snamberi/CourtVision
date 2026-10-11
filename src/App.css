@@ -2256,3 +2256,41 @@ a.ad-creative:hover .ad-cta { background: var(--c-bg-ff8f3c, #ff8f3c); }
 .cv-update-bar span { flex: 1; min-width: 0; }
 .cv-update-bar button { flex: none; padding: 6px 12px; }
 @media (max-width: 540px) { .cv-update-bar { left: 16px; right: 16px; transform: none; max-width: none; bottom: 76px; flex-wrap: wrap; } }
+.injury-decision .share-box { max-width: 560px; }
+.injury-options { display: grid; gap: 6px; margin: 10px 0; }
+.injury-options button { display: grid; gap: 2px; text-align: left; padding: 8px 10px; }
+.injury-options small { font-size: .75rem; opacity: .8; font-weight: 400; text-transform: none; letter-spacing: 0; }
+.injury-options span { font-size: .8rem; text-transform: none; letter-spacing: 0; }
+/* The league wire on the dashboard. */
+.league-ticker { display: flex; align-items: stretch; overflow: hidden; margin: 0 0 12px; border: 2px solid var(--c-border-2a3546, #2a3546); background: var(--c-bg-0b1018, #0b1018); }
+.league-ticker-tag { flex: none; display: grid; place-items: center; padding: 0 10px; font: 9px var(--ff-pixel, 'Press Start 2P', monospace); color: var(--c-fg-0b1018, #0b1018); background: var(--c-bg-f47b20, #f47b20); white-space: nowrap; }
+.league-ticker-track { flex: 1; overflow: hidden; }
+.league-ticker ul { display: inline-flex; gap: 28px; margin: 0; padding: 7px 0; list-style: none; white-space: nowrap; animation: ticker-scroll linear infinite; }
+.league-ticker li { font-size: .82rem; color: var(--c-fg-f4f0e6, #f4f0e6); }
+.league-ticker li small { color: var(--c-fg-94a0b2, #94a0b2); }
+.league-ticker li.ticker-traded b { color: var(--c-fg-ffd166, #ffd166); } .league-ticker li.ticker-signed b { color: var(--c-fg-55c878, #55c878); } .league-ticker li.ticker-waived b, .league-ticker li.ticker-trade_request b { color: var(--c-fg-e85d5d, #e85d5d); }
+.league-ticker:hover ul { animation-play-state: paused; }
+@keyframes ticker-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .league-ticker ul { animation: none; } .league-ticker-track { overflow-x: auto; } }
+/* The playoff series preview. */
+.series-preview { margin: 0 0 14px; padding: 12px 14px; border: 2px solid var(--c-border-ffd166, #ffd166); background: var(--c-bg-121926, #121926); }
+.series-preview-sides { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 8px 0; }
+.series-side { display: grid; justify-items: start; gap: 3px; }
+.series-side.right { justify-items: end; text-align: right; }
+.series-side ul { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 2px; font-size: .8rem; }
+.series-side li em { display: block; font-style: normal; color: var(--c-fg-94a0b2, #94a0b2); font-size: .72rem; }
+.series-preview-line { margin: 4px 0 0; }
+.series-preview-line b { color: var(--c-fg-ffd166, #ffd166); }
+/* Coach identity on the dashboard. */
+.coach-identity { margin: 0 0 12px; padding: 10px 12px; border: 2px solid var(--c-border-2a3546, #2a3546); background: var(--c-bg-121926, #121926); }
+.coach-identity-system { margin: 4px 0; }
+.coach-identity-tags { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 6px; padding: 0; }
+.coach-identity-tags li { padding: 2px 8px; font-size: .78rem; border: 1px solid var(--c-border-4da3ff, #4da3ff); color: var(--c-fg-4da3ff, #4da3ff); }
+/* The draft rumour mill. */
+.rumor-mill ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.rumor { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border: 1px solid var(--c-border-2a3546, #2a3546); background: var(--c-bg-121926, #121926); }
+.rumor.mine { border-color: var(--c-border-f47b20, #f47b20); }
+.rumor.smoke { opacity: .8; border-style: dashed; }
+.rumor-pick { font: 10px var(--ff-pixel, 'Press Start 2P', monospace); color: var(--c-fg-ffd166, #ffd166); min-width: 34px; }
+.rumor-body { display: grid; gap: 3px; }
+.rumor-body small { font-size: .65rem; letter-spacing: .08em; color: var(--c-fg-94a0b2, #94a0b2); }

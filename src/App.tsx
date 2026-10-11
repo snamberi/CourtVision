@@ -57,7 +57,8 @@ import { followsRealDevelopment } from './simulation/realDevelopmentGate';
 import { applyHistoricalRosters } from './history/realRollover';
 import { enforceSticky } from './simulation/sticky';
 import { collectPress } from './simulation/press';
-import { pendingDecisions } from './simulation/medical';
+import { pendingDecisions, chooseTreatment } from './simulation/medical';
+import { InjuryDecisionDialog } from './components/InjuryDecisionDialog';
 import { crowdFill, arenaLevels } from './simulation/business';
 import { useBackgroundJobs } from './workers/useBackgroundJobs';
 import { ToastStack, type ToastData } from './components/ToastStack';
@@ -826,8 +827,10 @@ function App() {
   // The doctors want a decision when one of your players gets hurt.
   const injuryDecisions = pendingDecisions(league, controlledTeamId).length;
   const lastDecisions = useRef(injuryDecisions);
+  // New injuries ask straight away (a pop-up with the doctors' options); "Decide later" leaves them in the Medical Room.
+  const [injuryLater, setInjuryLater] = useState(false);
   useEffect(() => {
-    if (injuryDecisions > lastDecisions.current) pushToast(`Injury: the doctors need your call in the Medical Room (${injuryDecisions} waiting).`, 'error');
+    if (injuryDecisions > lastDecisions.current) { if (handsOff) pushToast(`Injury: the doctors need your call in the Medical Room (${injuryDecisions} waiting).`, 'error'); else setInjuryLater(false); }
     lastDecisions.current = injuryDecisions;
   }, [injuryDecisions]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1617,6 +1620,8 @@ function App() {
   return (
     <TeamLinksProvider teams={league.teams} saveId={activeSaveId}><TeamIdentityProvider teams={league.teams} freeAgents={extras.freeAgents}><div className="app-shell">
       <DownloadButton />
+      {screen === 'app' && !handsOff && !injuryLater && injuryDecisions > 0 && <InjuryDecisionDialog league={league} teamId={controlledTeamId}
+        onChoose={(id, t) => { setLeague(l => chooseTreatment(l, id, t)); pushToast(`Treatment set for ${id}.`, 'success'); }} onLater={() => setInjuryLater(true)} />}
       <header className="topbar">
         <button className="sidebar-toggle" onClick={() => setSidebarCollapsed((v) => !v)} aria-label="Toggle navigation" aria-expanded={!sidebarCollapsed} aria-controls="game-navigation" title="Toggle navigation">
           <PixelIcon name="menu" />
