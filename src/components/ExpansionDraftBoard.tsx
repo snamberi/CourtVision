@@ -1,3 +1,4 @@
+import { PixelIcon } from './PixelIcon';
 import { useMemo, useState } from 'react';
 import type { League } from '../simulation/league';
 import type { GMLeagueExtras } from '../simulation/gm';
@@ -64,7 +65,7 @@ export function ExpansionDraftBoard({ league, extras, onDone }: Props) {
           <TeamLogo team={t} size={28} /><span>{t.name}</span><small>{kept.length} protected · {exposed.length} exposed</small>
         </button>
         {open && <div className="expansion-lists">
-          <div><h5>Protected</h5><ul>{kept.map(id => { const p = t.seasons.find(s => s.playerId === id)!; return <li key={id}>🔒 {id} <small>{calculateOverall(p)} OVR · {p.age}</small></li>; })}</ul></div>
+          <div><h5>Protected</h5><ul>{kept.map(id => { const p = t.seasons.find(s => s.playerId === id)!; return <li key={id}><PixelIcon name="lock" size={12} /> {id} <small>{calculateOverall(p)} OVR · {p.age}</small></li>; })}</ul></div>
           <div><h5>Exposed</h5><ul>{exposed.map(e => <li key={e.player.playerId}>{e.player.playerId} <small>{e.overall} OVR · {e.player.age}</small></li>)}</ul></div>
         </div>}
       </article>;

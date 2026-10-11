@@ -1,10 +1,10 @@
+import { DifficultyCards } from './DifficultyCards';
 import { LEVELS, LEVEL_NAME, type Level, type RunView } from '../retention/challenge';
 
 /** Rookie / Pro / Legend, with what each one changes in this mode. */
 export function LevelPicker({ value, onChange, blurbs, label = 'Difficulty' }: { value: Level; onChange: (l: Level) => void; blurbs: Record<Level, string>; label?: string }) {
   return <div className="challenge-opt">
-    <div className="hunt-pills" role="radiogroup" aria-label={label}>{LEVELS.map(l => <button key={l} role="radio" aria-checked={value === l} className={`hunt-pill ${value === l ? 'on' : ''}`} onClick={() => onChange(l)}>{LEVEL_NAME[l]}</button>)}</div>
-    <p className="hunt-step-note">{blurbs[value]}</p>
+    <DifficultyCards label={label} value={value} onChange={onChange} options={LEVELS.map((l, i) => ({ id: l, name: LEVEL_NAME[l], blurb: blurbs[l], level: i + 1 + (i === 2 ? 1 : 0) }))} />
   </div>;
 }
 

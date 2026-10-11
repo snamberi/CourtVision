@@ -1,3 +1,4 @@
+import { MedalIcon } from '../PixelIcon';
 import type { ReactNode } from 'react';
 import { COUNTRY_BY_NAME, type Medal } from '../../worldGames/data';
 import { groupTable, GROUP_NAMES, type WGGame, type WGLine, type Stage } from '../../worldGames/tournament';
@@ -89,6 +90,6 @@ export function MedalTable({ records }: { records: { gold: string; silver: strin
   for (const r of records) for (const [i, c] of [r.gold, r.silver, r.bronze].entries()) { const row = t.get(c) ?? [0, 0, 0]; row[i]++; t.set(c, row); }
   const rows = [...t].sort((a, b) => b[1][0] - a[1][0] || b[1][1] - a[1][1] || b[1][2] - a[1][2]);
   if (!rows.length) return null;
-  return <table className="db-table wg-medal-table"><thead><tr><th>Country</th><th>🥇</th><th>🥈</th><th>🥉</th></tr></thead>
+  return <table className="db-table wg-medal-table"><thead><tr><th>Country</th><th><MedalIcon medal="gold" /></th><th><MedalIcon medal="silver" /></th><th><MedalIcon medal="bronze" /></th></tr></thead>
     <tbody>{rows.map(([c, [g, s, b]]) => <tr key={c}><td><CountryName country={c} /></td><td>{g}</td><td>{s}</td><td>{b}</td></tr>)}</tbody></table>;
 }

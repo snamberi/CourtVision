@@ -5,8 +5,8 @@ import type { PlayerSeason } from '../../simulation/types';
 import { COUNTRIES, hostOf } from '../../worldGames/data';
 import { calculateOverall } from '../../simulation/engine/overall';
 import { startTournament, countryOf, type WGState, type NationalTeam } from '../../worldGames/tournament';
-import { buildTeams, eligiblePlayers, poolsOf, recordOf, applyResults, summerYear, medalLine, type WorldGamesRecord } from '../../worldGames/league';
-import { PixelIcon } from '../PixelIcon';
+import { buildTeams, eligiblePlayers, poolsOf, recordOf, applyResults, summerYear, type WorldGamesRecord } from '../../worldGames/league';
+import { PixelIcon, MedalIcon } from '../PixelIcon';
 import { CountryName, GameList, GroupTables, Knockouts, Leaders, MedalTable, Podium } from './WorldGamesViews';
 import { PickTwelve, TournamentRun } from './TournamentRun';
 
@@ -86,11 +86,11 @@ export function WorldGamesPage({ league, freeAgents, controlledTeamId, seed, onC
     </section>
 
     {mine.length > 0 && <section className="wg-card"><h3 className="hunt-subhead">Your players' medals</h3>
-      <ul className="wg-my-medals">{mine.map(p => <li key={p.playerId}><b>{p.playerId}</b> <CountryName country={countryOf(p)} /> {medalLine(p.worldGames)}</li>)}</ul></section>}
+      <ul className="wg-my-medals">{mine.map(p => <li key={p.playerId}><b>{p.playerId}</b> <CountryName country={countryOf(p)} /> {(p.worldGames ?? []).map((m, i) => <span key={i}>{i ? ' · ' : ''}<MedalIcon medal={m.medal} /> {m.year}</span>)}</li>)}</ul></section>}
 
     {wg.history.length > 0 && <section className="wg-card"><h3 className="hunt-subhead">Medal table</h3>
       <MedalTable records={wg.history} />
-      <ul className="wg-my-medals">{[...wg.history].reverse().map(r => <li key={r.year}>{r.year} {r.city}: 🥇 {r.gold} · 🥈 {r.silver} · 🥉 {r.bronze}</li>)}</ul>
+      <ul className="wg-my-medals">{[...wg.history].reverse().map(r => <li key={r.year}>{r.year} {r.city}: <MedalIcon medal="gold" /> {r.gold} · <MedalIcon medal="silver" /> {r.silver} · <MedalIcon medal="bronze" /> {r.bronze}</li>)}</ul>
     </section>}
   </div>;
 }

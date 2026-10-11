@@ -1,3 +1,4 @@
+import { PixelIcon } from './PixelIcon';
 import { CupBanner, DynastyBanner, JerseyBanner, TitleBanner } from './Banners';
 import { TeamLink } from './TeamLink';
 import { fx } from './statFormat';
@@ -139,7 +140,7 @@ export function TeamHistoryPage({ league, extras, initialTeamId, onSelectPlayer,
             <td title={s.imported ? `Real NBA season ${s.season}–${String((Number(s.season) + 1) % 100).padStart(2, '0')} (imported)` : undefined}>{formatSeasonYear(s.season)}{s.inProgress && ' *'}{s.imported && s.teamName && s.teamName !== team.name ? <small> {s.teamName}</small> : null}</td><td>{s.wins ?? '—'}</td><td>{s.losses ?? '—'}</td>
             <td>{s.wins != null && s.losses != null && s.wins + s.losses > 0 ? (s.wins / (s.wins + s.losses)).toFixed(3).replace(/^0/, '') : '—'}</td>
             <td>{fx(s.ortg)}</td><td>{fx(s.drtg)}</td>
-            <td className="history-finish">{s.finish === 'Champion' ? '🏆 Champion' : s.finish ?? '—'}{s.playoffRecord && <small> ({s.playoffRecord})</small>}</td>
+            <td className="history-finish">{s.finish === 'Champion' ? <><PixelIcon name="trophy" size={12} /> Champion</> : s.finish ?? '—'}{s.playoffRecord && <small> ({s.playoffRecord})</small>}</td>
             <td className="col-name">{top ? <button className="link-button" onClick={() => onSelectPlayer(top.playerId)}>{top.playerId}</button> : '—'}{top && <small> {top.pts.toFixed(1)} PTS{top.ws ? ` · ${top.ws.toFixed(1)} WS` : ''}</small>}</td>
             <td>{s.imported ? (onOpenArchive ? <button onClick={onOpenArchive} title="Real rosters are in the NBA History archive">Archive</button> : null) : <button onClick={() => setOpen(isOpen ? null : s.season)} aria-expanded={isOpen}>{isOpen ? 'Hide roster' : 'Roster'}</button>}</td>
           </tr>

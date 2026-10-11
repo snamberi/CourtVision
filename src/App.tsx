@@ -71,6 +71,8 @@ import { AD_CONFIG } from './ads/adConfig';
 import { loadGoogleConsentTool } from './ads/adsense';
 import { hasEntitlement } from './profile/cosmetics';
 import { IS_DESKTOP_BUILD } from './appMode';
+import { MenuBottomBar, type BarTab } from './components/MenuBottomBar';
+import type { ModeEntry } from './menu/modeCatalog';
 import { MainMenu, type GameMode, type RealLeagueOptions } from './components/MainMenu';
 import { SettingsPage } from './components/SettingsPage';
 import { ChooseTeamScreen } from './components/ChooseTeamScreen';
@@ -1552,33 +1554,45 @@ function App() {
   if (restoring) return <main role="status" className="navigation-loading">Opening your league…</main>;
   if (showPrivacy) return <Suspense fallback={<p className="empty-state page-loading" role="status">Loading…</p>}><PrivacyPolicyPage onClose={closePrivacy} /></Suspense>;
 
+  // Any mode or sub-mode card (menu, the phone's Play and Compete sheets) opens through here.
+  const openMode = (e: ModeEntry) => {
+    const a = e.action;
+    if (a.kind === 'create') { setCreateChallenge(a.challenge); setScreen('create'); }
+    else if (a.kind === 'start') startGameMode(a.mode, 'normal', '', '');
+    else if (a.kind === 'arcade') { setArcadeTab(a.tab); setScreen('arcade'); }
+    else if (a.screen === 'community') { setCommunityUser(null); setCommunityTab('boards'); setScreen('community'); }
+    else setScreen(a.screen);
+  };
+  const barTab: BarTab = screen === 'menu' ? 'home' : screen === 'community' ? 'ranks' : screen === 'profile' || screen === 'locker' || screen === 'closet' || screen === 'settings' ? 'me' : screen === 'clubs' || screen === 'online' || screen === 'friends' ? 'compete' : 'play';
+  const menuBar = <MenuBottomBar active={barTab} onHome={() => setScreen('menu')} onRanks={() => { setCommunityUser(null); setCommunityTab('boards'); setScreen('community'); }} onMe={() => { setProfileTab('profile'); setScreen('profile'); }} onOpen={openMode} />;
+
   if (screen === 'draft') {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening the draft room…</main>}><AllTimeDraft onExit={() => setScreen('menu')} onStart={(l, e, teamId, name) => { enterApp(l, e, teamId, name); setTab('dashboard'); }} /></Suspense></>;
   }
   if (screen === 'community') {
-    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Community…</main>}><Community key={communityTab} initialTab={communityTab} onExit={() => { setCommunityUser(null); setScreen('menu'); }} user={communityUser} onUser={u => setCommunityUser(u || null)} /></Suspense></>;
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} />{menuBar}<Suspense fallback={<main role="status" className="navigation-loading">Opening Community…</main>}><Community key={communityTab} initialTab={communityTab} onExit={() => { setCommunityUser(null); setScreen('menu'); }} user={communityUser} onUser={u => setCommunityUser(u || null)} /></Suspense></>;
   }
   if (screen === 'online') {
-    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Online Leagues…</main>}><OnlineLeaguesPage onExit={() => setScreen('menu')} onOpen={openOnlineLeague} /></Suspense></>;
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} />{menuBar}<Suspense fallback={<main role="status" className="navigation-loading">Opening Online Leagues…</main>}><OnlineLeaguesPage onExit={() => setScreen('menu')} onOpen={openOnlineLeague} /></Suspense></>;
   }
   if (screen === 'clubs') {
-    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Clubs…</main>}><ClubsPage onExit={() => setScreen('menu')} onUser={u => { setCommunityTab('friends'); setCommunityUser(u); setScreen('community'); }} /></Suspense></>;
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} />{menuBar}<Suspense fallback={<main role="status" className="navigation-loading">Opening Clubs…</main>}><ClubsPage onExit={() => setScreen('menu')} onUser={u => { setCommunityTab('friends'); setCommunityUser(u); setScreen('community'); }} /></Suspense></>;
   }
   if (screen === 'closet') {
-    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening your Closet…</main>}><ClosetPage onExit={() => setScreen('menu')} onProfile={() => { setProfileTab('profile'); setScreen('profile'); }} /></Suspense></>;
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} />{menuBar}<Suspense fallback={<main role="status" className="navigation-loading">Opening your Closet…</main>}><ClosetPage onExit={() => setScreen('menu')} onProfile={() => { setProfileTab('profile'); setScreen('profile'); }} /></Suspense></>;
   }
   if (screen === 'friendList') {
-    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening your friend list…</main>}><FriendListPage onExit={() => setScreen('menu')} onFind={() => setScreen('friends')} onUser={u => { setCommunityTab('friends'); setCommunityUser(u); setScreen('community'); }} /></Suspense></>;
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} />{menuBar}<Suspense fallback={<main role="status" className="navigation-loading">Opening your friend list…</main>}><FriendListPage onExit={() => setScreen('menu')} onFind={() => setScreen('friends')} onUser={u => { setCommunityTab('friends'); setCommunityUser(u); setScreen('community'); }} /></Suspense></>;
   }
   if (screen === 'friends') {
-    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Friends…</main>}><FriendsPage onClubs={() => setScreen('clubs')} onOnline={() => setScreen('online')} onExit={() => setScreen('menu')} onUser={u => { setCommunityTab('friends'); setCommunityUser(u); setScreen('community'); }} onCommunity={() => { setCommunityUser(null); setCommunityTab('boards'); setScreen('community'); }} /></Suspense></>;
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} />{menuBar}<Suspense fallback={<main role="status" className="navigation-loading">Opening Friends…</main>}><FriendsPage onClubs={() => setScreen('clubs')} onOnline={() => setScreen('online')} onExit={() => setScreen('menu')} onUser={u => { setCommunityTab('friends'); setCommunityUser(u); setScreen('community'); }} onCommunity={() => { setCommunityUser(null); setCommunityTab('boards'); setScreen('community'); }} /></Suspense></>;
   }
   // The GM Locker lives in the Player Profile now: an old #/locker link opens its Trophy room.
   if (screen === 'profile' || screen === 'locker') {
-    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening your profile…</main>}><ProfileHub key={`${screen}-${profileTab}`} initialTab={screen === 'locker' ? 'trophies' : profileTab} onExit={() => setScreen('menu')} onCloset={() => setScreen('closet')} /></Suspense></>;
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} />{menuBar}<Suspense fallback={<main role="status" className="navigation-loading">Opening your profile…</main>}><ProfileHub key={`${screen}-${profileTab}`} initialTab={screen === 'locker' ? 'trophies' : profileTab} onExit={() => setScreen('menu')} onCloset={() => setScreen('closet')} /></Suspense></>;
   }
   if (screen === 'settings') {
-    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><SettingsPage onExit={() => setScreen('menu')} backup={<BackupPanel />}
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} />{menuBar}<SettingsPage onExit={() => setScreen('menu')} backup={<BackupPanel />}
       recovery={<SaveRecoveryPanel beforeAction={async () => { await debouncedSave.flush(); }} onOpen={async id => { jobs.resetAll(); await debouncedSave.flush(); await continueSavedUniverse(id); }} />} /></>;
   }
   if (screen === 'worldGamesMode' && worldGamesRun) {
@@ -1588,7 +1602,7 @@ function App() {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening New Franchise…</main>}><FranchiseCreate key={createChallenge} initial={createChallenge} busy={menuBusy} onBack={() => setScreen('menu')} onStart={startFromCreate} /></Suspense></>;
   }
   if (screen === 'arcade') {
-    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening the quick games…</main>}><Arcade tab={arcadeTab} onTab={setArcadeTab} onExit={() => setScreen('menu')} /></Suspense></>;
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} />{menuBar}<Suspense fallback={<main role="status" className="navigation-loading">Opening the quick games…</main>}><Arcade tab={arcadeTab} onTab={setArcadeTab} onExit={() => setScreen('menu')} /></Suspense></>;
   }
   if (screen === 'career') {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Career Mode…</main>}><CareerMode onExit={() => setScreen('menu')} /></Suspense></>;
@@ -1597,13 +1611,13 @@ function App() {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Survival…</main>}><Survival onExit={() => setScreen('menu')} /></Suspense></>;
   }
   if (screen === 'relics' || screen === 'shop') {
-    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening the Relic {screen === 'shop' ? 'Shop' : 'Vault'}…</main>}><RelicVault key={screen} view={screen === 'shop' ? 'shop' : 'vault'} onSwitch={() => setScreen(screen === 'shop' ? 'relics' : 'shop')} onExit={() => setScreen('menu')} /></Suspense></>;
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} />{menuBar}<Suspense fallback={<main role="status" className="navigation-loading">Opening the Relic {screen === 'shop' ? 'Shop' : 'Vault'}…</main>}><RelicVault key={screen} view={screen === 'shop' ? 'shop' : 'vault'} onSwitch={() => setScreen(screen === 'shop' ? 'relics' : 'shop')} onExit={() => setScreen('menu')} /></Suspense></>;
   }
   if (screen === 'levelRoad' || screen === 'trophyRoad') {
-    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening the road…</main>}><RoadPage key={screen} road={screen === 'levelRoad' ? 'level' : 'trophy'} onSwitch={() => setScreen(screen === 'levelRoad' ? 'trophyRoad' : 'levelRoad')} onExit={() => setScreen('menu')} /></Suspense></>;
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} />{menuBar}<Suspense fallback={<main role="status" className="navigation-loading">Opening the road…</main>}><RoadPage key={screen} road={screen === 'levelRoad' ? 'level' : 'trophy'} onSwitch={() => setScreen(screen === 'levelRoad' ? 'trophyRoad' : 'levelRoad')} onExit={() => setScreen('menu')} /></Suspense></>;
   }
   if (screen === 'seasonPass') {
-    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening the Season Pass…</main>}><SeasonPassPage onExit={() => setScreen('menu')} onRelics={() => setScreen('relics')} /></Suspense></>;
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} />{menuBar}<Suspense fallback={<main role="status" className="navigation-loading">Opening the Season Pass…</main>}><SeasonPassPage onExit={() => setScreen('menu')} onRelics={() => setScreen('relics')} /></Suspense></>;
   }
   if (screen === 'story') {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Story Mode…</main>}><StoryMode onExit={() => setScreen('menu')} /></Suspense></>;
@@ -1619,6 +1633,7 @@ function App() {
     return (
       <>
         <ToastStack toasts={toasts} onDismiss={dismissToast} />
+        {menuBar}
         <MainMenu
           onStart={startGameMode}
           onLocker={() => setScreen('locker')}
@@ -1640,6 +1655,7 @@ function App() {
           onArcade={t => { setArcadeTab(t); setScreen('arcade'); }}
           onCreate={c => { setCreateChallenge(c ?? 'free'); setScreen('create'); }}
           onRenameSave={handleRenameSave}
+          onOpenMode={openMode}
         />
 
       </>

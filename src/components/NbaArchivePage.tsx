@@ -1,3 +1,4 @@
+import { PixelIcon } from './PixelIcon';
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import type { League } from '../simulation/league';
 import type { GMLeagueExtras } from '../simulation/gm';
@@ -184,7 +185,7 @@ function TeamsView({ h, cutoff }: { h: NbaHistory; cutoff: number }) {
       <tbody>{rows.map(t => <tr key={t.abbr} className={champ?.champion === t.abbr ? 'finish-champion' : undefined}>
         <td className="col-name">{t.name} <small>{t.abbr}</small></td><td>{t.w ?? NA}</td><td>{t.l ?? NA}</td><td>{t.w != null && t.l != null ? (t.w / Math.max(1, t.w + t.l)).toFixed(3).replace(/^0/, '') : NA}</td>
         <td>{fx(t.ortg)}</td><td>{fx(t.drtg)}</td><td>{fx(t.pace)}</td><td>{fx(t.srs, 2)}</td>
-        <td>{champ?.champion === t.abbr ? '🏆 Champion' : champ?.runnerUp === t.abbr ? 'Finals' : t.playoffs ? 'Playoffs' : '—'}</td></tr>)}</tbody>
+        <td>{champ?.champion === t.abbr ? <><PixelIcon name="trophy" size={12} /> Champion</> : champ?.runnerUp === t.abbr ? 'Finals' : t.playoffs ? 'Playoffs' : '—'}</td></tr>)}</tbody>
     </table></div>
   </section>;
 }

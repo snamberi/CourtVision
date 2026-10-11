@@ -1,3 +1,4 @@
+import { PixelIcon } from './PixelIcon';
 import { plural } from '../lib/humanize';
 import { TeamLink, TeamText } from './TeamLink';
 import { rookieScale } from '../simulation/draftSeason';
@@ -139,12 +140,12 @@ export function DraftPage({ league, extras, controlledTeamId, onChange, onSelect
     {warRoom && <section className="war-room" aria-label="War room">
       <div className="war-room-clock"><span className="pixel-eyebrow">YOU'RE ON THE CLOCK</span><b className={clock <= 10 ? 'urgent' : ''}>0:{String(Math.max(0, clock)).padStart(2, '0')}</b>
         <button onClick={() => setClockOn(o => !o)}>{clockOn ? 'Pause clock' : 'Resume clock'}</button></div>
-      <div className="war-room-calls"><h4>📞 Calls</h4>{calls.length ? calls.map((c, i) => <div key={i} className="war-room-call"><span><TeamText text={c.note} /></span><button onClick={() => takeCall(c)}>Accept</button></div>)
+      <div className="war-room-calls"><h4><PixelIcon name="phone" size={14} /> Calls</h4>{calls.length ? calls.map((c, i) => <div key={i} className="war-room-call"><span><TeamText text={c.note} /></span><button onClick={() => takeCall(c)}>Accept</button></div>)
         : <p className="hint-text">Nobody's calling to move up right now. You can still call around: use "Propose trade" on any pick below.</p>}</div>
       <p className="hint-text">Make your pick from the board below before the clock hits zero, or the war room takes the best player on your board.</p>
     </section>}
     {extras.draftDayOpen && !warRoom && controlledTeamId && <section className="war-room war-room-up" aria-label="Move up">
-      <div className="war-room-calls"><h4>📞 Move up</h4>
+      <div className="war-room-calls"><h4><PixelIcon name="phone" size={14} /> Move up</h4>
         {!moveUpOpen ? <button onClick={() => setMoveUpOpen(true)}>Call around to move up</button>
           : moveUps.length ? moveUps.map((c, i) => <div key={i} className="war-room-call"><span><TeamText text={c.note} /></span><button onClick={() => takeMoveUp(c)}>Make the deal</button></div>)
           : <p className="hint-text">No team ahead of you will move down for what you have right now.</p>}</div>

@@ -1,10 +1,9 @@
-import { MEDAL_ICON } from '../worldGames/league';
 import { PlayerChatPosts } from './social/PlayerChatPosts';
 import { PersonalityPanel } from './MoralePanels';
 import { familyTies, relationLabel } from '../simulation/family';
 import { scoutingReport } from '../simulation/scouting';
 import { PlayerDevelopmentPanel } from './PlayerDevelopmentPanel';
-import { PixelIcon } from './PixelIcon';
+import { PixelIcon, MedalIcon } from './PixelIcon';
 import { TeamLink } from './TeamLink';
 import { Fragment, useState, useMemo } from 'react';
 import type { PlayerSeason } from '../simulation/types';
@@ -531,7 +530,7 @@ function PlayerCard({ season, ratings, badgeNames, awardsHistory, league, family
       {(season.worldGames?.length ?? 0) > 0 && <section className="profile-world-games">
         <h4>World Games</h4>
         <ul className="wg-medal-list">{season.worldGames!.map((m, i) => <li key={i} className={`wg-medal-chip ${m.medal}`} title={m.real ? 'A real result from before this league began' : 'Won in this league'}>
-          <span aria-hidden="true">{MEDAL_ICON[m.medal]}</span> <b>{m.year}</b> {m.country}{m.city ? ` · ${m.city}` : ''}{m.real ? ' (real)' : ''}
+          <MedalIcon medal={m.medal} /> <b>{m.year}</b> {m.country}{m.city ? ` · ${m.city}` : ''}{m.real ? ' (real)' : ''}
         </li>)}</ul>
         <p className="hint-text">National team: {season.nationality ?? 'USA'}.</p>
       </section>}

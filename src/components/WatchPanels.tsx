@@ -1,3 +1,4 @@
+import { PixelBall } from './PixelIcon';
 import { memo, useMemo, useState } from 'react';
 import type { LiveTeam } from '../simulation/liveBox';
 import type { Highlight } from '../simulation/highlights';
@@ -116,7 +117,7 @@ export function CoachPanel({ coaching, team, opponent, run, lastShotNow, crunchN
       {crunchAt != null && onSkipToCrunch && <button onClick={onSkipToCrunch}>Skip to crunch time</button>}
     </div>}
     {(lastShotNow || crunchNow) && !finished && <div className="coach-last-shot" role="group" aria-label={lastShotNow ? 'Draw up the last shot' : 'Call the play'}>
-      <b>{lastShotNow ? '🏀 Your ball, game on the line. Draw up the last shot.' : `🏀 Crunch time, ${clockLabel}. Your ball: call the play.`}</b>
+      <b><PixelBall size={16} /> {lastShotNow ? 'Your ball, game on the line. Draw up the last shot.' : `Crunch time, ${clockLabel}. Your ball: call the play.`}</b>
       <label>Shooter<select value={shooter} onChange={e => setShooter(e.target.value)}>{onFloorLines.map(l => <option key={l.playerId} value={l.playerId}>{shortName(l.playerId)} ({l.pts} pts)</option>)}</select></label>
       <label>Shot<select value={shot} onChange={e => setShot(e.target.value as LastShotType)}>{SHOTS.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}</select></label>
       <button className="primary" disabled={!shooter} onClick={() => send({ kind: 'lastShot', atPossession, teamId: coaching.teamId, shooterId: shooter, shot }, `Play drawn up: ${shortName(shooter)}, ${SHOTS.find(s => s.id === shot)!.label.toLowerCase()}. Press Play to run it.`)}>Run it</button>

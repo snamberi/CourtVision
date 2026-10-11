@@ -8,6 +8,10 @@ import { PrivacyLink } from './PrivacyLink';
 import { IS_DESKTOP_BUILD } from '../appMode';
 import { liteMode, performanceSetting, setPerformanceSetting, type PerformanceSetting } from '../lib/performanceMode';
 import { colourSafe, setColourSafe, setTextSize, textSize, type TextSize } from '../lib/accessibility';
+import { DifficultyCards } from './DifficultyCards';
+import { LEVELS, LEVEL_NAME, defaultLevel, setDefaultLevel, type Level } from '../retention/challenge';
+import { GOLD_UNLOCK_SECONDS, goldProgress, goldUnlocked, menuStyle, setMenuStyle, type MenuStyle } from '../lib/menuStyle';
+import { formatPlayTime, readPlayTime } from '../retention/playTime';
 import './locker/locker.css';
 import './hunt/hunt.css';
 
@@ -35,6 +39,33 @@ export function AccessibilityToggles() {
   </>;
 }
 
+const LEVEL_INFO: Record<Level, string> = {
+  rookie: 'Softer opponents and more help. Scores count a little less.',
+  pro: 'The standard game. Daily and weekly runs always use it.',
+  legend: 'Tougher teams, fewer second chances, bigger scores.',
+};
+/** Settings > Default difficulty. */
+function DefaultDifficulty() {
+  const [level, setLevel] = useState<Level>(defaultLevel);
+  return <DifficultyCards label="Default difficulty" value={level} onChange={l => { setDefaultLevel(l); setLevel(l); }}
+    options={LEVELS.map((l, i) => ({ id: l, name: LEVEL_NAME[l], blurb: LEVEL_INFO[l], level: i + 1 + (i === 2 ? 1 : 0) }))} />;
+}
+
+/** Settings > Menu style: Classic, or Gold Arcade after 24 hours played. */
+function MenuStylePicker() {
+  const [style, setStyle] = useState<MenuStyle>(menuStyle);
+  const total = readPlayTime().total, open = goldUnlocked(total);
+  const pick = (s: MenuStyle) => { setMenuStyle(s); setStyle(menuStyle()); };
+  return <>
+    <DifficultyCards label="Menu style" value={style} onChange={pick} options={[
+      { id: 'classic', name: 'Classic', blurb: 'Sharp pixel panels in navy and orange.', level: 1, icon: 'court' },
+      { id: 'gold', name: 'Gold Arcade', blurb: 'Chunky rounded buttons, a gold Play coin, bold Oswald titles.', level: 4, icon: 'star', locked: open ? undefined : `play ${formatPlayTime(GOLD_UNLOCK_SECONDS - total)} more (24 hours in total)` },
+    ]} />
+    {!open && <><i className="settings-progress" aria-hidden="true"><i style={{ width: `${goldProgress(total) * 100}%` }} /></i>
+      <p className="hint-text">{formatPlayTime(total)} of 24 hours played.</p></>}
+  </>;
+}
+
 function SettingCard({ icon, title, blurb, wide, children }: { icon: string; title: string; blurb?: string; wide?: boolean; children: ReactNode }) {
   return <section className={`setting-card ${wide ? 'wide' : ''}`}>
     <h2><PixelIcon name={icon} size={18} /> {title}</h2>
@@ -51,11 +82,17 @@ export function SettingsPage({ onExit, backup, recovery }: { onExit: () => void;
   return <div className="hunt locker settings-page settings-menu">
     <header className="hunt-top">
       <button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button>
-      <div className="hunt-title"><span className="pixel-eyebrow">LOOK, BACKUPS, GRAPHICS, ACCESSIBILITY, INSTALL, PRIVACY</span><h1>Settings</h1></div>
+      <div className="hunt-title"><span className="pixel-eyebrow">LOOK, MENU STYLE, DIFFICULTY, BACKUPS, GRAPHICS, ACCESSIBILITY, PRIVACY</span><h1>Settings</h1></div>
     </header>
     <div className="setting-cards">
       <SettingCard icon="star" title="Look" blurb="The colours, fonts and menu art of the whole game. Pick from every look.">
         <span className="settings-theme"><ThemeChip /></span>
+      </SettingCard>
+      <SettingCard icon="home" title="Menu style" blurb="How the menus, the phone bar and the mode cards look. Gold Arcade unlocks after 24 hours of play.">
+        <MenuStylePicker />
+      </SettingCard>
+      <SettingCard icon="shield" title="Default difficulty" blurb="What every mode starts on: League Hunt, 82-0, Survival, the All-Time Draft and Career. You can still change it in each mode.">
+        <DefaultDifficulty />
       </SettingCard>
       <SettingCard icon="check" title="Backup everything">{backup}</SettingCard>
       <SettingCard icon="chart" title="League recovery">{recovery}</SettingCard>
