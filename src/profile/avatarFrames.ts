@@ -10,7 +10,7 @@ import { seasonTier, seasonRule, seasonHow } from '../retention/season';
  * The list is append-only: a frame's place in it is part of the look code (avatarCode.ts).
  */
 
-export type AvatarFrameId = 'none' | 'rookie' | 'courtside' | 'neon' | 'blaze' | 'dragon' | 'celestial' | 'bronzeCrest' | 'silverWings' | 'goldCrown' | 'undefeated' | 'perfectGold' | 'sovereign' | 'founding' | 'glitch';
+export type AvatarFrameId = 'none' | 'rookie' | 'courtside' | 'neon' | 'blaze' | 'dragon' | 'celestial' | 'bronzeCrest' | 'silverWings' | 'goldCrown' | 'undefeated' | 'perfectGold' | 'sovereign' | 'founding' | 'glitch' | 'frozen';
 export interface AvatarFrameDef {
   id: AvatarFrameId; name: string; blurb: string;
   /** How it opens: a level, trophies, or one of these leaderboard honors. */
@@ -43,6 +43,7 @@ export const AVATAR_FRAMES: AvatarFrameDef[] = [
   { id: 'sovereign', name: 'Sovereign', blurb: 'Black wings, blue fire and a royal crown. Game Owner only.', staff: true },
   { id: 'founding', name: 'Founding GM', blurb: 'An orange-and-cream crest with the Founder banner: for making a free account.', account: true },
   { id: 'glitch', name: 'Glitch', blurb: 'A corrupted ring that splits into cyan and magenta and tears apart. Season 1.', season: seasonRule('avatarFrame', 'glitch') },
+  { id: 'frozen', name: 'Frozen', blurb: 'A ring of ice with icicles and drifting snow. Season 2.', season: seasonRule('avatarFrame', 'frozen', 'frozen') },
 ];
 export const avatarFrameDef = (id: string | null | undefined) => AVATAR_FRAMES.find(f => f.id === id) ?? AVATAR_FRAMES[0];
 

@@ -10,7 +10,7 @@ export const PASS_KEY = 'cv-pass';
 export const PASS_TIERS = 30, PASS_TIER_XP = 150;
 export interface PassMonth { start: number; tier: number }
 /** A named season's pass (season.ts): where its XP started, the tier reached, and how many tiers' Lucky Spins were paid. */
-export interface PassSeason { start: number; tier: number; paid: number }
+export interface PassSeason { start: number; tier: number; paid: number; /** Extra pass XP from daily streak bonuses, and the last day one was paid. */ bonus?: number; bonusDay?: string }
 export interface PassState { months: Record<string, PassMonth>; seasons?: Record<string, PassSeason> }
 
 export interface PassTier { tier: number; trophies: number; title?: string }
@@ -30,7 +30,7 @@ export function readPass(read: Read = localRead): PassState {
     }
     const seasons: Record<string, PassSeason> = {};
     for (const [id, v] of Object.entries(p?.seasons ?? {})) {
-      if (/^[a-z0-9-]{1,24}$/.test(id) && v && typeof v.start === 'number' && Number.isInteger(v.tier) && v.tier >= 0 && v.tier <= 1000) seasons[id] = { start: Math.max(0, v.start), tier: v.tier, paid: Math.max(0, Math.min(v.tier, Number.isInteger(v.paid) ? v.paid : 0)) };
+      if (/^[a-z0-9-]{1,24}$/.test(id) && v && typeof v.start === 'number' && Number.isInteger(v.tier) && v.tier >= 0 && v.tier <= 1000) seasons[id] = { start: Math.max(0, v.start), tier: v.tier, paid: Math.max(0, Math.min(v.tier, Number.isInteger(v.paid) ? v.paid : 0)), ...(Number.isFinite(v.bonus) && v.bonus! > 0 ? { bonus: Math.min(1e6, Math.floor(v.bonus!)) } : {}), ...(typeof v.bonusDay === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v.bonusDay) ? { bonusDay: v.bonusDay } : {}) };
     }
     return { months, ...(Object.keys(seasons).length ? { seasons } : {}) };
   } catch { return { months: {} }; }
@@ -54,7 +54,7 @@ export function mergePass(a: PassState, b: PassState): PassState {
   const months: Record<string, PassMonth> = { ...b.months };
   for (const [m, x] of Object.entries(a.months)) { const y = months[m]; months[m] = y ? { start: Math.min(x.start, y.start), tier: Math.max(x.tier, y.tier) } : x; }
   const seasons: Record<string, PassSeason> = { ...(b.seasons ?? {}) };
-  for (const [id, x] of Object.entries(a.seasons ?? {})) { const y = seasons[id]; seasons[id] = y ? { start: Math.min(x.start, y.start), tier: Math.max(x.tier, y.tier), paid: Math.max(x.paid, y.paid) } : x; }
+  for (const [id, x] of Object.entries(a.seasons ?? {})) { const y = seasons[id]; if (!y) { seasons[id] = x; continue; } const bonus = Math.max(x.bonus ?? 0, y.bonus ?? 0), day = [x.bonusDay, y.bonusDay].filter(Boolean).sort().at(-1); seasons[id] = { start: Math.min(x.start, y.start), tier: Math.max(x.tier, y.tier), paid: Math.max(x.paid, y.paid), ...(bonus ? { bonus } : {}), ...(day ? { bonusDay: day } : {}) }; }
   return { months: Object.fromEntries(Object.entries(months).sort(([x], [y]) => x.localeCompare(y))), ...(Object.keys(seasons).length ? { seasons } : {}) };
 }
 

@@ -1,0 +1,20 @@
+/* Season 2: Frozen. Ice, frost and falling snow. Motion is off for reduced motion. */
+.avf-snow { animation: avf-snow 4s ease-in-out infinite; }
+@keyframes avf-snow { 0%, 100% { transform: translateY(0); opacity: 1; } 50% { transform: translateY(2px); opacity: .7; } }
+
+/* Previews on the roads and in the pickers. */
+.road-frame.frame-frozen { border-color: #dff4ff; box-shadow: inset 0 0 0 2px #6db8ff; background: linear-gradient(#1d4a72, #0f2a44); }
+.road-floor.floor-frozen { background: linear-gradient(180deg, #e6f6ff 0 45%, #c8102e 45% 50%, #e6f6ff 50%); box-shadow: inset 0 0 0 2px #9fc9e8; }
+.profile-card-big.frame-frozen { border-color: #dff4ff; box-shadow: 0 0 0 3px #6db8ff, 0 0 16px #9fd8ff66; }
+.phone-skin-frozen { --phone-body: linear-gradient(160deg, #dff4ff, #9fc9e8 55%, #6db8ff); --phone-edge: #ffffff; --phone-inner: #4d86b3; --phone-text: #f2fbff; --phone-muted: #cfe6f5; --phone-tile: #0d2438; --phone-tile-edge: #9fd8ff; --phone-accent: #9fd8ff; --phone-on-accent: #071827; --phone-screen: #071827; }
+.phone-skin-frozen .menu-phone-body { box-shadow: 0 0 0 2px #ffffff, 0 0 18px #9fd8ff88; }
+.studio-color-chip.frozen { background: linear-gradient(135deg, #ffffff, #bfe6ff 40%, #6db8ff 70%, #ffffff); }
+
+/* The Frozen app look: snow drifting down behind everything, frosted headings. */
+:root[data-cv-theme='frozen'] body { background-image: radial-gradient(circle at 20% 30%, #ffffff22 0 1px, transparent 2px), radial-gradient(circle at 70% 60%, #ffffff1a 0 1px, transparent 2px), radial-gradient(circle at 45% 85%, #ffffff22 0 1.5px, transparent 2px); background-size: 140px 140px, 190px 190px, 230px 230px; animation: frozen-snow 30s linear infinite; }
+@keyframes frozen-snow { from { background-position: 0 0, 0 0, 0 0; } to { background-position: 40px 560px, -30px 760px, 20px 920px; } }
+:root[data-cv-theme='frozen'] h1, :root[data-cv-theme='frozen'] h2 { text-shadow: 0 0 10px #9fd8ff66, 0 2px 0 #03101c; }
+
+@media (prefers-reduced-motion: reduce) {
+  .avf-snow, :root[data-cv-theme='frozen'] body { animation: none; }
+}

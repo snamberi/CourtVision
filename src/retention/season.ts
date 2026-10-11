@@ -8,11 +8,13 @@ import { readPass, PASS_KEY, type PassSeason } from './pass';
  * look, app look, picture frame and a full set of character pieces. It's free for everyone; nothing is bought.
  *
  * Season 1 is GLITCH: everything comes corrupted, with cyan and magenta channel splits and torn pixels.
+ * Season 2 is FROZEN: ice, frost and falling snow (January to March 2027).
  */
 
 export interface Season { id: string; number: number; name: string; tagline: string; /** First day (UTC). */ start: string; /** Day after the last (UTC). */ end: string }
 export const SEASONS: Season[] = [
   { id: 'glitch', number: 1, name: 'Glitch', tagline: 'Reality is buffering. Your gear is corrupted. Wear it anyway.', start: '2026-10-01', end: '2027-01-01' },
+  { id: 'frozen', number: 2, name: 'Frozen', tagline: 'The court froze over. Lace up your skates and play through the blizzard.', start: '2027-01-01', end: '2027-04-01' },
 ];
 export const SEASON_TIERS = 100, SEASON_TIER_XP = 100, SEASON_COSMETIC_EVERY = 5;
 
@@ -54,7 +56,34 @@ export const GLITCH_REWARDS: SeasonCosmetic[] = [
   c(95, 'aura', 'glitch', 'Glitch aura', 'Aura'),
   c(100, 'title', 'Corrupted Legend', 'Corrupted Legend', 'Final title'),
 ];
-export const SEASON_REWARDS: Record<string, SeasonCosmetic[]> = { glitch: GLITCH_REWARDS };
+/** The Frozen pass: ice and snow, the whole set by tier 100. */
+export const FROZEN_REWARDS: SeasonCosmetic[] = [
+  c(5, 'icon', 'frozen', 'Frozen Ball', 'Profile icon'),
+  c(10, 'color', 'frost', 'Frostbite', 'Name colour'),
+  c(15, 'skin', 'frozen', 'Ice', 'Body colour'),
+  c(20, 'frame', 'frozen', 'Frozen', 'Share card frame'),
+  c(25, 'hairColor', 'frozen', 'Frost white', 'Hair colour'),
+  c(30, 'title', 'Frostbitten', 'Frostbitten', 'Title'),
+  c(35, 'hair', 'iceSpikes', 'Icicle hair', 'Hair'),
+  c(40, 'floor', 'frozen', 'Frozen rink', 'Court floor'),
+  c(45, 'beard', 'frostBeard', 'Frost beard', 'Beard'),
+  c(50, 'phone', 'frozen', 'Frozen', 'Menu phone'),
+  c(55, 'eyes', 'snowGoggles', 'Snow goggles', 'Eyewear'),
+  c(60, 'titleColor', 'frozen', 'Frozen', 'Title colour'),
+  c(65, 'outfit', 'frostParka', 'Frost parka', 'Outfit'),
+  c(70, 'hat', 'iceCrown', 'Ice crown', 'Headwear'),
+  c(75, 'avatarFrame', 'frozen', 'Frozen', 'Picture frame'),
+  c(80, 'shoes', 'iceSkates', 'Ice skates', 'Shoes'),
+  c(85, 'neck', 'frostCape', 'Frost cape', 'Neck & back'),
+  c(90, 'look', 'frozen', 'Frozen', 'App look'),
+  c(95, 'aura', 'blizzard', 'Blizzard', 'Aura'),
+  c(100, 'title', 'Absolute Zero', 'Absolute Zero', 'Final title'),
+];
+export const SEASON_REWARDS: Record<string, SeasonCosmetic[]> = { glitch: GLITCH_REWARDS, frozen: FROZEN_REWARDS };
+/** The season after this one, if it's announced. */
+export const nextSeason = (now = new Date()) => SEASONS.find(s => s.start > now.toISOString().slice(0, 10));
+/** Days until a season starts. */
+export const daysUntil = (s: Season, now = new Date()) => Math.max(0, Math.ceil((Date.parse(`${s.start}T00:00:00Z`) - now.getTime()) / 86_400_000));
 /** The tier a season cosmetic opens at, if it is one. */
 export const seasonTierOf = (kind: SeasonRewardKind, id: string, season = 'glitch') => SEASON_REWARDS[season]?.find(r => r.kind === kind && r.id === id)?.tier;
 /** The unlock rule for a season cosmetic (see cosmetics.ts `isOpen`). */
@@ -76,13 +105,28 @@ export function noteSeason(totalXp: number, now = new Date()): SeasonProgress {
   const p = readPass();
   const prev: PassSeason = p.seasons?.[season.id] ?? { start: totalXp, tier: 0, paid: 0 };
   const ended = seasonEnded(season, now) && SEASONS.at(-1)?.id !== season.id;
-  const xp = Math.max(0, totalXp - prev.start);
+  const xp = Math.max(0, totalXp - prev.start + (prev.bonus ?? 0));
   const tier = ended ? prev.tier : Math.max(prev.tier, Math.min(SEASON_TIERS, Math.floor(xp / SEASON_TIER_XP)));
   if (!p.seasons?.[season.id] || tier !== prev.tier) {
     try { localStorage.setItem(PASS_KEY, JSON.stringify({ ...p, seasons: { ...(p.seasons ?? {}), [season.id]: { ...prev, tier } } })); } catch { /* storage blocked */ }
   }
   const into = tier >= SEASON_TIERS ? SEASON_TIER_XP : Math.max(0, xp - tier * SEASON_TIER_XP);
   return { season, xp, tier, into, need: SEASON_TIER_XP, paid: prev.paid, newTiers: Array.from({ length: Math.max(0, tier - prev.tier) }, (_, i) => prev.tier + i + 1) };
+}
+
+/** The daily streak bonus: once a day, +10 pass XP for each day of your streak (up to +100 at 10 days). */
+export const STREAK_BONUS_PER_DAY = 10, STREAK_BONUS_MAX = 100;
+export const streakBonus = (streak: number) => Math.min(STREAK_BONUS_MAX, Math.max(0, streak) * STREAK_BONUS_PER_DAY);
+/** Pays today's streak bonus into the current season's pass (once a day). Returns the XP added. */
+export function claimStreakBonus(streak: number, totalXp: number, now = new Date()): number {
+  const season = currentSeason(now), day = now.toISOString().slice(0, 10);
+  if (seasonEnded(season, now) || day < season.start) return 0;
+  noteSeason(totalXp, now);
+  const p = readPass(), s = p.seasons?.[season.id];
+  const add = streakBonus(streak);
+  if (!s || s.bonusDay === day || add <= 0) return 0;
+  try { localStorage.setItem(PASS_KEY, JSON.stringify({ ...p, seasons: { ...p.seasons, [season.id]: { ...s, bonus: (s.bonus ?? 0) + add, bonusDay: day } } })); } catch { return 0; }
+  return add;
 }
 
 /** Marks a season's tiers as paid (their Lucky Spins handed out). Returns how many were new. */

@@ -439,6 +439,26 @@
   --look-veil: #071525eb;
   --look-page-wash: #071525b8;
 }
+:root[data-cv-theme="frozen"], [data-theme-preview="frozen"] {
+  --look-page: #071827;
+  --look-panel: #0d2438;
+  --look-raised: #16334d;
+  --look-line: #2c5677;
+  --look-edge: #bfe6ff;
+  --look-text: #f2fbff;
+  --look-muted: #cfe6f5;
+  --look-accent: #9fd8ff;
+  --look-on-accent: #071827;
+  --look-secondary: #ffffff;
+  --look-shadow: 0 3px 0 #03101c;
+  --look-radius: 0px;
+  --look-border: 1px;
+  --look-pixel: 'Press Start 2P', monospace;
+  --look-body: 'Inter', sans-serif;
+  --look-scene: url('../assets/looks/scenes/frozen.svg');
+  --look-veil: #071827eb;
+  --look-page-wash: #071827b8;
+}
 :root[data-cv-theme="glitch"], [data-theme-preview="glitch"] {
   --look-page: #07080d;
   --look-panel: #0f1119;

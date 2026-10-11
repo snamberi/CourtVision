@@ -92,8 +92,8 @@ describe('looks on the Level Road', () => {
     expect(THEMES.filter(t => themeTrophies(t.id) > 0).map(t => t.id)).toEqual(['aurora', 'royalcourt', 'galaxy', 'hallowed', 'eclipse', 'immortal']);
     expect(themeOpen('galaxy', 250, 74_999)).toBe(false);
     expect(themeOpen('galaxy', 1, 75_000)).toBe(true);
-    expect(THEMES).toHaveLength(23);
-    expect(THEMES.filter(t => t.season).map(t => t.id)).toEqual(['glitch']);
+    expect(THEMES).toHaveLength(24);
+    expect(THEMES.filter(t => t.season).map(t => t.id)).toEqual(['glitch', 'frozen']);
     // The game owner's look: closed and hidden for everyone else.
     expect(THEMES.filter(t => t.staff).map(t => t.id)).toEqual(['sovereign']);
     expect(themeOpen('sovereign', 750, 1e9)).toBe(false);

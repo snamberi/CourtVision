@@ -7,6 +7,9 @@ import { UserAvatar, useAvatar } from './UserAvatar';
 import { PixelIcon } from './PixelIcon';
 import { REAL_FRANCHISES } from '../profile/favorites';
 import { outfitKit } from '../visuals/avatarSprite';
+
+/** Colour items drawn as a pattern rather than one colour. */
+const PATTERNS = new Set(['rainbow', 'glitch', 'frozen']);
 import './customization.css';
 
 const HEAD: AvatarCategory[] = ['hair', 'hairColor', 'beard', 'hat', 'eyes'];
@@ -107,7 +110,7 @@ export function AvatarEditor() {
           const unlocked = open(i), equipped = look[cat] === i.id, trying = preview?.cat === cat && preview.item.id === i.id;
           return <button type="button" key={i.id} aria-pressed={equipped} className={`studio-tile${equipped ? ' selected' : ''}${!unlocked ? ' locked' : ''}${trying ? ' trying' : ''}`} onClick={() => { if (!unlocked) { setPreview({ cat, item: i }); return; } commit({ ...look, [cat]: i.id }, `${i.name} equipped.`); if (cat === 'outfit' && outfitDef(i.id).kind === 'jersey') setJerseyAsk(true); }} aria-label={`${i.name}${unlocked ? equipped ? ', equipped' : '' : `, locked: ${avatarHow(i)}, preview`}`}>
             <span className="studio-tile-state">{equipped ? <PixelIcon name="check" size={13} /> : !unlocked ? <PixelIcon name="lock" size={13} /> : null}</span>
-            <span className="studio-tile-art">{i.hex && <span className={`studio-color-chip${i.hex === 'rainbow' || i.hex === 'glitch' ? ` ${i.hex}` : ''}`} style={i.hex !== 'rainbow' && i.hex !== 'glitch' ? { background: i.hex } : undefined} />}<UserAvatar look={{ ...look, ...(cat === 'hair' ? { hat: 'none' } : {}), [cat]: i.id }} team={team} size={63} mode={HEAD.includes(cat) ? 'portrait' : 'full'} animate={false} title={i.name} /></span>
+            <span className="studio-tile-art">{i.hex && <span className={`studio-color-chip${PATTERNS.has(i.hex) ? ` ${i.hex}` : ''}`} style={!PATTERNS.has(i.hex) ? { background: i.hex } : undefined} />}<UserAvatar look={{ ...look, ...(cat === 'hair' ? { hat: 'none' } : {}), [cat]: i.id }} team={team} size={63} mode={HEAD.includes(cat) ? 'portrait' : 'full'} animate={false} title={i.name} /></span>
             <b>{i.name}</b><small>{equipped ? 'Equipped' : unlocked ? 'Available' : avatarHow(i)}</small>
           </button>;
         })}</div>

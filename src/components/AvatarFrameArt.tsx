@@ -161,6 +161,13 @@ export function frameArtwork(id: AvatarFrameId): { under?: ReactNode; over: Reac
       {[[14,22,'#00f0ff'],[84,30,'#ff2bd6'],[20,74,'#ffffff'],[80,80,'#7dff5a'],[50,9,'#ff2bd6'],[47,91,'#00f0ff']].map(([x,y,c])=><rect key={`${x}-${y}`} x={x as number} y={y as number} width="3" height="3" fill={c as string} />)}
       <g className="avf-glitch-tear"><rect x="6" y="44" width="30" height="4" fill="#00f0ff" opacity=".8" /><rect x="66" y="56" width="28" height="4" fill="#ff2bd6" opacity=".8" /></g>
     </> };
+    // Season 2: a ring of packed ice with icicles hanging below and snowflakes drifting round it.
+    case 'frozen': return { under:<><circle cx="50" cy="50" r="41" fill="#123a5c" stroke="#0a2238" strokeWidth="1.5" />{around(8,40,(x,y,i)=><circle key={i} cx={x} cy={y} r="1.6" fill="#ffffff" opacity=".8" />,0)}</>, over:<>
+      <circle cx="50" cy="50" r="36" fill="none" stroke="#dff4ff" strokeWidth="4.5" />
+      <circle cx="50" cy="50" r="36" fill="none" stroke="#6db8ff" strokeWidth="1.2" strokeDasharray="3 4" />
+      {[30,38,46,54,62,70].map((x,i)=><path key={x} d={`M${x-3} ${83-Math.abs(50-x)*0.35}L${x+3} ${83-Math.abs(50-x)*0.35}L${x} ${92+(i%2)*4-Math.abs(50-x)*0.3}Z`} fill="#eaf8ff" stroke="#6db8ff" strokeWidth=".6" />)}
+      <g className="avf-snow">{[[16,20],[84,26],[12,60],[88,66],[50,6]].map(([x,y])=><path key={`${x}-${y}`} d={`M${x-3} ${y}H${x+3}M${x} ${y-3}V${y+3}M${x-2} ${y-2}L${x+2} ${y+2}M${x+2} ${y-2}L${x-2} ${y+2}`} stroke="#ffffff" strokeWidth="1" />)}</g>
+    </> };
     default: return { over:<circle cx="50" cy="50" r="32" fill="none" stroke="#3a4a5f" strokeWidth="1.5" /> };
   }
 }

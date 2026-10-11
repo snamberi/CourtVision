@@ -154,6 +154,7 @@ export const TITLE_COLORS: TitleColor[] = [
   { id: 'sovereign', name: 'Sovereign', css: 'linear-gradient(90deg, #0a1f7a, #4da3ff, #ffffff, #ffd166, #ffffff, #4da3ff, #0a1f7a)', anim: 'flow', staff: true },
   { id: 'immortal', name: 'Immortal', css: 'linear-gradient(90deg, #ff4d2e, #ffd166, #6fdc93, #4fd6d6, #c79bff, #ff4dd2, #ff4d2e)', anim: 'flow' },
   { id: 'glitch', name: 'Glitch', css: 'linear-gradient(90deg, #ff2bd6, #ffffff, #00f0ff, #ff2bd6, #ffffff, #00f0ff)', anim: 'glitch', season: { season: 'glitch', tier: 60 } },
+  { id: 'frozen', name: 'Frozen', css: 'linear-gradient(90deg, #bfe6ff, #ffffff, #6db8ff, #ffffff, #bfe6ff)', anim: 'shimmer', season: { season: 'frozen', tier: 60 } },
 ];
 /** Whether a title colour is open: the Trophy Road's, or an owner legacy for the Owner's Box one. */
 export const titleColorOpen = (c: TitleColor, ctx: { trophies: number; owner?: number; staff?: boolean; seasons?: Record<string, number> }) =>

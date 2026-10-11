@@ -26,7 +26,7 @@ export type ThemeId = 'original' | 'cartridge' | 'scoreboard' | 'prodark' | 'ter
   // The game owner's (hidden from everyone else).
   | 'sovereign'
   // Season Pass looks (retention/season.ts).
-  | 'glitch';
+  | 'glitch' | 'frozen';
 type Family = 'red' | 'orange' | 'gold' | 'green' | 'blue' | 'purple';
 type Stop = [number, string];
 type Role = 'bg' | 'fg' | 'border' | 'shadow' | 'any';
@@ -304,6 +304,13 @@ THEMES.push(
     accent: { red: '#ff3d6e', orange: '#ff2bd6', gold: '#f4ff5a', green: '#7dff5a', blue: '#00f0ff', purple: '#b06bff' },
     fonts: { display: "'Press Start 2P', 'Oswald', monospace" },
     preview: { bg: '#05050b', panel: '#0c0c18', line: '#00f0ff', text: '#f2fbff', dim: '#bfeaff', accent: '#ff2bd6', onAccent: '#05050b', hi: '#00f0ff', display: "'Press Start 2P', monospace", body: "'Inter', sans-serif" },
+  },
+  {
+    id: 'frozen', name: 'Frozen', blurb: 'Season 2: midnight ice, frosted panels and snow falling behind everything.', season: seasonRule('look', 'frozen', 'frozen'),
+    ramps: darkRamps({ floor: '#071827', panel: '#0d2438', panel2: '#112b42', panel3: '#16334d', raised: '#1c3d5b', line: '#2c5677', lineMid: '#4d86b3', lineStrong: '#bfe6ff', dim: '#cfe6f5', text: '#f2fbff', bright: '#ffffff', ink: '#071827' }),
+    shadow: '#03101c',
+    accent: { red: '#ff7a8a', orange: '#9fd8ff', gold: '#e8f6ff', green: '#7fe0c4', blue: '#6db8ff', purple: '#b8a8ff' },
+    preview: { bg: '#071827', panel: '#0d2438', line: '#4d86b3', text: '#f2fbff', dim: '#cfe6f5', accent: '#9fd8ff', onAccent: '#071827', hi: '#ffffff', display: "'Oswald', sans-serif", body: "'Inter', sans-serif" },
   },
 
 );

@@ -6,7 +6,7 @@ import { AVATAR_LEVEL_ROAD } from './avatar';
 import { readStreak, streakTitles } from '../retention/streak';
 import { readPass, passBestTier, passTitles } from '../retention/pass';
 import { readMissions, missionsClaimed, missionTitles } from '../retention/missions';
-import { seasonTiers, seasonTitles, seasonRule, seasonHow } from '../retention/season';
+import { seasonTiers, seasonTitles, seasonRule, seasonHow, SEASONS } from '../retention/season';
 
 /** Complete team sets and legendary cards in the album (read straight from storage; see cards/cards.ts). */
 function albumCounts(read: Read): { sets: number; legendary: number } {
@@ -191,6 +191,8 @@ export const ICONS: IconDef[] = [
   // Season 1: Glitch (the Season Pass).
   { id: 'glitch', name: 'Corrupted Ball', base: 'ball', recolor: { o: '#1a1f2a', O: '#00f0ff' }, anim: 'glitch' as IconAnim, rule: seasonRule('icon', 'glitch'), how: seasonHow(seasonRule('icon', 'glitch')) },
   { id: 'card-legend', name: 'Legendary card', base: 'card', recolor: { b: '#ffd166', B: '#c9971f' }, anim: 'glow' as IconAnim, rule: { album: 'legendary', n: 10 } as Rule, how: albumHow({ album: 'legendary', n: 10 }) },
+  // Season 2: Frozen.
+  { id: 'frozen', name: 'Frozen Ball', base: 'ball', recolor: { o: '#dff4ff', O: '#6db8ff' }, anim: 'twinkle' as IconAnim, rule: seasonRule('icon', 'frozen', 'frozen'), how: seasonHow(seasonRule('icon', 'frozen', 'frozen')) },
 ];
 export type IconId = string;
 
@@ -238,6 +240,7 @@ export const NAME_COLORS: (Cosmetic & { css: string; anim?: ColorAnim })[] = [
   animated('eternalflame', 'Eternal flame', 'linear-gradient(90deg, #1f4fd9, #4da3ff, #ffffff, #ffd166, #ff4d2e, #1f4fd9)', 'flow'),
   animated('divine', 'Divine', 'linear-gradient(90deg, #fff3c4, #ffd166, #ffffff, #9fe7ff, #ffffff, #ffd166, #fff3c4)', 'shimmer'),
   { id: 'glitch', name: 'Glitch', css: 'linear-gradient(90deg, #00f0ff, #ffffff, #ff2bd6, #00f0ff, #ffffff, #ff2bd6)', anim: 'glitch' as ColorAnim, rule: seasonRule('color', 'glitch'), how: seasonHow(seasonRule('color', 'glitch')) },
+  { id: 'frost', name: 'Frostbite', css: 'linear-gradient(90deg, #6db8ff, #ffffff, #bfe6ff, #ffffff, #6db8ff)', anim: 'shimmer' as ColorAnim, rule: seasonRule('color', 'frost', 'frozen'), how: seasonHow(seasonRule('color', 'frost', 'frozen')) },
   animated('immortal', 'Immortal', 'linear-gradient(90deg, #ff4d2e, #ffd166, #6fdc93, #4fd6d6, #c79bff, #ff4dd2, #ff4d2e)', 'flow'),
 ];
 
@@ -301,7 +304,7 @@ export function hasEntitlement(kind: 'noAds' | 'supporter', read: Read = localRe
 export interface UnlockContext { /** Tiers reached in each season's pass (season.ts). */ seasons?: Record<string, number>; level: number; rank: number; honors: string[]; modes: string[]; supporter: boolean; trophies: number; album?: { sets: number; legendary: number }; owner?: number; /** Best daily streak and best Season Pass tier. */ streak?: number; pass?: number; /** Weekly missions claimed in all. */ missions?: number; /** The game owner's account: everything is open (ownerAccess.ts). */ staff?: boolean; /** This browser has signed in to an account (the Founding GM reward). */ account?: boolean }
 /** What unlocks read: the level is passed in; the rest comes from this browser. */
 export function unlockContext(level: number, read: Read = localRead): UnlockContext {
-  if (hasOwnerAccess(read)) return { level: Math.max(level, 100_000), rank: TIERS.length - 1, honors: HONORS.map(h => h.id), modes: MODE_TITLES.map(t => t.mode), supporter: true, trophies: 1e9, album: { sets: 1e6, legendary: 1e6 }, owner: 1e6, streak: 1e6, pass: 1e6, missions: 1e6, staff: true, account: true, seasons: { glitch: 1e6 } };
+  if (hasOwnerAccess(read)) return { level: Math.max(level, 100_000), rank: TIERS.length - 1, honors: HONORS.map(h => h.id), modes: MODE_TITLES.map(t => t.mode), supporter: true, trophies: 1e9, album: { sets: 1e6, legendary: 1e6 }, owner: 1e6, streak: 1e6, pass: 1e6, missions: 1e6, staff: true, account: true, seasons: Object.fromEntries(SEASONS.map(s => [s.id, 1e6])) };
   return { seasons: seasonTiers(read), level, rank: TIERS.indexOf(read('cv-ranked-best') ?? ''), honors: readHonors(read), modes: json<string[]>(read, 'cv-mode-ach-seen', []), supporter: hasEntitlement('supporter', read), trophies: totalTrophies(read), album: albumCounts(read), owner: ownerBest(read), streak: readStreak(read).best, pass: passBestTier(readPass(read)), missions: missionsClaimed(readMissions(read)), account: hasFoundingAccount(read) };
 }
 export function isOpen(rule: Rule, c: UnlockContext): boolean {

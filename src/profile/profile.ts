@@ -115,10 +115,10 @@ export function levelFor(xp: number): { level: number; into: number; need: numbe
 // ---------------------------------------------------------------- cosmetics
 
 export type FrameId = 'classic' | 'gold' | 'hardwood' | 'neon' | 'banner' | 'fire'
-  | 'diamond' | 'jade' | 'pixel' | 'ice' | 'lightning' | 'ember' | 'royal' | 'galaxy' | 'rainbow' | 'legend' | 'sovereign' | 'glitch';
+  | 'diamond' | 'jade' | 'pixel' | 'ice' | 'lightning' | 'ember' | 'royal' | 'galaxy' | 'rainbow' | 'legend' | 'sovereign' | 'glitch' | 'frozen';
 export type FloorId = 'team' | 'planks' | 'parquet' | 'blonde' | 'midnight' | 'asphalt'
-  | 'cherry' | 'sand' | 'retro' | 'herringbone' | 'ebony' | 'ice' | 'neon' | 'lava' | 'gold' | 'galaxy' | 'celestial' | 'glitch';
-export type PhoneId = 'classic' | 'courtside' | 'hardwood' | 'jersey' | 'neon' | 'handheld' | 'ice' | 'gold' | 'lava' | 'galaxy' | 'diamond' | 'glitch';
+  | 'cherry' | 'sand' | 'retro' | 'herringbone' | 'ebony' | 'ice' | 'neon' | 'lava' | 'gold' | 'galaxy' | 'celestial' | 'glitch' | 'frozen';
+export type PhoneId = 'classic' | 'courtside' | 'hardwood' | 'jersey' | 'neon' | 'handheld' | 'ice' | 'gold' | 'lava' | 'galaxy' | 'diamond' | 'glitch' | 'frozen';
 export interface Unlock<T extends string> { id: T; name: string; level: number; blurb: string; /** Opened on the Trophy Road at this many trophies instead of a level. */ trophies?: number; /** The game owner's account only (ownerAccess.ts); hidden from everyone else. */ staff?: boolean;
   /** Opened at this tier of a season's pass (season.ts) instead. */ season?: { season: string; tier: number } }
 /** Whether a level-road, Trophy Road or Season Pass unlock is open. */
@@ -146,6 +146,7 @@ export const FRAMES: Unlock<FrameId>[] = [
   // The game owner's.
   { id: 'sovereign', name: 'Celestial Sovereign', level: 1, staff: true, blurb: 'Deep space, blue fire and a king\'s crown. Game Owner only.' },
   { id: 'glitch', name: 'Glitch', level: 1, season: seasonRule('frame', 'glitch'), blurb: 'Torn scanlines and a cyan-magenta channel split. Season 1.' },
+  { id: 'frozen', name: 'Frozen', level: 1, season: seasonRule('frame', 'frozen', 'frozen'), blurb: 'Packed snow, hanging icicles and drifting flakes. Season 2.' },
 ];
 export const FLOORS: Unlock<FloorId>[] = [
   { id: 'team', name: "Home team's floor", level: 1, blurb: 'Each arena keeps its own floor.' },
@@ -161,6 +162,7 @@ export const FLOORS: Unlock<FloorId>[] = [
     ['galaxy', 'Galaxy court', 'Play among the stars.']] as [FloorId, string, string][]).map(([id, name, blurb]) => ({ id, name, blurb, level: 1, trophies: trophyNeed('floor', id) ?? 750_000 })),
   { id: 'celestial', name: 'Celestial throne', level: 1, staff: true, blurb: 'A starfield floor laced with blue fire. Game Owner only.' },
   { id: 'glitch', name: 'Corrupted court', level: 1, season: seasonRule('floor', 'glitch'), blurb: 'Black tiles, dead pixels and cyan error lines. Season 1.' },
+  { id: 'frozen', name: 'Frozen rink', level: 1, season: seasonRule('floor', 'frozen', 'frozen'), blurb: 'A polished ice rink with skate marks and blue lines. Season 2.' },
 ];
 /** Looks for the phone on the main menu: five on the level road, five on the Trophy Road. */
 export const PHONES: Unlock<PhoneId>[] = [
@@ -174,6 +176,7 @@ export const PHONES: Unlock<PhoneId>[] = [
     ['galaxy', 'Galaxy', 'Deep space and drifting stars.'], ['diamond', 'Diamond', 'Cut crystal that catches the light.']] as [PhoneId, string, string][])
     .map(([id, name, blurb]) => ({ id, name, blurb, level: 1, trophies: trophyNeed('phone', id) ?? 750_000 })),
   { id: 'glitch', name: 'Glitch', level: 1, season: seasonRule('phone', 'glitch'), blurb: 'A cracked black screen that never stops glitching. Season 1.' },
+  { id: 'frozen', name: 'Frozen', level: 1, season: seasonRule('phone', 'frozen', 'frozen'), blurb: 'A frosted case with falling snow. Season 2.' },
 ];
 export const TITLES: Unlock<string>[] = ROAD_TITLES.map(id => ({ id, name: id, level: id === 'Rookie GM' ? 1 : road('title', id), blurb: '' }));
 

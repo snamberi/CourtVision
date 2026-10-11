@@ -126,3 +126,57 @@ describe('road placement', () => {
     expect(roadPosition([10, 20, 30], 0, 100)).toBe(0);
   });
 });
+
+describe('Season 2: Frozen', () => {
+  const jan = (d: number) => new Date(Date.UTC(2027, 0, d, 12));
+  it('follows Glitch on January 1st with its own full set', async () => {
+    const { currentSeason, nextSeason, daysUntil, FROZEN_REWARDS } = await import('../retention/season');
+    expect(nextSeason(oct(11))?.id).toBe('frozen');
+    expect(daysUntil(nextSeason(oct(11))!, oct(11))).toBe(82);
+    expect(currentSeason(jan(2)).id).toBe('frozen');
+    expect(FROZEN_REWARDS.map(r => r.kind)).toEqual(GLITCH_REWARDS.map(r => r.kind));
+  });
+  it('every Frozen cosmetic exists and opens at its tier', async () => {
+    const { FROZEN_REWARDS } = await import('../retention/season');
+    localStorage.setItem(PASS_KEY, JSON.stringify({ months: {}, seasons: { frozen: { start: 0, tier: 100, paid: 0 } } }));
+    const c = unlockContext(1);
+    for (const r of FROZEN_REWARDS) {
+      if (AVATAR_CATEGORIES.some(cat => cat.id === r.kind)) expect(isOpen(avatarItem(r.kind as AvatarCategory, r.id)!.rule, c), r.id).toBe(true);
+    }
+    expect(isOpen(ICONS.find(i => i.id === 'frozen')!.rule, c)).toBe(true);
+    expect(isOpen(NAME_COLORS.find(i => i.id === 'frost')!.rule, c)).toBe(true);
+    expect(titleColorOpen(TITLE_COLORS.find(t => t.id === 'frozen')!, c)).toBe(true);
+    expect(unlockOpen(FRAMES.find(f => f.id === 'frozen')!, 1, 0) && unlockOpen(FLOORS.find(f => f.id === 'frozen')!, 1, 0) && unlockOpen(PHONES.find(f => f.id === 'frozen')!, 1, 0)).toBe(true);
+    expect(avatarFrameOpen(AVATAR_FRAMES.find(f => f.id === 'frozen')!, c)).toBe(true);
+    expect(themeOpen('frozen', 1, 0)).toBe(true);
+    expect(earnedExtraTitles(c)).toEqual(expect.arrayContaining(['Frostbitten', 'Absolute Zero']));
+    // Glitch stays locked: each season's tiers are its own.
+    expect(themeOpen('glitch', 1, 0)).toBe(false);
+    const { grid, aura } = buildAvatarGrid({ look: { skin: 'frozen', hair: 'iceSpikes', hairColor: 'frozen', beard: 'frostBeard', outfit: 'frostParka', hat: 'iceCrown', eyes: 'snowGoggles', neck: 'frostCape', shoes: 'iceSkates', aura: 'blizzard' } });
+    expect(new Set(grid.flat()).has('#9fd8ff')).toBe(true);
+    expect(aura.flat().some(Boolean)).toBe(true);
+  });
+});
+
+describe('streak bonus and tier-up rewards', () => {
+  it('adds pass XP once a day for the streak, capped at 10 days', async () => {
+    const { claimStreakBonus, streakBonus } = await import('../retention/season');
+    expect(streakBonus(3)).toBe(30);
+    expect(streakBonus(40)).toBe(100);
+    noteSeason(0, oct(2));
+    expect(claimStreakBonus(5, 0, oct(3))).toBe(50);
+    expect(claimStreakBonus(5, 0, oct(3))).toBe(0);
+    expect(claimStreakBonus(6, 0, oct(4))).toBe(60);
+    expect(noteSeason(0, oct(4)).tier).toBe(1);
+    expect(readPass().seasons?.glitch.bonus).toBe(110);
+  });
+  it('reports the cosmetics new tiers unlocked, once', async () => {
+    const { paySeasonRewards } = await import('../relics/rewards');
+    noteSeason(0, oct(2));
+    const first = paySeasonRewards(SEASON_TIER_XP * 11, oct(3));
+    expect(first.spins).toBe(11);
+    expect(first.cosmetics.map(c => c.tier)).toEqual([5, 10]);
+    expect(paySeasonRewards(SEASON_TIER_XP * 11, oct(3))).toEqual({ spins: 0, cosmetics: [] });
+    expect(paySeasonRewards(SEASON_TIER_XP * 15, oct(4)).cosmetics.map(c => c.id)).toEqual(['glitch']);
+  });
+});

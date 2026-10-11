@@ -3,14 +3,18 @@ import { IS_DESKTOP_BUILD } from '../appMode';
 import { DISCORD_URL } from './DiscordLink';
 import { CookieSettingsLink } from '../consent/ConsentBanner';
 import { ConsentBanner } from '../consent/ConsentBanner';
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { localProgress, careerProgress, type InProgress } from '../menu/inProgress';
 import { modeOfWeek, FEATURED_NAME, WEEKLY_BONUS_CAP } from '../retention/modeOfWeek';
 import { PlayerAvatar } from './PlayerAvatar';
 import { MyAvatar } from './UserAvatar';
 import { PixelBall, PixelIcon } from './PixelIcon';
 import { loadRelics, saveRelics, collectDailyCoins, luckPercent, collectionProgress, RELICS_EVENT } from '../relics/relics';
-import { claimAchievementSpins, paySeasonSpins } from '../relics/rewards';
+import { claimAchievementSpins, paySeasonRewards } from '../relics/rewards';
+import { claimStreakBonus, noteSeason, daysLeft, nextSeason, daysUntil, SEASON_TIERS } from '../retention/season';
+import './roads/menuSeason.css';
+// Loaded only when a tier unlocks something (it pulls in every cosmetic preview).
+const SeasonTierUp = lazy(() => import('./roads/SeasonTierUp').then(m => ({ default: m.SeasonTierUp })));
 import './relics/relics.css';
 import type { TradeDifficulty } from '../simulation/gm';
 import type { SaveSummary } from '../storage/saves';
@@ -171,7 +175,8 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
   // Today's visit counts for the daily streak and the Season Pass.
   const [visit] = useState<Visit>(() => ({ v: noteVisit(), p: notePass(totalXp()) }));
   // The Season Pass pays a free Lucky Spin for each new tier (once each) as soon as you're back on the menu.
-  useState(() => { try { paySeasonSpins(totalXp()); } catch { /* storage blocked */ } return 0; });
+  // The daily streak tops up the pass first, so a streak bonus that crosses a tier pays straight away.
+  const [seasonPay, setSeasonPay] = useState(() => { try { claimStreakBonus(visit.v.streak.current, totalXp()); return paySeasonRewards(totalXp()); } catch { return { spins: 0, cosmetics: [] }; } });
   // Then (accounts on, signed out, first time): sign in, or carry on without an account.
   const account = useAccount();
   const [askSignIn, setAskSignIn] = useState(true);
@@ -252,7 +257,9 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
         </div>)}
       </div>
 
+      {onRoad && <SeasonStrip onOpen={() => onRoad('season')} />}
       {onRelics && <RelicStrip onOpen={onRelics} />}
+      {seasonPay.cosmetics.length > 0 && <Suspense fallback={null}><SeasonTierUp cosmetics={seasonPay.cosmetics} spins={seasonPay.spins} onClose={() => setSeasonPay({ spins: 0, cosmetics: [] })} onOpenPass={onRoad && (() => onRoad('season'))} /></Suspense>}
 
       {onArcade && <QuickGames onOpen={onArcade} />}
 
@@ -361,6 +368,21 @@ function QuickGames({ onOpen }: { onOpen: (game: 'grid' | 'guess' | 'hilo' | 'br
 }
 
 /** The Relic Vault entry: spins waiting, luck and coins. */
+/** The Season Pass on the menu: the season, your tier and how close the next one is. */
+function SeasonStrip({ onOpen }: { onOpen: () => void }) {
+  const [, setTick] = useState(0);
+  useEffect(() => { const bump = () => setTick(t => t + 1); window.addEventListener('courtvision:progress', bump); return () => window.removeEventListener('courtvision:progress', bump); }, []);
+  const p = noteSeason(totalXp()), left = daysLeft(p.season), up = nextSeason();
+  const pct = p.tier >= SEASON_TIERS ? 100 : Math.round((p.into / p.need) * 100);
+  return <section className={`menu-season season-${p.season.id}`} aria-label="Season Pass">
+    <span className="menu-season-tier"><small>TIER</small><b>{p.tier}</b></span>
+    <span className="menu-season-text"><b>Season {p.season.number}: {p.season.name}</b>
+      <i className="menu-season-bar" aria-label={`${pct}% to tier ${p.tier + 1}`}><i style={{ width: `${pct}%` }} /></i>
+      <small>{p.tier >= SEASON_TIERS ? 'Pass complete' : `${p.need - p.into} XP to tier ${p.tier + 1}`} · {left > 0 ? `${left} days left` : up ? `Season ${up.number}: ${up.name} in ${daysUntil(up)} days` : 'season over'}</small></span>
+    <button onClick={onOpen}>Open the pass</button>
+  </section>;
+}
+
 function RelicStrip({ onOpen }: { onOpen: () => void }) {
   // The daily coins are paid on the first menu visit of the day.
   const [s, setS] = useState(() => { const r = loadRelics(), c = collectDailyCoins(r); if (c !== r) saveRelics(c); return c; });
