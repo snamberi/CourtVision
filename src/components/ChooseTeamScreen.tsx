@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import type { League } from '../simulation/league';
 import type { GMLeagueExtras } from '../simulation/gm';
-import { ExpansionDraftBoard } from './ExpansionDraftBoard';
 import { calculateOverall } from '../simulation/engine/overall';
 import { PlayerAvatar } from './PlayerAvatar';
 import { defaultTeam } from '../profile/favorites';
+
+const ExpansionDraftBoard = lazy(() => import('./ExpansionDraftBoard').then(m => ({ default: m.ExpansionDraftBoard })));
 
 interface Props {
   league: League;
@@ -63,7 +64,7 @@ export function ChooseTeamScreen({ league, extras, onConfirm }: Props) {
         </div>
       )}
 
-      {mode === 'create' && <ExpansionDraftBoard league={league} extras={extras} onDone={onConfirm} />}
+      {mode === 'create' && <Suspense fallback={<p className="empty-state" role="status">Loading…</p>}><ExpansionDraftBoard league={league} extras={extras} onDone={onConfirm} /></Suspense>}
     </div>
   );
 }

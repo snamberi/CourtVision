@@ -13,7 +13,6 @@ import type { Challenge, CreateChoice } from './components/FranchiseCreate';
 import type { GamesId } from './worldGames/mode';
 import { applyCreateSettings, type CreateSettings } from './menu/createSettings';
 import { runWorldGamesIfDue, resolvePending } from './worldGames/league';
-import { WorldGamesPage } from './components/worldGames/WorldGamesPage';
 import { useGameHistory } from './navigation/useGameHistory';
 import { manageCoachRosters, normalizeRosterRules, ROSTER_LIMITS } from './simulation/coachRosters';
 import { currentDraftOrder } from './simulation/gm';
@@ -59,10 +58,13 @@ import { enforceSticky } from './simulation/sticky';
 import { collectPress } from './simulation/press';
 import { pendingDecisions, chooseTreatment } from './simulation/medical';
 import { InjuryDecisionDialog } from './components/InjuryDecisionDialog';
+import { QuickJump, ShortcutHelp } from './components/QuickJump';
+import { typingIn, type JumpItem } from './navigation/quickJump';
+import { GROUPS } from './navigation/menu';
 import { crowdFill, arenaLevels } from './simulation/business';
 import { useBackgroundJobs } from './workers/useBackgroundJobs';
 import { ToastStack, type ToastData } from './components/ToastStack';
-import { PrivacyPolicyPage, PrivacyLink } from './components/PrivacyPolicyPage';
+import { PrivacyLink } from './components/PrivacyLink';
 import { ConsentBanner, CookieSettingsLink } from './consent/ConsentBanner';
 import { AD_CONFIG } from './ads/adConfig';
 import { loadGoogleConsentTool } from './ads/adsense';
@@ -154,6 +156,8 @@ import {
 // Pages load on demand (code-split): the first paint only needs the shell, sidebar and Play button.
 import { needsRetireeData } from './history/retirees';
 import { pendingOffers } from './simulation/staffPoaching';
+const PrivacyPolicyPage = lazy(() => import('./components/PrivacyPolicyPage').then(m => ({ default: m.PrivacyPolicyPage })));
+const WorldGamesPage = lazy(() => import('./components/worldGames/WorldGamesPage').then(m => ({ default: m.WorldGamesPage })));
 const StaffPage = lazy(() => import('./components/StaffPage').then(m => ({ default: m.StaffPage })));
 const TeamProfilePage = lazy(() => import('./components/TeamProfilePage').then(m => ({ default: m.TeamProfilePage })));
 const SandboxPage = lazy(() => import('./components/SandboxPage').then(m => ({ default: m.SandboxPage })));
@@ -302,6 +306,8 @@ function App() {
   // Turning Sandbox on marks the league for good: its GM record and achievements stop counting.
   const setSandboxMode = (enabled: boolean) => setLeague(l => markSandboxUse({ ...l, settings: { ...l.settings, sandboxMode: enabled } }));
   const [confirmation, setConfirmation] = useState<'sandbox' | 'exit' | null>(null);
+  /** League keyboard shortcuts (Ctrl+K, ?, N, D, R...): set each render so it sees the current league. */
+  const shortcutRef = useRef<((e: KeyboardEvent) => void) | null>(null);
   const [viewedTeamId, setViewedTeamId] = useState<string>('');
   const managerId = sandboxMode ? null : controlledTeamId ?? '__spectator__';
   const [seed, setSeed] = useState(1234);
@@ -687,7 +693,9 @@ function App() {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
         e.preventDefault();
         handleExport();
+        return;
       }
+      shortcutRef.current?.(e);
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
@@ -830,6 +838,7 @@ function App() {
   const lastDecisions = useRef(injuryDecisions);
   // New injuries ask straight away (a pop-up with the doctors' options); "Decide later" leaves them in the Medical Room.
   const [injuryLater, setInjuryLater] = useState(false);
+  const [overlay, setOverlay] = useState<'jump' | 'keys' | null>(null);
   useEffect(() => {
     if (injuryDecisions > lastDecisions.current) { if (handsOff) pushToast(`Injury: the doctors need your call in the Medical Room (${injuryDecisions} waiting).`, 'error'); else setInjuryLater(false); }
     lastDecisions.current = injuryDecisions;
@@ -1438,6 +1447,35 @@ function App() {
   const locked = lockedFeatures(unlockCtx);
   const lockedTabSet = new Set([...locked.flatMap((s) => s.feature.tabs), ...(league.gmCareer ? ROLE_LOCKED[gmRole(league)] : [])]);
   const freshTabs = newFeatureTabs(unlockCtx);
+  // Every page you can open right now, for the Ctrl+K quick jump (same rules as the sidebar, locked pages left out).
+  const jumpItems: JumpItem[] = [
+    ...GROUPS.flatMap(g => g.items.filter(i => !(i.requiresControlledTeam && !controlledTeam) && !(i.onlyDuringPhase && i.onlyDuringPhase !== seasonPhase)
+      && !(i.requiresHistorical && !league.historical) && !lockedTabSet.has(i.tab)).map(i => ({ label: i.label, tab: i.tab, group: g.title, sub: i.leagueSettingsSub }))),
+    { label: 'Main Menu', tab: 'mainMenu', group: 'Leave' },
+  ];
+  const jumpTo = (item: JumpItem) => {
+    if (item.tab === 'mainMenu') { setConfirmation('exit'); return; }
+    if (item.sub) setLeagueSettingsSub(item.sub);
+    navigateFromMenu(item.tab);
+  };
+  shortcutRef.current = (e: KeyboardEvent) => {
+    if (screen !== 'app' || league.teams.length === 0 || confirmation) return;
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'k') { e.preventDefault(); setOverlay(o => o === 'jump' ? null : 'jump'); return; }
+    if (e.ctrlKey || e.metaKey || e.altKey || overlay || typingIn(e.target) || document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+    const key = e.key.toLowerCase();
+    if (e.key === '?') { e.preventDefault(); setOverlay('keys'); return; }
+    if (e.key === '/') { e.preventDefault(); setOverlay('jump'); return; }
+    const pages: Record<string, string> = { d: 'dashboard', r: 'roster', t: 'trade', s: 'standings', f: 'freeAgency', p: 'playerStats' };
+    if (pages[key]) { if (!lockedTabSet.has(pages[key])) { e.preventDefault(); navigateFromMenu(pages[key]); } return; }
+    if (key === 'n') {
+      e.preventDefault();
+      if (seasonPhase !== 'regular_season' || leagueUnplayedCount === 0) pushToast('No regular-season games to sim right now. Use the Play button.', 'info');
+      else if (jobs.busy) pushToast('A simulation is already running.', 'info');
+      else if (rosterIssues.length > 0) pushToast('Some rosters are out of compliance. Open the Play button to see which.', 'error');
+      else if (isDeadlineDayOpen(league)) { setTab('deadline'); pushToast('Trade Deadline Day is open: finish it first.', 'info'); }
+      else simulateGamesCount(1);
+    }
+  };
   const unlockNotice: Feature | undefined = pendingUnlockNotices(unlockCtx)[0];
   const lessons = tutorial && controlledTeamId ? lessonStatuses(unlockCtx) : [];
   // Tutorial quests: a finished lesson pays its XP once (any league, this device and your account).
@@ -1509,7 +1547,7 @@ function App() {
   }, []);
 
   if (restoring) return <main role="status" className="navigation-loading">Opening your league…</main>;
-  if (showPrivacy) return <PrivacyPolicyPage onClose={closePrivacy} />;
+  if (showPrivacy) return <Suspense fallback={<p className="empty-state page-loading" role="status">Loading…</p>}><PrivacyPolicyPage onClose={closePrivacy} /></Suspense>;
 
   if (screen === 'draft') {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening the draft room…</main>}><AllTimeDraft onExit={() => setScreen('menu')} onStart={(l, e, teamId, name) => { enterApp(l, e, teamId, name); setTab('dashboard'); }} /></Suspense></>;
@@ -1623,6 +1661,8 @@ function App() {
       <DownloadButton />
       {screen === 'app' && !handsOff && !injuryLater && injuryDecisions > 0 && <InjuryDecisionDialog league={league} teamId={controlledTeamId}
         onChoose={(id, t) => { setLeague(l => chooseTreatment(l, id, t)); pushToast(`Treatment set for ${id}.`, 'success'); }} onLater={() => setInjuryLater(true)} />}
+      {overlay === 'jump' && <QuickJump items={jumpItems} onPick={jumpTo} onClose={() => setOverlay(null)} />}
+      {overlay === 'keys' && <ShortcutHelp onClose={() => setOverlay(null)} />}
       <header className="topbar">
         <button className="sidebar-toggle" onClick={() => setSidebarCollapsed((v) => !v)} aria-label="Toggle navigation" aria-expanded={!sidebarCollapsed} aria-controls="game-navigation" title="Toggle navigation">
           <PixelIcon name="menu" />
@@ -1631,6 +1671,9 @@ function App() {
           <img src={logoIcon} alt="" className="brand-logo" />
           <span className="brand-word">COURT VISION</span>
         </div>
+        {league.teams.length > 0 && <button className="topbar-jump" onClick={() => setOverlay('jump')} title="Go to any page (Ctrl+K)" aria-keyshortcuts="Control+K">
+          <PixelIcon name="search" size={14} /><span>Go to…</span><kbd>Ctrl K</kbd>
+        </button>}
         {controlledTeam && topbarRecord ? (
           <div className="topbar-team">
             <TeamLogo team={controlledTeam} size={32} />

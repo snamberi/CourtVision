@@ -1,10 +1,7 @@
 import { Fragment, useEffect, type ReactNode } from 'react';
 import policy from '../legal/privacyPolicy.json';
 
-/** Path of the static, crawlable copy of this same policy (generated from the same JSON at build time). */
-export const PRIVACY_STATIC_PATH = 'privacy.html';
-/** Hash route that opens the in-app policy page from anywhere: `<a href="#/privacy">`. */
-export const PRIVACY_HASH = '#/privacy';
+export { PRIVACY_HASH, PRIVACY_STATIC_PATH, PrivacyLink } from './PrivacyLink';
 
 type Block =
   | { type: 'p'; text: string }
@@ -104,6 +101,3 @@ export function PrivacyPolicyPage({ onClose }: Props) {
 }
 
 /** Small "Privacy Policy" link for menus and footers. Uses the hash route, so it works from any screen and in the offline Windows edition. */
-export function PrivacyLink({ className }: { className?: string }) {
-  return <a className={className ?? 'legal-link'} href={PRIVACY_HASH}>Privacy Policy</a>;
-}

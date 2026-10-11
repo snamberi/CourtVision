@@ -1,4 +1,4 @@
-import { PrivacyLink } from './PrivacyPolicyPage';
+import { PrivacyLink } from './PrivacyLink';
 import { IS_DESKTOP_BUILD } from '../appMode';
 import { DISCORD_URL } from './DiscordLink';
 import { CookieSettingsLink } from '../consent/ConsentBanner';
@@ -13,6 +13,7 @@ import { grantLuckySpins, loadRelics, saveRelics, collectDailyCoins, totalLuck, 
 import { claimAchievementSpins, paySeasonRewards } from '../relics/rewards';
 import { claimStreakBonus, noteSeason, daysLeft, nextSeason, daysUntil, SEASON_TIERS } from '../retention/season';
 import './roads/menuSeason.css';
+import { UpdateBanner } from './UpdateBanner';
 // Loaded only when a tier unlocks something (it pulls in every cosmetic preview).
 const SeasonTierUp = lazy(() => import('./roads/SeasonTierUp').then(m => ({ default: m.SeasonTierUp })));
 import './relics/relics.css';
@@ -127,7 +128,7 @@ function SavedLeaguesList({ saves, onContinue, onDeleteSave, onRenameSave }: Pic
   if (saves.length === 0) return null;
 
   return (
-    <div className="saved-leagues">
+    <div className="saved-leagues" id="menu-saves">
       <h4>Your Leagues</h4>
       <div className="saved-leagues-list">
         {saves.map((s) => (
@@ -208,6 +209,7 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
   return (
     <div className="main-menu">
       <MenuMasthead onProfile={onProfile ?? onLocker} onCommunity={onCommunity && (() => onCommunity('boards'))} onSettings={onSettings} />
+      {IS_DESKTOP_BUILD && <UpdateBanner />}
       <SaveSafetyNudge />
       <RivalAlerts />
       <WeeklyRecap />
@@ -224,9 +226,11 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
           onAchievements={onProfileTab && (() => onProfileTab('achievements'))} streak={visit.v.streak} />
       </div>
 
+      <MenuQuickLinks hasSaves={saves.length > 0} onRoad={onRoad} onRelics={onRelics} onProfile={onProfile ?? onLocker} onFriends={onFriends} onSettings={onSettings} />
+
       <div className="menu-section-heading"><h2>Choose your game</h2><span>PICK ONE, THEN PRESS PLAY</span></div>
 
-      <div className="mode-grid">
+      <div className="mode-grid" id="menu-modes">
         {MODES.map((m) => {
           const picked = selectedMode === m.id, inProgress = progressOf(m.id), hot = cardOf(featured) === m.id;
           return <div key={m.id} className={`mode-card-wrap ${picked ? 'picked' : ''}`}>
@@ -369,7 +373,27 @@ function QuickGames({ onOpen }: { onOpen: (game: 'grid' | 'guess' | 'hilo' | 'br
   </section>;
 }
 
-/** The Relic Vault entry: spins waiting, luck and coins. */
+/** One row of the places people look for most: jumps down the menu (modes, today's challenge, saved leagues) and opens
+ *  the pages that otherwise live only in the phone (Season Pass, Relic Vault, the roads, profile, friends, settings). */
+function MenuQuickLinks({ hasSaves, onRoad, onRelics, onProfile, onFriends, onSettings }: { hasSaves: boolean; onRoad?: (r: 'level' | 'trophy' | 'season') => void; onRelics?: () => void; onProfile?: () => void; onFriends?: () => void; onSettings?: () => void }) {
+  const go = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const links: [string, string, (() => void) | undefined][] = [
+    ['play', 'Modes', () => go('menu-modes')],
+    ['calendar', 'Daily', () => go('menu-daily')],
+    ['list', 'Saved leagues', hasSaves ? () => go('menu-saves') : undefined],
+    ['star', 'Season Pass', onRoad && (() => onRoad('season'))],
+    ['crown', 'Relics', onRelics],
+    ['chart', 'Level Road', onRoad && (() => onRoad('level'))],
+    ['trophy', 'Trophy Road', onRoad && (() => onRoad('trophy'))],
+    ['team', 'Profile', onProfile],
+    ['phone', 'Friends', onFriends],
+    ['settings', 'Settings', onSettings],
+  ];
+  return <nav className="menu-quick" aria-label="Quick links">
+    {links.filter(([, , on]) => on).map(([icon, label, on]) => <button key={label} onClick={on}><PixelIcon name={icon} size={14} /> {label}</button>)}
+  </nav>;
+}
+
 /** The Season Pass on the menu: the season, your tier and how close the next one is. */
 function SeasonStrip({ onOpen }: { onOpen: () => void }) {
   const [, setTick] = useState(0);
@@ -391,7 +415,7 @@ function DailyChallengeCard({ onPlay }: { onPlay: (m: ChallengeMode) => void }) 
   // Finishing it pays a free Lucky Spin, once (checked each time you're back on the menu).
   const [paid] = useState(() => { if (!claimChallenge(day)) return false; saveRelics(grantLuckySpins(loadRelics(), 1)); return true; });
   const s = readChallenge(), done = s.days.includes(day), streak = challengeStreak(s, day);
-  return <section className={`daily-challenge ${done ? 'done' : ''}`} aria-label="Daily Challenge">
+  return <section id="menu-daily" className={`daily-challenge ${done ? 'done' : ''}`} aria-label="Daily Challenge">
     <span className="pixel-eyebrow">DAILY CHALLENGE · THE SAME FOR EVERYONE</span>
     <b>{info.title}</b><small>{info.blurb}</small>
     <span className="daily-challenge-meta">{done ? (paid ? 'Done! +1 free Lucky Spin' : 'Done for today: back tomorrow') : 'Reward: 1 free Lucky Spin'}{streak > 1 ? ` · ${streak}-day challenge streak` : ''}</span>
@@ -399,6 +423,7 @@ function DailyChallengeCard({ onPlay }: { onPlay: (m: ChallengeMode) => void }) 
   </section>;
 }
 
+/** The Relic Vault entry: spins waiting, luck and coins. */
 function RelicStrip({ onOpen }: { onOpen: () => void }) {
   // The daily coins are paid on the first menu visit of the day.
   const [s, setS] = useState(() => { const r = loadRelics(), c = collectDailyCoins(r); if (c !== r) saveRelics(c); return c; });

@@ -1,10 +1,28 @@
 /*
  * The "What's new" popup: shown once on the main menu after an update, to players who were here before it.
- * Add new entries at the top; the id must sort after the previous one (a date works).
+ * Add new entries at the top; the id must sort after the previous one (a date works), and copy it to
+ * LATEST_RELEASE in ./whatsNewLatest.ts.
  */
+import { WHATS_NEW_KEY as KEY } from './whatsNewLatest';
+
 export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
+  {
+    id: '2027-05-12',
+    title: 'Season 2: FROZEN, plus 25 upgrades and easier navigation',
+    items: [
+      "**Season 2 · Frozen** is next: preview its whole pass on the Season Pass page now. Frozen icon, Frost name colour, Frozen title colour, card frame, court, phone, app look, picture frame and a whole ice character (frost skin, ice spikes, frost beard, frost parka, ice crown, snow goggles, frost cape, ice skates and a blizzard aura).",
+      "**Season Pass:** your daily streak adds bonus pass XP (+10 a day, up to +100), a tier-up pop-up lets you equip new cosmetics straight away, the pass is on the menu, and you can share a season recap card.",
+      "**Relics:** a Relic of the Week (+50% luck while slotted), fuse 5 spare copies into a relic one rarity higher, a spinning reel, a relic museum on your profile, and showcase picks on your public profile.",
+      "**Franchise:** injury decisions pop up when a player gets hurt, locker-room leaders and bad apples, a league wire ticker, playoff series previews, a coach identity card and a Rumour Mill before the draft.",
+      "**Modes and friends:** a Daily Challenge (a free Lucky Spin a day), pick a friend as your weekly rival (every weekly board is a round), the 10-Season Dynasty challenge, a friend Activity app on the phone, and a club pass for your club.",
+      "**Easier to get around:** quick links under the menu's hero (Season Pass, Relics, roads, profile, saved leagues), and in a league a **Go to…** search (Ctrl+K or /) that opens any page by name.",
+      "**Keyboard shortcuts:** N sims the next game day, D dashboard, R roster, T trade, S standings, F free agents, P player stats. Press ? for the list.",
+      "**Accessibility:** bigger text and colour-blind-safe rarity colours in Settings.",
+      "**Faster first load,** and the Windows edition now tells you when a new version is out.",
+    ],
+  },
   {
     id: '2027-05-05',
     title: 'Season 1: GLITCH, the new Season Pass',
@@ -493,7 +511,6 @@ export const RELEASES: Release[] = [
   },
 ];
 
-const KEY = 'courtvision:whatsNewSeen';
 
 /** The releases this player has not seen yet (newest first). First-time visitors see nothing and are marked up to date. */
 export function unseenReleases(storage: Pick<Storage, 'getItem' | 'setItem' | 'length' | 'key'> = localStorage): Release[] {

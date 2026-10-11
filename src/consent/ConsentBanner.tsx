@@ -4,7 +4,7 @@ import { unloadAdsense, showGoogleConsentChoices } from '../ads/adsense';
 import { AD_CONFIG } from '../ads/adConfig';
 import { advertisingPermitted } from '../ads/adPolicy';
 import { IS_DESKTOP_BUILD } from '../appMode';
-import { PRIVACY_HASH } from '../components/PrivacyPolicyPage';
+import { PRIVACY_HASH } from '../components/PrivacyLink';
 
 /**
  * First-visit cookie banner plus a re-openable "Cookie settings" panel, for the web build only.

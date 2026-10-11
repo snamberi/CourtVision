@@ -1,6 +1,6 @@
 import { useEffect, useState, useId } from 'react';
 import { PixelIcon } from './PixelIcon';
-import { FloorPatterns } from './WatchCourt';
+import { FloorPatterns } from './FloorPatterns';
 import type { FloorId, FrameId } from '../profile/profile';
 
 /** A court floor on a little court, with lines and paint (the Profile's floor picker). */

@@ -31,11 +31,14 @@ import { CloudRoot } from './components/cloud/CloudRoot'
 import { startPwa } from './pwa/pwa'
 import { InstallGuideHost } from './components/InstallGuide'
 import { applyPerformanceMode } from './lib/performanceMode'
+import { applyAccessibility } from './lib/accessibility'
+import './a11y.css'
 import { applyTheme, readTheme } from './theme/themes'
 import { startAccounts } from './cloud/account'
 import { startSync } from './cloud/sync'
 
 applyPerformanceMode()
+applyAccessibility()
 applyTheme(readTheme() ?? 'original')
 startPwa()
 startSync()

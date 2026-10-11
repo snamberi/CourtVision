@@ -31,7 +31,7 @@ const serviceWorker = (): Plugin => ({
     }
     for (const [file, item] of Object.entries(bundle)) if (item.type === 'chunk' && item.isEntry) add(file)
     // The scene collection is small and bundled: every look also works on the first offline switch.
-    const sceneNames = new Set(['original', 'cartridge', 'scoreboard', 'prodark', 'terminal', 'frontoffice', 'hardwood', 'blacktop', 'playbook', 'handheld', 'broadcast', 'neongrid', 'arcade', 'comicpop', 'championship', 'aurora', 'royalcourt', 'galaxy', 'hallowed', 'eclipse', 'immortal', 'sovereign'])
+    const sceneNames = new Set(['glitch', 'frozen', 'original', 'cartridge', 'scoreboard', 'prodark', 'terminal', 'frontoffice', 'hardwood', 'blacktop', 'playbook', 'handheld', 'broadcast', 'neongrid', 'arcade', 'comicpop', 'championship', 'aurora', 'royalcourt', 'galaxy', 'hallowed', 'eclipse', 'immortal', 'sovereign'])
     for (const [file, item] of Object.entries(bundle)) if (item.type === 'asset' && file.endsWith('.svg') && sceneNames.has(file.split('/').pop()!.split('-')[0])) shell.add(`/${file}`)
     // Relic illustrations are local collectibles: discoveries also work offline.
     for (const [file, item] of Object.entries(bundle)) if (item.type === 'asset' && file.endsWith('.svg') && file.split('/').pop()!.startsWith('relic-')) shell.add(`/${file}`)
@@ -80,6 +80,19 @@ const buildStampPlugin = (): Plugin => ({
   transformIndexHtml: html => html.replace('</head>', `  <meta name="cv-build" content="${buildStamp}">\n  </head>`),
 })
 
+/**
+ * version.json for the web build: the newest What's New release and this build's stamp. The Windows edition reads it
+ * from the live site (CORS is open for it in public/_headers) to tell players a newer version is out.
+ */
+const versionFile = (): Plugin => ({
+  name: 'version-file',
+  apply: 'build',
+  generateBundle() {
+    const release = /LATEST_RELEASE = '([^']+)'/.exec(readFileSync(new URL('./src/content/whatsNewLatest.ts', import.meta.url), 'utf8'))?.[1] ?? ''
+    this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ release, build: buildStamp }) + '\n' })
+  },
+})
+
 /** The production domain, for share-card footers (a preview deployment's address changes with every deploy). */
 const siteHost = (process.env.SITE_URL || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : '')).replace(/^https?:\/\//, '').replace(/\/$/, '')
 
@@ -97,7 +110,7 @@ export default defineConfig(({ mode }) => ({
     'import.meta.env.VITE_LEMONSQUEEZY_NO_ADS_URL': JSON.stringify(process.env.VITE_LEMONSQUEEZY_NO_ADS_URL || process.env.LEMONSQUEEZY_NO_ADS_URL || ''),
     'import.meta.env.VITE_LEMONSQUEEZY_SUPPORTER_URL': JSON.stringify(process.env.VITE_LEMONSQUEEZY_SUPPORTER_URL || process.env.LEMONSQUEEZY_SUPPORTER_URL || ''),
   },
-  plugins: mode === 'desktop' ? [react(), stripAdsense()] : [react(), siteMaps(), serviceWorker(), buildStampPlugin()],
+  plugins: mode === 'desktop' ? [react(), stripAdsense()] : [react(), siteMaps(), serviceWorker(), buildStampPlugin(), versionFile()],
   // `--mode desktop` is the offline Windows package: relative asset paths, its own output folder.
   base: mode === 'desktop' ? './' : '/',
   build: {

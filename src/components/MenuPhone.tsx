@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { unseenReleases } from '../content/whatsNew';
+import { hasUnseenRelease } from '../content/whatsNewLatest';
 import { PixelIcon } from './PixelIcon';
 import { MyAvatar } from './UserAvatar';
 import { StreakDialog } from './StreakDialog';
@@ -67,7 +67,7 @@ export function MenuPhone({ onBoards, onFriends, onProfile, onRelics, onShop, on
   }, []);
   // Notification dots: a new shop today, an update not read yet.
   const [shopNew] = useState(() => read(SHOP_SEEN_KEY) !== today());
-  const [newsNew] = useState(() => { try { return unseenReleases().length > 0; } catch { return false; } });
+  const [newsNew] = useState(() => { return hasUnseenRelease(); });
   const openShop = onShop ?? (() => { try { sessionStorage.setItem(RELICS_FOCUS_KEY, 'shop'); } catch { /* storage blocked */ } onRelics?.(); });
   const luckySpins = relics.lucky;
   // Friend activity: new results from the GMs you follow since you last looked (signed-in accounts only).

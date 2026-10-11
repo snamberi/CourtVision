@@ -17,3 +17,10 @@
 .daily-challenge small { color: var(--c-fg-94a0b2, #94a0b2); }
 .daily-challenge-meta { font-size: .8rem; color: var(--c-fg-ffd166, #ffd166); }
 .daily-challenge button { justify-self: start; }
+
+/* Quick links: the places people look for most, one row under the hero. */
+.menu-quick { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 4px; }
+.menu-quick button { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 6px 10px; font-size: 13px; background: var(--c-bg-121926, #121926); border: 1px solid var(--c-border-2a3546, #2a3546); color: var(--c-fg-f4f0e6, #f4f0e6); box-shadow: 2px 2px 0 var(--c-shadow-000000, #000); cursor: pointer; }
+.menu-quick button:hover, .menu-quick button:focus-visible { border-color: var(--c-border-f47b20, #f47b20); }
+@media (max-width: 720px) { .menu-quick { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; } .menu-quick button { flex: none; } }
+#menu-modes, #menu-daily, #menu-saves { scroll-margin-top: 12px; }
