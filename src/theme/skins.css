@@ -459,6 +459,26 @@
   --look-veil: #071827eb;
   --look-page-wash: #071827b8;
 }
+:root[data-cv-theme="inferno"], [data-theme-preview="inferno"] {
+  --look-page: #140604;
+  --look-panel: #22100a;
+  --look-raised: #33180e;
+  --look-line: #5a2a14;
+  --look-edge: #ffb347;
+  --look-text: #fff1e6;
+  --look-muted: #f2c9a8;
+  --look-accent: #ff6b2d;
+  --look-on-accent: #140604;
+  --look-secondary: #ffe066;
+  --look-shadow: 0 3px 0 #070201;
+  --look-radius: 0px;
+  --look-border: 1px;
+  --look-pixel: 'Press Start 2P', monospace;
+  --look-body: 'Inter', sans-serif;
+  --look-scene: url('../assets/looks/scenes/inferno.svg');
+  --look-veil: #140604eb;
+  --look-page-wash: #140604b8;
+}
 :root[data-cv-theme="glitch"], [data-theme-preview="glitch"] {
   --look-page: #07080d;
   --look-panel: #0f1119;

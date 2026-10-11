@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { cloudEnabled, useAccount } from '../../cloud/account';
 import { openSignIn } from '../../cloud/signIn';
-import { myClub, findClubs, clubMembers, clubBoard, clubClash, createClub, joinClub, leaveClub, challengeClub, CLUB_MAX, type Club, type ClubMember, type ClubWeekRow, type Clash } from '../../cloud/clubs';
+import { myClub, findClubs, clubMembers, clubBoard, clubClash, isShowdownWeekend, showdownPair, showdownResult, createClub, joinClub, leaveClub, challengeClub, CLUB_MAX, type Club, type ClubMember, type ClubWeekRow, type Clash } from '../../cloud/clubs';
 import { weekKey, weekEndsAt } from '../../retention/week';
+import { noteFeat } from '../../profile/feats';
 import { ICONS, NAME_COLORS } from '../../profile/cosmetics';
 import { ProfileIcon, NameTag, Tinted } from '../ProfileIcon';
 import { PixelIcon } from '../PixelIcon';
@@ -100,6 +101,7 @@ function MyClub({ club, onUser, onChange }: { club: Club; onUser: (u: string) =>
         <small>{mine.points > theirs.points ? 'You are ahead. Keep playing the weekly boards.' : mine.points < theirs.points ? 'You are behind: every weekly board you play adds points.' : 'All square.'}</small>
       </div>
       : <p className="hint-text">No clash this week. {owner ? 'Challenge a club from the board below.' : 'Your club owner can challenge another club.'}</p>}
+    <WeekendShowdown club={club} />
     <h3 className="hunt-subhead">Members</h3>
     {members == null ? <p className="hint-text">Loading the members…</p> : <ol className="club-members">{members.map(m => <li key={m.userId} className={m.userId === me ? 'you' : ''}>
       <button className="link-button" onClick={() => onUser(m.username)}><NameTag name={`@${m.username}`} icon={m.icon} color={m.color} title={m.title} /></button>
@@ -180,6 +182,33 @@ function ClubBoard({ mine, onJoined, canJoin }: { mine: Club | null; onJoined: (
     {msg && <p className="hint-text" role="status">{msg}</p>}
   </section>;
 }
+
+/** The Weekend Showdown card: this weekend's rival (the club next to yours on the board) or last week's result. */
+function WeekendShowdown({ club }: { club: Club }) {
+  const [now] = useState(() => new Date());
+  const [rows, setRows] = useState<{ cur: ClubWeekRow[]; last: ClubWeekRow[] } | null>(null);
+  useEffect(() => {
+    let live = true;
+    const lastWeek = weekKey(new Date(now.getTime() - 7 * 86_400_000));
+    void Promise.all([clubBoard(), clubBoard(lastWeek)]).then(([cur, last]) => {
+      if (!live) return;
+      setRows({ cur, last });
+      // A showdown won last week counts once, for the Weekend Warriors achievement.
+      const res = showdownResult(last, club.id);
+      try { if (res?.outcome === 'won' && localStorage.getItem(SHOWDOWN_KEY) !== lastWeek) { localStorage.setItem(SHOWDOWN_KEY, lastWeek); noteFeat('showdownWins', 1); } } catch { /* storage blocked */ }
+    }, () => { if (live) setRows({ cur: [], last: [] }); });
+    return () => { live = false; };
+  }, [club.id, now]);
+  if (!rows) return null;
+  const weekend = isShowdownWeekend(now), pair = showdownPair(rows.cur, club.id), last = showdownResult(rows.last, club.id);
+  return <div className={`club-clash showdown ${pair && pair.me.points > pair.rival.points ? 'ahead' : pair && pair.me.points < pair.rival.points ? 'behind' : ''}`}>
+    <span className="pixel-eyebrow">WEEKEND SHOWDOWN{weekend ? ' · LIVE UNTIL SUNDAY MIDNIGHT UTC' : ' · STARTS FRIDAY'}</span>
+    {pair ? <div><b>{pair.me.name}</b><strong>{pair.me.points}</strong><i>vs</i><strong>{pair.rival.points}</strong><b>{pair.rival.name}</b></div>
+      : <small>Your club needs points on this week's board to get a rival: the clubs next to each other on the board face off.</small>}
+    <small>{weekend ? 'The week\'s club points at Sunday midnight decide it. Every weekly board your members play adds points.' : 'Each weekend your club faces the club next to it on the club board.'}{last ? ` Last week: ${last.outcome === 'won' ? `you beat ${last.rival.name}!` : last.outcome === 'lost' ? `${last.rival.name} won.` : `level with ${last.rival.name}.`}` : ''}</small>
+  </div>;
+}
+const SHOWDOWN_KEY = 'cv-showdown-claimed';
 
 /** The club pass: everyone's XP fills one bar, and banners unlock for the whole club. */
 function ClubPassBar({ xp }: { xp: number }) {

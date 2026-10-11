@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { NbaHistory } from '../../history/nbaHistoryData';
 import { legendsField, opponentFor, playRound, simulateBracket, tournamentWeek, ROUND_NAMES, playStreet, type Baller, type StreetGame } from '../../arcade/street';
 import { RNG } from '../../simulation/engine/rng';
@@ -8,6 +8,12 @@ import { PixelIcon } from '../PixelIcon';
 import { totalXp, levelFor, localName } from '../../profile/profile';
 import { weekEndsAt } from '../../retention/week';
 import { noteWeekRun } from '../../retention/weekLog';
+import { noteFeat } from '../../profile/feats';
+import { CourtLineup, type LineupPlayer } from '../CourtLineup';
+import { assignToSpots, THREE_SPOTS } from '../lineupSpots';
+import { teamColors } from '../../simulation/teamColors';
+import { burst, celebrate, shake } from '../../fx/effects';
+import { aiTeams, canAfford, roundDay, roundsOpen, runTournament, teamCost, tourCost, tourPool, TOUR_BUDGET, TOUR_PICKS, TOUR_ROUNDS, flipGame, type TourGame, type TourTeam } from '../../arcade/gmTournament';
 
 /*
  * Two street games on real history: the Legends Tournament (pick one of the 64 greatest, win six 1v1 games to 11)
@@ -30,13 +36,21 @@ function LiveScore({ game, left, right, onDone }: { game: StreetGame; left: Reac
     return () => window.clearInterval(t);
   }, [game, reduce]);
   const done = i >= game.plays.length;
-  useEffect(() => { if (done) onDone?.(); }, [done]); // eslint-disable-line react-hooks/exhaustive-deps
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!done) return;
+    onDone?.();
+    // The final whistle: sparks over the winner's side, and a shake when it's you.
+    const side = box.current?.querySelectorAll('.street-side')[game.winner];
+    burst(side, { colors: game.winner === 0 ? ['#55c878', '#ffd166', '#f4f0e6'] : ['#e85d5d', '#94a0b2'], count: game.winner === 0 ? 34 : 14 });
+    if (game.winner === 0) shake(box.current);
+  }, [done]); // eslint-disable-line react-hooks/exhaustive-deps
   const shown = game.plays[Math.min(i, game.plays.length) - 1];
   const score = done ? game.score : shown?.score ?? [0, 0];
-  return <div className={`street-court ${done ? 'final' : ''}`}>
-    <div className="street-side">{left}<b>{score[0]}</b></div>
+  return <div ref={box} className={`street-court ${done ? 'final' : ''}`}>
+    <div className="street-side">{left}<b key={`a${score[0]}`} className="fx-pop">{score[0]}</b></div>
     <div className="street-mid"><small>{done ? 'FINAL' : 'LIVE'}</small><span>{done ? (game.winner === 0 ? 'You win' : 'You lose') : shown?.text ?? 'Check ball'}</span></div>
-    <div className="street-side">{right}<b>{score[1]}</b></div>
+    <div className="street-side">{right}<b key={`b${score[1]}`} className="fx-pop">{score[1]}</b></div>
   </div>;
 }
 
@@ -62,6 +76,7 @@ export function LegendsGame({ h }: { h: NbaHistory }) {
     const won = g.winner === 0;
     const next: LegendsRun = { ...run, round: run.round + (won ? 1 : 0), alive: won, results: [...run.results, { opp: opp.name, score: g.score, won }] };
     writeRun(next); setRun(next);
+    if (won && next.round >= ROUND_NAMES.length) window.setTimeout(() => celebrate(), 2600);
     if (!won || next.round >= ROUND_NAMES.length) noteWeekRun('bracket', { score: next.round * 10, line: `${mine.name}: ${next.round >= ROUND_NAMES.length ? 'Legends champion' : `out in the ${ROUND_NAMES[run.round]}`}` }, `legends-${week}`);
   };
   const avatar = (b: Baller, size = 64) => <PlayerAvatar playerId={b.name} teamId={b.team} size={size} title={b.name} />;
@@ -127,4 +142,73 @@ export function StreetGame({ h }: { h: NbaHistory }) {
       {lost && revealed && <><p className="empty-state">Your run ends at {streak} win{streak === 1 ? '' : 's'}.</p><button className="primary" onClick={restart}>New run</button></>}
     </>}
   </section>;
+}
+
+// ---------------------------------------------------------------- GM Tournament (16 GMs, one week)
+
+const TOUR_KEY = 'cv-gm-tour';
+interface TourRun { week: string; picks: string[]; revealed: number }
+const readTour = (week: string): TourRun | null => { try { const r = JSON.parse(localStorage.getItem(TOUR_KEY) ?? 'null') as TourRun | null; return r && r.week === week ? r : null; } catch { return null; } };
+const writeTour = (r: TourRun) => { try { localStorage.setItem(TOUR_KEY, JSON.stringify(r)); } catch { /* storage blocked */ } };
+
+export function GmTournament({ h }: { h: NbaHistory }) {
+  const week = tournamentWeek();
+  const pool = useMemo(() => tourPool(h, week), [h, week]);
+  const ai = useMemo(() => aiTeams(pool, week), [pool, week]);
+  const [run, setRun] = useState<TourRun | null>(() => readTour(week));
+  const [picked, setPicked] = useState<Baller[]>([]);
+  const [live, setLive] = useState<TourGame | null>(null);
+  const [revealed, setRevealed] = useState(true);
+  const mine: TourTeam | null = run ? { gm: localName(), you: true, players: run.picks.map(id => pool.find(b => b.id === id)).filter((b): b is Baller => !!b) } : null;
+  const result = useMemo(() => mine && mine.players.length === TOUR_PICKS ? runTournament(mine, ai, week) : null, [run, ai, week]); // eslint-disable-line react-hooks/exhaustive-deps
+  const open = roundsOpen();
+  const face = (b: Baller, size = 34) => <PlayerAvatar playerId={b.name} teamId={b.team} size={size} title={b.name} />;
+  const lockIn = () => { const r = { week, picks: picked.map(b => b.id), revealed: 0 }; writeTour(r); setRun(r); };
+  const myGame = (round: number) => result?.games.find(g => g.round === round && (g.a.you || g.b.you)) ?? null;
+  const out = result ? result.games.find(g => (g.a.you || g.b.you) && !g.winner.you) : undefined;
+  const next = run && result && run.revealed < TOUR_ROUNDS.length && !(out && out.round < run.revealed) ? run.revealed : null;
+  const reveal = () => {
+    if (!run || next == null || next >= open) return;
+    const g = myGame(next);
+    const r = { ...run, revealed: next + 1 };
+    writeTour(r); setRun(r);
+    if (g) { setLive(g); setRevealed(false); }
+    if (g?.winner.you && next === TOUR_ROUNDS.length - 1) window.setTimeout(() => celebrate(), 2600);
+    const lost = g && !g.winner.you, champ = g?.winner.you && next === TOUR_ROUNDS.length - 1;
+    if (lost || champ) {
+      noteWeekRun('bracket', { score: (next + (champ ? 1 : 0)) * 10, line: `GM Tournament: ${champ ? 'champion' : `out in the ${TOUR_ROUNDS[next]}`}` }, `gm-tour-${week}`);
+      if (champ) noteFeat('tourTitles', 1);
+    }
+  };
+  const team = (t: TourTeam) => <span className={`tour-team${t.you ? ' you' : ''}`}><span className="street-trio">{t.players.map(b => <span key={b.id}>{face(b, 22)}</span>)}</span><b>{t.you ? `${t.gm} (you)` : t.gm}</b></span>;
+  return <section className="street-game gm-tour">
+    <p className="hunt-lede">Sixteen GMs, one bracket, one week. Draft three legends under a {TOUR_BUDGET}-point budget, then win four 3v3 games to 21: the Round of 16 opens Monday, the quarterfinals Wednesday, the semifinals Friday and the final Sunday (UTC).</p>
+    {!run ? <>
+      <h3 className="hunt-subhead">Your draft ({picked.length}/{TOUR_PICKS}) · budget {teamCost(picked)}/{TOUR_BUDGET}</h3>
+      <i className="tour-budget" aria-hidden="true"><i style={{ width: `${Math.min(100, teamCost(picked) / TOUR_BUDGET * 100)}%` }} /></i>
+      <CourtLineup spots={THREE_SPOTS} players={assignToSpots(picked.map(onCourt), THREE_SPOTS)} active={picked.length < TOUR_PICKS ? assignToSpots(picked.map(onCourt), THREE_SPOTS).findIndex(p => !p) : undefined} label="Your three" />
+      <ul className="street-pick">{pool.map(b => { const on = picked.some(p => p.id === b.id); return <li key={b.id}><button aria-pressed={on} disabled={!on && !canAfford(pool, picked, b)} onClick={() => setPicked(cur => on ? cur.filter(p => p.id !== b.id) : [...cur, b])}>{face(b, 40)}<b>{b.name}</b><small>{b.ovr} OVR · costs {tourCost(b)}</small></button></li>; })}</ul>
+      <button className="primary" disabled={picked.length !== TOUR_PICKS} onClick={lockIn}>Lock in my three</button>
+      <p className="hint-text">Once you lock in, your team is set for the week. Stars cost more: you can't take three of the best.</p>
+    </> : result && <>
+      <div className="street-path">{TOUR_ROUNDS.map((n, i) => { const g = myGame(i); const shown = i < run.revealed; return <span key={n} className={shown && g ? (g.winner.you ? 'won' : 'lost') : i === next ? 'next' : ''}>{n}{i >= open ? ` · ${roundDay(i)}` : ''}</span>; })}</div>
+      {live && <LiveScore game={live.a.you ? live.game : flipGame(live.game)} left={team(live.a.you ? live.a : live.b)} right={team(live.a.you ? live.b : live.a)} onDone={() => setRevealed(true)} />}
+      {next != null && revealed && (next < open
+        ? <button className="primary" onClick={reveal}>Play the {TOUR_ROUNDS[next]}{(() => { const g = myGame(next); const o = g && (g.a.you ? g.b : g.a); return o ? ` vs ${o.gm}` : ''; })()}</button>
+        : <p className="hint-text">The {TOUR_ROUNDS[next]} opens {roundDay(next)} (UTC). Come back then.</p>)}
+      {out && out.round < run.revealed && revealed && <p className="empty-state">Knocked out in the {TOUR_ROUNDS[out.round]}. A new tournament starts Monday.</p>}
+      {run.revealed >= TOUR_ROUNDS.length && result.champion.you && revealed && <p className="street-champ"><PixelIcon name="trophy" size={18} /> You win the GM Tournament!</p>}
+      <div className="tour-bracket">{TOUR_ROUNDS.map((n, r) => <div key={n} className="tour-round"><h4>{n}</h4>
+        {r < run.revealed || (out && out.round < run.revealed && r < open) ? result.games.filter(g => g.round === r).map((g, i) => <p key={i} className={g.a.you || g.b.you ? 'mine' : ''}>
+          <span className={g.winner === g.a ? 'w' : ''}>{g.a.you ? 'You' : g.a.gm} {g.score[0]}</span><span className={g.winner === g.b ? 'w' : ''}>{g.b.you ? 'You' : g.b.gm} {g.score[1]}</span></p>)
+          : <p className="hint-text">{r < open ? 'Play your game to see it.' : `Opens ${roundDay(r)}`}</p>}
+      </div>)}</div>
+    </>}
+  </section>;
+}
+
+/** A legend on the 3v3 court: guard, wing or big by height. */
+function onCourt(b: Baller): LineupPlayer {
+  const c = teamColors(b.team);
+  return { id: b.id, name: b.name, pos: b.height <= 77 ? 'PG' : b.height <= 81 ? 'SF' : 'C', colors: [c.primary, c.secondary], sub: `${b.ovr} OVR` };
 }

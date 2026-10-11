@@ -212,3 +212,21 @@ export function moraleContractAdjustment(p: PlayerSeason, teamId: string, isPrio
   } else if (!isPriorTeam && m?.fondOf?.includes(teamId)) { premium -= 0.08; notes.push('fond memories'); }
   return { premium, notes };
 }
+
+/**
+ * A veteran star's say over where he goes: a winner-minded star (30+, 75+ overall) won't accept a trade to a losing
+ * team (under .400 after 10 games). A player who asked out himself takes any exit; Loyal and Mercenary types don't block.
+ * Returns why he refuses, or null.
+ */
+const vetoStandings = new WeakMap<League, ReturnType<typeof computeStandings>>();
+export function tradeVeto(p: PlayerSeason, toTeamId: string, league: League): string | null {
+  if (p.age < 30 || p.morale?.tradeRequest) return null;
+  const per = personalityOf(p);
+  if (per.type === 'Loyal' || per.type === 'Mercenary' || per.winning < 60 || calculateOverall(p) < 75) return null;
+  let rows = vetoStandings.get(league);
+  if (!rows) { rows = computeStandings(league); vetoStandings.set(league, rows); }
+  const row = rows.find(r => r.teamId === toTeamId);
+  if (!row || row.wins + row.losses < 10 || row.winPct >= 0.4) return null;
+  const team = league.teams.find(t => t.teamId === toTeamId)?.name ?? 'that team';
+  return `${p.playerId} refuses a trade to ${team} (${row.wins}-${row.losses}). A veteran star who wants to win won't go to a losing team.`;
+}

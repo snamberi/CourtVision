@@ -41,3 +41,29 @@ export function crunchStart(log: PossessionLogEntry[], regulationPeriods: number
     return Math.abs((prev?.homeScoreAfter ?? 0) - (prev?.awayScoreAfter ?? 0)) <= CRUNCH_MARGIN;
   });
 }
+
+/**
+ * Momentum from -100 (all away) to 100 (all home): the net points of the last dozen possessions, the most recent counting
+ * most. A timeout wipes what came before it, the way a good timeout cools a run.
+ */
+export const MOMENTUM_WINDOW = 12;
+export function momentum(log: PossessionLogEntry[], upto: number): number {
+  let net = 0, weight = 0;
+  const end = Math.min(upto, log.length);
+  for (let i = end - 1, k = 0; i >= 0 && k < MOMENTUM_WINDOW; i--, k++) {
+    const e = log[i], prev = log[i - 1], w = 1 - k / (MOMENTUM_WINDOW + 4);
+    net += w * ((e.homeScoreAfter - (prev?.homeScoreAfter ?? 0)) - (e.awayScoreAfter - (prev?.awayScoreAfter ?? 0)));
+    weight += w;
+    if (e.events.some(ev => ev.endsWith(' timeout'))) break;
+  }
+  // About 1.2 points a possession either way is a full swing.
+  return weight ? Math.max(-100, Math.min(100, Math.round(net / weight / 1.2 * 100))) : 0;
+}
+
+/**
+ * Foul trouble, the way coaches count it: two in the first quarter, three in the second, four in the third, five in the
+ * fourth (one short of fouling out from the fourth on, overtime included). Scales to other period counts and foul limits.
+ */
+export function foulTroubleAt(quarter: number, regulationPeriods: number, foulLimit = 6): number {
+  return Math.max(2, Math.min(foulLimit - 1, foulLimit - 1 - (regulationPeriods - quarter)));
+}

@@ -1,5 +1,5 @@
 import { plural } from '../../lib/humanize';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode, useRef } from 'react';
 import { readFavorites } from '../../profile/favorites';
 import type { NbaHistory } from '../../history/nbaHistoryData';
 import { cardNotes } from '../../hunt/cardNotes';
@@ -42,6 +42,7 @@ import { relicRunOpts } from '../../relics/apply';
 import { rewardRun, huntSpins, huntSecret, huntRewardKey } from '../../relics/rewards';
 import { RelicReward, LuckChip } from '../relics/RelicReward';
 import './hunt.css';
+import { burst, celebrate } from '../../fx/effects';
 
 /** League Hunt: spin a six-man squad and a coach from all of basketball history, then win ten best-of-seven series. */
 export function LeagueHunt({ onExit }: { onExit: () => void }) {
@@ -271,6 +272,12 @@ function SeriesView({ h, run, play, series, index, onReveal, onContinue }: { h: 
   }, []);
   const n = play.games.length, per = SERIES_MS / n, done = t >= SERIES_MS;
   useEffect(() => { if (done) onReveal(); }, [done, onReveal]);
+  // Series over: sparks for a series win, confetti when it was the boss.
+  const resultBox = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!done || !play.won) return;
+    if (run.stage === 'won') celebrate(); else burst(resultBox.current, { colors: ['#55c878', '#ffd166', '#f4f0e6'], count: 36, power: 6 });
+  }, [done]); // eslint-disable-line react-hooks/exhaustive-deps
   const gi = Math.min(n - 1, Math.floor(t / per));
   const frac = done ? 1 : Math.min(1, (t - gi * per) / (per * 0.82));
   const g = play.games[gi];
@@ -293,7 +300,7 @@ function SeriesView({ h, run, play, series, index, onReveal, onContinue }: { h: 
     <ol className="hunt-games">{Array.from({ length: 7 }, (_, i) => { const x = play.games[i]; const shownGame = x && i < finished.length;
       return <li key={i} className={shownGame ? (x.won ? 'won' : 'lost') : done ? 'unneeded' : 'pending'}>
         <small>G{i + 1}</small>{shownGame ? <><b>{x.won ? 'W' : 'L'} {x.us}-{x.them}</b><span>{x.top}</span></> : <b>{done ? '—' : '…'}</b>}</li>; })}</ol>
-    {done ? <div className={`hunt-result ${play.won ? 'won' : 'lost'}`}>
+    {done ? <div ref={resultBox} className={`hunt-result fx-pop ${play.won ? 'won' : 'lost'}`}>
       <h2>{play.won ? `Series won ${WINS_NEEDED}-${n - WINS_NEEDED}` : `Series lost ${n - WINS_NEEDED}-${WINS_NEEDED}`}</h2>
       <p>{play.mvp ? `Series MVP: ${play.mvp.name}, ${(play.mvp.pts / play.mvp.g).toFixed(1)} PTS · ${(play.mvp.reb / play.mvp.g).toFixed(1)} REB · ${(play.mvp.ast / play.mvp.g).toFixed(1)} AST` : ''}</p>
       <p><span className="hunt-coins">+{play.coins} coins</span></p>

@@ -35,7 +35,7 @@ export function PressRoomPage({ league, extras, controlledTeamId, onChange }: Pr
       {state.pending.length === 0 && <p className="hint-text">No reporters waiting. Big wins, bad losses, streaks, huge nights, trade requests and playoff series bring them out.</p>}
       {state.pending.map(c => <article key={c.id} className={`press-card${c.kind === 'rivalry' ? ' press-card-rivalry' : ''}`}>
         {c.kind === 'rivalry' && <span className="pixel-eyebrow"><PixelIcon name="flame" size={12} /> RIVALRY WEEK</span>}
-        <p className="press-question">🎤 “<TeamText text={c.question} />”</p>
+        <p className="press-question"><PixelIcon name="mic" size={14} /> “<TeamText text={c.question} />”</p>
         <div className="press-answers">{c.answers.map(a => <button key={a.id} onClick={() => onChange(answerPress(league, c.id, a.id, controlledTeamId))}>
           <b>{a.tone}</b><span>“{a.text}”</span><small>{hints(a.effects)}</small></button>)}</div>
       </article>)}

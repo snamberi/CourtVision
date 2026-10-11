@@ -64,6 +64,7 @@ const road = (cat: AvatarCategory, id: string): Rule | undefined => {
 /** A Season Pass piece (see retention/season.ts). */
 const season = (cat: AvatarCategory, id: string, s = 'glitch'): Rule => seasonRule(cat, id, s);
 const frozen = (cat: AvatarCategory, id: string): Rule => season(cat, id, 'frozen');
+const inferno = (cat: AvatarCategory, id: string): Rule => season(cat, id, 'inferno');
 /** A Relic Shop piece: bought with coins (relics/shopCosmetics.ts). Its key is shop-<category>-<id>. */
 const shop = (cat: AvatarCategory, id: string): Rule => ({ shop: `shop-${cat}-${id}` });
 /** A secret piece: only a Relic Vault spin can drop it (relics/secretCosmetics.ts). */
@@ -86,6 +87,7 @@ export const SKINS: AvatarItem[] = [
   item('skin', 'abyss', 'Abyss blue', OWNER, { hex: '#1a2a78' }),
   item('skin', 'glitch', 'Corrupted', season('skin', 'glitch'), { hex: 'glitch' }),
   item('skin', 'frozen', 'Ice', frozen('skin', 'frozen'), { hex: 'frozen' }),
+  item('skin', 'inferno', 'Molten', inferno('skin', 'inferno'), { hex: 'inferno' }),
   item('skin', 'obsidian', 'Obsidian', shop('skin', 'obsidian'), { hex: '#2a2238' }), item('skin', 'jade', 'Jade', shop('skin', 'jade'), { hex: '#2fae8a' }),
   item('skin', 'coral', 'Coral', shop('skin', 'coral'), { hex: '#ff7a6b' }),
   item('skin', 'nebula', 'Nebula', secret('skin', 'nebula'), { hex: '#5b3fd6' }),
@@ -103,6 +105,7 @@ export const HAIR_COLORS: AvatarItem[] = [
   item('hairColor', 'blueFire', 'Blue fire', OWNER, { hex: '#3fa9ff' }),
   item('hairColor', 'glitch', 'Glitch', season('hairColor', 'glitch'), { hex: 'glitch' }),
   item('hairColor', 'frozen', 'Frost white', frozen('hairColor', 'frozen'), { hex: 'frozen' }),
+  item('hairColor', 'inferno', 'Ember', inferno('hairColor', 'inferno'), { hex: 'inferno' }),
   item('hairColor', 'sunset', 'Sunset', shop('hairColor', 'sunset'), { hex: '#ff7e5f' }), item('hairColor', 'mint', 'Mint', shop('hairColor', 'mint'), { hex: '#6ff0c2' }),
   item('hairColor', 'lilac', 'Lilac', shop('hairColor', 'lilac'), { hex: '#c9a0ff' }),
   item('hairColor', 'phantom', 'Phantom', secret('hairColor', 'phantom'), { hex: '#9fffe0' }),
@@ -121,6 +124,7 @@ export const HAIRS: AvatarItem[] = [
   item('hair', 'sovereignFlame', 'Sovereign flame', OWNER),
   item('hair', 'glitchSpikes', 'Glitch spikes', season('hair', 'glitchSpikes')),
   item('hair', 'iceSpikes', 'Icicle hair', frozen('hair', 'iceSpikes')),
+  item('hair', 'magmaSpikes', 'Magma spikes', inferno('hair', 'magmaSpikes')),
 ];
 export const NEW_BEARDS = ['wizard', 'viking', 'handlebar', 'sideburns', 'flameBeard'] as const;
 const BEARD_LEVELS: Record<string, number> = { wizard: 120, viking: 95, handlebar: 35, sideburns: 18, flameBeard: 140 };
@@ -130,6 +134,7 @@ export const BEARDS: AvatarItem[] = [
   item('beard', 'stardust', 'Stardust', OWNER),
   item('beard', 'glitchBeard', 'Pixel beard', season('beard', 'glitchBeard')),
   item('beard', 'frostBeard', 'Frost beard', frozen('beard', 'frostBeard')),
+  item('beard', 'emberBeard', 'Ember beard', inferno('beard', 'emberBeard')),
 ];
 
 // ---------------------------------------------------------------- outfits (50)
@@ -184,6 +189,8 @@ export const OUTFITS: Outfit[] = [
   fit('glitchSuit', 'Corrupted suit', 'plugsuit', '#12141f', '#00f0ff', season('outfit', 'glitchSuit')),
   // Season 2: Frozen.
   fit('frostParka', 'Frost parka', 'hoodie', '#dff4ff', '#4d86b3', frozen('outfit', 'frostParka')),
+  // Season 3: Inferno.
+  fit('magmaArmor', 'Magma armour', 'armor', '#2a0d08', '#ff6b2d', inferno('outfit', 'magmaArmor')),
   // The Relic Shop.
   fit('royalTux', 'Royal tux', 'tux', '#2a1a4a', '#ffd166', shop('outfit', 'royalTux')),
   fit('neonTrack', 'Neon tracksuit', 'track', '#0f1020', '#7dff5a', shop('outfit', 'neonTrack')),
@@ -205,6 +212,7 @@ export const HATS: AvatarItem[] = [
   item('hat', 'blueCrown', "Sovereign's blue crown", OWNER),
   item('hat', 'glitchHalo', 'Error halo', season('hat', 'glitchHalo')),
   item('hat', 'iceCrown', 'Ice crown', frozen('hat', 'iceCrown')),
+  item('hat', 'flameCrown', 'Flame crown', inferno('hat', 'flameCrown')),
 ];
 export const EYES: AvatarItem[] = [
   item('eyes', 'none', 'Nothing'), item('eyes', 'glasses', 'Glasses'), item('eyes', 'shades', 'Shades'),
@@ -215,6 +223,7 @@ export const EYES: AvatarItem[] = [
   item('eyes', 'voidFace', 'Faceless void', OWNER),
   item('eyes', 'glitchVisor', 'Glitch visor', season('eyes', 'glitchVisor')),
   item('eyes', 'snowGoggles', 'Snow goggles', frozen('eyes', 'snowGoggles')),
+  item('eyes', 'lavaGoggles', 'Lava goggles', inferno('eyes', 'lavaGoggles')),
 ];
 export const NECKS: AvatarItem[] = [
   item('neck', 'none', 'Nothing'), item('neck', 'goldChain', 'Gold chain'), item('neck', 'headphones', 'Headphones'),
@@ -227,6 +236,7 @@ export const NECKS: AvatarItem[] = [
   item('neck', 'sovereignCape', 'Sovereign golden cape', OWNER),
   item('neck', 'glitchWings', 'Data wings', season('neck', 'glitchWings')),
   item('neck', 'frostCape', 'Frost cape', frozen('neck', 'frostCape')),
+  item('neck', 'flameCape', 'Flame cape', inferno('neck', 'flameCape')),
 ];
 export const SHOES: AvatarItem[] = [
   item('shoes', 'team', 'Match the outfit'), item('shoes', 'white', 'White', FREE, { hex: '#f4f6fa' }), item('shoes', 'black', 'Black', FREE, { hex: '#1a1f2a' }),
@@ -236,6 +246,7 @@ export const SHOES: AvatarItem[] = [
   item('shoes', 'cosmicBoots', 'Blue fire boots', OWNER),
   item('shoes', 'glitch', 'Glitch kicks', season('shoes', 'glitch'), { hex: '#00f0ff' }),
   item('shoes', 'iceSkates', 'Ice skates', frozen('shoes', 'iceSkates'), { hex: '#dff4ff' }),
+  item('shoes', 'magmaBoots', 'Magma boots', inferno('shoes', 'magmaBoots'), { hex: '#ff6b2d' }),
   item('shoes', 'lava', 'Lava runners', shop('shoes', 'lava'), { hex: '#ff4d1a' }), item('shoes', 'midnight', 'Midnight kicks', shop('shoes', 'midnight'), { hex: '#262b6b' }),
   item('shoes', 'chrome', 'Chrome kicks', shop('shoes', 'chrome'), { hex: '#d8dee8' }),
   item('shoes', 'stardust', 'Stardust kicks', secret('shoes', 'stardust'), { hex: '#ffe7a3' }),
@@ -249,6 +260,7 @@ export const AURAS: AvatarItem[] = [
   item('aura', 'cosmicFire', 'Cosmic blue fire', OWNER),
   item('aura', 'glitch', 'Glitch aura', season('aura', 'glitch')),
   item('aura', 'blizzard', 'Blizzard', frozen('aura', 'blizzard')),
+  item('aura', 'inferno', 'Inferno aura', inferno('aura', 'inferno')),
 ];
 
 export const AVATAR_CATEGORIES: { id: AvatarCategory; label: string; items: AvatarItem[] }[] = [

@@ -117,3 +117,14 @@
 .tu-swatch { width: 64px; height: 64px; }
 .road-frame.frame-sovereign { border-color: var(--c-border-6fd3ff, #6fd3ff); box-shadow: inset 0 0 0 2px var(--c-shadow-ffd166, #ffd166), 0 0 8px var(--c-shadow-4da3ffaa, #4da3ffaa); }
 .road-floor.floor-celestial { background: radial-gradient(circle at 30% 40%, var(--c-bg-ffffff, #ffffff) 1px, transparent 2px), linear-gradient(0deg, var(--c-bg-4da3ff, #4da3ff) 0 3px, transparent 3px), var(--c-bg-060b2a, #060b2a); }
+
+/* The phone's Friend list: friends with a free daily gift button each. */
+.friend-list-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; }
+.friend-list-head h2 small { font-size: 13px; color: var(--c-fg-94a0b2, #94a0b2); margin-left: 4px; }
+.friend-list { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 6px; }
+.friend-row { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 8px 10px; background: var(--c-bg-121926, #121926); border: 1px solid var(--c-border-2a3546, #2a3546); }
+.friend-name { display: grid; justify-items: start; gap: 2px; text-align: left; }
+.friend-name small { color: var(--c-fg-94a0b2, #94a0b2); font-size: 12px; }
+.friend-row > button:last-child { white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+.gift-inbox { border-color: var(--c-border-ffd166, #ffd166); }
+@media (max-width: 520px) { .friend-row { grid-template-columns: auto 1fr; } .friend-row > button:last-child { grid-column: 1 / -1; justify-content: center; } }

@@ -44,4 +44,15 @@ describe('Storylines', () => {
     const plain = storylines(l, undefined, null).findIndex(s => s.teamIds.includes(l.teams[2].teamId));
     if (firstMine >= 0) expect(firstMine).toBeLessThanOrEqual(plain);
   });
+
+  it('follows the rookies: the Rookie of the Year race and a late-pick steal', () => {
+    let l = base();
+    for (let i = 0; i < 4; i++) l = simulateFullRound(l, 900 + i);
+    // The two busiest players on the first two teams become this year's rookies, one of them a 38th pick.
+    const ids = l.teams.slice(0, 2).map(t => [...t.seasons].sort((a, b) => (b.seasonStats?.points ?? 0) - (a.seasonStats?.points ?? 0))[0].playerId);
+    const league = { ...l, teams: l.teams.map(t => ({ ...t, seasons: t.seasons.map(s => ids.includes(s.playerId) ? { ...s, age: 21, careerHistory: [], draftPick: s.playerId === ids[0] ? 38 : 2 } : { ...s, age: Math.max(s.age, 26) }) })) };
+    const list = storylines(league, undefined, null).filter(s => s.kind === 'rookie');
+    expect(list.some(s => s.headline.startsWith('Rookie of the Year race'))).toBe(true);
+    expect(list.find(s => s.id.startsWith('rookie:steal:'))?.playerId).toBe(ids[0]);
+  });
 });

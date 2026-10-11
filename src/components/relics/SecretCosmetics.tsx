@@ -15,7 +15,7 @@ export function SecretCosmeticsSection({ owned }: { owned: string[] }) {
       const has = owned.includes(c.key);
       return <div key={c.key} className={`relic-card shop-cosmetic ${has ? 'r-legendary' : 'missing'}`}>
         <span className="shop-cosmetic-art">{has ? <RoadReward {...reward(c)} /> : <PixelIcon name="lock" size={28} />}</span>
-        <span><b>{has ? c.name : '???'}</b><small>{has ? `${c.label} · equip it on your Profile` : `A secret ${c.label.toLowerCase()}`}</small></span>
+        <span><b>{has ? c.name : '???'}</b><small>{has ? `${c.label} · wear it from your Closet` : `A secret ${c.label.toLowerCase()}`}</small></span>
       </div>;
     })}</div>
   </section>;

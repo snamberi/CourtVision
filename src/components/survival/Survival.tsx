@@ -10,6 +10,8 @@ import {
   emergencyOffer, emergencySign, EMERGENCY_PRICE, WIN_CASH, SURVIVAL_LEVELS, ROSTER, BOSS_EVERY, MAX_SHIELDS, type SurvivalRun, type SurvivalRecords, type SurvivalLevel,
 } from '../../survival/run';
 import { PlayerAvatar } from '../PlayerAvatar';
+import { DifficultyCards } from '../DifficultyCards';
+import { defaultLevel } from '../../retention/challenge';
 import { PixelIcon } from '../PixelIcon';
 import { ShareCardButton } from '../ShareCardButton';
 import { track, trackOnce } from '../../analytics/track';
@@ -86,7 +88,7 @@ function CardTile({ c, selected, franchise, onClick, small }: { c: HuntCard; sel
 }
 
 function Hub({ records, onStart }: { records: SurvivalRecords; onStart: (level: SurvivalLevel, daily?: string) => void }) {
-  const [level, setLevel] = useState<SurvivalLevel>('pro');
+  const [level, setLevel] = useState<SurvivalLevel>(defaultLevel);
   const today = todayUtc(), doneToday = records.daily[today];
   return <section className="hunt-stage surv-hub">
     <div className="surv-pitch">
@@ -103,8 +105,7 @@ function Hub({ records, onStart }: { records: SurvivalRecords; onStart: (level: 
     </div>
     <div className="cv-panel">
       <h3 className="hunt-subhead">Difficulty</h3>
-      <div className="hunt-replace" role="radiogroup" aria-label="Difficulty">{(Object.keys(SURVIVAL_LEVELS) as SurvivalLevel[]).map(l => <button key={l} role="radio" aria-checked={level === l} className={level === l ? 'active' : ''} onClick={() => setLevel(l)}>{SURVIVAL_LEVELS[l].name} <small>×{SURVIVAL_LEVELS[l].mult}</small></button>)}</div>
-      <p className="hint-text">{SURVIVAL_LEVELS[level].blurb}</p>
+      <DifficultyCards value={level} onChange={setLevel} options={(Object.keys(SURVIVAL_LEVELS) as SurvivalLevel[]).map((l, i) => ({ id: l, name: SURVIVAL_LEVELS[l].name, blurb: SURVIVAL_LEVELS[l].blurb, level: i + 1 + (i === 2 ? 1 : 0), extra: `x${SURVIVAL_LEVELS[l].mult} score` }))} />
       <div className="contest-actions">
         <button className="primary hunt-play" onClick={() => onStart(level)}><PixelIcon name="play" size={16} /> Start a run</button>
         <button onClick={() => onStart('pro', today)} disabled={!!doneToday}>{doneToday ? `Daily Survival done: ${doneToday.wins} wins` : 'Daily Survival (same for everyone today)'}</button>

@@ -402,6 +402,17 @@ button { border-radius: 0; }
 
 /* ---- Sideline coaching ---- */
 .coach-alert { display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding:8px 10px; margin:6px 0; border:2px solid var(--cv-red, var(--c-border-e85d5d, #e85d5d)); background:var(--c-bg-2a1418, #2a1418); color:var(--cv-text, var(--c-fg-f4f0e6, #f4f0e6)); font-weight:600; }
+.coach-foul { border-color:var(--cv-gold, var(--c-border-ffd166, #ffd166)); background:var(--cv-surface-raised, var(--c-bg-192333, #192333)); font-weight:500; }
+.coach-tip { margin:6px 0; padding:6px 10px; border-left:3px solid var(--cv-blue, var(--c-border-4da3ff, #4da3ff)); color:var(--cv-text-muted, var(--c-fg-94a0b2, #94a0b2)); }
+.watch-momentum { display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:10px; padding:6px 18px 10px; background:var(--c-bg-15263c, #15263c); border:2px solid var(--c-border-4d637d, #4d637d); border-top:0; border-bottom:0; }
+.watch-momentum small { font:10px var(--font-data); letter-spacing:.1em; color:var(--c-fg-98adc4, #98adc4); white-space:nowrap; }
+.watch-momentum-bar { position:relative; height:8px; background:var(--cv-bg, var(--c-bg-0b1018, #0b1018)); border:1px solid var(--cv-border, var(--c-border-2a3546, #2a3546)); }
+.watch-momentum-bar::after { content:''; position:absolute; left:50%; top:-3px; bottom:-3px; width:2px; background:var(--cv-text-muted, var(--c-bg-94a0b2, #94a0b2)); }
+.watch-momentum-bar > i { position:absolute; top:0; bottom:0; transition:width .16s ease-out; }
+.watch-momentum-bar > i.home { background:var(--cv-orange, var(--c-bg-f47b20, #f47b20)); }
+.watch-momentum-bar > i.away { background:var(--cv-blue, var(--c-bg-4da3ff, #4da3ff)); }
+@media (max-width:600px) { .watch-momentum { padding:4px 8px 8px; gap:6px; } }
+@media (prefers-reduced-motion: reduce) { .watch-momentum-bar > i { transition:none; } }
 .coach-last-shot { display:flex; flex-wrap:wrap; align-items:flex-end; gap:10px; padding:10px 12px; margin:6px 0; border:2px solid var(--cv-gold, var(--c-border-ffd166, #ffd166)); background:var(--c-bg-2a2412, #2a2412); box-shadow:3px 3px 0 var(--c-shadow-060a11, #060a11); }
 .coach-last-shot b { width:100%; color:var(--cv-gold, var(--c-fg-ffd166, #ffd166)); }
 .coach-last-shot label { display:grid; gap:3px; font-size:12px; color:var(--cv-text-muted, var(--c-fg-94a0b2, #94a0b2)); }

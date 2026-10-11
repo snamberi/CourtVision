@@ -161,6 +161,12 @@ export function frameArtwork(id: AvatarFrameId): { under?: ReactNode; over: Reac
       {[[14,22,'#00f0ff'],[84,30,'#ff2bd6'],[20,74,'#ffffff'],[80,80,'#7dff5a'],[50,9,'#ff2bd6'],[47,91,'#00f0ff']].map(([x,y,c])=><rect key={`${x}-${y}`} x={x as number} y={y as number} width="3" height="3" fill={c as string} />)}
       <g className="avf-glitch-tear"><rect x="6" y="44" width="30" height="4" fill="#00f0ff" opacity=".8" /><rect x="66" y="56" width="28" height="4" fill="#ff2bd6" opacity=".8" /></g>
     </> };
+    // Season 3: a ring of cooling basalt with lava cracks, flames along the bottom and embers rising.
+    case 'inferno': return { under:<><circle cx="50" cy="50" r="41" fill="#2a0d08" stroke="#120402" strokeWidth="1.5" />{around(10,41,(x,y,i)=><rect key={i} x={x-1} y={y-1} width="2" height="2" fill={i%2?'#ffb347':'#ff4d2e'} opacity=".85" />,0)}</>, over:<>
+      <circle cx="50" cy="50" r="36" fill="none" stroke="#3a1a12" strokeWidth="5" />
+      <circle cx="50" cy="50" r="36" fill="none" stroke="#ff6b2d" strokeWidth="1.4" strokeDasharray="6 3 2 4" />
+      {[28,36,44,52,60,68].map((x,i)=><path key={x} className="avf-flame" d={`M${x-4} ${86-Math.abs(50-x)*0.3}Q${x} ${72-(i%3)*3-Math.abs(50-x)*0.3} ${x+4} ${86-Math.abs(50-x)*0.3}Z`} fill={i%2?'#ffb347':'#ff4d2e'} />)}
+    </> };
     // Season 2: a ring of packed ice with icicles hanging below and snowflakes drifting round it.
     case 'frozen': return { under:<><circle cx="50" cy="50" r="41" fill="#123a5c" stroke="#0a2238" strokeWidth="1.5" />{around(8,40,(x,y,i)=><circle key={i} cx={x} cy={y} r="1.6" fill="#ffffff" opacity=".8" />,0)}</>, over:<>
       <circle cx="50" cy="50" r="36" fill="none" stroke="#dff4ff" strokeWidth="4.5" />

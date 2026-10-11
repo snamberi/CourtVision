@@ -88,7 +88,7 @@ export function SeasonPassPage({ onExit, onRelics }: { onExit: () => void; onRel
         kicker: `SEASON ${p.season.number} · ${p.season.name.toUpperCase()}`, title: `Tier ${p.tier}`, subtitle: p.tier >= SEASON_TIERS ? 'The whole pass, done.' : `${SEASON_TIERS - p.tier} tiers to go`,
         stats: [{ label: 'Tier', value: `${p.tier}` }, { label: 'Lucky Spins', value: `${p.paid}` }, { label: 'Cosmetics', value: `${got}/${rewards.length}` }, { label: 'XP', value: p.xp.toLocaleString() }],
         lines: [bestName ? `Best relic pulled: ${bestName}` : 'No relics pulled yet', ...rewards.filter(r => r.tier <= p.tier).slice(-3).map(r => `Unlocked: ${r.name} (${r.label.toLowerCase()})`)],
-        frame: (['glitch', 'frozen'].includes(p.season.id) ? p.season.id : 'classic') as FrameId, accent: 'gold',
+        frame: (['glitch', 'frozen', 'inferno'].includes(p.season.id) ? p.season.id : 'classic') as FrameId, accent: 'gold',
       }} />
     </div>}
 
@@ -116,7 +116,7 @@ export function SeasonPassPage({ onExit, onRelics }: { onExit: () => void; onRel
         })}</ol>
       </div>
     </div>
-    <p className="hint-text">Every XP you earn this season, in any mode, fills the pass ({p.need} XP a tier), and your daily streak adds a bonus every day. Every tier pays a free Lucky Spin for the Relic Vault (2× luck, no Commons), and every {SEASON_COSMETIC_EVERY} tiers unlocks a {shown.name} cosmetic for good: icon, name colour, title and title colour, card frame, court, phone, app look, picture frame and a whole character set. Equip them on your Profile.</p>
+    <p className="hint-text">Every XP you earn this season, in any mode, fills the pass ({p.need} XP a tier), and your daily streak adds a bonus every day. Every tier pays a free Lucky Spin for the Relic Vault (2× luck, no Commons), and every {SEASON_COSMETIC_EVERY} tiers unlocks a {shown.name} cosmetic for good: icon, name colour, title and title colour, card frame, court, phone, app look, picture frame and a whole character set. Wear them from your Closet.</p>
     {unlocked.length > 0 && <SeasonTierUp cosmetics={unlocked} spins={0} onClose={() => setUnlocked([])} />}
 
     <SeasonPass />

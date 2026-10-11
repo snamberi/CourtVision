@@ -1,5 +1,6 @@
 import { loadRelics, saveRelics, grantReward, grantLuckySpins, earn, type SecretId } from './relics';
 import { noteSeason, markSeasonPaid, SEASON_REWARDS, type SeasonCosmetic } from '../retention/season';
+import { isEvent } from '../retention/weeklyEvent';
 
 /*
  * Relic Spins for finishing things. Each result pays out once (keyed by its run), so reloading a finished run, or a
@@ -24,9 +25,11 @@ export const careerSecret = (hallOfFame: string | undefined): SecretId | undefin
 export const perfectSecret = (s: { perfectSeason: boolean }): SecretId | undefined => (s.perfectSeason ? 'extraPick' : undefined);
 
 /** Grants a finished run's spins, coins and feat secret (once per key) and returns how many spins were new. */
-export function rewardRun(key: string, n: number, opts: { secret?: SecretId; why?: string } = {}): number {
+export function rewardRun(key: string, n: number, opts: { secret?: SecretId; why?: string } = {}, now = new Date()): number {
   const before = loadRelics();
-  const after = grantReward(before, key, { spins: n, coins: runCoins(n), secret: opts.secret, why: opts.why });
+  // The Weekly Event: Coin Rush doubles the coins, Spin Storm adds a spin to a run that pays spins.
+  const spins = n + (n > 0 && isEvent('spinStorm', now) ? 1 : 0), coins = runCoins(n) * (isEvent('coinRush', now) ? 2 : 1);
+  const after = grantReward(before, key, { spins, coins, secret: opts.secret, why: opts.why });
   if (after === before) return 0;
   saveRelics(after);
   return after.spins - before.spins;

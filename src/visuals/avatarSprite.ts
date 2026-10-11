@@ -23,6 +23,9 @@ const SKIN_KEY = '#fe01fe', HAIR_KEY = '#01fefe';
 const G_CYAN = '#00f0ff', G_MAGENTA = '#ff2bd6', G_DARK = '#12141f', G_WHITE = '#eefcff';
 /** Season 2's ice colours: deep ice, ice, frost and snow white. */
 const I_DEEP = '#4d86b3', I_ICE = '#9fd8ff', I_FROST = '#dff4ff', I_SNOW = '#ffffff';
+/** Season 3 (Inferno) reuses the Frozen shapes in lava colours: deep, mid, light and hot. */
+const F_DEEP = '#7a1010', F_LAVA = '#ff4d2e', F_EMBER = '#ffb347', F_HOT = '#ffe066';
+const ICE_SET = { deep: I_DEEP, mid: I_ICE, light: I_FROST, top: I_SNOW }, FIRE_SET = { deep: F_DEEP, mid: F_LAVA, light: F_EMBER, top: F_HOT };
 
 type Rect = (x: number, y: number, w: number, h: number, c: string) => void;
 interface Shade { c: string; l: string; d: string }
@@ -224,6 +227,7 @@ function drawShoes(r: Rect, id: string, o: Outfit, skin: Shade) {
     if (id === 'sandals') { r(x - 1, 46, 7, 2, skin.c); r(x - 1, 48, 7, 1, '#8a5a2b'); r(x - 1, 49, 7, 1, '#5a3a1a'); r(x + 1, 46, 1, 2, '#c8102e'); continue; }
     if (id === 'cosmicBoots') { r(x - 1, 41, 7, 8, '#0e1a5a'); r(x - 1, 41, 7, 1, '#ffd166'); r(x, 43, 1, 5, '#4da3ff'); r(x + 4, 42, 2, 7, '#060b2a'); r(x - 1, 49, 7, 1, '#6fd3ff'); r(x, 50, 5, 1, '#9fe7ff'); continue; }
     if (id === 'iceSkates') { r(x - 1, 44, 7, 5, I_FROST); r(x - 1, 44, 7, 1, I_SNOW); r(x + 4, 45, 2, 4, I_ICE); r(x, 46, 4, 1, I_DEEP); r(x - 2, 49, 9, 1, '#c9d1dc'); r(x - 2, 50, 9, 1, '#8a93a3'); continue; }
+    if (id === 'magmaBoots') { r(x - 1, 42, 7, 7, '#2a0d08'); r(x - 1, 42, 7, 1, F_EMBER); r(x, 44, 1, 4, F_LAVA); r(x + 3, 45, 2, 1, F_HOT); r(x + 4, 43, 2, 6, '#1a0603'); r(x - 2, 49, 9, 1, F_LAVA); r(x - 1, 50, 7, 1, F_DEEP); continue; }
     if (id === 'glitch') { r(x - 1, 46, 7, 3, G_DARK); r(x - 1, 46, 3, 1, G_CYAN); r(x + 3, 47, 3, 1, G_MAGENTA); r(x + 1, 46, 1, 2, G_WHITE); r(x - 1, 49, 7, 1, G_CYAN); r(x + 2, 49, 2, 1, G_MAGENTA); continue; }
     if (id === 'warriorBoots') { r(x - 1, 41, 7, 8, '#f4f6fa'); r(x - 1, 41, 7, 2, '#e8b84a'); r(x + 4, 43, 2, 6, '#c9d1dc'); r(x - 1, 49, 7, 1, '#5b6b82'); continue; }
     if (id === 'boots' || id === 'heroBoots') {
@@ -288,11 +292,13 @@ function drawHair(r: Rect, id: string, hair: Shade) {
       h(11, 4, 18, 7); h(9, 7, 4, 10); h(27, 7, 4, 10); h(8, 14, 3, 8); h(29, 14, 3, 8); h(7, 20, 2, 4); h(31, 20, 2, 4);
       for (const [x, top] of [[10, 2], [13, 0], [17, 0], [21, 0], [25, 1], [28, 3]] as const) { h(x, top + 1, 3, 5 - top); h(x + 1, top, 1, 1); }
       r(14, 1, 1, 6, '#ffffff'); r(22, 1, 1, 6, '#9fe7ff'); r(10, 9, 1, 10, hair.l); r(29, 9, 1, 10, hair.d); r(18, 3, 1, 4, '#ffffff'); return;
-    case 'iceSpikes':
-      // Hair frozen into icicles pointing up, with frost on the tips.
+    case 'iceSpikes': case 'magmaSpikes': {
+      // Hair frozen into icicles pointing up, with frost on the tips (Inferno: spikes of magma with glowing tips).
+      const c = id === 'magmaSpikes' ? FIRE_SET : ICE_SET;
       h(11, 5, 18, 6); h(10, 8, 3, 5); h(27, 8, 3, 5);
-      for (const [x, top] of [[11, 2], [14, 0], [17, 1], [20, 0], [23, 1], [26, 2]] as const) { h(x, top + 1, 2, 5 - top); r(x, top, 1, 1, I_SNOW); }
-      r(13, 6, 12, 1, hair.l); r(15, 2, 1, 4, I_SNOW); r(21, 1, 1, 4, I_SNOW); r(9, 9, 1, 3, I_ICE); r(30, 9, 1, 3, I_ICE); return;
+      for (const [x, top] of [[11, 2], [14, 0], [17, 1], [20, 0], [23, 1], [26, 2]] as const) { h(x, top + 1, 2, 5 - top); r(x, top, 1, 1, c.top); }
+      r(13, 6, 12, 1, hair.l); r(15, 2, 1, 4, c.top); r(21, 1, 1, 4, c.top); r(9, 9, 1, 3, c.mid); r(30, 9, 1, 3, c.mid); return;
+    }
     case 'glitchSpikes':
       // Square pixel spikes, torn sideways, with the colour channels split off the edges.
       h(11, 5, 18, 6); h(10, 8, 3, 5); h(27, 8, 3, 5);
@@ -305,11 +311,12 @@ function drawHair(r: Rect, id: string, hair: Shade) {
 
 function drawBeard(r: Rect, id: string, hair: Shade) {
   if (id === 'stardust') { for (const [x, y] of [[14, 20], [17, 22], [20, 21], [23, 22], [25, 20], [19, 24], [16, 25], [22, 25]] as const) r(x, y, 1, 1, (x + y) % 2 ? '#9fe7ff' : '#ffffff'); return; }
-  if (id === 'frostBeard') {
-    // A beard frosted white, with little icicles hanging off it.
-    r(12, 18, 3, 4, I_FROST); r(25, 18, 3, 4, I_FROST); r(14, 21, 12, 5, I_FROST); r(16, 25, 8, 2, I_FROST); r(17, 20, 7, 1, '#351c29');
-    for (const x of [15, 18, 21, 24]) { r(x, 27, 1, 2, I_ICE); r(x, 29, 1, 1, I_SNOW); }
-    r(14, 22, 1, 3, I_SNOW); r(25, 22, 1, 3, I_ICE); return;
+  if (id === 'frostBeard' || id === 'emberBeard') {
+    // A beard frosted white, with little icicles hanging off it (Inferno: smouldering, with embers dripping off it).
+    const c = id === 'emberBeard' ? FIRE_SET : ICE_SET;
+    r(12, 18, 3, 4, c.light); r(25, 18, 3, 4, c.light); r(14, 21, 12, 5, c.light); r(16, 25, 8, 2, c.light); r(17, 20, 7, 1, '#351c29');
+    for (const x of [15, 18, 21, 24]) { r(x, 27, 1, 2, c.mid); r(x, 29, 1, 1, c.top); }
+    r(14, 22, 1, 3, c.top); r(25, 22, 1, 3, c.mid); return;
   }
   if (id === 'glitchBeard') {
     // A blocky pixel beard, half of it out of sync.
@@ -349,11 +356,13 @@ function drawCustomHat(r: Rect, id: string, hairHex: string) {
       r(11, 8, 18, 1, '#ffd166'); r(11, 4, 18, 1, '#ffd166'); r(12, 5, 6, 1, b.l);
       r(14, 6, 2, 1, '#9fe7ff'); r(19, 5, 2, 2, '#ffffff'); r(24, 6, 2, 1, '#9fe7ff'); r(19, 0, 2, 1, '#ffffff'); return;
     }
-    case 'iceCrown':
-      // A crown of ice crystals.
-      r(12, 5, 16, 3, I_ICE); r(12, 7, 16, 1, I_DEEP); r(12, 5, 16, 1, I_FROST);
-      for (const [x, hgt] of [[12, 3], [15, 4], [19, 5], [23, 4], [26, 3]] as const) { r(x, 5 - hgt, 2, hgt, I_FROST); r(x, 5 - hgt, 1, hgt, I_SNOW); }
-      r(19, 6, 2, 1, I_SNOW); return;
+    case 'iceCrown': case 'flameCrown': {
+      // A crown of ice crystals (Inferno: a band of rock with flames for points).
+      const c = id === 'flameCrown' ? FIRE_SET : ICE_SET;
+      r(12, 5, 16, 3, c.mid); r(12, 7, 16, 1, c.deep); r(12, 5, 16, 1, c.light);
+      for (const [x, hgt] of [[12, 3], [15, 4], [19, 5], [23, 4], [26, 3]] as const) { r(x, 5 - hgt, 2, hgt, c.light); r(x, 5 - hgt, 1, hgt, c.top); }
+      r(19, 6, 2, 1, c.top); return;
+    }
     case 'glitchHalo':
       // A halo that failed to load: broken segments, split colours and an error block.
       r(13, 1, 4, 1, G_CYAN); r(18, 1, 3, 1, G_WHITE); r(23, 1, 4, 1, G_MAGENTA); r(15, 0, 3, 1, G_MAGENTA); r(21, 0, 4, 1, G_CYAN); r(14, 2, 2, 1, G_WHITE); r(24, 2, 3, 1, G_CYAN);
@@ -396,6 +405,7 @@ function drawEyes(r: Rect, id: string) {
       for (const [x, yy, c] of [[15, 12, '#ffffff'], [24, 13, '#9fe7ff'], [19, 16, '#b8a8ff'], [17, 19, '#ffffff'], [23, 18, '#6fd3ff'], [21, 11, '#ffffff']] as const) r(x, yy, 1, 1, c);
       return;
     case 'snowGoggles': r(10, y - 1, 20, 6, '#2b4b6b'); r(12, y, 6, 4, I_ICE); r(22, y, 6, 4, I_ICE); r(12, y, 6, 1, I_SNOW); r(22, y, 6, 1, I_SNOW); r(13, y + 2, 2, 1, I_FROST); r(23, y + 2, 2, 1, I_FROST); r(18, y + 1, 4, 2, '#2b4b6b'); return;
+    case 'lavaGoggles': r(10, y - 1, 20, 6, '#2a0d08'); r(12, y, 6, 4, F_LAVA); r(22, y, 6, 4, F_LAVA); r(12, y, 6, 1, F_HOT); r(22, y, 6, 1, F_HOT); r(13, y + 2, 2, 1, F_EMBER); r(23, y + 2, 2, 1, F_EMBER); r(18, y + 1, 4, 2, '#2a0d08'); return;
     case 'glitchVisor': r(11, y, 19, 3, G_DARK); r(10, y + 1, 19, 1, G_MAGENTA); r(12, y + 1, 19, 1, G_CYAN); r(14, y, 3, 1, G_WHITE); r(24, y + 2, 4, 1, G_CYAN); r(29, y - 1, 2, 5, '#3a2a55'); return;
     case 'blindfold': r(11, y - 1, 18, 5, '#161a24'); r(11, y - 1, 18, 1, '#3a3f4a'); r(28, y + 3, 2, 3, '#161a24'); return;
     case 'scouter': r(22, y - 1, 6, 5, '#7dff9b'); r(22, y - 1, 6, 1, '#b8ffcc'); r(28, 11, 3, 8, '#e8322e'); r(29, 12, 1, 6, '#ff9d9d'); return;
@@ -407,6 +417,7 @@ function drawEyes(r: Rect, id: string) {
 function drawNeck(r: Rect, id: string) {
   switch (id) {
     case 'frostCape': r(11, 24, 3, 2, I_FROST); r(26, 24, 3, 2, I_FROST); r(19, 25, 2, 1, I_SNOW); r(13, 23, 14, 1, I_SNOW); return;
+    case 'flameCape': r(11, 24, 3, 2, F_EMBER); r(26, 24, 3, 2, F_EMBER); r(19, 25, 2, 1, F_HOT); r(13, 23, 14, 1, F_HOT); return;
     case 'goldChain': case 'silverChain': { const c = id === 'goldChain' ? '#ffd166' : '#d7dde6'; r(16, 27, 1, 3, c); r(23, 27, 1, 3, c); r(17, 30, 1, 1, c); r(22, 30, 1, 1, c); r(18, 31, 4, 1, c); r(19, 32, 2, 2, c); return; }
     case 'headphones': r(13, 24, 14, 2, '#2b2f3a'); r(12, 24, 3, 3, '#e8322e'); r(25, 24, 3, 3, '#e8322e'); return;
     case 'whistle': r(18, 27, 1, 4, '#c8102e'); r(21, 27, 1, 4, '#c8102e'); r(19, 31, 3, 2, '#c9d1dc'); return;
@@ -446,11 +457,13 @@ function drawBack(grid: SpriteGrid, id: string) {
         for (let x = x0 + 1; x < x0 + w - 1; x++) back(x, y, 1, 1, (x + y) % 7 === 0 ? '#ffe08a' : (y + s) % 6 === 0 ? '#c9971f' : '#ffd166');
       }
       return;
-    case 'frostCape':
-      // A pale blue cape, frosted at the edges, ending in icicles.
-      for (let y = 25; y < 48; y++) { const sp = Math.floor((y - 25) / 5); back(10 - sp, y, 20 + sp * 2, 1, (y + sp) % 6 === 0 ? I_FROST : I_ICE); back(10 - sp, y, 1, 1, I_SNOW); back(29 + sp, y, 1, 1, I_SNOW); }
-      for (let x = 6; x < 34; x += 3) back(x, 48 + (x % 2), 1, 2, I_SNOW);
+    case 'frostCape': case 'flameCape': {
+      // A pale blue cape, frosted at the edges, ending in icicles (Inferno: a cape of flame, burning at the hem).
+      const c = id === 'flameCape' ? FIRE_SET : ICE_SET;
+      for (let y = 25; y < 48; y++) { const sp = Math.floor((y - 25) / 5); back(10 - sp, y, 20 + sp * 2, 1, (y + sp) % 6 === 0 ? c.light : c.mid); back(10 - sp, y, 1, 1, c.top); back(29 + sp, y, 1, 1, c.top); }
+      for (let x = 6; x < 34; x += 3) back(x, 48 + (x % 2), 1, 2, c.top);
       return;
+    }
     case 'glitchWings':
       // Wings made of data: rows of pixel blocks in cyan and magenta, some missing.
       for (const [x0, dir] of [[9, -1], [30, 1]] as const) for (let i = 0; i < 10; i++) {
@@ -493,6 +506,7 @@ const AURA_COLORS: Record<string, string[]> = {
   cosmicFire: ['#9fe7ff', '#1f4fd9', '#6fd3ff', '#ffffff', '#4a2fbf', '#0a1f7a'],
   glitch: [G_CYAN, G_MAGENTA, G_WHITE],
   blizzard: [I_SNOW, I_FROST, I_ICE],
+  inferno: [F_LAVA, F_EMBER, F_HOT, F_DEEP],
 };
 function auraCells(grid: SpriteGrid, kind: string): SpriteGrid {
   const H = grid.length, W = grid[0].length;
@@ -508,7 +522,7 @@ function auraCells(grid: SpriteGrid, kind: string): SpriteGrid {
     }
     return false;
   };
-  const rising = kind === 'fire' || kind === 'golden' || kind === 'lightning' || kind === 'superWarrior' || kind === 'storm' || kind === 'cursed' || kind === 'hunter' || kind === 'cosmicFire';
+  const rising = kind === 'inferno' || kind === 'fire' || kind === 'golden' || kind === 'lightning' || kind === 'superWarrior' || kind === 'storm' || kind === 'cursed' || kind === 'hunter' || kind === 'cosmicFire';
   const crackle = kind === 'superWarrior' || kind === 'storm' || kind === 'cursed' || kind === 'cosmicFire';
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     if (grid[y][x]) continue;
@@ -563,8 +577,14 @@ const frozenAt = (x: number, y: number) => {
   if (cell % 29 === 0) return I_SNOW;
   return (x + y * 2) % 9 === 0 ? I_FROST : (x * 3 + y) % 11 < 4 ? I_ICE : '#b8e2fb';
 };
-const patterned = (hex: string) => hex === 'rainbow' || hex === 'glitch' || hex === 'frozen';
-const patternAt = (hex: string, x: number, y: number, base: string) => hex === 'glitch' ? glitchAt(x, y, base) : hex === 'frozen' ? frozenAt(x, y) : rainbowAt(x, y);
+/** Inferno skin and hair: dark cooling rock with glowing lava cracks. */
+const infernoAt = (x: number, y: number) => {
+  const cell = ((x * 73856093) ^ (y * 19349663)) >>> 0;
+  if (cell % 31 === 0) return F_HOT;
+  return (x * 2 + y) % 10 === 0 ? F_LAVA : (x + y * 3) % 13 === 0 ? F_EMBER : (x + y) % 2 ? '#3a1208' : '#2a0d08';
+};
+const patterned = (hex: string) => hex === 'rainbow' || hex === 'glitch' || hex === 'frozen' || hex === 'inferno';
+const patternAt = (hex: string, x: number, y: number, base: string) => hex === 'glitch' ? glitchAt(x, y, base) : hex === 'frozen' ? frozenAt(x, y) : hex === 'inferno' ? infernoAt(x, y) : rainbowAt(x, y);
 
 /** An outfit's colours and number: a jersey can wear any team's colours and any number (your favourite team's for "Your team"). */
 export function outfitKit(look: AvatarLook, team?: AvatarOptions['team']): { primary: string; secondary: string; number: number | null } {

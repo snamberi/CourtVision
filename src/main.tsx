@@ -1,5 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { applyMenuStyle } from './lib/menuStyle'
 // Fonts are bundled with the app (not fetched from Google Fonts), so no visitor's IP address is sent to a font CDN and the
 // offline Windows edition renders identically without a network. latin-ext covers accented player names.
 import '@fontsource/oswald/latin-500.css'
@@ -44,6 +45,7 @@ startPwa()
 startSync()
 void startAccounts()
 
+applyMenuStyle()
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />

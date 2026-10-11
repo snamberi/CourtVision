@@ -1,3 +1,4 @@
+import { PixelIcon } from './PixelIcon';
 import { useEffect, useMemo, useState } from 'react';
 import type { NbaHistory } from '../history/nbaHistoryData';
 import { huntTeams, teamLabel } from '../hunt/teams';
@@ -39,7 +40,7 @@ export function TimeMachinePicker({ onChange }: { onChange: (p: TimeMachinePick 
   const pool = cardPool(h);
   return <div>
     <div className="create-field"><span>Bring this team</span>
-      <div className="tm-famous" role="radiogroup" aria-label="Famous teams">{famous.map(t => t && <button key={t.id} role="radio" aria-checked={from === t.id} className={from === t.id ? 'selected' : ''} onClick={() => setFrom(t.id)}>{t.end - 1}-{String(t.end).slice(2)} {t.abbr}{t.champion ? ' 🏆' : ''}</button>)}</div>
+      <div className="tm-famous" role="radiogroup" aria-label="Famous teams">{famous.map(t => t && <button key={t.id} role="radio" aria-checked={from === t.id} className={from === t.id ? 'selected' : ''} onClick={() => setFrom(t.id)}>{t.end - 1}-{String(t.end).slice(2)} {t.abbr}{t.champion ? <> <PixelIcon name="trophy" size={12} /></> : ''}</button>)}</div>
     </div>
     <div className="create-fields">
       <label className="create-field"><span>Or any team: decade</span>

@@ -267,6 +267,21 @@ export const CARD_THEMES: Record<FrameId, CardTheme> = {
       ctx.fillStyle = '#ffffff'; for (let x = x0 + 10; x < x0 + w - 10; x += 22) { ctx.beginPath(); ctx.moveTo(x, y0 + h); ctx.lineTo(x + 8, y0 + h); ctx.lineTo(x + 4, y0 + h + 14 + rnd(x) * 12); ctx.closePath(); ctx.fill(); }
     },
   },
+  inferno: { ...base, panel: 'rgba(42,13,8,.55)', box: 'rgba(24,6,3,.84)', line: '#a8401c', accent: '#ffe066', accent2: '#ff6b2d',
+    background: (ctx, W, H) => {
+      vgrad(ctx, W, H, [[0, '#2a0d08'], [0.6, '#3a1208'], [1, '#120402']]);
+      // Lava rivers across the bottom, cracks glowing through the rock and embers rising.
+      ctx.fillStyle = 'rgba(255,107,45,.85)';
+      ctx.beginPath(); ctx.moveTo(0, H); for (let x = 0; x <= W; x += 40) ctx.lineTo(x, H - 50 - rnd(x + 5) * 40); ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,179,71,.55)'; ctx.lineWidth = 3;
+      for (let i = 0; i < 9; i++) { ctx.beginPath(); let x = rnd(300 + i) * W, y = rnd(400 + i) * H * 0.7; ctx.moveTo(x, y); for (let k = 0; k < 4; k++) { x += (rnd(500 + i * 7 + k) - 0.5) * 120; y += 30 + rnd(600 + i + k) * 50; ctx.lineTo(x, y); } ctx.stroke(); }
+      for (let i = 0; i < 110; i++) { ctx.fillStyle = rnd(700 + i) > 0.5 ? 'rgba(255,224,102,.8)' : 'rgba(255,77,46,.75)'; const s2 = rnd(900 + i) > 0.85 ? 6 : 3; ctx.fillRect(Math.floor(rnd(1000 + i) * W / 3) * 3, Math.floor(rnd(1100 + i) * H / 3) * 3, s2, s2); }
+    },
+    border: (ctx, x0, y0, w, h) => {
+      box(ctx, x0, y0, w, h, '#ff6b2d', 5); box(ctx, x0, y0, w, h, '#ffe066', 2, 8);
+      ctx.fillStyle = '#ffb347'; for (let x = x0 + 10; x < x0 + w - 10; x += 22) { ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x + 8, y0); ctx.lineTo(x + 4, y0 - 12 - rnd(x) * 12); ctx.closePath(); ctx.fill(); }
+    },
+  },
   rainbow: { ...base, accent: '#ffd166', accent2: '#ff7ad9',
     background: (ctx, W, H) => {
       vgrad(ctx, W, H, [[0, '#101624'], [1, '#080c14']]);

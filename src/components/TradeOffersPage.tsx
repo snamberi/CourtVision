@@ -1,3 +1,4 @@
+import { PixelIcon } from './PixelIcon';
 import { TeamText } from './TeamLink';
 import { useState } from 'react';
 import type { League } from '../simulation/league';
@@ -95,7 +96,7 @@ export function TradeOffersPage({ league, extras, controlledTeamId, onChange }: 
         return (
           <div key={i} className="trade-comparison-block">
             <p className="hint-text">Offer from <TeamText text={partnerName} /></p>
-            {offer.note && <p className="trade-offer-note">📞 <TeamText text={offer.note} /></p>}
+            {offer.note && <p className="trade-offer-note"><PixelIcon name="phone" size={12} /> <TeamText text={offer.note} /></p>}
             <div className={`trade-verdict ${verdict.className}`}>{verdict.label}</div>
             <div className="trade-compare-columns">
               <div>

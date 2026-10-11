@@ -8,6 +8,8 @@ import { loadWeeklyRecords } from '../retention/weekly';
 import { careerCache } from './profile';
 import { readFeats, type Feats } from './feats';
 import { loadRelics, setComplete, RELICS, RELIC_SETS, SECRET_RELICS } from '../relics/relics';
+import { SECRET_COSMETIC_KEYS } from '../relics/secretCosmetics';
+import { readPass } from '../retention/pass';
 
 /*
  * Achievements for the modes outside the GM front office: Career Mode, League Hunt, the Rebuild Challenge, the
@@ -16,10 +18,10 @@ import { loadRelics, setComplete, RELICS, RELIC_SETS, SECRET_RELICS } from '../r
  * can count them for rarity. They are trophies only: the modes already give XP for the same results.
  */
 
-export type Mode = 'career' | 'hunt' | 'perfect' | 'rebuild' | 'draft' | 'pvp' | 'ranked' | 'weekly' | 'daily' | 'survival' | 'story' | 'relics';
+export type Mode = 'career' | 'hunt' | 'perfect' | 'rebuild' | 'draft' | 'pvp' | 'ranked' | 'weekly' | 'daily' | 'survival' | 'story' | 'relics' | 'social';
 export const MODE_LABELS: Record<Mode, string> = {
   career: 'Career Mode', hunt: 'League Hunt', perfect: '82-0 Challenge', rebuild: 'Rebuild Challenge', draft: 'All-Time Draft',
-  pvp: 'Hunt PvP', ranked: 'Ranked', weekly: 'Weekly challenges', daily: 'Daily goals', survival: 'Survival', story: 'Story Mode', relics: 'Relics',
+  pvp: 'Hunt PvP', ranked: 'Ranked', weekly: 'Weekly challenges', daily: 'Daily goals', survival: 'Survival', story: 'Story Mode', relics: 'Relics', social: 'Friends & collection',
 };
 
 export interface ModeStats {
@@ -37,6 +39,8 @@ export interface ModeStats {
   survivalBest: number; survivalBosses: number; storyFinished: number; storyLegend: number; storyEndings: number;
   /** The Relic Vault. */
   relicCommons: number; relicMythics: number; relicSecrets: number; relicSets: number;
+  /** Shop and secret cosmetics owned, the best Season Pass tier, and friend gifts. */
+  shopCosmetics: number; secretCosmetics: number; seasonBest: number; giftsSent: number; giftsCollected: number; showdownWins: number; tourTitles: number;
 }
 
 export interface ModeAchievement { id: string; mode: Mode; name: string; description: string; icon: TrophyKey; progress: (s: ModeStats) => [number, number]; label?: (n: number, goal: number) => string }
@@ -82,6 +86,17 @@ export const MODE_ACHIEVEMENTS: ModeAchievement[] = [
   { id: 'relic-set', mode: 'relics', name: 'Set Builder', description: 'Complete a relic set.', icon: 'champion', progress: s => at(s.relicSets, 1) },
   { id: 'relic-mythic', mode: 'relics', name: 'Mythic Hunter', description: 'Find a Mythic relic.', icon: 'mvp', progress: s => at(s.relicMythics, 1) },
   { id: 'relic-secrets', mode: 'relics', name: 'Keeper of Secrets', description: 'Uncover all eight secret relics.', icon: 'fmvp', progress: s => at(s.relicSecrets, SECRET_RELICS.length) },
+
+  { id: 'social-first-gift', mode: 'social', name: 'Good Teammate', description: 'Send a friend a gift.', icon: 'teammate', progress: s => at(s.giftsSent, 1) },
+  { id: 'social-gifts-50', mode: 'social', name: 'Team Player', description: 'Send 50 gifts to friends.', icon: 'teammate', progress: s => at(s.giftsSent, 50) },
+  { id: 'social-collect', mode: 'social', name: 'Thank You!', description: 'Collect 10 gifts from friends.', icon: 'allStar', progress: s => at(s.giftsCollected, 10) },
+  { id: 'social-shop-1', mode: 'social', name: 'Window Shopper', description: 'Buy a shop cosmetic.', icon: 'allStar', progress: s => at(s.shopCosmetics, 1) },
+  { id: 'social-shop-10', mode: 'social', name: 'Fashion Icon', description: 'Own 10 shop cosmetics.', icon: 'mvp', progress: s => at(s.shopCosmetics, 10) },
+  { id: 'social-secret-1', mode: 'social', name: 'Lucky Find', description: 'Find a secret cosmetic in a spin.', icon: 'pow', progress: s => at(s.secretCosmetics, 1) },
+  { id: 'social-secret-8', mode: 'social', name: 'Hidden Wardrobe', description: 'Find all eight secret cosmetics.', icon: 'fmvp', progress: s => at(s.secretCosmetics, SECRET_COSMETIC_KEYS.length) },
+  { id: 'social-showdown', mode: 'social', name: 'Weekend Warriors', description: 'Win a Weekend Showdown with your club.', icon: 'champion', progress: s => at(s.showdownWins, 1) },
+  { id: 'social-tour', mode: 'social', name: 'Tournament Champion', description: 'Win a weekly GM Tournament (Quick Games).', icon: 'champion', progress: s => at(s.tourTitles, 1) },
+  { id: 'social-pass-100', mode: 'social', name: 'Pass Master', description: 'Reach tier 100 of a Season Pass.', icon: 'champion', progress: s => at(s.seasonBest, 100) },
   { id: 'story-all', mode: 'story', name: 'Every Road', description: 'See all four Story Mode endings.', icon: 'eoy', progress: s => at(s.storyEndings, 4) },
 
   { id: 'rebuild-star', mode: 'rebuild', name: 'First Star', description: 'Earn a star in a Rebuild Challenge.', icon: 'mip', progress: s => at(s.rebuildStars, 1) },
@@ -152,6 +167,8 @@ export function modeStats(read: Read = localRead, extra: Feats = {}): ModeStats 
     storyFinished: story.finished ?? 0, storyLegend: story.tiers?.legend ?? 0, storyEndings: Object.keys(story.tiers ?? {}).length,
     relicCommons: RELICS.filter(r => r.rarity === 'common' && has(r.id)).length, relicMythics: RELICS.filter(r => r.rarity === 'mythic' && has(r.id)).length,
     relicSecrets: relics.secrets.length, relicSets: RELIC_SETS.filter(st => setComplete(relics, st)).length,
+    shopCosmetics: (relics.cosmetics ?? []).filter(k => k.startsWith('shop-')).length, secretCosmetics: (relics.cosmetics ?? []).filter(k => k.startsWith('secret-')).length,
+    seasonBest: Math.max(0, ...Object.values(readPass(read).seasons ?? {}).map(x => x.tier)), giftsSent: feats.giftsSent ?? 0, giftsCollected: feats.giftsCollected ?? 0, showdownWins: feats.showdownWins ?? 0, tourTitles: feats.tourTitles ?? 0,
   };
 }
 

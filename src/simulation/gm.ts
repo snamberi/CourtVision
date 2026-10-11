@@ -2,7 +2,7 @@ import { enforceSticky, stickyTradeProblems, isStuck } from './sticky';
 import { rememberRivalTrade } from './gmRivals';
 import { consensusBoard, pickReaction } from './draftNight';
 import { formatSeasonYear } from './calendar';
-import { withGrudge } from './personality';
+import { withGrudge, tradeVeto } from './personality';
 import { recordRivalryTrade } from './rivalry';
 import { closeStint } from './stints';
 import { packageValue, pickAssetValue, teamDirection, tradeAssetValue, type TeamDirection } from './tradeValue';
@@ -350,6 +350,10 @@ export function validateTrade(league: League, extras: GMLeagueExtras, proposal: 
   const a = league.teams.find(t => t.teamId === proposal.teamAId)!;
   const b = league.teams.find(t => t.teamId === proposal.teamBId)!;
   if (isTradeDeadlinePassed(league)) reasons.push('The trade deadline has passed for this season.');
+  // Veteran stars who want to win can refuse a move to a losing team (personality.ts).
+  for (const [from, ids, to] of [[a, proposal.playersFromA, b], [b, proposal.playersFromB, a]] as const) {
+    for (const id of ids) { const p = from.seasons.find(s => s.playerId === id); const no = p && tradeVeto(p, to.teamId, league); if (no) reasons.push(no); }
+  }
   for (const [team, outgoing, incoming] of [[a, proposal.playersFromA, proposal.playersFromB], [b, proposal.playersFromB, proposal.playersFromA]] as const) {
     const count = team.seasons.length - outgoing.length + incoming.length;
     // Offseason transactions may temporarily cross the roster limits. Coaches trim/fill before games.

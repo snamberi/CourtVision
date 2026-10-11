@@ -155,6 +155,7 @@ export const TITLE_COLORS: TitleColor[] = [
   { id: 'immortal', name: 'Immortal', css: 'linear-gradient(90deg, #ff4d2e, #ffd166, #6fdc93, #4fd6d6, #c79bff, #ff4dd2, #ff4d2e)', anim: 'flow' },
   { id: 'glitch', name: 'Glitch', css: 'linear-gradient(90deg, #ff2bd6, #ffffff, #00f0ff, #ff2bd6, #ffffff, #00f0ff)', anim: 'glitch', season: { season: 'glitch', tier: 60 } },
   { id: 'frozen', name: 'Frozen', css: 'linear-gradient(90deg, #bfe6ff, #ffffff, #6db8ff, #ffffff, #bfe6ff)', anim: 'shimmer', season: { season: 'frozen', tier: 60 } },
+  { id: 'inferno', name: 'Inferno', css: 'linear-gradient(90deg, #ff4d2e, #ffb347, #ffe066, #ffb347, #ff4d2e)', anim: 'flow', season: { season: 'inferno', tier: 60 } },
   // The Relic Shop.
   { id: 'shop-emerald', name: 'Emerald', css: 'linear-gradient(90deg, #1f8a55, #4fd38a, #c8ffe0, #4fd38a, #1f8a55)', anim: 'shimmer', shop: 'shop-tc-emerald' },
   { id: 'shop-magma', name: 'Magma', css: 'linear-gradient(90deg, #2a1a16, #ff6b2d, #ffd166, #ff6b2d, #2a1a16)', anim: 'flow', shop: 'shop-tc-magma' },

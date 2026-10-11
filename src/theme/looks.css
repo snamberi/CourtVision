@@ -227,6 +227,8 @@
 .menu-phone-app:hover .app-tile, .menu-phone-app:focus-visible .app-tile { transform: translateY(-2px); border-color: var(--look-accent); }
 .app-tile.boards { background-color: var(--phone-accent, var(--look-accent)); color: var(--phone-on-accent, var(--look-on-accent)); border-color: var(--phone-accent, var(--look-accent)); }
 .app-tile.friends { color: var(--look-secondary); }
+.app-tile.friendlist { color: var(--c-fg-ff6fb8, #ff6fb8); }
+.app-tile.closet { align-items: end; }
 .app-tile.streak { color: var(--look-accent); }
 .app-tile em { position: absolute; right: 1px; bottom: 1px; min-width: 15px; padding: 1px 3px; font: normal 700 9px/1.2 var(--look-body); text-align: center; background-color: var(--look-page); color: var(--look-text); border-radius: 4px; }
 .app-tile.streak em { position: static; padding: 0; background: none; font-size: 11px; margin-top: -4px; }

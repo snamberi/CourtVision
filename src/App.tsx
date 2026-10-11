@@ -31,6 +31,7 @@ import './theme/looks.css';
 import './theme/cosmetics.css';
 import './theme/glitch.css';
 import './theme/frozen.css';
+import './theme/inferno.css';
 import { CoachGuide } from './components/tutorial/CoachGuide';
 import { SeasonRoadMap } from './components/tutorial/SeasonRoadMap';
 import { FirstSeasonChecklist } from './components/tutorial/FirstSeasonChecklist';
@@ -70,15 +71,18 @@ import { AD_CONFIG } from './ads/adConfig';
 import { loadGoogleConsentTool } from './ads/adsense';
 import { hasEntitlement } from './profile/cosmetics';
 import { IS_DESKTOP_BUILD } from './appMode';
+import { MenuBottomBar, type BarTab } from './components/MenuBottomBar';
+import type { ModeEntry } from './menu/modeCatalog';
 import { MainMenu, type GameMode, type RealLeagueOptions } from './components/MainMenu';
-import { SettingsPage } from './components/SettingsPage';
+const SettingsPage = lazy(() => import('./components/SettingsPage').then(m => ({ default: m.SettingsPage })));
 import { ChooseTeamScreen } from './components/ChooseTeamScreen';
 import { retireJerseyNumber, unretireJerseyNumber } from './simulation/league';
 import { collectPlayerIds, withUniquePlayerId } from './simulation/playerIds';
 import { repairDuplicatePlayerIds } from './simulation/playerIntegrity';
 import { syncLeaguePotentials } from './simulation/potentialMigration';
 import { backfillRecordBook } from './simulation/records';
-import { LeagueSettingsPage, type AwardSettings } from './components/LeagueSettingsPage';
+import type { AwardSettings } from './components/LeagueSettingsPage';
+const LeagueSettingsPage = lazy(() => import('./components/LeagueSettingsPage').then(m => ({ default: m.LeagueSettingsPage })));
 import { DEFAULT_LEAGUE_RULES } from './simulation/leagueRules';
 import { rivalryBadge } from './simulation/rivalry';
 import { rivalryWeekGame, rivalryHype } from './simulation/rivalryWeek';
@@ -96,7 +100,8 @@ import { DEFAULT_CAP_SETTINGS, DEFAULT_TRADE_SETTINGS, DEFAULT_GM_FLAGS, generat
 import { RNG } from './simulation/engine/rng';
 import { beginNewSeasonRoster, finalizeNewSeasonSchedule, type SeasonTransitionSummary } from './simulation/seasonTransition';
 import { acceptJobOffer, becomeSpectator, ensureFrontOffice, markSandboxUse, isOfficialLeague, ACHIEVEMENT_BY_ID, type OwnerReview } from './simulation/frontOffice';
-import { JobOffersDialog, OwnerReviewDialog } from './components/FrontOfficePanels';
+const JobOffersDialog = lazy(() => import('./components/FrontOfficePanels').then(m => ({ default: m.JobOffersDialog })));
+const OwnerReviewDialog = lazy(() => import('./components/FrontOfficePanels').then(m => ({ default: m.OwnerReviewDialog })));
 import { recordLeagueLegacy } from './storage/gmLegacy';
 import { usePlayClock } from './retention/usePlayClock';
 import { noteWeekRun } from './retention/weekLog';
@@ -110,7 +115,7 @@ import { getAccount } from './cloud/account';
 import { canAdvance, type OnlineLeague } from './cloud/onlineLeague';
 import { OnlineBar, progressMark, type OnlineSession } from './components/cloud/OnlineBar';
 import { track, trackOnce } from './analytics/track';
-import { ChallengeBanner } from './components/ChallengeBanner';
+const ChallengeBanner = lazy(() => import('./components/ChallengeBanner').then(m => ({ default: m.ChallengeBanner })));
 import { rebuildSnapshot } from './simulation/rebuildSnapshot';
 import { DailyGoalsCard } from './components/DailyGoalsCard';
 import { LeagueCodeBox } from './components/LeagueCodeBox';
@@ -179,6 +184,8 @@ const StoryMode = lazy(() => import('./components/story/StoryMode').then(m => ({
 const PerfectChallenge = lazy(() => import('./components/perfect/PerfectChallenge').then(m => ({ default: m.PerfectChallenge })));
 const LeagueHunt = lazy(() => import('./components/hunt/LeagueHunt').then(m => ({ default: m.LeagueHunt })));
 const CareerImportPanel = lazy(() => import('./components/career/CareerImportPanel').then(m => ({ default: m.CareerImportPanel })));
+const ClosetPage = lazy(() => import('./components/locker/ClosetPage').then(m => ({ default: m.ClosetPage })));
+const FriendListPage = lazy(() => import('./components/cloud/FriendListPage').then(m => ({ default: m.FriendListPage })));
 const ProfileHub = lazy(() => import('./components/locker/ProfileHub').then(m => ({ default: m.ProfileHub })));
 const AllTimeDraft = lazy(() => import('./components/draft/AllTimeDraft').then(m => ({ default: m.AllTimeDraft })));
 const Community = lazy(() => import('./components/cloud/Community').then(m => ({ default: m.Community })));
@@ -283,8 +290,8 @@ function buildInitialExtras(league: League): GMLeagueExtras {
   };
 }
 
-type Screen = 'menu' | 'chooseTeam' | 'app' | 'hunt' | 'perfect' | 'survival' | 'story' | 'relics' | 'shop' | 'levelRoad' | 'trophyRoad' | 'seasonPass' | 'career' | 'locker' | 'profile' | 'community' | 'draft' | 'settings' | 'arcade' | 'create' | 'worldGamesMode' | 'friends' | 'clubs' | 'online';
-const ARCADE_HASH: Record<ArcadeTab, string> = { grid: '#/grid', guess: '#/guess', hilo: '#/higher-lower', bracket: '#/bracket', quiz: '#/quiz', legends: '#/legends', street: '#/street' };
+type Screen = 'menu' | 'chooseTeam' | 'app' | 'hunt' | 'perfect' | 'survival' | 'story' | 'relics' | 'shop' | 'levelRoad' | 'trophyRoad' | 'seasonPass' | 'career' | 'locker' | 'profile' | 'community' | 'draft' | 'settings' | 'arcade' | 'create' | 'worldGamesMode' | 'friends' | 'clubs' | 'online' | 'friendList' | 'closet';
+const ARCADE_HASH: Record<ArcadeTab, string> = { grid: '#/grid', guess: '#/guess', hilo: '#/higher-lower', bracket: '#/bracket', quiz: '#/quiz', legends: '#/legends', street: '#/street', tour: '#/tournament' };
 const arcadeTabOf = (hash: string) => (Object.entries(ARCADE_HASH).find(([, h]) => h === hash)?.[0] as ArcadeTab | undefined);
 
 const debouncedSave = createDebouncedSave();
@@ -378,7 +385,7 @@ function App() {
   const [worldGamesRun, setWorldGamesRun] = useState<{ games: GamesId; country: string } | null>(null);
   const [boxscoreSource, setBoxscoreSource] = useState<'league' | 'exhibition'>('league');
 
-  const currentRoute = screen === 'menu' ? '#/menu' : screen === 'chooseTeam' ? '#/choose-team' : screen === 'hunt' ? '#/hunt' : screen === 'perfect' ? '#/82-0' : screen === 'survival' ? '#/survival' : screen === 'story' ? '#/story' : screen === 'relics' ? '#/relics' : screen === 'shop' ? '#/shop' : screen === 'levelRoad' ? '#/level-road' : screen === 'trophyRoad' ? '#/trophy-road' : screen === 'seasonPass' ? '#/season-pass' : screen === 'career' ? '#/career' : screen === 'locker' ? '#/locker' : screen === 'profile' ? '#/profile' : screen === 'settings' ? '#/settings' : screen === 'create' ? '#/new-league' : screen === 'worldGamesMode' ? '#/world-games' : screen === 'friends' ? '#/friends' : screen === 'clubs' ? '#/clubs' : screen === 'online' ? '#/online' : screen === 'draft' ? '#/draft' : screen === 'arcade' ? ARCADE_HASH[arcadeTab] : screen === 'community' ? (communityUser ? `#/u/${encodeURIComponent(communityUser)}` : '#/community')
+  const currentRoute = screen === 'menu' ? '#/menu' : screen === 'chooseTeam' ? '#/choose-team' : screen === 'hunt' ? '#/hunt' : screen === 'perfect' ? '#/82-0' : screen === 'survival' ? '#/survival' : screen === 'story' ? '#/story' : screen === 'relics' ? '#/relics' : screen === 'shop' ? '#/shop' : screen === 'levelRoad' ? '#/level-road' : screen === 'trophyRoad' ? '#/trophy-road' : screen === 'seasonPass' ? '#/season-pass' : screen === 'career' ? '#/career' : screen === 'locker' ? '#/locker' : screen === 'profile' ? '#/profile' : screen === 'settings' ? '#/settings' : screen === 'create' ? '#/new-league' : screen === 'worldGamesMode' ? '#/world-games' : screen === 'friends' ? '#/friends' : screen === 'friendList' ? '#/friend-list' : screen === 'closet' ? '#/closet' : screen === 'clubs' ? '#/clubs' : screen === 'online' ? '#/online' : screen === 'draft' ? '#/draft' : screen === 'arcade' ? ARCADE_HASH[arcadeTab] : screen === 'community' ? (communityUser ? `#/u/${encodeURIComponent(communityUser)}` : '#/community')
     : activeSaveId ? routeHash({ saveId: activeSaveId, tab, player: selectedPlayerId,
       team: viewedTeamId, game: viewedGameId ?? undefined, source: boxscoreSource, sub: leagueSettingsSub }) : null;
   const { restoring, showPrivacy, closePrivacy } = useGameHistory(currentRoute, async (hash, isCurrent) => {
@@ -394,7 +401,7 @@ function App() {
       setCommunityUser(profileMatch ? decodeURIComponent(profileMatch[1]) : null);
       const arcade = arcadeTabOf(hash);
       if (arcade) setArcadeTab(arcade);
-      setScreen(arcade ? 'arcade' : hash === '#/choose-team' && pendingLeague ? 'chooseTeam' : hash === '#/hunt' ? 'hunt' : hash === '#/82-0' ? 'perfect' : hash === '#/survival' ? 'survival' : hash === '#/story' ? 'story' : hash === '#/relics' ? 'relics' : hash === '#/shop' ? 'shop' : hash === '#/level-road' ? 'levelRoad' : hash === '#/trophy-road' ? 'trophyRoad' : hash === '#/season-pass' ? 'seasonPass' : hash === '#/career' ? 'career' : hash === '#/locker' ? 'locker' : hash === '#/profile' ? 'profile' : hash === '#/settings' ? 'settings' : hash === '#/new-league' ? 'create' : hash === '#/world-games' && worldGamesRun ? 'worldGamesMode' : hash === '#/friends' ? 'friends' : hash === '#/clubs' ? 'clubs' : hash === '#/online' ? 'online' : hash === '#/community' || profileMatch ? 'community' : hash === '#/draft' ? 'draft' : 'menu');
+      setScreen(arcade ? 'arcade' : hash === '#/choose-team' && pendingLeague ? 'chooseTeam' : hash === '#/hunt' ? 'hunt' : hash === '#/82-0' ? 'perfect' : hash === '#/survival' ? 'survival' : hash === '#/story' ? 'story' : hash === '#/relics' ? 'relics' : hash === '#/shop' ? 'shop' : hash === '#/level-road' ? 'levelRoad' : hash === '#/trophy-road' ? 'trophyRoad' : hash === '#/season-pass' ? 'seasonPass' : hash === '#/career' ? 'career' : hash === '#/locker' ? 'locker' : hash === '#/profile' ? 'profile' : hash === '#/settings' ? 'settings' : hash === '#/new-league' ? 'create' : hash === '#/world-games' && worldGamesRun ? 'worldGamesMode' : hash === '#/friends' ? 'friends' : hash === '#/friend-list' ? 'friendList' : hash === '#/closet' ? 'closet' : hash === '#/clubs' ? 'clubs' : hash === '#/online' ? 'online' : hash === '#/community' || profileMatch ? 'community' : hash === '#/draft' ? 'draft' : 'menu');
       refreshSaves();
       return;
     }
@@ -1549,28 +1556,46 @@ function App() {
   if (restoring) return <main role="status" className="navigation-loading">Opening your league…</main>;
   if (showPrivacy) return <Suspense fallback={<p className="empty-state page-loading" role="status">Loading…</p>}><PrivacyPolicyPage onClose={closePrivacy} /></Suspense>;
 
+  // Any mode or sub-mode card (menu, the phone's Play and Compete sheets) opens through here.
+  const openMode = (e: ModeEntry) => {
+    const a = e.action;
+    if (a.kind === 'create') { setCreateChallenge(a.challenge); setScreen('create'); }
+    else if (a.kind === 'start') startGameMode(a.mode, 'normal', '', '');
+    else if (a.kind === 'arcade') { setArcadeTab(a.tab); setScreen('arcade'); }
+    else if (a.screen === 'community') { setCommunityUser(null); setCommunityTab('boards'); setScreen('community'); }
+    else setScreen(a.screen);
+  };
+  const barTab: BarTab = screen === 'menu' ? 'home' : screen === 'community' ? 'ranks' : screen === 'profile' || screen === 'locker' || screen === 'closet' || screen === 'settings' ? 'me' : screen === 'clubs' || screen === 'online' || screen === 'friends' ? 'compete' : 'play';
+  const menuBar = <MenuBottomBar active={barTab} onHome={() => setScreen('menu')} onRanks={() => { setCommunityUser(null); setCommunityTab('boards'); setScreen('community'); }} onMe={() => { setProfileTab('profile'); setScreen('profile'); }} onOpen={openMode} />;
+
   if (screen === 'draft') {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening the draft room…</main>}><AllTimeDraft onExit={() => setScreen('menu')} onStart={(l, e, teamId, name) => { enterApp(l, e, teamId, name); setTab('dashboard'); }} /></Suspense></>;
   }
   if (screen === 'community') {
-    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Community…</main>}><Community key={communityTab} initialTab={communityTab} onExit={() => { setCommunityUser(null); setScreen('menu'); }} user={communityUser} onUser={u => setCommunityUser(u || null)} /></Suspense></>;
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} />{menuBar}<Suspense fallback={<main role="status" className="navigation-loading">Opening Community…</main>}><Community key={communityTab} initialTab={communityTab} onExit={() => { setCommunityUser(null); setScreen('menu'); }} user={communityUser} onUser={u => setCommunityUser(u || null)} /></Suspense></>;
   }
   if (screen === 'online') {
-    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Online Leagues…</main>}><OnlineLeaguesPage onExit={() => setScreen('menu')} onOpen={openOnlineLeague} /></Suspense></>;
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} />{menuBar}<Suspense fallback={<main role="status" className="navigation-loading">Opening Online Leagues…</main>}><OnlineLeaguesPage onExit={() => setScreen('menu')} onOpen={openOnlineLeague} /></Suspense></>;
   }
   if (screen === 'clubs') {
-    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Clubs…</main>}><ClubsPage onExit={() => setScreen('menu')} onUser={u => { setCommunityTab('friends'); setCommunityUser(u); setScreen('community'); }} /></Suspense></>;
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} />{menuBar}<Suspense fallback={<main role="status" className="navigation-loading">Opening Clubs…</main>}><ClubsPage onExit={() => setScreen('menu')} onUser={u => { setCommunityTab('friends'); setCommunityUser(u); setScreen('community'); }} /></Suspense></>;
+  }
+  if (screen === 'closet') {
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} />{menuBar}<Suspense fallback={<main role="status" className="navigation-loading">Opening your Closet…</main>}><ClosetPage onExit={() => setScreen('menu')} onProfile={() => { setProfileTab('profile'); setScreen('profile'); }} /></Suspense></>;
+  }
+  if (screen === 'friendList') {
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} />{menuBar}<Suspense fallback={<main role="status" className="navigation-loading">Opening your friend list…</main>}><FriendListPage onExit={() => setScreen('menu')} onFind={() => setScreen('friends')} onUser={u => { setCommunityTab('friends'); setCommunityUser(u); setScreen('community'); }} /></Suspense></>;
   }
   if (screen === 'friends') {
-    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Friends…</main>}><FriendsPage onClubs={() => setScreen('clubs')} onOnline={() => setScreen('online')} onExit={() => setScreen('menu')} onUser={u => { setCommunityTab('friends'); setCommunityUser(u); setScreen('community'); }} onCommunity={() => { setCommunityUser(null); setCommunityTab('boards'); setScreen('community'); }} /></Suspense></>;
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} />{menuBar}<Suspense fallback={<main role="status" className="navigation-loading">Opening Friends…</main>}><FriendsPage onClubs={() => setScreen('clubs')} onOnline={() => setScreen('online')} onExit={() => setScreen('menu')} onUser={u => { setCommunityTab('friends'); setCommunityUser(u); setScreen('community'); }} onCommunity={() => { setCommunityUser(null); setCommunityTab('boards'); setScreen('community'); }} /></Suspense></>;
   }
   // The GM Locker lives in the Player Profile now: an old #/locker link opens its Trophy room.
   if (screen === 'profile' || screen === 'locker') {
-    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening your profile…</main>}><ProfileHub key={`${screen}-${profileTab}`} initialTab={screen === 'locker' ? 'trophies' : profileTab} onExit={() => setScreen('menu')} /></Suspense></>;
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} />{menuBar}<Suspense fallback={<main role="status" className="navigation-loading">Opening your profile…</main>}><ProfileHub key={`${screen}-${profileTab}`} initialTab={screen === 'locker' ? 'trophies' : profileTab} onExit={() => setScreen('menu')} onCloset={() => setScreen('closet')} /></Suspense></>;
   }
   if (screen === 'settings') {
-    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><SettingsPage onExit={() => setScreen('menu')} backup={<BackupPanel />}
-      recovery={<SaveRecoveryPanel beforeAction={async () => { await debouncedSave.flush(); }} onOpen={async id => { jobs.resetAll(); await debouncedSave.flush(); await continueSavedUniverse(id); }} />} /></>;
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} />{menuBar}<Suspense fallback={<main role="status" className="navigation-loading">Opening Settings…</main>}><SettingsPage onExit={() => setScreen('menu')} backup={<BackupPanel />}
+      recovery={<SaveRecoveryPanel beforeAction={async () => { await debouncedSave.flush(); }} onOpen={async id => { jobs.resetAll(); await debouncedSave.flush(); await continueSavedUniverse(id); }} />} /></Suspense></>;
   }
   if (screen === 'worldGamesMode' && worldGamesRun) {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening the World Games…</main>}><WorldGamesMode key={`${worldGamesRun.games}-${worldGamesRun.country}`} games={worldGamesRun.games} country={worldGamesRun.country} onExit={() => setScreen('menu')} onNew={() => { setCreateChallenge('worldgames'); setScreen('create'); }} /></Suspense></>;
@@ -1579,7 +1604,7 @@ function App() {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening New Franchise…</main>}><FranchiseCreate key={createChallenge} initial={createChallenge} busy={menuBusy} onBack={() => setScreen('menu')} onStart={startFromCreate} /></Suspense></>;
   }
   if (screen === 'arcade') {
-    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening the quick games…</main>}><Arcade tab={arcadeTab} onTab={setArcadeTab} onExit={() => setScreen('menu')} /></Suspense></>;
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} />{menuBar}<Suspense fallback={<main role="status" className="navigation-loading">Opening the quick games…</main>}><Arcade tab={arcadeTab} onTab={setArcadeTab} onExit={() => setScreen('menu')} /></Suspense></>;
   }
   if (screen === 'career') {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Career Mode…</main>}><CareerMode onExit={() => setScreen('menu')} /></Suspense></>;
@@ -1588,13 +1613,13 @@ function App() {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Survival…</main>}><Survival onExit={() => setScreen('menu')} /></Suspense></>;
   }
   if (screen === 'relics' || screen === 'shop') {
-    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening the Relic {screen === 'shop' ? 'Shop' : 'Vault'}…</main>}><RelicVault key={screen} view={screen === 'shop' ? 'shop' : 'vault'} onSwitch={() => setScreen(screen === 'shop' ? 'relics' : 'shop')} onExit={() => setScreen('menu')} /></Suspense></>;
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} />{menuBar}<Suspense fallback={<main role="status" className="navigation-loading">Opening the Relic {screen === 'shop' ? 'Shop' : 'Vault'}…</main>}><RelicVault key={screen} view={screen === 'shop' ? 'shop' : 'vault'} onSwitch={() => setScreen(screen === 'shop' ? 'relics' : 'shop')} onExit={() => setScreen('menu')} /></Suspense></>;
   }
   if (screen === 'levelRoad' || screen === 'trophyRoad') {
-    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening the road…</main>}><RoadPage key={screen} road={screen === 'levelRoad' ? 'level' : 'trophy'} onSwitch={() => setScreen(screen === 'levelRoad' ? 'trophyRoad' : 'levelRoad')} onExit={() => setScreen('menu')} /></Suspense></>;
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} />{menuBar}<Suspense fallback={<main role="status" className="navigation-loading">Opening the road…</main>}><RoadPage key={screen} road={screen === 'levelRoad' ? 'level' : 'trophy'} onSwitch={() => setScreen(screen === 'levelRoad' ? 'trophyRoad' : 'levelRoad')} onExit={() => setScreen('menu')} /></Suspense></>;
   }
   if (screen === 'seasonPass') {
-    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening the Season Pass…</main>}><SeasonPassPage onExit={() => setScreen('menu')} onRelics={() => setScreen('relics')} /></Suspense></>;
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} />{menuBar}<Suspense fallback={<main role="status" className="navigation-loading">Opening the Season Pass…</main>}><SeasonPassPage onExit={() => setScreen('menu')} onRelics={() => setScreen('relics')} /></Suspense></>;
   }
   if (screen === 'story') {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Story Mode…</main>}><StoryMode onExit={() => setScreen('menu')} /></Suspense></>;
@@ -1610,6 +1635,7 @@ function App() {
     return (
       <>
         <ToastStack toasts={toasts} onDismiss={dismissToast} />
+        {menuBar}
         <MainMenu
           onStart={startGameMode}
           onLocker={() => setScreen('locker')}
@@ -1620,6 +1646,8 @@ function App() {
           onProfile={() => { setProfileTab('profile'); setScreen('profile'); }}
           onCommunity={t => { setCommunityUser(null); setCommunityTab(t ?? 'boards'); setScreen('community'); }}
           onFriends={() => setScreen('friends')}
+          onFriendList={() => setScreen('friendList')}
+          onCloset={() => setScreen('closet')}
           onCode={startFromCode}
           busy={menuBusy}
           saves={saveSummaries}
@@ -1629,6 +1657,7 @@ function App() {
           onArcade={t => { setArcadeTab(t); setScreen('arcade'); }}
           onCreate={c => { setCreateChallenge(c ?? 'free'); setScreen('create'); }}
           onRenameSave={handleRenameSave}
+          onOpenMode={openMode}
         />
 
       </>
@@ -1767,9 +1796,9 @@ function App() {
         </div>
       )}
 
-      {ownerVerdict && <OwnerReviewDialog review={ownerVerdict.review} newAchievements={ownerVerdict.newAchievements} onClose={() => setOwnerVerdict(null)} />}
+      {ownerVerdict && <Suspense fallback={null}><OwnerReviewDialog review={ownerVerdict.review} newAchievements={ownerVerdict.newAchievements} onClose={() => setOwnerVerdict(null)} /></Suspense>}
       {!ownerVerdict && frontOffice?.status === 'unemployed' && frontOffice.offers.length > 0 &&
-        <JobOffersDialog league={league} onAccept={acceptOffer} onSpectate={spectate} />}
+        <Suspense fallback={null}><JobOffersDialog league={league} onAccept={acceptOffer} onSpectate={spectate} /></Suspense>}
       <ToastStack toasts={toasts} onDismiss={dismissToast} />
       {celebration && <ChampionshipCelebration league={league} info={celebration} onClose={() => setCelebration(null)} onSelectPlayer={id => { setCelebration(null); selectPlayer(id); }} />}
       {tourActive && tourStep != null && (
@@ -2089,7 +2118,7 @@ function App() {
               <button className={leagueSettingsSub === 'awards' ? 'active' : ''} onClick={() => setLeagueSettingsSub('awards')}>Award Formulas</button>
               <button className={leagueSettingsSub === 'rules' ? 'active' : ''} onClick={() => setLeagueSettingsSub('rules')}>League Rules</button>
             </nav>
-            {leagueSettingsSub === 'awards' && <LeagueSettingsPage settings={awardSettings} onChange={setAwardSettings} seasonGames={seasonGamesPerTeam(league)} onSave={() => { handleSaveNow(); pushToast('Award settings saved.', 'success'); }} />}
+            {leagueSettingsSub === 'awards' && <Suspense fallback={<p className="empty-state page-loading" role="status">Loading…</p>}><LeagueSettingsPage settings={awardSettings} onChange={setAwardSettings} seasonGames={seasonGamesPerTeam(league)} onSave={() => { handleSaveNow(); pushToast('Award settings saved.', 'success'); }} /></Suspense>}
             {leagueSettingsSub === 'rules' && (
               <><HistoricalSettingsCard league={league} extras={extras} onChange={setLeague} /><section className="settings-card">
                 <h4>Roster and trade rules</h4><p className="hint-text">10–18 players for regular-season games. Coaches sign or waive players to meet the limits. Draft and offseason moves can temporarily exceed them.</p>
@@ -2249,7 +2278,7 @@ function App() {
 
         {tab === 'dashboard' && controlledTeamId && league.frontOffice?.demand?.status === 'active' && league.frontOffice.demand.season === league.season && (() => { const d = league.frontOffice!.demand!, pr = demandProgress(league, d, controlledTeamId); return <div className="tm-banner demand-banner" role="note"><PixelIcon name="warning" size={16} /> <b>Owner's demand</b> Win {d.need} of {d.games}: {pr.won}-{pr.played - pr.won} so far, {d.games - pr.played} to play. <small>{d.text}</small></div>; })()}
         {tab === 'dashboard' && league.timeMachine && <div className="tm-banner" role="note"><PixelIcon name="clock" size={16} /> <b>Time Machine</b> The {league.timeMachine.fromLabel} in the {league.timeMachine.year}-{String(league.timeMachine.year + 1).slice(2)} NBA, in place of the {league.timeMachine.replaced}.</div>}
-        {(tab === 'dashboard' || tab === 'database') && league.rebuildChallenge && <ChallengeBanner league={league} contracts={extras.contracts} onMenu={() => setConfirmation('exit')} />}
+        {(tab === 'dashboard' || tab === 'database') && league.rebuildChallenge && <Suspense fallback={null}><ChallengeBanner league={league} contracts={extras.contracts} onMenu={() => setConfirmation('exit')} /></Suspense>}
         {tab === 'dashboard' && controlledTeamId && <DailyGoalsCard official={isOfficialLeague(league)} />}
         {tab === 'dashboard' && league.gmCareer && <GmCareerCard league={league} onTakeOffer={() => { const teamId = league.gmCareer?.offer?.teamId; if (teamId) { acceptOffer(teamId); setLeague(l => takeGmOffer(l)); } }} />}
         {tab === 'dashboard' && controlledTeamId && <LockerRoomCard league={league} teamId={controlledTeamId} onChange={adoptLeague} />}

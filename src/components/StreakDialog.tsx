@@ -28,7 +28,7 @@ export function StreakDialog({ streak, onClose, onProfile }: { streak: { current
         <em>{got ? <><PixelIcon name="check" size={12} /> Earned</> : `${plural(r.days - streak.current, 'day')} to go`}</em>
       </li>;
     })}</ol>
-    <p className="hint-text">Earned so far: <b>{earned.toLocaleString()} trophies</b> from your streak. Titles show in Profile → Title.</p>
+    <p className="hint-text">Earned so far: <b>{earned.toLocaleString()} trophies</b> from your streak. Titles show in Closet → Icon, colours & title → Title.</p>
     <div className="streak-actions">
       {onProfile && <button className="primary" onClick={() => { onClose(); onProfile(); }}>Your profile</button>}
       <button onClick={onClose}>Close</button>

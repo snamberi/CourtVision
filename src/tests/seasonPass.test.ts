@@ -158,6 +158,30 @@ describe('Season 2: Frozen', () => {
   });
 });
 
+describe('Season 3: Inferno', () => {
+  it('follows Frozen on April 1st with every cosmetic opening at its tier', async () => {
+    const { currentSeason, INFERNO_REWARDS } = await import('../retention/season');
+    expect(currentSeason(new Date(Date.UTC(2027, 3, 2, 12))).id).toBe('inferno');
+    expect(INFERNO_REWARDS.map(r => r.kind)).toEqual(GLITCH_REWARDS.map(r => r.kind));
+    localStorage.setItem(PASS_KEY, JSON.stringify({ months: {}, seasons: { inferno: { start: 0, tier: 100, paid: 0 } } }));
+    const c = unlockContext(1);
+    for (const r of INFERNO_REWARDS) {
+      if (AVATAR_CATEGORIES.some(cat => cat.id === r.kind)) expect(isOpen(avatarItem(r.kind as AvatarCategory, r.id)!.rule, c), r.id).toBe(true);
+    }
+    expect(isOpen(ICONS.find(i => i.id === 'inferno')!.rule, c)).toBe(true);
+    expect(isOpen(NAME_COLORS.find(i => i.id === 'magma')!.rule, c)).toBe(true);
+    expect(titleColorOpen(TITLE_COLORS.find(t => t.id === 'inferno')!, c)).toBe(true);
+    expect(unlockOpen(FRAMES.find(f => f.id === 'inferno')!, 1, 0) && unlockOpen(FLOORS.find(f => f.id === 'inferno')!, 1, 0) && unlockOpen(PHONES.find(f => f.id === 'inferno')!, 1, 0)).toBe(true);
+    expect(avatarFrameOpen(AVATAR_FRAMES.find(f => f.id === 'inferno')!, c)).toBe(true);
+    expect(themeOpen('inferno', 1, 0)).toBe(true);
+    expect(earnedExtraTitles(c)).toEqual(expect.arrayContaining(['Scorched', 'Living Inferno']));
+    expect(themeOpen('frozen', 1, 0)).toBe(false);
+    const { grid, aura } = buildAvatarGrid({ look: { skin: 'inferno', hair: 'magmaSpikes', hairColor: 'inferno', beard: 'emberBeard', outfit: 'magmaArmor', hat: 'flameCrown', eyes: 'lavaGoggles', neck: 'flameCape', shoes: 'magmaBoots', aura: 'inferno' } });
+    expect(new Set(grid.flat()).has('#ff4d2e')).toBe(true);
+    expect(aura.flat().some(Boolean)).toBe(true);
+  });
+});
+
 describe('streak bonus and tier-up rewards', () => {
   it('adds pass XP once a day for the streak, capped at 10 days', async () => {
     const { claimStreakBonus, streakBonus } = await import('../retention/season');

@@ -14,6 +14,7 @@ import { claimAchievementSpins, paySeasonRewards } from '../relics/rewards';
 import { claimStreakBonus, noteSeason, daysLeft, nextSeason, daysUntil, SEASON_TIERS } from '../retention/season';
 import './roads/menuSeason.css';
 import { UpdateBanner } from './UpdateBanner';
+import { weeklyEvent } from '../retention/weeklyEvent';
 // Loaded only when a tier unlocks something (it pulls in every cosmetic preview).
 const SeasonTierUp = lazy(() => import('./roads/SeasonTierUp').then(m => ({ default: m.SeasonTierUp })));
 import './relics/relics.css';
@@ -32,6 +33,9 @@ import { WeeklyRecap } from './WeeklyRecap';
 import { WelcomeSignIn, needsSignInWelcome } from './cloud/WelcomeSignIn';
 import { MenuMasthead } from './MenuMasthead';
 import { MenuPhone } from './MenuPhone';
+import { ModeArt, ModeCard } from './ModeCard';
+import { burst } from '../fx/effects';
+import { modeById, modesIn, subModesOf, type ModeEntry } from '../menu/modeCatalog';
 import { totalXp, levelFor, takeLevelUp, unlocksBetween } from '../profile/profile';
 import { noteVisit } from '../retention/streak';
 import { notePass } from '../retention/pass';
@@ -61,10 +65,16 @@ interface Props {
   onProfile?: () => void;
   /** The phone's Friends app: the Friends page. */
   onFriends?: () => void;
+  /** The phone's Friend list app (friends and free daily gifts). */
+  onFriendList?: () => void;
+  /** The phone's Closet app (your character and every cosmetic). */
+  onCloset?: () => void;
   /** Opens Settings (backups, graphics, privacy). */
   onSettings?: () => void;
   /** Opens a quick game. */
   onArcade?: (game: 'grid' | 'guess' | 'hilo' | 'bracket' | 'quiz') => void;
+  /** Opens any mode or sub-mode card (src/menu/modeCatalog.ts). */
+  onOpenMode?: (entry: ModeEntry) => void;
   /** Opens the New Franchise page (with a challenge picked, for the Rebuild and the All-Time Draft). */
   onCreate?: (challenge?: 'free' | 'rebuild' | 'draft') => void;
   /** Opens the Relic Vault. */
@@ -170,7 +180,7 @@ function SavedLeaguesList({ saves, onContinue, onDeleteSave, onRenameSave }: Pic
   );
 }
 
-export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSave, busy = null, onLocker, onCode, onCommunity, onProfile, onFriends, onSettings, onArcade, onCreate, onRelics, onShop, onRoad, onProfileTab }: Props) {
+export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSave, busy = null, onLocker, onCode, onCommunity, onProfile, onFriends, onFriendList, onCloset, onSettings, onArcade, onCreate, onRelics, onShop, onRoad, onProfileTab, onOpenMode }: Props) {
   const [newsOpen, setNewsOpen] = useState(false);
   // First visit: pick a look before anything else; What's New waits until it is picked.
   const [pickLook, setPickLook] = useState(needsThemeChoice);
@@ -222,11 +232,11 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
           <PlayerAvatar playerId="Court Vision Center" primaryColor="#ec852b" secondaryColor="#fcdfad" jerseyNumber={23} size={100} />
           <PixelBall size={48} />
         </div>
-        <MenuPhone onBoards={onCommunity && (() => onCommunity('boards'))} onFriends={onFriends ?? (onCommunity && (() => onCommunity('friends')))} onProfile={onProfile ?? onLocker} onRelics={onRelics} onShop={onShop} onRoad={onRoad} onSettings={onSettings} onWhatsNew={() => setNewsOpen(true)}
+        <MenuPhone onFriendList={onFriendList} onCloset={onCloset} onBoards={onCommunity && (() => onCommunity('boards'))} onFriends={onFriends ?? (onCommunity && (() => onCommunity('friends')))} onProfile={onProfile ?? onLocker} onRelics={onRelics} onShop={onShop} onRoad={onRoad} onSettings={onSettings} onWhatsNew={() => setNewsOpen(true)}
           onAchievements={onProfileTab && (() => onProfileTab('achievements'))} streak={visit.v.streak} />
       </div>
 
-      <MenuQuickLinks hasSaves={saves.length > 0} onRoad={onRoad} onRelics={onRelics} onProfile={onProfile ?? onLocker} onFriends={onFriends} onSettings={onSettings} />
+      <MenuQuickLinks hasSaves={saves.length > 0} onRoad={onRoad} onRelics={onRelics} onProfile={onProfile ?? onLocker} onFriends={onFriendList ?? onFriends} onCloset={onCloset} onSettings={onSettings} />
 
       <div className="menu-section-heading"><h2>Choose your game</h2><span>PICK ONE, THEN PRESS PLAY</span></div>
 
@@ -240,6 +250,7 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
               aria-pressed={picked}
               aria-describedby={picked ? `mode-play-${m.id}` : undefined}
             >
+              {modeById(m.id) && <ModeArt entry={modeById(m.id)!} />}
               <span className="mode-card-kicker"><PixelIcon name={m.icon} size={24} /><span>{m.kicker}</span>{(m.badge || hot) && <span className="mode-flags">{hot && <span className="mode-xp" title={`Mode of the Week: double XP for ${FEATURED_NAME[featured]} runs finished this week`}>2× XP</span>}{m.badge && <span className={`mode-badge mode-badge-${m.badge}`}><PixelIcon name={m.badge === 'popular' ? 'flame' : 'star'} size={12} /> {BADGE_LABEL[m.badge]}</span>}</span>}<span className="mode-selection-dot" /></span>
               <h3>{m.title}</h3>
               <p>{m.blurb}</p>
@@ -262,12 +273,17 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
         </div>)}
       </div>
 
+      {selectedMode && onOpenMode && subModesOf(selectedMode).length > 0 && <section className="mode-subs" aria-label="Ways to play">
+        <h4>Ways to play {MODES.find(m => m.id === selectedMode)?.title}</h4>
+        <div className="mode-tiles">{(selectedMode === 'perfect' ? [modeById('perfect')!, ...subModesOf('perfect')] : subModesOf(selectedMode)).map(e => <ModeCard key={e.id} entry={e} onOpen={onOpenMode} />)}</div>
+      </section>}
+
       {onRoad && <SeasonStrip onOpen={() => onRoad('season')} />}
       {onRelics && <RelicStrip onOpen={onRelics} />}
       {seasonPay.cosmetics.length > 0 && <Suspense fallback={null}><SeasonTierUp cosmetics={seasonPay.cosmetics} spins={seasonPay.spins} onClose={() => setSeasonPay({ spins: 0, cosmetics: [] })} onOpenPass={onRoad && (() => onRoad('season'))} /></Suspense>}
 
       <DailyChallengeCard onPlay={m => m === 'perfect' ? onStart('perfect', 'normal', '', '') : m === 'hunt' ? onStart('legends', 'normal', '', '') : onArcade?.(m)} />
-      {onArcade && <QuickGames onOpen={onArcade} />}
+      {onArcade && <QuickGames onOpen={onArcade} onOpenMode={onOpenMode} />}
 
       <SavedLeaguesList saves={saves} onContinue={onContinue} onDeleteSave={onDeleteSave} onRenameSave={onRenameSave} />
 
@@ -300,6 +316,7 @@ function ThisWeek({ busy, onRebuild, onCareer, onHunt, onCommunity, onFeatured }
   return <section className="this-week" aria-label="This week's challenges">
     <div className="this-week-head"><h2>This week</h2><span>{rb.week} · new challenges in {days} day{days === 1 ? '' : 's'}{streak > 1 ? ` · ${streak}-week streak` : ''}</span>{cloudEnabled && <button className="link-button" onClick={() => setBoard(true)}>Leaderboard</button>}</div>
     {board && <WeeklyBoardDialog onClose={() => setBoard(false)} onCommunity={onCommunity} />}
+    <article className="mode-of-week weekly-event"><span className="pixel-eyebrow">WEEKLY EVENT · ENDS IN {days} DAY{days === 1 ? '' : 'S'}</span><b>{weeklyEvent(now).name}</b><p>{weeklyEvent(now).blurb} A new event every Monday.</p></article>
     <article className="mode-of-week"><span className="pixel-eyebrow">MODE OF THE WEEK · DOUBLE XP</span><b>{FEATURED_NAME[featured]}</b>
       <p>Every {FEATURED_NAME[featured]} run you finish this week earns its XP twice (up to {WEEKLY_BONUS_CAP.toLocaleString()} bonus XP). A new mode every Monday.</p>
       <button className="primary" onClick={onFeatured}>Play {FEATURED_NAME[featured]}</button></article>
@@ -334,9 +351,10 @@ function StreakNote({ visit, onProfile }: { visit: Visit; onProfile?: () => void
 function LevelUpNote({ onProfile }: { onProfile?: () => void }) {
   const [up] = useState(() => takeLevelUp(levelFor(totalXp()).level));
   const [open, setOpen] = useState(true);
+  useEffect(() => { if (up) { const t = window.setTimeout(() => burst(document.querySelector('.level-up-corner'), { count: 40, power: 6 }), 300); return () => window.clearTimeout(t); } }, [up]);
   if (!up || !open) return null;
   const unlocks = unlocksBetween(up.from, up.to);
-  return <div className="level-up level-up-corner" role="status"><b>LEVEL UP · LV {up.to}</b><span>{unlocks.length ? `Unlocked ${unlocks.slice(0, 3).join(', ')}${unlocks.length > 3 ? ` and ${unlocks.length - 3} more` : ''}.` : 'Keep going: new unlocks are on the way.'}</span>
+  return <div className="level-up level-up-corner fx-pop" role="status"><b>LEVEL UP · LV {up.to}</b><span>{unlocks.length ? `Unlocked ${unlocks.slice(0, 3).join(', ')}${unlocks.length > 3 ? ` and ${unlocks.length - 3} more` : ''}.` : 'Keep going: new unlocks are on the way.'}</span>
     {onProfile && unlocks.length > 0 && <button onClick={onProfile}>Equip in your profile</button>}<button className="link-button" onClick={() => setOpen(false)}>Close</button></div>;
 }
 
@@ -353,7 +371,7 @@ function CodeEntry({ busy, onCode }: { busy: string | null; onCode: (code: strin
 }
 
 /** The quick games strip under the modes: today's puzzle, your streak, this week's bracket. */
-function QuickGames({ onOpen }: { onOpen: (game: 'grid' | 'guess' | 'hilo' | 'bracket' | 'quiz') => void }) {
+function QuickGames({ onOpen, onOpenMode }: { onOpen: (game: 'grid' | 'guess' | 'hilo' | 'bracket' | 'quiz') => void; onOpenMode?: (e: ModeEntry) => void }) {
   const [r] = useState(readArcade);
   const today = new Date().toISOString().slice(0, 10), week = weekKey();
   const day = r.guess[today], streak = guessStreak(r, today).current, bracket = r.bracket[week], quiz = endlessOf(r).quiz;
@@ -367,15 +385,16 @@ function QuickGames({ onOpen }: { onOpen: (game: 'grid' | 'guess' | 'hilo' | 'br
   ];
   return <section className="quick-games" aria-labelledby="quick-games-title">
     <div className="menu-section-heading"><h2 id="quick-games-title">Quick games</h2><span>REAL NBA HISTORY · 2 MINUTES</span></div>
-    <div className="quick-games-grid">{games.map(g => <button key={g.id} className="quick-game" onClick={() => onOpen(g.id)}>
-      <PixelIcon name={g.icon} size={24} /><b>{g.title}</b><small>{g.blurb}</small><em>{g.status}{g.extra ? ` · ${g.extra}` : ''}</em>
-    </button>)}</div>
+    <div className="mode-tiles quick-games-tiles">
+      {games.map(g => { const e = modeById(g.id)!; return <ModeCard key={g.id} entry={e} badge={`${g.status}${g.extra ? ` · ${g.extra}` : ''}`} onOpen={() => onOpen(g.id)} />; })}
+      {onOpenMode && modesIn('quick', 'compete').filter(e => e.action.kind === 'arcade' && !games.some(g => g.id === e.id)).map(e => <ModeCard key={e.id} entry={e} onOpen={onOpenMode} />)}
+    </div>
   </section>;
 }
 
 /** One row of the places people look for most: jumps down the menu (modes, today's challenge, saved leagues) and opens
  *  the pages that otherwise live only in the phone (Season Pass, Relic Vault, the roads, profile, friends, settings). */
-function MenuQuickLinks({ hasSaves, onRoad, onRelics, onProfile, onFriends, onSettings }: { hasSaves: boolean; onRoad?: (r: 'level' | 'trophy' | 'season') => void; onRelics?: () => void; onProfile?: () => void; onFriends?: () => void; onSettings?: () => void }) {
+function MenuQuickLinks({ hasSaves, onRoad, onRelics, onProfile, onFriends, onCloset, onSettings }: { hasSaves: boolean; onRoad?: (r: 'level' | 'trophy' | 'season') => void; onRelics?: () => void; onProfile?: () => void; onFriends?: () => void; onCloset?: () => void; onSettings?: () => void }) {
   const go = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   const links: [string, string, (() => void) | undefined][] = [
     ['play', 'Modes', () => go('menu-modes')],
@@ -386,6 +405,7 @@ function MenuQuickLinks({ hasSaves, onRoad, onRelics, onProfile, onFriends, onSe
     ['chart', 'Level Road', onRoad && (() => onRoad('level'))],
     ['trophy', 'Trophy Road', onRoad && (() => onRoad('trophy'))],
     ['team', 'Profile', onProfile],
+    ['star', 'Closet', onCloset],
     ['phone', 'Friends', onFriends],
     ['settings', 'Settings', onSettings],
   ];

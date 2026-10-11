@@ -98,7 +98,7 @@ export function StickyPanel({ league, extras, onChange, onToast }: Props) {
       {current && isStuck(current) && <button onClick={() => apply(who, null)}>Unstick</button>}
     </div>
     {stuck.length > 0 && <table className="db-table"><thead><tr><th className="col-name">Player</th><th>Now with</th><th>Stuck</th><th /></tr></thead><tbody>
-      {stuck.map(({ p, team }) => <tr key={p.playerId}><td className="col-name">📌 {p.playerId}</td><td>{team}</td>
+      {stuck.map(({ p, team }) => <tr key={p.playerId}><td className="col-name"><PixelIcon name="pin" size={12} /> {p.playerId}</td><td>{team}</td>
         <td>{p.stick?.teamId ? `to ${league.teams.find(t => t.teamId === p.stick!.teamId)?.name ?? p.stick.teamId}` : `with ${p.stick?.withPlayerId}`}</td>
         <td><button className="link-button" onClick={() => apply(p.playerId, null)}>Unstick</button></td></tr>)}
     </tbody></table>}

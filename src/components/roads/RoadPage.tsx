@@ -54,7 +54,7 @@ function LevelRoadView() {
         <small>{xp.toLocaleString()} XP{need ? ` · ${(need - into).toLocaleString()} XP to level ${level + 1}` : ''} · {opened} of {LEVEL_ROAD.length} rewards · max level {MAX_LEVEL}</small></div>
     </div>
     <BrawlRoad stops={stops} value={level + (need ? into / need : 0)} marker={`LV ${level}`} label="Level Road" icon="star" />
-    <p className="hint-text">XP comes from everything you finish in every mode. Equip what you unlock on your Profile. Ranked tiers, leaderboards, achievements and the Season Pass unlock more on top of the road.</p>
+    <p className="hint-text">XP comes from everything you finish in every mode. Wear what you unlock in your Closet (a phone app). Ranked tiers, leaderboards, achievements and the Season Pass unlock more on top of the road.</p>
   </section>;
 }
 
@@ -77,6 +77,6 @@ function TrophyRoadView() {
     <BrawlRoad stops={stops} value={trophies} marker={trophies.toLocaleString()} label="Trophy Road" />
     <h2 className="road-sub">Where your trophies come from</h2>
     <table className="db-table profile-xp"><tbody>{parts.map(p => <tr key={p.id}><td className="col-name">{p.label}</td><td>{p.trophies.toLocaleString()} trophies</td></tr>)}</tbody></table>
-    <p className="hint-text">Trophies come from winning: GM wins, seasons and titles (official leagues), achievements, careers and Hall of Famers, League Hunt runs and wins, Rebuild stars and titles, weekly challenges, daily goals, Legend Challenge stars, the Season Pass and your card album. Equip what you unlock on your Profile: it shows on the leaderboards too.</p>
+    <p className="hint-text">Trophies come from winning: GM wins, seasons and titles (official leagues), achievements, careers and Hall of Famers, League Hunt runs and wins, Rebuild stars and titles, weekly challenges, daily goals, Legend Challenge stars, the Season Pass and your card album. Wear what you unlock in your Closet (a phone app): it shows on the leaderboards too.</p>
   </section>;
 }

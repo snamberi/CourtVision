@@ -23,10 +23,19 @@ type Prefs = Partial<Record<string, { level?: Level; view?: RunView }>>;
 const read = (): Prefs => { try { return JSON.parse(localStorage.getItem(KEY) ?? '{}') as Prefs; } catch { return {}; } };
 /** The last settings chosen in a mode (remembered on this device). */
 export function challengePrefs(mode: string): { level: Level; view: RunView } {
-  const p = read()[mode];
-  return { level: isLevel(p?.level) ? p!.level! : 'pro', view: { ...STANDARD_VIEW, ...(p?.view ?? {}) } };
+  const all = read(), p = all[mode], d = all.default?.level;
+  return { level: isLevel(p?.level) ? p!.level! : isLevel(d) ? d : 'pro', view: { ...STANDARD_VIEW, ...(p?.view ?? {}) } };
 }
 export function saveChallengePrefs(mode: string, prefs: { level?: Level; view?: RunView }): void {
   const all = read();
   try { localStorage.setItem(KEY, JSON.stringify({ ...all, [mode]: { ...all[mode], ...prefs } })); } catch { /* storage blocked */ }
+}
+
+/** Settings > Default difficulty: what every mode starts on. Setting it also resets each mode's remembered level. */
+export const defaultLevel = (): Level => { const d = read().default?.level; return isLevel(d) ? d : 'pro'; };
+export function setDefaultLevel(level: Level): void {
+  const all = read();
+  const next: Prefs = Object.fromEntries(Object.entries(all).map(([k, v]) => [k, { ...v, level }]));
+  next.default = { ...all.default, level };
+  try { localStorage.setItem(KEY, JSON.stringify(next)); } catch { /* storage blocked */ }
 }

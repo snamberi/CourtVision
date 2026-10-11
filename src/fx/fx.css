@@ -1,0 +1,13 @@
+/* Shared effects (src/fx/effects.ts). */
+.fx-canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 200; pointer-events: none; image-rendering: pixelated; }
+.fx-shake { animation: fx-shake .35s steps(6); }
+.fx-shake-big { animation: fx-shake-big .5s steps(8); }
+@keyframes fx-shake { 0%, 100% { transform: none; } 20% { transform: translate(-3px, 1px); } 40% { transform: translate(3px, -1px); } 60% { transform: translate(-2px, 2px); } 80% { transform: translate(2px, 0); } }
+@keyframes fx-shake-big { 0%, 100% { transform: none; } 15% { transform: translate(-6px, 2px) rotate(-.5deg); } 30% { transform: translate(6px, -2px) rotate(.5deg); } 45% { transform: translate(-5px, 3px); } 60% { transform: translate(5px, -1px); } 80% { transform: translate(-2px, 1px); } }
+.fx-pop { animation: fx-pop .45s cubic-bezier(.2, 1.5, .4, 1); }
+@keyframes fx-pop { 0% { transform: scale(.6); opacity: 0; } 100% { transform: none; opacity: 1; } }
+.fx-shine { position: relative; overflow: hidden; }
+.fx-shine::after { content: ''; position: absolute; top: 0; bottom: 0; left: -40%; width: 30%; pointer-events: none;
+  background: linear-gradient(100deg, transparent, var(--c-bg-ffffff59, rgba(255,255,255,.35)), transparent); animation: fx-shine 2.6s ease-in-out infinite; }
+@keyframes fx-shine { 0%, 60% { left: -40%; } 100% { left: 120%; } }
+@media (prefers-reduced-motion: reduce) { .fx-shake, .fx-shake-big, .fx-pop, .fx-shine::after { animation: none; } }

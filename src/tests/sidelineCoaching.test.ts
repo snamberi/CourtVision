@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { simulateGame, type LiveCoachingCommand, RUN_TIMEOUT } from '../simulation/engine/game';
 import { generateFullLeague } from '../simulation/leagueGenerator';
 import { DEFAULT_GAME_SETTINGS } from '../simulation/types';
-import { currentRun, lastShotMoment } from '../simulation/coachMoments';
+import { currentRun, lastShotMoment, momentum, foulTroubleAt } from '../simulation/coachMoments';
+import type { PossessionLogEntry } from '../simulation/boxscore';
 
 const gen = generateFullLeague(12, 2, 13, 4).league;
 const side = (i: number, id: string) => ({ teamId: id, seasons: gen.teams[i].seasons, coach: gen.teams[i].coach });
@@ -72,5 +73,22 @@ describe('sideline coaching', () => {
     expect(lastShotMoment(log, 1, 'H', 'H', 4)).toBe(true);
     expect(lastShotMoment(log, 1, 'A', 'H', 4)).toBe(false);
     expect(lastShotMoment(log, 0, 'A', 'H', 4)).toBe(false);
+  });
+});
+
+
+describe('momentum and foul trouble', () => {
+  const entry = (h: number, a: number, events: string[] = []) => ({ homeScoreAfter: h, awayScoreAfter: a, events } as unknown as PossessionLogEntry);
+  it('swings toward the team scoring lately and resets on a timeout', () => {
+    const homeRun = [entry(0, 2), entry(2, 2), entry(4, 2), entry(7, 2), entry(9, 2), entry(11, 2)];
+    expect(momentum(homeRun, homeRun.length)).toBeGreaterThan(50);
+    expect(momentum(homeRun, 1)).toBeLessThan(0);
+    expect(momentum([], 0)).toBe(0);
+    const afterTimeout = [...homeRun, entry(11, 2, ['Away timeout']), entry(11, 4)];
+    expect(momentum(afterTimeout, afterTimeout.length)).toBeLessThan(0);
+  });
+  it('counts foul trouble like a coach', () => {
+    expect([1, 2, 3, 4, 5].map(q => foulTroubleAt(q, 4))).toEqual([2, 3, 4, 5, 5]);
+    expect([1, 2, 3, 4].map(q => foulTroubleAt(q, 4, 5))).toEqual([2, 2, 3, 4]);
   });
 });

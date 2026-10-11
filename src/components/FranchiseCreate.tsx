@@ -5,6 +5,7 @@ import type { TradeDifficulty } from '../simulation/gm';
 import { nbaHistoryYearRange } from '../simulation/calendar';
 import { SCENARIOS, loadRebuildRecords } from '../simulation/rebuildChallenge';
 import { DataCredits } from './DataCredits';
+import { DifficultyCards } from './DifficultyCards';
 import { PixelIcon } from './PixelIcon';
 import { Modal } from './Modal';
 import { COUNTRIES } from '../worldGames/data';
@@ -120,7 +121,7 @@ export function FranchiseCreate({ onBack, onStart, busy = null, initial = 'free'
         <div className="create-fields">
           <label className="create-field"><span>League name</span>
             <span className="create-inline"><input className="year-input" value={name} maxLength={40} onChange={e => setName(e.target.value)} placeholder="e.g. My Dynasty" />
-              <button type="button" title="A random name" aria-label="Pick a random name" onClick={() => setName(NAMES[Math.floor(Math.random() * NAMES.length)])}>🎲</button></span>
+              <button type="button" title="A random name" aria-label="Pick a random name" onClick={() => setName(NAMES[Math.floor(Math.random() * NAMES.length)])}><PixelIcon name="shuffle" size={14} /></button></span>
           </label>
           {source !== 'csv' && <label className="create-field"><span>Starting season</span>
             {historical
@@ -129,8 +130,7 @@ export function FranchiseCreate({ onBack, onStart, busy = null, initial = 'free'
             <small>{historical ? `Every season from 1946–47 to ${seasonName(Number(historyYear) - 1)} is loaded as history; ${seasonName(Number(historyYear))} starts unplayed.` : 'Only sets the calendar: every player is new.'}</small>
           </label>}
           <div className="create-field"><span>Difficulty</span>
-            <div className="create-segment" role="radiogroup" aria-label="Difficulty">{DIFFICULTIES.map(d => <button key={d.id} role="radio" aria-checked={difficulty === d.id} className={difficulty === d.id ? 'selected' : ''} onClick={() => setDifficulty(d.id)}>{d.label}</button>)}</div>
-            <small>{DIFFICULTIES.find(d => d.id === difficulty)!.blurb}</small>
+            <DifficultyCards value={difficulty} onChange={setDifficulty} options={DIFFICULTIES.map((d, i) => ({ id: d.id, name: d.label, blurb: d.blurb, level: i + 1 + (i === 2 ? 1 : 0) }))} />
           </div>
         </div>
       </section>

@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ordinal } from '../../lib/humanize';
 import type { NbaHistory } from '../../history/nbaHistoryData';
-import { PixelIcon } from '../PixelIcon';
+import { PixelIcon, MedalIcon } from '../PixelIcon';
 import { track } from '../../analytics/track';
 import { startTournament, placings, type NationalTeam, type WGState } from '../../worldGames/tournament';
 import { hostFor, modeTeams, myPool, modeScore, saveModeResult, MODE_GAMES, type GamesId, type ModeRecords } from '../../worldGames/mode';
-import { MEDAL_ICON } from '../../worldGames/league';
 import { CountryName } from './WorldGamesViews';
 import { PickTwelve, TournamentRun } from './TournamentRun';
 import '../hunt/hunt.css';
@@ -46,7 +45,7 @@ export function WorldGamesMode({ games, country, onExit, onNew }: { games: Games
       : !h ? <p className="empty-state">Loading every national team…</p>
       : result && run ? <>
         <section className="wg-card">
-          <div className="wg-head"><h2>{result.place <= 2 ? `${MEDAL_ICON[(['gold', 'silver', 'bronze'] as const)[result.place]]} ${['Gold', 'Silver', 'Bronze'][result.place]} for ${country}!` : `${country} finished ${ordinal(result.place + 1)}`}</h2>
+          <div className="wg-head"><h2>{result.place <= 2 ? <><MedalIcon medal={(['gold', 'silver', 'bronze'] as const)[result.place]} size={20} /> {`${['Gold', 'Silver', 'Bronze'][result.place]} for ${country}!`}</> : `${country} finished ${ordinal(result.place + 1)}`}</h2>
             <div className="wg-actions">
               <button className="primary" onClick={() => { setRun(null); setResult(null); setSeed(Math.floor(Math.random() * 1e9)); }}><PixelIcon name="play" size={14} /> Play again</button>
               <button onClick={onNew}>Other Games or country</button>
