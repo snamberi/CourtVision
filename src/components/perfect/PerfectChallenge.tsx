@@ -6,7 +6,7 @@ import { COACH_STYLE, coachRarity } from '../../hunt/coaches';
 import { eraOf } from '../../hunt/eras';
 import {
   makeTrade, tradePending, tradeFits, TRADE_UP,
-  newPerfectRun, weeklyRule, ERA_RULES, type EraRule, pickPlayer, quickSpinCard, reelFiller, rerollTeam, rerollEra, applyPrime, rerollSpin, luckySpin, spinsLeft, luckyLeft, rollRerollsLeft, lineupOf, swapLineup, setLineup, ROTATION_MINUTES, pickCoach, playNext, rollPool, franchiseName, eraById, teamBonds,
+  newPerfectRun, weeklyRule, ERA_RULES, type EraRule, pickPlayer, quickSpinCard, reelFiller, rerollTeam, rerollEra, applyPrime, rerollSpin, luckySpin, spinsLeft, luckyLeft, rollRerollsLeft, lineupOf, swapLineup, setLineup, ROTATION_MINUTES, pickCoach, playNext, rollPool, franchiseName, franchiseAbbr, franchiseIndex, eraShort, ROLL_ERAS, eraById, teamBonds,
   perfectRating, teamRating, summary, starCount, starCapReached, MAX_STARS, coachMatchup, coachMatchupText, streakPressure, STREAK_STEP, STREAK_MAX, OPP_EDGE, verdict, BOSS_TEAMS, QUICK_SLOTS, QUICK_SLOT_LABEL, SQUAD, SEASON_GAMES, ROUND_NAMES, WINS_NEEDED, SCORE, COACH_BY_ID,
   newWhatIfRun, isFreeMode, type WhatIf, type WhatIfKind,
   isCategoryMode, categoryPool, rerollCategory, categoryMultiplier, picksFromCategory, STARTERS, optionMultiplier, OPTION_MULTIPLIER, SHOT_CLOCK, autoPick, categoryLocked, bestFive, type CategoryOptions,
@@ -34,6 +34,10 @@ import { relicRunOpts } from '../../relics/apply';
 import { rewardRun, perfectSpins, perfectSecret, perfectRewardKey } from '../../relics/rewards';
 import { RelicReward, LuckChip } from '../relics/RelicReward';
 import { PixelIcon } from '../PixelIcon';
+import { SlotReels, type Reel } from '../SlotReels';
+import { burst, celebrate, shake, useCountUp } from '../../fx/effects';
+import { CourtLineup, type LineupPlayer } from '../CourtLineup';
+import { assignToSpots, FIVE_SPOTS } from '../lineupSpots';
 import { WhatIfRows, WhatIfSetup } from './WhatIfModes';
 import { whatIfTitle } from '../../perfect/whatIfInfo';
 import { ShareCardButton } from '../ShareCardButton';
@@ -342,13 +346,20 @@ function QuickDraft({ h, run, setRun }: { h: NbaHistory; run: PerfectRun; setRun
   const slot = QUICK_SLOTS[run.squad.length];
   const [spinning, setSpinning] = useState(false);
   const [landed, setLanded] = useState<HuntCard | null>(null);
+  const reelBox = useRef<HTMLDivElement>(null);
   const target = useMemo(() => quickSpinCard(h, run), [h, run]);
   const strip = useMemo(() => [...reelFiller(h, 14, run.seed + run.squad.length), target], [h, run.seed, run.squad.length, target]);
   const spin = () => {
     if (spinning) return;
     setSpinning(true);
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    window.setTimeout(() => { setSpinning(false); setLanded(target); }, reduce ? 50 : 1300);
+    window.setTimeout(() => {
+      setSpinning(false); setLanded(target);
+      // A Star landing gets the big treatment: gold sparks and a shake.
+      const star = target.rarity === 'legendary' && run.view?.colors !== false;
+      burst(reelBox.current, { colors: star ? ['#ffd166', '#fff3b0', '#f47b20'] : ['#f47b20', '#f4f0e6'], count: star ? 50 : 20, power: star ? 7 : 4 });
+      if (star) shake(reelBox.current, 'big');
+    }, reduce ? 50 : 1300);
   };
   const keep = () => { setLanded(null); setRun(pickPlayer(h, run)); };
   // A reroll sends the card back and spins this spot again (once the new card is ready).
@@ -359,7 +370,7 @@ function QuickDraft({ h, run, setRun }: { h: NbaHistory; run: PerfectRun; setRun
     <div className="p820-stage">
       <span className="pixel-eyebrow">{run.from === 'hunt' ? `YOUR HUNT SQUAD + BENCH SPIN ${run.squad.length - 5} OF ${SQUAD - 6}` : `SPIN ${run.squad.length + 1} OF ${SQUAD}`}</span>
       <h2>{QUICK_SLOT_LABEL[slot]} <LuckChip luck={run.luck} /></h2>
-      <div className={`p820-reel ${spinning ? 'spinning' : ''} ${landed ? 'landed' : ''}`} aria-live="polite">
+      <div ref={reelBox} className={`p820-reel ${spinning ? 'spinning' : ''} ${landed ? 'landed' : ''}`} aria-live="polite">
         {landed ? <CardTile c={landed} hide={!ratingsShown(run)} />
           : <div className="p820-reel-strip" style={{ transform: spinning ? `translateY(-${(strip.length - 1) * 64}px)` : 'translateY(0)' }}>{strip.map((c, i) => <div key={i} className="p820-reel-row"><b>{c.name}</b><small>{seasonLabel(c.end)} {c.team}</small><span>{ratingsShown(run) ? c.ovr : HIDDEN}</span></div>)}</div>}
       </div>
@@ -372,6 +383,7 @@ function QuickDraft({ h, run, setRun }: { h: NbaHistory; run: PerfectRun; setRun
           <button className="primary p820-big" onClick={spin} disabled={spinning}>{spinning ? 'Spinning…' : run.lucky ? 'LUCKY SPIN' : 'SPIN'}</button>
           {!run.lucky && <button onClick={() => setRun(luckySpin(h, run))} disabled={spinning || luckyLeft(run) < 1} title="The next spin lands on a Great or a Star"><PixelIcon name="star" size={14} /> Use a lucky spin ({luckyLeft(run)} left)</button>}
         </div>}
+      <StarterCourt h={h} run={run} fixedSlots={run.from !== 'hunt'} />
     </div>
     <SquadPanel h={h} run={run} />
   </section>;
@@ -384,22 +396,26 @@ function FranchiseDraft({ h, run, setRun }: { h: NbaHistory; run: PerfectRun; se
   const era = eraById(roll.eraId);
   const name = franchiseName(h, roll.franchise);
   const col = teamColors(roll.franchise);
-  const [revealed, setRevealed] = useState(false);
   const rollKey = `${roll.franchise}|${roll.eraId}|${run.rolls}`;
-  useEffect(() => {
-    setRevealed(false);
-    const t = window.setTimeout(() => setRevealed(true), window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 30 : 900);
-    return () => window.clearTimeout(t);
-  }, [rollKey]);
+  // The reels land, then the players show: revealed once the reels for this roll have stopped.
+  const [landedKey, setLandedKey] = useState('');
+  const revealed = landedKey === rollKey;
+  const audio = useRef<CourtAudio | null>(null);
+  const reels = useMemo<Reel[]>(() => {
+    const abbrsAll = [...franchiseIndex(h).names.keys()].map(f => franchiseAbbr(h, f));
+    return [
+      { label: 'Franchise', values: abbrsAll, landing: franchiseAbbr(h, roll.franchise), color: brightest(col.primary, col.secondary), sub: name },
+      { label: 'Era', values: ROLL_ERAS.map(e => eraShort(e.id)), landing: eraShort(roll.eraId), color: '#b983ff', sub: `${era.from}-${era.to}` },
+    ];
+  }, [h, roll.franchise, roll.eraId, col.primary, col.secondary, name, era.from, era.to]);
+  const tick = () => { if (!readSound()) return; try { audio.current ??= new CourtAudio(); audio.current.dribble(); } catch { /* no audio */ } };
   // Listed by name, not by rating, so the order gives nothing away.
   const players = [...rollPool(h, run, roll)].sort((a, b) => a.name.localeCompare(b.name));
   return <section className="p820-draft">
     <div className="p820-stage">
-      <span className="pixel-eyebrow">PICK {run.squad.length + 1} OF {SQUAD} · ONE PLAYER PER SPIN</span>
-      <div className={`p820-roll ${revealed ? 'revealed' : 'rolling'}`} style={{ ['--team-a' as string]: col.primary, ['--team-b' as string]: col.secondary }}>
-        <span className="p820-roll-team">{revealed ? name : '? ? ?'}</span>
-        <span className="p820-roll-era">{revealed ? `${era.label} (${era.from}-${era.to})` : 'spinning…'}</span>
-      </div>
+      <span className="pixel-eyebrow">PICK {run.squad.length + 1} OF {SQUAD} · {run.squad.length < STARTERS ? `STARTER ${run.squad.length + 1} OF ${STARTERS}` : 'BENCH'} · ONE PLAYER PER SPIN</span>
+      <SlotReels reels={reels} rollKey={rollKey} onTick={tick} onLanded={() => { setLandedKey(rollKey); if (readSound()) { try { audio.current?.swish(); } catch { /* no audio */ } } }} />
+      <StarterCourt h={h} run={run} />
       <div className="p820-tools">
         <button onClick={() => setRun(rerollTeam(h, run))} disabled={!revealed || rollRerollsLeft(run, 'team') < 1}><PixelIcon name="trade" size={14} /> Team reroll ({rollRerollsLeft(run, 'team')}{run.rerolls.roll != null ? ' left' : ''})</button>
         <button onClick={() => setRun(rerollEra(h, run))} disabled={!revealed || rollRerollsLeft(run, 'era') < 1}><PixelIcon name="calendar" size={14} /> Era reroll ({rollRerollsLeft(run, 'era')}{run.rerolls.roll != null ? ' left' : ''})</button>
@@ -408,12 +424,33 @@ function FranchiseDraft({ h, run, setRun }: { h: NbaHistory; run: PerfectRun; se
       </div>
       {run.rerolls.roll != null && <p className="hint-text p820-tools-note">Team and era rerolls share {run.rerolls.roll} left.</p>}
       {revealed && <>
-        <p className="hint-text">{run.prime ? 'Absolute Prime: everyone at the best season of his career.' : `Each player at his best season with the ${name} in ${era.label.toLowerCase()}.`} Pick one.</p>
-        <div className="p820-pool">{players.map(c => <CardTile key={c.id} c={c} prime={run.prime} hide={!ratingsShown(run)} onPick={() => setRun(pickPlayer(h, run, c.id))} />)}</div>
+        <p className="hint-text">{run.prime ? 'Absolute Prime: everyone at the best season of his career.' : `Each player at his best season with the ${name} in ${era.label.toLowerCase()}.`} {run.squad.length < STARTERS ? 'Pick your next starter.' : 'Pick a bench player.'}</p>
+        <div className="p820-pool fx-pop">{players.map(c => <CardTile key={c.id} c={c} prime={run.prime} hide={!ratingsShown(run)} onPick={() => setRun(pickPlayer(h, run, c.id))} />)}</div>
       </>}
     </div>
     <SquadPanel h={h} run={run} />
   </section>;
+}
+
+/** The brighter of a team's two colours (dark ones vanish on the reel frame); orange when both are dark. */
+function brightest(...cs: string[]): string {
+  const lum = (c: string) => { const m = /^#?([0-9a-f]{6})$/i.exec(c); if (!m) return 0; const n = parseInt(m[1], 16); return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255; };
+  const best = [...cs].sort((a, b) => lum(b) - lum(a))[0];
+  return best && lum(best) >= 0.35 ? best : '#f47b20';
+}
+
+/** Your starting five on the court: each starter at the spot that fits him, the next open spot pulsing. */
+function StarterCourt({ h, run, fixedSlots }: { h: NbaHistory; run: PerfectRun; fixedSlots?: boolean }) {
+  const pool = cardPool(h);
+  const starters = run.squad.slice(0, STARTERS).map(id => pool.byId.get(id)).filter((c): c is HuntCard => !!c)
+    .map((c): LineupPlayer => { const tc = teamColors(c.team); return { id: c.id, name: nameIn(run, c), pos: c.pos, colors: [tc.primary, tc.secondary], sub: `${seasonLabel(c.end)} ${c.team}`, hot: c.rarity === 'legendary' && run.view?.colors !== false }; });
+  // Quick Spin fills PG, SG, SF, PF, C in order; the other drafts place each starter where he fits.
+  const placed = fixedSlots ? FIVE_SPOTS.map((_, i) => starters[i]) : assignToSpots(starters, FIVE_SPOTS);
+  const next = run.squad.length < STARTERS ? (fixedSlots ? run.squad.length : placed.findIndex(p => !p)) : undefined;
+  return <div className="p820-court">
+    <h3 className="hunt-subhead">Starting five <small>{Math.min(STARTERS, run.squad.length)}/{STARTERS}{run.squad.length >= STARTERS ? ` · bench ${run.squad.length - STARTERS}/${SQUAD - STARTERS}` : ''}</small></h3>
+    <CourtLineup players={placed} active={next} />
+  </div>;
 }
 
 // ---------------------------------------------------------------- Category Roll and Slot Spin
@@ -528,6 +565,7 @@ function CategoryDraft({ h, run, setRun }: { h: NbaHistory; run: PerfectRun; set
         {pool.length > shown && <button className="link-button" onClick={() => setShown(n => n + PAGE * 2)}>Show more ({pool.length - shown} left)</button>}
         {!pool.length && <p className="empty-state">Nobody by that name in this category.</p>}
       </>}
+      <StarterCourt h={h} run={run} />
     </div>
     <SquadPanel h={h} run={run} />
   </section>;
@@ -754,8 +792,15 @@ function Finished({ h, run, records, onAgain }: { h: NbaHistory; run: PerfectRun
   const report = reportOf(h, run);
   const free = isFreeMode(run.mode);
   const frame = free ? null : s.perfectSeason && s.perfectPlayoffs ? 'perfectGold' : s.perfectSeason ? 'undefeated' : null;
+  // The score counts up; a title rains confetti (gold for a perfect run), once per finished run.
+  const shown = useCountUp(s.score, 1400);
+  useEffect(() => {
+    if (!s.champion) return;
+    const t = window.setTimeout(() => celebrate(s.perfectSeason ? ['#ffd166', '#fff3b0', '#f4f0e6'] : undefined), 350);
+    return () => window.clearTimeout(t);
+  }, [run.seed, s.champion]); // eslint-disable-line react-hooks/exhaustive-deps
   return <section className="p820-done">
-    <div className={`p820-final ${s.champion ? 'champ' : ''}`}>
+    <div className={`p820-final fx-pop ${s.champion ? 'champ fx-shine' : ''}`}>
       <span className="pixel-eyebrow">{s.champion ? 'CHAMPIONS' : `OUT IN THE ${ROUND_NAMES[lastSeries?.round ?? 0].toUpperCase()}`}</span>
       <div className="p820-final-record">{s.w}-{s.l}<small>playoffs {s.pw}-{s.pl}</small></div>
       <p>{verdict(s)}</p>
@@ -778,7 +823,7 @@ function Finished({ h, run, records, onAgain }: { h: NbaHistory; run: PerfectRun
       {s.perfectPlayoffs && <tr><td>16-0</td><td>{SCORE.perfectPlayoffs.toLocaleString()}</td></tr>}
       {isCategoryMode(run.mode) && <tr><td>Categories ({[...new Set(run.cats ?? [])].map(id => categoryById(h, id)?.name).filter(Boolean).slice(0, 3).join(', ')}{(new Set(run.cats ?? [])).size > 3 ? '…' : ''})</td><td>×{categoryMultiplier(run)}</td></tr>}
       {s.multiplier !== 1 && <tr><td>{isCategoryMode(run.mode) ? 'Total multiplier' : 'Challenge'} ({LEVEL_NAME[run.level ?? 'pro']}{run.view?.numbers ? ', ratings shown' : ''}{run.view && !run.view.colors ? ', colours hidden' : ''})</td><td>×{s.multiplier}</td></tr>}
-      <tr className="total"><td>Score</td><td>{s.score.toLocaleString()}</td></tr>
+      <tr className="total"><td>Score</td><td>{shown.toLocaleString()}</td></tr>
     </tbody></table>
     <p className="hint-text">Best ever: {records.best ? `${records.best.w}-${records.best.l}, ${records.best.score.toLocaleString()} points` : '—'} · {records.titles} title{records.titles === 1 ? '' : 's'} · {records.perfectSeasons} perfect season{records.perfectSeasons === 1 ? '' : 's'}{run.daily ? ' · Daily 82-0: your best try today counts on the weekly board.' : ''}</p>
     <SquadPanel h={h} run={run} />

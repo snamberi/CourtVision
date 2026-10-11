@@ -34,6 +34,7 @@ import { WelcomeSignIn, needsSignInWelcome } from './cloud/WelcomeSignIn';
 import { MenuMasthead } from './MenuMasthead';
 import { MenuPhone } from './MenuPhone';
 import { ModeArt, ModeCard } from './ModeCard';
+import { burst } from '../fx/effects';
 import { modeById, modesIn, subModesOf, type ModeEntry } from '../menu/modeCatalog';
 import { totalXp, levelFor, takeLevelUp, unlocksBetween } from '../profile/profile';
 import { noteVisit } from '../retention/streak';
@@ -350,9 +351,10 @@ function StreakNote({ visit, onProfile }: { visit: Visit; onProfile?: () => void
 function LevelUpNote({ onProfile }: { onProfile?: () => void }) {
   const [up] = useState(() => takeLevelUp(levelFor(totalXp()).level));
   const [open, setOpen] = useState(true);
+  useEffect(() => { if (up) { const t = window.setTimeout(() => burst(document.querySelector('.level-up-corner'), { count: 40, power: 6 }), 300); return () => window.clearTimeout(t); } }, [up]);
   if (!up || !open) return null;
   const unlocks = unlocksBetween(up.from, up.to);
-  return <div className="level-up level-up-corner" role="status"><b>LEVEL UP · LV {up.to}</b><span>{unlocks.length ? `Unlocked ${unlocks.slice(0, 3).join(', ')}${unlocks.length > 3 ? ` and ${unlocks.length - 3} more` : ''}.` : 'Keep going: new unlocks are on the way.'}</span>
+  return <div className="level-up level-up-corner fx-pop" role="status"><b>LEVEL UP · LV {up.to}</b><span>{unlocks.length ? `Unlocked ${unlocks.slice(0, 3).join(', ')}${unlocks.length > 3 ? ` and ${unlocks.length - 3} more` : ''}.` : 'Keep going: new unlocks are on the way.'}</span>
     {onProfile && unlocks.length > 0 && <button onClick={onProfile}>Equip in your profile</button>}<button className="link-button" onClick={() => setOpen(false)}>Close</button></div>;
 }
 

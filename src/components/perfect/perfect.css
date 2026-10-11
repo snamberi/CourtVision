@@ -330,3 +330,9 @@ button.p820-card:hover, button.p820-card:focus-visible { border-color: var(--c-b
   .p820-create-row { grid-template-columns: 1fr; }
   .p820-create-row > .p820-search, .p820-create-row > .p820-chip { grid-column: 1; grid-row: auto; }
 }
+
+/* The starting five on the court (CourtLineup) under the draft. */
+.p820-court { margin-top: 14px; }
+.p820-court .hunt-subhead small { color: var(--cv-text-muted, var(--c-fg-94a0b2, #94a0b2)); font-weight: 400; }
+.p820-court { align-self: stretch; width: 100%; }
+.p820-stage .slot-reels { align-self: stretch; width: 100%; max-width: 520px; margin-left: auto; margin-right: auto; }

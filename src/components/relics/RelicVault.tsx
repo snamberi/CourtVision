@@ -14,6 +14,7 @@ import { ShopCosmetics } from './ShopCosmetics';
 import { SecretCosmeticFound, SecretCosmeticsSection } from './SecretCosmetics';
 import { SHOP_COSMETIC_WEIGHTS } from '../../relics/shopCosmetics';
 import { weeklyEvent } from '../../retention/weeklyEvent';
+import { burst, celebrate } from '../../fx/effects';
 
 const pct = (odds: number) => `${+(odds * 100).toFixed(2)}%`;
 const fmtLuck = (n: number) => `+${+n.toFixed(1)}%`;
@@ -300,6 +301,11 @@ function BigReveal({ result, onClose }: { result: SpinResult; onClose: () => voi
     return () => { window.removeEventListener('keydown', on); prev?.focus?.(); };
   }, [onClose]);
   const name = nameOf(result), rarity = rarityName(result);
+  // The rarer the pull, the bigger the party.
+  useEffect(() => {
+    const big = /mythic|legendary|secret/i.test(rarity);
+    if (big) celebrate(['#ffd166', '#c18cff', '#f4f0e6']); else burst({ x: innerWidth / 2, y: innerHeight * 0.4 }, { count: 30, power: 6 });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const text = `I just pulled ${name} (${rarity} relic) in Court Vision! https://courtvisiongame.com`;
   const share = async () => {
     try {

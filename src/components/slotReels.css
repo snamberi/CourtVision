@@ -1,0 +1,21 @@
+/* Arcade reels (src/components/SlotReels.tsx): a pixel cabinet per reel, its colour on the frame and the lights. */
+.slot-reels { display: grid; gap: 12px; margin: 8px 0 12px; }
+.reel { position: relative; display: grid; gap: 4px; padding: 6px 8px 8px; background: var(--cv-surface, var(--c-bg-121926, #121926));
+  border: 3px solid var(--reel); box-shadow: 0 4px 0 var(--cv-bg, var(--c-shadow-0b1018, #0b1018)), inset 0 0 0 2px var(--cv-bg, var(--c-shadow-0b1018, #0b1018)); }
+.reel::before { content: ''; position: absolute; left: 8px; right: 8px; top: -3px; height: 3px;
+  background: repeating-linear-gradient(90deg, var(--reel) 0 4px, transparent 4px 10px); }
+.reel.rolling::before { animation: reel-lights .32s steps(2) infinite; }
+.reel-label { font: 700 11px var(--font-data, monospace); letter-spacing: .14em; text-transform: uppercase; color: var(--reel); text-align: center; }
+.reel-window { position: relative; height: 46px; overflow: hidden; background: var(--cv-bg, var(--c-bg-0b1018, #0b1018)); border: 2px solid var(--cv-border, var(--c-border-2a3546, #2a3546)); }
+.reel-strip { transition-property: transform; transition-timing-function: cubic-bezier(.12, .8, .18, 1); will-change: transform; }
+.reel-strip b { display: grid; place-items: center; font: 400 26px/1 var(--ff-display, 'Oswald', var(--font-ui, sans-serif)); letter-spacing: .04em; color: var(--cv-text, var(--c-fg-f4f0e6, #f4f0e6)); white-space: nowrap; }
+.reel.rolling .reel-strip b { filter: blur(.6px); opacity: .85; }
+.reel-glass { position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(180deg, var(--c-bg-0000008c, rgba(0,0,0,.55)), transparent 32%, transparent 68%, var(--c-bg-0000008c, rgba(0,0,0,.55))); }
+.reel-glass::after { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 2px; margin-top: -1px; background: var(--reel); opacity: .35; }
+.reel.landed .reel-window { animation: reel-land .35s ease-out; }
+.reel-sub { min-height: 14px; text-align: center; color: var(--cv-text-muted, var(--c-fg-94a0b2, #94a0b2)); font-size: 11px; }
+@keyframes reel-lights { 50% { opacity: .35; } }
+@keyframes reel-land { 0% { transform: scale(1.06); box-shadow: 0 0 0 3px var(--reel); } 100% { transform: none; box-shadow: none; } }
+.menu-gold .reel { border-radius: 14px; } .menu-gold .reel-window { border-radius: 8px; }
+@media (prefers-reduced-motion: reduce) { .reel.rolling::before, .reel.landed .reel-window { animation: none; } }

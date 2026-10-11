@@ -15,6 +15,8 @@ export const RELEASES: Release[] = [
       "**Free gifts for friends:** open the new **Friend list** app on the phone and send each friend 150 coins and a Lucky Spin every day. It costs you nothing, and you can gift up to 10 friends a day.",
       "**The Closet:** your character and every cosmetic now live in their own phone app. Your profile is just your card, achievements and trophies.",
       "**Season 3: INFERNO.** A brand-new fire Season Pass with magma armour, ember beards, a flame crown, a flame cape and more.",
+      "**Spin and build your starting five:** 82-0's Franchise Spin now spins a **Franchise** reel and an **Era** reel like an arcade cabinet, and your starters stand on a half court, each at the spot that fits him. Quick Spin and the Category drafts show your five on the court too, and the GM Tournament shows your three.",
+      "**More effects:** sparks when reels land and players join your five, a shake and gold sparks when a Star lands, confetti for titles and big relic pulls, popping scores in the street games, and a score that counts up at the end of an 82-0 run. Reduced motion and Lite graphics turn them off.",
       "**Phone navigation:** a bar along the bottom with Home, Compete, a big Play button, Ranks and Me. Play shows every mode and sub-mode as a card with its own artwork.",
       "**Gold Arcade style:** play 24 hours in total to unlock a chunky gold menu style in Settings.",
       "**Easier difficulty picking:** every mode shows difficulty as cards that say what changes. Settings has a default difficulty for every mode.",

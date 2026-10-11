@@ -81,3 +81,15 @@
 .menu-sheet .share-box { max-height: calc(100dvh - 24px); overflow-y: auto; overscroll-behavior: contain; width: min(760px, calc(100vw - 16px)); }
 .menu-sheet { z-index: 70; }
 .menu-bar > button.menu-bar-tab, .menu-bar > button.menu-bar-play { border: 0; box-shadow: none; background: transparent; border-radius: 0; min-width: 0; }
+
+/* Motion: sparkles twinkle, the icon hops when you point at a card, the Play coin glows. */
+.ma-spark { animation: ma-twinkle 2s steps(2) infinite; }
+.mode-tile:hover .ma-icon, .mode-tile:focus-visible .ma-icon, .mode-card:hover .ma-icon, .mode-card.selected .ma-icon { animation: ma-hop .5s steps(4); }
+.menu-bar-coin { animation: coin-glow 2.4s ease-in-out infinite; }
+.menu-bar-play:active .menu-bar-coin { transform: scale(.92) rotate(-8deg); }
+@keyframes ma-twinkle { 50% { opacity: .1; } }
+@keyframes ma-hop { 0%, 100% { transform: none; } 40% { transform: translateY(-3px); } 70% { transform: translateY(1px); } }
+@keyframes coin-glow { 50% { box-shadow: 0 0 0 2px var(--cv-orange-bright, var(--c-shadow-ff9d3d, #ff9d3d)), 0 0 14px 2px var(--c-shadow-f47b2073, rgba(244, 123, 32, .45)); } }
+.menu-gold .menu-bar-coin { animation-name: coin-glow-gold; }
+@keyframes coin-glow-gold { 50% { box-shadow: 0 0 0 3px var(--c-shadow-d99a00, #d99a00), 0 4px 0 3px var(--c-shadow-8a6200, #8a6200), 0 0 18px 4px var(--c-shadow-ffc21a80, rgba(255, 194, 26, .5)); } }
+@media (prefers-reduced-motion: reduce) { .ma-spark, .menu-bar-coin, .ma-icon { animation: none !important; } }

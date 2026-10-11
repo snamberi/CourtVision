@@ -212,9 +212,23 @@ export function franchiseIndex(h: NbaHistory): FranchiseIndex {
 }
 
 export const franchiseName = (h: NbaHistory, f: string) => franchiseIndex(h).names.get(f) ?? f;
+/** A franchise's short code for the reels: the abbreviation it played under most recently. */
+const abbrs = new WeakMap<NbaHistory, Map<string, string>>();
+export function franchiseAbbr(h: NbaHistory, f: string): string {
+  let m = abbrs.get(h);
+  if (!m) {
+    const latest = new Map<string, { team: string; end: number }>();
+    for (const c of cardPool(h).cards) { const cur = latest.get(c.franchise); if (!cur || c.end > cur.end) latest.set(c.franchise, { team: c.team, end: c.end }); }
+    m = new Map([...latest].map(([k, v]) => [k, v.team]));
+    abbrs.set(h, m);
+  }
+  return m.get(f) ?? f.slice(0, 3).toUpperCase();
+}
+/** An era's short name for the reels: EARLY, '60s ... '10s, TODAY. */
+export const eraShort = (id: string) => (id === 'early' ? 'EARLY' : id === '20s' ? 'TODAY' : `'${id}`);
 /** The BAA and early NBA (before 1955) are their own roll; their games use the 1960s rules. */
 const EARLY: HuntEra = { ...ERAS[0], id: 'early', label: 'The early NBA', from: 1947, to: 1954 };
-const ROLL_ERAS = [EARLY, ...ERAS];
+export const ROLL_ERAS = [EARLY, ...ERAS];
 const eraKey = (end: number) => (end < EARLY.to + 1 ? EARLY.id : eraOf(end).id);
 export const eraById = (id: string): HuntEra => ROLL_ERAS.find(e => e.id === id) ?? ERAS[ERAS.length - 1];
 
