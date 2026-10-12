@@ -1,3 +1,4 @@
+import { ModeIcon } from '../ModeIcon';
 import type { BigMoment } from '../../career/bigMoments';
 import { plural } from '../../lib/humanize';
 import { CATEGORY_BY_ID } from '../../career/categories';
@@ -288,9 +289,9 @@ function Hub({ careers, onNew, onOpen, onDelete }: { careers: CareerMeta[]; onNe
       <p className="hint-text">{era ? `The ${era - 1}-${String(era).slice(2)} season is played first, then the ${era} draft, with the real class${FAMOUS[era] ? ` (${FAMOUS[era]})` : ''}. Real players follow their real careers around him.` : 'Today\'s league with real rosters: the 2025-26 season plays out first, then your draft.'}</p>
       <div className="cv-era-row"><span>Difficulty:</span><LevelPicker value={level} onChange={l => { setLevel(l); saveChallengePrefs('career', { level: l }); }} blurbs={CAREER_LEVEL_BLURB} /></div>
       <div className="hunt-roads cv-modes">
-        <button className="hunt-road" onClick={() => onNew('wheel', era)}><span className="hunt-road-icon">⟳</span><b>Random mode</b><span>Spin the wheel of NBA history. Take Curry's three-point shot, Shaq's size, LeBron's playmaking… if the wheel lets you. Two lucky spins, each a sure Star or Great.</span></button>
-        <button className="hunt-road cv-sandbox-road" onClick={() => onNew('sandbox', era)}><span className="hunt-road-icon">∞</span><b>Create Anything</b><span>Every rating from 1 to 120, any height, no limits: make the greatest player ever (or the worst). Just for fun: it never counts for leaderboards, XP or rewards.</span></button>
-        <button className="hunt-road" onClick={() => onNew('myplayer', era)}><span className="hunt-road-icon">✎</span><b>MyPlayer</b><span>Build him yourself, part by part. Your draft stock is rolled: a Starter, an All-Star, or once in a while a Generational talent.</span></button>
+        <button className="hunt-road" onClick={() => onNew('wheel', era)}><span className="hunt-road-icon"><ModeIcon mode="career-wheel" size={64} /></span><b>Random mode</b><span>Spin the wheel of NBA history. Take Curry's three-point shot, Shaq's size, LeBron's playmaking… if the wheel lets you. Two lucky spins, each a sure Star or Great.</span></button>
+        <button className="hunt-road cv-sandbox-road" onClick={() => onNew('sandbox', era)}><span className="hunt-road-icon"><ModeIcon mode="career-sandbox" size={64} /></span><b>Create Anything</b><span>Every rating from 1 to 120, any height, no limits: make the greatest player ever (or the worst). Just for fun: it never counts for leaderboards, XP or rewards.</span></button>
+        <button className="hunt-road" onClick={() => onNew('myplayer', era)}><span className="hunt-road-icon"><ModeIcon mode="career-myplayer" size={64} /></span><b>MyPlayer</b><span>Build him yourself, part by part. Your draft stock is rolled: a Starter, an All-Star, or once in a while a Generational talent.</span></button>
       </div>
     </div>
     <WeeklyCareerCard careers={careers} onPlay={w => onNew('wheel', w.draftYear, w)} />
@@ -311,7 +312,7 @@ function WeeklyCareerCard({ careers, onPlay }: { careers: CareerMeta[]; onPlay: 
       <b>{w.draftYear ? `The ${w.draftYear} draft${FAMOUS[w.draftYear] ? ` (${FAMOUS[w.draftYear]})` : ''}` : 'Today\'s league, the 2026 draft'}</b>
       <p>Everyone spins the same wheel in the same league this week. Build the best career you can and compare Legacy Scores on Discord. New one in {days} day{days === 1 ? '' : 's'}.</p>
       <small>{best ? `Your best this week: Legacy ${best.best} (${best.label})` : mine.length ? `${mine.length} in progress` : 'Not played yet this week'}</small></div>
-    <button className="primary" onClick={() => onPlay(w)}>Spin this week's wheel</button>
+    <button className="primary" onClick={() => onPlay(w)}><ModeIcon mode="career-weekly" size={32} /> Spin this week's wheel</button>
   </div>;
 }
 

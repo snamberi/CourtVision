@@ -1,3 +1,4 @@
+import { ModeIcon } from '../ModeIcon';
 import { useMemo, useState } from 'react';
 import type { NbaHistory } from '../../history/nbaHistoryData';
 import { LEGEND_SCENARIOS, GAME_PLANS, legendRun, legendTeams, playLegendGame, scoreLegend, loadLegendRecords, saveLegendResult, loadLegendRun, storeLegendRun,
@@ -28,7 +29,7 @@ export function LegendChallenges({ h }: { h: NbaHistory }) {
     <p className="hunt-lede">Short scenarios from real NBA history: one series or one game. Coach the real team against the real opponent under that era's rules, pick a game plan before every game, and chase three stars.</p>
     <p className="hint-text">★ push the favourite (win a game, or keep a one-game challenge within 5) · ★★ pull it off · ★★★ pull it off with the scenario's extra goal.</p>
     <div className="legend-grid">{LEGEND_SCENARIOS.map(s => { const rec = records[s.id]; return <article key={s.id} className="legend-card">
-      <header><b>{s.title}</b><Stars n={rec?.stars ?? 0} /></header>
+      <header><ModeIcon mode={`legend-${s.id}`} size={48} /><b>{s.title}</b><Stars n={rec?.stars ?? 0} /></header>
       <p>{s.blurb}</p>
       <p className="hint-text">{s.format === 'game' ? 'One game' : s.start ? `Best of seven, starting ${s.start[0]}-${s.start[1]}` : 'Best of seven'} · ★★★ {s.bonus.text.toLowerCase()}{rec ? ` · best ${rec.best.toLocaleString()} pts` : ''}</p>
       <button className="primary" onClick={() => { setLast(null); set({ scenarioId: s.id, games: [] }); }}>Play</button>

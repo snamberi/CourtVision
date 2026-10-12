@@ -1,3 +1,4 @@
+import { ModeIcon } from '../ModeIcon';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { NbaHistory } from '../../history/nbaHistoryData';
 import { PixelIcon } from '../PixelIcon';
@@ -23,7 +24,7 @@ export function GridGame({ h }: { h: NbaHistory }) {
   const [codeInput, setCodeInput] = useState('');
   return <section className="arcade-gridgame">
     <div className="arcade-switch" role="radiogroup" aria-label="Grid mode">
-      {(['daily', 'endless'] as Mode[]).map(m => <button key={m} role="radio" aria-checked={mode === m} className={mode === m ? 'selected' : ''} onClick={() => setMode(m)}>{m === 'daily' ? 'Daily Grid' : 'Endless grids'}</button>)}
+      {(['daily', 'endless'] as Mode[]).map(m => <button key={m} role="radio" aria-checked={mode === m} className={mode === m ? 'selected' : ''} onClick={() => setMode(m)}><ModeIcon mode={`arcade-${m}`} size={28} />{m === 'daily' ? 'Daily Grid' : 'Endless grids'}</button>)}
     </div>
     {mode === 'daily' ? <DailyGrid h={h} /> : <>
       <div className="cv-grid-code"><span>Grid code <b>{endlessCode}</b>: send it to a friend and compare scores.</span>

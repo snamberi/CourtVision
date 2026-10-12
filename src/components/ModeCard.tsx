@@ -1,37 +1,25 @@
 import { memo } from 'react';
-import { PixelIcon } from './PixelIcon';
-import { pixelIconPath } from './pixelIconData';
+import { ModeEmblem, ModeIcon } from './ModeIcon';
 import type { ModeEntry } from '../menu/modeCatalog';
 import './modeCards.css';
 
-const hash = (s: string) => { let h = 2166136261; for (const c of s) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
-const mix = (a: string, b: string, t: number) => {
-  const p = (x: string) => [1, 3, 5].map(i => parseInt(x.slice(i, i + 2), 16));
-  const [x, y] = [p(a), p(b)];
-  return `rgb(${x.map((v, i) => Math.round(v + (y[i] - v) * t)).join(',')})`;
-};
-
-/**
- * A mode's card art, all pixels: a banded sky in the mode's colours, a hardwood floor with its paint and arc, a hoop,
- * a few sparkles placed by the mode's id, and the mode's icon big in the middle.
- */
+/** Arena banners use the same emblem as their setup screen. Entirely local SVG. */
 export const ModeArt = memo(function ModeArt({ entry, className }: { entry: ModeEntry; className?: string }) {
   const [sky, floor, accent] = entry.art;
-  const h = hash(entry.id);
-  const icon = pixelIconPath(entry.icon);
-  const sparkles = Array.from({ length: 6 }, (_, i) => ({ x: 4 + ((h >>> (i * 5)) % 88), y: 3 + ((h >>> (i * 3 + 7)) % 22) }));
-  return <svg className={`mode-art ${className ?? ''}`} viewBox="0 0 96 48" preserveAspectRatio="xMidYMid slice" shapeRendering="crispEdges" aria-hidden="true">
-    {[0, 1, 2, 3].map(i => <rect key={i} x="0" y={i * 8} width="96" height="8" fill={mix(sky, '#0b1018', i / 5)} />)}
-    {sparkles.map((s, i) => <rect key={i} className="ma-spark" style={{ animationDelay: `${(i * 0.37) % 2}s` }} x={s.x} y={s.y} width={i % 3 ? 1 : 2} height={i % 3 ? 1 : 2} fill={accent} opacity={0.75} />)}
-    <rect x="0" y="32" width="96" height="16" fill={floor} />
-    {[34, 38, 42, 46].map(y => <rect key={y} x="0" y={y} width="96" height="1" fill="#000" opacity=".12" />)}
-    <rect x="0" y="32" width="96" height="1" fill="#fff" opacity=".35" />
-    <rect x="66" y="36" width="30" height="12" fill={accent} opacity=".35" />
-    <rect x="66" y="36" width="1" height="12" fill="#fff" opacity=".6" />
-    <rect x="86" y="12" width="2" height="22" fill="#d9d9d9" />
-    <rect x="80" y="10" width="12" height="9" fill="#f4f0e6" /><rect x="83" y="13" width="6" height="4" fill="none" stroke={accent} strokeWidth="1" />
-    <rect x="76" y="19" width="8" height="1" fill={accent} />
-    <svg className="ma-icon" x="22" y="2" width="44" height="44" viewBox="0 0 16 16"><path d={icon.d} fillRule="evenodd" fill="#000" opacity=".35" transform="translate(.6 .6)" /><path d={icon.d} fillRule="evenodd" fill={accent} />{icon.shine && <path d={icon.shine} fill="#fff" opacity=".35" />}</svg>
+  return <svg className={`mode-art ${className ?? ''}`} viewBox="0 0 160 72" preserveAspectRatio="xMidYMid slice" shapeRendering="crispEdges" aria-hidden="true" focusable="false">
+    <rect width="160" height="72" fill="#0b1120" />
+    <path d="M0 0H160V48H0Z" fill={sky} opacity=".72" />
+    <path d="M0 4H160M0 12H160M0 20H160M0 28H160M0 36H160" stroke="#0b1120" strokeWidth="3" opacity=".3" />
+    <path className="ma-beams" d="M20 0H27L65 53H4ZM133 0H140L156 53H95Z" fill={accent} opacity=".09" />
+    <path d="M0 43H160V72H0Z" fill={floor} opacity=".28" />
+    <path d="M0 44H160M0 56H160M0 69H160M22 44L10 72M55 44L50 72M105 44L110 72M138 44L150 72" stroke={accent} strokeWidth=".5" opacity=".3" />
+    <path d="M5 60H35V71M155 60H125V71M77 47H83V50H77" fill="none" stroke="#fff0c8" opacity=".3" />
+    {[12, 24, 36, 118, 130, 142].map((x, i) => <g key={x}><rect x={x} y={27 + i % 2 * 4} width="5" height="2" fill={accent} opacity=".45" /><rect x={x + 2} y="38" width="3" height="2" fill="#fff0c8" opacity=".3" /></g>)}
+    <path d="M6 7H25M6 10H18M135 7H154M142 10H154" stroke={accent} strokeWidth="1" opacity=".65" />
+    <path d="M8 18V21M6 19H11M148 33V37M146 35H151" stroke={accent} className="ma-spark" />
+    <path d="M53 64H107V67H53Z" fill="#060b15" opacity=".65" />
+    <g transform="translate(52 7) scale(.875)"><ModeEmblem mode={entry.id} /></g>
+    <path d="M0 71H160" stroke={accent} opacity=".6" />
   </svg>;
 });
 
@@ -40,7 +28,7 @@ export function ModeCard({ entry, onOpen, selected, badge, compact }: { entry: M
   return <button className={`mode-tile ${selected ? 'selected' : ''} ${compact ? 'compact' : ''}`} onClick={() => onOpen(entry)} aria-pressed={selected}>
     <ModeArt entry={entry} />
     <span className="mode-tile-body">
-      <b><PixelIcon name={entry.icon} size={16} /> {entry.title}</b>
+      <b><ModeIcon mode={entry.id} size={28} /> {entry.title}</b>
       <small>{entry.desc}</small>
     </span>
     {badge && <em className="mode-tile-badge">{badge}</em>}

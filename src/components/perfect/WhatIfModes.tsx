@@ -1,3 +1,4 @@
+import { ModeIcon } from '../ModeIcon';
 import { useMemo, useState } from 'react';
 import type { NbaHistory } from '../../history/nbaHistoryData';
 import { cardPool, seasonLabel, type HuntCard } from '../../hunt/cards';
@@ -140,7 +141,7 @@ export function WhatIfRows({ open, onOpen }: { open: WhatIfKind | null; onOpen: 
     <h3 className="hunt-subhead">{g === 'whatif' ? 'What If' : 'Fun'} <small>{g === 'whatif' ? 'Rewrite basketball history.' : 'Do whatever you want.'} Unranked, normal difficulty.</small></h3>
     <div className="p820-modes">{WHAT_IF_INFO.filter(x => x.group === g).map(x => <button key={x.kind} className={`p820-mode p820-mode-new ${open === x.kind ? 'on' : ''}`} aria-expanded={open === x.kind} onClick={() => onOpen(open === x.kind ? null : x.kind)}>
       <span className="p820-new-tag">{g === 'whatif' ? 'WHAT IF' : 'FUN'}</span>
-      <span className="hunt-mode-icon"><PixelIcon name={x.icon} size={24} /></span><b>{x.name}</b><small>{x.blurb}</small>
+      <span className="hunt-mode-icon"><ModeIcon mode={`whatif-${x.kind}`} size={64} /></span><b>{x.name}</b><small>{x.blurb}</small>
       <em>{open === x.kind ? 'Close' : 'Set it up'}</em></button>)}</div>
   </div>)}</>;
 }

@@ -93,3 +93,14 @@
 .menu-gold .menu-bar-coin { animation-name: coin-glow-gold; }
 @keyframes coin-glow-gold { 50% { box-shadow: 0 0 0 3px var(--c-shadow-d99a00, #d99a00), 0 4px 0 3px var(--c-shadow-8a6200, #8a6200), 0 0 18px 4px var(--c-shadow-ffc21a80, rgba(255, 194, 26, .5)); } }
 @media (prefers-reduced-motion: reduce) { .ma-spark, .menu-bar-coin, .ma-icon { animation: none !important; } }
+
+/* Emblem banners: retain the active menu theme and existing card controls. */
+.mode-tile .mode-art { aspect-ratio: 20 / 9; }
+:root .mode-card .mode-art { width: calc(100% + 34px); max-height: none; height: 128px; margin: -17px -17px 12px; flex: 0 0 auto; }
+.ma-beams { animation: ma-lights 6s ease-in-out infinite; }
+@keyframes ma-lights { 50% { opacity: .18; } }
+:root .mode-card-wrap:nth-child(2n) .mi-object { animation-delay: -.8s; }
+:root .mode-card-wrap:nth-child(3n) .mi-object { animation-delay: -1.6s; }
+@media (max-width: 720px) { :root .mode-card .mode-art { width: calc(100% + 30px); height: 108px; margin: -15px -15px 12px; } }
+:root.lite .ma-beams { animation: none !important; }
+@media (prefers-reduced-motion: reduce) { .ma-beams { animation: none !important; } }

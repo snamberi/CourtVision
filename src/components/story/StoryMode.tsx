@@ -1,3 +1,4 @@
+import { ModeIcon } from '../ModeIcon';
 import { useRef, useState } from 'react';
 import {
   newStory, currentBeat, continueStory, choose, spendTraining, choosePath, runDraft, playStoryGame, ending, overall, storyShareText, chapterOf, ordinal,
@@ -82,7 +83,7 @@ function Create({ endings, onStart }: { endings: StoryEndings; onStart: (name: s
       <label className="story-field"><span>Your name</span><input className="year-input" maxLength={24} value={name} placeholder="Jaylen Carter" onChange={e => setName(e.target.value)} /></label>
       <h3 className="hunt-subhead">Your game</h3>
       <div className="story-styles" role="radiogroup" aria-label="Your game">{(Object.keys(STYLES) as StoryStyle[]).map(k => <button key={k} role="radio" aria-checked={style === k} className={style === k ? 'active' : ''} onClick={() => setStyle(k)}>
-        <b>{STYLES[k].name}</b><small>{STYLES[k].pos} · {STYLES[k].blurb}</small></button>)}</div>
+        <ModeIcon mode={`story-${k}`} size={48} /><b>{STYLES[k].name}</b><small>{STYLES[k].pos} · {STYLES[k].blurb}</small></button>)}</div>
       <label className="story-field"><span>Hometown</span><select className="year-input" value={town} onChange={e => setTown(e.target.value)}>{HOMETOWNS.map(t => <option key={t}>{t}</option>)}</select></label>
       <div className="contest-actions"><button className="primary hunt-play" onClick={() => onStart(name || 'Jaylen Carter', style, town)}><PixelIcon name="play" size={16} /> Begin the story</button></div>
       {endings.finished > 0 && <p className="hint-text">Stories finished: {endings.finished} · endings seen: {Object.keys(endings.tiers).length} of 4</p>}

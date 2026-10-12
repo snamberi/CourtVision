@@ -1,3 +1,4 @@
+import { ModeIcon } from '../ModeIcon';
 import { useMemo, useState } from 'react';
 import type { NbaHistory } from '../../history/nbaHistoryData';
 import { cardPool, seasonLabel, type HuntCard } from '../../hunt/cards';
@@ -21,9 +22,9 @@ export function BattleSetup({ onStart, onCancel }: { onStart: (rival: BattleRiva
     <p className="hint-text">The game rolls a category and you take turns picking from it (1-2-2-1…), {BATTLE_PICKS} players each. Then your two teams play a best-of-seven. No ratings while you draft.</p>
     <div className="p820-modes">
       {(['rookie', 'pro', 'legend'] as BattleRival[]).map(r => <button key={r} className="p820-mode" onClick={() => onStart(r, ['You', RIVALS[r].gm])}>
-        <span className="hunt-mode-icon"><PixelIcon name={r === 'legend' ? 'crown' : r === 'pro' ? 'star' : 'team'} size={24} /></span><b>vs {RIVALS[r].gm}</b><small>{RIVALS[r].name}: {RIVALS[r].blurb}</small><em>Start</em></button>)}
+        <span className="hunt-mode-icon"><ModeIcon mode={`battle-${r}`} size={64} /></span><b>vs {RIVALS[r].gm}</b><small>{RIVALS[r].name}: {RIVALS[r].blurb}</small><em>Start</em></button>)}
       <button className={`p820-mode ${friend ? 'on' : ''}`} onClick={() => setFriend(true)}>
-        <span className="hunt-mode-icon"><PixelIcon name="phone" size={24} /></span><b>vs a friend</b><small>Pass the device: you pick in turns, then watch the series together.</small><em>Set up</em></button>
+        <span className="hunt-mode-icon"><ModeIcon mode="battle-friend" size={64} /></span><b>vs a friend</b><small>Pass the device: you pick in turns, then watch the series together.</small><em>Set up</em></button>
     </div>
     {friend && <div className="p820-battle-names">
       <label>Player 1 <input value={p1} maxLength={16} onChange={e => setP1(e.target.value)} /></label>

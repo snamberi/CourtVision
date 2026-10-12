@@ -1,3 +1,4 @@
+import { ModeIcon } from '../ModeIcon';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { NbaHistory } from '../../history/nbaHistoryData';
 import { cardPool, seasonLabel, RARITY_LABEL, type HuntCard } from '../../hunt/cards';
@@ -198,28 +199,28 @@ function Hub({ h, records, onStart, onWhatIf, onBattle }: { h: NbaHistory; recor
     <div className="p820-modes">
       <button className="p820-mode p820-weekly" onClick={() => onStart('category', weekSeed(week), undefined, { weekly: week, catOpts })}>
         <span className="p820-new-tag">THIS WEEK</span>
-        <span className="hunt-mode-icon"><PixelIcon name="calendar" size={24} /></span><b>Weekly Category Challenge</b>
+        <span className="hunt-mode-icon"><ModeIcon mode="perfect-weekly" size={64} /></span><b>Weekly Category Challenge</b>
         <small>Everyone's starters come from <strong>{weekCat.name}</strong> (tier {weekCat.tier}, ×{TIER_MULTIPLIER[weekCat.tier]}). Same bench rolls for everyone; your best try counts on the weekly board.</small>
         <em>{weekBest ? `Best this week: ${weekBest.w}-${weekBest.l} · ${weekBest.score.toLocaleString()}` : 'Play this week'}</em></button>
       <button className="p820-mode p820-weekly" onClick={() => onStart('quick', Math.floor(Math.random() * 1_000_000_000), undefined, { ...prefs, rule: weekRule })}>
         <span className="p820-new-tag">WEEKLY RULE</span>
-        <span className="hunt-mode-icon"><PixelIcon name="clock" size={24} /></span><b>Quick Spin: {ERA_RULES[weekRule].name}</b>
+        <span className="hunt-mode-icon"><ModeIcon mode="perfect-rule" size={64} /></span><b>Quick Spin: {ERA_RULES[weekRule].name}</b>
         <small>This week, {ERA_RULES[weekRule].blurb}. A new rule every Monday.</small><em>Start</em></button>
       {(['category', 'slots', 'quick', 'franchise'] as PerfectMode[]).map(m => <button key={m} className={`p820-mode ${isCategoryMode(m) ? 'p820-mode-new' : ''}`} onClick={() => onStart(m, Math.floor(Math.random() * 1_000_000_000), undefined, { ...prefs, catOpts })}>
         {isCategoryMode(m) && <span className="p820-new-tag">NEW</span>}
-        <span className="hunt-mode-icon"><PixelIcon name={MODE_INFO[m].icon} size={24} /></span><b>{MODE_INFO[m].name}</b><small>{MODE_INFO[m].blurb}</small><em>Start</em></button>)}
+        <span className="hunt-mode-icon"><ModeIcon mode={`perfect-${m}`} size={64} /></span><b>{MODE_INFO[m].name}</b><small>{MODE_INFO[m].blurb}</small><em>Start</em></button>)}
       <button className={`p820-mode p820-mode-new ${building ? 'on' : ''}`} onClick={() => setBuilding(b => !b)} aria-expanded={building}>
         <span className="p820-new-tag">NEW</span>
-        <span className="hunt-mode-icon"><PixelIcon name="settings" size={24} /></span><b>Custom Category</b>
+        <span className="hunt-mode-icon"><ModeIcon mode="perfect-custom" size={64} /></span><b>Custom Category</b>
         <small>Build your own: up to three categories at once ("Lakers × 90s players × All-Stars"), then draft from it and send the code to a friend.</small>
         <em>{building ? 'Close the builder' : 'Build one'}</em></button>
       <button className="p820-mode p820-mode-new" onClick={onBattle}>
         <span className="p820-new-tag">NEW</span>
-        <span className="hunt-mode-icon"><PixelIcon name="trade" size={24} /></span><b>Draft Battle</b>
+        <span className="hunt-mode-icon"><ModeIcon mode="perfect-battle" size={64} /></span><b>Draft Battle</b>
         <small>One category, two GMs, a snake draft. Then your eight against theirs in a best-of-seven. Play an AI rival GM or a friend on this device.</small>
         <em>{battles.played ? `${battles.won}-${battles.played - battles.won} in battles` : 'Start'}</em></button>
       <button className="p820-mode p820-daily" onClick={() => onStart(daily.mode, daily.seed, today)}>
-        <span className="hunt-mode-icon"><PixelIcon name="calendar" size={24} /></span><b>Daily 82-0</b>
+        <span className="hunt-mode-icon"><ModeIcon mode="perfect-daily" size={64} /></span><b>Daily 82-0</b>
         <small>Today: {MODE_INFO[daily.mode].name}. The same spins for everyone; your best try counts on the weekly board.</small>
         <em>{todayBest ? `Best today: ${todayBest.w}-${todayBest.l} · ${todayBest.score.toLocaleString()}` : 'Play today'}</em></button>
     </div>
