@@ -1,3 +1,4 @@
+import { ModeIcon } from '../ModeIcon';
 import { useEffect, useRef, useState } from 'react';
 import type { NbaHistory } from '../../history/nbaHistoryData';
 import { cardPool, seasonLabel, type HuntCard } from '../../hunt/cards';
@@ -107,8 +108,8 @@ function Hub({ records, onStart }: { records: SurvivalRecords; onStart: (level: 
       <h3 className="hunt-subhead">Difficulty</h3>
       <DifficultyCards value={level} onChange={setLevel} options={(Object.keys(SURVIVAL_LEVELS) as SurvivalLevel[]).map((l, i) => ({ id: l, name: SURVIVAL_LEVELS[l].name, blurb: SURVIVAL_LEVELS[l].blurb, level: i + 1 + (i === 2 ? 1 : 0), extra: `x${SURVIVAL_LEVELS[l].mult} score` }))} />
       <div className="contest-actions">
-        <button className="primary hunt-play" onClick={() => onStart(level)}><PixelIcon name="play" size={16} /> Start a run</button>
-        <button onClick={() => onStart('pro', today)} disabled={!!doneToday}>{doneToday ? `Daily Survival done: ${doneToday.wins} wins` : 'Daily Survival (same for everyone today)'}</button>
+        <button className="primary hunt-play" onClick={() => onStart(level)}><ModeIcon mode="survival" size={36} /> Start a run</button>
+        <button onClick={() => onStart('pro', today)} disabled={!!doneToday}><ModeIcon mode="survival-daily" size={36} />{doneToday ? `Daily Survival done: ${doneToday.wins} wins` : 'Daily Survival (same for everyone today)'}</button>
       </div>
     </div>
     <div className="hunt-over-stats surv-records">

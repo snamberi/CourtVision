@@ -1,3 +1,4 @@
+import { ModeIcon } from './ModeIcon';
 import { PrivacyLink } from './PrivacyLink';
 import { IS_DESKTOP_BUILD } from '../appMode';
 import { DISCORD_URL } from './DiscordLink';
@@ -251,7 +252,7 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
               aria-describedby={picked ? `mode-play-${m.id}` : undefined}
             >
               {modeById(m.id) && <ModeArt entry={modeById(m.id)!} />}
-              <span className="mode-card-kicker"><PixelIcon name={m.icon} size={24} /><span>{m.kicker}</span>{(m.badge || hot) && <span className="mode-flags">{hot && <span className="mode-xp" title={`Mode of the Week: double XP for ${FEATURED_NAME[featured]} runs finished this week`}>2× XP</span>}{m.badge && <span className={`mode-badge mode-badge-${m.badge}`}><PixelIcon name={m.badge === 'popular' ? 'flame' : 'star'} size={12} /> {BADGE_LABEL[m.badge]}</span>}</span>}<span className="mode-selection-dot" /></span>
+              <span className="mode-card-kicker"><ModeIcon mode={m.id} size={30} /><span>{m.kicker}</span>{(m.badge || hot) && <span className="mode-flags">{hot && <span className="mode-xp" title={`Mode of the Week: double XP for ${FEATURED_NAME[featured]} runs finished this week`}>2× XP</span>}{m.badge && <span className={`mode-badge mode-badge-${m.badge}`}><PixelIcon name={m.badge === 'popular' ? 'flame' : 'star'} size={12} /> {BADGE_LABEL[m.badge]}</span>}</span>}<span className="mode-selection-dot" /></span>
               <h3>{m.title}</h3>
               <p>{m.blurb}</p>
               {inProgress && <span className="mode-continue"><PixelIcon name="play" size={12} /> In progress: {inProgress}</span>}

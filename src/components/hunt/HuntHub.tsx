@@ -1,3 +1,4 @@
+import { ModeIcon } from '../ModeIcon';
 import { RecordBookPanel } from './RunStats';
 import { ViewToggles } from '../ChallengeOptions';
 import { challengePrefs, defaultLevel, saveChallengePrefs } from '../../retention/challenge';
@@ -33,7 +34,7 @@ export function HuntHub({ h, records, onStart }: { h: NbaHistory; records: HuntR
   ];
   return <section className="hunt-hub hunt-hub-centered">
     <nav className="hunt-modes" aria-label="League Hunt modes">{tiles.map(t => <button key={t.id} className={`hunt-mode-tile ${tab === t.id ? 'on' : ''}`} aria-pressed={tab === t.id} onClick={() => setTab(t.id)}>
-      <span className="hunt-mode-icon"><PixelIcon name={t.icon} size={22} /></span><b>{t.name}</b><small>{t.sub}</small>{t.badge && <em>{t.badge}</em>}</button>)}</nav>
+      <span className="hunt-mode-icon"><ModeIcon mode={`hunt-${t.id}`} size={64} /></span><b>{t.name}</b><small>{t.sub}</small>{t.badge && <em>{t.badge}</em>}</button>)}</nav>
     <div className="hunt-hub-panel">
       {tab === 'hunt' ? <NewHunt records={records} onStart={opts => onStart(Math.floor(Math.random() * 1_000_000_000), opts)} />
         : tab === 'weekly' ? <Weekly records={records} onStart={(seed, opts) => onStart(seed, opts)} />
@@ -57,7 +58,7 @@ function NewHunt({ records, onStart }: { records: HuntRecords; onStart: (opts: N
       <p>Spin a {SQUAD_SIZE}-man squad and a coach from all of NBA history, then win ten best-of-seven series. Series 5 is a semi-boss, series 10 the boss.</p></div>
     <div className="hunt-step"><span className="hunt-step-n">1</span><h3>Starting deck</h3>
       <div className="hunt-pills" role="radiogroup" aria-label="Starting deck">{DECK_IDS.map(id => { const open = deckUnlocked(records, id); return <button key={id} role="radio" aria-checked={deck === id} className={`hunt-pill ${deck === id ? 'on' : ''}`} disabled={!open} title={open ? DECKS[id].blurb : `Locked: ${DECKS[id].unlock}`} onClick={() => setDeck(id)}>
-        {!open && <PixelIcon name="lock" size={12} />} {DECKS[id].name}</button>; })}</div>
+        <ModeIcon mode={`deck-${id}`} size={32} />{!open && <PixelIcon name="lock" size={12} />} {DECKS[id].name}</button>; })}</div>
       <p className="hunt-step-note">{d.blurb}</p></div>
     <div className="hunt-step"><span className="hunt-step-n">2</span><h3>Difficulty</h3>
       <DifficultyCards value={difficulty} onChange={setDifficulty} options={DIFFICULTY_IDS.map((id, i) => ({ id, name: DIFFICULTIES[id].name, blurb: DIFFICULTIES[id].blurb, level: i + 1 + (i === 2 ? 1 : 0), extra: `${DIFFICULTIES[id].lives} lives`, locked: difficultyUnlocked(records, id) ? undefined : DIFFICULTIES[id].unlock }))} /></div>

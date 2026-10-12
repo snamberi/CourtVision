@@ -1,3 +1,4 @@
+import { ModeIcon } from './ModeIcon';
 import { lazy, Suspense, useState } from 'react';
 import type { TimeMachinePick } from './TimeMachinePicker';
 const TimeMachinePicker = lazy(() => import('./TimeMachinePicker').then(m => ({ default: m.TimeMachinePicker })));
@@ -90,7 +91,7 @@ export function FranchiseCreate({ onBack, onStart, busy = null, initial = 'free'
       <h2 id="create-step-game"><span className="create-num">1</span> Choose your game</h2>
       <div className="create-choices create-choices-6" role="radiogroup" aria-label="Game">
         {CHALLENGES.map(c => <button key={c.id} role="radio" aria-checked={challenge === c.id} className={`create-choice ${challenge === c.id ? 'selected' : ''}`} onClick={() => setChallenge(c.id)}>
-          <span className="create-choice-head"><PixelIcon name={c.icon} size={22} /><b>{c.title}</b><small><PixelIcon name="clock" size={11} /> {c.time}</small></span>
+          <span className="create-choice-head"><ModeIcon mode={c.id === 'free' ? 'franchise' : c.id} size={52} /><b>{c.title}</b><small><PixelIcon name="clock" size={11} /> {c.time}</small></span>
           <span className="create-choice-blurb">{c.blurb}</span>
           {c.id === 'dynasty' ? <span className="create-tag hot">New</span> : c.id !== 'free' && <span className="create-tag">Challenge</span>}
         </button>)}
@@ -102,11 +103,11 @@ export function FranchiseCreate({ onBack, onStart, busy = null, initial = 'free'
         <h2 id="create-step-league"><span className="create-num">2</span> Pick a league</h2>
         <div className="create-choices create-choices-2" role="radiogroup" aria-label="League type">
           <button role="radio" aria-checked={source !== 'random'} className={`create-choice ${source !== 'random' ? 'selected' : ''}`} onClick={() => setSource('history')}>
-            <span className="create-choice-head"><PixelIcon name="court" size={22} /><b>Real NBA league</b><span className="create-tag hot">Most popular</span></span>
+            <span className="create-choice-head"><ModeIcon mode="league-history" size={52} /><b>Real NBA league</b><span className="create-tag hot">Most popular</span></span>
             <span className="create-choice-blurb">Real players, real careers, awards and champions from any season since 1946. From the first game on, your league writes its own history.</span>
           </button>
           <button role="radio" aria-checked={source === 'random'} className={`create-choice ${source === 'random' ? 'selected' : ''}`} onClick={() => setSource('random')}>
-            <span className="create-choice-head"><PixelIcon name="team" size={22} /><b>Random league</b></span>
+            <span className="create-choice-head"><ModeIcon mode="league-random" size={52} /><b>Random league</b></span>
             <span className="create-choice-blurb">A freshly generated 30-team league: every player, team and storyline new. Nobody knows who the stars are yet.</span>
           </button>
         </div>
@@ -176,7 +177,7 @@ export function FranchiseCreate({ onBack, onStart, busy = null, initial = 'free'
       </label>
       <div className="create-choices create-choices-3" role="radiogroup" aria-label="Which Games">
         {MODE_GAMES.map(g => <button key={String(g.id)} role="radio" aria-checked={wgGames === g.id} className={`create-choice ${wgGames === g.id ? 'selected' : ''}`} onClick={() => setWgGames(g.id)}>
-          <span className="create-choice-head"><b>{g.label}</b></span><span className="create-choice-blurb">{g.blurb}</span>
+          <span className="create-choice-head"><ModeIcon mode={g.id === 'fantasy' ? 'games-fantasy' : 'games-real'} size={40} /><b>{g.label}</b></span><span className="create-choice-blurb">{g.blurb}</span>
         </button>)}
       </div>
     </section>}

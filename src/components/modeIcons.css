@@ -1,0 +1,49 @@
+/* Mode art is intentionally independent from theme colors; its dark pixel keyline
+   keeps the same collectible artwork legible in every existing light/dark theme. */
+.mode-icon { display: inline-block; flex: 0 0 auto; vertical-align: middle; overflow: visible; image-rendering: pixelated; }
+.mi-object { transform-origin: 32px 36px; }
+.mi-halo { animation: mi-breathe 5s ease-in-out infinite; }
+.mi-spark { animation: mi-sparkle 4.6s steps(3, end) infinite; }
+.mi-spark-late { animation-delay: -2.3s; }
+.mi-detail, .mi-wheel, .mi-clock-hand, .mi-flare { transform-origin: 32px 31px; }
+/* Idle motion stays small. Hover, keyboard focus and selection wake the emblem. */
+.mode-art .mi-object { animation: mi-float 5s steps(6, end) infinite; }
+:is(button:hover, button:focus-visible, button.selected, button.on, button[aria-checked='true'], button[aria-pressed='true'], button[aria-expanded='true']) > .mode-icon .mi-object,
+:is(button:hover, button:focus-visible, button.selected, button.on, button[aria-checked='true'], button[aria-pressed='true'], button[aria-expanded='true']) :is(.hunt-mode-icon, .hunt-road-icon, .create-choice-head, .mode-card-kicker, .mode-art, .mode-tile-body) .mi-object { animation: mi-float 1.8s steps(5, end) infinite; }
+button:is(:hover, :focus-visible, .selected, .on, [aria-checked='true'], [aria-pressed='true']) .mi-detail { animation: mi-detail-hop 1.5s steps(5, end) infinite; }
+button:is(:hover, :focus-visible, .selected, .on, [aria-checked='true'], [aria-pressed='true']) .mi-wheel { animation: mi-turn 5s steps(24, end) infinite; }
+button:is(:hover, :focus-visible, .selected, .on, [aria-checked='true'], [aria-pressed='true']) .mi-clock-hand { animation: mi-turn 6s steps(12, end) infinite; }
+button:is(:hover, :focus-visible, .selected, .on, [aria-checked='true'], [aria-pressed='true']) .mi-flare { animation: mi-flame 1.2s steps(3, end) infinite; }
+button:is(:hover, :focus-visible, .selected, .on, [aria-checked='true'], [aria-pressed='true']) .mi-halo { opacity: .3; }
+.mode-card-kicker > .mode-icon { width: 30px; height: 30px; }
+.mode-tile-body b > .mode-icon { width: 28px; height: 28px; }
+.hunt-mode-icon:has(.mode-icon) { width: 64px; height: 64px; background: transparent; }
+.hunt-mode-tile:has(.mode-icon) { grid-template-columns: 64px minmax(0, 1fr); }
+.hunt-mode-tile:has(em):has(.mode-icon) { padding-top: 28px; }
+.hunt-mode-tile > b, .hunt-mode-tile > small { min-width: 0; overflow-wrap: anywhere; }
+.hunt-road-icon:has(.mode-icon) { display: block; line-height: 0; }
+.create-choice-head > .mode-icon { width: 52px; height: 52px; }
+.hunt-pill:has(.mode-icon), .arcade-tabs button:has(.mode-icon), .arcade-switch button:has(.mode-icon), .contest-actions button:has(> .mode-icon) { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.hunt-pill:has(.mode-icon) { padding: 6px 10px 6px 5px; }
+button:disabled .mode-icon { opacity: .5; filter: saturate(.35); }
+button:disabled .mi-emblem * { animation: none !important; }
+@keyframes mi-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
+@keyframes mi-breathe { 0%, 100% { opacity: .1; } 50% { opacity: .24; } }
+@keyframes mi-sparkle { 0%, 15%, 85%, 100% { opacity: .25; } 40%, 60% { opacity: 1; } }
+@keyframes mi-detail-hop { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-3px); } 70% { transform: translateY(1px); } }
+@keyframes mi-turn { to { transform: rotate(360deg); } }
+@keyframes mi-flame { 0%, 100% { transform: translateY(0); opacity: .7; } 50% { transform: translateY(-2px) scaleX(.95); opacity: 1; } }
+:root.lite :is(.mi-emblem, .mode-art) *, :root.lite .mode-art { animation: none !important; transition: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .mi-emblem *, .mode-art, .mode-art * { animation: none !important; transition: none !important; }
+}
+@media (max-width: 600px) {
+  .hunt-mode-tile:has(.mode-icon) { grid-template-columns: 48px minmax(0, 1fr); column-gap: 8px; padding-inline: 10px; }
+  .hunt-mode-tile .hunt-mode-icon:has(.mode-icon), .hunt-mode-tile .hunt-mode-icon > .mode-icon { width: 48px; height: 48px; }
+}
+
+.legend-card:has(.mode-icon) > header { display: grid; grid-template-columns: 48px minmax(0, 1fr); align-items: center; gap: 8px; }
+.legend-card:has(.mode-icon) > header > :last-child { grid-column: 2; }
+.legend-card:hover .mi-object { animation: mi-float 1.8s steps(5, end) infinite; }
+:root.lite .legend-card .mi-object { animation: none !important; }
+@media (prefers-reduced-motion: reduce) { .legend-card .mi-object { animation: none !important; } }

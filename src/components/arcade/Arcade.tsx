@@ -1,3 +1,4 @@
+import { ModeIcon } from '../ModeIcon';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { NbaHistory } from '../../history/nbaHistoryData';
 import { PixelIcon } from '../PixelIcon';
@@ -58,7 +59,7 @@ export function Arcade({ tab, onTab, onExit }: { tab: ArcadeTab; onTab: (t: Arca
       <div className="hunt-title"><span className="pixel-eyebrow">QUICK GAMES · REAL NBA HISTORY</span><h1>{TABS.find(t => t.id === tab)!.label}</h1></div>
     </header>
     <nav className="arcade-tabs" role="tablist" aria-label="Quick games">
-      {TABS.map(t => <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'selected' : ''} onClick={() => onTab(t.id)}><PixelIcon name={t.icon} size={16} /> {t.label}</button>)}
+      {TABS.map(t => <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'selected' : ''} onClick={() => onTab(t.id)}><ModeIcon mode={t.id === 'legends' ? 'legendsT' : t.id} size={28} /> {t.label}</button>)}
     </nav>
     {error ? <p className="empty-state">Could not load the NBA history data: {error}</p>
       : !h ? <p className="empty-state">Loading 80 years of basketball…</p>
@@ -73,7 +74,7 @@ const untilMidnight = () => { const now = new Date(), next = Date.UTC(now.getUTC
 /** Daily or endless: a small switch at the top of a game. */
 function PlaySwitch<T extends string>({ value, options, onChange, label }: { value: T; options: { id: T; label: string }[]; onChange: (v: T) => void; label: string }) {
   return <div className="arcade-switch" role="radiogroup" aria-label={label}>
-    {options.map(o => <button key={o.id} role="radio" aria-checked={value === o.id} className={value === o.id ? 'selected' : ''} onClick={() => onChange(o.id)}>{o.label}</button>)}
+    {options.map(o => <button key={o.id} role="radio" aria-checked={value === o.id} className={value === o.id ? 'selected' : ''} onClick={() => onChange(o.id)}>{['daily', 'weekly', 'endless', 'random'].includes(o.id) && <ModeIcon mode={`arcade-${o.id}`} size={28} />}{o.label}</button>)}
   </div>;
 }
 
