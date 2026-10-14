@@ -241,6 +241,41 @@ function balanceRosters(teams: LeagueTeam[], contracts: Record<string, Contract>
   });
 }
 
+/** Share of the max salary by league-wide rank (0 = the best player), like the real NBA's pay spread. */
+const PAY_CURVE: [number, number][] = [[0, 1], [0.02, 0.9], [0.05, 0.62], [0.15, 0.32], [0.35, 0.12], [0.6, 0.04], [1, 0]];
+export function payShare(rank: number): number {
+  for (let i = 1; i < PAY_CURVE.length; i++) {
+    const [r1, v1] = PAY_CURVE[i], [r0, v0] = PAY_CURVE[i - 1];
+    if (rank <= r1) return v0 + (v1 - v0) * ((rank - r0) / (r1 - r0));
+  }
+  return 0;
+}
+/**
+ * Pays every player by where he ranks in the whole league, not on his own team: a few big deals, a band of solid
+ * contracts, most players on modest ones (a 70 on a weak team no longer earns like the league's best). Ranks count
+ * fifteen players a team (the deep end of an 18-man roster is on minimums), and the whole pay scale is set so the
+ * average payroll opens at about 88% of the cap, leaving most teams real room; a team that would still open more
+ * than 15% over the cap is scaled back to that.
+ */
+function payByLeagueRank(teams: LeagueTeam[], contracts: Record<string, Contract>, jitters: Map<string, number>): void {
+  const cap = DEFAULT_CAP_SETTINGS.salaryCap, max = cap * DEFAULT_CAP_SETTINGS.maxSalaryPctOfCap, min = 1_200_000;
+  const all = teams.flatMap(t => t.seasons).sort((a, b) => calculateOverall(b) - calculateOverall(a));
+  const slots = Math.max(2, teams.length * 15);
+  const raw = all.map((p, i) => min + (max - min) * payShare(Math.min(1, i / (slots - 1))) * (jitters.get(p.playerId) ?? 1));
+  const total = raw.reduce((n, x) => n + x, 0), floor = all.length * min, target = teams.length * cap * 0.88;
+  const k = total > target && total > floor ? Math.max(0, (target - floor) / (total - floor)) : 1;
+  all.forEach((p, i) => {
+    const salary = min + (raw[i] - min) * k;
+    contracts[p.playerId] = { ...contracts[p.playerId], annualSalary: Math.min(max, Math.round(salary / 10_000) * 10_000) };
+  });
+  for (const t of teams) {
+    const payroll = t.seasons.reduce((n, p) => n + contracts[p.playerId].annualSalary, 0);
+    if (payroll <= cap * 1.15) continue;
+    const k = (cap * 1.15) / payroll;
+    for (const p of t.seasons) contracts[p.playerId] = { ...contracts[p.playerId], annualSalary: Math.max(min, Math.round(contracts[p.playerId].annualSalary * k / 10_000) * 10_000) };
+  }
+}
+
 export function generateFullLeague(
   seed = 1, teamCount = 30, rosterSize = 18, gamesPerTeam = 82, seasonLabel = '2026',
   /** Set `priorSeasons: false` to skip the synthetic "season zero" history and start every player with a blank career. */
@@ -255,6 +290,7 @@ export function generateFullLeague(
   const contracts: Record<string, Contract> = {};
   const usedNames = new Set<string>();
   const usedCoachNames = new Set<string>();
+  const jitters = new Map<string, number>();
 
   for (let t = 0; t < teamCount; t++) {
     const [city, mascot] = CITY_MASCOTS[t % CITY_MASCOTS.length];
@@ -269,31 +305,18 @@ export function generateFullLeague(
       seasons.push(applyHistoricalDraftInfo(player, seasonLabel, teamId, rng));
     }
 
-    // Salaries are assigned by roster rank (best player down to last), not raw overall alone, so a
-    // freshly generated team's total payroll lands comfortably under the cap on average - like a real
-    // team that has actually built a roster - rather than randomly blowing past it before the user even
-    // makes a move. Each rank gets a smaller share than the one above it (a real "star to scrub" curve),
-    // scaled so the whole roster targets ~88% of the cap, then jittered +/-10% per player.
+    // Salaries are set league-wide once every team exists (see payByLeagueRank below); each player's jitter is drawn
+    // here so a seed still generates the same league.
     const ranked = [...seasons].sort((a, b) => calculateOverall(b) - calculateOverall(a));
-    const weights = ranked.map((_, i) => Math.pow(0.80, i));
-    const weightSum = weights.reduce((a, b) => a + b, 0);
-    const targetTotal = DEFAULT_CAP_SETTINGS.salaryCap * 0.88;
-    const MIN_SALARY = 1_200_000;
-    ranked.forEach((s, i) => {
-      const rawShare = (weights[i] / weightSum) * targetTotal;
-      const jittered = rawShare * (0.9 + rng.next() * 0.2);
-      contracts[s.playerId] = {
-        playerId: s.playerId, teamId,
-        annualSalary: Math.max(MIN_SALARY, Math.round(jittered)),
-        yearsRemaining: 1 + rng.nextInt(4),
-        playerOption: rng.next() < 0.1,
-        teamOption: rng.next() < 0.15,
-      };
-    });
+    for (const s of ranked) {
+      jitters.set(s.playerId, 0.92 + rng.next() * 0.16);
+      contracts[s.playerId] = { playerId: s.playerId, teamId, annualSalary: 0, yearsRemaining: 1 + rng.nextInt(4), playerOption: rng.next() < 0.1, teamOption: rng.next() < 0.15 };
+    }
 
     teams.push({ teamId, name, seasons, coach: { ...defaultCoachTendencies(), paceTendency: jitter(rng, 50, 20) }, chemistry: jitter(rng, 65, 20), coachIdentity: generateCoachIdentity(rng, seasonLabel, usedCoachNames), expenseLevels: { scouting: jitter(rng, 50, 25), coaching: jitter(rng, 50, 25), health: jitter(rng, 50, 25), facilities: jitter(rng, 50, 25) } });
   }
 
+  payByLeagueRank(teams, contracts, jitters);
   if (opts.balanced) balanceRosters(teams, contracts, new RNG(seed + 4_441));
 
   // "Season zero": give players who've plausibly already played a few seasons a synthetic stat history, so

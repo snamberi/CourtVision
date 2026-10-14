@@ -636,10 +636,20 @@ export function movePlayerToTeam(league: League, extras: GMLeagueExtras, playerI
 
 /** A player's ballpark contract demand in free agency, scaled between the league minimum and a true
  * max contract by overall rating. Not a hard price — teams can still offer more or less at signing. */
+/**
+ * Share of the max salary by Overall: the same pay scale a new league opens with (see payByLeagueRank), so free
+ * agents ask what players of their level already earn: an 80+ about the max, a 70 a bit over half, a 60 about a
+ * quarter, a 50 close to the minimum.
+ */
+const ASK_CURVE: [number, number][] = [[45, 0], [50, 0.03], [55, 0.09], [60, 0.24], [65, 0.41], [70, 0.56], [75, 0.76], [80, 0.95], [85, 1]];
 export function computeAskingSalary(overall: number, capSettings: SalaryCapSettings): number {
-  const t = Math.max(0, Math.min(1, (overall - 45) / 45)); // 45 OVR -> bottom of the scale, 90+ OVR -> near max
   const max = capSettings.salaryCap * capSettings.maxSalaryPctOfCap;
-  return Math.round(capSettings.minSalary + (max - capSettings.minSalary) * Math.pow(t, 1.8));
+  let share = overall >= 85 ? 1 : 0;
+  for (let i = 1; i < ASK_CURVE.length; i++) {
+    const [o0, v0] = ASK_CURVE[i - 1], [o1, v1] = ASK_CURVE[i];
+    if (overall >= o0 && overall <= o1) { share = v0 + (v1 - v0) * ((overall - o0) / (o1 - o0)); break; }
+  }
+  return Math.round(capSettings.minSalary + (max - capSettings.minSalary) * share);
 }
 
 /** The team a free agent most recently played for, read off their history log (waived/expired entries

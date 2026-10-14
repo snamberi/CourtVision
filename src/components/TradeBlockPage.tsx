@@ -1,8 +1,12 @@
 import { TeamLink } from './TeamLink';
 import type { League } from '../simulation/league';
 import type { GMLeagueExtras, FutureDraftPick } from '../simulation/gm';
-import { canManageTeam, toggleTradeBlock, computeTradeValue, tradeableFuturePicks, computeFutureDraftPickValue, togglePickOnBlock, isTradeDeadlinePassed } from '../simulation/gm';
+import { canManageTeam, toggleTradeBlock, computeTradeValue, tradeableFuturePicks, computeFutureDraftPickValue, togglePickOnBlock, isTradeDeadlinePassed, validateTrade, executeTrade } from '../simulation/gm';
+import { seekTradeOffers, type SoughtOffer } from '../simulation/seekOffers';
+import { calculateOverall } from '../simulation/engine/overall';
+import { useState } from 'react';
 import { PlayerNameTag } from './PlayerAvatar';
+import './seekTrade.css';
 
 interface Props {
   league: League;
@@ -26,12 +30,50 @@ export function TradeBlockPage({ league, extras, controlledTeamId, onChange, onS
 
   const deadlinePassed = isTradeDeadlinePassed(league);
   const showValues = extras.tradeSettings.showValues === true;
+  const myTeam = league.teams.find(t => t.teamId === controlledTeamId);
+  const myBlock = myTeam ? myTeam.seasons.filter(s => extras.tradeBlock.includes(s.playerId)).length + tradeableFuturePicks(extras, myTeam.teamId).filter(p => picksOnBlock.includes(p.id)).length : 0;
+  const [offers, setOffers] = useState<SoughtOffer[] | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+  const seek = () => {
+    if (!myTeam) return;
+    const found = seekTradeOffers(league, extras, myTeam.teamId);
+    setOffers(found);
+    setNote(found.length ? null : 'No team can make a fair offer for this package right now. Try a different mix of players or picks.');
+  };
+  const accept = (o: SoughtOffer) => {
+    const check = validateTrade(league, extras, o.proposal);
+    if (!check.valid) { setNote(check.reasons[0] ?? 'That deal is no longer possible.'); return; }
+    const done = executeTrade(league, extras, o.proposal);
+    onChange(done.league, done.extras);
+    setOffers(null);
+    setNote(`Deal done with ${league.teams.find(t => t.teamId === o.proposal.teamBId)?.name ?? o.proposal.teamBId}.`);
+  };
+  const playerLine = (teamId: string, ids: string[]) => ids.map(id => { const p = league.teams.find(t => t.teamId === teamId)?.seasons.find(s => s.playerId === id); return p ? `${id} (${calculateOverall(p)})` : id; });
+  const pickLine = (ids: string[] = []) => ids.map(id => { const pk = extras.futurePicks?.find(x => x.id === id); return pk ? pickLabel(pk) : id; });
 
   return (
     <div>
       {deadlinePassed && <p className="calendar-banner">Trade deadline has passed for this season - listed players and picks can't be traded away until next season.</p>}
       <p className="hint-text">Players and future draft picks any team has marked as available for trade discussion.</p>
       {blockedPlayers.length === 0 && blockedPicks.length === 0 && <p className="empty-state">Nothing on the trade block yet.</p>}
+      {myTeam && <section className="seek-trade" aria-label="Seek trade offers">
+        <div className="seek-trade-head">
+          <div><b>Seek trade</b><small>Put everything you want to move on the block, then every team answers at once with offers you can accept on the spot.</small></div>
+          <button className="primary" disabled={!myBlock || deadlinePassed} onClick={seek}>Seek trade{myBlock ? ` (${myBlock} on the block)` : ''}</button>
+        </div>
+        {!myBlock && <p className="hint-text">Add your players or picks to the block below first.</p>}
+        {note && <p className="hint-text" role="status">{note}</p>}
+        {offers && offers.length > 0 && <ol className="seek-trade-offers">{offers.map((o, i) => {
+          const them = league.teams.find(t => t.teamId === o.proposal.teamBId);
+          const get = [...playerLine(o.proposal.teamBId, o.proposal.playersFromB), ...pickLine(o.proposal.picksFromB)];
+          return <li key={`${o.proposal.teamBId}-${i}`}>
+            <span className="seek-offer-team"><TeamLink name={them?.name ?? o.proposal.teamBId} /></span>
+            <span className="seek-offer-get">You get: <b>{get.join(', ')}</b></span>
+            {showValues && <small>Value to you {Math.round(o.yourValue)}</small>}
+            <button className="primary" onClick={() => accept(o)}>Accept</button>
+          </li>;
+        })}</ol>}
+      </section>}
 
       {blockedPlayers.length > 0 && (
         <table className="db-table">

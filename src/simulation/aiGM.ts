@@ -402,11 +402,13 @@ export function runTradeMarketAI(
   let currentExtras = extras;
   const trades: ExecutedAITrade[] = [];
   const attempts = Math.round(Math.min(20, ids.length * 3) * aggressiveness);
+  // One deal per team per pass: a front office settles one trade before it shops again (its core can change).
+  const dealt = new Set<string>();
 
   for (let attempt = 0; attempt < attempts && trades.length < effectiveMaxTrades; attempt++) {
     const a = ids[rng.nextInt(ids.length)];
     const b = ids[rng.nextInt(ids.length)];
-    if (a === b) continue;
+    if (a === b || dealt.has(a) || dealt.has(b)) continue;
     const proposal = findAITrade(currentLeague, currentExtras, a, b);
     if (!proposal) continue;
     const validation = validateTrade(currentLeague, currentExtras, proposal);
@@ -425,6 +427,7 @@ export function runTradeMarketAI(
     const { league: nextLeague, extras: nextExtras } = executeTrade(currentLeague, currentExtras, proposal);
     currentLeague = nextLeague;
     currentExtras = nextExtras;
+    dealt.add(proposal.teamAId); dealt.add(proposal.teamBId);
     trades.push({
       teamAId: proposal.teamAId, teamAName, teamBId: proposal.teamBId, teamBName,
       playersFromA: proposal.playersFromA, playersFromB: proposal.playersFromB,
