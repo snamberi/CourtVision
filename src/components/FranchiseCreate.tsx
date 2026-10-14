@@ -1,3 +1,4 @@
+import { ModeBackdrop } from './presentation/ModeScene';
 import { ModeIcon } from './ModeIcon';
 import { lazy, Suspense, useState } from 'react';
 import type { TimeMachinePick } from './TimeMachinePicker';
@@ -81,11 +82,12 @@ export function FranchiseCreate({ onBack, onStart, busy = null, initial = 'free'
   const sc = SCENARIOS.find(s => s.id === scenario)!;
   const startLabel = busy ?? (challenge === 'rebuild' ? `Start: ${sc.title}` : challenge === 'draft' ? 'Go to the draft room' : challenge === 'worldgames' ? `Coach ${wgCountry}` : challenge === 'timeMachine' ? (tm ? `Travel to ${seasonName(tm.year)}` : 'Loading NBA history…') : historical ? `Start the ${seasonName(Number(historyYear))} NBA` : source === 'random' ? 'Create the random league' : 'Create the league');
 
-  return <div className="create-page">
+  return <div className="create-page mode-environment" data-environment="franchise">
     <header className="create-top">
       <button className="hunt-exit" onClick={onBack}><PixelIcon name="exit" size={16} /> Main Menu</button>
       <div><span className="pixel-eyebrow">GM MODE</span><h1>New franchise</h1></div>
     </header>
+    <ModeBackdrop mode="franchise" />
 
     <section className="create-step" aria-labelledby="create-step-game">
       <h2 id="create-step-game"><span className="create-num">1</span> Choose your game</h2>

@@ -11,6 +11,7 @@ import { RelicArt } from './RelicArt';
 import '../hunt/hunt.css';
 import './relics.css';
 import { ShopCosmetics } from './ShopCosmetics';
+import { SmallRoom } from '../presentation/SmallRoom';
 import { SecretCosmeticFound, SecretCosmeticsSection } from './SecretCosmetics';
 import { SHOP_COSMETIC_WEIGHTS } from '../../relics/shopCosmetics';
 import { weeklyEvent } from '../../retention/weeklyEvent';
@@ -87,6 +88,7 @@ export function RelicVault({ onExit, view = 'vault', onSwitch }: { onExit: () =>
       {onSwitch && <button className="relic-switch" onClick={onSwitch}><PixelIcon name={shop ? 'crown' : 'star'} size={16} /> {shop ? 'Relic Vault' : 'Shop'}</button>}
     </header>
 
+    <SmallRoom kind={shop ? 'shop' : 'archive'} title={shop ? 'The collector’s counter' : 'Your collection, on display'} detail={shop ? 'Browse today’s relics, find your next cosmetic and build your collection.' : 'Inspect your relics and choose what to equip for your next run.'} />
     <section className="relic-stats" aria-label="Your relics">
       <div><span>Relic Spins</span><b>{state.spins}</b>{(state.luckySpins ?? 0) > 0 && <small>+{state.luckySpins} free Lucky Spin{state.luckySpins === 1 ? '' : 's'}</small>}</div>
       <div><span>Luck</span><b>{fmtLuck(luck)}</b><small>{state.equipped.length}/{slots} slots{weekly ? ` · ${fmtLuck(weekly)} relic of the week` : ''} · max +{MAX_LUCK}%</small></div>

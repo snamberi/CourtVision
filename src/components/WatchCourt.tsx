@@ -14,6 +14,7 @@ import { pixelTextPath, pixelTextWidth, splitTeamName } from '../visuals/pixelFo
 import { equippedFloor } from '../profile/profile';
 import { CoachFigure, RefereeFigure, type CoachPose } from './CoachFigure';
 import { coachLook, type CoachLook } from '../visuals/coachLook';
+import './presentation/livePolish.css';
 export { FloorPatterns };
 
 type Team={teamId:string;name:string};
@@ -134,11 +135,16 @@ function Mascot({level,identity,hype}:{level:number;identity:TeamIdentity;hype:n
  </g></g>;
 }
 /** A bench: chairs along the sideline with the team's reserves sitting in them. */
-function Bench({x,y,players,kit,count=9,teamId}:{x:number;y:number;players:PlayerSeason[];kit:TeamIdentity;count?:number;teamId:string}){
- return <g>{Array.from({length:count},(_,i)=>{const p=players[i];return <g key={i} transform={`translate(${x+i*28},${y})`}>
-  <rect x="0" y="6" width="22" height="18" fill="#1d2a3c" stroke="#0a111c" shapeRendering="crispEdges"/><rect x="2" y="0" width="18" height="10" fill="#2c3e55" shapeRendering="crispEdges"/>
-  {p&&<g transform="translate(-2,-14)"><PlayerAvatar playerId={p.playerId} teamId={teamId} size={26} jerseyNumber={p.jerseyNumber} age={p.age} primaryColor={kit.primary} secondaryColor={kit.secondary} jerseyStyle={kit.jerseyStyle}/></g>}
- </g>;})}</g>;
+function Bench({x,y,players,kit,count=9,teamId,reaction=0}:{x:number;y:number;players:PlayerSeason[];kit:TeamIdentity;count?:number;teamId:string;reaction?:number}){
+ return <g data-testid={`bench-${teamId}`} data-reacting={reaction>0?'true':'false'}>{Array.from({length:count},(_,i)=>{const p=players[i],t=Math.max(0,Math.min(1,reaction-i*.025));
+  const active=t>0&&t<.98;
+  const f=pickFrame({pose:'idle',anim:active?{kind:i%3?'clap':'celebrate',t}:undefined,carrier:false,moving:false,ballZ:0});
+  const sprite=p&&active?actionSprite(f.id,f.pose,{playerId:p.playerId,primary:kit.primary,secondary:kit.secondary,jerseyNumber:p.jerseyNumber,age:p.age,jerseyStyle:kit.jerseyStyle}):null;
+  return <g key={i} transform={`translate(${x+i*28},${y})`}>
+   <rect x="0" y="6" width="22" height="18" fill="#1d2a3c" stroke="#0a111c" shapeRendering="crispEdges"/><rect x="2" y="0" width="18" height="10" fill="#2c3e55" shapeRendering="crispEdges"/>
+   {p&&<><g className={active?'bench-rest bench-rest-hidden':'bench-rest'} transform="translate(-2,-14)"><PlayerAvatar playerId={p.playerId} teamId={teamId} size={26} jerseyNumber={p.jerseyNumber} age={p.age} primaryColor={kit.primary} secondaryColor={kit.secondary} jerseyStyle={kit.jerseyStyle}/></g>
+   {sprite&&<g className="bench-reaction" transform={`translate(11,${22-Math.sin(t*Math.PI)*5}) scale(.62) translate(${-ORIGIN_X},${-ORIGIN_Y})`} shapeRendering="crispEdges">{sprite.map((path,j)=><path key={j} d={path.d} fill={path.fill}/>)}</g>}</>}
+  </g>;})}</g>;
 }
 /** A referee in stripes who trails the play along the sideline. */
 export function Referee({x,y,facing=1,number,whistle=false}:{x:number;y:number;facing?:number;number?:number;whistle?:boolean}){
@@ -161,7 +167,7 @@ function DiscordBoard({x,y}:{x:number;y:number}){
  </a>;
 }
 /** The floor patterns, `${id}-${floor}` (also the floor previews in the Profile). */
-const Arena=memo(function Arena({home,away,identity,awayKit,id,hype,homeBench,awayBench,fill=1,loud=0,mascot=0,rivalry=false,building}:{home:Team;away:Team;identity:TeamIdentity;awayKit:TeamIdentity;id:string;hype:number;homeBench:PlayerSeason[];awayBench:PlayerSeason[];fill?:number;loud?:number;mascot?:number;rivalry?:boolean;building?:{name:string;suites:number}}){
+const Arena=memo(function Arena({home,identity,awayKit,id,hype,fill=1,loud=0,mascot=0,rivalry=false,building}:{home:Team;identity:TeamIdentity;awayKit:TeamIdentity;id:string;hype:number;fill?:number;loud?:number;mascot?:number;rivalry?:boolean;building?:{name:string;suites:number}}){
  const tableText=building?building.name.toUpperCase().replace(/[^A-Z0-9 ]/g,'').slice(0,22):identity.abbreviation+' COURT VISION';
  const apron=shade(identity.primary,-.18),apronDark=shade(identity.primary,-.45),paint=identity.courtPaint,picked=equippedFloor(),style=picked==='team'?floorStyle(home.teamId):picked;
  const cream='#f6ecd2';
@@ -185,7 +191,6 @@ const Arena=memo(function Arena({home,away,identity,awayKit,id,hype,homeBench,aw
   {building&&building.suites>0&&<g data-testid="arena-suites" shapeRendering="crispEdges">{Array.from({length:building.suites*9},(_,i)=>{const n=building.suites*9,x=60+(i+.5)*(880/n)-7;return <rect key={i} x={x} y="1" width="14" height="5" fill={i%4?'#ffd166':'#fff3c4'} stroke="#0b1018" strokeWidth=".8"/>;})}</g>}
   {/* Top sideline: the visitors' bench, the table officials' chairs and the community board. */}
   <rect x="100" y="8" width="332" height="44" fill={apronDark} opacity=".55"/>
-  <Bench x={112} y={24} players={awayBench} kit={awayKit} teamId={away.teamId} count={11}/>
   <DiscordBoard x={624} y={12}/>
   {/* Baseline aprons carry the name, top to bottom, like a painted end line. */}
   <BaselineName text={home.name} x={11} side={1} fill={cream}/>
@@ -217,7 +222,6 @@ const Arena=memo(function Arena({home,away,identity,awayKit,id,hype,homeBench,aw
    <rect x="376" y="566" width="248" height="28" fill="#1c2a3b" stroke="#0a111c"/><rect x="386" y="571" width="228" height="16" fill="#0c1725"/>
    <g transform={`translate(${(500-pixelTextWidth(tableText))},575)`}><path d={pixelTextPath(tableText,2)} fill="#f8bc70"/></g>
   </g>
-  <Bench x={96} y={566} players={homeBench} kit={identity} teamId={home.teamId} count={9}/>
   <g shapeRendering="crispEdges">{Array.from({length:mascot?7:8},(_,i)=><g key={i} transform={`translate(${(mascot?684:650)+i*34},566)`}><rect width="24" height="20" fill="#1d2a3c" stroke="#0a111c"/><rect x="4" y="-10" width="16" height="12" fill="#2c3e55"/></g>)}</g>
  </>;
 });
@@ -387,6 +391,7 @@ export function WatchCourt({frame,home,away,rosters,hotId,labels=true,trail=fals
  const lv={scoreboard:arena?.scoreboard??0,lights:arena?.lights??0,crowd:arena?.crowd??0,mascot:arena?.mascot??0};
  const duoCall=frame.callout?.tone==='make'&&duos&&frame.duo&&duos.has(frame.duo.key)?frame.duo:null;
  const flash=frame.net>0?frame.net:0;
+ const reactionFor=(teamId:string)=>{const c=frame.callout;if(!c||c.t<=0||c.t>=1)return 0;return (c.tone==='make'&&frame.offenseTeamId===teamId)||(c.tone==='defense'&&frame.offenseTeamId!==teamId)?c.t:0;};
  const whistle=frame.phase==='Whistle'||frame.callout?.text==='FOUL';
  // A coach celebrates his team's baskets, folds his arms at the other team's, and points out the play on offense.
  const coachPose=(isHome:boolean):CoachPose=>{const teamId=isHome?home.teamId:away.teamId,c=frame.callout;
@@ -395,7 +400,9 @@ export function WatchCourt({frame,home,away,rosters,hotId,labels=true,trail=fals
  const athlete=(a:CourtActor)=>{const homeSide=a.teamId===home.teamId;return <Athlete key={a.id} ballZ={ball.z} hoopX={frame.hoop.x} actor={a} player={rosters.find(p=>p.playerId===a.id)} identity={homeSide?hi:awayKit} ring={homeSide?hi.primary:ai.primary} hot={a.id===hotId} carrier={a.id===frame.carrier} labels={labels&&(a.teamId===frame.offenseTeamId||!frame.offenseTeamId||a.id===frame.carrier)} above={a.teamId!==frame.offenseTeamId&&!!frame.offenseTeamId}/>;};
  const followView=useFollowCamera(frame,camera==='follow');
  return <div className="watch-arena"><svg className="watch-court" viewBox={followView??cameraBox(frame,camera)} role="img" aria-label={`${home.name} home court. ${frame.phase}.`}>
-  <Arena home={home} away={away} identity={hi} awayKit={awayKit} id={id} hype={hype} homeBench={homeBench} awayBench={awayBench} fill={rivalry?1:crowdFill} loud={lv.crowd} mascot={lv.mascot} rivalry={rivalry} building={building}/>
+  <Arena home={home} identity={hi} awayKit={awayKit} id={id} hype={hype} fill={rivalry?1:crowdFill} loud={lv.crowd} mascot={lv.mascot} rivalry={rivalry} building={building}/>
+  <Bench x={112} y={24} players={awayBench} kit={awayKit} teamId={away.teamId} count={11} reaction={reactionFor(away.teamId)}/>
+  <Bench x={96} y={566} players={homeBench} kit={hi} teamId={home.teamId} count={9} reaction={reactionFor(home.teamId)}/>
   {lv.lights>0&&<ArenaLights level={lv.lights} identity={hi}/>}
   {lv.scoreboard>0&&<VideoBoard level={lv.scoreboard} identity={hi} bug={bug} hype={hype}/>}
   {lv.mascot>0&&<Mascot level={lv.mascot} identity={hi} hype={hype}/>}
@@ -412,6 +419,11 @@ export function WatchCourt({frame,home,away,rosters,hotId,labels=true,trail=fals
   {players.filter(a=>a.y<310).map(athlete)}
   <Hoop x={100} pad={hi.primary} net={frame.hoop.x===100?frame.net:0} rim={frame.hoop.x===100?frame.rim??0:0}/><Hoop x={900} pad={hi.primary} net={frame.hoop.x===900?frame.net:0} rim={frame.hoop.x===900?frame.rim??0:0}/>
   {players.filter(a=>a.y>=310).map(athlete)}
+  <g className="court-play-effects" pointerEvents="none" aria-hidden="true" shapeRendering="crispEdges">
+   {!trail&&frame.flightTrail?.map((g,i)=><rect key={i} x={g.x-3+i*.5} y={g.y-ballHeight(g.z)-3+i*.5} width={6-i} height={6-i} fill={i?'#ffcf8a':'#fff0c2'} opacity={.48-i*.12}/>)}
+   {frame.impact&&frame.callout&&<Burst x={frame.impact.x} y={frame.impact.y-ballHeight(frame.impact.z)+RIM_HEIGHT} t={Math.min(1,frame.callout.t*3)} color="#7cc4ff"/>}
+   {frame.celebration==='nightNight'&&frame.callout&&<Callout text="NIGHT NIGHT" x={frame.players.find(a=>a.anim?.kind==='nightNight')?.x??500} y={(frame.players.find(a=>a.anim?.kind==='nightNight')?.y??310)-78} t={Math.min(.95,frame.callout.t)} tone="make" size={10}/>}
+  </g>
   <Ball ball={ball}/>
   {frame.callout?.tone==='make'&&<Burst x={frame.hoop.x} y={frame.hoop.y} t={frame.callout.t} color={frame.offenseTeamId===home.teamId?hi.primary:ai.primary}/>}
   {frame.callout&&<Callout {...frame.callout}/>}

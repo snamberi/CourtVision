@@ -21,6 +21,8 @@ export interface ShareCardSpec {
   badge?: string;
   /** Pixel player drawn on the right. */
   avatar?: { playerId: string; jersey?: number; primary?: string; secondary?: string };
+  /** An MVP/franchise-player plaque paired with the portrait. */
+  spotlight?: { label: string; name: string };
   /** Star rating shown under the title (0-3). */
   stars?: number;
   accent?: 'orange' | 'gold' | 'red' | 'green';
@@ -119,9 +121,21 @@ export function drawShareCard(spec: ShareCardSpec, site = siteHost()): HTMLCanva
     ctx.fillStyle = T.text; ctx.fillText(fit(ctx, l, textMax - 24), left + 22, ly);
   });
   if (spec.avatar) {
-    radial(ctx, W - 250, 300, 230, `${T.accent}44`);
-    drawSprite(ctx, spec.avatar, W - 420, 110, 8);
-    T.overAvatar?.(ctx, W - 420 + 22 * 8, 110, 8);
+    radial(ctx, W - 200, 300, 210, `${T.accent}44`);
+    if (spec.spotlight) {
+      const x = W - 336, w = 276;
+      ctx.fillStyle = T.box; ctx.fillRect(x, 108, w, 413);
+      ctx.strokeStyle = accent; ctx.lineWidth = 2; ctx.strokeRect(x, 108, w, 413);
+      ctx.fillStyle = accent; ctx.font = `12px ${PIXEL}`;
+      ctx.fillText(fit(ctx, spec.spotlight.label.toUpperCase(), w - 24), x + 14, 138);
+      drawSprite(ctx, spec.avatar, x + 6, 155, 6);
+      T.overAvatar?.(ctx, x + 138, 155, 6);
+      ctx.fillStyle = T.text; ctx.font = `bold 28px ${DISPLAY}`;
+      ctx.fillText(fit(ctx, spec.spotlight.name, w - 24), x + 14, 498);
+    } else {
+      drawSprite(ctx, spec.avatar, W - 420, 110, 8);
+      T.overAvatar?.(ctx, W - 420 + 22 * 8, 110, 8);
+    }
   }
   // Footer.
   ctx.fillStyle = T.footer; ctx.fillRect(30, H - 82, W - 68, 52);
@@ -183,7 +197,11 @@ function drawTallCard(spec: ShareCardSpec, site: string): HTMLCanvasElement {
     ctx.fillStyle = T.accent2; ctx.fillText(spec.badge, mid - w / 2 + 20, y + 36);
     y += 52;
   }
-  if (spec.avatar) { const sc = spec.results?.length ? 6 : 9; radial(ctx, mid, y + 20 + 26 * sc, 26 * sc + 60, `${T.accent}55`); drawSprite(ctx, spec.avatar, mid - 22 * sc, y + 20, sc); T.overAvatar?.(ctx, mid, y + 20, sc); y += 20 + 52 * sc; }
+  if (spec.avatar) { const sc = spec.results?.length || spec.spotlight ? 6 : 9; radial(ctx, mid, y + 20 + 26 * sc, 26 * sc + 60, `${T.accent}55`); drawSprite(ctx, spec.avatar, mid - 22 * sc, y + 20, sc); T.overAvatar?.(ctx, mid, y + 20, sc); y += 20 + 52 * sc; }
+  if (spec.spotlight) {
+    ctx.fillStyle = accent; ctx.font = `18px ${PIXEL}`; center(spec.spotlight.label.toUpperCase(), y += 28);
+    ctx.fillStyle = T.text; ctx.font = `bold 38px ${DISPLAY}`; center(spec.spotlight.name, y += 48);
+  }
   const stats = spec.stats.slice(0, 4);
   if (stats.length) {
     y += 30;

@@ -1,3 +1,5 @@
+import { ResultCount, ResultCrest } from '../presentation/ResultPresentation';
+import { ModeBackdrop } from '../presentation/ModeScene';
 import { ModeIcon } from '../ModeIcon';
 import type { BigMoment } from '../../career/bigMoments';
 import { plural } from '../../lib/humanize';
@@ -203,8 +205,9 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
   if (error) return <div className="hunt">{header}<p className="empty-state">Something went wrong: {error}</p><button onClick={() => { setError(null); setView({ k: 'hub' }); }}>Back</button></div>;
   if (!h) return <div className="hunt">{header}<p className="empty-state">Loading 80 years of basketball…</p></div>;
 
-  return <div className="hunt cv">
+  return <div className="hunt cv mode-environment" data-environment="career">
     {header}
+    <ModeBackdrop mode="career" />
     {busy && <div className="cv-busy" role="status"><span>{busy.label}</span>{busy.pct != null && <div className="hunt-cap-bar"><i style={{ width: `${busy.pct}%` }} /></div>}
       {active?.meta.autopilot && <button className="link-button" onClick={() => setActive(a => (a ? { ...a, meta: { ...a.meta, autopilot: false } } : a))}>Stop autopilot after this season</button>}</div>}
     {view.k === 'hub' ? <Hub careers={careers} onNew={startNew} onOpen={open} onDelete={id => deleteCareer(id).then(refresh)} />
@@ -349,7 +352,7 @@ const pct = (m: number, a: number) => (a ? (m / a * 100).toFixed(1) : '—');
 function StatLine({ s }: { s: SeasonStatTotals }) {
   const g = s.gamesPlayed;
   return <div className="hunt-over-stats cv-line">
-    <div><small>GP</small><b>{g}</b></div><div><small>PTS</small><b>{per(s.points, g)}</b></div><div><small>REB</small><b>{per(s.oreb + s.dreb, g)}</b></div>
+    <div><small>GP</small><b><ResultCount value={g} /></b></div><div><small>PTS</small><b>{per(s.points, g)}</b></div><div><small>REB</small><b>{per(s.oreb + s.dreb, g)}</b></div>
     <div><small>AST</small><b>{per(s.ast, g)}</b></div><div><small>STL</small><b>{per(s.stl, g)}</b></div><div><small>BLK</small><b>{per(s.blk, g)}</b></div>
     <div><small>FG%</small><b>{pct(s.fgm, s.fga)}</b></div><div><small>3P%</small><b>{pct(s.tpm, s.tpa)}</b></div>
   </div>;
@@ -402,7 +405,7 @@ function CareerView({ h, a, busy, tradeAsked, onPlay, onAutopilot, onTraining, o
   const current = tabList.some(t => t.id === tab) ? tab : tabList[0].id;
   return <section className="hunt-stage cv-page">
     <div className="cv-hero cv-hero-card">
-      <CareerCard meta={meta} overall={p ? calculateOverall(p) : null} age={p?.age} teamName={team ? team.name : 'Free agent'} prime={primeOverall(meta.prime, meta.readiness, meta.identity.pos)} />
+      <CareerCard meta={meta} overall={p ? calculateOverall(p) : null} age={p?.age} teamName={team ? team.name : 'Free agent'} teamId={team?.teamId ?? null} prime={primeOverall(meta.prime, meta.readiness, meta.identity.pos)} />
       <div className="cv-hero-info"><span className="pixel-eyebrow">#{meta.identity.jersey} · {meta.identity.pos} · AGE {p?.age ?? ''}{meta.draftYear ? ` · ${meta.draftYear} DRAFT CLASS` : ''}</span><h2>{meta.playerId}</h2>
         <p>{team ? team.name : 'Free agent'} · <b className="hunt-rating">{p ? calculateOverall(p) : '—'}</b> OVR · prime {primeOverall(meta.prime, meta.readiness, meta.identity.pos)}</p>
         {meta.draft && <p className="hint-text">{meta.draft.pick ? `Drafted #${meta.draft.pick} overall by ${meta.draft.teamName} (${meta.draft.season} draft)` : `Undrafted (${meta.draft.season} draft)`}</p>}
@@ -520,18 +523,18 @@ function Legacy({ h, meta, onNew }: { h: NbaHistory; meta: CareerMeta; onNew: ()
     <div className="cv-legacy-card"><CareerCard meta={meta} overall={meta.years.reduce((m, y) => Math.max(m, y.overall), 0)} teamName={meta.years.at(-1)?.teamName ?? ''} /></div>
     {!isSandboxCareer(meta) && <><RelicReward rewardKey={careerRewardKey(meta)} />
     <RelicCase /></>}
-    <div className="hunt-over-banner"><span className="pixel-eyebrow">RETIRED AT {ret.age} · {fy(ret.season)}</span><h2>The legacy of {meta.playerId}</h2>
+    <div className="hunt-over-banner result-hero"><ResultCrest celebrateWin={ret.hallOfFame !== 'no'} label="COURT VISION · CAREER LEGACY" /><span className="pixel-eyebrow">RETIRED AT {ret.age} · {fy(ret.season)}</span><h2>The legacy of {meta.playerId}</h2>
       <div className="hunt-over-stats">
         <div><small>ALL-TIME RANK</small><b>{rank ? `#${rank}` : '—'}</b></div>
         <div><small>HALL OF FAME</small><b>{ret.hallOfFame === 'first-ballot' ? 'First ballot' : ret.hallOfFame === 'yes' ? 'Inducted' : 'No'}</b></div>
-        <div><small>LEGACY SCORE</small><b>{score}</b></div>
+        <div><small>LEGACY SCORE</small><b><ResultCount value={Number(score)} decimals={1} /></b></div>
         <div><small>SEASONS</small><b>{meta.years.length}</b></div>
       </div></div>
     {isSandboxCareer(meta) ? <p className="hint-text">A Create Anything career: just for fun, so it stays off the leaderboards, XP and rewards.</p> : <ClaimRankCard id={`career:${meta.id}`} board={{ kind: 'players' }} score={Math.round(ret.legacy)} scored={`Your career scored ${ret.legacy.toFixed(1)}`} where="globally" pitchOnly={meta.difficulty === 'rookie'} />}
     {meta.difficulty && <p className="hint-text">{LEVEL_NAME[meta.difficulty]} career{meta.difficulty === 'rookie' ? ': it stays off the online Legacy board.' : '.'}</p>}
     <h3 className="hunt-subhead">Career</h3>
     <div className="hunt-over-stats cv-line">
-      <div><small>GAMES</small><b>{g}</b></div><div><small>POINTS</small><b>{r.pts.toLocaleString()}</b></div><div><small>REBOUNDS</small><b>{r.reb.toLocaleString()}</b></div><div><small>ASSISTS</small><b>{r.ast.toLocaleString()}</b></div>
+      <div><small>GAMES</small><b><ResultCount value={g} /></b></div><div><small>POINTS</small><b><ResultCount value={r.pts} /></b></div><div><small>REBOUNDS</small><b><ResultCount value={r.reb} /></b></div><div><small>ASSISTS</small><b><ResultCount value={r.ast} /></b></div>
       <div><small>PPG</small><b>{per(r.pts, g)}</b></div><div><small>RPG</small><b>{per(r.reb, g)}</b></div><div><small>APG</small><b>{per(r.ast, g)}</b></div><div><small>STL+BLK</small><b>{(r.stl + r.blk).toLocaleString()}</b></div>
     </div>
     {ret.jerseys && ret.jerseys.length > 0 && <div className="hunt-result won cv-jersey"><span className="pixel-eyebrow">JERSEY RETIREMENT</span><h2>#{meta.identity.jersey} hangs in the rafters</h2><p>Retired by {ret.jerseys.join(' and ')}.</p></div>}

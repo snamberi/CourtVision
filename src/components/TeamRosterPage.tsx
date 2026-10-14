@@ -1,4 +1,5 @@
 import { LockerRoomPanel, MoraleCell } from './MoralePanels';
+import { FranchiseLineup } from './presentation/LineupBoard';
 import { plural } from '../lib/humanize';
 import { ChemistryWeb } from './ChemistryWeb';
 import { TeamIdentityPanel } from './TeamIdentityPanel';
@@ -74,6 +75,7 @@ export function TeamRosterPage({
 
       {team && <TeamIdentityPanel key={team.teamId} team={team} history={franchiseHistory} currentChampion={currentChampion} currentSeason={currentSeason}
         onChange={onIdentityChange && canEditIdentity?.(team.teamId) ? identity => onIdentityChange(team.teamId, identity) : undefined} />}
+      {team && <FranchiseLineup key={team.teamId} team={team} injuries={injuries} onOpenPlayer={onSelectPlayer} />}
       {team && (
         <div className="roster-team-summary">
           {(() => {

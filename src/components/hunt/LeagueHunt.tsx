@@ -1,3 +1,10 @@
+import { ResultCount, ResultCrest, MvpSpotlight } from '../presentation/ResultPresentation';
+import { LineupBoard } from '../presentation/LineupBoard';
+import { BossIntro } from './BossIntro';
+import { teamColors } from '../../simulation/teamColors';
+import { playerFinish, matchesRunName } from '../presentation/cardFinish';
+import { RevealSparks } from '../presentation/PlayerFinish';
+import { ModeBackdrop } from '../presentation/ModeScene';
 import { plural } from '../../lib/humanize';
 import { useEffect, useState, type ReactNode, useRef } from 'react';
 import { readFavorites } from '../../profile/favorites';
@@ -50,6 +57,7 @@ export function LeagueHunt({ onExit }: { onExit: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [run, setRunState] = useState<HuntRun | null>(() => loadRun());
   const [records, setRecords] = useState<HuntRecords>(() => loadRecords());
+  const [intro, setIntro] = useState(false);
   /** The series just played, while its scoreboard runs (it is already recorded in the run). */
   const [play, setPlay] = useState<{ play: SeriesPlay; series: HuntSeries; index: number; before: HuntRun; revealed: boolean } | null>(null);
   useEffect(() => {
@@ -79,9 +87,14 @@ export function LeagueHunt({ onExit }: { onExit: () => void }) {
   /** PLAY: out of the shop (if it is open) and straight into the series. */
   const startSeries = () => {
     if (!h || !run) return;
+    setIntro(false);
     const ready = run.stage === 'shop' ? leaveShop(run) : run;
     const r = playSeries(h, ready); if (!r) return;
     setPlay({ play: r.play, series: ready.series[ready.seriesIndex], index: ready.seriesIndex, before: ready, revealed: false }); setRun(r.run);
+  };
+  const prepareSeries = () => {
+    if (run?.series[run.seriesIndex]?.kind !== 'normal') setIntro(true);
+    else startSeries();
   };
   // While the scoreboard runs, the header still shows the lives and coins from before the series (no spoilers).
   const shown = play && !play.revealed ? play.before : run;
@@ -106,21 +119,22 @@ export function LeagueHunt({ onExit }: { onExit: () => void }) {
   if (error) return <div className="hunt">{header}<p className="empty-state">Could not load the NBA history data: {error}</p></div>;
   if (!h) return <div className="hunt">{header}<p className="empty-state">Loading 80 years of basketball…</p></div>;
 
-  return <div className={`hunt ${play ? `era-${play.play.era.id}` : ''} ${run?.view?.colors === false && run.stage !== 'won' && run.stage !== 'lost' ? 'no-rarity' : ''}`}>
+  return <div data-environment="legends" className={`hunt mode-environment ${play ? `era-${play.play.era.id}` : ''} ${run?.view?.colors === false && run.stage !== 'won' && run.stage !== 'lost' ? 'no-rarity' : ''}`}>
     {header}
+    <ModeBackdrop mode="legends" />
     {run && run.stage !== 'won' && run.stage !== 'lost' && <DuelBanner duel={run.duel} />}
     {!run ? <HuntHub h={h} records={records} onStart={(seed, opts) => { setPlay(null); setRun(newRun(h, seed, { ...opts, ...relicRunOpts(), fav: readFavorites().player })); }} />
       : play ? <SeriesView h={h} run={run} play={play.play} series={play.series} index={play.index} onReveal={() => setPlay(p => (p && !p.revealed ? { ...p, revealed: true } : p))} onContinue={() => setPlay(null)} />
+      : intro && (run.stage === 'series' || run.stage === 'shop') ? <BossIntro key={`${run.seed}-${run.seriesIndex}`} h={h} run={run} onPlay={startSeries} onBack={() => setIntro(false)} />
       : run.stage === 'draft' ? <SlotMachine key={run.seed} h={h} run={run} onRun={setRun} onAbandon={() => setRun(null)} />
       : run.stage === 'focus' ? <FocusView run={run} onChoose={f => setRun(chooseFocus(h, run, f))} />
-      : run.stage === 'shop' ? <HuntBase h={h} run={run} onRun={setRun} onPlay={startSeries} onAbandon={() => setRun(null)} />
+      : run.stage === 'shop' ? <HuntBase h={h} run={run} onRun={setRun} onPlay={prepareSeries} onAbandon={() => setRun(null)} />
       : run.stage === 'boost' ? <BoostPick h={h} run={run} onTake={b => setRun(takeBoost(h, run, b))} />
       : run.stage === 'won' || run.stage === 'lost' ? <RunOver h={h} run={run} records={records} onNew={() => { setPlay(null); setRun(newRun(h, Math.floor(Math.random() * 1_000_000_000), { deck: run.deck, difficulty: run.difficulty, ...relicRunOpts(), fav: readFavorites().player })); }} onExit={() => { setRun(null); onExit(); }} />
-      : <HuntBase h={h} run={run} onRun={setRun} onPlay={startSeries} onAbandon={() => setRun(null)} />}
+      : <HuntBase h={h} run={run} onRun={setRun} onPlay={prepareSeries} onAbandon={() => setRun(null)} />}
   </div>;
 }
 
-const posColor: Record<string, string> = { PG: '#4da3ff', SG: '#55c878', SF: '#ffd166', PF: '#f47b20', C: '#e85d5d', G: '#4da3ff', F: '#f47b20' };
 const pct = (v: number) => `${Math.round(v)}%`;
 
 /** The six slots and the coach, filled or waiting. */
@@ -199,24 +213,28 @@ function SlotMachine({ h, run, onRun, onAbandon }: { h: NbaHistory; run: HuntRun
     const isOpen = open.includes(k), idx = open.indexOf(k);
     const lockedId = k === 'COACH' ? run.coach : run.squad[SLOTS.indexOf(k as Slot)];
     const lucky = isOpen && settled(idx) && !!run.reels?.[k] && !!run.luckyReels?.includes(k);
-    const cls = ['hunt-reel', k === 'COACH' ? 'coach' : '', !isOpen ? 'locked' : settled(idx) ? 'frozen' : 'spinning', justLocked === k && !isOpen ? 'just-locked' : '', lucky ? 'lucky' : ''].filter(Boolean).join(' ');
+    const shownId = !isOpen ? lockedId : settled(idx) ? run.reels?.[k] : undefined;
+    const shownCard = shownId && k !== 'COACH' ? pool.byId.get(shownId) : undefined;
+    const rarity = shownId ? (k === 'COACH' ? coachRarity(COACH_BY_ID.get(shownId)!) : shownCard?.rarity) : undefined;
+    const cls = ['hunt-reel', shownId ? 'player-finish' : '', rarity && run.view?.colors !== false ? `rarity-${rarity}` : '', k === 'COACH' ? 'coach' : '', !isOpen ? 'locked' : settled(idx) ? 'frozen' : 'spinning', justLocked === k && !isOpen ? 'just-locked' : '', lucky ? 'lucky' : ''].filter(Boolean).join(' ');
     let body: ReactNode;
     if (!isOpen && lockedId) {
       if (k === 'COACH') { const x = COACH_BY_ID.get(lockedId)!; body = <><span className="hunt-reel-face coach">{initials(x.name)}</span><span className="hunt-reel-text"><b>{x.name}</b><small>{COACH_STYLE[x.style]}</small></span><span className={`hunt-reel-ovr rarity-${coachRarity(x)}`}>{x.bonus > 0 ? '+' : ''}{x.bonus}</span></>; }
-      else { const c = pool.byId.get(lockedId)!; body = <><PlayerAvatar playerId={c.name} primaryColor={posColor[c.pos] ?? '#f47b20'} secondaryColor="#f4f0e6" size={56} /><span className="hunt-reel-text"><b>{c.name}</b><small>{seasonLabel(c.end)} · {c.team}</small></span><span className={`hunt-reel-ovr rarity-${c.rarity}`}>{c.ovr}</span></>; }
+      else { const c = pool.byId.get(lockedId)!; body = <><PlayerAvatar playerId={c.name} primaryColor={teamColors(c.team).primary} secondaryColor={teamColors(c.team).secondary} size={56} /><span className="hunt-reel-text"><b>{c.name}</b><small>{seasonLabel(c.end)} · {c.team}</small></span><span className={`hunt-reel-ovr rarity-${c.rarity}`}>{c.ovr}</span></>; }
     } else if (isOpen && settled(idx) && run.reels?.[k]) {
       const id = run.reels[k]!;
       if (k === 'COACH') { const x = COACH_BY_ID.get(id)!; body = <><span className="hunt-reel-face coach">{initials(x.name)}</span><span className="hunt-reel-text"><b>{x.name}</b><small>{x.franchises.slice(0, 2).join(' · ')}</small></span>{run.view?.numbers && <span className={`hunt-reel-ovr rarity-${coachRarity(x)}`}>{x.bonus > 0 ? '+' : ''}{x.bonus}</span>}</>; }
-      else { const c = pool.byId.get(id)!; const notes = cardNotes(h, c); body = <><PlayerAvatar playerId={c.name} primaryColor={posColor[c.pos] ?? '#f47b20'} secondaryColor="#f4f0e6" size={56} /><span className="hunt-reel-text"><b>{c.name}</b><small>{seasonLabel(c.end)} · {c.team}</small>{notes.length > 0 && <i>{notes.slice(0, 2).join(' · ')}</i>}</span>{run.view?.numbers && <span className={`hunt-reel-ovr rarity-${c.rarity}`}>{c.ovr}</span>}</>; }
+      else { const c = pool.byId.get(id)!; const notes = cardNotes(h, c); body = <><PlayerAvatar playerId={c.name} primaryColor={teamColors(c.team).primary} secondaryColor={teamColors(c.team).secondary} size={56} /><span className="hunt-reel-text"><b>{c.name}</b><small>{seasonLabel(c.end)} · {c.team}</small>{notes.length > 0 && <i>{notes.slice(0, 2).join(' · ')}</i>}</span>{run.view?.numbers && <span className={`hunt-reel-ovr rarity-${c.rarity}`}>{c.ovr}</span>}</>; }
     } else {
       const f = faces[k][(tick + idx * 7) % faces[k].length];
       body = k === 'COACH' ? <><span className="hunt-reel-face coach">{initials(f.name)}</span><span className="hunt-reel-text"><b>{f.name}</b><small>{f.sub}</small></span></>
         : <><PlayerAvatar playerId={f.name} primaryColor="#3a3f4a" secondaryColor="#f4f0e6" size={56} /><span className="hunt-reel-text"><b>{f.name}</b><small>{f.sub}</small></span></>;
     }
     const label = <><span className="hunt-reel-pos">{REEL_LABEL[k]}{!isOpen && <em>LOCKED</em>}</span>{lucky && <span className="hunt-reel-lucky" title="Relic luck turned this reel into a better player">LUCKY</span>}</>;
-    return isOpen && allSettled
-      ? <button key={k} className={cls} onClick={() => lock(k)} aria-label={`Lock ${REEL_LABEL[k]}`}>{label}{body}</button>
-      : <div key={k} className={cls} aria-hidden={isOpen && !settled(idx) ? true : undefined}>{label}{body}</div>;
+    const sparks = isOpen && allSettled && rarity && run.view?.colors !== false ? <RevealSparks key={`${run.spin}-${shownId}`} rarity={rarity} /> : null;
+    return isOpen
+      ? <button key={k} style={playerFinish(shownCard?.team)} className={cls} disabled={!allSettled} onClick={() => lock(k)} aria-label={`Lock ${REEL_LABEL[k]}`}>{label}{body}{sparks}</button>
+      : <div key={k} style={playerFinish(shownCard?.team)} className={cls}>{label}{body}</div>;
   };
 
   return <section className="hunt-stage hunt-slots">
@@ -320,9 +338,6 @@ function BoostPick({ h, run, onTake }: { h: NbaHistory; run: HuntRun; onTake: (b
   </section>;
 }
 
-/** A spot on the mini court for each starter (PG at the top, the bigs low), in % of the court. */
-const COURT_SPOT: Record<string, [number, number]> = { PG: [50, 16], SG: [18, 38], SF: [82, 38], PF: [30, 72], C: [70, 72] };
-
 /**
  * The hunt's home base between series: the road on top; your team on a court in the middle with the PLAY button; the
  * shop on the left (players, a coach, shop boosts, a life, training; shut until you win a series); your coach, your
@@ -352,8 +367,8 @@ function HuntBase({ h, run, onRun, onPlay, onAbandon }: { h: NbaHistory; run: Hu
         {!shop ? <div className="hunt-shop-shut"><PixelIcon name="lock" size={28} /><b>Closed</b><p>The shop opens after every series you win: new players, coaches, shop boosts and training.</p></div> : <>
           <h3 className="hunt-shop-shelf">Players</h3>
           <div className="hunt-shop-items">{shop.cards.map(({ id, slot }) => { const c = pool.byId.get(id)!, sold = shop.sold.includes(id), price = cardPrice(h, id), out = pool.byId.get(run.squad[slot])!;
-            return <button key={id} className={`hunt-ware rarity-${c.rarity}`} disabled={sold || run.coins < price} onClick={() => onRun(buyCard(h, run, id))} title={`Replaces ${out.name} (${out.ovr})`}>
-              <PlayerAvatar playerId={c.name} primaryColor={posColor[c.pos] ?? '#f47b20'} secondaryColor="#f4f0e6" size={40} mode="portrait" />
+            return <button key={id} style={playerFinish(c.team)} className={`hunt-ware player-finish rarity-${c.rarity}`} disabled={sold || run.coins < price} onClick={() => onRun(buyCard(h, run, id))} title={`Replaces ${out.name} (${out.ovr})`}>
+              <PlayerAvatar playerId={c.name} primaryColor={teamColors(c.team).primary} secondaryColor={teamColors(c.team).secondary} size={40} mode="portrait" />
               <span className="hunt-ware-name"><b>{c.name}</b><small>{c.ovr} OVR · {slotName(slot)} · for {out.name.split(' ').slice(-1)[0]} ({out.ovr})</small></span>
               <span className="hunt-price">{sold ? 'SOLD' : price}</span></button>; })}</div>
           {shopCoach && <><h3 className="hunt-shop-shelf">Coach</h3>
@@ -379,15 +394,8 @@ function HuntBase({ h, run, onRun, onPlay, onAbandon }: { h: NbaHistory; run: Hu
           <h2>{teamLabel(team)}</h2>
           <small>{team.w}-{team.l}{team.champion ? ' · Champions' : ''} · {run.daily ? `Daily Legend ${run.daily}` : run.weekly ? `Weekly Hunt ${run.weekly}` : `${DECKS[run.deck ?? 'classic'].name} · ${DIFFICULTIES[run.difficulty ?? 'pro'].name}`}</small>
         </div>
-        <div className="hunt-court" aria-label="Your starting five">
-          <i className="hunt-court-key" aria-hidden="true" /><i className="hunt-court-arc" aria-hidden="true" />
-          {SLOTS.slice(0, 5).map((slot, i) => { const b = bonuses[i], c = b?.card; if (!c) return null; const [x, y] = COURT_SPOT[slot] ?? [50, 50];
-            return <div key={slot} className={`hunt-court-man rarity-${c.rarity}`} style={{ left: `${x}%`, top: `${y}%` }}>
-              <PlayerAvatar playerId={c.name} primaryColor="#f47b20" secondaryColor="#f4f0e6" size={46} />
-              <span className="hunt-court-tag"><b>{c.ovr}{b.bonus ? <i className={b.bonus > 0 ? 'up' : 'down'}>{b.bonus > 0 ? '+' : ''}{b.bonus}</i> : null}</b>{slot} {c.name.split(' ').slice(-1)[0]}{run.training[c.id] ? ` +${run.training[c.id]}` : ''}</span>
-            </div>; })}
-        </div>
-        <div className="hunt-bench">{(() => { const b = bonuses[5], c = b?.card; return c ? <span><small>6TH MAN</small> <b>{c.ovr}</b> {c.name}</span> : null; })()}</div>
+        <LineupBoard title="Your starting five" fixed players={bonuses.slice(0, 5).map(b => { const c = b.card, kit = teamColors(c.team); return { id: c.id, name: c.name, pos: c.pos, colors: [kit.primary, kit.secondary], sub: `${c.ovr} OVR${b.bonus ? ` · ${b.bonus > 0 ? '+' : ''}${b.bonus}` : ''}`, hot: c.rarity === 'legendary' && run.view?.colors !== false }; })}
+          bench={bonuses.slice(5).map(b => { const c = b.card, kit = teamColors(c.team); return { id: c.id, name: c.name, pos: c.pos, colors: [kit.primary, kit.secondary], sub: `${c.ovr} OVR` }; })} bonds={bonds} />
         <div className="hunt-versus-bar"><div><small>YOU</small><b className="hunt-rating">{ours}</b></div>
           <button className="primary hunt-play-big" onClick={onPlay}><PixelIcon name="play" size={22} /> PLAY</button>
           <div><small>THEM</small><b className="hunt-rating">{them}</b></div></div>
@@ -450,24 +458,25 @@ function RunOver({ h, run, records, onNew, onExit }: { h: NbaHistory; run: HuntR
   ].filter(Boolean).join('\n');
   const copy = () => { navigator.clipboard?.writeText(share).then(() => setCopied(true), () => setCopied(false)); };
   return <section className={`hunt-stage hunt-over ${won ? 'won' : 'lost'}`}>
-    <div className="hunt-over-banner">
+    <div className="hunt-over-banner result-hero">
+      <ResultCrest celebrateWin={won} label="COURT VISION · LEAGUE HUNT" />
       <span className="pixel-eyebrow">{won ? 'HUNT COMPLETE' : 'HUNT OVER'}</span>
       <h2>{won ? (run.immortal ? 'You beat the Immortals' : 'You conquered basketball history') : `You reached series ${run.seriesIndex + 1} of ${SERIES_COUNT}`}</h2>
       {won && run.note && <p>{run.note}</p>}
       <div className="hunt-over-stats">
-        <div><small>SERIES</small><b>{seriesWon}-{seriesLost}</b></div>
-        <div><small>GAMES</small><b>{gamesWon}-{gamesPlayed - gamesWon}</b></div>
+        <div><small>SERIES</small><b><ResultCount value={seriesWon} />–<ResultCount value={seriesLost} /></b></div>
+        <div><small>GAMES</small><b><ResultCount value={gamesWon} />–<ResultCount value={gamesPlayed - gamesWon} /></b></div>
         <div><small>BOOSTS</small><b>{run.boosts.length}</b></div>
         {draftGrade(run) && <div><small>DRAFT GRADE</small><b>{draftGrade(run)!.grade}</b></div>}
-        <div><small>COINS LEFT</small><b>{run.coins}</b></div>
+        <div><small>COINS LEFT</small><b><ResultCount value={run.coins} /></b></div>
       </div>
     <RelicReward rewardKey={huntRewardKey(run)} />
     </div>
+    {mvp && <MvpSpotlight name={mvp.name} label="HUNT MVP" team={run.squad.map(id => cardPool(h).byId.get(id)).find(c => matchesRunName(c, mvp.name))?.team} detail={`${per(mvp.pts, mvp.g)} PTS · ${per(mvp.reb, mvp.g)} REB · ${per(mvp.ast, mvp.g)} AST in ${mvp.g} games`} />}
     <DuelPanel setup={{ m: 'hunt', s: run.seed, deck: run.deck, diff: run.difficulty, ...(run.view ? { vw: run.view } : {}) }} duel={run.duel}
       mine={{ score: huntScore({ won, stop: run.seriesIndex, wins: gamesWon, losses: gamesPlayed - gamesWon }), won, line: won ? `Beat the boss · ${gamesWon}-${gamesPlayed - gamesWon} in games` : `Reached series ${run.seriesIndex + 1} · ${gamesWon}-${gamesPlayed - gamesWon}` }} />
     <HuntClaim run={run} records={records} />
-    {mvp && <div className="hunt-mvp"><PlayerAvatar playerId={mvp.name} primaryColor="#f47b20" secondaryColor="#f4f0e6" size={72} />
-      <div><span className="pixel-eyebrow">HUNT MVP</span><strong>{mvp.name}</strong><span>{per(mvp.pts, mvp.g)} PTS · {per(mvp.reb, mvp.g)} REB · {per(mvp.ast, mvp.g)} AST in {mvp.g} game{mvp.g === 1 ? '' : 's'}</span></div></div>}
+
     <ol className="hunt-log">{run.results.map((r, i) => { const t = teams.get(r.teamId)!; return <li key={i} className={r.won ? 'won' : 'lost'}>{r.won ? 'W' : 'L'} {wl(r)} vs {teamLabel(t)} <small>· {eraOf(t.end).label}</small></li>; })}</ol>
     {lines.length > 0 && <RunStatsTable lines={run.lines} title="Squad stats" />}
     <RunHighs highs={run.highs} mode="hunt" />
@@ -486,7 +495,8 @@ function RunOver({ h, run, records, onNew, onExit }: { h: NbaHistory; run: HuntR
       subtitle: mvp ? `MVP ${mvp.name}: ${per(mvp.pts, mvp.g)} PTS · ${per(mvp.reb, mvp.g)} REB · ${per(mvp.ast, mvp.g)} AST` : undefined,
       stats: [{ label: 'Series', value: `${seriesWon}-${seriesLost}` }, { label: 'Games', value: `${gamesWon}-${gamesPlayed - gamesWon}` }, draftGrade(run) ? { label: 'Draft grade', value: draftGrade(run)!.grade } : { label: 'Boosts', value: String(run.boosts.length) }],
       lines: run.results.slice(-6).map(r => `${r.won ? 'W' : 'L'} ${wl(r)} vs ${teamLabel(teams.get(r.teamId)!)}`),
-      avatar: mvp ? { playerId: mvp.name } : undefined, accent: won ? 'gold' : 'red',
+      spotlight: mvp ? { label: 'HUNT MVP', name: mvp.name } : undefined,
+      avatar: mvp ? (() => { const c = run.squad.map(id => cardPool(h).byId.get(id)).find(c => matchesRunName(c, mvp.name)); const kit = teamColors(c?.team); return { playerId: c?.name ?? mvp.name, primary: kit.primary, secondary: kit.secondary }; })() : undefined, accent: won ? 'gold' : 'red',
     }} /><button onClick={copy}>{copied ? 'Copied!' : 'Copy as text'}</button><button onClick={onExit}>Main Menu</button></div>
   </section>;
 }

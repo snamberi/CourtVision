@@ -1,3 +1,6 @@
+import { CoachFigure } from '../CoachFigure';
+import { coachLook } from '../../visuals/coachLook';
+import '../presentation/nextLevel.css';
 import type { TradeSideView } from '../../simulation/gm';
 import { tradeMood, type Mood } from '../../simulation/tradeMood';
 
@@ -14,23 +17,10 @@ const MOOD_TEXT: Record<Mood, string> = {
   happy: 'He likes it. You may be giving a little extra.',
   thrilled: 'He loves it. You are overpaying.',
 };
-/** 8×8 pixel faces: eyes and mouth rows per mood. */
-const MOUTH: Record<Mood, string[]> = {
-  furious: ['........', '..####..', '.#....#.'],
-  unhappy: ['........', '..####..', '.#....#.'],
-  thinking: ['........', '.######.', '........'],
-  happy: ['.#....#.', '..####..', '........'],
-  thrilled: ['.#....#.', '.######.', '..####..'],
-};
-const BROWS: Record<Mood, string> = { furious: '.##..##.', unhappy: '........', thinking: '........', happy: '........', thrilled: '........' };
-
-function Face({ mood }: { mood: Mood }) {
-  const rows = ['.######.', BROWS[mood], '.##..##.', '.##..##.', '........', ...MOUTH[mood]];
-  const skin = mood === 'furious' ? '#e85d5d' : mood === 'unhappy' ? '#e0a36a' : '#e8b98a';
-  return <svg className={`ts-face mood-${mood}`} viewBox="0 0 8 10" width="56" height="70" aria-hidden="true" shapeRendering="crispEdges">
-    <rect x="0" y="0" width="8" height="10" fill={skin} />
-    {rows.map((r, y) => [...r].map((c, x) => c === '#' ? <rect key={`${x}-${y}`} x={x} y={y} width="1" height="1" fill={y === 0 ? '#3a2a1a' : '#0b1018'} /> : null))}
-  </svg>;
+/** A consistent, detailed front-office portrait instead of the old oversized 8×8 face. */
+function Face({ mood, name }: { mood: Mood; name: string }) {
+  const pose = mood === 'thrilled' ? 'up' : mood === 'furious' || mood === 'unhappy' ? 'cross' : mood === 'happy' ? 'point' : 'down';
+  return <span className={`ts-portrait mood-${mood}`} aria-hidden="true"><svg viewBox="-22 -50 44 40" shapeRendering="crispEdges"><CoachFigure look={{ ...coachLook(`${name} front office`, 48), outfit: 'suit' }} primary="#d6af64" secondary="#f1ead5" pose={pose} /></svg><small>{mood.toUpperCase()}</small></span>;
 }
 
 export function TradeScale({ aName, bName, view, aiSide, tolerance, empty }: { aName: string; bName: string; view: TradeSideView; aiSide: 'a' | 'b'; tolerance: number; empty: boolean }) {
@@ -52,7 +42,7 @@ export function TradeScale({ aName, bName, view, aiSide, tolerance, empty }: { a
     </svg>
     <div className="ts-labels"><span>{aName} sends</span><span>{bName} sends</span></div>
     <div className="ts-gm">
-      <Face mood={mood} />
+      <Face mood={empty ? 'thinking' : mood} name={aiName} />
       <div>
         <small>{aiName.toUpperCase()} GM</small>
         <b>{empty ? 'Put something on the table.' : MOOD_TEXT[mood]}</b>

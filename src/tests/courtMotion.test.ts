@@ -51,4 +51,16 @@ describe('court motion',()=>{
   expect(kindAt('fadeaway')).toBe('fadeaway');
   expect(kindAt('layup')).toBe('layup');
  });
+ it('gives Curry a made-three celebration, never on a miss, and remains seekable',()=>{
+  const shooter="Stephen Curry '17";
+  const e={...entry,ballHandlerId:shooter,onCourtHome:[shooter,...entry.onCourtHome.slice(1)],playback:{shooterId:shooter,shotType:'aboveBreak3',shotMade:true}};
+  const f=courtFrame(e,.94,'H','A');
+  expect(f.celebration).toBe('nightNight');expect(f.players.find(p=>p.id===shooter)?.anim?.kind).toBe('nightNight');
+  expect(courtFrame({...e,result:'MISS',playback:{...e.playback,shotMade:false}},.94,'H','A').celebration).toBeUndefined();
+  expect(courtFrame({...e,playback:{...e.playback,shotType:'layup'}},.94,'H','A').celebration).toBeUndefined();
+  const arc=courtFrame(e,.65,'H','A');expect(arc.flightTrail).toHaveLength(3);
+  expect(arc.flightTrail!.every(b=>Number.isFinite(b.x+b.y+b.z)&&b.z>=0)).toBe(true);
+  courtFrame(e,.98,'H','A');expect(courtFrame(e,.65,'H','A')).toEqual(arc);
+ });
+
 });

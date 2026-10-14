@@ -1,3 +1,6 @@
+import { teamColors } from '../../simulation/teamColors';
+import { playerFinish } from '../presentation/cardFinish';
+import { RevealSparks } from '../presentation/PlayerFinish';
 import { useCallback, useEffect, useState } from 'react';
 import { LuckChip } from '../relics/RelicReward';
 import type { NbaHistory } from '../../history/nbaHistoryData';
@@ -16,9 +19,7 @@ import { PlayerAvatar } from '../PlayerAvatar';
 const SLICE = 132;
 /** Slices the strip travels before it stops, and slices kept after the stop (so the right side is never empty). */
 const LEAD = 40, TAIL = 16, START = 6;
-/** Jersey colour on the wheel by rarity, so a Star stands out as the strip flies past. */
-const SLICE_KIT: Record<string, string> = { common: '#5b6b82', rare: '#2f6fb8', epic: '#7e4fc9', legendary: '#d99a1e' };
-const reducedMotion = () => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+const reducedMotion = () => typeof window !== 'undefined' && (!!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || document.documentElement.classList.contains('lite'));
 
 /**
  * One wheel: a strip of real players that spins to a stop; the slices either side are the Move Left/Right options.
@@ -38,7 +39,7 @@ function Reel({ h, wheel, onSettled }: { h: NbaHistory; wheel: Wheel; onSettled:
     <div className={`cv-reel-marker rarity-${hit.rarity}`} aria-hidden="true" />
     <div className="cv-reel-strip" onAnimationEnd={e => { if (e.animationName === 'cv-spin') onSettled(); }} style={{ transform: `translateX(${-(target * SLICE + SLICE / 2)}px)`, ['--from' as string]: `${-(START * SLICE + SLICE / 2)}px` }}>
       {strip.map((id, i) => { const c = pool.byId.get(id)!; return <div key={i} className={`cv-slice rarity-${c.rarity} ${i === target ? 'on' : ''}`}>
-        <PlayerAvatar playerId={c.name} mode="portrait" size={30} primaryColor={SLICE_KIT[c.rarity]} secondaryColor="#f4f0e6" />
+        <PlayerAvatar playerId={c.name} mode="portrait" size={30} primaryColor={teamColors(c.team).primary} secondaryColor={teamColors(c.team).secondary} />
         <span><b>{c.name}</b><small>'{String(c.end).slice(2)} · {c.ovr}</small></span>
       </div>; })}
     </div>
@@ -56,9 +57,10 @@ function Landed({ h, s, wheel, index, onTake, onBoost }: { h: NbaHistory; s: Whe
   const boost = wheel.boost;
   const raised = (cat: CategoryId) => !!boost && Object.keys(cats[cat]).some(k => boost.raised.includes(k));
   const canBoost = !used && !boost && mustTake(s) && boostLeft(s) > 0;
-  return <div className={`cv-landed rarity-${c.rarity} ${used ? 'used' : ''}`}>
+  return <div style={playerFinish(c.team)} className={`cv-landed player-finish rarity-${c.rarity} ${used ? 'used' : ''}`}>
+    <RevealSparks key={id} rarity={c.rarity} active={!used} />
     {star && !used && <div className="cv-star-burst" aria-hidden="true">STAR!</div>}
-    <div className="cv-landed-head"><PlayerAvatar playerId={c.name} primaryColor={SLICE_KIT[c.rarity]} secondaryColor="#f4f0e6" size={56} pose={star ? 'raise' : 'stand'} />
+    <div className="cv-landed-head"><PlayerAvatar playerId={c.name} primaryColor={teamColors(c.team).primary} secondaryColor={teamColors(c.team).secondary} size={56} pose={star ? 'raise' : 'stand'} />
       <div><small>{RARITY_LABEL[c.rarity].toUpperCase()} · {c.pos}{star ? ` · +${STAR_BONUS} TO EVERY SKILL` : ''}</small><strong>{c.name}{boost && <span className="cv-boost-badge">{boost.mode === 'prime' ? 'PRIME' : 'SURGE'}</span>}</strong><span>{seasonLabel(c.end)} {c.teamName} · {c.ovr} OVR</span></div></div>
     {boost
       ? <p className="hint-text">{boost.mode === 'prime' ? `In his absolute prime: ${boost.raised.length} skills at the best he ever had them.` : `Already at his peak: ${boost.raised.length} skills up 10-20%.`} Height never changes; nothing passes {ELITE_MAX}.</p>

@@ -1,11 +1,17 @@
 import { useMemo, useState } from 'react';
 import type { League } from '../simulation/league';
 import type { GMLeagueExtras } from '../simulation/gm';
-import { franchiseTimeline, EVENT_ICON, type TimelineSeason } from '../simulation/timeline';
+import { franchiseTimeline, type TimelineSeason } from '../simulation/timeline';
+import { pixelIconPath } from './pixelIconData';
 import { resolveTeamIdentity } from '../simulation/teamIdentity';
 import { formatSeasonYear } from '../simulation/calendar';
 import { TeamLogo } from './TeamLogo';
 import { PlayerNameTag } from './PlayerAvatar';
+import { EarnedTrophyRoom } from './presentation/EarnedTrophyRoom';
+import { JerseyBanner } from './Banners';
+import { PixelIcon } from './PixelIcon';
+
+const TIMELINE_ICON = { title: 'trophy', finals: 'star', series: 'up', game7: 'flame', award: 'star', trade: 'trade', jersey: 'user', arena: 'court', draft: 'cards', owner: 'crown', move: 'globe' } as const;
 
 /** Draws the whole timeline as one tall image (a row per season), for sharing. */
 async function timelineImage(teamName: string, primary: string, seasons: TimelineSeason[]): Promise<Blob | null> {
@@ -27,7 +33,12 @@ async function timelineImage(teamName: string, primary: string, seasons: Timelin
     x.fillStyle = '#f4f0e6'; x.fillText(`${s.wins}-${s.losses}`, 300, y + 38);
     x.fillStyle = s.champion ? '#ffd166' : '#94a0b2'; x.font = "bold 20px 'Oswald', sans-serif"; x.fillText(s.champion ? 'CHAMPIONS' : s.finish.toUpperCase(), 440, y + 38);
     x.fillStyle = '#c9ced8'; x.font = "18px 'Inter', sans-serif";
-    s.events.slice(0, 4).forEach((e, i) => x.fillText(`${EVENT_ICON[e.kind]}  ${e.text}`, 68, y + 70 + i * 26));
+    s.events.slice(0, 4).forEach((e, i) => {
+      const lineY = y + 70 + i * 26;
+      x.save(); x.translate(68, lineY - 14); x.fillStyle = s.champion ? '#ffd166' : '#94a0b2';
+      x.fill(new Path2D(pixelIconPath(TIMELINE_ICON[e.kind]).d)); x.restore();
+      x.fillText(e.text, 94, lineY);
+    });
     y += h;
   }
   x.fillStyle = '#94a0b2'; x.font = "16px 'Inter', sans-serif"; x.fillText('Court Vision', 48, H - 24);
@@ -45,6 +56,10 @@ export function FranchiseTimelinePage({ league, extras, controlledTeamId, onSele
   if (!team) return <p className="empty-state">No team to show.</p>;
   const id = resolveTeamIdentity(team);
   const titles = seasons.filter(s => s.champion);
+  const revisit = (season: string) => {
+    setSel(season);
+    window.requestAnimationFrame(() => document.getElementById('franchise-season-detail')?.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' }));
+  };
   const share = async () => {
     const blob = await timelineImage(team.name, id.primary, seasons);
     if (!blob) { setStatus('Could not draw the image in this browser.'); return; }
@@ -58,14 +73,14 @@ export function FranchiseTimelinePage({ league, extras, controlledTeamId, onSele
       <p>{seasons.length} season{seasons.length === 1 ? '' : 's'} · {titles.length} title{titles.length === 1 ? '' : 's'}{titles.length ? ` (${titles.map(t => formatSeasonYear(t.season)).join(', ')})` : ''}</p></div>
       <div className="timeline-actions"><label>Team<select value={teamId} onChange={e => { setTeamId(e.target.value); setSel(null); }}>{league.teams.map(t => <option key={t.teamId} value={t.teamId}>{t.name}</option>)}</select></label>
         <button onClick={() => void share()}>Share as image</button>{status && <small role="status">{status}</small>}</div></div>
-    {titles.length > 0 && <div className="timeline-rafters" aria-label="Banners">{titles.map(t => <span key={t.season} className="timeline-banner"><b>CHAMPIONS</b><small>{formatSeasonYear(t.season)}</small></span>)}
-      {(team.retiredJerseys ?? []).map(j => <span key={j.number} className="timeline-banner timeline-jersey"><b>#{j.number}</b><small>{j.playerId.split(' ').slice(-1)[0]}</small></span>)}</div>}
+    <EarnedTrophyRoom seasons={seasons} teamId={teamId} identity={id} selected={picked?.season} onSeason={revisit} />
+    {!!team.retiredJerseys?.length && <div className="timeline-rafters detailed-rafters" aria-label="Retired jerseys">{team.retiredJerseys.map(j => <button key={j.number} className="banner-select" onClick={() => onSelectPlayer(j.playerId)} aria-label={`View ${j.playerId}, retired number ${j.number}`}><JerseyBanner identity={id} number={j.number} name={j.playerId} years={formatSeasonYear(j.season)} /></button>)}</div>}
     <ol className="timeline-rail">{seasons.map(s => <li key={s.season}><button className={`timeline-stop${s.champion ? ' champ' : ''}${s === picked ? ' active' : ''}${s.current ? ' current' : ''}`} onClick={() => setSel(s.season)} aria-pressed={s === picked}>
       <b>{formatSeasonYear(s.season)}</b><span className="timeline-record">{s.wins}-{s.losses}</span><small>{s.champion ? 'CHAMPIONS' : s.finish}</small>
-      <span className="timeline-icons">{s.events.slice(0, 5).map((e, i) => <i key={i} className={`tl-${e.kind}`} title={e.text}>{EVENT_ICON[e.kind]}</i>)}</span></button></li>)}</ol>
-    {picked && <section className="timeline-detail">
+      <span className="timeline-icons">{s.events.slice(0, 5).map((e, i) => <i key={i} className={`tl-${e.kind}`} title={e.text}><PixelIcon name={TIMELINE_ICON[e.kind]} size={15} /></i>)}</span></button></li>)}</ol>
+    {picked && <section className="timeline-detail" id="franchise-season-detail" aria-label={`Season ${formatSeasonYear(picked.season)}`}>
       <h3>{formatSeasonYear(picked.season)} · {picked.wins}-{picked.losses} · {picked.champion ? 'Champions' : picked.finish}</h3>
-      {picked.events.length > 0 ? <ul className="timeline-events">{picked.events.map((e, i) => <li key={i} className={`tl-${e.kind}`}><i>{EVENT_ICON[e.kind]}</i>{e.text}</li>)}</ul> : <p className="hint-text">A quiet season: no banners, big trades or awards.</p>}
+      {picked.events.length > 0 ? <ul className="timeline-events">{picked.events.map((e, i) => <li key={i} className={`tl-${e.kind}`}><i><PixelIcon name={TIMELINE_ICON[e.kind]} size={18} /></i>{e.text}</li>)}</ul> : <p className="hint-text">A quiet season: no banners, big trades or awards.</p>}
       {picked.summary ? <div className="feature-table-scroll"><table className="db-table"><thead><tr><th className="col-name">Player</th><th>Pos</th><th>Age</th><th>OVR</th><th>GP</th><th>PTS</th><th>REB</th><th>AST</th><th>WS</th></tr></thead>
         <tbody>{picked.summary.roster.map(r => <tr key={r.playerId}><td className="col-name"><button className="prospect-name" onClick={() => onSelectPlayer(r.playerId)}><PlayerNameTag playerId={r.playerId} teamId={teamId} size={22} /></button></td>
           <td>{r.position}</td><td>{r.age}</td><td>{r.overall}</td><td>{r.gp}</td><td>{r.pts.toFixed(1)}</td><td>{r.reb.toFixed(1)}</td><td>{r.ast.toFixed(1)}</td><td>{r.ws.toFixed(1)}</td></tr>)}</tbody></table></div>

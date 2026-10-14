@@ -49,7 +49,9 @@ export function franchiseTimeline(league: League, extras: GMLeagueExtras | undef
   if (league.season && !out.some(s => s.season === league.season)) {
     const games = league.schedule.filter(g => g.played && g.result && (g.homeTeamId === teamId || g.awayTeamId === teamId));
     const wins = games.filter(g => (g.homeTeamId === teamId) === (g.result!.homeScore > g.result!.awayScore)).length;
-    out.push({ season: league.season, wins, losses: games.length - wins, finish: 'In progress', champion: false, events: [], current: true });
+    const champion = league.playoffBracket?.championTeamId === teamId;
+    out.push({ season: league.season, wins, losses: games.length - wins, finish: champion ? 'Champion' : 'In progress', champion,
+      events: champion ? [{ kind: 'title', text: 'Won the championship' }] : [], current: true });
   }
   const at = (season: string) => out.find(s => s.season === season);
   // Numbers raised to the rafters.

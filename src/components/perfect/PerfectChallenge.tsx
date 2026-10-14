@@ -1,3 +1,7 @@
+import { ResultCount, ResultCrest, MvpSpotlight } from '../presentation/ResultPresentation';
+import { LineupBoard } from '../presentation/LineupBoard';
+import { playerFinish, matchesRunName } from '../presentation/cardFinish';
+import { RevealSparks } from '../presentation/PlayerFinish';
 import { ModeIcon } from '../ModeIcon';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { NbaHistory } from '../../history/nbaHistoryData';
@@ -36,7 +40,7 @@ import { rewardRun, perfectSpins, perfectSecret, perfectRewardKey } from '../../
 import { RelicReward, LuckChip } from '../relics/RelicReward';
 import { PixelIcon } from '../PixelIcon';
 import { SlotReels, type Reel } from '../SlotReels';
-import { burst, celebrate, shake, useCountUp } from '../../fx/effects';
+import { shake } from '../../fx/effects';
 import { CourtLineup, type LineupPlayer } from '../CourtLineup';
 import { assignToSpots, FIVE_SPOTS } from '../lineupSpots';
 import { WhatIfRows, WhatIfSetup } from './WhatIfModes';
@@ -51,7 +55,6 @@ import './perfect.css';
 import { DraftBattle, BattleSetup } from './DraftBattle';
 import { loadBattle, saveBattle, newBattle, recordBattle, loadBattleRecords, type Battle } from '../../perfect/battle';
 
-const POS_COLOR: Record<string, string> = { PG: '#4da3ff', SG: '#55c878', SF: '#f47b20', PF: '#b983ff', C: '#e85d5d', G: '#4da3ff', F: '#f47b20' };
 const MODE_INFO: Record<PerfectMode, { name: string; blurb: string; icon: string }> = {
   quick: { name: 'Quick Spin', icon: 'play', blurb: 'Ten spins and a coach spin. Five starters by position, five off the bench. Three rerolls and two lucky spins (a sure Great or Star).' },
   franchise: { name: 'Franchise Spin', icon: 'team', blurb: 'Each spin rolls a franchise and an era. Pick ONE player from everyone who played there. Three team-or-era rerolls, two lucky rolls and one Absolute Prime boost.' },
@@ -310,17 +313,17 @@ const nameIn = (run: PerfectRun, c: HuntCard) => (run.whatIf?.hybrid?.base === c
 function CardTile({ c, onPick, prime, hide, bare, tip }: { c: HuntCard; onPick?: () => void; prime?: boolean; hide?: boolean; bare?: boolean; tip?: string }) {
   // Category Draft: the name, the face and the position. No season, numbers, rating or rarity to go on.
   if (bare) {
-    const inner = <><PlayerAvatar playerId={c.name} primaryColor={POS_COLOR[c.pos] ?? '#f47b20'} secondaryColor="#f4f0e6" size={44} mode="portrait" />
+    const inner = <><PlayerAvatar playerId={c.name} primaryColor="#475569" secondaryColor="#cbd5e1" size={44} mode="portrait" />
       <span className="p820-card-text"><b>{c.name}</b><small>{c.pos}{tip ? <> · <em className="p820-tip">{tip}</em></> : null}</small></span></>;
-    return onPick ? <button className="p820-card p820-card-bare" onClick={onPick}>{inner}</button> : <div className="p820-card p820-card-bare">{inner}</div>;
+    return onPick ? <button className="p820-card p820-card-bare player-finish" style={playerFinish(null)} onClick={onPick}>{inner}</button> : <div className="p820-card p820-card-bare player-finish" style={playerFinish(null)}>{inner}</div>;
   }
   const body = <>
-    <PlayerAvatar playerId={c.name} primaryColor={POS_COLOR[c.pos] ?? '#f47b20'} secondaryColor="#f4f0e6" size={44} mode="portrait" />
+    <PlayerAvatar playerId={c.name} primaryColor={teamColors(c.team).primary} secondaryColor={teamColors(c.team).secondary} size={44} mode="portrait" />
     <span className="p820-card-text"><b>{c.name}</b><small>{seasonLabel(c.end)} · {c.team} · {c.pos}</small><i>{c.ppg} pts · {c.rpg} reb · {c.apg} ast</i></span>
     <span className={`p820-ovr rarity-${c.rarity}`} title={hide ? `${RARITY_LABEL[c.rarity]} · rating hidden until the season is over` : RARITY_LABEL[c.rarity]}>{hide ? HIDDEN : c.ovr}</span>
     {prime && <em className="p820-prime-tag">PRIME</em>}
   </>;
-  return onPick ? <button className={`p820-card rarity-${c.rarity}`} onClick={onPick}>{body}</button> : <div className={`p820-card rarity-${c.rarity}`}>{body}</div>;
+  return onPick ? <button className={`p820-card player-finish rarity-${c.rarity}`} style={playerFinish(c.team)} onClick={onPick}>{body}</button> : <div className={`p820-card player-finish rarity-${c.rarity}`} style={playerFinish(c.team)}>{body}</div>;
 }
 
 function SquadPanel({ h, run }: { h: NbaHistory; run: PerfectRun }) {
@@ -348,17 +351,19 @@ function QuickDraft({ h, run, setRun }: { h: NbaHistory; run: PerfectRun; setRun
   const [spinning, setSpinning] = useState(false);
   const [landed, setLanded] = useState<HuntCard | null>(null);
   const reelBox = useRef<HTMLDivElement>(null);
+  const spinTimer = useRef(0);
+  useEffect(() => () => window.clearTimeout(spinTimer.current), []);
   const target = useMemo(() => quickSpinCard(h, run), [h, run]);
   const strip = useMemo(() => [...reelFiller(h, 14, run.seed + run.squad.length), target], [h, run.seed, run.squad.length, target]);
   const spin = () => {
     if (spinning) return;
     setSpinning(true);
-    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    window.setTimeout(() => {
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || document.documentElement.classList.contains('lite');
+    spinTimer.current = window.setTimeout(() => {
       setSpinning(false); setLanded(target);
       // A Star landing gets the big treatment: gold sparks and a shake.
       const star = target.rarity === 'legendary' && run.view?.colors !== false;
-      burst(reelBox.current, { colors: star ? ['#ffd166', '#fff3b0', '#f47b20'] : ['#f47b20', '#f4f0e6'], count: star ? 50 : 20, power: star ? 7 : 4 });
+
       if (star) shake(reelBox.current, 'big');
     }, reduce ? 50 : 1300);
   };
@@ -371,10 +376,11 @@ function QuickDraft({ h, run, setRun }: { h: NbaHistory; run: PerfectRun; setRun
     <div className="p820-stage">
       <span className="pixel-eyebrow">{run.from === 'hunt' ? `YOUR HUNT SQUAD + BENCH SPIN ${run.squad.length - 5} OF ${SQUAD - 6}` : `SPIN ${run.squad.length + 1} OF ${SQUAD}`}</span>
       <h2>{QUICK_SLOT_LABEL[slot]} <LuckChip luck={run.luck} /></h2>
-      <div ref={reelBox} className={`p820-reel ${spinning ? 'spinning' : ''} ${landed ? 'landed' : ''}`} aria-live="polite">
-        {landed ? <CardTile c={landed} hide={!ratingsShown(run)} />
+      <div ref={reelBox} className={`p820-reel ${spinning ? 'spinning' : ''} ${landed ? 'landed' : ''} ${landed?.rarity === 'legendary' && run.view?.colors !== false ? 'legendary-reveal' : ''}`} aria-live="polite">
+        {landed ? <><CardTile c={landed} hide={!ratingsShown(run)} /><RevealSparks rarity={landed.rarity} active={run.view?.colors !== false} /></>
           : <div className="p820-reel-strip" style={{ transform: spinning ? `translateY(-${(strip.length - 1) * 64}px)` : 'translateY(0)' }}>{strip.map((c, i) => <div key={i} className="p820-reel-row"><b>{c.name}</b><small>{seasonLabel(c.end)} {c.team}</small><span>{ratingsShown(run) ? c.ovr : HIDDEN}</span></div>)}</div>}
       </div>
+      {landed?.rarity === 'legendary' && run.view?.colors !== false && <span className="legendary-pull" role="status">★ LEGENDARY PULL ★</span>}
       {run.lucky && !landed && <p className="p820-lucky-on"><PixelIcon name="star" size={12} /> Lucky spin: this reel lands on a Great or a Star{starCapReached(h, run) ? ' (a Great: you have your three Stars)' : ''}.</p>}
       {landed ? <div className="p820-spin-actions">
           <button className="primary p820-big" onClick={keep}>{run.squad.length + 1 >= SQUAD ? (run.coach ? 'Keep and start the season' : 'Keep and spin the coach') : 'Keep and spin again'}</button>
@@ -740,6 +746,11 @@ function LineupPanel({ h, run, setRun, locked }: { h: NbaHistory; run: PerfectRu
   const pool = cardPool(h);
   const custom = lineupOf(run);
   const order = custom ?? run.squad;
+  const preview = (custom ?? [...run.squad].sort((a, b) => (pool.byId.get(b)?.ovr ?? 0) - (pool.byId.get(a)?.ovr ?? 0))).flatMap(id => {
+    const c = pool.byId.get(id); if (!c) return [];
+    const kit = teamColors(c.team);
+    return [{ id, name: nameIn(run, c), pos: c.pos, colors: [kit.primary, kit.secondary] as [string, string], sub: `${ratingsShown(run) ? `${c.ovr} OVR · ` : ''}${seasonLabel(c.end)}`, hot: c.rarity === 'legendary' && run.view?.colors !== false }];
+  });
   const [picked, setPicked] = useState<string | null>(null);
   const bonds = teamBonds(h, run);
   const tap = (id: string) => {
@@ -750,6 +761,7 @@ function LineupPanel({ h, run, setRun, locked }: { h: NbaHistory; run: PerfectRu
   };
   return <aside className="p820-squad p820-lineup">
     <h3>Your rotation <small>{custom ? 'your lineup' : 'auto'}</small></h3>
+    <LineupBoard title={custom ? 'Your starting five' : 'Projected starting five'} players={preview.slice(0, 5)} bench={preview.slice(5)} bonds={bonds} />
     <p className="hint-text">{custom ? 'The first five start; the bench comes in in order.' : 'Auto: your coach starts his best five every game.'} Tap a player, then another, to swap them{locked ? ' (pause the sim first)' : ''}.</p>
     <ol>{order.map((id, i) => { const c = pool.byId.get(id); if (!c) return null; return <li key={id} className={`rarity-${c.rarity} ${picked === id ? 'picked' : ''} ${custom && i === 5 ? 'p820-bench-start' : ''}`}>
       <button type="button" onClick={() => tap(id)} disabled={locked} aria-pressed={picked === id}>
@@ -767,11 +779,11 @@ function LineupPanel({ h, run, setRun, locked }: { h: NbaHistory; run: PerfectRu
 // ---------------------------------------------------------------- the end
 
 /** The run's MVP (regular season) and, with a title, the Finals MVP. */
-function RunMvps({ run }: { run: PerfectRun }) {
+function RunMvps({ run, h }: { run: PerfectRun; h: NbaHistory }) {
   const mvp = runMvp(run.lines, 20), s = summary(run), fmvp = s.champion ? runMvp(run.finalsLines) : null;
   if (!mvp && !fmvp) return null;
-  const card = (label: string, m: NonNullable<typeof mvp>) => <div className="hunt-mvp"><PlayerAvatar playerId={m.name} primaryColor="#f47b20" secondaryColor="#f4f0e6" size={64} />
-    <div><span className="pixel-eyebrow">{label}</span><strong>{m.name}</strong><span>{perGame(m.pts, m.g)} PTS · {perGame(m.reb, m.g)} REB · {perGame(m.ast, m.g)} AST · {perGame(m.min, m.g)} MIN in {m.g} game{m.g === 1 ? '' : 's'}</span></div></div>;
+  const card = (label: string, m: NonNullable<typeof mvp>) => <MvpSpotlight name={m.name} label={label} team={run.squad.map(id => cardPool(h).byId.get(id)).find(c => matchesRunName(c, m.name))?.team}
+    detail={`${perGame(m.pts, m.g)} PTS · ${perGame(m.reb, m.g)} REB · ${perGame(m.ast, m.g)} AST · ${perGame(m.min, m.g)} MIN in ${m.g} games`} />;
   return <div className="p820-mvps">{mvp && card('RUN MVP', mvp)}{fmvp && card('FINALS MVP', fmvp)}</div>;
 }
 
@@ -793,27 +805,21 @@ function Finished({ h, run, records, onAgain }: { h: NbaHistory; run: PerfectRun
   const report = reportOf(h, run);
   const free = isFreeMode(run.mode);
   const frame = free ? null : s.perfectSeason && s.perfectPlayoffs ? 'perfectGold' : s.perfectSeason ? 'undefeated' : null;
-  // The score counts up; a title rains confetti (gold for a perfect run), once per finished run.
-  const shown = useCountUp(s.score, 1400);
-  useEffect(() => {
-    if (!s.champion) return;
-    const t = window.setTimeout(() => celebrate(s.perfectSeason ? ['#ffd166', '#fff3b0', '#f4f0e6'] : undefined), 350);
-    return () => window.clearTimeout(t);
-  }, [run.seed, s.champion]); // eslint-disable-line react-hooks/exhaustive-deps
   return <section className="p820-done">
-    <div className={`p820-final fx-pop ${s.champion ? 'champ fx-shine' : ''}`}>
+    <div className={`p820-final result-hero fx-pop ${s.champion ? 'champ fx-shine' : ''}`}>
+      <ResultCrest celebrateWin={s.champion} label="COURT VISION · 82-0 CHALLENGE" />
       <span className="pixel-eyebrow">{s.champion ? 'CHAMPIONS' : `OUT IN THE ${ROUND_NAMES[lastSeries?.round ?? 0].toUpperCase()}`}</span>
-      <div className="p820-final-record">{s.w}-{s.l}<small>playoffs {s.pw}-{s.pl}</small></div>
+      <div className="p820-final-record"><span className="result-record-line"><ResultCount value={s.w} />–<ResultCount value={s.l} /></span><small>playoffs <ResultCount value={s.pw} />–<ResultCount value={s.pl} /></small></div>
       <p>{verdict(s)}</p>
       {frame && <div className="p820-reward"><FramedAvatar look={look} team={team} frame={frame} size={96} /><span><b>{frame === 'perfectGold' ? 'Perfection' : 'Undefeated'}</b> title and profile frame unlocked. Equip them in your Player Profile.</span></div>}
       {!s.champion && lastSeries && teams.get(lastSeries.opp) && <p className="hint-text">Knocked out by the {teamLabel(teams.get(lastSeries.opp)!)} (their rating {teamRating(h, teams.get(lastSeries.opp)!)}).</p>}
     </div>
+    <RunMvps run={run} h={h} />
     {!run.weekly && !isFreeMode(run.mode) && <DuelPanel setup={{ m: 'perfect', s: run.seed, pm: run.mode, ...(run.level ? { diff: run.level } : {}), ...(run.view ? { vw: run.view } : {}), ...(run.catOpts ? { co: run.catOpts } : {}), ...(run.custom ? { cc: run.custom } : {}) }} duel={run.duel}
       mine={{ score: s.score, won: s.champion, line: `${s.w}-${s.l} · playoffs ${s.pw}-${s.pl}${s.champion ? ' · champions' : ''}` }} />}
     {free ? <p className="hint-text p820-unranked">{run.mode === 'fun' ? 'A Fun run' : 'A What If run'}: just for fun, so it doesn't count for records, leaderboards or rewards.</p>
       : <><RelicReward rewardKey={perfectRewardKey(run)} />
         <PerfectClaim run={run} records={records} score={s.score} /></>}
-    <RunMvps run={run} />
     <ReportCard h={h} run={run} />
     <table className="p820-score"><tbody>
       <tr><td>Wins ({s.w} × {SCORE.win} + margins)</td><td>{run.games.filter(g => g.won).reduce((n, g) => n + SCORE.win + Math.min(SCORE.marginCap, g.us - g.them), 0).toLocaleString()}</td></tr>
@@ -824,7 +830,7 @@ function Finished({ h, run, records, onAgain }: { h: NbaHistory; run: PerfectRun
       {s.perfectPlayoffs && <tr><td>16-0</td><td>{SCORE.perfectPlayoffs.toLocaleString()}</td></tr>}
       {isCategoryMode(run.mode) && <tr><td>Categories ({[...new Set(run.cats ?? [])].map(id => categoryById(h, id)?.name).filter(Boolean).slice(0, 3).join(', ')}{(new Set(run.cats ?? [])).size > 3 ? '…' : ''})</td><td>×{categoryMultiplier(run)}</td></tr>}
       {s.multiplier !== 1 && <tr><td>{isCategoryMode(run.mode) ? 'Total multiplier' : 'Challenge'} ({LEVEL_NAME[run.level ?? 'pro']}{run.view?.numbers ? ', ratings shown' : ''}{run.view && !run.view.colors ? ', colours hidden' : ''})</td><td>×{s.multiplier}</td></tr>}
-      <tr className="total"><td>Score</td><td>{shown.toLocaleString()}</td></tr>
+      <tr className="total"><td>Score</td><td><ResultCount value={s.score} /></td></tr>
     </tbody></table>
     <p className="hint-text">Best ever: {records.best ? `${records.best.w}-${records.best.l}, ${records.best.score.toLocaleString()} points` : '—'} · {records.titles} title{records.titles === 1 ? '' : 's'} · {records.perfectSeasons} perfect season{records.perfectSeasons === 1 ? '' : 's'}{run.daily ? ' · Daily 82-0: your best try today counts on the weekly board.' : ''}</p>
     <SquadPanel h={h} run={run} />
@@ -840,7 +846,8 @@ function Finished({ h, run, records, onAgain }: { h: NbaHistory; run: PerfectRun
         stats: [{ label: 'Record', value: `${s.w}-${s.l}` }, { label: 'Playoffs', value: `${s.pw}-${s.pl}` }, { label: 'Bosses', value: `${s.bossWins}/${s.bosses}` }, { label: 'Score', value: s.score.toLocaleString() }],
         results: run.games.map(g => ({ won: g.won, boss: g.boss })),
         lines: report ? [...(() => { const m = runMvp(run.lines, 20); return m ? [`Run MVP: ${m.name} ${perGame(m.pts, m.g)} PPG`] : []; })(), ...report.rows.slice(0, STARTERS).map(r => `${r.c.name} · #${r.rank} of ${r.of} · ${report.verdictOf(r.rank, r.of)}`)] : [...(() => { const m = runMvp(run.lines, 20); return m ? [`Run MVP: ${m.name} ${perGame(m.pts, m.g)} PPG`] : []; })(), ...[...run.squad].map(id => cardPool(h).byId.get(id)!).sort((a, b) => b.ovr - a.ovr).map(c => `${c.name} ${seasonLabel(c.end)} · ${c.ovr}`)],
-        avatar: (() => { const top = [...run.squad].map(id => cardPool(h).byId.get(id)!).sort((a, b) => b.ovr - a.ovr)[0]; return top ? { playerId: top.name, primary: POS_COLOR[top.pos] } : undefined; })(),
+        spotlight: (() => { const m = runMvp(run.lines, 20); return m ? { label: 'RUN MVP', name: m.name } : undefined; })(),
+        avatar: (() => { const m = runMvp(run.lines, 20), cards = run.squad.map(id => cardPool(h).byId.get(id)!); const top = (m ? cards.find(c => matchesRunName(c, m.name)) : undefined) ?? [...cards].sort((a, b) => b.ovr - a.ovr)[0]; return top ? { playerId: top.name, primary: teamColors(top.team).primary, secondary: teamColors(top.team).secondary } : undefined; })(),
         accent: s.perfectSeason ? 'gold' : s.champion ? 'green' : 'orange',
       }} /></div>
   </section>;

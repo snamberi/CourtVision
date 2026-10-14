@@ -36,7 +36,7 @@ function Ghost() {
   </svg>;
 }
 
-export function CourtLineup({ players, spots = FIVE_SPOTS, active, paint, label = 'Starting lineup' }: { players: (LineupPlayer | undefined)[]; spots?: readonly string[]; active?: number; paint?: string; label?: string }) {
+export function CourtLineup({ players, spots = FIVE_SPOTS, active, paint, label = 'Starting lineup', bonds = [], highlighted, selected, onSelect }: { players: (LineupPlayer | undefined)[]; spots?: readonly string[]; active?: number; paint?: string; label?: string; bonds?: { label: string; cards: string[]; bonus?: number }[]; highlighted?: Set<string>; selected?: string; onSelect?: (id: string) => void }) {
   const places = PLACES[spots.length] ?? PLACES[5];
   const seen = useRef<Set<string>>(new Set(players.filter(Boolean).map(p => p!.id)));
   const [fresh, setFresh] = useState<string | null>(null);
@@ -47,20 +47,25 @@ export function CourtLineup({ players, spots = FIVE_SPOTS, active, paint, label 
     if (i < 0) return;
     setFresh(players[i]!.id);
     const p = players[i]!;
-    window.setTimeout(() => burst(spotRefs.current[i], { colors: [p.colors?.[0] ?? '#f47b20', p.colors?.[1] ?? '#ffd166', '#f4f0e6'], count: p.hot ? 40 : 22, power: p.hot ? 6 : 4 }), 260);
+    const sparks = window.setTimeout(() => burst(spotRefs.current[i], { colors: [p.colors?.[0] ?? '#f47b20', p.colors?.[1] ?? '#ffd166', '#f4f0e6'], count: p.hot ? 40 : 22, power: p.hot ? 6 : 4 }), 260);
     const t = window.setTimeout(() => setFresh(null), 700);
-    return () => window.clearTimeout(t);
+    return () => { window.clearTimeout(t); window.clearTimeout(sparks); };
   }, [players.map(p => p?.id ?? '').join('|')]); // eslint-disable-line react-hooks/exhaustive-deps
   return <div className="court-lineup" role="list" aria-label={label} style={paint ? { ['--court-paint' as string]: paint } : undefined}>
     <Court />
+    <svg className="lineup-link-lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">{bonds.flatMap((b, n) => {
+      const indices = b.cards.map(id => players.findIndex(p => p?.id === id)).filter(i => i >= 0);
+      return indices.slice(1).map((index, k) => { const a = places[indices[k]], z = places[index]; return <g key={`${n}-${k}`} className={(b.bonus ?? 0) < 0 ? 'negative' : ''}><line x1={a[0]} y1={a[1]} x2={z[0]} y2={z[1]} className="link-shadow" /><line x1={a[0]} y1={a[1]} x2={z[0]} y2={z[1]} /><circle cx={(a[0] + z[0]) / 2} cy={(a[1] + z[1]) / 2} r="1.1" /></g>; });
+    })}</svg>
     {spots.map((s, i) => {
       const p = players[i], [x, y] = places[i] ?? [50, 50];
-      return <div key={s + i} role="listitem" ref={el => { spotRefs.current[i] = el; }} className={`court-spot ${p ? 'filled' : 'empty'} ${active === i && !p ? 'next' : ''} ${p && fresh === p.id ? 'drop-in' : ''} ${p?.hot ? 'hot' : ''}`}
+      return <div key={s + i} role="listitem" ref={el => { spotRefs.current[i] = el; }} className={`court-spot ${p ? 'filled' : 'empty'} ${active === i && !p ? 'next' : ''} ${p && fresh === p.id ? 'drop-in' : ''} ${p?.hot ? 'hot' : ''} ${p && highlighted?.has(p.id) ? 'chem-linked' : ''}`}
         style={{ left: `${x}%`, top: `${y}%` }} aria-label={p ? `${s}: ${p.name}` : `${s}: open`}>
         {p ? <PlayerAvatar playerId={p.name} teamId={p.teamId} primaryColor={p.colors?.[0]} secondaryColor={p.colors?.[1]} size={58} mode="full" title={p.name} />
           : <span className="court-spot-ghost"><Ghost /></span>}
         <b className="court-spot-pos">{s}</b>
         {p && <small className="court-spot-name">{p.name}{p.sub ? <em>{p.sub}</em> : null}</small>}
+        {p && onSelect && <button className="court-player-hit" onClick={() => onSelect(p.id)} aria-pressed={selected === p.id} aria-label={`Inspect ${p.name}'s chemistry`} />}
       </div>;
     })}
   </div>;
