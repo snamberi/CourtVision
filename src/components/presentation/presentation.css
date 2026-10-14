@@ -101,3 +101,9 @@
 :root .p820-mvps .result-mvp { gap: 16px; padding: 18px; }
 :root .p820-mvps .result-mvp-art { flex-basis: 96px; }
 @media (max-width: 600px) { .result-record-line { font-size: 38px; } :root .p820-mvps .result-mvp-art { flex-basis: 84px; } }
+.continue-bulk { position: relative; z-index: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px; }
+.continue-bulk > span { font: 700 12px var(--font-data, monospace); color: var(--cv-text-muted, var(--c-fg-94a0b2, #94a0b2)); }
+.continue-bulk-confirm { position: relative; z-index: 1; margin: 0 0 12px; padding: 12px; border: 1px solid var(--cv-red, var(--c-border-e85d5d, #e85d5d)); background: var(--cv-surface, var(--c-bg-121926, #121926)); }
+.continue-pick { display: grid; place-items: center; width: 44px; flex-shrink: 0; cursor: pointer; }
+.continue-pick input { width: 22px; height: 22px; padding: 0; accent-color: var(--cv-orange, var(--c-fg-f47b20, #f47b20)); }
+.continue-save.is-picked { outline: 2px solid var(--cv-orange, var(--c-border-f47b20, #f47b20)); }

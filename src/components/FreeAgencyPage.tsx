@@ -9,6 +9,7 @@ import {
 import { runFreeAgencyAI } from '../simulation/aiGM';
 import { addDays, formatDisplayDate } from '../simulation/calendar';
 import { FreeAgentTable } from './FreeAgentTable';
+import { WaivePanel } from './WaivePanel';
 
 interface Props {
   sandboxMode?: boolean;
@@ -106,11 +107,11 @@ export function FreeAgencyPage({ league, extras, controlledTeamId, onChange, onS
       )}
       {signTeamRosterFull && !signTeamOverCap && (
         <p className="calendar-banner">
-          <TeamLink name={signTeam?.name} />'s roster is full ({extras.capSettings.maxRosterSize} players) — release someone on the Roster page before signing anyone else.
+          <TeamLink name={signTeam?.name} />'s roster is full ({extras.capSettings.maxRosterSize} players). Waive someone below before signing anyone else.
         </p>
       )}
       {extras.freeAgents.length === 0 ? (
-        <p className="empty-state">No free agents currently available. Release a player on the Roster page to open one up.</p>
+        <p className="empty-state">No free agents currently available.</p>
       ) : (
         <FreeAgentTable
           title="Free Agents"
@@ -130,6 +131,7 @@ export function FreeAgencyPage({ league, extras, controlledTeamId, onChange, onS
           quote={sandboxMode || !signTeam ? undefined : (p) => signingDecision(league, extras, p, signTeamId, undefined, { ranking })}
         />
       )}
+      {signTeam && <WaivePanel league={league} extras={extras} team={signTeam} controlledTeamId={controlledTeamId} onChange={onChange} onSelectPlayer={onSelectPlayer} />}
     </div>
   );
 }
