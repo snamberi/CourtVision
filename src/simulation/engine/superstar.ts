@@ -24,6 +24,15 @@ export const athleticismOf = (a: Attributes) => avg(a.physical.speed, a.physical
 export const bodyOf = (a: Attributes) => avg(a.physical.strength, a.physical.balance, a.physical.stamina, a.physical.durability);
 export const iqOf = (a: Attributes) => avg(a.mental.basketballIQ, a.mental.clutch, a.mental.composure, a.mental.pressurePerformance, a.offense.offensiveIQ, a.offense.shotIQ);
 
+/** The Career Finishing category (layups, dunks, touch and the post), on raw ratings. */
+export const finishingOf = (a: Attributes) => avg(a.offense.closeShot, a.offense.drivingLayup, a.offense.drivingDunk, a.offense.standingDunk, a.offense.postHook, a.offense.postFade, a.offense.postControl, a.offense.finishing, a.offense.touch);
+/**
+ * Pure Scorer (a Career Mode ability): Finishing of 105 or more. He looks for his own shot: about 10% more points at
+ * 105, up to 15% at 120, and the same share fewer assists. Returns that share (0 for everyone else).
+ */
+export const PURE_SCORER_FROM = 105;
+export const pureScorerShare = (a: Attributes) => { const f = finishingOf(a); return f < PURE_SCORER_FROM ? 0 : 0.1 + 0.05 * Math.min(1, (f - PURE_SCORER_FROM) / 15); };
+
 /** How much each category is past 99 (0 = an ordinary player). */
 export function superFactors(a: Attributes): { athleticism: number; body: number; iq: number } {
   return { athleticism: superFactor(athleticismOf(a)), body: superFactor(bodyOf(a)), iq: superFactor(iqOf(a)) };

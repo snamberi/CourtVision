@@ -326,3 +326,10 @@ div.mp-callout { cursor: default; }
 @media (max-width: 640px) {
   .cv-sandbox-size, .cv-sandbox-cats label { grid-template-columns: 1fr; }
 }
+
+/* Ultra Cheat (secret relic): two Lucky Spins for a category rated 125. */
+.cv-ultra { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 0 0 12px; padding: 10px 14px; background: var(--c-bg-1a1030, #1a1030); border: 2px solid var(--c-border-c18cff, #c18cff); box-shadow: 3px 3px 0 var(--c-shadow-000000, #000); }
+.cv-ultra .pixel-eyebrow { flex-basis: 100%; color: var(--c-fg-c18cff, #c18cff); }
+.cv-ultra p { margin: 0; flex: 1 1 260px; }
+.cv-ultra label { display: inline-flex; align-items: center; gap: 6px; }
+.cv-ultra-btn { border-color: var(--c-border-c18cff, #c18cff); color: var(--c-fg-c18cff, #c18cff); }

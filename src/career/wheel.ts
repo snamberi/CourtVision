@@ -20,7 +20,8 @@ import { FAV_BOOST } from '../profile/favorites';
  *
  * Tools: two Lucky Spins (they always land on a Star or a Great); Move Left and Move Right (once each) shift a stopped
  * wheel one slice; two Respins spin again without taking anything; one Triple Spin spins three wheels at once, and you
- * may take one category from each of them (at least one before the next spin); one free Prime Boost.
+ * may take one category from each of them (at least one before the next spin); one free Prime Boost (+7 to every
+ * rating of the player it stopped on).
  */
 
 export const REEL_LENGTH = 24;
@@ -57,10 +58,14 @@ export interface WheelState {
   favLanded?: boolean;
   /** Relic luck (relics.ts): Stars and Greats come up that much more often on ordinary spins. */
   relicLuck?: number;
+  /** Ultra Cheat (a secret relic): Lucky Spins can be traded for a category rated 125. */
+  ultra?: boolean;
 }
 
-export const newWheel = (seed: number, fav?: string, relics?: { luck?: number; eternalSpin?: boolean }): WheelState => ({ seed, spinCount: 0, current: null, takenFrom: [], picks: {}, moves: { left: true, right: true },
-  respins: RESPINS + (relics?.eternalSpin ? 1 : 0), triple: true, lucky: LUCKY_SPINS, ...(fav ? { fav } : {}), ...(relics?.luck ? { relicLuck: Math.round(relics.luck * 100) / 100 } : {}) });
+export interface WheelRelics { luck?: number; eternalSpin?: boolean; luckyCharm?: boolean; ultraCheat?: boolean }
+export const newWheel = (seed: number, fav?: string, relics?: WheelRelics): WheelState => ({ seed, spinCount: 0, current: null, takenFrom: [], picks: {}, moves: { left: true, right: true },
+  respins: RESPINS + (relics?.eternalSpin ? 1 : 0), triple: true, lucky: LUCKY_SPINS + (relics?.luckyCharm ? 1 : 0), ...(fav ? { fav } : {}),
+  ...(relics?.luck ? { relicLuck: Math.round(relics.luck * 100) / 100 } : {}), ...(relics?.ultraCheat ? { ultra: true } : {}) });
 export const luckyLeft = (s: WheelState) => s.lucky ?? LUCKY_SPINS;
 export const boostLeft = (s: WheelState) => s.boost ?? PRIME_BOOSTS;
 
@@ -320,49 +325,50 @@ export function take(h: NbaHistory, s: WheelState, wheel: number, cat: CategoryI
 
 // ---------------------------------------------------------------- the Prime Boost
 
-const careers = new WeakMap<NbaHistory, Map<string, string[]>>();
-/** Every season card of a player (the wheel shows one: his best). */
-function seasonsOf(h: NbaHistory, playerId: string): string[] {
-  let m = careers.get(h);
-  if (!m) { m = new Map(); for (const c of cardPool(h).cards) m.set(c.playerId, [...(m.get(c.playerId) ?? []), c.id]); careers.set(h, m); }
-  return m.get(playerId) ?? [];
-}
 /** Categories a boost can touch: everything but height and length. */
 const BOOSTABLE = CATEGORIES.filter(c => c.id !== 'size').map(c => c.id);
+/** Older builds raised six skills 10-20% when the player was already at his peak. */
 export const SURGE_SKILLS = 6;
+/** What the Prime Boost adds to every rating of the player the wheel stopped on. */
+export const PRIME_BOOST_POINTS = 7;
 
 /**
- * The Prime Boost for the player a wheel stopped on (once per player, free). It puts him in his
- * absolute prime: every skill at the best he ever had it, in any season. If that would raise fewer than six skills
- * (he is already at his peak), six random skills rise 10-20% instead. Nothing passes 120; height, length and weight
- * never change.
+ * The Prime Boost for the player a wheel stopped on (once per player, free): +7 to every one of his ratings. Height,
+ * length and weight never change, and nothing passes 120.
  */
 export function primeBoost(h: NbaHistory, s: WheelState, wheel: number): WheelState {
   const w = s.current?.[wheel];
   if (!w || !mustTake(s) || s.takenFrom.includes(wheel) || w.boost || boostLeft(s) <= 0) return s;
-  const cardId = landed(w), card = cardPool(h).byId.get(cardId)!;
-  const base = Object.fromEntries(BOOSTABLE.map(c => [c, takenValues(h, cardId, c)])) as Record<CategoryId, CategoryValues>;
-  const peak = structuredClone(base), raised: string[] = [];
-  for (const other of seasonsOf(h, card.playerId)) {
-    if (other === cardId) continue;
-    for (const c of BOOSTABLE) for (const [k, v] of Object.entries(takenValues(h, other, c))) if (!MEASURE.has(k) && v > peak[c][k]) peak[c][k] = v;
+  const cardId = landed(w);
+  const values = Object.fromEntries(BOOSTABLE.map(c => [c, takenValues(h, cardId, c)])) as Record<CategoryId, CategoryValues>;
+  const raised: string[] = [];
+  for (const c of BOOSTABLE) for (const [k, v] of Object.entries(values[c])) {
+    if (MEASURE.has(k)) continue;
+    const up = Math.min(ELITE_MAX, Math.max(v, v + PRIME_BOOST_POINTS));
+    if (up > v) { values[c][k] = up; raised.push(k); }
   }
-  for (const c of BOOSTABLE) for (const k of Object.keys(peak[c])) if (peak[c][k] > base[c][k]) raised.push(k);
-  let boost: Boost;
-  if (raised.length >= SURGE_SKILLS) boost = { mode: 'prime', values: peak, raised };
-  else {
-    const rng = new RNG(s.seed * 131 + s.spinCount * 7 + wheel);
-    const fields = BOOSTABLE.flatMap(c => Object.keys(base[c]).filter(k => !MEASURE.has(k)).map(k => [c, k] as const));
-    const values = structuredClone(base), picked: string[] = [];
-    while (picked.length < SURGE_SKILLS && picked.length < fields.length) {
-      const [c, k] = fields[rng.nextInt(fields.length)];
-      if (picked.includes(k)) continue;
-      values[c][k] = Math.min(ELITE_MAX, Math.round(values[c][k] * (1.1 + rng.next() * 0.1)));
-      picked.push(k);
-    }
-    boost = { mode: 'surge', values, raised: picked };
-  }
+  const boost: Boost = { mode: 'prime', values, raised };
   return { ...s, boost: boostLeft(s) - 1, current: s.current!.map((x, i) => (i === wheel ? { ...x, boost } : x)) };
+}
+
+// ---------------------------------------------------------------- Ultra Cheat
+
+/** Ultra Cheat: this many Lucky Spins buy one category of your choice, every rating in it at ULTRA_RATING. */
+export const ULTRA_COST = 2, ULTRA_RATING = 125;
+/** The "player" an Ultra Cheat pick came from (there isn't one). */
+export const ULTRA_CARD = 'ultra-cheat';
+/** Weight given to an Ultra Cheat Body (weight is a measurement, not a rating). */
+const ULTRA_WEIGHT = 225;
+/** Categories Ultra Cheat can fill right now: any open one but height (a measurement), between spins. */
+export const ultraOptions = (s: WheelState): CategoryId[] =>
+  s.ultra && luckyLeft(s) >= ULTRA_COST && !mustTake(s) && !complete(s) ? CATEGORIES.filter(c => c.id !== 'size' && !s.picks[c.id]).map(c => c.id) : [];
+/** Spends ULTRA_COST Lucky Spins: every rating of `cat` becomes 125 (past the usual 120 cap). */
+export function ultraCheat(s: WheelState, cat: CategoryId): WheelState {
+  if (!ultraOptions(s).includes(cat)) return s;
+  const values: CategoryValues = {};
+  for (const [g, k] of CATEGORIES.find(c => c.id === cat)!.fields) values[`${g}.${k}`] = MEASURE.has(`${g}.${k}`) ? ULTRA_WEIGHT : ULTRA_RATING;
+  const picks = { ...s.picks, [cat]: { cardId: ULTRA_CARD, values } };
+  return { ...s, picks, lucky: luckyLeft(s) - ULTRA_COST, current: CATEGORIES.every(c => picks[c.id]) ? null : s.current };
 }
 
 /** A wheel's categories as they would be taken (boosted when the Prime Boost was used on it). */

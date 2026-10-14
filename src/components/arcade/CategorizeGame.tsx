@@ -9,6 +9,8 @@ import { todayUtc } from '../../hunt/storage';
 import { burst } from '../../fx/effects';
 import { categorizePuzzle, dailyCategorize, checkPick, CATEGORIZE_MISTAKES, type CategorizeLevel, type CategorizePuzzle } from '../../arcade/categorize';
 import { readArcade, updateArcade, endlessOf, ARCADE_EVENT } from '../../arcade/storage';
+import { relicRunOpts } from '../../relics/apply';
+import { uncoverSecret, categorizeSecret } from '../../relics/rewards';
 import './categorize.css';
 
 const SITE = 'https://courtvisiongame.com';
@@ -45,6 +47,8 @@ export function CategorizeGame({ h }: { h: NbaHistory }) {
   const [seed, setSeed] = useState(() => Math.floor(Math.random() * 2 ** 31));
   const today = todayUtc();
   const puzzle = useMemo(() => mode === 'daily' ? dailyCategorize(h, today) : categorizePuzzle(h, seed, level), [h, mode, today, seed, level]);
+  // Sixth Sense (a secret relic): one more mistake on Endless boards (the daily board stays the same for everyone).
+  const [sixthSense] = useState(() => relicRunOpts().sixthSense);
   return <section className="arcade-categorize">
     <div className="arcade-switch" role="radiogroup" aria-label="Categorize mode">
       {(['daily', 'endless'] as Mode[]).map(m => <button key={m} role="radio" aria-checked={mode === m} className={mode === m ? 'selected' : ''} onClick={() => setMode(m)}><ModeIcon mode={`arcade-${m}`} size={28} />{m === 'daily' ? 'Daily board' : 'Endless boards'}</button>)}
@@ -52,12 +56,12 @@ export function CategorizeGame({ h }: { h: NbaHistory }) {
     {mode === 'endless' && <div className="cat-levels" role="radiogroup" aria-label="Difficulty">
       {LEVELS.map(l => <button key={l.id} role="radio" aria-checked={level === l.id} className={level === l.id ? 'selected' : ''} onClick={() => { setLevel(l.id); setSeed(Math.floor(Math.random() * 2 ** 31)); }}><b>{l.label}</b><small>{l.blurb}</small></button>)}
     </div>}
-    <Board key={mode === 'daily' ? `d-${today}` : `e-${seed}-${level}`} puzzle={puzzle} day={mode === 'daily' ? today : null} onNext={mode === 'endless' ? () => setSeed(Math.floor(Math.random() * 2 ** 31)) : undefined} />
+    <Board key={mode === 'daily' ? `d-${today}` : `e-${seed}-${level}`} puzzle={puzzle} day={mode === 'daily' ? today : null} maxMistakes={CATEGORIZE_MISTAKES + (mode === 'endless' && sixthSense ? 1 : 0)} onNext={mode === 'endless' ? () => setSeed(Math.floor(Math.random() * 2 ** 31)) : undefined} />
     <p className="hint-text">Pick four players who share something, then press Submit. Every player belongs to exactly one of the four hidden categories. {CATEGORIZE_MISTAKES} mistakes and the board is over. "One away" means three of your four belong together.</p>
   </section>;
 }
 
-function Board({ puzzle, day, onNext }: { puzzle: CategorizePuzzle; day: string | null; onNext?: () => void }) {
+function Board({ puzzle, day, maxMistakes, onNext }: { puzzle: CategorizePuzzle; day: string | null; maxMistakes: number; onNext?: () => void }) {
   const [progress, setProgress] = useState<Progress>(() => day ? readDay(day) : fresh());
   const [picked, setPicked] = useState<string[]>([]);
   const [order, setOrder] = useState(() => puzzle.tiles.map(t => t.playerId));
@@ -66,7 +70,7 @@ function Board({ puzzle, day, onNext }: { puzzle: CategorizePuzzle; day: string 
   const [rec, setRec] = useState(readArcade);
   useEffect(() => { const sync = () => setRec(readArcade()); window.addEventListener(ARCADE_EVENT, sync); return () => window.removeEventListener(ARCADE_EVENT, sync); }, []);
   const names = useMemo(() => new Map(puzzle.tiles.map(t => [t.playerId, t.name])), [puzzle]);
-  const won = progress.solved.length === 4, lost = progress.mistakes >= CATEGORIZE_MISTAKES, over = won || lost;
+  const won = progress.solved.length === 4, lost = progress.mistakes >= maxMistakes, over = won || lost;
   const solvedSet = new Set(progress.solved.flatMap(id => puzzle.groups.find(g => g.id === id)?.players ?? []));
   const open = order.filter(id => !solvedSet.has(id));
   const stats = endlessOf(rec).categorize;
@@ -74,11 +78,12 @@ function Board({ puzzle, day, onNext }: { puzzle: CategorizePuzzle; day: string 
   const save = (p: Progress) => {
     setProgress(p);
     if (day) writeDay(day, p);
-    const nowWon = p.solved.length === 4, nowLost = p.mistakes >= CATEGORIZE_MISTAKES;
+    const nowWon = p.solved.length === 4, nowLost = p.mistakes >= maxMistakes;
     if (nowWon || nowLost) {
       updateArcade(r => { const x = endlessOf(r).categorize, streak = nowWon ? x.streak + 1 : 0; return { ...r, endless: { ...endlessOf(r), categorize: { played: x.played + 1, won: x.won + (nowWon ? 1 : 0), perfect: x.perfect + (nowWon && p.mistakes === 0 ? 1 : 0), streak, best: Math.max(x.best, streak) } } }; });
       track('mode_finish', { mode: 'categorize', won: nowWon, mistakes: p.mistakes, daily: !!day });
-      noteWeekRun('categorize', { score: nowWon ? (CATEGORIZE_MISTAKES - p.mistakes + 1) * 100 : p.solved.length * 50, line: nowWon ? `Solved with ${p.mistakes} mistake${p.mistakes === 1 ? '' : 's'}` : `${p.solved.length}/4 categories` }, `categorize-${day ?? puzzle.seed}`);
+      uncoverSecret(`categorize-perfect:${day ?? puzzle.seed}`, categorizeSecret({ won: nowWon, mistakes: p.mistakes }));
+      noteWeekRun('categorize', { score: nowWon ? (maxMistakes - p.mistakes + 1) * 100 : p.solved.length * 50, line: nowWon ? `Solved with ${p.mistakes} mistake${p.mistakes === 1 ? '' : 's'}` : `${p.solved.length}/4 categories` }, `categorize-${day ?? puzzle.seed}`);
     }
   };
   const toggle = (id: string) => {
@@ -111,7 +116,7 @@ function Board({ puzzle, day, onNext }: { puzzle: CategorizePuzzle; day: string 
 
   return <div className="cat-board">
     <div className="arcade-hilo-top">
-      <span>Mistakes left <b className="cat-lives" aria-label={`${CATEGORIZE_MISTAKES - progress.mistakes} of ${CATEGORIZE_MISTAKES}`}>{Array.from({ length: CATEGORIZE_MISTAKES }, (_, i) => <i key={i} className={i < CATEGORIZE_MISTAKES - progress.mistakes ? 'on' : ''} aria-hidden="true" />)}</b></span>
+      <span>Mistakes left <b className="cat-lives" aria-label={`${maxMistakes - progress.mistakes} of ${maxMistakes}`}>{Array.from({ length: maxMistakes }, (_, i) => <i key={i} className={i < maxMistakes - progress.mistakes ? 'on' : ''} aria-hidden="true" />)}</b></span>
       <span>Solved <b>{progress.solved.length}</b>/4</span>
       <span>Streak <b>{stats.streak}</b></span>
     </div>

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { loadHistoryForTests } from './helpers/nbaHistoryFixture';
 import { cardPool } from '../hunt/cards';
 import { top100, top100Rank, legacyScore, emptyResume } from '../career/legacy';
-import { newWheel, spin, respin, move, take, landed, neighbour, mustTake, canSpin, isComplete, donor, RESPINS, eliteRanks, takenValues, eliteBonus, eliteTarget, wheelPool, ELITE_MAX, luckyLeft, sliceWeight, LUCKY_SPINS, STAR_BONUS, primeBoost, boostLeft, SURGE_SKILLS, type WheelState } from '../career/wheel';
+import { newWheel, spin, respin, move, take, landed, neighbour, mustTake, canSpin, isComplete, donor, RESPINS, eliteRanks, takenValues, eliteBonus, eliteTarget, wheelPool, ELITE_MAX, luckyLeft, sliceWeight, LUCKY_SPINS, STAR_BONUS, primeBoost, boostLeft, PRIME_BOOST_POINTS, type WheelState } from '../career/wheel';
 import { legendRank } from '../draft/allTimeDraft';
 import { resolveEffectivePlayer } from '../simulation/engine/effective';
 import { CATEGORIES, categoryValues, categoryScore, type CategoryId } from '../career/categories';
@@ -136,36 +136,30 @@ describe('Career Mode', () => {
     expect(takenValues(h, plainStar.id, 'size')['physical.heightInches']).toBe(categoryValues(donor(h, plainStar.id), 'size')['physical.heightInches']);
   }, 120_000);
 
-  it('Prime Boost: his absolute prime, or six skills up 10-20%; one, free; never height, never past 120', async () => {
+  it('Prime Boost: +7 to every rating; one, free; never height, never past 120', async () => {
     const h = await loadHistoryForTests();
     const at = (id: string, lucky = LUCKY_SPINS): WheelState => ({ ...newWheel(3), spinCount: 1, lucky, current: [{ reel: Array(24).fill(id), stop: 0 }] });
-    const modes = new Set<string>();
-    for (const c of wheelPool(h).filter(x => x.rarity === 'legendary' || x.rarity === 'epic').slice(0, 60)) {
+    for (const c of wheelPool(h).filter(x => x.rarity === 'legendary' || x.rarity === 'epic').slice(0, 40)) {
       const s = at(c.id), b = primeBoost(h, s, 0), boost = b.current![0].boost!;
-      modes.add(boost.mode);
+      expect(boost.mode).toBe('prime');
       expect(luckyLeft(b)).toBe(LUCKY_SPINS); // free: no Lucky Spin spent
       expect(boostLeft(b)).toBe(0);
       expect(boost.values.size).toBeUndefined(); // height and length never change
       for (const cat of CATEGORIES.filter(x => x.id !== 'size')) {
         const base = takenValues(h, c.id, cat.id);
         for (const [k, v] of Object.entries(boost.values[cat.id]!)) {
-          expect(v).toBeGreaterThanOrEqual(base[k]);
-          expect(v).toBeLessThanOrEqual(Math.max(base[k], ELITE_MAX));
-          if (boost.mode === 'surge') expect(v).toBeLessThanOrEqual(Math.max(base[k], Math.min(ELITE_MAX, Math.round(base[k] * 1.2))));
+          if (k === 'physical.weightLbs') { expect(v).toBe(base[k]); continue; }
+          expect(v).toBe(Math.min(ELITE_MAX, Math.max(base[k], base[k] + PRIME_BOOST_POINTS)));
           if (v > base[k]) expect(boost.raised).toContain(k);
         }
       }
-      if (boost.mode === 'surge') expect(boost.raised).toHaveLength(SURGE_SKILLS);
-      else expect(boost.raised.length).toBeGreaterThanOrEqual(SURGE_SKILLS);
       // Once per player; the boosted wheel can't be moved or respun; taking gets the boosted ratings.
       expect(primeBoost(h, b, 0)).toBe(b);
       expect(move(b, 'left')).toBe(b);
       expect(respin(h, b)).toBe(b);
-      const cat = CATEGORIES.find(x => x.id !== 'size' && Object.keys(boost.values[x.id]!).some(k => boost.raised.includes(k)))!.id;
-      expect(take(h, b, 0, cat).picks[cat]!.values).toEqual(boost.values[cat]);
+      expect(take(h, b, 0, 'iq').picks.iq!.values).toEqual(boost.values.iq);
       expect(take(h, b, 0, 'size').picks.size!.values).toEqual(takenValues(h, c.id, 'size'));
     }
-    expect(modes).toEqual(new Set(['prime', 'surge']));
     // It works without a Lucky Spin left, and needs a wheel waiting for a pick.
     const id = wheelPool(h)[0].id;
     expect(primeBoost(h, at(id, 0), 0).current![0].boost).toBeTruthy();
@@ -347,4 +341,35 @@ describe('Career Mode: all-time ranks set the ratings', () => {
       expect(best, name).toBeGreaterThanOrEqual(100);
     }
   }, 180_000);
+});
+
+describe('Career abilities: Ultra Cheat and Pure Scorer', () => {
+  it('Ultra Cheat trades two Lucky Spins for a chosen category rated 125, between spins only', async () => {
+    const { ultraCheat, ultraOptions, ULTRA_RATING, ULTRA_COST, ULTRA_CARD } = await import('../career/wheel');
+    const plain = newWheel(5);
+    expect(ultraOptions(plain)).toEqual([]);
+    const s = newWheel(5, undefined, { ultraCheat: true });
+    expect(ultraOptions(s)).not.toContain('size');
+    expect(ultraOptions(s)).toHaveLength(CATEGORIES.length - 1);
+    const done = ultraCheat(s, 'threePoint');
+    expect(luckyLeft(done)).toBe(LUCKY_SPINS - ULTRA_COST);
+    expect(done.picks.threePoint!.cardId).toBe(ULTRA_CARD);
+    expect(Object.values(done.picks.threePoint!.values).every(v => v === ULTRA_RATING)).toBe(true);
+    // Out of Lucky Spins, or a wheel waiting for a pick: nothing happens.
+    expect(ultraCheat(done, 'iq')).toBe(done);
+    const waiting = { ...newWheel(5, undefined, { ultraCheat: true }), spinCount: 1, current: [{ reel: Array(24).fill('x'), stop: 0 }] };
+    expect(ultraCheat(waiting, 'iq')).toBe(waiting);
+    // The Lucky Charm adds a Lucky Spin.
+    expect(luckyLeft(newWheel(5, undefined, { luckyCharm: true }))).toBe(LUCKY_SPINS + 1);
+  });
+  it('Pure Scorer: Finishing 105+ gives a 10% share, 15% at 120', async () => {
+    const { pureScorerShare } = await import('../simulation/engine/superstar');
+    const { generateFullLeague } = await import('../simulation/leagueGenerator');
+    const p = generateFullLeague(1, 2, 8, 4, '2026').league.teams[0].seasons[0];
+    const fin = (v: number) => ({ ...p.attributes, offense: { ...p.attributes.offense, closeShot: v, drivingLayup: v, drivingDunk: v, standingDunk: v, postHook: v, postFade: v, postControl: v, finishing: v, touch: v } });
+    expect(pureScorerShare(fin(104))).toBe(0);
+    expect(pureScorerShare(fin(105))).toBeCloseTo(0.1);
+    expect(pureScorerShare(fin(120))).toBeCloseTo(0.15);
+    expect(pureScorerShare(fin(125))).toBeCloseTo(0.15);
+  });
 });

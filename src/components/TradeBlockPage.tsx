@@ -1,3 +1,4 @@
+import { relicRunOpts } from '../relics/apply';
 import { TeamLink } from './TeamLink';
 import type { League } from '../simulation/league';
 import type { GMLeagueExtras, FutureDraftPick } from '../simulation/gm';
@@ -36,7 +37,8 @@ export function TradeBlockPage({ league, extras, controlledTeamId, onChange, onS
   const [note, setNote] = useState<string | null>(null);
   const seek = () => {
     if (!myTeam) return;
-    const found = seekTradeOffers(league, extras, myTeam.teamId);
+    // The Phone Tree (a secret relic): four more teams pick up.
+    const found = seekTradeOffers(league, extras, myTeam.teamId, relicRunOpts().phoneTree ? 16 : 12);
     setOffers(found);
     setNote(found.length ? null : 'No team can make a fair offer for this package right now. Try a different mix of players or picks.');
   };

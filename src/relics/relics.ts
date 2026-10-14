@@ -13,8 +13,8 @@ import { isEvent } from '../retention/weeklyEvent';
  * (League Hunt reels, 82-0 spins, the Career wheel, the Survival deal). A relic you already own pays out coins instead
  * (more for rarer relics). Stacking relics are the exception: each copy adds +1%, up to five copies. Coins buy spins,
  * Lucky Spins (no Commons, double odds on Epic and up), the three relics in the daily shop, and upgrades (+50% luck
- * for a relic that doesn't stack). Eight secret relics are hidden behind a tiny chance on any spin; each unlocks a
- * permanent ability somewhere in the game.
+ * for a relic that doesn't stack). Secret relics are hidden behind a tiny chance on any spin (or a feat); each unlocks
+ * a permanent ability somewhere in the game. Ultra Cheat comes only from owning every relic.
  *
  * Fairness: Dailies, Weeklies, duels and other shared-seed runs ignore luck and abilities, so boards stay fair.
  */
@@ -103,8 +103,9 @@ export const RELICS: Relic[] = [
 export const RELIC_BY_ID = new Map(RELICS.map(r => [r.id, r]));
 
 /** Secret relics: each one is a permanent ability. */
-export type SecretId = 'eternalSpin' | 'secondWind' | 'goldenTouch' | 'ironWill' | 'extraPick' | 'clutchGene' | 'ownersFavorite' | 'lastLook';
-export interface SecretRelic { id: SecretId; name: string; mode: string; ability: string; /** Shown while it's still hidden. */ hint: string; /** A feat that uncovers it (besides luck). */ feat?: string }
+export type SecretId = 'eternalSpin' | 'secondWind' | 'goldenTouch' | 'ironWill' | 'extraPick' | 'clutchGene' | 'ownersFavorite' | 'lastLook'
+  | 'luckyCharm' | 'sixthSense' | 'filmRoom' | 'phoneTree' | 'ultraCheat';
+export interface SecretRelic { id: SecretId; name: string; mode: string; ability: string; /** Shown while it's still hidden. */ hint: string; /** A feat that uncovers it (besides luck). */ feat?: string; /** Only its feat uncovers it (never a spin). */ earnedOnly?: true }
 export const SECRET_RELICS: SecretRelic[] = [
   { id: 'eternalSpin', name: 'The Eternal Spin', mode: 'Career Mode', ability: 'Always +1 respin on the Career wheel.', hint: 'Voted in on the first ballot, the wheel turns once more.', feat: 'Retire a first-ballot Hall of Famer in Career Mode.' },
   { id: 'secondWind', name: 'Second Wind', mode: 'League Hunt', ability: 'Start every hunt with one extra life.', hint: 'Survive the hardest road and you breathe twice.', feat: 'Win a League Hunt on Legend.' },
@@ -114,7 +115,16 @@ export const SECRET_RELICS: SecretRelic[] = [
   { id: 'clutchGene', name: 'The Clutch Gene', mode: 'Story Mode', ability: 'Your story player starts with +2 grit.', hint: 'From the park with no nets to a legend\'s ending.', feat: 'Reach the legend ending in Story Mode.' },
   { id: 'ownersFavorite', name: 'Owner\'s Favorite', mode: 'Franchise', ability: 'The owner\'s demands ask for one fewer win.', hint: 'Luck alone gets you a seat in the owner\'s box.' },
   { id: 'lastLook', name: 'The Last Look', mode: 'Daily Grid', ability: 'One extra guess on Endless grids.', hint: 'Luck alone gives you one more look at the board.' },
+  { id: 'luckyCharm', name: 'The Lucky Charm', mode: 'Career Mode', ability: 'One extra Lucky Spin on the Career wheel.', hint: 'Luck alone finds the charm that finds more luck.' },
+  { id: 'sixthSense', name: 'Sixth Sense', mode: 'Categorize', ability: 'One extra mistake on Endless boards.', hint: 'See every group without a single wrong guess.', feat: 'Solve a Categorize board with no mistakes.' },
+  { id: 'filmRoom', name: 'The Film Room', mode: 'Guess the Team', ability: 'One extra guess on every team.', hint: 'Ten teams in a row and the tapes start talking.', feat: 'Name 10 teams in a row in Guess the Team.' },
+  { id: 'phoneTree', name: 'The Phone Tree', mode: 'Franchise', ability: 'Seek trade brings in 4 more offers.', hint: 'Luck alone gets every GM to pick up.' },
+  { id: 'ultraCheat', name: 'Ultra Cheat', mode: 'Career Mode', ability: 'Spend 2 Lucky Spins on the Career wheel for one category of your choice rated 125.', hint: 'Own every relic in the vault and the last door opens.', feat: 'Own every relic in the vault.', earnedOnly: true },
 ];
+/** Every relic in the vault owned (the key to Ultra Cheat). */
+export const ownsEveryRelic = (s: Pick<RelicState, 'owned'>) => RELICS.every(r => (s.owned[r.id] ?? 0) > 0);
+/** Secrets a collection has earned on its own (Ultra Cheat once every relic is owned). */
+export const withEarnedSecrets = <T extends Pick<RelicState, 'owned' | 'secrets'>>(s: T): T => (ownsEveryRelic(s) && !s.secrets.includes('ultraCheat') ? { ...s, secrets: [...s.secrets, 'ultraCheat'] } : s);
 export const SECRET_BY_ID = new Map(SECRET_RELICS.map(r => [r.id, r]));
 /** The chance any spin uncovers a secret relic you don't have yet (rarer than a Mythic: a secret is a permanent ability). */
 export const SECRET_CHANCE = 0.0007;
@@ -183,7 +193,7 @@ export function loadRelics(read: Read = localRead): RelicState {
       const base: RelicState = { ...empty(), ...r, owned: r.owned ?? {}, secrets: (r.secrets ?? []).filter(s => SECRET_BY_ID.has(s)), granted: r.granted ?? [], history: r.history ?? [],
         upgraded: (r.upgraded ?? []).filter(id => RELIC_BY_ID.has(id)), pity: { ...empty().pity, ...r.pity }, ledger: r.ledger ?? [], rewards: r.rewards ?? [], slotsBought: Math.max(0, Math.min(EXTRA_SLOTS, r.slotsBought ?? 0)), opens: r.opens ?? 0, equipped: [], fused: Object.fromEntries(Object.entries(r.fused ?? {}).filter(([id, n]) => RELIC_BY_ID.has(id) && Number.isInteger(n) && n > 0)), luckySpins: Math.max(0, Math.floor(Number(r.luckySpins) || 0)) };
       // Saves from before slots: the best relics you own go in.
-      return { ...base, equipped: Array.isArray(r.equipped) ? r.equipped.filter(id => (base.owned[id] ?? 0) > 0 && RELIC_BY_ID.has(id)).slice(0, slotCount(base)) : autoEquip(base) };
+      return withEarnedSecrets({ ...base, equipped: Array.isArray(r.equipped) ? r.equipped.filter(id => (base.owned[id] ?? 0) > 0 && RELIC_BY_ID.has(id)).slice(0, slotCount(base)) : autoEquip(base) });
     }
   } catch { /* fall through */ }
   return empty();
@@ -296,7 +306,7 @@ export function fuseDuplicates(state: RelicState, rarity: RelicRarity, rand: () 
   const duplicate = !canGain(state, relic), coins = duplicate ? RELIC_RARITY[up].coins : 0, count = (state.owned[relic.id] ?? 0) + 1;
   const result: SpinResult = { kind: 'relic', id: relic.id, rarity: up, duplicate, coins, ...(relic.stack ? { stack: Math.min(count, STACK_MAX) } : {}) };
   let next = fillSlot({ ...earn(state, coins, `Duplicate ${relic.name}`), owned: { ...state.owned, [relic.id]: count }, fused }, relic.id);
-  next = { ...next, history: [...next.history, { ...result, at: Date.now() }].slice(-50) };
+  next = withEarnedSecrets({ ...next, history: [...next.history, { ...result, at: Date.now() }].slice(-50) });
   return { state: next, result };
 }
 
@@ -385,7 +395,7 @@ export function spinRelic(state: RelicState, rand: () => number = Math.random): 
 }
 
 function roll(state: RelicState, rand: () => number, lucky: boolean): { state: RelicState; result: SpinResult } {
-  const lockedSecrets = SECRET_RELICS.filter(r => !state.secrets.includes(r.id));
+  const lockedSecrets = SECRET_RELICS.filter(r => !r.earnedOnly && !state.secrets.includes(r.id));
   const opens = state.opens + 1;
   const secretPity = !state.secretPityDone && opens >= SECRET_PITY_AT && lockedSecrets.length > 0;
   let result: SpinResult;
@@ -412,7 +422,7 @@ function roll(state: RelicState, rand: () => number, lucky: boolean): { state: R
     result = { ...result, cosmetic: key };
     next = { ...next, cosmetics: [...(next.cosmetics ?? []), key] };
   }
-  next = { ...next, history: [...next.history, { ...result, at: Date.now() }].slice(-50) };
+  next = withEarnedSecrets({ ...next, history: [...next.history, { ...result, at: Date.now() }].slice(-50) });
   return { state: next, result };
 }
 

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  RELIC_RARITY, RARITY_ORDER, RELICS, SECRET_RELICS, SECRET_CHANCE, MAX_LUCK, rarityFor, spinRelic, grantSpins, luckPercent, luckMultiplier, loadRelics,
+  RELIC_RARITY, RARITY_ORDER, RELICS, SECRET_RELICS, SECRET_CHANCE, withEarnedSecrets, MAX_LUCK, rarityFor, spinRelic, grantSpins, luckPercent, luckMultiplier, loadRelics,
   autoEquip, PITY, LUCKY_PITY, SLOT_PRICES, BASE_SLOTS, EXTRA_SLOTS, RELIC_SETS, slotCount, buySlot, equipRelic, unequipRelic, setBonus, spinMany,
   grantReward, rewardOf, collectDailyCoins, DAILY_COINS, LUCKY_ODDS, STACK_MAX, SPIN_PRICE, LUCKY_SPIN_PRICE, RELIC_PRICE, UPGRADE_PRICE, buySpin, luckySpin, refreshShop, buyRelic, upgradeRelic, canGain,
   type RelicState,
@@ -26,7 +26,8 @@ describe('relics', () => {
     expect(SECRET_CHANCE).toBeLessThan(RELIC_RARITY.mythic.odds);
     expect(RARITY_ORDER.map(r => RELIC_RARITY[r].luck)).toEqual([1, 2, 3, 4, 5]);
     for (const r of RARITY_ORDER) expect(RELICS.some(x => x.rarity === r)).toBe(true);
-    expect(SECRET_RELICS).toHaveLength(8);
+    expect(SECRET_RELICS).toHaveLength(13);
+    expect(SECRET_RELICS.filter(r => r.earnedOnly).map(r => r.id)).toEqual(['ultraCheat']);
   });
 
   it('maps rolls to rarities, rarest first', () => {
@@ -49,6 +50,21 @@ describe('relics', () => {
     expect(again.result).toMatchObject({ duplicate: true, coins: RELIC_RARITY.legendary.coins });
     expect(again.state.coins).toBe(RELIC_RARITY.legendary.coins);
     expect(again.state.owned[first.result.id]).toBe(2);
+  });
+
+  it('Ultra Cheat: never from a spin, uncovered by owning every relic', () => {
+    // Every other secret found: the secret roll has nothing left that luck can uncover.
+    const rest = SECRET_RELICS.filter(r => !r.earnedOnly).map(s => s.id);
+    expect(spinRelic(base({ spins: 1, secrets: rest }), seq(0, 0.5, 0))!.result.kind).toBe('relic');
+    const allButOne = Object.fromEntries(RELICS.slice(1).map(r => [r.id, 1]));
+    expect(withEarnedSecrets(base({ owned: allButOne })).secrets).not.toContain('ultraCheat');
+    const all = withEarnedSecrets(base({ owned: { ...allButOne, [RELICS[0].id]: 1 } }));
+    expect(all.secrets).toContain('ultraCheat');
+    expect(withEarnedSecrets(all)).toBe(all);
+    // The spin that lands the last relic opens it.
+    const last = spinRelic(base({ spins: 1, owned: Object.fromEntries(RELICS.filter(r => r.rarity !== 'mythic' || r.id !== 'gavel').map(r => [r.id, 1])) }), seq(0.5, 0.0001, 0.99))!;
+    expect(last.result).toMatchObject({ kind: 'relic', id: 'gavel' });
+    expect(last.state.secrets).toContain('ultraCheat');
   });
 
   it('a tiny chance uncovers a secret you lack, never one you have', () => {

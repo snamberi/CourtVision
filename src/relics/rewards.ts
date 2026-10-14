@@ -24,6 +24,19 @@ export const storySecret = (tier: string): SecretId | undefined => (tier === 'le
 export const careerSecret = (hallOfFame: string | undefined): SecretId | undefined => (hallOfFame === 'first-ballot' ? 'eternalSpin' : undefined);
 export const perfectSecret = (s: { perfectSeason: boolean }): SecretId | undefined => (s.perfectSeason ? 'extraPick' : undefined);
 
+export const categorizeSecret = (s: { won: boolean; mistakes: number }): SecretId | undefined => (s.won && s.mistakes === 0 ? 'sixthSense' : undefined);
+export const guessTeamSecret = (streak: number): SecretId | undefined => (streak >= 10 ? 'filmRoom' : undefined);
+/** A quick game's feat: uncovers its secret relic (once), no spins or coins. Returns whether it was new. */
+export function uncoverSecret(key: string, secret: SecretId | undefined): boolean {
+  if (!secret) return false;
+  const before = loadRelics();
+  if (before.secrets.includes(secret)) return false;
+  const after = grantReward(before, key, { spins: 0, coins: 0, secret, why: 'A feat' });
+  if (after === before) return false;
+  saveRelics(after);
+  return true;
+}
+
 /** Grants a finished run's spins, coins and feat secret (once per key) and returns how many spins were new. */
 export function rewardRun(key: string, n: number, opts: { secret?: SecretId; why?: string } = {}, now = new Date()): number {
   const before = loadRelics();

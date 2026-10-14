@@ -8,6 +8,7 @@ import { loadRelics, totalLuck, type SecretId } from './relics';
 export interface RelicRunOpts {
   luck: number;
   secondWind: boolean; goldenTouch: boolean; ironWill: boolean; extraPick: boolean; clutchGene: boolean; eternalSpin: boolean; lastLook: boolean; ownersFavorite: boolean;
+  luckyCharm: boolean; sixthSense: boolean; filmRoom: boolean; phoneTree: boolean; ultraCheat: boolean;
 }
 export function relicRunOpts(read: Read = localRead): RelicRunOpts {
   const s = loadRelics(read);
@@ -16,5 +17,6 @@ export function relicRunOpts(read: Read = localRead): RelicRunOpts {
     luck: totalLuck(s) / 100,
     secondWind: has('secondWind'), goldenTouch: has('goldenTouch'), ironWill: has('ironWill'), extraPick: has('extraPick'),
     clutchGene: has('clutchGene'), eternalSpin: has('eternalSpin'), lastLook: has('lastLook'), ownersFavorite: has('ownersFavorite'),
+    luckyCharm: has('luckyCharm'), sixthSense: has('sixthSense'), filmRoom: has('filmRoom'), phoneTree: has('phoneTree'), ultraCheat: has('ultraCheat'),
   };
 }

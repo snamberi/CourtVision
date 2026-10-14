@@ -9,6 +9,8 @@ import { burst } from '../../fx/effects';
 import { teamColors } from '../../simulation/teamColors';
 import { guessTeamPuzzle, seasonText, GUESS_TEAM_ERAS, GUESS_TEAM_TRIES, type GuessTeamLevel, type GuessTeamPuzzle, type MysteryStarter } from '../../arcade/guessTeam';
 import { readArcade, updateArcade, endlessOf, ARCADE_EVENT } from '../../arcade/storage';
+import { relicRunOpts } from '../../relics/apply';
+import { uncoverSecret, guessTeamSecret } from '../../relics/rewards';
 import './categorize.css';
 
 const SITE = 'https://courtvisiongame.com';
@@ -69,7 +71,9 @@ export function GuessTeamGame({ h }: { h: NbaHistory }) {
 function Round({ puzzle, streak, onNext, onSetup }: { puzzle: GuessTeamPuzzle; streak: number; onNext: () => void; onSetup: () => void }) {
   const [guesses, setGuesses] = useState<string[]>([]);
   const [filter, setFilter] = useState('');
-  const tries = GUESS_TEAM_TRIES[puzzle.level];
+  // The Film Room (a secret relic): one more guess on every team.
+  const [filmRoom] = useState(() => relicRunOpts().filmRoom);
+  const tries = GUESS_TEAM_TRIES[puzzle.level] + (filmRoom ? 1 : 0);
   const won = guesses.includes(puzzle.abbr), over = won || guesses.length >= tries;
   // A wrong guess turns over the second clue for every starter.
   const shownClues = guesses.length > 0 || over ? 2 : 1;
@@ -84,7 +88,8 @@ function Round({ puzzle, streak, onNext, onSetup }: { puzzle: GuessTeamPuzzle; s
     setGuesses(next); setFilter('');
     if (nowWon) burst(document.querySelector('.gt-court'), { colors: [col.primary, col.secondary, '#ffd166'], count: 40, power: 6 });
     if (nowWon || next.length >= tries) {
-      updateArcade(r => { const x = endlessOf(r).guessTeam, s = nowWon ? x.streak + 1 : 0; return { ...r, endless: { ...endlessOf(r), guessTeam: { played: x.played + 1, won: x.won + (nowWon ? 1 : 0), streak: s, best: Math.max(x.best, s) } } }; });
+      const after = updateArcade(r => { const x = endlessOf(r).guessTeam, s = nowWon ? x.streak + 1 : 0; return { ...r, endless: { ...endlessOf(r), guessTeam: { played: x.played + 1, won: x.won + (nowWon ? 1 : 0), streak: s, best: Math.max(x.best, s) } } }; });
+      uncoverSecret(`guess-team-streak:${puzzle.seed}`, guessTeamSecret(endlessOf(after).guessTeam.streak));
       track('mode_finish', { mode: 'guessTeam', won: nowWon, level: puzzle.level, guesses: next.length });
       noteWeekRun('guessTeam', { score: nowWon ? (tries - next.length + 1) * 100 : 0, line: nowWon ? `${puzzle.teamName} in ${next.length}` : `Missed the ${seasonText(puzzle.season)} ${puzzle.teamName}` }, `guess-team-${puzzle.seed}`);
     }
