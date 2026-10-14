@@ -4,7 +4,7 @@
  * and what opening it does. The main menu, the phone's Play and Compete sheets all read this one list.
  */
 
-export type ArcadeTabId = 'grid' | 'guess' | 'hilo' | 'bracket' | 'quiz' | 'legends' | 'street' | 'tour';
+export type ArcadeTabId = 'grid' | 'guess' | 'hilo' | 'bracket' | 'quiz' | 'legends' | 'street' | 'tour' | 'categorize' | 'guessTeam';
 export type CreateChallengeId = 'free' | 'decade' | 'dynasty' | 'rebuild' | 'draft' | 'worldgames' | 'timeMachine';
 export type StartModeId = 'legends' | 'perfect' | 'category' | 'career' | 'survival' | 'story';
 
@@ -49,6 +49,8 @@ export const MODE_CATALOG: ModeEntry[] = [
   // Quick Games
   { id: 'grid', group: 'quick', title: 'Daily Grid', desc: 'Three teams, three categories. Fill all nine squares.', icon: 'grid', art: ['#123a2c', '#a8814f', '#55c878'], action: { kind: 'arcade', tab: 'grid' } },
   { id: 'guess', group: 'quick', title: 'Guess the Player', desc: 'A daily mystery player for everyone, then endless.', icon: 'question', art: ['#1b2550', '#a57a4a', '#4da3ff'], action: { kind: 'arcade', tab: 'guess' } },
+  { id: 'categorize', group: 'quick', title: 'Categorize', desc: 'Sixteen players, four hidden categories. Find the groups.', icon: 'grid', art: ['#2a1d47', '#9d7448', '#c18cff'], action: { kind: 'arcade', tab: 'categorize' } },
+  { id: 'guessTeam', group: 'quick', title: 'Guess the Team', desc: 'A real starting five, names hidden, one clue each.', icon: 'team', art: ['#3a1f0e', '#b07c45', '#f47b20'], action: { kind: 'arcade', tab: 'guessTeam' } },
   { id: 'hilo', group: 'quick', title: 'Higher or Lower', desc: 'Career numbers head to head. How long can you go?', icon: 'up', art: ['#2c1a45', '#9b6e45', '#c18cff'], action: { kind: 'arcade', tab: 'hilo' } },
   { id: 'bracket', group: 'quick', title: 'Bracket Challenge', desc: 'Sixteen all-time teams. Pick every series.', icon: 'trophy', art: ['#3b2a0f', '#b78a4c', '#ffd166'], action: { kind: 'arcade', tab: 'bracket' } },
   { id: 'quiz', group: 'quick', title: 'NBA Quiz', desc: 'Ten questions on titles, MVPs, picks and legends.', icon: 'question', art: ['#0f3340', '#a98450', '#55c8c8'], action: { kind: 'arcade', tab: 'quiz' } },

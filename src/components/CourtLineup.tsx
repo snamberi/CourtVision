@@ -9,7 +9,7 @@ import { FIVE_SPOTS } from './lineupSpots';
  * ghost jersey and the position; a filled spot shows the player standing there, dropping in with a burst of sparks.
  * The next spot to fill pulses. Players go to the spot that fits their position best (assignToSpots).
  */
-export interface LineupPlayer { id: string; name: string; pos?: string; teamId?: string; colors?: [string, string]; sub?: string; hot?: boolean }
+export interface LineupPlayer { id: string; name: string; pos?: string; teamId?: string; colors?: [string, string]; sub?: string; hot?: boolean; /** Draw a stand-in look from this instead of the name (a hidden player). */ avatarId?: string }
 
 const PLACES: Record<number, [number, number][]> = {
   5: [[50, 80], [83, 62], [17, 62], [66, 40], [34, 40]], // PG, SG, SF, PF, C
@@ -61,7 +61,7 @@ export function CourtLineup({ players, spots = FIVE_SPOTS, active, paint, label 
       const p = players[i], [x, y] = places[i] ?? [50, 50];
       return <div key={s + i} role="listitem" ref={el => { spotRefs.current[i] = el; }} className={`court-spot ${p ? 'filled' : 'empty'} ${active === i && !p ? 'next' : ''} ${p && fresh === p.id ? 'drop-in' : ''} ${p?.hot ? 'hot' : ''} ${p && highlighted?.has(p.id) ? 'chem-linked' : ''}`}
         style={{ left: `${x}%`, top: `${y}%` }} aria-label={p ? `${s}: ${p.name}` : `${s}: open`}>
-        {p ? <PlayerAvatar playerId={p.name} teamId={p.teamId} primaryColor={p.colors?.[0]} secondaryColor={p.colors?.[1]} size={58} mode="full" title={p.name} />
+        {p ? <PlayerAvatar playerId={p.avatarId ?? p.name} teamId={p.teamId} primaryColor={p.colors?.[0]} secondaryColor={p.colors?.[1]} size={58} mode="full" title={p.name} />
           : <span className="court-spot-ghost"><Ghost /></span>}
         <b className="court-spot-pos">{s}</b>
         {p && <small className="court-spot-name">{p.name}{p.sub ? <em>{p.sub}</em> : null}</small>}
