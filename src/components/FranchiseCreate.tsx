@@ -12,7 +12,7 @@ import { PixelIcon } from './PixelIcon';
 import { Modal } from './Modal';
 import { COUNTRIES } from '../worldGames/data';
 import { MODE_GAMES, type GamesId } from '../worldGames/mode';
-import { DEFAULT_CREATE, FEELS, ERA_CHOICES, GAME_COUNTS, QUARTER_LENGTHS, changedCount, summary, type CreateSettings } from '../menu/createSettings';
+import { DEFAULT_CREATE, FEELS, ERA_CHOICES, GAME_COUNTS, QUARTER_LENGTHS, LOTTERY_CHOICES, changedCount, summary, type CreateSettings } from '../menu/createSettings';
 import './create.css';
 
 /*
@@ -58,7 +58,7 @@ export function FranchiseCreate({ onBack, onStart, busy = null, initial = 'free'
   const [historyYear, setHistoryYear] = useState('2016');
   const [difficulty, setDifficulty] = useState<TradeDifficulty>('normal');
   const [realDevelopment, setRealDevelopment] = useState(true);
-  const [forceRosters, setForceRosters] = useState(false);
+  const [forceRosters, setForceRosters] = useState(true);
   const [allPlayers, setAllPlayers] = useState(true);
   const [asScout, setAsScout] = useState(false);
   const [settings, setSettings] = useState<CreateSettings>(DEFAULT_CREATE);
@@ -142,7 +142,7 @@ export function FranchiseCreate({ onBack, onStart, busy = null, initial = 'free'
         <h2 id="create-step-real"><span className="create-num">4</span> Real league options</h2>
         <div className="create-toggles">
           <Toggle on={realDevelopment} set={setRealDevelopment} title="Real player development" blurb={realDevelopment ? 'Real players rise and decline along their real careers.' : "Real players develop through Court Vision's own systems."} />
-          <Toggle on={forceRosters} set={setForceRosters} title="Historical rosters" blurb={forceRosters ? 'Every AI team keeps its real roster each season; they make no trades.' : 'Rosters start real, then change through your league.'} />
+          <Toggle on={forceRosters} set={setForceRosters} title="Historical rosters" blurb={forceRosters ? 'Every AI team takes the floor with its real roster each season, real trades included, until the data runs out. They make no other trades.' : 'Rosters start real, then change through your league.'} />
           <Toggle on={allPlayers} set={setAllPlayers} title="Every real player" blurb={allPlayers ? `Players who retired before ${historyYear} are in, with their careers and honours.` : 'Only players active at the start (and those to come).'} />
         </div>
       </section>}
@@ -225,9 +225,15 @@ function SettingsDialog({ value, random, onDone, onCancel }: { value: CreateSett
       <div className="create-setting wide"><b>Game style</b>
         <div className="create-segment wrap" role="radiogroup" aria-label="Game style">{FEELS.map(f => <button key={f.id} role="radio" aria-checked={s.feel === f.id} className={s.feel === f.id ? 'selected' : ''} onClick={() => set('feel', f.id)}>{f.id}</button>)}</div>
         <small>{FEELS.find(f => f.id === s.feel)!.blurb}</small></div>
+      {!random && <div className="create-setting wide"><b>Like real life, year by year</b>
+        <label className="create-check"><input type="checkbox" checked={s.realYears} onChange={e => set('realYears', e.target.checked)} /> Each season plays its real length and pace</label>
+        <small>{s.realYears ? '72 games in 2020-21, 66 in the 2011-12 lockout, 48 in 1947-48, and faster 1960s games. After the last real season, 82 games at today\'s pace.' : 'Every season plays the length you pick below.'}</small></div>}
       <label className="create-setting"><b>Games a season</b>
-        <select className="year-input" value={s.games} onChange={e => set('games', Number(e.target.value))}>{GAME_COUNTS.map(g => <option key={g} value={g}>{g} games</option>)}</select>
-        <small>Shorter seasons play faster.</small></label>
+        <select className="year-input" disabled={!random && s.realYears} value={s.games} onChange={e => set('games', Number(e.target.value))}>{GAME_COUNTS.map(g => <option key={g} value={g}>{g} games</option>)}</select>
+        <small>{!random && s.realYears ? 'Set by each real season.' : 'Shorter seasons play faster.'}</small></label>
+      <label className="create-setting"><b>Draft lottery</b>
+        <select className="year-input" value={s.lottery} onChange={e => set('lottery', e.target.value as CreateSettings['lottery'])}>{LOTTERY_CHOICES.map(l => <option key={l.id} value={l.id}>{l.label}</option>)}</select>
+        <small>{s.lottery === 'auto' ? 'Coin flips before 1985, envelopes, weighted odds, then today\'s flattened odds.' : 'Every draft uses this rule.'}</small></label>
       <label className="create-setting"><b>Quarter length</b>
         <select className="year-input" value={s.quarterMinutes} onChange={e => set('quarterMinutes', Number(e.target.value))}>{QUARTER_LENGTHS.map(q => <option key={q} value={q}>{q} minutes{q === 12 ? ' (NBA)' : q === 10 ? ' (FIBA)' : ''}</option>)}</select>
         <small>Stats scale with the minutes played.</small></label>

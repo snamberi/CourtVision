@@ -1,4 +1,5 @@
 import { enforceSticky, stickyTradeProblems, isStuck } from './sticky';
+import { lotteryFirstRound } from './draftLottery';
 import { rememberRivalTrade } from './gmRivals';
 import { consensusBoard, pickReaction } from './draftNight';
 import { formatSeasonYear } from './calendar';
@@ -708,39 +709,12 @@ export function draftOrderFromStandings(league: League): TeamId[] {
 }
 
 /**
- * A simplified NBA-style draft lottery: the worst-record teams (up to 14 of
- * them) go into a weighted lottery for the top 4 picks - the worse the
- * record, the better the odds, but no team is guaranteed a top pick. Every
- * other pick (5th onward) falls back to reverse-standings order among
- * whoever didn't land a top-4 slot. Deterministic given the same seed.
+ * Round 1 through the draft lottery. The rule follows the league's setting (see draftLottery.ts): year accurate in
+ * historical leagues (coin flips in the 1970s, 25% odds in the 2000s, flattened odds today), today's rule otherwise.
+ * Deterministic given the same seed.
  */
-export function draftOrderWithLottery(league: League, seed = Date.now()): TeamId[] {
-  const standings = [...computeStandings(league)].sort((a, b) => a.winPct - b.winPct); // worst record first
-  const lotteryPoolSize = Math.min(14, standings.length);
-  const lotteryPool = standings.slice(0, lotteryPoolSize).map((r) => r.teamId);
-  const rest = standings.slice(lotteryPoolSize).map((r) => r.teamId);
-  if (lotteryPool.length === 0) return rest;
-
-  const rng = new RNG(seed);
-  const remainingPool = [...lotteryPool];
-  const remainingWeights = lotteryPool.map((_, i) => lotteryPoolSize - i); // worst team = highest weight
-  const numLotteryPicks = Math.min(4, lotteryPoolSize);
-  const top: TeamId[] = [];
-
-  for (let i = 0; i < numLotteryPicks; i++) {
-    const totalWeight = remainingWeights.reduce((a, b) => a + b, 0);
-    let roll = rng.next() * totalWeight;
-    let idx = remainingWeights.length - 1;
-    for (let j = 0; j < remainingWeights.length; j++) {
-      roll -= remainingWeights[j];
-      if (roll <= 0) { idx = j; break; }
-    }
-    top.push(remainingPool[idx]);
-    remainingPool.splice(idx, 1);
-    remainingWeights.splice(idx, 1);
-  }
-
-  return [...top, ...remainingPool, ...rest];
+export function draftOrderWithLottery(league: League, seed = Date.now(), draftYear = Number(league.season) + 1): TeamId[] {
+  return lotteryFirstRound(league, Number.isFinite(draftYear) ? draftYear : new Date().getFullYear(), seed);
 }
 
 /**
@@ -748,8 +722,8 @@ export function draftOrderWithLottery(league: League, seed = Date.now()): TeamId
  * picks), round 2 is plain reverse-standings with no lottery — exactly like the real NBA draft. The
  * returned array's length is always `2 * teamCount`; `draftPickIndex` cycles straight through it.
  */
-export function buildTwoRoundDraftOrder(league: League, seed = Date.now()): TeamId[] {
-  const round1 = draftOrderWithLottery(league, seed);
+export function buildTwoRoundDraftOrder(league: League, seed = Date.now(), draftYear?: number): TeamId[] {
+  const round1 = draftOrderWithLottery(league, seed, draftYear);
   const round2 = draftOrderFromStandings(league);
   return [...round1, ...round2];
 }

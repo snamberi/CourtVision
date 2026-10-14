@@ -3,6 +3,7 @@ import { computeStandings } from './league';
 import type { GMLeagueExtras, DraftProspect, TradeProposal } from './gm';
 import { validateTrade, tradeableFuturePicks, currentDraftOrder } from './gm';
 import { calculateOverall } from './engine/overall';
+import { activeLotteryFormat, lotteryPool, oddsForTop, type LotteryFormat } from './draftLottery';
 
 /*
  * Draft night: the lottery reveal, the consensus board the media grades picks against, and the calls a war room
@@ -10,14 +11,16 @@ import { calculateOverall } from './engine/overall';
  */
 
 export interface LotteryEntry { teamId: string; before: number; after: number; oddsTop: number }
-export interface LotteryResult { season: string; entries: LotteryEntry[]; revealed?: boolean }
+export interface LotteryResult { season: string; entries: LotteryEntry[]; revealed?: boolean; /** Which rule drew it (see draftLottery.ts); absent on older saves. */ format?: Exclude<LotteryFormat, 'auto'> }
 
-/** Who was where before the balls were drawn, and where they ended up (round 1, the 14 lottery slots). */
-export function lotteryResult(league: League, round1: string[], season: string): LotteryResult | undefined {
-  const pre = [...computeStandings(league)].sort((a, b) => a.winPct - b.winPct).slice(0, Math.min(14, league.teams.length)).map(r => r.teamId);
-  if (pre.length < 2) return undefined;
-  const total = pre.reduce((n, _, i) => n + (pre.length - i), 0);
-  return { season, entries: pre.map((teamId, i) => ({ teamId, before: i + 1, after: round1.indexOf(teamId) + 1, oddsTop: Math.round(((pre.length - i) / total) * 1000) / 10 })) };
+/** Who was where before the balls were drawn, and where they ended up (round 1, the lottery teams). */
+export function lotteryResult(league: League, round1: string[], season: string, draftYear = Number(season)): LotteryResult | undefined {
+  const worstFirst = [...computeStandings(league)].sort((a, b) => a.winPct - b.winPct).map(r => r.teamId);
+  const format = activeLotteryFormat(league, draftYear);
+  const pre = format === 'none' || format === 'coinFlip1966' ? worstFirst.slice(0, Math.min(format === 'none' ? 1 : 2, worstFirst.length)) : lotteryPool(league, worstFirst);
+  if (pre.length < 2 && format !== 'none') return undefined;
+  const odds = oddsForTop(format, pre.length);
+  return { season, format, entries: pre.map((teamId, i) => ({ teamId, before: i + 1, after: round1.indexOf(teamId) + 1, oddsTop: odds[i] ?? 0 })) };
 }
 
 /** The media's consensus value of a prospect: today's ability and upside (their read sits between the truth and the scouts'). */

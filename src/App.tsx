@@ -914,6 +914,21 @@ function App() {
   }, [league, extras]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const historicalSeason = league.historical ? league.season : null;
+  // Older historical saves: load each real season's length and pace; leagues with Historical rosters on follow them.
+  const needsSeasonShape = !!league.historical && !league.historical.realSeasonGames;
+  useEffect(() => {
+    if (!needsSeasonShape || jobs.busy) return;
+    let cancelled = false;
+    historyTools().then(({ h, realSeasonShape }) => {
+      if (cancelled) return;
+      const shape = realSeasonShape(h);
+      setLeague(l => !l.historical || l.historical.realSeasonGames ? l : {
+        ...l, historical: { ...l.historical, realSeasonGames: shape.games, realPace: shape.pace },
+        settings: l.historical.forceRosters && l.settings.yearAccurate === undefined ? { ...l.settings, yearAccurate: true } : l.settings,
+      });
+    }).catch(() => { /* tried again next time the league opens */ });
+    return () => { cancelled = true; };
+  }, [needsSeasonShape, jobs.busy]);
   useEffect(() => {
     if (!historicalSeason || jobs.busy) return;
     const through = Number(historicalSeason) + 10;

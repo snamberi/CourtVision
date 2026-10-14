@@ -220,7 +220,7 @@ export function simulateGame(opts: SimulateGameOptions): GameResult {
   for (let q = 0; q < numQuarters || (homeBox.points === awayBox.points && q < numQuarters + 6); q++) {
     const periodMinutes = q < numQuarters ? qLen : Math.max(1, settings.era.overtimeLengthMinutes);
     const periodSeconds = Math.round(periodMinutes * 60);
-    const possessionsThisQuarter = possessionsPerQuarter(periodMinutes, settings.pacePreset, paceModifier, ruleMods.paceMultiplier);
+    const possessionsThisQuarter = possessionsPerQuarter(periodMinutes, settings.pacePreset, paceModifier, ruleMods.paceMultiplier * (settings.eraPace ?? 1));
     const averageDuration = periodSeconds / (possessionsThisQuarter * 2);
     let clock = periodSeconds;
     let poss = 0;

@@ -47,6 +47,10 @@ export interface HistoricalLeagueMeta {
   realMoves?: Record<string, { id: string; to: string }[]>;
   /** Seasons whose real mid-season moves have been applied. */
   movesApplied?: string[];
+  /** Real games per team, by season start year (year-accurate leagues schedule each season to match). */
+  realSeasonGames?: Record<string, number>;
+  /** Real league pace relative to today's (1 = about 99 possessions a game), by season start year. */
+  realPace?: Record<string, number>;
 }
 
 export function supportedStartYears(h: NbaHistory): number[] {
@@ -341,10 +345,37 @@ export function realDraftClasses(h: NbaHistory, from: number, to: number, usedId
   return out;
 }
 
+/** Pace before the data tracks it (no shot clock until 1954-55, the run-and-gun 1960s), by END year. */
+function estimatedPace(endYear: number): number {
+  if (endYear <= 1954) return 0.92;
+  if (endYear <= 1958) return 1.15;
+  if (endYear <= 1966) return 1.26;
+  if (endYear <= 1970) return 1.18;
+  return 1.12;
+}
+/** Each real season's length (games per team) and pace relative to today's ~99 possessions, keyed by START year. */
+export function realSeasonShape(h: NbaHistory): { games: Record<string, number>; pace: Record<string, number> } {
+  const byEnd = new Map<number, { games: number; pace: number[] }>();
+  for (const t of h.teams) {
+    if (!NBA.has(t.league)) continue;
+    const row = byEnd.get(t.season) ?? { games: 0, pace: [] };
+    row.games = Math.max(row.games, (t.w ?? 0) + (t.l ?? 0));
+    if (t.pace != null) row.pace.push(t.pace);
+    byEnd.set(t.season, row);
+  }
+  const games: Record<string, number> = {}, pace: Record<string, number> = {};
+  for (const [end, r] of byEnd) {
+    if (r.games >= 20) games[String(endToStart(end))] = r.games;
+    const avg = r.pace.length ? r.pace.reduce((a, b) => a + b, 0) / r.pace.length / 99 : estimatedPace(end);
+    pace[String(endToStart(end))] = Math.round(Math.max(0.85, Math.min(1.3, avg)) * 1000) / 1000;
+  }
+  return { games, pace };
+}
+
 export interface HistoricalLeagueResult { league: League; extras: GMLeagueExtras; summary: { teams: number; rostered: number; freeAgents: number; importedSeasons: number; notes: string[] } }
 
 /** Builds a playable league at the opening of `startYear`-(startYear+1). */
-export function buildHistoricalLeague(h: NbaHistory, startYear: number, opts: { realDevelopment: boolean; difficulty: TradeDifficulty; seed?: number; forceRosters?: boolean; allPlayers?: boolean }): HistoricalLeagueResult {
+export function buildHistoricalLeague(h: NbaHistory, startYear: number, opts: { realDevelopment: boolean; difficulty: TradeDifficulty; seed?: number; forceRosters?: boolean; allPlayers?: boolean; yearAccurate?: boolean }): HistoricalLeagueResult {
   const E = startYear + 1; // END-year label of the start season in the data
   const lastEnd = h.manifest.coverage.seasons[1];
   if (startYear < FIRST_START_YEAR || E > lastEnd) throw new Error(`Start year ${startYear} is outside the supported range ${FIRST_START_YEAR}–${lastEnd - 1}.`);
@@ -481,14 +512,19 @@ export function buildHistoricalLeague(h: NbaHistory, startYear: number, opts: { 
   const teamIds = teams.map(t => t.teamId);
   const realRosters = opts.forceRosters ? historicalRosterPlan(h, E + 1, lastEnd, new Set(teamIds), mapTeam) : undefined;
   const realMoves = opts.forceRosters ? historicalMidseasonMoves(h, E, lastEnd, new Set(teamIds), mapTeam) : undefined;
+  // Year accurate (the default): every season the data covers takes its real length and pace.
+  const yearAccurate = opts.yearAccurate !== false;
+  const shape = realSeasonShape(h);
   const league: League = {
-    teams, schedule: generateSeasonSchedule(teamIds, gamesPerTeam), settings: { ...DEFAULT_GAME_SETTINGS, gamesPerSeason: gamesPerTeam } as League['settings'],
+    teams, schedule: generateSeasonSchedule(teamIds, gamesPerTeam),
+    settings: { ...DEFAULT_GAME_SETTINGS, gamesPerSeason: gamesPerTeam, ...(yearAccurate ? { yearAccurate: true, eraPace: shape.pace[season] ?? 1 } : {}) } as League['settings'],
     season, calendarDate: seasonStartDate(season), calendarRound: -1, franchiseHistory, ...(retiredPlayers ? { retiredPlayers } : {}),
     historical: {
       source: 'nba-history', dataset: NBA_HISTORY_DATASET, startYear, realDevelopment: opts.realDevelopment,
       futureClasses, futureDebuts, classesLoadedThrough: Math.min(firstDraft + 9, lastDraftYear(h)), lastDataStartYear: lastEnd - 1, notes,
       cityNames: Object.fromEntries(teams.map(t => [t.teamId, t.name])),
       ...(opts.forceRosters ? { forceRosters: true, realRosters, realMoves } : {}),
+      realSeasonGames: shape.games, realPace: shape.pace,
     },
   };
   const firstClass = futureClasses[String(firstDraft)] ?? [];

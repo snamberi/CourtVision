@@ -4,6 +4,7 @@ import { ERA_PRESETS } from '../simulation/types';
 import { SETTINGS_PRESETS } from '../simulation/settingsPresets';
 import { generateSeasonSchedule } from '../simulation/league';
 import type { GMLeagueExtras } from '../simulation/gm';
+import { LOTTERY_RULES, type LotteryFormat } from '../simulation/draftLottery';
 
 /*
  * League settings picked on the New Franchise page, before the league exists. They are applied once to the freshly
@@ -36,7 +37,16 @@ export interface CreateSettings {
   /** The World Games every four summers, and the country you coach ('' = the AI plays every country). */
   worldGames: boolean;
   worldGamesCoach: string;
+  /** Real leagues: every season the data covers takes its real length and pace (Games a season is ignored). */
+  realYears: boolean;
+  /** How round 1 is ordered: 'auto' follows the real rule for each draft year. */
+  lottery: LotteryFormat;
 }
+
+export const LOTTERY_CHOICES: { id: LotteryFormat; label: string }[] = [
+  { id: 'auto', label: 'Real rule for each year' },
+  ...LOTTERY_RULES.map(r => ({ id: r.id as LotteryFormat, label: `${r.label} (${r.years})` })),
+];
 
 export const FEELS: { id: GameFeel; blurb: string }[] = [
   { id: 'Standard', blurb: "Court Vision's default game: what most leagues play." },
@@ -57,7 +67,7 @@ export const QUARTER_LENGTHS = [12, 10, 8, 6];
 export const DEFAULT_CREATE: CreateSettings = {
   feel: 'Standard', era: 'season', quarterMinutes: 12, games: 82, injuries: false, injuryRate: 1, fatigue: true, chemistry: true,
   homeCourt: 0.03, tradeDeadline: 0.65, sandbox: false, salaryCap: 140_000_000, hardCap: false,
-  worldGames: true, worldGamesCoach: '',
+  worldGames: true, worldGamesCoach: '', realYears: true, lottery: 'auto',
 };
 
 /** How many settings differ from the defaults (shown on the button). */
@@ -65,7 +75,8 @@ export const changedCount = (s: CreateSettings) => (Object.keys(DEFAULT_CREATE) 
 
 /** A one-line summary of the settings, for the creation page. */
 export function summary(s: CreateSettings, random: boolean): string[] {
-  const out = [s.feel === 'Standard' ? 'Standard game' : `${s.feel} games`, `${s.games} games a season`];
+  const out = [s.feel === 'Standard' ? 'Standard game' : `${s.feel} games`, !random && s.realYears ? 'Real season length and pace each year' : `${s.games} games a season`];
+  if (s.lottery !== 'auto') out.push(`${LOTTERY_CHOICES.find(l => l.id === s.lottery)?.label} every year`);
   if (s.quarterMinutes !== 12) out.push(`${s.quarterMinutes}-minute quarters`);
   if (s.era !== 'season') out.push(`${ERA_CHOICES.find(e => e.id === s.era)?.label} rules`);
   out.push(s.injuries ? (s.injuryRate === 1 ? 'Injuries on' : `Injuries ×${s.injuryRate}`) : 'No injuries');
@@ -94,10 +105,15 @@ export function applyCreateSettings(league: League, extras: GMLeagueExtras, s: C
   if (s.homeCourt !== d.homeCourt) settings.homeCourtAdvantage = s.homeCourt;
   if (s.tradeDeadline !== d.tradeDeadline) settings.tradeDeadlinePct = s.tradeDeadline;
   if (s.sandbox !== d.sandbox) settings.sandboxMode = s.sandbox;
-  if (s.games !== d.games) settings.gamesPerSeason = s.games;
+  // A real league that turns year-by-year off plays the chosen length at today's pace.
+  const fixedLength = random || !s.realYears;
+  if (!random && !s.realYears) { settings.yearAccurate = false; settings.eraPace = 1; }
+  if (fixedLength && s.games !== d.games) settings.gamesPerSeason = s.games;
+  if (!random && !s.realYears && s.games === d.games) settings.gamesPerSeason = s.games;
+  if (s.lottery !== d.lottery) settings.draftLottery = s.lottery;
   const worldGames = !s.worldGames || s.worldGamesCoach ? { worldGames: { history: [], ...(!s.worldGames ? { off: true } : {}), ...(s.worldGamesCoach ? { coach: s.worldGamesCoach } : {}) } } : {};
   const scheduled = league.teams.length ? Math.round((league.schedule.length * 2) / league.teams.length) : s.games;
-  const schedule = scheduled !== s.games && league.teams.length > 1 ? generateSeasonSchedule(league.teams.map(t => t.teamId), s.games) : league.schedule;
+  const schedule = fixedLength && scheduled !== s.games && league.teams.length > 1 ? generateSeasonSchedule(league.teams.map(t => t.teamId), s.games) : league.schedule;
   const capSettings = random && (s.salaryCap !== d.salaryCap || s.hardCap !== d.hardCap)
     ? { ...extras.capSettings, salaryCap: s.salaryCap, luxuryTaxLine: Math.round(s.salaryCap * (extras.capSettings.luxuryTaxLine / extras.capSettings.salaryCap)), hardCapEnabled: s.hardCap }
     : extras.capSettings;
