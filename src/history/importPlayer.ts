@@ -1,5 +1,6 @@
 import type { NbaHistory, HistPlayer } from './nbaHistoryData';
 import { NBA_HISTORY_DATASET } from './datasetInfo';
+import { franchiseRatings } from './ratingSmoothing';
 import { seedFor } from './historicalLeague';
 import { buildRealPlayer } from './realPlayers';
 import { realJerseyNumber, plausibleJerseyNumber } from './jerseyNumbers';
@@ -38,7 +39,7 @@ export function importableSeasons(h: NbaHistory, p: HistPlayer): ImportableSeaso
     const rs = rows.filter(r => r.season === end);
     const agg = rs.find(r => r.isAggregate) ?? rs[0];
     const g = agg.stats.g ?? 0;
-    return { end, team: rs.filter(r => !r.isAggregate).map(r => r.team).join('/') || agg.team, age: agg.age, ovr: h.ratingsByPlayer.get(p.idx)?.get(end)?.ovr ?? null,
+    return { end, team: rs.filter(r => !r.isAggregate).map(r => r.team).join('/') || agg.team, age: agg.age, ovr: franchiseRatings(h).get(p.idx)?.get(end)?.ovr ?? null,
       ppg: g ? Math.round(((agg.stats.pts ?? 0) / g) * 10) / 10 : null };
   });
 }

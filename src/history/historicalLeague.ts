@@ -1,6 +1,7 @@
 import { realMedals } from '../worldGames/data';
 import type { NbaHistory, HistSeasonRow, HistPlayer } from './nbaHistoryData';
 import { NBA_HISTORY_DATASET } from './datasetInfo';
+import { franchiseRatings } from './ratingSmoothing';
 import { buildRealPlayer, type RealPlayerSeed, type RealProfile, type RatingFrame } from './realPlayers';
 import type { League, LeagueTeam, FranchiseHistoryRecord, TeamSeasonSummary, PlayoffFinish, RetiredPlayerRecord } from '../simulation/league';
 import { generateSeasonSchedule, defaultCoachTendencies } from '../simulation/league';
@@ -185,7 +186,7 @@ function realCareer(ctx: CareerContext, p: HistPlayer): CareerSeasonRecord[] {
     const agg = aggregateRow(rs), stints = rs.filter(r => !r.isAggregate);
     const { totals, missing } = statTotals(agg);
     const lastTeam = stints[stints.length - 1]?.team ?? agg.team;
-    const rating = h.ratingsByPlayer.get(p.idx)?.get(end);
+    const rating = franchiseRatings(h).get(p.idx)?.get(end);
     const splits: SeasonStint[] | undefined = stints.length > 1 ? stints.map(st => ({ teamId: mapTeam(st.team), teamLabel: st.team !== mapTeam(st.team) ? st.team : undefined, stats: statTotals(st).totals, advanced: advancedFrom(st) })) : undefined;
     const milestones = emptySeasonMilestones();
     if (agg.stats.trp_dbl != null) milestones.tripleDoubles = agg.stats.trp_dbl;
@@ -242,7 +243,7 @@ export function seedFor(h: NbaHistory, p: HistPlayer, end: number, profileEnds: 
   const pick = (e: number) => { const rs = rows.filter(r => r.season === e); return rs.length ? [aggregateRow(rs)] : []; };
   let profileRows: HistSeasonRow[] = [];
   for (const e of profileEnds) { profileRows = profileRows.concat(pick(e)); if (profileRows.reduce((n, r) => n + (r.stats.mp ?? (r.stats.g ?? 0) * 20), 0) >= 1200) break; }
-  const ratings = h.ratingsByPlayer.get(p.idx);
+  const ratings = franchiseRatings(h).get(p.idx);
   const at = ratings?.get(end) ?? [...(ratings?.values() ?? [])].find(r => r.season >= end) ?? null;
   const frames: RatingFrame[] = [...(ratings?.values() ?? [])].filter(r => r.season > end).sort((a, b) => a.season - b.season).map(r => [endToStart(r.season), r.ovr, r.source]);
   // Position: the most recent listing up to this season (career listings are often just "G"/"F").
