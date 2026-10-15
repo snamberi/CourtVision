@@ -58,8 +58,8 @@ function DailyGrid({ h }: { h: NbaHistory }) {
 
 function EndlessGrid({ h, code, onNew }: { h: NbaHistory; code: string; onNew: () => void }) {
   const grid = useMemo(() => codeGrid(h, code), [h, code]);
-  // The Last Look (a secret relic): one more guess on Endless grids.
-  const [play, setPlay] = useState<GridPlay>(() => emptyPlay(relicRunOpts().lastLook ? GRID_GUESSES + 1 : undefined));
+  // The Last Look (a secret relic) and the Parrot (a pet): one more guess each on Endless grids.
+  const [play, setPlay] = useState<GridPlay>(() => { const o = relicRunOpts(), extra = (o.lastLook ? 1 : 0) + (o.pet === 'parrot' ? 1 : 0); return emptyPlay(extra ? GRID_GUESSES + extra : undefined); });
   return <GridBoard h={h} grid={grid} play={play} onPlay={setPlay} title="Endless grid" shareDay={null} onNew={onNew} />;
 }
 

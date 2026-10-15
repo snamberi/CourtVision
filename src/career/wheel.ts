@@ -62,9 +62,9 @@ export interface WheelState {
   ultra?: boolean;
 }
 
-export interface WheelRelics { luck?: number; eternalSpin?: boolean; luckyCharm?: boolean; ultraCheat?: boolean }
+export interface WheelRelics { luck?: number; eternalSpin?: boolean; luckyCharm?: boolean; ultraCheat?: boolean; /** Your pet: the Fox adds a respin. */ pet?: string | null }
 export const newWheel = (seed: number, fav?: string, relics?: WheelRelics): WheelState => ({ seed, spinCount: 0, current: null, takenFrom: [], picks: {}, moves: { left: true, right: true },
-  respins: RESPINS + (relics?.eternalSpin ? 1 : 0), triple: true, lucky: LUCKY_SPINS + (relics?.luckyCharm ? 1 : 0), ...(fav ? { fav } : {}),
+  respins: RESPINS + (relics?.eternalSpin ? 1 : 0) + (relics?.pet === 'fox' ? 1 : 0), triple: true, lucky: LUCKY_SPINS + (relics?.luckyCharm ? 1 : 0), ...(fav ? { fav } : {}),
   ...(relics?.luck ? { relicLuck: Math.round(relics.luck * 100) / 100 } : {}), ...(relics?.ultraCheat ? { ultra: true } : {}) });
 export const luckyLeft = (s: WheelState) => s.lucky ?? LUCKY_SPINS;
 export const boostLeft = (s: WheelState) => s.boost ?? PRIME_BOOSTS;

@@ -125,7 +125,7 @@ export function PerfectChallenge({ onExit }: { onExit: () => void }) {
     if (!h) return;
     track('mode_start', { mode: 'perfect', variant: opts?.weekly ? 'weekly-category' : daily ? 'daily' : mode, level: daily ? 'pro' : opts?.level ?? 'pro' });
     const relic = relicRunOpts();
-    setRun(newPerfectRun(h, mode, seed, daily, { ...opts, luck: relic.luck, extraPick: relic.extraPick, catOpts: isCategoryMode(mode) ? opts?.catOpts ?? readCatOpts() : undefined }));
+    setRun(newPerfectRun(h, mode, seed, daily, { ...opts, luck: relic.luck, extraPick: relic.extraPick, pet: relic.pet, catOpts: isCategoryMode(mode) ? opts?.catOpts ?? readCatOpts() : undefined }));
   };
   const startWhatIf = (w: WhatIf, opts?: StartOpts) => {
     if (!h) return;

@@ -89,10 +89,10 @@ export function dealLegends(h: NbaHistory, seed: number, luck = 0): string[] {
   return out.sort((a, b) => b.ovr - a.ovr).map(c => c.id);
 }
 
-export function newSurvivalRun(h: NbaHistory, seed: number, level: SurvivalLevel = 'pro', daily?: string, relics?: { luck?: number; ironWill?: boolean }): SurvivalRun {
+export function newSurvivalRun(h: NbaHistory, seed: number, level: SurvivalLevel = 'pro', daily?: string, relics?: { luck?: number; ironWill?: boolean; pet?: string | null }): SurvivalRun {
   // The Daily Survival is the same for everyone: no relics there.
   const r = daily ? undefined : relics;
-  return { v: 1, seed, level, ...(daily ? { daily } : {}), ...(r?.luck ? { luck: r.luck } : {}), dealt: dealLegends(h, seed, r?.luck ?? 0), roster: [], franchise: null, shields: 1 + (r?.ironWill ? 1 : 0), games: [], faced: [], next: null, stage: 'draft' };
+  return { v: 1, seed, level, ...(daily ? { daily } : {}), ...(r?.luck ? { luck: r.luck } : {}), dealt: dealLegends(h, seed, r?.luck ?? 0), roster: [], franchise: null, shields: 1 + (r?.ironWill ? 1 : 0) + (r?.pet === 'dog' ? 1 : 0), games: [], faced: [], next: null, stage: 'draft' };
 }
 
 /** Keep ten of the fourteen. */

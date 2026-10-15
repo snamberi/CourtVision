@@ -19,6 +19,9 @@ import { MISSION_TITLES } from '../retention/missions';
 import { useAccount } from '../cloud/account';
 import { passesOnSale } from '../billing/billing';
 import { ThemeSection } from './ThemePicker';
+import { PetSprite } from './locker/PetSprite';
+import './locker/playerPets.css';
+import { activePet, loadPets, lookOf } from '../profile/pets';
 import { seasonHow, SEASON_REWARDS } from '../retention/season';
 import { TITLE_COLORS, TROPHY_TITLES, trophyNeed, titleColorOpen } from '../profile/trophyRoad';
 
@@ -179,10 +182,11 @@ export function ProfilePanel({ extras, onCloset }: { /** Shown right under your 
   const signedIn = account.status === 'signedIn' && !!account.profile?.username;
   const name = signedIn ? account.profile!.username! : localName();
   const specials = earnedExtraTitles(ctx).length + rankTitles().length;
+  const pet = activePet(p.level);
   return <section className="locker-bay profile-panel">
     <h2><PixelIcon name="star" size={18} /> Your card</h2>
     <div className={`profile-card-big frame-${eq.frame}`}>
-      <span className="profile-card-avatar"><MyFramedAvatar size={96} title={`${name}'s character`} /></span>
+      <span className="profile-card-avatar"><MyFramedAvatar size={96} title={`${name}'s character`} />{pet && <span className="profile-card-pet"><PetSprite id={pet} look={lookOf(loadPets(), pet)} size={36} title={`${lookOf(loadPets(), pet).name}, ${name}'s pet`} /></span>}</span>
       <ProfileIcon id={eq.icon} size={40} title={`${name}'s icon`} />
       <div className="profile-card-id">
         <NameTag name={signedIn ? `@${name}` : name} icon={null} color={eq.color} title={eq.title} titleColor={eq.titleColor} className="profile-card-name" />
@@ -200,13 +204,13 @@ export function ProfilePanel({ extras, onCloset }: { /** Shown right under your 
   </section>;
 }
 
-export type ClosetTab = 'character' | 'name' | 'frames' | 'look';
+export type ClosetTab = 'character' | 'ratings' | 'pets' | 'name' | 'frames' | 'look';
 export const CLOSET_TABS: { id: ClosetTab; label: string }[] = [
-  { id: 'character', label: 'Character' }, { id: 'name', label: 'Icon, colours & title' }, { id: 'frames', label: 'Frames, court & phone' }, { id: 'look', label: 'App look' },
+  { id: 'character', label: 'Character' }, { id: 'ratings', label: 'Ratings' }, { id: 'pets', label: 'Pets' }, { id: 'name', label: 'Icon, colours & title' }, { id: 'frames', label: 'Frames, court & phone' }, { id: 'look', label: 'App look' },
 ];
 
 /** The Closet's cosmetic pickers (the character itself is the AvatarEditor). */
-export function ClosetPickers({ tab }: { tab: Exclude<ClosetTab, 'character'> }) {
+export function ClosetPickers({ tab }: { tab: Exclude<ClosetTab, 'character' | 'ratings' | 'pets'> }) {
   const p = useProfile();
   const account = useAccount();
   const eq = equipped(p.level);

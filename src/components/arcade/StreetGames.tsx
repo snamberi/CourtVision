@@ -6,6 +6,7 @@ import { PlayerAvatar } from '../PlayerAvatar';
 import { MyAvatar } from '../UserAvatar';
 import { PixelIcon } from '../PixelIcon';
 import { totalXp, levelFor, localName } from '../../profile/profile';
+import { loadMyRatings, myOverall } from '../../profile/myRatings';
 import { weekEndsAt } from '../../retention/week';
 import { noteWeekRun } from '../../retention/weekLog';
 import { noteFeat } from '../../profile/feats';
@@ -103,10 +104,13 @@ export function LegendsGame({ h }: { h: NbaHistory }) {
 const STREET_KEY = 'cv-street-best';
 const readBest = () => { try { return Number(localStorage.getItem(STREET_KEY) ?? 0) || 0; } catch { return 0; } };
 
-/** You, as a street baller: your level makes you better (60 to 90). */
+/** You, as a street baller: the ratings you build in the Closet (Ratings tab), points earned by your level. */
 function me(): Baller {
-  const lv = levelFor(totalXp()).level, r = Math.min(90, 60 + Math.floor(lv / 8));
-  return { id: '__me__', name: localName(), inside: r, mid: r - 2, three: r - 4, handle: r, perD: r - 3, intD: r - 6, reb: r - 4, height: 76, ovr: r };
+  const r = loadMyRatings(levelFor(totalXp()).level), k = r.skills;
+  // Athleticism and IQ help everything a little; the body helps inside and on the boards.
+  const lift = ((k.athleticism - 45) + (k.iq - 45)) * 0.15;
+  return { id: '__me__', name: localName(), inside: (k.finishing * 2 + k.body) / 3 + lift, mid: k.midRange + lift, three: k.threePoint + lift, handle: k.playmaking + lift,
+    perD: k.perimeterD + lift, intD: k.interiorD + lift, reb: (k.interiorD + k.body) / 2, height: r.height, ovr: myOverall(r) };
 }
 
 export function StreetGame({ h }: { h: NbaHistory }) {
@@ -130,7 +134,7 @@ export function StreetGame({ h }: { h: NbaHistory }) {
   const restart = () => { setSeed(Math.floor(Math.random() * 1e9)); setTeam([]); setStreak(0); setGame(null); setLost(false); };
   const face = (b: Baller, size = 48) => b.id === '__me__' ? <MyAvatar size={size} mode="full" title={b.name} /> : <PlayerAvatar playerId={b.name} teamId={b.team} size={size} title={b.name} />;
   return <section className="street-game">
-    <p className="hunt-lede">Half court, first to 21, ones and twos. You and two legends against street crews that get tougher every win. How long can you run the court? <small>Your level makes you better.</small></p>
+    <p className="hunt-lede">Half court, first to 21, ones and twos. You and two legends against street crews that get tougher every win. How long can you run the court? <small>You play with the ratings you build in the Closet (Ratings tab); every 5 levels earn 7 points.</small></p>
     <p className="hint-text">Best run: <b>{best}</b> win{best === 1 ? '' : 's'} in a row.</p>
     {team.length < 2 ? <>
       <h3 className="hunt-subhead">Pick two legends ({team.length}/2)</h3>

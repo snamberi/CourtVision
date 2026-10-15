@@ -71,12 +71,12 @@ export function GuessTeamGame({ h }: { h: NbaHistory }) {
 function Round({ puzzle, streak, onNext, onSetup }: { puzzle: GuessTeamPuzzle; streak: number; onNext: () => void; onSetup: () => void }) {
   const [guesses, setGuesses] = useState<string[]>([]);
   const [filter, setFilter] = useState('');
-  // The Film Room (a secret relic): one more guess on every team.
-  const [filmRoom] = useState(() => relicRunOpts().filmRoom);
-  const tries = GUESS_TEAM_TRIES[puzzle.level] + (filmRoom ? 1 : 0);
+  // The Film Room (a secret relic): one more guess on every team. The Owl (a pet): both clues from the start.
+  const [perks] = useState(() => { const o = relicRunOpts(); return { filmRoom: o.filmRoom, owl: o.pet === 'owl' }; });
+  const tries = GUESS_TEAM_TRIES[puzzle.level] + (perks.filmRoom ? 1 : 0);
   const won = guesses.includes(puzzle.abbr), over = won || guesses.length >= tries;
   // A wrong guess turns over the second clue for every starter.
-  const shownClues = guesses.length > 0 || over ? 2 : 1;
+  const shownClues = guesses.length > 0 || over || perks.owl ? 2 : 1;
   const col = teamColors(puzzle.franchise);
   const spots = useMemo(() => assignToSpots(puzzle.starters, FIVE_SPOTS), [puzzle]);
   const players: (LineupPlayer | undefined)[] = spots.map((s, i) => s && (over
