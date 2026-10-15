@@ -10,6 +10,7 @@ import {
 import { PETS, PET_COLORS, PET_ACCESSORIES, loadPets, savePets, equipPet, setLook, lookOf, petOpen, PETS_EVENT, SECOND_PRICE, PET_SECOND, secondOpen, secondBlurb, withSecond, type PetId } from '../../profile/pets';
 import { loadRelics, saveRelics, spendCoins, RELICS_EVENT } from '../../relics/relics';
 import { PetSprite } from './PetSprite';
+import { PrototypeCard } from './PrototypeCard';
 import './playerPets.css';
 
 const useLevel = () => useState(() => levelFor(totalXp()).level)[0];
@@ -52,6 +53,7 @@ export function MyRatingsPanel() {
       })}
     </ul>
     <button onClick={() => commit(baseRatings())} disabled={left === pointsEarned(level)}><PixelIcon name="shuffle" size={14} /> Reset and get every point back</button>
+    <PrototypeCard shape={r} />
   </section>;
 }
 

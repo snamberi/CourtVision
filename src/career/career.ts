@@ -22,9 +22,13 @@ import type { NbaHistory } from '../history/nbaHistoryData';
  * may ask for a trade, and eventually retires.
  */
 
-export type CareerMode = 'wheel' | 'myplayer' | 'sandbox';
+export type CareerMode = 'wheel' | 'myplayer' | 'sandbox' | 'yourplayer';
 /** Create Anything careers (every rating 1-120, chosen freely): just for fun, never on boards, XP or rewards. */
 export const isSandboxCareer = (m: { mode?: string }) => m.mode === 'sandbox';
+/** Your Player careers (your own player from the Closet, simmed): XP and rewards count, the leaderboards don't. */
+export const isYourPlayerCareer = (m: { mode?: string }) => m.mode === 'yourplayer';
+/** Careers that never go on a leaderboard. */
+export const isUnrankedCareer = (m: { mode?: string }) => isSandboxCareer(m) || isYourPlayerCareer(m);
 export interface CareerAward { key: TrophyKey; label: string }
 export interface CareerYear {
   season: string; age: number; teamId: string | null; teamName: string; overall: number;

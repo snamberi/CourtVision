@@ -3,6 +3,8 @@ import type { PlayerSeason } from '../simulation/types';
 import { wheelPool, donor } from '../career/wheel';
 import { RNG } from '../simulation/engine/rng';
 import { weekKey, weeklySeed } from '../retention/week';
+import { myOverall, loadMyRatings, type MyRatings } from '../profile/myRatings';
+import { totalXp, levelFor, localName } from '../profile/profile';
 
 /*
  * Street ball on a half court: 1v1 (the Legends Tournament, first to 11) and 3v3 (Street, first to 21). Ones inside
@@ -29,6 +31,17 @@ export function ballerOf(p: PlayerSeason, name: string, ovr: number, team?: stri
     height: ph.heightInches,
   };
 }
+
+/** A Your Player build (the Closet ratings) on the street. Athleticism and IQ help everything a little; the body helps
+ *  inside and on the boards. */
+export function ratingsBaller(r: Pick<MyRatings, 'skills' | 'height'>, id: string, name: string): Baller {
+  const k = r.skills, lift = ((k.athleticism - 45) + (k.iq - 45)) * 0.15;
+  return { id, name, inside: (k.finishing * 2 + k.body) / 3 + lift, mid: k.midRange + lift, three: k.threePoint + lift, handle: k.playmaking + lift,
+    perD: k.perimeterD + lift, intD: k.interiorD + lift, reb: (k.interiorD + k.body) / 2, height: r.height, ovr: myOverall({ v: 1, ...r }) };
+}
+
+/** You: your Closet build, with the points your level has earned. */
+export const myBaller = (): Baller => ratingsBaller(loadMyRatings(levelFor(totalXp()).level), '__me__', localName());
 
 /** Plays one game. `to` is the winning score (11 for 1v1, 21 for 3v3). */
 export function playStreet(a: Baller[], b: Baller[], to: number, seed: number): StreetGame {

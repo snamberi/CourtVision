@@ -19,7 +19,7 @@ import { PlayerAvatar } from '../PlayerAvatar';
 import { ProfileIcon, NameTag } from '../ProfileIcon';
 import { HONORS } from '../../profile/cosmetics';
 import { CodeAvatar } from '../AvatarFrame';
-import { FriendlyMatch } from './FriendlyMatch';
+import { FriendlyMatch, PlayerOneOnOne } from './FriendlyMatch';
 
 /** The leaderboard honors on a public profile (server-granted, in its stats). */
 const honorTitles = (s: Record<string, unknown>) => (Array.isArray(s.honors) ? s.honors : []).map(h => HONORS.find(x => x.id === h)?.title).filter((t): t is string => !!t);
@@ -256,6 +256,7 @@ function ProfileView({ username, onUser }: { username: string; onUser: (u: strin
         {(s.relicShelf?.ids ?? []).length > 0 && <><small className="showcase-sub">RELIC MUSEUM{s.relicShelf!.secrets ? ` · ${s.relicShelf!.secrets} SECRET${s.relicShelf!.secrets === 1 ? '' : 'S'}` : ''}</small><ul className="relic-museum">{s.relicShelf!.ids.filter(id => RELIC_BY_ID.has(id)).map(id => { const r = RELIC_BY_ID.get(id)!; return <li key={id} className={`r-${r.rarity}`} title={`${r.name} (${RELIC_RARITY[r.rarity].name})`}><RelicArt id={id} size={44} /><small>{r.name}</small></li>; })}</ul></>}
         {rarest.length > 0 && <><small className="showcase-sub">RAREST ACHIEVEMENTS</small><ul className="achievement-chips showcase-rare">{rarest.map(id => <li key={id}><b>{ACHIEVEMENT_BY_ID.get(id)?.name ?? id.replace(/^mode-/, '')}</b><small>{rarity[id]}% of GMs</small></li>)}</ul></>}
         {!isMe && d.pvp?.squad != null && <FriendlyMatch theirs={d.pvp.squad} username={d.profile.username} />}
+        {!isMe && s.myPlayer != null && <PlayerOneOnOne theirs={s.myPlayer} username={d.profile.username} level={d.profile.level} />}
       </div>
     </section>
     <section className="locker-bay profile-card">

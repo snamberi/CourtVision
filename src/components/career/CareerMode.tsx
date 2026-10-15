@@ -15,9 +15,13 @@ import { formatSeasonYear as fy } from '../../simulation/calendar';
 import { initializeCoaching } from '../../simulation/staffManagement';
 import { DEFAULT_AWARD_SETTINGS } from '../../simulation/awards';
 import { CATEGORIES, categoryScore, type CategoryId } from '../../career/categories';
-import { startProgress, valuesAt, primeOverall, type Prime } from '../../career/create';
+import { startProgress, valuesAt, primeOverall, primeFromRatings, primeShape, type Prime } from '../../career/create';
+import { loadMyRatings } from '../../profile/myRatings';
+import { totalXp, levelFor } from '../../profile/profile';
+import { MyFramedAvatar } from '../AvatarFrame';
+import { PrototypeCard } from '../locker/PrototypeCard';
 import {
-  newCareerMeta, isSandboxCareer, joinDraft, draftResult, landSeason, chooseMoment, careerMoments, careerShelf, type Moment, autopilotOffseason, findPlayer, freeAgentOffers, signOffer, requestTrade, retire, uniqueName, careerResume,
+  newCareerMeta, isSandboxCareer, isYourPlayerCareer, joinDraft, draftResult, landSeason, chooseMoment, careerMoments, careerShelf, type Moment, autopilotOffseason, findPlayer, freeAgentOffers, signOffer, requestTrade, retire, uniqueName, careerResume,
   OFFER_LABEL, type CareerMeta, type CareerMode as Mode, type CareerYear, type TradeWish,
 } from '../../career/career';
 import { legacyScore, top100, top100Rank } from '../../career/legacy';
@@ -124,7 +128,8 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
     const warm = pre.current && !weekly && draftYear == null && pre.current.draftYear == null ? pre.current : null;
     const seed = weekly ? weekly.seed : warm ? warm.seed : newSeed();
     setWeekly(weekly?.week ?? null);
-    setView(mode === 'wheel' ? { k: 'wheel', seed } : mode === 'sandbox' ? { k: 'sandbox', seed } : { k: 'myplayer', seed });
+    if (mode === 'yourplayer') { const r = loadMyRatings(levelFor(totalXp()).level); setView({ k: 'identity', seed, prime: primeFromRatings(r.skills, r.height), mode }); }
+    else setView(mode === 'wheel' ? { k: 'wheel', seed } : mode === 'sandbox' ? { k: 'sandbox', seed } : { k: 'myplayer', seed });
     setDraftYear(draftYear);
     if (!warm) await launchPre(seed, draftYear);
   };
@@ -217,7 +222,7 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
       : view.k === 'wheel' ? <WheelBuilder h={h} seed={view.seed} fav={weekly ? undefined : readFavorites().player} relics={weekly ? undefined : relicRunOpts()} onBack={() => setView({ k: 'hub' })} onDone={prime => setView({ k: 'identity', seed: view.seed, prime, mode: 'wheel' })} />
       : view.k === 'myplayer' ? <MyPlayerBuilder seed={view.seed} onBack={() => setView({ k: 'hub' })} onDone={prime => setView({ k: 'identity', seed: view.seed, prime, mode: 'myplayer' })} />
       : view.k === 'sandbox' ? <SandboxBuilder onBack={() => setView({ k: 'hub' })} onDone={prime => setView({ k: 'identity', seed: view.seed, prime, mode: 'sandbox' })} />
-      : view.k === 'identity' ? (busy ? null : <IdentityView prime={view.prime} seed={view.seed} ready={preReady} pct={prePct} sandbox={view.mode === 'sandbox'} onBack={() => setView({ k: view.mode, seed: view.seed })} onDone={c => enterDraft(view, c)} />)
+      : view.k === 'identity' ? (busy ? null : <IdentityView prime={view.prime} seed={view.seed} ready={preReady} pct={prePct} sandbox={view.mode === 'sandbox'} h={h} onBack={() => setView(view.mode === 'yourplayer' ? { k: 'hub' } : { k: view.mode, seed: view.seed })} onDone={c => enterDraft(view, c)} />)
       : active ? <CareerView h={h} a={active} busy={!!busy} tradeAsked={tradeAsked}
           onPlay={() => playSeason(active)}
           onAutopilot={on => setActive({ ...active, meta: { ...active.meta, autopilot: on } })}
@@ -298,6 +303,7 @@ function Hub({ careers, onNew, onOpen, onDelete }: { careers: CareerMeta[]; onNe
         <button className="hunt-road" onClick={() => onNew('wheel', era)}><span className="hunt-road-icon"><ModeIcon mode="career-wheel" size={64} /></span><b>Random mode</b><span>Spin the wheel of NBA history. Take Curry's three-point shot, Shaq's size, LeBron's playmaking… if the wheel lets you. Two lucky spins, each a sure Star or Great.</span></button>
         <button className="hunt-road cv-sandbox-road" onClick={() => onNew('sandbox', era)}><span className="hunt-road-icon"><ModeIcon mode="career-sandbox" size={64} /></span><b>Create Anything</b><span>Every rating from 1 to 120, any height, no limits: make the greatest player ever (or the worst). Just for fun: it never counts for leaderboards, XP or rewards.</span></button>
         <button className="hunt-road" onClick={() => onNew('myplayer', era)}><span className="hunt-road-icon"><ModeIcon mode="career-myplayer" size={64} /></span><b>MyPlayer</b><span>Build him yourself, part by part. Your draft stock is rolled: a Starter, an All-Star, or once in a while a Generational talent.</span></button>
+        <button className="hunt-road" onClick={() => onNew('yourplayer', era)}><span className="hunt-road-icon"><MyFramedAvatar size={64} title="Your player" /></span><b>Your Player</b><span>Your own player from the Closet, with the ratings you built there, simmed through a whole career. XP and rewards count; the leaderboards don't.</span></button>
       </div>
     </div>
     <WeeklyCareerCard careers={careers} onPlay={w => onNew('wheel', w.draftYear, w)} />
@@ -441,7 +447,7 @@ function CareerView({ h, a, busy, tradeAsked, onPlay, onAutopilot, onTraining, o
       {offseason && found?.teamId && !tradeAsked && <><h3 className="hunt-subhead">Ask for a trade?</h3>
         <div className="hunt-replace"><button disabled={busy} onClick={() => onTrade('contender')}>To a contender</button><button disabled={busy} onClick={() => onTrade('role')}>For a bigger role</button><button disabled={busy} onClick={() => onTrade('anywhere')}>Anywhere but here</button></div></>}
     </div>}
-    {current === 'ratings' && <div className="cv-panel"><h3 className="hunt-subhead">Ratings <small>(now / prime; green = training focus)</small></h3><Ratings meta={meta} />{p && <Traits p={p} />}</div>}
+    {current === 'ratings' && <div className="cv-panel"><h3 className="hunt-subhead">Ratings <small>(now / prime; green = training focus)</small></h3><Ratings meta={meta} />{p && <Traits p={p} />}<PrototypeCard shape={primeShape(meta.prime)} h={h} /></div>}
     {current === 'history' && <><OverallChart years={meta.years} />{meta.years.length ? <><YearsTable years={meta.years} /><RivalPanel r={draftRival(world.league, world.extras, meta.playerId)} /><CareerExtras h={h} years={meta.years} /></> : <p className="empty-state">No seasons played yet.</p>}</>}
   </section>;
 }
@@ -533,7 +539,8 @@ function Legacy({ h, meta, onNew }: { h: NbaHistory; meta: CareerMeta; onNew: ()
         <div><small>LEGACY SCORE</small><b><ResultCount value={Number(score)} decimals={1} /></b></div>
         <div><small>SEASONS</small><b>{meta.years.length}</b></div>
       </div></div>
-    {isSandboxCareer(meta) ? <p className="hint-text">A Create Anything career: just for fun, so it stays off the leaderboards, XP and rewards.</p> : <ClaimRankCard id={`career:${meta.id}`} board={{ kind: 'players' }} score={Math.round(ret.legacy)} scored={`Your career scored ${ret.legacy.toFixed(1)}`} where="globally" pitchOnly={meta.difficulty === 'rookie'} />}
+    {isSandboxCareer(meta) ? <p className="hint-text">A Create Anything career: just for fun, so it stays off the leaderboards, XP and rewards.</p>
+      : isYourPlayerCareer(meta) ? <p className="hint-text">A Your Player career: XP and rewards count, but it stays off the leaderboards.</p> : <ClaimRankCard id={`career:${meta.id}`} board={{ kind: 'players' }} score={Math.round(ret.legacy)} scored={`Your career scored ${ret.legacy.toFixed(1)}`} where="globally" pitchOnly={meta.difficulty === 'rookie'} />}
     {meta.difficulty && <p className="hint-text">{LEVEL_NAME[meta.difficulty]} career{meta.difficulty === 'rookie' ? ': it stays off the online Legacy board.' : '.'}</p>}
     <h3 className="hunt-subhead">Career</h3>
     <div className="hunt-over-stats cv-line">

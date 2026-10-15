@@ -40,3 +40,26 @@ export function FriendlyMatch({ theirs, username }: { theirs: unknown; username:
       <ol className="pvp-games">{out.games.map((g, i) => <li key={i} className={g.won ? 'won' : ''}>G{i + 1} {g.us}-{g.them} · {g.top}</li>)}</ol></div>}
   </div>;
 }
+
+/**
+ * Your player against theirs, 1v1 to 11: both built in the Closet with the points each level earns (their profile
+ * publishes their build). Counts for your 1v1 record; nothing is ranked.
+ */
+export function PlayerOneOnOne({ theirs, username, level }: { theirs: unknown; username: string; level: number }) {
+  const [out, setOut] = useState<{ score: [number, number]; won: boolean; me: string; them: number } | null>(null);
+  const play = async () => {
+    const [{ playStreet, ratingsBaller, myBaller }, { cleanRatings }, one, { noteHolidayFinish }] = await Promise.all([
+      import('../../arcade/street'), import('../../profile/myRatings'), import('../../arcade/oneOnOne'), import('../../retention/holiday')]);
+    const mine = myBaller(), opp = ratingsBaller(cleanRatings(theirs, level), `@${username}`, `@${username}`);
+    const g = playStreet([mine], [opp], 11, Math.floor(Math.random() * 1e9));
+    const rec = one.loadOne(), won = g.winner === 0;
+    noteHolidayFinish(won, one.eventTag(rec));
+    one.saveOne(one.noteOne(rec, { kind: 'user', id: username }, won));
+    setOut({ score: g.score, won, me: `${mine.ovr}`, them: opp.ovr });
+  };
+  return <div className="friendly">
+    <button onClick={() => void play()}>{out ? 'Run it back' : `Your player vs @${username}'s, 1v1`}</button>
+    <small>Your Closet player against theirs, first to 11. Just for fun.</small>
+    {out && <div className={`hunt-result ${out.won ? 'won' : 'lost'}`}><span className="pixel-eyebrow">{out.won ? 'YOU WON' : 'YOU LOST'} · {out.me} OVR vs {out.them} OVR</span><h3>{out.score[0]}-{out.score[1]}</h3></div>}
+  </div>;
+}

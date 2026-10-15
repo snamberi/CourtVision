@@ -1,7 +1,8 @@
 import { teamColors } from '../../simulation/teamColors';
 import { playerFinish } from '../presentation/cardFinish';
 import { RevealSparks } from '../presentation/PlayerFinish';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { PrototypeCard } from '../locker/PrototypeCard';
 import { LuckChip } from '../relics/RelicReward';
 import type { NbaHistory } from '../../history/nbaHistoryData';
 import { cardPool, seasonLabel, RARITY_LABEL } from '../../hunt/cards';
@@ -10,7 +11,7 @@ import { eliteRanks, newWheel, spin, respin, move, take, landed, neighbour, whee
 import {
   READINESS, NORMAL_READINESS, sandboxBuild, setSandbox, primeFromSandbox, categoryPaths, SANDBOX_MIN, SANDBOX_MAX, SANDBOX_HEIGHT, SANDBOX_WEIGHT, type SandboxBuild,
   suggestPosition, primeOverall, projectedPrime, buildPlayer, startProgress, primeFromBuild, capFor, buildSpent, rollPotential, RATING_CATEGORIES, BUILD_MIN, START_AGE, POTENTIAL_REROLLS,
-  type Prime, type Readiness, type Position, type Build,
+  primeShape, type Prime, type Readiness, type Position, type Build,
 } from '../../career/create';
 import { MyPlayerBoard, BodyBoard, type BoardCell } from './MyPlayerBoard';
 import { calculateOverall } from '../../simulation/engine/overall';
@@ -289,14 +290,15 @@ const LAST = ['Carter', 'Hayes', 'Brooks', 'Walker', 'Ellis', 'Grant', 'Mitchell
 
 export interface IdentityChoice { name: string; pos: Position; jersey: number; readiness: Readiness }
 
-export function IdentityView({ prime, seed, onDone, onBack, ready, pct, sandbox }: { prime: Prime; seed: number; onDone: (c: IdentityChoice) => void; onBack: () => void; ready: boolean; pct: number | null; /** Create Anything: "Exactly as built" is offered (and picked). */ sandbox?: boolean }) {
+export function IdentityView({ prime, seed, onDone, onBack, ready, pct, sandbox, h }: { prime: Prime; seed: number; onDone: (c: IdentityChoice) => void; onBack: () => void; ready: boolean; pct: number | null; /** Create Anything: "Exactly as built" is offered (and picked). */ sandbox?: boolean; /** For his prototype (the real players he plays like). */ h?: NbaHistory }) {
   const [name, setName] = useState(() => `${FIRST[seed % FIRST.length]} ${LAST[Math.floor(seed / 7) % LAST.length]}`);
   const [pos, setPos] = useState<Position>(() => suggestPosition(prime));
   const [jersey, setJersey] = useState(() => (seed % 50) + 1);
   const [readiness, setReadiness] = useState<Readiness>(sandbox ? 'exact' : 'balanced');
   const rookie = calculateOverall(buildPlayer({ name: 'x', pos, jersey }, prime, startProgress(), readiness, '2025-26', START_AGE, seed));
   const primeOvr = primeOverall(prime, readiness, pos);
-  const h = prime.size['physical.heightInches'];
+  const height = prime.size['physical.heightInches'];
+  const shape = useMemo(() => primeShape(prime), [prime]);
   return <section className="hunt-stage cv-builder">
     <CreateSteps step={1} />
     <div className="cv-builder-head"><span className="pixel-eyebrow">WHO IS HE?</span><h2>Name your player</h2></div>
@@ -310,7 +312,8 @@ export function IdentityView({ prime, seed, onDone, onBack, ready, pct, sandbox 
     </div>
     <h3 className="hunt-subhead">How ready is he?</h3>
     <div className="hunt-choices">{(sandbox ? ['exact', ...NORMAL_READINESS] as Readiness[] : NORMAL_READINESS).map(r => <button key={r} className={`hunt-choice ${readiness === r ? 'on' : ''}`} aria-pressed={readiness === r} onClick={() => setReadiness(r)}><b>{READINESS[r].name}</b><span>{READINESS[r].blurb}</span></button>)}</div>
-    <div className="hunt-versus"><div><small>ROOKIE</small><b className="hunt-rating">{rookie}</b></div><span>→</span><div><small>PRIME</small><b className="hunt-rating">{primeOvr}</b></div><span className="hint-text">{feetInches(h)} · {prime.body['physical.weightLbs']} lb · age {START_AGE}</span></div>
+    <div className="hunt-versus"><div><small>ROOKIE</small><b className="hunt-rating">{rookie}</b></div><span>→</span><div><small>PRIME</small><b className="hunt-rating">{primeOvr}</b></div><span className="hint-text">{feetInches(height)} · {prime.body['physical.weightLbs']} lb · age {START_AGE}</span></div>
+    {h && <PrototypeCard shape={shape} h={h} />}
     <div className="contest-actions">
       <button className="primary hunt-play" disabled={!name.trim()} onClick={() => onDone({ name: name.trim(), pos, jersey, readiness })}>{ready ? 'Enter the draft' : `Enter the draft (the season before is being played${pct != null ? `: ${pct}%` : ''})`}</button>
       <button className="link-button" onClick={onBack}>Back</button>

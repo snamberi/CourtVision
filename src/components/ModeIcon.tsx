@@ -12,7 +12,7 @@ const MODE_ICON_ART: Record<string, IconSpec> = {
   decade: spec('calendar', 'gold', '10'), dynasty: spec('crown', 'gold'), rebuild: spec('hammer', 'green'),
   draft: spec('cards', 'blue'), timeMachine: spec('clock', 'purple'), worldgames: spec('globe', 'cyan'),
   category: spec('grid', 'blue'), grid: spec('grid', 'green'), guess: spec('mystery', 'blue'), hilo: spec('chart', 'purple'), categorize: spec('grid', 'purple', '4'), guessTeam: spec('team', 'orange'),
-  bracket: spec('bracket', 'gold'), quiz: spec('quiz', 'cyan'), legendsT: spec('crown', 'orange'), street: spec('hoop', 'orange'),
+  bracket: spec('bracket', 'gold'), quiz: spec('quiz', 'cyan'), legendsT: spec('crown', 'orange'), street: spec('hoop', 'orange'), oneOnOne: spec('swords', 'red'),
   tour: spec('swords', 'gold'), ranked: spec('podium', 'gold'), clubs: spec('team', 'green'), online: spec('network', 'blue'), friends: spec('heart', 'pink'),
   'league-history': spec('arena', 'blue'), 'league-random': spec('wheel', 'green'),
   'hunt-hunt': spec('trophy', 'gold'), 'hunt-weekly': spec('calendar', 'gold', '7'), 'hunt-daily': spec('calendar', 'orange', '1'),

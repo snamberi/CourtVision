@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { NbaHistory } from '../../history/nbaHistoryData';
-import { legendsField, opponentFor, playRound, simulateBracket, tournamentWeek, ROUND_NAMES, playStreet, type Baller, type StreetGame } from '../../arcade/street';
+import { legendsField, opponentFor, playRound, simulateBracket, tournamentWeek, ROUND_NAMES, playStreet, myBaller, type Baller, type StreetGame } from '../../arcade/street';
 import { RNG } from '../../simulation/engine/rng';
 import { PlayerAvatar } from '../PlayerAvatar';
 import { MyAvatar } from '../UserAvatar';
 import { PixelIcon } from '../PixelIcon';
-import { totalXp, levelFor, localName } from '../../profile/profile';
-import { loadMyRatings, myOverall } from '../../profile/myRatings';
+import { localName } from '../../profile/profile';
 import { weekEndsAt } from '../../retention/week';
 import { noteWeekRun } from '../../retention/weekLog';
 import { noteHolidayFinish } from '../../retention/holiday';
@@ -28,7 +27,7 @@ const readRun = (week: string): LegendsRun | null => { try { const r = JSON.pars
 const writeRun = (r: LegendsRun) => { try { localStorage.setItem(LEGENDS_KEY, JSON.stringify(r)); } catch { /* storage blocked */ } };
 
 /** Plays a game's possessions out over a couple of seconds, then shows the final. */
-function LiveScore({ game, left, right, onDone }: { game: StreetGame; left: React.ReactNode; right: React.ReactNode; onDone?: () => void }) {
+export function LiveScore({ game, left, right, onDone }: { game: StreetGame; left: React.ReactNode; right: React.ReactNode; onDone?: () => void }) {
   const [i, setI] = useState(0);
   const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   useEffect(() => {
@@ -107,13 +106,7 @@ const STREET_KEY = 'cv-street-best';
 const readBest = () => { try { return Number(localStorage.getItem(STREET_KEY) ?? 0) || 0; } catch { return 0; } };
 
 /** You, as a street baller: the ratings you build in the Closet (Ratings tab), points earned by your level. */
-function me(): Baller {
-  const r = loadMyRatings(levelFor(totalXp()).level), k = r.skills;
-  // Athleticism and IQ help everything a little; the body helps inside and on the boards.
-  const lift = ((k.athleticism - 45) + (k.iq - 45)) * 0.15;
-  return { id: '__me__', name: localName(), inside: (k.finishing * 2 + k.body) / 3 + lift, mid: k.midRange + lift, three: k.threePoint + lift, handle: k.playmaking + lift,
-    perD: k.perimeterD + lift, intD: k.interiorD + lift, reb: (k.interiorD + k.body) / 2, height: r.height, ovr: myOverall(r) };
-}
+const me = myBaller;
 
 export function StreetGame({ h }: { h: NbaHistory }) {
   const field = useMemo(() => legendsField(h), [h]);

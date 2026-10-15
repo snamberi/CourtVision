@@ -203,3 +203,13 @@ button.cv-grid-cell:hover:not(:disabled), .cv-grid-cell.active { border-color: v
 .tour-round p span.w { color: var(--text); font-weight: 700; }
 .tour-round p.mine { border-color: var(--cv-orange, var(--c-border-f47b20, #f47b20)); }
 @media (max-width: 600px) { .tour-bracket { grid-template-columns: repeat(4, 150px); } }
+
+/* 1v1: your player against anyone. */
+.one-record { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 12px; background: var(--c-bg-121926, #121926); border: 1px solid var(--c-border-2a3546, #2a3546); }
+.one-record > div { display: flex; align-items: center; gap: 10px; }
+.one-record span { display: grid; }
+.one-record small { color: var(--text-dim); font-size: 11px; }
+.one-stats { gap: 18px !important; }
+.one-stats b { font: 700 20px var(--font-data); font-variant-numeric: tabular-nums; }
+.one-find { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.one-find .street-pick { flex-basis: 100%; }

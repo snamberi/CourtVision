@@ -48,3 +48,13 @@
 .pet-second.on { border-style: solid; border-color: var(--c-border-ffd166, #ffd166); }
 .pet-second p { margin: 6px 0; }
 .pet-second small { color: var(--c-fg-55c878, #55c878); display: inline-flex; gap: 6px; align-items: center; }
+
+/* Your prototype: the closest real players to a build. */
+.prototype-card { margin: 12px 0; }
+.prototype-list { display: grid; gap: 6px; margin: 6px 0; padding: 0; list-style: none; }
+.prototype-list li { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 6px 10px; background: var(--c-bg-121926, #121926); border: 1px solid var(--c-border-2a3546, #2a3546); }
+.prototype-list li.top { border-color: var(--c-border-ffd166, #ffd166); }
+.prototype-list span { display: grid; }
+.prototype-list small { color: var(--text-dim); font-size: 11px; }
+.prototype-list output { display: grid; justify-items: end; font: 700 18px var(--font-data); font-variant-numeric: tabular-nums; }
+.prototype-list li.top output { color: var(--c-fg-ffd166, #ffd166); }

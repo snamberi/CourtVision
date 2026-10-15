@@ -66,9 +66,10 @@ describe('weekly hunt and frames', () => {
     expect(weeklyHunt('2026-W40').seed).not.toBe(weeklyHunt('2026-W41').seed);
     expect(huntScore({ won: true, stop: 9, wins: 40, losses: 10 })).toBeGreaterThan(huntScore({ won: false, stop: 9, wins: 39, losses: 12 }));
   });
-  it('has sixteen profile frames: three ranked, three on each road, two from the 82-0 Challenge, one Game Owner only, one for an account, three from the Season Pass', () => {
-    const frames = AVATAR_FRAMES.filter(f => f.id !== 'none');
+  it('has sixteen profile frames: three ranked, three on each road, two from the 82-0 Challenge, one Game Owner only, one for an account, three from the Season Pass (plus the holiday shops\' own)', () => {
+    const frames = AVATAR_FRAMES.filter(f => f.id !== 'none' && !f.shop);
     expect(frames).toHaveLength(16);
+    expect(AVATAR_FRAMES.filter(f => f.shop?.startsWith('evt-'))).toHaveLength(2);
     expect(frames.filter(f => f.season)).toHaveLength(3);
     expect(frames.filter(f => f.staff)).toHaveLength(1);
     expect(frames.filter(f => f.account)).toHaveLength(1);
