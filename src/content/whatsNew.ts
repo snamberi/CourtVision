@@ -9,6 +9,24 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: '2027-06-02',
+    title: 'Real-life historical leagues, Categorize, Guess the Team, pets and your own player',
+    items: [
+      "**Historical rosters stay real:** start in any year and every team keeps its real roster, season by season, until the real history runs out. Each season also has its real length (from 49 games to 82) and pace, and the draft lottery follows the rules of that year (coin flips, the envelope, weighted lotteries, the 2019 odds). Pick a lottery yourself on the New Franchise page.",
+      "**Better ratings:** smoother real-player ratings (no more 12-point drops in one summer), a small boost for stars, and fixes for guards blocking and rebounding like centers.",
+      "**Salaries and trades:** pay now follows where a player ranks in the whole league, and one star is worth several good starters in trades, not two bench players. On the Trading Block, **Seek trade** asks every team for an offer at once and shows you at least 10.",
+      "**Rosters:** your team can run short of 10 players or go past 18, and games still play. AI teams sign and waive on their own to stay inside the limits.",
+      "**Waive button** on Sign / Waive, and **select or delete all** saved leagues at once.",
+      "**Two new quick games:** **Categorize** (16 players, 4 hidden categories, find the groups) and **Guess the Team** (a real starting five, names hidden, one clue each; pick your difficulty and eras).",
+      "**Career Mode:** the Prime Boost is now +7 to every rating, a **Pure Scorer** ability for Finishing 105+, and **Ultra Cheat**, a secret relic for owning every relic: trade 2 Lucky Spins for a category of your choice at 125.",
+      "**Four new secret relics** (Lucky Charm, Sixth Sense, The Film Room, The Phone Tree), and the Relic Vault now shows every secret and how to find it.",
+      "**Your own player:** the Closet has a **Ratings** tab. Start at 5'3\" with every skill at 45, earn 7 points every 5 levels, and play 3v3 Street with your build.",
+      "**Pets:** ten pets in the Closet, each with its own ability. Name them, colour them, dress them up, and bring one along.",
+      "**Saved to your account:** your look (theme, favourites, phone layout, saved characters), your player's ratings, your pets, and your Survival, Story, owner and ranked records now travel with your account, alongside your relics, spins and achievements.",
+      "**Mode polish:** new mode backgrounds and cards, a Franchise Continue page, card reveals, results screens, court lineups, League Hunt boss intros and an earned trophy room.",
+    ],
+  },
+  {
     id: '2027-05-26',
     title: 'Season 3: INFERNO, free gifts for friends, a Closet, and new phone navigation',
     items: [

@@ -30,6 +30,10 @@ export const SYNC_KEYS = [
   'cv-legend-records', 'cv-card-album', 'cv-card-sets', 'cv-avatar', 'cv-streak', 'cv-pass',
   'cv-perfect-records', 'cv-bonus-xp', 'cv-record-book', 'cv-play-time', 'cv-arcade', 'cv-missions', 'cv-quests', 'cv-trophy-case',
   'cv-relics', 'cv-daily-challenge',
+  // More records the achievements read, and the rest of your look (theme, menu style, favourites, phone layout, saved
+  // characters, profile name, your player's ratings and your pets).
+  'cv-survival-records', 'cv-story-endings', 'cv-owner-records', 'cv-battle-records', 'cv-decade-best', 'cv-street-best', 'cv-ranked-best', 'cv-founding',
+  'cv-theme', 'cv-menu-style', 'cv-favorites', 'cv-profile-name', 'cv-phone-order', 'cv-avatar-presets-v1', 'cv-my-ratings', 'cv-pets',
 ] as const;
 export type SyncKey = typeof SYNC_KEYS[number];
 
@@ -89,6 +93,23 @@ function mergeCodes(a: Record<string, CodeResult>, b: Record<string, CodeResult>
   return out;
 }
 
+const RANK_ORDER = ['bronze', 'silver', 'gold', 'platinum', 'diamond', 'legend'];
+type Obj = Record<string, unknown>;
+const num = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+/** Two sets of counters: the larger of each. */
+const maxEach = (a: Obj = {}, b: Obj = {}) => Object.fromEntries([...new Set([...Object.keys(a), ...Object.keys(b)])].map(k => [k, Math.max(num(a[k]), num(b[k]))]));
+
+function mergeSurvival(a: Obj, b: Obj): Obj {
+  const best: Obj = { ...((b.best as Obj) ?? {}) };
+  for (const [lv, r] of Object.entries((a.best as Obj) ?? {})) { const o = best[lv] as Obj | undefined, x = r as Obj; if (!o || num(x.score) > num(o.score) || (num(x.score) === num(o.score) && num(x.wins) > num(o.wins))) best[lv] = r; }
+  return { ...b, ...a, runs: Math.max(num(a.runs), num(b.runs)), bossesBeaten: Math.max(num(a.bossesBeaten), num(b.bossesBeaten)), best, daily: { ...((b.daily as Obj) ?? {}), ...((a.daily as Obj) ?? {}) } };
+}
+function mergeOwners(a: Obj[], b: Obj[]): Obj[] {
+  const byKey = new Map(b.map(r => [String(r.key), r]));
+  for (const r of a) { const o = byKey.get(String(r.key)); if (!o || num(r.legacy) >= num(o.legacy)) byKey.set(String(r.key), r); }
+  return [...byKey.values()];
+}
+
 /** Merges one stored value. `local` wins ties for per-device choices (the frame and floor you just equipped). */
 export function mergeValue(key: SyncKey, local: string | null | undefined, cloud: string | null | undefined): string | null {
   if (local == null || local === '') return cloud ?? null;
@@ -126,6 +147,21 @@ export function mergeValue(key: SyncKey, local: string | null | undefined, cloud
     }
     case 'cv-card-sets':
     case 'cv-card-album': return JSON.stringify({ ...parse<Record<string, unknown>>(cloud, {}), ...parse<Record<string, unknown>>(local, {}) });
+    case 'cv-survival-records': return JSON.stringify(mergeSurvival(parse(local, {}), parse(cloud, {})));
+    case 'cv-story-endings': { const a = parse<Obj>(local, {}), b = parse<Obj>(cloud, {}); return JSON.stringify({ finished: Math.max(num(a.finished), num(b.finished)), tiers: maxEach(a.tiers as Obj, b.tiers as Obj) }); }
+    case 'cv-owner-records': return JSON.stringify(mergeOwners(parse<Obj[]>(local, []), parse<Obj[]>(cloud, [])));
+    case 'cv-battle-records': {
+      const a = parse<Obj>(local, {}), b = parse<Obj>(cloud, {}), ra = (a.byRival as Record<string, Obj>) ?? {}, rb = (b.byRival as Record<string, Obj>) ?? {};
+      const byRival = Object.fromEntries([...new Set([...Object.keys(ra), ...Object.keys(rb)])].map(k => [k, maxEach(ra[k], rb[k])]));
+      return JSON.stringify({ played: Math.max(num(a.played), num(b.played)), won: Math.max(num(a.won), num(b.won)), byRival });
+    }
+    case 'cv-decade-best': return num(parse<Obj>(cloud, {}).score) > num(parse<Obj>(local, {}).score) ? cloud : local;
+    case 'cv-street-best': return String(Math.max(num(local), num(cloud)));
+    case 'cv-ranked-best': return RANK_ORDER.indexOf(cloud) > RANK_ORDER.indexOf(local) ? cloud : local;
+    case 'cv-founding': return local === '1' || cloud === '1' ? '1' : local;
+    case 'cv-pets': { const a = parse<Obj>(local, {}), b = parse<Obj>(cloud, {}); return JSON.stringify({ ...b, ...a, looks: { ...((b.looks as Obj) ?? {}), ...((a.looks as Obj) ?? {}) } }); }
+    // Your look on this device: theme, menu style, favourites, phone layout, saved characters, name, ratings.
+    case 'cv-theme': case 'cv-menu-style': case 'cv-favorites': case 'cv-profile-name': case 'cv-phone-order': case 'cv-avatar-presets-v1': case 'cv-my-ratings': return local;
   }
 }
 
