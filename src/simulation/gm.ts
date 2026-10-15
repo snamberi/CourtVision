@@ -41,8 +41,8 @@ export interface SalaryCapSettings {
   enforceCapOnTrades: boolean; // sandbox mode can disable this to allow "invalid" trades
   minSalary: number; // league-minimum contract, offered to any free agent regardless of quality
   maxSalaryPctOfCap: number; // a true max contract is this fraction of the cap
-  minRosterSize: number; // a team below this must sign someone before it can waive anyone else
-  maxRosterSize: number; // a team at this cap cannot sign or trade for another player
+  minRosterSize: number; // AI teams sign up to this during the season (coachRosters.ts); yours may go below it
+  maxRosterSize: number; // AI teams waive down to this during the season; yours may go above it
 }
 
 export const DEFAULT_CAP_SETTINGS: SalaryCapSettings = {
@@ -57,12 +57,12 @@ export const DEFAULT_CAP_SETTINGS: SalaryCapSettings = {
   maxRosterSize: 18,
 };
 
-/** Whether this team has room to add another player under the league's roster-size rules. */
+/** Whether this team is under the league's roster maximum (AI teams stop adding there; a person may go past it). */
 export function hasRosterRoom(team: LeagueTeam, cap: SalaryCapSettings): boolean {
   return team.seasons.length < cap.maxRosterSize;
 }
 
-/** Whether this team can afford to lose a player without dropping below the roster minimum. */
+/** Whether this team is above the league's roster minimum (AI teams stop cutting there; a person may go below it). */
 export function canDropPlayer(team: LeagueTeam, cap: SalaryCapSettings): boolean {
   return team.seasons.length > cap.minRosterSize;
 }
@@ -356,12 +356,7 @@ export function validateTrade(league: League, extras: GMLeagueExtras, proposal: 
     for (const id of ids) { const p = from.seasons.find(s => s.playerId === id); const no = p && tradeVeto(p, to.teamId, league); if (no) reasons.push(no); }
   }
   for (const [team, outgoing, incoming] of [[a, proposal.playersFromA, proposal.playersFromB], [b, proposal.playersFromB, proposal.playersFromA]] as const) {
-    const count = team.seasons.length - outgoing.length + incoming.length;
-    // Offseason transactions may temporarily cross the roster limits. Coaches trim/fill before games.
-    if ((league.seasonPhase ?? 'regular_season') === 'regular_season' && incoming.length !== outgoing.length) {
-      if (count < extras.capSettings.minRosterSize && count < team.seasons.length) reasons.push(`${team.name} would fall below the ${extras.capSettings.minRosterSize}-player minimum.`);
-      if (count > extras.capSettings.maxRosterSize && count > team.seasons.length) reasons.push(`${team.name} would be above the ${extras.capSettings.maxRosterSize}-player maximum.`);
-    }
+    // Roster sizes don't block a trade: AI coaches trim or fill their rosters before games (coachRosters.ts).
     const salaryOut = outgoing.reduce((sum, id) => sum + (extras.contracts[id]?.annualSalary ?? 0), 0);
     const salaryIn = incoming.reduce((sum, id) => sum + (extras.contracts[id]?.annualSalary ?? 0), 0);
     const payroll = teamPayroll(extras.contracts, team) - salaryOut + salaryIn;
@@ -474,7 +469,7 @@ export function signFreeAgent(
   const emergency = emergencyRosterSigning && (league.seasonPhase ?? 'regular_season') === 'regular_season' && (league.teams.find(t => t.teamId === teamId)?.seasons.length ?? Infinity) < extras.capSettings.minRosterSize;
   if (!extras.freeAgencyOpen && !emergency && priorTeamId(player) !== teamId) return { league, extras };
   const signingTeam = league.teams.find((t) => t.teamId === teamId);
-  if (!signingTeam || !hasRosterRoom(signingTeam, extras.capSettings)) return { league, extras }; // roster is full
+  if (!signingTeam) return { league, extras };
 
   if (extras.capSettings.hardCapEnabled && teamPayroll(extras.contracts, signingTeam) + contract.annualSalary > extras.capSettings.salaryCap) return { league, extras };
   const teamName = league.teams.find((t) => t.teamId === teamId)?.name ?? teamId;
@@ -512,7 +507,6 @@ export function waiveToFreeAgency(
   const player = team?.seasons.find((s) => s.playerId === playerId);
   if (!team || !player) return { league, extras };
   if (isStuck(player)) return { league, extras }; // stuck players can't be waived (Sandbox): unstick first
-  if (!canDropPlayer(team, extras.capSettings)) return { league, extras }; // would drop below the roster minimum
 
   const teams = league.teams.map((t) => (t.teamId === teamId ? { ...t, seasons: t.seasons.filter((s) => s.playerId !== playerId) } : t));
   const waived = appendHistoryEvent(withGrudge({ ...closeStint(player, team.teamId), teamId: null }, team.teamId, league.season), 'waived', `Waived by ${team.name}`, team.teamId);

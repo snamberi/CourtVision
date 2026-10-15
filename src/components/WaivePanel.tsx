@@ -29,7 +29,7 @@ export function WaivePanel({ league, extras, team, controlledTeamId, onChange, o
   };
   return <section className="waive-panel" aria-label="Waive a player">
     <h4>Waive a player</h4>
-    <p className="hint-text">Waived players join the free-agent pool and their salary comes off your books. {atMinimum ? `Your roster is at the minimum (${extras.capSettings.minRosterSize}), so sign someone first.` : ''}</p>
+    <p className="hint-text">Waived players join the free-agent pool and their salary comes off your books. {atMinimum ? `You're at or below the usual minimum (${extras.capSettings.minRosterSize}); you can still waive, and games play either way.` : ''}</p>
     {note && <p className="hint-text" role="status">{note}</p>}
     <div className="waive-scroll"><table className="db-table stat-line-table">
       <thead><tr><th className="col-name">Name</th><th>Pos</th><th>Ovr</th><th>Salary</th><th>Actions</th></tr></thead>

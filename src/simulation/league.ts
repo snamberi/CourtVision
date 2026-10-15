@@ -644,9 +644,9 @@ export interface PreparedGame {
   homeAvailableIds: string[];
 }
 
-/** True when no regular-season game can be played yet: a roster outside the limits, the All-Star break or Trade Deadline Day is due. */
+/** True when no regular-season game can be played yet: the All-Star break or Trade Deadline Day is due. Roster sizes
+ * never block a game: AI teams keep theirs inside the limits (coachRosters.ts) and yours can be short or long. */
 function gameBlocked(league: League, idx: number): boolean {
-  if ((league.seasonPhase ?? 'regular_season') === 'regular_season' && league.rosterLimits && league.teams.some(t => t.seasons.length < league.rosterLimits!.minRosterSize || t.seasons.length > league.rosterLimits!.maxRosterSize)) return true;
   if (league.deadlineDay && league.schedule[idx].round >= league.deadlineDay.round && isDeadlineDayBlocking(league)) return true;
   const breakRound = allStarBreakRound(league);
   return breakRound != null && league.schedule[idx].round >= breakRound && isAllStarBreakPending(league);

@@ -52,13 +52,12 @@ describe('coach roster management', () => {
     const result = manageCoachRosters(league, extras);
     expect(result.league).toBe(league); expect(result.extras).toBe(extras);
   });
-  it('blocks only a regular-season game when a legal roster cannot be formed', () => {
+  it('plays games even when a roster stays short (no free agents to sign)', () => {
     const state = fixture(); state.league.teams[0].seasons = state.league.teams[0].seasons.slice(0, 9);
     state.extras.freeAgents = []; state.league.settings.injuriesEnabled = false;
     const { league, extras } = normalizeRosterRules(state.league, state.extras);
     expect(manageCoachRosters(league, extras).moves).toHaveLength(0);
-    expect(simulateNextGame(league)).toBe(league);
-    expect(simulateNextGame({ ...league, seasonPhase: 'preseason' }).schedule[0].played).toBe(true);
+    expect(simulateNextGame(league).schedule[0].played).toBe(true);
   });
   it('honors a hard cap instead of silently signing unaffordable contracts', () => {
     const state = fixture(); state.league.teams[0].seasons = [];

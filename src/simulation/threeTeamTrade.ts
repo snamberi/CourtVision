@@ -58,12 +58,6 @@ export function validateThreeTeam(league: League, extras: GMLeagueExtras, trade:
     if (m.kind === 'pick' && !tradeableFuturePicks(extras, m.from).some(p => p.id === m.id)) reasons.push(`${name(m.from)} doesn't own that pick.`);
   }
   reasons.push(...stickyTradeProblems(league, trade.moves.filter(m => m.kind === 'player').map(m => m.id), []));
-  if ((league.seasonPhase ?? 'regular_season') === 'regular_season') for (const id of trade.teams) {
-    const team = league.teams.find(t => t.teamId === id)!;
-    const count = team.seasons.length - trade.moves.filter(m => m.kind === 'player' && m.from === id).length + trade.moves.filter(m => m.kind === 'player' && m.to === id).length;
-    if (count > extras.capSettings.maxRosterSize && count > team.seasons.length) reasons.push(`${name(id)} would be above the ${extras.capSettings.maxRosterSize}-player maximum.`);
-    if (count < extras.capSettings.minRosterSize && count < team.seasons.length) reasons.push(`${name(id)} would fall below the ${extras.capSettings.minRosterSize}-player minimum.`);
-  }
   for (const s of threeTeamSides(league, extras, trade)) if (!s.ok && s.teamId !== userTeamId) reasons.push(`${name(s.teamId)} would lose too much value.`);
   return [...new Set(reasons)];
 }

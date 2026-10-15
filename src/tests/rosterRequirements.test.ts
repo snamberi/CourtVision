@@ -44,8 +44,8 @@ describe('rosterComplianceIssues', () => {
   });
 });
 
-describe('validateTrade roster-size gate', () => {
-  it('rejects a trade that would push either side below the minimum', () => {
+describe('validateTrade and roster sizes', () => {
+  it('never rejects a trade for taking a side below the minimum (AI coaches refill before games)', () => {
     const teamA = buildDemoTeam('A', 'Team A'); // 5 players
     const teamB = buildDemoTeam('B', 'Team B');
     const league: League = {
@@ -69,17 +69,16 @@ describe('validateTrade roster-size gate', () => {
     });
     expect(evenish.reasons.some((r) => r.includes('minimum') || r.includes('maximum'))).toBe(false);
 
-    // A sends 3 away for nothing back: A would drop to 2, below the 4-player minimum.
+    // A sends 3 away for nothing back: A drops to 2, below the 4-player minimum, and that's allowed.
     const tooFew = validateTrade(league, extras, {
       teamAId: 'A', teamBId: 'B',
       playersFromA: [teamA.seasons[0].playerId, teamA.seasons[1].playerId, teamA.seasons[2].playerId],
       playersFromB: [],
     });
-    expect(tooFew.valid).toBe(false);
-    expect(tooFew.reasons.some((r) => r.includes('below the 4-player minimum'))).toBe(true);
+    expect(tooFew.reasons.some((r) => r.includes('minimum'))).toBe(false);
   });
 
-  it('rejects a trade that would push either side above the maximum', () => {
+  it('never rejects a trade for taking a side above the maximum (AI coaches trim before games)', () => {
     const teamA = buildDemoTeam('A', 'Team A');
     const teamB = buildDemoTeam('B', 'Team B');
     const league: League = {
@@ -95,11 +94,10 @@ describe('validateTrade roster-size gate', () => {
       tradeSettings: { difficulty: 'easy' },
       ...DEFAULT_GM_FLAGS,
     };
-    // B sends nothing, receives 1: B would rise to 6, above the 5-player maximum.
+    // B sends nothing, receives 1: B rises to 6, above the 5-player maximum, and that's allowed.
     const tooMany = validateTrade(league, extras, {
       teamAId: 'A', teamBId: 'B', playersFromA: [teamA.seasons[0].playerId], playersFromB: [],
     });
-    expect(tooMany.valid).toBe(false);
-    expect(tooMany.reasons.some((r) => r.includes('above the 5-player maximum'))).toBe(true);
+    expect(tooMany.reasons.some((r) => r.includes('maximum'))).toBe(false);
   });
 });

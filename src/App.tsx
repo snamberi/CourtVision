@@ -577,7 +577,7 @@ function App() {
         setMenuBusy('Firing up the time machine…');
         const built = buildHistoricalLeague(h, c.year, { realDevelopment: true, difficulty: 'normal', seed: tmSeed, allPlayers: true });
         const moved = tm.applyTimeMachine(h, built.league, built.extras, c.from, c.replace, tmSeed);
-        const ready = manageCoachRosters(moved.league, moved.extras);
+        const ready = manageCoachRosters(moved.league, moved.extras, [moved.teamId]);
         enterApp(ready.league, ready.extras, moved.teamId, `Time Machine: ${moved.league.timeMachine?.fromLabel ?? 'Your team'} in ${c.year}-${String(c.year + 1).slice(2)}`);
         setTab('dashboard');
         pushToast(`The ${moved.league.timeMachine?.fromLabel} have arrived in the ${c.year}-${String(c.year + 1).slice(2)} NBA. Good luck.`, 'success');
@@ -976,7 +976,7 @@ function App() {
    * reaching the deadline's morning opens the day instead of playing (`holdDeadline`; Auto Play plays straight through).
    */
   const prepareRegularSeason = (holdDeadline = true) => {
-    const coached = manageCoachRosters(league, extras);
+    const coached = manageCoachRosters(league, extras, [aiUserTeam(league, controlledTeamId)]);
     let ready = { league: holdDeadline ? scheduleDeadlineDay(coached.league, controlledTeamId) : coached.league, extras: coached.extras };
     if (isDeadlineDayOpen(ready.league)) {
       const closed = runToDeadline(ready.league, ready.extras, controlledTeamId, deadlineSeed(ready.league));
@@ -1215,7 +1215,7 @@ function App() {
 
   const startRegularSeason = () => {
     setPlayoffBracket(null);
-    const ready = manageCoachRosters(finalizeNewSeasonSchedule(league), extras);
+    const ready = manageCoachRosters(finalizeNewSeasonSchedule(league), extras, [aiUserTeam(league, controlledTeamId)]);
     setLeague(ready.league);
     setExtras(ensureUpcomingDraftClass(ready.league, ready.extras));
     setTab('standings');
@@ -1343,7 +1343,7 @@ function App() {
   const setFiringEnabled = (on: boolean) => setLeague(l => l.frontOffice ? { ...l, frontOffice: { ...l.frontOffice, firingEnabled: on } } : l);
   useEffect(() => {
     if (screen !== 'app' || seasonPhase !== 'regular_season') return;
-    const ready = manageCoachRosters(league, extras);
+    const ready = manageCoachRosters(league, extras, [aiUserTeam(league, controlledTeamId)]);
     if (!ready.moves.length) return;
     setLeague(ready.league);
     setExtras(ready.extras);
@@ -1458,7 +1458,8 @@ function App() {
   const teamUnplayedCount = controlledTeamId ? league.schedule.filter((g) => !g.played && (g.homeTeamId === controlledTeamId || g.awayTeamId === controlledTeamId)).length : null;
   const tradeDeadlinePassed = isTradeDeadlinePassed(league);
   const seasonComplete = league.schedule.length > 0 && league.schedule.every((g) => g.played);
-  const rosterIssues = seasonPhase === 'regular_season' && !seasonComplete ? rosterComplianceIssues(league, extras.capSettings) : [];
+  // Your roster outside 10-18 is only a note now (games still play); AI teams fix theirs (coachRosters.ts).
+  const rosterIssues = seasonPhase === 'regular_season' && !seasonComplete && controlledTeamId ? rosterComplianceIssues(league, extras.capSettings).filter(i => i.teamId === controlledTeamId) : [];
   const draftOrderList = currentDraftOrder(league, extras);
   const draftPicksRemaining = extras.draftDayOpen ? Math.max(0, draftOrderList.length - extras.draftPickIndex) : 0;
   const hasUpcomingDraftPick = !!controlledTeamId && draftOrderList.slice(extras.draftPickIndex).includes(controlledTeamId);
@@ -1494,7 +1495,6 @@ function App() {
       e.preventDefault();
       if (seasonPhase !== 'regular_season' || leagueUnplayedCount === 0) pushToast('No regular-season games to sim right now. Use the Play button.', 'info');
       else if (jobs.busy) pushToast('A simulation is already running.', 'info');
-      else if (rosterIssues.length > 0) pushToast('Some rosters are out of compliance. Open the Play button to see which.', 'error');
       else if (isDeadlineDayOpen(league)) { setTab('deadline'); pushToast('Trade Deadline Day is open: finish it first.', 'info'); }
       else simulateGamesCount(1);
     }
@@ -1910,7 +1910,7 @@ function App() {
                   if (!canEditTeam(sandboxMode, controlledTeamId, teamId)) return;
                   const result = waiveToFreeAgency(league, extras, playerId, teamId, managerId);
                   if (result.league === league && result.extras === extras) {
-                    pushToast(`Can't release ${playerId} — that roster is at the ${extras.capSettings.minRosterSize}-player minimum.`, 'error');
+                    pushToast(`Can't release ${playerId} right now (a player stuck to the team can't be waived).`, 'error');
                     return;
                   }
                   setLeague(result.league);
@@ -2289,7 +2289,7 @@ function App() {
               canNext={boxscoreSource === 'league' && idx >= 0 && idx < playedGames.length - 1}
               onNext={() => setViewedGameId(playedGames[idx + 1]?.id ?? null)}
               onSimNext={boxscoreSource === 'league' ? () => playNextGame() : undefined}
-              canSimNext={boxscoreSource === 'league' && unplayedCount > 0 && rosterIssues.length === 0}
+              canSimNext={boxscoreSource === 'league' && unplayedCount > 0}
             />
           );
         })()}

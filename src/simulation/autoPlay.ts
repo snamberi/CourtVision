@@ -2,7 +2,6 @@ import { applyHistoricalRosters } from '../history/realRollover';
 import { runWorldGamesIfDue, resolvePending } from '../worldGames/league';
 import { signingDecision } from './freeAgentDecision';
 import { ensureUpcomingDraftClass } from './draftSeason';
-import { rosterComplianceIssues } from './rosterRequirements';
 import { manageCoachRosters } from './coachRosters';
 import { lockAllStarVoting, currentAllStarWeekend } from './allStarVoting';
 import type { League } from './league';
@@ -90,8 +89,8 @@ export function autoSignForControlledTeam(
   league: League, extras: GMLeagueExtras, controlledTeamId: string, targetRosterSize: number, seed: number,
 ): { league: League; extras: GMLeagueExtras; signings: string[] } {
   const rng = new RNG(seed);
+  // Auto Play runs your team too, so your coach keeps it inside the limits as well (games play either way).
   const ready = manageCoachRosters(league, extras);
-  if ((ready.league.seasonPhase ?? 'regular_season') === 'regular_season' && rosterComplianceIssues(ready.league, ready.extras.capSettings).length) throw new Error('Regular-season rosters need available free agents or hard-cap room.');
   let currentLeague = ready.league;
   let currentExtras = ready.extras;
   const signings: string[] = [];

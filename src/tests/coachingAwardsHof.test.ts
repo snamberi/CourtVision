@@ -107,7 +107,7 @@ describe('roster size limits', () => {
     return { league, extras };
   }
 
-  it('blocks signing when the roster is already at the maximum', () => {
+  it('lets a team sign past the usual maximum (AI coaches trim their own rosters before games)', () => {
     const { league, extras } = fixture(); // 5 players == maxRosterSize
     const team = league.teams[0];
     expect(hasRosterRoom(team, cap)).toBe(false);
@@ -115,20 +115,19 @@ describe('roster size limits', () => {
     const result = signFreeAgent(league, { ...extras, freeAgents: [fa] }, fa.playerId, 'A', {
       annualSalary: 2_000_000, yearsRemaining: 1, playerOption: false, teamOption: false,
     });
-    expect(result.league.teams[0].seasons.length).toBe(5); // unchanged
+    expect(result.league.teams[0].seasons.length).toBe(6);
   });
 
-  it('blocks waiving when it would drop the roster below the minimum', () => {
+  it('lets a team waive below the usual minimum (AI coaches refill their own rosters before games)', () => {
     const { league, extras } = fixture();
     let current = { league, extras };
-    // 5 -> 4 -> 3 is fine; the next waive would breach the floor of 3.
     current = waiveToFreeAgency(current.league, current.extras, current.league.teams[0].seasons[0].playerId, 'A') as any;
     current = waiveToFreeAgency(current.league, current.extras, current.league.teams[0].seasons[0].playerId, 'A') as any;
     expect(current.league.teams[0].seasons.length).toBe(3);
     expect(canDropPlayer(current.league.teams[0], cap)).toBe(false);
 
-    const blocked = waiveToFreeAgency(current.league, current.extras, current.league.teams[0].seasons[0].playerId, 'A');
-    expect(blocked.league.teams[0].seasons.length).toBe(3); // refused
+    const below = waiveToFreeAgency(current.league, current.extras, current.league.teams[0].seasons[0].playerId, 'A');
+    expect(below.league.teams[0].seasons.length).toBe(2);
   });
 });
 

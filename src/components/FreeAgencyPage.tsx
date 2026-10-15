@@ -107,7 +107,7 @@ export function FreeAgencyPage({ league, extras, controlledTeamId, onChange, onS
       )}
       {signTeamRosterFull && !signTeamOverCap && (
         <p className="calendar-banner">
-          <TeamLink name={signTeam?.name} />'s roster is full ({extras.capSettings.maxRosterSize} players). Waive someone below before signing anyone else.
+          <TeamLink name={signTeam?.name} /> has {signTeam?.seasons.length} players, at or past the usual {extras.capSettings.maxRosterSize}. You can still sign more; games play either way.
         </p>
       )}
       {extras.freeAgents.length === 0 ? (
@@ -119,10 +119,9 @@ export function FreeAgencyPage({ league, extras, controlledTeamId, onChange, onS
           team={signTeam ?? null}
           contracts={extras.contracts}
           capSettings={extras.capSettings}
-          canSign={!!signTeam && extras.freeAgencyOpen && !signTeamOverCap && !signTeamRosterFull}
+          canSign={!!signTeam && extras.freeAgencyOpen && !signTeamOverCap}
           disabledReason={
             !extras.freeAgencyOpen ? 'Free agency is not open yet.'
-              : signTeamRosterFull ? `${signTeam?.name}'s roster is full.`
               : undefined
           }
           onSign={signPlayer}
