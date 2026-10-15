@@ -10,6 +10,25 @@ export interface Release { id: string; title: string; items: string[]; theme?: s
 
 export const RELEASES: Release[] = [
   {
+    id: '2027-06-09',
+    title: 'Halloween and Christmas events, clans, other leagues and a deeper record book',
+    theme: 'spooky',
+    items: [
+      "**Halloween and Christmas events:** Spooky Season (from 31 October) and Winter Wonderland (from 25 December) each run for two weeks. Every finished game pays 1 Candy (or Snowflake) and every win pays 2, in every mode. Each event has its own shop with every kind of cosmetic, from 15 to 250.",
+      "**Relics:** no more luck cap, relics are 20% weaker and games pay 15% fewer coins. A **15th slot** costs 2.5M and doubles the power of the relic in it. A new **Double Relics** weekly event, and pets get a **second ability** for 15,000 coins: up to 10% off relic upgrades and spins.",
+      "**Clans:** found one for 100,000 coins. The leader sets the name, the description and a **flag you design** (patterns, colours, emblems, or paint it pixel by pixel), invites and removes members, and picks **open** (anyone can join) or **closed** (invite or join link). Your clan's flag shows on your profile.",
+      "**The Updates hub:** every update in its own colours, a short line for each new thing, and the full story one tap away.",
+      "**Your Player:** skill points cost more from 70, 90 and 100, and inches cost more from 6'2\", 6'8\" and 7'5\". See which NBA players your build is most like, take him through a **Your Player career** (just for fun: it never counts on the leaderboards), and play **1v1** against NBA players or real users.",
+      "**More real-player likenesses:** 60 more players look like themselves.",
+      "**Player development:** Edit Player can **lock a player's ratings** (and, while he is still good, he keeps playing at any age) or let him **develop on his own** even with Real Player Development on. Players below their potential keep growing through their prime, and a development rate of 100 or more means a player reaches his potential by his prime unless injuries get in the way.",
+      "**Contracts:** max deals, and a **supermax** for a franchise player re-signing with his own team. Win-first players take **pay cuts** to join a contender, and AI teams hold on to their best player unless they are tanking.",
+      "**Any game length:** pick 1 to 8 periods of any length from 1 to 30 minutes (a 16-minute game, three periods, college halves) when you create a league or later in League Settings → League Rules. Minutes, stats and development follow the length.",
+      "**Advanced stats:** shooting by distance (at the rim, 3-10 ft, 10-16 ft, long twos, threes and 28 ft and beyond), 20-point games and the **longest run** of them, **20-20 and 20-20-20 games**, 50-point games, the **50-40-90 club**, **clutch points**, **buzzer-beaters** and **game-winners**. Find them on player pages, in the Stats page's new **Feats** and **By Distance** views, and in the Record Book.",
+      "**All-Time Leaders:** Records → All-Time Leaders ranks every player who has ever played in your league by any stat, with everyone, active or retired.",
+      "**Other leagues in Franchise:** the **EuroLeague**, China's **CBA**, Georgia's **Superleague** and a **college conference**, each with real club names, its own rules (FIBA quarters, college halves and 30-second clock), season length and playoffs. Players are generated in each league's mix of home players and imports, and you can paste in the real rosters with Settings → Import Data.",
+    ],
+  },
+  {
     id: '2027-06-02',
     title: 'Real-life historical leagues, Categorize, Guess the Team, pets and your own player',
     items: [
