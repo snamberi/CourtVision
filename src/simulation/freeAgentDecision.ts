@@ -139,15 +139,16 @@ export function signingDecision(league: League, extras: GMLeagueExtras, player: 
   const team = league.teams.find(t => t.teamId === teamId);
   if (!team) return reject('Unknown team.');
   const cap = extras.capSettings;
-  // Nobody is paid past his max: the supermax only for a franchise player with his own team (maxContracts.ts).
-  const ceiling = supermaxEligible(player, team, path === 'resign') ? supermaxSalary(cap) : maxSalary(cap);
-  if (offer.annualSalary > ceiling) return reject(`That's more than the ${ceiling > maxSalary(cap) ? 'supermax' : 'max'} ($${(ceiling / 1e6).toFixed(1)}M a year).`);
   const payroll = team.seasons.reduce((n, s) => n + (extras.contracts[s.playerId]?.annualSalary ?? 0), 0);
   if (cap.hardCapEnabled && payroll + offer.annualSalary > cap.salaryCap) return reject(`${team.name} would go over the hard cap.`);
   if (path === 'market') {
     const room = capSpaceRemaining(extras.contracts, team, cap);
     if (offer.annualSalary > Math.max(room, cap.minSalary)) return reject(`${player.playerId} is willing, but ${team.name} only has $${(Math.max(0, room) / 1e6).toFixed(1)}M in cap space. Clear room or offer a minimum deal.`);
   }
+  // Nobody is paid past his max (never below a minimum deal): the supermax only for a franchise player with his own
+  // team (maxContracts.ts).
+  const ceiling = Math.max(cap.minSalary, supermaxEligible(player, team, path === 'resign') ? supermaxSalary(cap) : maxSalary(cap));
+  if (offer.annualSalary > ceiling) return reject(`That's more than the ${ceiling > maxSalary(cap) && ceiling > cap.minSalary ? 'supermax' : 'max'} ($${(ceiling / 1e6).toFixed(1)}M a year).`);
   return { ...quote, accepted: true, reason: `${player.playerId} accepts.` };
 }
 

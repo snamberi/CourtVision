@@ -365,7 +365,7 @@ export function simulatePossession(input: PossessionInput): PossessionResult {
         events.push(`${assistCandidate.playerId} AST`);
       }
     }
-    return { ballHandlerId: bh.playerId, events, result: 'MAKE', statDeltas, pointsScored: points, debug: { makeProbability: shotResult.probability, shotType, contest, freeThrowOutcomes } };
+    return { ballHandlerId: bh.playerId, events, result: 'MAKE', statDeltas, pointsScored: points, debug: { makeProbability: shotResult.probability, shotType, contest, freeThrowOutcomes, ...(deep ? { deep } : {}) } };
   }
 
   events.push(`${shooter.playerId} ${shotType} MISS`);
@@ -373,7 +373,7 @@ export function simulatePossession(input: PossessionInput): PossessionResult {
   const offensiveRebound = offense.some(p => p.playerId === reboundWinner);
   events.push(credited ? `Rebound: ${reboundWinner}` : 'Out of bounds: team rebound');
   if (offensiveRebound) events.push(`Offensive rebound: ${credited ? reboundWinner : 'the offense'} keeps it alive`);
-  return { ballHandlerId: bh.playerId, events, result: 'MISS', statDeltas, pointsScored: 0, debug: { makeProbability: shotResult.probability, shotType, contest, offensiveRebound } };
+  return { ballHandlerId: bh.playerId, events, result: 'MISS', statDeltas, pointsScored: 0, debug: { makeProbability: shotResult.probability, shotType, contest, offensiveRebound, ...(deep ? { deep } : {}) } };
 }
 
 /** Under the four-point line: the share of pull-up, step-back and above-the-break threes taken from behind it, and how much harder they are. */

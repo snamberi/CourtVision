@@ -11,6 +11,8 @@ import { assignGMPersonalities } from './aiGM';
 import type { PlayerSeason } from './types';
 import { DEFAULT_GAME_SETTINGS } from './types';
 import { generatePlayerOrigin, type PlayerOrigin } from './names';
+import { worldOrigin, shiftRatings, type WorldLeagueDef } from './worldLeagues';
+import { teamTheme } from './teamColors';
 import { archetypeByKey, pickArchetype } from './archetypes';
 import { compressElitePotential, syncPotential } from './engine/potential';
 import { calculateOverall } from './engine/overall';
@@ -283,6 +285,8 @@ export function generateFullLeague(
     priorSeasons?: boolean;
     /** Deal the generated players out like a draft (see balanceRosters) instead of leaving each team with its random roll. */
     balanced?: boolean;
+    /** Another league (worldLeagues.ts): its clubs, and its players' nationalities, ages and level. */
+    world?: WorldLeagueDef;
   } = {},
 ): GeneratedLeague {
   const rng = new RNG(seed);
@@ -292,13 +296,21 @@ export function generateFullLeague(
   const usedCoachNames = new Set<string>();
   const jitters = new Map<string, number>();
 
+  const w = opts.world;
   for (let t = 0; t < teamCount; t++) {
     const [city, mascot] = CITY_MASCOTS[t % CITY_MASCOTS.length];
-    const teamId = `GEN${t.toString().padStart(2, '0')}`;
-    const name = `${city} ${mascot}`;
+    const club = w?.clubs[t % w.clubs.length];
+    const teamId = club ? `W-${club.abbr}` : `GEN${t.toString().padStart(2, '0')}`;
+    const name = club ? club.name : `${city} ${mascot}`;
     const seasons: PlayerSeason[] = [];
 
     for (let p = 0; p < rosterSize; p++) {
+      if (w && club) {
+        const age = w.ages[0] + rng.nextInt(w.ages[1] - w.ages[0] + 1);
+        const origin = worldOrigin(w, rng, usedNames, club.name);
+        seasons.push(shiftRatings(generatePlayer(origin.name, seasonLabel, teamId, age, p, rng, { origin }), w.ratingShift));
+        continue;
+      }
       const age = 19 + rng.nextInt(17); // 19-35
       const origin = generatePlayerOrigin(rng, usedNames);
       const player = generatePlayer(origin.name, seasonLabel, teamId, age, p, rng, { origin });
@@ -313,7 +325,8 @@ export function generateFullLeague(
       contracts[s.playerId] = { playerId: s.playerId, teamId, annualSalary: 0, yearsRemaining: 1 + rng.nextInt(4), playerOption: rng.next() < 0.1, teamOption: rng.next() < 0.15 };
     }
 
-    teams.push({ teamId, name, seasons, coach: { ...defaultCoachTendencies(), paceTendency: jitter(rng, 50, 20) }, chemistry: jitter(rng, 65, 20), coachIdentity: generateCoachIdentity(rng, seasonLabel, usedCoachNames), expenseLevels: { scouting: jitter(rng, 50, 25), coaching: jitter(rng, 50, 25), health: jitter(rng, 50, 25), facilities: jitter(rng, 50, 25) } });
+    const identity = club ? { identity: { abbreviation: club.abbr, primary: club.primary, secondary: club.secondary, courtPaint: club.primary, courtApron: club.secondary, logo: teamTheme(teamId, name).logo, jerseyStyle: 'classic' as const } } : {};
+    teams.push({ teamId, name, ...identity, seasons, coach: { ...defaultCoachTendencies(), paceTendency: jitter(rng, 50, 20) }, chemistry: jitter(rng, 65, 20), coachIdentity: generateCoachIdentity(rng, seasonLabel, usedCoachNames), expenseLevels: { scouting: jitter(rng, 50, 25), coaching: jitter(rng, 50, 25), health: jitter(rng, 50, 25), facilities: jitter(rng, 50, 25) } });
   }
 
   payByLeagueRank(teams, contracts, jitters);
@@ -333,7 +346,8 @@ export function generateFullLeague(
     }
   }
 
-  const teamsWithConferences = assignMarketSizes(assignConferencesAndDivisions(teams), rng);
+  // Other leagues play one table (no conferences): the playoffs seed straight from it.
+  const teamsWithConferences = assignMarketSizes(w ? teams : assignConferencesAndDivisions(teams), rng);
   const schedule = generateSeasonSchedule(teamsWithConferences.map((t) => t.teamId), gamesPerTeam);
   const league: League = {
     teams: teamsWithConferences, schedule, settings: { ...DEFAULT_GAME_SETTINGS }, season: seasonLabel,
@@ -343,7 +357,7 @@ export function generateFullLeague(
     contracts,
     freeAgents: [],
     capSettings: { ...DEFAULT_CAP_SETTINGS },
-    draftClass: generateDraftClass(pickDraftClassSize(teamCount, rng), seed + 9999, `${parseInt(seasonLabel) + 1}`, usedNames),
+    draftClass: generateDraftClass(pickDraftClassSize(teamCount, rng), seed + 9999, `${parseInt(seasonLabel) + 1}`, usedNames, w),
     tradeSettings: { ...DEFAULT_TRADE_SETTINGS },
     ...DEFAULT_GM_FLAGS,
     freeAgencyOpen: true,

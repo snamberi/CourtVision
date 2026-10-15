@@ -72,7 +72,7 @@ describe('contracts: max, supermax and pay cuts', async () => {
   const { supermaxEligible, supermaxSalary, maxSalary, contractTier, maxFor } = await import('../simulation/maxContracts');
   const { payCut, personalityOf } = await import('../simulation/personality');
   const { resignVerdict, signingDecision } = await import('../simulation/freeAgentDecision');
-  const { isProtectedCornerstone, tradeAssetValue } = await import('../simulation/tradeValue');
+  const { isProtectedCornerstone, wouldBeCornerstone, tradeAssetValue } = await import('../simulation/tradeValue');
   const g = generateFullLeague(7);
   const cap = g.extras.capSettings;
   const team = g.league.teams[0];
@@ -100,7 +100,9 @@ describe('contracts: max, supermax and pay cuts', async () => {
     expect(v.reason).toMatch(/supermax/);
     const other = g.league.teams[1].seasons[0];
     const fa = { ...other, history: [] } as PlayerSeason;
-    const d = signingDecision(g.league, { ...g.extras, freeAgents: [fa] }, fa, team.teamId, { annualSalary: supermaxSalary(cap), yearsRemaining: 2 });
+    // A team with all the cap room in the world still cannot pay a free agent past the max.
+    const roomy = { ...g.extras, freeAgents: [fa], contracts: Object.fromEntries(Object.entries(g.extras.contracts).filter(([, c]) => c.teamId !== team.teamId)) };
+    const d = signingDecision(g.league, roomy, fa, team.teamId, { annualSalary: supermaxSalary(cap), yearsRemaining: 2 });
     expect(d.accepted).toBe(false);
     expect(d.reason).toMatch(/more than the max/);
   });
@@ -121,7 +123,14 @@ describe('contracts: max, supermax and pay cuts', async () => {
     const second = [...team.seasons].sort((a, b) => calculateOverall(b) - calculateOverall(a))[1];
     expect(isProtectedCornerstone(second, g.league, team.teamId)).toBe(false);
     expect(isProtectedCornerstone({ ...best, morale: { ...(best.morale ?? {}), tradeRequest: 'wants out' } } as unknown as PlayerSeason, g.league, team.teamId)).toBe(false);
-    const own = tradeAssetValue(best, g.league, g.extras, team.teamId), theirs = tradeAssetValue(best, g.league, g.extras, g.league.teams[1].teamId);
+    // Worth more to his own team than to a team that already has a better leader...
+    const rival = g.league.teams[1];
+    const ledRival = { ...g.league, teams: g.league.teams.map(t => (t.teamId === rival.teamId ? { ...t, seasons: [star(t.seasons[0]), ...t.seasons.slice(1)] } : t)) };
+    const own = tradeAssetValue(best, g.league, g.extras, team.teamId), theirs = tradeAssetValue(best, ledRival, g.extras, rival.teamId);
     expect(own).toBeGreaterThan(theirs);
+    // ...but a team he would lead prizes him as its own does, so a swap of equal stars still balances.
+    const weakRival = { ...g.league, teams: g.league.teams.map(t => (t.teamId === rival.teamId ? { ...t, seasons: t.seasons.filter(p => calculateOverall(p) < calculateOverall(best)) } : t)) };
+    expect(wouldBeCornerstone(best, weakRival, rival.teamId)).toBe(true);
+    expect(tradeAssetValue(best, weakRival, g.extras, rival.teamId)).toBeGreaterThan(theirs);
   });
 });

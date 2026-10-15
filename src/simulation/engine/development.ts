@@ -7,6 +7,7 @@ import { calculateOverall, calculateFullAttributeOverall, calculateRatings } fro
 import { careerPhase, primeWindow, syncPotential } from './potential';
 import type { LeagueRulesSettings } from '../leagueRules';
 import { expenseEffects, type TeamExpenseLevels } from '../league';
+import { NBA_GAME_MINUTES } from '../gameLength';
 
 function clampAttr(v: number, max: number): number {
   return Math.max(0, Math.min(max, v));
@@ -36,7 +37,7 @@ export const GUARANTEE_RATE = 100;
  * variance, rookie/young-player growth bonuses, late-career decline speed,
  * and how much playing time matters - each multiplier is 100 = baseline.
  */
-export function developOffseasonPlayer(season: PlayerSeason, rng: RNG = new RNG(), rules?: LeagueRulesSettings, facilityMultiplier = 1, focus: CoachTendencies['trainingFocus'] = 'balanced', ratingCap = 200): PlayerSeason {
+export function developOffseasonPlayer(season: PlayerSeason, rng: RNG = new RNG(), rules?: LeagueRulesSettings, facilityMultiplier = 1, focus: CoachTendencies['trainingFocus'] = 'balanced', ratingCap = 200, gameMinutes = NBA_GAME_MINUTES): PlayerSeason {
   const beforeOverall = calculateOverall(season);
   const beforeFullOverall = calculateFullAttributeOverall(season);
   const next: PlayerSeason = JSON.parse(JSON.stringify(season));
@@ -68,7 +69,8 @@ export function developOffseasonPlayer(season: PlayerSeason, rng: RNG = new RNG(
   const varianceFactor = 1 + (rng.next() - 0.5) * (season.development.developmentVariance / 50) * randomnessMult;
   const maxAttr = Math.max(ratingCap, ...Object.values(season.attributes.offense), ...Object.values(season.attributes.defense), ...Object.values(season.attributes.mental)); // clamp headroom only; realistic-mode display clamp happens in resolveEffectivePlayer
 
-  const minutesPlayedRaw = season.seasonStats?.minutes ?? 0;
+  // Minutes count as if the games were 48 minutes long, so a league of shorter (or longer) games develops at the same pace.
+  const minutesPlayedRaw = (season.seasonStats?.minutes ?? 0) * NBA_GAME_MINUTES / Math.max(1, gameMinutes);
   const baseMinutesFactor = minutesPlayedRaw > 0 ? Math.max(0.4, Math.min(1.6, minutesPlayedRaw / BASELINE_SEASON_MINUTES)) : 0.6;
   const gamesPlayedForMinutes = season.seasonStats?.gamesPlayed ?? 0;
   const mpg = minutesPlayedRaw / Math.max(1, gamesPlayedForMinutes);

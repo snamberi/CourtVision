@@ -8,6 +8,7 @@ import type { GameResult } from './boxscore';
 import { simulateGame } from './engine/game';
 import { applyGameResultToLeague } from './careerStats';
 import { addDays, seasonStartDate, DAYS_PER_ROUND } from './calendar';
+import { worldDefOf } from './worldLeagues';
 
 export interface PlayoffSeries {
   id: string;
@@ -127,8 +128,11 @@ export function generateConferencePlayoffBracket(league: League, gamesToWin = 4)
 /** Always call this to start the playoffs — picks the conference-structured bracket when possible, falling
  * back gracefully for leagues without conference data. This is the only entry point the app should use;
  * there is no user-facing bracket-size choice, the postseason always seeds from the real standings. */
-export function autoGeneratePlayoffBracket(league: League, gamesToWin = 4): PlayoffBracket {
-  return generateConferencePlayoffBracket(league, gamesToWin);
+export function autoGeneratePlayoffBracket(league: League, gamesToWin?: number): PlayoffBracket {
+  // Other leagues (worldLeagues.ts): one table, their own bracket size and series length.
+  const world = worldDefOf(league);
+  if (world) return generatePlayoffBracket(league, Math.min(world.playoffs.teams, pickPlayoffBracketSize(league.teams.length)) as 4 | 8 | 16, gamesToWin ?? world.playoffs.gamesToWin);
+  return generateConferencePlayoffBracket(league, gamesToWin ?? 4);
 }
 
 function findNextSeries(bracket: PlayoffBracket): PlayoffSeries | null {

@@ -4,9 +4,10 @@ import type { GameEvidence } from '../simulation/playerDevelopment';
 import type { PlayerSeason } from '../simulation/types';
 import { runEngineJob } from './engineJob';
 import { liteMode, LITE_ENGINE_WORKERS } from '../lib/performanceMode';
+import type { GameFeatsRecord } from '../simulation/gameFeats';
 
 export interface EngineJob { id: number; input: PreparedGame['input']; pack: boolean }
-export type EngineReply = { id: number; result: GameResult; evidence: GameEvidence } | { id: number; error: string };
+export type EngineReply = { id: number; result: GameResult; evidence: GameEvidence; feats?: GameFeatsRecord } | { id: number; error: string };
 
 /** The engine reads only these training fields; the rest (history, reports, badge progress) stays behind. */
 function slimSeason(s: PlayerSeason): PlayerSeason {
@@ -44,7 +45,7 @@ export class EnginePool {
         if (!waiting) return;
         this.pending.delete(reply.id);
         if ('error' in reply) waiting.reject(new Error(reply.error));
-        else waiting.resolve({ result: reply.result, evidence: reply.evidence });
+        else waiting.resolve({ result: reply.result, evidence: reply.evidence, feats: reply.feats });
       };
     }
   }

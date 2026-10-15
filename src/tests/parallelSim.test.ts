@@ -27,8 +27,8 @@ function inProcessPool(size: number): EnginePool {
   for (let i = 0; i < size; i++) {
     const channel = new MessageChannel();
     channel.port1.onmessage = (e: MessageEvent<EngineJob>) => {
-      const { result, evidence } = runEngineJob(e.data.input, e.data.pack);
-      channel.port1.postMessage({ id: e.data.id, result, evidence: evidence! } satisfies EngineReply);
+      const { result, evidence, feats } = runEngineJob(e.data.input, e.data.pack);
+      channel.port1.postMessage({ id: e.data.id, result, evidence: evidence!, feats } satisfies EngineReply);
     };
     ports.push(channel.port2);
   }

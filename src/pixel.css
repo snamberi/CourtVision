@@ -676,6 +676,13 @@ fieldset.development-controls { border: 1px solid var(--line-strong); padding: 1
 .records-page h2, .team-history-page h2 { margin:6px 0 4px; }
 .records-controls { display:flex; flex-wrap:wrap; gap:10px 16px; align-items:center; margin:12px 0 4px; }
 .records-controls .stats-view-toggle button small { color:var(--c-fg-94a0b2, #94a0b2); font-size:.7em; }
+.records-view { display:inline-flex; margin:6px 0 2px; }
+.atl-title { margin:12px 0 6px; }
+.atl-title small { color:var(--c-fg-94a0b2, #94a0b2); font-weight:400; }
+.atl-table td.num, .atl-table th.num { text-align:right; font-variant-numeric:tabular-nums; }
+.atl-active { color:var(--c-fg-55c878, #55c878); }
+.zone-table .zone-count { color:var(--c-fg-94a0b2, #94a0b2); font-size:.8em; }
+.all-time-leaders > button { margin-top:10px; }
 .records-section h4 { margin:22px 0 10px; font-size:11px; color:var(--c-fg-f4ce96, #f4ce96); }
 .records-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(270px,1fr)); gap:10px; }
 .record-card { border:1px solid var(--c-border-2a3546, #2a3546); background:var(--c-bg-121926, #121926); padding:10px 12px; box-shadow:2px 2px 0 var(--c-shadow-050a12, #050a12); }

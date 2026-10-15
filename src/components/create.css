@@ -11,6 +11,7 @@
 .create-choices-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .create-choices-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .create-choices-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.create-world-rules { display: block; margin-top: 6px; color: var(--look-dim, var(--text-dim)); font-size: 12px; line-height: 1.35; }
 .create-choices-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .create-choice { position: relative; display: grid; align-content: start; gap: 8px; min-height: 120px; padding: 14px 16px; text-align: left; background-color: var(--look-raised); color: var(--look-text); border: var(--look-border) solid var(--look-line); border-radius: var(--look-radius); box-shadow: none; transition: border-color 120ms, transform 120ms; }
 .create-choice:hover:not(:disabled) { border-color: var(--look-edge); transform: translateY(-1px); }

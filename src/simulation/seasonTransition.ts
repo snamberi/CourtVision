@@ -31,6 +31,8 @@ import { driftChemistryForRosterContinuity } from './engine/chemistryEvolution';
 import { RNG } from './engine/rng';
 import { calculateOverall, calculateFullAttributeOverall } from './engine/overall';
 import { developOffseasonPlayer } from './engine/development';
+import { gameMinutes } from './gameLength';
+import { worldDefOf } from './worldLeagues';
 import {
   generateDraftClass, buildTwoRoundDraftOrder, pickDraftClassSize, resolveTradedPicksIntoOrder,
   rollFutureDraftPicksForward, FUTURE_PICK_WINDOW_YEARS, priorTeamId, type GMLeagueExtras, type Contract,
@@ -100,7 +102,7 @@ export function rollFreeAgentsForward(league: League, freeAgents: PlayerSeason[]
     // Real Player Development: a real player follows his reference trajectory; everyone else (and real players past
     // their trajectory) develops through Court Vision.
     const realStep = followsRealDevelopment(fa, league) ? applyRealDevelopment(fa, newSeason) : null;
-    let developed = realStep ?? developOffseasonPlayer(fa, rng, league.rulesSettings, 0.9, 'balanced', league.settings.sandboxMode ? 200 : 100);
+    let developed = realStep ?? developOffseasonPlayer(fa, rng, league.rulesSettings, 0.9, 'balanced', league.settings.sandboxMode ? 200 : 100, gameMinutes(league.settings.era));
     if (!realStep && followsRealDevelopment(fa, league)) developed = markRealFallback(developed, newSeason);
     const next: PlayerSeason = { ...developed, season: newSeason, seasonStats: undefined, seasonMilestones: undefined, playoffStats: undefined, seasonStints: undefined,
       careerHistory: archived ? [...(fa.careerHistory ?? []), archived] : fa.careerHistory };
@@ -108,7 +110,7 @@ export function rollFreeAgentsForward(league: League, freeAgents: PlayerSeason[]
     // A real player who really played this season stays in the league while his trajectory continues.
     if (realStep && realCareerContinues(fa, newSeason)) { out.push(next); continue; }
     const leavesLeague = next.age >= 24 && (overall < 45 ? rng.chance(0.5) : overall < 52 ? rng.chance(0.2) : false);
-    if (!isStuck(next) && !next.careerPlayer && (shouldRetire(next, rng, league.rulesSettings) || leavesLeague)) {
+    if (!isStuck(next) && !next.careerPlayer && (shouldRetire(next, rng, league.rulesSettings, worldDefOf(league)?.leaveAfterAge) || leavesLeague)) {
       retired.push({ playerId: next.playerId, finalTeamId: lastTeam ?? '', finalTeamName: teamName(lastTeam), finalSeason: previousSeason,
         finalAge: next.age, finalOverall: overall, finalSeasonData: retiredData(next) });
       continue;
@@ -118,9 +120,11 @@ export function rollFreeAgentsForward(league: League, freeAgents: PlayerSeason[]
   return { freeAgents: out, retired };
 }
 
-export function shouldRetire(next: PlayerSeason, rng: RNG, rules?: LeagueRulesSettings): boolean {
+export function shouldRetire(next: PlayerSeason, rng: RNG, rules?: LeagueRulesSettings, leaveAfterAge?: number): boolean {
   // Locked ratings (Edit Player): while he is still good, age never retires him.
   if (next.lockRatings && calculateOverall(next) >= LOCKED_KEEPS_PLAYING) return false;
+  // College: past the last college age he moves on (graduates or turns pro).
+  if (leaveAfterAge != null && next.age > leaveAfterAge) return true;
   const forcedAge = 41 + (rules?.retirementAgeShiftYears ?? 0);
   if (next.age >= forcedAge) return true;
   const rampStartAge = 34 + (rules?.retirementAgeShiftYears ?? 0);
@@ -268,7 +272,7 @@ export function beginNewSeasonRoster(
       const developmentMultiplier = expenseEffects(team.expenseLevels).developmentMultiplier * (1 + (coachDevelopment - 1) * (league.rulesSettings?.coachingImpact ?? 100) / 100)
         * (1 + (team.business?.arena.practice ?? 0) * 0.02); // a better practice facility
       const realStep = followsRealDevelopment(season, league) ? applyRealDevelopment(season, newSeason) : null;
-      let developed = realStep ?? developOffseasonPlayer(season, rng, league.rulesSettings, developmentMultiplier * (1 + (teachingQuality(team, season.training?.plan.coachId) - 1) * (league.rulesSettings?.coachingImpact ?? 100) / 100), team.coach?.trainingFocus, league.settings.sandboxMode ? 200 : 100);
+      let developed = realStep ?? developOffseasonPlayer(season, rng, league.rulesSettings, developmentMultiplier * (1 + (teachingQuality(team, season.training?.plan.coachId) - 1) * (league.rulesSettings?.coachingImpact ?? 100) / 100), team.coach?.trainingFocus, league.settings.sandboxMode ? 200 : 100, gameMinutes(league.settings.era));
       if (!realStep && followsRealDevelopment(season, league)) developed = markRealFallback(developed, newSeason);
       if (team.teamId === userTeamId) {
         // Your summer camp, on top of normal development (real players on Real Player Development follow their real careers).
@@ -290,7 +294,7 @@ export function beginNewSeasonRoster(
         careerHistory: [...(season.careerHistory ?? []), archived],
       };
 
-      if (!isStuck(withHistory) && !withHistory.careerPlayer && !(realStep && realCareerContinues(season, newSeason)) && shouldRetire(withHistory, rng, league.rulesSettings)) {
+      if (!isStuck(withHistory) && !withHistory.careerPlayer && !(realStep && realCareerContinues(season, newSeason)) && shouldRetire(withHistory, rng, league.rulesSettings, worldDefOf(league)?.leaveAfterAge)) {
         retiredPlayerIds.push(withHistory.playerId);
         delete contracts[withHistory.playerId];
         newlyRetired.push({
@@ -363,7 +367,7 @@ export function beginNewSeasonRoster(
   retiredPlayerIds.push(...faResult.retired.map(r => r.playerId));
   newlyRetired.push(...faResult.retired);
 
-  const generateClass = () => { const size = pickDraftClassSize(teams.length, rng), seed = Math.floor(rng.next() * 1_000_000); return withLegacySons(generateDraftClass(size, seed, newSeason, collectPlayerIds(league, extras)), { ...league, retiredPlayers: [...(league.retiredPlayers ?? []), ...newlyRetired] }, seed); };
+  const generateClass = () => { const size = pickDraftClassSize(teams.length, rng), seed = Math.floor(rng.next() * 1_000_000); return withLegacySons(generateDraftClass(size, seed, newSeason, collectPlayerIds(league, extras), worldDefOf(league)), { ...league, retiredPlayers: [...(league.retiredPlayers ?? []), ...newlyRetired] }, seed); };
   // Historical leagues: this offseason's real draft class, and real players whose NBA debut is this season.
   let historical = league.historical;
   let draftClass: ReturnType<typeof generateDraftClass>;

@@ -7,7 +7,8 @@ import type { LeagueRulesSettings } from '../leagueRules';
 import { computeRuleMods } from './ruleMods';
 import { RNG } from './rng';
 import { resolveEffectivePlayer, CAREER_RATING_MAX } from './effective';
-import { simulatePossession, type OnCourtPlayer, type PlayCall, type LastShotType } from './possession';
+import { simulatePossession, type OnCourtPlayer, type PlayCall, type LastShotType, type PossessionResult } from './possession';
+import { shotFeet } from '../shotDistance';
 import { computeMatchups } from './matchups';
 import { LiveRotation } from './liveRotation';
 import { superFactor, athleticismOf, starLift, STAR_DEFENSE_SHARE, pureScorerShare } from './superstar';
@@ -64,6 +65,13 @@ export const MOMENTUM_RUN = 8, RUN_TIMEOUT = 10;
 /** Past this lead the game starts pulling back together (see the lead edge in the possession loop). */
 export const BLOWOUT_START = 10;
 const PACE_DURATION: Record<LivePace, number> = { slow: 1.22, normal: 1, fast: 0.8 };
+
+/** The possession's debug record, plus the shot's distance in feet when a field goal was tried. */
+function shotDebug(result: PossessionResult, rng: RNG, line: number, buzzer: boolean): Record<string, unknown> {
+  const type = result.debug.shotType;
+  if (typeof type !== 'string' || !Object.values(result.statDeltas).some(d => (d.fga ?? 0) > 0)) return result.debug;
+  return { ...result.debug, shotFeet: shotFeet(type, rng, { line, deep: result.debug.deep === true, buzzer }) };
+}
 
 function possessionsPerQuarter(quarterLengthMinutes: number, pacePreset: GameSettings['pacePreset'], paceModifier: number, rulesPaceMultiplier = 1): number {
   // secPerPossession is the average seconds between one TEAM's own consecutive possessions
@@ -153,6 +161,8 @@ export function simulateGame(opts: SimulateGameOptions): GameResult {
   const numQuarters = settings.era.numberOfQuarters;
   const qLen = settings.era.quarterLengthMinutes;
   const rotationRng = new RNG((settings.seed ?? 1) + 80321);
+  // Shot distances for the by-distance splits come from their own stream: they never change how the game plays out.
+  const shotRng = new RNG((settings.seed ?? 1) + 50707);
   const totalSeconds = Math.round(numQuarters * qLen * 60);
   const homeRotation = new LiveRotation(home.seasons, totalSeconds, homeCoach, opts.rules, rotationRng, home.rotationOrder, opts.isPlayoffs, away.seasons);
   const awayRotation = new LiveRotation(away.seasons, totalSeconds, awayCoach, opts.rules, rotationRng, away.rotationOrder, opts.isPlayoffs, home.seasons);
@@ -387,7 +397,7 @@ export function simulateGame(opts: SimulateGameOptions): GameResult {
         action: result.debug.action as string ?? result.debug.shotType as string ?? 'possession',
         events: extraEvents.length > 0 ? [...result.events, ...extraEvents] : result.events,
         result: result.result as PossessionLogEntry['result'],
-        debug: result.debug,
+        debug: shotDebug(result, shotRng, settings.era.threePointLineDistance, clock <= 2 && secondsPerPossession >= clock),
         onCourtHome: hOnCourtIds,
         onCourtAway: aOnCourtIds,
         homeScoreAfter: homeBox.points,

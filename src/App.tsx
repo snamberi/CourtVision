@@ -97,6 +97,7 @@ import { ensureGmRivals } from './simulation/gmRivals';
 import type { Speech } from './simulation/halftime';
 import type { NbaHistory } from './history/nbaHistoryData';
 import { HistoricalSettingsCard } from './components/HistoricalSettingsCard';
+import { GameLengthCard } from './components/GameLengthPicker';
 import { migrateHistoricalLeague } from './history/migrateHistorical';
 import { stripNameYears } from './history/nameYears';
 import { DEFAULT_CAP_SETTINGS, DEFAULT_TRADE_SETTINGS, DEFAULT_GM_FLAGS, generateDraftClass, pickDraftClassSize, buildTwoRoundDraftOrder, generateFutureDraftPicks, isTradeDeadlinePassed, simulateUntilTradeDeadline, waiveToFreeAgency, toggleTradeBlock, type GMLeagueExtras, type Contract, type TradeDifficulty, type TradeProposal } from './simulation/gm';
@@ -501,7 +502,7 @@ function App() {
   const startFromOrigin = (origin: LeagueOrigin, o: { name: string; teamId?: string | null; weekly?: WeeklyRebuild | null; settings?: CreateSettings; dynasty?: boolean; decade?: boolean; gmCareer?: boolean }) => {
     const openWithTeam = (built: League, builtExtras: GMLeagueExtras) => {
       // League settings picked on the New Franchise page; Dynasty Mode switches on the living world.
-      const set = o.settings ? applyCreateSettings(built, builtExtras, o.settings, origin.kind === 'random') : { league: built, extras: builtExtras };
+      const set = o.settings ? applyCreateSettings(built, builtExtras, o.settings, origin.kind === 'random' || origin.kind === 'world') : { league: built, extras: builtExtras };
       const extras = set.extras, dyn0 = o.dynasty ? startDynasty(set.league) : set.league, dyn = o.decade ? startDecade(dyn0) : dyn0, league = o.gmCareer ? startGmCareer(dyn) : dyn;
       if (o.teamId && league.teams.some(t => t.teamId === o.teamId)) { enterApp(league, extras, o.teamId, o.name); setTab('dashboard'); return; }
       setPendingLeague(league);
@@ -512,6 +513,14 @@ function App() {
     if (origin.kind === 'random') {
       const generated = generateFullLeague(origin.seed, 30, 18, 82, String(origin.year), { balanced: !!origin.balanced });
       openWithTeam({ ...generated.league, origin }, { ...generated.extras, tradeSettings: { difficulty: origin.difficulty } });
+      return;
+    }
+    if (origin.kind === 'world') {
+      // Another league: EuroLeague, CBA, the Georgian Superleague or a college conference (worldLeagues.ts).
+      import('./simulation/worldLeagueBuild').then(({ buildWorldLeague }) => {
+        const built = buildWorldLeague(origin.world ?? 'euro', origin.seed, origin.year ?? 2025);
+        openWithTeam({ ...built.league, origin }, { ...built.extras, tradeSettings: { difficulty: origin.difficulty } });
+      }).catch((err: unknown) => pushToast(`Could not build the league: ${err instanceof Error ? err.message : String(err)}`, 'error'));
       return;
     }
     setMenuBusy('Loading NBA history…');
@@ -595,8 +604,9 @@ function App() {
       return;
     }
     const seed = Math.floor(Math.random() * 1_000_000);
-    track('mode_start', { mode: c.source === 'random' ? 'random' : 'real', variant: c.source });
-    if (c.source === 'random') startFromOrigin({ kind: 'random', year: parseInt(c.year, 10), seed, difficulty: c.difficulty, balanced: true }, { name: c.name, settings: c.settings, dynasty: c.dynasty, decade: c.decade, gmCareer: c.gmCareer });
+    track('mode_start', { mode: c.source === 'random' ? 'random' : c.source === 'world' ? 'world' : 'real', variant: c.source === 'world' ? c.world ?? 'euro' : c.source });
+    if (c.source === 'world') startFromOrigin({ kind: 'world', world: c.world ?? 'euro', year: parseInt(c.year, 10), seed, difficulty: c.difficulty }, { name: c.name, settings: c.settings, dynasty: c.dynasty, decade: c.decade, gmCareer: c.gmCareer });
+    else if (c.source === 'random') startFromOrigin({ kind: 'random', year: parseInt(c.year, 10), seed, difficulty: c.difficulty, balanced: true }, { name: c.name, settings: c.settings, dynasty: c.dynasty, decade: c.decade, gmCareer: c.gmCareer });
     else if (c.source === 'history') startFromOrigin({ kind: 'history', year: parseInt(c.year, 10), seed, difficulty: c.difficulty, ...c.real }, { name: c.name, settings: c.settings, dynasty: c.dynasty, decade: c.decade, gmCareer: c.gmCareer });
     else startGameMode('real', c.difficulty, c.year, c.name, { source: 'csv', realDevelopment: true });
   };
@@ -2154,7 +2164,7 @@ function App() {
             </nav>
             {leagueSettingsSub === 'awards' && <Suspense fallback={<p className="empty-state page-loading" role="status">Loading…</p>}><LeagueSettingsPage settings={awardSettings} onChange={setAwardSettings} seasonGames={seasonGamesPerTeam(league)} onSave={() => { handleSaveNow(); pushToast('Award settings saved.', 'success'); }} /></Suspense>}
             {leagueSettingsSub === 'rules' && (
-              <><HistoricalSettingsCard league={league} extras={extras} onChange={setLeague} /><section className="settings-card">
+              <><HistoricalSettingsCard league={league} extras={extras} onChange={setLeague} /><GameLengthCard league={league} onChange={setLeague} /><section className="settings-card">
                 <h4>Roster and trade rules</h4><p className="hint-text">10–18 players for regular-season games. Coaches sign or waive players to meet the limits. Draft and offseason moves can temporarily exceed them.</p>
                 <label className="trade-value-toggle"><input type="checkbox" checked={extras.tradeSettings.showValues === true} onChange={e => setExtras(prev => ({ ...prev, tradeSettings: { ...prev.tradeSettings, showValues: e.target.checked } }))} /> Show trade values</label>
               </section><LeagueRulesPage
@@ -2227,8 +2237,9 @@ function App() {
               </div>
             </section>
 
-            {(sandboxMode || league.teams.length === 0) && <section className="wide">
+            {(sandboxMode || league.teams.length === 0 || !!league.worldLeague) && <section className="wide">
               <h4 id="csv-league-import">Import Data (CSV to league/roster)</h4>
+              {league.worldLeague && <p className="hint-text">Bring in the real rosters: one row per player with his team's name in the team column (as it is in this league), his height in inches, position and per-game stats. Pick the team below and add them; release the generated players you replace from the roster page.</p>}
               <ImportPage teams={league.teams} onAddToTeam={addImportedPlayers} onBuildLeague={buildLeagueFromImport} />
             </section>}
 
