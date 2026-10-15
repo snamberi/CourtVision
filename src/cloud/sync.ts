@@ -9,6 +9,11 @@ import { PROFILE_EVENT, equipped } from '../profile/profile';
 import { updateProfile } from './account';
 import { DAILY_EVENT } from '../profile/dailyGoals';
 import { AVATAR_EVENT } from '../profile/avatar';
+import { RELICS_EVENT } from '../relics/relics';
+import { PETS_EVENT } from '../profile/pets';
+import { MY_RATINGS_EVENT } from '../profile/myRatings';
+import { ARCADE_EVENT } from '../arcade/storage';
+import { LIKENESS_EVENT } from '../visuals/likeness';
 
 /*
  * Cloud sync: pull the account's progress, merge it with this device's (merge.ts keeps the best of both), write the
@@ -38,7 +43,7 @@ function writeLocal(storage: Record<string, string>) {
   for (const [k, v] of Object.entries(storage)) {
     try { if (localStorage.getItem(k) !== v) { localStorage.setItem(k, v); changed = true; } } catch { /* storage blocked */ }
   }
-  if (changed) for (const e of [LEGACY_EVENT, PROFILE_EVENT, DAILY_EVENT, PROGRESS_EVENT, AVATAR_EVENT]) window.dispatchEvent(new Event(e));
+  if (changed) for (const e of [LEGACY_EVENT, PROFILE_EVENT, DAILY_EVENT, PROGRESS_EVENT, AVATAR_EVENT, RELICS_EVENT, PETS_EVENT, MY_RATINGS_EVENT, ARCADE_EVENT, LIKENESS_EVENT]) window.dispatchEvent(new Event(e));
 }
 
 /** Retired careers travel with the account (careers still being played stay on their device with their league). */

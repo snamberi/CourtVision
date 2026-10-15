@@ -142,6 +142,8 @@ export function likenessKey(playerId: string): string {
 export const LIKENESS_KEY = 'cv-likeness';
 export const LIKENESS_EVENT = 'courtvision:likeness';
 let overrides: Record<string, L> | null = null;
+// Looks can change under us (a sync from another device): read them again on the next use.
+try { window.addEventListener(LIKENESS_EVENT, () => { overrides = null; }); } catch { /* no window */ }
 function readOverrides(): Record<string, L> {
   if (overrides) return overrides;
   try { overrides = JSON.parse(localStorage.getItem(LIKENESS_KEY) ?? '{}') as Record<string, L>; } catch { overrides = {}; }
