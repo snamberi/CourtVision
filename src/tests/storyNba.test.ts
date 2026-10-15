@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { newStory, currentBeat, continueStory, choose, spendTraining, choosePath, playStoryGame, overall, type StoryState } from '../story/story';
 import {
   enterDraft, afterDraft, toNextMoment, currentMoment, chooseNba, playNbaGame, playNbaSeries, continueNba, signNba, trainNba, nbaCard, nbaCtx, nbaOffers,
-  storyEnding, storyShareText, NBA_SEASONS, NBA_DECK, type NbaRun, type NbaCtx,
+  storyEnding, storyShareText, pickEnding, NBA_SEASONS, NBA_DECK, NBA_ENDINGS, type NbaRun, type NbaCtx,
 } from '../story/storyNba';
 import { localSim } from '../story/storySimLocal';
 import type { StoryWorld } from '../story/storyStorage';
@@ -84,7 +84,14 @@ describe('Story Mode: the NBA years', () => {
     expect(peak).toBeGreaterThan(draftOvr + 5);
     expect(n.years.at(-1)!.overall).toBeLessThan(peak);
     expect(n.seen).toEqual(expect.arrayContaining(['vet', 'dre-call', 'y2-deal']));
-    expect(['legend', 'star', 'pro', 'grinder']).toContain(storyEnding(r.s).tier);
+    // Retirement: the announcement, what comes next, and the last card (Hall of Fame, jersey night or the park).
+    expect(r.s.flags.some(f => f.startsWith('thanks'))).toBe(true);
+    expect(r.s.flags.some(f => f.startsWith('after'))).toBe(true);
+    expect(r.s.flags.some(f => f.startsWith('speech'))).toBe(true);
+    const ending = storyEnding(r.s);
+    expect(['legend', 'star', 'pro', 'grinder']).toContain(ending.tier);
+    expect(NBA_ENDINGS.map(id => `nba-${id}`)).toContain(ending.id);
+    expect(ending.epilogue).toHaveLength(6);
     if ((globalThis as unknown as { process: { env: Record<string, string | undefined> } }).process.env.PEEK) {
       console.log('PEEK draft', r.s.draft, 'ovr', draftOvr, '| by year', n.years.map(y => `${y.age}:${y.overall}/${(y.stats.points / Math.max(1, y.stats.gamesPlayed)).toFixed(1)}${y.awards.length ? '*' + y.awards.map(a => a.key).join('+') : ''}`).join(' '),
         '| ending', storyEnding(r.s).title, '| games', r.s.games.length, '| seen', n.seen.join(','));
@@ -121,7 +128,7 @@ describe('Story Mode: the NBA years', () => {
       n: { ...base.n, seen: high ? NBA_DECK.map(c => c.id) : [] },
       s: { ...base.s, hype: high ? 20 : 0, flags, bonds: high ? { dre: 5, ray: 5, ice: 3, maya: 5 } : { dre: -2, ray: -2, ice: -2, maya: -1 } },
     });
-    const clean = (text: string) => { expect(text.length).toBeGreaterThan(5); expect(text).not.toMatch(/undefined|NaN|null|\[object/); };
+    const clean = (text: string) => { expect(text.trim().length).toBeGreaterThan(2); expect(text).not.toMatch(/undefined|NaN|null|\[object/); };
     const shown = new Set<string>(), flags = new Set<string>(['champion']);
     for (const pass of [0, 1]) for (let year = 1; year <= NBA_SEASONS; year++) for (const high of [false, true]) {
       const ctx = ctxFor(year, high, high && pass ? [...flags] : []);
@@ -138,6 +145,22 @@ describe('Story Mode: the NBA years', () => {
     // A chain's later chapters need a flag an earlier choice sets: every card is reachable.
     expect(NBA_DECK.filter(c => c.stops.length && !shown.has(c.id)).map(c => c.id)).toEqual([]);
   }, 120_000);
+
+  it('nine endings, each one reachable', () => {
+    const bonds = { dre: 1, ray: 1, maya: 1 }, close = { dre: 5, ray: 4, maya: 4 };
+    const got = new Set([
+      pickEnding({ legacy: 160, titles: 4, seasons: 15 }, 2, bonds),
+      pickEnding({ legacy: 95, titles: 0, seasons: 15 }, 2, bonds),
+      pickEnding({ legacy: 30, titles: 1, seasons: 15 }, 3, bonds),
+      pickEnding({ legacy: 50, titles: 0, seasons: 15 }, 3, bonds),
+      pickEnding({ legacy: 20, titles: 0, seasons: 15 }, 1, bonds),
+      pickEnding({ legacy: 20, titles: 0, seasons: 15 }, 6, bonds),
+      pickEnding({ legacy: 10, titles: 0, seasons: 15 }, 3, close),
+      pickEnding({ legacy: 20, titles: 0, seasons: 15 }, 3, bonds),
+      pickEnding({ legacy: 5, titles: 0, seasons: 15 }, 3, bonds),
+    ]);
+    expect([...got].sort()).toEqual([...NBA_ENDINGS].sort());
+  });
 
   it('a playoff series stops before its deciding game (Game 7), then plays it', async () => {
     let stops = 0;

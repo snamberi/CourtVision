@@ -322,8 +322,8 @@ export const NBA_EVENTS: NbaCard[] = [
   { id: 'late-tv', stops: ['summer'], title: 'After Basketball', when: c => c.year >= 11,
     text: () => 'A TV network wants you in the studio after you retire. A team wants you as an assistant coach. Your mom wants you to rest.',
     choices: () => [
-      { id: 'tv', label: 'Sign with the network for later.', result: 'You practise your TV voice in the mirror. Maya says it\'s terrible.', effects: { hype: 1 } },
-      { id: 'coach', label: 'Start learning to coach.', result: 'You sit in on every coaches\' meeting. You start seeing the game from the bench.', effects: { train: { iq: 2 } } },
+      { id: 'tv', label: 'Sign with the network for later.', result: 'You practise your TV voice in the mirror. Maya says it\'s terrible.', effects: { hype: 1, flag: 'leanTv' } },
+      { id: 'coach', label: 'Start learning to coach.', result: 'You sit in on every coaches\' meeting. You start seeing the game from the bench.', effects: { train: { iq: 2 }, flag: 'leanCoach' } },
       { id: 'rest', label: 'Nothing yet. Play first.', result: 'You put the offers in a drawer. Basketball first.', effects: { grit: 1 } },
     ] },
   { id: 'late-farewell', stops: ['camp'], first: true, title: 'The Last Season', when: c => c.year === 15,

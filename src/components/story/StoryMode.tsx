@@ -8,7 +8,7 @@ import {
 } from '../../story/story';
 import {
   enterDraft, afterDraft, joinLeague, toNextMoment, currentMoment, nbaCtx, nbaCard, nbaGame, chooseNba, playNbaGame, playNbaSeries, continueNba, signNba,
-  trainNba, nbaOffers, storyEnding, storyShareText, nbaCareerLine, nbaYear, nextStop, roundLabel, seasonHeadline, NBA_SEASONS, STOP_LABEL, type NbaRun, type NbaCtx, type StorySim,
+  trainNba, nbaOffers, storyEnding, storyShareText, nbaCareerLine, nbaYear, nextStop, roundLabel, seasonHeadline, NBA_SEASONS, NBA_ENDINGS, STOP_LABEL, type NbaRun, type NbaCtx, type StorySim,
 } from '../../story/storyNba';
 import { prepareStoryLeague, runStoryStep, storyStepRunning, onStoryStatus, storyStatus, leaguePrepPct, storyWorldId, type StoryStatus } from '../../story/storyRunner';
 import { loadStoryWorld, saveStoryWorld, dropStoryWorlds, type StoryWorld } from '../../story/storyStorage';
@@ -53,7 +53,7 @@ export function StoryMode({ onExit }: { onExit: () => void }) {
     saveStory(s);
     if (s && s.done && prev && !prev.done) {
       const e = storyEnding(s);
-      setEndings(recordEnding(e.tier));
+      setEndings(recordEnding(e.tier, e.id));
       rewardRun(storyRewardKey(s), storySpins(e.tier), { secret: storySecret(e.tier), why: 'Story Mode' });
       const score = s.nba ? Math.round(nbaCareerLine(s.nba).legacy * 10) : Math.round(overall(s) * 10 + s.games.filter(g => g.won).length * 50);
       noteWeekRun('story', { score, line: e.title }, `story-${s.seed}${s.nba ? '-nba' : ''}`);
@@ -399,14 +399,19 @@ function NbaView({ s, world, worldMissing, ctx, run, now, onJoin }: NbaViewProps
     <p className="story-points"><PixelIcon name="flame" size={14} /> {m.points} point{m.points === 1 ? '' : 's'} to spend · each one is +{TRAIN_STEP} to every rating in that area</p>
     <TrainButtons s={s} onPick={cat => now(x => trainNba(x, cat))} />
   </section>;
-  if (m.kind === 'farewell') {
+  if (m.kind === 'lastGame') {
     const c = nbaCareerLine(n);
     return <section className="story-chapter">
       <span className="story-act">THE LAST GAME</span><h2>Fifteen Seasons</h2>
-      <p>{c.games} games, {c.ppg} points a game{c.titles ? `, ${c.titles} championship${c.titles === 1 ? '' : 's'}` : ''}{c.allStars ? `, ${c.allStars} All-Star selection${c.allStars === 1 ? '' : 's'}` : ''}. The arena stands for the whole of the last timeout. Dre is in the front row. So is Coach Ray.</p>
+      <p>{c.games} games, {c.ppg} points a game{c.titles ? `, ${c.titles} championship${c.titles === 1 ? '' : 's'}` : ''}{c.allStars ? `, ${c.allStars} All-Star selection${c.allStars === 1 ? '' : 's'}` : ''}. The arena stands for the whole of the last timeout. Mom and Maya are in the front row. So are Dre and Coach Ray.</p>
       <button className="primary hunt-play-big" onClick={() => now(continueNba)}>Walk off the floor</button>
     </section>;
   }
+  if (m.kind === 'farewell') return <section className="story-chapter">
+    <span className="story-act">THE LAST PAGE</span><h2>Ten Years Later</h2>
+    <p>The courts at Carver Park still have one working light. Most Saturdays, somebody is out there at 10 AM, lacing up, asking who has next.</p>
+    <button className="primary hunt-play-big" onClick={() => now(continueNba)}>See how it ends</button>
+  </section>;
   return null;
 }
 
@@ -425,6 +430,7 @@ function Ending({ s, endings, onNew, onNba, busy, onExit }: { s: StoryState; end
       <span className="pixel-eyebrow">THE END · {s.name.toUpperCase()}</span>
       <h2>{e.title}</h2>
       <div className="story-ending-text">{e.text.split('\n').filter(Boolean).map((line, i) => <p key={i}>{line}</p>)}</div>
+      {e.epilogue && <div className="story-epilogue"><span className="pixel-eyebrow">TEN YEARS LATER</span>{e.epilogue.map((line, i) => <p key={i}>{line}</p>)}</div>}
       {c ? <div className="hunt-over-stats">
         <div><small>SEASONS</small><b>{c.seasons}</b></div>
         <div><small>PPG</small><b>{c.ppg}</b></div>
@@ -442,7 +448,9 @@ function Ending({ s, endings, onNew, onNba, busy, onExit }: { s: StoryState; end
     <RelicReward rewardKey={storyRewardKey(s)} />
     {c && s.nba && <ol className="hunt-log">{s.nba.years.map((y, i) => <li key={i} className={y.awards.some(a => a.key === 'champion') ? 'won' : ''}>Season {i + 1} · {y.teamName}{y.record ? ` (${y.record.w}-${y.record.l})` : ''} <small>· {(y.stats.points / Math.max(1, y.stats.gamesPlayed)).toFixed(1)} PPG{y.awards.length ? ` · ${y.awards.map(a => a.label).join(', ')}` : ''}</small></li>)}</ol>}
     {!c && <ol className="hunt-log">{s.games.map((g, i) => <li key={i} className={g.won ? 'won' : 'lost'}>{g.won ? 'W' : 'L'} {g.us}-{g.them} · {g.title} vs {g.opp} <small>· {g.line.pts} PTS, {g.line.reb} REB, {g.line.ast} AST · grade {g.grade}</small></li>)}</ol>}
-    <p className="hint-text">Endings seen: {Object.keys(endings.tiers).length} of 4. A different path, different choices or a different game style tell a different story.</p>
+    <p className="hint-text">{s.nba && !s.classic
+      ? `Endings seen: ${NBA_ENDINGS.filter(id => endings.ids?.[`nba-${id}`]).length} of ${NBA_ENDINGS.length}.`
+      : `Endings seen: ${Object.keys(endings.tiers).length} of 4.`} A different path, different choices or a different game style tell a different story.</p>
     {s.classic && <div className="story-y2"><span className="pixel-eyebrow">NEW: THE NBA YEARS</span><b>Take {s.name.split(' ')[0]} into the real NBA</b><p>Fifteen seasons in today's league, every game played: camps, Christmas games, deadlines, All-Star Weekends, playoffs and free agency. Your player, your bonds and your hype carry over.</p>
       <button className="primary" disabled={!!busy} onClick={onNba}>{busy ? `${busy.label}…` : 'Play the NBA years'}</button></div>}
     <div className="contest-actions">

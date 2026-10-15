@@ -19,6 +19,7 @@ import { applyEffects, heroForGame, trainHero, gradeOf, gameScore, draftPick, or
 import type { StoryWorld } from './storyStorage';
 import { NBA_CARDS, NBA_GAMES, type NbaCard } from './storyNbaCards';
 import { NBA_EVENTS } from './storyNbaEvents';
+import { RETIRE_CARDS, finalCardId } from './storyNbaRetire';
 
 /*
  * Story Mode, the NBA years: fifteen seasons in the real league. Your player is drafted into today's NBA (the same
@@ -43,7 +44,9 @@ export type NbaMoment =
   | { kind: 'card'; id: string }
   | { kind: 'game'; id: string; vs?: string }
   | { kind: 'allStar' } | { kind: 'standings' } | { kind: 'series'; decider?: boolean } | { kind: 'season' }
-  | { kind: 'offers' } | { kind: 'train'; points: number } | { kind: 'farewell' };
+  | { kind: 'offers' } | { kind: 'train'; points: number }
+  /** The last summer: the last game, then the retirement cards, then the end of the story. */
+  | { kind: 'lastGame' } | { kind: 'farewell' };
 
 /** One playoff matchup of his: a play-in game or a series. */
 export interface SeriesNote { label: string; opp: string; won: boolean; w: number; l: number; games: number; pts: number; reb: number; ast: number }
@@ -355,7 +358,10 @@ export function arrive(run: NbaRun, stop: NbaStop): NbaRun {
     case 'allStar': if (weekendDone(world.league)) queue.push({ kind: 'allStar' }); break;
     case 'finale': queue.push({ kind: 'standings' }); break;
     case 'summer': {
-      if (n.years.length >= NBA_SEASONS) { queue.push({ kind: 'farewell' }); break; }
+      if (n.years.length >= NBA_SEASONS) {
+        queue.push({ kind: 'lastGame' }, { kind: 'card', id: 'retire-day' }, { kind: 'card', id: 'retire-next' }, { kind: 'card', id: finalCardId(n.years) }, { kind: 'farewell' });
+        break;
+      }
       if (!teamId) queue.push({ kind: 'offers' });
       queue.push({ kind: 'train', points: summerPoints(s) });
       card('summer');
@@ -370,7 +376,7 @@ const upcoming = (league: League, teamId: string): ScheduledGame[] => league.sch
 export const summerPoints = (s: StoryState) => 2 + (s.grit >= 10 ? 1 : 0);
 
 /** Every card: the season's (camp, contracts, the business) and the deck of what happens around it. */
-export const NBA_DECK: NbaCard[] = [...NBA_CARDS, ...NBA_EVENTS];
+export const NBA_DECK: NbaCard[] = [...NBA_CARDS, ...NBA_EVENTS, ...RETIRE_CARDS];
 const cardsFor = (s: StoryState, ctx: NbaCtx, stop: NbaStop) => NBA_DECK.filter(c => c.stops.includes(stop) && (c.repeat || !s.nba!.seen.includes(c.id)) && (!c.when || c.when(ctx)));
 const hasFirstCard = (s: StoryState, ctx: NbaCtx, stop: NbaStop) => cardsFor(s, ctx, stop).some(c => c.first);
 
@@ -514,7 +520,7 @@ export async function playNbaSeries(run: NbaRun, sim: StorySim): Promise<NbaRun>
   return { s: { ...s, nba: { ...n, run: [...n.run, note], queue: alive ? n.queue : n.queue.slice(1) }, last: text }, world };
 }
 
-/** The moments that only need reading: All-Star Weekend, the standings, the season's wrap, the farewell. */
+/** The moments that only need reading: All-Star Weekend, the standings, the season's wrap, the last game, the farewell. */
 export function continueNba(run: NbaRun): NbaRun {
   const m = currentMoment(run.s);
   if (!m) return run;
@@ -593,27 +599,62 @@ export function nbaCareerLine(n: StoryNba): NbaCareerLine {
   };
 }
 
+/** The endings of the NBA years, most legendary first (see pickEnding). */
+export const NBA_ENDINGS = ['goat', 'legend', 'champion', 'star', 'oneCity', 'journeyman', 'family', 'pro', 'grinder'] as const;
+export type NbaEndingId = (typeof NBA_ENDINGS)[number];
+
+/** Which ending a career earns: greatness first, then a ring, then the shape of the career, then the people. */
+export function pickEnding(c: Pick<NbaCareerLine, 'legacy' | 'titles' | 'seasons'>, teams: number, bonds: Pick<StoryState['bonds'], 'dre' | 'ray' | 'maya'>): NbaEndingId {
+  if (c.legacy >= 150) return 'goat';
+  if (c.legacy >= 90) return 'legend';
+  if (c.titles > 0) return 'champion';
+  if (c.legacy >= 45) return 'star';
+  if (teams === 1 && c.seasons >= 10) return 'oneCity';
+  if (teams >= 5) return 'journeyman';
+  if (bonds.dre + bonds.ray + (bonds.maya ?? 0) >= 12) return 'family';
+  return c.legacy >= 15 ? 'pro' : 'grinder';
+}
+
 /** How the story ends: his whole NBA career (stories from before the NBA years keep their old endings). */
 export function storyEnding(s: StoryState): Ending {
   if (!s.nba || s.classic) return classicEnding(s);
-  const c = nbaCareerLine(s.nba);
+  const n = s.nba;
+  const c = nbaCareerLine(n);
+  const has = (f: string) => s.flags.includes(f);
   const tier: Ending['tier'] = c.legacy >= 90 ? 'legend' : c.legacy >= 45 ? 'star' : c.legacy >= 15 ? 'pro' : 'grinder';
+  const teams = [...new Set(n.years.filter(y => y.teamId).map(y => y.teamName))];
+  const id = pickEnding(c, teams.length, s.bonds);
   const name = s.name.split(' ')[0];
   const line = `${c.seasons} seasons, ${c.games} games: ${c.ppg} points, ${c.rpg} rebounds and ${c.apg} assists a game.`;
-  const base = {
-    legend: { title: 'Immortal', text: `${s.name} goes into the Hall of Fame on the first ballot. ${line}${c.titles ? ` ${c.titles} title${c.titles === 1 ? '' : 's'}.` : ''}${c.mvps ? ` ${c.mvps}× MVP.` : ''} Kids at Carver Park argue about whether anyone was ever better.` },
+  const rings = c.titles ? ` ${c.titles} title${c.titles === 1 ? '' : 's'}.` : '';
+  const hof = c.hallOfFame === 'first-ballot' ? ' A first-ballot Hall of Famer.' : c.hallOfFame === 'yes' ? ' A Hall of Famer.' : '';
+  const base: Record<NbaEndingId, { title: string; text: string }> = {
+    goat: { title: 'The Greatest', text: `${s.name} retires as the best player of a generation, and maybe of any other. ${line}${rings}${c.mvps ? ` ${c.mvps}× MVP.` : ''} The arguments at Carver Park are finally over.` },
+    legend: { title: 'Immortal', text: `${s.name} goes into the Hall of Fame on the first ballot. ${line}${rings}${c.mvps ? ` ${c.mvps}× MVP.` : ''} Kids at Carver Park argue about whether anyone was ever better.` },
+    champion: { title: 'Ring Night', text: `${name} won ${c.titles === 1 ? 'a championship' : `${c.titles} championships`}. ${line}${hof} Whatever else anyone says, the ring${c.titles === 1 ? ' is' : 's are'} real.` },
     star: { title: 'Hall of Famer', text: `${s.name}'s jacket is gold and the speech makes the whole room cry. ${line}${c.allStars ? ` ${c.allStars}× All-Star.` : ''}` },
+    oneCity: { title: 'One City', text: `${c.seasons} seasons, one jersey. ${line} ${teams[0]} fans name a street after ${name}; it runs right past the arena.` },
+    journeyman: { title: 'Have Bags, Will Travel', text: `${teams.length} teams, ${line} Every locker room ${name} ever walked into got a little better, and every one of them still texts.` },
+    family: { title: 'Rich in Every Way', text: `${line} The trophies were never the point. At the end of it all, everyone who was there at Carver Park is still there.` },
     pro: { title: 'A Long Career', text: `${name} played fifteen years in the best league in the world. ${line} Most kids from Carver Park never get one.` },
     grinder: { title: 'Still Standing', text: `It was never easy. ${line} But ${name} was still there at the end, and the kids at Carver Park know the name.` },
-  }[tier];
-  const dre = s.bonds.dre >= 4 ? 'Dre sits in the front row of the induction, wearing the first jersey you ever gave him.' : s.bonds.dre >= 1 ? 'Dre still texts after every game you watch, mostly to say you should have passed.' : "You and Dre don't talk much anymore. Some nights you miss him more than you'll admit.";
+  };
+  const jerseys = c.jerseys.length ? `\nThe ${c.jerseys.join(' and the ')} retired your number.` : '';
+  const after = has('afterTv') ? 'You became the loudest voice on the best basketball show on TV. Your catchphrase is on T-shirts.'
+    : has('afterCoach') ? 'You are a head coach now. Your first timeout speech was word for word what Ray told you at Carver Park.'
+      : has('afterGm') ? 'You run a front office now. Last June you drafted a skinny kid from a park with no nets.'
+        : has('afterGym') ? 'The Carver Park Center has your name and Dre\'s over the door. Two hundred kids a day, and every light works.'
+          : 'You never miss one of Maya\'s games or one of Mom\'s Sunday dinners. Turns out that was the dream too.';
+  const dre = has('dreManager') && s.bonds.dre >= 1 ? 'Dre ran your business for fifteen years and never lost a dollar. He still wears the suit.'
+    : s.bonds.dre >= 4 ? 'Dre sits in the front row at every one of your big nights, wearing the first jersey you ever gave him.'
+      : s.bonds.dre >= 1 ? 'Dre still texts after every game you watch, mostly to say you should have passed.' : "You and Dre don't talk much anymore. Some nights you miss him more than you'll admit.";
   const ray = s.bonds.ray >= 4 ? 'The new gym at the rec center has Coach Ray\'s name over the door. You paid for it.' : s.bonds.ray >= 1 ? 'Coach Ray tells every kid at the rec center that he taught you the left hand.' : 'Coach Ray tells the kids about you. He leaves out the parts where you stopped calling.';
-  const ice = s.bonds.ice >= 2 ? 'Ice gives a speech at your retirement party. Half of it is jokes about Carver Park.' : 'Ice never did say "good game". He did show up to your last one.';
-  const maya = s.flags.includes('mayaPro') ? 'Maya retires a WNBA All-Star. The two of you still argue about who was the better shooter.'
+  const ice = s.bonds.ice >= 2 ? 'Ice gave a speech at your retirement party. Half of it was jokes about Carver Park.' : 'Ice never did say "good game". He did show up to your last one.';
+  const maya = has('mayaPro') ? 'Maya retired a WNBA All-Star. The two of you still argue about who was the better shooter.'
     : (s.bonds.maya ?? 0) >= 3 ? 'Maya sits next to Mom at every big night. She has never once let you win at H-O-R-S-E.'
       : (s.bonds.maya ?? 0) >= 1 ? 'Maya calls every Sunday and still uses your middle-school nickname.' : 'Maya grew up while you were on the road. You are working on it.';
-  const jerseys = c.jerseys.length ? `\nYour number hangs in the rafters in ${c.jerseys.join(' and ')}.` : '';
-  return { id: `nba-${tier}`, title: base.title, text: `${base.text}${jerseys}\n\n${dre}\n${ray}\n${maya}\n${ice}`, tier };
+  const mom = has('momHouse') ? `Mom still lives in the house you bought her${has('momPromise') ? ', and the sticky note from your mirror is framed in her kitchen' : ''}. She still makes you carry the groceries.` : 'Mom still sits in the same seat at every Douglass High game.';
+  return { id: `nba-${id}`, title: base[id].title, text: `${base[id].text}${jerseys}`, tier, epilogue: [after, mom, dre, ray, maya, ice] };
 }
 
 /** The story as text, for sharing. */

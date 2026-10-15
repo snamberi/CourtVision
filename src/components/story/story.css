@@ -66,3 +66,5 @@
 .story-offers button:hover, .story-offers button:focus-visible { border-color: var(--c-border-f47b20, #f47b20); }
 .story-decider { border-color: var(--c-border-e85d5d, #e85d5d); }
 .story-headline { margin: 0; display: flex; gap: 8px; align-items: center; font: 20px var(--ff-display, 'Oswald', sans-serif); letter-spacing: 0.04em; color: var(--c-fg-ffd166, #ffd166); text-transform: uppercase; }
+.story-epilogue { display: grid; gap: 6px; margin-top: 12px; padding-top: 10px; border-top: 2px solid var(--c-border-2a3546, #2a3546); text-align: left; }
+.story-epilogue p { margin: 0; color: var(--c-fg-94a0b2, #94a0b2); }

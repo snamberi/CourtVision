@@ -465,7 +465,11 @@ export function playStoryGame(s: StoryState): StoryState {
 
 // ---------------------------------------------------------------- the ending of a classic story
 
-export interface Ending { id: string; title: string; text: string; tier: 'legend' | 'star' | 'pro' | 'grinder' }
+export interface Ending {
+  id: string; title: string; text: string; tier: 'legend' | 'star' | 'pro' | 'grinder';
+  /** Ten years later: what became of you and the people on the road with you (the NBA years' endings). */
+  epilogue?: string[];
+}
 
 /** The key games of the old scripted rookie year and Year Two (stories finished before the NBA years keep their endings). */
 const CLASSIC_KEY = new Set(['g-state', 'g-final', 'g-ice', 'g-playoff', 'y2-ice', 'y2-final']);
@@ -541,14 +545,15 @@ export function migrateStory(raw: unknown): StoryState | null {
 export function saveStory(s: StoryState | null): void {
   try { if (s) localStorage.setItem(STORY_KEY, JSON.stringify(s)); else localStorage.removeItem(STORY_KEY); } catch { /* storage blocked */ }
 }
-export interface StoryEndings { finished: number; tiers: Partial<Record<Ending['tier'], number>> }
+export interface StoryEndings { finished: number; tiers: Partial<Record<Ending['tier'], number>>; ids?: Record<string, number> }
 export function loadEndings(): StoryEndings {
-  try { const r = JSON.parse(localStorage.getItem(STORY_ENDINGS_KEY) ?? 'null') as StoryEndings | null; if (r && Number.isFinite(r.finished)) return { finished: r.finished, tiers: r.tiers ?? {} }; } catch { /* fall through */ }
+  try { const r = JSON.parse(localStorage.getItem(STORY_ENDINGS_KEY) ?? 'null') as StoryEndings | null; if (r && Number.isFinite(r.finished)) return { finished: r.finished, tiers: r.tiers ?? {}, ids: r.ids ?? {} }; } catch { /* fall through */ }
   return { finished: 0, tiers: {} };
 }
-export function recordEnding(t: Ending['tier']): StoryEndings {
+export function recordEnding(t: Ending['tier'], id?: string): StoryEndings {
   const r = loadEndings();
-  const next = { finished: r.finished + 1, tiers: { ...r.tiers, [t]: (r.tiers[t] ?? 0) + 1 } };
+  const ids = id ? { ...r.ids, [id]: (r.ids?.[id] ?? 0) + 1 } : r.ids;
+  const next = { finished: r.finished + 1, tiers: { ...r.tiers, [t]: (r.tiers[t] ?? 0) + 1 }, ids };
   try { localStorage.setItem(STORY_ENDINGS_KEY, JSON.stringify(next)); } catch { /* storage blocked */ }
   return next;
 }
