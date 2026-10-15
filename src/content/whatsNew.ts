@@ -10,6 +10,15 @@ export interface Release { id: string; title: string; items: string[]; theme?: s
 
 export const RELEASES: Release[] = [
   {
+    id: '2027-06-16',
+    title: 'Ratings in groups, and a lock for every rating',
+    items: [
+      "**Edit Player, in groups:** ratings now come in the same groups as Career Mode (Three-Point, Playmaking, Interior D & Boards and the rest). One slider moves a whole group, and **Fine-tune** opens each rating to edit one by one.",
+      "**Lock any rating:** every rating and every group has a lock (Sandbox Mode). A locked rating never changes on its own: not with development, age, summer camp, practice or Real Player Development, and the group slider leaves it alone.",
+      "**Career Mode, Create Anything:** lock any rating or group there too. Your player keeps that exact number his whole career, from his rookie year on: no growth and no aging.",
+    ],
+  },
+  {
     id: '2027-06-09',
     title: 'Halloween and Christmas events, clans, other leagues and a deeper record book',
     theme: 'spooky',

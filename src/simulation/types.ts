@@ -307,6 +307,9 @@ export interface PlayerSeason {
   /** Edit Player (Sandbox): his ratings stay exactly as they are every summer (he still ages), even under Real Player
    *  Development; while he is still good (Overall 60+) he never retires on age. */
   lockRatings?: boolean;
+  /** Edit Player / Career Create Anything: single ratings ("offense.threePoint") that never change on their own
+   *  (development, real development, summer camp, practice). See ratingLocks.ts. */
+  lockedRatings?: string[];
   /** Edit Player: he develops the Court Vision way (potential, minutes, training) even when Real Player Development is on. */
   ownDevelopment?: boolean;
   /** Regular-season games in a row with 20+ points, as of his last game played (carries over from season to season). */

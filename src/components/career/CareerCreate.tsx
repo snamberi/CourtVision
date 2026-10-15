@@ -16,7 +16,9 @@ import {
 import { MyPlayerBoard, BodyBoard, type BoardCell } from './MyPlayerBoard';
 import { calculateOverall } from '../../simulation/engine/overall';
 import { PlayerAvatar } from '../PlayerAvatar';
+import { PixelIcon } from '../PixelIcon';
 import { PURE_SCORER_FROM } from '../../simulation/engine/superstar';
+import { RatingGroupsEditor, type RatingGroup } from '../RatingGroupsEditor';
 
 const SLICE = 132;
 /** Slices the strip travels before it stops, and slices kept after the stop (so the right side is never empty). */
@@ -241,17 +243,18 @@ export function MyPlayerBuilder({ seed, onDone, onBack }: { seed: number; onDone
 
 // ---------------------------------------------------------------- Create Anything (unranked)
 
-const FIELD_LABEL = (k: string) => k.replace(/([A-Z0-9])/g, ' $1').replace(/^./, c => c.toUpperCase()).replace(/ I Q/g, ' IQ').replace(/ 3$/, ' 3');
-const avgOf = (b: SandboxBuild, paths: string[]) => Math.round(paths.reduce((n, p) => n + (b.values[p] ?? 0), 0) / Math.max(1, paths.length));
-
-/** Create Anything: every rating 1-120, any size, no budget. Just for fun: it never counts anywhere. */
-export function SandboxBuilder({ onDone, onBack }: { onDone: (prime: Prime) => void; onBack: () => void }) {
+/** Create Anything: every rating 1-120, any size, no budget. Just for fun: it never counts anywhere. Any rating (or
+ * group) can be locked: it keeps exactly the number you gave it for the whole career, no growth and no aging. */
+export function SandboxBuilder({ onDone, onBack }: { onDone: (prime: Prime, locks: Record<string, number>) => void; onBack: () => void }) {
   const [b, setB] = useState<SandboxBuild>(() => sandboxBuild(75));
-  const [open, setOpen] = useState<CategoryId | null>(null);
+  const [locked, setLocked] = useState<ReadonlySet<string>>(() => new Set());
   const prime = primeFromSandbox(b);
   const pos = suggestPosition(prime);
-  const rated = CATEGORIES.filter(c => c.id !== 'size');
-  const setAll = (v: number) => setB(x => rated.reduce((acc, c) => setSandbox(acc, categoryPaths(c.id), v), x));
+  const groups = useMemo<RatingGroup[]>(() => CATEGORIES.filter(c => c.id !== 'size').map(c => ({ id: c.id, name: c.name, blurb: c.blurb, paths: categoryPaths(c.id) })), []);
+  const free = (paths: string[]) => paths.filter(p => !locked.has(p));
+  const setAll = (v: number) => setB(x => setSandbox(x, free(groups.flatMap(g => g.paths)), v));
+  const lock = (paths: string[], on: boolean) => setLocked(prev => { const next = new Set(prev); for (const p of paths) { if (on) next.add(p); else next.delete(p); } return next; });
+  const done = () => onDone(prime, Object.fromEntries([...locked].map(p => [p, prime[groups.find(g => g.paths.includes(p))!.id as CategoryId][p]])));
   return <section className="hunt-stage cv-builder cv-sandbox">
     <CreateSteps step={0} />
     <div className="hunt-stage-head"><div><span className="pixel-eyebrow">CREATE ANYTHING</span><h2>Make him whatever you want</h2></div>
@@ -259,27 +262,19 @@ export function SandboxBuilder({ onDone, onBack }: { onDone: (prime: Prime) => v
     <p className="hint-text">Every rating from {SANDBOX_MIN} to {SANDBOX_MAX}, any height, no points to spend. <b>Just for fun:</b> this career never counts for leaderboards, XP, achievements or rewards.</p>
     <div className="cv-sandbox-presets" role="group" aria-label="Set every rating">
       <span>Set everything to</span>{[1, 50, 75, 99, 120].map(v => <button key={v} type="button" onClick={() => setAll(v)}>{v}</button>)}
+      {locked.size > 0 && <span className="hint-text">({locked.size} locked, left as they are)</span>}
     </div>
     <div className="cv-sliders cv-sandbox-size">
       <label><span>Height <b>{feetInches(b.heightIn)}</b></span><input type="range" min={SANDBOX_HEIGHT.min} max={SANDBOX_HEIGHT.max} value={b.heightIn} onChange={e => { const h = Number(e.target.value); setB({ ...b, heightIn: h, wingspanIn: b.wingspanIn + (h - b.heightIn) }); }} /></label>
       <label><span>Wingspan <b>{feetInches(prime.size['physical.wingspanInches'])}</b></span><input type="range" min={b.heightIn - 12} max={b.heightIn + 18} value={b.wingspanIn} onChange={e => setB({ ...b, wingspanIn: Number(e.target.value) })} /></label>
       <label><span>Weight <b>{b.weightLbs} lb</b></span><input type="range" min={SANDBOX_WEIGHT.min} max={SANDBOX_WEIGHT.max} value={b.weightLbs} onChange={e => setB({ ...b, weightLbs: Number(e.target.value) })} /></label>
     </div>
-    <ul className="cv-sandbox-cats">{rated.map(c => { const paths = categoryPaths(c.id), v = avgOf(b, paths);
-      return <li key={c.id}>
-        <label><span><b>{c.name}</b> <small>{c.blurb}</small></span>
-          <span className="mp-stepper">
-            <button type="button" aria-label={`Lower ${c.name}`} onClick={() => setB(setSandbox(b, paths, v - 1))}>−</button>
-            <input type="range" min={SANDBOX_MIN} max={SANDBOX_MAX} value={v} onChange={e => setB(setSandbox(b, paths, Number(e.target.value)))} aria-label={c.name} />
-            <button type="button" aria-label={`Raise ${c.name}`} onClick={() => setB(setSandbox(b, paths, v + 1))}>+</button>
-            <input className="year-input cv-sandbox-num" type="number" min={SANDBOX_MIN} max={SANDBOX_MAX} value={v} onChange={e => setB(setSandbox(b, paths, Number(e.target.value) || SANDBOX_MIN))} aria-label={`${c.name} value`} />
-          </span></label>
-        <button type="button" className="link-button" aria-expanded={open === c.id} onClick={() => setOpen(open === c.id ? null : c.id)}>{open === c.id ? 'Hide each rating' : `Fine-tune ${paths.length} ratings`}</button>
-        {open === c.id && <div className="cv-sandbox-fields">{paths.map(p => <label key={p}><span>{FIELD_LABEL(p.split('.')[1])} <b>{b.values[p]}</b></span>
-          <input type="range" min={SANDBOX_MIN} max={SANDBOX_MAX} value={b.values[p]} onChange={e => setB(setSandbox(b, [p], Number(e.target.value)))} /></label>)}</div>}
-      </li>; })}</ul>
+    <p className="hint-text"><PixelIcon name="lock" size={12} /> Lock a rating (or a whole group) and he keeps exactly that number his whole career: from his rookie year, with no growth and no aging. The group slider leaves it alone too.</p>
+    <RatingGroupsEditor groups={groups} value={p => b.values[p] ?? SANDBOX_MIN} min={SANDBOX_MIN} max={SANDBOX_MAX}
+      onSet={(paths, v) => setB(x => setSandbox(x, paths, v))} locked={locked} onLock={lock}
+      lockHint="Locked: he keeps this number his whole career (no growth, no aging); the group slider skips it." />
     <p>Suggested position: <b>{pos}</b> · prime overall <b>{primeOverall(prime, 'exact', pos)}</b> <small className="hint-text">(over 99 a rating unlocks superstar effects: 110 athleticism plays all 48 minutes, 110 body owns the paint, 110 IQ lifts the team)</small></p>
-    <div className="contest-actions"><button className="primary" onClick={() => onDone(prime)}>Next: name your player</button><button className="link-button" onClick={onBack}>Back</button></div>
+    <div className="contest-actions"><button className="primary" onClick={done}>Next: name your player</button><button className="link-button" onClick={onBack}>Back</button></div>
   </section>;
 }
 
@@ -290,12 +285,12 @@ const LAST = ['Carter', 'Hayes', 'Brooks', 'Walker', 'Ellis', 'Grant', 'Mitchell
 
 export interface IdentityChoice { name: string; pos: Position; jersey: number; readiness: Readiness }
 
-export function IdentityView({ prime, seed, onDone, onBack, ready, pct, sandbox, h }: { prime: Prime; seed: number; onDone: (c: IdentityChoice) => void; onBack: () => void; ready: boolean; pct: number | null; /** Create Anything: "Exactly as built" is offered (and picked). */ sandbox?: boolean; /** For his prototype (the real players he plays like). */ h?: NbaHistory }) {
+export function IdentityView({ prime, seed, onDone, onBack, ready, pct, sandbox, h, locks }: { prime: Prime; seed: number; onDone: (c: IdentityChoice) => void; onBack: () => void; ready: boolean; pct: number | null; /** Create Anything: "Exactly as built" is offered (and picked). */ sandbox?: boolean; /** For his prototype (the real players he plays like). */ h?: NbaHistory; /** Create Anything's locked ratings. */ locks?: Record<string, number> }) {
   const [name, setName] = useState(() => `${FIRST[seed % FIRST.length]} ${LAST[Math.floor(seed / 7) % LAST.length]}`);
   const [pos, setPos] = useState<Position>(() => suggestPosition(prime));
   const [jersey, setJersey] = useState(() => (seed % 50) + 1);
   const [readiness, setReadiness] = useState<Readiness>(sandbox ? 'exact' : 'balanced');
-  const rookie = calculateOverall(buildPlayer({ name: 'x', pos, jersey }, prime, startProgress(), readiness, '2025-26', START_AGE, seed));
+  const rookie = calculateOverall(buildPlayer({ name: 'x', pos, jersey }, prime, startProgress(), readiness, '2025-26', START_AGE, seed, locks));
   const primeOvr = primeOverall(prime, readiness, pos);
   const height = prime.size['physical.heightInches'];
   const shape = useMemo(() => primeShape(prime), [prime]);

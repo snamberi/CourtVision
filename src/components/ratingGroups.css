@@ -1,0 +1,24 @@
+/* Ratings in groups with locks (RatingGroupsEditor): Edit Player and Career's Create Anything. */
+.rg-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.rg-list > li { display: grid; gap: 4px; padding: 8px 10px; background: var(--c-bg-121926, #121926); border: 1px solid var(--c-border-2a3546, #2a3546); }
+.rg-list > li.all-locked { border-color: var(--c-border-ffd166, #ffd166); }
+.rg-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+.rg-head label { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 4px 12px; align-items: center; }
+.rg-head label small { color: var(--c-fg-94a0b2, #94a0b2); font-size: 12px; }
+.rg-stepper { display: flex; align-items: center; gap: 6px; }
+.rg-stepper button { width: 30px; height: 30px; padding: 0; font-size: 16px; }
+.rg-stepper input[type="range"] { flex: 1; min-width: 0; accent-color: var(--c-fg-f47b20, #f47b20); }
+.rg-num { width: 64px; }
+.rg-list > li > .link-button { justify-self: start; font-size: 12px; }
+.rg-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px 12px; }
+.rg-field { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; align-items: end; }
+.rg-field label { display: grid; gap: 2px; font-size: 12px; }
+.rg-field input[type="range"] { width: 100%; accent-color: var(--c-fg-f47b20, #f47b20); }
+.rg-field.locked label b { color: var(--c-fg-ffd166, #ffd166); }
+.rg-lock { display: inline-grid; place-items: center; width: 30px; height: 30px; padding: 0; color: var(--c-fg-94a0b2, #94a0b2); background: var(--c-bg-0b1018, #0b1018); border: 1px solid var(--c-border-2a3546, #2a3546); }
+.rg-lock.on, .rg-lock.some { color: var(--c-fg-ffd166, #ffd166); border-color: var(--c-border-ffd166, #ffd166); }
+.rg-lock.some { border-style: dashed; }
+.rg-lock:focus-visible { outline: 2px solid var(--c-border-ff9d3d, #ff9d3d); outline-offset: 1px; }
+@media (max-width: 640px) {
+  .rg-head label { grid-template-columns: 1fr; }
+}

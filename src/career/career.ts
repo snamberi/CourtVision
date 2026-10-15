@@ -10,7 +10,7 @@ import type { TrophyKey } from '../simulation/trophies';
 import { signingDecision } from '../simulation/freeAgentDecision';
 import { primaryPosition } from '../simulation/teamStatus';
 import { CATEGORIES, categoryScore, withCategory, type CategoryId } from './categories';
-import { buildPlayer, tendenciesFor, valuesAt, primeOverall, MAX_PROGRESS, START_AGE, type Identity, type Prime, type Progress, type Readiness } from './create';
+import { buildPlayer, withLocks, tendenciesFor, valuesAt, primeOverall, MAX_PROGRESS, START_AGE, type Identity, type Prime, type Progress, type Readiness } from './create';
 import { emptyResume, legacyScore, top100, top100Rank, type LegacyResume } from './legacy';
 import { seasonMoment, applyMomentChoice, storyLegacy, type BigMoment, type MomentPick } from './bigMoments';
 import type { NbaHistory } from '../history/nbaHistoryData';
@@ -62,6 +62,8 @@ export interface CareerMeta {
   retired?: { age: number; season: string; legacy: number; rank: number | null; hallOfFame: 'first-ballot' | 'yes' | 'no'; jerseys?: string[] };
   /** Rookie grows faster and ages slower; Legend the other way (absent = Pro). Rookie careers stay off the online boards. */
   difficulty?: Level;
+  /** Create Anything: ratings locked at the value they were built with ("group.field" → value); no growth, no aging. */
+  locks?: Record<string, number>;
 }
 
 export const newCareerMeta = (id: string, seed: number, mode: CareerMode, identity: Identity, prime: Prime, readiness: Readiness, playerId: string, startSeason: string, progress: Progress): CareerMeta => ({
@@ -97,7 +99,7 @@ export function uniqueName(league: League, extras: GMLeagueExtras, name: string)
 
 /** Year one: the player joins the draft class (the league must be stopped at the draft). */
 export function joinDraft(league: League, extras: GMLeagueExtras, meta: CareerMeta): { league: League; extras: GMLeagueExtras } {
-  const rookie = { ...buildPlayer({ ...meta.identity, name: meta.playerId }, meta.prime, meta.progress, meta.readiness, league.season ?? meta.startSeason, START_AGE, meta.seed), careerPlayer: true };
+  const rookie = { ...buildPlayer({ ...meta.identity, name: meta.playerId }, meta.prime, meta.progress, meta.readiness, league.season ?? meta.startSeason, START_AGE, meta.seed, meta.locks), careerPlayer: true };
   const prospect: DraftProspect = { playerId: meta.playerId, trueSeason: rookie, scoutedPotential: rookie.development.potential, scoutingAccuracy: 0.95 };
   return { league, extras: { ...extras, draftClass: [prospect, ...extras.draftClass.filter(d => d.playerId !== meta.playerId)] } };
 }
@@ -146,6 +148,7 @@ export function applyProgress(league: League, extras: GMLeagueExtras, meta: Care
   const vals = valuesAt(meta.prime, meta.progress, meta.readiness);
   let p = found.player;
   for (const c of CATEGORIES) p = withCategory(p, vals[c.id]);
+  p = withLocks(p, meta.locks);
   p = { ...p, tendencies: tendenciesFor(p), careerPlayer: true };
   const overall = calculateOverall(p);
   const prime = primeOverall(meta.prime, meta.readiness, meta.identity.pos);

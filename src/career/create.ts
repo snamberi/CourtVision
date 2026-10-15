@@ -93,10 +93,13 @@ export function suggestPosition(prime: Prime): Position {
 }
 
 /** The player himself at a given progress: a league-ready PlayerSeason. */
-export function buildPlayer(id: Identity, prime: Prime, progress: Progress, readiness: Readiness, season: string, age: number, seed: number): PlayerSeason {
+export function buildPlayer(id: Identity, prime: Prime, progress: Progress, readiness: Readiness, season: string, age: number, seed: number,
+  /** Locked ratings (Create Anything): "group.field" → the value it keeps for the whole career. */
+  locks?: Record<string, number>): PlayerSeason {
   let p = makeDefaultSeason(id.name, season, null, age);
   const vals = valuesAt(prime, progress, readiness);
   for (const c of CATEGORIES) p = withCategory(p, vals[c.id]);
+  p = withLocks(p, locks);
   const rng = new RNG(seed);
   const positions = positionsFrom(id.pos, prime.size['physical.heightInches']);
   p = { ...p, positions, jerseyNumber: id.jersey, source: 'user', firstName: id.name.split(' ')[0], lastName: id.name.split(' ').slice(1).join(' ') || id.name,
@@ -105,6 +108,13 @@ export function buildPlayer(id: Identity, prime: Prime, progress: Progress, read
   const overall = calculateOverall(p);
   const primeOverall = calculateOverall(buildPrimeShell(p, prime, readiness));
   return { ...p, development: { ...p.development, potential: Math.max(overall, primeOverall), peakAge: 27, primeLengthYears: 5 } };
+}
+
+/** Locked ratings put in place (and marked locked, so a league he joins never develops them either). */
+export function withLocks(p: PlayerSeason, locks: Record<string, number> | undefined): PlayerSeason {
+  const paths = Object.keys(locks ?? {});
+  if (!paths.length) return p;
+  return { ...withCategory(p, locks!), lockedRatings: [...new Set([...(p.lockedRatings ?? []), ...paths])].sort() };
 }
 
 function buildPrimeShell(p: PlayerSeason, prime: Prime, readiness: Readiness): PlayerSeason {

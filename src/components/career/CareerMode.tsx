@@ -49,7 +49,7 @@ import { rewardRun, careerSpins, careerSecret, careerRewardKey } from '../../rel
 import { RelicReward, RelicCase } from '../relics/RelicReward';
 import './career.css';
 
-type View = { k: 'hub' } | { k: 'wheel'; seed: number } | { k: 'myplayer'; seed: number } | { k: 'sandbox'; seed: number } | { k: 'identity'; seed: number; prime: Prime; mode: Mode } | { k: 'career' };
+type View = { k: 'hub' } | { k: 'wheel'; seed: number } | { k: 'myplayer'; seed: number } | { k: 'sandbox'; seed: number } | { k: 'identity'; seed: number; prime: Prime; mode: Mode; locks?: Record<string, number> } | { k: 'career' };
 interface Active { meta: CareerMeta; world: CareerWorld | null }
 const newSeed = () => Math.floor(Math.random() * 1_000_000_000);
 
@@ -144,7 +144,7 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
       const playerId = uniqueName(w.league, w.extras, c.name);
       // Career of the Week is always Pro (everyone plays the same game).
       const level = weekly ? 'pro' : challengePrefs('career').level;
-      let meta = { ...newCareerMeta(id, v.seed, v.mode, { name: c.name, pos: c.pos, jersey: c.jersey }, v.prime, c.readiness, playerId, w.league.season ?? '', startProgress()), ...(draftYear ? { draftYear } : {}), ...(weekly ? { weekly } : {}), ...(level !== 'pro' ? { difficulty: level } : {}) };
+      let meta = { ...newCareerMeta(id, v.seed, v.mode, { name: c.name, pos: c.pos, jersey: c.jersey }, v.prime, c.readiness, playerId, w.league.season ?? '', startProgress()), ...(draftYear ? { draftYear } : {}), ...(weekly ? { weekly } : {}), ...(level !== 'pro' ? { difficulty: level } : {}), ...(v.locks ? { locks: v.locks } : {}) };
       track('mode_start', { mode: 'career', variant: weekly ? 'weekly' : v.mode, past_draft: !!draftYear });
       const joined = joinDraft(w.league, w.extras, meta);
       setBusy({ label: 'Draft night…', pct: null });
@@ -221,8 +221,8 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
     {view.k === 'hub' ? <Hub careers={careers} onNew={startNew} onOpen={open} onDelete={id => deleteCareer(id).then(refresh)} />
       : view.k === 'wheel' ? <WheelBuilder h={h} seed={view.seed} fav={weekly ? undefined : readFavorites().player} relics={weekly ? undefined : relicRunOpts()} onBack={() => setView({ k: 'hub' })} onDone={prime => setView({ k: 'identity', seed: view.seed, prime, mode: 'wheel' })} />
       : view.k === 'myplayer' ? <MyPlayerBuilder seed={view.seed} onBack={() => setView({ k: 'hub' })} onDone={prime => setView({ k: 'identity', seed: view.seed, prime, mode: 'myplayer' })} />
-      : view.k === 'sandbox' ? <SandboxBuilder onBack={() => setView({ k: 'hub' })} onDone={prime => setView({ k: 'identity', seed: view.seed, prime, mode: 'sandbox' })} />
-      : view.k === 'identity' ? (busy ? null : <IdentityView prime={view.prime} seed={view.seed} ready={preReady} pct={prePct} sandbox={view.mode === 'sandbox'} h={h} onBack={() => setView(view.mode === 'yourplayer' ? { k: 'hub' } : { k: view.mode, seed: view.seed })} onDone={c => enterDraft(view, c)} />)
+      : view.k === 'sandbox' ? <SandboxBuilder onBack={() => setView({ k: 'hub' })} onDone={(prime, locks) => setView({ k: 'identity', seed: view.seed, prime, mode: 'sandbox', ...(Object.keys(locks).length ? { locks } : {}) })} />
+      : view.k === 'identity' ? (busy ? null : <IdentityView prime={view.prime} seed={view.seed} ready={preReady} pct={prePct} sandbox={view.mode === 'sandbox'} h={h} locks={view.locks} onBack={() => setView(view.mode === 'yourplayer' ? { k: 'hub' } : { k: view.mode, seed: view.seed })} onDone={c => enterDraft(view, c)} />)
       : active ? <CareerView h={h} a={active} busy={!!busy} tradeAsked={tradeAsked}
           onPlay={() => playSeason(active)}
           onAutopilot={on => setActive({ ...active, meta: { ...active.meta, autopilot: on } })}
