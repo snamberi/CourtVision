@@ -58,7 +58,7 @@ export const NBA_CARDS: NbaCard[] = [
   { id: 'dre-call', stops: ['early'], first: true, title: 'A Call From Home', when: c => c.year === 1,
     text: c => `Dre calls at 2 AM. ${c.s.bonds.dre >= 3 ? '"I need a favor, brother. I lost my job."' : '"Hey. I know we haven\'t talked. I lost my job."'} He sounds like he hasn't slept.`,
     choices: c => [
-      { id: 'hire', label: 'Hire him to run your camps back home.', result: 'Dre runs the best youth camp in the city. Two hundred kids from Carver Park learn your name and his.', effects: { bond: { dre: 3 }, hype: 1 } },
+      { id: 'hire', label: 'Hire him to run your camps back home.', result: 'Dre runs the best youth camp in the city. Two hundred kids from Carver Park learn your name and his.', effects: { bond: { dre: 3 }, hype: 1, flag: 'dreCamp' } },
       { id: 'money', label: 'Send money. Lots of it.', result: 'It helps. It isn\'t the same as being there.', effects: { bond: { dre: 1 } } },
       ...(c.s.bonds.dre < 1 ? [{ id: 'ignore', label: 'Let it go to voicemail.', result: 'You tell yourself you\'re focused. Ray hears about it.', effects: { bond: { dre: -2, ray: -1 }, train: { threePoint: 1 } } }] : []),
     ] },

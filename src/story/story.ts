@@ -35,7 +35,8 @@ export const PATHS: Record<Path, { name: string; team: string; blurb: string; mi
   overseas: { name: 'Partizan Belgrade', team: 'Belgrade', blurb: 'Skip college and turn pro in Europe. Grown men, tough coaching, real money.', minutes: 26, hype: 1 },
 };
 
-export type Person = 'dre' | 'ray' | 'ice';
+/** The people on the road with you: best friend Dre, Coach Ray, rival Ice, and your little sister Maya. */
+export type Person = 'dre' | 'ray' | 'ice' | 'maya';
 export interface Effects { hype?: number; grit?: number; bond?: Partial<Record<Person, number>>; train?: Partial<Record<CategoryId, number>>; flag?: string }
 export interface Choice { id: string; label: string; result: string; effects: Effects }
 
@@ -223,7 +224,7 @@ export const TRAINABLE: CategoryId[] = ['finishing', 'midRange', 'threePoint', '
 export function newStory(seed: number, name: string, style: StoryStyle, hometown: string, relics?: { clutchGene?: boolean; pet?: string | null }): StoryState {
   const clean = name.trim().replace(/\s+/g, ' ').slice(0, 24) || 'Jaylen Carter';
   // The Clutch Gene (a secret relic): two grit before the first page.
-  return { v: 2, seed, name: clean, style, hometown, hero: createHero(seed, clean, style), hype: 0, grit: (relics?.clutchGene ? 2 : 0) + (relics?.pet === 'turtle' ? 2 : 0), bonds: { dre: 1, ray: 0, ice: 0 }, flags: [], beat: SCRIPT[0].id, games: [], points: 0, done: false };
+  return { v: 2, seed, name: clean, style, hometown, hero: createHero(seed, clean, style), hype: 0, grit: (relics?.clutchGene ? 2 : 0) + (relics?.pet === 'turtle' ? 2 : 0), bonds: { dre: 1, ray: 0, ice: 0, maya: 2 }, flags: [], beat: SCRIPT[0].id, games: [], points: 0, done: false };
 }
 
 const NBA_BEAT = SCRIPT.find(b => b.kind === 'nba')!;
@@ -238,7 +239,7 @@ export function applyEffects(s: StoryState, e: Effects | undefined): StoryState 
   let hero = s.hero;
   for (const [cat, n] of Object.entries(e.train ?? {})) hero = trainHero(hero, cat as CategoryId, (n ?? 0) * TRAIN_STEP);
   const bonds = { ...s.bonds };
-  for (const [p, n] of Object.entries(e.bond ?? {})) bonds[p as Person] = Math.max(-5, Math.min(6, bonds[p as Person] + (n ?? 0)));
+  for (const [p, n] of Object.entries(e.bond ?? {})) bonds[p as Person] = Math.max(-5, Math.min(6, (bonds[p as Person] ?? 0) + (n ?? 0)));
   return { ...s, hero, hype: Math.max(0, s.hype + (e.hype ?? 0)), grit: Math.max(0, s.grit + (e.grit ?? 0)), bonds, flags: e.flag && !s.flags.includes(e.flag) ? [...s.flags, e.flag] : s.flags };
 }
 
@@ -411,13 +412,15 @@ const V1_BEATS = ['c1', 'park', 'g-park', 'party', 't1', 'c2', 'tryout', 'g-open
 export function migrateStory(raw: unknown): StoryState | null {
   const r = raw as (Omit<Partial<StoryState>, 'v'> & { v?: number; at?: number }) | null;
   if (!r || typeof r !== 'object' || !r.hero || !Array.isArray(r.games)) return null;
-  if (r.v === 2 && typeof r.beat === 'string') return r as StoryState;
+  // Maya joined the story later: older saves meet her as a little sister who is close to you.
+  if (r.v === 2 && typeof r.beat === 'string') return { ...(r as StoryState), bonds: { ...(r as StoryState).bonds, maya: (r as StoryState).bonds.maya ?? 2 } };
   if (r.v !== 1 || typeof r.at !== 'number') return null;
   const { at, ...rest } = r;
   const id = V1_BEATS[Math.max(0, Math.min(V1_BEATS.length - 1, at))];
   const onTheRoad = SCRIPT.some(b => b.id === id && b.kind !== 'nba');
-  if (onTheRoad && !r.done) return { ...(rest as StoryState), v: 2, beat: id };
-  return { ...(rest as StoryState), v: 2, beat: 'nba', points: 0, ...(r.done ? { classic: true } : {}) };
+  const bonds = { ...(rest as StoryState).bonds, maya: (rest as StoryState).bonds.maya ?? 2 };
+  if (onTheRoad && !r.done) return { ...(rest as StoryState), bonds, v: 2, beat: id };
+  return { ...(rest as StoryState), bonds, v: 2, beat: 'nba', points: 0, ...(r.done ? { classic: true } : {}) };
 }
 export function saveStory(s: StoryState | null): void {
   try { if (s) localStorage.setItem(STORY_KEY, JSON.stringify(s)); else localStorage.removeItem(STORY_KEY); } catch { /* storage blocked */ }

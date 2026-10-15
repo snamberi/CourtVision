@@ -18,6 +18,7 @@ import type { CategoryId } from '../career/categories';
 import { applyEffects, heroForGame, trainHero, gradeOf, gameScore, draftPick, ordinal, classicEnding, TRAIN_STEP, TRAINABLE, STYLES, type StoryState, type StoryGame, type Ending } from './story';
 import type { StoryWorld } from './storyStorage';
 import { NBA_CARDS, NBA_GAMES, type NbaCard } from './storyNbaCards';
+import { NBA_EVENTS } from './storyNbaEvents';
 
 /*
  * Story Mode, the NBA years: fifteen seasons in the real league. Your player is drafted into today's NBA (the same
@@ -108,6 +109,8 @@ export interface NbaCtx {
   contract: { salary: number; years: number; extended: boolean; offer: number; supermax: boolean } | null;
   /** His team's record last season (the summer reads it). */
   lastRecord: { w: number; l: number } | null;
+  /** Ice has retired. */
+  iceRetired: boolean;
 }
 
 export function nbaCtx(s: StoryState, world: StoryWorld): NbaCtx {
@@ -135,6 +138,7 @@ export function nbaCtx(s: StoryState, world: StoryWorld): NbaCtx {
     first: s.name.split(' ')[0],
     contract: contractOf(world, found?.player ?? null, teamId),
     lastRecord: n.years.at(-1)?.record ?? null,
+    iceRetired: !!n.iceId && !!league.retiredPlayers?.some(r => r.playerId === n.iceId),
   };
 }
 
@@ -365,7 +369,9 @@ export function arrive(run: NbaRun, stop: NbaStop): NbaRun {
 const upcoming = (league: League, teamId: string): ScheduledGame[] => league.schedule.filter(g => !g.played && (g.homeTeamId === teamId || g.awayTeamId === teamId));
 export const summerPoints = (s: StoryState) => 2 + (s.grit >= 10 ? 1 : 0);
 
-const cardsFor = (s: StoryState, ctx: NbaCtx, stop: NbaStop) => NBA_CARDS.filter(c => c.stops.includes(stop) && (c.repeat || !s.nba!.seen.includes(c.id)) && (!c.when || c.when(ctx)));
+/** Every card: the season's (camp, contracts, the business) and the deck of what happens around it. */
+export const NBA_DECK: NbaCard[] = [...NBA_CARDS, ...NBA_EVENTS];
+const cardsFor = (s: StoryState, ctx: NbaCtx, stop: NbaStop) => NBA_DECK.filter(c => c.stops.includes(stop) && (c.repeat || !s.nba!.seen.includes(c.id)) && (!c.when || c.when(ctx)));
 const hasFirstCard = (s: StoryState, ctx: NbaCtx, stop: NbaStop) => cardsFor(s, ctx, stop).some(c => c.first);
 
 function pickCard(s: StoryState, ctx: NbaCtx, stop: NbaStop): NbaCard | null {
@@ -375,15 +381,17 @@ function pickCard(s: StoryState, ctx: NbaCtx, stop: NbaStop): NbaCard | null {
   const first = pool.filter(c => c.first);
   const from = first.length ? first : pool;
   const rng = new RNG(s.seed * 7 + ctx.year * 101 + SEASON_STOPS.indexOf(stop) * 13 + n.seen.length);
-  const total = from.reduce((t, c) => t + (c.weight ?? 1), 0);
+  // A card that comes back is less likely each time it has (fresh cards first).
+  const weight = (c: NbaCard) => (c.weight ?? 1) / (1 + 2 * n.seen.filter(id => id === c.id).length);
+  const total = from.reduce((t, c) => t + weight(c), 0);
   let roll = rng.next() * total;
-  for (const c of from) { roll -= c.weight ?? 1; if (roll <= 0) return c; }
+  for (const c of from) { roll -= weight(c); if (roll <= 0) return c; }
   return from[from.length - 1];
 }
 
 // ---------------------------------------------------------------- moments
 
-const CARD_BY_ID = new Map(NBA_CARDS.map(c => [c.id, c]));
+const CARD_BY_ID = new Map(NBA_DECK.map(c => [c.id, c]));
 const GAME_BY_ID = new Map(NBA_GAMES.map(g => [g.id, g]));
 export const nbaCard = (id: string) => CARD_BY_ID.get(id);
 export const nbaGame = (id: string) => GAME_BY_ID.get(id);
@@ -558,6 +566,21 @@ export function trainNba(run: NbaRun, cat: CategoryId): NbaRun {
   return { ...run, s: left > 0 ? s : { ...s, last: 'A summer of work. You feel it in your legs and see it in your shot.' } };
 }
 
+/** Awards night's headline: his biggest honour of the season, if any. */
+export function seasonHeadline(y: CareerYear | undefined): string | null {
+  const has = (k: string) => !!y?.awards.some(a => a.key === k);
+  if (has('champion') && has('fmvp')) return 'NBA Champion and Finals MVP';
+  if (has('mvp')) return 'Most Valuable Player';
+  if (has('champion')) return 'NBA Champion';
+  if (has('dpoy')) return 'Defensive Player of the Year';
+  if (has('roy')) return 'Rookie of the Year';
+  if (has('allLeague1')) return 'All-NBA First Team';
+  if (has('mip')) return 'Most Improved Player';
+  if (has('smoy')) return 'Sixth Man of the Year';
+  if (has('allStar')) return 'All-Star';
+  return null;
+}
+
 // ---------------------------------------------------------------- the end
 
 export interface NbaCareerLine { seasons: number; games: number; ppg: number; rpg: number; apg: number; titles: number; mvps: number; allStars: number; legacy: number; hallOfFame: 'first-ballot' | 'yes' | 'no'; jerseys: string[] }
@@ -586,8 +609,11 @@ export function storyEnding(s: StoryState): Ending {
   const dre = s.bonds.dre >= 4 ? 'Dre sits in the front row of the induction, wearing the first jersey you ever gave him.' : s.bonds.dre >= 1 ? 'Dre still texts after every game you watch, mostly to say you should have passed.' : "You and Dre don't talk much anymore. Some nights you miss him more than you'll admit.";
   const ray = s.bonds.ray >= 4 ? 'The new gym at the rec center has Coach Ray\'s name over the door. You paid for it.' : s.bonds.ray >= 1 ? 'Coach Ray tells every kid at the rec center that he taught you the left hand.' : 'Coach Ray tells the kids about you. He leaves out the parts where you stopped calling.';
   const ice = s.bonds.ice >= 2 ? 'Ice gives a speech at your retirement party. Half of it is jokes about Carver Park.' : 'Ice never did say "good game". He did show up to your last one.';
+  const maya = s.flags.includes('mayaPro') ? 'Maya retires a WNBA All-Star. The two of you still argue about who was the better shooter.'
+    : (s.bonds.maya ?? 0) >= 3 ? 'Maya sits next to Mom at every big night. She has never once let you win at H-O-R-S-E.'
+      : (s.bonds.maya ?? 0) >= 1 ? 'Maya calls every Sunday and still uses your middle-school nickname.' : 'Maya grew up while you were on the road. You are working on it.';
   const jerseys = c.jerseys.length ? `\nYour number hangs in the rafters in ${c.jerseys.join(' and ')}.` : '';
-  return { id: `nba-${tier}`, title: base.title, text: `${base.text}${jerseys}\n\n${dre}\n${ray}\n${ice}`, tier };
+  return { id: `nba-${tier}`, title: base.title, text: `${base.text}${jerseys}\n\n${dre}\n${ray}\n${maya}\n${ice}`, tier };
 }
 
 /** The story as text, for sharing. */

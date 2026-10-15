@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { newStory, currentBeat, continueStory, choose, spendTraining, choosePath, playStoryGame, overall, type StoryState } from '../story/story';
 import {
   enterDraft, afterDraft, toNextMoment, currentMoment, chooseNba, playNbaGame, playNbaSeries, continueNba, signNba, trainNba, nbaCard, nbaCtx, nbaOffers,
-  storyEnding, storyShareText, NBA_SEASONS, type NbaRun,
+  storyEnding, storyShareText, NBA_SEASONS, NBA_DECK, type NbaRun, type NbaCtx,
 } from '../story/storyNba';
 import { localSim } from '../story/storySimLocal';
 import type { StoryWorld } from '../story/storyStorage';
@@ -105,6 +105,39 @@ describe('Story Mode: the NBA years', () => {
     expect(a.s.nba!.years.map(y => y.stats.points)).toEqual(b.s.nba!.years.map(y => y.stats.points));
     expect(a.s.games.map(g => g.us)).toEqual(b.s.games.map(g => g.us));
   }, 600_000);
+
+  it('the deck: eighty cards, every one can show, and each reads cleanly in every season', async () => {
+    expect(NBA_DECK.length).toBeGreaterThanOrEqual(80);
+    expect(new Set(NBA_DECK.map(c => c.id)).size).toBe(NBA_DECK.length);
+    const e = enterDraft(toDraftNight(3), await smallWorld(3));
+    const d = await localSim.fromDraft(e.world, 9);
+    const base = nbaCtx(afterDraft({ s: e.s, world: d.world }, d.picks).s, d.world);
+    expect(base.ice).toBeTruthy();
+    const ctxFor = (year: number, high: boolean, flags: string[]): NbaCtx => ({
+      ...base, year, age: 20 + year, rank: high ? 2 : year % 2 ? 8 : 13, ovr: high ? 86 : 55, gp: high ? 50 : 20, ppg: high ? 28 : 6, w: high ? 34 : 10, l: high ? 16 : 30,
+      lastRecord: high ? { w: 20, l: 62 } : { w: 50, l: 32 }, iceRetired: high && year >= 10,
+      contract: high ? { salary: 30e6, years: 1, extended: false, offer: 45e6, supermax: true } : null,
+      ice: base.ice && { ...base.ice, teamId: high ? 'elsewhere' : base.ice.teamId },
+      n: { ...base.n, seen: high ? NBA_DECK.map(c => c.id) : [] },
+      s: { ...base.s, hype: high ? 20 : 0, flags, bonds: high ? { dre: 5, ray: 5, ice: 3, maya: 5 } : { dre: -2, ray: -2, ice: -2, maya: -1 } },
+    });
+    const clean = (text: string) => { expect(text.length).toBeGreaterThan(5); expect(text).not.toMatch(/undefined|NaN|null|\[object/); };
+    const shown = new Set<string>(), flags = new Set<string>(['champion']);
+    for (const pass of [0, 1]) for (let year = 1; year <= NBA_SEASONS; year++) for (const high of [false, true]) {
+      const ctx = ctxFor(year, high, high && pass ? [...flags] : []);
+      for (const card of NBA_DECK) {
+        if (card.when && !card.when(ctx)) continue;
+        shown.add(card.id);
+        clean(card.text(ctx));
+        const cs = card.choices(ctx);
+        expect(cs.length, card.id).toBeGreaterThanOrEqual(2);
+        expect(new Set(cs.map(x => x.id)).size, card.id).toBe(cs.length);
+        for (const ch of cs) { clean(ch.label); clean(typeof ch.result === 'function' ? ch.result(ctx) : ch.result); if (ch.effects?.flag) flags.add(ch.effects.flag); }
+      }
+    }
+    // A chain's later chapters need a flag an earlier choice sets: every card is reachable.
+    expect(NBA_DECK.filter(c => c.stops.length && !shown.has(c.id)).map(c => c.id)).toEqual([]);
+  }, 120_000);
 
   it('a playoff series stops before its deciding game (Game 7), then plays it', async () => {
     let stops = 0;

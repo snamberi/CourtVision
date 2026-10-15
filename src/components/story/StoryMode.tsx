@@ -8,7 +8,7 @@ import {
 } from '../../story/story';
 import {
   enterDraft, afterDraft, joinLeague, toNextMoment, currentMoment, nbaCtx, nbaCard, nbaGame, chooseNba, playNbaGame, playNbaSeries, continueNba, signNba,
-  trainNba, nbaOffers, storyEnding, storyShareText, nbaCareerLine, nbaYear, nextStop, roundLabel, NBA_SEASONS, STOP_LABEL, type NbaRun, type NbaCtx, type StorySim,
+  trainNba, nbaOffers, storyEnding, storyShareText, nbaCareerLine, nbaYear, nextStop, roundLabel, seasonHeadline, NBA_SEASONS, STOP_LABEL, type NbaRun, type NbaCtx, type StorySim,
 } from '../../story/storyNba';
 import { prepareStoryLeague, runStoryStep, storyStepRunning, onStoryStatus, storyStatus, leaguePrepPct, storyWorldId, type StoryStatus } from '../../story/storyRunner';
 import { loadStoryWorld, saveStoryWorld, dropStoryWorlds, type StoryWorld } from '../../story/storyStorage';
@@ -212,6 +212,7 @@ function HeroPanel({ s, ctx }: { s: StoryState; ctx: NbaCtx | null }) {
     <ul className="story-bonds">
       <li><b>Dre</b> <small>best friend</small><span>{BOND_LABEL(s.bonds.dre)}</span></li>
       <li><b>Coach Ray</b> <small>mentor</small><span>{BOND_LABEL(s.bonds.ray)}</span></li>
+      <li><b>Maya</b> <small>little sister</small><span>{BOND_LABEL(s.bonds.maya ?? 0)}</span></li>
       <li><b>Ice Vance</b> <small>rival{ctx?.ice ? ` · ${ctx.ice.teamName}` : ''}</small><span>{RIVAL_LABEL(s.bonds.ice)}</span></li>
     </ul>
     <ol className="story-acts" aria-label="Chapters">
@@ -371,6 +372,7 @@ function NbaView({ s, world, worldMissing, ctx, run, now, onJoin }: NbaViewProps
     const per = (v: number) => (y && y.stats.gamesPlayed ? (v / y.stats.gamesPlayed).toFixed(1) : '0');
     return <section className="story-scene">
       <span className="pixel-eyebrow">SEASON {n.years.length} OF {NBA_SEASONS} · {y?.season ? formatSeasonYear(y.season) : ''}</span>
+      {seasonHeadline(y) && <p className="story-headline"><PixelIcon name="trophy" size={16} /> {seasonHeadline(y)}</p>}
       <h2>{y ? `${y.teamName}${y.record ? `, ${y.record.w}-${y.record.l}` : ''}` : 'The season'}</h2>
       {y && <p>{y.stats.gamesPlayed} games: {per(y.stats.points)} points, {per(y.stats.oreb + y.stats.dreb)} rebounds, {per(y.stats.ast)} assists a game.{y.finish ? ` ${y.finish}.` : ''}</p>}
       {n.run.length > 0 && <ul className="story-facts">{n.run.map((x, i) => <li key={i}>{x.label}: {x.won ? 'beat' : 'lost to'} {x.opp}{x.games > 1 ? ` ${x.w}-${x.l}` : ''}</li>)}</ul>}
