@@ -9,6 +9,8 @@ import type { NbaCtx } from './storyNba';
 
 const has = (c: NbaCtx, flag: string) => c.s.flags.includes(flag);
 const bond = (c: NbaCtx, who: 'dre' | 'ray' | 'ice' | 'maya') => c.s.bonds[who] ?? 0;
+/** Who handles your business (chosen when you declared for the draft). */
+const agent = (c: NbaCtx) => (has(c, 'dreManager') ? 'Your manager Dre' : has(c, 'agentLena') ? 'Your agent Lena' : 'Your agent Sal');
 
 export const NBA_EVENTS: NbaCard[] = [
   // ---------------------------------------------------------------- Maya, your little sister
@@ -117,7 +119,7 @@ export const NBA_EVENTS: NbaCard[] = [
 
   // ---------------------------------------------------------------- Mom
   { id: 'mom-house', stops: ['summer'], title: 'Mom\'s House', when: c => c.year <= 2,
-    text: () => 'Your first real NBA paycheck clears. Your mom still works double shifts at the hospital and still lives in the apartment you grew up in.',
+    text: c => `Your first real NBA paycheck clears. ${has(c, 'momPromise') ? 'The sticky note is still on your mirror back home: "Buy Mom a house." ' : ''}Your mom still works at the hospital and still lives in the apartment you grew up in.`,
     choices: () => [
       { id: 'house', label: 'Buy her the house she always pointed at.', result: 'She cries in the driveway. Then she makes you carry every box.', effects: { hype: 1, flag: 'momHouse' } },
       { id: 'choose', label: 'Give her the money and let her choose.', result: 'She pays off her sister\'s house first. That\'s Mom.', effects: { grit: 1, flag: 'momHouse' } },
@@ -140,7 +142,7 @@ export const NBA_EVENTS: NbaCard[] = [
 
   // ---------------------------------------------------------------- the agent and the business
   { id: 'agent-commercial', stops: ['early'], repeat: true, title: 'The Commercial', when: c => c.year >= 2 && c.s.hype >= 6,
-    text: () => 'Your agent Sal has a national commercial for you: one day of shooting on your only off day this month.',
+    text: c => `${agent(c)} has a national commercial for you: one day of shooting on your only off day this month.`,
     choices: () => [
       { id: 'shoot', label: 'Shoot it.', result: 'Twelve hours of pretending to dunk on a man in a cereal costume. You\'re on every TV by Friday.', effects: { hype: 2, grit: -1 } },
       { id: 'rest', label: 'Turn it down. You need the rest.', result: 'Sal sighs loudly into the phone. Your legs thank you.', effects: { train: { body: 1 } } },
