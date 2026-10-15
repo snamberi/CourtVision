@@ -69,6 +69,8 @@ const inferno = (cat: AvatarCategory, id: string): Rule => season(cat, id, 'infe
 const shop = (cat: AvatarCategory, id: string): Rule => ({ shop: `shop-${cat}-${id}` });
 /** A secret piece: only a Relic Vault spin can drop it (relics/secretCosmetics.ts). */
 const secret = (cat: AvatarCategory, id: string): Rule => ({ shop: `secret-${cat}-${id}` });
+/** A holiday event piece: bought with event coins while its event is on (retention/holidayShop.ts). */
+const evt = (holiday: 'halloween' | 'christmas', cat: AvatarCategory, id: string): Rule => ({ shop: `evt-${holiday}-${cat}-${id}` });
 const item = (cat: AvatarCategory, id: string, name: string, rule: Rule = FREE, extra: Partial<AvatarItem> = {}): AvatarItem => ({ id, name, rule: road(cat, id) ?? rule, ...extra });
 
 // ---------------------------------------------------------------- body and hair colours
@@ -91,6 +93,8 @@ export const SKINS: AvatarItem[] = [
   item('skin', 'obsidian', 'Obsidian', shop('skin', 'obsidian'), { hex: '#2a2238' }), item('skin', 'jade', 'Jade', shop('skin', 'jade'), { hex: '#2fae8a' }),
   item('skin', 'coral', 'Coral', shop('skin', 'coral'), { hex: '#ff7a6b' }),
   item('skin', 'nebula', 'Nebula', secret('skin', 'nebula'), { hex: '#5b3fd6' }),
+  item('skin', 'pumpkin', 'Pumpkin', evt('halloween', 'skin', 'pumpkin'), { hex: '#ff7a1a' }),
+  item('skin', 'gingerbread', 'Gingerbread', evt('christmas', 'skin', 'gingerbread'), { hex: '#b8743a' }),
 ];
 
 export const HAIR_COLORS: AvatarItem[] = [
@@ -109,6 +113,8 @@ export const HAIR_COLORS: AvatarItem[] = [
   item('hairColor', 'sunset', 'Sunset', shop('hairColor', 'sunset'), { hex: '#ff7e5f' }), item('hairColor', 'mint', 'Mint', shop('hairColor', 'mint'), { hex: '#6ff0c2' }),
   item('hairColor', 'lilac', 'Lilac', shop('hairColor', 'lilac'), { hex: '#c9a0ff' }),
   item('hairColor', 'phantom', 'Phantom', secret('hairColor', 'phantom'), { hex: '#9fffe0' }),
+  item('hairColor', 'slime', 'Witch green', evt('halloween', 'hairColor', 'slime'), { hex: '#7ee03a' }),
+  item('hairColor', 'frostTips', 'Frost tips', evt('christmas', 'hairColor', 'frostTips'), { hex: '#dff6ff' }),
 ];
 
 // ---------------------------------------------------------------- hair and beards
@@ -199,6 +205,11 @@ export const OUTFITS: Outfit[] = [
   fit('goldVarsity', 'Gold varsity jacket', 'varsity', '#1a1f2a', '#ffd166', shop('outfit', 'goldVarsity')),
   // Secret: dropped by a spin.
   fit('shadowTux', 'Shadow tux', 'tux', '#0b0b12', '#b983ff', secret('outfit', 'shadowTux')),
+  // Holiday events.
+  fit('pumpkinHoodie', 'Pumpkin hoodie', 'hoodie', '#ff7a1a', '#1a1024', evt('halloween', 'outfit', 'pumpkinHoodie')),
+  fit('skeletonRobe', 'Skeleton robe', 'soulReaper', '#101014', '#f4f0e6', evt('halloween', 'outfit', 'skeletonRobe')),
+  fit('uglySweater', 'Ugly holiday sweater', 'hoodie', '#1f8a3a', '#e8323c', evt('christmas', 'outfit', 'uglySweater')),
+  fit('elfSuit', 'Elf suit', 'santa', '#1f8a3a', '#ffd166', evt('christmas', 'outfit', 'elfSuit')),
 ];
 
 // ---------------------------------------------------------------- headwear, eyewear, neck and back, shoes, aura
@@ -213,6 +224,10 @@ export const HATS: AvatarItem[] = [
   item('hat', 'glitchHalo', 'Error halo', season('hat', 'glitchHalo')),
   item('hat', 'iceCrown', 'Ice crown', frozen('hat', 'iceCrown')),
   item('hat', 'flameCrown', 'Flame crown', inferno('hat', 'flameCrown')),
+  item('hat', 'pumpkinHead', 'Pumpkin head', evt('halloween', 'hat', 'pumpkinHead')),
+  item('hat', 'witchHat', 'Witch hat', evt('halloween', 'hat', 'witchHat')),
+  item('hat', 'reindeerAntlers', 'Reindeer antlers', evt('christmas', 'hat', 'reindeerAntlers')),
+  item('hat', 'elfHat', 'Elf hat', evt('christmas', 'hat', 'elfHat')),
 ];
 export const EYES: AvatarItem[] = [
   item('eyes', 'none', 'Nothing'), item('eyes', 'glasses', 'Glasses'), item('eyes', 'shades', 'Shades'),
@@ -237,6 +252,8 @@ export const NECKS: AvatarItem[] = [
   item('neck', 'glitchWings', 'Data wings', season('neck', 'glitchWings')),
   item('neck', 'frostCape', 'Frost cape', frozen('neck', 'frostCape')),
   item('neck', 'flameCape', 'Flame cape', inferno('neck', 'flameCape')),
+  item('neck', 'ghostCape', 'Ghost cape', evt('halloween', 'neck', 'ghostCape')),
+  item('neck', 'holidayScarf', 'Holiday scarf', evt('christmas', 'neck', 'holidayScarf')),
 ];
 export const SHOES: AvatarItem[] = [
   item('shoes', 'team', 'Match the outfit'), item('shoes', 'white', 'White', FREE, { hex: '#f4f6fa' }), item('shoes', 'black', 'Black', FREE, { hex: '#1a1f2a' }),
@@ -250,6 +267,8 @@ export const SHOES: AvatarItem[] = [
   item('shoes', 'lava', 'Lava runners', shop('shoes', 'lava'), { hex: '#ff4d1a' }), item('shoes', 'midnight', 'Midnight kicks', shop('shoes', 'midnight'), { hex: '#262b6b' }),
   item('shoes', 'chrome', 'Chrome kicks', shop('shoes', 'chrome'), { hex: '#d8dee8' }),
   item('shoes', 'stardust', 'Stardust kicks', secret('shoes', 'stardust'), { hex: '#ffe7a3' }),
+  item('shoes', 'batKicks', 'Bat kicks', evt('halloween', 'shoes', 'batKicks'), { hex: '#5a2d91' }),
+  item('shoes', 'candyCane', 'Candy cane kicks', evt('christmas', 'shoes', 'candyCane'), { hex: '#e8323c' }),
 ];
 export const AURAS: AvatarItem[] = [
   item('aura', 'none', 'Nothing'), item('aura', 'sparkles', 'Sparkles', lv(32)), item('aura', 'hearts', 'Hearts', lv(64)), item('aura', 'ice', 'Frost', lv(96)),
@@ -261,6 +280,8 @@ export const AURAS: AvatarItem[] = [
   item('aura', 'glitch', 'Glitch aura', season('aura', 'glitch')),
   item('aura', 'blizzard', 'Blizzard', frozen('aura', 'blizzard')),
   item('aura', 'inferno', 'Inferno aura', inferno('aura', 'inferno')),
+  item('aura', 'haunted', 'Haunted', evt('halloween', 'aura', 'haunted')),
+  item('aura', 'snowfall', 'Snowfall', evt('christmas', 'aura', 'snowfall')),
 ];
 
 export const AVATAR_CATEGORIES: { id: AvatarCategory; label: string; items: AvatarItem[] }[] = [
@@ -334,6 +355,6 @@ export function avatarHow(i: AvatarItem): string {
   if ('honor' in r && r.honor === 'hunt-week-10') return 'Top 10% of a Weekly Hunt';
   if ('staff' in r) return 'Game Owner only';
   if ('season' in r) return seasonHow(r);
-  if ('shop' in r) return isSecretCosmetic(r.shop) ? SECRET_HOW : 'Relic Shop';
+  if ('shop' in r) return r.shop.startsWith('evt-halloween-') ? 'Spooky Season event shop' : r.shop.startsWith('evt-christmas-') ? 'Winter Wonderland event shop' : isSecretCosmetic(r.shop) ? SECRET_HOW : 'Relic Shop';
   return 'Special';
 }

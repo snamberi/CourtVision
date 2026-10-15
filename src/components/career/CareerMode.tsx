@@ -1,5 +1,6 @@
 import { ResultCount, ResultCrest } from '../presentation/ResultPresentation';
 import { ModeBackdrop } from '../presentation/ModeScene';
+import { noteHolidayFinish } from '../../retention/holiday';
 import { ModeIcon } from '../ModeIcon';
 import type { BigMoment } from '../../career/bigMoments';
 import { plural } from '../../lib/humanize';
@@ -76,6 +77,7 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
   const persist = useCallback((meta: CareerMeta, world: CareerWorld | null) => {
     setActive({ meta, world });
     if (meta.status === 'retired' && isSandboxCareer(meta)) {
+      noteHolidayFinish(false, `career-${meta.id}`);
       trackOnce(`career-${meta.id}`, 'mode_finish', { mode: 'career', variant: 'sandbox', seasons: meta.years.length, legacy: meta.retired?.legacy ?? 0 });
       saveCareer(meta).then(() => dropWorld(meta.id)).then(refresh); return;
     }
@@ -83,6 +85,7 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
       if (meta.weekly && meta.retired) recordWeekly('career', meta.weekly, { best: meta.retired.legacy, label: meta.playerId });
       if (meta.retired) rewardRun(careerRewardKey(meta), careerSpins(meta.retired.hallOfFame), { secret: careerSecret(meta.retired.hallOfFame), why: 'Career Mode' });
       if (meta.retired) noteWeekRun('career', { score: meta.retired.legacy, line: `${meta.playerId}, Legacy ${meta.retired.legacy.toFixed(1)}` }, `career-${meta.id}`);
+      noteHolidayFinish(!!meta.retired && meta.retired.hallOfFame !== 'no', `career-${meta.id}`);
       trackOnce(`career-${meta.id}`, 'mode_finish', { mode: 'career', variant: meta.weekly ? 'weekly' : meta.mode, seasons: meta.years.length, legacy: meta.retired?.legacy ?? 0, hall: meta.retired?.hallOfFame ?? 'no', past_draft: !!meta.draftYear });
       saveCareer(meta).then(() => dropWorld(meta.id)).then(refresh); return;
     }

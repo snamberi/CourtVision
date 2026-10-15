@@ -9,6 +9,7 @@ import { totalXp, levelFor, localName } from '../../profile/profile';
 import { loadMyRatings, myOverall } from '../../profile/myRatings';
 import { weekEndsAt } from '../../retention/week';
 import { noteWeekRun } from '../../retention/weekLog';
+import { noteHolidayFinish } from '../../retention/holiday';
 import { noteFeat } from '../../profile/feats';
 import { CourtLineup, type LineupPlayer } from '../CourtLineup';
 import { assignToSpots, THREE_SPOTS } from '../lineupSpots';
@@ -78,6 +79,7 @@ export function LegendsGame({ h }: { h: NbaHistory }) {
     const next: LegendsRun = { ...run, round: run.round + (won ? 1 : 0), alive: won, results: [...run.results, { opp: opp.name, score: g.score, won }] };
     writeRun(next); setRun(next);
     if (won && next.round >= ROUND_NAMES.length) window.setTimeout(() => celebrate(), 2600);
+    if (!won || next.round >= ROUND_NAMES.length) noteHolidayFinish(won, `legends-${week}`);
     if (!won || next.round >= ROUND_NAMES.length) noteWeekRun('bracket', { score: next.round * 10, line: `${mine.name}: ${next.round >= ROUND_NAMES.length ? 'Legends champion' : `out in the ${ROUND_NAMES[run.round]}`}` }, `legends-${week}`);
   };
   const avatar = (b: Baller, size = 64) => <PlayerAvatar playerId={b.name} teamId={b.team} size={size} title={b.name} />;
@@ -129,7 +131,7 @@ export function StreetGame({ h }: { h: NbaHistory }) {
     const g = playStreet([me(), ...team], crew, 21, seed ^ (streak + 1) * 7919);
     setGame({ g, crew }); setRevealed(false);
     if (g.winner === 0) { const s = streak + 1; setStreak(s); if (s > best) { setBest(s); try { localStorage.setItem(STREET_KEY, String(s)); } catch { /* storage blocked */ } } }
-    else { setLost(true); noteWeekRun('hilo', { score: streak, line: `3v3 Street: ${streak} win${streak === 1 ? '' : 's'} in a row` }); }
+    else { setLost(true); noteHolidayFinish(streak >= 3); noteWeekRun('hilo', { score: streak, line: `3v3 Street: ${streak} win${streak === 1 ? '' : 's'} in a row` }); }
   };
   const restart = () => { setSeed(Math.floor(Math.random() * 1e9)); setTeam([]); setStreak(0); setGame(null); setLost(false); };
   const face = (b: Baller, size = 48) => b.id === '__me__' ? <MyAvatar size={size} mode="full" title={b.name} /> : <PlayerAvatar playerId={b.name} teamId={b.team} size={size} title={b.name} />;
@@ -180,6 +182,7 @@ export function GmTournament({ h }: { h: NbaHistory }) {
     if (g?.winner.you && next === TOUR_ROUNDS.length - 1) window.setTimeout(() => celebrate(), 2600);
     const lost = g && !g.winner.you, champ = g?.winner.you && next === TOUR_ROUNDS.length - 1;
     if (lost || champ) {
+      noteHolidayFinish(!!champ, `gm-tour-${week}`);
       noteWeekRun('bracket', { score: (next + (champ ? 1 : 0)) * 10, line: `GM Tournament: ${champ ? 'champion' : `out in the ${TOUR_ROUNDS[next]}`}` }, `gm-tour-${week}`);
       if (champ) noteFeat('tourTitles', 1);
     }

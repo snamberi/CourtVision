@@ -1,5 +1,7 @@
 import { ModeIcon } from './ModeIcon';
 import { PrivacyLink } from './PrivacyLink';
+import { activeHoliday, daysLeft as holidayDaysLeft, eventCoins, loadHoliday } from '../retention/holiday';
+import type { CSSProperties } from 'react';
 import { IS_DESKTOP_BUILD } from '../appMode';
 import { DISCORD_URL } from './DiscordLink';
 import { CookieSettingsLink } from '../consent/ConsentBanner';
@@ -292,6 +294,7 @@ function ThisWeek({ busy, onRebuild, onCareer, onHunt, onCommunity, onFeatured }
   return <section className="this-week" aria-label="This week's challenges">
     <div className="this-week-head"><h2>This week</h2><span>{rb.week} · new challenges in {days} day{days === 1 ? '' : 's'}{streak > 1 ? ` · ${streak}-week streak` : ''}</span>{cloudEnabled && <button className="link-button" onClick={() => setBoard(true)}>Leaderboard</button>}</div>
     {board && <WeeklyBoardDialog onClose={() => setBoard(false)} onCommunity={onCommunity} />}
+    <HolidayCard now={now} />
     <article className="mode-of-week weekly-event"><span className="pixel-eyebrow">WEEKLY EVENT · ENDS IN {days} DAY{days === 1 ? '' : 'S'}</span><b>{weeklyEvent(now).name}</b><p>{weeklyEvent(now).blurb} A new event every Monday.</p></article>
     <article className="mode-of-week"><span className="pixel-eyebrow">MODE OF THE WEEK · DOUBLE XP</span><b>{FEATURED_NAME[featured]}</b>
       <p>Every {FEATURED_NAME[featured]} run you finish this week earns its XP twice (up to {WEEKLY_BONUS_CAP.toLocaleString()} bonus XP). A new mode every Monday.</p>
@@ -436,4 +439,17 @@ function RelicStrip({ onOpen }: { onOpen: () => void }) {
     <span><b>Relic Vault{s.spins ? ` · ${s.spins} spin${s.spins === 1 ? '' : 's'} waiting` : ''}</b><small>+{+totalLuck(s).toFixed(1)}% luck · {s.coins.toLocaleString()} coins · {p.owned}/{p.total} relics{p.secrets ? ` · ${p.secrets} secret${p.secrets === 1 ? '' : 's'}` : ''}</small></span>
     <button className={s.spins ? 'primary' : ''} onClick={onOpen}>{s.spins ? 'Spin now' : 'Open the vault'}</button>
   </section>;
+}
+
+/** The holiday event's card: only while Spooky Season or Winter Wonderland is on. */
+function HolidayCard({ now }: { now: Date }) {
+  const run = activeHoliday(now);
+  if (!run) return null;
+  const h = run.holiday, left = holidayDaysLeft(run, now), coins = eventCoins(loadHoliday(), run.key);
+  const vars = { '--hol-bg': h.colors.bg, '--hol-panel': h.colors.panel, '--hol-accent': h.colors.accent, '--hol-text': h.colors.text, '--hol-glow': h.colors.glow } as CSSProperties;
+  return <article className="mode-of-week holiday menu-holiday" style={vars}>
+    <span className="pixel-eyebrow">HOLIDAY EVENT · {left} DAY{left === 1 ? '' : 'S'} LEFT</span><b>{h.name}</b>
+    <p>{h.blurb} You have {coins.toLocaleString()} {coins === 1 ? h.coin : h.coins}.</p>
+    <button className="primary" onClick={() => { location.hash = '#/event'; }}>Open the {h.id === 'halloween' ? 'Spooky' : 'Holiday'} Shop</button>
+  </article>;
 }

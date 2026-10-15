@@ -1,11 +1,12 @@
 import { syncNow } from '../cloud/sync';
 import { readPlayTime, formatPlayTime, topArea, AREA_LABEL, type PlayArea } from '../retention/playTime';
+import { eventPieceHidden } from '../retention/holiday';
 import { PLAY_TIME_EVENT } from '../retention/usePlayClock';
 import { useEffect, useState, type ReactNode } from 'react';
 import { xpParts, totalXp, levelFor, equipped, equip, rankTitles, localName, setLocalName, unlockOpen, unlockHow, listedFor, FRAMES, FLOORS, PHONES, TITLES, PROFILE_EVENT, type Unlock } from '../profile/profile';
 import { OWNER_TITLE, SOVEREIGN_TITLE } from '../profile/ownerAccess';
 import { FOUNDING_TITLE } from '../profile/founding';
-import { ALBUM_TITLES, ICONS, NAME_COLORS, HONORS, MODE_TITLES, SUPPORTER_TITLE, unlockContext, isOpen, earnedExtraTitles, type UnlockContext } from '../profile/cosmetics';
+import { ALBUM_TITLES, EVENT_TITLES, ICONS, NAME_COLORS, HONORS, MODE_TITLES, SUPPORTER_TITLE, unlockContext, isOpen, earnedExtraTitles, type UnlockContext } from '../profile/cosmetics';
 import { DAILY_EVENT } from '../profile/dailyGoals';
 import { LEGACY_EVENT } from '../storage/gmLegacy';
 import { PixelIcon } from './PixelIcon';
@@ -69,7 +70,7 @@ const pickerId = (label: string) => `pick-${label.toLowerCase().replace(/[^a-z]+
 
 /** Supporter cosmetics are listed only while the pass is on sale (or already owned). */
 const showSupporter = (c: UnlockContext) => c.supporter || passesOnSale();
-const listed = <T extends { rule: object }>(list: T[], c: UnlockContext) => list.filter(x => (!('supporter' in x.rule) || showSupporter(c)) && (!('staff' in x.rule) || !!c.staff));
+const listed = <T extends { rule: object }>(list: T[], c: UnlockContext) => list.filter(x => (!('supporter' in x.rule) || showSupporter(c)) && (!('staff' in x.rule) || !!c.staff) && !eventPieceHidden('shop' in x.rule ? (x.rule as { shop: string }).shop : null, c.shop ?? []));
 
 /** Every title and where it comes from: levels, ranked seasons, leaderboards and the modes. */
 function titleGroups(c: UnlockContext) {
@@ -89,13 +90,14 @@ function titleGroups(c: UnlockContext) {
     { label: 'Missions', items: MISSION_TITLES.map(t => ({ title: t.title, open: (c.missions ?? 0) >= t.n, how: `Finish ${t.n} weekly missions`, progress: (c.missions ?? 0) / t.n })) },
     { label: 'Card album', items: ALBUM_TITLES.map(t => { const have = (t.kind === 'sets' ? c.album?.sets : c.album?.legendary) ?? 0; return { title: t.title, open: have >= t.n, how: t.kind === 'sets' ? `Complete ${t.n} team card set${t.n === 1 ? '' : 's'}` : `Collect ${t.n} legendary cards`, progress: have / t.n }; }) },
     { label: 'Account', items: [{ title: FOUNDING_TITLE, open: !!c.account, how: 'Create a free account' }] },
+    { label: 'Events', items: EVENT_TITLES.filter(t => !eventPieceHidden(t.key, c.shop ?? [])).map(t => ({ title: t.title, open: (c.shop ?? []).includes(t.key), how: t.how })) },
     ...(c.staff ? [{ label: 'Owner', items: [{ title: OWNER_TITLE, open: true, how: 'The game owner' }, { title: SOVEREIGN_TITLE, open: true, how: 'The game owner' }] }] : []),
-  ].filter(g => g.label !== 'Supporter' || showSupporter(c)) as TitleGroup[];
+  ].filter(g => (g.label !== 'Supporter' || showSupporter(c)) && g.items.length > 0) as TitleGroup[];
 }
 interface TitleGroup { label: string; items: { title: string; open: boolean; how: string; progress?: number }[] }
 const GROUP_ICON: Record<string, string> = {
   Levels: 'up', Ranked: 'crown', Leaderboards: 'chart', Achievements: 'check', Supporter: 'heart', 'Trophy Road': 'trophy',
-  'Daily streak': 'flame', 'Season Pass': 'calendar', Missions: 'check', 'Card album': 'list', Account: 'team', Owner: 'crown',
+  'Daily streak': 'flame', 'Season Pass': 'calendar', Missions: 'check', 'Card album': 'list', Account: 'team', Owner: 'crown', Events: 'star',
 };
 
 /** Titles a group shows before "Show all". */
@@ -217,7 +219,7 @@ export function ClosetPickers({ tab }: { tab: Exclude<ClosetTab, 'character' | '
   const ctx = unlockContext(p.level);
   const signedIn = account.status === 'signedIn' && !!account.profile?.username;
   const name = signedIn ? account.profile!.username! : localName();
-  const titleColorList = TITLE_COLORS.filter(c => !c.staff || ctx.staff);
+  const titleColorList = TITLE_COLORS.filter(c => (!c.staff || ctx.staff) && !eventPieceHidden(c.shop, ctx.shop ?? []));
   const iconList = listed(ICONS, ctx), nameColorList = listed(NAME_COLORS, ctx);
   return <section className="locker-bay profile-panel closet-panel">
     {tab === 'name' && <>
@@ -238,7 +240,7 @@ export function ClosetPickers({ tab }: { tab: Exclude<ClosetTab, 'character' | '
         <i className={c.anim ? `anim-${c.anim}` : undefined} style={{ background: c.css, backgroundSize: c.anim ? '200% 100%' : undefined }} aria-hidden="true" />
         <b><Tinted css={c.css} anim={c.anim}>{c.name}</Tinted></b>
         <em><Tinted css={c.css} anim={c.anim}>{eq.title}</Tinted></em>
-        <small>{open ? (eq.titleColor === c.id ? 'Equipped' : 'Unlocked') : c.shop ? (c.shop.startsWith('secret-') ? 'Secret · from spins' : 'Relic Shop') : c.season ? seasonHow(c.season) : c.ownerLegacy != null ? `Owner legacy ${c.ownerLegacy}` : `${(trophyNeed('titleColor', c.id) ?? 0).toLocaleString()} trophies`}</small></button>; })}</div></div>
+        <small>{open ? (eq.titleColor === c.id ? 'Equipped' : 'Unlocked') : c.shop ? (c.shop.startsWith('secret-') ? 'Secret · from spins' : c.shop.startsWith('evt-') ? 'Holiday event shop' : 'Relic Shop') : c.season ? seasonHow(c.season) : c.ownerLegacy != null ? `Owner legacy ${c.ownerLegacy}` : `${(trophyNeed('titleColor', c.id) ?? 0).toLocaleString()} trophies`}</small></button>; })}</div></div>
 
     <TitlePicker ctx={ctx} name={signedIn ? `@${name}` : name} eq={eq} />
 

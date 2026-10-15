@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { NbaHistory } from '../../history/nbaHistoryData';
+import { noteHolidayFinish } from '../../retention/holiday';
 import { PixelIcon } from '../PixelIcon';
 import { CourtLineup, type LineupPlayer } from '../CourtLineup';
 import { FIVE_SPOTS, assignToSpots } from '../lineupSpots';
@@ -90,6 +91,7 @@ function Round({ puzzle, streak, onNext, onSetup }: { puzzle: GuessTeamPuzzle; s
     if (nowWon || next.length >= tries) {
       const after = updateArcade(r => { const x = endlessOf(r).guessTeam, s = nowWon ? x.streak + 1 : 0; return { ...r, endless: { ...endlessOf(r), guessTeam: { played: x.played + 1, won: x.won + (nowWon ? 1 : 0), streak: s, best: Math.max(x.best, s) } } }; });
       uncoverSecret(`guess-team-streak:${puzzle.seed}`, guessTeamSecret(endlessOf(after).guessTeam.streak));
+      noteHolidayFinish(nowWon, `guess-team-${puzzle.seed}`);
       track('mode_finish', { mode: 'guessTeam', won: nowWon, level: puzzle.level, guesses: next.length });
       noteWeekRun('guessTeam', { score: nowWon ? (tries - next.length + 1) * 100 : 0, line: nowWon ? `${puzzle.teamName} in ${next.length}` : `Missed the ${seasonText(puzzle.season)} ${puzzle.teamName}` }, `guess-team-${puzzle.seed}`);
     }

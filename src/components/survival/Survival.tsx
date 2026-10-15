@@ -1,5 +1,6 @@
 import { LineupBoard } from '../presentation/LineupBoard';
 import { ResultCount, ResultCrest, MvpSpotlight } from '../presentation/ResultPresentation';
+import { noteHolidayFinish } from '../../retention/holiday';
 import { teamColors } from '../../simulation/teamColors';
 import { playerFinish } from '../presentation/cardFinish';
 import { RevealSparks } from '../presentation/PlayerFinish';
@@ -54,6 +55,7 @@ export function Survival({ onExit }: { onExit: () => void }) {
       rewardRun(survivalRewardKey(r), survivalSpins(wins(r)), { secret: survivalSecret(wins(r)), why: 'Survival' });
       const w = wins(r);
       noteWeekRun('survival', { score: survivalScore(r), line: `${w} win${w === 1 ? '' : 's'}` }, `surv-${r.seed}-${r.level}`);
+      noteHolidayFinish(w >= 10, `surv-${r.seed}-${r.level}`);
       trackOnce(`surv-${r.seed}-${r.level}`, 'mode_finish', { mode: 'survival', level: r.level, daily: !!r.daily, wins: w });
     }
   };

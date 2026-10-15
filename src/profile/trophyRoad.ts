@@ -163,6 +163,9 @@ export const TITLE_COLORS: TitleColor[] = [
   { id: 'shop-void', name: 'Void', css: 'linear-gradient(90deg, #120c24, #6a2fd6, #ff4fd8, #6a2fd6, #120c24)', anim: 'pulse', shop: 'shop-tc-void' },
   // Secret: dropped by a Relic Vault spin.
   { id: 'secret-eclipse', name: 'Eclipse', css: 'linear-gradient(90deg, #000000, #ffd166, #ffffff, #ffd166, #000000)', anim: 'shimmer', shop: 'secret-tc-eclipse' },
+  // Holiday events.
+  { id: 'pumpkinGlow', name: 'Pumpkin glow', css: 'linear-gradient(90deg, #7a3fc0, #ff7a1a, #ffd166, #ff7a1a, #7a3fc0)', anim: 'pulse', shop: 'evt-halloween-tc' },
+  { id: 'evergreen', name: 'Evergreen', css: 'linear-gradient(90deg, #1f8a3a, #ffd166, #e8323c, #ffd166, #1f8a3a)', anim: 'shimmer', shop: 'evt-christmas-tc' },
 ];
 /** Whether a title colour is open: the Trophy Road's, or an owner legacy for the Owner's Box one. */
 export const titleColorOpen = (c: TitleColor, ctx: { trophies: number; owner?: number; staff?: boolean; seasons?: Record<string, number>; shop?: string[] }) =>

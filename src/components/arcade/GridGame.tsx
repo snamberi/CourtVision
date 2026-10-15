@@ -1,5 +1,6 @@
 import { ModeIcon } from '../ModeIcon';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { noteHolidayFinish } from '../../retention/holiday';
 import type { NbaHistory } from '../../history/nbaHistoryData';
 import { PixelIcon } from '../PixelIcon';
 import { relicRunOpts } from '../../relics/apply';
@@ -46,6 +47,7 @@ function DailyGrid({ h }: { h: NbaHistory }) {
     updateArcade(r => ({ ...r, grid: { ...(r.grid ?? {}), [today]: next } }));
     if (isGridDone(next) && !isGridDone(play)) {
       const s = gridScore(h, grid, next);
+      noteHolidayFinish(s.filled === 9);
       track('mode_finish', { mode: 'grid', filled: s.filled });
       noteWeekRun('grid', { score: s.score, line: `${s.filled}/9 squares` }, `grid-${today}`);
     }

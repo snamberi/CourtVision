@@ -24,14 +24,15 @@ const RARITY: Record<string, ShopRarity> = {
   'shop-aurora': 'legendary', 'shop-sunset': 'epic', 'shop-toxic': 'rare', 'shop-ruby': 'epic', 'shop-ocean': 'rare', 'shop-royal': 'legendary',
   'shop-tc-emerald': 'epic', 'shop-tc-magma': 'epic', 'shop-tc-candy': 'rare', 'shop-tc-void': 'legendary',
 };
-const keyOf = (rule: object) => ('shop' in rule && !(rule as { shop: string }).shop.startsWith('secret-') ? (rule as { shop: string }).shop : null);
+/** Relic Shop keys: not the secret pieces, and not the holiday event pieces (those have their own shops). */
+const keyOf = (rule: object) => ('shop' in rule && !/^(secret|evt)-/.test((rule as { shop: string }).shop) ? (rule as { shop: string }).shop : null);
 const priced = (c: Omit<ShopCosmetic, 'rarity' | 'price'>): ShopCosmetic => { const rarity = RARITY[c.key] ?? 'rare'; return { ...c, rarity, price: SHOP_COSMETIC_PRICE[rarity] }; };
 
 export const SHOP_COSMETICS: ShopCosmetic[] = [
   ...AVATAR_CATEGORIES.flatMap(cat => cat.items.flatMap(i => { const key = keyOf(i.rule); return key ? [priced({ key, kind: 'avatar', id: i.id, name: i.name, label: cat.label, category: cat.id })] : []; })),
   ...ICONS.flatMap(i => { const key = keyOf(i.rule); return key ? [priced({ key, kind: 'icon', id: i.id, name: i.name, label: 'Profile icon' })] : []; }),
   ...NAME_COLORS.flatMap(c => { const key = keyOf(c.rule); return key ? [priced({ key, kind: 'color', id: c.id, name: c.name, label: 'Name colour' })] : []; }),
-  ...TITLE_COLORS.flatMap(c => (c.shop && !c.shop.startsWith('secret-') ? [priced({ key: c.shop, kind: 'titleColor', id: c.id, name: c.name, label: 'Title colour' })] : [])),
+  ...TITLE_COLORS.flatMap(c => (c.shop && !/^(secret|evt)-/.test(c.shop) ? [priced({ key: c.shop, kind: 'titleColor', id: c.id, name: c.name, label: 'Title colour' })] : [])),
 ];
 export const SHOP_COSMETIC_BY_KEY = new Map(SHOP_COSMETICS.map(c => [c.key, c]));
 /** For the daily roll (relics.ts refreshCosmeticShop). */

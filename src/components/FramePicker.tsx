@@ -5,11 +5,12 @@ import { PixelIcon } from './PixelIcon';
 import { AVATAR_FRAMES, avatarFrameDef, avatarFrameHow, avatarFrameOpen } from '../profile/avatarFrames';
 import type { UnlockContext } from '../profile/cosmetics';
 import { equip } from '../profile/profile';
+import { eventPieceHidden } from '../retention/holiday';
 
 /** Browsing is separate from equipping, so every earned and locked frame can be inspected. */
 export function FramePicker({ value, ctx }: { value: string; ctx: UnlockContext }) {
   const [preview, setPreview] = useState<string | null>(null);
-  const frames = AVATAR_FRAMES.filter(f => !f.staff || ctx.staff);
+  const frames = AVATAR_FRAMES.filter(f => (!f.staff || ctx.staff) && !eventPieceHidden(f.shop, ctx.shop ?? []));
   const shown = frames.find(f => f.id === preview) ?? frames.find(f => f.id === value) ?? avatarFrameDef('none');
   const open = avatarFrameOpen(shown, ctx), active = value === shown.id;
   const n = frames.filter(f => avatarFrameOpen(f,ctx)).length;

@@ -1,5 +1,6 @@
 import { ModeIcon } from '../ModeIcon';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { noteHolidayFinish } from '../../retention/holiday';
 import type { NbaHistory } from '../../history/nbaHistoryData';
 import { PixelIcon } from '../PixelIcon';
 import { ClaimRankCard } from '../cloud/ClaimRankCard';
@@ -155,6 +156,7 @@ function DailyGuess({ h, onNext, onEndless }: { h: NbaHistory; onNext: () => voi
     const won = f.idx === answer.idx, guesses = [...day.guesses, f.idx];
     updateArcade(r => ({ ...r, guess: { ...r.guess, [today]: { guesses, won } } }));
     if (won || guesses.length >= GUESS_TRIES) {
+      noteHolidayFinish(won, `guess-${today}`);
       track('mode_finish', { mode: 'guess', won, tries: guesses.length });
       noteWeekRun('guess', { score: guessPoints({ guesses, won }), line: won ? `solved in ${guesses.length}` : 'missed' }, `guess-${today}`);
     }
@@ -202,6 +204,7 @@ function EndlessGuess({ h }: { h: NbaHistory }) {
     setGuesses(g);
     if (w || g.length >= GUESS_TRIES) {
       updateArcade(r => { const x = endlessOf(r); const streak = w ? x.guess.streak + 1 : 0; return { ...r, endless: { ...x, guess: { played: x.guess.played + 1, won: x.guess.won + (w ? 1 : 0), streak, best: Math.max(x.guess.best, streak) } } }; });
+      noteHolidayFinish(w);
       track('mode_finish', { mode: 'guess-endless', won: w, tries: g.length });
     }
   };
@@ -273,6 +276,7 @@ function HiloGame({ h }: { h: NbaHistory }) {
       } else {
         setOver(true);
         updateArcade(r => ({ ...r, hilo: { best: Math.max(r.hilo.best, streak), runs: r.hilo.runs + 1, weeks: { ...r.hilo.weeks, [week]: Math.max(r.hilo.weeks[week] ?? 0, streak) } } }));
+        noteHolidayFinish(streak >= 10);
         track('mode_finish', { mode: 'hilo', streak });
         noteWeekRun('hilo', { score: streak, line: `streak of ${streak}` }, `hilo-${Date.now()}`);
       }
@@ -408,6 +412,7 @@ function BracketBoard({ h, keyId, era, weekly, onNew }: { h: NbaHistory; keyId: 
       setLocal({ locked: true, played: true, champion: out[14].winner });
       updateArcade(r => { const x = endlessOf(r); return { ...r, endless: { ...x, bracket: { played: x.bracket.played + 1, best: Math.max(x.bracket.best, score) } } }; });
     }
+    noteHolidayFinish(false);
     track('mode_finish', { mode: weekly ? 'bracket' : 'bracket-random', score });
     setRunning(false);
   };
@@ -488,6 +493,7 @@ function QuizGame({ h }: { h: NbaHistory }) {
     setAt(n); setChosen(null); shownAt.current = Date.now();
     if (n >= round.length) {
       updateArcade(r => { const x = endlessOf(r); return { ...r, endless: { ...x, quiz: { played: x.quiz.played + 1, best: Math.max(x.quiz.best, points), right: x.quiz.right + right, answered: x.quiz.answered + round.length } } }; });
+      noteHolidayFinish(right >= Math.ceil(round.length * 0.7));
       track('mode_finish', { mode: 'quiz', era, score: points, right });
       noteWeekRun('quiz', { score: points, line: `${right}/${round.length} right` }, `quiz-${Date.now()}`);
     }

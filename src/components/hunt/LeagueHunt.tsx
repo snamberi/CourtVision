@@ -1,5 +1,6 @@
 import { ResultCount, ResultCrest, MvpSpotlight } from '../presentation/ResultPresentation';
 import { LineupBoard } from '../presentation/LineupBoard';
+import { noteHolidayFinish } from '../../retention/holiday';
 import { BossIntro } from './BossIntro';
 import { teamColors } from '../../simulation/teamColors';
 import { playerFinish, matchesRunName } from '../presentation/cardFinish';
@@ -79,6 +80,7 @@ export function LeagueHunt({ onExit }: { onExit: () => void }) {
       // The finished squad becomes your League Hunt PvP team (published when you are signed in).
       const ghost = ghostFromRun(r);
       if (ghost) { saveLocalGhost(ghost); void publishGhost(ghost).catch(() => {}); }
+      noteHolidayFinish(r.stage === 'won', `hunt-${r.seed}`);
       trackOnce(`hunt-${r.seed}`, 'mode_finish', { mode: 'hunt', result: r.stage, reached: r.seriesIndex + 1, difficulty: r.difficulty ?? 'pro', deck: r.deck ?? 'classic', daily: !!r.daily });
     }
     if (r && r.stage === 'draft' && r.seed !== run?.seed) track('mode_start', { mode: 'hunt', variant: r.daily ? 'daily' : r.weekly ? 'weekly' : 'run', difficulty: r.difficulty ?? 'pro', deck: r.deck ?? 'classic' });

@@ -1,0 +1,31 @@
+/* Holiday event looks: Haunted (Spooky Season) and Winterland (Winter Wonderland). Motion is off for reduced motion. */
+:root[data-cv-theme='haunted'] body { background-image: radial-gradient(circle at 18% 24%, #8bdc3f14 0 2px, transparent 3px), radial-gradient(circle at 72% 58%, #a87ef01a 0 2px, transparent 3px), radial-gradient(ellipse at 50% 120%, #ff7a1a18, transparent 60%); background-size: 220px 220px, 300px 300px, 100% 100%; animation: haunted-drift 40s linear infinite; }
+@keyframes haunted-drift { from { background-position: 0 0, 0 0, 0 0; } to { background-position: 220px -440px, -300px -600px, 0 0; } }
+:root[data-cv-theme='haunted'] h1, :root[data-cv-theme='haunted'] h2 { text-shadow: 0 0 10px #8bdc3f44, 0 2px 0 #050208; }
+:root[data-cv-theme='winterland'] body { background-image: radial-gradient(circle at 20% 30%, #ffffff26 0 1px, transparent 2px), radial-gradient(circle at 70% 60%, #ffffff1e 0 1.5px, transparent 2px), radial-gradient(circle at 40% 80%, #ffd16626 0 1px, transparent 2px); background-size: 150px 150px, 200px 200px, 260px 260px; animation: winterland-snow 28s linear infinite; }
+@keyframes winterland-snow { from { background-position: 0 0, 0 0, 0 0; } to { background-position: 30px 600px, -40px 800px, 20px 1040px; } }
+:root[data-cv-theme='winterland'] h1, :root[data-cv-theme='winterland'] h2 { text-shadow: 0 0 10px #ffd16640, 0 2px 0 #020805; }
+
+/* The event page and menu card. */
+.holiday { --hol-bg: #140a1f; --hol-panel: #24123a; --hol-accent: #ff7a1a; --hol-text: #fbeee0; --hol-glow: #8bdc3f; }
+.holiday-banner { position: relative; overflow: hidden; padding: 18px 16px; border: 2px solid var(--hol-accent); background: radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--hol-glow) 22%, transparent), transparent 60%), var(--hol-panel); color: var(--hol-text); box-shadow: 4px 4px 0 #000; }
+.holiday-banner h2 { margin: 4px 0; font: 700 32px/1 var(--font-display, 'Oswald', sans-serif); color: var(--hol-text); }
+.holiday-banner p { margin: 6px 0 0; max-width: 60ch; }
+.holiday-banner .holiday-coins { display: inline-flex; gap: 8px; align-items: baseline; margin-top: 10px; padding: 6px 10px; background: #0006; border: 1px solid var(--hol-accent); }
+.holiday-banner .holiday-coins b { font: 700 26px/1 var(--font-display, 'Oswald', sans-serif); color: var(--hol-accent); }
+.holiday-art { position: absolute; right: 10px; top: 10px; opacity: .9; pointer-events: none; }
+.holiday-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; margin-top: 12px; }
+.holiday-item { display: flex; flex-direction: column; gap: 6px; padding: 10px; background: var(--hol-panel); border: 2px solid color-mix(in srgb, var(--hol-accent) 45%, #000); color: var(--hol-text); }
+.holiday-item.owned { border-color: var(--hol-glow); }
+.holiday-item .holiday-preview { display: grid; place-items: center; min-height: 84px; background: #0005; }
+.holiday-item small { opacity: .85; }
+.holiday-item button { margin-top: auto; }
+.holiday-swatch { width: 100%; height: 26px; border: 1px solid #0008; }
+.holiday-earn { margin: 10px 0 0; padding-left: 18px; }
+.menu-holiday { border-color: var(--hol-accent); background: radial-gradient(ellipse at 80% 0%, color-mix(in srgb, var(--hol-glow) 24%, transparent), transparent 60%), var(--hol-panel); color: var(--hol-text); }
+@media (prefers-reduced-motion: reduce) {
+  :root[data-cv-theme='haunted'] body, :root[data-cv-theme='winterland'] body { animation: none; }
+}
+.holiday-title { font: 700 16px/1.2 var(--font-display, 'Oswald', sans-serif); color: var(--hol-accent); text-align: center; }
+.holiday-theme { display: flex; gap: 4px; padding: 6px; width: 90px; height: 44px; }
+.holiday-theme i { flex: 1; }
