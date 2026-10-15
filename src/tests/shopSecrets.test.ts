@@ -59,7 +59,7 @@ describe('secret cosmetics', () => {
   });
   it('a spin can drop one you do not have, and never a second copy', () => {
     const lucky = () => 0;
-    const out = spinRelic(base({ spins: 1 }), lucky)!;
+    const out = spinRelic(base({ spins: 1 }), lucky, new Date('2026-10-28T12:00:00Z'))!;
     expect(out.result.cosmetic).toBeDefined();
     expect(out.state.cosmetics).toEqual([out.result.cosmetic]);
     const all = spinRelic(base({ spins: 1, cosmetics: [...SECRET_COSMETIC_KEYS] }), lucky)!;

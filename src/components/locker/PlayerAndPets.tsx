@@ -7,7 +7,8 @@ import {
   MY_SKILLS, BASE_RATING, BASE_HEIGHT, MAX_RATING, MAX_HEIGHT, ELITE_FROM, ELITE_SLOTS, INCH_COST, POINTS_PER_STEP, LEVELS_PER_STEP,
   loadMyRatings, saveMyRatings, stepSkill, stepHeight, raiseBlock, heightBlock, pointsLeft, pointsEarned, eliteCount, myOverall, baseRatings, MY_RATINGS_EVENT, type MySkill,
 } from '../../profile/myRatings';
-import { PETS, PET_COLORS, PET_ACCESSORIES, loadPets, savePets, equipPet, setLook, lookOf, petOpen, PETS_EVENT, type PetId } from '../../profile/pets';
+import { PETS, PET_COLORS, PET_ACCESSORIES, loadPets, savePets, equipPet, setLook, lookOf, petOpen, PETS_EVENT, SECOND_PRICE, PET_SECOND, secondOpen, secondBlurb, withSecond, type PetId } from '../../profile/pets';
+import { loadRelics, saveRelics, spendCoins, RELICS_EVENT } from '../../relics/relics';
 import { PetSprite } from './PetSprite';
 import './playerPets.css';
 
@@ -61,6 +62,14 @@ export function PetsPanel() {
   const [focus, setFocus] = useState<PetId>(() => loadPets().equipped ?? 'cat');
   useEffect(() => { const sync = () => setS(loadPets()); window.addEventListener(PETS_EVENT, sync); return () => window.removeEventListener(PETS_EVENT, sync); }, []);
   const commit = (next: typeof s) => { if (next !== s) { setS(next); savePets(next); } };
+  const [coins, setCoins] = useState(() => loadRelics().coins);
+  useEffect(() => { const sync = () => setCoins(loadRelics().coins); window.addEventListener(RELICS_EVENT, sync); return () => window.removeEventListener(RELICS_EVENT, sync); }, []);
+  /** Pays for a pet's second ability out of your relic coins. */
+  const unlockSecond = (id: PetId) => {
+    const paid = spendCoins(loadRelics(), SECOND_PRICE, `${PETS.find(p => p.id === id)!.name}: ${PET_SECOND[id].name}`);
+    if (!paid) return;
+    saveRelics(paid); setCoins(paid.coins); commit(withSecond(loadPets(), id));
+  };
   const pet = PETS.find(p => p.id === focus)!, look = lookOf(s, focus), open = petOpen(focus, level);
   return <section className="locker-bay pets-panel">
     <p className="hint-text">Bring one pet along. Each pet has its own ability; new pets open as your level climbs. Abilities never count in Dailies, Weeklies or duels, so those stay fair.</p>
@@ -78,6 +87,13 @@ export function PetsPanel() {
         <h3>{look.name}</h3>
         <p><b>{pet.ability}</b></p>
         <p className="hint-text">{pet.blurb}</p>
+        <div className={`pet-second ${secondOpen(s, focus) ? 'on' : ''}`}>
+          <span className="pixel-eyebrow">SECOND ABILITY</span>
+          <p>{secondBlurb(focus)}</p>
+          {secondOpen(s, focus) ? <small><PixelIcon name="check" size={12} /> Unlocked{s.equipped === focus ? ' and working' : ': bring this pet along to use it'}.</small>
+            : <button onClick={() => unlockSecond(focus)} disabled={!open || coins < SECOND_PRICE} title={!open ? `Opens at level ${pet.level}` : coins < SECOND_PRICE ? `You have ${coins.toLocaleString()} coins` : undefined}>
+              <PixelIcon name="unlock" size={14} /> Unlock for {SECOND_PRICE.toLocaleString()} coins</button>}
+        </div>
         {open
           ? <div className="contest-actions">
             {s.equipped === focus ? <button onClick={() => commit(equipPet(s, null, level))}>Leave at home</button> : <button className="primary" onClick={() => commit(equipPet(s, focus, level))}><PixelIcon name="heart" size={14} /> Bring {look.name} along</button>}

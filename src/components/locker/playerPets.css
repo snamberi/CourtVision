@@ -43,3 +43,8 @@
 /* Your pet sits at your character's feet on the profile card. */
 .profile-card-avatar { position: relative; }
 .profile-card-pet { position: absolute; right: -14px; bottom: -6px; line-height: 0; }
+
+.pet-second { margin: 10px 0; padding: 10px 12px; border: 2px dashed var(--c-border-2a3546, #2a3546); background: var(--c-bg-121926, #121926); }
+.pet-second.on { border-style: solid; border-color: var(--c-border-ffd166, #ffd166); }
+.pet-second p { margin: 6px 0; }
+.pet-second small { color: var(--c-fg-55c878, #55c878); display: inline-flex; gap: 6px; align-items: center; }

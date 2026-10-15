@@ -9,8 +9,11 @@ describe('weekly event', () => {
     const mon = new Date('2026-10-12T00:00:00Z'), sun = new Date('2026-10-18T23:59:00Z'), next = new Date('2026-10-19T00:00:00Z');
     expect(weeklyEvent(sun).id).toBe(weeklyEvent(mon).id);
     expect(weeklyEvent(next).id).not.toBe(weeklyEvent(mon).id);
-    const seen = new Set(Array.from({ length: WEEKLY_EVENTS.length }, (_, i) => weeklyEvent(new Date(mon.getTime() + i * 7 * 86_400_000)).id));
+    const seen = new Set(Array.from({ length: WEEKLY_EVENTS.length }, (_, i) => weeklyEvent(new Date(next.getTime() + i * 7 * 86_400_000)).id));
     expect(seen.size).toBe(WEEKLY_EVENTS.length);
+    // Double Relics joined the rotation on 2026-10-19 without changing the week it arrived in.
+    expect(weeklyEvent(mon).id).toBe('coinRush');
+    expect(weeklyEvent(next).id).toBe('doubleRelics');
   });
 });
 

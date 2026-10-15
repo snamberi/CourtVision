@@ -182,7 +182,11 @@ export function mergeValue(key: SyncKey, local: string | null | undefined, cloud
     case 'cv-week-log': return JSON.stringify(mergeWeekLog(parse(local, {}), parse(cloud, {})));
     // Real-player looks: every fix from both devices, this device's when both changed the same player.
     case 'cv-likeness': return JSON.stringify({ ...parse<Obj>(cloud, {}), ...parse<Obj>(local, {}) });
-    case 'cv-pets': { const a = parse<Obj>(local, {}), b = parse<Obj>(cloud, {}); return JSON.stringify({ ...b, ...a, looks: { ...((b.looks as Obj) ?? {}), ...((a.looks as Obj) ?? {}) } }); }
+    case 'cv-pets': {
+      const a = parse<Obj>(local, {}), b = parse<Obj>(cloud, {}), list = (x: Obj) => (Array.isArray(x.second) ? x.second as string[] : []);
+      const second = [...new Set([...list(b), ...list(a)])];
+      return JSON.stringify({ ...b, ...a, looks: { ...((b.looks as Obj) ?? {}), ...((a.looks as Obj) ?? {}) }, ...(second.length ? { second } : {}) });
+    }
     // Your look on this device: theme, menu style, favourites, phone layout, saved characters, name, ratings.
     case 'cv-theme': case 'cv-menu-style': case 'cv-favorites': case 'cv-profile-name': case 'cv-phone-order': case 'cv-avatar-presets-v1': case 'cv-my-ratings': return local;
   }

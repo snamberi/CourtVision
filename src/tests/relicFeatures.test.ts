@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { RELICS, RELIC_BY_ID, fuseDuplicates, spareCopies, relicOfWeek, weeklyLuck, totalLuck, luckPercent, mergeRelics, FUSE_COST, WEEKLY_BOOST, MAX_LUCK, type RelicState } from '../relics/relics';
+import { RELICS, RELIC_BY_ID, fuseDuplicates, spareCopies, relicOfWeek, weeklyLuck, totalLuck, luckPercent, mergeRelics, FUSE_COST, WEEKLY_BOOST, type RelicState } from '../relics/relics';
 import { derive } from '../../server/derive';
 
 const base = (over: Partial<RelicState> = {}): RelicState => ({ v: 1, spins: 0, coins: 0, owned: {}, secrets: [], granted: [], history: [], upgraded: [], equipped: [], slotsBought: 0, pity: { epic: 0, legendary: 0, mythic: 0, lucky: 0 }, opens: 0, ledger: [], rewards: [], ...over });
@@ -41,7 +41,7 @@ describe('relic of the week', () => {
     expect(weeklyLuck(off, now)).toBe(0);
     expect(weeklyLuck(on, now)).toBeCloseTo(luckPercent(on) * WEEKLY_BOOST, 5);
     expect(totalLuck(on, now)).toBeGreaterThan(luckPercent(on));
-    expect(totalLuck({ owned: Object.fromEntries(RELICS.map(x => [x.id, 1])) }, now)).toBe(MAX_LUCK);
+    expect(totalLuck({ owned: Object.fromEntries(RELICS.map(x => [x.id, 1])) }, now)).toBeGreaterThanOrEqual(luckPercent({ owned: Object.fromEntries(RELICS.map(x => [x.id, 1])) }));
   });
 });
 

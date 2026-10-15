@@ -1,4 +1,4 @@
-import { loadRelics, saveRelics, grantReward, grantLuckySpins, earn, type SecretId } from './relics';
+import { loadRelics, saveRelics, grantReward, grantLuckySpins, earn, INCOME_RATE, type SecretId } from './relics';
 import { noteSeason, markSeasonPaid, SEASON_REWARDS, type SeasonCosmetic } from '../retention/season';
 import { isEvent } from '../retention/weeklyEvent';
 import { activePet } from '../profile/pets';
@@ -17,7 +17,7 @@ export const careerSpins = (hallOfFame: string | undefined) => 1 + (hallOfFame &
 export const FRANCHISE_TITLE_SPINS = 1;
 
 /** Coins for a finished run: something for every run, more for the spins it earned. */
-export const runCoins = (spins: number) => 25 + 50 * Math.max(0, spins);
+export const runCoins = (spins: number) => Math.round((25 + 50 * Math.max(0, spins)) * INCOME_RATE);
 
 /** Secret relics a feat uncovers. */
 export const huntSecret = (r: { stage: string; difficulty?: string; daily?: string; weekly?: string }): SecretId | undefined => (r.stage === 'won' && r.difficulty === 'legend' ? 'secondWind' : undefined);
