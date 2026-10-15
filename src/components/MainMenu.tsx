@@ -129,7 +129,6 @@ const cardOf = (m: string): MenuMode => (m === 'rebuild' || m === 'draft' || m =
 const BADGE_LABEL = { popular: 'Most popular', fun: 'Most fun' } as const;
 
 export function MainMenu({ onStart, saves, onOpenContinue, busy = null, onLocker, onCode, onCommunity, onProfile, onFriends, onFriendList, onCloset, onSettings, onArcade, onCreate, onRelics, onShop, onRoad, onProfileTab, onOpenMode }: Props) {
-  const [newsOpen, setNewsOpen] = useState(false);
   // First visit: pick a look before anything else; What's New waits until it is picked.
   const [pickLook, setPickLook] = useState(needsThemeChoice);
   // Today's visit counts for the daily streak and the Season Pass.
@@ -201,7 +200,7 @@ export function MainMenu({ onStart, saves, onOpenContinue, busy = null, onLocker
           <PlayerAvatar playerId="Court Vision Center" primaryColor="#ec852b" secondaryColor="#fcdfad" jerseyNumber={23} size={100} />
           <PixelBall size={48} />
         </div>
-        <MenuPhone onFriendList={onFriendList} onCloset={onCloset} onBoards={onCommunity && (() => onCommunity('boards'))} onFriends={onFriends ?? (onCommunity && (() => onCommunity('friends')))} onProfile={onProfile ?? onLocker} onRelics={onRelics} onShop={onShop} onRoad={onRoad} onSettings={onSettings} onWhatsNew={() => setNewsOpen(true)}
+        <MenuPhone onFriendList={onFriendList} onCloset={onCloset} onBoards={onCommunity && (() => onCommunity('boards'))} onFriends={onFriends ?? (onCommunity && (() => onCommunity('friends')))} onProfile={onProfile ?? onLocker} onRelics={onRelics} onShop={onShop} onRoad={onRoad} onSettings={onSettings} onWhatsNew={() => { location.hash = '#/updates'; }}
           onAchievements={onProfileTab && (() => onProfileTab('achievements'))} streak={visit.v.streak} />
       </div>
 
@@ -277,7 +276,7 @@ export function MainMenu({ onStart, saves, onOpenContinue, busy = null, onLocker
       <StreakNote visit={visit} onProfile={onProfile ?? onLocker} />
       <TrophyUnlock onProfile={onProfile ?? onLocker} />
       <ConsentBanner />
-      {pickLook ? <ThemeWelcome onDone={() => setPickLook(false)} /> : showSignIn ? <WelcomeSignIn onDone={() => setAskSignIn(false)} /> : newsOpen ? <WhatsNew key="forced" force onClose={() => setNewsOpen(false)} /> : <WhatsNew />}
+      {pickLook ? <ThemeWelcome onDone={() => setPickLook(false)} /> : showSignIn ? <WelcomeSignIn onDone={() => setAskSignIn(false)} /> : <WhatsNew />}
     </div>
   );
 }

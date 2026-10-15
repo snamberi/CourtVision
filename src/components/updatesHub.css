@@ -1,0 +1,24 @@
+/* The Updates hub: one card per update, each in its own colours. */
+.updates-hub .updates-search { display: grid; gap: 4px; max-width: 860px; margin: 0 auto 12px; }
+.updates-hub .updates-search small { color: var(--text-dim); }
+.updates-list { list-style: none; margin: 0 auto; padding: 0; display: grid; gap: 14px; max-width: 860px; }
+.update-card { border: 2px solid var(--upd-accent); background: linear-gradient(180deg, var(--upd-bg), var(--c-bg-121926, #121926) 70%); box-shadow: 3px 3px 0 var(--c-shadow-000000, #000); }
+.update-card > header { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-bottom: 2px solid var(--upd-accent); }
+.update-card > header h2 { margin: 2px 0 0; font-size: 18px; line-height: 1.25; }
+.update-card .pixel-eyebrow { color: var(--upd-accent); }
+.update-icon { display: grid; place-items: center; width: 40px; height: 40px; flex: none; color: var(--upd-bg); background: var(--upd-accent); box-shadow: 2px 2px 0 var(--c-shadow-000000, #000); }
+.update-items { list-style: none; margin: 0; padding: 6px 12px 10px; display: grid; gap: 2px; }
+.update-items summary { display: flex; align-items: center; gap: 8px; padding: 5px 4px; cursor: pointer; font-weight: 600; list-style: none; }
+.update-items summary::-webkit-details-marker { display: none; }
+.update-items summary .pixel-icon { color: var(--upd-accent); flex: none; }
+.update-items summary::after { content: '+'; margin-left: auto; color: var(--text-dim); font-family: var(--font-data); }
+.update-items details[open] summary::after { content: '−'; }
+.update-items summary:hover span, .update-items summary:focus-visible span { color: var(--upd-accent); }
+.update-items details p { margin: 0 0 8px 24px; padding: 6px 10px; border-left: 2px solid var(--upd-accent); color: var(--text-dim); line-height: 1.5; }
+.update-items details p b { color: var(--c-fg-f4f0e6, #f4f0e6); }
+.updates-more { display: block; margin: 14px auto 0; }
+@media (max-width: 640px) {
+  .updates-hub { padding: 0 12px 96px; }
+  .update-card > header h2 { font-size: 16px; }
+  .update-items details p { margin-left: 4px; }
+}

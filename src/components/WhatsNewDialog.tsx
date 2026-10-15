@@ -31,6 +31,7 @@ export function WhatsNewDialog({ force = false, onClose }: { /** Opened on purpo
       </section>)}
       <div className="contest-actions whats-new-actions">
         <button ref={closeRef} className="primary">Let's play</button>
+        <a className="link-button" href="#/updates" onClick={close}>Every update</a>
         {!IS_DESKTOP_BUILD && <a className="link-button" href="/changelog.html" onClick={() => markReleasesSeen()}>Full changelog</a>}
         <span className="whats-new-hint" aria-hidden="true">{touch ? 'Tap' : 'Click'} anywhere to continue</span>
       </div>
