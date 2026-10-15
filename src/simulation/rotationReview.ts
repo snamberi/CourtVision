@@ -51,13 +51,16 @@ export function ensureTalentInRotation(team: LeagueTeam, injuries?: League['inju
   const changes: RotationChange[] = [];
   const targets = new Map(team.seasons.map(s => [s.playerId, s.minutes.target]));
   ranked.slice(0, 8).forEach((p, rank) => {
-    if (p.minutes.mode !== 'AI' || p.minutes.baselineTarget != null || p.rotationRole === 'bench') return;
-    const fair = MINUTES_BY_TALENT_RANK[rank];
+    if (p.minutes.mode !== 'AI' || p.minutes.baselineTarget != null) return;
+    // A benched player (a demoted starter, or one the coach sent to the bench) stays out of the starting five but
+    // still belongs in the rotation: he is placed from the sixth spot on, with bench minutes.
+    const spot = p.rotationRole === 'bench' ? Math.max(5, rank) : rank;
+    const fair = MINUTES_BY_TALENT_RANK[spot];
     const index = order.indexOf(p.playerId);
-    const buried = index >= depth || index > rank + 4;
+    const buried = index >= depth || index > spot + 4;
     const underused = p.minutes.target < fair - 10;
     if (!buried && !underused) return;
-    if (buried) { order = order.filter(id => id !== p.playerId); order.splice(Math.min(rank, order.length), 0, p.playerId); }
+    if (buried) { order = order.filter(id => id !== p.playerId); order.splice(Math.min(spot, order.length), 0, p.playerId); }
     const target = Math.max(p.minutes.target, fair - 4);
     changes.push({ playerId: p.playerId, fromMinutes: p.minutes.target, toMinutes: target, reason: 'Too good to sit: moved into the rotation on talent.' });
     targets.set(p.playerId, target);

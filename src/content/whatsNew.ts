@@ -10,6 +10,18 @@ export interface Release { id: string; title: string; items: string[]; theme?: s
 
 export const RELEASES: Release[] = [
   {
+    id: '2027-06-23',
+    title: 'Story Mode: fifteen seasons in the real NBA',
+    items: [
+      "**The NBA years:** Story Mode no longer ends after your rookie year. You're drafted into today's real NBA and play fifteen seasons, every game on the real engine: training camp, opening night, Christmas, the trade deadline, All-Star Weekend, the stretch run, every playoff series (you play Game 7 yourself), awards night and the summer.",
+      "**A longer road there:** a new act, The Circuit (AAU teams, the Summer Showcase, an official visit, the All-American Game or Senior Night), two new roads (the G League and junior college), the combine, private workouts and four choices in most scenes. Your little sister Maya joins Dre, Coach Ray and Ice.",
+      "**80 story cards:** contracts and the supermax, trade requests, teammates, fans, the holidays and stories that run across seasons (Maya's career, Dre's camp, Coach Ray, Mom's house, Ice). Your choices come back years later.",
+      "**Retirement and nine endings:** announcement day, what comes next, then the Hall of Fame speech, jersey night or one more run at Carver Park. Nine endings and a \"Ten years later\" epilogue for everyone who walked the road with you.",
+      "**Journal, People and Trophies:** every choice and big game is written in your journal, the People page shows where everyone stands, and the trophy case holds every award.",
+      "**Fix (every league):** a starter sent to the bench could be left out of the rotation for the rest of the season. Benched players now always get bench minutes.",
+    ],
+  },
+  {
     id: '2027-06-16',
     title: 'Ratings in groups, and a lock for every rating',
     items: [

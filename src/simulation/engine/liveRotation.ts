@@ -39,6 +39,10 @@ export class LiveRotation {
       return rank(a) - rank(b) || index(a) - index(b);
     });
     this.starters = sorted.slice(0, 5).map(s => s.playerId);
+    // "Bench" keeps a player out of the starting five, not out of the rotation: after the starters, the rotation runs
+    // by the depth chart (or minutes), whether a player was marked bench (a demoted starter) or never marked at all.
+    const index = (s: PlayerSeason) => (order.includes(s.playerId) ? order.indexOf(s.playerId) : 30 - s.minutes.target);
+    const byDepth = [...sorted.slice(0, 5), ...sorted.slice(5).sort((a, b) => index(a) - index(b))];
     this.depth = Math.max(5, Math.min(roster.length, coach.rotationPolicy?.mode==='playoff' && playoffs ? Math.min(8,coach.rotationDepth??8) : coach.rotationDepth ?? 10));
     // The best players play the most: an NBA team's best starter logs ~36 minutes, its third-best ~32.
     const byRating = [...roster].sort((a, b) => (b.overall.overall ?? 0) - (a.overall.overall ?? 0)).map(s => s.playerId);
@@ -49,7 +53,7 @@ export class LiveRotation {
       this.stint[s.playerId] = 0;
       const isStarter = this.starters.includes(s.playerId);
       const explicit = s.minutes.mode !== 'AI';
-      const inRotation = sorted.indexOf(s) < this.depth || explicit;
+      const inRotation = byDepth.indexOf(s) < this.depth || explicit;
       const spread = (rules?.minutesVariance ?? 50) / 100;
       const variation = s.minutes.mode === 'EXACT' ? 1 : 1 + (rng.next() - 0.5) * 0.24 * spread;
       const usage = explicit ? 1 : isStarter ? 1 + (coach.starUsage - 50) / 250 : 1 + (coach.benchUsage - 50) / 150;

@@ -121,7 +121,7 @@ const MODES: { id: MenuMode; title: string; blurb: string; kicker: string; icon:
   {
     id: 'story', kicker: '06 / STORY', icon: 'calendar', time: '20-40 min', tags: ['New', 'Story', 'Choices'],
     title: 'Story Mode',
-    blurb: 'Street to the League: from a park with no nets to your NBA rookie season. Five chapters, real choices, key games on the real engine, a best friend, a mentor, a rival named Ice, and four endings.',
+    blurb: 'Street to the League: from a park with no nets to fifteen seasons in the real NBA. Five chapters on the way up, 80 story cards, every game on the real engine, a best friend, a mentor, a little sister, a rival named Ice, and nine endings.',
   },
 ];
 /** The menu card a Mode of the Week falls under. */

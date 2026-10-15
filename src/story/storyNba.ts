@@ -14,7 +14,7 @@ import { formatSeasonYear } from '../simulation/calendar';
 import { findPlayer, replacePlayer, uniqueName, seasonRecord, freeAgentOffers, signOffer, requestTrade, careerResume, hallOfFame, retiredJerseys, type CareerYear, type Offer } from '../career/career';
 import { legacyScore } from '../career/legacy';
 import { tendenciesFor } from '../career/create';
-import type { CategoryId } from '../career/categories';
+import { categoryScore, categoryValues, type CategoryId } from '../career/categories';
 import { applyEffects, addJournal, gameSummary, heroForGame, trainHero, gradeOf, gameScore, draftPick, ordinal, classicEnding, TRAIN_STEP, TRAINABLE, STYLES, type StoryState, type StoryGame, type Ending } from './story';
 import type { StoryWorld } from './storyStorage';
 import { NBA_CARDS, NBA_GAMES, type NbaCard } from './storyNbaCards';
@@ -161,10 +161,33 @@ function contractOf(world: StoryWorld, p: PlayerSeason | null, teamId: string | 
 // ---------------------------------------------------------------- his ratings in the league
 
 /** His player in the league: the story's ratings (grit and hype on the mental side); everything else the league's. */
+/**
+ * How much of the offense runs through him, on the curve the real players around him follow (measured on today's
+ * league: a 57 averages ball priority 41, pass frequency 47, ball dominance 37, spot-up 32; an 80+ star 67, 65, 79,
+ * 17). His style still shapes it (a floor general handles more, a shooter spots up more), but a rookie scorer no
+ * longer takes a franchise star's touches, and a star gets them.
+ */
+function withStanding(p: PlayerSeason, ovr: number): PlayerSeason {
+  const clamp = (v: number, lo: number, hi: number) => Math.round(Math.max(lo, Math.min(hi, v)));
+  const play = categoryScore(categoryValues(p, 'playmaking')) - 50;
+  const t = p.tendencies;
+  return {
+    ...p,
+    ballHandlerPriority: clamp(41 + (ovr - 57) + play * 0.4, 15, 80),
+    tendencies: {
+      ...t,
+      ballDominance: clamp(37 + (ovr - 57) * 1.5 + play * 0.3, 15, 90),
+      passing: { ...t.passing, passFrequency: clamp(47 + (ovr - 57) * 0.6 + play * 0.4, 30, 80) },
+      role: { ...t.role, spotUpShooter: Math.min(t.role.spotUpShooter, 45), catchAndShoot: Math.min(t.role.catchAndShoot, 45) },
+    },
+  };
+}
+
 function asLeaguePlayer(s: StoryState, base: PlayerSeason): PlayerSeason {
   let p: PlayerSeason = { ...base, attributes: heroForGame(s).attributes, careerPlayer: true };
   p = { ...p, tendencies: tendenciesFor(p) };
   const ovr = calculateOverall(p);
+  p = withStanding(p, ovr);
   return { ...p, development: { ...p.development, potential: Math.max(ovr, Math.min(99, ovr + Math.max(0, 27 - p.age) * 2)) } };
 }
 /** Writes his current ratings into the league (before every stretch of games). */
