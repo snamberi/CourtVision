@@ -61,7 +61,7 @@ export const MODE_CATALOG: ModeEntry[] = [
 
   // Compete and online
   { id: 'ranked', group: 'compete', title: 'Leaderboards', desc: 'Weekly boards, ranked seasons and the PvP ladder.', icon: 'podium', art: ['#1d2a44', '#a5824f', '#ffd166'], action: { kind: 'screen', screen: 'community' } },
-  { id: 'clubs', group: 'compete', title: 'Clubs', desc: 'Team up with friends. Weekend Showdowns every Friday.', icon: 'team', art: ['#16324a', '#9f7a4e', '#55c878'], action: { kind: 'screen', screen: 'clubs' } },
+  { id: 'clubs', group: 'compete', title: 'Clans', desc: 'Team up under your own flag. Weekend Showdowns every Friday.', icon: 'team', art: ['#16324a', '#9f7a4e', '#55c878'], action: { kind: 'screen', screen: 'clubs' } },
   { id: 'online', group: 'compete', title: 'Online Leagues', desc: 'Two to eight friends share one league.', icon: 'online', art: ['#14304a', '#a07c50', '#4da3ff'], action: { kind: 'screen', screen: 'online' } },
   { id: 'friends', group: 'compete', title: 'Challenge a Friend', desc: 'Same spins, head to head. No rating on the line.', icon: 'heart', art: ['#3d1630', '#a06d4f', '#ff7aa2'], action: { kind: 'screen', screen: 'friends' } },
 ];

@@ -81,19 +81,22 @@ export async function loadProfile(username: string) {
   const { data: p } = await client.from('lb_users').select('*').ilike('username', username).maybeSingle();
   if (!p) return null;
   const id = (p as { id: string }).id;
-  const [players, ach, rebuild, ghost, followers, following] = await Promise.all([
+  const [players, ach, rebuild, ghost, followers, following, clan] = await Promise.all([
     client.from('created_players').select('*').eq('user_id', id).order('legacy', { ascending: false }).limit(10),
     client.from('user_achievements').select('achievement_id').eq('user_id', id),
     client.from('rebuild_records').select('*').eq('user_id', id),
     client.from('hunt_ghosts').select('rating, wins, losses, squad').eq('user_id', id).maybeSingle(),
     client.from('follows').select('*', { count: 'exact', head: true }).eq('target_id', id),
     getAccount().userId ? client.from('follows').select('target_id').eq('user_id', getAccount().userId!).eq('target_id', id) : Promise.resolve({ data: [] }),
+    // Their clan (name, tag and flag), shown on the profile.
+    import('./clubs').then(m => m.clanOf(id)).catch(() => null),
   ]);
   return {
     profile: p as { id: string; username: string; title: string; frame: string; icon?: string; color?: string; avatar?: string; level: number; xp: number; stats: Record<string, unknown> },
     players: (players.data ?? []) as Record<string, unknown>[], achievements: ((ach.data ?? []) as { achievement_id: string }[]).map(a => a.achievement_id),
     rebuild: (rebuild.data ?? []) as { scenario: string; best: number; stars: number; title_in: number | null }[],
     pvp: ghost.data as { rating: number; wins: number; losses: number; squad?: unknown } | null, followers: followers.count ?? 0, following: ((following.data ?? []) as unknown[]).length > 0,
+    clan: clan ? { name: clan.name, tag: clan.tag, flag: clan.flag, open: clan.open } : null,
   };
 }
 

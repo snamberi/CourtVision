@@ -9,6 +9,7 @@ import { SANDBOX_TABS, canEditTeam } from './navigation/permissions';
 import { TeamIdentityProvider } from './visuals/TeamIdentityContext';
 import { SaveRecoveryPanel } from './components/SaveRecoveryPanel';
 import { parseRoute, routeHash, type Tab } from './navigation/routes';
+import { CLAN_JOIN_KEY } from './cloud/clubs';
 import type { ArcadeTab } from './components/arcade/Arcade';
 import type { Challenge, CreateChoice } from './components/FranchiseCreate';
 import type { GamesId } from './worldGames/mode';
@@ -401,6 +402,10 @@ function App() {
       const duel = duelFromHash(hash);
       if (duel) { savePendingDuel(duel); location.replace(duel.m === 'hunt' ? '#/hunt' : '#/82-0'); return; }
       jobs.resetAll();
+      // A clan invite link: keep the code for the Clans page, then open it.
+      const clanJoin = hash.match(/^#\/clans\/join\/([0-9a-f]{12})$/);
+      if (clanJoin) { try { sessionStorage.setItem(CLAN_JOIN_KEY, clanJoin[1]); } catch { /* storage blocked */ } location.replace('#/clubs'); return; }
+      if (hash === '#/clans') { location.replace('#/clubs'); return; }
       const profileMatch = hash.match(/^#\/u\/(.+)$/);
       setCommunityUser(profileMatch ? decodeURIComponent(profileMatch[1]) : null);
       const arcade = arcadeTabOf(hash);
@@ -1598,7 +1603,7 @@ function App() {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} />{menuBar}<Suspense fallback={<main role="status" className="navigation-loading">Opening Online Leagues…</main>}><OnlineLeaguesPage onExit={() => setScreen('menu')} onOpen={openOnlineLeague} /></Suspense></>;
   }
   if (screen === 'clubs') {
-    return <><ToastStack toasts={toasts} onDismiss={dismissToast} />{menuBar}<Suspense fallback={<main role="status" className="navigation-loading">Opening Clubs…</main>}><ClubsPage onExit={() => setScreen('menu')} onUser={u => { setCommunityTab('friends'); setCommunityUser(u); setScreen('community'); }} /></Suspense></>;
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} />{menuBar}<Suspense fallback={<main role="status" className="navigation-loading">Opening Clans…</main>}><ClubsPage onExit={() => setScreen('menu')} onUser={u => { setCommunityTab('friends'); setCommunityUser(u); setScreen('community'); }} /></Suspense></>;
   }
   if (screen === 'holiday') {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} />{menuBar}<Suspense fallback={<main role="status" className="navigation-loading">Opening the event…</main>}><HolidayEventPage onExit={() => setScreen('menu')} onCloset={() => setScreen('closet')} /></Suspense></>;
