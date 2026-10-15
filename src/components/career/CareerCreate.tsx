@@ -1,9 +1,12 @@
+import { teamColors } from '../../simulation/teamColors';
+import { playerFinish } from '../presentation/cardFinish';
+import { RevealSparks } from '../presentation/PlayerFinish';
 import { useCallback, useEffect, useState } from 'react';
 import { LuckChip } from '../relics/RelicReward';
 import type { NbaHistory } from '../../history/nbaHistoryData';
 import { cardPool, seasonLabel, RARITY_LABEL } from '../../hunt/cards';
 import { CATEGORIES, categoryLabel, categoryScore, feetInches, type CategoryId, type CategoryValues } from '../../career/categories';
-import { eliteRanks, newWheel, spin, respin, move, take, landed, neighbour, wheelCategories, primeBoost, mustTake, canSpin, isComplete, openWheels, luckyLeft, boostLeft, REEL_LENGTH, STAR_BONUS, ELITE_MAX, SURGE_SKILLS, type WheelState, type Wheel } from '../../career/wheel';
+import { eliteRanks, newWheel, spin, respin, move, take, landed, neighbour, wheelCategories, primeBoost, mustTake, canSpin, isComplete, openWheels, luckyLeft, boostLeft, ultraCheat, ultraOptions, REEL_LENGTH, STAR_BONUS, ELITE_MAX, PRIME_BOOST_POINTS, ULTRA_COST, ULTRA_RATING, ULTRA_CARD, type WheelState, type Wheel, type WheelRelics } from '../../career/wheel';
 import {
   READINESS, NORMAL_READINESS, sandboxBuild, setSandbox, primeFromSandbox, categoryPaths, SANDBOX_MIN, SANDBOX_MAX, SANDBOX_HEIGHT, SANDBOX_WEIGHT, type SandboxBuild,
   suggestPosition, primeOverall, projectedPrime, buildPlayer, startProgress, primeFromBuild, capFor, buildSpent, rollPotential, RATING_CATEGORIES, BUILD_MIN, START_AGE, POTENTIAL_REROLLS,
@@ -12,13 +15,12 @@ import {
 import { MyPlayerBoard, BodyBoard, type BoardCell } from './MyPlayerBoard';
 import { calculateOverall } from '../../simulation/engine/overall';
 import { PlayerAvatar } from '../PlayerAvatar';
+import { PURE_SCORER_FROM } from '../../simulation/engine/superstar';
 
 const SLICE = 132;
 /** Slices the strip travels before it stops, and slices kept after the stop (so the right side is never empty). */
 const LEAD = 40, TAIL = 16, START = 6;
-/** Jersey colour on the wheel by rarity, so a Star stands out as the strip flies past. */
-const SLICE_KIT: Record<string, string> = { common: '#5b6b82', rare: '#2f6fb8', epic: '#7e4fc9', legendary: '#d99a1e' };
-const reducedMotion = () => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+const reducedMotion = () => typeof window !== 'undefined' && (!!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || document.documentElement.classList.contains('lite'));
 
 /**
  * One wheel: a strip of real players that spins to a stop; the slices either side are the Move Left/Right options.
@@ -38,7 +40,7 @@ function Reel({ h, wheel, onSettled }: { h: NbaHistory; wheel: Wheel; onSettled:
     <div className={`cv-reel-marker rarity-${hit.rarity}`} aria-hidden="true" />
     <div className="cv-reel-strip" onAnimationEnd={e => { if (e.animationName === 'cv-spin') onSettled(); }} style={{ transform: `translateX(${-(target * SLICE + SLICE / 2)}px)`, ['--from' as string]: `${-(START * SLICE + SLICE / 2)}px` }}>
       {strip.map((id, i) => { const c = pool.byId.get(id)!; return <div key={i} className={`cv-slice rarity-${c.rarity} ${i === target ? 'on' : ''}`}>
-        <PlayerAvatar playerId={c.name} mode="portrait" size={30} primaryColor={SLICE_KIT[c.rarity]} secondaryColor="#f4f0e6" />
+        <PlayerAvatar playerId={c.name} mode="portrait" size={30} primaryColor={teamColors(c.team).primary} secondaryColor={teamColors(c.team).secondary} />
         <span><b>{c.name}</b><small>'{String(c.end).slice(2)} · {c.ovr}</small></span>
       </div>; })}
     </div>
@@ -56,14 +58,15 @@ function Landed({ h, s, wheel, index, onTake, onBoost }: { h: NbaHistory; s: Whe
   const boost = wheel.boost;
   const raised = (cat: CategoryId) => !!boost && Object.keys(cats[cat]).some(k => boost.raised.includes(k));
   const canBoost = !used && !boost && mustTake(s) && boostLeft(s) > 0;
-  return <div className={`cv-landed rarity-${c.rarity} ${used ? 'used' : ''}`}>
+  return <div style={playerFinish(c.team)} className={`cv-landed player-finish rarity-${c.rarity} ${used ? 'used' : ''}`}>
+    <RevealSparks key={id} rarity={c.rarity} active={!used} />
     {star && !used && <div className="cv-star-burst" aria-hidden="true">STAR!</div>}
-    <div className="cv-landed-head"><PlayerAvatar playerId={c.name} primaryColor={SLICE_KIT[c.rarity]} secondaryColor="#f4f0e6" size={56} pose={star ? 'raise' : 'stand'} />
+    <div className="cv-landed-head"><PlayerAvatar playerId={c.name} primaryColor={teamColors(c.team).primary} secondaryColor={teamColors(c.team).secondary} size={56} pose={star ? 'raise' : 'stand'} />
       <div><small>{RARITY_LABEL[c.rarity].toUpperCase()} · {c.pos}{star ? ` · +${STAR_BONUS} TO EVERY SKILL` : ''}</small><strong>{c.name}{boost && <span className="cv-boost-badge">{boost.mode === 'prime' ? 'PRIME' : 'SURGE'}</span>}</strong><span>{seasonLabel(c.end)} {c.teamName} · {c.ovr} OVR</span></div></div>
     {boost
-      ? <p className="hint-text">{boost.mode === 'prime' ? `In his absolute prime: ${boost.raised.length} skills at the best he ever had them.` : `Already at his peak: ${boost.raised.length} skills up 10-20%.`} Height never changes; nothing passes {ELITE_MAX}.</p>
+      ? <p className="hint-text">{boost.mode === 'prime' ? `Prime Boost: +${PRIME_BOOST_POINTS} on ${boost.raised.length} ratings.` : `Already at his peak: ${boost.raised.length} skills up 10-20%.`} Height never changes; nothing passes {ELITE_MAX}.</p>
       : !used && <button className="cv-boost-btn" disabled={!canBoost} onClick={onBoost}
-        title={boostLeft(s) <= 0 ? 'Prime Boost used' : `His absolute prime (or ${SURGE_SKILLS} skills up 10-20% if he is already there). One, free.`}>
+        title={boostLeft(s) <= 0 ? 'Prime Boost used' : `+${PRIME_BOOST_POINTS} to every one of his ratings. One, free.`}>
         Prime Boost {boostLeft(s) > 0 ? '(1 free)' : '(used)'}</button>}
     <ul className="cv-cats">{CATEGORIES.map(cat => { const taken = s.picks[cat.id]; return <li key={cat.id}>
       <span>{cat.name}{elite?.[cat.id] ? <small className="cv-elite-tag"> #{elite[cat.id]} ever</small> : null}</span><b className={`${categoryScore(cats[cat.id]) > 99 ? 'cv-elite' : ''} ${raised(cat.id) ? 'cv-raised' : ''}`}>{categoryLabel(cat.id, cats[cat.id])}</b>
@@ -90,18 +93,34 @@ function WheelBoard({ h, s, settled, onTake }: { h: NbaHistory; s: WheelState; s
     const p = s.picks[cat.id];
     if (p) {
       const from = pool.byId.get(p.cardId);
-      return [cat.id, { value: short(cat.id, p.values), sub: from ? `${from.name} '${String(from.end).slice(2)}` : undefined, state: 'filled' }];
+      return [cat.id, { value: short(cat.id, p.values), sub: from ? `${from.name} '${String(from.end).slice(2)}` : p.cardId === ULTRA_CARD ? 'Ultra Cheat' : undefined, state: 'filled' }];
     }
     if (offered) return [cat.id, { value: short(cat.id, offered[cat.id]), sub: 'Click to take', state: 'pickable' }];
     return [cat.id, { value: '—', state: 'empty' }];
   })) as Record<CategoryId, BoardCell>;
   return <div className="cv-board-wrap"><h3><span>Your player</span><span>{filled}/10</span></h3>
     <div className="cv-prime-calc" aria-live="polite"><div><small>PRIME OVR</small><b>{estOvr}</b></div><div><small>POSITION</small><b>{estPos}</b></div>
+      {s.picks.finishing && categoryScore(s.picks.finishing.values) >= PURE_SCORER_FROM && <div title="Finishing 105+: about 10-15% more points and that much fewer assists"><small>ABILITY</small><b>Pure Scorer</b></div>}
       <span>{filled === CATEGORIES.length ? 'His overall at his prime (balanced readiness).' : `Projected at his prime: the ${CATEGORIES.length - filled} empty categor${CATEGORIES.length - filled === 1 ? 'y counts' : 'ies count'} as plain 65s until you fill ${CATEGORIES.length - filled === 1 ? 'it' : 'them'}.`}</span></div>
     <BodyBoard heightIn={heightIn} name="" cells={cells} onSelect={offered ? onTake : undefined} label="Your player's build from the wheel" /></div>;
 }
 
-export function WheelBuilder({ h, seed, fav, relics, onDone, onBack }: { h: NbaHistory; seed: number; /** Your favourite player (not in the weekly career). */ fav?: string; /** Relic luck and The Eternal Spin (not in the weekly career). */ relics?: { luck: number; eternalSpin: boolean }; onDone: (prime: Prime) => void; onBack: () => void }) {
+/** Ultra Cheat (a secret relic): two Lucky Spins for one category of your choice, every rating in it at 125. */
+function UltraCheat({ s, onUse }: { s: WheelState; onUse: (cat: CategoryId) => void }) {
+  const open = ultraOptions(s);
+  const [cat, setCat] = useState<CategoryId | ''>('');
+  const pick = cat && open.includes(cat) ? cat : open[0] ?? '';
+  return <div className="cv-ultra">
+    <span className="pixel-eyebrow">ULTRA CHEAT · SECRET RELIC</span>
+    <p>Trade {ULTRA_COST} Lucky Spins for one category of your choice with every rating at <b>{ULTRA_RATING}</b>. You have {luckyLeft(s)}.</p>
+    <label>Category <select value={pick} disabled={!open.length} onChange={e => setCat(e.target.value as CategoryId)}>
+      {open.length ? CATEGORIES.filter(c => open.includes(c.id)).map(c => <option key={c.id} value={c.id}>{c.name}</option>) : <option value="">{luckyLeft(s) < ULTRA_COST ? 'Not enough Lucky Spins' : mustTake(s) ? 'Take from the wheel first' : 'Nothing left to fill'}</option>}
+    </select></label>
+    <button className="cv-ultra-btn" disabled={!pick} onClick={() => pick && onUse(pick)}>Use Ultra Cheat</button>
+  </div>;
+}
+
+export function WheelBuilder({ h, seed, fav, relics, onDone, onBack }: { h: NbaHistory; seed: number; /** Your favourite player (not in the weekly career). */ fav?: string; /** Relic luck and secret relics (not in the weekly career). */ relics?: WheelRelics & { luck: number }; onDone: (prime: Prime) => void; onBack: () => void }) {
   const [s, setS] = useState<WheelState>(() => newWheel(seed, fav, relics));
   /** The spin whose wheels have stopped: nothing about where they landed shows before that. */
   const [settledSpin, setSettledSpin] = useState(0);
@@ -124,7 +143,8 @@ export function WheelBuilder({ h, seed, fav, relics, onDone, onBack }: { h: NbaH
       <button disabled={busy || !mustTake(s) || !single || !s.moves.right || !!w0?.boost} onClick={() => setS(move(s, 'right'))} title={w0 && !busy ? `Move to ${pool.byId.get(neighbour(w0, 'right'))?.name}` : ''}>Move right →</button>
     </div>
     <details className="cv-howto"><summary>How the wheel works</summary>
-      <p className="hint-text">Every player in NBA history is on the wheel once, at his best season; the odds lean a little toward good players (Star about 7%, Great about 18%), and among Stars the all-time greats come up most. Take one category from the player it stops on: you get his exact ratings as your player's prime, +{STAR_BONUS} on every skill from a Star. The best ever at a skill go past 99, up to {ELITE_MAX}. Two Lucky Spins (each one always lands on a Star or a Great), Move Left and Move Right once each, two respins, one triple spin (take one category from each of the three), and one free Prime Boost: the player you landed on in his absolute prime, or six of his skills up 10-20% if he is already there (never his height, never past {ELITE_MAX}).</p></details>
+      <p className="hint-text">Every player in NBA history is on the wheel once, at his best season; the odds lean a little toward good players (Star about 7%, Great about 18%), and among Stars the all-time greats come up most. Take one category from the player it stops on: you get his exact ratings as your player's prime, +{STAR_BONUS} on every skill from a Star. The best ever at a skill go past 99, up to {ELITE_MAX}. Two Lucky Spins (each one always lands on a Star or a Great), Move Left and Move Right once each, two respins, one triple spin (take one category from each of the three), and one free Prime Boost: +{PRIME_BOOST_POINTS} to every rating of the player you landed on (never his height, never past {ELITE_MAX}).</p></details>
+    {s.ultra && !done && <UltraCheat s={s} onUse={cat => setS(ultraCheat(s, cat))} />}
     {s.current?.[0]?.lucky && <p className="cv-lucky-note">LUCKY SPIN · a Star or a Great, guaranteed</p>}
     {s.current ? <div className="cv-wheels">{s.current.map((w, i) => <Reel key={`${s.spinCount}-${i}`} h={h} wheel={w} onSettled={() => settle(s.spinCount)} />)}</div>
       : !done && <p className="empty-state">Spin to start. Ten categories to fill.</p>}

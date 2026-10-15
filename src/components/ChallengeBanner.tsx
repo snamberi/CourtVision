@@ -1,4 +1,5 @@
 import type { League } from '../simulation/league';
+import { SmallRoom } from './presentation/SmallRoom';
 import { plural } from '../lib/humanize';
 import { computeStandings } from '../simulation/league';
 import type { Contract } from '../simulation/gm';
@@ -70,6 +71,7 @@ export function ChallengeBanner({ league, contracts, onMenu }: { league: League;
   const over = p.status !== 'active';
   const twist = p.config.weekly ? TWISTS.find(t => t.id === p.config.weekly!.twist) : undefined;
   return <section className={`rb-banner ${p.status}`} aria-live="polite">
+    <SmallRoom kind="challenge" title={p.scenario.title ?? 'Build a champion'} detail="Your rebuild, your decisions. Follow the season clock and raise a banner." />
     <div className="rb-head">
       <span className="pixel-eyebrow"><PixelIcon name="trophy" size={14} /> {p.config.weekly ? `REBUILD OF THE WEEK ${p.config.weekly.week}` : 'REBUILD CHALLENGE'} · {p.scenario.difficulty.toUpperCase()}{twist && twist.id !== 'standard' ? ` · ${twist.label.toUpperCase()}` : ''}</span>
       <h2>{p.scenario.title}</h2>

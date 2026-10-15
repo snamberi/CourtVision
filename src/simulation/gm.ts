@@ -1,4 +1,5 @@
 import { enforceSticky, stickyTradeProblems, isStuck } from './sticky';
+import { lotteryFirstRound } from './draftLottery';
 import { rememberRivalTrade } from './gmRivals';
 import { consensusBoard, pickReaction } from './draftNight';
 import { formatSeasonYear } from './calendar';
@@ -40,8 +41,8 @@ export interface SalaryCapSettings {
   enforceCapOnTrades: boolean; // sandbox mode can disable this to allow "invalid" trades
   minSalary: number; // league-minimum contract, offered to any free agent regardless of quality
   maxSalaryPctOfCap: number; // a true max contract is this fraction of the cap
-  minRosterSize: number; // a team below this must sign someone before it can waive anyone else
-  maxRosterSize: number; // a team at this cap cannot sign or trade for another player
+  minRosterSize: number; // AI teams sign up to this during the season (coachRosters.ts); yours may go below it
+  maxRosterSize: number; // AI teams waive down to this during the season; yours may go above it
 }
 
 export const DEFAULT_CAP_SETTINGS: SalaryCapSettings = {
@@ -56,12 +57,12 @@ export const DEFAULT_CAP_SETTINGS: SalaryCapSettings = {
   maxRosterSize: 18,
 };
 
-/** Whether this team has room to add another player under the league's roster-size rules. */
+/** Whether this team is under the league's roster maximum (AI teams stop adding there; a person may go past it). */
 export function hasRosterRoom(team: LeagueTeam, cap: SalaryCapSettings): boolean {
   return team.seasons.length < cap.maxRosterSize;
 }
 
-/** Whether this team can afford to lose a player without dropping below the roster minimum. */
+/** Whether this team is above the league's roster minimum (AI teams stop cutting there; a person may go below it). */
 export function canDropPlayer(team: LeagueTeam, cap: SalaryCapSettings): boolean {
   return team.seasons.length > cap.minRosterSize;
 }
@@ -355,12 +356,7 @@ export function validateTrade(league: League, extras: GMLeagueExtras, proposal: 
     for (const id of ids) { const p = from.seasons.find(s => s.playerId === id); const no = p && tradeVeto(p, to.teamId, league); if (no) reasons.push(no); }
   }
   for (const [team, outgoing, incoming] of [[a, proposal.playersFromA, proposal.playersFromB], [b, proposal.playersFromB, proposal.playersFromA]] as const) {
-    const count = team.seasons.length - outgoing.length + incoming.length;
-    // Offseason transactions may temporarily cross the roster limits. Coaches trim/fill before games.
-    if ((league.seasonPhase ?? 'regular_season') === 'regular_season' && incoming.length !== outgoing.length) {
-      if (count < extras.capSettings.minRosterSize && count < team.seasons.length) reasons.push(`${team.name} would fall below the ${extras.capSettings.minRosterSize}-player minimum.`);
-      if (count > extras.capSettings.maxRosterSize && count > team.seasons.length) reasons.push(`${team.name} would be above the ${extras.capSettings.maxRosterSize}-player maximum.`);
-    }
+    // Roster sizes don't block a trade: AI coaches trim or fill their rosters before games (coachRosters.ts).
     const salaryOut = outgoing.reduce((sum, id) => sum + (extras.contracts[id]?.annualSalary ?? 0), 0);
     const salaryIn = incoming.reduce((sum, id) => sum + (extras.contracts[id]?.annualSalary ?? 0), 0);
     const payroll = teamPayroll(extras.contracts, team) - salaryOut + salaryIn;
@@ -473,7 +469,7 @@ export function signFreeAgent(
   const emergency = emergencyRosterSigning && (league.seasonPhase ?? 'regular_season') === 'regular_season' && (league.teams.find(t => t.teamId === teamId)?.seasons.length ?? Infinity) < extras.capSettings.minRosterSize;
   if (!extras.freeAgencyOpen && !emergency && priorTeamId(player) !== teamId) return { league, extras };
   const signingTeam = league.teams.find((t) => t.teamId === teamId);
-  if (!signingTeam || !hasRosterRoom(signingTeam, extras.capSettings)) return { league, extras }; // roster is full
+  if (!signingTeam) return { league, extras };
 
   if (extras.capSettings.hardCapEnabled && teamPayroll(extras.contracts, signingTeam) + contract.annualSalary > extras.capSettings.salaryCap) return { league, extras };
   const teamName = league.teams.find((t) => t.teamId === teamId)?.name ?? teamId;
@@ -511,7 +507,6 @@ export function waiveToFreeAgency(
   const player = team?.seasons.find((s) => s.playerId === playerId);
   if (!team || !player) return { league, extras };
   if (isStuck(player)) return { league, extras }; // stuck players can't be waived (Sandbox): unstick first
-  if (!canDropPlayer(team, extras.capSettings)) return { league, extras }; // would drop below the roster minimum
 
   const teams = league.teams.map((t) => (t.teamId === teamId ? { ...t, seasons: t.seasons.filter((s) => s.playerId !== playerId) } : t));
   const waived = appendHistoryEvent(withGrudge({ ...closeStint(player, team.teamId), teamId: null }, team.teamId, league.season), 'waived', `Waived by ${team.name}`, team.teamId);
@@ -635,10 +630,20 @@ export function movePlayerToTeam(league: League, extras: GMLeagueExtras, playerI
 
 /** A player's ballpark contract demand in free agency, scaled between the league minimum and a true
  * max contract by overall rating. Not a hard price — teams can still offer more or less at signing. */
+/**
+ * Share of the max salary by Overall: the same pay scale a new league opens with (see payByLeagueRank), so free
+ * agents ask what players of their level already earn: an 80+ about the max, a 70 a bit over half, a 60 about a
+ * quarter, a 50 close to the minimum.
+ */
+const ASK_CURVE: [number, number][] = [[45, 0], [50, 0.03], [55, 0.09], [60, 0.24], [65, 0.41], [70, 0.56], [75, 0.76], [80, 0.95], [85, 1]];
 export function computeAskingSalary(overall: number, capSettings: SalaryCapSettings): number {
-  const t = Math.max(0, Math.min(1, (overall - 45) / 45)); // 45 OVR -> bottom of the scale, 90+ OVR -> near max
   const max = capSettings.salaryCap * capSettings.maxSalaryPctOfCap;
-  return Math.round(capSettings.minSalary + (max - capSettings.minSalary) * Math.pow(t, 1.8));
+  let share = overall >= 85 ? 1 : 0;
+  for (let i = 1; i < ASK_CURVE.length; i++) {
+    const [o0, v0] = ASK_CURVE[i - 1], [o1, v1] = ASK_CURVE[i];
+    if (overall >= o0 && overall <= o1) { share = v0 + (v1 - v0) * ((overall - o0) / (o1 - o0)); break; }
+  }
+  return Math.round(capSettings.minSalary + (max - capSettings.minSalary) * share);
 }
 
 /** The team a free agent most recently played for, read off their history log (waived/expired entries
@@ -708,39 +713,12 @@ export function draftOrderFromStandings(league: League): TeamId[] {
 }
 
 /**
- * A simplified NBA-style draft lottery: the worst-record teams (up to 14 of
- * them) go into a weighted lottery for the top 4 picks - the worse the
- * record, the better the odds, but no team is guaranteed a top pick. Every
- * other pick (5th onward) falls back to reverse-standings order among
- * whoever didn't land a top-4 slot. Deterministic given the same seed.
+ * Round 1 through the draft lottery. The rule follows the league's setting (see draftLottery.ts): year accurate in
+ * historical leagues (coin flips in the 1970s, 25% odds in the 2000s, flattened odds today), today's rule otherwise.
+ * Deterministic given the same seed.
  */
-export function draftOrderWithLottery(league: League, seed = Date.now()): TeamId[] {
-  const standings = [...computeStandings(league)].sort((a, b) => a.winPct - b.winPct); // worst record first
-  const lotteryPoolSize = Math.min(14, standings.length);
-  const lotteryPool = standings.slice(0, lotteryPoolSize).map((r) => r.teamId);
-  const rest = standings.slice(lotteryPoolSize).map((r) => r.teamId);
-  if (lotteryPool.length === 0) return rest;
-
-  const rng = new RNG(seed);
-  const remainingPool = [...lotteryPool];
-  const remainingWeights = lotteryPool.map((_, i) => lotteryPoolSize - i); // worst team = highest weight
-  const numLotteryPicks = Math.min(4, lotteryPoolSize);
-  const top: TeamId[] = [];
-
-  for (let i = 0; i < numLotteryPicks; i++) {
-    const totalWeight = remainingWeights.reduce((a, b) => a + b, 0);
-    let roll = rng.next() * totalWeight;
-    let idx = remainingWeights.length - 1;
-    for (let j = 0; j < remainingWeights.length; j++) {
-      roll -= remainingWeights[j];
-      if (roll <= 0) { idx = j; break; }
-    }
-    top.push(remainingPool[idx]);
-    remainingPool.splice(idx, 1);
-    remainingWeights.splice(idx, 1);
-  }
-
-  return [...top, ...remainingPool, ...rest];
+export function draftOrderWithLottery(league: League, seed = Date.now(), draftYear = Number(league.season) + 1): TeamId[] {
+  return lotteryFirstRound(league, Number.isFinite(draftYear) ? draftYear : new Date().getFullYear(), seed);
 }
 
 /**
@@ -748,8 +726,8 @@ export function draftOrderWithLottery(league: League, seed = Date.now()): TeamId
  * picks), round 2 is plain reverse-standings with no lottery — exactly like the real NBA draft. The
  * returned array's length is always `2 * teamCount`; `draftPickIndex` cycles straight through it.
  */
-export function buildTwoRoundDraftOrder(league: League, seed = Date.now()): TeamId[] {
-  const round1 = draftOrderWithLottery(league, seed);
+export function buildTwoRoundDraftOrder(league: League, seed = Date.now(), draftYear?: number): TeamId[] {
+  const round1 = draftOrderWithLottery(league, seed, draftYear);
   const round2 = draftOrderFromStandings(league);
   return [...round1, ...round2];
 }

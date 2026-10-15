@@ -79,10 +79,10 @@ describe('parallel game days', () => {
     expect(played.homeBox.players[player]).toBeTruthy();
   });
 
-  it('leaves a blocked day untouched', async () => {
+  it('roster sizes never block a day: games play with rosters outside the limits', async () => {
     const league = { ...small().league, rosterLimits: { minRosterSize: 20, maxRosterSize: 25 } };
-    const same = await simulateRoundPhased(league, 1, async () => { throw new Error('should not run'); });
-    expect(same).toBe(league);
+    const played = await simulateRoundPhased(league, 1, async (inputs) => inputs.map((input) => ({ result: simulateGame(input) })));
+    expect(played.schedule.some((g) => g.played)).toBe(true);
   });
 
   it('Auto Play on engine workers ends the season in exactly the same state', async () => {

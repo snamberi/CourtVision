@@ -1,0 +1,70 @@
+/* Categorize and Guess the Team (quick games). */
+.arcade-categorize, .arcade-guess-team { display: grid; gap: 12px; }
+.arcade-categorize .arcade-switch, .arcade-guess-team .arcade-big { justify-self: start; }
+
+/* Difficulty cards, shared by both games. */
+.cat-levels { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.cat-levels button { display: grid; gap: 2px; padding: 10px 12px; text-align: left; }
+.cat-levels button small { color: var(--text-dim); font-size: 12px; line-height: 1.3; }
+.cat-levels button.selected { background: var(--amber); color: var(--c-fg-140c02, #140c02); border-color: var(--c-border-ffd29c, #ffd29c); }
+.cat-levels button.selected small { color: inherit; opacity: .8; }
+
+.cat-board { display: grid; gap: 10px; }
+.cat-lives { display: inline-flex; gap: 4px; vertical-align: middle; }
+.cat-lives i { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--c-border-2a3546, #2a3546); background: transparent; }
+.cat-lives i.on { background: var(--c-bg-e85d5d, #e85d5d); border-color: var(--c-border-e85d5d, #e85d5d); }
+
+.cat-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.cat-grid.shake { animation: cat-shake .36s steps(6); }
+@keyframes cat-shake { 0%, 100% { transform: none; } 20%, 60% { transform: translateX(-4px); } 40%, 80% { transform: translateX(4px); } }
+.cat-tile { display: grid; justify-items: center; align-content: center; gap: 4px; min-height: 96px; padding: 8px 6px; font: 600 13px/1.2 var(--font-data); text-align: center; background: var(--c-bg-192333, #192333); border: 2px solid var(--c-border-2a3546, #2a3546); box-shadow: 2px 2px 0 var(--c-shadow-000000, #000); transition: transform .12s, background .12s; }
+.cat-tile span { overflow-wrap: anywhere; }
+.cat-tile:hover { border-color: var(--c-border-94a0b2, #94a0b2); }
+.cat-tile.picked { background: var(--c-bg-f47b20, #f47b20); color: var(--c-fg-140c02, #140c02); border-color: var(--c-border-ffd29c, #ffd29c); transform: translateY(-2px); }
+
+.cat-solved { display: grid; gap: 2px; padding: 10px 14px; text-align: center; border: 2px solid var(--c-border-000000, #000); box-shadow: 2px 2px 0 var(--c-shadow-000000, #000); color: var(--c-fg-140c02, #140c02); animation: cat-pop .2s steps(4); }
+.cat-solved b { font: 700 15px/1.2 var(--font-display); text-transform: uppercase; letter-spacing: .04em; }
+.cat-solved small { font-size: 12px; opacity: .8; }
+.cat-solved span { font: 600 13px/1.3 var(--font-data); }
+.cat-solved em { font-style: normal; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+.cat-solved.tone-gold { background: var(--c-bg-ffd166, #ffd166); }
+.cat-solved.tone-green { background: var(--c-bg-55c878, #55c878); }
+.cat-solved.tone-blue { background: var(--c-bg-4da3ff, #4da3ff); }
+.cat-solved.tone-purple { background: var(--c-bg-c18cff, #c18cff); }
+.cat-solved.tone-missed { background: var(--c-bg-121926, #121926); color: var(--text); border-color: var(--c-border-e85d5d, #e85d5d); }
+@keyframes cat-pop { from { transform: scale(.94); } to { transform: none; } }
+
+.cat-note { margin: 0; font-weight: 700; }
+.cat-note.bad { color: var(--c-fg-e85d5d, #e85d5d); }
+.cat-note.close { color: var(--c-fg-ffd166, #ffd166); }
+.cat-note.good { color: var(--c-fg-55c878, #55c878); }
+
+/* Guess the Team */
+.gt-eras { display: flex; flex-wrap: wrap; gap: 6px; }
+.gt-eras button { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; }
+.gt-eras button.selected { background: var(--amber); color: var(--c-fg-140c02, #140c02); border-color: var(--c-border-ffd29c, #ffd29c); }
+.gt-court { max-width: 560px; width: 100%; justify-self: center; }
+.gt-clues { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.gt-clues li { display: grid; grid-template-rows: auto 1fr; gap: 6px; padding: 10px; background: var(--c-bg-121926, #121926); border: 2px solid var(--c-border-2a3546, #2a3546); box-shadow: 2px 2px 0 var(--c-shadow-000000, #000); }
+.gt-spot { justify-self: start; padding: 1px 6px; font: 700 11px var(--font-data); letter-spacing: .08em; color: var(--c-fg-140c02, #140c02); background: var(--amber); }
+.gt-clues p { margin: 0; font: 600 14px/1.3 var(--font-data); }
+.gt-clues p small { display: block; font: 600 11px var(--font-data); letter-spacing: .04em; text-transform: uppercase; color: var(--text-dim); }
+.gt-clues p.gt-extra { padding-top: 6px; border-top: 1px dashed var(--c-border-2a3546, #2a3546); animation: cat-pop .2s steps(4); }
+.gt-name { color: var(--court); }
+.gt-tried { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.gt-tried li { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; font-weight: 700; border: 2px solid var(--c-border-e85d5d, #e85d5d); }
+.gt-tried li.hit { border-color: var(--c-border-2f9e55, #2f9e55); }
+.gt-filter { max-width: 360px; padding: 10px 12px; }
+.gt-choices { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 6px; }
+.gt-choices button { padding: 8px 10px; text-align: left; }
+.gt-choices button:disabled { opacity: .4; text-decoration: line-through; }
+
+@media (max-width: 760px) {
+  .cat-levels { grid-template-columns: 1fr; }
+  .cat-grid { gap: 5px; }
+  .cat-tile { min-height: 84px; padding: 6px 3px; font-size: 11px; }
+  .gt-clues { grid-template-columns: 1fr; }
+  .gt-clues li { grid-template-columns: auto 1fr; grid-template-rows: none; align-items: start; }
+  .gt-choices { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) { .cat-grid.shake, .cat-solved, .gt-clues p.gt-extra { animation: none; } .cat-tile { transition: none; } }

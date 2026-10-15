@@ -71,7 +71,9 @@ export function freeAgentVerdict(league: League, extras: GMLeagueExtras, player:
     if (rivals) { premium += 0.06 * Math.min(3, rivals); notes.push(`${rivals} rival bid${rivals === 1 ? '' : 's'}`); }
   }
   const floor = star ? 0.9 : overall >= 65 ? 0.8 : 0.7;
-  const required = Math.round(Math.max(cap.minSalary, asking * Math.max(floor, 1 + premium)) / 50_000) * 50_000;
+  // Premiums push a price up, but nobody can ask for more than a max contract.
+  const maxDeal = Math.round(cap.salaryCap * cap.maxSalaryPctOfCap / 50_000) * 50_000;
+  const required = Math.min(maxDeal, Math.round(Math.max(cap.minSalary, asking * Math.max(floor, 1 + premium)) / 50_000) * 50_000);
   const interest = Math.max(5, Math.min(100, Math.round(80 - premium * 150)));
   if (!offer) return { accepted: true, required, interest, refuses: false, reason: notes.length ? `Price includes: ${notes.join(', ')}.` : 'Open to signing here.' };
   const years = offer.yearsRemaining;
@@ -97,7 +99,8 @@ export interface SigningDecision extends FreeAgentVerdict { path: SigningPath }
 export function resignVerdict(extras: GMLeagueExtras, player: PlayerSeason, teamId: string): FreeAgentVerdict {
   const adj = moraleContractAdjustment(player, teamId, true);
   if (adj.refuses) return { accepted: false, required: 0, interest: 0, refuses: true, reason: adj.refuses };
-  const required = Math.round(Math.max(extras.capSettings.minSalary, computeAskingSalary(calculateOverall(player), extras.capSettings) * Math.max(0.8, 1 + adj.premium)) / 50_000) * 50_000;
+  const cap = extras.capSettings, maxDeal = Math.round(cap.salaryCap * cap.maxSalaryPctOfCap / 50_000) * 50_000;
+  const required = Math.min(maxDeal, Math.round(Math.max(cap.minSalary, computeAskingSalary(calculateOverall(player), cap) * Math.max(0.8, 1 + adj.premium)) / 50_000) * 50_000);
   const interest = Math.max(5, Math.min(100, Math.round(72 - adj.premium * 150)));
   return { accepted: true, required, interest, refuses: false, reason: adj.notes.length ? `Price includes: ${adj.notes.join(', ')}.` : 'Happy to talk about staying.' };
 }

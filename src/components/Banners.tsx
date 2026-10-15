@@ -14,6 +14,7 @@ function Frame({ main, trim, children, label, className }: { main: string; trim:
   for (let y = 14; y < 98; y += 6) stitches.push(<rect key={`l${y}`} x="11" y={y} width="2" height="3" fill={trim} opacity=".55" />, <rect key={`r${y}`} x={W - 13} y={y} width="2" height="3" fill={trim} opacity=".55" />);
   return <svg className={`history-banner ${className}`} viewBox={`0 0 ${W} ${H}`} width={W} height={H} shapeRendering="crispEdges" role="img" aria-label={label}>
     {/* rod and cords */}
+    <path d="M8 12H68V102L50 116L38 108L26 116L8 104Z" fill="#040912" opacity=".6" />
     <rect x="2" y="1" width={W - 4} height="4" fill="#6b778a" /><rect x="0" y="0" width="4" height="6" fill="#aab4c3" /><rect x={W - 4} y="0" width="4" height="6" fill="#aab4c3" />
     <rect x="16" y="5" width="2" height="4" fill="#aab4c3" /><rect x={W - 18} y="5" width="2" height="4" fill="#aab4c3" />
     {/* cloth: trim, body, a darker fold down one side, swallow-tail hem */}
@@ -21,6 +22,10 @@ function Frame({ main, trim, children, label, className }: { main: string; trim:
     <path d={`M9 11H${W - 9}V98L${W / 2 + 11} 108L${W / 2} 100L${W / 2 - 11} 108L9 98Z`} fill={main} />
     <path d={`M${W - 17} 11H${W - 9}V98L${W - 17} 102Z`} fill="#000" opacity=".16" />
     <path d={`M9 11H15V100L9 98Z`} fill="#fff" opacity=".07" />
+    <path d="M17 12H20V98H17ZM37 12H40V99L37 97Z" fill="#fff" opacity=".08" />
+    <path d="M27 12H30V101H27ZM49 12H52V101H49Z" fill="#000" opacity=".12" />
+    <path d="M10 10H62M9 12V96M12 98L25 106M47 106L60 98" stroke="#fff4d9" strokeWidth="1" opacity=".45" fill="none" />
+    <rect x="10" y="9" width="52" height="3" fill={trim} opacity=".6" />
     {stitches}
     {children}
   </svg>;
@@ -30,7 +35,7 @@ const Mark = ({ identity, x, y, scale, fill }: { identity: TeamIdentity; x: numb
   <path d={MARKS[identity.logo] ?? MARKS.star} transform={`translate(${x} ${y}) scale(${scale})`} fill={fill} fillRule="evenodd" />;
 
 const Trophy = ({ x, y, fill }: { x: number; y: number; fill: string }) =>
-  <path d={`M${x} ${y}H${x + 12}V${y + 2}H${x + 15}V${y + 7}H${x + 12}V${y + 9}H${x + 9}V${y + 11}H${x + 11}V${y + 14}H${x + 1}V${y + 11}H${x + 3}V${y + 9}H${x}V${y + 7}H${x - 3}V${y + 2}H${x}ZM${x - 1} ${y + 3}V${y + 6}H${x}V${y + 3}ZM${x + 12} ${y + 3}V${y + 6}H${x + 13}V${y + 3}Z`} fill={fill} fillRule="evenodd" />;
+  <g transform={`translate(${x},${y})`}><path d="M-1-1H13V1H16V8H13V10H10V12H12V16H0V12H2V10H-1V8H-4V1H-1Z" fill="#0b1018" /><path d="M0 0H12V8L8 11H7V13H11V15H1V13H5V11H4L0 8ZM-3 2H0V4H-1V6H1V8H-3ZM12 2H15V8H11V6H13V4H12Z" fill={fill} /><path d="M1 1H4V7H3V9H2V7H1ZM2 13H9V14H2" fill="#fff4c6" /><path d="M9 1H11V7L8 10H6V9H8V7H9Z" fill="#713f27" opacity=".5" /></g>;
 
 /** League title: the team's color, gold trim, trophy and year. */
 export function TitleBanner({ identity, year }: { identity: TeamIdentity; year: string }) {
@@ -39,7 +44,7 @@ export function TitleBanner({ identity, year }: { identity: TeamIdentity; year: 
     <text x={W / 2} y="40" textAnchor="middle" fill="#fff4d9" fontFamily={PIXEL} fontSize="5.5">WORLD</text>
     <text x={W / 2} y="48" textAnchor="middle" fill="#fff4d9" fontFamily={PIXEL} fontSize="5.5">CHAMPIONS</text>
     <Trophy x={W / 2 - 6} y={54} fill="#ffd166" />
-    <text x={W / 2} y="86" textAnchor="middle" fill="#ffd166" fontFamily={PIXEL} fontSize="10">{year}</text>
+    <text x={W / 2} y="86" textAnchor="middle" fill="#ffd166" fontFamily={PIXEL} fontSize={year.length > 4 ? 6.3 : 10}>{year}</text>
     <text x={W / 2} y="97" textAnchor="middle" fill="#f4f0e6" fontFamily="monospace" fontWeight="bold" fontSize="7">{identity.abbreviation}</text>
   </Frame>;
 }
@@ -51,7 +56,7 @@ export function CupBanner({ identity, year }: { identity: TeamIdentity; year: st
     <text x={W / 2} y="40" textAnchor="middle" fill="#dbeafe" fontFamily={PIXEL} fontSize="5">IN-SEASON</text>
     <text x={W / 2} y="48" textAnchor="middle" fill="#dbeafe" fontFamily={PIXEL} fontSize="7">CUP</text>
     <Trophy x={W / 2 - 6} y={54} fill="#9fcbff" />
-    <text x={W / 2} y="86" textAnchor="middle" fill="#9fcbff" fontFamily={PIXEL} fontSize="10">{year}</text>
+    <text x={W / 2} y="86" textAnchor="middle" fill="#9fcbff" fontFamily={PIXEL} fontSize={year.length > 4 ? 6.3 : 10}>{year}</text>
     <text x={W / 2} y="97" textAnchor="middle" fill="#f4f0e6" fontFamily="monospace" fontWeight="bold" fontSize="7">{identity.abbreviation}</text>
   </Frame>;
 }

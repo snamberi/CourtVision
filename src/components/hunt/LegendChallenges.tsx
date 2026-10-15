@@ -1,4 +1,5 @@
 import { ModeIcon } from '../ModeIcon';
+import { SmallRoom } from '../presentation/SmallRoom';
 import { useMemo, useState } from 'react';
 import type { NbaHistory } from '../../history/nbaHistoryData';
 import { LEGEND_SCENARIOS, GAME_PLANS, legendRun, legendTeams, playLegendGame, scoreLegend, loadLegendRecords, saveLegendResult, loadLegendRun, storeLegendRun,
@@ -26,6 +27,7 @@ export function LegendChallenges({ h }: { h: NbaHistory }) {
   if (watching && last) return <div className="hunt-watch"><WatchGame game={last.result} home={last.home} away={last.away} homeRoster={last.home.seasons} awayRoster={last.away.seasons} onBoxScore={() => setWatching(false)} /></div>;
 
   if (!run || !sc) return <div className="legend-list">
+    <SmallRoom kind="challenge" title="History is waiting." detail="Take the underdog’s bench, call your game plan and change the ending." />
     <p className="hunt-lede">Short scenarios from real NBA history: one series or one game. Coach the real team against the real opponent under that era's rules, pick a game plan before every game, and chase three stars.</p>
     <p className="hint-text">★ push the favourite (win a game, or keep a one-game challenge within 5) · ★★ pull it off · ★★★ pull it off with the scenario's extra goal.</p>
     <div className="legend-grid">{LEGEND_SCENARIOS.map(s => { const rec = records[s.id]; return <article key={s.id} className="legend-card">

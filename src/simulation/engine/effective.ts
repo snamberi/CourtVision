@@ -112,8 +112,8 @@ function applyEffect(attributes: Attributes, flags: AggregatedFlags, effect: Bad
   }
 }
 
-/** The highest rating Career Mode's player can carry (the best ever at something). */
-export const CAREER_RATING_MAX = 120;
+/** The highest rating Career Mode's player can carry: 120 (the best ever at something), 125 from Ultra Cheat. */
+export const CAREER_RATING_MAX = 125;
 
 /** Past 99 a rating counts half on the court: a 120 shooter is the best ever, not a 70% three-point shooter. */
 const pastNinetyNine = (v: number, max: number) => (v > 99 && max > 99 ? 99 + (Math.min(max, v) - 99) / 2 : Math.min(max, v));

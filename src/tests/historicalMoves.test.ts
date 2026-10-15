@@ -35,6 +35,9 @@ describe('historical rosters: real mid-season moves and real picks', () => {
     const league = { ...built.league, season: '2017' };
     const extras = { ...built.extras, draftClass, draftOrder: buildTwoRoundDraftOrder(league, 1), draftDayOpen: true, draftPickIndex: 0, draftPicksMade: [] };
     const first = draftOnePick(league, extras).pick!;
-    expect(first.playerId).toBe('Markelle Fultz');
+    // The team on the clock takes the player it really drafted; a team without a real pick takes the best real one left.
+    const real = draftClass.filter(p => p.trueSeason.draftPick != null);
+    const own = real.filter(p => p.trueSeason.draftTeamId === first.teamId).sort((a, b) => a.trueSeason.draftPick! - b.trueSeason.draftPick!)[0];
+    expect(first.playerId).toBe(own?.playerId ?? 'Markelle Fultz');
   });
 });

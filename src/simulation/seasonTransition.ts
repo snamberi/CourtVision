@@ -378,10 +378,10 @@ export function beginNewSeasonRoster(
     draftClass = scouted ? extras.draftClass : generateClass();
   }
   const keepWorkouts = !historical && draftClass === extras.draftClass;
-  const standingsDraftOrder = buildTwoRoundDraftOrder(league, Math.floor(rng.next() * 1_000_000));
   const draftYear = parseInt(newSeason.slice(0, 4), 10);
+  const standingsDraftOrder = buildTwoRoundDraftOrder(league, Math.floor(rng.next() * 1_000_000), draftYear);
   const { order: draftOrder, protectionsTriggered } = resolveTradedPicksIntoOrder(standingsDraftOrder, draftYear, extras.futurePicks ?? []);
-  const lottery = lotteryResult(league, standingsDraftOrder.slice(0, teams.length), newSeason);
+  const lottery = lotteryResult(league, standingsDraftOrder.slice(0, teams.length), newSeason, draftYear);
   const futurePicks = rollFutureDraftPicksForward(extras.futurePicks ?? [], teams.map((t) => t.teamId), draftYear, FUTURE_PICK_WINDOW_YEARS);
 
   const historyRecord: FranchiseHistoryRecord = {
@@ -469,13 +469,29 @@ export function beginNewSeasonRoster(
 }
 
 /**
+ * Year-accurate historical leagues: a season the data covers takes its real length and pace (72 games in 2020-21,
+ * 66 in the 2011-12 lockout, 48 in 1947-48). Once the league passes the last real season it plays today's 82 games
+ * at today's pace.
+ */
+export function withYearAccurateSeason(league: League): League {
+  const meta = league.historical;
+  if (!league.settings.yearAccurate || !meta?.realSeasonGames) return league;
+  const real = meta.realSeasonGames[league.season ?? ''];
+  const games = real ?? 82;
+  const eraPace = meta.realPace?.[league.season ?? ''] ?? 1;
+  if (league.settings.gamesPerSeason === games && league.settings.eraPace === eraPace) return league;
+  return { ...league, settings: { ...league.settings, gamesPerSeason: games, eraPace } };
+}
+
+/**
  * The schedule-side half of the offseason: regenerates a fresh, fully
  * unplayed schedule (same games-per-team as before) and clears any leftover
  * injuries, since nobody carries an injury into a brand new season. This is
  * the very last step of the guided season-flow UI, called when preseason
  * ends - it's what actually starts the new regular season.
  */
-export function finalizeNewSeasonSchedule(league: League): League {
+export function finalizeNewSeasonSchedule(input: League): League {
+  const league = withYearAccurateSeason(input);
   const gamesPerTeam = league.settings.gamesPerSeason
     ?? (league.teams[0] ? totalGamesForTeam(league, league.teams[0].teamId) || 82 : 82);
   const schedule = generateSeasonSchedule(league.teams.map((t) => t.teamId), gamesPerTeam);

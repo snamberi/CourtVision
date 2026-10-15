@@ -1,0 +1,7 @@
+.bench-rest-hidden { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .court-play-effects, .bench-reaction { display: none; }
+  .bench-rest-hidden { display: inline; }
+}
+:root.lite .court-play-effects, :root.lite .bench-reaction { display: none; }
+:root.lite .bench-rest-hidden { display: inline; }

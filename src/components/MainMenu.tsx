@@ -22,6 +22,7 @@ import './relics/relics.css';
 import type { TradeDifficulty } from '../simulation/gm';
 import type { SaveSummary } from '../storage/saves';
 import { formatSeasonYear } from '../simulation/calendar';
+import { MODE_SHORT, modeRecords } from '../menu/modePresentation';
 import { AdBanner } from './AdBanner';
 import { weeklyRebuild, weeklyCareer, loadWeeklyRecords, weeklyStreak, weekEndsAt } from '../retention/weekly';
 import { WhatsNew } from './WhatsNew';
@@ -53,9 +54,7 @@ interface Props {
   /** Shown while a historical league is being assembled. */
   busy?: string | null;
   saves: SaveSummary[];
-  onContinue: (saveId: string) => void;
-  onDeleteSave: (saveId: string) => void;
-  onRenameSave: (saveId: string, name: string) => void;
+  onOpenContinue: () => void;
   /** Opens the Player Profile at its Trophy room (what the GM Locker was). */
   onLocker?: () => void;
   /** Starts the league a code describes; returns an error message, or null. */
@@ -127,61 +126,7 @@ const MODES: { id: MenuMode; title: string; blurb: string; kicker: string; icon:
 const cardOf = (m: string): MenuMode => (m === 'rebuild' || m === 'draft' || m === 'real' || m === 'random' || m === 'timeMachine' ? 'franchise' : m === 'category' ? 'perfect' : m as MenuMode);
 const BADGE_LABEL = { popular: 'Most popular', fun: 'Most fun' } as const;
 
-function formatWhen(ts: number): string {
-  return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
-function SavedLeaguesList({ saves, onContinue, onDeleteSave, onRenameSave }: Pick<Props, 'saves' | 'onContinue' | 'onDeleteSave' | 'onRenameSave'>) {
-  const [renamingId, setRenamingId] = useState<string | null>(null);
-  const [renameValue, setRenameValue] = useState('');
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-
-  if (saves.length === 0) return null;
-
-  return (
-    <div className="saved-leagues" id="menu-saves">
-      <h4>Your Leagues</h4>
-      <div className="saved-leagues-list">
-        {saves.map((s) => (
-          <div key={s.id} className="saved-league-row">
-            {renamingId === s.id ? (
-              <input
-                className="year-input" value={renameValue} autoFocus
-                onChange={(e) => setRenameValue(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') { onRenameSave(s.id, renameValue); setRenamingId(null); }
-                  if (e.key === 'Escape') setRenamingId(null);
-                }}
-                onBlur={() => { onRenameSave(s.id, renameValue); setRenamingId(null); }}
-              />
-            ) : (
-              <div className="saved-league-info" onClick={() => onContinue(s.id)}>
-                <strong>{s.name}</strong>
-                <span className="hint-text">
-                  {s.season ? formatSeasonYear(s.season) : 'No season yet'} · {s.teamCount} teams{s.controlledTeamName ? ` · ${s.controlledTeamName}` : ''} · {formatWhen(s.updatedAt)}
-                </span>
-              </div>
-            )}
-            <div className="saved-league-actions">
-              <button className="primary" onClick={() => onContinue(s.id)}>Continue</button>
-              <button onClick={() => { setRenamingId(s.id); setRenameValue(s.name); }}>Rename</button>
-              {confirmDeleteId === s.id ? (
-                <>
-                  <button className="danger" onClick={() => { onDeleteSave(s.id); setConfirmDeleteId(null); }}>Confirm Delete</button>
-                  <button onClick={() => setConfirmDeleteId(null)}>Cancel</button>
-                </>
-              ) : (
-                <button onClick={() => setConfirmDeleteId(s.id)}>Delete</button>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSave, busy = null, onLocker, onCode, onCommunity, onProfile, onFriends, onFriendList, onCloset, onSettings, onArcade, onCreate, onRelics, onShop, onRoad, onProfileTab, onOpenMode }: Props) {
+export function MainMenu({ onStart, saves, onOpenContinue, busy = null, onLocker, onCode, onCommunity, onProfile, onFriends, onFriendList, onCloset, onSettings, onArcade, onCreate, onRelics, onShop, onRoad, onProfileTab, onOpenMode }: Props) {
   const [newsOpen, setNewsOpen] = useState(false);
   // First visit: pick a look before anything else; What's New waits until it is picked.
   const [pickLook, setPickLook] = useState(needsThemeChoice);
@@ -194,16 +139,37 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
   const account = useAccount();
   const [askSignIn, setAskSignIn] = useState(true);
   const showSignIn = askSignIn && needsSignInWelcome(account.status);
-  // A first click picks a card (its Play button appears); Play (or a second click) opens the mode's setup.
+  // Selecting a card reveals its actions and the available ways to play.
   const [selectedMode, setSelectedMode] = useState<MenuMode | null>(null);
+  useEffect(() => {
+    if (!selectedMode || !window.matchMedia('(max-width: 720px)').matches) return;
+    const timer = window.setTimeout(() => {
+      const actions = document.getElementById(`mode-options-${selectedMode}`)?.querySelector('.mode-card-actions');
+      if (!actions) return;
+      const rect = actions.getBoundingClientRect();
+      const bar = document.querySelector('.menu-bar')?.getBoundingClientRect();
+      const bottom = bar && bar.height ? bar.top - 16 : window.innerHeight - 24;
+      const delta = rect.bottom > bottom ? rect.bottom - bottom : rect.top < 88 ? rect.top - 88 : 0;
+      if (delta) window.scrollBy({ top: delta, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.classList.contains('lite') ? 'instant' : 'smooth' });
+    }, 240);
+    return () => window.clearTimeout(timer);
+  }, [selectedMode]);
   // Runs in progress, for the Continue chips (careers live in their own database, read after the menu shows).
   const [progress, setProgress] = useState<InProgress>(() => localProgress());
+  const [records, setRecords] = useState(modeRecords);
   useEffect(() => {
     let live = true;
-    import('../career/storage').then(m => m.listCareers()).then(list => { const c = careerProgress(list); if (live && c) setProgress(p => ({ ...p, career: c })); }, () => {});
+    import('../career/storage').then(m => m.listCareers()).then(list => {
+      if (!live) return;
+      const active = careerProgress(list);
+      if (active) setProgress(p => ({ ...p, career: active }));
+      const latest = [...list].sort((a, b) => b.updatedAt - a.updatedAt)[0];
+      if (latest) setRecords(r => ({ ...r, career: `${latest.identity.name} · ${latest.years.length} seasons${latest.status === 'retired' ? ' · retired' : ''}` }));
+    }, () => {});
     return () => { live = false; };
   }, []);
-  const progressOf = (m: MenuMode) => (m === 'franchise' ? progress.rebuild ?? progress.draft ?? progress.real ?? progress.random : progress[m]);
+  const latestSave = [...saves].sort((a, b) => b.updatedAt - a.updatedAt)[0];
+  const progressOf = (m: MenuMode) => (m === 'franchise' ? latestSave ? `${latestSave.name}${latestSave.season ? ` · ${formatSeasonYear(latestSave.season)}` : ''}` : undefined : progress[m]);
   const [featured] = useState(() => modeOfWeek());
   const play = (m: MenuMode) => {
     if (busy) return;
@@ -237,30 +203,44 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
           onAchievements={onProfileTab && (() => onProfileTab('achievements'))} streak={visit.v.streak} />
       </div>
 
-      <MenuQuickLinks hasSaves={saves.length > 0} onRoad={onRoad} onRelics={onRelics} onProfile={onProfile ?? onLocker} onFriends={onFriendList ?? onFriends} onCloset={onCloset} onSettings={onSettings} />
+      <MenuQuickLinks onContinue={onOpenContinue} onRoad={onRoad} onRelics={onRelics} onProfile={onProfile ?? onLocker} onFriends={onFriendList ?? onFriends} onCloset={onCloset} onSettings={onSettings} />
 
-      <div className="menu-section-heading"><h2>Choose your game</h2><span>PICK ONE, THEN PRESS PLAY</span></div>
+      <div className="menu-section-heading"><h2>Choose your game</h2><span>YOUR NEXT CHAPTER STARTS HERE</span></div>
 
       <div className="mode-grid" id="menu-modes">
         {MODES.map((m) => {
           const picked = selectedMode === m.id, inProgress = progressOf(m.id), hot = cardOf(featured) === m.id;
-          return <div key={m.id} className={`mode-card-wrap ${picked ? 'picked' : ''}`}>
+          return <div key={m.id} className={`mode-card-wrap ${picked ? 'picked' : ''}`} data-mode={m.id}>
             <button
               className={`mode-card ${picked ? 'selected' : ''}`}
-              onClick={() => (picked ? play(m.id) : setSelectedMode(m.id))}
+              onClick={() => setSelectedMode(picked ? null : m.id)}
               aria-pressed={picked}
-              aria-describedby={picked ? `mode-play-${m.id}` : undefined}
+              aria-expanded={picked}
+              aria-controls={`mode-options-${m.id}`}
+              aria-label={`${m.title}: show ways to play`}
             >
               {modeById(m.id) && <ModeArt entry={modeById(m.id)!} />}
               <span className="mode-card-kicker"><ModeIcon mode={m.id} size={30} /><span>{m.kicker}</span>{(m.badge || hot) && <span className="mode-flags">{hot && <span className="mode-xp" title={`Mode of the Week: double XP for ${FEATURED_NAME[featured]} runs finished this week`}>2× XP</span>}{m.badge && <span className={`mode-badge mode-badge-${m.badge}`}><PixelIcon name={m.badge === 'popular' ? 'flame' : 'star'} size={12} /> {BADGE_LABEL[m.badge]}</span>}</span>}<span className="mode-selection-dot" /></span>
               <h3>{m.title}</h3>
-              <p>{m.blurb}</p>
-              {inProgress && <span className="mode-continue"><PixelIcon name="play" size={12} /> In progress: {inProgress}</span>}
+              <span className={`mode-progress ${inProgress ? 'active' : ''}`}><PixelIcon name={inProgress ? 'play' : records[m.id] ? 'trophy' : 'star'} size={12} />{inProgress ? `Current: ${inProgress}` : records[m.id] ?? 'Your first chapter awaits'}</span>
+              <p>{MODE_SHORT[m.id]}</p>
               <span className="mode-meta"><span className="mode-time" title="How long a sitting takes"><PixelIcon name="clock" size={12} /> {m.time}</span>{m.tags.map(t => <span key={t} className="mode-tag">{t}</span>)}</span>
             </button>
-            {picked && <button id={`mode-play-${m.id}`} className="primary mode-play" disabled={!!busy} onClick={() => play(m.id)} autoFocus>
-              <PixelIcon name="play" size={14} /> {busy ?? (inProgress && m.id !== 'franchise' ? 'Continue' : m.id === 'franchise' ? 'Play: set up a league' : 'Play')}
-            </button>}
+            <div id={`mode-options-${m.id}`} className={`mode-card-expansion ${picked ? 'open' : ''}`} aria-hidden={!picked} inert={!picked}>
+              <div className="mode-card-expansion-inner">
+            <div className="mode-card-actions">
+              <button id={`mode-play-${m.id}`} className="primary mode-play" disabled={!!busy} onClick={() => play(m.id)}><PixelIcon name="play" size={14} />{busy ?? 'Play'}</button>
+              {m.id === 'franchise' && <button className="mode-resume" disabled={!!busy} onClick={onOpenContinue}>Continue{ saves.length > 0 && <span>{saves.length}</span>}</button>}
+            </div>
+            {onOpenMode && subModesOf(m.id).length > 0 && <div className="mode-card-options" aria-label={`Ways to play ${m.title}`}>
+              <span className="pixel-eyebrow">WAYS TO PLAY</span>
+              {(m.id === 'perfect' ? [modeById('perfect')!, ...subModesOf('perfect')] : subModesOf(m.id)).map(e => <button key={e.id} className="mode-option-row" onClick={() => onOpenMode(e)} disabled={!!busy}>
+                <ModeIcon mode={e.id} size={36} /><span><b>{e.title}</b><small>{e.desc}</small></span><PixelIcon name="play" size={12} />
+              </button>)}
+            </div>}
+              </div>
+            </div>
+            <details className="mode-how"><summary>How to play</summary><p>{m.blurb}</p></details>
           </div>;
         })}
         {/* Room for the next modes. */}
@@ -274,11 +254,6 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
         </div>)}
       </div>
 
-      {selectedMode && onOpenMode && subModesOf(selectedMode).length > 0 && <section className="mode-subs" aria-label="Ways to play">
-        <h4>Ways to play {MODES.find(m => m.id === selectedMode)?.title}</h4>
-        <div className="mode-tiles">{(selectedMode === 'perfect' ? [modeById('perfect')!, ...subModesOf('perfect')] : subModesOf(selectedMode)).map(e => <ModeCard key={e.id} entry={e} onOpen={onOpenMode} />)}</div>
-      </section>}
-
       {onRoad && <SeasonStrip onOpen={() => onRoad('season')} />}
       {onRelics && <RelicStrip onOpen={onRelics} />}
       {seasonPay.cosmetics.length > 0 && <Suspense fallback={null}><SeasonTierUp cosmetics={seasonPay.cosmetics} spins={seasonPay.spins} onClose={() => setSeasonPay({ spins: 0, cosmetics: [] })} onOpenPass={onRoad && (() => onRoad('season'))} /></Suspense>}
@@ -286,7 +261,7 @@ export function MainMenu({ onStart, saves, onContinue, onDeleteSave, onRenameSav
       <DailyChallengeCard onPlay={m => m === 'perfect' ? onStart('perfect', 'normal', '', '') : m === 'hunt' ? onStart('legends', 'normal', '', '') : onArcade?.(m)} />
       {onArcade && <QuickGames onOpen={onArcade} onOpenMode={onOpenMode} />}
 
-      <SavedLeaguesList saves={saves} onContinue={onContinue} onDeleteSave={onDeleteSave} onRenameSave={onRenameSave} />
+
 
 
       {onCode && <CodeEntry busy={busy} onCode={onCode} />}
@@ -395,12 +370,12 @@ function QuickGames({ onOpen, onOpenMode }: { onOpen: (game: 'grid' | 'guess' | 
 
 /** One row of the places people look for most: jumps down the menu (modes, today's challenge, saved leagues) and opens
  *  the pages that otherwise live only in the phone (Season Pass, Relic Vault, the roads, profile, friends, settings). */
-function MenuQuickLinks({ hasSaves, onRoad, onRelics, onProfile, onFriends, onCloset, onSettings }: { hasSaves: boolean; onRoad?: (r: 'level' | 'trophy' | 'season') => void; onRelics?: () => void; onProfile?: () => void; onFriends?: () => void; onCloset?: () => void; onSettings?: () => void }) {
+function MenuQuickLinks({ onContinue, onRoad, onRelics, onProfile, onFriends, onCloset, onSettings }: { onContinue: () => void; onRoad?: (r: 'level' | 'trophy' | 'season') => void; onRelics?: () => void; onProfile?: () => void; onFriends?: () => void; onCloset?: () => void; onSettings?: () => void }) {
   const go = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   const links: [string, string, (() => void) | undefined][] = [
     ['play', 'Modes', () => go('menu-modes')],
     ['calendar', 'Daily', () => go('menu-daily')],
-    ['list', 'Saved leagues', hasSaves ? () => go('menu-saves') : undefined],
+    ['list', 'Continue franchise', onContinue],
     ['star', 'Season Pass', onRoad && (() => onRoad('season'))],
     ['crown', 'Relics', onRelics],
     ['chart', 'Level Road', onRoad && (() => onRoad('level'))],

@@ -2191,8 +2191,8 @@ a.ad-creative:hover .ad-cta { background: var(--c-bg-ff8f3c, #ff8f3c); }
 .play-menu-section p { margin: 0; font-size: 0.85rem; color: var(--text-dim); }
 .play-menu-section > button { width: 100%; }
 
-.play-menu-blocked { font-size: 0.85rem; }
-.play-menu-blocked p { margin: 0 0 6px; color: var(--text); }
+.play-menu-blocked, .play-menu-note { font-size: 0.85rem; }
+.play-menu-blocked p, .play-menu-note p { margin: 0 0 6px; color: var(--text); }
 .play-menu-blocked ul { margin: 0 0 8px; padding-left: 18px; color: var(--c-fg-ff8a7a, #ff8a7a); }
 .play-menu-blocked li { margin: 2px 0; }
 

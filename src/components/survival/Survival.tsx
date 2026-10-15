@@ -1,3 +1,9 @@
+import { LineupBoard } from '../presentation/LineupBoard';
+import { ResultCount, ResultCrest, MvpSpotlight } from '../presentation/ResultPresentation';
+import { teamColors } from '../../simulation/teamColors';
+import { playerFinish } from '../presentation/cardFinish';
+import { RevealSparks } from '../presentation/PlayerFinish';
+import { ModeBackdrop } from '../presentation/ModeScene';
 import { ModeIcon } from '../ModeIcon';
 import { useEffect, useRef, useState } from 'react';
 import type { NbaHistory } from '../../history/nbaHistoryData';
@@ -24,7 +30,6 @@ import '../hunt/hunt.css';
 import './survival.css';
 
 const SITE = 'https://courtvisiongame.com';
-const posColor: Record<string, string> = { PG: '#4da3ff', SG: '#55c878', SF: '#ffd166', PF: '#f47b20', C: '#e85d5d', G: '#4da3ff', F: '#f47b20' };
 const newSeed = () => Math.floor(Math.random() * 1_000_000_000);
 
 /** Survival: start with legends, pay a player for every win, and see how long you last. */
@@ -65,8 +70,9 @@ export function Survival({ onExit }: { onExit: () => void }) {
   </header>;
   if (error) return <div className="hunt surv">{header}<p className="empty-state">Could not load the NBA history data: {error}</p></div>;
   if (!h) return <div className="hunt surv">{header}<p className="empty-state">Loading 80 years of basketball…</p></div>;
-  return <div className="hunt surv">
+  return <div className="hunt surv mode-environment" data-environment="survival">
     {header}
+    <ModeBackdrop mode="survival" />
     {!run ? <Hub records={records} onStart={start} />
       : run.stage === 'draft' ? <DraftView h={h} run={run} onKeep={ids => setRun(keepTen(run, ids))} />
       : run.stage === 'tag' ? <TagView h={h} run={run} onTag={id => setRun(tagFranchise(h, run, id))} />
@@ -79,13 +85,13 @@ export function Survival({ onExit }: { onExit: () => void }) {
 
 function CardTile({ c, selected, franchise, onClick, small }: { c: HuntCard; selected?: boolean; franchise?: boolean; onClick?: () => void; small?: boolean }) {
   const body = <>
-    <PlayerAvatar playerId={c.name} primaryColor={posColor[c.pos] ?? '#f47b20'} secondaryColor="#f4f0e6" size={small ? 36 : 48} mode="portrait" />
+    <PlayerAvatar playerId={c.name} primaryColor={teamColors(c.team).primary} secondaryColor={teamColors(c.team).secondary} size={small ? 36 : 48} mode="portrait" />
     <span className="surv-card-text"><b>{franchise && <PixelIcon name="crown" size={12} />} {c.name}</b><small>{seasonLabel(c.end)} · {c.team} · {c.pos}</small><small>{c.ppg} PTS · {c.rpg} REB · {c.apg} AST</small></span>
     <span className={`hunt-reel-ovr rarity-${c.rarity}`}>{c.ovr}</span>
   </>;
   return onClick
-    ? <button className={`surv-card rarity-${c.rarity} ${selected ? 'selected' : ''} ${small ? 'small' : ''}`} aria-pressed={selected} onClick={onClick}>{body}</button>
-    : <div className={`surv-card rarity-${c.rarity} ${franchise ? 'franchise' : ''} ${small ? 'small' : ''}`}>{body}</div>;
+    ? <button style={playerFinish(c.team)} className={`surv-card player-finish rarity-${c.rarity} ${selected ? 'selected' : ''} ${small ? 'small' : ''}`} aria-pressed={selected} onClick={onClick}>{body}</button>
+    : <div style={playerFinish(c.team)} className={`surv-card player-finish rarity-${c.rarity} ${franchise ? 'franchise' : ''} ${small ? 'small' : ''}`}>{body}</div>;
 }
 
 function Hub({ records, onStart }: { records: SurvivalRecords; onStart: (level: SurvivalLevel, daily?: string) => void }) {
@@ -129,7 +135,7 @@ function DraftView({ h, run, onKeep }: { h: NbaHistory; run: SurvivalRun; onKeep
     <div className="hunt-next"><span className="pixel-eyebrow">THE DEAL · KEEP {ROSTER} OF {run.dealt.length}</span><h2>Your legends <LuckChip luck={run.luck} /></h2>
       <small>Team rating {survivalRating(h, keep)} · {keep.length}/{ROSTER} kept · {guards} guards · {bigs} centers</small></div>
     <p className="hint-text">Every win costs you one of your best, so depth matters as much as stars. Positions matter too: a team with no center gets punished on the boards.</p>
-    <div className="surv-grid">{run.dealt.map(id => <CardTile key={id} c={pool.byId.get(id)!} selected={keep.includes(id)} onClick={() => toggle(id)} />)}</div>
+    <div className="surv-grid surv-deal"><RevealSparks rarity="epic" />{run.dealt.map(id => <CardTile key={id} c={pool.byId.get(id)!} selected={keep.includes(id)} onClick={() => toggle(id)} />)}</div>
     <div className="contest-actions"><button className="primary hunt-play" disabled={keep.length !== ROSTER} onClick={() => onKeep(keep)}>Keep these {keep.length}</button></div>
   </section>;
 }
@@ -157,6 +163,7 @@ function Pregame({ h, run, onPlay, onSign }: { h: NbaHistory; run: SurvivalRun; 
   const mine = new Set(run.roster.map(id => pool.byId.get(id)!.playerId));
   const theirs = opp.roster.map(id => pool.byId.get(id)!).filter(c => c && !mine.has(c.playerId)).slice(0, ROSTER);
   const roster = run.roster.map(id => pool.byId.get(id)!).sort((a, b) => b.ovr - a.ovr);
+  const lineup = roster.map(c => { const kit=teamColors(c.team); return { id:c.id,name:c.name,pos:c.pos,colors:[kit.primary,kit.secondary] as [string,string],sub:`${seasonLabel(c.end)} · ${c.ovr} OVR` }; });
   const odds = ours - them;
   return <section className="hunt-stage">
     <Strip run={run} />
@@ -170,6 +177,7 @@ function Pregame({ h, run, onPlay, onSign }: { h: NbaHistory; run: SurvivalRun; 
       <div><small>THEM</small><b className="hunt-rating">{them}</b></div></div>
     <p className="hint-text hunt-odds">{odds >= 4 ? 'You are the favourite.' : odds <= -4 ? 'You are the underdog. One game: anything can happen.' : 'A coin flip.'} Era rules: {era.blurb}</p>
     <Emergency h={h} run={run} onSign={onSign} />
+    <LineupBoard title="Your survival lineup" players={lineup.slice(0,5)} bench={lineup.slice(5)} />
     <div className="surv-two">
       <div><h3 className="hunt-subhead">Your ten</h3><div className="surv-list">{roster.map(c => <CardTile key={c.id} c={c} small franchise={c.id === run.franchise} />)}</div></div>
       <div><h3 className="hunt-subhead">Their rotation</h3><ol className="hunt-their">{theirs.map(c => <li key={c.id}><b>{c.ovr}</b> {c.name} <small>{c.pos}</small></li>)}</ol>
@@ -243,19 +251,19 @@ function Over({ h, run, records, onNew, onExit }: { h: NbaHistory; run: Survival
   const name = (id?: string) => (id ? pool.byId.get(id)?.name ?? id : '');
   const franchise = run.franchise ? pool.byId.get(run.franchise) : undefined;
   return <section className={`hunt-stage hunt-over ${w >= 10 ? 'won' : 'lost'}`}>
-    <div className="hunt-over-banner">
+    <div className="hunt-over-banner result-hero">
+      <ResultCrest celebrateWin={w >= 10} label="COURT VISION · SURVIVAL" />
       <span className="pixel-eyebrow">RUN OVER · {SURVIVAL_LEVELS[run.level].name.toUpperCase()}{run.daily ? ` · DAILY ${run.daily}` : ''}</span>
       <h2>You lasted {w} round{w === 1 ? '' : 's'}</h2>
       {last && !last.won && <p>Knocked out {last.us}-{last.them} by the {last.oppName}.</p>}
       <div className="hunt-over-stats">
-        <div><small>WINS</small><b>{w}</b></div><div><small>BOSSES</small><b>{bosses}</b></div><div><small>SCORE</small><b>{score.toLocaleString()}</b></div>
-        <div><small>BEST</small><b>{best?.wins ?? w}</b></div>
+        <div><small>WINS</small><b><ResultCount value={w} /></b></div><div><small>BOSSES</small><b><ResultCount value={bosses} /></b></div><div><small>SCORE</small><b><ResultCount value={score} /></b></div>
+        <div><small>BEST</small><b><ResultCount value={best?.wins ?? w} /></b></div>
       </div>
     </div>
     <RelicReward rewardKey={survivalRewardKey(run)} />
     <Strip run={run} />
-    {franchise && <div className="hunt-mvp"><PlayerAvatar playerId={franchise.name} primaryColor="#f47b20" secondaryColor="#f4f0e6" size={72} />
-      <div><span className="pixel-eyebrow">FRANCHISE PLAYER</span><strong>{franchise.name}</strong><span>{seasonLabel(franchise.end)} · there to the end</span></div></div>}
+    {franchise && <MvpSpotlight name={franchise.name} label="FRANCHISE PLAYER" team={franchise.team} detail={`${seasonLabel(franchise.end)} · there to the end`} />}
     <ol className="hunt-log">{run.games.map(g => <li key={g.round} className={g.won ? 'won' : 'lost'}>{g.won ? 'W' : 'L'} {g.us}-{g.them} vs {g.oppName}{g.boss ? ' (boss)' : ''}
       {g.lost && <small> · lost {name(g.lost)}{g.signed ? `, signed ${name(g.signed)}` : ''}{g.shielded ? ` · shielded ${name(g.shielded)}` : ''}</small>}</li>)}</ol>
     <div className="contest-actions">
@@ -266,7 +274,8 @@ function Over({ h, run, records, onNew, onExit }: { h: NbaHistory; run: Survival
         subtitle: last && !last.won ? `Knocked out by the ${last.oppName}` : undefined,
         stats: [{ label: 'Wins', value: String(w) }, { label: 'Bosses', value: String(bosses) }, { label: 'Score', value: score.toLocaleString() }],
         lines: run.games.slice(-6).map(g => `${g.won ? 'W' : 'L'} ${g.us}-${g.them} vs ${g.oppName}`),
-        avatar: franchise ? { playerId: franchise.name } : undefined, accent: w >= 10 ? 'gold' : 'red',
+        spotlight: franchise ? { label: 'FRANCHISE PLAYER', name: franchise.name } : undefined,
+        avatar: franchise ? { playerId: franchise.name, primary: teamColors(franchise.team).primary, secondary: teamColors(franchise.team).secondary } : undefined, accent: w >= 10 ? 'gold' : 'red',
       }} />
       <button onClick={() => navigator.clipboard?.writeText(text).then(() => setCopied(true), () => setCopied(false))}>{copied ? 'Copied!' : 'Copy as text'}</button>
       <button onClick={onExit}>Main Menu</button>

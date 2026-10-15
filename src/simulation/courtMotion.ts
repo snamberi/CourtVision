@@ -1,5 +1,6 @@
 import type { PossessionLogEntry, PossessionPlayback } from './boxscore';
 import { playbackForEntry } from './gamePlayback';
+import { likenessKey } from '../visuals/likeness';
 import { signatureShot } from './signatureMoves';
 import type { AnimKind, Gait } from '../visuals/actionSprites';
 
@@ -17,6 +18,7 @@ export interface CourtFrame {
  players:CourtActor[]; ball:CourtBall; phase:string; carrier?:string; hoop:CourtPoint; net:number; attackRight:boolean; shotAttempt?:number;
  /** Presentation-only extras; derived from the recorded log, never from simulation randomness. */
  offenseTeamId?:string; callout?:CourtCallout; rim?:number; shotFrom?:CourtPoint;
+ flightTrail?:CourtBall[]; impact?:CourtBall; celebration?:'nightNight';
  /** The passer and scorer of an assisted basket (key = the two ids sorted, as in chemistryWeb.ts). */
  duo?:{key:string;passer:string;shooter:string};
 }
@@ -301,7 +303,8 @@ function baseFrame(entry:PossessionLogEntry,play:PossessionPlayback,progress:num
   const shotEnd=dunk?.84:.78;
   let anim:CourtActor['anim'];
   const shooting=isShooter&&!!play.shooterId&&!onlyFT&&!ftActive&&!turnover;
-  if(pose==='celebrate')anim={kind:'celebrate',t:window01(q,.84,1)};
+  if(pose==='celebrate'){const night=three&&likenessKey(shooter)==='stephen curry';anim={kind:night?'nightNight':'celebrate',t:window01(q,.84,1)};if(night)jump=0;}
+  else if(!isShooter&&play.shotMade&&q>.86&&!ftActive)anim={kind:'clap',t:window01(q,.86,1)};
   else if(shooting&&q>=.47&&q<shotEnd+.08)anim={kind:shotKind,t:window01(q,.47,shotEnd+.08)};
   // A pump fake before a one-on-one jumper; landing and recovering after a miss.
   else if(shooting&&pumpFake&&q>=.415&&q<.47){anim={kind:'pumpFake',t:window01(q,.415,.47)};pose='idle';}
@@ -439,19 +442,24 @@ function baseFrame(entry:PossessionLogEntry,play:PossessionPlayback,progress:num
   return {x:a.x+lateral*7+(right?5:-5),y:a.y+1+lateral*2,z:3+18*Math.abs(Math.cos(f*Math.PI)),spin:q*1500};
  };
  const held=(id:string|undefined):CourtBall=>({...hand(id),z:26,spin:0});
+ let flightTrail:CourtBall[]|undefined,impact:CourtBall|undefined;
+ const flight=(a:CourtPoint,b:CourtPoint,t:number,start:number,end:number,seconds:number):CourtBall=>{
+  flightTrail=[.035,.07,.105].filter(dt=>t>=dt).map(dt=>ballFlight(a,b,t-dt,start,end,seconds));
+  return ballFlight(a,b,t,start,end,seconds);
+ };
  let ball:CourtBall,phase=entry.secondChance?'Second chance':fast?'Push it':'Bring it up',carrier:string|undefined=bringer,net=0,shotAttempt:number|undefined,rim=0,callout:CourtCallout|undefined;
  // In-bound or outlet first (entryPass is set above).
  if(grabT!=null&&loose&&q<grabT){ball={...loose,z:0,spin:0};carrier=undefined;phase=inbounder?'Inbound':'Loose ball';}
  else if(entryPass&&q<entryPass.t0){ball=held(entryPass.from);carrier=entryPass.from;phase=inbounder?'Inbound':'Outlet';}
- else if(entryPass&&q<entryPass.t1){ball=ballFlight(hand(entryPass.from),hand(bringer),(q-entryPass.t0)/(entryPass.t1-entryPass.t0),40,26,inbounder?.6:.8);carrier=undefined;phase=inbounder?'Inbound':'Outlet pass';}
+ else if(entryPass&&q<entryPass.t1){ball=flight(hand(entryPass.from),hand(bringer),(q-entryPass.t0)/(entryPass.t1-entryPass.t0),40,26,inbounder?.6:.8);carrier=undefined;phase=inbounder?'Inbound':'Outlet pass';}
  else{
   const holder=holderAt(q),flying=passes.find(ps=>q>=ps.t0&&q<ps.t1);
   if(flying){
    const t=(q-flying.t0)/(flying.t1-flying.t0),from=hand(flying.from),to=hand(flying.to);
    const kind=passKind(flying);
-   if(flying.bounce){const mid=courtLerp(from,to,.52);ball=t<.52?ballFlight(from,mid,t/.52,23,3,.35):ballFlight(mid,to,(t-.52)/.48,3,26,.32);}
-   else if(kind==='overheadPass')ball=ballFlight(from,to,t,40,28,.85);
-   else ball=ballFlight(from,to,t,25,26,.32);
+   if(flying.bounce){const mid=courtLerp(from,to,.52);ball=t<.52?flight(from,mid,t/.52,23,3,.35):flight(mid,to,(t-.52)/.48,3,26,.32);}
+   else if(kind==='overheadPass')ball=flight(from,to,t,40,28,.85);
+   else ball=flight(from,to,t,25,26,.32);
    carrier=undefined;phase=flying.to===shooter&&flying.from===creator&&play.passerId?(flying.bounce?'Bounce pass':'Pass'):'Swing pass';
   }else{
    carrier=holder;
@@ -476,11 +484,12 @@ function baseFrame(entry:PossessionLogEntry,play:PossessionPlayback,progress:num
  const shotFrom=play.shooterId&&!onlyFT?shot:undefined;
  if(play.shooterId&&q>=.56&&!onlyFT&&!turnover){
   const t=limit((q-.56)/.2),from=hand(shooter),airtime=dunk?.25:close?.6:three?1.4:1.1;
-  ball=ballFlight(from,hoop,t,dunk?48:42,34,airtime);
+  ball=flight(from,hoop,t,dunk?48:42,34,airtime);
   carrier=undefined;phase=dunk?'At the rim':three?'Three-point attempt':'Shot in the air';
-  if(play.blockerId&&q>=.66){const contact=ballFlight(from,hoop,.5,dunk?48:42,34,airtime);ball=ballFlight(contact,hand(play.rebounderId??play.blockerId),limit((q-.66)/.24),contact.z,25,.48);phase='Blocked';if(q>.9)carrier=play.rebounderId??play.blockerId;
+  if(play.blockerId&&q>=.66){const contact=ballFlight(from,hoop,.5,dunk?48:42,34,airtime);ball=flight(contact,hand(play.rebounderId??play.blockerId),limit((q-.66)/.24),contact.z,25,.48);impact=contact;phase='Blocked';if(q>.9)carrier=play.rebounderId??play.blockerId;
    callout={text:'BLOCKED!',...contact,t:window01(q,.66,.96),tone:'defense'};}
   else if(q>=.76){
+   flightTrail=undefined;
    if(play.shotMade){const t2=limit((q-.76)/.16);ball={...hoop,z:34*(1-t2*t2),spin:q*900};if(q>.92){const u=limit((q-.92)/.08);ball={...courtLerp(hoop,mirror({x:878,y:310+sign*10}),u),z:bouncing(u,12),spin:q*900};}net=Math.sin(limit((q-.76)/.1)*Math.PI);phase=dunk?'Dunk!':'Basket';
     const and1=entry.result==='AND1'||entry.events.some(e=>e.includes(' AND-1 ('));
     const sigMade=signatureShot(play.shooterId,play.shotType);
@@ -536,7 +545,7 @@ function baseFrame(entry:PossessionLogEntry,play:PossessionPlayback,progress:num
  }
  const passer=play.assistId??(shooter!==creator?creator:undefined);
  const duo=play.shotMade&&passer&&passer!==shooter?{key:passer<shooter?`${passer}|${shooter}`:`${shooter}|${passer}`,passer,shooter}:undefined;
- return {players:actors,ball,phase,carrier,hoop,net,attackRight:right,shotAttempt,offenseTeamId:entry.offenseTeamId,callout,rim,shotFrom,duo};
+ return {players:actors,ball,phase,carrier,hoop,net,attackRight:right,shotAttempt,offenseTeamId:entry.offenseTeamId,callout,rim,shotFrom,duo,flightTrail,impact,celebration:play.shotMade&&three&&q>.84&&!ftActive&&likenessKey(shooter)==='stephen curry'?'nightNight':undefined};
 }
 const SMOOTH=.035,SMOOTH_TAPS=6;
 /** A stateless scene makes pause, seek, high playback speeds and repeat viewing agree exactly. */

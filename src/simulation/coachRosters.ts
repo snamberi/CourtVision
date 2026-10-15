@@ -12,14 +12,20 @@ export function normalizeRosterRules(league: League, extras: GMLeagueExtras) {
   return { league: { ...league, rosterLimits: ROSTER_LIMITS }, extras: { ...extras, capSettings: { ...extras.capSettings, ...ROSTER_LIMITS } } };
 }
 
-/** Coaches handle emergency roster moves before regular-season play, including the user's team. */
-export function manageCoachRosters(league: League, extras: GMLeagueExtras) {
+/**
+ * AI coaches keep their rosters inside the league's limits during the regular season: they waive the weakest fits
+ * above the maximum and sign free agents up to the minimum. Teams in `keep` (yours, and friends' teams in an online
+ * league) are left alone: a person can run a short or an oversized roster, and games still play.
+ */
+export function manageCoachRosters(league: League, extras: GMLeagueExtras, keep: (string | null | undefined)[] = []) {
   let current = { league, extras };
   const moves: { teamId: string; playerId: string; kind: 'signed' | 'waived' }[] = [];
   if ((league.seasonPhase ?? 'regular_season') !== 'regular_season') return { ...current, moves };
   const { minRosterSize: min, maxRosterSize: max } = extras.capSettings;
+  const skip = new Set([...keep, ...(league.online?.humans ?? [])].filter((id): id is string => !!id));
+  const managed = league.teams.filter(t => !skip.has(t.teamId));
   // Release excess depth first so every team can draw from the same free-agent pool.
-  for (const original of league.teams) {
+  for (const original of managed) {
     let team = current.league.teams.find(t => t.teamId === original.teamId)!;
     while (team.seasons.length > max) {
       const depth = (pos: ReturnType<typeof primaryPosition>) => team.seasons.filter(s => primaryPosition(s) === pos).length;
@@ -35,7 +41,7 @@ export function manageCoachRosters(league: League, extras: GMLeagueExtras) {
       team = current.league.teams.find(t => t.teamId === original.teamId)!;
     }
   }
-  for (const original of league.teams) {
+  for (const original of managed) {
     let team = current.league.teams.find(t => t.teamId === original.teamId)!;
     while (team.seasons.length < min) {
       const cap = current.extras.capSettings;

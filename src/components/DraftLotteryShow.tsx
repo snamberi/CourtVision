@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { League } from '../simulation/league';
 import type { LotteryResult } from '../simulation/draftNight';
 import { TeamLogo } from './TeamLogo';
+import { LOTTERY_RULES } from '../simulation/draftLottery';
 
 /** The lottery, live: envelopes open from the last lottery pick up to No. 1. */
 export function DraftLotteryShow({ league, lottery, controlledTeamId, onDone }: { league: League; lottery: LotteryResult; controlledTeamId: string | null; onDone: () => void }) {
@@ -16,9 +17,12 @@ export function DraftLotteryShow({ league, lottery, controlledTeamId, onDone }: 
   }, [auto, shown, done, byPick.length]);
   const team = (id: string) => league.teams.find(t => t.teamId === id);
   const mine = lottery.entries.find(e => e.teamId === controlledTeamId);
+  const rule = LOTTERY_RULES.find(r => r.id === lottery.format);
+  const coin = lottery.format === 'coinFlip1966', title = coin ? 'The coin flip' : lottery.format === 'none' ? 'No lottery this year' : 'Who gets No. 1?';
 
   return <section className="lottery-show" aria-label="Draft lottery">
-    <header><span className="pixel-eyebrow">DRAFT LOTTERY</span><h3>Who gets No. 1?</h3>
+    <header><span className="pixel-eyebrow">{coin ? 'COIN FLIP' : 'DRAFT LOTTERY'}{rule ? ` · ${rule.label.toUpperCase()} (${rule.years})` : ''}</span><h3>{title}</h3>
+      {rule && <p className="hint-text">{rule.blurb}</p>}
       {mine && <p className="hint-text">You came in at No. {mine.before} with a {mine.oddsTop}% chance at the top pick.</p>}</header>
     <ol className="lottery-envelopes">{byPick.map((e, i) => {
       const open = i < shown, t = team(e.teamId), moved = e.before - e.after;
@@ -26,11 +30,11 @@ export function DraftLotteryShow({ league, lottery, controlledTeamId, onDone }: 
         <span className="lottery-pick">No. {e.after}</span>
         {open && t ? <><TeamLogo team={t} size={28} /><b>{t.name}</b>
           <small>{moved > 0 ? `▲ up ${moved} from No. ${e.before}` : moved < 0 ? `▼ down ${-moved} from No. ${e.before}` : `held No. ${e.before}`} · {e.oddsTop}% odds</small></>
-          : <span className="lottery-sealed">✉ sealed</span>}
+          : <span className="lottery-sealed">{coin ? 'coin in the air' : '✉ sealed'}</span>}
       </li>;
     })}</ol>
     <div className="lottery-actions">
-      {!done && <button className="primary" onClick={() => setShown(s => s + 1)}>Open next envelope</button>}
+      {!done && <button className="primary" onClick={() => setShown(s => s + 1)}>{coin ? 'Flip the coin' : 'Open next envelope'}</button>}
       {!done && <button onClick={() => setAuto(a => !a)}>{auto ? 'Pause' : 'Play the reveal'}</button>}
       {!done && <button onClick={() => setShown(byPick.length)}>Show all</button>}
       {done && <button className="primary" onClick={onDone}>On to the draft ▶</button>}

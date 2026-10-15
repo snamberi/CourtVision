@@ -1,8 +1,12 @@
+import { teamColors } from '../../simulation/teamColors';
+import { playerFinish } from '../presentation/cardFinish';
 import type { CareerMeta } from '../../career/career';
 import { careerResume } from '../../career/career';
 import { cardTier, type CardTier } from '../../career/card';
 import { formatSeasonYear as fy } from '../../simulation/calendar';
 import { PlayerAvatar } from '../PlayerAvatar';
+import { categoryScore } from '../../career/categories';
+import { PURE_SCORER_FROM } from '../../simulation/engine/superstar';
 
 /*
  * Your created player as a trading card that changes with his career. The card's finish follows his overall (bronze,
@@ -13,17 +17,21 @@ import { PlayerAvatar } from '../PlayerAvatar';
 
 const TIER_NAME: Record<CardTier, string> = { bronze: 'Bronze', silver: 'Silver', gold: 'Gold', holo: 'Holo', foil: 'Hall of Fame foil' };
 const per = (n: number, g: number) => (g ? (n / g).toFixed(1) : '0.0');
+/** Pure Scorer (superstar.ts): his Finishing category at his prime is 105 or more. */
+const pureScorer = (meta: CareerMeta) => categoryScore(meta.prime.finishing ?? {}) >= PURE_SCORER_FROM;
 
 /** A season's pip colour class, by that season's overall. */
 const pipTier = (ovr: number) => (ovr >= 90 ? 'p-holo' : ovr >= 80 ? 'p-gold' : ovr >= 70 ? 'p-silver' : 'p-bronze');
 
-export function CareerCard({ meta, overall, age, teamName, prime }: { meta: CareerMeta; overall: number | null; age?: number; teamName: string; prime?: number }) {
+export function CareerCard({ meta, overall, age, teamName, teamId, prime }: { meta: CareerMeta; overall: number | null; age?: number; teamName: string; teamId?: string | null; prime?: number }) {
   const retired = meta.status === 'retired' ? meta.retired : undefined;
   const hof = !!retired && retired.hallOfFame !== 'no';
   const ovr = overall ?? meta.years.at(-1)?.overall ?? 0;
   const tier = cardTier(ovr, hof);
   const last = meta.years.at(-1);
   const r = careerResume(meta);
+  const team = teamId !== undefined ? teamId : last?.teamId ?? meta.draft?.teamId;
+  const kit = teamColors(team);
   // The strip: last season while he plays, the whole career once he retires.
   const line = retired
     ? { label: 'CAREER', g: r.games, pts: r.pts, reb: r.reb, ast: r.ast }
@@ -35,16 +43,17 @@ export function CareerCard({ meta, overall, age, teamName, prime }: { meta: Care
     r.allStar && { k: 'star', t: `${r.allStar}× All-Star`, s: `${r.allStar}× AS` },
     r.dpoy && { k: 'dpoy', t: `${r.dpoy}× Defensive Player of the Year`, s: 'DPOY' },
     r.roy && { k: 'roy', t: 'Rookie of the Year', s: 'ROY' },
+    pureScorer(meta) && { k: 'pure', t: 'Pure Scorer: Finishing 105+, about 10-15% more points and that much fewer assists', s: 'PURE SCORER' },
   ].filter(Boolean) as { k: string; t: string; s: string }[];
   const circ = 2 * Math.PI * 26;
-  return <figure className={`cv-card tier-${tier}`} aria-label={`${meta.playerId}: ${TIER_NAME[tier]} card, ${ovr} overall`}>
+  return <figure style={playerFinish(team)} className={`cv-card player-finish tier-${tier}`} aria-label={`${meta.playerId}: ${TIER_NAME[tier]} card, ${ovr} overall`}>
     <div className="cv-card-inner">
       <div className="cv-card-top">
         <span>{retired ? `RETIRED · ${fy(retired.season)}` : `${teamName.toUpperCase()}${last ? ` · SEASON ${meta.years.length + (meta.status === 'active' ? 1 : 0)}` : ' · ROOKIE'}`}</span>
         <span className="cv-card-tier">{TIER_NAME[tier].toUpperCase()}</span>
       </div>
       <div className="cv-card-art">
-        <PlayerAvatar playerId={meta.playerId} primaryColor="#f47b20" secondaryColor="#f4f0e6" size={96} pose={hof ? 'raise' : 'stand'} />
+        <PlayerAvatar playerId={meta.playerId} primaryColor={kit.primary} secondaryColor={kit.secondary} size={112} pose={hof ? 'raise' : 'stand'} />
         <svg className="cv-card-ring" viewBox="0 0 64 64" aria-hidden="true">
           <circle cx="32" cy="32" r="26" className="ring-back" />
           <circle cx="32" cy="32" r="26" className="ring-fill" strokeDasharray={`${(Math.min(99, ovr) / 99) * circ} ${circ}`} transform="rotate(-90 32 32)" />

@@ -1,6 +1,8 @@
 import { loadRelics, saveRelics, grantReward, grantLuckySpins, earn, type SecretId } from './relics';
 import { noteSeason, markSeasonPaid, SEASON_REWARDS, type SeasonCosmetic } from '../retention/season';
 import { isEvent } from '../retention/weeklyEvent';
+import { activePet } from '../profile/pets';
+import { totalXp, levelFor } from '../profile/profile';
 
 /*
  * Relic Spins for finishing things. Each result pays out once (keyed by its run), so reloading a finished run, or a
@@ -24,11 +26,26 @@ export const storySecret = (tier: string): SecretId | undefined => (tier === 'le
 export const careerSecret = (hallOfFame: string | undefined): SecretId | undefined => (hallOfFame === 'first-ballot' ? 'eternalSpin' : undefined);
 export const perfectSecret = (s: { perfectSeason: boolean }): SecretId | undefined => (s.perfectSeason ? 'extraPick' : undefined);
 
+export const categorizeSecret = (s: { won: boolean; mistakes: number }): SecretId | undefined => (s.won && s.mistakes === 0 ? 'sixthSense' : undefined);
+export const guessTeamSecret = (streak: number): SecretId | undefined => (streak >= 10 ? 'filmRoom' : undefined);
+/** A quick game's feat: uncovers its secret relic (once), no spins or coins. Returns whether it was new. */
+export function uncoverSecret(key: string, secret: SecretId | undefined): boolean {
+  if (!secret) return false;
+  const before = loadRelics();
+  if (before.secrets.includes(secret)) return false;
+  const after = grantReward(before, key, { spins: 0, coins: 0, secret, why: 'A feat' });
+  if (after === before) return false;
+  saveRelics(after);
+  return true;
+}
+
 /** Grants a finished run's spins, coins and feat secret (once per key) and returns how many spins were new. */
 export function rewardRun(key: string, n: number, opts: { secret?: SecretId; why?: string } = {}, now = new Date()): number {
   const before = loadRelics();
   // The Weekly Event: Coin Rush doubles the coins, Spin Storm adds a spin to a run that pays spins.
-  const spins = n + (n > 0 && isEvent('spinStorm', now) ? 1 : 0), coins = runCoins(n) * (isEvent('coinRush', now) ? 2 : 1);
+  // The Dragon (a pet) hoards: +50% coins.
+  const dragon = activePet(levelFor(totalXp()).level) === 'dragon' ? 1.5 : 1;
+  const spins = n + (n > 0 && isEvent('spinStorm', now) ? 1 : 0), coins = Math.round(runCoins(n) * (isEvent('coinRush', now) ? 2 : 1) * dragon);
   const after = grantReward(before, key, { spins, coins, secret: opts.secret, why: opts.why });
   if (after === before) return 0;
   saveRelics(after);

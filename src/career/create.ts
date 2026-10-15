@@ -47,8 +47,8 @@ export function valuesAt(prime: Prime, progress: Progress, readiness: Readiness)
         continue;
       }
       const top = target + r.primeBonus;
-      // Ratings top out at 120 (the best ever at something, see wheel.ts).
-      vals[path] = clamp(top * (r.start + (1 - r.start) * p), exact ? 1 : 20, 120);
+      // Ratings top out at 120 (the best ever at something, see wheel.ts); an Ultra Cheat category keeps its 125.
+      vals[path] = clamp(top * (r.start + (1 - r.start) * p), exact ? 1 : 20, Math.max(120, target));
     }
     out[c.id] = vals;
   }

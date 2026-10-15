@@ -11,6 +11,9 @@ import type { FatigueState } from './fatigue';
 import { fatiguePenaltyMultiplier } from './fatigue';
 import { NEUTRAL_RULE_MODS, type RuleMods } from './ruleMods';
 
+/** How hard a Pure Scorer's share cuts his passing: measured over 3 x 46 games, about +10-20% points and 10-12% fewer assists. */
+export const PURE_SCORER_PASS_CUT = 0.85;
+
 export interface OnCourtPlayer {
   playerId: PlayerId;
   attributes: Attributes;
@@ -22,6 +25,8 @@ export interface OnCourtPlayer {
   ballDominance: number;
   passing: PassingTendencies;
   threePointTarget?: number; // explicit user override, engine must respect it
+  /** Pure Scorer (superstar.ts): the share more he scores and less he assists; absent for everyone else. */
+  pureScorer?: number;
   fatigue: FatigueState;
 }
 
@@ -169,6 +174,7 @@ export function simulatePossession(input: PossessionInput): PossessionResult {
   if (doubleTeamed) passFrequency += 20; // giving it up under pressure is the smart read
   if (call?.kind === 'threes') passFrequency += 10; // swing it for the open three
   passFrequency += iqs[offense.indexOf(bh)] * 25; // a floor general sets teammates up
+  if (bh.pureScorer) passFrequency *= 1 - bh.pureScorer * PURE_SCORER_PASS_CUT; // a pure scorer looks for his own shot
   passFrequency = Math.max(12, Math.min(90, passFrequency));
   // A called isolation, post-up or last shot stays with the man it was drawn up for (unless he's doubled).
   const keepIt = !!focus && focus === bh && !doubleTeamed && (call!.kind === 'iso' || call!.kind === 'post' || call!.kind === 'lastShot');

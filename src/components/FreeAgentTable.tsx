@@ -109,7 +109,7 @@ export function FreeAgentTable({ title, players, team, contracts, capSettings, c
         <h4><TeamText text={title} /></h4>
         {team && (
           <p className="hint-text">
-            You currently have {openRosterSpots} open roster spot{openRosterSpots === 1 ? '' : 's'} and{' '}
+            You have {team.seasons.length} player{team.seasons.length === 1 ? '' : 's'} ({openRosterSpots ? `${openRosterSpots} below the usual ${capSettings.maxRosterSize}` : `the usual most is ${capSettings.maxRosterSize}, but you can sign more`}) and{' '}
             <span className={capSpace >= 0 ? 'fa-cap-ok' : 'fa-cap-over'}>{fmtMoney(Math.abs(capSpace))}</span>{' '}
             {capSpace >= 0 ? 'in cap space' : 'over the cap'}.
           </p>

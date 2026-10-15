@@ -323,6 +323,18 @@ const CELEBRATE6 = [
   pose({ ...STAND, lE: [8, 32], lH: [6, 37], rE: [34, 24], rH: [40, 18] }),
 ];
 
+// Curry brings both hands to his cheek, tilts, and holds the night-night pose.
+const NIGHT_NIGHT6 = six([
+  STAND,
+  pose({ ...STAND, lE: [12, 24], lH: [29, 17], rE: [35, 23], rH: [31, 16] }),
+  pose({ ...STAND, body: [1, 2], lean: 5, lE: [15, 22], lH: [30, 12], rE: [34, 23], rH: [31, 13] }),
+  pose({ ...STAND, body: [1, 2], lean: 5, lE: [15, 22], lH: [30, 12], rE: [34, 23], rH: [31, 13] }),
+]);
+const CLAP6 = loop([
+  pose({ ...STAND, lE: [9, 28], lH: [15, 24], rE: [31, 28], rH: [26, 24] }),
+  pose({ ...STAND, lE: [11, 28], lH: [20, 24], rE: [29, 28], rH: [21, 24] }),
+  pose({ ...STAND, body: [0, -1], lE: [9, 28], lH: [14, 23], rE: [31, 28], rH: [27, 23] }),
+]);
 export const POSES = { STAND, BREATH, READY, RUN, DRIBBLE, RUN_DRIBBLE, JUMPER, LAYUP, DUNK, PASS, GUARD, REACH, REBOUND, SCREEN, CELEBRATE } as const;
 /** The full animation sheet: six frames per action (the court and the animation sheet test read these). */
 export const ANIMATIONS = {
@@ -330,7 +342,7 @@ export const ANIMATIONS = {
   crossover: CROSSOVER6, behindBack: BEHIND6, spin: SPIN6, jab: JAB6, pumpFake: PUMP6, jumper: JUMPER6, stepback: STEPBACK6,
   fadeaway: FADE6, ft: FT6, layup: LAYUP6, floater: FLOATER6, dunk: DUNK6, alleyOop: OOP6, chestPass: CHEST6, bouncePass: BOUNCE6,
   overheadPass: OVERHEAD6, catch: CATCH6, rebound: REBOUND6, block: BLOCK6, contest: CONTEST6, steal: STEAL6, boxOut: BOXOUT6,
-  screen: SCREEN6, dive: DIVE6, charge: CHARGE6, fall: FALL6, land: LAND6, celebrate: CELEBRATE6,
+  screen: SCREEN6, dive: DIVE6, charge: CHARGE6, fall: FALL6, land: LAND6, celebrate: CELEBRATE6, nightNight: NIGHT_NIGHT6, clap: CLAP6,
 } as const;
 export type AnimationName = keyof typeof ANIMATIONS;
 
@@ -341,7 +353,7 @@ export const headTop = (p: Pose) => FOOT - 2 - p.body[1];
 
 // ---------------------------------------------------------------- choosing a frame
 
-export type AnimKind = 'jumper' | 'layup' | 'dunk' | 'ft' | 'pass' | 'rebound' | 'celebrate'
+export type AnimKind = 'jumper' | 'layup' | 'dunk' | 'ft' | 'pass' | 'rebound' | 'celebrate' | 'nightNight' | 'clap'
   | 'stepback' | 'fadeaway' | 'floater' | 'alleyOop' | 'chestPass' | 'bouncePass' | 'overheadPass' | 'catch' | 'block' | 'contest'
   | 'steal' | 'boxOut' | 'screen' | 'dive' | 'charge' | 'fall' | 'land' | 'crossover' | 'behindBack' | 'spin' | 'jab' | 'pumpFake';
 export type Gait = 'walk' | 'run' | 'sprint' | 'backpedal' | 'slide';
@@ -362,7 +374,7 @@ const CODE: Record<AnimationName, string> = {
   idle: 'ID', walk: 'WK', run: 'RN', sprint: 'SP', backpedal: 'BP', slide: 'SL', dribble: 'DB', crossover: 'CX', behindBack: 'BB', spin: 'SN',
   jab: 'JB', pumpFake: 'PF', jumper: 'JS', stepback: 'SB', fadeaway: 'FA', ft: 'FT', layup: 'LU', floater: 'FL', dunk: 'DK', alleyOop: 'AO',
   chestPass: 'CP', bouncePass: 'BO', overheadPass: 'OP', catch: 'CA', rebound: 'RB', block: 'BL', contest: 'CT', steal: 'ST', boxOut: 'BX',
-  screen: 'SC', dive: 'DV', charge: 'CH', fall: 'FG', land: 'LD', celebrate: 'CE',
+  screen: 'SC', dive: 'DV', charge: 'CH', fall: 'FG', land: 'LD', celebrate: 'CE', nightNight: 'NN', clap: 'CL',
 };
 const frameOf = (name: AnimationName, i: number) => ({ id: `${CODE[name]}${i}`, pose: ANIMATIONS[name][i] });
 

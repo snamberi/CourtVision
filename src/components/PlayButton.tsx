@@ -96,7 +96,9 @@ export function PlayButton(props: PlayButtonProps) {
   }, [open]);
 
   const anyJobRunning = seasonSimJob.running || autoPlayJob.running;
-  const blocked = seasonPhase === 'regular_season' && !seasonComplete && rosterIssues.length > 0;
+  // Roster sizes never block games any more: AI coaches fix their own rosters, and yours may run short or long.
+  const blocked = false;
+  const rosterNote = seasonPhase === 'regular_season' && !seasonComplete && rosterIssues.length > 0;
 
   const doAndClose = (fn: () => void) => { fn(); setOpen(false); };
 
@@ -125,13 +127,10 @@ export function PlayButton(props: PlayButtonProps) {
             <button className="play-menu-close" onClick={() => setOpen(false)} aria-label="Close">×</button>
           </div>
 
-          {blocked && (
-            <div className="play-menu-blocked">
-              <p>
-                Regular-season games require 10–18 players per team. {rosterIssues.length} team{rosterIssues.length === 1 ? '' : 's'} out of compliance:
-              </p>
+          {rosterNote && (
+            <div className="play-menu-note">
               <ul>{rosterIssues.map((i) => <li key={i.teamId}>{describeRosterIssue(i)}</li>)}</ul>
-              <p className="hint-text">Coaches sign or waive players automatically. If a roster remains short, check available free agents and hard-cap room. Drafting and offseason actions remain available.</p>
+              <p className="hint-text">Games still play. AI teams keep 10–18 players on their own; your roster is up to you.</p>
             </div>
           )}
 

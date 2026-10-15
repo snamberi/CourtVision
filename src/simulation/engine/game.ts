@@ -6,11 +6,11 @@ import { defaultCoachTendencies } from '../league';
 import type { LeagueRulesSettings } from '../leagueRules';
 import { computeRuleMods } from './ruleMods';
 import { RNG } from './rng';
-import { resolveEffectivePlayer } from './effective';
+import { resolveEffectivePlayer, CAREER_RATING_MAX } from './effective';
 import { simulatePossession, type OnCourtPlayer, type PlayCall, type LastShotType } from './possession';
 import { computeMatchups } from './matchups';
 import { LiveRotation } from './liveRotation';
-import { superFactor, athleticismOf, starLift, STAR_DEFENSE_SHARE } from './superstar';
+import { superFactor, athleticismOf, starLift, STAR_DEFENSE_SHARE, pureScorerShare } from './superstar';
 import { calculateOverall } from './overall';
 import { applyCoachingPlan } from './coachingPlan';
 import { freshFatigue, updateFatigue, type FatigueState } from './fatigue';
@@ -95,7 +95,7 @@ function buildOnCourtPlayer(season: PlayerSeason, fatigueMap: Record<PlayerId, F
 }
 function buildStaticOnCourt(season: PlayerSeason, customBadges: Badge[], sandboxMode: boolean, chemistryModifier: number): StaticOnCourt {
   const eff = resolveEffectivePlayer(season, customBadges, sandboxMode);
-  const clamp = (v: number) => Math.max(0, Math.min(sandboxMode ? 200 : season.careerPlayer || season.highRatings ? 120 : 99, v));
+  const clamp = (v: number) => Math.max(0, Math.min(sandboxMode ? 200 : season.careerPlayer || season.highRatings ? CAREER_RATING_MAX : 99, v));
   // Team chemistry nudges communication/decision-making attributes without overpowering raw ability.
   if (chemistryModifier !== 0) {
     eff.attributes.offense.passingIQ = clamp(eff.attributes.offense.passingIQ + chemistryModifier);
@@ -130,6 +130,8 @@ function buildStaticOnCourt(season: PlayerSeason, customBadges: Badge[], sandbox
     ballDominance: season.tendencies.ballDominance,
     passing: season.tendencies.passing,
     threePointTarget: season.tendencies.threePointTargets?.target,
+    // Pure Scorer reads his raw Finishing (the court view above halves ratings past 99).
+    ...(season.careerPlayer || season.highRatings ? (pureScorerShare(season.attributes) ? { pureScorer: pureScorerShare(season.attributes) } : {}) : {}),
   };
 }
 
@@ -220,7 +222,7 @@ export function simulateGame(opts: SimulateGameOptions): GameResult {
   for (let q = 0; q < numQuarters || (homeBox.points === awayBox.points && q < numQuarters + 6); q++) {
     const periodMinutes = q < numQuarters ? qLen : Math.max(1, settings.era.overtimeLengthMinutes);
     const periodSeconds = Math.round(periodMinutes * 60);
-    const possessionsThisQuarter = possessionsPerQuarter(periodMinutes, settings.pacePreset, paceModifier, ruleMods.paceMultiplier);
+    const possessionsThisQuarter = possessionsPerQuarter(periodMinutes, settings.pacePreset, paceModifier, ruleMods.paceMultiplier * (settings.eraPace ?? 1));
     const averageDuration = periodSeconds / (possessionsThisQuarter * 2);
     let clock = periodSeconds;
     let poss = 0;

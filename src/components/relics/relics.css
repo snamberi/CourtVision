@@ -171,3 +171,4 @@ button.relic-socket:hover, button.relic-socket:focus-visible { border-color: var
 .shop-wishlist { margin-top: 10px; }
 .shop-wishlist summary { cursor: pointer; font-weight: 600; padding: 6px 0; }
 .shop-cosmetic.owned { opacity: .6; }
+.relic-card .relic-secret-how { display: block; margin-top: 3px; color: var(--c-fg-ffd166, #ffd166); }

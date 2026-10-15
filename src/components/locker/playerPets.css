@@ -1,0 +1,45 @@
+/* Your player's ratings and pets (Closet tabs). */
+.my-ratings-head { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 12px; }
+.my-ratings-head h2 { margin: 2px 0; font: 700 34px/1 var(--font-display); color: var(--c-fg-ffd166, #ffd166); }
+.my-ratings-head h2 small { font-size: 14px; color: var(--text-dim); }
+.my-ratings-head p { margin: 4px 0; }
+.my-ratings-list { display: grid; gap: 6px; margin: 0 0 12px; padding: 0; list-style: none; }
+.my-ratings-list li { display: grid; grid-template-columns: minmax(130px, 1fr) 34px 52px 34px minmax(80px, 2fr); align-items: center; gap: 8px; padding: 6px 10px; background: var(--c-bg-121926, #121926); border: 1px solid var(--c-border-2a3546, #2a3546); }
+.my-ratings-list li.elite { border-color: var(--c-border-ffd166, #ffd166); }
+.my-ratings-list span { display: grid; }
+.my-ratings-list small { color: var(--text-dim); font-size: 11px; }
+.my-ratings-list li.elite small { color: var(--c-fg-ffd166, #ffd166); }
+.my-ratings-list button { padding: 4px 0; font-size: 16px; }
+.my-ratings-list output { font: 700 18px var(--font-data); text-align: center; font-variant-numeric: tabular-nums; }
+.my-ratings-bar { display: block; height: 8px; background: var(--c-bg-0b1018, #0b1018); border: 1px solid var(--c-border-2a3546, #2a3546); }
+.my-ratings-bar em { display: block; height: 100%; background: var(--c-bg-f47b20, #f47b20); }
+.my-ratings-list li.elite .my-ratings-bar em { background: var(--c-bg-ffd166, #ffd166); }
+
+.pets-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; margin: 10px 0 14px; }
+.pet-pick { display: grid; justify-items: center; gap: 2px; padding: 8px 4px; }
+.pet-pick small { color: var(--text-dim); font-size: 11px; }
+.pet-pick.selected { border-color: var(--c-border-ffd29c, #ffd29c); background: var(--c-bg-1d2a40, #1d2a40); }
+.pet-pick.equipped small { color: var(--c-fg-55c878, #55c878); }
+.pet-pick.locked .pet-sprite { filter: grayscale(1) brightness(.6); }
+.pet-detail { display: grid; grid-template-columns: 180px 1fr; gap: 16px; align-items: start; }
+.pet-stage { display: grid; place-items: center; min-height: 180px; background: var(--c-bg-121926, #121926); border: 2px solid var(--c-border-2a3546, #2a3546); box-shadow: 3px 3px 0 var(--c-shadow-000000, #000); }
+.pet-info h3 { margin: 2px 0 6px; font: 700 24px var(--font-display); }
+.pet-info p { margin: 4px 0; }
+.pet-locked { color: var(--c-fg-ffd166, #ffd166); }
+.pet-field { display: grid; gap: 4px; margin: 10px 0 0; }
+.pet-field input { max-width: 240px; }
+.pet-swatches { display: flex; flex-wrap: wrap; gap: 6px; }
+.pet-swatches button { width: 28px; height: 28px; padding: 0; border: 2px solid var(--c-border-2a3546, #2a3546); }
+.pet-swatches button.selected { border-color: var(--c-border-f4f0e6, #f4f0e6); box-shadow: 0 0 0 2px var(--c-shadow-f47b20, #f47b20); }
+.pet-accessories { display: flex; flex-wrap: wrap; gap: 6px; }
+.pet-accessories button { padding: 5px 10px; }
+.pet-accessories button.selected { background: var(--amber); color: var(--c-fg-140c02, #140c02); }
+@media (max-width: 640px) {
+  .my-ratings-head { flex-direction: column; align-items: center; text-align: center; }
+  .my-ratings-list li { grid-template-columns: 1fr 34px 46px 34px; }
+  .my-ratings-list .my-ratings-bar { grid-column: 1 / -1; }
+  .pet-detail { grid-template-columns: 1fr; }
+}
+/* Your pet sits at your character's feet on the profile card. */
+.profile-card-avatar { position: relative; }
+.profile-card-pet { position: absolute; right: -14px; bottom: -6px; line-height: 0; }

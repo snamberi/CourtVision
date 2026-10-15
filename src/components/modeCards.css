@@ -1,5 +1,16 @@
 /* Mode cards (src/menu/modeCatalog.ts): artwork, icon, title, one line. */
 .mode-art { display: block; width: 100%; height: auto; aspect-ratio: 2 / 1; image-rendering: pixelated; background: var(--cv-bg, var(--c-bg-0b1018, #0b1018)); }
+/* Original pixel emblems float in front of the new rooms, with their own light and floor shadow. */
+.mode-art-scene { position: relative; isolation: isolate; overflow: hidden; }
+.mode-art-scene > .mode-scene { position: absolute; inset: 0; width: 100%; height: 100%; }
+.mode-art-emblem { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
+.mode-art-emblem::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at center, color-mix(in srgb, var(--mode-art-accent) 20%, transparent), transparent 62%); }
+.mode-art-emblem::after { content: ''; position: absolute; bottom: 8%; left: 35%; width: 30%; height: 5%; background: var(--c-bg-060b15b3, #060b15b3); clip-path: polygon(10% 0, 90% 0, 90% 25%, 100% 25%, 100% 75%, 90% 75%, 90% 100%, 10% 100%, 10% 75%, 0 75%, 0 25%, 10% 25%); }
+.mode-art-emblem > .mode-icon { position: relative; z-index: 1; width: auto; height: 86%; max-height: 144px; aspect-ratio: 1; filter: drop-shadow(0 5px 0 var(--c-shadow-030812b3, #030812b3)); animation: mode-emblem-float 4.8s steps(6, end) infinite; }
+.mode-card-wrap:nth-child(2n) .mode-art-emblem > .mode-icon { animation-delay: -.8s; }
+.mode-card-wrap:nth-child(3n) .mode-art-emblem > .mode-icon { animation-delay: -1.6s; }
+button:is(:hover, :focus-visible, .selected) .mode-art-emblem > .mode-icon { animation-duration: 2.4s; }
+@keyframes mode-emblem-float { 0%, 100% { transform: translateY(2px); } 50% { transform: translateY(-4px); } }
 .mode-tile { position: relative; display: flex; flex-direction: column; align-items: stretch; padding: 0; text-align: left; overflow: hidden;
   background: var(--cv-surface, var(--c-bg-121926, #121926)); border: 2px solid var(--cv-border, var(--c-border-2a3546, #2a3546)); color: var(--cv-text, var(--c-fg-f4f0e6, #f4f0e6)); cursor: pointer;
   box-shadow: 2px 2px 0 var(--cv-bg, var(--c-shadow-0b1018, #0b1018)); transition: transform .12s ease-out, border-color .12s ease-out; }
@@ -104,3 +115,49 @@
 @media (max-width: 720px) { :root .mode-card .mode-art { width: calc(100% + 30px); height: 108px; margin: -15px -15px 12px; } }
 :root.lite .ma-beams { animation: none !important; }
 @media (prefers-reduced-motion: reduce) { .ma-beams { animation: none !important; } }
+
+/* Mode refresh: selection reveals actions; progress stays directly under the title. */
+:root .main-menu .mode-card-wrap { display: flex; flex-direction: column; border: 1px solid var(--cv-border, var(--c-border-334155, #334155)); background: var(--cv-surface, var(--c-bg-121926, #121926)); box-shadow: 0 5px 0 var(--c-shadow-00000022, #0002); overflow: hidden; }
+:root .main-menu .mode-card-wrap.picked { border-color: var(--cv-orange, var(--c-border-f47b20, #f47b20)); }
+:root .main-menu .mode-card-wrap > button.mode-card { border: 0; border-radius: 0; box-shadow: none; padding: 17px; flex: 1; min-height: 0; background: transparent; }
+:root .main-menu .mode-card-wrap.picked > button.mode-card { padding-bottom: 17px; }
+:root .main-menu .mode-card h3 { font-family: var(--ff-display, 'Oswald', sans-serif); font-size: clamp(25px, 2.2vw, 34px); line-height: 1.15; margin: 10px 0 9px; letter-spacing: .02em; }
+:root .main-menu .mode-card p { font-size: 13px; line-height: 1.6; min-height: 42px; margin: 10px 0 14px; }
+:root .main-menu .mode-card .mode-art { height: 156px; width: calc(100% + 34px); margin: -17px -17px 14px; }
+.mode-progress { display: flex; gap: 6px; align-items: flex-start; font-size: 11px; line-height: 1.6; color: var(--cv-text-muted, var(--c-fg-94a0b2, #94a0b2)); font-family: var(--font-data, monospace); min-height: 35px; text-align: left; }
+.mode-progress .pixel-icon { flex: 0 0 12px; margin-top: 2px; }
+.mode-progress.active { color: var(--cv-gold, var(--c-fg-ffd166, #ffd166)); }
+:root .main-menu .mode-card-actions { display: flex; gap: 8px; padding: 0 17px 14px; animation: mode-play-in 160ms ease-out; }
+:root .main-menu .mode-card-wrap .mode-play { position: static; flex: 1; min-height: 42px; animation: none; margin: 0; }
+.mode-resume { display: flex; justify-content: center; align-items: center; gap: 8px; flex: 1; min-height: 42px; }
+.mode-resume span { padding: 1px 5px; background: var(--c-bg-ffffff10, #ffffff10); font-size: 10px; }
+.mode-how { border-top: 1px solid var(--cv-border, var(--c-border-334155, #334155)); margin: 0; padding: 0 17px; text-align: left; }
+.mode-how summary { cursor: pointer; padding: 12px 0; font-size: 12px; color: var(--cv-text-muted, var(--c-fg-94a0b2, #94a0b2)); }
+.mode-how summary:hover { color: var(--cv-text, var(--c-fg-f4f0e6, #f4f0e6)); }
+.mode-how p { font-size: 13px; line-height: 1.7; margin: 0 0 16px; color: var(--cv-text-muted, var(--c-fg-94a0b2, #94a0b2)); }
+.mode-tile-play { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--cv-border, var(--c-border-334155, #334155)); color: var(--cv-orange, var(--c-fg-f47b20, #f47b20)); font-size: 12px; font-weight: 700; }
+:root .main-menu .mode-card-wrap.soon { opacity: .65; }
+@media (max-width: 600px) { :root .main-menu .mode-card .mode-art { height: 155px; } :root .main-menu .mode-card h3 { font-size: 30px; } }
+@media (max-width: 720px) { .main-menu .menu-quick { width: 100%; max-width: 100%; min-width: 0; justify-content: flex-start; } }
+:root.lite .main-menu .mode-card-actions { animation: none; }
+@media (prefers-reduced-motion: reduce) { :root .main-menu .mode-card-actions { animation: none; } }
+
+/* A card opens its own actions and options; neighboring cards keep their natural height. */
+:root .main-menu .mode-grid { align-items: start; }
+:root .main-menu .mode-card-wrap { transition: border-color 180ms, box-shadow 180ms; }
+:root .main-menu .mode-card-wrap.picked { border-color: var(--cv-orange, var(--c-border-f47b20, #f47b20)); box-shadow: 0 0 0 2px var(--cv-orange, var(--c-shadow-f47b20, #f47b20)), 0 6px 0 var(--c-shadow-00000044, #0004), 0 0 22px var(--c-shadow-f47b2020, #f47b2020); }
+.mode-card-expansion { display: grid; grid-template-rows: 0fr; visibility: hidden; opacity: 0; transition: grid-template-rows 220ms ease, opacity 180ms ease, visibility 220ms; }
+.mode-card-expansion.open { grid-template-rows: 1fr; visibility: visible; opacity: 1; }
+.mode-card-expansion-inner { min-height: 0; overflow: hidden; }
+.mode-card-options { padding: 0 16px 16px; }
+.mode-card-options > .pixel-eyebrow { display: block; margin: 2px 0 12px; font-size: 9px; }
+button.mode-option-row { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 58px; margin-top: 7px; padding: 8px; text-align: left; border: 1px solid var(--cv-border, var(--c-border-334155, #334155)); background: var(--cv-bg, var(--c-bg-0b1018, #0b1018)); box-shadow: 0 2px 0 var(--c-shadow-00000022, #0002); }
+.mode-option-row > span { flex: 1; min-width: 0; }
+.mode-option-row b { display: block; font-size: 13px; }
+.mode-option-row small { display: block; font-size: 11px; line-height: 1.5; margin-top: 3px; color: var(--cv-text-muted, var(--c-fg-aab6c8, #aab6c8)); }
+.mode-option-row:hover, .mode-option-row:focus-visible { border-color: var(--cv-orange, var(--c-border-f47b20, #f47b20)); }
+.mode-card.selected .mode-art-emblem { animation: mode-emblem-ready 320ms steps(6, end); }
+@keyframes mode-emblem-ready { 0% { transform: scale(.94); } 65% { transform: translateY(-3px) scale(1.06); } 100% { transform: none; } }
+@media (max-width: 720px) { .mode-card-actions { scroll-margin-block: 100px 130px; } :root .main-menu .mode-play, .mode-resume { min-height: 46px; } body.has-menu-bar { padding-bottom: calc(110px + env(safe-area-inset-bottom)); } }
+:root.lite .mode-card-expansion, :root.lite .mode-card-wrap { transition: none !important; }
+@media (prefers-reduced-motion: reduce) { .mode-card-expansion, :root .main-menu .mode-card-wrap { transition: none; } .mode-card.selected .mode-art-emblem { animation: none; } }

@@ -1,10 +1,16 @@
-import { memo } from 'react';
+import { ModeScene, type SceneMode } from './presentation/ModeScene';
+import { memo, type CSSProperties } from 'react';
 import { ModeEmblem, ModeIcon } from './ModeIcon';
 import type { ModeEntry } from '../menu/modeCatalog';
 import './modeCards.css';
 
 /** Arena banners use the same emblem as their setup screen. Entirely local SVG. */
 export const ModeArt = memo(function ModeArt({ entry, className }: { entry: ModeEntry; className?: string }) {
+  const scene = entry.parent ?? entry.id;
+  if (['franchise', 'legends', 'career', 'survival'].includes(scene)) return <span className={`mode-art mode-art-scene ${className ?? ''}`} style={{ '--mode-art-accent': entry.art[2] } as CSSProperties} aria-hidden="true">
+    <ModeScene mode={scene as SceneMode} />
+    <span className="mode-art-emblem"><ModeIcon mode={entry.id} fallback={scene} size={128} /></span>
+  </span>;
   const [sky, floor, accent] = entry.art;
   return <svg className={`mode-art ${className ?? ''}`} viewBox="0 0 160 72" preserveAspectRatio="xMidYMid slice" shapeRendering="crispEdges" aria-hidden="true" focusable="false">
     <rect width="160" height="72" fill="#0b1120" />
@@ -30,6 +36,7 @@ export function ModeCard({ entry, onOpen, selected, badge, compact }: { entry: M
     <span className="mode-tile-body">
       <b><ModeIcon mode={entry.id} size={28} /> {entry.title}</b>
       <small>{entry.desc}</small>
+      <span className="mode-tile-play">Play <span aria-hidden="true">→</span></span>
     </span>
     {badge && <em className="mode-tile-badge">{badge}</em>}
   </button>;

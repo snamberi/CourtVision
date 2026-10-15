@@ -1,4 +1,5 @@
 import { TeamLink } from './TeamLink';
+import { FranchiseLineup } from './presentation/LineupBoard';
 import { TeamIdentityPanel } from './TeamIdentityPanel';
 import { useState } from 'react';
 import type { League } from '../simulation/league';
@@ -111,6 +112,7 @@ export function YourTeamPage({ league, controlledTeamId, onSelectPlayer, onChang
   return (
     <div className="your-team-page">
       <TeamIdentityPanel team={team} history={league.franchiseHistory} currentChampion={currentChampion} currentSeason={league.season} onChange={onChange ? identity => applyTeamUpdate({ ...team, identity }) : undefined} />
+      <FranchiseLineup team={team} injuries={league.injuries} onOpenPlayer={onSelectPlayer} />
       <div className="yt-header">
         <div>
           <h2><TeamLink name={team.name} /></h2>

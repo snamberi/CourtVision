@@ -40,6 +40,8 @@ export interface RealPlayerInfo {
   coverageEndYear?: number;
   /** Season from which Court Vision development took over because the reference trajectory had ended. */
   fallbackSince?: string;
+  /** Highest blocking and rebounding his real rates allow (see rateCeilings); real development never passes them. */
+  caps?: { block: number; dreb: number; oreb: number };
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
@@ -79,9 +81,11 @@ function groupsFrom(prof: RealProfile | null, heightIn: number, weightLb: number
   const ast = nz(pr?.astPct, guard ? 22 : big ? 9 : 13);
   const passing = clamp(0.72 + ast * 0.018, 0.65, 1.38);
   const handling = clamp(0.74 + ast * 0.014 + (guard ? 0.06 : 0) - nz(pr?.tovPct, 12) * 0.006, 0.62, 1.32);
-  const reb = clamp(0.62 + nz(pr?.trbPct, big ? 15 : 8) * 0.03, 0.62, 1.32);
+  // Rebounding and blocks spread wide: a guard's 8% rebound rate and 0.8% block rate sit far below a center's 20% and 6%
+  // (a narrow range left star guards with near-center rebounding and blocking once their level rose).
+  const reb = clamp(0.38 + nz(pr?.trbPct, big ? 15 : 8) * 0.036, 0.45, 1.18);
   const steals = clamp(0.78 + nz(pr?.stlPct, 1.5) * 0.13, 0.7, 1.3);
-  const blocks = clamp(0.7 + nz(pr?.blkPct, big ? 2.5 : 0.8) * 0.085, 0.62, 1.35);
+  const blocks = clamp(0.36 + nz(pr?.blkPct, big ? 2.5 : 0.8) * 0.16, 0.38, 1.35);
   const dIQ = clamp(1 + nz(pr?.dbpm, 0) * 0.045, 0.78, 1.25);
   const usg = nz(pr?.usgPct, 19);
   return {
@@ -92,6 +96,15 @@ function groupsFrom(prof: RealProfile | null, heightIn: number, weightLb: number
     athleticism: clamp(1.02 + (guard ? 0.05 : big ? -0.06 : 0) + nz(pr?.blkPct, 1) * 0.01, 0.8, 1.2),
     strength: clamp(0.7 + (weightLb - 180) * 0.005, 0.7, 1.3),
     size: (heightIn - 72) / 6,
+  };
+}
+
+/** The most a player's blocking and rebounding can be, from his real rates (unrecorded eras leave them open). */
+export function rateCeilings(pr: RealProfile | null): { block: number; dreb: number; oreb: number } {
+  return {
+    block: pr?.blkPct == null ? 99 : clamp(Math.round(36 + pr.blkPct * 12), 40, 99),
+    dreb: pr?.trbPct == null ? 99 : clamp(Math.round(42 + pr.trbPct * 2.25), 50, 92),
+    oreb: pr?.orbPct == null ? 99 : clamp(Math.round(36 + pr.orbPct * 4), 40, 90),
   };
 }
 
@@ -116,6 +129,10 @@ function build(seed: RealPlayerSeed, season: string, teamId: string | null, age:
   d.steal = a(g.steals); d.stealIQ = a((g.steals + g.defensiveIQ) / 2); d.onBallSteal = a(g.steals); d.passingLaneSteal = a((g.steals + g.defensiveIQ) / 2);
   d.block = a(g.blocks); d.blockIQ = a((g.blocks + g.defensiveIQ) / 2); d.blockTiming = a(g.blocks); d.rimProtection = a((g.blocks + g.interiorD) / 2);
   d.defensiveRebounding = a(g.rebounding); d.defensiveConsistency = a(1, 8); d.defensiveAwareness = a(g.defensiveIQ); d.defensiveDiscipline = a(g.defensiveIQ);
+  // Size skills can't outrun the real rates: a star guard's caliber doesn't make him rebound or block like a center.
+  const ceil = rateCeilings(seed.profile);
+  d.block = Math.min(d.block, ceil.block); d.blockTiming = Math.min(d.blockTiming, ceil.block); d.rimProtection = Math.min(d.rimProtection, ceil.block + 6);
+  d.defensiveRebounding = Math.min(d.defensiveRebounding, ceil.dreb); o.offensiveRebounding = Math.min(o.offensiveRebounding, ceil.oreb);
   const ph = s.attributes.physical;
   ph.heightInches = heightIn; ph.weightLbs = weightLb; ph.wingspanInches = Math.round(heightIn + 2 + rng.next() * 3); ph.standingReachInches = Math.round(heightIn * 1.32 + rng.next() * 2);
   const ageAthletic = clamp(1.06 - Math.max(0, age - 27) * 0.025, 0.8, 1.08);
@@ -135,14 +152,14 @@ function build(seed: RealPlayerSeed, season: string, teamId: string | null, age:
   t.shot.layup = clamp(Math.round(35 + ftRate * 50), 5, 95); t.shot.postShot = clamp(Math.round(pos.C >= 90 || pos.PF >= 90 ? 45 - threeRate * 80 : 8), 1, 80);
   t.shot.hook = clamp(Math.round(pos.C >= 90 ? 35 - threeRate * 60 : 3), 1, 70); t.shot.midrange = clamp(Math.round(45 - threeRate * 40), 5, 90);
   t.shot.longMidrange = clamp(Math.round(30 - threeRate * 40), 2, 80); t.shot.stepback = clamp(Math.round(usg > 26 ? 30 : 8), 1, 70);
-  t.passing.passFrequency = clamp(Math.round(30 + ast * 1.4), 15, 95); t.passing.assistCreation = clamp(Math.round(20 + ast * 1.8), 10, 99);
+  t.passing.passFrequency = clamp(Math.round(30 + ast * 1.15), 15, 90); t.passing.assistCreation = clamp(Math.round(20 + ast * 1.35), 10, 90);
   t.ballDominance = clamp(Math.round(15 + (usg - 12) * 3.3), 5, 98);
   const r = t.role;
   r.primaryBallHandler = clamp(Math.round(ast * 2.4), 2, 99); r.secondaryBallHandler = clamp(Math.round(ast * 1.8), 2, 90); r.pnrBallHandler = clamp(Math.round(ast * 2), 2, 95);
-  r.shotCreator = clamp(Math.round((usg - 10) * 3.5), 5, 99); r.isolation = clamp(Math.round((usg - 14) * 3), 2, 95); r.spotUpShooter = clamp(Math.round(threeRate * 140 * (usg < 22 ? 1.2 : 0.7)), 2, 95);
-  r.catchAndShoot = clamp(Math.round(threeRate * 120), 2, 95); r.postUp = clamp(Math.round(pos.C >= 90 || pos.PF >= 90 ? 55 - threeRate * 100 : 5), 1, 90);
+  r.shotCreator = clamp(Math.round((usg - 10) * 3.5), 5, 99); r.isolation = clamp(Math.round((usg - 14) * 3), 2, 95); r.spotUpShooter = clamp(Math.round(threeRate * 90 * (usg < 22 ? 1 : 0.6)), 2, 60);
+  r.catchAndShoot = clamp(Math.round(threeRate * 85), 2, 60); r.postUp = clamp(Math.round(pos.C >= 90 || pos.PF >= 90 ? 55 - threeRate * 100 : 5), 1, 90);
   r.offensiveRebounder = clamp(Math.round(nz(pr?.orbPct, pos.C >= 90 ? 9 : 3) * 6), 2, 95); r.pnrScreener = clamp(Math.round(pos.C >= 90 || pos.PF >= 90 ? 60 : 10), 2, 90);
-  s.ballHandlerPriority = clamp(Math.round(15 + ast * 2.1), 5, 98);
+  s.ballHandlerPriority = clamp(Math.round(18 + ast * 1.6), 5, 92);
   // Identity and history
   s.source = 'historical';
   s.college = seed.college ?? undefined;
@@ -177,7 +194,7 @@ export function buildRealPlayer(seed: RealPlayerSeed, season: string, teamId: st
     if (calculateOverall(p) < targetCv) lo = mid; else hi = mid;
   }
   best = build(seed, season, teamId, age, hi);
-  best.real = { id: seed.id, dataset, rating: seed.rating, frames: seed.frames, appliedSeason: season, coverageEndYear: seed.frames.length ? seed.frames[seed.frames.length - 1][0] : seed.rating.startYear };
+  best.real = { id: seed.id, dataset, rating: seed.rating, frames: seed.frames, appliedSeason: season, coverageEndYear: seed.frames.length ? seed.frames[seed.frames.length - 1][0] : seed.rating.startYear, caps: rateCeilings(seed.profile) };
   // His real national team (for the World Games).
   best.nationality = realNationality(seed.name);
   // Potential follows Court Vision's usual projection from age and current level (no future real data leaks here).
@@ -191,18 +208,42 @@ export function buildRealPlayer(seed: RealPlayerSeed, season: string, teamId: st
 const SKILL_GROUPS = ['offense', 'defense', 'mental'] as const;
 const PHYS_SKILLS = ['speed', 'acceleration', 'agility', 'vertical', 'strength', 'balance', 'stamina'] as const;
 /** Scales a player's skills (keeping their shape) until his Overall reaches `targetCv`. Body measurements are untouched. */
+/**
+ * How much of a raise a skill takes: a player's strengths take all of it, his weaknesses only a little, so raising a
+ * guard to a star's Overall sharpens his shooting and passing without handing him a center's blocks and rebounds.
+ * Lowering (age, decline) applies evenly.
+ */
+export function raiseShare(src: number): number { return clamp((src - 35) / 40, 0.15, 1); }
+/** The weak defensive skills a perimeter player can't grow into a big man's: blocks, rebounding, interior defence. */
+const SIZE_SKILLS = new Set(['block', 'defensiveRebounding', 'offensiveRebounding', 'interiorDefense', 'standingDunk', 'postControl', 'postHook']);
+
 export function rescaleToOverall(p: PlayerSeason, targetCv: number): PlayerSeason {
+  const guard = (p.attributes.physical.heightInches ?? 78) <= 78;
+  const scaled = (src: number, f: number, key: string) => {
+    if (f <= 1) return src * f;
+    const size = SIZE_SKILLS.has(key);
+    const share = raiseShare(src) * (guard && size ? 0.35 : 1);
+    // Size skills creep at most 3 a season, so a rising star doesn't grow into a center over the years.
+    return size ? Math.min(src + 3, src * (1 + (f - 1) * share)) : src * (1 + (f - 1) * share);
+  };
   const apply = (f: number): PlayerSeason => {
     const next: PlayerSeason = { ...p, attributes: { ...p.attributes, offense: { ...p.attributes.offense }, defense: { ...p.attributes.defense }, mental: { ...p.attributes.mental }, physical: { ...p.attributes.physical } } };
     for (const g of SKILL_GROUPS) {
       const grp = next.attributes[g] as unknown as Record<string, number>, src = p.attributes[g] as unknown as Record<string, number>;
-      for (const k of Object.keys(grp)) grp[k] = clamp(Math.round(src[k] * f), 15, 99);
+      for (const k of Object.keys(grp)) grp[k] = clamp(Math.round(scaled(src[k], f, k)), 15, 99);
     }
     const ph = next.attributes.physical as unknown as Record<string, number>, sp = p.attributes.physical as unknown as Record<string, number>;
-    for (const k of PHYS_SKILLS) ph[k] = clamp(Math.round(sp[k] * f), 15, 99);
+    for (const k of PHYS_SKILLS) ph[k] = clamp(Math.round(scaled(sp[k], f, k)), 15, 99);
+    const caps = p.real?.caps;
+    if (caps && f > 1) {
+      const d = next.attributes.defense, o = next.attributes.offense, src = p.attributes;
+      d.block = Math.min(d.block, Math.max(caps.block, src.defense.block)); d.blockTiming = Math.min(d.blockTiming, Math.max(caps.block, src.defense.blockTiming));
+      d.defensiveRebounding = Math.min(d.defensiveRebounding, Math.max(caps.dreb, src.defense.defensiveRebounding));
+      o.offensiveRebounding = Math.min(o.offensiveRebounding, Math.max(caps.oreb, src.offense.offensiveRebounding));
+    }
     return next;
   };
-  let lo = 0.3, hi = 2.5;
+  let lo = 0.3, hi = 4;
   for (let i = 0; i < 24; i++) { const mid = (lo + hi) / 2; if (calculateOverall(apply(mid)) < targetCv) lo = mid; else hi = mid; }
   const out = apply(hi);
   const overall = calculateOverall(out);

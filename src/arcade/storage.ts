@@ -18,6 +18,10 @@ export interface EndlessRecords {
   guess: { played: number; won: number; streak: number; best: number };
   bracket: { played: number; best: number };
   quiz: { played: number; best: number; right: number; answered: number };
+  /** Categorize: boards played, solved, solved with no mistakes, solved in a row. */
+  categorize?: { played: number; won: number; perfect: number; streak: number; best: number };
+  /** Guess the Team: teams played, named, named in a row. */
+  guessTeam?: { played: number; won: number; streak: number; best: number };
 }
 export interface ArcadeRecords {
   guess: Record<string, GuessDay>;
@@ -27,13 +31,15 @@ export interface ArcadeRecords {
   /** The Daily Grid: each day's squares (player ids) and guesses used. */
   grid?: Record<string, { cells: string[]; used: number }>;
 }
-export const emptyEndless = (): EndlessRecords => ({ guess: { played: 0, won: 0, streak: 0, best: 0 }, bracket: { played: 0, best: 0 }, quiz: { played: 0, best: 0, right: 0, answered: 0 } });
+export const emptyEndless = (): EndlessRecords => ({ guess: { played: 0, won: 0, streak: 0, best: 0 }, bracket: { played: 0, best: 0 }, quiz: { played: 0, best: 0, right: 0, answered: 0 }, categorize: { played: 0, won: 0, perfect: 0, streak: 0, best: 0 }, guessTeam: { played: 0, won: 0, streak: 0, best: 0 } });
 const n = (v: unknown) => (Number.isFinite(Number(v)) && Number(v) >= 0 ? Math.floor(Number(v)) : 0);
 function readEndless(e: Partial<EndlessRecords> | undefined): EndlessRecords {
   return {
     guess: { played: n(e?.guess?.played), won: n(e?.guess?.won), streak: n(e?.guess?.streak), best: n(e?.guess?.best) },
     bracket: { played: n(e?.bracket?.played), best: Math.min(n(e?.bracket?.best), 320) },
     quiz: { played: n(e?.quiz?.played), best: n(e?.quiz?.best), right: n(e?.quiz?.right), answered: n(e?.quiz?.answered) },
+    categorize: { played: n(e?.categorize?.played), won: n(e?.categorize?.won), perfect: n(e?.categorize?.perfect), streak: n(e?.categorize?.streak), best: n(e?.categorize?.best) },
+    guessTeam: { played: n(e?.guessTeam?.played), won: n(e?.guessTeam?.won), streak: n(e?.guessTeam?.streak), best: n(e?.guessTeam?.best) },
   };
 }
 /** Grid days, keeping only well-formed ones. */
@@ -59,7 +65,7 @@ export function gridStreak(r: ArcadeRecords, today: string): { current: number; 
   return { current, best };
 }
 /** This browser's endless records (never missing). */
-export const endlessOf = (r: ArcadeRecords) => r.endless ?? emptyEndless();
+export const endlessOf = (r: ArcadeRecords): Required<EndlessRecords> => readEndless(r.endless) as Required<EndlessRecords>;
 
 export const GUESS_TRIES = 6;
 /** A day is over once it is solved or all six guesses are used. */
@@ -103,7 +109,7 @@ export function mergeArcade(a: ArcadeRecords, b: ArcadeRecords): ArcadeRecords {
   // Endless totals: the larger of each (the device that has played more holds the full count).
   if (a.endless || b.endless) {
     const ea = endlessOf(a), eb = endlessOf(b), max = <T extends Record<string, number>>(x: T, y: T) => Object.fromEntries(Object.keys(x).map(k => [k, Math.max(x[k], y[k])])) as T;
-    out.endless = { guess: max(ea.guess, eb.guess), bracket: max(ea.bracket, eb.bracket), quiz: max(ea.quiz, eb.quiz) };
+    out.endless = { guess: max(ea.guess, eb.guess), bracket: max(ea.bracket, eb.bracket), quiz: max(ea.quiz, eb.quiz), categorize: max(ea.categorize, eb.categorize), guessTeam: max(ea.guessTeam, eb.guessTeam) };
   }
   return out;
 }

@@ -1,4 +1,6 @@
 import { useState, type ReactNode } from 'react';
+import { SmallRoom } from './presentation/SmallRoom';
+import { ModeIcon } from './ModeIcon';
 import { PixelIcon } from './PixelIcon';
 import { InstallAppButton } from './InstallAppButton';
 import { ThemeChip } from './ThemePicker';
@@ -68,7 +70,7 @@ function MenuStylePicker() {
 
 function SettingCard({ icon, title, blurb, wide, children }: { icon: string; title: string; blurb?: string; wide?: boolean; children: ReactNode }) {
   return <section className={`setting-card ${wide ? 'wide' : ''}`}>
-    <h2><PixelIcon name={icon} size={18} /> {title}</h2>
+    <h2><ModeIcon mode={icon === 'shield' ? 'hunt-legend' : icon === 'home' ? 'franchise' : icon === 'team' ? 'friends' : icon === 'chart' ? 'league-history' : 'perfect-custom'} size={36} /> {title}</h2>
     {blurb && <p className="hint-text">{blurb}</p>}
     <div className="setting-card-body">{children}</div>
   </section>;
@@ -84,6 +86,7 @@ export function SettingsPage({ onExit, backup, recovery }: { onExit: () => void;
       <button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button>
       <div className="hunt-title"><span className="pixel-eyebrow">LOOK, MENU STYLE, DIFFICULTY, BACKUPS, GRAPHICS, ACCESSIBILITY, PRIVACY</span><h1>Settings</h1></div>
     </header>
+    <SmallRoom kind="settings" title="Make the game yours." detail="Set your look, tune the graphics and keep your leagues backed up." />
     <div className="setting-cards">
       <SettingCard icon="star" title="Look" blurb="The colours, fonts and menu art of the whole game. Pick from every look.">
         <span className="settings-theme"><ThemeChip /></span>

@@ -278,11 +278,11 @@ function rollFor(h: NbaHistory, run: PerfectRun, keep?: { franchise?: string; er
 
 // ---------------------------------------------------------------- starting and drafting
 
-export function newPerfectRun(h: NbaHistory, mode: PerfectMode, seed: number, daily?: string, opts: { level?: Level; view?: RunView; catOpts?: CategoryOptions; weekly?: string; custom?: string; rule?: EraRule; /** Relic luck and The Extra Pick (relics.ts); ignored by the Daily and the Weekly. */ luck?: number; extraPick?: boolean } = {}): PerfectRun {
+export function newPerfectRun(h: NbaHistory, mode: PerfectMode, seed: number, daily?: string, opts: { level?: Level; view?: RunView; catOpts?: CategoryOptions; weekly?: string; custom?: string; rule?: EraRule; /** Relic luck, The Extra Pick (relics.ts) and your pet (the Hamster's reroll); ignored by the Daily and the Weekly. */ luck?: number; extraPick?: boolean; pet?: string | null } = {}): PerfectRun {
   // The Daily is the standard game for everyone.
   const level = daily ? 'pro' : opts.level ?? 'pro', view = daily ? STANDARD_VIEW : opts.view ?? STANDARD_VIEW;
   const shared = !!daily || !!opts.weekly;
-  const extra = !shared && opts.extraPick ? 1 : 0;
+  const extra = shared ? 0 : (opts.extraPick ? 1 : 0) + (opts.pet === 'hamster' ? 1 : 0);
   const rerolls = mode === 'quick' ? { team: 0, era: 0, prime: 0, spin: SPIN_REROLLS + extra, lucky: LUCKY_SPINS } : { team: 0, era: 0, prime: mode === 'franchise' ? 1 : 0, roll: SPIN_REROLLS + extra, lucky: LUCKY_SPINS };
   const run: PerfectRun = { v: 1, mode, seed, daily, stage: 'draft', squad: [], rolls: 0, rerolls, schedule: [], bosses: [], games: [], playoffs: [], ...(!shared && opts.luck ? { luck: opts.luck } : {}),
     ...(level !== 'pro' ? { level } : {}), ...(view.numbers !== STANDARD_VIEW.numbers || view.colors !== STANDARD_VIEW.colors ? { view } : {}) };

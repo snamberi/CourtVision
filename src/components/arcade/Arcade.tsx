@@ -17,10 +17,12 @@ import '../hunt/hunt.css';
 import '../locker/locker.css';
 import './arcade.css';
 
-export type ArcadeTab = 'grid' | 'guess' | 'hilo' | 'bracket' | 'quiz' | 'legends' | 'street' | 'tour';
+export type ArcadeTab = 'grid' | 'guess' | 'categorize' | 'guessTeam' | 'hilo' | 'bracket' | 'quiz' | 'legends' | 'street' | 'tour';
 const TABS: { id: ArcadeTab; label: string; icon: string }[] = [
   { id: 'grid', label: 'Daily Grid', icon: 'list' },
   { id: 'guess', label: 'Guess the Player', icon: 'search' },
+  { id: 'categorize', label: 'Categorize', icon: 'grid' },
+  { id: 'guessTeam', label: 'Guess the Team', icon: 'team' },
   { id: 'hilo', label: 'Higher or Lower', icon: 'up' },
   { id: 'bracket', label: 'Bracket Challenge', icon: 'trophy' },
   { id: 'quiz', label: 'NBA Quiz', icon: 'star' },
@@ -30,6 +32,8 @@ const TABS: { id: ArcadeTab; label: string; icon: string }[] = [
 ];
 import { LegendsGame, StreetGame, GmTournament } from './StreetGames';
 import { GridGame } from './GridGame';
+import { CategorizeGame } from './CategorizeGame';
+import { GuessTeamGame } from './GuessTeamGame';
 const SITE = 'https://courtvisiongame.com';
 
 function useArcade(): ArcadeRecords {
@@ -63,7 +67,7 @@ export function Arcade({ tab, onTab, onExit }: { tab: ArcadeTab; onTab: (t: Arca
     </nav>
     {error ? <p className="empty-state">Could not load the NBA history data: {error}</p>
       : !h ? <p className="empty-state">Loading 80 years of basketball…</p>
-      : tab === 'grid' ? <GridGame h={h} /> : tab === 'guess' ? <GuessGame h={h} onNext={() => onTab('hilo')} /> : tab === 'hilo' ? <HiloGame h={h} /> : tab === 'quiz' ? <QuizGame h={h} /> : tab === 'legends' ? <LegendsGame h={h} /> : tab === 'street' ? <StreetGame h={h} /> : tab === 'tour' ? <GmTournament h={h} /> : <BracketGame h={h} />}
+      : tab === 'grid' ? <GridGame h={h} /> : tab === 'guess' ? <GuessGame h={h} onNext={() => onTab('hilo')} /> : tab === 'categorize' ? <CategorizeGame h={h} /> : tab === 'guessTeam' ? <GuessTeamGame h={h} /> : tab === 'hilo' ? <HiloGame h={h} /> : tab === 'quiz' ? <QuizGame h={h} /> : tab === 'legends' ? <LegendsGame h={h} /> : tab === 'street' ? <StreetGame h={h} /> : tab === 'tour' ? <GmTournament h={h} /> : <BracketGame h={h} />}
   </div>;
 }
 

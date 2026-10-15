@@ -11,6 +11,7 @@ import { RelicArt } from './RelicArt';
 import '../hunt/hunt.css';
 import './relics.css';
 import { ShopCosmetics } from './ShopCosmetics';
+import { SmallRoom } from '../presentation/SmallRoom';
 import { SecretCosmeticFound, SecretCosmeticsSection } from './SecretCosmetics';
 import { SHOP_COSMETIC_WEIGHTS } from '../../relics/shopCosmetics';
 import { weeklyEvent } from '../../retention/weeklyEvent';
@@ -87,6 +88,7 @@ export function RelicVault({ onExit, view = 'vault', onSwitch }: { onExit: () =>
       {onSwitch && <button className="relic-switch" onClick={onSwitch}><PixelIcon name={shop ? 'crown' : 'star'} size={16} /> {shop ? 'Relic Vault' : 'Shop'}</button>}
     </header>
 
+    <SmallRoom kind={shop ? 'shop' : 'archive'} title={shop ? 'The collector’s counter' : 'Your collection, on display'} detail={shop ? 'Browse today’s relics, find your next cosmetic and build your collection.' : 'Inspect your relics and choose what to equip for your next run.'} />
     <section className="relic-stats" aria-label="Your relics">
       <div><span>Relic Spins</span><b>{state.spins}</b>{(state.luckySpins ?? 0) > 0 && <small>+{state.luckySpins} free Lucky Spin{state.luckySpins === 1 ? '' : 's'}</small>}</div>
       <div><span>Luck</span><b>{fmtLuck(luck)}</b><small>{state.equipped.length}/{slots} slots{weekly ? ` · ${fmtLuck(weekly)} relic of the week` : ''} · max +{MAX_LUCK}%</small></div>
@@ -208,12 +210,13 @@ export function RelicVault({ onExit, view = 'vault', onSwitch }: { onExit: () =>
 
     <section className="relic-section">
       <h2>Secret relics</h2>
-      <p className="relic-help">Eight hidden relics, each a permanent ability (no slot needed). Any spin has a {pct(SECRET_CHANCE)} chance to uncover one you don't have, and some answer to a feat.</p>
+      <p className="relic-help">All {SECRET_RELICS.length} secret relics, each a permanent ability (no slot needed). Any spin has a {pct(SECRET_CHANCE)} chance to uncover one you don't have, some answer to a feat, and Ultra Cheat opens only when you own every relic in the vault.</p>
       <div className="relic-grid">{SECRET_RELICS.map(s => {
         const got = state.secrets.includes(s.id);
+        const how = s.earnedOnly ? s.feat : s.feat ? `${s.feat} Or any spin, by luck.` : 'Any spin, by luck alone.';
         return <div key={s.id} className={`relic-card r-secret ${got ? '' : 'missing'}`}>
           <RelicArt id={got ? s.id : undefined} locked={!got} />
-          <span><b>{got ? s.name : '???'}</b><small>{got ? `${s.mode}: ${s.ability}` : <><i>"{s.hint}"</i> ({s.mode})</>}</small></span>
+          <span><b>{s.name}{got ? '' : ' · locked'}</b><small>{s.mode}: {s.ability}</small>{!got && <small className="relic-secret-how">How to find it: {how}</small>}</span>
         </div>;
       })}</div>
     </section>

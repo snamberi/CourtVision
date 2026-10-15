@@ -1,0 +1,9 @@
+.seek-trade { margin: 12px 0 18px; padding: 12px; border: 1px solid var(--cv-border, var(--c-border-2a3546, #2a3546)); background: var(--cv-surface, var(--c-bg-121926, #121926)); }
+.seek-trade-head { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+.seek-trade-head > div { display: grid; gap: 2px; min-width: 200px; flex: 1; }
+.seek-trade-head small { color: var(--cv-text-muted, var(--c-fg-94a0b2, #94a0b2)); }
+.seek-trade-offers { display: grid; gap: 8px; margin: 12px 0 0; padding: 0; list-style: none; counter-reset: offer; }
+.seek-trade-offers li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 8px 10px; border: 1px solid var(--cv-border, var(--c-border-2a3546, #2a3546)); background: var(--cv-bg, var(--c-bg-0b1018, #0b1018)); }
+.seek-offer-team { min-width: 140px; font-weight: 700; }
+.seek-offer-get { flex: 1; min-width: 180px; overflow-wrap: anywhere; }
+.seek-trade-offers small { color: var(--cv-text-muted, var(--c-fg-94a0b2, #94a0b2)); }

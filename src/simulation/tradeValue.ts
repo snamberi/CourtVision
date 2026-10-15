@@ -61,21 +61,26 @@ export const assetCurve = (score: number) => 100 * Math.pow(Math.max(0, score - 
 
 export function tradeAssetValue(p: PlayerSeason, league: League, extras: GMLeagueExtras, perspectiveTeamId: string): number {
   const dir = teamDirection(league, perspectiveTeamId);
-  let score = playerTradeScore(p, league);
+  const base = playerTradeScore(p, league);
+  let adj = 0;
   // Youth: the growth he can really be expected to add (growth.ts), which rebuilding teams prize and contenders discount.
-  score += expectedGrowth(p) * (dir === 'rebuilding' ? 1.3 : dir === 'contender' ? 0.5 : 0.9);
-  if (p.age > 30) score -= (p.age - 30) * (dir === 'contender' ? 0.8 : 1.6);
-  if (dir === 'rebuilding' && p.age >= 28) score -= Math.min(10, (p.age - 27) * 2);
+  adj += expectedGrowth(p) * (dir === 'rebuilding' ? 1.3 : dir === 'contender' ? 0.5 : 0.9);
+  if (p.age > 30) adj -= (p.age - 30) * (dir === 'contender' ? 0.8 : 1.6);
+  if (dir === 'rebuilding' && p.age >= 28) adj -= Math.min(10, (p.age - 27) * 2);
   // Contract: salary below a player's fair price is surplus value, above it is a burden.
   const contract = extras.contracts[p.playerId];
   if (contract) {
-    const fair = computeAskingSalary(Math.round(score), extras.capSettings);
+    const fair = computeAskingSalary(Math.round(base + adj), extras.capSettings);
     const years = Math.min(3, Math.max(1, contract.yearsRemaining));
-    score += Math.max(-8, Math.min(8, (fair - contract.annualSalary) / 1e6 * 0.25 * years));
+    adj += Math.max(-8, Math.min(8, (fair - contract.annualSalary) / 1e6 * 0.25 * years));
   }
+  // Age and contract shade a player's worth but never turn an 80 into a bench player (they could take off 20+).
+  let value = assetCurve(base + Math.max(-12, adj));
+  // True stars are rare: every point past 84 adds 3%, so a 91 is worth well over two good starters.
+  if (base > 84) value *= 1 + (base - 84) * 0.03;
   // A player who asked out is worth less to the team stuck with him: everyone knows they have to move him.
-  if (p.morale?.tradeRequest && p.morale.teamId === perspectiveTeamId) return assetCurve(score) * 0.85;
-  return assetCurve(score);
+  if (p.morale?.tradeRequest && p.morale.teamId === perspectiveTeamId) return value * 0.85;
+  return value;
 }
 
 /**

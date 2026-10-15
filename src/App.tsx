@@ -175,6 +175,7 @@ const ThreeTeamTradePage = lazy(() => import('./components/ThreeTeamTradePage').
 const ExtensionsPage = lazy(() => import('./components/ExtensionsPage').then(m => ({ default: m.ExtensionsPage })));
 const Arcade = lazy(() => import('./components/arcade/Arcade').then(m => ({ default: m.Arcade })));
 const WorldGamesMode = lazy(() => import('./components/worldGames/WorldGamesMode').then(m => ({ default: m.WorldGamesMode })));
+const ContinueFranchise = lazy(() => import('./components/ContinueFranchise').then(m => ({ default: m.ContinueFranchise })));
 const FranchiseCreate = lazy(() => import('./components/FranchiseCreate').then(m => ({ default: m.FranchiseCreate })));
 const Survival = lazy(() => import('./components/survival/Survival').then(m => ({ default: m.Survival })));
 const RoadPage = lazy(() => import('./components/roads/RoadPage').then(m => ({ default: m.RoadPage })));
@@ -290,8 +291,8 @@ function buildInitialExtras(league: League): GMLeagueExtras {
   };
 }
 
-type Screen = 'menu' | 'chooseTeam' | 'app' | 'hunt' | 'perfect' | 'survival' | 'story' | 'relics' | 'shop' | 'levelRoad' | 'trophyRoad' | 'seasonPass' | 'career' | 'locker' | 'profile' | 'community' | 'draft' | 'settings' | 'arcade' | 'create' | 'worldGamesMode' | 'friends' | 'clubs' | 'online' | 'friendList' | 'closet';
-const ARCADE_HASH: Record<ArcadeTab, string> = { grid: '#/grid', guess: '#/guess', hilo: '#/higher-lower', bracket: '#/bracket', quiz: '#/quiz', legends: '#/legends', street: '#/street', tour: '#/tournament' };
+type Screen = 'continue' | 'menu' | 'chooseTeam' | 'app' | 'hunt' | 'perfect' | 'survival' | 'story' | 'relics' | 'shop' | 'levelRoad' | 'trophyRoad' | 'seasonPass' | 'career' | 'locker' | 'profile' | 'community' | 'draft' | 'settings' | 'arcade' | 'create' | 'worldGamesMode' | 'friends' | 'clubs' | 'online' | 'friendList' | 'closet';
+const ARCADE_HASH: Record<ArcadeTab, string> = { grid: '#/grid', guess: '#/guess', categorize: '#/categorize', guessTeam: '#/guess-the-team', hilo: '#/higher-lower', bracket: '#/bracket', quiz: '#/quiz', legends: '#/legends', street: '#/street', tour: '#/tournament' };
 const arcadeTabOf = (hash: string) => (Object.entries(ARCADE_HASH).find(([, h]) => h === hash)?.[0] as ArcadeTab | undefined);
 
 const debouncedSave = createDebouncedSave();
@@ -385,7 +386,7 @@ function App() {
   const [worldGamesRun, setWorldGamesRun] = useState<{ games: GamesId; country: string } | null>(null);
   const [boxscoreSource, setBoxscoreSource] = useState<'league' | 'exhibition'>('league');
 
-  const currentRoute = screen === 'menu' ? '#/menu' : screen === 'chooseTeam' ? '#/choose-team' : screen === 'hunt' ? '#/hunt' : screen === 'perfect' ? '#/82-0' : screen === 'survival' ? '#/survival' : screen === 'story' ? '#/story' : screen === 'relics' ? '#/relics' : screen === 'shop' ? '#/shop' : screen === 'levelRoad' ? '#/level-road' : screen === 'trophyRoad' ? '#/trophy-road' : screen === 'seasonPass' ? '#/season-pass' : screen === 'career' ? '#/career' : screen === 'locker' ? '#/locker' : screen === 'profile' ? '#/profile' : screen === 'settings' ? '#/settings' : screen === 'create' ? '#/new-league' : screen === 'worldGamesMode' ? '#/world-games' : screen === 'friends' ? '#/friends' : screen === 'friendList' ? '#/friend-list' : screen === 'closet' ? '#/closet' : screen === 'clubs' ? '#/clubs' : screen === 'online' ? '#/online' : screen === 'draft' ? '#/draft' : screen === 'arcade' ? ARCADE_HASH[arcadeTab] : screen === 'community' ? (communityUser ? `#/u/${encodeURIComponent(communityUser)}` : '#/community')
+  const currentRoute = screen === 'continue' ? '#/continue' : screen === 'menu' ? '#/menu' : screen === 'chooseTeam' ? '#/choose-team' : screen === 'hunt' ? '#/hunt' : screen === 'perfect' ? '#/82-0' : screen === 'survival' ? '#/survival' : screen === 'story' ? '#/story' : screen === 'relics' ? '#/relics' : screen === 'shop' ? '#/shop' : screen === 'levelRoad' ? '#/level-road' : screen === 'trophyRoad' ? '#/trophy-road' : screen === 'seasonPass' ? '#/season-pass' : screen === 'career' ? '#/career' : screen === 'locker' ? '#/locker' : screen === 'profile' ? '#/profile' : screen === 'settings' ? '#/settings' : screen === 'create' ? '#/new-league' : screen === 'worldGamesMode' ? '#/world-games' : screen === 'friends' ? '#/friends' : screen === 'friendList' ? '#/friend-list' : screen === 'closet' ? '#/closet' : screen === 'clubs' ? '#/clubs' : screen === 'online' ? '#/online' : screen === 'draft' ? '#/draft' : screen === 'arcade' ? ARCADE_HASH[arcadeTab] : screen === 'community' ? (communityUser ? `#/u/${encodeURIComponent(communityUser)}` : '#/community')
     : activeSaveId ? routeHash({ saveId: activeSaveId, tab, player: selectedPlayerId,
       team: viewedTeamId, game: viewedGameId ?? undefined, source: boxscoreSource, sub: leagueSettingsSub }) : null;
   const { restoring, showPrivacy, closePrivacy } = useGameHistory(currentRoute, async (hash, isCurrent) => {
@@ -401,7 +402,7 @@ function App() {
       setCommunityUser(profileMatch ? decodeURIComponent(profileMatch[1]) : null);
       const arcade = arcadeTabOf(hash);
       if (arcade) setArcadeTab(arcade);
-      setScreen(arcade ? 'arcade' : hash === '#/choose-team' && pendingLeague ? 'chooseTeam' : hash === '#/hunt' ? 'hunt' : hash === '#/82-0' ? 'perfect' : hash === '#/survival' ? 'survival' : hash === '#/story' ? 'story' : hash === '#/relics' ? 'relics' : hash === '#/shop' ? 'shop' : hash === '#/level-road' ? 'levelRoad' : hash === '#/trophy-road' ? 'trophyRoad' : hash === '#/season-pass' ? 'seasonPass' : hash === '#/career' ? 'career' : hash === '#/locker' ? 'locker' : hash === '#/profile' ? 'profile' : hash === '#/settings' ? 'settings' : hash === '#/new-league' ? 'create' : hash === '#/world-games' && worldGamesRun ? 'worldGamesMode' : hash === '#/friends' ? 'friends' : hash === '#/friend-list' ? 'friendList' : hash === '#/closet' ? 'closet' : hash === '#/clubs' ? 'clubs' : hash === '#/online' ? 'online' : hash === '#/community' || profileMatch ? 'community' : hash === '#/draft' ? 'draft' : 'menu');
+      setScreen(arcade ? 'arcade' : hash === '#/choose-team' && pendingLeague ? 'chooseTeam' : hash === '#/hunt' ? 'hunt' : hash === '#/82-0' ? 'perfect' : hash === '#/survival' ? 'survival' : hash === '#/story' ? 'story' : hash === '#/relics' ? 'relics' : hash === '#/shop' ? 'shop' : hash === '#/level-road' ? 'levelRoad' : hash === '#/trophy-road' ? 'trophyRoad' : hash === '#/season-pass' ? 'seasonPass' : hash === '#/career' ? 'career' : hash === '#/locker' ? 'locker' : hash === '#/profile' ? 'profile' : hash === '#/settings' ? 'settings' : hash === '#/continue' ? 'continue' : hash === '#/new-league' ? 'create' : hash === '#/world-games' && worldGamesRun ? 'worldGamesMode' : hash === '#/friends' ? 'friends' : hash === '#/friend-list' ? 'friendList' : hash === '#/closet' ? 'closet' : hash === '#/clubs' ? 'clubs' : hash === '#/online' ? 'online' : hash === '#/community' || profileMatch ? 'community' : hash === '#/draft' ? 'draft' : 'menu');
       refreshSaves();
       return;
     }
@@ -576,7 +577,7 @@ function App() {
         setMenuBusy('Firing up the time machine…');
         const built = buildHistoricalLeague(h, c.year, { realDevelopment: true, difficulty: 'normal', seed: tmSeed, allPlayers: true });
         const moved = tm.applyTimeMachine(h, built.league, built.extras, c.from, c.replace, tmSeed);
-        const ready = manageCoachRosters(moved.league, moved.extras);
+        const ready = manageCoachRosters(moved.league, moved.extras, [moved.teamId]);
         enterApp(ready.league, ready.extras, moved.teamId, `Time Machine: ${moved.league.timeMachine?.fromLabel ?? 'Your team'} in ${c.year}-${String(c.year + 1).slice(2)}`);
         setTab('dashboard');
         pushToast(`The ${moved.league.timeMachine?.fromLabel} have arrived in the ${c.year}-${String(c.year + 1).slice(2)} NBA. Good luck.`, 'success');
@@ -913,6 +914,21 @@ function App() {
   }, [league, extras]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const historicalSeason = league.historical ? league.season : null;
+  // Older historical saves: load each real season's length and pace; leagues with Historical rosters on follow them.
+  const needsSeasonShape = !!league.historical && !league.historical.realSeasonGames;
+  useEffect(() => {
+    if (!needsSeasonShape || jobs.busy) return;
+    let cancelled = false;
+    historyTools().then(({ h, realSeasonShape }) => {
+      if (cancelled) return;
+      const shape = realSeasonShape(h);
+      setLeague(l => !l.historical || l.historical.realSeasonGames ? l : {
+        ...l, historical: { ...l.historical, realSeasonGames: shape.games, realPace: shape.pace },
+        settings: l.historical.forceRosters && l.settings.yearAccurate === undefined ? { ...l.settings, yearAccurate: true } : l.settings,
+      });
+    }).catch(() => { /* tried again next time the league opens */ });
+    return () => { cancelled = true; };
+  }, [needsSeasonShape, jobs.busy]);
   useEffect(() => {
     if (!historicalSeason || jobs.busy) return;
     const through = Number(historicalSeason) + 10;
@@ -960,7 +976,7 @@ function App() {
    * reaching the deadline's morning opens the day instead of playing (`holdDeadline`; Auto Play plays straight through).
    */
   const prepareRegularSeason = (holdDeadline = true) => {
-    const coached = manageCoachRosters(league, extras);
+    const coached = manageCoachRosters(league, extras, [aiUserTeam(league, controlledTeamId)]);
     let ready = { league: holdDeadline ? scheduleDeadlineDay(coached.league, controlledTeamId) : coached.league, extras: coached.extras };
     if (isDeadlineDayOpen(ready.league)) {
       const closed = runToDeadline(ready.league, ready.extras, controlledTeamId, deadlineSeed(ready.league));
@@ -1199,7 +1215,7 @@ function App() {
 
   const startRegularSeason = () => {
     setPlayoffBracket(null);
-    const ready = manageCoachRosters(finalizeNewSeasonSchedule(league), extras);
+    const ready = manageCoachRosters(finalizeNewSeasonSchedule(league), extras, [aiUserTeam(league, controlledTeamId)]);
     setLeague(ready.league);
     setExtras(ensureUpcomingDraftClass(ready.league, ready.extras));
     setTab('standings');
@@ -1327,7 +1343,7 @@ function App() {
   const setFiringEnabled = (on: boolean) => setLeague(l => l.frontOffice ? { ...l, frontOffice: { ...l.frontOffice, firingEnabled: on } } : l);
   useEffect(() => {
     if (screen !== 'app' || seasonPhase !== 'regular_season') return;
-    const ready = manageCoachRosters(league, extras);
+    const ready = manageCoachRosters(league, extras, [aiUserTeam(league, controlledTeamId)]);
     if (!ready.moves.length) return;
     setLeague(ready.league);
     setExtras(ready.extras);
@@ -1442,7 +1458,8 @@ function App() {
   const teamUnplayedCount = controlledTeamId ? league.schedule.filter((g) => !g.played && (g.homeTeamId === controlledTeamId || g.awayTeamId === controlledTeamId)).length : null;
   const tradeDeadlinePassed = isTradeDeadlinePassed(league);
   const seasonComplete = league.schedule.length > 0 && league.schedule.every((g) => g.played);
-  const rosterIssues = seasonPhase === 'regular_season' && !seasonComplete ? rosterComplianceIssues(league, extras.capSettings) : [];
+  // Your roster outside 10-18 is only a note now (games still play); AI teams fix theirs (coachRosters.ts).
+  const rosterIssues = seasonPhase === 'regular_season' && !seasonComplete && controlledTeamId ? rosterComplianceIssues(league, extras.capSettings).filter(i => i.teamId === controlledTeamId) : [];
   const draftOrderList = currentDraftOrder(league, extras);
   const draftPicksRemaining = extras.draftDayOpen ? Math.max(0, draftOrderList.length - extras.draftPickIndex) : 0;
   const hasUpcomingDraftPick = !!controlledTeamId && draftOrderList.slice(extras.draftPickIndex).includes(controlledTeamId);
@@ -1478,7 +1495,6 @@ function App() {
       e.preventDefault();
       if (seasonPhase !== 'regular_season' || leagueUnplayedCount === 0) pushToast('No regular-season games to sim right now. Use the Play button.', 'info');
       else if (jobs.busy) pushToast('A simulation is already running.', 'info');
-      else if (rosterIssues.length > 0) pushToast('Some rosters are out of compliance. Open the Play button to see which.', 'error');
       else if (isDeadlineDayOpen(league)) { setTab('deadline'); pushToast('Trade Deadline Day is open: finish it first.', 'info'); }
       else simulateGamesCount(1);
     }
@@ -1631,6 +1647,10 @@ function App() {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening League Hunt…</main>}><LeagueHunt onExit={() => setScreen('menu')} /></Suspense></>;
   }
 
+  if (screen === 'continue') {
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} />{menuBar}<Suspense fallback={<main role="status" className="navigation-loading">Opening your leagues…</main>}><ContinueFranchise saves={saveSummaries} onContinue={continueSavedUniverse} onDeleteSave={handleDeleteSave} onRenameSave={handleRenameSave} onBack={() => setScreen('menu')} onCreate={() => { setCreateChallenge('free'); setScreen('create'); }} /></Suspense></>;
+  }
+
   if (screen === 'menu') {
     return (
       <>
@@ -1651,12 +1671,10 @@ function App() {
           onCode={startFromCode}
           busy={menuBusy}
           saves={saveSummaries}
-          onContinue={continueSavedUniverse}
-          onDeleteSave={handleDeleteSave}
+          onOpenContinue={() => setScreen('continue')}
           onSettings={() => setScreen('settings')}
           onArcade={t => { setArcadeTab(t); setScreen('arcade'); }}
           onCreate={c => { setCreateChallenge(c ?? 'free'); setScreen('create'); }}
-          onRenameSave={handleRenameSave}
           onOpenMode={openMode}
         />
 
@@ -1892,7 +1910,7 @@ function App() {
                   if (!canEditTeam(sandboxMode, controlledTeamId, teamId)) return;
                   const result = waiveToFreeAgency(league, extras, playerId, teamId, managerId);
                   if (result.league === league && result.extras === extras) {
-                    pushToast(`Can't release ${playerId} — that roster is at the ${extras.capSettings.minRosterSize}-player minimum.`, 'error');
+                    pushToast(`Can't release ${playerId} right now (a player stuck to the team can't be waived).`, 'error');
                     return;
                   }
                   setLeague(result.league);
@@ -2271,7 +2289,7 @@ function App() {
               canNext={boxscoreSource === 'league' && idx >= 0 && idx < playedGames.length - 1}
               onNext={() => setViewedGameId(playedGames[idx + 1]?.id ?? null)}
               onSimNext={boxscoreSource === 'league' ? () => playNextGame() : undefined}
-              canSimNext={boxscoreSource === 'league' && unplayedCount > 0 && rosterIssues.length === 0}
+              canSimNext={boxscoreSource === 'league' && unplayedCount > 0}
             />
           );
         })()}

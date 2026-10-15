@@ -497,6 +497,12 @@ export interface GameSettings {
   tradeDeadlinePct?: number; // fraction of the schedule played (0-1) at which the trade deadline hits; defaults to 0.65
   gamesPerSeason?: number; // used by finalizeNewSeasonSchedule for next season's schedule length once set
   freeAgencyDurationDays?: number; // length of the guided free-agency window; defaults to 30
+  /** How the first round is ordered (see draftLottery.ts). Absent: year accurate in historical leagues, today's rule otherwise. */
+  draftLottery?: import('./draftLottery').LotteryFormat;
+  /** Historical leagues: each season takes the real season's length and pace while the data covers it. */
+  yearAccurate?: boolean;
+  /** Possessions multiplier for the era (1 = today's NBA pace); set each season by year-accurate leagues. */
+  eraPace?: number;
 }
 
 export const REALISTIC_ERA_MODERN: EraRules = {
