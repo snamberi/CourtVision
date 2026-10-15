@@ -34,6 +34,8 @@ export const SYNC_KEYS = [
   // characters, profile name, your player's ratings and your pets).
   'cv-survival-records', 'cv-story-endings', 'cv-owner-records', 'cv-battle-records', 'cv-decade-best', 'cv-street-best', 'cv-ranked-best', 'cv-founding',
   'cv-theme', 'cv-menu-style', 'cv-favorites', 'cv-profile-name', 'cv-phone-order', 'cv-avatar-presets-v1', 'cv-my-ratings', 'cv-pets',
+  // World Games records, the weekly recap's log, and the real-player looks you fixed.
+  'cv-world-games', 'cv-week-log', 'cv-likeness',
 ] as const;
 export type SyncKey = typeof SYNC_KEYS[number];
 
@@ -104,6 +106,23 @@ function mergeSurvival(a: Obj, b: Obj): Obj {
   for (const [lv, r] of Object.entries((a.best as Obj) ?? {})) { const o = best[lv] as Obj | undefined, x = r as Obj; if (!o || num(x.score) > num(o.score) || (num(x.score) === num(o.score) && num(x.wins) > num(o.wins))) best[lv] = r; }
   return { ...b, ...a, runs: Math.max(num(a.runs), num(b.runs)), bossesBeaten: Math.max(num(a.bossesBeaten), num(b.bossesBeaten)), best, daily: { ...((b.daily as Obj) ?? {}), ...((a.daily as Obj) ?? {}) } };
 }
+function mergeWorldGames(a: Obj, b: Obj): Obj {
+  const pa = (a.best_place as Obj) ?? {}, pb = (b.best_place as Obj) ?? {};
+  const best_place = Object.fromEntries([...new Set([...Object.keys(pa), ...Object.keys(pb)])].map(k => [k, Math.min(num(pa[k]) || 99, num(pb[k]) || 99)]));
+  return { ...maxEach({ played: a.played, best: a.best, gold: a.gold, silver: a.silver, bronze: a.bronze }, { played: b.played, best: b.best, gold: b.gold, silver: b.silver, bronze: b.bronze }), best_place };
+}
+/** The week log: each week's bigger counts and better bests, the last eight weeks. */
+function mergeWeekLog(a: Record<string, Obj>, b: Record<string, Obj>): Record<string, Obj> {
+  const weeks = [...new Set([...Object.keys(a), ...Object.keys(b)])].sort().slice(-8);
+  return Object.fromEntries(weeks.map(w => {
+    const x = a[w], y = b[w];
+    if (!x || !y) return [w, x ?? y];
+    const best: Obj = { ...((y.best as Obj) ?? {}) };
+    for (const [m, v] of Object.entries((x.best as Obj) ?? {})) if (!best[m] || num((v as Obj).score) > num((best[m] as Obj).score)) best[m] = v;
+    const ids = [...new Set([...((y.ids as string[]) ?? []), ...((x.ids as string[]) ?? [])])].slice(-200);
+    return [w, { seconds: Math.max(num(x.seconds), num(y.seconds)), runs: maxEach(x.runs as Obj, y.runs as Obj), best, records: Math.max(num(x.records), num(y.records)), ...(ids.length ? { ids } : {}) }];
+  }));
+}
 function mergeOwners(a: Obj[], b: Obj[]): Obj[] {
   const byKey = new Map(b.map(r => [String(r.key), r]));
   for (const r of a) { const o = byKey.get(String(r.key)); if (!o || num(r.legacy) >= num(o.legacy)) byKey.set(String(r.key), r); }
@@ -159,6 +178,10 @@ export function mergeValue(key: SyncKey, local: string | null | undefined, cloud
     case 'cv-street-best': return String(Math.max(num(local), num(cloud)));
     case 'cv-ranked-best': return RANK_ORDER.indexOf(cloud) > RANK_ORDER.indexOf(local) ? cloud : local;
     case 'cv-founding': return local === '1' || cloud === '1' ? '1' : local;
+    case 'cv-world-games': return JSON.stringify(mergeWorldGames(parse(local, {}), parse(cloud, {})));
+    case 'cv-week-log': return JSON.stringify(mergeWeekLog(parse(local, {}), parse(cloud, {})));
+    // Real-player looks: every fix from both devices, this device's when both changed the same player.
+    case 'cv-likeness': return JSON.stringify({ ...parse<Obj>(cloud, {}), ...parse<Obj>(local, {}) });
     case 'cv-pets': { const a = parse<Obj>(local, {}), b = parse<Obj>(cloud, {}); return JSON.stringify({ ...b, ...a, looks: { ...((b.looks as Obj) ?? {}), ...((a.looks as Obj) ?? {}) } }); }
     // Your look on this device: theme, menu style, favourites, phone layout, saved characters, name, ratings.
     case 'cv-theme': case 'cv-menu-style': case 'cv-favorites': case 'cv-profile-name': case 'cv-phone-order': case 'cv-avatar-presets-v1': case 'cv-my-ratings': return local;

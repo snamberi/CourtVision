@@ -28,4 +28,15 @@ describe('account sync: your look, ratings, pets and every record the achievemen
     expect(JSON.parse(mergeValue('cv-pets', JSON.stringify({ v: 1, equipped: 'cat', looks: { cat: { name: 'Tom' } } }), JSON.stringify({ v: 1, equipped: 'dog', looks: { dog: { name: 'Rex' } } }))!))
       .toMatchObject({ equipped: 'cat', looks: { cat: { name: 'Tom' }, dog: { name: 'Rex' } } });
   });
+  it('keeps World Games medals, the weekly recap log and your look fixes from both devices', () => {
+    expect(JSON.parse(mergeValue('cv-world-games', JSON.stringify({ played: 4, best: 900, gold: 1, silver: 0, bronze: 2, best_place: { '2008|Spain': 3 } }), JSON.stringify({ played: 6, best: 700, gold: 0, silver: 1, bronze: 0, best_place: { '2008|Spain': 1, '1992|USA': 2 } }))!))
+      .toEqual({ played: 6, best: 900, gold: 1, silver: 1, bronze: 2, best_place: { '2008|Spain': 1, '1992|USA': 2 } });
+    const week = (seconds: number, hunt: number, score: number, ids: string[]) => ({ seconds, runs: { hunt }, best: { hunt: { score, line: String(score) } }, records: 1, ids });
+    const log = JSON.parse(mergeValue('cv-week-log', JSON.stringify({ '2026-W40': week(600, 2, 50, ['a']) }), JSON.stringify({ '2026-W40': week(300, 3, 80, ['b']), '2026-W39': week(100, 1, 10, []) }))!);
+    expect(log['2026-W40']).toEqual({ seconds: 600, runs: { hunt: 3 }, best: { hunt: { score: 80, line: '80' } }, records: 1, ids: ['b', 'a'] });
+    expect(log['2026-W39'].seconds).toBe(100);
+    expect(JSON.parse(mergeValue('cv-likeness', JSON.stringify({ 'luka doncic': { skin: 1 } }), JSON.stringify({ 'luka doncic': { skin: 3 }, 'jalen brunson': { skin: 2 } }))!))
+      .toEqual({ 'luka doncic': { skin: 1 }, 'jalen brunson': { skin: 2 } });
+    for (const k of ['cv-world-games', 'cv-week-log', 'cv-likeness']) expect(SYNC_KEYS as readonly string[]).toContain(k);
+  });
 });
