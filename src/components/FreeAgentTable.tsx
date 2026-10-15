@@ -15,6 +15,7 @@ import type { GMLeagueExtras } from '../simulation/gm';
 import { NegotiationPanel } from './NegotiationPanel';
 import { openNegotiation } from '../simulation/agents';
 import { stat1 } from './statFormat';
+import { supermaxSalary } from '../simulation/maxContracts';
 
 interface Props {
   title: string;
@@ -114,7 +115,7 @@ export function FreeAgentTable({ title, players, team, contracts, capSettings, c
             {capSpace >= 0 ? 'in cap space' : 'over the cap'}.
           </p>
         )}
-        <p className="hint-text">Min contract: {fmtMoney(capSettings.minSalary)} &nbsp;·&nbsp; Max contract: {fmtMoney(maxSalary)}</p>
+        <p className="hint-text">Min contract: {fmtMoney(capSettings.minSalary)} &nbsp;·&nbsp; Max contract: {fmtMoney(maxSalary)} · Supermax (a franchise player re-signing with his own team): {fmtMoney(supermaxSalary(capSettings))}</p>
         {allLastSeason
           ? <p className="hint-text">Every stat below is from last season: free agents haven't played any games yet while unsigned.</p>
           : <p className="hint-text">Stats tagged <span className="fa-last-season-tag">Last season</span> (LS on a phone) are from last season — free agents haven't played any games yet while unsigned.</p>}
@@ -185,7 +186,7 @@ export function FreeAgentTable({ title, players, team, contracts, capSettings, c
                       <div className="identity-grid">
                         <label>
                           Annual Salary
-                          <input type="number" step={100000} min={capSettings.minSalary} max={maxSalary} value={offerSalary} onChange={(e) => setOfferSalary(Number(e.target.value))} />
+                          <input type="number" step={100000} min={capSettings.minSalary} max={supermaxSalary(capSettings)} value={offerSalary} onChange={(e) => setOfferSalary(Number(e.target.value))} />
                         </label>
                         <label>
                           Years

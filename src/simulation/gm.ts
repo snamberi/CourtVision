@@ -41,6 +41,7 @@ export interface SalaryCapSettings {
   enforceCapOnTrades: boolean; // sandbox mode can disable this to allow "invalid" trades
   minSalary: number; // league-minimum contract, offered to any free agent regardless of quality
   maxSalaryPctOfCap: number; // a true max contract is this fraction of the cap
+  supermaxPctOfCap?: number; // a franchise player's supermax with his own team (default 0.35, see maxContracts.ts)
   minRosterSize: number; // AI teams sign up to this during the season (coachRosters.ts); yours may go below it
   maxRosterSize: number; // AI teams waive down to this during the season; yours may go above it
 }

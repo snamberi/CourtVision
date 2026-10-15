@@ -1,7 +1,8 @@
 import type { League, LeagueTeam } from './league';
 import type { Contract, GMLeagueExtras } from './gm';
 import { capSpaceRemaining, computeAskingSalary, priorTeamId, signFreeAgent } from './gm';
-import { moraleContractAdjustment } from './personality';
+import { moraleContractAdjustment, payCut } from './personality';
+import { maxSalary, supermaxEligible, supermaxSalary } from './maxContracts';
 import { currentNegotiation } from './agents';
 import type { PlayerSeason } from './types';
 import { calculateOverall } from './engine/overall';
@@ -26,6 +27,8 @@ export interface FreeAgentVerdict {
   reason: string;
 }
 export const STAR_FREE_AGENT = 78;
+/** A contender: one of the league's strongest teams (top fifth, at least three). */
+export const isContender = (ranking: string[], teamId: string) => { const r = ranking.indexOf(teamId); return r >= 0 && r < Math.max(3, Math.round(ranking.length * 0.2)); };
 
 /**
  * How a free agent answers an offer. Stars will not join the league's best team or a ready-made super-team,
@@ -70,9 +73,12 @@ export function freeAgentVerdict(league: League, extras: GMLeagueExtras, player:
     const rivals = league.teams.filter(t => t.teamId !== teamId && t.teamId !== ranking[0] && capSpaceRemaining(extras.contracts, t, cap) >= asking * 0.9).length;
     if (rivals) { premium += 0.06 * Math.min(3, rivals); notes.push(`${rivals} rival bid${rivals === 1 ? '' : 's'}`); }
   }
-  const floor = star ? 0.9 : overall >= 65 ? 0.8 : 0.7;
+  // A win-first player who doesn't care much about money takes less to play for a contender.
+  const cut = payCut(player, isContender(ranking, teamId));
+  if (cut) { premium -= cut.discount; notes.push(cut.note); }
+  const floor = cut ? 0.6 : star ? 0.9 : overall >= 65 ? 0.8 : 0.7;
   // Premiums push a price up, but nobody can ask for more than a max contract.
-  const maxDeal = Math.round(cap.salaryCap * cap.maxSalaryPctOfCap / 50_000) * 50_000;
+  const maxDeal = maxSalary(cap);
   const required = Math.min(maxDeal, Math.round(Math.max(cap.minSalary, asking * Math.max(floor, 1 + premium)) / 50_000) * 50_000);
   const interest = Math.max(5, Math.min(100, Math.round(80 - premium * 150)));
   if (!offer) return { accepted: true, required, interest, refuses: false, reason: notes.length ? `Price includes: ${notes.join(', ')}.` : 'Open to signing here.' };
@@ -95,14 +101,26 @@ export function freeAgentVerdict(league: League, extras: GMLeagueExtras, player:
 export type SigningPath = 'market' | 'resign' | 'emergency';
 export interface SigningDecision extends FreeAgentVerdict { path: SigningPath }
 
-/** A team's own free agent: last season's mood and how he was treated set the price (see personality.ts). */
-export function resignVerdict(extras: GMLeagueExtras, player: PlayerSeason, teamId: string): FreeAgentVerdict {
+/**
+ * A team's own free agent: last season's mood and how he was treated set the price (see personality.ts). A franchise
+ * player asks for the supermax his own team can pay (maxContracts.ts); a win-first one takes less to stay with a
+ * contender. Without the league (older callers) neither applies.
+ */
+export function resignVerdict(extras: GMLeagueExtras, player: PlayerSeason, teamId: string, league?: League): FreeAgentVerdict {
   const adj = moraleContractAdjustment(player, teamId, true);
   if (adj.refuses) return { accepted: false, required: 0, interest: 0, refuses: true, reason: adj.refuses };
-  const cap = extras.capSettings, maxDeal = Math.round(cap.salaryCap * cap.maxSalaryPctOfCap / 50_000) * 50_000;
-  const required = Math.min(maxDeal, Math.round(Math.max(cap.minSalary, computeAskingSalary(calculateOverall(player), cap) * Math.max(0.8, 1 + adj.premium)) / 50_000) * 50_000);
-  const interest = Math.max(5, Math.min(100, Math.round(72 - adj.premium * 150)));
-  return { accepted: true, required, interest, refuses: false, reason: adj.notes.length ? `Price includes: ${adj.notes.join(', ')}.` : 'Happy to talk about staying.' };
+  const cap = extras.capSettings, notes = [...adj.notes];
+  const team = league?.teams.find(t => t.teamId === teamId);
+  const supermax = supermaxEligible(player, team, true);
+  const maxDeal = supermax ? supermaxSalary(cap) : maxSalary(cap);
+  const asking = supermax ? maxDeal : computeAskingSalary(calculateOverall(player), cap);
+  if (supermax) notes.unshift('supermax eligible');
+  const cut = league ? payCut(player, isContender(strengthRanking(league), teamId)) : null;
+  if (cut) notes.push(cut.note);
+  const premium = adj.premium - (cut?.discount ?? 0);
+  const required = Math.min(maxDeal, Math.round(Math.max(cap.minSalary, asking * Math.max(cut ? 0.6 : 0.8, 1 + premium)) / 50_000) * 50_000);
+  const interest = Math.max(5, Math.min(100, Math.round(72 - premium * 150)));
+  return { accepted: true, required, interest, refuses: false, reason: notes.length ? `Price includes: ${notes.join(', ')}.` : 'Happy to talk about staying.' };
 }
 
 export function signingDecision(league: League, extras: GMLeagueExtras, player: PlayerSeason, teamId: string,
@@ -112,7 +130,7 @@ export function signingDecision(league: League, extras: GMLeagueExtras, player: 
   if (!opts.emergency && currentNegotiation(league, extras, player.playerId, teamId)?.status === 'walked') {
     return { accepted: false, required: 0, interest: 0, refuses: true, path, reason: `${player.playerId} walked away from talks with this team. He won't sign here this offseason.` };
   }
-  const base = path === 'resign' ? resignVerdict(extras, player, teamId) : freeAgentVerdict(league, extras, player, teamId, undefined, opts.ranking);
+  const base = path === 'resign' ? resignVerdict(extras, player, teamId, league) : freeAgentVerdict(league, extras, player, teamId, undefined, opts.ranking);
   const quote: SigningDecision = { ...base, path };
   if (base.refuses || !offer) return quote;
   const reject = (reason: string): SigningDecision => ({ ...quote, accepted: false, reason });
@@ -121,6 +139,9 @@ export function signingDecision(league: League, extras: GMLeagueExtras, player: 
   const team = league.teams.find(t => t.teamId === teamId);
   if (!team) return reject('Unknown team.');
   const cap = extras.capSettings;
+  // Nobody is paid past his max: the supermax only for a franchise player with his own team (maxContracts.ts).
+  const ceiling = supermaxEligible(player, team, path === 'resign') ? supermaxSalary(cap) : maxSalary(cap);
+  if (offer.annualSalary > ceiling) return reject(`That's more than the ${ceiling > maxSalary(cap) ? 'supermax' : 'max'} ($${(ceiling / 1e6).toFixed(1)}M a year).`);
   const payroll = team.seasons.reduce((n, s) => n + (extras.contracts[s.playerId]?.annualSalary ?? 0), 0);
   if (cap.hardCapEnabled && payroll + offer.annualSalary > cap.salaryCap) return reject(`${team.name} would go over the hard cap.`);
   if (path === 'market') {

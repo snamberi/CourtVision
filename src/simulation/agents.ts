@@ -4,6 +4,7 @@ import type { PlayerSeason } from './types';
 import { signingDecision } from './freeAgentDecision';
 import { personalityOf } from './personality';
 import { calculateOverall } from './engine/overall';
+import { maxSalary, supermaxEligible, supermaxSalary } from './maxContracts';
 
 /*
  * Contract talks go through agents. Every player is represented by one of a dozen (fictional) agents, and the
@@ -104,8 +105,9 @@ export function openNegotiation(league: League, extras: GMLeagueExtras, player: 
   const agent = agentFor(player);
   const p = personalityOf(player);
   const overall = calculateOverall(player);
-  const max = round50k(extras.capSettings.salaryCap * extras.capSettings.maxSalaryPctOfCap);
   const resign = quote.path === 'resign';
+  const supermax = resign && supermaxEligible(player, league.teams.find(t => t.teamId === teamId), true);
+  const max = supermax ? supermaxSalary(extras.capSettings) : maxSalary(extras.capSettings);
   const markup = { Hardball: 0.22, Showman: 0.16, Dealmaker: 0.1, Steady: 0.08, Loyalist: resign ? 0.02 : 0.08 }[agent.style] + (p.greed - 50) / 400;
   const years = preferredYears(player, overall);
   const ultimatum = agent.style === 'Hardball' && overall >= 78 && player.age <= 31;
@@ -115,7 +117,7 @@ export function openNegotiation(league: League, extras: GMLeagueExtras, player: 
   const playerOption = overall >= 75 && (agent.style === 'Showman' || agent.style === 'Hardball');
   const money = `$${(salary / 1e6).toFixed(1)}M`;
   const opener = ultimatum
-    ? `${player.playerId} wants a max deal (${money} a year, ${years} years) or he walks. There's nothing to discuss below that.`
+    ? `${player.playerId} wants ${supermax ? 'the supermax' : 'a max deal'} (${money} a year, ${years} years) or he walks. There's nothing to discuss below that.`
     : {
       Hardball: `We're at ${money} a year for ${years} years${playerOption ? ' with a player option' : ''}. Other teams are calling.`,
       Showman: `My client is one of the most marketable players in the league. ${money} a year, ${years} years${playerOption ? ', player option on the last year' : ''}.`,

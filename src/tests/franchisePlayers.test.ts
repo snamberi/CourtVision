@@ -66,3 +66,62 @@ describe('growing into potential', () => {
     expect(gained / n).toBeGreaterThan(0.8);
   });
 });
+
+describe('contracts: max, supermax and pay cuts', async () => {
+  const { generateFullLeague } = await import('../simulation/leagueGenerator');
+  const { supermaxEligible, supermaxSalary, maxSalary, contractTier, maxFor } = await import('../simulation/maxContracts');
+  const { payCut, personalityOf } = await import('../simulation/personality');
+  const { resignVerdict, signingDecision } = await import('../simulation/freeAgentDecision');
+  const { isProtectedCornerstone, tradeAssetValue } = await import('../simulation/tradeValue');
+  const g = generateFullLeague(7);
+  const cap = g.extras.capSettings;
+  const team = g.league.teams[0];
+  const best = [...team.seasons].sort((a, b) => calculateOverall(b) - calculateOverall(a))[0];
+  const star = (p: PlayerSeason): PlayerSeason => ({ ...p, age: 28, overall: { mode: 'MANUAL', manualOverall: 88 }, careerHistory: Array.from({ length: 6 }, () => ({}) as never) });
+
+  it('the supermax: 35% of the cap, for his own team\'s 82+ best player with 5 seasons, 33 or younger', () => {
+    expect(supermaxSalary(cap)).toBeGreaterThan(maxSalary(cap));
+    const s = star(best);
+    expect(supermaxEligible(s, team, true)).toBe(true);
+    expect(supermaxEligible(s, team, false)).toBe(false);
+    expect(supermaxEligible({ ...s, age: 34 }, team, true)).toBe(false);
+    expect(supermaxEligible({ ...s, careerHistory: [] }, team, true)).toBe(false);
+    expect(maxFor(s, team, true, cap)).toBe(supermaxSalary(cap));
+    expect(maxFor(s, team, false, cap)).toBe(maxSalary(cap));
+    expect(contractTier(supermaxSalary(cap), cap)).toBe('supermax');
+    expect(contractTier(maxSalary(cap), cap)).toBe('max');
+    expect(contractTier(cap.minSalary, cap)).toBeNull();
+  });
+  it('a franchise player asks his own team for the supermax; nobody can be paid past his ceiling', () => {
+    const s = star(best);
+    const league = { ...g.league, teams: g.league.teams.map((t, i) => (i === 0 ? { ...t, seasons: t.seasons.filter(p => p.playerId !== best.playerId) } : t)) };
+    const v = resignVerdict(g.extras, s, team.teamId, league);
+    expect(v.required).toBeGreaterThan(maxSalary(cap) * 0.85);
+    expect(v.reason).toMatch(/supermax/);
+    const other = g.league.teams[1].seasons[0];
+    const fa = { ...other, history: [] } as PlayerSeason;
+    const d = signingDecision(g.league, { ...g.extras, freeAgents: [fa] }, fa, team.teamId, { annualSalary: supermaxSalary(cap), yearsRemaining: 2 });
+    expect(d.accepted).toBe(false);
+    expect(d.reason).toMatch(/more than the max/);
+  });
+  it('a win-first player who does not care about money takes a pay cut for a contender, never for anyone else', () => {
+    let found: PlayerSeason | null = null;
+    for (let i = 0; i < 400 && !found; i++) { const p = { ...best, playerId: `Win ${i}` }; const per = personalityOf(p); if (per.winning >= 85 && per.greed <= 40) found = p; }
+    expect(found).not.toBeNull();
+    const cut = payCut(found!, true)!;
+    expect(cut.discount).toBeGreaterThanOrEqual(0.15);
+    expect(cut.discount).toBeLessThanOrEqual(0.35);
+    expect(payCut(found!, false)).toBeNull();
+    let greedy: PlayerSeason | null = null;
+    for (let i = 0; i < 400 && !greedy; i++) { const p = { ...best, playerId: `Money ${i}` }; if (personalityOf(p).greed >= 70) greedy = p; }
+    expect(payCut(greedy!, true)).toBeNull();
+  });
+  it('a team holds on to its leader unless it is tanking and he is past 27, or he asked out', () => {
+    expect(isProtectedCornerstone(best, g.league, team.teamId)).toBe(true);
+    const second = [...team.seasons].sort((a, b) => calculateOverall(b) - calculateOverall(a))[1];
+    expect(isProtectedCornerstone(second, g.league, team.teamId)).toBe(false);
+    expect(isProtectedCornerstone({ ...best, morale: { ...(best.morale ?? {}), tradeRequest: 'wants out' } } as unknown as PlayerSeason, g.league, team.teamId)).toBe(false);
+    const own = tradeAssetValue(best, g.league, g.extras, team.teamId), theirs = tradeAssetValue(best, g.league, g.extras, g.league.teams[1].teamId);
+    expect(own).toBeGreaterThan(theirs);
+  });
+});

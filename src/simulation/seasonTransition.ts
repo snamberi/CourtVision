@@ -140,12 +140,12 @@ export function shouldRetire(next: PlayerSeason, rng: RNG, rules?: LeagueRulesSe
  * worth a long look (not old and fading). Rotation players (sixth to eighth best, under 31) stay some of the time too. The player has to be willing (unhappy players and grudges refuse, see
  * resignVerdict) and gets his asking price; the hard cap still applies. Stars stay far more often than role players.
  */
-function aiResign(team: LeagueTeam, player: PlayerSeason, rank: number, extras: GMLeagueExtras, contracts: Record<string, Contract>, rng: RNG): Contract | null {
+function aiResign(team: LeagueTeam, player: PlayerSeason, rank: number, extras: GMLeagueExtras, contracts: Record<string, Contract>, rng: RNG, league?: League): Contract | null {
   const overall = calculateOverall(player);
   const core = rank < 5 || overall >= 70;
   const rotation = !core && rank < 8 && player.age <= 30;
   if ((!core && !rotation) || (player.age >= 34 && overall < 72) || player.age >= 37) return null;
-  const verdict = resignVerdict(extras, player, team.teamId);
+  const verdict = resignVerdict(extras, player, team.teamId, league);
   if (verdict.refuses) return null;
   const chance = (rotation ? 0.45 : rank < 2 || overall >= 75 ? 0.9 : rank < 5 ? 0.7 : 0.6) * (0.55 + verdict.interest / 160);
   if (rng.next() >= chance) return null;
@@ -330,7 +330,7 @@ export function beginNewSeasonRoster(
             continue;
           }
           // AI teams keep the players they build around (your own team decides in the re-sign phase).
-          const extension = team.teamId !== userTeamId ? aiResign(team, withHistory, rank.get(season.playerId) ?? 99, extras, contracts, rng) : null;
+          const extension = team.teamId !== userTeamId ? aiResign(team, withHistory, rank.get(season.playerId) ?? 99, extras, contracts, rng, league) : null;
           if (extension) {
             contracts[withHistory.playerId] = extension;
             resignedIds.push(withHistory.playerId);

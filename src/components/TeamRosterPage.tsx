@@ -20,6 +20,7 @@ import { coachStrengths, coachWeaknesses, relationshipWith, relationshipLabel, C
 import { formatSeasonYear } from '../simulation/calendar';
 import { PlayerNameTag } from './PlayerAvatar';
 import { stat1 } from './statFormat';
+import { contractTier, TIER_LABEL } from '../simulation/maxContracts';
 
 interface Props {
   initialTeamId?: string | null;
@@ -260,6 +261,7 @@ export function TeamRosterPage({
                     </td>
                     <td className="roster-contract">
                       {contract ? `$${(contract.annualSalary / 1_000_000).toFixed(2)}M · ${contract.yearsRemaining}y` : '—'}
+                      {contract && capSettings && (() => { const tier = contractTier(contract.annualSalary, capSettings); return tier && <span className={`contract-tier ${tier}`}>{TIER_LABEL[tier]}</span>; })()}
                     </td>
                     <td>{yearsWithTeam}</td>
                     {showTradeValues && <td>{computeTradeValue(s).toFixed(0)}</td>}

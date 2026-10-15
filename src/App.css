@@ -2323,3 +2323,8 @@ a.ad-creative:hover .ad-cta { background: var(--c-bg-ff8f3c, #ff8f3c); }
 .dev-flags label span { display: grid; gap: 2px; }
 .dev-flags label small { color: var(--text-dim); }
 .dev-flags input:disabled + span { opacity: .65; }
+
+/* Max and supermax contracts on the roster. */
+.contract-tier { display: inline-block; margin-left: 6px; padding: 0 4px; font: 700 9px var(--font-data); letter-spacing: .06em; border: 1px solid currentColor; vertical-align: 1px; }
+.contract-tier.max { color: var(--c-fg-4da3ff, #4da3ff); }
+.contract-tier.supermax { color: var(--c-fg-ffd166, #ffd166); }
