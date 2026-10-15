@@ -49,6 +49,13 @@ const LEVEL: Record<GameLevel, [number, number]> = {
   street: [41, 42], hs: [46, 46], hsRival: [47, 49], state: [49, 51], showcase: [49, 50], allAmerican: [52, 52], college: [55, 56], collegeFinal: [57, 59],
 };
 
+/** One page of the journal: a choice you made, a big game, a season. */
+export interface JournalEntry { when: string; title: string; text: string; kind: 'choice' | 'game' | 'season'; pick?: string }
+/** The journal keeps the latest pages (a whole career fits). */
+export const JOURNAL_MAX = 400;
+export const addJournal = (s: StoryState, e: JournalEntry): StoryState => ({ ...s, journal: [...(s.journal ?? []), e].slice(-JOURNAL_MAX) });
+export const gameSummary = (g: Pick<StoryGame, 'won' | 'us' | 'them' | 'opp' | 'line'>) => `${g.won ? 'W' : 'L'} ${g.us}-${g.them} vs ${g.opp} · ${g.line.pts} PTS, ${g.line.reb} REB, ${g.line.ast} AST`;
+
 export interface StoryGame { beat: string; title: string; opp: string; us: number; them: number; won: boolean; line: { pts: number; reb: number; ast: number; stl: number; blk: number; fgm: number; fga: number; min: number }; grade: string }
 
 export interface StoryState {
@@ -77,6 +84,8 @@ export interface StoryState {
   nba?: StoryNba;
   /** A story finished before the NBA years existed: it ended after the rookie season (or Year Two). */
   classic?: boolean;
+  /** What happened, page by page (stories from before the journal start it where they are). */
+  journal?: JournalEntry[];
 }
 
 export type Beat =
@@ -378,7 +387,8 @@ export function choose(s: StoryState, choiceId: string): StoryState {
   if (b.kind !== 'scene') return s;
   const c = b.choices(s).find(x => x.id === choiceId);
   if (!c) return s;
-  return { ...advance(applyEffects(s, c.effects)), last: c.result };
+  const page: JournalEntry = { when: actLabel(s), title: b.title, pick: c.label, text: c.result, kind: 'choice' };
+  return { ...advance(addJournal(applyEffects(s, c.effects), page)), last: c.result };
 }
 
 export function spendTraining(s: StoryState, cat: CategoryId): StoryState {
@@ -398,7 +408,8 @@ export function choosePath(s: StoryState, path: Path): StoryState {
     gleague: 'You sign your first pro contract at nineteen. Maya asks if you\'re rich now. "Kind of," you say.',
     juco: 'Harbor Community College. The gym goes quiet, then Ray starts clapping, and everybody follows.',
   }[path];
-  return { ...advance({ ...s, path, hype: s.hype + PATHS[path].hype }), last: blurb };
+  const page: JournalEntry = { when: actLabel(s), title: b.title, pick: PATHS[path].name, text: blurb, kind: 'choice' };
+  return { ...advance(addJournal({ ...s, path, hype: s.hype + PATHS[path].hype }, page)), last: blurb };
 }
 
 /** Pick on draft night, from how good you are and how loud your name is (and Ice's, who is always good). */
@@ -460,7 +471,9 @@ export function playStoryGame(s: StoryState): StoryState {
   const shine = game.grade.startsWith('A') ? { hype: 1 } : undefined;
   let next = applyEffects({ ...s, games: [...s.games, game] }, won ? b.reward?.win : b.reward?.loss);
   next = applyEffects(next, shine);
-  return { ...advance(next), last: won ? b.win(next, game) : b.loss(next, game) };
+  const text = won ? b.win(next, game) : b.loss(next, game);
+  next = addJournal(next, { when: actLabel(s), title: b.title, text: `${gameSummary(game)}. ${text}`, kind: 'game' });
+  return { ...advance(next), last: text };
 }
 
 // ---------------------------------------------------------------- the ending of a classic story
@@ -557,4 +570,5 @@ export function recordEnding(t: Ending['tier'], id?: string): StoryEndings {
   try { localStorage.setItem(STORY_ENDINGS_KEY, JSON.stringify(next)); } catch { /* storage blocked */ }
   return next;
 }
+const actLabel = (s: StoryState) => { const ch = chapterOf(s); return ch ? `Act ${ch.act} · ${ch.title}` : ''; };
 export const chapterOf = (s: StoryState) => [...SCRIPT.slice(0, (beatIndex(s) < 0 ? SCRIPT.length : beatIndex(s)) + 1)].reverse().find((b): b is Extract<Beat, { kind: 'chapter' }> => b.kind === 'chapter');

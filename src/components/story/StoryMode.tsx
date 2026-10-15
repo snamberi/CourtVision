@@ -25,6 +25,7 @@ import '../hunt/hunt.css';
 import { relicRunOpts } from '../../relics/apply';
 import { rewardRun, storySpins, storySecret, storyRewardKey } from '../../relics/rewards';
 import { RelicReward } from '../relics/RelicReward';
+import { StoryTabs, SeasonTrack, Journal, People, Trophies, type StoryTab } from './StoryBook';
 import './story.css';
 
 const SITE = 'https://courtvisiongame.com';
@@ -44,6 +45,7 @@ export function StoryMode({ onExit }: { onExit: () => void }) {
   const [lastGame, setLastGame] = useState<StoryGame | null>(null);
   const [status, setStatus] = useState<StoryStatus | null>(storyStatus);
   const [error, setError] = useState<string | null>(null);
+  const [tab, setTab] = useState<StoryTab>('story');
   const current = useRef(story);
 
   const setStory = (s: StoryState | null) => {
@@ -148,14 +150,21 @@ export function StoryMode({ onExit }: { onExit: () => void }) {
       : <div className="story-layout">
           <HeroPanel s={story} ctx={ctx} />
           <main className="story-main">
-            {error && <div className="story-last lost" role="alert"><p>Something went wrong: {error}</p><button onClick={() => setError(null)}>Try again</button></div>}
-            {story.last && !status && <div className={`story-last ${lastGame ? (lastGame.won ? 'won' : 'lost') : ''}`} role="status">
-              {lastGame && <GameLine g={lastGame} />}
-              <p>{story.last}</p>
-            </div>}
-            {status ? <Busy status={status} />
-              : inLeague ? <NbaView s={story} world={world} worldMissing={worldMissing} ctx={ctx} run={run} now={now} onJoin={() => intoTheLeague(story)} />
-              : <BeatView s={story} act={act} onDraft={draftNight} />}
+            <StoryTabs tab={tab} onTab={setTab} pages={story.journal?.length ?? 0} />
+            {tab === 'journal' ? <Journal s={story} />
+              : tab === 'people' ? <People s={story} ctx={ctx} />
+              : tab === 'trophies' ? <Trophies s={story} />
+              : <>
+                {story.nba && <SeasonTrack n={story.nba} />}
+                {error && <div className="story-last lost" role="alert"><p>Something went wrong: {error}</p><button onClick={() => setError(null)}>Try again</button></div>}
+                {story.last && !status && <div className={`story-last ${lastGame ? (lastGame.won ? 'won' : 'lost') : ''}`} role="status">
+                  {lastGame && <GameLine g={lastGame} />}
+                  <p>{story.last}</p>
+                </div>}
+                {status ? <Busy status={status} />
+                  : inLeague ? <NbaView s={story} world={world} worldMissing={worldMissing} ctx={ctx} run={run} now={now} onJoin={() => intoTheLeague(story)} />
+                  : <BeatView s={story} act={act} onDraft={draftNight} />}
+              </>}
           </main>
         </div>}
   </div>;
@@ -181,7 +190,7 @@ function Create({ endings, onStart }: { endings: StoryEndings; onStart: (name: s
     <div className="story-pitch">
       <span className="pixel-eyebrow">THE ROAD UP · FIFTEEN NBA SEASONS · YOUR CHOICES</span>
       <h2>From the park to the Hall of Fame</h2>
-      <p>You're sixteen, from {town}, and nobody knows your name. Win at the park, make varsity, choose a college (or Europe) and hear your name on draft night. Then fifteen seasons in today's real NBA, every game played by the real engine: training camps, Christmas games, trade deadlines, All-Star Weekends, playoff runs, free agency. Your best friend Dre, Coach Ray and your rival Marcus "Ice" Vance are with you the whole way. Your choices, your games and the people you keep close decide how it ends.</p>
+      <p>You're sixteen, from {town}, and nobody knows your name. Win at the park, make varsity, run the summer circuit, choose your road (a blue blood, a mid-major, Europe, the G League or junior college) and hear your name on draft night. Then fifteen seasons in today's real NBA, every game played by the real engine: training camps, Christmas games, trade deadlines, All-Star Weekends, playoff runs, free agency. Your best friend Dre, Coach Ray, your little sister Maya and your rival Marcus "Ice" Vance are with you the whole way. Your choices, your games and the people you keep close decide which of nine endings you get.</p>
     </div>
     <div className="cv-panel">
       <label className="story-field"><span>Your name</span><input className="year-input" maxLength={24} value={name} placeholder="Jaylen Carter" onChange={e => setName(e.target.value)} /></label>
@@ -190,7 +199,7 @@ function Create({ endings, onStart }: { endings: StoryEndings; onStart: (name: s
         <ModeIcon mode={`story-${k}`} size={48} /><b>{STYLES[k].name}</b><small>{STYLES[k].pos} · {STYLES[k].blurb}</small></button>)}</div>
       <label className="story-field"><span>Hometown</span><select className="year-input" value={town} onChange={e => setTown(e.target.value)}>{HOMETOWNS.map(t => <option key={t}>{t}</option>)}</select></label>
       <div className="contest-actions"><button className="primary hunt-play" onClick={() => onStart(name || 'Jaylen Carter', style, town)}><PixelIcon name="play" size={16} /> Begin the story</button></div>
-      {endings.finished > 0 && <p className="hint-text">Stories finished: {endings.finished} · endings seen: {Object.keys(endings.tiers).length} of 4</p>}
+      {endings.finished > 0 && <p className="hint-text">Stories finished: {endings.finished} · NBA endings seen: {NBA_ENDINGS.filter(id => endings.ids?.[`nba-${id}`]).length} of {NBA_ENDINGS.length}</p>}
     </div>
   </section>;
 }

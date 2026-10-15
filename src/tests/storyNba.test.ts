@@ -92,6 +92,10 @@ describe('Story Mode: the NBA years', () => {
     expect(['legend', 'star', 'pro', 'grinder']).toContain(ending.tier);
     expect(NBA_ENDINGS.map(id => `nba-${id}`)).toContain(ending.id);
     expect(ending.epilogue).toHaveLength(6);
+    // The journal holds the whole career: draft night and every season, every card answered.
+    const pages = r.s.journal ?? [];
+    expect(pages.filter(e => e.kind === 'season').length).toBeGreaterThanOrEqual(NBA_SEASONS + 1);
+    expect(pages.filter(e => e.kind === 'choice' && e.when.startsWith('Season ')).length).toBeGreaterThanOrEqual(NBA_SEASONS * 3);
     if ((globalThis as unknown as { process: { env: Record<string, string | undefined> } }).process.env.PEEK) {
       console.log('PEEK draft', r.s.draft, 'ovr', draftOvr, '| by year', n.years.map(y => `${y.age}:${y.overall}/${(y.stats.points / Math.max(1, y.stats.gamesPlayed)).toFixed(1)}${y.awards.length ? '*' + y.awards.map(a => a.key).join('+') : ''}`).join(' '),
         '| ending', storyEnding(r.s).title, '| games', r.s.games.length, '| seen', n.seen.join(','));

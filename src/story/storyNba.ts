@@ -15,7 +15,7 @@ import { findPlayer, replacePlayer, uniqueName, seasonRecord, freeAgentOffers, s
 import { legacyScore } from '../career/legacy';
 import { tendenciesFor } from '../career/create';
 import type { CategoryId } from '../career/categories';
-import { applyEffects, heroForGame, trainHero, gradeOf, gameScore, draftPick, ordinal, classicEnding, TRAIN_STEP, TRAINABLE, STYLES, type StoryState, type StoryGame, type Ending } from './story';
+import { applyEffects, addJournal, gameSummary, heroForGame, trainHero, gradeOf, gameScore, draftPick, ordinal, classicEnding, TRAIN_STEP, TRAINABLE, STYLES, type StoryState, type StoryGame, type Ending } from './story';
 import type { StoryWorld } from './storyStorage';
 import { NBA_CARDS, NBA_GAMES, type NbaCard } from './storyNbaCards';
 import { NBA_EVENTS } from './storyNbaEvents';
@@ -89,6 +89,8 @@ export interface StorySim {
 export const nbaYear = (n: Pick<StoryNba, 'stop' | 'years'>) => (n.stop === 'awards' || n.stop === 'summer' ? n.years.length : n.years.length + 1);
 export const nextStop = (n: Pick<StoryNba, 'stop'>): NbaStop => SEASON_STOPS[(SEASON_STOPS.indexOf(n.stop) + 1) % SEASON_STOPS.length];
 export const currentMoment = (s: StoryState): NbaMoment | null => s.nba?.queue[0] ?? null;
+/** Where a journal page was written: "Season 3 · Trade deadline". */
+const pageWhen = (n: StoryNba) => `Season ${nbaYear(n)} · ${STOP_LABEL[n.stop]}`;
 
 // ---------------------------------------------------------------- reading the league
 
@@ -244,7 +246,7 @@ export function afterDraft(run: NbaRun, picks: { playerId: string; teamId: strin
   const draft = { pick, team, icePick: j >= 0 ? j + 1 : null, iceTeam: j >= 0 ? teamName(world.league, picks[j].teamId) : teamName(world.league, findPlayer(world.league, world.extras, n.iceId ?? '')?.teamId) };
   const last = pick ? `With the ${ordinal(pick)} pick in the ${(world.league.season ?? '').slice(0, 4)} NBA Draft, ${team} select... ${s.name}.${draft.icePick ? ` Ice went ${ordinal(draft.icePick)} to ${draft.iceTeam}.` : ''}`
     : `Sixty names are called. Yours isn't. At midnight your phone rings: ${signedWith} want you on a two-year minimum deal. You take it.`;
-  s = { ...s, beat: 'nba', draft, hype: s.hype + (pick && pick <= 10 ? 2 : 0), last };
+  s = addJournal({ ...s, beat: 'nba', draft, hype: s.hype + (pick && pick <= 10 ? 2 : 0), last }, { when: 'Draft night', title: 'The Draft', text: last, kind: 'season' });
   return arrive({ s, world }, 'camp');
 }
 
@@ -424,7 +426,9 @@ export function chooseNba(run: NbaRun, choiceId: string): NbaRun {
     note = ` ${r.note}`;
     s = { ...s, nba: { ...s.nba!, teamId: findPlayer(world.league, world.extras, s.nba!.playerId)?.teamId ?? null } };
   }
-  return { s: { ...dequeue(s), last: (typeof c.result === 'function' ? c.result(ctx) : c.result) + note }, world };
+  const result = (typeof c.result === 'function' ? c.result(ctx) : c.result) + note;
+  s = addJournal(s, { when: pageWhen(run.s.nba!), title: card.title, pick: c.label, text: result, kind: 'choice' });
+  return { s: { ...dequeue(s), last: result }, world };
 }
 
 interface Line { pts: number; reb: number; ast: number; stl: number; blk: number; fgm: number; fga: number; min: number }
@@ -461,6 +465,7 @@ export async function playNbaGame(run: NbaRun, sim: StorySim): Promise<NbaRun> {
   const after = nbaCtx(s, world);
   const text = line.min ? (won ? def.win(after, game) : def.loss(after, game))
     : `You watched this one from the bench in street clothes. ${won ? `${after.teamName} won it anyway, ${side.us}-${side.them}.` : `${after.teamName} lost ${side.them}-${side.us}.`}`;
+  s = addJournal(s, { when: pageWhen(s.nba!), title: game.title, text: `${gameSummary(game)}. ${text}`, kind: 'game' });
   return { s: { ...dequeue(s), last: text }, world };
 }
 
@@ -517,6 +522,7 @@ export async function playNbaSeries(run: NbaRun, sim: StorySim): Promise<NbaRun>
   const per = (v: number) => (note.games ? (v / note.games).toFixed(1) : '0');
   const text = pi ? (won ? `Play-in: you beat ${note.opp}${lines[0]?.pts ? `, ${lines[0].pts} points` : ''}. ${alive ? 'On to the playoffs.' : ''}` : `Play-in: ${note.opp} end your season.`)
     : `${decider ? `GAME ${games.length}. ${won ? 'You did it.' : 'So close.'} ` : ''}${label}${champion ? '' : ` against ${note.opp}`}: ${won ? 'won' : 'lost'} ${w}-${l}. You averaged ${per(note.pts)} points, ${per(note.reb)} rebounds and ${per(note.ast)} assists.${champion ? ' NBA CHAMPIONS. The confetti falls and you find your family in the crowd.' : won ? '' : ' The season is over.'}`;
+  s = addJournal(s, { when: pageWhen(n), title: pi ? 'The play-in' : label.replace(/^The /, '').replace(/^./, ch => ch.toUpperCase()), text, kind: 'game' });
   return { s: { ...s, nba: { ...n, run: [...n.run, note], queue: alive ? n.queue : n.queue.slice(1) }, last: text }, world };
 }
 
@@ -537,6 +543,11 @@ export function continueNba(run: NbaRun): NbaRun {
   if (m.kind === 'season') {
     const y = s.nba!.years.at(-1);
     s = applyEffects(s, { hype: Math.min(4, (y?.awards.length ?? 0)) });
+    if (y) {
+      const head = seasonHeadline(y);
+      const text = `${y.teamName}${y.record ? `, ${y.record.w}-${y.record.l}` : ''}: ${perGame(y.stats.points, y.stats.gamesPlayed)} points, ${perGame(y.stats.oreb + y.stats.dreb, y.stats.gamesPlayed)} rebounds and ${perGame(y.stats.ast, y.stats.gamesPlayed)} assists a game in ${y.stats.gamesPlayed} games.${y.awards.length ? ` ${y.awards.map(a => a.label).join(', ')}.` : ''}`;
+      s = addJournal(s, { when: `Season ${s.nba!.years.length} · ${formatSeasonYear(y.season)}`, title: head ?? 'The season', text, kind: 'season' });
+    }
   }
   return { ...run, s: { ...dequeue(s), last: undefined } };
 }
@@ -559,7 +570,8 @@ export function signNba(run: NbaRun, index: number | null): NbaRun {
     note = `Nobody had a big offer. You signed a minimum deal with ${teamName(world.league, findPlayer(world.league, world.extras, run.s.nba!.playerId)?.teamId)}.`;
   }
   const teamId = findPlayer(world.league, world.extras, run.s.nba!.playerId)?.teamId ?? null;
-  return { s: { ...dequeue(run.s), nba: { ...dequeue(run.s).nba!, teamId }, last: note }, world };
+  const s = addJournal(dequeue(run.s), { when: pageWhen(run.s.nba!), title: 'Free agency', text: note, kind: 'choice' });
+  return { s: { ...s, nba: { ...s.nba!, teamId }, last: note }, world };
 }
 
 export function trainNba(run: NbaRun, cat: CategoryId): NbaRun {
