@@ -16,6 +16,8 @@ import { PlayerAvatar } from './PlayerAvatar';
 import { calculateOverall } from '../simulation/engine/overall';
 import { primaryPosition } from '../simulation/teamStatus';
 import { stat1, pct1 } from './statFormat';
+import { LOCKED_KEEPS_PLAYING } from '../simulation/realDevelopmentGate';
+import { GUARANTEE_RATE } from '../simulation/engine/development';
 
 interface Props {
   season: PlayerSeason;
@@ -260,6 +262,17 @@ export function FullPlayerEditor({ season, onChange, sandboxMode, league, extras
       </Collapsible>
 
       <Collapsible title={CATEGORY_LABELS.development} isOpen={open.development} onToggle={() => toggle('development')}>
+        <div className="dev-flags">
+          <label className="create-check" title={sandboxMode ? undefined : 'Turn on Sandbox Mode to lock ratings'}>
+            <input type="checkbox" checked={!!season.lockRatings} disabled={!sandboxMode} onChange={e => update({ lockRatings: e.target.checked || undefined })} />
+            <span><b>Lock ratings</b><small>His ratings stay exactly as they are every summer, even with Real Player Development on. While he is still good (Overall {LOCKED_KEEPS_PLAYING}+) he keeps playing at any age.{sandboxMode ? '' : ' Sandbox Mode only.'}</small></span>
+          </label>
+          <label className="create-check">
+            <input type="checkbox" checked={!!season.ownDevelopment} onChange={e => update({ ownDevelopment: e.target.checked || undefined })} />
+            <span><b>Not real player development</b><small>He develops the Court Vision way (minutes, training, potential) even when Real Player Development is on for the league.</small></span>
+          </label>
+          <p className="hint-text">Development rate {GUARANTEE_RATE} or more: he reaches his potential by the first year of his prime, however far he has to go, unless injuries get in the way. A player who reaches his prime short of his potential keeps growing toward it, more slowly.</p>
+        </div>
         {!sandboxMode && <LockedNotice />}
         <AttributeGroupEditor
           title="" max={sandboxMode ? 200 : 99} disabled={!sandboxMode}

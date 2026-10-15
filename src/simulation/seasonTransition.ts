@@ -43,7 +43,7 @@ import { settleStaffOffers } from './staffPoaching';
 import { collectPlayerIds } from './playerIds';
 import { computeSeasonAwards, type SeasonAwards, type SeasonAwardsOptions, type AwardWinner } from './awards';
 import type { LeagueRulesSettings } from './leagueRules';
-import { realDevelopmentOn } from './realDevelopmentGate';
+import { followsRealDevelopment, ratingsHeld, LOCKED_KEEPS_PLAYING } from './realDevelopmentGate';
 import { applyRealDevelopment, markRealFallback, realCareerContinues, realDevelopmentNote } from '../history/realDevelopment';
 import { historicalDraftClass, historicalDebuts } from '../history/realRollover';
 
@@ -99,9 +99,9 @@ export function rollFreeAgentsForward(league: League, freeAgents: PlayerSeason[]
     } : null;
     // Real Player Development: a real player follows his reference trajectory; everyone else (and real players past
     // their trajectory) develops through Court Vision.
-    const realStep = realDevelopmentOn(league) && fa.real ? applyRealDevelopment(fa, newSeason) : null;
+    const realStep = followsRealDevelopment(fa, league) ? applyRealDevelopment(fa, newSeason) : null;
     let developed = realStep ?? developOffseasonPlayer(fa, rng, league.rulesSettings, 0.9, 'balanced', league.settings.sandboxMode ? 200 : 100);
-    if (!realStep && realDevelopmentOn(league) && fa.real) developed = markRealFallback(developed, newSeason);
+    if (!realStep && followsRealDevelopment(fa, league)) developed = markRealFallback(developed, newSeason);
     const next: PlayerSeason = { ...developed, season: newSeason, seasonStats: undefined, seasonMilestones: undefined, playoffStats: undefined, seasonStints: undefined,
       careerHistory: archived ? [...(fa.careerHistory ?? []), archived] : fa.careerHistory };
     const overall = calculateOverall(next);
@@ -118,7 +118,9 @@ export function rollFreeAgentsForward(league: League, freeAgents: PlayerSeason[]
   return { freeAgents: out, retired };
 }
 
-function shouldRetire(next: PlayerSeason, rng: RNG, rules?: LeagueRulesSettings): boolean {
+export function shouldRetire(next: PlayerSeason, rng: RNG, rules?: LeagueRulesSettings): boolean {
+  // Locked ratings (Edit Player): while he is still good, age never retires him.
+  if (next.lockRatings && calculateOverall(next) >= LOCKED_KEEPS_PLAYING) return false;
   const forcedAge = 41 + (rules?.retirementAgeShiftYears ?? 0);
   if (next.age >= forcedAge) return true;
   const rampStartAge = 34 + (rules?.retirementAgeShiftYears ?? 0);
@@ -265,19 +267,19 @@ export function beginNewSeasonRoster(
       const coachDevelopment = coachPerformanceModifiers(team.coachIdentity, team.seasons).development;
       const developmentMultiplier = expenseEffects(team.expenseLevels).developmentMultiplier * (1 + (coachDevelopment - 1) * (league.rulesSettings?.coachingImpact ?? 100) / 100)
         * (1 + (team.business?.arena.practice ?? 0) * 0.02); // a better practice facility
-      const realStep = realDevelopmentOn(league) && season.real ? applyRealDevelopment(season, newSeason) : null;
+      const realStep = followsRealDevelopment(season, league) ? applyRealDevelopment(season, newSeason) : null;
       let developed = realStep ?? developOffseasonPlayer(season, rng, league.rulesSettings, developmentMultiplier * (1 + (teachingQuality(team, season.training?.plan.coachId) - 1) * (league.rulesSettings?.coachingImpact ?? 100) / 100), team.coach?.trainingFocus, league.settings.sandboxMode ? 200 : 100);
-      if (!realStep && realDevelopmentOn(league) && season.real) developed = markRealFallback(developed, newSeason);
+      if (!realStep && followsRealDevelopment(season, league)) developed = markRealFallback(developed, newSeason);
       if (team.teamId === userTeamId) {
         // Your summer camp, on top of normal development (real players on Real Player Development follow their real careers).
         const plan = camp?.plans[season.playerId];
-        const locked = realDevelopmentOn(league) && !!season.real;
+        const locked = ratingsHeld(season, league);
         const ran = plan && !locked ? applySummerCamp(developed, plan, `${season.playerId}|${newSeason}`, teachingQuality(team)) : null;
         const campGain = ran ? calculateOverall(ran.player) - calculateOverall(developed) : 0;
         if (ran) developed = ran.player;
-        campRows.push(reportRow(season, developed, campGain, plan, ran?.note ?? (plan ? '' : 'No summer plan.'), plan && locked ? 'Real Player Development: his ratings follow his real career.' : undefined));
+        campRows.push(reportRow(season, developed, campGain, plan, ran?.note ?? (plan ? '' : 'No summer plan.'), plan && locked ? (season.lockRatings ? 'Ratings locked (Edit Player): summer camp skipped.' : 'Real Player Development: his ratings follow his real career.') : undefined));
       }
-      const aged = recordOffseasonDevelopment(season, developed, team, league.calendarDate ?? previousSeason, realDevelopmentOn(league) && season.real ? realDevelopmentNote(developed, !!realStep) : undefined);
+      const aged = recordOffseasonDevelopment(season, developed, team, league.calendarDate ?? previousSeason, followsRealDevelopment(season, league) ? realDevelopmentNote(developed, !!realStep) : season.lockRatings ? 'Ratings locked (Edit Player).' : undefined);
       const withHistory: PlayerSeason = {
         ...aged,
         season: newSeason,

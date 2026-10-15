@@ -172,7 +172,7 @@ export function generatePlayer(
   const overallNow = calculateOverall(s);
   const yearsToPeak = Math.max(0, s.development.peakAge - age);
   const projected = overallNow + yearsToPeak * (1 + rng.next() * 2) + (rng.next() * 2 - 1) * 3;
-  s.development.potential = Math.max(overallNow, Math.min(99, Math.round(compressElitePotential(projected))));
+  s.development.potential = yearsToPeak > 0 ? Math.max(overallNow, Math.min(99, Math.round(compressElitePotential(projected)))) : overallNow;
   s.development.declineRate = Math.round(40 + rng.next() * 80); // some fall off a cliff, some age gracefully
   s.minutes = { mode: 'AI', target: arch.minutesBand[0] + rng.nextInt(arch.minutesBand[1] - arch.minutesBand[0] + 1) };
 

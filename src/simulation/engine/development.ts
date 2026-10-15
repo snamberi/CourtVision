@@ -17,6 +17,8 @@ function clampAttr(v: number, max: number): number {
 // reps matter, so heavy-minutes players develop faster (and stay sharper into decline) than players
 // who barely saw the floor.
 const BASELINE_SEASON_MINUTES = 2200;
+/** Development rate at which a player is sure to reach his potential by the start of his prime (barring injury). */
+export const GUARANTEE_RATE = 100;
 
 /**
  * Advances a player by one season of aging/development. Growth before
@@ -39,6 +41,8 @@ export function developOffseasonPlayer(season: PlayerSeason, rng: RNG = new RNG(
   const beforeFullOverall = calculateFullAttributeOverall(season);
   const next: PlayerSeason = JSON.parse(JSON.stringify(season));
   next.age = season.age + 1;
+  // Locked ratings (Edit Player): a year older, not a point different.
+  if (season.lockRatings) return { ...next, previousOverall: beforeOverall, previousFullOverall: beforeFullOverall };
 
   const speedMult = ((rules?.developmentSpeed ?? 100) / 100) * facilityMultiplier;
   const randomnessMult = (rules?.developmentRandomness ?? 100) / 100;
@@ -140,7 +144,12 @@ export function developOffseasonPlayer(season: PlayerSeason, rng: RNG = new RNG(
   } else if (phase === 'prime') {
     // Prime: what you see is what you get. Small year-to-year noise; heavy minutes keep a player sharp.
     const drift = (rng.next() - 0.5) * 1.4 * randomnessMult - (next.age >= primeEnd ? 0.35 : 0);
-    growOverall(drift * ((rules?.primeDevelopment ?? 100) / 100));
+    // A player who reached his prime short of his potential keeps growing toward it, more slowly than before it and
+    // only with minutes; the window closes a little every prime year (his potential fades by a point).
+    const gap = Math.max(0, season.development.potential - beforeOverall);
+    const catchUp = gap >= 1 ? Math.min(gap, 3, gap * (0.15 + season.development.developmentRate / 500) * minutesFactor * workEthic * injuryGrowthPenalty * speedMult) : 0;
+    growOverall(drift * ((rules?.primeDevelopment ?? 100) / 100) + catchUp);
+    if (gap >= 1) next.development.potential = Math.max(beforeOverall, season.development.potential - 1);
   } else {
     // Post-prime decline, scaled by the player's own declineRate plus injury wear. The roll gives some
     // veterans a graceful landing and others a hard cliff.
@@ -177,7 +186,13 @@ export function developOffseasonPlayer(season: PlayerSeason, rng: RNG = new RNG(
       for (const key of ['speed','acceleration','vertical','agility'] as const) next.attributes.physical[key] = clampAttr(next.attributes.physical[key] - .25 * declineSpeedMult, maxAttr);
     }
   }
-  if (phase === 'growth') capToPotential(season, next, next.development.potential);
+  // Development rate 100 or more: he reaches his potential by the first year of his prime, however far he has to go,
+  // unless injuries got in the way (a missed season takes its share of the gain).
+  if (season.development.developmentRate >= GUARANTEE_RATE && next.age >= window.start && phase !== 'decline') {
+    const target = next.development.potential, gapNow = target - calculateOverallExact(next);
+    if (gapNow > 0.5) growOverall(gapNow * (missedShare > 0.3 ? injuryGrowthPenalty : 1));
+  }
+  if (phase === 'growth' || phase === 'prime') capToPotential(season, next, next.development.potential);
   const synced = syncPotential(next, rules);
   synced.previousOverall = beforeOverall;
   synced.previousFullOverall = beforeFullOverall;

@@ -23,14 +23,14 @@ export function careerPhase(p: Pick<PlayerSeason, 'development' | 'age'>, rules?
 }
 
 /**
- * Potential is the best Overall a player can still reach, so it is never below Overall. Once a player
- * reaches their prime they are what they are (potential = overall), and as they decline it falls with them.
- * Returns the same object when nothing changes.
+ * Potential is the best Overall a player can still reach, so it is never below Overall. A player who reaches his
+ * prime short of it can still grow toward it during the prime (development fades it a little each prime year); once
+ * he declines it falls with him (potential = overall). Returns the same object when nothing changes.
  */
 export function syncPotential<T extends PlayerSeason>(p: T, rules?: LeagueRulesSettings): T {
   const overall = calculateOverall(p);
   const phase = careerPhase(p, rules);
-  const next = phase === 'growth' ? Math.max(p.development.potential, overall) : overall;
+  const next = phase === 'decline' ? overall : Math.max(p.development.potential, overall);
   return next === p.development.potential ? p : { ...p, development: { ...p.development, potential: next } };
 }
 
