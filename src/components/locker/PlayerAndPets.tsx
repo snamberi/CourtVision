@@ -4,7 +4,7 @@ import { MyFramedAvatar } from '../AvatarFrame';
 import { totalXp, levelFor } from '../../profile/profile';
 import { feetInches } from '../../career/categories';
 import {
-  MY_SKILLS, BASE_RATING, BASE_HEIGHT, MAX_RATING, MAX_HEIGHT, ELITE_FROM, ELITE_SLOTS, INCH_COST, POINTS_PER_STEP, LEVELS_PER_STEP,
+  MY_SKILLS, BASE_RATING, BASE_HEIGHT, MAX_RATING, MAX_HEIGHT, ELITE_FROM, ELITE_SLOTS, INCH_COST, POINTS_PER_STEP, LEVELS_PER_STEP, skillStepCost, inchStepCost,
   loadMyRatings, saveMyRatings, stepSkill, stepHeight, raiseBlock, heightBlock, pointsLeft, pointsEarned, eliteCount, myOverall, baseRatings, MY_RATINGS_EVENT, type MySkill,
 } from '../../profile/myRatings';
 import { PETS, PET_COLORS, PET_ACCESSORIES, loadPets, savePets, equipPet, setLook, lookOf, petOpen, PETS_EVENT, SECOND_PRICE, PET_SECOND, secondOpen, secondBlurb, withSecond, type PetId } from '../../profile/pets';
@@ -29,12 +29,12 @@ export function MyRatingsPanel() {
         <span className="pixel-eyebrow">YOUR PLAYER</span>
         <h2>{myOverall(r)} <small>OVR</small></h2>
         <p>{feetInches(r.height)} · Level {level} · <b>{left}</b> point{left === 1 ? '' : 's'} to spend · {POINTS_PER_STEP} more at level {nextAt}</p>
-        <p className="hint-text">Everyone starts at {feetInches(BASE_HEIGHT)} with every skill at {BASE_RATING}. You earn {POINTS_PER_STEP} points every {LEVELS_PER_STEP} levels ({pointsEarned(level)} so far). A point is +1 to a skill (up to {MAX_RATING}); an inch of height costs {INCH_COST}. Only {ELITE_SLOTS} skills can be rated {ELITE_FROM}+ ({elite} now). Your player plays 3v3 Street with these ratings.</p>
+        <p className="hint-text">Everyone starts at {feetInches(BASE_HEIGHT)} with every skill at {BASE_RATING}. You earn {POINTS_PER_STEP} points every {LEVELS_PER_STEP} levels ({pointsEarned(level)} so far). A point is +1 to a skill up to 70; then each +1 costs 2, from 90 it costs 3 and from 100 it costs 5 (up to {MAX_RATING}). An inch of height costs {INCH_COST}, then 7 from 6'2", 12 from 6'8" and 20 from 7'5". Only {ELITE_SLOTS} skills can be rated {ELITE_FROM}+ ({elite} now). Your player plays 3v3 Street and 1v1 with these ratings.</p>
       </div>
     </div>
     <ul className="my-ratings-list">
       <li>
-        <span><b>Height</b><small>{INCH_COST} points an inch</small></span>
+        <span><b>Height</b><small>{r.height >= MAX_HEIGHT ? 'As tall as you can grow' : `Next inch: ${inchStepCost(r.height)} points`}</small></span>
         <button aria-label="One inch shorter" disabled={r.height <= BASE_HEIGHT} onClick={() => commit(stepHeight(r, -1, level))}>−</button>
         <output>{feetInches(r.height)}</output>
         <button aria-label="One inch taller" disabled={!!heightBlock(r, level)} title={heightBlock(r, level) ?? undefined} onClick={() => commit(stepHeight(r, 1, level))}>+</button>
@@ -43,7 +43,7 @@ export function MyRatingsPanel() {
       {MY_SKILLS.map(s => {
         const v = r.skills[s.id], block = raiseBlock(r, s.id as MySkill, level);
         return <li key={s.id} className={v >= ELITE_FROM ? 'elite' : ''}>
-          <span><b>{s.name}</b><small>{v >= ELITE_FROM ? 'Elite' : s.short}</small></span>
+          <span><b>{s.name}</b><small>{v >= ELITE_FROM ? 'Elite' : s.short}{v < MAX_RATING && skillStepCost(v) > 1 ? ` · next +1: ${skillStepCost(v)} pts` : ''}</small></span>
           <button aria-label={`Lower ${s.name}`} disabled={v <= BASE_RATING} onClick={() => commit(stepSkill(r, s.id, -1, level))}>−</button>
           <output>{v}</output>
           <button aria-label={`Raise ${s.name}`} disabled={!!block} title={block ?? undefined} onClick={() => commit(stepSkill(r, s.id, 1, level))}>+</button>
