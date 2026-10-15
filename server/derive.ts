@@ -16,6 +16,7 @@ import { SYNC_KEYS, type ProgressBlob, type CodeResult } from '../src/cloud/merg
 import { seasonOf, dailyLegendPoints, weeklyRebuildPoints, weeklyCareerPoints, dailyGoalPoints, tierFor } from '../src/cloud/ranked';
 import type { CareerMeta } from '../src/career/career';
 import { careerResume } from '../src/career/career';
+import { loadMyRatings } from '../src/profile/myRatings';
 import { AVATAR_CATEGORIES, DEFAULT_AVATAR, cleanAvatar, type AvatarLook } from '../src/profile/avatar';
 import { avatarFrameDef } from '../src/profile/avatarFrames';
 import { encodeAvatar } from '../src/profile/avatarCode';
@@ -75,8 +76,9 @@ export function derive(blob: ProgressBlob, now = new Date()): Derived {
     if (m.status !== 'retired' || !r || !name || !int(Math.round(r.legacy), 0, 400) || !Array.isArray(m.years) || !int(m.years.length, 1, 25)) continue;
     // Create Anything careers (every rating chosen freely) count for nothing.
     if (m.mode === 'sandbox') continue;
-    // Rookie careers (the easy setting) count for your XP but stay off the Legacy board.
-    if (m.difficulty === 'rookie') { counted.push(m); continue; }
+    // Rookie careers (the easy setting) and Your Player careers (your own player, simmed) count for your XP but stay
+    // off the Legacy board.
+    if (m.difficulty === 'rookie' || m.mode === 'yourplayer') { counted.push(m); continue; }
     const res = careerResume(m), legacy = Math.round(r.legacy), g = Math.max(1, res.games);
     if (res.titles > m.years.length || res.mvp > m.years.length || res.games > 30 * 110) continue;
     const hall = ['yes', 'first-ballot'].includes(r.hallOfFame) ? r.hallOfFame : 'no';
@@ -195,6 +197,8 @@ export function derive(blob: ProgressBlob, now = new Date()): Derived {
     careers: players.length, hallOfFame: hof, bestPlayer: best, xpParts: Object.fromEntries(parts.map(p => [p.id, p.xp])),
     summary: `${plural(gm.titles, 'title')} · ${plural(hof, 'Hall of Famer')} · ${plural(hunt.wins, 'hunt')} won`,
     relicShelf: relicShelf(read), showcase: showcase(read, levelFor(xp).level, hunt.wins),
+    // Your Player (the Closet ratings), kept within the points this level has earned: others play 1v1 against it.
+    myPlayer: (({ skills, height }) => ({ skills, height }))(loadMyRatings(levelFor(xp).level, read)),
   };
   // Mode achievements count for rarity too, as mode-<id>.
   const modes = earnedModeAchievements(readWithCareers, { rankedTier: TIERS.findIndex(t => t.id === stats.rankedBest) }).map(id => `mode-${id}`);

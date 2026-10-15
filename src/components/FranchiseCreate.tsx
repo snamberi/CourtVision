@@ -12,7 +12,10 @@ import { PixelIcon } from './PixelIcon';
 import { Modal } from './Modal';
 import { COUNTRIES } from '../worldGames/data';
 import { MODE_GAMES, type GamesId } from '../worldGames/mode';
-import { DEFAULT_CREATE, FEELS, ERA_CHOICES, GAME_COUNTS, QUARTER_LENGTHS, LOTTERY_CHOICES, changedCount, summary, type CreateSettings } from '../menu/createSettings';
+import { GameLengthPicker } from './GameLengthPicker';
+import { WORLD_LEAGUES, WORLD_LEAGUE_IDS, type WorldLeagueId } from '../simulation/worldLeagues';
+import { gameLengthText } from '../simulation/gameLength';
+import { DEFAULT_CREATE, FEELS, ERA_CHOICES, GAME_COUNTS, LOTTERY_CHOICES, changedCount, summary, type CreateSettings } from '../menu/createSettings';
 import './create.css';
 
 /*
@@ -22,9 +25,9 @@ import './create.css';
  */
 
 export type Challenge = 'free' | 'decade' | 'dynasty' | 'rebuild' | 'draft' | 'worldgames' | 'timeMachine';
-export type LeagueSource = 'history' | 'random' | 'csv';
+export type LeagueSource = 'history' | 'random' | 'csv' | 'world';
 export type CreateChoice =
-  | { kind: 'league'; source: LeagueSource; name: string; year: string; difficulty: TradeDifficulty; real: { realDevelopment: boolean; forceRosters: boolean; allPlayers: boolean }; settings: CreateSettings; /** Dynasty Mode: the living world switched on (see simulation/dynasty.ts). */ dynasty?: boolean; /** Build a Dynasty in 10 Seasons (see simulation/decadeChallenge.ts). */ decade?: boolean; /** GM Career: start as the scout (see simulation/gmCareer.ts). */ gmCareer?: boolean }
+  | { kind: 'league'; source: LeagueSource; /** Other leagues (source 'world'): which one. */ world?: WorldLeagueId; name: string; year: string; difficulty: TradeDifficulty; real: { realDevelopment: boolean; forceRosters: boolean; allPlayers: boolean }; settings: CreateSettings; /** Dynasty Mode: the living world switched on (see simulation/dynasty.ts). */ dynasty?: boolean; /** Build a Dynasty in 10 Seasons (see simulation/decadeChallenge.ts). */ decade?: boolean; /** GM Career: start as the scout (see simulation/gmCareer.ts). */ gmCareer?: boolean }
   | { kind: 'rebuild'; scenario: string }
   | { kind: 'draft' }
   | { kind: 'worldgames'; games: GamesId; country: string }
@@ -68,19 +71,32 @@ export function FranchiseCreate({ onBack, onStart, busy = null, initial = 'free'
   const [wgGames, setWgGames] = useState<GamesId>(2024);
   const [wgCountry, setWgCountry] = useState('USA');
   const [tm, setTm] = useState<TimeMachinePick | null>(null);
+  const [worldId, setWorldId] = useState<WorldLeagueId>('euro');
   const historical = source === 'history';
+  // Other leagues start with their own season length and game length (shown, and changeable, in League settings).
+  // A name the player has not typed follows the league they pick.
+  const autoName = (n: string) => n === 'My League' || NAMES.includes(n) || WORLD_LEAGUE_IDS.some(i => WORLD_LEAGUES[i].name === n);
+  const pickSource = (next: LeagueSource) => {
+    if (next === 'world') { const d = WORLD_LEAGUES[worldId]; setSettings(x => ({ ...x, games: d.games, periods: d.periods, quarterMinutes: d.minutes })); setName(n => (autoName(n) ? d.name : n)); }
+    else if (source === 'world') setName(n => (autoName(n) ? 'My League' : n));
+    if (next !== 'world' && source === 'world') setSettings(x => ({ ...x, games: DEFAULT_CREATE.games, periods: DEFAULT_CREATE.periods, quarterMinutes: DEFAULT_CREATE.quarterMinutes }));
+    setSource(next);
+  };
+  const pickWorld = (id: WorldLeagueId) => { const d = WORLD_LEAGUES[id]; setWorldId(id); setSettings(x => ({ ...x, games: d.games, periods: d.periods, quarterMinutes: d.minutes })); setName(n => (autoName(n) ? d.name : n)); };
   const year = historical ? historyYear : randomYear;
-  const changed = changedCount(settings);
+  const changed = source === 'world'
+    ? changedCount(settings, { ...DEFAULT_CREATE, games: WORLD_LEAGUES[worldId].games, periods: WORLD_LEAGUES[worldId].periods, quarterMinutes: WORLD_LEAGUES[worldId].minutes })
+    : changedCount(settings);
 
   const start = () => {
     if (challenge === 'rebuild') onStart({ kind: 'rebuild', scenario });
     else if (challenge === 'draft') onStart({ kind: 'draft' });
     else if (challenge === 'worldgames') onStart({ kind: 'worldgames', games: wgGames, country: wgCountry });
     else if (challenge === 'timeMachine') { if (tm?.replace) onStart({ kind: 'timeMachine', from: tm.from, year: tm.year, replace: tm.replace }); }
-    else onStart({ kind: 'league', source, name: name.trim() || (challenge === 'dynasty' ? 'My Dynasty' : challenge === 'decade' ? 'Ten-Year Plan' : 'My League'), year, difficulty, real: { realDevelopment, forceRosters, allPlayers }, settings, ...(challenge === 'dynasty' ? { dynasty: true } : {}), ...(challenge === 'decade' ? { decade: true } : {}), ...(asScout ? { gmCareer: true } : {}) });
+    else onStart({ kind: 'league', source, ...(source === 'world' ? { world: worldId } : {}), name: name.trim() || (challenge === 'dynasty' ? 'My Dynasty' : challenge === 'decade' ? 'Ten-Year Plan' : 'My League'), year, difficulty, real: { realDevelopment, forceRosters, allPlayers }, settings, ...(challenge === 'dynasty' ? { dynasty: true } : {}), ...(challenge === 'decade' ? { decade: true } : {}), ...(asScout ? { gmCareer: true } : {}) });
   };
   const sc = SCENARIOS.find(s => s.id === scenario)!;
-  const startLabel = busy ?? (challenge === 'rebuild' ? `Start: ${sc.title}` : challenge === 'draft' ? 'Go to the draft room' : challenge === 'worldgames' ? `Coach ${wgCountry}` : challenge === 'timeMachine' ? (tm ? `Travel to ${seasonName(tm.year)}` : 'Loading NBA history…') : historical ? `Start the ${seasonName(Number(historyYear))} NBA` : source === 'random' ? 'Create the random league' : 'Create the league');
+  const startLabel = busy ?? (challenge === 'rebuild' ? `Start: ${sc.title}` : challenge === 'draft' ? 'Go to the draft room' : challenge === 'worldgames' ? `Coach ${wgCountry}` : challenge === 'timeMachine' ? (tm ? `Travel to ${seasonName(tm.year)}` : 'Loading NBA history…') : historical ? `Start the ${seasonName(Number(historyYear))} NBA` : source === 'random' ? 'Create the random league' : source === 'world' ? `Start the ${WORLD_LEAGUES[worldId].short}` : 'Create the league');
 
   return <div className="create-page mode-environment" data-environment="franchise">
     <header className="create-top">
@@ -103,17 +119,29 @@ export function FranchiseCreate({ onBack, onStart, busy = null, initial = 'free'
     {(challenge === 'free' || challenge === 'dynasty' || challenge === 'decade') && <>
       <section className="create-step" aria-labelledby="create-step-league">
         <h2 id="create-step-league"><span className="create-num">2</span> Pick a league</h2>
-        <div className="create-choices create-choices-2" role="radiogroup" aria-label="League type">
-          <button role="radio" aria-checked={source !== 'random'} className={`create-choice ${source !== 'random' ? 'selected' : ''}`} onClick={() => setSource('history')}>
+        <div className="create-choices create-choices-3" role="radiogroup" aria-label="League type">
+          <button role="radio" aria-checked={source === 'history' || source === 'csv'} className={`create-choice ${source === 'history' || source === 'csv' ? 'selected' : ''}`} onClick={() => pickSource('history')}>
             <span className="create-choice-head"><ModeIcon mode="league-history" size={52} /><b>Real NBA league</b><span className="create-tag hot">Most popular</span></span>
             <span className="create-choice-blurb">Real players, real careers, awards and champions from any season since 1946. From the first game on, your league writes its own history.</span>
           </button>
-          <button role="radio" aria-checked={source === 'random'} className={`create-choice ${source === 'random' ? 'selected' : ''}`} onClick={() => setSource('random')}>
+          <button role="radio" aria-checked={source === 'random'} className={`create-choice ${source === 'random' ? 'selected' : ''}`} onClick={() => pickSource('random')}>
             <span className="create-choice-head"><ModeIcon mode="league-random" size={52} /><b>Random league</b></span>
             <span className="create-choice-blurb">A freshly generated 30-team league: every player, team and storyline new. Nobody knows who the stars are yet.</span>
           </button>
+          <button role="radio" aria-checked={source === 'world'} className={`create-choice ${source === 'world' ? 'selected' : ''}`} onClick={() => pickSource('world')}>
+            <span className="create-choice-head"><ModeIcon mode="league-world" size={52} /><b>Other leagues</b><span className="create-tag hot">New</span></span>
+            <span className="create-choice-blurb">The EuroLeague, China's CBA, Georgia's Superleague or a college conference: real clubs, each league's own rules.</span>
+          </button>
         </div>
-        {source !== 'random' && <div className="create-sub">
+        {source === 'world' && <div className="create-sub">
+          <div className="create-choices create-choices-4" role="radiogroup" aria-label="Which league">{WORLD_LEAGUE_IDS.map(id => { const d = WORLD_LEAGUES[id]; return <button key={id} role="radio" aria-checked={worldId === id} className={`create-choice ${worldId === id ? 'selected' : ''}`} onClick={() => pickWorld(id)}>
+            <span className="create-choice-head"><ModeIcon mode={`world-${id}`} size={40} /><b>{d.name}</b><small>{d.clubs.length} teams · {d.games} games</small></span>
+            <span className="create-choice-blurb">{d.blurb}</span>
+            <small className="create-world-rules">{gameLengthText(d.periods, d.minutes)} · {d.shotClock}-second clock · playoffs: {d.playoffs.teams} teams, {d.playoffs.gamesToWin === 1 ? 'one game a round' : `first to ${d.playoffs.gamesToWin}`}</small>
+          </button>; })}</div>
+          <p className="hint-text">Real club names; the players are generated in each league's mix of home players and imports, at its level. Know the real rosters? Open Settings → Import Data in your league and paste them (name, team, height, position, per-game stats): they are rated from their numbers.</p>
+        </div>}
+        {(source === 'history' || source === 'csv') && <div className="create-sub">
           <label className="create-check"><input type="checkbox" checked={source === 'csv'} onChange={e => setSource(e.target.checked ? 'csv' : 'history')} /> Use my own data instead (import a CSV after the league opens)</label>
           {historical && <DataCredits compact />}
         </div>}
@@ -150,7 +178,7 @@ export function FranchiseCreate({ onBack, onStart, busy = null, initial = 'free'
       <section className="create-step" aria-labelledby="create-step-settings">
         <h2 id="create-step-settings"><span className="create-num">{historical ? 5 : 4}</span> League settings</h2>
         <div className="create-settings-row">
-          <ul className="create-chips">{summary(settings, source === 'random').map(t => <li key={t}>{t}</li>)}</ul>
+          <ul className="create-chips">{summary(settings, source === 'random' || source === 'world').filter(t => source !== 'world' || !/World Games/.test(t)).map(t => <li key={t}>{t}</li>)}</ul>
           <button onClick={() => setEditing(true)}><PixelIcon name="settings" size={14} /> League settings{changed ? ` (${changed} changed)` : ''}</button>
         </div>
         <p className="hint-text">Optional: change the game's rules before the first tip-off. Everything can be changed later in the league's Settings.</p>
@@ -200,11 +228,11 @@ export function FranchiseCreate({ onBack, onStart, busy = null, initial = 'free'
 
     <div className="create-go">
       <div className="create-go-text"><b>{challenge === 'free' || challenge === 'dynasty' || challenge === 'decade' ? `${challenge === 'dynasty' ? 'Dynasty: ' : challenge === 'decade' ? '10 seasons: ' : ''}${name.trim() || 'My League'}` : challenge === 'rebuild' ? sc.title : challenge === 'worldgames' ? `World Games: ${wgCountry}` : challenge === 'timeMachine' ? `Time Machine${tm ? `: ${tm.label}` : ''}` : 'All-Time Draft'}</b>
-        <small>{challenge === 'free' || challenge === 'dynasty' || challenge === 'decade' ? `${source === 'random' ? 'Random league' : source === 'csv' ? 'Your own data' : 'Real NBA'}${source !== 'csv' ? ` · ${seasonName(Number(year))}` : ''} · ${DIFFICULTIES.find(d => d.id === difficulty)!.label}${changed ? ` · ${changed} custom setting${changed > 1 ? 's' : ''}` : ''}` : challenge === 'rebuild' ? `${sc.team} · ${sc.seasons} seasons to win a title` : challenge === 'worldgames' ? MODE_GAMES.find(g => g.id === wgGames)?.label : challenge === 'timeMachine' ? (tm ? `to the ${seasonName(tm.year)} NBA, in place of the ${tm.replaceName}` : '') : 'Thirty teams, thirteen rounds'}</small></div>
+        <small>{challenge === 'free' || challenge === 'dynasty' || challenge === 'decade' ? `${source === 'random' ? 'Random league' : source === 'csv' ? 'Your own data' : source === 'world' ? WORLD_LEAGUES[worldId].name : 'Real NBA'}${source !== 'csv' ? ` · ${seasonName(Number(year))}` : ''} · ${DIFFICULTIES.find(d => d.id === difficulty)!.label}${changed ? ` · ${changed} custom setting${changed > 1 ? 's' : ''}` : ''}` : challenge === 'rebuild' ? `${sc.team} · ${sc.seasons} seasons to win a title` : challenge === 'worldgames' ? MODE_GAMES.find(g => g.id === wgGames)?.label : challenge === 'timeMachine' ? (tm ? `to the ${seasonName(tm.year)} NBA, in place of the ${tm.replaceName}` : '') : 'Thirty teams, thirteen rounds'}</small></div>
       <button className="primary create-start" disabled={!!busy || (challenge === 'timeMachine' && !tm?.replace)} onClick={start}><PixelIcon name="play" size={16} /> {startLabel}</button>
     </div>
 
-    {editing && <SettingsDialog value={settings} random={source === 'random'} onDone={s => { setSettings(s); setEditing(false); }} onCancel={() => setEditing(false)} />}
+    {editing && <SettingsDialog value={settings} random={source === 'random' || source === 'world'} world={source === 'world'} onDone={s => { setSettings(s); setEditing(false); }} onCancel={() => setEditing(false)} />}
   </div>;
 }
 
@@ -215,7 +243,7 @@ function Toggle({ on, set, title, blurb }: { on: boolean; set: (v: boolean) => v
 }
 
 /** League settings before the league exists. */
-function SettingsDialog({ value, random, onDone, onCancel }: { value: CreateSettings; random: boolean; onDone: (s: CreateSettings) => void; onCancel: () => void }) {
+function SettingsDialog({ value, random, world = false, onDone, onCancel }: { value: CreateSettings; random: boolean; /** Other leagues: no World Games. */ world?: boolean; onDone: (s: CreateSettings) => void; onCancel: () => void }) {
   const [s, setS] = useState(value);
   const set = <K extends keyof CreateSettings>(k: K, v: CreateSettings[K]) => setS(x => ({ ...x, [k]: v }));
   return <Modal label="League settings" onClose={onCancel} className="create-settings-modal">
@@ -229,14 +257,13 @@ function SettingsDialog({ value, random, onDone, onCancel }: { value: CreateSett
         <label className="create-check"><input type="checkbox" checked={s.realYears} onChange={e => set('realYears', e.target.checked)} /> Each season plays its real length and pace</label>
         <small>{s.realYears ? '72 games in 2020-21, 66 in the 2011-12 lockout, 48 in 1947-48, and faster 1960s games. After the last real season, 82 games at today\'s pace.' : 'Every season plays the length you pick below.'}</small></div>}
       <label className="create-setting"><b>Games a season</b>
-        <select className="year-input" disabled={!random && s.realYears} value={s.games} onChange={e => set('games', Number(e.target.value))}>{GAME_COUNTS.map(g => <option key={g} value={g}>{g} games</option>)}</select>
+        <select className="year-input" disabled={!random && s.realYears} value={s.games} onChange={e => set('games', Number(e.target.value))}>{[...new Set([...GAME_COUNTS, s.games])].sort((a, b) => b - a).map(g => <option key={g} value={g}>{g} games</option>)}</select>
         <small>{!random && s.realYears ? 'Set by each real season.' : 'Shorter seasons play faster.'}</small></label>
       <label className="create-setting"><b>Draft lottery</b>
         <select className="year-input" value={s.lottery} onChange={e => set('lottery', e.target.value as CreateSettings['lottery'])}>{LOTTERY_CHOICES.map(l => <option key={l.id} value={l.id}>{l.label}</option>)}</select>
         <small>{s.lottery === 'auto' ? 'Coin flips before 1985, envelopes, weighted odds, then today\'s flattened odds.' : 'Every draft uses this rule.'}</small></label>
-      <label className="create-setting"><b>Quarter length</b>
-        <select className="year-input" value={s.quarterMinutes} onChange={e => set('quarterMinutes', Number(e.target.value))}>{QUARTER_LENGTHS.map(q => <option key={q} value={q}>{q} minutes{q === 12 ? ' (NBA)' : q === 10 ? ' (FIBA)' : ''}</option>)}</select>
-        <small>Stats scale with the minutes played.</small></label>
+      <div className="create-setting wide"><b>Game length</b>
+        <GameLengthPicker id="create-length" periods={s.periods} minutes={s.quarterMinutes} onChange={(periods, quarterMinutes) => setS(x => ({ ...x, periods, quarterMinutes }))} /></div>
       <label className="create-setting"><b>Rules era</b>
         <select className="year-input" value={s.era} onChange={e => set('era', e.target.value as CreateSettings['era'])}>{ERA_CHOICES.map(e => <option key={e.id} value={e.id}>{e.label}</option>)}</select>
         <small>The 3-point line, hand-checking, zone defence and defensive 3 seconds.</small></label>
@@ -256,13 +283,13 @@ function SettingsDialog({ value, random, onDone, onCancel }: { value: CreateSett
         <input type="range" min={100_000_000} max={200_000_000} step={5_000_000} value={s.salaryCap} onChange={e => set('salaryCap', Number(e.target.value))} />
         <small>${Math.round(s.salaryCap / 1e6)}M; the luxury tax line moves with it.</small>
         <span className="create-check"><input type="checkbox" checked={s.hardCap} onChange={e => set('hardCap', e.target.checked)} id="create-hardcap" /> <label htmlFor="create-hardcap">Hard cap (no going over)</label></span></label>}
-      <div className="create-setting wide"><b>World Games</b>
+      {!world && <div className="create-setting wide"><b>World Games</b>
         <label className="create-check"><input type="checkbox" checked={s.worldGames} onChange={e => set('worldGames', e.target.checked)} /> Every four summers, the league's best players play for their countries</label>
         {s.worldGames && <select className="year-input" value={s.worldGamesCoach} onChange={e => set('worldGamesCoach', e.target.value)} aria-label="Who plays the World Games">
           <option value="">The AI plays every country</option>
           {COUNTRIES.map(c => <option key={c.name} value={c.name}>I coach {c.name}</option>)}
         </select>}
-        <small>Medals stay on the players for good and count for the Hall of Fame. Coach a country to pick its twelve and play it yourself.</small></div>
+        <small>Medals stay on the players for good and count for the Hall of Fame. Coach a country to pick its twelve and play it yourself.</small></div>}
       <div className="create-setting wide"><b>Sandbox mode</b>
         <label className="create-check"><input type="checkbox" checked={s.sandbox} onChange={e => set('sandbox', e.target.checked)} /> Ratings over 100 and edit anything</label>
         <small>Sandbox leagues don't count for achievements, the GM career or the leaderboards.</small></div>

@@ -1,4 +1,5 @@
 import type { PlayerSeason, PositionSuitability } from '../simulation/types';
+import type { BuildShape } from './prototype';
 import { makeDefaultSeason } from '../simulation/presets/samplePlayers';
 import { calculateOverall } from '../simulation/engine/overall';
 import { positionsFrom } from '../history/realPlayers';
@@ -163,6 +164,20 @@ export function primeFromSandbox(b: SandboxBuild): Prime {
   }
   return prime;
 }
+
+/** Your own player (the Closet ratings: nine skills and a height) as a career prime. */
+export function primeFromRatings(skills: Partial<Record<Exclude<CategoryId, 'size'>, number>>, heightIn: number): Prime {
+  const b = sandboxBuild(45, heightIn);
+  let out = { ...b, wingspanIn: heightIn + 3, weightLbs: Math.round(185 + (heightIn - 75) * 7 + ((skills.body ?? 45) - 45) * 0.6) };
+  for (const c of CATEGORIES) if (c.id !== 'size') out = setSandbox(out, categoryPaths(c.id), skills[c.id] ?? 45);
+  return primeFromSandbox(out);
+}
+
+/** A prime as a build shape (nine category scores and a height), for its prototype. */
+export const primeShape = (prime: Prime): BuildShape => ({
+  skills: Object.fromEntries(CATEGORIES.filter(c => c.id !== 'size').map(c => [c.id, categoryScore(prime[c.id])])) as BuildShape['skills'],
+  height: prime.size['physical.heightInches'],
+});
 
 // ---------------------------------------------------------------- MyPlayer: build him yourself
 

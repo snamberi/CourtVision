@@ -529,6 +529,45 @@ a.menu-phone-app { text-decoration: none; }
 :root .club-swatch { display: block; width: 22px; height: 22px; }
 :root .club-preview { display: flex; align-items: center; gap: 10px; }
 :root .clubs-how ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+/* Clans: flags, the flag editor, leader tools, invites. */
+:root .clan-flag { display: block; image-rendering: pixelated; border: 1px solid var(--look-line); box-shadow: 2px 2px 0 rgba(0, 0, 0, .45); flex: none; }
+:root .clan-mark { padding-left: 3px; }
+:root .clan-mark .clan-flag { box-shadow: none; }
+:root .clan-description { margin: 8px 0; white-space: pre-line; overflow-wrap: anywhere; }
+:root .clan-price { margin: 0 0 10px; }
+:root .clan-price.short { color: var(--c-fg-e85d5d, #e85d5d); }
+:root .clan-desc-input { width: 100%; min-height: 64px; resize: vertical; font: inherit; }
+:root .clan-closed { display: inline-flex; align-items: center; gap: 4px; }
+:root .clan-leader { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--look-line); display: grid; gap: 10px; }
+:root .clan-sent { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+:root .clan-sent li { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border: 1px solid var(--look-line); font-size: 13px; }
+:root .clan-sent small { color: var(--look-muted); }
+:root .clan-link { display: grid; gap: 6px; }
+:root .clan-link code { font: 700 12px var(--look-mono, monospace); color: var(--look-accent); overflow-wrap: anywhere; padding: 6px 8px; border: 1px dashed var(--look-line); }
+:root .clan-invite-card { display: grid; gap: 8px; border-color: var(--look-accent); }
+:root .clan-invite-head { display: flex; align-items: center; gap: 14px; }
+:root .clan-invite-head h2 { margin: 0; }
+:root .profile-clan { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+:root .profile-clan span { display: grid; line-height: 1.2; }
+:root .profile-clan small { color: var(--look-muted); font-size: 10px; letter-spacing: .08em; }
+:root .flag-editor { display: grid; gap: 10px; }
+:root .flag-editor fieldset { border: 1px solid var(--look-line); padding: 8px; margin: 0; }
+:root .flag-editor-preview { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+:root .flag-picks { display: flex; flex-wrap: wrap; gap: 6px; }
+:root .flag-picks button { display: grid; justify-items: center; gap: 2px; padding: 4px; min-width: 64px; }
+:root .flag-picks button small { font-size: 10px; color: var(--look-muted); }
+:root .flag-picks button.active { border-color: var(--look-accent); box-shadow: 0 0 0 2px var(--look-accent); }
+:root .flag-colors { display: flex; flex-wrap: wrap; gap: 10px 16px; }
+:root .flag-colors label { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+:root .flag-colors input[type=color] { width: 40px; height: 32px; padding: 0; border: 2px solid var(--look-line); background: none; cursor: pointer; }
+:root .flag-brushes { display: flex; gap: 6px; margin-bottom: 8px; }
+:root .flag-brushes button { padding: 3px; }
+:root .flag-brushes button i { display: block; width: 24px; height: 24px; }
+:root .flag-brushes button.active { box-shadow: 0 0 0 2px var(--look-accent); }
+:root .flag-paint { display: grid; grid-template-columns: repeat(15, 1fr); width: min(100%, 420px); aspect-ratio: 3 / 2; border: 2px solid var(--look-line); touch-action: none; }
+:root .flag-paint button { padding: 0; min-width: 0; min-height: 0; border: 0; border-right: 1px solid rgba(0, 0, 0, .18); border-bottom: 1px solid rgba(0, 0, 0, .18); box-shadow: none; cursor: crosshair; }
+:root .flag-paint button:focus-visible { outline: 2px solid var(--look-accent); outline-offset: -2px; }
+:root .flag-row { display: flex; flex-wrap: wrap; gap: 10px; }
 @media (max-width: 620px) {
   :root .club-head { grid-template-columns: auto 1fr; }
   :root .club-points { grid-column: 1 / -1; justify-items: start; }

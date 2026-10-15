@@ -4,6 +4,8 @@ import type { League, LeagueTeam } from '../simulation/league';
 import type { PlayerSeason, SeasonStatTotals } from '../simulation/types';
 import { emptySeasonMilestones, emptySeasonStatTotals } from '../simulation/types';
 import { currentSeasonAdvanced, type PlayerAdvanced } from '../simulation/advancedStats';
+import { zoneSplits } from '../simulation/gameFeats';
+import { SHOT_BANDS } from '../simulation/shotDistance';
 
 interface Props {
   teams: LeagueTeam[];
@@ -12,7 +14,7 @@ interface Props {
   onSelect: (playerId: string) => void;
 }
 
-type ViewMode = 'perGame' | 'totals' | 'shooting' | 'advanced' | 'winShares' | 'playoffs' | 'milestones';
+type ViewMode = 'perGame' | 'totals' | 'shooting' | 'advanced' | 'winShares' | 'playoffs' | 'milestones' | 'feats' | 'zones';
 interface Row { season: PlayerSeason; teamName: string; s: SeasonStatTotals; p: SeasonStatTotals; adv?: PlayerAdvanced }
 interface Col { key: string; label: string; title?: string; value: (r: Row) => number; fmt: (v: number) => string; lowerIsBetter?: boolean }
 
@@ -89,11 +91,23 @@ const COLS: Record<ViewMode, Col[]> = {
     { key: 'hs', label: 'High STL', value: r => (r.season.seasonMilestones ?? emptySeasonMilestones()).gameHighSteals, fmt: i0 },
     { key: 'hb', label: 'High BLK', value: r => (r.season.seasonMilestones ?? emptySeasonMilestones()).gameHighBlocks, fmt: i0 },
   ],
+  feats: [
+    { key: 'g20', label: '20+', title: '20-point games', value: r => r.season.seasonMilestones?.games20 ?? 0, fmt: i0 },
+    { key: 'run20', label: 'RUN', title: 'Longest run of 20-point games this season', value: r => r.season.seasonMilestones?.best20Streak ?? 0, fmt: i0 },
+    { key: 'now20', label: 'NOW', title: '20-point games in a row right now', value: r => r.season.streak20 ?? 0, fmt: i0 },
+    { key: 'tt', label: '20-20', title: '20-20 games (20+ in two of PTS, REB, AST)', value: r => r.season.seasonMilestones?.twentyTwenty ?? 0, fmt: i0 },
+    { key: 'ttt', label: '20-20-20', title: '20-20-20 games', value: r => r.season.seasonMilestones?.triple20 ?? 0, fmt: i0 },
+    { key: 'g50', label: '50+', title: '50-point games', value: r => r.season.seasonMilestones?.fiftyPointGames ?? 0, fmt: i0 },
+    { key: 'clutchf', label: 'CLUTCH', title: 'Clutch points: last period, final 5 minutes, within 10', value: r => r.s.clutchPoints, fmt: i0 },
+    { key: 'bzr', label: 'BZR', title: 'Buzzer-beaters', value: r => r.season.seasonMilestones?.buzzerBeaters ?? 0, fmt: i0 },
+    { key: 'gw', label: 'GW', title: 'Game-winning shots (final 24 seconds)', value: r => r.season.seasonMilestones?.gameWinners ?? 0, fmt: i0 },
+  ],
+  zones: SHOT_BANDS.map((b, i): Col => ({ key: `z${i}`, label: b.short, title: `Field-goal percentage, ${b.label.toLowerCase()}`, value: r => zoneSplits(r.season.seasonMilestones?.shotZones)[i].pct ?? 0, fmt: pct })),
 };
 const VIEWS: { id: ViewMode; label: string; sort: string }[] = [
   { id: 'perGame', label: 'Per Game', sort: 'ppg' }, { id: 'totals', label: 'Totals', sort: 'pts' }, { id: 'shooting', label: 'Shooting', sort: 'ts' },
   { id: 'advanced', label: 'Advanced', sort: 'per' }, { id: 'winShares', label: 'Win Shares', sort: 'ws' }, { id: 'playoffs', label: 'Playoffs', sort: 'p-ppg' },
-  { id: 'milestones', label: 'Milestones', sort: 'dd' },
+  { id: 'milestones', label: 'Milestones', sort: 'dd' }, { id: 'feats', label: 'Feats', sort: 'g20' }, { id: 'zones', label: 'By Distance', sort: 'z0' },
 ];
 
 export function PlayerStatsPage({ teams, league, onSelect }: Props) {

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { PETS, PET_ART, PET_ANCHORS, cleanPets, equipPet, setLook, lookOf, petOpen, activePet, PETS_KEY } from '../profile/pets';
-import { baseRatings, pointsEarned, pointsLeft, stepSkill, stepHeight, raiseBlock, eliteCount, cleanRatings, myOverall, MY_SKILLS, BASE_RATING, BASE_HEIGHT, ELITE_SLOTS, INCH_COST, MAX_RATING } from '../profile/myRatings';
+import { baseRatings, pointsEarned, pointsLeft, pointsSpent, stepSkill, stepHeight, raiseBlock, eliteCount, cleanRatings, myOverall, skillStepCost, inchStepCost, MY_SKILLS, BASE_RATING, BASE_HEIGHT, ELITE_SLOTS, INCH_COST, MAX_RATING } from '../profile/myRatings';
 
 describe('pets', () => {
   it('every pet has 14 x 14 art, anchors inside it, and an ability', () => {
@@ -40,6 +40,23 @@ describe('your player ratings', () => {
     expect(pointsEarned(52)).toBe(70);
     expect(myOverall(r)).toBe(45);
   });
+  it('costs climb: a skill point costs 2 from 70, 3 from 90, 5 from 100; an inch 7 from 6\'2", 12 from 6\'8", 20 from 7\'5"', () => {
+    expect([69, 70, 89, 90, 99, 100, 119].map(skillStepCost)).toEqual([1, 2, 2, 3, 3, 5, 5]);
+    expect([63, 73, 74, 79, 80, 88, 89, 93].map(inchStepCost)).toEqual([INCH_COST, INCH_COST, 7, 7, 12, 12, 20, 20]);
+    const r = baseRatings();
+    // 45 -> 75: 25 points at 1, then 5 at 2.
+    expect(pointsSpent({ ...r, skills: { ...r.skills, iq: 75 } })).toBe(25 + 5 * 2);
+    // 5'3" -> 6'3": 11 inches at 5, then 1 at 7.
+    expect(pointsSpent({ ...r, height: 75 })).toBe(11 * INCH_COST + 7);
+    // Short on points for the next tier: the block says what it costs.
+    const lv = 52; // 70 points
+    let s = r;
+    for (let i = 0; i < 25; i++) s = stepSkill(s, 'iq', 1, lv);
+    expect(s.skills.iq).toBe(70);
+    for (let i = 0; i < 30; i++) s = stepSkill(s, 'iq', 1, lv);
+    expect(pointsLeft(s, lv)).toBeLessThan(skillStepCost(s.skills.iq));
+    expect(raiseBlock(s, 'iq', lv)).toMatch(/costs/);
+  });
   it('spends points: +1 a skill, 5 an inch, max 120, only three skills at 99+', () => {
     let r = baseRatings();
     expect(stepSkill(r, 'threePoint', 1, 0)).toBe(r); // no points yet
@@ -56,7 +73,7 @@ describe('your player ratings', () => {
     expect(r.skills.threePoint).toBe(MAX_RATING);
     // Lowering gives the point back, never below 45.
     const down = stepSkill(r, 'iq', -1, lv);
-    expect(pointsLeft(down, lv)).toBe(pointsLeft(r, lv) + 1);
+    expect(pointsLeft(down, lv)).toBe(pointsLeft(r, lv) + skillStepCost(97));
     expect(stepSkill(baseRatings(), 'iq', -1, lv).skills.iq).toBe(BASE_RATING);
   });
   it('cleans a stored build: never over budget, never four 99s', () => {

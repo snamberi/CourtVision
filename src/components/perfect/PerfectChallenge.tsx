@@ -1,5 +1,6 @@
 import { ResultCount, ResultCrest, MvpSpotlight } from '../presentation/ResultPresentation';
 import { LineupBoard } from '../presentation/LineupBoard';
+import { noteHolidayFinish } from '../../retention/holiday';
 import { playerFinish, matchesRunName } from '../presentation/cardFinish';
 import { RevealSparks } from '../presentation/PlayerFinish';
 import { ModeIcon } from '../ModeIcon';
@@ -53,7 +54,7 @@ import { noteFeaturedXp } from '../../retention/modeOfWeek';
 import { perfectRunXp } from '../../profile/profile';
 import './perfect.css';
 import { DraftBattle, BattleSetup } from './DraftBattle';
-import { loadBattle, saveBattle, newBattle, recordBattle, loadBattleRecords, type Battle } from '../../perfect/battle';
+import { loadBattle, saveBattle, newBattle, recordBattle, loadBattleRecords, battleWinner, type Battle } from '../../perfect/battle';
 
 const MODE_INFO: Record<PerfectMode, { name: string; blurb: string; icon: string }> = {
   quick: { name: 'Quick Spin', icon: 'play', blurb: 'Ten spins and a coach spin. Five starters by position, five off the bench. Three rerolls and two lucky spins (a sure Great or Star).' },
@@ -85,6 +86,7 @@ export function PerfectChallenge({ onExit }: { onExit: () => void }) {
       // What If and Fun: just for fun. Their own best-season book, nothing else.
       setRecords(recordPerfect(r));
       const s = summary(r);
+      noteHolidayFinish(s.champion, `p820-${r.seed}-${r.mode}`);
       trackOnce(`p820-${r.seed}-${r.mode}`, 'mode_finish', { mode: 'perfect', variant: r.whatIf?.kind ?? r.mode, wins: s.w, champion: s.champion });
     } else if (r && r.stage === 'done' && prev?.stage !== 'done') {
       setRecords(recordPerfect(r));
@@ -96,6 +98,7 @@ export function PerfectChallenge({ onExit }: { onExit: () => void }) {
       if (fmvp) noteFinalsMvp({ name: fmvp.name, record: `${s.w}-${s.l}`, pts: fmvp.pts, g: fmvp.g });
       noteFeaturedXp('perfect', `p820-${r.seed}-${r.mode}`, perfectRunXp({ champion: s.champion, perfectSeason: s.perfectSeason, perfect98: s.perfectSeason && s.perfectPlayoffs, daily: !!r.daily }));
       window.dispatchEvent(new Event(FEATS_EVENT));
+      noteHolidayFinish(s.champion, `p820-${r.seed}-${r.mode}`);
       trackOnce(`p820-${r.seed}-${r.mode}`, 'mode_finish', { mode: 'perfect', variant: r.mode, daily: !!r.daily, wins: s.w, champion: s.champion });
     }
   };
@@ -103,7 +106,7 @@ export function PerfectChallenge({ onExit }: { onExit: () => void }) {
   const [battle, setBattleState] = useState<Battle | null>(loadBattle);
   const [battleSetup, setBattleSetup] = useState(false);
   const setBattle = (b: Battle | null) => {
-    if (b && b.stage === 'done' && battle?.stage !== 'done') { recordBattle(b); track('mode_finish', { mode: 'perfect', variant: 'battle', rival: b.rival }); }
+    if (b && b.stage === 'done' && battle?.stage !== 'done') { recordBattle(b); noteHolidayFinish(battleWinner(b) === 0, `battle-${b.seed}`); track('mode_finish', { mode: 'perfect', variant: 'battle', rival: b.rival }); }
     setBattleState(b); saveBattle(b);
   };
   // A duel link: start the challenger's exact run (asking first if a run is going).

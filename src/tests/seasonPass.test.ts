@@ -48,7 +48,7 @@ describe('Season 1: Glitch', () => {
 
   it('a free Lucky Spin is a lucky roll that costs no coins', () => {
     const s = grantLuckySpins({ ...loadRelics(), coins: 10 }, 1);
-    const out = freeLuckySpin(s, () => 0.5)!;
+    const out = freeLuckySpin(s, () => 0.5, new Date('2026-10-28T12:00:00Z'))!;
     expect(out.result.lucky).toBe(true);
     expect(out.state.luckySpins).toBe(0);
     expect(out.state.coins).toBeGreaterThanOrEqual(10);

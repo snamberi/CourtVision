@@ -1,6 +1,10 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+
+// Spins depend on the week (the Double Relics event opens two): pin the clock to a plain week.
+beforeAll(() => { vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date('2026-10-28T12:00:00Z')); });
+afterAll(() => { vi.useRealTimers(); });
 import {
-  RELIC_RARITY, RARITY_ORDER, RELICS, SECRET_RELICS, SECRET_CHANCE, withEarnedSecrets, MAX_LUCK, rarityFor, spinRelic, grantSpins, luckPercent, luckMultiplier, loadRelics,
+  RELIC_RARITY, RARITY_ORDER, RELICS, SECRET_RELICS, SECRET_CHANCE, withEarnedSecrets, relicLuck, rarityFor, spinRelic, grantSpins, luckPercent, luckMultiplier, loadRelics,
   autoEquip, PITY, LUCKY_PITY, SLOT_PRICES, BASE_SLOTS, EXTRA_SLOTS, RELIC_SETS, slotCount, buySlot, equipRelic, unequipRelic, setBonus, spinMany,
   grantReward, rewardOf, collectDailyCoins, DAILY_COINS, LUCKY_ODDS, STACK_MAX, SPIN_PRICE, LUCKY_SPIN_PRICE, RELIC_PRICE, UPGRADE_PRICE, buySpin, luckySpin, refreshShop, buyRelic, upgradeRelic, canGain,
   type RelicState,
@@ -82,17 +86,20 @@ describe('relics', () => {
     expect(grantSpins(a, 'x', 0)).toBe(a);
   });
 
-  it('counts each relic once and caps luck', () => {
-    expect(luckPercent({ owned: { ring: 5, netScrap: 1 } })).toBe(5);
-    expect(luckPercent({ owned: Object.fromEntries(RELICS.map(r => [r.id, 1])) })).toBe(MAX_LUCK);
+  it('counts each relic once, 20% below the table, with no cap', () => {
+    expect(luckPercent({ owned: { ring: 5, netScrap: 1 } })).toBe(4);
+    // Everything owned: the ten best relics in the ten slots, plus every set bonus. Nothing caps it.
+    const all = Object.fromEntries(RELICS.map(r => [r.id, 1]));
+    const best = RELICS.map(r => relicLuck(r, 1)).sort((a, b) => b - a).slice(0, 10).reduce((a, b) => a + b, 0);
+    expect(luckPercent({ owned: all })).toBeCloseTo(best + RELIC_SETS.reduce((n, s) => n + s.bonus, 0), 5);
     expect(luckMultiplier(0.12)).toBeCloseTo(1.12);
-    expect(luckMultiplier(5)).toBeCloseTo(1 + MAX_LUCK / 100);
+    expect(luckMultiplier(5)).toBeCloseTo(6);
   });
 
   it('reads the run options from storage, and survives junk', () => {
     const store = { 'cv-relics': JSON.stringify(base({ owned: { firstBall: 1 }, secrets: ['eternalSpin', 'bogus' as never] })) } as Record<string, string>;
     const o = relicRunOpts(k => store[k] ?? null);
-    expect(o.luck).toBeCloseTo(0.05);
+    expect(o.luck).toBeCloseTo(0.04);
     expect(o.eternalSpin).toBe(true);
     expect(o.secondWind).toBe(false);
     expect(loadRelics(() => '{not json').spins).toBe(0);
@@ -126,19 +133,19 @@ describe('relic shop, stacks and upgrades', () => {
       const out = spinRelic(s, seq(0.5, 0.9, pick))!;
       expect(out.result).toMatchObject({ id: 'luckyPenny', duplicate: false, stack: i, coins: 0 });
       s = out.state;
-      expect(luckPercent(s)).toBe(i);
+      expect(luckPercent(s)).toBeCloseTo(i * 0.8, 5);
     }
     const extra = spinRelic(s, seq(0.5, 0.9, pick))!;
     expect(extra.result).toMatchObject({ duplicate: true, coins: RELIC_RARITY.common.coins });
-    expect(luckPercent(extra.state)).toBe(STACK_MAX);
+    expect(luckPercent(extra.state)).toBeCloseTo(STACK_MAX * 0.8, 5);
   });
 
   it('upgrades add 50% luck to relics that do not stack, once', () => {
     const s = base({ coins: 10_000, owned: { whistle: 1, luckyPenny: 2 } });
-    expect(luckPercent(s)).toBe(4);
+    expect(luckPercent(s)).toBeCloseTo(3.2, 5);
     const up = upgradeRelic(s, 'whistle')!;
     expect(up.coins).toBe(10_000 - UPGRADE_PRICE.rare);
-    expect(luckPercent(up)).toBe(5);
+    expect(luckPercent(up)).toBeCloseTo(4, 5);
     expect(upgradeRelic(up, 'whistle')).toBeNull();
     expect(upgradeRelic(s, 'luckyPenny')).toBeNull();
     expect(upgradeRelic(s, 'ring')).toBeNull();
@@ -189,7 +196,7 @@ describe('relic shop, stacks and upgrades', () => {
     const s = loadRelics(() => JSON.stringify(old));
     expect(s.upgraded).toEqual([]);
     expect(s.shop).toBeUndefined();
-    expect(luckPercent(s)).toBe(4);
+    expect(luckPercent(s)).toBeCloseTo(3.2, 5);
   });
 });
 
@@ -227,7 +234,7 @@ describe('slots, pity, sets and coins', () => {
 
   it('only relics in your slots add luck; ten slots, five more to buy', () => {
     const owned = Object.fromEntries(RELICS.slice(0, 20).map(r => [r.id, 1]));
-    const s = base({ owned, coins: 100_000 });
+    const s = base({ owned, coins: 3_000_000 });
     expect(s.equipped).toHaveLength(BASE_SLOTS);
     const luck = luckPercent(s);
     const off = unequipRelic(s, s.equipped[0]);
@@ -236,7 +243,7 @@ describe('slots, pity, sets and coins', () => {
     let t = s;
     for (let i = 0; i < EXTRA_SLOTS; i++) t = buySlot(t)!;
     expect(slotCount(t)).toBe(BASE_SLOTS + EXTRA_SLOTS);
-    expect(t.coins).toBe(100_000 - SLOT_PRICES.reduce((a, b) => a + b, 0));
+    expect(t.coins).toBe(3_000_000 - SLOT_PRICES.reduce((a, b) => a + b, 0));
     expect(buySlot(t)).toBeNull();
     // Each bought slot took the best spare relic; full again now.
     expect(t.equipped).toHaveLength(BASE_SLOTS + EXTRA_SLOTS);

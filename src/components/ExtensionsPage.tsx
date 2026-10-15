@@ -3,6 +3,7 @@ import { plural } from '../lib/humanize';
 import type { League } from '../simulation/league';
 import type { GMLeagueExtras } from '../simulation/gm';
 import { calculateOverall } from '../simulation/engine/overall';
+import { maxFor } from '../simulation/maxContracts';
 import { AGENTS, STYLE_BLURB, makeOffer, walkAway } from '../simulation/agents';
 import { extensionStance, openExtension, storeExtensionTalks, extensionMinimum, signExtension } from '../simulation/extensions';
 
@@ -62,7 +63,7 @@ export function ExtensionsPage({ league, extras, controlledTeamId, onChange, onS
       {(() => { const agent = AGENTS.find(a => a.id === talks.agentId)!; return <p className="hint-text"><b>{agent.name}</b>, {agent.agency} · {agent.style}: {STYLE_BLURB[agent.style]}</p>; })()}
       <ol className="negotiation-log">{talks.log.map((l, i) => <li key={i} className={`from-${l.from}`}>{l.text}</li>)}</ol>
       {talks.status === 'open' ? <div className="negotiation-offer">
-        <label>Salary <input type="range" min={extras.capSettings.minSalary} max={extras.capSettings.salaryCap * extras.capSettings.maxSalaryPctOfCap} step={50000} value={salary} onChange={e => setSalary(Number(e.target.value))} /><b>{money(salary)}</b></label>
+        <label>Salary <input type="range" min={extras.capSettings.minSalary} max={maxFor(player, team, true, extras.capSettings)} step={50000} value={salary} onChange={e => setSalary(Number(e.target.value))} /><b>{money(salary)}</b></label>
         <label>Years <select value={years} onChange={e => setYears(Number(e.target.value))}>{[1, 2, 3, 4, 5].map(y => <option key={y}>{y}</option>)}</select></label>
         <button className="primary" onClick={offer}>Make offer</button>
         <button onClick={() => { onChange(league, storeExtensionTalks(extras, walkAway(talks))); setTalkingTo(null); }}>Walk away</button>

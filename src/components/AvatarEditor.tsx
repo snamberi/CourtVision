@@ -1,5 +1,6 @@
 import { useState, type CSSProperties } from 'react';
 import { AVATAR_CATEGORIES, SOVEREIGN_LOOK, SOVEREIGN_GOLD_LOOK, isOwnerPiece, saveAvatar, randomAvatar, avatarHow, avatarItem, outfitDef, type AvatarCategory, type AvatarItem, type AvatarLook } from '../profile/avatar';
+import { eventPieceHidden } from '../retention/holiday';
 import { unlockContext, isOpen } from '../profile/cosmetics';
 import { totalXp, levelFor } from '../profile/profile';
 import { readAvatarPresets, writeAvatarPresets } from '../profile/avatarPresets';
@@ -39,7 +40,8 @@ export function AvatarEditor() {
   const ctx = unlockContext(levelFor(totalXp()).level);
   const open = (i: AvatarItem) => isOpen(i.rule, ctx);
   // Game Owner pieces show only for the owner's account.
-  const visible = (items: AvatarItem[]) => (ctx.staff ? items : items.filter(i => !isOwnerPiece(i)));
+  // Holiday event pieces stay hidden until their event starts (or once you own one).
+  const visible = (items: AvatarItem[]) => items.filter(i => (ctx.staff || !isOwnerPiece(i)) && !eventPieceHidden('shop' in i.rule ? i.rule.shop : null, ctx.shop ?? []));
   const category = AVATAR_CATEGORIES.find(c => c.id === cat)!;
   const openCount = (items: AvatarItem[]) => visible(items).filter(open).length;
   const allOpen = AVATAR_CATEGORIES.reduce((n, c) => n + openCount(c.items), 0);

@@ -1,6 +1,7 @@
 import { SCENARIOS } from '../simulation/rebuildChallenge';
 import { TWISTS } from './weekly';
 import type { TradeDifficulty } from '../simulation/gm';
+import { WORLD_LEAGUES, isWorldLeagueId, type WorldLeagueId } from '../simulation/worldLeagues';
 
 /*
  * League codes: a short code holds everything needed to build the same starting league again (the kind, the season,
@@ -10,9 +11,10 @@ import type { TradeDifficulty } from '../simulation/gm';
  *   G2025-4-K3M9QX-BOS-7   random league, 2025-26, options, seed, team, check digit
  *   H2016-9-4K2J9Z-LAL-Q   real NBA history from 2016-17
  *   BBULLS99-2-1ZZ0KQ-CHI-3  a Rebuild scenario (and its weekly twist)
+ *   WEURO2025-1-3K9QX-W-RMB-4  one of the other leagues (EuroLeague, CBA, Georgian Superleague, college)
  */
 
-export type LeagueKind = 'random' | 'history' | 'rebuild';
+export type LeagueKind = 'random' | 'history' | 'rebuild' | 'world';
 export interface LeagueOrigin {
   kind: LeagueKind; seed: number; difficulty: TradeDifficulty;
   /** Random and history: the start year. */
@@ -23,6 +25,8 @@ export interface LeagueOrigin {
   balanced?: boolean;
   /** Rebuild: the scenario, and the weekly twist if it was the Rebuild of the Week. */
   scenario?: string; twist?: string;
+  /** Other leagues: which one. */
+  world?: WorldLeagueId;
 }
 
 const DIFFS: TradeDifficulty[] = ['easy', 'normal', 'hard'];
@@ -37,6 +41,9 @@ export function encodeLeagueCode(o: LeagueOrigin, teamId?: string | null): strin
   if (o.kind === 'rebuild') {
     head = `B${(o.scenario ?? '').toUpperCase()}`;
     opts = d + 3 * (o.twist ? Math.max(0, TWISTS.findIndex(t => t.id === o.twist)) + 1 : 0);
+  } else if (o.kind === 'world') {
+    head = `W${(o.world ?? 'euro').toUpperCase()}${o.year ?? ''}`;
+    opts = d;
   } else {
     head = `${o.kind === 'random' ? 'G' : 'H'}${o.year ?? ''}`;
     opts = d + 3 * ((o.realDevelopment ? 1 : 0) + (o.forceRosters ? 2 : 0) + (o.allPlayers ? 4 : 0) + (o.kind === 'random' && o.balanced ? 8 : 0));
@@ -68,6 +75,11 @@ export function decodeLeagueCode(raw: string): DecodedCode {
     const twist = rest ? TWISTS[rest - 1]?.id : undefined;
     return { origin: { kind: 'rebuild', seed, difficulty, scenario: scenario.id, ...(twist ? { twist } : {}) }, teamId };
   }
+  if (head.startsWith('W')) {
+    const m = head.match(/^W([A-Z]+)(\d{4})$/), world = m?.[1].toLowerCase();
+    if (!m || !isWorldLeagueId(world)) throw new Error('This code is for a league this version of the game does not have.');
+    return { origin: { kind: 'world', seed, difficulty, year: Number(m[2]), world }, teamId };
+  }
   const kind: LeagueKind | null = head[0] === 'G' ? 'random' : head[0] === 'H' ? 'history' : null;
   const year = Number(head.slice(1));
   if (!kind || !Number.isInteger(year) || year < 1946 || year > 2100) throw new Error('That is not a Court Vision league code.');
@@ -83,5 +95,6 @@ export function describeOrigin(o: LeagueOrigin, teamName?: string): string {
     return `Rebuild Challenge: ${sc?.title ?? o.scenario}${tw && tw.id !== 'standard' ? ` (${tw.label})` : ''}${team}`;
   }
   const season = `${o.year}-${String((o.year ?? 0) + 1).slice(2)}`;
+  if (o.kind === 'world') return `${WORLD_LEAGUES[o.world ?? 'euro'].name}, ${season}${team}`;
   return o.kind === 'random' ? `Random league, ${season}${team}` : `Real NBA history from ${season}${team}${o.forceRosters ? ', historical rosters' : ''}`;
 }

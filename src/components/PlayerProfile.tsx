@@ -14,6 +14,7 @@ import type { Appearance } from '../visuals/playerSprite';
 import { PlayerAvatar } from './PlayerAvatar';
 import { PixelBall } from './PixelIcon';
 import { calculateRatings } from '../simulation/engine/overall';
+import { PlayerFeats } from './PlayerFeats';
 import { perGameAverages, computeAdvancedStats, careerSummary, careerYearRows, careerStatUnavailable, type PerGameAverages, type AdvancedStats, type CareerYearRow, type CareerSummary } from '../simulation/careerStats';
 import { currentSeasonAdvanced } from '../simulation/advancedStats';
 import type { SeasonStatTotals, SeasonMilestones, MissingStat } from '../simulation/types';
@@ -323,6 +324,7 @@ function PlayerCard({ season, ratings, badgeNames, awardsHistory, league, family
                 {summary.partial.gameHighs ? ' (games in this league only; game highs are not in the imported history)' : ''}
               </p>
             )}
+            <PlayerFeats season={season} career={summary.milestones} careerTotals={summary.totals} league={league} />
           </>
         ) : (
           <p className="hint-text">No games played yet this season.</p>

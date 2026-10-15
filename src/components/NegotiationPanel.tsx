@@ -5,6 +5,8 @@ import type { PlayerSeason } from '../simulation/types';
 import { AGENTS, STYLE_BLURB, makeOffer, openNegotiation, storeNegotiation, walkAway, currentNegotiation } from '../simulation/agents';
 import { signingDecision } from '../simulation/freeAgentDecision';
 import { personalityOf } from '../simulation/personality';
+import { maxFor } from '../simulation/maxContracts';
+import { priorTeamId } from '../simulation/gm';
 
 interface Props {
   league: League;
@@ -29,7 +31,8 @@ export function NegotiationPanel({ league, extras, player, teamId, onUpdate, onA
   if (!talks) return <div className="negotiation-panel"><p className="hint-text">{player.playerId} won't talk to this team.</p><button onClick={onClose}>Close</button></div>;
   const agent = AGENTS.find(a => a.id === talks.agentId)!;
   const persona = personalityOf(player);
-  const max = extras.capSettings.salaryCap * extras.capSettings.maxSalaryPctOfCap;
+  // His own team can go to the supermax for a franchise player (maxContracts.ts).
+  const max = maxFor(player, league.teams.find(t => t.teamId === teamId), priorTeamId(player) === teamId, extras.capSettings);
   const open = talks.status === 'open';
 
   const submit = () => {

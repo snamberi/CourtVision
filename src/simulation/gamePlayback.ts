@@ -1,5 +1,6 @@
 import type { GameResult, PossessionLogEntry, PossessionPlayback } from './boxscore';
 import type { PossessionResult } from './engine/possession';
+import { periodLabel } from './gameLength';
 
 /** Capture actual engine participants; presentation never consumes the seeded simulation RNG. */
 export function playbackFromPossession(result: PossessionResult): PossessionPlayback {
@@ -51,7 +52,7 @@ export function playbackClock(game: GameResult, index: number, progress: number)
   const duration = current.durationSeconds ?? (next?.quarter === current.quarter ? Math.max(0, current.clockSeconds - next.clockSeconds) : current.clockSeconds);
   const seconds = Math.max(0, Math.ceil(current.clockSeconds - duration * progress));
   const regulation = game.regulationPeriods ?? 4;
-  const period = current.quarter <= regulation ? `${regulation === 2 ? 'H' : 'Q'}${current.quarter}` : `OT${current.quarter - regulation}`;
+  const period = periodLabel(current.quarter, regulation);
   return `${period} · ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 }
 

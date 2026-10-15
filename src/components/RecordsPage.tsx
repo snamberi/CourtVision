@@ -6,6 +6,7 @@ import { computeRecords, type RecordEntry, type RecordFormat, type RecordGroup, 
 import { TeamLink } from './TeamLink';
 import { formatSeasonYear } from '../simulation/calendar';
 import { resolveTeamIdentity } from '../simulation/teamIdentity';
+import { AllTimeLeaders } from './AllTimeLeaders';
 
 const GROUPS: RecordGroup[] = ['Single Game', 'Season', 'Career', 'Playoffs', 'Team', 'Awards'];
 const fmt = (v: number, f: RecordFormat) => f === 'pct' ? `${(v * 100).toFixed(1)}%` : f === 'dec1' ? v.toFixed(1) : f === 'dec2' ? v.toFixed(2) : f === 'dec3' ? v.toFixed(3).replace(/^0/, '') : Math.round(v).toLocaleString();
@@ -31,9 +32,10 @@ function RecordCard({ r, onSelectPlayer, teamName, teamAbbr }: { r: RecordResult
 }
 
 export function RecordsPage({ league, extras, onSelectPlayer }: { league: League; extras?: GMLeagueExtras; onSelectPlayer: (id: string) => void }) {
+  const [view, setView] = useState<'book' | 'leaders'>('book');
   const [group, setGroup] = useState<RecordGroup>('Single Game');
   const [query, setQuery] = useState('');
-  const records = useMemo(() => computeRecords(league, extras), [league, extras]);
+  const records = useMemo(() => view === 'book' ? computeRecords(league, extras) : [], [league, extras, view]);
   const teamNames = useMemo(() => new Map(league.teams.map(t => [t.teamId, t.name])), [league.teams]);
   const teamName = (id?: string) => id ? teamNames.get(id) ?? id : undefined;
   const abbrs = useMemo(() => new Map(league.teams.map(t => [t.teamId, resolveTeamIdentity(t).abbreviation])), [league.teams]);
@@ -42,8 +44,16 @@ export function RecordsPage({ league, extras, onSelectPlayer }: { league: League
   const shown = records.filter(r => (q ? true : r.def.group === group) && (!q || r.def.title.toLowerCase().includes(q) || r.entries.some(e => e.playerId?.toLowerCase().includes(q) || teamName(e.teamId)?.toLowerCase().includes(q))));
   const sections = [...new Set(shown.map(r => `${q ? `${r.def.group} · ` : ''}${r.def.section}`))];
   const held = records.filter(r => r.entries.length).length;
+  const views = <div className="stats-view-toggle records-view" role="tablist" aria-label="Records view">
+    <button role="tab" aria-selected={view === 'book'} className={view === 'book' ? 'active' : ''} onClick={() => setView('book')}>Record Book</button>
+    <button role="tab" aria-selected={view === 'leaders'} className={view === 'leaders' ? 'active' : ''} onClick={() => setView('leaders')}>All-Time Leaders</button>
+  </div>;
+  if (view === 'leaders') return <div className="records-page">
+    <span className="pixel-eyebrow">EVERY PLAYER, EVER</span><h2>All-Time Leaders</h2>{views}
+    <AllTimeLeaders league={league} extras={extras} onSelectPlayer={onSelectPlayer} />
+  </div>;
   return <div className="records-page">
-    <span className="pixel-eyebrow">THE RECORD BOOK</span><h2>League Records</h2>
+    <span className="pixel-eyebrow">THE RECORD BOOK</span><h2>League Records</h2>{views}
     <p className="hint-text">{records.length} records, {held} set so far. Single-game records are tracked from every game played since this update; season, career, playoff and award records use every archived season, including retired players.</p>
     {league.historical && <p className="hint-text">Historical league: season and career records include the imported real seasons of players who are in this league. {preStartCount(league) > 0 ? `That includes the ${preStartCount(league).toLocaleString()} players who retired before it started.` : 'Players who retired before it started are not in the record book — load them from NBA History.'} Seasons that did not record a stat (e.g. steals before 1973–74) never count toward that stat's records.</p>}
     <div className="records-controls">

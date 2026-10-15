@@ -42,9 +42,9 @@ export function FriendsPage({ onExit, onUser, onCommunity, onClubs, onOnline }: 
         <button className="primary" onClick={onOnline}>Open online leagues</button>
       </section>}
       {onClubs && <section className="locker-bay friends-clubs">
-        <h2><PixelIcon name="crown" size={18} /> Clubs</h2>
-        <p>Start a club with your friends (up to 20 GMs): a name, a tag and a badge, club points from every weekly board, and one-week clashes against other clubs.</p>
-        <button className="primary" onClick={onClubs}>Open Clubs</button>
+        <h2><PixelIcon name="crown" size={18} /> Clans</h2>
+        <p>Join a clan or found one with your friends (up to 20 GMs): a name, a tag and a flag you design, clan points from every weekly board, and one-week clashes against other clans.</p>
+        <button className="primary" onClick={onClubs}>Open Clans</button>
       </section>}
       {signedIn && <RivalList />}
       {signedIn && <ActivityFeed onUser={onUser} />}

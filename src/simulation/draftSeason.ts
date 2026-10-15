@@ -12,6 +12,7 @@ import { primaryPosition } from './teamStatus';
 import { weakestPositions } from './aiGM';
 import { previousSeasonsPlayed } from './rookieEligibility';
 import { collectPlayerIds } from './playerIds';
+import { worldDefOf } from './worldLeagues';
 import { nextSeasonLabel } from './seasonTransition';
 
 /* Draft Season: the next draft class is on the board from opening night, a mock draft tracks it all year,
@@ -37,7 +38,7 @@ export function ensureUpcomingDraftClass(league: League, extras: GMLeagueExtras)
   if ((league.seasonPhase ?? 'regular_season') !== 'regular_season') return extras;
   const label = upcomingDraftLabel(league);
   const rng = new RNG(hash(`draftclass:${label}`));
-  const draftClass = withLegacySons(generateDraftClass(pickDraftClassSize(league.teams.length, rng), hash(`draftclass-seed:${label}`), label, collectPlayerIds(league, extras)), league, hash(`legacy:${label}`));
+  const draftClass = withLegacySons(generateDraftClass(pickDraftClassSize(league.teams.length, rng), hash(`draftclass-seed:${label}`), label, collectPlayerIds(league, extras), worldDefOf(league)), league, hash(`legacy:${label}`));
   return { ...extras, draftClass, draftWorkouts: {} };
 }
 

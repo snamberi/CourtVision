@@ -8,7 +8,7 @@ import { playbackForEntry } from './gamePlayback';
 import { practiceHeadroom } from './engine/potential';
 import { calculateOverall } from './engine/overall';
 import { RNG } from './engine/rng';
-import { followsRealDevelopment } from './realDevelopmentGate';
+import { ratingsHeld } from './realDevelopmentGate';
 import { addDays, seasonStartDate } from './calendar';
 import { FOCUS_SKILLS, TARGET_ROLES, PROJECTS, DEFAULT_COACHING_SETTINGS, clamp, stableSeed, type CoachingControl, type PlayerTraining, type DevelopmentPlan, type TrainingFocus, type PracticeSession, type ProjectKey } from './coachingModel';
 import { initializeCoaching, newControl, teachingQuality, staffMembers, autoManageStaff, enrichCoach } from './staffManagement';
@@ -180,8 +180,8 @@ function trainDay(team:LeagueTeam,league:League,date:string,gameToday:boolean):L
   const rng=new RNG(stableSeed(p.playerId+date+':practice'));
   const variance=clamp((league.rulesSettings?.developmentRandomness??100)/100,0,2);
   const roll=rng.next();
-  // Real players under Real Player Development keep their base ratings; practice still drives workload, familiarity and morale.
-  const ratingsLocked=followsRealDevelopment(p,league);
+  // Real players under Real Player Development (and locked ratings) keep their base ratings; practice still drives workload, familiarity and morale.
+  const ratingsLocked=ratingsHeld(p,league);
   if(!ratingsLocked&&!injured&&session.type!=='recovery'&&(variance===0||roll<clamp(.25+quality*.22,0,.8))){
    const focus=rng.next()<.72?tr.plan.primary:tr.plan.secondary;
    const paths=session.type==='conditioning'?FOCUS_SKILLS.conditioning:FOCUS_SKILLS[focus];

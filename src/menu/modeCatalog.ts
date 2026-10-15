@@ -4,7 +4,7 @@
  * and what opening it does. The main menu, the phone's Play and Compete sheets all read this one list.
  */
 
-export type ArcadeTabId = 'grid' | 'guess' | 'hilo' | 'bracket' | 'quiz' | 'legends' | 'street' | 'tour' | 'categorize' | 'guessTeam';
+export type ArcadeTabId = 'grid' | 'guess' | 'hilo' | 'bracket' | 'quiz' | 'legends' | 'street' | 'oneOnOne' | 'tour' | 'categorize' | 'guessTeam';
 export type CreateChallengeId = 'free' | 'decade' | 'dynasty' | 'rebuild' | 'draft' | 'worldgames' | 'timeMachine';
 export type StartModeId = 'legends' | 'perfect' | 'category' | 'career' | 'survival' | 'story';
 
@@ -56,11 +56,12 @@ export const MODE_CATALOG: ModeEntry[] = [
   { id: 'quiz', group: 'quick', title: 'NBA Quiz', desc: 'Ten questions on titles, MVPs, picks and legends.', icon: 'question', art: ['#0f3340', '#a98450', '#55c8c8'], action: { kind: 'arcade', tab: 'quiz' } },
   { id: 'legendsT', group: 'quick', title: 'Legends Tournament', desc: 'Pick one of the 64 greatest. Win six 1v1 games.', icon: 'crown', art: ['#401c10', '#ad7442', '#f47b20'], action: { kind: 'arcade', tab: 'legends' } },
   { id: 'street', group: 'quick', title: '3v3 Street', desc: 'You and two legends against tougher and tougher crews.', icon: 'team', art: ['#2e2e2e', '#7a7a7a', '#f4a259'], action: { kind: 'arcade', tab: 'street' } },
+  { id: 'oneOnOne', group: 'quick', title: '1v1', desc: 'Your own player against any NBA player ever, or another GM.', icon: 'swords', art: ['#3a1212', '#a8664a', '#e85d5d'], action: { kind: 'arcade', tab: 'oneOnOne' } },
   { id: 'tour', group: 'compete', title: 'GM Tournament', desc: 'Sixteen GMs, one bracket, one week. Draft three legends.', icon: 'swords', art: ['#3a2a05', '#b8913f', '#ffd166'], action: { kind: 'arcade', tab: 'tour' } },
 
   // Compete and online
   { id: 'ranked', group: 'compete', title: 'Leaderboards', desc: 'Weekly boards, ranked seasons and the PvP ladder.', icon: 'podium', art: ['#1d2a44', '#a5824f', '#ffd166'], action: { kind: 'screen', screen: 'community' } },
-  { id: 'clubs', group: 'compete', title: 'Clubs', desc: 'Team up with friends. Weekend Showdowns every Friday.', icon: 'team', art: ['#16324a', '#9f7a4e', '#55c878'], action: { kind: 'screen', screen: 'clubs' } },
+  { id: 'clubs', group: 'compete', title: 'Clans', desc: 'Team up under your own flag. Weekend Showdowns every Friday.', icon: 'team', art: ['#16324a', '#9f7a4e', '#55c878'], action: { kind: 'screen', screen: 'clubs' } },
   { id: 'online', group: 'compete', title: 'Online Leagues', desc: 'Two to eight friends share one league.', icon: 'online', art: ['#14304a', '#a07c50', '#4da3ff'], action: { kind: 'screen', screen: 'online' } },
   { id: 'friends', group: 'compete', title: 'Challenge a Friend', desc: 'Same spins, head to head. No rating on the line.', icon: 'heart', art: ['#3d1630', '#a06d4f', '#ff7aa2'], action: { kind: 'screen', screen: 'friends' } },
 ];

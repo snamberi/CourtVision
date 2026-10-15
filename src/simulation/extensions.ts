@@ -4,7 +4,9 @@ import { computeAskingSalary } from './gm';
 import type { PlayerSeason } from './types';
 import { calculateOverall } from './engine/overall';
 import { agentFor, type Negotiation } from './agents';
-import { personalityOf } from './personality';
+import { personalityOf, payCut } from './personality';
+import { maxSalary, supermaxEligible, supermaxSalary } from './maxContracts';
+import { isContender, strengthRanking } from './freeAgentDecision';
 
 /*
  * In-season extensions: sign one of your players to a new deal before he reaches free agency. His agent talks the
@@ -42,8 +44,12 @@ export function openExtension(league: League, extras: GMLeagueExtras, player: Pl
   if (existing && existing.season === league.season) return existing;
   if (!extensionStance(league, extras, player).open) return null;
   const agent = agentFor(player), p = personalityOf(player), ovr = calculateOverall(player);
-  const max = round50k(extras.capSettings.salaryCap * extras.capSettings.maxSalaryPctOfCap);
-  const asking = computeAskingSalary(ovr, extras.capSettings);
+  // A franchise player can extend for the supermax; a win-first one takes less to stay with a contender.
+  const team = league.teams.find(t => t.teamId === teamId);
+  const supermax = supermaxEligible(player, team, true);
+  const max = supermax ? supermaxSalary(extras.capSettings) : maxSalary(extras.capSettings);
+  const cut = payCut(player, isContender(strengthRanking(league), teamId));
+  const asking = round50k((supermax ? max : computeAskingSalary(ovr, extras.capSettings)) * (1 - (cut?.discount ?? 0)));
   // Security has value: an extension asks a little less than the open market, more from a greedy camp.
   const markup = { Hardball: 0.14, Showman: 0.1, Dealmaker: 0.04, Steady: 0.02, Loyalist: -0.04 }[agent.style] + (p.greed - 50) / 500 - (p.loyalty - 50) / 600;
   const salary = Math.min(max, round50k(asking * (1 + markup)));
@@ -54,7 +60,7 @@ export function openExtension(league: League, extras: GMLeagueExtras, player: Pl
   return {
     playerId: player.playerId, teamId, season: league.season ?? '', agentId: agent.id,
     demand: { salary, years, playerOption: false }, floor, patience, ultimatum: false, status: 'open', rounds: 0,
-    log: [{ from: 'agent', text: `${player.playerId} would sign on for ${years} more years at ${money} a year, starting when his current deal ends.` }],
+    log: [{ from: 'agent', text: `${player.playerId} would sign on for ${years} more years at ${money} a year, starting when his current deal ends.${supermax ? ' He is eligible for the supermax with you.' : ''}${cut ? " He'll take less than his market value to keep winning here." : ''}` }],
   };
 }
 

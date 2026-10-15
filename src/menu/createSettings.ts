@@ -5,6 +5,7 @@ import { SETTINGS_PRESETS } from '../simulation/settingsPresets';
 import { generateSeasonSchedule } from '../simulation/league';
 import type { GMLeagueExtras } from '../simulation/gm';
 import { LOTTERY_RULES, type LotteryFormat } from '../simulation/draftLottery';
+import { withGameLength, gameLengthText } from '../simulation/gameLength';
 
 /*
  * League settings picked on the New Franchise page, before the league exists. They are applied once to the freshly
@@ -19,7 +20,9 @@ export type EraChoice = 'season' | keyof typeof ERA_PRESETS;
 export interface CreateSettings {
   feel: GameFeel;
   era: EraChoice;
+  /** Minutes in each period (any whole number, 1-30) and how many periods a game has (1-8). */
   quarterMinutes: number;
+  periods: number;
   games: number;
   injuries: boolean;
   /** 0.5 = half as many, 2 = twice as many. */
@@ -62,22 +65,21 @@ export const ERA_CHOICES: { id: EraChoice; label: string }[] = [
   { id: '1980s', label: '1980s' }, { id: '1970s', label: '1970s (no 3-point line)' }, { id: '1960s', label: '1960s (no 3-point line)' },
 ];
 export const GAME_COUNTS = [82, 72, 66, 58, 41, 29];
-export const QUARTER_LENGTHS = [12, 10, 8, 6];
 
 export const DEFAULT_CREATE: CreateSettings = {
-  feel: 'Standard', era: 'season', quarterMinutes: 12, games: 82, injuries: false, injuryRate: 1, fatigue: true, chemistry: true,
+  feel: 'Standard', era: 'season', quarterMinutes: 12, periods: 4, games: 82, injuries: false, injuryRate: 1, fatigue: true, chemistry: true,
   homeCourt: 0.03, tradeDeadline: 0.65, sandbox: false, salaryCap: 140_000_000, hardCap: false,
   worldGames: true, worldGamesCoach: '', realYears: true, lottery: 'auto',
 };
 
-/** How many settings differ from the defaults (shown on the button). */
-export const changedCount = (s: CreateSettings) => (Object.keys(DEFAULT_CREATE) as (keyof CreateSettings)[]).filter(k => s[k] !== DEFAULT_CREATE[k]).length;
+/** How many settings differ from the defaults (shown on the button); other leagues count from their own season and game length. */
+export const changedCount = (s: CreateSettings, base: CreateSettings = DEFAULT_CREATE) => (Object.keys(DEFAULT_CREATE) as (keyof CreateSettings)[]).filter(k => s[k] !== base[k]).length;
 
 /** A one-line summary of the settings, for the creation page. */
 export function summary(s: CreateSettings, random: boolean): string[] {
   const out = [s.feel === 'Standard' ? 'Standard game' : `${s.feel} games`, !random && s.realYears ? 'Real season length and pace each year' : `${s.games} games a season`];
   if (s.lottery !== 'auto') out.push(`${LOTTERY_CHOICES.find(l => l.id === s.lottery)?.label} every year`);
-  if (s.quarterMinutes !== 12) out.push(`${s.quarterMinutes}-minute quarters`);
+  if (s.quarterMinutes !== 12 || s.periods !== 4) out.push(gameLengthText(s.periods, s.quarterMinutes));
   if (s.era !== 'season') out.push(`${ERA_CHOICES.find(e => e.id === s.era)?.label} rules`);
   out.push(s.injuries ? (s.injuryRate === 1 ? 'Injuries on' : `Injuries ×${s.injuryRate}`) : 'No injuries');
   if (!s.fatigue) out.push('No fatigue');
@@ -98,7 +100,7 @@ export function applyCreateSettings(league: League, extras: GMLeagueExtras, s: C
     const preset = SETTINGS_PRESETS[s.feel];
     Object.assign(settings, { pacePreset: preset.pacePreset, shootingVariance: preset.shootingVariance, foulFrequency: preset.foulFrequency, turnoverFrequencyMultiplier: preset.turnoverFrequencyMultiplier });
   }
-  if (s.era !== d.era || s.quarterMinutes !== d.quarterMinutes) settings.era = { ...(s.era === 'season' ? league.settings.era : ERA_PRESETS[s.era]), quarterLengthMinutes: s.quarterMinutes };
+  if (s.era !== d.era || s.quarterMinutes !== d.quarterMinutes || s.periods !== d.periods) settings.era = withGameLength(s.era === 'season' ? league.settings.era : ERA_PRESETS[s.era], s.periods, s.quarterMinutes);
   if (s.injuries !== d.injuries || s.injuryRate !== d.injuryRate) { settings.injuriesEnabled = s.injuries; settings.injuryFrequencyMultiplier = s.injuryRate; }
   if (s.fatigue !== d.fatigue) settings.fatigueEnabled = s.fatigue;
   if (s.chemistry !== d.chemistry) settings.teamChemistryEnabled = s.chemistry;
@@ -113,7 +115,8 @@ export function applyCreateSettings(league: League, extras: GMLeagueExtras, s: C
   if (s.lottery !== d.lottery) settings.draftLottery = s.lottery;
   const worldGames = !s.worldGames || s.worldGamesCoach ? { worldGames: { history: [], ...(!s.worldGames ? { off: true } : {}), ...(s.worldGamesCoach ? { coach: s.worldGamesCoach } : {}) } } : {};
   const scheduled = league.teams.length ? Math.round((league.schedule.length * 2) / league.teams.length) : s.games;
-  const schedule = fixedLength && scheduled !== s.games && league.teams.length > 1 ? generateSeasonSchedule(league.teams.map(t => t.teamId), s.games) : league.schedule;
+  // (Other leagues are built with their own season length: only an explicit change rebuilds their schedule.)
+  const schedule = fixedLength && scheduled !== s.games && league.teams.length > 1 && (!league.worldLeague || s.games !== d.games) ? generateSeasonSchedule(league.teams.map(t => t.teamId), s.games) : league.schedule;
   const capSettings = random && (s.salaryCap !== d.salaryCap || s.hardCap !== d.hardCap)
     ? { ...extras.capSettings, salaryCap: s.salaryCap, luxuryTaxLine: Math.round(s.salaryCap * (extras.capSettings.luxuryTaxLine / extras.capSettings.salaryCap)), hardCapEnabled: s.hardCap }
     : extras.capSettings;

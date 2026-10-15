@@ -1,0 +1,10 @@
+/* Game length picker (New Franchise settings and League Rules). */
+.game-length { display: grid; gap: 8px; }
+.game-length-presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.game-length-presets button { display: grid; gap: 1px; padding: 6px 10px; text-align: left; line-height: 1.2; }
+.game-length-presets button small { color: var(--text-dim); font-family: var(--font-data); font-size: 11px; }
+.game-length-presets button.selected { background-color: var(--c-bg-f47b20, #f47b20); color: var(--c-fg-0b1018, #0b1018); }
+.game-length-presets button.selected small { color: inherit; }
+.game-length-inputs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.game-length-inputs input[type='number'] { width: 72px; }
+.game-length-total { color: var(--text-dim); }

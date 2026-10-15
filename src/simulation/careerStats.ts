@@ -5,6 +5,7 @@ import type { GameResult, PlayerStatLine } from './boxscore';
 import type { League } from './league';
 import { recordGame, rookieCheck } from './records';
 import type { PlayerAdvanced } from './advancedStats';
+import { gameFeats, addGameFeats, sumFeats, type PlayerGameFeats, type GameFeatsRecord } from './gameFeats';
 
 function addLine(totals: SeasonStatTotals, line: PlayerStatLine): SeasonStatTotals {
   return {
@@ -37,6 +38,7 @@ function addMilestones(m: SeasonMilestones, line: PlayerStatLine): SeasonMilesto
   const reb = line.oreb + line.dreb;
   const categoryCount = doubleFigureCategoryCount(line);
   return {
+    ...m, // keeps the game feats (gameFeats.ts), added after this
     doubleDoubles: m.doubleDoubles + (categoryCount >= 2 ? 1 : 0),
     tripleDoubles: m.tripleDoubles + (categoryCount >= 3 ? 1 : 0),
     quadrupleDoubles: m.quadrupleDoubles + (categoryCount >= 4 ? 1 : 0),
@@ -49,24 +51,31 @@ function addMilestones(m: SeasonMilestones, line: PlayerStatLine): SeasonMilesto
   };
 }
 
-function applyToSeason(season: PlayerSeason, line: PlayerStatLine | undefined): PlayerSeason {
+function applyToSeason(season: PlayerSeason, line: PlayerStatLine | undefined, feats: Map<string, PlayerGameFeats>): PlayerSeason {
   if (!line) return season;
+  const milestones = addMilestones(season.seasonMilestones ?? emptySeasonMilestones(), line);
+  if (line.minutes <= 0) return { ...season, seasonStats: addLine(season.seasonStats ?? emptySeasonStatTotals(), line), seasonMilestones: milestones };
+  // A game missed does not end a run of 20-point games; a game played under 20 does.
+  const streak20 = line.points >= 20 ? (season.streak20 ?? 0) + 1 : 0;
   return {
     ...season,
+    streak20,
     seasonStats: addLine(season.seasonStats ?? emptySeasonStatTotals(), line),
-    seasonMilestones: addMilestones(season.seasonMilestones ?? emptySeasonMilestones(), line),
+    seasonMilestones: addGameFeats(milestones, line, streak20, feats.get(season.playerId) ?? NO_FEATS),
   };
 }
+const NO_FEATS: PlayerGameFeats = { zones: [], buzzerBeaters: 0, gameWinners: 0 };
 
 /** Applies one game's box score to every participating player — regular-season games to `seasonStats`,
  * playoff games to `playoffStats` — and adds the game to the league record book. Returns a new League. */
-export function applyGameResultToLeague(league: League, result: GameResult, opts: { playoffs?: boolean } = {}): League {
+export function applyGameResultToLeague(league: League, result: GameResult, opts: { playoffs?: boolean; /** Feats worked out where the game was played (engine workers return the result without its log). */ feats?: GameFeatsRecord } = {}): League {
   const playoffs = !!opts.playoffs;
   const recordBook = recordGame(league.recordBook, result, { season: league.season ?? '', date: league.calendarDate, playoffs, isRookie: rookieCheck(league) });
+  const feats = playoffs ? new Map<string, PlayerGameFeats>() : opts.feats ? new Map(Object.entries(opts.feats)) : gameFeats(result);
   const teams = league.teams.map((t) => {
     const box = t.teamId === result.homeTeamId ? result.homeBox : t.teamId === result.awayTeamId ? result.awayBox : null;
     if (!box) return t;
-    return { ...t, seasons: t.seasons.map((s) => playoffs ? applyToPlayoffs(s, box.players[s.playerId]) : applyToSeason(s, box.players[s.playerId])) };
+    return { ...t, seasons: t.seasons.map((s) => playoffs ? applyToPlayoffs(s, box.players[s.playerId]) : applyToSeason(s, box.players[s.playerId], feats)) };
   });
   return { ...league, teams, recordBook };
 }
@@ -180,6 +189,7 @@ function sumMilestones(a: SeasonMilestones, b: SeasonMilestones): SeasonMileston
     gameHighAssists: Math.max(a.gameHighAssists, b.gameHighAssists),
     gameHighSteals: Math.max(a.gameHighSteals, b.gameHighSteals),
     gameHighBlocks: Math.max(a.gameHighBlocks, b.gameHighBlocks),
+    ...sumFeats(a, b),
   };
 }
 

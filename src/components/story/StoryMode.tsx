@@ -1,5 +1,6 @@
 import { ModeIcon } from '../ModeIcon';
 import { useRef, useState } from 'react';
+import { noteHolidayFinish } from '../../retention/holiday';
 import {
   newStory, currentBeat, continueStory, choose, spendTraining, choosePath, runDraft, playStoryGame, ending, overall, storyShareText, chapterOf, ordinal,
   loadStory, saveStory, loadEndings, recordEnding, STYLES, HOMETOWNS, PATHS, TRAINABLE, TRAIN_STEP, SCRIPT,
@@ -38,6 +39,7 @@ export function StoryMode({ onExit }: { onExit: () => void }) {
       if (!inYearTwo(s)) setEndings(recordEnding(s));
       rewardRun(storyRewardKey(s), storySpins(ending(s).tier), { secret: storySecret(ending(s).tier), why: 'Story Mode' });
       noteWeekRun('story', { score: Math.round(overall(s) * 10 + s.games.filter(g => g.won).length * 50), line: ending(s).title }, `story-${s.seed}`);
+      noteHolidayFinish(true, `story-${s.seed}`);
       trackOnce(`story-${s.seed}`, 'mode_finish', { mode: 'story', ending: ending(s).tier });
     }
   };

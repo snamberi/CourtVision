@@ -304,6 +304,13 @@ export interface PlayerSeason {
   contractYear?: boolean;
   /** Career Mode's player: he retires only when his career says so, never on the league's random rolls. */
   careerPlayer?: boolean;
+  /** Edit Player (Sandbox): his ratings stay exactly as they are every summer (he still ages), even under Real Player
+   *  Development; while he is still good (Overall 60+) he never retires on age. */
+  lockRatings?: boolean;
+  /** Edit Player: he develops the Court Vision way (potential, minutes, training) even when Real Player Development is on. */
+  ownDevelopment?: boolean;
+  /** Regular-season games in a row with 20+ points, as of his last game played (carries over from season to season). */
+  streak20?: number;
   /** Can carry ratings past 99 (up to 120): Career Mode's player, in his career or brought into a league. */
   highRatings?: boolean;
   /** Honours won in real NBA history before this league's start (imported, never simulated). */
@@ -389,6 +396,18 @@ export interface SeasonMilestones {
   gameHighAssists: number;
   gameHighSteals: number;
   gameHighBlocks: number;
+  /** Game feats (gameFeats.ts), counted from the update that added them: 20-point games and the longest run of them
+   *  in a row, 20-20 games (20 in two of points, rebounds and assists), 20-20-20 games, 50-point games, buzzer-beaters
+   *  and game-winning shots. */
+  games20?: number;
+  best20Streak?: number;
+  twentyTwenty?: number;
+  triple20?: number;
+  fiftyPointGames?: number;
+  buzzerBeaters?: number;
+  gameWinners?: number;
+  /** Shooting by distance (shotDistance.ts bands): attempts and makes, [a0, m0, a1, m1, …]. */
+  shotZones?: number[];
 }
 
 export function emptySeasonMilestones(): SeasonMilestones {

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { NbaHistory } from '../../history/nbaHistoryData';
+import { noteHolidayFinish } from '../../retention/holiday';
 import { ModeIcon } from '../ModeIcon';
 import { PixelIcon } from '../PixelIcon';
 import { PlayerAvatar } from '../PlayerAvatar';
@@ -81,6 +82,7 @@ function Board({ puzzle, day, maxMistakes, onNext }: { puzzle: CategorizePuzzle;
     const nowWon = p.solved.length === 4, nowLost = p.mistakes >= maxMistakes;
     if (nowWon || nowLost) {
       updateArcade(r => { const x = endlessOf(r).categorize, streak = nowWon ? x.streak + 1 : 0; return { ...r, endless: { ...endlessOf(r), categorize: { played: x.played + 1, won: x.won + (nowWon ? 1 : 0), perfect: x.perfect + (nowWon && p.mistakes === 0 ? 1 : 0), streak, best: Math.max(x.best, streak) } } }; });
+      noteHolidayFinish(nowWon, `categorize-${day ?? puzzle.seed}`);
       track('mode_finish', { mode: 'categorize', won: nowWon, mistakes: p.mistakes, daily: !!day });
       uncoverSecret(`categorize-perfect:${day ?? puzzle.seed}`, categorizeSecret({ won: nowWon, mistakes: p.mistakes }));
       noteWeekRun('categorize', { score: nowWon ? (maxMistakes - p.mistakes + 1) * 100 : p.solved.length * 50, line: nowWon ? `Solved with ${p.mistakes} mistake${p.mistakes === 1 ? '' : 's'}` : `${p.solved.length}/4 categories` }, `categorize-${day ?? puzzle.seed}`);

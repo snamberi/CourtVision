@@ -17,6 +17,7 @@ import { computeStandings } from './league';
 import { expectedGrowth } from './growth';
 import { calculateOverall } from './engine/overall';
 import { generatePlayerOrigin } from './names';
+import { worldOrigin, shiftRatings, type WorldLeagueDef } from './worldLeagues';
 import { collectPlayerIds, withUniquePlayerId } from './playerIds';
 import { appendHistoryEvent } from './playerHistory';
 import { isDeadlineDayClosed, logDeadlineTrade, tradeDeadlineEnabled } from './deadlineDay';
@@ -41,6 +42,7 @@ export interface SalaryCapSettings {
   enforceCapOnTrades: boolean; // sandbox mode can disable this to allow "invalid" trades
   minSalary: number; // league-minimum contract, offered to any free agent regardless of quality
   maxSalaryPctOfCap: number; // a true max contract is this fraction of the cap
+  supermaxPctOfCap?: number; // a franchise player's supermax with his own team (default 0.35, see maxContracts.ts)
   minRosterSize: number; // AI teams sign up to this during the season (coachRosters.ts); yours may go below it
   maxRosterSize: number; // AI teams waive down to this during the season; yours may go above it
 }
@@ -675,16 +677,18 @@ export interface DraftProspect {
 }
 
 /** Generates a draft class of prospects with true (hidden) ratings and a scouted (noisy) potential display. Prospects are built with the same archetype-based generator as regular league players, so they arrive with real varied positions, tendencies, and attribute spreads instead of a flat stat bump. */
-export function generateDraftClass(count: number, seed: number, draftYear: string, existingNames: Iterable<string> = []): DraftProspect[] {
+export function generateDraftClass(count: number, seed: number, draftYear: string, existingNames: Iterable<string> = [], world?: WorldLeagueDef): DraftProspect[] {
   const rng = new RNG(seed);
   const prospects: DraftProspect[] = [];
   // Player ids ARE names, so a prospect must never share a name with anyone already in the universe
   // (rostered, free agent, retired, or still in a previous class) or the two would be treated as one player.
   const usedNames = new Set<string>(existingNames);
   for (let i = 0; i < count; i++) {
-    const origin = generatePlayerOrigin(rng, usedNames);
-    const age = 19 + rng.nextInt(4); // 19-22
-    const season = generatePlayer(origin.name, draftYear, null, age, rng.nextInt(1000), rng, { origin, prospect: true });
+    // Another league's intake: its own nationality mix and ages (college freshmen are 18), at its level.
+    const origin = world ? worldOrigin(world, rng, usedNames) : generatePlayerOrigin(rng, usedNames);
+    const age = world ? world.prospectAges[0] + rng.nextInt(world.prospectAges[1] - world.prospectAges[0] + 1) : 19 + rng.nextInt(4); // 19-22
+    const generated = generatePlayer(origin.name, draftYear, null, age, rng.nextInt(1000), rng, { origin, prospect: true });
+    const season = world ? shiftRatings(generated, world.ratingShift) : generated;
     // Prospects skew toward higher upside than the league average rookie, on top of the archetype's own potential roll.
     // Prospects carry a little extra upside, but franchise-changing ceilings stay rare.
     season.development.potential = Math.max(calculateOverall(season), Math.min(99, Math.round(compressElitePotential(season.development.potential + 2 + rng.nextInt(6)))));

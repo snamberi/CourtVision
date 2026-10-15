@@ -208,6 +208,9 @@ export const ICONS: IconDef[] = [
   // Secret: dropped by a Relic Vault spin.
   { id: 'secret-crown-void', name: 'Void crown', base: 'crown', recolor: { g: '#2a1a4a', G: '#120c24', r: '#ff4fd8', b: '#b983ff' }, anim: 'glow' as IconAnim, rule: { shop: 'secret-crown-void' } as Rule, how: SECRET_HOW },
   { id: 'secret-goat-cosmic', name: 'Cosmic GOAT', base: 'goat', recolor: { w: '#b983ff', s: '#3b1d82' }, anim: 'twinkle' as IconAnim, rule: { shop: 'secret-goat-cosmic' } as Rule, how: SECRET_HOW },
+  // Holiday events: bought with event coins while the event is on (retention/holidayShop.ts).
+  { id: 'evt-halloween-icon', name: "Jack-o'-ball", base: 'ball', recolor: { o: '#ff7a1a', O: '#1a1024' }, anim: 'flicker' as IconAnim, rule: { shop: 'evt-halloween-icon' } as Rule, how: 'Spooky Season event shop' },
+  { id: 'evt-christmas-icon', name: 'Ornament', base: 'ball', recolor: { o: '#e8323c', O: '#ffd166' }, anim: 'twinkle' as IconAnim, rule: { shop: 'evt-christmas-icon' } as Rule, how: 'Winter Wonderland event shop' },
 ];
 export type IconId = string;
 
@@ -268,6 +271,9 @@ export const NAME_COLORS: (Cosmetic & { css: string; anim?: ColorAnim })[] = [
   ] as [string, string, string, ColorAnim][]).map(([id, name, css, anim]) => ({ id, name, css, anim, rule: { shop: id } as Rule, how: 'Relic Shop' })),
   { id: 'secret-prism', name: 'Prism', css: 'linear-gradient(90deg, #ff4d6d, #ffd166, #7dff5a, #3fc8ff, #b983ff, #ff4fd8, #ff4d6d)', anim: 'glitch' as ColorAnim, rule: { shop: 'secret-prism' } as Rule, how: SECRET_HOW },
   animated('immortal', 'Immortal', 'linear-gradient(90deg, #ff4d2e, #ffd166, #6fdc93, #4fd6d6, #c79bff, #ff4dd2, #ff4d2e)', 'flow'),
+  // Holiday events.
+  { id: 'evt-halloween-color', name: 'Candy corn', css: 'linear-gradient(90deg, #ffd23f, #ff7a1a, #fff6e0, #ff7a1a, #ffd23f)', anim: 'flow' as ColorAnim, rule: { shop: 'evt-halloween-color' } as Rule, how: 'Spooky Season event shop' },
+  { id: 'evt-christmas-color', name: 'Candy cane', css: 'repeating-linear-gradient(90deg, #e8323c 0 8px, #ffffff 8px 16px)', anim: 'flow' as ColorAnim, rule: { shop: 'evt-christmas-color' } as Rule, how: 'Winter Wonderland event shop' },
 ];
 
 /** Titles on the level road, in order (Rookie GM is everyone's first). */
@@ -349,8 +355,14 @@ export function isOpen(rule: Rule, c: UnlockContext): boolean {
   return rule.honor === 'first' ? c.honors.some(h => HONORS.find(x => x.id === h)?.first) : c.honors.includes(rule.honor);
 }
 
+/** Titles bought in a holiday event shop (retention/holidayShop.ts). */
+export const EVENT_TITLES: { title: string; key: string; how: string }[] = [
+  { title: 'Pumpkin King', key: 'evt-halloween-title', how: 'Spooky Season event shop' },
+  { title: 'Holiday Hooper', key: 'evt-christmas-title', how: 'Winter Wonderland event shop' },
+];
 /** Titles from the leaderboards, the modes and the Supporter pass that are open. */
 export const earnedExtraTitles = (c: UnlockContext): string[] => [
+  ...EVENT_TITLES.filter(t => (c.shop ?? []).includes(t.key)).map(t => t.title),
   ...HONORS.filter(h => c.honors.includes(h.id)).map(h => h.title),
   ...MODE_TITLES.filter(t => c.modes.includes(t.mode)).map(t => t.title),
   ...(c.supporter ? [SUPPORTER_TITLE] : []),

@@ -215,6 +215,8 @@ export interface League {
   leagueOffice?: import('./ownerBox').LeagueOffice;
   /** How the league was built (kind, season, options, seed): its league code (see retention/leagueCode.ts). */
   origin?: import('../retention/leagueCode').LeagueOrigin;
+  /** One of the other leagues (EuroLeague, CBA, Georgian Superleague, college): its rules, intake and playoffs (worldLeagues.ts). */
+  worldLeague?: import('./worldLeagues').WorldLeagueId;
   /** Rebuild Challenge: the scenario this league is playing (see rebuildChallenge.ts). */
   rebuildChallenge?: import('./rebuildChallenge').RebuildChallengeConfig;
   /** Time Machine: the real team-season that travelled into this league, and whose place it took. */
@@ -697,7 +699,7 @@ function prepareGame(league: League, idx: number, seedBase: number, injuries: Re
 }
 
 /** Applies a finished game: injuries, chemistry, calendar, stats and records, then post-game development and rotation review. */
-function commitGame(league: League, prepared: PreparedGame, result: GameResult, evidence?: GameEvidence): League {
+function commitGame(league: League, prepared: PreparedGame, result: GameResult, evidence?: GameEvidence, feats?: import('./gameFeats').GameFeatsRecord): League {
   const { idx } = prepared;
   const g = league.schedule[idx];
   const home = league.teams.find((t) => t.teamId === g.homeTeamId)!;
@@ -765,7 +767,7 @@ function commitGame(league: League, prepared: PreparedGame, result: GameResult, 
   }
 
   teams = applyGameBonds(teams, result);
-  const updated = applyGameResultToLeague({ ...league, teams, schedule, injuries: nextInjuries, calendarDate, calendarRound, ...(medical ? { medical } : {}) }, result);
+  const updated = applyGameResultToLeague({ ...league, teams, schedule, injuries: nextInjuries, calendarDate, calendarRound, ...(medical ? { medical } : {}) }, result, feats ? { feats } : {});
   // The last game of a game day moves the award races along (weekly ladder, Players of the Week/Month).
   // The same night decides the Cup: once the last group game is in, the knockout rounds are played (see cup.ts).
   const dayDone = (l: League) => l.schedule.some((x) => !x.played && x.round === g.round) ? l : advanceCup(advanceAwardRace(l, g.round));
@@ -782,7 +784,7 @@ export function simulateNextGame(league: League, seedBase = 1, liveCoaching?: Re
 }
 
 /** A game simulated by `runGames`: the result (possibly with its log already packed) and its development evidence. */
-export interface SimulatedGame { result: GameResult; evidence?: GameEvidence }
+export interface SimulatedGame { result: GameResult; evidence?: GameEvidence; /** Shooting by distance, buzzer-beaters, game-winners (gameFeats.ts). */ feats?: import('./gameFeats').GameFeatsRecord }
 
 /**
  * The same game day as `simulateFullRound`, with the engine runs handed to `runGames` so they can happen in parallel
@@ -817,7 +819,7 @@ export async function simulateRoundPhased(league: League, seedBase: number, runG
   if (originalInjuries === undefined) delete current.injuries;
 
   const simulated = await runGames(prepared.map((p) => p.input));
-  for (let i = 0; i < prepared.length; i++) current = commitGame(current, prepared[i], simulated[i].result, simulated[i].evidence);
+  for (let i = 0; i < prepared.length; i++) current = commitGame(current, prepared[i], simulated[i].result, simulated[i].evidence, simulated[i].feats);
   return current;
 }
 

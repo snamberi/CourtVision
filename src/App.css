@@ -2315,3 +2315,16 @@ a.ad-creative:hover .ad-cta { background: var(--c-bg-ff8f3c, #ff8f3c); }
 .club-banners li { display: grid; justify-items: center; opacity: .4; }
 .club-banners li.got { opacity: 1; }
 .club-banners li i { display: block; width: 22px; height: 30px; border: 2px solid; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 82%, 0 100%); }
+
+/* Edit Player: lock ratings, own development (per player). */
+.dev-flags { display: grid; gap: 8px; margin: 4px 0 10px; }
+.dev-flags label { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; cursor: pointer; }
+.dev-flags label input { margin-top: 3px; }
+.dev-flags label span { display: grid; gap: 2px; }
+.dev-flags label small { color: var(--text-dim); }
+.dev-flags input:disabled + span { opacity: .65; }
+
+/* Max and supermax contracts on the roster. */
+.contract-tier { display: inline-block; margin-left: 6px; padding: 0 4px; font: 700 9px var(--font-data); letter-spacing: .06em; border: 1px solid currentColor; vertical-align: 1px; }
+.contract-tier.max { color: var(--c-fg-4da3ff, #4da3ff); }
+.contract-tier.supermax { color: var(--c-fg-ffd166, #ffd166); }

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ordinal } from '../../lib/humanize';
+import { noteHolidayFinish } from '../../retention/holiday';
 import type { NbaHistory } from '../../history/nbaHistoryData';
 import { PixelIcon, MedalIcon } from '../PixelIcon';
 import { track } from '../../analytics/track';
@@ -33,6 +34,7 @@ export function WorldGamesMode({ games, country, onExit, onNew }: { games: Games
     const place = placings(s).indexOf(country);
     const score = modeScore(s, country, place);
     setResult({ place, score, records: saveModeResult(games, country, place, score), state: s });
+    noteHolidayFinish(place === 0, `wg-${games}-${country}-${score}-${s.games.length}`);
     track('mode_finish', { mode: 'worldgames', games: String(games), country, place: place + 1, score });
   }, [games, country]);
 

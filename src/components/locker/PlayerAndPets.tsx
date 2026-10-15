@@ -4,11 +4,13 @@ import { MyFramedAvatar } from '../AvatarFrame';
 import { totalXp, levelFor } from '../../profile/profile';
 import { feetInches } from '../../career/categories';
 import {
-  MY_SKILLS, BASE_RATING, BASE_HEIGHT, MAX_RATING, MAX_HEIGHT, ELITE_FROM, ELITE_SLOTS, INCH_COST, POINTS_PER_STEP, LEVELS_PER_STEP,
+  MY_SKILLS, BASE_RATING, BASE_HEIGHT, MAX_RATING, MAX_HEIGHT, ELITE_FROM, ELITE_SLOTS, INCH_COST, POINTS_PER_STEP, LEVELS_PER_STEP, skillStepCost, inchStepCost,
   loadMyRatings, saveMyRatings, stepSkill, stepHeight, raiseBlock, heightBlock, pointsLeft, pointsEarned, eliteCount, myOverall, baseRatings, MY_RATINGS_EVENT, type MySkill,
 } from '../../profile/myRatings';
-import { PETS, PET_COLORS, PET_ACCESSORIES, loadPets, savePets, equipPet, setLook, lookOf, petOpen, PETS_EVENT, type PetId } from '../../profile/pets';
+import { PETS, PET_COLORS, PET_ACCESSORIES, loadPets, savePets, equipPet, setLook, lookOf, petOpen, PETS_EVENT, SECOND_PRICE, PET_SECOND, secondOpen, secondBlurb, withSecond, type PetId } from '../../profile/pets';
+import { loadRelics, saveRelics, spendCoins, RELICS_EVENT } from '../../relics/relics';
 import { PetSprite } from './PetSprite';
+import { PrototypeCard } from './PrototypeCard';
 import './playerPets.css';
 
 const useLevel = () => useState(() => levelFor(totalXp()).level)[0];
@@ -28,12 +30,12 @@ export function MyRatingsPanel() {
         <span className="pixel-eyebrow">YOUR PLAYER</span>
         <h2>{myOverall(r)} <small>OVR</small></h2>
         <p>{feetInches(r.height)} · Level {level} · <b>{left}</b> point{left === 1 ? '' : 's'} to spend · {POINTS_PER_STEP} more at level {nextAt}</p>
-        <p className="hint-text">Everyone starts at {feetInches(BASE_HEIGHT)} with every skill at {BASE_RATING}. You earn {POINTS_PER_STEP} points every {LEVELS_PER_STEP} levels ({pointsEarned(level)} so far). A point is +1 to a skill (up to {MAX_RATING}); an inch of height costs {INCH_COST}. Only {ELITE_SLOTS} skills can be rated {ELITE_FROM}+ ({elite} now). Your player plays 3v3 Street with these ratings.</p>
+        <p className="hint-text">Everyone starts at {feetInches(BASE_HEIGHT)} with every skill at {BASE_RATING}. You earn {POINTS_PER_STEP} points every {LEVELS_PER_STEP} levels ({pointsEarned(level)} so far). A point is +1 to a skill up to 70; then each +1 costs 2, from 90 it costs 3 and from 100 it costs 5 (up to {MAX_RATING}). An inch of height costs {INCH_COST}, then 7 from 6'2", 12 from 6'8" and 20 from 7'5". Only {ELITE_SLOTS} skills can be rated {ELITE_FROM}+ ({elite} now). Your player plays 3v3 Street and 1v1 with these ratings.</p>
       </div>
     </div>
     <ul className="my-ratings-list">
       <li>
-        <span><b>Height</b><small>{INCH_COST} points an inch</small></span>
+        <span><b>Height</b><small>{r.height >= MAX_HEIGHT ? 'As tall as you can grow' : `Next inch: ${inchStepCost(r.height)} points`}</small></span>
         <button aria-label="One inch shorter" disabled={r.height <= BASE_HEIGHT} onClick={() => commit(stepHeight(r, -1, level))}>−</button>
         <output>{feetInches(r.height)}</output>
         <button aria-label="One inch taller" disabled={!!heightBlock(r, level)} title={heightBlock(r, level) ?? undefined} onClick={() => commit(stepHeight(r, 1, level))}>+</button>
@@ -42,7 +44,7 @@ export function MyRatingsPanel() {
       {MY_SKILLS.map(s => {
         const v = r.skills[s.id], block = raiseBlock(r, s.id as MySkill, level);
         return <li key={s.id} className={v >= ELITE_FROM ? 'elite' : ''}>
-          <span><b>{s.name}</b><small>{v >= ELITE_FROM ? 'Elite' : s.short}</small></span>
+          <span><b>{s.name}</b><small>{v >= ELITE_FROM ? 'Elite' : s.short}{v < MAX_RATING && skillStepCost(v) > 1 ? ` · next +1: ${skillStepCost(v)} pts` : ''}</small></span>
           <button aria-label={`Lower ${s.name}`} disabled={v <= BASE_RATING} onClick={() => commit(stepSkill(r, s.id, -1, level))}>−</button>
           <output>{v}</output>
           <button aria-label={`Raise ${s.name}`} disabled={!!block} title={block ?? undefined} onClick={() => commit(stepSkill(r, s.id, 1, level))}>+</button>
@@ -51,6 +53,7 @@ export function MyRatingsPanel() {
       })}
     </ul>
     <button onClick={() => commit(baseRatings())} disabled={left === pointsEarned(level)}><PixelIcon name="shuffle" size={14} /> Reset and get every point back</button>
+    <PrototypeCard shape={r} />
   </section>;
 }
 
@@ -61,6 +64,14 @@ export function PetsPanel() {
   const [focus, setFocus] = useState<PetId>(() => loadPets().equipped ?? 'cat');
   useEffect(() => { const sync = () => setS(loadPets()); window.addEventListener(PETS_EVENT, sync); return () => window.removeEventListener(PETS_EVENT, sync); }, []);
   const commit = (next: typeof s) => { if (next !== s) { setS(next); savePets(next); } };
+  const [coins, setCoins] = useState(() => loadRelics().coins);
+  useEffect(() => { const sync = () => setCoins(loadRelics().coins); window.addEventListener(RELICS_EVENT, sync); return () => window.removeEventListener(RELICS_EVENT, sync); }, []);
+  /** Pays for a pet's second ability out of your relic coins. */
+  const unlockSecond = (id: PetId) => {
+    const paid = spendCoins(loadRelics(), SECOND_PRICE, `${PETS.find(p => p.id === id)!.name}: ${PET_SECOND[id].name}`);
+    if (!paid) return;
+    saveRelics(paid); setCoins(paid.coins); commit(withSecond(loadPets(), id));
+  };
   const pet = PETS.find(p => p.id === focus)!, look = lookOf(s, focus), open = petOpen(focus, level);
   return <section className="locker-bay pets-panel">
     <p className="hint-text">Bring one pet along. Each pet has its own ability; new pets open as your level climbs. Abilities never count in Dailies, Weeklies or duels, so those stay fair.</p>
@@ -78,6 +89,13 @@ export function PetsPanel() {
         <h3>{look.name}</h3>
         <p><b>{pet.ability}</b></p>
         <p className="hint-text">{pet.blurb}</p>
+        <div className={`pet-second ${secondOpen(s, focus) ? 'on' : ''}`}>
+          <span className="pixel-eyebrow">SECOND ABILITY</span>
+          <p>{secondBlurb(focus)}</p>
+          {secondOpen(s, focus) ? <small><PixelIcon name="check" size={12} /> Unlocked{s.equipped === focus ? ' and working' : ': bring this pet along to use it'}.</small>
+            : <button onClick={() => unlockSecond(focus)} disabled={!open || coins < SECOND_PRICE} title={!open ? `Opens at level ${pet.level}` : coins < SECOND_PRICE ? `You have ${coins.toLocaleString()} coins` : undefined}>
+              <PixelIcon name="unlock" size={14} /> Unlock for {SECOND_PRICE.toLocaleString()} coins</button>}
+        </div>
         {open
           ? <div className="contest-actions">
             {s.equipped === focus ? <button onClick={() => commit(equipPet(s, null, level))}>Leave at home</button> : <button className="primary" onClick={() => commit(equipPet(s, focus, level))}><PixelIcon name="heart" size={14} /> Bring {look.name} along</button>}

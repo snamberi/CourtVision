@@ -1,7 +1,10 @@
 import type { GameResult, PlayerStatLine } from './boxscore';
 import type { League, TeamSeasonSummary } from './league';
 import type { GMLeagueExtras } from './gm';
-import type { PlayerSeason, SeasonStatTotals } from './types';
+import type { PlayerSeason, SeasonStatTotals, SeasonMilestones } from './types';
+import { addZones, fiftyFortyNinety, zoneSplits } from './gameFeats';
+import { SHOT_BANDS } from './shotDistance';
+import { gameMinutes, NBA_GAME_MINUTES } from './gameLength';
 import type { PlayerAdvanced } from './advancedStats';
 import type { MissingStat } from './types';
 import { currentSeasonAdvanced, regularSeasonContext } from './advancedStats';
@@ -141,8 +144,12 @@ export interface SeasonRow {
   stats: SeasonStatTotals; dd: number; td: number; playoff?: SeasonStatTotals; adv?: PlayerAdvanced;
   /** Imported history: stats that season did not record (such seasons never qualify for those records). */
   missing?: MissingStat[];
+  /** The season's milestones, for the game feats (20-point games, buzzer-beaters, shooting by distance…). */
+  m?: SeasonMilestones;
 }
-interface CareerRow { playerId: string; totals: SeasonStatTotals; dd: number; td: number; playoff: SeasonStatTotals; seasons: number; ws: number; ows: number; dws: number; perMin: number; perMinutes: number; seasons20: number; seasons10ws: number; seasons1000: number; lastTeam: string | null; teamSeasons: Record<string, number>;
+/** Career totals of the game feats (gameFeats.ts). */
+export interface CareerFeats { games20: number; best20Streak: number; twentyTwenty: number; triple20: number; fifties: number; buzzerBeaters: number; gameWinners: number; club: number; zones?: number[] }
+export interface CareerRow { playerId: string; totals: SeasonStatTotals; dd: number; td: number; playoff: SeasonStatTotals; seasons: number; feats: CareerFeats; ws: number; ows: number; dws: number; perMin: number; perMinutes: number; seasons20: number; seasons10ws: number; seasons1000: number; lastTeam: string | null; teamSeasons: Record<string, number>;
   /** Games in seasons that did not record a stat, so career averages divide by the games that did. */
   missingGames: Partial<Record<MissingStat, number>> }
 /** Which recorded stats each record needs (by the record id's last part). */
@@ -166,13 +173,19 @@ function allPlayers(league: League, extras?: GMLeagueExtras): PlayerSeason[] {
   return out;
 }
 
+/** The 50-40-90 minimums, scaled to this league's season and game length. */
+export const clubScaleOf = (league: League) => ((league.settings.gamesPerSeason ?? 82) / 82) * (gameMinutes(league.settings.era) / NBA_GAME_MINUTES);
+/** A season that recorded every shooting stat (imported early seasons may lack threes). */
+const recordedShooting = (r: { missing?: MissingStat[] }) => !r.missing?.some(f => f === 'fga' || f === 'tpa' || f === 'fta' || f === 'tpm' || f === 'fgm' || f === 'ftm');
+
 export function seasonRows(league: League, extras?: GMLeagueExtras): { rows: SeasonRow[]; careers: CareerRow[] } {
   const current = currentSeasonAdvanced(league);
+  const clubScale = clubScaleOf(league);
   const teamOf = new Map(league.teams.flatMap(t => t.seasons.map(p => [p.playerId, t.teamId] as const)));
   const rows: SeasonRow[] = [], careers: CareerRow[] = [];
   for (const p of allPlayers(league, extras)) {
     const history = p.careerHistory ?? [];
-    const c: CareerRow = { playerId: p.playerId, totals: Z(), dd: 0, td: 0, playoff: Z(), seasons: 0, ws: 0, ows: 0, dws: 0, perMin: 0, perMinutes: 0, seasons20: 0, seasons10ws: 0, seasons1000: 0, lastTeam: null, teamSeasons: {}, missingGames: {} };
+    const c: CareerRow = { playerId: p.playerId, totals: Z(), dd: 0, td: 0, playoff: Z(), seasons: 0, feats: { games20: 0, best20Streak: 0, twentyTwenty: 0, triple20: 0, fifties: 0, buzzerBeaters: 0, gameWinners: 0, club: 0 }, ws: 0, ows: 0, dws: 0, perMin: 0, perMinutes: 0, seasons20: 0, seasons10ws: 0, seasons1000: 0, lastTeam: null, teamSeasons: {}, missingGames: {} };
     const take = (row: SeasonRow) => {
       rows.push(row);
       if (row.stats.gamesPlayed > 0) {
@@ -181,6 +194,13 @@ export function seasonRows(league: League, extras?: GMLeagueExtras): { rows: Sea
         if (row.stats.points / row.stats.gamesPlayed >= 20 && row.stats.gamesPlayed >= 40) c.seasons20++;
         if (row.stats.points >= 1000) c.seasons1000++;
         for (const f of row.missing ?? []) c.missingGames[f] = (c.missingGames[f] ?? 0) + row.stats.gamesPlayed;
+        const m = row.m, f = c.feats;
+        if (m) {
+          f.games20 += m.games20 ?? 0; f.best20Streak = Math.max(f.best20Streak, m.best20Streak ?? 0); f.twentyTwenty += m.twentyTwenty ?? 0; f.triple20 += m.triple20 ?? 0;
+          f.fifties += m.fiftyPointGames ?? 0; f.buzzerBeaters += m.buzzerBeaters ?? 0; f.gameWinners += m.gameWinners ?? 0;
+          if (m.shotZones?.length) f.zones = addZones(f.zones, m.shotZones);
+        }
+        if (fiftyFortyNinety(row.stats, clubScale) && recordedShooting(row)) f.club++;
       }
       if (row.playoff) addT(c.playoff, row.playoff);
       if (row.adv) {
@@ -190,11 +210,11 @@ export function seasonRows(league: League, extras?: GMLeagueExtras): { rows: Sea
         if (row.adv.ws >= 10) c.seasons10ws++;
       }
     };
-    history.forEach((h, i) => take({ playerId: p.playerId, season: h.season, teamId: h.teamId, age: h.age, index: i, stats: h.stats, dd: h.milestones?.doubleDoubles ?? 0, td: h.milestones?.tripleDoubles ?? 0, playoff: h.playoffStats, adv: h.advanced, ...(h.missing?.length ? { missing: h.missing } : {}) }));
+    history.forEach((h, i) => take({ playerId: p.playerId, season: h.season, teamId: h.teamId, age: h.age, index: i, stats: h.stats, dd: h.milestones?.doubleDoubles ?? 0, td: h.milestones?.tripleDoubles ?? 0, playoff: h.playoffStats, adv: h.advanced, m: h.milestones, ...(h.missing?.length ? { missing: h.missing } : {}) }));
     const isActive = teamOf.has(p.playerId);
     if (isActive && p.seasonStats && p.seasonStats.gamesPlayed > 0) {
       take({ playerId: p.playerId, season: league.season ?? p.season, teamId: teamOf.get(p.playerId) ?? null, age: p.age, index: history.length, stats: p.seasonStats,
-        dd: p.seasonMilestones?.doubleDoubles ?? 0, td: p.seasonMilestones?.tripleDoubles ?? 0, playoff: p.playoffStats, adv: current.get(p.playerId) });
+        dd: p.seasonMilestones?.doubleDoubles ?? 0, td: p.seasonMilestones?.tripleDoubles ?? 0, playoff: p.playoffStats, adv: current.get(p.playerId), m: p.seasonMilestones });
     }
     if (c.seasons > 0 || c.playoff.gamesPlayed > 0) careers.push(c);
   }
@@ -234,6 +254,7 @@ export function computeRecords(league: League, extras?: GMLeagueExtras): RecordR
     for (const cat of TEAM_GAME) out.push({ def: { id: `game:t:${scope}:${cat.id}`, group: 'Single Game', section: `Team · ${label}`, title: `${cat.title} in a game`, format: cat.format ?? 'int', lowerIsBetter: cat.lower }, entries: (book[`t:${scope}:${cat.id}`] ?? []).slice(0, 5) });
   }
   const { rows, careers } = seasonRows(league, extras);
+  const clubScale = clubScaleOf(league);
   const played = rows.filter(r => r.stats.gamesPlayed > 0);
   const qualAvg = (r: SeasonRow) => r.stats.gamesPlayed >= 40 || (r.season === league.season && r.stats.gamesPlayed >= 10);
   const qualMin = (r: SeasonRow) => r.stats.minutes >= 1000 || (r.season === league.season && r.stats.minutes >= 300);
@@ -287,6 +308,18 @@ export function computeRecords(league: League, extras?: GMLeagueExtras): RecordR
   seasonRec('By age', 'age:20ppg', 'Points per game, age 20 or younger', 'dec1', r => per(r.stats.points, r.stats.gamesPlayed), r => r.age <= 20 && qualAvg(r), '40+ games');
   seasonRec('By age', 'age:35ppg', 'Points per game, age 35 or older', 'dec1', r => per(r.stats.points, r.stats.gamesPlayed), r => r.age >= 35 && qualAvg(r), '40+ games');
   seasonRec('By age', 'age:35ws', 'Win Shares, age 35 or older', 'dec1', r => r.adv?.ws ?? null, r => r.age >= 35 && !!r.adv);
+  // Game feats (tracked from the update that added them) and shooting by distance.
+  const feat = (k: 'games20' | 'best20Streak' | 'twentyTwenty' | 'triple20' | 'fiftyPointGames' | 'buzzerBeaters' | 'gameWinners') => (r: SeasonRow) => r.m?.[k] || null;
+  seasonRec('Feats', 'feat:g20', '20-point games in a season', 'int', feat('games20'));
+  seasonRec('Feats', 'feat:streak20', 'Most 20-point games in a row', 'int', feat('best20Streak'), undefined, 'a run can carry over from the season before');
+  seasonRec('Feats', 'feat:2020', '20-20 games in a season', 'int', feat('twentyTwenty'), undefined, '20+ in two of PTS, REB, AST');
+  seasonRec('Feats', 'feat:202020', '20-20-20 games in a season', 'int', feat('triple20'));
+  seasonRec('Feats', 'feat:50', '50-point games in a season', 'int', feat('fiftyPointGames'));
+  seasonRec('Feats', 'feat:buzzer', 'Buzzer-beaters in a season', 'int', feat('buzzerBeaters'));
+  seasonRec('Feats', 'feat:winners', 'Game-winning shots in a season', 'int', feat('gameWinners'), undefined, 'final 24 seconds');
+  seasonRec('Feats', 'feat:club', '50-40-90 seasons (best true shooting)', 'pct', r => per(r.stats.points, 2 * (r.stats.fga + 0.44 * r.stats.fta)), r => recordedShooting(r) && fiftyFortyNinety(r.stats, clubScale), '50% FG, 40% 3P, 90% FT');
+  const ZONE_MIN = [150, 100, 100, 100, 150, 25];
+  SHOT_BANDS.forEach((b, i) => seasonRec('Shooting by distance', `zone:${b.id}`, `FG% ${b.label.toLowerCase()} (season)`, 'pct', r => zoneSplits(r.m?.shotZones)[i].pct, r => (r.m?.shotZones?.[i * 2] ?? 0) >= ZONE_MIN[i], `${ZONE_MIN[i]}+ attempts`));
 
   // Career
   const careerEntry = (c: CareerRow) => ({ playerId: c.playerId, teamId: c.lastTeam ?? undefined, season: `${c.seasons} season${c.seasons === 1 ? '' : 's'}`, detail: `${c.totals.gamesPlayed} GP` });
@@ -321,6 +354,13 @@ export function computeRecords(league: League, extras?: GMLeagueExtras): RecordR
   careerRec('Longevity', 'seasons20', 'Seasons averaging 20+ points', 'int', c => c.seasons20);
   careerRec('Longevity', 'seasons1000', '1,000-point seasons', 'int', c => c.seasons1000);
   careerRec('Longevity', 'seasons10ws', 'Seasons with 10+ Win Shares', 'int', c => c.seasons10ws);
+  const careerFeats: [string, string, (f: CareerFeats) => number, string?][] = [
+    ['g20', 'Career 20-point games', f => f.games20], ['streak20', 'Longest run of 20-point games', f => f.best20Streak], ['2020', 'Career 20-20 games', f => f.twentyTwenty],
+    ['202020', 'Career 20-20-20 games', f => f.triple20], ['50', 'Career 50-point games', f => f.fifties], ['buzzer', 'Career buzzer-beaters', f => f.buzzerBeaters],
+    ['winners', 'Career game-winning shots', f => f.gameWinners, 'final 24 seconds'], ['club', '50-40-90 seasons', f => f.club, '50% FG, 40% 3P, 90% FT'],
+  ];
+  for (const [id, title, v, q] of careerFeats) careerRec('Feats', `feat:${id}`, title, 'int', c => v(c.feats) || NaN, () => true, q);
+  SHOT_BANDS.forEach((b, i) => careerRec('Shooting by distance', `zone:${b.id}`, `Career FG% ${b.label.toLowerCase()}`, 'pct', c => zoneSplits(c.feats.zones)[i].pct, c => (c.feats.zones?.[i * 2] ?? 0) >= ZONE_MIN[i] * 4, `${ZONE_MIN[i] * 4}+ attempts`));
 
   // Playoffs
   const po = rows.filter(r => r.playoff && r.playoff.gamesPlayed > 0);

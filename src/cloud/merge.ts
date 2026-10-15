@@ -1,5 +1,7 @@
 import { readRecordBook, mergeRecordBook } from '../retention/recordBook';
 import { readArcade, mergeArcade } from '../arcade/storage';
+import { mergeHoliday, loadHoliday } from '../retention/holiday';
+import { mergeOne, loadOne } from '../arcade/oneOnOne';
 import { readPlayTime, mergePlayTime } from '../retention/playTime';
 /*
  * Cloud progress: which stored values travel with an account, and how two copies (this device and the cloud) are
@@ -36,6 +38,8 @@ export const SYNC_KEYS = [
   'cv-theme', 'cv-menu-style', 'cv-favorites', 'cv-profile-name', 'cv-phone-order', 'cv-avatar-presets-v1', 'cv-my-ratings', 'cv-pets',
   // World Games records, the weekly recap's log, and the real-player looks you fixed.
   'cv-world-games', 'cv-week-log', 'cv-likeness',
+  // Holiday event coins (earned and spent per event), and your 1v1 record.
+  'cv-holiday', 'cv-1v1',
 ] as const;
 export type SyncKey = typeof SYNC_KEYS[number];
 
@@ -179,10 +183,16 @@ export function mergeValue(key: SyncKey, local: string | null | undefined, cloud
     case 'cv-ranked-best': return RANK_ORDER.indexOf(cloud) > RANK_ORDER.indexOf(local) ? cloud : local;
     case 'cv-founding': return local === '1' || cloud === '1' ? '1' : local;
     case 'cv-world-games': return JSON.stringify(mergeWorldGames(parse(local, {}), parse(cloud, {})));
+    case 'cv-holiday': return JSON.stringify(mergeHoliday(loadHoliday(() => local), loadHoliday(() => cloud)));
+    case 'cv-1v1': return JSON.stringify(mergeOne(loadOne(() => local), loadOne(() => cloud)));
     case 'cv-week-log': return JSON.stringify(mergeWeekLog(parse(local, {}), parse(cloud, {})));
     // Real-player looks: every fix from both devices, this device's when both changed the same player.
     case 'cv-likeness': return JSON.stringify({ ...parse<Obj>(cloud, {}), ...parse<Obj>(local, {}) });
-    case 'cv-pets': { const a = parse<Obj>(local, {}), b = parse<Obj>(cloud, {}); return JSON.stringify({ ...b, ...a, looks: { ...((b.looks as Obj) ?? {}), ...((a.looks as Obj) ?? {}) } }); }
+    case 'cv-pets': {
+      const a = parse<Obj>(local, {}), b = parse<Obj>(cloud, {}), list = (x: Obj) => (Array.isArray(x.second) ? x.second as string[] : []);
+      const second = [...new Set([...list(b), ...list(a)])];
+      return JSON.stringify({ ...b, ...a, looks: { ...((b.looks as Obj) ?? {}), ...((a.looks as Obj) ?? {}) }, ...(second.length ? { second } : {}) });
+    }
     // Your look on this device: theme, menu style, favourites, phone layout, saved characters, name, ratings.
     case 'cv-theme': case 'cv-menu-style': case 'cv-favorites': case 'cv-profile-name': case 'cv-phone-order': case 'cv-avatar-presets-v1': case 'cv-my-ratings': return local;
   }

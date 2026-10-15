@@ -57,6 +57,29 @@ export function playerTradeScore(p: PlayerSeason, league: League): number {
 }
 
 /** Steep curve: a 90 is worth several 70s. Scores are in Overall-like units. */
+/**
+ * A team's leader: its best player. His own team holds on to him (and prices him CORNERSTONE_PREMIUM higher) unless
+ * it is tanking (rebuilding) and he is past CORNERSTONE_YOUNG, or he asked out.
+ */
+export const CORNERSTONE_PREMIUM = 1.35, CORNERSTONE_YOUNG = 27;
+export function isProtectedCornerstone(p: PlayerSeason, league: League, teamId: string): boolean {
+  const team = league.teams.find(t => t.teamId === teamId);
+  if (!team || !team.seasons.some(s => s.playerId === p.playerId)) return false;
+  if (p.morale?.tradeRequest) return false;
+  const overall = calculateOverall(p);
+  if (team.seasons.some(s => s.playerId !== p.playerId && calculateOverall(s) > overall)) return false;
+  return teamDirection(league, teamId) !== 'rebuilding' || p.age <= CORNERSTONE_YOUNG;
+}
+/** A player from elsewhere who would become this team's leader: it prizes him as it would its own (so a star-for-star
+ *  swap of equals still balances). */
+export function wouldBeCornerstone(p: PlayerSeason, league: League, teamId: string): boolean {
+  const team = league.teams.find(t => t.teamId === teamId);
+  if (!team || team.seasons.some(s => s.playerId === p.playerId) || p.morale?.tradeRequest) return false;
+  const overall = calculateOverall(p);
+  if (team.seasons.some(s => calculateOverall(s) > overall)) return false;
+  return teamDirection(league, teamId) !== 'rebuilding' || p.age <= CORNERSTONE_YOUNG;
+}
+
 export const assetCurve = (score: number) => 100 * Math.pow(Math.max(0, score - 35) / 55, 2.7);
 
 export function tradeAssetValue(p: PlayerSeason, league: League, extras: GMLeagueExtras, perspectiveTeamId: string): number {
@@ -80,6 +103,8 @@ export function tradeAssetValue(p: PlayerSeason, league: League, extras: GMLeagu
   if (base > 84) value *= 1 + (base - 84) * 0.03;
   // A player who asked out is worth less to the team stuck with him: everyone knows they have to move him.
   if (p.morale?.tradeRequest && p.morale.teamId === perspectiveTeamId) return value * 0.85;
+  // A team's leader is worth more to it than to anyone else (and so is the star who would take his place).
+  if (isProtectedCornerstone(p, league, perspectiveTeamId) || wouldBeCornerstone(p, league, perspectiveTeamId)) return value * CORNERSTONE_PREMIUM;
   return value;
 }
 

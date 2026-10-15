@@ -4,7 +4,7 @@ import { applyHistoricalDeadline } from '../history/realRollover';
 import type { PlayerSeason } from './types';
 import type { League, LeagueTeam } from './league';
 import { signingDecision, strengthRanking } from './freeAgentDecision';
-import { pickAssetValue, tradeAssetValue } from './tradeValue';
+import { pickAssetValue, tradeAssetValue, isProtectedCornerstone } from './tradeValue';
 import { computeStandings } from './league';
 import type { PositionSuitability } from './types';
 import { primaryPosition } from './teamStatus';
@@ -312,7 +312,7 @@ export function findAITrade(league: League, extras: GMLeagueExtras, teamAId: str
   // A named target (a Deadline Day rumor, your trade block) is shopped whatever his age; otherwise the seller moves veterans.
   const named = targetPlayerId ? seller.seasons.find((s) => s.playerId === targetPlayerId) : undefined;
   const vets = named ? [named] : [...seller.seasons]
-    .filter((s) => s.age >= 28 && calculateOverall(s) >= rotationLine + 3)
+    .filter((s) => s.age >= 28 && calculateOverall(s) >= rotationLine + 3 && !isProtectedCornerstone(s, league, seller.teamId))
     .sort((a, b) => tradeAssetValue(b, league, extras, buyer.teamId) * needBoost(b, buyerNeed) - tradeAssetValue(a, league, extras, buyer.teamId) * needBoost(a, buyerNeed))
     .slice(0, 3);
   const currentYear = parseInt((league.season ?? '2026').slice(0, 4), 10);

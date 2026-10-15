@@ -230,3 +230,16 @@ export function tradeVeto(p: PlayerSeason, toTeamId: string, league: League): st
   const team = league.teams.find(t => t.teamId === toTeamId)?.name ?? 'that team';
   return `${p.playerId} refuses a trade to ${team} (${row.wins}-${row.losses}). A veteran star who wants to win won't go to a losing team.`;
 }
+
+/**
+ * A pay cut to win: a win-first player who doesn't care much about money (winning 70+, greed 50 or less) takes less to
+ * play for a contender. Returns the share he gives up (up to 35%), or null.
+ */
+export function payCut(p: PlayerSeason, contender: boolean): { discount: number; note: string } | null {
+  if (!contender) return null;
+  const per = personalityOf(p);
+  if (per.winning < PAY_CUT_WINNING || per.greed > PAY_CUT_GREED) return null;
+  const discount = Math.min(0.35, 0.15 + (per.winning - PAY_CUT_WINNING) / 150 + (PAY_CUT_GREED - per.greed) / 250);
+  return { discount, note: 'pay cut to win' };
+}
+export const PAY_CUT_WINNING = 70, PAY_CUT_GREED = 50;

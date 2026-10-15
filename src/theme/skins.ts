@@ -37,6 +37,8 @@ export const THEME_SKINS: Record<ThemeId, ThemeSkin> = {
   eclipse: skin(['#100e0c','#1c1713','#2d211a','#66483b','#b37753','#f7eddf','#d1c2b5','#ed9970','#28140c','#daba93'], { shadow: '0 3px 0 #070606' }),
   immortal: skin(['#0b101a','#131d2b','#202d40','#667387','#abbcd0','#f1f3fa','#c3cbd8','#f2cf91','#24221c','#9ad6e3'], { shadow: '0 3px 0 #050811' }),
   sovereign: skin(['#071525','#10273e','#1a3853','#7a6d4f','#ccb174','#fcf2db','#c3d5e4','#dfc17e','#172433','#99d4ed'], { border: '2px', shadow: 'inset 0 1px 0 #375477, 3px 4px 0 #040d16' }),
+  haunted: skin(['#0e0718','#1a0f2a','#26173c','#3c2a56','#a87ef0','#fbeee0','#d9c9ef','#ff7a1a','#0e0718','#8bdc3f'], { shadow: '0 3px 0 #050208' }),
+  winterland: skin(['#06150f','#0c241b','#173d2d','#245a42','#dff6ff','#f4fbff','#cfe8dc','#ff5a64','#06150f','#ffd166'], { shadow: '0 3px 0 #020805' }),
   frozen: skin(['#071827','#0d2438','#16334d','#2c5677','#bfe6ff','#f2fbff','#cfe6f5','#9fd8ff','#071827','#ffffff'], { shadow: '0 3px 0 #03101c' }),
   inferno: skin(['#140604','#22100a','#33180e','#5a2a14','#ffb347','#fff1e6','#f2c9a8','#ff6b2d','#140604','#ffe066'], { shadow: '0 3px 0 #070201' }),
   glitch: skin(['#07080d','#0f1119','#181b28','#3a2a55','#00f0ff','#eefcff','#a9b4c8','#00f0ff','#06121a','#ff2bd6'], { shadow: '-2px 0 0 #ff2bd6, 2px 2px 0 #00f0ff' }),

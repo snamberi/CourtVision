@@ -14,8 +14,8 @@ function serve(port: MessagePort) {
   port.onmessage = (e: MessageEvent<EngineJob>) => {
     const { id, input, pack } = e.data;
     try {
-      const { result, evidence } = runEngineJob(input, pack);
-      port.postMessage({ id, result, evidence: evidence! } satisfies EngineReply);
+      const { result, evidence, feats } = runEngineJob(input, pack);
+      port.postMessage({ id, result, evidence: evidence!, feats } satisfies EngineReply);
     } catch (err) {
       port.postMessage({ id, error: String(err) } satisfies EngineReply);
     }

@@ -3,13 +3,14 @@ import { CATEGORIES, feetInches, type CategoryId } from '../career/categories';
 
 /*
  * Your own player's ratings (the character in your Closet). Everyone starts 5'3" with every skill at 45. Every five
- * profile levels earn 7 points to spend: a point raises a skill by one (up to 120), and an inch of height costs 5
- * points. Only three skills can be rated 99 or more. Your player plays 3v3 Street with these.
+ * profile levels earn 7 points to spend. A point raises a skill by one up to 70; past that each step costs more (2
+ * from 70, 3 from 90, 5 from 100, up to 120). An inch of height costs 5, then 7 from 6'2", 12 from 6'8" and 20 from
+ * 7'5". Only three skills can be rated 99 or more. Your player plays 3v3 Street and 1v1 with these.
  */
 
 export type MySkill = Exclude<CategoryId, 'size'>;
 export const MY_SKILLS: { id: MySkill; name: string; short: string }[] = CATEGORIES.filter(c => c.id !== 'size').map(c => ({ id: c.id as MySkill, name: c.name, short: c.short }));
-export const BASE_RATING = 45, BASE_HEIGHT = 63, MAX_RATING = 120, MAX_HEIGHT = 90;
+export const BASE_RATING = 45, BASE_HEIGHT = 63, MAX_RATING = 120, MAX_HEIGHT = 94;
 export const POINTS_PER_STEP = 7, LEVELS_PER_STEP = 5, INCH_COST = 5;
 /** Only this many skills can be rated ELITE_FROM or more. */
 export const ELITE_FROM = 99, ELITE_SLOTS = 3;
@@ -22,7 +23,15 @@ export const baseRatings = (): MyRatings => ({ v: 1, skills: Object.fromEntries(
 
 /** Points earned by a profile level: 7 for every 5 levels. */
 export const pointsEarned = (level: number) => Math.floor(Math.max(0, level) / LEVELS_PER_STEP) * POINTS_PER_STEP;
-export const pointsSpent = (r: MyRatings) => MY_SKILLS.reduce((n, s) => n + (r.skills[s.id] - BASE_RATING), 0) + (r.height - BASE_HEIGHT) * INCH_COST;
+/** What the next point of a skill costs, from its current rating: 1, then 2 from 70, 3 from 90, 5 from 100. */
+export const skillStepCost = (v: number) => (v >= 100 ? 5 : v >= 90 ? 3 : v >= 70 ? 2 : 1);
+/** What the next inch costs, from the current height: 5, then 7 from 6'2", 12 from 6'8", 20 from 7'5". */
+export const inchStepCost = (h: number) => (h >= 89 ? 20 : h >= 80 ? 12 : h >= 74 ? 7 : INCH_COST);
+/** The cost tiers, for the panel's help text. */
+export const SKILL_TIERS: [number, number][] = [[70, 2], [90, 3], [100, 5]];
+export const HEIGHT_TIERS: [number, number][] = [[74, 7], [80, 12], [89, 20]];
+const sumSteps = (from: number, to: number, cost: (v: number) => number) => { let n = 0; for (let v = from; v < to; v++) n += cost(v); return n; };
+export const pointsSpent = (r: MyRatings) => MY_SKILLS.reduce((n, s) => n + sumSteps(BASE_RATING, r.skills[s.id], skillStepCost), 0) + sumSteps(BASE_HEIGHT, r.height, inchStepCost);
 export const pointsLeft = (r: MyRatings, level: number) => pointsEarned(level) - pointsSpent(r);
 export const eliteCount = (r: MyRatings) => MY_SKILLS.filter(s => r.skills[s.id] >= ELITE_FROM).length;
 
@@ -30,12 +39,13 @@ export const eliteCount = (r: MyRatings) => MY_SKILLS.filter(s => r.skills[s.id]
 export function raiseBlock(r: MyRatings, skill: MySkill, level: number): string | null {
   const v = r.skills[skill];
   if (v >= MAX_RATING) return `${MAX_RATING} is the most a skill can reach.`;
-  if (pointsLeft(r, level) < 1) return `No points left. You earn ${POINTS_PER_STEP} more every ${LEVELS_PER_STEP} levels.`;
+  const cost = skillStepCost(v);
+  if (pointsLeft(r, level) < cost) return cost > 1 ? `The next point costs ${cost}. You earn ${POINTS_PER_STEP} more every ${LEVELS_PER_STEP} levels.` : `No points left. You earn ${POINTS_PER_STEP} more every ${LEVELS_PER_STEP} levels.`;
   if (v + 1 === ELITE_FROM && eliteCount(r) >= ELITE_SLOTS) return `Only ${ELITE_SLOTS} skills can be rated ${ELITE_FROM} or more.`;
   return null;
 }
 export const heightBlock = (r: MyRatings, level: number): string | null =>
-  r.height >= MAX_HEIGHT ? `${feetInches(MAX_HEIGHT)} is as tall as you can grow.` : pointsLeft(r, level) < INCH_COST ? `An inch costs ${INCH_COST} points.` : null;
+  r.height >= MAX_HEIGHT ? `${feetInches(MAX_HEIGHT)} is as tall as you can grow.` : pointsLeft(r, level) < inchStepCost(r.height) ? `The next inch costs ${inchStepCost(r.height)} points.` : null;
 
 /** Raises (by +1) or lowers (by -1) a skill; lowering gives the point back. Returns the same object if not allowed. */
 export function stepSkill(r: MyRatings, skill: MySkill, by: 1 | -1, level: number): MyRatings {

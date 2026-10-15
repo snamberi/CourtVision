@@ -1,5 +1,6 @@
 import type { GameResult, PossessionLogEntry, TopPlay } from './boxscore';
 import { playbackForEntry } from './gamePlayback';
+import { periodLabel } from './gameLength';
 
 export type HighlightKind = 'gameWinner' | 'goAhead' | 'clutchThree' | 'dunk' | 'block' | 'andOne' | 'stealScore' | 'leadChange' | 'deepThree';
 export interface Highlight {
@@ -82,7 +83,7 @@ export function topPlaysFor(result: GameResult, max = 3): TopPlay[] {
 }
 
 export function formatGameClock(quarter: number, clockSeconds: number, regulationPeriods = 4): string {
-  const period = quarter <= regulationPeriods ? `${regulationPeriods === 2 ? 'H' : 'Q'}${quarter}` : `OT${quarter - regulationPeriods}`;
+  const period = periodLabel(quarter, regulationPeriods);
   const s = Math.max(0, Math.round(clockSeconds));
   return `${period} ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }

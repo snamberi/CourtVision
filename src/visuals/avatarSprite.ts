@@ -381,6 +381,28 @@ function drawCustomHat(r: Rect, id: string, hairHex: string) {
     case 'chefHat': r(12, 0, 16, 7, '#f4f6fa'); r(11, 1, 3, 5, '#f4f6fa'); r(26, 1, 3, 5, '#f4f6fa'); r(12, 7, 16, 3, '#e3e7ee'); r(14, 1, 3, 1, '#ffffff'); return;
     case 'propeller': drawHat(r, 'cap', '#4da3ff', '#000'); r(19, 2, 2, 2, '#ffd166'); r(13, 1, 7, 1, '#e8322e'); r(20, 1, 7, 1, '#6fdc93'); return;
     case 'santaHat': r(12, 4, 16, 6, '#c8102e'); r(22, 2, 6, 3, '#c8102e'); r(27, 3, 3, 5, '#c8102e'); r(29, 7, 3, 3, '#f4f6fa'); r(11, 8, 18, 3, '#f4f6fa'); return;
+    case 'elfHat':
+      // A green elf cap flopping to one side, red trim and a gold bell.
+      r(12, 4, 16, 6, '#1f8a3a'); r(14, 4, 4, 1, '#3fbf5f'); r(22, 2, 7, 3, '#1f8a3a'); r(28, 3, 3, 4, '#1f8a3a'); r(30, 6, 3, 3, '#ffd166'); r(31, 7, 1, 1, '#c9971f'); r(11, 8, 18, 3, '#e8323c'); r(12, 8, 16, 1, '#ff6b6b'); return;
+    case 'witchHat': {
+      // A tall, crooked black witch hat with a purple band and a little buckle.
+      const c = shade('#1f1830');
+      for (let y = 0; y < 9; y++) r(21 - Math.ceil(y * 0.9) + (y < 3 ? 2 : 0), y, 1 + Math.ceil(y * 1.8), 1, c.c);
+      r(7, 9, 26, 2, c.d); r(13, 7, 14, 2, '#7a3fc0'); r(19, 7, 2, 2, '#ffd166'); r(23, 1, 2, 1, c.l); return;
+    }
+    case 'pumpkinHead': {
+      // A carved pumpkin worn like a helmet: ribs, a stalk, triangle eyes lit from inside.
+      r(11, 2, 18, 11, '#ff7a1a'); r(12, 1, 16, 1, '#ff7a1a'); r(10, 4, 1, 7, '#ff7a1a'); r(29, 4, 1, 7, '#ff7a1a');
+      for (const x of [15, 20, 25]) r(x, 2, 1, 11, '#d9580b');
+      r(13, 2, 2, 3, '#ffb15a'); r(19, -1, 2, 3, '#3f7a24'); r(21, -1, 2, 1, '#5fae3a');
+      r(14, 6, 3, 2, '#ffd166'); r(15, 5, 1, 1, '#ffd166'); r(23, 6, 3, 2, '#ffd166'); r(24, 5, 1, 1, '#ffd166');
+      r(15, 10, 10, 1, '#ffd166'); r(16, 9, 2, 1, '#ffd166'); r(22, 9, 2, 1, '#ffd166'); return;
+    }
+    case 'reindeerAntlers':
+      // Brown antlers branching up from a headband, and a red nose... on the band.
+      r(11, 9, 18, 2, '#6b4423');
+      for (const [x, d] of [[12, -1], [27, 1]] as const) { r(x, 3, 2, 6, '#8a5a2b'); r(x + d * 2, 1, 2, 3, '#8a5a2b'); r(x - d, 0, 1, 3, '#8a5a2b'); r(x + d * 3, 4, 2, 2, '#8a5a2b'); r(x, 3, 1, 6, '#b07a42'); }
+      r(19, 9, 2, 2, '#e8323c'); return;
   }
 }
 
@@ -417,6 +439,11 @@ function drawEyes(r: Rect, id: string) {
 function drawNeck(r: Rect, id: string) {
   switch (id) {
     case 'frostCape': r(11, 24, 3, 2, I_FROST); r(26, 24, 3, 2, I_FROST); r(19, 25, 2, 1, I_SNOW); r(13, 23, 14, 1, I_SNOW); return;
+    case 'ghostCape': r(11, 24, 3, 2, '#e9eef7'); r(26, 24, 3, 2, '#e9eef7'); r(19, 25, 2, 1, '#8bdc3f'); r(13, 23, 14, 1, '#ffffff'); return;
+    case 'holidayScarf':
+      // A thick knitted scarf in red and green stripes, one end hanging down.
+      r(14, 24, 12, 3, '#e8323c'); for (let x = 15; x < 26; x += 3) r(x, 24, 1, 3, '#1f8a3a'); r(15, 24, 10, 1, '#ff8080');
+      for (let y = 26; y < 36; y++) r(23, y, 3, 1, y % 3 ? '#e8323c' : '#1f8a3a'); r(23, 36, 1, 1, '#f4f6fa'); r(25, 36, 1, 1, '#f4f6fa'); return;
     case 'flameCape': r(11, 24, 3, 2, F_EMBER); r(26, 24, 3, 2, F_EMBER); r(19, 25, 2, 1, F_HOT); r(13, 23, 14, 1, F_HOT); return;
     case 'goldChain': case 'silverChain': { const c = id === 'goldChain' ? '#ffd166' : '#d7dde6'; r(16, 27, 1, 3, c); r(23, 27, 1, 3, c); r(17, 30, 1, 1, c); r(22, 30, 1, 1, c); r(18, 31, 4, 1, c); r(19, 32, 2, 2, c); return; }
     case 'headphones': r(13, 24, 14, 2, '#2b2f3a'); r(12, 24, 3, 3, '#e8322e'); r(25, 24, 3, 3, '#e8322e'); return;
@@ -457,6 +484,11 @@ function drawBack(grid: SpriteGrid, id: string) {
         for (let x = x0 + 1; x < x0 + w - 1; x++) back(x, y, 1, 1, (x + y) % 7 === 0 ? '#ffe08a' : (y + s) % 6 === 0 ? '#c9971f' : '#ffd166');
       }
       return;
+    case 'ghostCape':
+      // A sheet-ghost cape: pale and see-through, ragged at the hem, with two hollow eyes on the back.
+      for (let y = 25; y < 48; y++) { const sp = Math.floor((y - 25) / 5); back(10 - sp, y, 20 + sp * 2, 1, (y + sp) % 7 === 0 ? '#cfd8e6' : '#eef2f8'); }
+      for (let x = 5; x < 35; x += 2) back(x, 48 + (x % 4 ? 1 : 0), 1, 2, '#cfd8e6');
+      back(15, 31, 2, 3, '#2a2140'); back(23, 31, 2, 3, '#2a2140'); return;
     case 'frostCape': case 'flameCape': {
       // A pale blue cape, frosted at the edges, ending in icicles (Inferno: a cape of flame, burning at the hem).
       const c = id === 'flameCape' ? FIRE_SET : ICE_SET;
@@ -507,6 +539,8 @@ const AURA_COLORS: Record<string, string[]> = {
   glitch: [G_CYAN, G_MAGENTA, G_WHITE],
   blizzard: [I_SNOW, I_FROST, I_ICE],
   inferno: [F_LAVA, F_EMBER, F_HOT, F_DEEP],
+  haunted: ['#7a3fc0', '#8bdc3f', '#2a1a40', '#ff7a1a'],
+  snowfall: ['#ffffff', '#dff4ff', '#e8323c', '#3fbf5f', '#ffd166'],
 };
 function auraCells(grid: SpriteGrid, kind: string): SpriteGrid {
   const H = grid.length, W = grid[0].length;
@@ -530,6 +564,19 @@ function auraCells(grid: SpriteGrid, kind: string): SpriteGrid {
       // A snowstorm: a pale frost haze close to the body and snowflakes swirling further out.
       if (near(x, y, 1, 1, 1)) { if (noise(x, y) % 3 === 0) out[y][x] = colors[2]; continue; }
       if (near(x, y, 5, 5, 5) && noise(x, y) % 7 === 0) out[y][x] = colors[noise(y, x) % 2];
+      continue;
+    }
+    if (kind === 'haunted') {
+      // A purple mist hugging the body, green wisps and the odd bat (an orange-eyed dot pair) further out.
+      if (near(x, y, 1, 1, 1)) { if (noise(x, y) % 3 === 0) out[y][x] = colors[noise(y, x) % 2 ? 0 : 2]; continue; }
+      if (near(x, y, 4, 4, 3) && noise(x, y) % 11 === 0) { out[y][x] = colors[1]; continue; }
+      if (near(x, y, 6, 6, 2) && noise(x, y) % 37 === 0 && x + 1 < W && !grid[y][x + 1]) { out[y][x] = colors[2]; out[y][x + 1] = colors[3]; }
+      continue;
+    }
+    if (kind === 'snowfall') {
+      // Snowflakes drifting all around, and a string of holiday lights close to the body.
+      if (near(x, y, 1, 1, 1)) { if (noise(x, y) % 5 === 0) out[y][x] = colors[2 + (noise(y, x) % 3)]; continue; }
+      if (near(x, y, 6, 6, 6) && noise(x, y) % 9 === 0) out[y][x] = colors[noise(y, x) % 2];
       continue;
     }
     if (kind === 'glitch') {

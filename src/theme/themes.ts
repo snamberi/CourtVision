@@ -3,6 +3,8 @@ import { PALETTE } from './palette.gen';
 import { roadLevel } from '../profile/cosmetics';
 import { trophyNeed } from '../profile/trophyRoad';
 import { seasonTier, seasonRule } from '../retention/season';
+import { shopOwned } from '../relics/shopOwned';
+import { eventPieceHidden } from '../retention/holiday';
 
 /*
  * App themes. Every colour in the stylesheets is a variable named by its role and original value
@@ -26,7 +28,9 @@ export type ThemeId = 'original' | 'cartridge' | 'scoreboard' | 'prodark' | 'ter
   // The game owner's (hidden from everyone else).
   | 'sovereign'
   // Season Pass looks (retention/season.ts).
-  | 'glitch' | 'frozen' | 'inferno';
+  | 'glitch' | 'frozen' | 'inferno'
+  // Holiday event looks (retention/holidayShop.ts).
+  | 'haunted' | 'winterland';
 type Family = 'red' | 'orange' | 'gold' | 'green' | 'blue' | 'purple';
 type Stop = [number, string];
 type Role = 'bg' | 'fg' | 'border' | 'shadow' | 'any';
@@ -51,6 +55,8 @@ export interface ThemeSpec {
   staff?: boolean;
   /** Opened at a Season Pass tier (retention/season.ts). */
   season?: { season: string; tier: number };
+  /** Bought in a holiday event shop: its key in the relic save's cosmetics. */
+  shop?: string;
   /** Colours for the picker's preview card. */
   preview: { bg: string; panel: string; line: string; text: string; dim: string; accent: string; onAccent: string; hi: string; display: string; body: string };
 }
@@ -319,6 +325,21 @@ THEMES.push(
     accent: { red: '#ff4d2e', orange: '#ff6b2d', gold: '#ffe066', green: '#c8e05a', blue: '#ffb347', purple: '#ff7a8a' },
     preview: { bg: '#140604', panel: '#22100a', line: '#a8401c', text: '#fff1e6', dim: '#f2c9a8', accent: '#ff6b2d', onAccent: '#140604', hi: '#ffe066', display: "'Oswald', sans-serif", body: "'Inter', sans-serif" },
   },
+  {
+    id: 'haunted', name: 'Haunted', blurb: 'Spooky Season: a purple night, pumpkin-orange buttons and ghostly green glows.', shop: 'evt-halloween-theme',
+    ramps: darkRamps({ floor: '#0e0718', panel: '#1a0f2a', panel2: '#201333', panel3: '#26173c', raised: '#2e1c48', line: '#3c2a56', lineMid: '#6a4a96', lineStrong: '#a87ef0', dim: '#d9c9ef', text: '#fbeee0', bright: '#ffffff', ink: '#0e0718' }),
+    shadow: '#050208',
+    accent: { red: '#ff4d5e', orange: '#ff7a1a', gold: '#ffd23f', green: '#8bdc3f', blue: '#a87ef0', purple: '#c084ff' },
+    preview: { bg: '#0e0718', panel: '#1a0f2a', line: '#6a4a96', text: '#fbeee0', dim: '#d9c9ef', accent: '#ff7a1a', onAccent: '#0e0718', hi: '#8bdc3f', display: "'Oswald', sans-serif", body: "'Inter', sans-serif" },
+  },
+  {
+    id: 'winterland', name: 'Winterland', blurb: 'Winter Wonderland: evergreen panels, candy-red buttons, gold lights and snow.', shop: 'evt-christmas-theme',
+    ramps: darkRamps({ floor: '#06150f', panel: '#0c241b', panel2: '#0f2b20', panel3: '#123325', raised: '#173d2d', line: '#245a42', lineMid: '#3f8a63', lineStrong: '#dff6ff', dim: '#cfe8dc', text: '#f4fbff', bright: '#ffffff', ink: '#06150f' }),
+    shadow: '#020805',
+    accent: { red: '#ff4d5e', orange: '#ff5a64', gold: '#ffd166', green: '#5fd38a', blue: '#9fd8ff', purple: '#c9a0ff' },
+    accentText: { red: '#ff6b78', orange: '#ff6b6b', gold: '#ffd166', green: '#5fd38a', blue: '#9fd8ff', purple: '#c9a0ff' },
+    preview: { bg: '#06150f', panel: '#0c241b', line: '#3f8a63', text: '#f4fbff', dim: '#cfe8dc', accent: '#ff5a64', onAccent: '#06150f', hi: '#ffd166', display: "'Oswald', sans-serif", body: "'Inter', sans-serif" },
+  },
 
 );
 
@@ -330,11 +351,12 @@ export const themeTrophies = (id: ThemeId) => trophyNeed('look', id) ?? 0;
 export const themeOpen = (id: ThemeId, level: number, trophies: number) => {
   const t = THEME_BY_ID.get(id);
   if (hasOwnerAccess()) return true;
+  if (t?.shop) return shopOwned().includes(t.shop);
   if (t?.season) return seasonTier(t.season.season) >= t.season.tier;
   return !t?.staff && level >= themeLevel(id) && trophies >= themeTrophies(id);
 };
-/** The looks this browser can see (Game Owner looks only for the owner). */
-export const visibleThemes = () => (hasOwnerAccess() ? THEMES : THEMES.filter(t => !t.staff));
+/** The looks this browser can see (Game Owner looks only for the owner; holiday looks while their event is on, or once owned). */
+export const visibleThemes = () => (hasOwnerAccess() ? THEMES : THEMES.filter(t => !t.staff && !eventPieceHidden(t.shop, shopOwned())));
 
 export const THEME_BY_ID = new Map(THEMES.map(t => [t.id, t]));
 

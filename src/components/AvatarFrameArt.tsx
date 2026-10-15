@@ -174,8 +174,23 @@ export function frameArtwork(id: AvatarFrameId): { under?: ReactNode; over: Reac
       {[30,38,46,54,62,70].map((x,i)=><path key={x} d={`M${x-3} ${83-Math.abs(50-x)*0.35}L${x+3} ${83-Math.abs(50-x)*0.35}L${x} ${92+(i%2)*4-Math.abs(50-x)*0.3}Z`} fill="#eaf8ff" stroke="#6db8ff" strokeWidth=".6" />)}
       <g className="avf-snow">{[[16,20],[84,26],[12,60],[88,66],[50,6]].map(([x,y])=><path key={`${x}-${y}`} d={`M${x-3} ${y}H${x+3}M${x} ${y-3}V${y+3}M${x-2} ${y-2}L${x+2} ${y+2}M${x+2} ${y-2}L${x-2} ${y+2}`} stroke="#ffffff" strokeWidth="1" />)}</g>
     </> };
+    // Spooky Season: a purple ring wrapped in cobwebs, a spider on a thread and two little pumpkins.
+    case 'cobweb': return { under:<><circle cx="50" cy="50" r="41" fill="#1a0f2a" stroke="#0b0614" strokeWidth="1.5" />{around(12,41,(x,y)=><path d={`M50 50L${x} ${y}`} stroke="#3c2a56" strokeWidth=".8" />)}</>, over:<>
+      <circle cx="50" cy="50" r="36" fill="none" stroke="#2a1a40" strokeWidth="5" />
+      <circle cx="50" cy="50" r="36" fill="none" stroke="#a87ef0" strokeWidth="1.2" strokeDasharray="5 3" />
+      {[[12,14,26],[88,14,74]].map(([x,y,x2])=><path key={x} d={`M${x} ${y}Q${(x+x2)/2} ${y+10} ${x2} ${y+3}M${x} ${y+6}Q${(x+x2)/2} ${y+15} ${x2} ${y+9}M${x+(x2>x?4:-4)} ${y-2}L${x+(x2>x?10:-10)} ${y+12}`} fill="none" stroke="#e9eef7" strokeWidth=".7" opacity=".85" />)}
+      <path d="M78 4V20" stroke="#e9eef7" strokeWidth=".6" /><g className="avf-detail"><circle cx="78" cy="22" r="3" fill={INK} /><path d="M74 20L72 18M74 23L71 24M82 20L84 18M82 23L85 24" stroke={INK} strokeWidth="1" /><rect x="76.5" y="21" width="1" height="1" fill="#ff7a1a" /><rect x="78.5" y="21" width="1" height="1" fill="#ff7a1a" /></g>
+      {[[26,86],[74,86]].map(([x,y])=><g key={x}><ellipse cx={x} cy={y} rx="7" ry="5.5" fill="#ff7a1a" stroke={INK} strokeWidth="1.2" /><path d={`M${x-2.5} ${y-5}V${y+5}M${x+2.5} ${y-5}V${y+5}`} stroke="#d9580b" strokeWidth="1" /><rect x={x-1} y={y-8} width="2" height="3" fill="#3f7a24" /><path d={`M${x-4} ${y-1}h2v1.5h-2zM${x+2} ${y-1}h2v1.5h-2zM${x-3} ${y+2}h6v1h-6z`} fill="#ffd166" /></g>)}
+    </> };
+    // Winter Wonderland: a ribbon-wrapped ring, a big red bow on top, holly and twinkling lights.
+    case 'giftWrap': return { under:<><circle cx="50" cy="50" r="41" fill="#0f3a2a" stroke="#06150f" strokeWidth="1.5" />{around(16,40,(x,y,i)=><circle cx={x} cy={y} r="1.5" fill={['#e8323c','#ffd166','#4da3ff','#ffffff'][i%4]} className="avf-detail" />)}</>, over:<>
+      <circle cx="50" cy="50" r="36" fill="none" stroke="#e8323c" strokeWidth="5" />
+      <circle cx="50" cy="50" r="36" fill="none" stroke="#ffd166" strokeWidth="1" strokeDasharray="2 6" />
+      <path d="M50 4L38 -2L40 12ZM50 4L62 -2L60 12Z" fill="#e8323c" stroke={INK} strokeWidth="1.2" /><path d="M50 12L46 22H49L50 18L51 22H54Z" fill="#c8102e" stroke={INK} strokeWidth=".8" /><circle cx="50" cy="8" r="3.2" fill="#ff5a64" stroke={INK} strokeWidth="1" />
+      {[[22,84],[78,84]].map(([x,y])=><g key={x}><path d={`M${x} ${y}l-7 -3l3 -2l-3 -3l6 1z M${x} ${y}l7 -3l-3 -2l3 -3l-6 1z`} fill="#1f8a3a" stroke={INK} strokeWidth=".8" /><circle cx={x-1} cy={y+1} r="1.6" fill="#e8323c" /><circle cx={x+1.5} cy={y+2} r="1.6" fill="#e8323c" /></g>)}
+    </> };
     default: return { over:<circle cx="50" cy="50" r="32" fill="none" stroke="#3a4a5f" strokeWidth="1.5" /> };
   }
 }
 
-export const frameAccent = (id: string): CSSProperties => ({ '--frame-accent': ({ rookie:'#e79857', courtside:'#dabb83', neon:'#6fe3ee', blaze:'#ff935c', dragon:'#7ae0ae', celestial:'#b8a0f4', bronzeCrest:'#d7a277', silverWings:'#c0deef', goldCrown:'#f7d278', undefeated:'#b8d4e5', perfectGold:'#f7d278', founding:'#efb57e', sovereign:'#79c9ff' } as Record<string,string>)[id] ?? '#8797ac' } as CSSProperties);
+export const frameAccent = (id: string): CSSProperties => ({ '--frame-accent': ({ rookie:'#e79857', courtside:'#dabb83', neon:'#6fe3ee', blaze:'#ff935c', dragon:'#7ae0ae', celestial:'#b8a0f4', bronzeCrest:'#d7a277', silverWings:'#c0deef', goldCrown:'#f7d278', undefeated:'#b8d4e5', perfectGold:'#f7d278', founding:'#efb57e', sovereign:'#79c9ff', cobweb:'#a87ef0', giftWrap:'#e8323c' } as Record<string,string>)[id] ?? '#8797ac' } as CSSProperties);

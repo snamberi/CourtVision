@@ -35,7 +35,24 @@ export const PET_ACCESSORIES: { id: PetAccessory; name: string }[] = [
 ];
 
 export interface PetLook { name: string; color: string; accessory: PetAccessory; accent: string }
-export interface PetState { v: 1; equipped: PetId | null; looks: Partial<Record<PetId, PetLook>> }
+/** `second`: pets whose second ability you've unlocked (with coins). */
+export interface PetState { v: 1; equipped: PetId | null; looks: Partial<Record<PetId, PetLook>>; second?: PetId[] }
+
+/*
+ * Second abilities: every pet has a second one, unlocked for SECOND_PRICE coins. It cuts the price of Relic Spins,
+ * Lucky Spins and relic upgrades while that pet is with you: a few percent for the early pets, up to 10% for the Dragon.
+ */
+export const SECOND_PRICE = 15_000;
+export const PET_SECOND: Record<PetId, { name: string; discount: number }> = {
+  cat: { name: 'Bargain Paws', discount: 0.04 }, dog: { name: 'Fetch a Deal', discount: 0.04 }, parrot: { name: 'Haggler', discount: 0.05 },
+  goldfish: { name: 'Small Change', discount: 0.05 }, hamster: { name: 'Coupon Cheeks', discount: 0.06 }, fox: { name: 'Sly Bargain', discount: 0.07 },
+  owl: { name: 'Wise Spender', discount: 0.08 }, bunny: { name: 'Lucky Price', discount: 0.08 }, turtle: { name: 'Slow Saver', discount: 0.09 },
+  dragon: { name: 'Hoard Keeper', discount: 0.1 },
+};
+export const secondOpen = (s: PetState, id: PetId) => (s.second ?? []).includes(id);
+export const secondBlurb = (id: PetId) => `${PET_SECOND[id].name}: Relic Spins, Lucky Spins and relic upgrades cost ${Math.round(PET_SECOND[id].discount * 100)}% less while it's with you.`;
+/** Marks a pet's second ability unlocked (the caller pays the coins). */
+export const withSecond = (s: PetState, id: PetId): PetState => (secondOpen(s, id) ? s : { ...s, second: [...(s.second ?? []), id] });
 export const PETS_KEY = 'cv-pets';
 export const PETS_EVENT = 'cv-pets-changed';
 
@@ -50,6 +67,8 @@ export function cleanPets(raw: unknown): PetState {
   const out: PetState = { v: 1, equipped: null, looks: {} };
   if (!x || typeof x !== 'object') return out;
   if (typeof x.equipped === 'string' && PET_BY_ID.has(x.equipped as PetId)) out.equipped = x.equipped as PetId;
+  const second = Array.isArray(x.second) ? [...new Set(x.second.filter(id => PET_BY_ID.has(id)))] : [];
+  if (second.length) out.second = second;
   for (const [id, l] of Object.entries(x.looks ?? {})) {
     if (!PET_BY_ID.has(id as PetId) || !l || typeof l !== 'object') continue;
     const d = defaultLook(id as PetId);
@@ -72,6 +91,12 @@ export function savePets(s: PetState): void {
 /** Brings a pet along (one at a time); null leaves them all at home. Locked pets can't be equipped. */
 export const equipPet = (s: PetState, id: PetId | null, level: number): PetState => (id && !petOpen(id, level) ? s : { ...s, equipped: id });
 export const setLook = (s: PetState, id: PetId, patch: Partial<PetLook>): PetState => ({ ...s, looks: { ...s.looks, [id]: { ...lookOf(s, id), ...patch } } });
+
+/** The relic-price discount from the pet you bring along (0 unless its second ability is unlocked). */
+export function petDiscount(level: number, read: Read = localRead): number {
+  const s = loadPets(read), id = s.equipped && petOpen(s.equipped, level) ? s.equipped : null;
+  return id && secondOpen(s, id) ? PET_SECOND[id].discount : 0;
+}
 
 /** The pet you bring along, if its level is reached (read once when a run starts). */
 export function activePet(level: number, read: Read = localRead): PetId | null {

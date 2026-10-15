@@ -88,11 +88,13 @@ describe('looks on the Level Road', () => {
     }
     expect(Object.keys(ROAD_LOOK_NAMES).sort()).toEqual(road.map(([, , id]) => id).sort());
     // The first five are free; ten on the Level Road, six on the Trophy Road: 21 in all.
-    expect(THEMES.filter(t => !t.staff && !t.season && themeLevel(t.id) === 1 && themeTrophies(t.id) === 0).map(t => t.id)).toEqual(['original', 'cartridge', 'scoreboard', 'prodark', 'terminal']);
+    expect(THEMES.filter(t => !t.staff && !t.season && !t.shop && themeLevel(t.id) === 1 && themeTrophies(t.id) === 0).map(t => t.id)).toEqual(['original', 'cartridge', 'scoreboard', 'prodark', 'terminal']);
+    // Two more are holiday event looks, bought in their event shops.
+    expect(THEMES.filter(t => t.shop).map(t => t.id)).toEqual(['haunted', 'winterland']);
     expect(THEMES.filter(t => themeTrophies(t.id) > 0).map(t => t.id)).toEqual(['aurora', 'royalcourt', 'galaxy', 'hallowed', 'eclipse', 'immortal']);
     expect(themeOpen('galaxy', 250, 74_999)).toBe(false);
     expect(themeOpen('galaxy', 1, 75_000)).toBe(true);
-    expect(THEMES).toHaveLength(25);
+    expect(THEMES).toHaveLength(27);
     expect(THEMES.filter(t => t.season).map(t => t.id)).toEqual(['glitch', 'frozen', 'inferno']);
     // The game owner's look: closed and hidden for everyone else.
     expect(THEMES.filter(t => t.staff).map(t => t.id)).toEqual(['sovereign']);

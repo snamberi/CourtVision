@@ -31,6 +31,8 @@ import { driftChemistryForRosterContinuity } from './engine/chemistryEvolution';
 import { RNG } from './engine/rng';
 import { calculateOverall, calculateFullAttributeOverall } from './engine/overall';
 import { developOffseasonPlayer } from './engine/development';
+import { gameMinutes } from './gameLength';
+import { worldDefOf } from './worldLeagues';
 import {
   generateDraftClass, buildTwoRoundDraftOrder, pickDraftClassSize, resolveTradedPicksIntoOrder,
   rollFutureDraftPicksForward, FUTURE_PICK_WINDOW_YEARS, priorTeamId, type GMLeagueExtras, type Contract,
@@ -43,7 +45,7 @@ import { settleStaffOffers } from './staffPoaching';
 import { collectPlayerIds } from './playerIds';
 import { computeSeasonAwards, type SeasonAwards, type SeasonAwardsOptions, type AwardWinner } from './awards';
 import type { LeagueRulesSettings } from './leagueRules';
-import { realDevelopmentOn } from './realDevelopmentGate';
+import { followsRealDevelopment, ratingsHeld, LOCKED_KEEPS_PLAYING } from './realDevelopmentGate';
 import { applyRealDevelopment, markRealFallback, realCareerContinues, realDevelopmentNote } from '../history/realDevelopment';
 import { historicalDraftClass, historicalDebuts } from '../history/realRollover';
 
@@ -99,16 +101,16 @@ export function rollFreeAgentsForward(league: League, freeAgents: PlayerSeason[]
     } : null;
     // Real Player Development: a real player follows his reference trajectory; everyone else (and real players past
     // their trajectory) develops through Court Vision.
-    const realStep = realDevelopmentOn(league) && fa.real ? applyRealDevelopment(fa, newSeason) : null;
-    let developed = realStep ?? developOffseasonPlayer(fa, rng, league.rulesSettings, 0.9, 'balanced', league.settings.sandboxMode ? 200 : 100);
-    if (!realStep && realDevelopmentOn(league) && fa.real) developed = markRealFallback(developed, newSeason);
+    const realStep = followsRealDevelopment(fa, league) ? applyRealDevelopment(fa, newSeason) : null;
+    let developed = realStep ?? developOffseasonPlayer(fa, rng, league.rulesSettings, 0.9, 'balanced', league.settings.sandboxMode ? 200 : 100, gameMinutes(league.settings.era));
+    if (!realStep && followsRealDevelopment(fa, league)) developed = markRealFallback(developed, newSeason);
     const next: PlayerSeason = { ...developed, season: newSeason, seasonStats: undefined, seasonMilestones: undefined, playoffStats: undefined, seasonStints: undefined,
       careerHistory: archived ? [...(fa.careerHistory ?? []), archived] : fa.careerHistory };
     const overall = calculateOverall(next);
     // A real player who really played this season stays in the league while his trajectory continues.
     if (realStep && realCareerContinues(fa, newSeason)) { out.push(next); continue; }
     const leavesLeague = next.age >= 24 && (overall < 45 ? rng.chance(0.5) : overall < 52 ? rng.chance(0.2) : false);
-    if (!isStuck(next) && !next.careerPlayer && (shouldRetire(next, rng, league.rulesSettings) || leavesLeague)) {
+    if (!isStuck(next) && !next.careerPlayer && (shouldRetire(next, rng, league.rulesSettings, worldDefOf(league)?.leaveAfterAge) || leavesLeague)) {
       retired.push({ playerId: next.playerId, finalTeamId: lastTeam ?? '', finalTeamName: teamName(lastTeam), finalSeason: previousSeason,
         finalAge: next.age, finalOverall: overall, finalSeasonData: retiredData(next) });
       continue;
@@ -118,7 +120,11 @@ export function rollFreeAgentsForward(league: League, freeAgents: PlayerSeason[]
   return { freeAgents: out, retired };
 }
 
-function shouldRetire(next: PlayerSeason, rng: RNG, rules?: LeagueRulesSettings): boolean {
+export function shouldRetire(next: PlayerSeason, rng: RNG, rules?: LeagueRulesSettings, leaveAfterAge?: number): boolean {
+  // Locked ratings (Edit Player): while he is still good, age never retires him.
+  if (next.lockRatings && calculateOverall(next) >= LOCKED_KEEPS_PLAYING) return false;
+  // College: past the last college age he moves on (graduates or turns pro).
+  if (leaveAfterAge != null && next.age > leaveAfterAge) return true;
   const forcedAge = 41 + (rules?.retirementAgeShiftYears ?? 0);
   if (next.age >= forcedAge) return true;
   const rampStartAge = 34 + (rules?.retirementAgeShiftYears ?? 0);
@@ -138,12 +144,12 @@ function shouldRetire(next: PlayerSeason, rng: RNG, rules?: LeagueRulesSettings)
  * worth a long look (not old and fading). Rotation players (sixth to eighth best, under 31) stay some of the time too. The player has to be willing (unhappy players and grudges refuse, see
  * resignVerdict) and gets his asking price; the hard cap still applies. Stars stay far more often than role players.
  */
-function aiResign(team: LeagueTeam, player: PlayerSeason, rank: number, extras: GMLeagueExtras, contracts: Record<string, Contract>, rng: RNG): Contract | null {
+function aiResign(team: LeagueTeam, player: PlayerSeason, rank: number, extras: GMLeagueExtras, contracts: Record<string, Contract>, rng: RNG, league?: League): Contract | null {
   const overall = calculateOverall(player);
   const core = rank < 5 || overall >= 70;
   const rotation = !core && rank < 8 && player.age <= 30;
   if ((!core && !rotation) || (player.age >= 34 && overall < 72) || player.age >= 37) return null;
-  const verdict = resignVerdict(extras, player, team.teamId);
+  const verdict = resignVerdict(extras, player, team.teamId, league);
   if (verdict.refuses) return null;
   const chance = (rotation ? 0.45 : rank < 2 || overall >= 75 ? 0.9 : rank < 5 ? 0.7 : 0.6) * (0.55 + verdict.interest / 160);
   if (rng.next() >= chance) return null;
@@ -265,19 +271,19 @@ export function beginNewSeasonRoster(
       const coachDevelopment = coachPerformanceModifiers(team.coachIdentity, team.seasons).development;
       const developmentMultiplier = expenseEffects(team.expenseLevels).developmentMultiplier * (1 + (coachDevelopment - 1) * (league.rulesSettings?.coachingImpact ?? 100) / 100)
         * (1 + (team.business?.arena.practice ?? 0) * 0.02); // a better practice facility
-      const realStep = realDevelopmentOn(league) && season.real ? applyRealDevelopment(season, newSeason) : null;
-      let developed = realStep ?? developOffseasonPlayer(season, rng, league.rulesSettings, developmentMultiplier * (1 + (teachingQuality(team, season.training?.plan.coachId) - 1) * (league.rulesSettings?.coachingImpact ?? 100) / 100), team.coach?.trainingFocus, league.settings.sandboxMode ? 200 : 100);
-      if (!realStep && realDevelopmentOn(league) && season.real) developed = markRealFallback(developed, newSeason);
+      const realStep = followsRealDevelopment(season, league) ? applyRealDevelopment(season, newSeason) : null;
+      let developed = realStep ?? developOffseasonPlayer(season, rng, league.rulesSettings, developmentMultiplier * (1 + (teachingQuality(team, season.training?.plan.coachId) - 1) * (league.rulesSettings?.coachingImpact ?? 100) / 100), team.coach?.trainingFocus, league.settings.sandboxMode ? 200 : 100, gameMinutes(league.settings.era));
+      if (!realStep && followsRealDevelopment(season, league)) developed = markRealFallback(developed, newSeason);
       if (team.teamId === userTeamId) {
         // Your summer camp, on top of normal development (real players on Real Player Development follow their real careers).
         const plan = camp?.plans[season.playerId];
-        const locked = realDevelopmentOn(league) && !!season.real;
+        const locked = ratingsHeld(season, league);
         const ran = plan && !locked ? applySummerCamp(developed, plan, `${season.playerId}|${newSeason}`, teachingQuality(team)) : null;
         const campGain = ran ? calculateOverall(ran.player) - calculateOverall(developed) : 0;
         if (ran) developed = ran.player;
-        campRows.push(reportRow(season, developed, campGain, plan, ran?.note ?? (plan ? '' : 'No summer plan.'), plan && locked ? 'Real Player Development: his ratings follow his real career.' : undefined));
+        campRows.push(reportRow(season, developed, campGain, plan, ran?.note ?? (plan ? '' : 'No summer plan.'), plan && locked ? (season.lockRatings ? 'Ratings locked (Edit Player): summer camp skipped.' : 'Real Player Development: his ratings follow his real career.') : undefined));
       }
-      const aged = recordOffseasonDevelopment(season, developed, team, league.calendarDate ?? previousSeason, realDevelopmentOn(league) && season.real ? realDevelopmentNote(developed, !!realStep) : undefined);
+      const aged = recordOffseasonDevelopment(season, developed, team, league.calendarDate ?? previousSeason, followsRealDevelopment(season, league) ? realDevelopmentNote(developed, !!realStep) : season.lockRatings ? 'Ratings locked (Edit Player).' : undefined);
       const withHistory: PlayerSeason = {
         ...aged,
         season: newSeason,
@@ -288,7 +294,7 @@ export function beginNewSeasonRoster(
         careerHistory: [...(season.careerHistory ?? []), archived],
       };
 
-      if (!isStuck(withHistory) && !withHistory.careerPlayer && !(realStep && realCareerContinues(season, newSeason)) && shouldRetire(withHistory, rng, league.rulesSettings)) {
+      if (!isStuck(withHistory) && !withHistory.careerPlayer && !(realStep && realCareerContinues(season, newSeason)) && shouldRetire(withHistory, rng, league.rulesSettings, worldDefOf(league)?.leaveAfterAge)) {
         retiredPlayerIds.push(withHistory.playerId);
         delete contracts[withHistory.playerId];
         newlyRetired.push({
@@ -328,7 +334,7 @@ export function beginNewSeasonRoster(
             continue;
           }
           // AI teams keep the players they build around (your own team decides in the re-sign phase).
-          const extension = team.teamId !== userTeamId ? aiResign(team, withHistory, rank.get(season.playerId) ?? 99, extras, contracts, rng) : null;
+          const extension = team.teamId !== userTeamId ? aiResign(team, withHistory, rank.get(season.playerId) ?? 99, extras, contracts, rng, league) : null;
           if (extension) {
             contracts[withHistory.playerId] = extension;
             resignedIds.push(withHistory.playerId);
@@ -361,7 +367,7 @@ export function beginNewSeasonRoster(
   retiredPlayerIds.push(...faResult.retired.map(r => r.playerId));
   newlyRetired.push(...faResult.retired);
 
-  const generateClass = () => { const size = pickDraftClassSize(teams.length, rng), seed = Math.floor(rng.next() * 1_000_000); return withLegacySons(generateDraftClass(size, seed, newSeason, collectPlayerIds(league, extras)), { ...league, retiredPlayers: [...(league.retiredPlayers ?? []), ...newlyRetired] }, seed); };
+  const generateClass = () => { const size = pickDraftClassSize(teams.length, rng), seed = Math.floor(rng.next() * 1_000_000); return withLegacySons(generateDraftClass(size, seed, newSeason, collectPlayerIds(league, extras), worldDefOf(league)), { ...league, retiredPlayers: [...(league.retiredPlayers ?? []), ...newlyRetired] }, seed); };
   // Historical leagues: this offseason's real draft class, and real players whose NBA debut is this season.
   let historical = league.historical;
   let draftClass: ReturnType<typeof generateDraftClass>;
