@@ -3,45 +3,8 @@ import { loadHistoryForTests } from './helpers/nbaHistoryFixture';
 import { cardPool } from '../hunt/cards';
 import { newSurvivalRun, keepTen, tagFranchise, playRound, answerClaim, signPlayer, emergencyOffer, emergencySign, EMERGENCY_PRICE, WIN_CASH, ROSTER, type SurvivalRun } from '../survival/run';
 import { newPerfectRun, quickSpinCard, pickPlayer, weeklyRule, ERA_RULES } from '../perfect/run';
-import {
-  newStory, currentBeat, continueStory, choose, spendTraining, choosePath, runDraft, playStoryGame, ending, inYearTwo, canStartYearTwo, startYearTwo, type StoryState,
-} from '../story/story';
 import { mergeRelics, loadRelics, type RelicState } from '../relics/relics';
-import { storyRewardKey, runCoins } from '../relics/rewards';
-
-function playStory(s0: StoryState): StoryState {
-  let s = s0;
-  for (let guard = 0; guard < 200 && !s.done; guard++) {
-    const b = currentBeat(s);
-    if (b.kind === 'chapter') s = continueStory(s);
-    else if (b.kind === 'scene') s = choose(s, b.choices(s)[0].id);
-    else if (b.kind === 'train') s = spendTraining(s, 'finishing');
-    else if (b.kind === 'path') s = choosePath(s, 'midmajor');
-    else if (b.kind === 'draft') s = runDraft(s);
-    else if (b.kind === 'game') s = playStoryGame(s);
-    else break;
-  }
-  return s;
-}
-
-describe('Story Mode: Chapter 6, Year Two', () => {
-  it('opens after any ending, plays on and ends with its own ending', () => {
-    const first = playStory(newStory(5, 'Jaylen Carter', 'scorer', 'Baltimore'));
-    expect(first.done).toBe(true);
-    expect(canStartYearTwo(first)).toBe(true);
-    const rookieGames = first.games.length;
-    const y2 = startYearTwo(first);
-    expect(inYearTwo(y2)).toBe(true);
-    expect(y2.done).toBe(false);
-    expect(currentBeat(y2).id).toBe('c6');
-    const done = playStory(y2);
-    expect(done.done).toBe(true);
-    expect(done.games.length).toBe(rookieGames + 3);
-    expect(ending(done).id.startsWith('y2-')).toBe(true);
-    expect(canStartYearTwo(done)).toBe(false);
-    expect(storyRewardKey(done)).not.toBe(storyRewardKey(first));
-  });
-});
+import { runCoins } from '../relics/rewards';
 
 describe('Survival: emergency signing', () => {
   it('pays cash for wins and sells one free agent a round', async () => {

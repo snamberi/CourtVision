@@ -89,5 +89,6 @@ export async function claimAchievementSpins(): Promise<number> {
 export const huntRewardKey = (r: { seed: number; difficulty?: string }) => `hunt:${r.seed}:${r.difficulty ?? 'pro'}`;
 export const perfectRewardKey = (r: { seed: number; mode: string; daily?: string }) => `p820:${r.seed}:${r.mode}:${r.daily ?? ''}`;
 export const survivalRewardKey = (r: { seed: number; level: string }) => `surv:${r.seed}:${r.level}`;
-export const storyRewardKey = (s: { seed: number; flags?: string[] }) => `story:${s.seed}${s.flags?.includes('yearTwo') ? ':y2' : ''}`;
+/** One reward per story: the NBA years have their own (a story finished before them may go on into the NBA and finish again). */
+export const storyRewardKey = (s: { seed: number; flags?: string[]; nba?: unknown }) => `story:${s.seed}${s.nba ? ':nba' : s.flags?.includes('yearTwo') ? ':y2' : ''}`;
 export const careerRewardKey = (m: { id: string }) => `career:${m.id}`;

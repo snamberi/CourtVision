@@ -7,13 +7,14 @@ import { defaultCoachTendencies } from '../simulation/league';
 import { DEFAULT_LEAGUE_RULES } from '../simulation/leagueRules';
 import { generatePlayer } from '../simulation/leagueGenerator';
 import { CATEGORY_BY_ID, type CategoryId } from '../career/categories';
+import type { StoryNba } from './storyNba';
 
 /*
- * Story Mode: Street to the League. One player's road from a park in his hometown to his rookie season in the NBA,
- * told in five chapters. Scenes ask you to choose (who you trust, how you train, what you say); key games are played
- * by the main game engine with you on the floor, and how you play changes the story. Three people walk the road with
- * you: your best friend Dre, Coach Ray from the rec center, and your rival Marcus "Ice" Vance. The ending depends on
- * your games, your hype, your grit and the people you kept close.
+ * Story Mode: Street to the League. One player's road from a park in his hometown to the NBA: four chapters on the
+ * way up (here), then fifteen seasons in the real league (storyNba.ts). Scenes ask you to choose (who you trust, how
+ * you train, what you say); key games are played by the main game engine with you on the floor, and how you play
+ * changes the story. Three people walk the road with you: your best friend Dre, Coach Ray from the rec center, and
+ * your rival Marcus "Ice" Vance. The ending depends on your career, your hype, your grit and the people you kept close.
  *
  * Everything is seeded: the same seed and the same choices tell the same story.
  */
@@ -38,16 +39,16 @@ export type Person = 'dre' | 'ray' | 'ice';
 export interface Effects { hype?: number; grit?: number; bond?: Partial<Record<Person, number>>; train?: Partial<Record<CategoryId, number>>; flag?: string }
 export interface Choice { id: string; label: string; result: string; effects: Effects }
 
-export type GameLevel = 'street' | 'hs' | 'hsRival' | 'state' | 'college' | 'collegeFinal' | 'nba' | 'nbaRival' | 'nbaPlayoff';
+export type GameLevel = 'street' | 'hs' | 'hsRival' | 'state' | 'college' | 'collegeFinal';
 /** Team calibers by level: [your teammates, the opponent]. Your own rating grows with training and age. */
 const LEVEL: Record<GameLevel, [number, number]> = {
-  street: [41, 42], hs: [46, 46], hsRival: [47, 49], state: [49, 51], college: [55, 56], collegeFinal: [57, 59], nba: [66, 67], nbaRival: [67, 68], nbaPlayoff: [69, 70],
+  street: [41, 42], hs: [46, 46], hsRival: [47, 49], state: [49, 51], college: [55, 56], collegeFinal: [57, 59],
 };
 
 export interface StoryGame { beat: string; title: string; opp: string; us: number; them: number; won: boolean; line: { pts: number; reb: number; ast: number; stl: number; blk: number; fgm: number; fga: number; min: number }; grade: string }
 
 export interface StoryState {
-  v: 1;
+  v: 2;
   seed: number;
   name: string;
   style: StoryStyle;
@@ -58,8 +59,8 @@ export interface StoryState {
   bonds: Record<Person, number>;
   flags: string[];
   path?: Path;
-  /** The beat you're on (index into the script). */
-  at: number;
+  /** The beat you're on (its id in the script); 'nba' once you're in the league. */
+  beat: string;
   /** Text of the choice you just made, shown above the next beat. */
   last?: string;
   games: StoryGame[];
@@ -68,6 +69,10 @@ export interface StoryState {
   /** Training points waiting to be spent. */
   points: number;
   done: boolean;
+  /** The NBA years, from draft night on (storyNba.ts). */
+  nba?: StoryNba;
+  /** A story finished before the NBA years existed: it ended after the rookie season (or Year Two). */
+  classic?: boolean;
 }
 
 export type Beat =
@@ -77,13 +82,13 @@ export type Beat =
   | { kind: 'path'; id: string; title: string; text: (s: StoryState) => string }
   | { kind: 'game'; id: string; title: string; level: GameLevel; opp: (s: StoryState) => string; stakes: (s: StoryState) => string; minutes: (s: StoryState) => number; key?: boolean; win: (s: StoryState, g: StoryGame) => string; loss: (s: StoryState, g: StoryGame) => string; reward?: { win?: Effects; loss?: Effects } }
   | { kind: 'draft'; id: string; title: string }
-  | { kind: 'ending'; id: string };
+  /** The NBA years (storyNba.ts) take over from here. */
+  | { kind: 'nba'; id: string };
 
 const first = (s: StoryState) => s.name.split(' ')[0];
 const stars = (s: StoryState) => Math.max(1, Math.min(5, Math.round((overall(s) - 38) / 4 + s.hype / 3)));
 export const overall = (s: StoryState) => calculateOverall(s.hero);
 const keyWins = (s: StoryState) => s.games.filter(g => g.won).length;
-const bestLine = (s: StoryState) => [...s.games].sort((a, b) => gameScore(b.line) - gameScore(a.line))[0];
 
 export const SCRIPT: Beat[] = [
   // ---------------------------------------------------------------- Act 1: The Blacktop
@@ -135,7 +140,7 @@ export const SCRIPT: Beat[] = [
       { id: 'quiet', label: 'No distractions. Win state first.', result: 'You turn your phone off for a month. Hart notices.', effects: { grit: 1, train: { iq: 1 } } },
     ] },
   { kind: 'game', id: 'g-state', title: 'State Championship', level: 'state', key: true, minutes: () => 32, opp: () => 'Westside (Ice Vance)', stakes: () => 'Of course it\'s Westside. Of course it\'s Ice. 12,000 people at the arena, every college coach in the state in the first three rows.',
-    win: (_, g) => `STATE CHAMPIONS, ${g.us}-${g.them}. Hart cries. Dre is on your shoulders even though you\'re the one who should be on his. Ice walks off without the handshake.`,
+    win: (_, g) => `STATE CHAMPIONS, ${g.us}-${g.them}. Hart cries. Dre is on your shoulders even though you're the one who should be on his. Ice walks off without the handshake.`,
     loss: (_, g) => `Westside wins it, ${g.them}-${g.us}. Ice cuts down the nets. You watch every second of it, on purpose.`,
     reward: { win: { hype: 2, flag: 'stateChamp' }, loss: { grit: 2 } } },
   { kind: 'train', id: 't2', title: 'Senior Summer', points: 3, text: () => 'One last summer before the big decision. Elite camps, AAU, and the empty gym at Douglass at 6 AM.' },
@@ -175,67 +180,8 @@ export const SCRIPT: Beat[] = [
     ] },
   { kind: 'draft', id: 'draft', title: 'The Green Room' },
 
-  // ---------------------------------------------------------------- Act 5: Rookie
-  { kind: 'chapter', id: 'c5', act: 5, age: 21, title: 'Rookie', text: s => `${s.draft?.team ?? 'Your new team'}. Your name on the back of a jersey in a real NBA locker room. The veterans make you carry the donuts. Ice is in the same conference.` },
-  { kind: 'scene', id: 'vet', title: 'The Veteran', text: () => 'Darius Cole, a 13-year veteran with two rings, watches you get torched in practice. Afterward he sits next to you. "You want the short version or the long version?"',
-    choices: () => [
-      { id: 'long', label: '"The long version."', result: 'Two hours on footwork, film and how to sleep on a plane. You take notes on your phone.', effects: { train: { iq: 2 }, grit: 1 } },
-      { id: 'short', label: '"I got it, OG. I\'m good."', result: '"Okay," he says, and never offers again.', effects: { hype: 1 } },
-      { id: 'body', label: '"Teach me how you lasted 13 years."', result: 'His trainer, his diet, his ice baths. Your body feels five years older and five years better.', effects: { train: { body: 2, athleticism: 1 } } },
-    ] },
-  { kind: 'game', id: 'g-debut', title: 'NBA Debut', level: 'nba', minutes: s => minutesForRookie(s, 16), opp: () => 'the Boston Celtics', stakes: s => `Opening night. ${s.draft?.pick && s.draft.pick <= 5 ? 'The arena chants your name when you check in.' : 'You check in late in the first quarter. Your mom is crying in section 112.'}`,
-    win: (_, g) => `A win in your first NBA game. ${g.line.pts} points; you keep the ball from your first bucket.`,
-    loss: (_, g) => `A loss, ${g.them}-${g.us}. ${g.line.pts ? `Your first NBA points come on a ${g.line.pts >= 10 ? 'night you\'ll remember' : 'quiet night'}.` : 'You don\'t score. Welcome to the league.'}`,
-    reward: { win: { hype: 1 }, loss: { grit: 1 } } },
-  { kind: 'scene', id: 'dre-call', title: 'A Call From Home', text: s => `Dre calls at 2 AM. ${s.bonds.dre >= 3 ? '"I need a favor, brother. I lost my job."' : '"Hey. I know we haven\'t talked. I lost my job."'} He sounds like he hasn\'t slept.`,
-    choices: s => [
-      { id: 'hire', label: 'Hire him to run your camps back home.', result: 'Dre runs the best youth camp in the city. Two hundred kids from Carver Park learn your name and his.', effects: { bond: { dre: 3 }, hype: 1 } },
-      { id: 'money', label: 'Send money. Lots of it.', result: 'It helps. It isn\'t the same as being there.', effects: { bond: { dre: 1 } } },
-      ...(s.bonds.dre < 1 ? [{ id: 'ignore', label: 'Let it go to voicemail.', result: 'You tell yourself you\'re focused. Ray hears about it.', effects: { bond: { dre: -2, ray: -1 }, train: { threePoint: 1 } } }] : []),
-    ] },
-  { kind: 'train', id: 't4', title: 'Midseason', points: 2, text: () => 'The schedule is brutal. The best rookies get better in January. Find the work.' },
-  { kind: 'game', id: 'g-ice', title: 'Ice', level: 'nbaRival', key: true, minutes: s => minutesForRookie(s, 22), opp: s => `${s.draft?.iceTeam ?? 'Ice\'s team'} (Ice Vance)`, stakes: s => `The first time you and Ice share an NBA floor. TNT is calling it the rookie game of the year. ${s.bonds.ice >= 1 ? 'He texts you before tip-off: "Let\'s give them a show."' : 'He hasn\'t said a word to you since the green room.'}`,
-    win: (s, g) => `${g.us}-${g.them}. ${g.line.pts >= 15 ? `${g.line.pts} for you. ` : ''}Ice finds you after the buzzer. ${s.bonds.ice >= 0 ? '"Carver Park," he says, and laughs. "You were always annoying."' : 'He walks past you, then stops, and taps your chest twice. Respect.'}`,
-    loss: (_, g) => `${g.them}-${g.us}. Ice wins round one in the NBA. "There's 15 more years of this," he says. "Get comfortable."`,
-    reward: { win: { hype: 2, bond: { ice: 1 }, flag: 'beatIce' }, loss: { grit: 2 } } },
-  { kind: 'game', id: 'g-playoff', title: 'Game 7', level: 'nbaPlayoff', key: true, minutes: s => minutesForRookie(s, 24), opp: () => 'the Denver Nuggets', stakes: s => `Somehow, you're here. First round, Game 7, on the road. ${s.flags.includes('stateChamp') ? 'You\'ve won a title game before.' : 'You\'ve never won the big one. Tonight would be a good night to start.'}`,
-    win: (_, g) => `GAME 7, ${g.us}-${g.them}. The road crowd goes silent. Your teammates mob you at center court. You\'re a rookie who won a Game 7.`,
-    loss: (_, g) => `Your season ends ${g.them}-${g.us}, one game short. On the plane home Darius Cole says: "Now you know what it feels like. Remember it."`,
-    reward: { win: { hype: 3, flag: 'game7' }, loss: { grit: 1 } } },
-  { kind: 'ending', id: 'end' },
-
-  // ---------------------------------------------------------------- Chapter 6 (bonus, after any ending): Year Two
-  { kind: 'chapter', id: 'c6', act: 6, age: 22, title: 'Year Two', text: s => `Summer again. ${s.hype >= 8 ? 'Your face is on a billboard on the highway home.' : 'Nobody stops you at the airport yet.'} Year two is when the league stops being surprised by you and starts scouting you. Ice put up 30 in the last game of his rookie year. He made sure you saw it.` },
-  { kind: 'scene', id: 'y2-deal', title: 'The Offer', text: () => 'Your agent slides two papers across the table. A sneaker company wants you as the face of a new line. A smaller deal would let you spend the summer in the gym instead of on a press tour.',
-    choices: () => [
-      { id: 'shoe', label: 'Sign the shoe deal.', result: 'Your logo, your colorway, your name on a box. You spend June on planes, not on the court.', effects: { hype: 3, grit: -1 } },
-      { id: 'gym', label: 'Take the small deal. Gym all summer.', result: 'Six a.m. every day at Carver Park. The kids start showing up at 5:45 to watch.', effects: { grit: 2, train: { athleticism: 1, body: 1 } } },
-      { id: 'dre', label: 'Make Dre your business manager first.', result: 'Dre negotiates like he plays defense: annoying and effective. The deal gets better.', effects: { bond: { dre: 2 }, hype: 1 } },
-    ] },
-  { kind: 'train', id: 't6', title: 'The Second Summer', points: 3, text: () => 'Every scout in the league has a file on you now. Add something they haven\'t seen.' },
-  { kind: 'game', id: 'y2-open', title: 'Year Two Opener', level: 'nba', minutes: s => minutesForRookie(s, 24), opp: () => 'the Milwaukee Bucks', stakes: s => `Opening night, year two. ${s.flags.includes('game7') ? 'The banner from last spring hangs over the floor.' : 'Last season ended early. This one starts tonight.'}`,
-    win: (_, g) => `${g.us}-${g.them}. ${g.line.pts >= 20 ? `${g.line.pts} points: the league notices.` : 'A win to start the year. That\'s the job.'}`,
-    loss: (_, g) => `${g.them}-${g.us}. The sophomore slump headlines are ready. You read every one.`,
-    reward: { win: { hype: 1 }, loss: { grit: 1 } } },
-  { kind: 'scene', id: 'y2-ray', title: 'Coach Ray', text: s => `Ray is in the hospital. Nothing serious, the doctors say, but he's seventy-one. ${s.bonds.ray >= 2 ? 'He asks the nurses to put your game on.' : 'He doesn\'t call you. Dre does.'}`,
-    choices: s => [
-      { id: 'visit', label: 'Fly home between games.', result: 'Two flights, no sleep, an hour at his bedside. He talks about your footwork the whole time.', effects: { bond: { ray: 2 }, grit: 1 } },
-      { id: 'game', label: 'Dedicate the next game to him.', result: 'You write his name on your shoes. The cameras find it.', effects: { hype: 1, flag: 'forRay' } },
-      ...(s.bonds.ray < 1 ? [{ id: 'later', label: 'Tell yourself you\'ll call after the road trip.', result: 'The road trip is twelve days long.', effects: { bond: { ray: -1 }, train: { iq: 1 } } }] : []),
-    ] },
-  { kind: 'game', id: 'y2-ice', title: 'Rising Stars', level: 'nbaRival', key: true, minutes: s => minutesForRookie(s, 26), opp: s => `Team Ice (${s.draft?.iceTeam ?? 'Ice Vance'})`, stakes: s => `All-Star Weekend. The league made you and Ice captains of the Rising Stars game. ${s.flags.includes('beatIce') ? 'He wants the rematch.' : 'You want the rematch.'}${s.flags.includes('forRay') ? ' Ray\'s name is still on your shoes.' : ''}`,
-    win: (s, g) => `${g.us}-${g.them}. Your team wins the Rising Stars game${g.line.pts >= 18 ? ` and you take MVP with ${g.line.pts}` : ''}. ${s.bonds.ice >= 1 ? 'Ice laughs the whole handshake line.' : 'Ice doesn\'t stay for the trophy.'}`,
-    loss: (_, g) => `${g.them}-${g.us}. Ice lifts the trophy and points it at you. Fine. The real season is still going.`,
-    reward: { win: { hype: 2, flag: 'risingMvp' }, loss: { grit: 2 } } },
-  { kind: 'train', id: 't7', title: 'The Stretch Run', points: 2, text: () => 'Twenty games left and a playoff seed on the line. Sharpen one thing.' },
-  { kind: 'game', id: 'y2-final', title: 'Conference Finals', level: 'nbaPlayoff', key: true, minutes: s => minutesForRookie(s, 30), opp: s => s.draft?.iceTeam ?? 'Ice\'s team', stakes: s => `Conference Finals, Game 6, and of course it's Ice. Win and you're in the Finals in year two. ${s.bonds.dre >= 3 ? 'Dre flew in. He\'s wearing your shoe.' : 'The whole of Carver Park is watching at the rec center.'}`,
-    win: (_, g) => `${g.us}-${g.them}. You're going to the NBA Finals in your second season. Ice waits at half court and hugs you. "Go get it," he says.`,
-    loss: (_, g) => `${g.them}-${g.us}. Ice goes to the Finals. You sit in the locker room in your jersey for an hour. Year three starts tomorrow.`,
-    reward: { win: { hype: 3, flag: 'finals' }, loss: { grit: 2 } } },
-  { kind: 'ending', id: 'end2' },
+  { kind: 'nba', id: 'nba' },
 ];
-
-export const minutesForRookie = (s: StoryState, base: number) => Math.min(36, Math.max(10, Math.round(base + (overall(s) - 64) * 0.9 + (s.draft?.pick && s.draft.pick <= 5 ? 4 : 0))));
 
 // ---------------------------------------------------------------- the hero
 
@@ -277,15 +223,17 @@ export const TRAINABLE: CategoryId[] = ['finishing', 'midRange', 'threePoint', '
 export function newStory(seed: number, name: string, style: StoryStyle, hometown: string, relics?: { clutchGene?: boolean; pet?: string | null }): StoryState {
   const clean = name.trim().replace(/\s+/g, ' ').slice(0, 24) || 'Jaylen Carter';
   // The Clutch Gene (a secret relic): two grit before the first page.
-  return { v: 1, seed, name: clean, style, hometown, hero: createHero(seed, clean, style), hype: 0, grit: (relics?.clutchGene ? 2 : 0) + (relics?.pet === 'turtle' ? 2 : 0), bonds: { dre: 1, ray: 0, ice: 0 }, flags: [], at: 0, games: [], points: 0, done: false };
+  return { v: 2, seed, name: clean, style, hometown, hero: createHero(seed, clean, style), hype: 0, grit: (relics?.clutchGene ? 2 : 0) + (relics?.pet === 'turtle' ? 2 : 0), bonds: { dre: 1, ray: 0, ice: 0 }, flags: [], beat: SCRIPT[0].id, games: [], points: 0, done: false };
 }
 
-/** The beat you're on (skipping scenes whose condition doesn't hold). */
+const NBA_BEAT = SCRIPT.find(b => b.kind === 'nba')!;
+const beatIndex = (s: Pick<StoryState, 'beat'>) => SCRIPT.findIndex(b => b.id === s.beat);
+/** The beat you're on (the NBA years once you're past the draft). */
 export function currentBeat(s: StoryState): Beat {
-  return SCRIPT[Math.min(s.at, SCRIPT.length - 1)];
+  return SCRIPT[beatIndex(s)] ?? NBA_BEAT;
 }
 
-function applyEffects(s: StoryState, e: Effects | undefined): StoryState {
+export function applyEffects(s: StoryState, e: Effects | undefined): StoryState {
   if (!e) return s;
   let hero = s.hero;
   for (const [cat, n] of Object.entries(e.train ?? {})) hero = trainHero(hero, cat as CategoryId, (n ?? 0) * TRAIN_STEP);
@@ -296,14 +244,14 @@ function applyEffects(s: StoryState, e: Effects | undefined): StoryState {
 
 /** Moves to the next beat, entering chapters (aging up) and skipping scenes that don't apply. */
 function advance(s: StoryState): StoryState {
-  let next = { ...s, at: s.at + 1 };
+  let i = beatIndex(s) + 1;
+  let next = s;
   for (;;) {
-    const b = SCRIPT[next.at];
-    if (!b) return { ...next, done: true };
-    if (b.kind === 'scene' && b.when && !b.when(next)) { next = { ...next, at: next.at + 1 }; continue; }
+    const b = SCRIPT[i] ?? NBA_BEAT;
+    next = { ...next, beat: b.id };
+    if (b.kind === 'scene' && b.when && !b.when(next)) { i++; continue; }
     if (b.kind === 'chapter') next = { ...next, hero: growUp(next.hero, Math.max(0, b.age - next.hero.age)) };
     if (b.kind === 'train') next = { ...next, points: b.points };
-    if (b.kind === 'ending') next = { ...next, done: true };
     return next;
   }
 }
@@ -343,22 +291,6 @@ export function draftPick(s: StoryState): number | null {
   return Math.max(1, Math.min(60, Math.round(31 - score)));
 }
 
-const NBA_TEAMS = ['Detroit Pistons', 'San Antonio Spurs', 'Charlotte Hornets', 'Portland Trail Blazers', 'Washington Wizards', 'Utah Jazz', 'Toronto Raptors', 'Memphis Grizzlies', 'Sacramento Kings', 'Chicago Bulls', 'Orlando Magic', 'Brooklyn Nets', 'Atlanta Hawks', 'Houston Rockets', 'Indiana Pacers', 'Miami Heat'];
-
-export function runDraft(s: StoryState): StoryState {
-  const b = currentBeat(s);
-  if (b.kind !== 'draft') return s;
-  const rng = new RNG(s.seed * 17 + 3);
-  const pick = draftPick(s);
-  const icePick = pick === 1 ? 2 : pick && pick <= 3 ? 1 : 1 + rng.nextInt(3);
-  const team = NBA_TEAMS[(pick ?? 30) % NBA_TEAMS.length];
-  let iceTeam = NBA_TEAMS[(icePick * 7 + 3) % NBA_TEAMS.length];
-  if (iceTeam === team) iceTeam = NBA_TEAMS[(icePick * 7 + 4) % NBA_TEAMS.length];
-  const draft = { pick, team: pick ? team : 'Undrafted (summer league invite)', icePick, iceTeam };
-  const line = pick ? `With the ${ordinal(pick)} pick, the ${team} select... ${s.name}.` : 'Sixty names are called. Yours isn\'t. At midnight your phone rings: a summer league invite. You take it.';
-  return { ...advance({ ...s, draft, hype: s.hype + (pick && pick <= 10 ? 2 : 0) }), last: line };
-}
-
 export const ordinal = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`;
 
 // ---------------------------------------------------------------- games
@@ -381,7 +313,7 @@ function squad(level: GameLevel, side: 0 | 1, seed: number, count: number, s: St
 }
 
 /** Your effective self in a game: grit sharpens the mental side, hype is pressure (and confidence). */
-function heroForGame(s: StoryState): PlayerSeason {
+export function heroForGame(s: StoryState): PlayerSeason {
   const m = s.hero.attributes.mental;
   const lift = Math.min(8, s.grit);
   const mental = { ...m, clutch: clamp99(m.clutch + lift), composure: clamp99(m.composure + lift), confidence: clamp99(m.confidence + Math.min(6, s.hype)) };
@@ -414,13 +346,18 @@ export function playStoryGame(s: StoryState): StoryState {
   return { ...advance(next), last: won ? b.win(next, game) : b.loss(next, game) };
 }
 
-// ---------------------------------------------------------------- the ending
+// ---------------------------------------------------------------- the ending of a classic story
 
 export interface Ending { id: string; title: string; text: string; tier: 'legend' | 'star' | 'pro' | 'grinder' }
 
-export function ending(s: StoryState): Ending {
+/** The key games of the old scripted rookie year and Year Two (stories finished before the NBA years keep their endings). */
+const CLASSIC_KEY = new Set(['g-state', 'g-final', 'g-ice', 'g-playoff', 'y2-ice', 'y2-final']);
+const inYearTwo = (s: Pick<StoryState, 'flags'>) => s.flags.includes('yearTwo');
+
+/** How a classic story (one that ended after the scripted rookie year) ended. */
+export function classicEnding(s: StoryState): Ending {
   if (inYearTwo(s)) return yearTwoEnding(s);
-  const key = s.games.filter(g => g.won && SCRIPT.some(b => b.id === g.beat && b.kind === 'game' && b.key)).length;
+  const key = s.games.filter(g => g.won && CLASSIC_KEY.has(g.beat)).length;
   const ovr = overall(s);
   const avg = s.games.length ? s.games.reduce((n, g) => n + gameScore(g.line), 0) / s.games.length : 0;
   const pts = (ovr - 60) * 1.5 + key * 4 + s.hype * 0.8 + avg * 0.3 + (s.draft?.pick && s.draft.pick <= 5 ? 4 : 0);
@@ -436,16 +373,6 @@ export function ending(s: StoryState): Ending {
   const ray = s.bonds.ray >= 4 ? 'Coach Ray sits courtside at every home game, in the seat you bought for him.' : s.bonds.ray >= 1 ? 'Ray watches every game from the rec-center office, on a TV with bad reception.' : 'Coach Ray tells the kids at the rec center about you. He leaves out the parts where you stopped calling.';
   const ice = s.flags.includes('beatIce') ? (s.bonds.ice >= 0 ? 'Ice calls it the best rivalry in the league. So do you.' : 'Ice has your next game circled. So do you.') : 'Ice got the first win in the NBA. You have a long memory.';
   return { id: tier, title: base.title, text: `${base.text}\n\n${dre}\n${ray}\n${ice}`, tier };
-}
-
-/** Chapter 6 (Year Two): open once you've reached any ending. */
-export const inYearTwo = (s: Pick<StoryState, 'flags'>) => s.flags.includes('yearTwo');
-const YEAR_TWO_AT = SCRIPT.findIndex(b => b.id === 'c6');
-export const canStartYearTwo = (s: StoryState) => s.done && !inYearTwo(s) && YEAR_TWO_AT > 0;
-export function startYearTwo(s: StoryState): StoryState {
-  if (!canStartYearTwo(s)) return s;
-  const b = SCRIPT[YEAR_TWO_AT] as Extract<Beat, { kind: 'chapter' }>;
-  return { ...s, done: false, at: YEAR_TWO_AT, last: undefined, flags: [...s.flags, 'yearTwo', `rookie:${ending({ ...s, flags: s.flags }).tier}`], hero: growUp(s.hero, Math.max(0, b.age - s.hero.age)) };
 }
 function yearTwoEnding(s: StoryState): Ending {
   const y2 = s.games.filter(g => g.beat.startsWith('y2-'));
@@ -465,18 +392,32 @@ function yearTwoEnding(s: StoryState): Ending {
   return { id: `y2-${tier}`, title: base.title, text: `${base.text}\n\n${ray}\n${ice}`, tier };
 }
 
-export function storyShareText(s: StoryState, site: string): string {
-  const e = ending(s);
-  const best = bestLine(s);
-  return `Court Vision Story Mode: ${s.name}, from ${s.hometown} to the NBA\n${e.title}${s.draft ? ` · ${s.draft.pick ? `#${s.draft.pick} pick` : 'undrafted'}` : ''}\n${s.games.map(g => (g.won ? '🟩' : '🟥')).join('')}${best ? `\nBest game: ${best.line.pts} PTS, ${best.line.reb} REB, ${best.line.ast} AST vs ${best.opp}` : ''}\n${site}/#/story`;
-}
-
 // ---------------------------------------------------------------- saving
 
 export const STORY_KEY = 'cv-story';
 export const STORY_ENDINGS_KEY = 'cv-story-endings';
 export function loadStory(): StoryState | null {
-  try { const s = JSON.parse(localStorage.getItem(STORY_KEY) ?? 'null') as StoryState | null; return s && s.v === 1 && s.hero && Array.isArray(s.games) ? s : null; } catch { return null; }
+  try { return migrateStory(JSON.parse(localStorage.getItem(STORY_KEY) ?? 'null')); } catch { return null; }
+}
+
+/** The beats of the first Story Mode (saves kept the beat's position, not its name). */
+const V1_BEATS = ['c1', 'park', 'g-park', 'party', 't1', 'c2', 'tryout', 'g-opener', 'dre-grades', 'g-westside', 'stars', 'g-state', 't2', 'c3', 'path', 'campus', 'belgrade', 't3', 'g-college', 'g-final', 'c4', 'interview', 'draft',
+  'c5', 'vet', 'g-debut', 'dre-call', 't4', 'g-ice', 'g-playoff', 'end', 'c6', 'y2-deal', 't6', 'y2-open', 'y2-ray', 'y2-ice', 't7', 'y2-final', 'end2'];
+/**
+ * A saved story, brought up to date. A first-version story still on the road to the NBA carries on where it was; one
+ * already in the scripted rookie year (or Year Two) moves into the real league; a finished one stays finished (with
+ * the option to take that player into the real NBA).
+ */
+export function migrateStory(raw: unknown): StoryState | null {
+  const r = raw as (Omit<Partial<StoryState>, 'v'> & { v?: number; at?: number }) | null;
+  if (!r || typeof r !== 'object' || !r.hero || !Array.isArray(r.games)) return null;
+  if (r.v === 2 && typeof r.beat === 'string') return r as StoryState;
+  if (r.v !== 1 || typeof r.at !== 'number') return null;
+  const { at, ...rest } = r;
+  const id = V1_BEATS[Math.max(0, Math.min(V1_BEATS.length - 1, at))];
+  const onTheRoad = SCRIPT.some(b => b.id === id && b.kind !== 'nba');
+  if (onTheRoad && !r.done) return { ...(rest as StoryState), v: 2, beat: id };
+  return { ...(rest as StoryState), v: 2, beat: 'nba', points: 0, ...(r.done ? { classic: true } : {}) };
 }
 export function saveStory(s: StoryState | null): void {
   try { if (s) localStorage.setItem(STORY_KEY, JSON.stringify(s)); else localStorage.removeItem(STORY_KEY); } catch { /* storage blocked */ }
@@ -486,10 +427,10 @@ export function loadEndings(): StoryEndings {
   try { const r = JSON.parse(localStorage.getItem(STORY_ENDINGS_KEY) ?? 'null') as StoryEndings | null; if (r && Number.isFinite(r.finished)) return { finished: r.finished, tiers: r.tiers ?? {} }; } catch { /* fall through */ }
   return { finished: 0, tiers: {} };
 }
-export function recordEnding(s: StoryState): StoryEndings {
-  const r = loadEndings(), t = ending(s).tier;
+export function recordEnding(t: Ending['tier']): StoryEndings {
+  const r = loadEndings();
   const next = { finished: r.finished + 1, tiers: { ...r.tiers, [t]: (r.tiers[t] ?? 0) + 1 } };
   try { localStorage.setItem(STORY_ENDINGS_KEY, JSON.stringify(next)); } catch { /* storage blocked */ }
   return next;
 }
-export const chapterOf = (s: StoryState) => [...SCRIPT.slice(0, s.at + 1)].reverse().find((b): b is Extract<Beat, { kind: 'chapter' }> => b.kind === 'chapter');
+export const chapterOf = (s: StoryState) => [...SCRIPT.slice(0, (beatIndex(s) < 0 ? SCRIPT.length : beatIndex(s)) + 1)].reverse().find((b): b is Extract<Beat, { kind: 'chapter' }> => b.kind === 'chapter');

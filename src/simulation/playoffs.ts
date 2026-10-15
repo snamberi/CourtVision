@@ -135,6 +135,14 @@ export function autoGeneratePlayoffBracket(league: League, gamesToWin?: number):
   return generateConferencePlayoffBracket(league, gamesToWin ?? 4);
 }
 
+/** The undecided play-in game or series `teamId` is in (its id), or null when the team's postseason is over (or never began). */
+export function currentMatchup(b: PlayoffBracket, teamId: string): string | null {
+  if (b.championTeamId) return null;
+  const pi = b.playIn?.find((x) => !x.winnerTeamId && (x.teamAId === teamId || x.teamBId === teamId));
+  if (pi) return pi.id;
+  return b.rounds.flat().find((x) => !x.winnerTeamId && (x.teamAId === teamId || x.teamBId === teamId))?.id ?? null;
+}
+
 function findNextSeries(bracket: PlayoffBracket): PlayoffSeries | null {
   for (const round of bracket.rounds) {
     for (const series of round) {

@@ -79,7 +79,7 @@ export function findPlayer(league: League, extras: GMLeagueExtras, playerId: str
   return fa ? { player: fa, teamId: null } : null;
 }
 
-function replacePlayer(league: League, extras: GMLeagueExtras, next: PlayerSeason): { league: League; extras: GMLeagueExtras } {
+export function replacePlayer(league: League, extras: GMLeagueExtras, next: PlayerSeason): { league: League; extras: GMLeagueExtras } {
   return {
     league: { ...league, teams: league.teams.map(t => (t.seasons.some(s => s.playerId === next.playerId) ? { ...t, seasons: t.seasons.map(s => (s.playerId === next.playerId ? next : s)) } : t)) },
     extras: { ...extras, freeAgents: extras.freeAgents.map(s => (s.playerId === next.playerId ? next : s)), draftClass: extras.draftClass.map(d => (d.playerId === next.playerId ? { ...d, trueSeason: next } : d)) },
@@ -167,7 +167,7 @@ export function defaultTraining(prime: Prime, progress: Progress): CategoryId[] 
 const AWARD_KEYS = new Set<TrophyKey>(['champion', 'fmvp', 'mvp', 'dpoy', 'roy', 'mip', 'smoy', 'allLeague1', 'allLeague2', 'allLeague3', 'allDefense1', 'allDefense2', 'allRookie1', 'allRookie2', 'allStar', 'allStarMvp', 'scoringChamp', 'reboundingChamp', 'assistsChamp', 'stealsChamp', 'blocksChamp']);
 
 /** His line for the season that just ended (the league has rolled over into the next one). */
-export function seasonRecord(league: League, extras: GMLeagueExtras, meta: CareerMeta, season: string): CareerYear | null {
+export function seasonRecord(league: League, extras: GMLeagueExtras, meta: Pick<CareerMeta, 'playerId'> & { training?: CategoryId[] }, season: string): CareerYear | null {
   const found = findPlayer(league, extras, meta.playerId);
   const rec = found?.player.careerHistory?.findLast(r => r.season === season);
   if (!found || !rec) return null;
@@ -179,7 +179,7 @@ export function seasonRecord(league: League, extras: GMLeagueExtras, meta: Caree
     season, age: rec.age, teamId, teamName: teamId ? league.teams.find(t => t.teamId === teamId)?.name ?? teamId : 'Free agent', overall: rec.overall,
     stats: rec.stats, ...(rec.playoffStats?.gamesPlayed ? { playoffs: rec.playoffStats } : {}), ...(rec.milestones ? { highs: rec.milestones } : {}),
     ...(ts ? { record: { w: ts.wins, l: ts.losses }, finish: ts.playoffFinish } : {}),
-    awards, training: meta.training,
+    awards, training: meta.training ?? [],
   };
 }
 
@@ -190,7 +190,7 @@ export interface Offer { kind: OfferKind; teamId: string; teamName: string; sala
 export const OFFER_LABEL: Record<OfferKind, string> = { money: 'Biggest contract', contender: 'Title contender', role: 'Biggest role', home: 'Re-sign' };
 
 /** Offers for a free agent: the best money, the best team and the biggest role (and his old team). */
-export function freeAgentOffers(league: League, extras: GMLeagueExtras, meta: CareerMeta): Offer[] {
+export function freeAgentOffers(league: League, extras: GMLeagueExtras, meta: Pick<CareerMeta, 'playerId' | 'years'>): Offer[] {
   const found = findPlayer(league, extras, meta.playerId);
   if (!found || found.teamId) return [];
   const p = found.player, pos = primaryPosition(p), ovr = calculateOverall(p);
@@ -215,7 +215,7 @@ export function freeAgentOffers(league: League, extras: GMLeagueExtras, meta: Ca
   return out;
 }
 
-export function signOffer(league: League, extras: GMLeagueExtras, meta: CareerMeta, offer: Offer): { league: League; extras: GMLeagueExtras; note: string } {
+export function signOffer(league: League, extras: GMLeagueExtras, meta: Pick<CareerMeta, 'playerId'>, offer: Offer): { league: League; extras: GMLeagueExtras; note: string } {
   const r = signFreeAgent(league, extras, meta.playerId, offer.teamId, { annualSalary: offer.salary, yearsRemaining: offer.years, playerOption: false, teamOption: false });
   if (r.league === league) {
     // The cap got in the way: he signs for the minimum instead.
@@ -228,7 +228,7 @@ export function signOffer(league: League, extras: GMLeagueExtras, meta: CareerMe
 
 export type TradeWish = 'contender' | 'role' | 'anywhere';
 /** He asks out: the chosen kind of team gets him for its player closest to his level. */
-export function requestTrade(league: League, extras: GMLeagueExtras, meta: CareerMeta, wish: TradeWish): { league: League; extras: GMLeagueExtras; note: string } {
+export function requestTrade(league: League, extras: GMLeagueExtras, meta: Pick<CareerMeta, 'playerId' | 'seed' | 'years'>, wish: TradeWish): { league: League; extras: GMLeagueExtras; note: string } {
   const found = findPlayer(league, extras, meta.playerId);
   if (!found?.teamId) return { league, extras, note: 'He is a free agent: nothing to trade.' };
   const p = found.player, pos = primaryPosition(p), ovr = calculateOverall(p);
@@ -254,7 +254,7 @@ export function autopilotRetires(age: number, overall: number): boolean {
   return age >= 40 || (age >= 36 && overall < 64) || (age >= 33 && overall < 55) || (age >= 30 && overall < 48);
 }
 
-export function careerResume(meta: CareerMeta): LegacyResume {
+export function careerResume(meta: Pick<CareerMeta, 'years' | 'bigMoments'>): LegacyResume {
   const r = emptyResume();
   for (const y of meta.years) {
     r.games += y.stats.gamesPlayed; r.pts += y.stats.points; r.reb += y.stats.oreb + y.stats.dreb; r.ast += y.stats.ast; r.stl += y.stats.stl; r.blk += y.stats.blk;
@@ -278,7 +278,7 @@ export function retire(meta: CareerMeta, h: NbaHistory, season: string, age: num
 }
 
 /** Teams that retire his number: five seasons there, and three All-Star years, a title or an MVP with them. */
-export function retiredJerseys(meta: CareerMeta): string[] {
+export function retiredJerseys(meta: Pick<CareerMeta, 'years'>): string[] {
   const byTeam = new Map<string, CareerYear[]>();
   for (const y of meta.years) if (y.teamId) (byTeam.get(y.teamName) ?? byTeam.set(y.teamName, []).get(y.teamName)!).push(y);
   const has = (ys: CareerYear[], k: TrophyKey) => ys.filter(y => y.awards.some(a => a.key === k)).length;
@@ -299,7 +299,7 @@ const TOTAL_MARKS: [keyof Pick<SeasonStatTotals, 'points' | 'ast' | 'gamesPlayed
 ];
 
 /** The moments of his career, season by season: firsts, big nights, round-number milestones, trophies. */
-export function careerMoments(meta: CareerMeta): Moment[] {
+export function careerMoments(meta: Pick<CareerMeta, 'years' | 'bigMoments'>): Moment[] {
   const out: Moment[] = [];
   let bestPts = 0, triples = 0;
   const counts = new Map<TrophyKey, number>();

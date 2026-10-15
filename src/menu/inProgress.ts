@@ -35,8 +35,8 @@ export const localProgress = (): InProgress => {
   if (p820) out.perfect = p820;
   const surv = json<{ v?: number; stage?: string; games?: unknown[] }>('cv-survival-run');
   if (surv && surv.v === 1 && surv.stage && surv.stage !== 'over') out.survival = surv.stage === 'draft' || surv.stage === 'tag' ? 'Picking your legends' : `Round ${(surv.games?.length ?? 0) + 1}`;
-  const story = json<{ v?: number; done?: boolean; name?: string; games?: unknown[] }>('cv-story');
-  if (story && story.v === 1 && !story.done) out.story = `${story.name ?? 'Your story'}, ${(story.games?.length ?? 0)} games in`;
+  const story = json<{ v?: number; done?: boolean; name?: string; games?: unknown[]; nba?: { years?: unknown[] } }>('cv-story');
+  if (story && (story.v === 1 || story.v === 2) && !story.done) out.story = story.nba ? `${story.name ?? 'Your story'}, NBA season ${Math.min(15, (story.nba.years?.length ?? 0) + 1)}` : `${story.name ?? 'Your story'}, ${(story.games?.length ?? 0)} games in`;
   return out;
 };
 
