@@ -260,6 +260,8 @@ export interface League {
   holdouts?: Record<string, import('./holdouts').Holdout>;
   /** Preseason predictions by season, graded when the season ends (see seasonPreview.ts). */
   seasonPreviews?: Record<string, import('./seasonPreview').SeasonPreview>;
+  /** Your playoff pick'em calls this season (see profile/pickem.ts). */
+  pickem?: import('../profile/pickem').Pickem;
   retiredPlayers?: RetiredPlayerRecord[]; // everyone who has ever retired in this league, most recent last
   /** Your summer development plans for the coming offseason (see summerCamp.ts). */
   summerCamp?: import('./summerCamp').SummerCampState;

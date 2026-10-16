@@ -535,6 +535,8 @@ export interface GameSettings {
   eraYear?: number;
   /** Three-point volume of the era relative to today's (0 before the line). */
   eraThreeVolume?: number;
+  /** Coach-only: the AI runs your front office (trades, signings, draft, re-signing); you coach (see coachOnly.ts). */
+  coachOnly?: boolean;
 }
 
 export const REALISTIC_ERA_MODERN: EraRules = {

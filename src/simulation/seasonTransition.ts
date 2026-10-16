@@ -248,7 +248,8 @@ export function beginNewSeasonRoster(
   const freeAgentsFromExpiry: PlayerSeason[] = [];
   const newlyRetired: RetiredPlayerRecord[] = [];
   const contracts = { ...extras.contracts };
-  const userTeamId = league.frontOffice?.teamId ?? league.coachingUserTeamId ?? null;
+  // Coach-only leagues: the AI front office re-signs your players like any other team's.
+  const userTeamId = league.settings.coachOnly ? null : league.frontOffice?.teamId ?? league.coachingUserTeamId ?? null;
   const resignedIds: string[] = [];
   const camp = userTeamId && league.summerCamp?.teamId === userTeamId && league.summerCamp.season === previousSeason ? league.summerCamp : null;
   const campRows: CampReportRow[] = [];

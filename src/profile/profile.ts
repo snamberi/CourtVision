@@ -1,3 +1,5 @@
+import { readPickemWins, PICKEM_XP } from './pickem';
+import { readDailyDraftWith, dailyDraftXp } from '../arcade/dailyDraft';
 import { seasonTier, seasonRule, seasonHow } from '../retention/season';
 import { readLegacy, legacyTotals } from '../storage/gmLegacy';
 import { trophyNeed } from './trophyRoad';
@@ -86,6 +88,8 @@ export function xpParts(read: Read = localRead): XpPart[] {
   const arcade = arcadeXp(readArcade(read));
   const missions = readMissions(read), done = missionsClaimed(missions);
   const quests = readQuests(read);
+  const pickem = readPickemWins(read).length;
+  const drafts = Object.values(readDailyDraftWith(read));
   return [
     { id: 'gm', label: 'GM leagues', xp: gm.seasons * XP.gmSeason + gm.wins * XP.gmWin + gm.titles * XP.gmTitle + gm.achievements * XP.achievement, detail: `${gm.seasons} season${gm.seasons === 1 ? '' : 's'} · ${gm.wins} wins · ${gm.titles} title${gm.titles === 1 ? '' : 's'} · ${gm.achievements} achievement${gm.achievements === 1 ? '' : 's'}` },
     { id: 'career', label: 'Career Mode', xp: c.retired * XP.careerRetired + c.legacy + c.hallOfFame * XP.careerHof, detail: `${c.retired} retired · ${c.hallOfFame} Hall of Famer${c.hallOfFame === 1 ? '' : 's'} · Legacy ${c.legacy} in all` },
@@ -97,6 +101,8 @@ export function xpParts(read: Read = localRead): XpPart[] {
     { id: 'bonus', label: 'Mode of the Week', xp: bonus.xp, detail: `Double XP on ${bonus.runs} run${bonus.runs === 1 ? '' : 's'}` },
     { id: 'quests', label: 'Tutorial quests', xp: questsXp(quests), detail: `${quests.length} first-season lesson${quests.length === 1 ? '' : 's'} done` },
     { id: 'missions', label: 'Weekly missions', xp: missionsXp(missions), detail: `${done} mission${done === 1 ? '' : 's'} done` },
+    { id: 'pickem', label: "Playoff pick'em", xp: pickem * PICKEM_XP, detail: `${pickem} right call${pickem === 1 ? '' : 's'}` },
+    { id: 'dailyDraft', label: 'Daily Draft', xp: drafts.reduce((n, d) => n + dailyDraftXp(d.grade), 0), detail: `${drafts.length} draft${drafts.length === 1 ? '' : 's'} played` },
     { id: 'arcade', label: 'Quick games', xp: arcade.xp, detail: `${arcade.solved} puzzle${arcade.solved === 1 ? '' : 's'} solved · ${arcade.brackets} bracket${arcade.brackets === 1 ? '' : 's'} · ${arcade.hiloWeeks} Higher or Lower week${arcade.hiloWeeks === 1 ? '' : 's'}` },
   ];
 }

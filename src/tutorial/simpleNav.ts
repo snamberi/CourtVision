@@ -109,6 +109,7 @@ export const SIMPLE_HUBS: SimpleHub[] = [
       { label: 'Hall of Fame', tab: 'hallOfFame' },
       { label: 'NBA History', tab: 'nbaArchive', requiresHistorical: true },
       { label: 'Real vs Yours', tab: 'realVsYours', requiresHistorical: true },
+      { label: 'Dynasty Rankings', tab: 'dynastyRankings' },
       { label: 'Dream matchup', tab: 'legends' },
     ],
   },

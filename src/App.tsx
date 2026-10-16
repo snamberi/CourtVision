@@ -1,3 +1,6 @@
+import { PickemCard } from './components/PickemCard';
+import { COACH_ONLY_HIDDEN } from './simulation/coachOnly';
+import { CoachOnlyCard } from './components/CoachOnlyCard';
 import { HistoryTour, historyTourDone } from './components/HistoryTour';
 import { RewindPage } from './components/RewindPage';
 import { prepareRewind } from './storage/saves';
@@ -10,6 +13,7 @@ import { TwoWayCard } from './components/TwoWayCard';
 import { assignHoldouts } from './simulation/holdouts';
 import { RosterResetPreview } from './components/RosterResetPreview';
 import { RealVsYoursPage } from './components/RealVsYoursPage';
+import { DynastyRankingsPage } from './components/DynastyRankingsPage';
 import { momentById } from './history/moments';
 import { plural } from './lib/humanize';
 import { initializeCoaching } from './simulation/staffManagement';
@@ -311,7 +315,7 @@ function buildInitialExtras(league: League): GMLeagueExtras {
 }
 
 type Screen = 'continue' | 'menu' | 'chooseTeam' | 'app' | 'hunt' | 'perfect' | 'survival' | 'story' | 'relics' | 'shop' | 'levelRoad' | 'trophyRoad' | 'seasonPass' | 'career' | 'locker' | 'profile' | 'community' | 'draft' | 'settings' | 'arcade' | 'create' | 'worldGamesMode' | 'friends' | 'clubs' | 'online' | 'friendList' | 'closet' | 'holiday' | 'updates';
-const ARCADE_HASH: Record<ArcadeTab, string> = { grid: '#/grid', guess: '#/guess', categorize: '#/categorize', guessTeam: '#/guess-the-team', hilo: '#/higher-lower', bracket: '#/bracket', quiz: '#/quiz', legends: '#/legends', street: '#/street', oneOnOne: '#/1v1', tour: '#/tournament' };
+const ARCADE_HASH: Record<ArcadeTab, string> = { grid: '#/grid', guess: '#/guess', categorize: '#/categorize', guessTeam: '#/guess-the-team', hilo: '#/higher-lower', bracket: '#/bracket', quiz: '#/quiz', legends: '#/legends', street: '#/street', oneOnOne: '#/1v1', tour: '#/tournament', dailyDraft: '#/daily-draft' };
 const arcadeTabOf = (hash: string) => (Object.entries(ARCADE_HASH).find(([, h]) => h === hash)?.[0] as ArcadeTab | undefined);
 
 const debouncedSave = createDebouncedSave();
@@ -1181,7 +1185,7 @@ function App() {
     let current = { league, extras };
     let totalSignings = 0;
     for (let i = 0; i < extras.freeAgencyDaysRemaining; i++) {
-      const result = runFreeAgencyAI(current.league, current.extras, controlledTeamId, Date.now() + i);
+      const result = runFreeAgencyAI(current.league, current.extras, aiUserTeam(current.league, controlledTeamId), Date.now() + i);
       totalSignings += result.signings.length;
       current = { league: result.league, extras: result.extras };
     }
@@ -1511,7 +1515,7 @@ function App() {
   const navMode: NavMode = tutorial?.navMode ?? 'full';
   const unlockCtx = { league, controlledTeamId, pendingTradeOffers: extras.pendingTradeOffers.length };
   const locked = lockedFeatures(unlockCtx);
-  const lockedTabSet = new Set([...locked.flatMap((s) => s.feature.tabs), ...(league.gmCareer ? ROLE_LOCKED[gmRole(league)] : [])]);
+  const lockedTabSet = new Set([...locked.flatMap((s) => s.feature.tabs), ...(league.gmCareer ? ROLE_LOCKED[gmRole(league)] : []), ...(league.settings.coachOnly ? COACH_ONLY_HIDDEN : [])]);
   const freshTabs = newFeatureTabs(unlockCtx);
   // Every page you can open right now, for the Ctrl+K quick jump (same rules as the sidebar, locked pages left out).
   const jumpItems: JumpItem[] = [
@@ -1857,7 +1861,7 @@ function App() {
         onViewSeasonRecap={beginAwardsRecap}
         onContinueToDraft={beginDraftPhase}
         draftPicksRemaining={draftPicksRemaining}
-        hasUpcomingDraftPick={hasUpcomingDraftPick}
+        hasUpcomingDraftPick={hasUpcomingDraftPick && !league.settings.coachOnly}
         onSimToMyNextPick={simToMyNextDraftPick}
         onSimEntireDraftAndContinue={simEntireDraftAndContinue}
         onContinueToResignWaive={() => beginResignWaivePhase()}
@@ -1923,6 +1927,7 @@ function App() {
           onNavigateLeagueSettings={(sub) => { setLeagueSettingsSub(sub); setTab('leagueSettings'); }}
           pendingTradeOfferCount={extras.pendingTradeOffers.length}
           inboxUnread={inboxUnread}
+          hiddenTabs={league.settings.coachOnly ? COACH_ONLY_HIDDEN : undefined}
           courtChatNew={courtChatNew}
         />
         <main tabIndex={0} aria-label="Game content">
@@ -2040,7 +2045,7 @@ function App() {
         {tab === 'playoffs' && (
           league.teams.length < 4
             ? <p className="empty-state">Need at least four teams for a playoff bracket.</p>
-            : <PlayoffsPage league={league} onChange={setLeague} bracket={playoffBracket} onBracketChange={setPlayoffBracket} onCelebrate={replayCelebration} controlledTeamId={controlledTeamId} />
+            : <><PickemCard league={league} bracket={playoffBracket} saveId={activeSaveId} onChange={setLeague} onToast={m => pushToast(m, 'success')} /><PlayoffsPage league={league} onChange={setLeague} bracket={playoffBracket} onBracketChange={setPlayoffBracket} onCelebrate={replayCelebration} controlledTeamId={controlledTeamId} /></>
         )}
 
         {tab === 'finances' && (
@@ -2100,7 +2105,7 @@ function App() {
           league.teams.length === 0
             ? <p className="empty-state">No teams yet.</p>
             : <DraftPage
-                league={league} extras={extras} controlledTeamId={managerId}
+                league={league} extras={extras} controlledTeamId={league.settings.coachOnly && managerId ? '__spectator__' : managerId}
                 onChange={(l, e) => { setLeague(l); setExtras(e); }} onSelectPlayer={selectPlayer}
                 summerLeagueReady={canPlaySummerLeague(league, extras)} onOpenSummerLeague={() => setTab('summerLeague')}
               />
@@ -2171,6 +2176,7 @@ function App() {
         {tab === 'historyBook' && <HistoryBookPage league={league} onSelectPlayer={selectPlayer} />}
         {tab === 'almanac' && <AlmanacPage league={league} extras={extras} awardSettings={awardSettings} onSelectPlayer={selectPlayer} />}
         {tab === 'realVsYours' && <RealVsYoursPage league={league} extras={extras} onSelectPlayer={selectPlayer} />}
+        {tab === 'dynastyRankings' && <DynastyRankingsPage league={league} userTeamId={controlledTeamId} onSelectTeam={id => { setViewedTeamId(id); setTab('teamHistory'); }} />}
         {tab === 'nbaArchive' && <NbaArchivePage key={archiveQuery} league={league} extras={extras} onSelectPlayer={selectPlayer} initialQuery={archiveQuery} onLoadRetirees={loadRetirees} />}
 
         {tab === 'resignWaive' && (
@@ -2211,7 +2217,7 @@ function App() {
             </nav>
             {leagueSettingsSub === 'awards' && <Suspense fallback={<p className="empty-state page-loading" role="status">Loading…</p>}><LeagueSettingsPage settings={awardSettings} onChange={setAwardSettings} seasonGames={seasonGamesPerTeam(league)} onSave={() => { handleSaveNow(); pushToast('Award settings saved.', 'success'); }} /></Suspense>}
             {leagueSettingsSub === 'rules' && (
-              <><HistoricalSettingsCard league={league} extras={extras} onChange={setLeague} /><GameLengthCard league={league} onChange={setLeague} /><section className="settings-card">
+              <><HistoricalSettingsCard league={league} extras={extras} onChange={setLeague} /><GameLengthCard league={league} onChange={setLeague} /><CoachOnlyCard league={league} onChange={setLeague} /><section className="settings-card">
                 <h4>Roster and trade rules</h4><p className="hint-text">10–18 players for regular-season games. Coaches sign or waive players to meet the limits. Draft and offseason moves can temporarily exceed them.</p>
                 <label className="trade-value-toggle"><input type="checkbox" checked={extras.tradeSettings.showValues === true} onChange={e => setExtras(prev => ({ ...prev, tradeSettings: { ...prev.tradeSettings, showValues: e.target.checked } }))} /> Show trade values</label>
               </section><LeagueRulesPage

@@ -104,3 +104,13 @@
 .history-tour-dots { display: flex; gap: 4px; margin-bottom: 8px; }
 .history-tour-dots span { width: 8px; height: 8px; background: var(--c-bg-2a3546, #2a3546); }
 .history-tour-dots span.on { background: var(--c-bg-f47b20, #f47b20); }
+
+/* Pick'em */
+.pickem-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 6px; }
+.pickem-row { display: flex; gap: 4px; }
+.pickem-row button { flex: 1; }
+
+/* Dynasty rankings */
+.dynasty-rank-page .create-segment { margin: 4px 0 10px; max-width: 100%; }
+.dynasty-table td:first-child { color: var(--text-muted, var(--c-fg-94a0b2, #94a0b2)); }
+@media (max-width: 640px) { .dynasty-rank-page .create-segment { display: flex; flex-wrap: wrap; } }

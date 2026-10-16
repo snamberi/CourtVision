@@ -25,6 +25,8 @@ interface Props {
   courtChatNew?: number;
   /** Unread Inbox messages (a badge on its menu item). */
   inboxUnread?: number;
+  /** Pages this league does not use (e.g. the front office in coach-only leagues). */
+  hiddenTabs?: string[];
   /** The league was started from the built-in NBA history (shows the NBA History archive). */
   historical?: boolean;
   /** Simple shows five places to go; Full (the default) is the complete menu. */
@@ -98,6 +100,7 @@ export function Sidebar(props: Props) {
       if (item.onlyDuringPhase && item.onlyDuringPhase !== seasonPhase) return false;
       if (item.requiresHistorical && !historical) return false;
       if (item.sandboxOnly && !sandboxMode) return false;
+      if (props.hiddenTabs?.includes(item.tab)) return false;
       return !lockedTabs.has(item.tab);
     };
     const renderHub = (hubId: HubId) => {
@@ -181,6 +184,7 @@ export function Sidebar(props: Props) {
           if (item.requiresControlledTeam && !hasControlledTeam) return false;
           if (item.onlyDuringPhase && item.onlyDuringPhase !== seasonPhase) return false;
           if (item.requiresHistorical && !historical) return false;
+          if (props.hiddenTabs?.includes(item.tab)) return false;
           return true;
         });
         if (visibleItems.length === 0) return null;
