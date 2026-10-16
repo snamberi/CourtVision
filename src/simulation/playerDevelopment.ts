@@ -187,7 +187,7 @@ function trainDay(team:LeagueTeam,league:League,date:string,gameToday:boolean):L
    const paths=session.type==='conditioning'?FOCUS_SKILLS.conditioning:FOCUS_SKILLS[focus];
    // Practice builds toward a player's ceiling; players in their prime mostly maintain (see engine/potential).
    const headroom=practiceHeadroom(p,league.rulesSettings);
-   for(const path of paths){const current=attributeValue(p,path);const highRating=Math.max(.08,1-current/(league.settings.sandboxMode?220:112));const ageFactor=path.startsWith('physical.')&&p.age>=29?.25:p.age>33?.4:1;
+   for(const path of paths){if(p.lockedRatings?.includes(path))continue;const current=attributeValue(p,path);const highRating=Math.max(.08,1-current/(league.settings.sandboxMode?220:112));const ageFactor=path.startsWith('physical.')&&p.age>=29?.25:p.age>33?.4:1;
     const gain=.045*quality*intensity*highRating*ageFactor*headroom*(variance===0?.45:1)*((league.rulesSettings?.developmentSpeed??100)/100);
     changeSkill(p,path,gain,league.settings.sandboxMode?200:100);
     tr.pendingChanges??={};tr.pendingChanges[path]=(tr.pendingChanges[path]??0)+(attributeValue(p,path)-current);

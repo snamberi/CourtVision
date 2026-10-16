@@ -619,6 +619,10 @@ export function allStarBreakRound(league: League): number | null {
   return Math.floor(maxRound * Math.max(0.1, Math.min(0.9, (league.rulesSettings?.allStarBreakPercent ?? 58) / 100)));
 }
 
+/** Regular-season games a team has played so far. */
+export const teamGamesPlayed = (league: League, teamId: string) =>
+  league.schedule.reduce((n, g) => n + (g.played && (g.homeTeamId === teamId || g.awayTeamId === teamId) ? 1 : 0), 0);
+
 /** True once the schedule has reached the All-Star break and this season's weekend hasn't been played yet. */
 export function isAllStarBreakPending(league: League): boolean {
   const breakRound = allStarBreakRound(league);

@@ -4,6 +4,9 @@ import { TeamLink } from './TeamLink';
 import { useState } from 'react';
 import type { PlayerSeason } from '../simulation/types';
 import { AttributeGroupEditor } from './AttributeGroupEditor';
+import { RatingGroupsEditor, type RatingGroup } from './RatingGroupsEditor';
+import { CATEGORIES, MEASUREMENTS } from '../career/categories';
+import { ratingAt, setRatingLocks } from '../simulation/ratingLocks';
 import { RatingSlider } from './RatingSlider';
 import { OFFENSE_HINTS, DEFENSE_HINTS, ROLE_HINTS } from '../simulation/hints';
 import { NORMAL_BADGES, EXPERIMENTAL_BADGES } from '../simulation/badges';
@@ -29,16 +32,13 @@ interface Props {
   onLeagueExtrasChange?: (league: League, extras: GMLeagueExtras, newPlayerId?: string) => void;
 }
 
-type Category = 'look' | 'identity' | 'physical' | 'offense' | 'defense' | 'mental' | 'shotTendencies' | 'passingTendencies'
+type Category = 'look' | 'identity' | 'ratings' | 'shotTendencies' | 'passingTendencies'
   | 'drivingTendencies' | 'roles' | 'minutes' | 'development' | 'badges' | 'overall';
 
 const CATEGORY_LABELS: Record<Category, string> = {
   look: 'Look',
   identity: 'Identity & Contract',
-  physical: 'Physical',
-  offense: 'Offense',
-  defense: 'Defense',
-  mental: 'Mental',
+  ratings: 'Ratings',
   shotTendencies: 'Shot Tendencies',
   passingTendencies: 'Passing Tendencies',
   drivingTendencies: 'Driving Tendencies',
@@ -49,6 +49,29 @@ const CATEGORY_LABELS: Record<Category, string> = {
   overall: 'Overall',
 };
 
+/** Ratings in Career Mode's groups (Three-Point, Playmaking, ...); anything no group covers goes under Other. */
+const GROUPS: RatingGroup[] = CATEGORIES.filter(c => c.id !== 'size').map(c => ({
+  id: c.id, name: c.name, blurb: c.blurb, paths: c.fields.filter(([, k]) => !MEASUREMENTS.has(k)).map(([g, k]) => `${g}.${k}`),
+}));
+const GROUPED = new Set(GROUPS.flatMap(g => g.paths));
+const HINTS: Record<string, string> = {
+  ...Object.fromEntries(Object.entries(OFFENSE_HINTS).map(([k, v]) => [`offense.${k}`, v])),
+  ...Object.fromEntries(Object.entries(DEFENSE_HINTS).map(([k, v]) => [`defense.${k}`, v])),
+};
+function ratingGroups(season: PlayerSeason): RatingGroup[] {
+  const other = (['physical', 'offense', 'defense', 'mental'] as const).flatMap(g => Object.entries(season.attributes[g])
+    .filter(([k, v]) => typeof v === 'number' && !MEASUREMENTS.has(k) && !GROUPED.has(`${g}.${k}`)).map(([k]) => `${g}.${k}`));
+  return other.length ? [...GROUPS, { id: 'other', name: 'Other', blurb: 'Everything else.', paths: other }] : GROUPS;
+}
+function withRatings(season: PlayerSeason, paths: string[], v: number): PlayerSeason['attributes'] {
+  const attributes = { physical: { ...season.attributes.physical }, offense: { ...season.attributes.offense }, defense: { ...season.attributes.defense }, mental: { ...season.attributes.mental } };
+  for (const path of paths) {
+    const [g, k] = path.split('.') as [keyof typeof attributes, string];
+    (attributes[g] as unknown as Record<string, number>)[k] = v;
+  }
+  return attributes;
+}
+
 function inchesToFeetInches(inches: number): string {
   const ft = Math.floor(inches / 12);
   const inch = Math.round(inches % 12);
@@ -57,7 +80,7 @@ function inchesToFeetInches(inches: number): string {
 
 export function FullPlayerEditor({ season, onChange, sandboxMode, league, extras, onLeagueExtrasChange }: Props) {
   const [open, setOpen] = useState<Record<Category, boolean>>({
-    look: false, identity: true, physical: true, offense: true, defense: false, mental: false, shotTendencies: false,
+    look: false, identity: true, ratings: true, shotTendencies: false,
     passingTendencies: false, drivingTendencies: false, roles: false, minutes: true,
     development: false, badges: false, overall: false,
   });
@@ -69,6 +92,8 @@ export function FullPlayerEditor({ season, onChange, sandboxMode, league, extras
   const avg = perGameAverages(season.seasonStats);
   const overall = calculateOverall(season);
   const pos = primaryPosition(season);
+  const groups = ratingGroups(season);
+  const locked = new Set(season.lockedRatings ?? []);
 
   return (
     <div className="editor-panel full-editor">
@@ -125,7 +150,7 @@ export function FullPlayerEditor({ season, onChange, sandboxMode, league, extras
         </Collapsible>
       )}
 
-      <Collapsible title={CATEGORY_LABELS.physical} isOpen={open.physical} onToggle={() => toggle('physical')}>
+      <Collapsible title={CATEGORY_LABELS.ratings} isOpen={open.ratings} onToggle={() => toggle('ratings')}>
         {!sandboxMode && <LockedNotice />}
         <div className={`rating-row${sandboxMode ? '' : ' locked'}`}>
           <span className="rating-label">Height</span>
@@ -135,37 +160,12 @@ export function FullPlayerEditor({ season, onChange, sandboxMode, league, extras
           />
           <span className="rating-number">{inchesToFeetInches(season.attributes.physical.heightInches)}</span>
         </div>
-        <AttributeGroupEditor
-          title="" max={max} disabled={!sandboxMode} excludeKeys={['heightInches', 'weightLbs', 'wingspanInches', 'standingReachInches']}
-          values={season.attributes.physical as unknown as Record<string, number>}
-          onChange={(k, v) => update({ attributes: { ...season.attributes, physical: { ...season.attributes.physical, [k]: v } } })}
-        />
-      </Collapsible>
-
-      <Collapsible title={CATEGORY_LABELS.offense} isOpen={open.offense} onToggle={() => toggle('offense')}>
-        {!sandboxMode && <LockedNotice />}
-        <AttributeGroupEditor
-          title="" max={max} disabled={!sandboxMode} hints={OFFENSE_HINTS}
-          values={season.attributes.offense as unknown as Record<string, number>}
-          onChange={(k, v) => update({ attributes: { ...season.attributes, offense: { ...season.attributes.offense, [k]: v } } })}
-        />
-      </Collapsible>
-
-      <Collapsible title={CATEGORY_LABELS.defense} isOpen={open.defense} onToggle={() => toggle('defense')}>
-        {!sandboxMode && <LockedNotice />}
-        <AttributeGroupEditor
-          title="" max={max} disabled={!sandboxMode} hints={DEFENSE_HINTS}
-          values={season.attributes.defense as unknown as Record<string, number>}
-          onChange={(k, v) => update({ attributes: { ...season.attributes, defense: { ...season.attributes.defense, [k]: v } } })}
-        />
-      </Collapsible>
-
-      <Collapsible title={CATEGORY_LABELS.mental} isOpen={open.mental} onToggle={() => toggle('mental')}>
-        {!sandboxMode && <LockedNotice />}
-        <AttributeGroupEditor
-          title="" max={max} disabled={!sandboxMode}
-          values={season.attributes.mental as unknown as Record<string, number>}
-          onChange={(k, v) => update({ attributes: { ...season.attributes, mental: { ...season.attributes.mental, [k]: v } } })}
+        <p className="hint-text">One slider moves a whole group; <b>Fine-tune</b> opens each rating. Lock a rating (or a whole group) and it stays exactly where it is: the group slider skips it, and development, age, summer camp and practice never change it.</p>
+        <RatingGroupsEditor
+          groups={groups} value={(path) => ratingAt(season, path)} min={0} max={max} disabled={!sandboxMode}
+          onSet={(paths, v) => update({ attributes: withRatings(season, paths, v) })}
+          locked={locked} onLock={(paths, on) => onChange(setRatingLocks(season, paths, on))}
+          lockHint="Locked: never changes on its own (development, age, summer camp, practice); the group slider skips it." hints={HINTS}
         />
       </Collapsible>
 

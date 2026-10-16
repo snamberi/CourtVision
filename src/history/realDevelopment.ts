@@ -1,3 +1,4 @@
+import { keepLockedRatings } from '../simulation/ratingLocks';
 import type { PlayerSeason } from '../simulation/types';
 import type { League } from '../simulation/league';
 import { calculateOverall, calculateFullAttributeOverall } from '../simulation/engine/overall';
@@ -62,7 +63,7 @@ export function applyRealDevelopment(p: PlayerSeason, newSeason: string): Player
   if (!target) return null;
   const beforeOverall = calculateOverall(p), beforeFull = calculateFullAttributeOverall(p);
   const aged: PlayerSeason = { ...p, age: p.age + 1 };
-  const next = rescaleToOverall(aged, target.ovr);
+  const next = keepLockedRatings(p, rescaleToOverall(aged, target.ovr));
   return {
     ...next,
     previousOverall: beforeOverall, previousFullOverall: beforeFull,

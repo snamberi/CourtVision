@@ -5,8 +5,8 @@ import { ensureUpcomingDraftClass } from './draftSeason';
 import { manageCoachRosters } from './coachRosters';
 import { lockAllStarVoting, currentAllStarWeekend } from './allStarVoting';
 import type { League } from './league';
-import { simulateRemainingSeason, simulateFullRound, isAllStarBreakPending } from './league';
-import { simulateFullPlayoffs, autoGeneratePlayoffBracket, type PlayoffBracket } from './playoffs';
+import { simulateRemainingSeason, simulateFullRound, isAllStarBreakPending, teamGamesPlayed } from './league';
+import { simulateFullPlayoffs, autoGeneratePlayoffBracket, simulatePlayoffGameDay, currentMatchup, type PlayoffBracket } from './playoffs';
 import { awardOptions as optionsFrom, computeFinalsMVP, computeSeasonAwards, type AwardSettings, type SeasonAwards } from './awards';
 import {
   beginNewSeasonRoster, finalizeNewSeasonSchedule, type ChampionshipInfo,
@@ -253,7 +253,13 @@ export function autoPlayToDraft(league: League, extras: GMLeagueExtras, controll
 
 /** `autoPlayToDraft` with each game day run by `simulateRound` (engine workers in parallel). */
 export async function autoPlayToDraftAsync(league: League, extras: GMLeagueExtras, controlledTeamId: string | null, awardSettings: AwardSettings, seed: number,
-  simulateRound: (league: League, seedBase: number) => Promise<League>) {
+  simulateRound: (league: League, seedBase: number) => Promise<League>,
+  /** Story Mode: the playoffs already under way on `league.playoffBracket` are finished instead of started over. */
+  continueBracket = false) {
+  if (continueBracket && league.playoffBracket && !league.schedule.some((g) => !g.played)) {
+    const none: AllStarOutcome = { allStarGameMVPPlayerId: null, threePointChampionId: null, dunkChampionId: null };
+    return seasonToDraft({ ...league, playoffBracket: undefined }, extras, controlledTeamId, awardSettings, seed, none, league.playoffBracket);
+  }
   const weekend: AllStarOutcome = { allStarGameMVPPlayerId: null, threePointChampionId: null, dunkChampionId: null };
   let currentLeague = withoutDeadlineStop(league);
   for (let guard = 0; guard < 5; guard++) {
@@ -266,6 +272,68 @@ export async function autoPlayToDraftAsync(league: League, extras: GMLeagueExtra
     currentLeague = playAllStarBreak(currentLeague, awardSettings, seed, guard, weekend);
   }
   return seasonToDraft(currentLeague, extras, controlledTeamId, awardSettings, seed, weekend);
+}
+
+/** Where a stretch of the regular season stops (Story Mode's moments): a team's game count, the All-Star break, or the end. */
+export interface StretchStop {
+  /** The team whose games are counted. */
+  teamId: string;
+  /** Stop once the team has played this many games (Infinity: play to the All-Star break or the end of the season). */
+  games: number;
+  /** At the All-Star break: play the weekend, then stop. */
+  allStar?: boolean;
+}
+
+/**
+ * Plays the regular season game day by game day until `stop`: the team has played `stop.games` games, or the schedule
+ * is done, or the All-Star break is reached (a weekend already due is played first; with `stop.allStar` the weekend at
+ * the break is played and the stretch stops there). The front offices work every ten game days, as Auto Play does.
+ */
+export async function autoPlayStretch(league: League, extras: GMLeagueExtras, stop: StretchStop, awardSettings: AwardSettings, seed: number,
+  simulateRound: (league: League, seedBase: number) => Promise<League>): Promise<{ league: League; extras: GMLeagueExtras }> {
+  let currentLeague = withoutDeadlineStop(league);
+  let currentExtras = extras;
+  const weekend: AllStarOutcome = { allStarGameMVPPlayerId: null, threePointChampionId: null, dunkChampionId: null };
+  if (isAllStarBreakPending(currentLeague) && !stop.allStar) currentLeague = playAllStarBreak(currentLeague, awardSettings, seed, 0, weekend);
+  let sincePass = 0;
+  while (currentLeague.schedule.some((g) => !g.played) && teamGamesPlayed(currentLeague, stop.teamId) < stop.games) {
+    const next = await simulateRound(withoutDeadlineStop(currentLeague), seed);
+    if (next === currentLeague || !isProgress(currentLeague, next)) {
+      if (!isAllStarBreakPending(currentLeague)) break;
+      currentLeague = playAllStarBreak(currentLeague, awardSettings, seed, 0, weekend);
+      if (stop.allStar) break;
+      continue;
+    }
+    currentLeague = next;
+    if (++sincePass >= AI_PASS_EVERY_ROUNDS) { sincePass = 0; ({ league: currentLeague, extras: currentExtras } = seasonAIPass(currentLeague, currentExtras, null, seed)); }
+  }
+  if (stop.allStar && isAllStarBreakPending(currentLeague)) currentLeague = playAllStarBreak(currentLeague, awardSettings, seed, 0, weekend);
+  return { league: currentLeague, extras: currentExtras };
+}
+const isProgress = (before: League, after: League) => after.schedule.some((g, i) => g.played && !before.schedule[i]?.played);
+
+/**
+ * Story Mode's playoffs: plays postseason game days (drawing the bracket on the first call) until `teamId`'s current
+ * matchup (its play-in game or series) is decided, or to the champion when the team is out or `teamId` is null. With
+ * `stopAtDecider`, a series that reaches its deciding game (3-3 in a best-of-seven) stops just before it.
+ */
+export function autoPlayPlayoffStep(league: League, teamId: string | null, seed: number, stopAtDecider = false): League {
+  if (league.schedule.some((g) => !g.played)) return league;
+  let bracket = league.playoffBracket ?? autoGeneratePlayoffBracket(league);
+  let current: League = { ...league, playoffBracket: bracket };
+  const before = teamId ? currentMatchup(bracket, teamId) : null;
+  const atDecider = (b: PlayoffBracket) => {
+    const sr = before ? b.rounds.flat().find((x) => x.id === before) : undefined;
+    return !!sr && !sr.winnerTeamId && sr.teamAWins === sr.gamesToWin - 1 && sr.teamBWins === sr.gamesToWin - 1;
+  };
+  for (let guard = 0; guard < 400 && !bracket.championTeamId; guard++) {
+    if (before && currentMatchup(bracket, teamId!) !== before) break;
+    if (stopAtDecider && guard > 0 && atDecider(bracket)) break;
+    const step = simulatePlayoffGameDay(bracket, current, seed + 1000);
+    if (!step.played.length) break;
+    bracket = step.bracket; current = step.league;
+  }
+  return { ...current, playoffBracket: bracket };
 }
 
 /** The second half of an Auto Play season: the draft, free agency and the new schedule. */

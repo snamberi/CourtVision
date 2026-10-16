@@ -3,10 +3,12 @@ import { exportUniverse, importUniverse, type UniverseExport } from './db';
 import { dumpCareers, restoreCareers } from '../career/storage';
 import type { CareerMeta } from '../career/career';
 import type { CareerWorld } from '../career/storage';
+import { dumpStoryWorlds, restoreStoryWorlds, type StoryWorld } from '../story/storyStorage';
 
 /*
  * One file with everything this browser holds: GM leagues (saves), Career Mode (careers and their leagues), League
- * Hunt (run, records, album), the GM legacy and achievements, Rebuild Challenge records, custom badges and settings.
+ * Hunt (run, records, album), Story Mode (the story and its NBA league), the GM legacy and achievements, Rebuild
+ * Challenge records, custom badges and settings.
  * Everything else (cookie consent, the last page open) belongs to this device and stays out.
  *
  * Restoring adds and replaces by id; nothing already here is deleted. Files are gzip-compressed where the browser
@@ -20,6 +22,8 @@ export interface Backup {
   saves: SaveRow[];
   careers: { metas: CareerMeta[]; worlds: CareerWorld[] };
   universe: UniverseExport;
+  /** Story Mode's NBA league (absent in older backups). */
+  story?: StoryWorld[];
 }
 export interface BackupSummary { leagues: number; careers: number; hunts: boolean; achievements: number; sizeKb: number }
 
@@ -28,7 +32,7 @@ const KEEP = (key: string) => (key.startsWith('cv-') || key.startsWith('courtvis
 export async function buildBackup(): Promise<Backup> {
   const ls: Record<string, string> = {};
   try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && KEEP(k)) ls[k] = localStorage.getItem(k) ?? ''; } } catch { /* storage blocked */ }
-  return { format: BACKUP_FORMAT, version: 1, createdAt: Date.now(), localStorage: ls, saves: await savesDb.saves.toArray(), careers: await dumpCareers(), universe: await exportUniverse() };
+  return { format: BACKUP_FORMAT, version: 1, createdAt: Date.now(), localStorage: ls, saves: await savesDb.saves.toArray(), careers: await dumpCareers(), universe: await exportUniverse(), story: await dumpStoryWorlds() };
 }
 
 export function summarize(b: Backup, bytes = 0): BackupSummary {
@@ -71,4 +75,5 @@ export async function restoreBackup(b: Backup): Promise<void> {
   if (b.saves?.length) await savesDb.saves.bulkPut(b.saves);
   if (b.careers) await restoreCareers(b.careers);
   if (b.universe) await importUniverse(b.universe);
+  if (b.story?.length) await restoreStoryWorlds(b.story);
 }

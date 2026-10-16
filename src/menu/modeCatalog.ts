@@ -44,7 +44,7 @@ export const MODE_CATALOG: ModeEntry[] = [
   { id: 'category', group: 'perfect', parent: 'perfect', title: 'Category Draft', desc: 'Draft your 82-0 team from a category: MVPs, the 90s, the Lakers.', icon: 'grid', art: ['#1f2f4f', '#a77b4c', '#4da3ff'], action: { kind: 'start', mode: 'category' } },
   { id: 'career', group: 'main', parent: 'career', title: 'Career Mode', desc: 'One player, one whole career: draft night to the Hall of Fame.', icon: 'user', art: ['#13314a', '#b98a55', '#55c878'], action: { kind: 'start', mode: 'career' } },
   { id: 'survival', group: 'main', parent: 'survival', title: 'Survival', desc: 'Ten greats. Every win costs you one. One loss ends it.', icon: 'shield', art: ['#3d1212', '#8f5a35', '#e85d5d'], action: { kind: 'start', mode: 'survival' } },
-  { id: 'story', group: 'main', parent: 'story', title: 'Story Mode', desc: 'Street to the League: five chapters, real choices, four endings.', icon: 'book', art: ['#22223b', '#9a7048', '#f4a259'], action: { kind: 'start', mode: 'story' } },
+  { id: 'story', group: 'main', parent: 'story', title: 'Story Mode', desc: 'From the park to fifteen seasons in the real NBA: your choices, nine endings.', icon: 'book', art: ['#22223b', '#9a7048', '#f4a259'], action: { kind: 'start', mode: 'story' } },
 
   // Quick Games
   { id: 'grid', group: 'quick', title: 'Daily Grid', desc: 'Three teams, three categories. Fill all nine squares.', icon: 'grid', art: ['#123a2c', '#a8814f', '#55c878'], action: { kind: 'arcade', tab: 'grid' } },

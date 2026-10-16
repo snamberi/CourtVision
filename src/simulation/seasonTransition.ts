@@ -31,6 +31,7 @@ import { driftChemistryForRosterContinuity } from './engine/chemistryEvolution';
 import { RNG } from './engine/rng';
 import { calculateOverall, calculateFullAttributeOverall } from './engine/overall';
 import { developOffseasonPlayer } from './engine/development';
+import { keepLockedRatings } from './ratingLocks';
 import { gameMinutes } from './gameLength';
 import { worldDefOf } from './worldLeagues';
 import {
@@ -280,7 +281,7 @@ export function beginNewSeasonRoster(
         const locked = ratingsHeld(season, league);
         const ran = plan && !locked ? applySummerCamp(developed, plan, `${season.playerId}|${newSeason}`, teachingQuality(team)) : null;
         const campGain = ran ? calculateOverall(ran.player) - calculateOverall(developed) : 0;
-        if (ran) developed = ran.player;
+        if (ran) developed = keepLockedRatings(season, ran.player);
         campRows.push(reportRow(season, developed, campGain, plan, ran?.note ?? (plan ? '' : 'No summer plan.'), plan && locked ? (season.lockRatings ? 'Ratings locked (Edit Player): summer camp skipped.' : 'Real Player Development: his ratings follow his real career.') : undefined));
       }
       const aged = recordOffseasonDevelopment(season, developed, team, league.calendarDate ?? previousSeason, followsRealDevelopment(season, league) ? realDevelopmentNote(developed, !!realStep) : season.lockRatings ? 'Ratings locked (Edit Player).' : undefined);

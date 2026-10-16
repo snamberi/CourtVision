@@ -25,7 +25,7 @@ export function careerPlayerAt(meta: CareerMeta, stage: CareerImportStage, seaso
   const lastAge = meta.retired?.age ?? meta.years.at(-1)?.age ?? START_AGE;
   const progress = stage === 'rookie' ? allAt(0) : stage === 'prime' ? allAt(1) : meta.progress;
   const age = stage === 'rookie' ? START_AGE : stage === 'prime' ? 27 : lastAge;
-  const p = buildPlayer({ ...meta.identity, name: meta.playerId }, meta.prime, progress, meta.readiness, season, age, meta.seed);
+  const p = buildPlayer({ ...meta.identity, name: meta.playerId }, meta.prime, progress, meta.readiness, season, age, meta.seed, meta.locks);
   return { ...p, highRatings: true };
 }
 

@@ -10,6 +10,27 @@ export interface Release { id: string; title: string; items: string[]; theme?: s
 
 export const RELEASES: Release[] = [
   {
+    id: '2027-06-23',
+    title: 'Story Mode: fifteen seasons in the real NBA',
+    items: [
+      "**The NBA years:** Story Mode no longer ends after your rookie year. You're drafted into today's real NBA and play fifteen seasons, every game on the real engine: training camp, opening night, Christmas, the trade deadline, All-Star Weekend, the stretch run, every playoff series (you play Game 7 yourself), awards night and the summer.",
+      "**A longer road there:** a new act, The Circuit (AAU teams, the Summer Showcase, an official visit, the All-American Game or Senior Night), two new roads (the G League and junior college), the combine, private workouts and four choices in most scenes. Your little sister Maya joins Dre, Coach Ray and Ice.",
+      "**80 story cards:** contracts and the supermax, trade requests, teammates, fans, the holidays and stories that run across seasons (Maya's career, Dre's camp, Coach Ray, Mom's house, Ice). Your choices come back years later.",
+      "**Retirement and nine endings:** announcement day, what comes next, then the Hall of Fame speech, jersey night or one more run at Carver Park. Nine endings and a \"Ten years later\" epilogue for everyone who walked the road with you.",
+      "**Journal, People and Trophies:** every choice and big game is written in your journal, the People page shows where everyone stands, and the trophy case holds every award.",
+      "**Fix (every league):** a starter sent to the bench could be left out of the rotation for the rest of the season. Benched players now always get bench minutes.",
+    ],
+  },
+  {
+    id: '2027-06-16',
+    title: 'Ratings in groups, and a lock for every rating',
+    items: [
+      "**Edit Player, in groups:** ratings now come in the same groups as Career Mode (Three-Point, Playmaking, Interior D & Boards and the rest). One slider moves a whole group, and **Fine-tune** opens each rating to edit one by one.",
+      "**Lock any rating:** every rating and every group has a lock (Sandbox Mode). A locked rating never changes on its own: not with development, age, summer camp, practice or Real Player Development, and the group slider leaves it alone.",
+      "**Career Mode, Create Anything:** lock any rating or group there too. Your player keeps that exact number his whole career, from his rookie year on: no growth and no aging.",
+    ],
+  },
+  {
     id: '2027-06-09',
     title: 'Halloween and Christmas events, clans, other leagues and a deeper record book',
     theme: 'spooky',

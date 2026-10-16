@@ -53,3 +53,56 @@
 @media (max-width: 760px) { .story-layout { grid-template-columns: 1fr; } .story-hero { position: static; } .story-chapter h2 { font-size: 26px; } }
 .story-y2 { display: grid; gap: 4px; justify-items: start; margin: 12px 0; padding: 12px; border: 2px solid var(--c-border-ffd166, #ffd166); background: var(--c-bg-121926, #121926); }
 .story-y2 p { margin: 0; color: var(--c-fg-94a0b2, #94a0b2); }
+/* The NBA years */
+.story-busy { display: grid; gap: 8px; padding: 18px 14px; border: 2px solid var(--c-border-2a3546, #2a3546); background: var(--c-bg-121926, #121926); }
+.story-busy small { color: var(--c-fg-94a0b2, #94a0b2); }
+.story-team { display: grid; gap: 2px; width: 100%; padding: 6px 8px; border-left: 3px solid var(--c-border-f47b20, #f47b20); background: var(--c-bg-192333, #192333); }
+.story-team small { color: var(--c-fg-94a0b2, #94a0b2); font-size: 12px; }
+.story-facts { margin: 0; padding-left: 18px; display: grid; gap: 3px; font-size: 14px; }
+.story-awards { margin: 0; display: flex; gap: 6px; align-items: center; color: var(--c-fg-ffd166, #ffd166); }
+.story-offers { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; }
+.story-offers button { display: grid; gap: 3px; text-align: left; padding: 10px 12px; background: var(--c-bg-192333, #192333); border: 2px solid var(--c-border-2a3546, #2a3546); color: inherit; font: inherit; cursor: pointer; }
+.story-offers button small { color: var(--c-fg-94a0b2, #94a0b2); font-size: 12px; }
+.story-offers button:hover, .story-offers button:focus-visible { border-color: var(--c-border-f47b20, #f47b20); }
+.story-decider { border-color: var(--c-border-e85d5d, #e85d5d); }
+.story-headline { margin: 0; display: flex; gap: 8px; align-items: center; font: 20px var(--ff-display, 'Oswald', sans-serif); letter-spacing: 0.04em; color: var(--c-fg-ffd166, #ffd166); text-transform: uppercase; }
+.story-epilogue { display: grid; gap: 6px; margin-top: 12px; padding-top: 10px; border-top: 2px solid var(--c-border-2a3546, #2a3546); text-align: left; }
+.story-epilogue p { margin: 0; color: var(--c-fg-94a0b2, #94a0b2); }
+.story-tabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 2px solid var(--c-border-2a3546, #2a3546); }
+.story-tabs button { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; background: transparent; border: 2px solid transparent; border-bottom: 0; color: var(--c-fg-94a0b2, #94a0b2); font: inherit; font-size: 13px; cursor: pointer; margin-bottom: -2px; }
+.story-tabs button.active { color: var(--c-fg-f4f0e6, #f4f0e6); background: var(--c-bg-121926, #121926); border-color: var(--c-border-2a3546, #2a3546); }
+.story-tabs button:hover, .story-tabs button:focus-visible { color: var(--c-fg-f4f0e6, #f4f0e6); }
+.story-tabs small { font-size: 10px; padding: 0 4px; background: var(--c-bg-192333, #192333); color: var(--c-fg-ffd166, #ffd166); }
+.story-track { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 3px; font-size: 11px; }
+.story-track li { padding: 2px 6px; border: 1px solid var(--c-border-2a3546, #2a3546); color: var(--c-fg-94a0b2, #94a0b2); }
+.story-track li.done { color: var(--c-fg-55c878, #55c878); border-color: var(--c-border-2a3546, #2a3546); }
+.story-track li.now { color: var(--c-fg-0b1018, #0b1018); background: var(--c-bg-f47b20, #f47b20); border-color: var(--c-border-f47b20, #f47b20); font-weight: 700; }
+.story-book { display: grid; gap: 10px; padding: 12px; background: var(--c-bg-121926, #121926); border: 2px solid var(--c-border-2a3546, #2a3546); }
+.story-book h2 { margin: 0; font-size: 18px; }
+.story-filters { display: flex; flex-wrap: wrap; gap: 4px; }
+.story-filters button { padding: 3px 8px; font: inherit; font-size: 12px; background: transparent; color: var(--c-fg-94a0b2, #94a0b2); border: 1px solid var(--c-border-2a3546, #2a3546); cursor: pointer; }
+.story-filters button.active { color: var(--c-fg-f4f0e6, #f4f0e6); border-color: var(--c-border-f47b20, #f47b20); }
+.story-journal { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.story-journal li { display: grid; gap: 2px; padding: 6px 8px; border-left: 3px solid var(--c-border-4da3ff, #4da3ff); background: var(--c-bg-0b1018, #0b1018); }
+.story-journal li.kind-game { border-left-color: var(--c-border-55c878, #55c878); }
+.story-journal li.kind-season { border-left-color: var(--c-border-ffd166, #ffd166); }
+.story-journal small { color: var(--c-fg-94a0b2, #94a0b2); font-size: 11px; }
+.story-journal p { margin: 0; font-size: 13px; }
+.story-pick { font-size: 12px; color: var(--c-fg-ffd166, #ffd166); }
+.story-people { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.story-people li { display: grid; gap: 6px; padding: 8px; background: var(--c-bg-0b1018, #0b1018); border: 1px solid var(--c-border-2a3546, #2a3546); }
+.story-people li > div:first-child { display: grid; }
+.story-people small { color: var(--c-fg-94a0b2, #94a0b2); font-size: 11px; }
+.story-people p { margin: 0; font-size: 13px; }
+.story-bond { display: grid; grid-template-columns: 1fr auto; gap: 6px; align-items: center; font-size: 12px; color: var(--c-fg-ffd166, #ffd166); }
+.story-trophies { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.story-trophies li { display: grid; justify-items: center; gap: 4px; padding: 10px 6px; text-align: center; background: var(--c-bg-0b1018, #0b1018); border: 1px solid var(--c-border-2a3546, #2a3546); color: var(--c-fg-94a0b2, #94a0b2); }
+.story-trophies li b { color: var(--c-fg-f4f0e6, #f4f0e6); font-size: 13px; }
+.story-trophies li small { font-size: 10px; }
+.story-trophies li.gold { border-color: var(--c-border-ffd166, #ffd166); color: var(--c-fg-ffd166, #ffd166); }
+.story-road { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 13px; }
+.story-road li { display: flex; align-items: center; gap: 6px; }
+@media (max-width: 480px) {
+  .story-tabs { gap: 2px; flex-wrap: nowrap; }
+  .story-tabs button { padding: 6px 6px; gap: 4px; font-size: 12px; white-space: nowrap; }
+}

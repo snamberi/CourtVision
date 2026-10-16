@@ -1,3 +1,4 @@
+import { keepLockedRatings } from '../ratingLocks';
 import { FOCUS_SKILLS } from '../coachingModel';
 import { coachPerformanceModifiers, type CoachIdentity } from '../coaching';
 import type { CoachTendencies } from '../league';
@@ -38,6 +39,11 @@ export const GUARANTEE_RATE = 100;
  * and how much playing time matters - each multiplier is 100 = baseline.
  */
 export function developOffseasonPlayer(season: PlayerSeason, rng: RNG = new RNG(), rules?: LeagueRulesSettings, facilityMultiplier = 1, focus: CoachTendencies['trainingFocus'] = 'balanced', ratingCap = 200, gameMinutes = NBA_GAME_MINUTES): PlayerSeason {
+  // Single locked ratings (Edit Player) come through the summer exactly as they were.
+  return keepLockedRatings(season, developSummer(season, rng, rules, facilityMultiplier, focus, ratingCap, gameMinutes));
+}
+
+function developSummer(season: PlayerSeason, rng: RNG, rules: LeagueRulesSettings | undefined, facilityMultiplier: number, focus: CoachTendencies['trainingFocus'], ratingCap: number, gameMinutes: number): PlayerSeason {
   const beforeOverall = calculateOverall(season);
   const beforeFullOverall = calculateFullAttributeOverall(season);
   const next: PlayerSeason = JSON.parse(JSON.stringify(season));
