@@ -39,6 +39,7 @@ import { PlayerAvatar } from '../PlayerAvatar';
 import { relicRunOpts } from '../../relics/apply';
 import { rewardRun, perfectSpins, perfectSecret, perfectRewardKey } from '../../relics/rewards';
 import { RelicReward, LuckChip } from '../relics/RelicReward';
+import { PostGameRewardPopup, type PostGameRewardData } from '../PostGameRewardPopup';
 import { PixelIcon } from '../PixelIcon';
 import { SlotReels, type Reel } from '../SlotReels';
 import { shake } from '../../fx/effects';
@@ -51,7 +52,7 @@ import { FramedAvatar } from '../AvatarFrame';
 import { useAvatar } from '../UserAvatar';
 import '../hunt/hunt.css';
 import { noteFeaturedXp } from '../../retention/modeOfWeek';
-import { perfectRunXp } from '../../profile/profile';
+import { perfectRunXp, totalXp } from '../../profile/profile';
 import './perfect.css';
 import { DraftBattle, BattleSetup } from './DraftBattle';
 import { loadBattle, saveBattle, newBattle, recordBattle, loadBattleRecords, battleWinner, type Battle } from '../../perfect/battle';
@@ -71,6 +72,7 @@ export function PerfectChallenge({ onExit }: { onExit: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [run, setRunState] = useState<PerfectRun | null>(() => loadPerfectRun());
   const [records, setRecords] = useState<PerfectRecords>(() => loadPerfectRecords());
+  const [pendingReward, setPendingReward] = useState<PostGameRewardData | null>(null);
   useEffect(() => {
     let live = true;
     import('../../history/nbaHistoryData').then(m => m.loadNbaHistory()).then(d => { if (live) setH(d); }, e => { if (live) setError(e instanceof Error ? e.message : String(e)); });
@@ -89,6 +91,7 @@ export function PerfectChallenge({ onExit }: { onExit: () => void }) {
       noteHolidayFinish(s.champion, `p820-${r.seed}-${r.mode}`);
       trackOnce(`p820-${r.seed}-${r.mode}`, 'mode_finish', { mode: 'perfect', variant: r.whatIf?.kind ?? r.mode, wins: s.w, champion: s.champion });
     } else if (r && r.stage === 'done' && prev?.stage !== 'done') {
+      const xpBefore = totalXp();
       setRecords(recordPerfect(r));
       const s = summary(r);
       rewardRun(perfectRewardKey(r), perfectSpins(s), { secret: perfectSecret(s), why: '82-0 Challenge' });
@@ -100,6 +103,7 @@ export function PerfectChallenge({ onExit }: { onExit: () => void }) {
       window.dispatchEvent(new Event(FEATS_EVENT));
       noteHolidayFinish(s.champion, `p820-${r.seed}-${r.mode}`);
       trackOnce(`p820-${r.seed}-${r.mode}`, 'mode_finish', { mode: 'perfect', variant: r.mode, daily: !!r.daily, wins: s.w, champion: s.champion });
+      setPendingReward({ rewardKey: perfectRewardKey(r), xpBefore, mode: '82-0 Challenge', result: 'done' });
     }
   };
   // Draft Battle: its own save, counted once when the series ends.
@@ -147,6 +151,7 @@ export function PerfectChallenge({ onExit }: { onExit: () => void }) {
   if (!h) return <div className="hunt p820">{header}<p className="empty-state">Loading 80 years of basketball…</p></div>;
   // Category Draft shows no rarity colours until the run is over (you pick on the name alone).
   return <div className={`hunt p820 ${run && run.stage !== 'done' && ((run.view && !run.view.colors) || isCategoryMode(run.mode)) ? 'no-rarity' : ''}`}>
+    {pendingReward && <PostGameRewardPopup data={pendingReward} onClose={() => setPendingReward(null)} />}
     {header}
     {run && run.stage !== 'done' && <DuelBanner duel={run.duel} />}
     {run && run.weekly && <p className="p820-challenge-line">Weekly Category Challenge · {run.weekly}</p>}

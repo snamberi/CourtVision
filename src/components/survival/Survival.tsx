@@ -27,6 +27,8 @@ import { noteWeekRun } from '../../retention/weekLog';
 import { relicRunOpts } from '../../relics/apply';
 import { rewardRun, survivalSpins, survivalSecret, survivalRewardKey } from '../../relics/rewards';
 import { RelicReward, LuckChip } from '../relics/RelicReward';
+import { totalXp } from '../../profile/profile';
+import { PostGameRewardPopup, type PostGameRewardData } from '../PostGameRewardPopup';
 import '../hunt/hunt.css';
 import './survival.css';
 
@@ -39,6 +41,7 @@ export function Survival({ onExit }: { onExit: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [run, setRunState] = useState<SurvivalRun | null>(loadSurvivalRun);
   const [records, setRecords] = useState<SurvivalRecords>(loadSurvivalRecords);
+  const [pendingReward, setPendingReward] = useState<PostGameRewardData | null>(null);
   const current = useRef(run);
   useEffect(() => {
     let live = true;
@@ -51,12 +54,14 @@ export function Survival({ onExit }: { onExit: () => void }) {
     setRunState(r);
     saveSurvivalRun(r);
     if (r && r.stage === 'over' && prev?.stage !== 'over') {
+      const xpBefore = totalXp();
       setRecords(recordSurvival(r));
       rewardRun(survivalRewardKey(r), survivalSpins(wins(r)), { secret: survivalSecret(wins(r)), why: 'Survival' });
       const w = wins(r);
       noteWeekRun('survival', { score: survivalScore(r), line: `${w} win${w === 1 ? '' : 's'}` }, `surv-${r.seed}-${r.level}`);
       noteHolidayFinish(w >= 10, `surv-${r.seed}-${r.level}`);
       trackOnce(`surv-${r.seed}-${r.level}`, 'mode_finish', { mode: 'survival', level: r.level, daily: !!r.daily, wins: w });
+      setPendingReward({ rewardKey: survivalRewardKey(r), xpBefore, mode: 'Survival', result: 'over' });
     }
   };
   const start = (level: SurvivalLevel, daily?: string) => {
@@ -73,6 +78,7 @@ export function Survival({ onExit }: { onExit: () => void }) {
   if (error) return <div className="hunt surv">{header}<p className="empty-state">Could not load the NBA history data: {error}</p></div>;
   if (!h) return <div className="hunt surv">{header}<p className="empty-state">Loading 80 years of basketball…</p></div>;
   return <div className="hunt surv mode-environment" data-environment="survival">
+    {pendingReward && <PostGameRewardPopup data={pendingReward} onClose={() => setPendingReward(null)} />}
     {header}
     <ModeBackdrop mode="survival" />
     {!run ? <Hub records={records} onStart={start} />
@@ -247,6 +253,7 @@ function Over({ h, run, records, onNew, onExit }: { h: NbaHistory; run: Survival
   const pool = cardPool(h);
   const [copied, setCopied] = useState(false);
   const w = wins(run), bosses = run.games.filter(g => g.won && g.boss).length, score = survivalScore(run);
+  const bestStreak = (() => { let max = 0, cur = 0; for (const g of run.games) { cur = g.won ? cur + 1 : 0; if (cur > max) max = cur; } return max; })();
   const last = run.games.at(-1);
   const best = records.best[run.level];
   const text = survivalShareText(run, SITE);
@@ -259,8 +266,11 @@ function Over({ h, run, records, onNew, onExit }: { h: NbaHistory; run: Survival
       <h2>You lasted {w} round{w === 1 ? '' : 's'}</h2>
       {last && !last.won && <p>Knocked out {last.us}-{last.them} by the {last.oppName}.</p>}
       <div className="hunt-over-stats">
-        <div><small>WINS</small><b><ResultCount value={w} /></b></div><div><small>BOSSES</small><b><ResultCount value={bosses} /></b></div><div><small>SCORE</small><b><ResultCount value={score} /></b></div>
-        <div><small>BEST</small><b><ResultCount value={best?.wins ?? w} /></b></div>
+        <div><small><PixelIcon name="check" size={11} /> WINS</small><b><ResultCount value={w} /></b></div>
+        <div><small><PixelIcon name="boss" size={11} /> BOSSES</small><b><ResultCount value={bosses} /></b></div>
+        <div><small><PixelIcon name="chart" size={11} /> SCORE</small><b><ResultCount value={score} /></b></div>
+        <div><small><PixelIcon name="flame" size={11} /> STREAK</small><b><ResultCount value={bestStreak} /></b></div>
+        <div><small><PixelIcon name="crown" size={11} /> BEST</small><b><ResultCount value={best?.wins ?? w} /></b></div>
       </div>
     </div>
     <RelicReward rewardKey={survivalRewardKey(run)} />

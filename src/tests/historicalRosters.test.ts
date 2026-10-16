@@ -60,6 +60,16 @@ describe('historical rosters', () => {
     const onTeams = new Set(res.league.teams.flatMap(t => t.seasons.map(p => p.playerId)));
     expect(res.extras.freeAgents.some(p => onTeams.has(p.playerId))).toBe(false);
   });
+  it('with "your team too" on, your team also takes its real roster', () => {
+    const { league, extras } = built;
+    const mine = 'CLE';
+    const next = { ...league, season: '2017', historical: { ...league.historical!, userTeamToo: true } };
+    const res = applyHistoricalRosters(next, extras, mine);
+    const cle = res.league.teams.find(t => t.teamId === mine)!;
+    expect(cle.seasons.some(p => p.playerId === 'Kyrie Irving')).toBe(false);
+    expect(res.league.teams.find(t => t.seasons.some(p => p.playerId === 'Kyrie Irving'))!.teamId).toBe('BOS');
+    expect(cle.seasons.some(p => p.playerId === 'Isaiah Thomas')).toBe(true);
+  });
   it('AI teams make no trades among themselves while rosters are historical', () => {
     const r = runTradeMarketAI(built.league, built.extras, null, 5, 5);
     expect(r.trades).toHaveLength(0);

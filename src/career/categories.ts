@@ -25,6 +25,11 @@ export const CATEGORIES: Category[] = [
 ];
 export const CATEGORY_BY_ID = new Map(CATEGORIES.map(c => [c.id, c]));
 export const MEASUREMENTS = new Set(['heightInches', 'wingspanInches', 'standingReachInches', 'weightLbs']);
+export const CATEGORY_ICON: Record<CategoryId, string> = {
+  size: 'user', body: 'shield', athleticism: 'lightning', finishing: 'ball',
+  midRange: 'midrange', threePoint: 'threepoint', playmaking: 'trade',
+  perimeterD: 'shoe', interiorD: 'hammer', iq: 'globe',
+};
 
 export type CategoryValues = Record<string, number>;
 const key = (g: Group, k: string) => `${g}.${k}`;

@@ -49,6 +49,8 @@ import { XP } from '../../profile/profile';
 import { relicRunOpts } from '../../relics/apply';
 import { rewardRun, huntSpins, huntSecret, huntRewardKey } from '../../relics/rewards';
 import { RelicReward, LuckChip } from '../relics/RelicReward';
+import { totalXp } from '../../profile/profile';
+import { PostGameRewardPopup, type PostGameRewardData } from '../PostGameRewardPopup';
 import './hunt.css';
 import { burst, celebrate } from '../../fx/effects';
 
@@ -59,6 +61,7 @@ export function LeagueHunt({ onExit }: { onExit: () => void }) {
   const [run, setRunState] = useState<HuntRun | null>(() => loadRun());
   const [records, setRecords] = useState<HuntRecords>(() => loadRecords());
   const [intro, setIntro] = useState(false);
+  const [pendingReward, setPendingReward] = useState<PostGameRewardData | null>(null);
   /** The series just played, while its scoreboard runs (it is already recorded in the run). */
   const [play, setPlay] = useState<{ play: SeriesPlay; series: HuntSeries; index: number; before: HuntRun; revealed: boolean } | null>(null);
   useEffect(() => {
@@ -71,6 +74,7 @@ export function LeagueHunt({ onExit }: { onExit: () => void }) {
     if (!r) clearRun();
     else saveRun(r);
     if (r && (r.stage === 'won' || r.stage === 'lost') && run?.stage !== r.stage) {
+      const xpBefore = totalXp();
       setRecords(recordRun(r));
       rewardRun(huntRewardKey(r), huntSpins(r), { secret: huntSecret(r), why: 'League Hunt' });
       noteWeekRecords(noteRunHighs('hunt', r.highs).length);
@@ -82,6 +86,7 @@ export function LeagueHunt({ onExit }: { onExit: () => void }) {
       if (ghost) { saveLocalGhost(ghost); void publishGhost(ghost).catch(() => {}); }
       noteHolidayFinish(r.stage === 'won', `hunt-${r.seed}`);
       trackOnce(`hunt-${r.seed}`, 'mode_finish', { mode: 'hunt', result: r.stage, reached: r.seriesIndex + 1, difficulty: r.difficulty ?? 'pro', deck: r.deck ?? 'classic', daily: !!r.daily });
+      setPendingReward({ rewardKey: huntRewardKey(r), xpBefore, mode: 'League Hunt', result: r.stage });
     }
     if (r && r.stage === 'draft' && r.seed !== run?.seed) track('mode_start', { mode: 'hunt', variant: r.daily ? 'daily' : r.weekly ? 'weekly' : 'run', difficulty: r.difficulty ?? 'pro', deck: r.deck ?? 'classic' });
   };
@@ -122,6 +127,7 @@ export function LeagueHunt({ onExit }: { onExit: () => void }) {
   if (!h) return <div className="hunt">{header}<p className="empty-state">Loading 80 years of basketball…</p></div>;
 
   return <div data-environment="legends" className={`hunt mode-environment ${play ? `era-${play.play.era.id}` : ''} ${run?.view?.colors === false && run.stage !== 'won' && run.stage !== 'lost' ? 'no-rarity' : ''}`}>
+    {pendingReward && <PostGameRewardPopup data={pendingReward} onClose={() => setPendingReward(null)} />}
     {header}
     <ModeBackdrop mode="legends" />
     {run && run.stage !== 'won' && run.stage !== 'lost' && <DuelBanner duel={run.duel} />}

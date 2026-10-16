@@ -171,4 +171,27 @@ button.relic-socket:hover, button.relic-socket:focus-visible { border-color: var
 .shop-wishlist { margin-top: 10px; }
 .shop-wishlist summary { cursor: pointer; font-weight: 600; padding: 6px 0; }
 .shop-cosmetic.owned { opacity: .6; }
+
+/* Post-game reward popup */
+.pgr-overlay { animation: pgr-in 160ms ease-out; }
+@keyframes pgr-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .pgr-overlay { animation: none; } }
+.pgr-box { width: min(440px, 100%); gap: 14px; }
+.pgr-head { text-align: center; padding-bottom: 4px; }
+.pgr-result { margin: 0; font-size: 28px; }
+.pgr-won { color: var(--c-fg-55c878, #55c878); }
+.pgr-lost { color: var(--c-fg-e85d5d, #e85d5d); }
+.pgr-done { color: var(--c-fg-f47b20, #f47b20); }
+.pgr-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.pgr-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--c-bg-0b1018, #0b1018); border: 1px solid var(--c-border-2a3546, #2a3546); }
+.pgr-row span { flex: 1; font-size: 14px; }
+.pgr-row b { font-size: 18px; font-variant-numeric: tabular-nums; }
+.pgr-level { border-color: var(--c-border-ffd166, #ffd166) !important; }
+.pgr-level b { color: var(--c-fg-ffd166, #ffd166); }
+.pgr-spins b { color: var(--c-fg-ffd166, #ffd166); }
+.pgr-secret { display: flex; gap: 12px; align-items: flex-start; padding: 12px; background: var(--c-bg-0b1018, #0b1018); border: 2px solid var(--c-border-f47b20, #f47b20); }
+.pgr-secret-text { display: grid; gap: 2px; }
+.pgr-secret-text b { font-size: 15px; }
+.pgr-secret-text small { color: var(--c-fg-94a0b2, #94a0b2); font-size: 12px; }
+.pgr-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .relic-card .relic-secret-how { display: block; margin-top: 3px; color: var(--c-fg-ffd166, #ffd166); }

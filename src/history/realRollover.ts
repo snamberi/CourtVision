@@ -74,9 +74,10 @@ export function historicalDebuts(meta: HistoricalLeagueMeta, newSeason: string, 
  * Real players move to the team they actually played for (from other AI teams or free agency; never off your team),
  * AI players who weren't on that team really are released, and numbers follow the real ones where known.
  */
-export function applyHistoricalRosters(league: League, extras: GMLeagueExtras, userTeamId: string | null): { league: League; extras: GMLeagueExtras; moved: number } {
+export function applyHistoricalRosters(league: League, extras: GMLeagueExtras, controlledTeamId: string | null): { league: League; extras: GMLeagueExtras; moved: number } {
   const meta = league.historical;
   const plan = meta?.forceRosters ? meta.realRosters?.[league.season ?? ''] : undefined;
+  const userTeamId = plan && meta?.userTeamToo ? null : controlledTeamId;
   const endYear = Number(league.season) + 1;
   if (!plan) {
     // Any historical league: real numbers where known, stable ones otherwise, no clashes (also fixes older saves).
@@ -132,8 +133,9 @@ export const rostersLocked = (league: Pick<League, 'historical'>) => !!league.hi
  * Historical rosters, after the trade deadline: AI players who really changed teams mid-season move to the team
  * they finished that season with. Your players, stuck and imported players stay put. Applied once per season.
  */
-export function applyHistoricalDeadline(league: League, extras: GMLeagueExtras, userTeamId: string | null): { league: League; extras: GMLeagueExtras; moved: string[] } {
+export function applyHistoricalDeadline(league: League, extras: GMLeagueExtras, controlledTeamId: string | null): { league: League; extras: GMLeagueExtras; moved: string[] } {
   const meta = league.historical;
+  const userTeamId = meta?.userTeamToo ? null : controlledTeamId;
   const season = league.season ?? '';
   const moves = meta?.forceRosters ? meta.realMoves?.[season] : undefined;
   if (!meta || !moves?.length || meta.movesApplied?.includes(season)) return { league, extras, moved: [] };

@@ -24,7 +24,10 @@ import { noteWeekRun } from '../../retention/weekLog';
 import '../hunt/hunt.css';
 import { relicRunOpts } from '../../relics/apply';
 import { rewardRun, storySpins, storySecret, storyRewardKey } from '../../relics/rewards';
+import { loadRelics, saveRelics, grantReward } from '../../relics/relics';
 import { RelicReward } from '../relics/RelicReward';
+import { totalXp } from '../../profile/profile';
+import { PostGameRewardPopup, type PostGameRewardData } from '../PostGameRewardPopup';
 import { StoryTabs, SeasonTrack, Journal, People, Trophies, type StoryTab } from './StoryBook';
 import './story.css';
 
@@ -46,6 +49,7 @@ export function StoryMode({ onExit }: { onExit: () => void }) {
   const [status, setStatus] = useState<StoryStatus | null>(storyStatus);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<StoryTab>('story');
+  const [pendingReward, setPendingReward] = useState<PostGameRewardData | null>(null);
   const current = useRef(story);
 
   const setStory = (s: StoryState | null) => {
@@ -53,7 +57,13 @@ export function StoryMode({ onExit }: { onExit: () => void }) {
     current.current = s;
     setStoryState(s);
     saveStory(s);
+    if (s && !s.done && !s.nba && prev && !prev.nba && s.games.length > (prev?.games.length ?? 0)) {
+      let streak = 0;
+      for (let i = s.games.length - 1; i >= 0 && s.games[i].won; i--) streak++;
+      if (streak > 0 && streak % 3 === 0) { const rs = loadRelics(); saveRelics(grantReward(rs, `story-streak-${s.seed}-${streak}`, { spins: 0, coins: 10, why: 'Story win streak' })); }
+    }
     if (s && s.done && prev && !prev.done) {
+      const xpBefore = totalXp();
       const e = storyEnding(s);
       setEndings(recordEnding(e.tier, e.id));
       rewardRun(storyRewardKey(s), storySpins(e.tier), { secret: storySecret(e.tier), why: 'Story Mode' });
@@ -61,6 +71,7 @@ export function StoryMode({ onExit }: { onExit: () => void }) {
       noteWeekRun('story', { score, line: e.title }, `story-${s.seed}${s.nba ? '-nba' : ''}`);
       noteHolidayFinish(true, `story-${s.seed}`);
       trackOnce(`story-${s.seed}${s.nba ? '-nba' : ''}`, 'mode_finish', { mode: 'story', ending: e.tier, nba: !!s.nba });
+      setPendingReward({ rewardKey: storyRewardKey(s), xpBefore, mode: 'Story Mode', result: 'done' });
     }
   };
 
@@ -144,6 +155,7 @@ export function StoryMode({ onExit }: { onExit: () => void }) {
     {story && !story.done && <button className="hunt-exit" onClick={() => { if (window.confirm('Start over? This story and its league will be lost.')) startOver(); }}>Start over</button>}
   </header>;
   return <div className="hunt story">
+    {pendingReward && <PostGameRewardPopup data={pendingReward} onClose={() => setPendingReward(null)} />}
     {header}
     {!story ? <Create endings={endings} onStart={(name, style, town) => { track('mode_start', { mode: 'story', style }); void dropStoryWorlds(); setStory(newStory(newSeed(), name, style, town, relicRunOpts())); }} />
       : story.done ? <Ending s={story} endings={endings} onNew={startOver} onNba={() => intoTheLeague(story)} busy={status} onExit={onExit} />
