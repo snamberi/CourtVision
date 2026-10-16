@@ -79,3 +79,28 @@
 /* Season preview grade */
 .grade-badge { flex: 0 0 auto; width: 54px; height: 54px; display: grid; place-items: center; font-family: var(--font-pixel); font-size: 22px; border: 3px solid currentColor; background: var(--c-bg-0b1018, #0b1018); }
 .grade-A { color: var(--c-fg-55c878, #55c878); } .grade-B { color: var(--c-fg-4da3ff, #4da3ff); } .grade-C { color: var(--c-fg-ffd166, #ffd166); } .grade-D { color: var(--c-fg-ff9d3d, #ff9d3d); } .grade-F { color: var(--c-fg-e85d5d, #e85d5d); }
+
+/* Inbox */
+.inbox-list { list-style: none; padding: 0; margin: 8px 0; display: flex; flex-direction: column; gap: 4px; }
+.inbox-msg { display: grid; grid-template-columns: 150px 1fr; gap: 10px; padding: 6px 8px; border-left: 3px solid var(--c-border-4da3ff, #4da3ff); background: var(--c-bg-121926, #121926); }
+.inbox-msg.success { border-left-color: var(--c-border-55c878, #55c878); }
+.inbox-msg.error { border-left-color: var(--c-border-e85d5d, #e85d5d); }
+.inbox-msg.unread { background: var(--c-bg-192333, #192333); font-weight: 600; }
+.inbox-when { color: var(--c-fg-94a0b2, #94a0b2); font-size: 11px; }
+@media (max-width: 640px) { .inbox-msg { grid-template-columns: 1fr; gap: 2px; } }
+
+/* Rewind */
+.rewind-list { list-style: none; padding: 0; margin: 6px 0 14px; display: flex; flex-direction: column; gap: 6px; }
+.rewind-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 10px; border: 2px solid var(--border, var(--c-border-2a3546, #2a3546)); background: var(--c-bg-121926, #121926); }
+.rewind-row.key { border-color: var(--c-border-7a6326, #7a6326); }
+.rewind-row small { display: block; color: var(--c-fg-94a0b2, #94a0b2); }
+@media (max-width: 640px) { .rewind-row { flex-direction: column; align-items: stretch; } }
+
+/* History tour */
+.history-tour { border: 2px solid var(--c-border-f47b20, #f47b20); background: var(--c-bg-121926, #121926); padding: 12px 14px; margin: 0 0 14px; box-shadow: 2px 2px 0 var(--c-shadow-f47b20, #f47b20); }
+.history-tour-head { display: flex; justify-content: space-between; align-items: center; }
+.history-tour h3 { margin: 6px 0; }
+.history-tour p { margin: 0 0 8px; max-width: 70ch; }
+.history-tour-dots { display: flex; gap: 4px; margin-bottom: 8px; }
+.history-tour-dots span { width: 8px; height: 8px; background: var(--c-bg-2a3546, #2a3546); }
+.history-tour-dots span.on { background: var(--c-bg-f47b20, #f47b20); }

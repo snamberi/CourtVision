@@ -15,8 +15,24 @@ export interface SaveRow {
 export interface RestorePoint {
   id: string; saveId: string; createdAt: number; sourceUpdatedAt: number; label: string;
   snapshot: SaveRow['snapshot'];
+  /** A key moment (before Deadline Day, the playoffs, the draft, re-signing, free agency, a new season or a rewind):
+   * kept in its own, longer list so routine backups never push it out. */
+  key?: boolean;
 }
-export const MAX_RESTORE_POINTS = 5;
+export const MAX_RESTORE_POINTS = 8;
+export const MAX_KEY_POINTS = 10;
+
+const PHASE_LABEL: Record<string, string> = {
+  playoffs: 'Before the playoffs', draft: 'Before the draft', resign_waive: 'Before re-signing', free_agency: 'Before free agency',
+  preseason: 'Before the preseason', awards_recap: 'Before the awards', all_star: 'Before All-Star Weekend',
+};
+/** The key moment a save is about to pass, if any: a label for the snapshot taken just before it. */
+export function keyMoment(previous: League, next: League): string | null {
+  if (previous.season !== next.season) return 'Before the new season';
+  if ((previous.deadlineDay?.status ?? 'upcoming') !== 'open' && next.deadlineDay?.status === 'open' && next.deadlineDay.season === next.season) return 'Before Deadline Day';
+  if (previous.seasonPhase !== next.seasonPhase) return PHASE_LABEL[next.seasonPhase ?? 'regular_season'] ?? 'Before season / phase change';
+  return null;
+}
 
 export interface SaveSummary {
   id: string;
@@ -98,12 +114,16 @@ export function updateSave(id: string, league: League, extras: GMLeagueExtras, c
       if (!row) return;
       const latest = await latestRestorePoint(id);
       const previous = row.snapshot.league;
-      const boundary = previous.season !== league.season || previous.seasonPhase !== league.seasonPhase;
+      const moment = keyMoment(previous, league);
+      const boundary = !!moment;
       const games = (l: League) => l.schedule.filter(g => g.played).length + (l.playoffBracket?.rounds.flat().reduce((n, s) => n + s.games.length, 0) ?? 0);
       const due = !latest || boundary || Date.now() - latest.createdAt >= 10 * 60_000
         || games(league) - games(latest.snapshot.league) >= 10;
       if (due && latest?.sourceUpdatedAt !== row.updatedAt) {
-        await addRestorePoint(id, row.snapshot, row.updatedAt, boundary ? 'Before season / phase change' : 'Automatic backup');
+        await addRestorePoint(id, row.snapshot, row.updatedAt, moment ?? 'Automatic backup', !!moment);
+      } else if (moment && latest && latest.sourceUpdatedAt === row.updatedAt && !latest.key) {
+        // The newest backup already holds this exact moment: name it instead of storing it twice.
+        await savesDb.restorePoints.update(latest.id, { label: moment, key: true });
       }
       await savesDb.saves.update(id, { snapshot, updatedAt: Math.max(Date.now(), row.updatedAt + 1) });
     });
@@ -192,15 +212,18 @@ export function createDebouncedSave(delayMs = 1500) {
 }
 
 /** Restore points share the save transaction: a failed backup never half-replaces a save. */
-async function addRestorePoint(saveId: string, snapshot: SaveRow['snapshot'], sourceUpdatedAt: number, label: string): Promise<string> {
+async function addRestorePoint(saveId: string, snapshot: SaveRow['snapshot'], sourceUpdatedAt: number, label: string, key = false): Promise<string> {
   const id = `restore_${makeId()}`;
   const last = await latestRestorePoint(saveId);
   const createdAt = Math.max(Date.now(), (last?.createdAt ?? 0) + 1);
-  await savesDb.restorePoints.add({ id, saveId, createdAt, sourceUpdatedAt, label, snapshot });
-  const keys = await savesDb.restorePoints.where('[saveId+createdAt]').between([saveId, Dexie.minKey], [saveId, Dexie.maxKey]).reverse().primaryKeys();
-  await savesDb.restorePoints.bulkDelete(keys.slice(MAX_RESTORE_POINTS));
+  await savesDb.restorePoints.add({ id, saveId, createdAt, sourceUpdatedAt, label, snapshot, ...(key ? { key: true } : {}) });
+  // Routine and key-moment backups are trimmed separately, newest kept.
+  const all = await savesDb.restorePoints.where('[saveId+createdAt]').between([saveId, Dexie.minKey], [saveId, Dexie.maxKey]).reverse().toArray();
+  const drop = [...all.filter(p => !p.key).slice(MAX_RESTORE_POINTS), ...all.filter(p => p.key).slice(MAX_KEY_POINTS)].map(p => p.id);
+  if (drop.length) await savesDb.restorePoints.bulkDelete(drop);
   return id;
 }
+
 function latestRestorePoint(saveId: string) {
   return savesDb.restorePoints.where('[saveId+createdAt]').between([saveId, Dexie.minKey], [saveId, Dexie.maxKey]).reverse().first();
 }
@@ -215,6 +238,22 @@ export async function createRestorePoint(saveId: string): Promise<string> {
     return addRestorePoint(saveId, row.snapshot, row.updatedAt, 'Manual backup');
   });
 }
+/**
+ * Rewind: replaces the save with a restore point's snapshot and returns it to load into the open league, after saving
+ * where you are now as a "Before rewind" key moment (so a rewind can itself be undone).
+ */
+export async function prepareRewind(saveId: string, pointId: string): Promise<SaveRow['snapshot']> {
+  await pendingWrites.get(saveId);
+  return savesDb.transaction('rw', savesDb.saves, savesDb.restorePoints, async () => {
+    const point = await savesDb.restorePoints.get(pointId);
+    const row = await savesDb.saves.get(saveId);
+    if (!point || point.saveId !== saveId || !row) throw new Error('This restore point is no longer available.');
+    await addRestorePoint(saveId, row.snapshot, row.updatedAt, 'Before rewind', true);
+    await savesDb.saves.update(saveId, { snapshot: point.snapshot, updatedAt: Math.max(Date.now(), row.updatedAt + 1) });
+    return point.snapshot;
+  });
+}
+
 export async function recoverRestorePoint(saveId: string, pointId: string): Promise<string> {
   const point = await savesDb.restorePoints.get(pointId);
   const original = await savesDb.saves.get(saveId);

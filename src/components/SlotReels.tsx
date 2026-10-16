@@ -47,7 +47,7 @@ function OneReel({ reel, spin, stopAt, rollKey, onStop }: { reel: Reel; spin: bo
 /** The reels for one roll. `onLanded` fires when the last reel stops; `onTick` while they spin (for a sound). */
 export function SlotReels({ reels, rollKey, onLanded, onTick }: { reels: Reel[]; rollKey: string; onLanded?: () => void; onTick?: () => void }) {
   const stopped = useRef(0), ticker = useRef(0);
-  const reduce = typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  const reduce = typeof window !== 'undefined' && !!(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || document.documentElement.classList.contains('reduce-motion'));
   useEffect(() => {
     stopped.current = 0;
     if (reduce) { onLanded?.(); return; }

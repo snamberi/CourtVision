@@ -121,7 +121,7 @@ export function WatchGame({game,home,away,homeRoster=[],awayRoster=[],onBoxScore
   const rivalryBoost=Math.min(.45,(rivalry?(rivalry.level==='Bitter rivals'?.3:rivalry.level==='Rivals'?.2:.12):0)+occasionBoost);
   const total=game.possessionLog.length;
   const [cursor,setCursor]=useState(()=>startAt!=null?Math.max(0,Math.min(total,startAt)):0);
-  const [playing,setPlaying]=useState(()=>!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
+  const [playing,setPlaying]=useState(()=>!(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || document.documentElement.classList.contains('reduce-motion')));
   const [labels,setLabels]=useState(true);
   const [trail,setTrail]=useState(false);
   const [shotChart,setShotChart]=useState(true);
@@ -148,7 +148,7 @@ export function WatchGame({game,home,away,homeRoster=[],awayRoster=[],onBoxScore
   const audio=useRef<CourtAudio|null>(null);
   const [speed,setSpeed]=useState(1);
   // Big-moment camera: a dunk, block or game-winner gets a zoom and a crowd flash, then a slow-motion replay.
-  const [bigCam,setBigCam]=useState(()=>!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
+  const [bigCam,setBigCam]=useState(()=>!(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || document.documentElement.classList.contains('reduce-motion')));
   const [bigmo,setBigmo]=useState<{h:Highlight;phase:'hit'|'replay'}|null>(null);
   const bigSeen=useRef(new Set<number>());
   const finished=cursor>=total;

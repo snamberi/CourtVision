@@ -1,3 +1,4 @@
+import { prefersReducedMotion } from '../../lib/accessibility';
 import { ResultCount, ResultCrest, MvpSpotlight } from '../presentation/ResultPresentation';
 import { LineupBoard } from '../presentation/LineupBoard';
 import { noteHolidayFinish } from '../../retention/holiday';
@@ -281,7 +282,7 @@ function Bonds({ bonds }: { bonds: ChemistryBond[] }) {
 const kindLabel = (s: HuntSeries, i: number) => (s.secret ? 'SECRET BOSS' : s.kind === 'boss' ? 'BOSS' : s.kind === 'semi' ? 'SEMI-BOSS' : `SERIES ${i + 1}`);
 
 const SERIES_MS = 10_000;
-const reducedMotion = () => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+const reducedMotion = prefersReducedMotion;
 /** How far into a game the scoreboard is (0-1) for each side: two different curves, so the lead changes hands. */
 const curve = (frac: number, k: number) => Math.min(1, Math.max(0, frac ** k));
 

@@ -26,6 +26,7 @@ export const GROUPS: NavGroup[] = [
     title: 'League',
     items: [
       { label: 'Dashboard', tab: 'dashboard' },
+      { label: 'Inbox', tab: 'inbox' },
       { label: 'Standings', tab: 'standings' },
       { label: 'Playoffs', tab: 'playoffs' },
       { label: 'In-Season Cup', tab: 'cup' },
@@ -120,6 +121,7 @@ export const GROUPS: NavGroup[] = [
     title: 'Settings',
     items: [
       { label: 'Global Settings', tab: 'settings' },
+      { label: 'Rewind', tab: 'rewind' },
       { label: 'League Settings', tab: 'leagueSettings', leagueSettingsSub: 'rules' },
       { label: 'Award Settings', tab: 'leagueSettings', leagueSettingsSub: 'awards' },
     ],
@@ -132,7 +134,7 @@ export const NAV_ICONS: Record<string, string> = {
   dailySchedule: 'calendar', finances: 'chart', history: 'list', powerRankings: 'chart',
   transactions: 'trade', news: 'list', yourTeam: 'team', roster: 'team', freeAgency: 'team',
   trade: 'trade', tradeBlock: 'trade', tradeOffers: 'trade', draft: 'team', compare: 'chart',
-  watchList: 'search', hallOfFame: 'trophy', teamHistory: 'trophy', records: 'trophy', almanac: 'trophy', historyBook: 'list', nbaArchive: 'search', realVsYours: 'chart', lineupLab: 'chart', seasonPreview: 'star', legends: 'trophy', analytics: 'chart',
+  watchList: 'search', hallOfFame: 'trophy', teamHistory: 'trophy', records: 'trophy', almanac: 'trophy', historyBook: 'list', nbaArchive: 'search', realVsYours: 'chart', lineupLab: 'chart', seasonPreview: 'star', inbox: 'list', rewind: 'clock', legends: 'trophy', analytics: 'chart',
   playerStats: 'chart', database: 'search', teamStats: 'chart', injuries: 'list', awards: 'trophy',
   bulk: 'settings', settings: 'settings', autoPlay: 'play', fastEdit: 'settings', code: 'list',
   staff: 'team', development: 'chart', sandbox: 'settings', imports: 'list', lab: 'chart', leagueSettings: 'settings', mainMenu: 'court',

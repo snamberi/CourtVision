@@ -31,6 +31,7 @@ export const SIMPLE_HUBS: SimpleHub[] = [
     id: 'home', label: 'Home', icon: 'court', blurb: 'next game, road map, news',
     items: [
       { label: 'Home', tab: 'dashboard' },
+      { label: 'Inbox', tab: 'inbox' },
       { label: 'Preseason', tab: 'preseason', onlyDuringPhase: 'preseason' },
       { label: 'News', tab: 'news' },
       { label: 'Storylines', tab: 'storylines' },
@@ -115,6 +116,7 @@ export const SIMPLE_HUBS: SimpleHub[] = [
     id: 'settings', label: 'Settings & tools', icon: 'settings', blurb: 'saves, rules, lessons',
     items: [
       { label: 'Settings & saves', tab: 'settings' },
+      { label: 'Rewind', tab: 'rewind' },
       { label: 'League rules', tab: 'leagueSettings', leagueSettingsSub: 'rules' },
       { label: 'Award formulas', tab: 'leagueSettings', leagueSettingsSub: 'awards' },
       { label: 'Auto Play', tab: 'autoPlay' },

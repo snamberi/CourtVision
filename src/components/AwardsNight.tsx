@@ -1,3 +1,4 @@
+import { prefersReducedMotion } from '../lib/accessibility';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ordinal } from '../lib/humanize';
 import { fx } from './statFormat';
@@ -25,7 +26,7 @@ type Step =
   | { kind: 'teams'; id: string; label: string; trophies: TrophyKey[]; teams: AwardWinner[][]; voteKey: VotedAwardKey }
   | { kind: 'outro' };
 
-const reducedMotion = () => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+const reducedMotion = prefersReducedMotion;
 const place = (i: number) => ordinal(i + 1);
 
 function playerSeasonLine(league: League, extras: GMLeagueExtras | undefined, playerId: string, season: string): StatSnapshot | null {

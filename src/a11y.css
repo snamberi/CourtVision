@@ -35,3 +35,14 @@ html.cb-safe .rarity-legendary .hunt-card-top small, html.cb-safe .hunt-reel-ovr
 .update-banner { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 10px; padding: 8px 10px; background: var(--c-bg-192333, #192333); border: 2px solid var(--c-border-f47b20, #f47b20); }
 .update-banner span { flex: 1; min-width: 200px; }
 .update-banner a { padding: 4px 10px; text-decoration: none; }
+
+/* Reduce motion (Settings): no animations or transitions anywhere. */
+html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
+
+/* Colour-blind-safe wins/losses and charts (Okabe-Ito blue and orange instead of green and red). */
+html.cb-safe .good-text, html.cb-safe .rvy-mark.same, html.cb-safe .cv-chip.good, html.cb-safe .reset-preview .in { color: var(--c-fg-56b4e9, #56b4e9); }
+html.cb-safe .bad-text, html.cb-safe .rvy-mark.diff, html.cb-safe .cv-chip.bad, html.cb-safe .reset-preview .out { color: var(--c-fg-e69f00, #e69f00); }
+html.cb-safe .shot-zone.hot { fill: var(--c-bg-0072b2, #0072b2); }
+html.cb-safe .shot-zone.cold { fill: var(--c-bg-d55e00, #d55e00); }
+html.cb-safe .grade-A { color: var(--c-fg-56b4e9, #56b4e9); }
+html.cb-safe .grade-F { color: var(--c-fg-e69f00, #e69f00); }
