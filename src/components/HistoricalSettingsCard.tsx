@@ -32,6 +32,16 @@ export function HistoricalSettingsCard({ league, extras, onChange }: { league: L
         {players.length} real players in the league · {following} on their reference this season · {fallback} past the end of their real data (developing through Court Vision).
         Missed seasons between two reference points are interpolated and labelled. The data ends with {seasonText(meta.lastDataStartYear)}; after that, and after a player’s real career, Court Vision development, aging and retirement take over.
       </p>
+      {meta.forceRosters && <>
+        <label className="trade-value-toggle">
+          <input type="checkbox" checked={!!meta.userTeamToo} onChange={e => onChange(l => (l.historical ? { ...l, historical: { ...l.historical, userTeamToo: e.target.checked } } : l))} /> Historical rosters for your team too
+        </label>
+        <p className="hint-text">
+          {meta.userTeamToo
+            ? 'On: at the start of every season the data covers, your team also resets to its real roster, and your real players make their real mid-season trades. Players you drafted or signed who were not really on your team are released.'
+            : 'Off: every AI team follows its real roster, but your team keeps whoever you draft, sign and trade for.'}
+        </p>
+      </>}
       <TeamNamesEditor league={league} onChange={onChange} />
       <DataCredits />
       {meta.notes.length > 0 && (

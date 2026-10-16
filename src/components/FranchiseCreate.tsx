@@ -27,7 +27,7 @@ import './create.css';
 export type Challenge = 'free' | 'decade' | 'dynasty' | 'rebuild' | 'draft' | 'worldgames' | 'timeMachine';
 export type LeagueSource = 'history' | 'random' | 'csv' | 'world';
 export type CreateChoice =
-  | { kind: 'league'; source: LeagueSource; /** Other leagues (source 'world'): which one. */ world?: WorldLeagueId; name: string; year: string; difficulty: TradeDifficulty; real: { realDevelopment: boolean; forceRosters: boolean; allPlayers: boolean }; settings: CreateSettings; /** Dynasty Mode: the living world switched on (see simulation/dynasty.ts). */ dynasty?: boolean; /** Build a Dynasty in 10 Seasons (see simulation/decadeChallenge.ts). */ decade?: boolean; /** GM Career: start as the scout (see simulation/gmCareer.ts). */ gmCareer?: boolean }
+  | { kind: 'league'; source: LeagueSource; /** Other leagues (source 'world'): which one. */ world?: WorldLeagueId; name: string; year: string; difficulty: TradeDifficulty; real: { realDevelopment: boolean; forceRosters: boolean; userTeamToo: boolean; allPlayers: boolean }; settings: CreateSettings; /** Dynasty Mode: the living world switched on (see simulation/dynasty.ts). */ dynasty?: boolean; /** Build a Dynasty in 10 Seasons (see simulation/decadeChallenge.ts). */ decade?: boolean; /** GM Career: start as the scout (see simulation/gmCareer.ts). */ gmCareer?: boolean }
   | { kind: 'rebuild'; scenario: string }
   | { kind: 'draft' }
   | { kind: 'worldgames'; games: GamesId; country: string }
@@ -62,6 +62,7 @@ export function FranchiseCreate({ onBack, onStart, busy = null, initial = 'free'
   const [difficulty, setDifficulty] = useState<TradeDifficulty>('normal');
   const [realDevelopment, setRealDevelopment] = useState(true);
   const [forceRosters, setForceRosters] = useState(true);
+  const [userTeamToo, setUserTeamToo] = useState(false);
   const [allPlayers, setAllPlayers] = useState(true);
   const [asScout, setAsScout] = useState(false);
   const [settings, setSettings] = useState<CreateSettings>(DEFAULT_CREATE);
@@ -93,7 +94,7 @@ export function FranchiseCreate({ onBack, onStart, busy = null, initial = 'free'
     else if (challenge === 'draft') onStart({ kind: 'draft' });
     else if (challenge === 'worldgames') onStart({ kind: 'worldgames', games: wgGames, country: wgCountry });
     else if (challenge === 'timeMachine') { if (tm?.replace) onStart({ kind: 'timeMachine', from: tm.from, year: tm.year, replace: tm.replace }); }
-    else onStart({ kind: 'league', source, ...(source === 'world' ? { world: worldId } : {}), name: name.trim() || (challenge === 'dynasty' ? 'My Dynasty' : challenge === 'decade' ? 'Ten-Year Plan' : 'My League'), year, difficulty, real: { realDevelopment, forceRosters, allPlayers }, settings, ...(challenge === 'dynasty' ? { dynasty: true } : {}), ...(challenge === 'decade' ? { decade: true } : {}), ...(asScout ? { gmCareer: true } : {}) });
+    else onStart({ kind: 'league', source, ...(source === 'world' ? { world: worldId } : {}), name: name.trim() || (challenge === 'dynasty' ? 'My Dynasty' : challenge === 'decade' ? 'Ten-Year Plan' : 'My League'), year, difficulty, real: { realDevelopment, forceRosters, userTeamToo, allPlayers }, settings, ...(challenge === 'dynasty' ? { dynasty: true } : {}), ...(challenge === 'decade' ? { decade: true } : {}), ...(asScout ? { gmCareer: true } : {}) });
   };
   const sc = SCENARIOS.find(s => s.id === scenario)!;
   const startLabel = busy ?? (challenge === 'rebuild' ? `Start: ${sc.title}` : challenge === 'draft' ? 'Go to the draft room' : challenge === 'worldgames' ? `Coach ${wgCountry}` : challenge === 'timeMachine' ? (tm ? `Travel to ${seasonName(tm.year)}` : 'Loading NBA history…') : historical ? `Start the ${seasonName(Number(historyYear))} NBA` : source === 'random' ? 'Create the random league' : source === 'world' ? `Start the ${WORLD_LEAGUES[worldId].short}` : 'Create the league');
@@ -171,6 +172,7 @@ export function FranchiseCreate({ onBack, onStart, busy = null, initial = 'free'
         <div className="create-toggles">
           <Toggle on={realDevelopment} set={setRealDevelopment} title="Real player development" blurb={realDevelopment ? 'Real players rise and decline along their real careers.' : "Real players develop through Court Vision's own systems."} />
           <Toggle on={forceRosters} set={setForceRosters} title="Historical rosters" blurb={forceRosters ? 'Every AI team takes the floor with its real roster each season, real trades included, until the data runs out. They make no other trades.' : 'Rosters start real, then change through your league.'} />
+          {forceRosters && <Toggle on={userTeamToo} set={setUserTeamToo} title="Your team too" blurb={userTeamToo ? 'Your team also resets to its real roster every season and makes its real trades. Your own signings and draft picks will not stay.' : 'Your team is yours: it keeps whoever you draft, sign and trade for.'} />}
           <Toggle on={allPlayers} set={setAllPlayers} title="Every real player" blurb={allPlayers ? `Players who retired before ${historyYear} are in, with their careers and honours.` : 'Only players active at the start (and those to come).'} />
         </div>
       </section>}

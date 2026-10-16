@@ -42,6 +42,8 @@ export interface HistoricalLeagueMeta {
   cityNames?: Record<string, string>;
   /** Historical rosters: AI teams are reset to their real rosters at the start of every season the data covers. */
   forceRosters?: boolean;
+  /** Historical rosters also reset your own team to its real roster each season. */
+  userTeamToo?: boolean;
   /** Real opening rosters by season start year → team → the abbreviation that season and real player ids (top 15 by minutes). */
   realRosters?: Record<string, Record<string, { abbr: string; ids: string[] }>>;
   /** Real mid-season moves by season start year: where each traded player finished that season (applied after the deadline). */
@@ -376,7 +378,7 @@ export function realSeasonShape(h: NbaHistory): { games: Record<string, number>;
 export interface HistoricalLeagueResult { league: League; extras: GMLeagueExtras; summary: { teams: number; rostered: number; freeAgents: number; importedSeasons: number; notes: string[] } }
 
 /** Builds a playable league at the opening of `startYear`-(startYear+1). */
-export function buildHistoricalLeague(h: NbaHistory, startYear: number, opts: { realDevelopment: boolean; difficulty: TradeDifficulty; seed?: number; forceRosters?: boolean; allPlayers?: boolean; yearAccurate?: boolean }): HistoricalLeagueResult {
+export function buildHistoricalLeague(h: NbaHistory, startYear: number, opts: { realDevelopment: boolean; difficulty: TradeDifficulty; seed?: number; forceRosters?: boolean; userTeamToo?: boolean; allPlayers?: boolean; yearAccurate?: boolean }): HistoricalLeagueResult {
   const E = startYear + 1; // END-year label of the start season in the data
   const lastEnd = h.manifest.coverage.seasons[1];
   if (startYear < FIRST_START_YEAR || E > lastEnd) throw new Error(`Start year ${startYear} is outside the supported range ${FIRST_START_YEAR}–${lastEnd - 1}.`);
@@ -524,7 +526,7 @@ export function buildHistoricalLeague(h: NbaHistory, startYear: number, opts: { 
       source: 'nba-history', dataset: NBA_HISTORY_DATASET, startYear, realDevelopment: opts.realDevelopment,
       futureClasses, futureDebuts, classesLoadedThrough: Math.min(firstDraft + 9, lastDraftYear(h)), lastDataStartYear: lastEnd - 1, notes,
       cityNames: Object.fromEntries(teams.map(t => [t.teamId, t.name])),
-      ...(opts.forceRosters ? { forceRosters: true, realRosters, realMoves } : {}),
+      ...(opts.forceRosters ? { forceRosters: true, realRosters, realMoves, ...(opts.userTeamToo ? { userTeamToo: true } : {}) } : {}),
       realSeasonGames: shape.games, realPace: shape.pace,
     },
   };

@@ -527,7 +527,7 @@ function App() {
     historyTools().then(({ h, buildHistoricalLeague }) => new Promise<void>(resolve => setTimeout(() => {
       setMenuBusy('Building the league…');
       if (origin.kind === 'history') {
-        const built = buildHistoricalLeague(h, origin.year ?? 2016, { realDevelopment: !!origin.realDevelopment, forceRosters: !!origin.forceRosters, allPlayers: !!origin.allPlayers, difficulty: origin.difficulty, seed: origin.seed });
+        const built = buildHistoricalLeague(h, origin.year ?? 2016, { realDevelopment: !!origin.realDevelopment, forceRosters: !!origin.forceRosters, userTeamToo: !!origin.userTeamToo, allPlayers: !!origin.allPlayers, difficulty: origin.difficulty, seed: origin.seed });
         openWithTeam({ ...built.league, origin }, built.extras);
         resolve();
         return;
@@ -626,7 +626,7 @@ function App() {
     }
     if (mode === 'real' && real?.source === 'history') {
       // Built-in NBA history: load the reference data on demand, then pick a team like any new league.
-      startFromOrigin({ kind: 'history', year: parseInt(year, 10), seed, difficulty, realDevelopment: real.realDevelopment, forceRosters: !!real.forceRosters, allPlayers: !!real.allPlayers },
+      startFromOrigin({ kind: 'history', year: parseInt(year, 10), seed, difficulty, realDevelopment: real.realDevelopment, forceRosters: !!real.forceRosters, ...(real.forceRosters && real.userTeamToo ? { userTeamToo: true } : {}), allPlayers: !!real.allPlayers },
         { name: leagueName || `NBA ${year}–${String(parseInt(year, 10) + 1).slice(2)}` });
       return;
     }
