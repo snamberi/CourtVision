@@ -1,3 +1,5 @@
+import { withRingNight } from '../simulation/ringNight';
+import { seasonEraSettings } from '../simulation/eraRules';
 import { realMedals } from '../worldGames/data';
 import type { NbaHistory, HistSeasonRow, HistPlayer } from './nbaHistoryData';
 import { NBA_HISTORY_DATASET } from './datasetInfo';
@@ -54,6 +56,8 @@ export interface HistoricalLeagueMeta {
   realSeasonGames?: Record<string, number>;
   /** Real league pace relative to today's (1 = about 99 possessions a game), by season start year. */
   realPace?: Record<string, number>;
+  /** Share of shots that were threes, relative to the last season in the data (0 before the line), by season start year. */
+  realThreeVolume?: Record<string, number>;
 }
 
 export function supportedStartYears(h: NbaHistory): number[] {
@@ -357,7 +361,7 @@ function estimatedPace(endYear: number): number {
   return 1.12;
 }
 /** Each real season's length (games per team) and pace relative to today's ~99 possessions, keyed by START year. */
-export function realSeasonShape(h: NbaHistory): { games: Record<string, number>; pace: Record<string, number> } {
+export function realSeasonShape(h: NbaHistory): { games: Record<string, number>; pace: Record<string, number>; threes: Record<string, number> } {
   const byEnd = new Map<number, { games: number; pace: number[] }>();
   for (const t of h.teams) {
     if (!NBA.has(t.league)) continue;
@@ -372,7 +376,19 @@ export function realSeasonShape(h: NbaHistory): { games: Record<string, number>;
     const avg = r.pace.length ? r.pace.reduce((a, b) => a + b, 0) / r.pace.length / 99 : estimatedPace(end);
     pace[String(endToStart(end))] = Math.round(Math.max(0.85, Math.min(1.3, avg)) * 1000) / 1000;
   }
-  return { games, pace };
+  // Three-point share of field-goal attempts each season (every stint counted once), relative to the latest season's.
+  const shots = new Map<number, { fga: number; tpa: number }>();
+  for (const r of h.seasons) {
+    if (r.isAggregate || !NBA.has(r.league) || r.stats.fga == null) continue;
+    const s = shots.get(r.season) ?? { fga: 0, tpa: 0 };
+    s.fga += r.stats.fga; s.tpa += r.stats.x3pa ?? 0;
+    shots.set(r.season, s);
+  }
+  const latest = shots.get(Math.max(...shots.keys()));
+  const modern = latest && latest.fga ? latest.tpa / latest.fga : 0.4;
+  const threes: Record<string, number> = {};
+  for (const [end, s] of shots) threes[String(endToStart(end))] = s.fga && modern ? Math.round(Math.min(1.2, s.tpa / s.fga / modern) * 1000) / 1000 : 0;
+  return { games, pace, threes };
 }
 
 export interface HistoricalLeagueResult { league: League; extras: GMLeagueExtras; summary: { teams: number; rostered: number; freeAgents: number; importedSeasons: number; notes: string[] } }
@@ -519,15 +535,17 @@ export function buildHistoricalLeague(h: NbaHistory, startYear: number, opts: { 
   const yearAccurate = opts.yearAccurate !== false;
   const shape = realSeasonShape(h);
   const league: League = {
-    teams, schedule: generateSeasonSchedule(teamIds, gamesPerTeam),
-    settings: { ...DEFAULT_GAME_SETTINGS, gamesPerSeason: gamesPerTeam, ...(yearAccurate ? { yearAccurate: true, eraPace: shape.pace[season] ?? 1 } : {}) } as League['settings'],
+    teams, schedule: withRingNight(generateSeasonSchedule(teamIds, gamesPerTeam), franchiseHistory),
+    settings: (yearAccurate
+      ? seasonEraSettings({ ...DEFAULT_GAME_SETTINGS, gamesPerSeason: gamesPerTeam, yearAccurate: true, eraPace: shape.pace[season] ?? 1 }, startYear, shape.threes, lastEnd - 1)
+      : { ...DEFAULT_GAME_SETTINGS, gamesPerSeason: gamesPerTeam }) as League['settings'],
     season, calendarDate: seasonStartDate(season), calendarRound: -1, franchiseHistory, ...(retiredPlayers ? { retiredPlayers } : {}),
     historical: {
       source: 'nba-history', dataset: NBA_HISTORY_DATASET, startYear, realDevelopment: opts.realDevelopment,
       futureClasses, futureDebuts, classesLoadedThrough: Math.min(firstDraft + 9, lastDraftYear(h)), lastDataStartYear: lastEnd - 1, notes,
       cityNames: Object.fromEntries(teams.map(t => [t.teamId, t.name])),
       ...(opts.forceRosters ? { forceRosters: true, realRosters, realMoves, ...(opts.userTeamToo ? { userTeamToo: true } : {}) } : {}),
-      realSeasonGames: shape.games, realPace: shape.pace,
+      realSeasonGames: shape.games, realPace: shape.pace, realThreeVolume: shape.threes,
     },
   };
   const firstClass = futureClasses[String(firstDraft)] ?? [];

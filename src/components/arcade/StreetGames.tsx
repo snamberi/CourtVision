@@ -29,7 +29,7 @@ const writeRun = (r: LegendsRun) => { try { localStorage.setItem(LEGENDS_KEY, JS
 /** Plays a game's possessions out over a couple of seconds, then shows the final. */
 export function LiveScore({ game, left, right, onDone }: { game: StreetGame; left: React.ReactNode; right: React.ReactNode; onDone?: () => void }) {
   const [i, setI] = useState(0);
-  const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  const reduce = typeof window !== 'undefined' && (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || document.documentElement.classList.contains('reduce-motion'));
   useEffect(() => {
     if (reduce) { setI(game.plays.length); return; }
     setI(0);

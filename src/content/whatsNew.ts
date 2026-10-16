@@ -10,6 +10,18 @@ export interface Release { id: string; title: string; items: string[]; theme?: s
 
 export const RELEASES: Release[] = [
   {
+    id: '2027-06-30',
+    title: '25 upgrades: real history, deeper franchises, new ways to play',
+    items: [
+      "**Real history:** a **Real vs Yours** page shows how far your league has drifted from what really happened. **Era rules** play old seasons by their own rules (no three-point line before 1979, hand-checking, no zones). Start from **12 famous moments** (Jordan's rookie year, The Decision, Kawhi leaving Toronto). Opening night is **Ring Night**: the champions host last year's Finals loser. Before the draft and free agency, a preview shows what historical rosters will do to your team.",
+      "**Franchise:** protected picks that don't convey **roll over** to next year with looser protection. **Two-way contracts** (two G League slots, young players grow there). Unhappy, underpaid stars can **hold out**, and players with options opt out when the market pays more.",
+      "**Analysis:** **Lineup Lab** with shot charts for every lineup, a richer **Compare** page with career curves and look-alike careers, **Hall of Fame voting** with ballots and near misses, and a **Season Preview** with predictions and a report card at the end.",
+      "**Easier to use:** Ctrl+K now finds players and teams too, new shortcuts (L, I, W), an **Inbox** that keeps every message, **Rewind** to a key moment (before the draft, Deadline Day, free agency…), a **Reduce motion** switch in Settings and a short tour of the history features.",
+      "**New ways to play:** **Coach only** leagues (the AI runs your front office, you coach), the **Daily Draft** quick game (the same real draft class for everyone, scored by real careers), playoff **Pick'em** for XP, and **Dynasty Rankings** that put your league's best runs next to the 60s Celtics, the 90s Bulls and the Warriors.",
+      "**Smaller, faster saves:** backups are compressed (rosters and history about 9 times smaller), you keep more of them (12 regular + 15 key moments), the save list opens without loading every league, and autosaving no longer re-reads a whole backup each time.",
+    ],
+  },
+  {
     id: '2027-06-23',
     title: 'Story Mode: fifteen seasons in the real NBA',
     items: [

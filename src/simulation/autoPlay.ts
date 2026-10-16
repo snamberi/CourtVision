@@ -1,3 +1,5 @@
+import { withSeasonPreview } from './seasonPreview';
+import { assignHoldouts } from './holdouts';
 import { applyHistoricalRosters } from '../history/realRollover';
 import { runWorldGamesIfDue, resolvePending } from '../worldGames/league';
 import { signingDecision } from './freeAgentDecision';
@@ -410,10 +412,10 @@ function seasonFromDraft(
   currentExtras = { ...currentExtras, freeAgencyOpen: true, freeAgencyDaysRemaining: days };
   const controlledTeamSignings: string[] = [];
   for (let day = 0; day < days; day++) {
-    const aiResult = runFreeAgencyAI(currentLeague, currentExtras, controlledTeamId, seed + 20_000 + day);
+    const aiResult = runFreeAgencyAI(currentLeague, currentExtras, currentLeague.settings.coachOnly ? null : controlledTeamId, seed + 20_000 + day);
     currentLeague = aiResult.league;
     currentExtras = aiResult.extras;
-    if (controlledTeamId) {
+    if (controlledTeamId && !currentLeague.settings.coachOnly) {
       const mine = autoSignForControlledTeam(currentLeague, currentExtras, controlledTeamId, 13, seed + 30_000 + day);
       currentLeague = mine.league;
       currentExtras = mine.extras;
@@ -428,7 +430,7 @@ function seasonFromDraft(
   // 6. Preseason -> open the fresh regular-season schedule.
   currentLeague = finalizeNewSeasonSchedule({ ...currentLeague, seasonPhase: 'regular_season' });
   const prepared = manageCoachRosters(currentLeague, currentExtras);
-  currentLeague = prepared.league;
+  currentLeague = withSeasonPreview(assignHoldouts(prepared.league, prepared.extras, seed + 41_000));
   currentExtras = prepared.extras;
   // Next summer's class goes on the board for the new season.
   currentExtras = ensureUpcomingDraftClass(currentLeague, currentExtras);

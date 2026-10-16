@@ -4,6 +4,7 @@ import type { GMLeagueExtras } from '../simulation/gm';
 import { seasonText } from '../history/realDevelopment';
 import { DataCredits } from './DataCredits';
 import { parseTeamNameLines, MAX_TEAM_NAME as MAX_NAME } from '../history/teamNames';
+import { seasonEraSettings, eraSummary } from '../simulation/eraRules';
 
 /** League Settings → League Rules: the historical league's cutoff, data version and the Real Player Development switch. */
 export function HistoricalSettingsCard({ league, extras, onChange }: { league: League; extras: GMLeagueExtras; onChange: (update: (l: League) => League) => void }) {
@@ -32,6 +33,16 @@ export function HistoricalSettingsCard({ league, extras, onChange }: { league: L
         {players.length} real players in the league · {following} on their reference this season · {fallback} past the end of their real data (developing through Court Vision).
         Missed seasons between two reference points are interpolated and labelled. The data ends with {seasonText(meta.lastDataStartYear)}; after that, and after a player’s real career, Court Vision development, aging and retirement take over.
       </p>
+      {league.settings.yearAccurate && <>
+        <label className="trade-value-toggle">
+          <input type="checkbox" checked={league.settings.eraRules !== false} onChange={e => onChange(l => ({ ...l, settings: seasonEraSettings({ ...l.settings, eraRules: e.target.checked }, Number(l.season), l.historical?.realThreeVolume, l.historical?.lastDataStartYear ?? 0) }))} /> Era rules
+        </label>
+        <p className="hint-text">
+          {league.settings.eraRules !== false
+            ? `On: each season plays by its real rules. No 3-point line before 1979–80 (a shorter 22-foot line from 1994–95 to 1996–97), hand-checking until 2003–04, no zone defenses until 2001–02, and as many threes as teams really took that year.${league.settings.eraYear != null ? ` This season: ${eraSummary(league.settings.era, league.settings.eraThreeVolume)}.` : ''}`
+            : 'Off: every season plays by today’s rules (the season length and pace still follow the real year).'}
+        </p>
+      </>}
       {meta.forceRosters && <>
         <label className="trade-value-toggle">
           <input type="checkbox" checked={!!meta.userTeamToo} onChange={e => onChange(l => (l.historical ? { ...l, historical: { ...l.historical, userTeamToo: e.target.checked } } : l))} /> Historical rosters for your team too

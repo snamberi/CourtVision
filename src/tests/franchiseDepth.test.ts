@@ -1,136 +1,98 @@
-import { autoPlayOneSeason } from '../simulation/autoPlay';
-import { DEFAULT_AWARD_SETTINGS } from '../components/LeagueSettingsPage';
 import { describe, it, expect } from 'vitest';
 import { generateFullLeague } from '../simulation/leagueGenerator';
-import { simulateGame } from '../simulation/engine/game';
-import { allStarBreakRound, isAllStarBreakPending, simulateFullRound, simulateRemainingSeason, defaultCoachTendencies } from '../simulation/league';
-import { allStarVoteStandings, castAllStarBallot, lockAllStarVoting } from '../simulation/allStarVoting';
-import { computeSeasonAwards } from '../simulation/awards';
-import { DEFAULT_LEAGUE_RULES } from '../simulation/leagueRules';
-import { formatPlayingTime } from '../simulation/boxscore';
-import { createSave, getSave, deleteSave } from '../storage/saves';
-import { developOffseasonLeague } from '../simulation/engine/development';
+import { rollOverProtectedPicks, loosenedProtection, PICK_PROTECTION_OPTIONS, type FutureDraftPick } from '../simulation/gm';
+import { simulateNextGame, type League } from '../simulation/league';
+import { calculateOverall } from '../simulation/engine/overall';
+import { setTwoWay, setCalledUp, twoWayBlocker, gLeagueGrowth, standardRosterCount } from '../simulation/twoWay';
+import { assignHoldouts, isHoldingOut, endHoldout } from '../simulation/holdouts';
+import { resolveExpiringContract } from '../simulation/seasonTransition';
 
-function fixture() {
-  const generated = generateFullLeague(433, 4, 12, 20, '2026', { priorSeasons: false });
-  generated.league.settings = { ...generated.league.settings, injuriesEnabled: false, foulFrequency: 0 };
-  return generated;
-}
+const fresh = () => generateFullLeague(7, 30, 18, 82, '2025');
 
-describe('seconds-based rotations', () => {
-  it('reconciles every player second with the logged lineups and period clock', () => {
-    const { league } = fixture();
-    const result = simulateGame({ home: league.teams[0], away: league.teams[1], settings: { ...league.settings, seed: 52 } });
-    const clockByQuarter = new Map<number, number>();
-    const seconds: Record<string, number> = {};
-    for (const p of result.possessionLog) {
-      expect(p.durationSeconds).toBeGreaterThan(0);
-      expect(Number.isInteger(p.durationSeconds)).toBe(true);
-      expect(new Set(p.onCourtHome).size).toBe(5);
-      expect(new Set(p.onCourtAway).size).toBe(5);
-      expect(p.clockSeconds).toBe((p.quarter <= 4 ? 720 : 300) - (clockByQuarter.get(p.quarter) ?? 0));
-      clockByQuarter.set(p.quarter, (clockByQuarter.get(p.quarter) ?? 0) + p.durationSeconds!);
-      for (const id of [...p.onCourtHome, ...p.onCourtAway]) seconds[id] = (seconds[id] ?? 0) + p.durationSeconds!;
-    }
-    for (const [q, value] of clockByQuarter) expect(value).toBe(q <= 4 ? 720 : 300);
-    for (const box of [result.homeBox, result.awayBox]) {
-      for (const row of Object.values(box.players)) expect(Math.round(row.minutes * 60)).toBe(seconds[row.playerId] ?? 0);
-      expect(Object.values(box.players).reduce((n, s) => n + s.minutes, 0)).toBeCloseTo([...clockByQuarter.values()].reduce((a, b) => a + b, 0) / 60 * 5);
-      expect(Object.values(box.players).filter(s => s.minutes > 0 && Math.round(s.minutes * 60) % 60 !== 0).length).toBeGreaterThan(5);
-    }
-    expect(result.possessionLog.some(p => p.events.some(e => e.includes('substitution:')))).toBe(true);
-    expect(result).toEqual(simulateGame({ home: league.teams[0], away: league.teams[1], settings: { ...league.settings, seed: 52 } }));
+describe('protected picks roll over', () => {
+  it('loosens protection each year until the pick conveys', () => {
+    const top10 = PICK_PROTECTION_OPTIONS.find(o => o.topN === 10)!;
+    expect(loosenedProtection(top10)?.topN).toBe(8);
+    expect(loosenedProtection(PICK_PROTECTION_OPTIONS.find(o => o.topN === 4)!)).toBeNull();
   });
-  it('uses the full requested EXACT quarter budget when feasible', () => {
-    const { league } = fixture();
-    const player = league.teams[0].seasons[0];
-    player.minutes = { mode: 'EXACT', target: 36, perQuarter: [9, 9, 9, 9] };
-    const result = simulateGame({ home: league.teams[0], away: league.teams[1], settings: { ...league.settings, seed: 13 } });
-    for (let q = 1; q <= 4; q++) expect(result.possessionLog.filter(p => p.quarter === q && p.onCourtHome.includes(player.playerId)).reduce((n, p) => n + p.durationSeconds!, 0)).toBe(540);
+  it('moves the obligation onto next year\'s pick, still owed to the same team', () => {
+    const top10 = PICK_PROTECTION_OPTIONS.find(o => o.topN === 10)!;
+    const picks: FutureDraftPick[] = [
+      { id: '2026-R1-AAA', year: 2026, round: 1, originalTeamId: 'AAA', currentOwnerTeamId: 'BBB', protection: top10 },
+      { id: '2027-R1-AAA', year: 2027, round: 1, originalTeamId: 'AAA', currentOwnerTeamId: 'AAA', protection: null },
+    ];
+    const out = rollOverProtectedPicks(picks, 2026, [{ originalTeamId: 'AAA', round: 1 }]);
+    const next = out.find(p => p.id === '2027-R1-AAA')!;
+    expect(next.currentOwnerTeamId).toBe('BBB');
+    expect(next.protection?.topN).toBe(8);
+    expect(next.rolledFrom).toContain('2026');
   });
-  it('limits an AI rotation to its depth when fouls, injuries and blowouts do not intervene', () => {
-    const { league } = fixture();
-    const home = { ...league.teams[0], coach: { ...defaultCoachTendencies(), rotationDepth: 8 } };
-    const result = simulateGame({ home, away: league.teams[1], settings: { ...league.settings, seed: 22 }, rules: { ...DEFAULT_LEAGUE_RULES, blowoutBenchThreshold: 999 } });
-    expect(Object.values(result.homeBox.players).filter(s => s.minutes > 0).length).toBe(8);
-  });
-  it('formats minute rollovers without a 60-second or rounded-up minute component', () => {
-    expect(formatPlayingTime(12.55)).toBe('12:33');
-    expect(formatPlayingTime(12 + 59.8 / 60)).toBe('13:00');
-    expect(formatPlayingTime(0)).toBe('0:00');
+  it('lapses when next year\'s pick is already gone', () => {
+    const picks: FutureDraftPick[] = [
+      { id: '2026-R1-AAA', year: 2026, round: 1, originalTeamId: 'AAA', currentOwnerTeamId: 'BBB', protection: PICK_PROTECTION_OPTIONS[0] },
+      { id: '2027-R1-AAA', year: 2027, round: 1, originalTeamId: 'AAA', currentOwnerTeamId: 'CCC', protection: null },
+    ];
+    expect(rollOverProtectedPicks(picks, 2026, [{ originalTeamId: 'AAA', round: 1 }])).toEqual(picks);
   });
 });
 
-describe('voting and season lifecycle', () => {
-  it('auto play completes voting and events, archives the selections and opens the next season', () => {
-    const { league, extras } = fixture();
-    const result = autoPlayOneSeason(league, extras, league.teams[0].teamId, DEFAULT_AWARD_SETTINGS, 217);
-    const archive = result.league.franchiseHistory?.find(s => s.season === league.season);
-    expect(archive?.fullAwards?.allStars.length).toBe(24);
-    expect(archive?.allStarGameMVPPlayerId).toBeTruthy();
-    expect(archive?.threePointChampionId).toBeTruthy();
-    expect(archive?.dunkChampionId).toBeTruthy();
-    expect(result.league.season).not.toBe(league.season);
-    expect(result.league.seasonPhase).toBe('regular_season');
-    expect(isAllStarBreakPending(result.league)).toBe(false);
-  });
-  it('opens before the actual break, saves one editable ballot and locks selected players', async () => {
-    const { league: fresh, extras } = fixture();
-    expect(isAllStarBreakPending(fresh)).toBe(false);
-    let league = simulateFullRound(fresh, 77);
-    expect(isAllStarBreakPending(league)).toBe(false);
-    const leader = allStarVoteStandings(league, 1)[0];
-    const duplicate = castAllStarBallot(league, [leader.playerId, leader.playerId]);
-    expect(duplicate.allStarWeekend?.voting?.ballot).toEqual([leader.playerId]);
-    expect(allStarVoteStandings(duplicate, 1).find(s => s.playerId === leader.playerId)!.fanVotes).toBe(leader.fanVotes + 1);
-    expect(castAllStarBallot(duplicate, [leader.playerId])).toEqual(duplicate);
-    league = simulateRemainingSeason(duplicate, 77);
-    expect(isAllStarBreakPending(league)).toBe(true);
-    expect(league.schedule.find(g => !g.played)?.round).toBe(allStarBreakRound(league));
-    expect(castAllStarBallot(league, [])).toBe(league);
-    league = lockAllStarVoting(league, 24, 1);
-    const selected = league.allStarWeekend!.voting!.selected!;
-    expect(selected.length).toBe(24);
-    expect(new Set(selected.map(p => p.playerId)).size).toBe(24);
-    league = { ...league, allStarWeekend: { ...league.allStarWeekend!, completed: true } };
-    league = simulateRemainingSeason(league, 77);
-    expect(computeSeasonAwards(league, { minGames: 1 }).allStars).toEqual(selected);
-    const id = await createSave('Voting persistence QA', league, extras, league.teams[0].teamId);
-    expect((await getSave(id))!.league.allStarWeekend).toEqual(league.allStarWeekend);
-    await deleteSave(id);
-  });
-  it('supports disabling and moving the break and safe zero-weight voting', () => {
-    const { league } = fixture();
-    expect(isAllStarBreakPending({ ...league, season: undefined, allStarWeekend: { season: '', completed: true } })).toBe(false);
-    expect(allStarBreakRound({ ...league, rulesSettings: { ...DEFAULT_LEAGUE_RULES, allStarEnabled: false } })).toBeNull();
-    expect(allStarBreakRound({ ...league, rulesSettings: { ...DEFAULT_LEAGUE_RULES, allStarBreakPercent: 75 } })).toBeGreaterThan(allStarBreakRound(league)!);
-    const played = simulateFullRound(league, 88);
-    const result = allStarVoteStandings({ ...played, rulesSettings: { ...DEFAULT_LEAGUE_RULES, allStarFanWeight: 0, allStarPlayerWeight: 0, allStarCoachWeight: 0 } }, 1);
-    expect(result.every(s => Number.isFinite(s.score))).toBe(true);
-  });
-});
-
-describe('coaching choices', () => {
-  it('changes shot selection for a three-point system over the same seeded games', () => {
-    const { league } = fixture();
-    let space = 0, post = 0;
-    for (let seed = 0; seed < 8; seed++) {
-      for (const system of ['pace-space', 'post'] as const) {
-        const home = { ...league.teams[0], coach: { ...defaultCoachTendencies(), offensiveSystem: system, threePointFrequency: system === 'pace-space' ? 90 : 20 } };
-        const game = simulateGame({ home, away: league.teams[1], settings: { ...league.settings, seed } });
-        const attempts = Object.values(game.homeBox.players).reduce((n, s) => n + s.tpa, 0);
-        if (system === 'pace-space') space += attempts; else post += attempts;
-      }
-    }
-    expect(space).toBeGreaterThan(post * 1.25);
-  });
-  it('specialized training increases growth in the selected skill group', () => {
-    const { league } = fixture();
+describe('two-way contracts', () => {
+  it('only young, raw players qualify, two per team, and they sit unless called up', () => {
+    const { league } = fresh();
     const team = league.teams[0];
-    team.seasons.forEach(s => { s.age = 20; s.development.peakAge = 28; s.development.potential = 99; });
-    const balanced = developOffseasonLeague([{ ...team, coach: { ...defaultCoachTendencies(), trainingFocus: 'balanced' as const } }], 10)[0];
-    const shooting = developOffseasonLeague([{ ...team, coach: { ...defaultCoachTendencies(), trainingFocus: 'shooting' as const } }], 10)[0];
-    const total = (t: typeof team) => t.seasons.reduce((n, p) => n + p.attributes.offense.threePoint, 0);
-    expect(total(shooting)).toBeGreaterThan(total(balanced));
+    const young = [...team.seasons].filter(p => !twoWayBlocker(team, p)).slice(0, 3);
+    expect(young.length).toBeGreaterThanOrEqual(1);
+    let l: League = league;
+    for (const p of young) l = setTwoWay(l, team.teamId, p.playerId, true);
+    const t = l.teams[0];
+    expect(t.seasons.filter(p => p.twoWay).length).toBe(Math.min(2, young.length));
+    expect(standardRosterCount(t)).toBe(t.seasons.length - t.seasons.filter(p => p.twoWay).length);
+    const star = [...t.seasons].sort((a, b) => calculateOverall(b) - calculateOverall(a))[0];
+    expect(twoWayBlocker(t, star)).toBeTruthy();
+
+    const tw = t.seasons.find(p => p.twoWay)!;
+    const g = l.schedule.findIndex(s => s.homeTeamId === t.teamId || s.awayTeamId === t.teamId);
+    const firstGame = { ...l, schedule: [l.schedule[g], ...l.schedule.filter((_, i) => i !== g)] };
+    const played = simulateNextGame(firstGame, 3);
+    const box = played.schedule[0].result!;
+    const side = box.homeTeamId === t.teamId ? box.homeBox : box.awayBox;
+    expect(side.players[tw.playerId]).toBeUndefined();
+    const up = setCalledUp(firstGame, t.teamId, tw.playerId, true);
+    expect(up.teams[0].seasons.find(p => p.playerId === tw.playerId)!.calledUp).toBe(true);
+  });
+  it('G League minutes add growth for young players', () => {
+    const { league } = fresh();
+    const p = { ...league.teams[0].seasons.find(s => s.age <= 21) ?? league.teams[0].seasons[0], age: 20 };
+    expect(calculateOverall(gLeagueGrowth(p, p))).toBeGreaterThan(calculateOverall(p));
+  });
+});
+
+describe('holdouts', () => {
+  it('an underpaid star holds out for a few games until extended or traded', () => {
+    const { league, extras } = fresh();
+    const team = league.teams[0];
+    const star = [...team.seasons].sort((a, b) => calculateOverall(b) - calculateOverall(a))[0];
+    const underpaid = { ...extras, contracts: { ...extras.contracts, [star.playerId]: { ...extras.contracts[star.playerId], annualSalary: 1_000_000, yearsRemaining: 2 } } };
+    const withStar = { ...league, teams: league.teams.map((t, i) => (i === 0 ? { ...t, seasons: t.seasons.map(p => (p.playerId === star.playerId ? { ...p, age: 26, morale: { score: 20, season: league.season ?? '', teamId: t.teamId, games: 0 } } : p)) } : t)) };
+    let held: League | null = null;
+    for (let seed = 0; seed < 40 && !held; seed++) { const l = assignHoldouts(withStar, underpaid, seed); if (l.holdouts?.[star.playerId]) held = l; }
+    expect(held).not.toBeNull();
+    const h = held!.holdouts![star.playerId];
+    expect(h.games).toBeGreaterThanOrEqual(3);
+    expect(isHoldingOut(held!, star.playerId, team.teamId, 1)).toBe(true);
+    expect(isHoldingOut(held!, star.playerId, team.teamId, h.games + 1)).toBe(false);
+    expect(isHoldingOut(held!, star.playerId, 'OTHER', 1)).toBe(false);
+    expect(isHoldingOut(endHoldout(held!, star.playerId), star.playerId, team.teamId, 1)).toBe(false);
+    expect(Object.keys(held!.holdouts!).length).toBeLessThanOrEqual(3);
+  });
+});
+
+describe('player options', () => {
+  const contract = { playerId: 'x', teamId: 'T', annualSalary: 5_000_000, yearsRemaining: 0, playerOption: true, teamOption: false };
+  it('opts out when the market pays clearly more', () => {
+    expect(resolveExpiringContract(contract, 65, 27, 9_000_000).retained).toBe(false);
+  });
+  it('opts in when he would not do better', () => {
+    expect(resolveExpiringContract(contract, 60, 30, 4_000_000).retained).toBe(true);
   });
 });

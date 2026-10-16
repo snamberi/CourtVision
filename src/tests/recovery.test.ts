@@ -1,10 +1,11 @@
 import Dexie from 'dexie';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { listSaves, createSave, updateSave, deleteSave, getSave, listRestorePoints, createRestorePoint, recoverRestorePoint, savesDb, MAX_RESTORE_POINTS } from '../storage/saves';
+import { listSaves, createSave, updateSave, deleteSave, getSave, listRestorePoints, createRestorePoint, recoverRestorePoint, savesDb, MAX_RESTORE_POINTS, loadRestorePoint, type RestorePoint } from '../storage/saves';
 import { generateFullLeague } from '../simulation/leagueGenerator';
 import { buildSnapshot, parseUniverseFile } from '../storage/universeIO';
 const fixture = () => generateFullLeague(41, 4, 10, 6, '2026', { priorSeasons: false });
-beforeEach(async () => { await savesDb.saves.clear(); await savesDb.restorePoints.clear(); });
+beforeEach(async () => { await savesDb.saves.clear(); await savesDb.restorePoints.clear(); await savesDb.saveMeta.clear(); });
+const leagueOf = async (p: RestorePoint) => (await loadRestorePoint(p)).league;
 describe('save recovery', () => {
   it('upgrades a version-one database without replacing its saved league', async () => {
     const { league, extras } = fixture();
@@ -14,13 +15,13 @@ describe('save recovery', () => {
     old.close(); await savesDb.open();
     expect((await getSave('legacy'))?.league).toEqual(league);
     await updateSave('legacy', { ...league, season: '2027' }, extras, null);
-    expect((await listRestorePoints('legacy'))[0].snapshot.league.season).toBe('2026');
+    expect((await leagueOf((await listRestorePoints('legacy'))[0])).season).toBe('2026');
   });
   it('keeps five distinct checkpoints and restores into a new slot with its team and extras', async () => {
     const { league, extras } = fixture();
     const team = league.teams[0].teamId;
     const id = await createSave('Original', league, extras, team);
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < MAX_RESTORE_POINTS; i++) {
       await updateSave(id, { ...league, calendarDate: `2026-10-${10 + i}` }, extras, team);
       await createRestorePoint(id);
     }
@@ -33,7 +34,7 @@ describe('save recovery', () => {
     expect(await getSave(id)).toEqual(before);
     const restored = await getSave(restoredId);
     expect(restored?.controlledTeamId).toBe(team);
-    expect(restored?.league.calendarDate).toBe(points.at(-1)!.snapshot.league.calendarDate);
+    expect(restored?.league.calendarDate).toBe((await leagueOf(points.at(-1)!)).calendarDate);
     expect(restored?.extras).toEqual(extras);
   });
   it('automatically protects the previous phase and played-game progress', async () => {
@@ -43,10 +44,10 @@ describe('save recovery', () => {
     await updateSave(id, first, extras, null);
     const next = { ...first, schedule: first.schedule.map((g, i) => ({ ...g, played: i < 10 })) };
     await updateSave(id, next, extras, null);
-    expect((await listRestorePoints(id))[0].snapshot.league.schedule.filter(g => g.played)).toHaveLength(9);
+    expect((await leagueOf((await listRestorePoints(id))[0])).schedule.filter(g => g.played)).toHaveLength(9);
     await updateSave(id, { ...next, seasonPhase: 'playoffs' }, extras, null);
-    expect((await listRestorePoints(id))[0].snapshot.league.seasonPhase).toBeUndefined();
-    expect((await listRestorePoints(id))[0].snapshot.league.schedule.filter(g => g.played)).toHaveLength(10);
+    expect((await leagueOf((await listRestorePoints(id))[0])).seasonPhase).toBeUndefined();
+    expect((await leagueOf((await listRestorePoints(id))[0])).schedule.filter(g => g.played)).toHaveLength(10);
   });
   it('rejects cross-league restores and deletes only the selected league backups', async () => {
     const { league, extras } = fixture();
@@ -72,6 +73,7 @@ describe('save recovery', () => {
     const id = await createSave('Damaged', league, extras, null);
     const point = (await listRestorePoints(id))[0];
     await savesDb.saves.update(id, { 'snapshot.league': null as unknown as typeof league });
+    await savesDb.saveMeta.clear(); // a summary written before the damage would still read fine
     expect((await listSaves()).find(s => s.id === id)?.teamCount).toBe(0);
     const recovered = await recoverRestorePoint(id, point.id);
     expect((await getSave(recovered))?.league.teams).toEqual(league.teams);

@@ -58,7 +58,7 @@ export function FranchiseTimelinePage({ league, extras, controlledTeamId, onSele
   const titles = seasons.filter(s => s.champion);
   const revisit = (season: string) => {
     setSel(season);
-    window.requestAnimationFrame(() => document.getElementById('franchise-season-detail')?.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' }));
+    window.requestAnimationFrame(() => document.getElementById('franchise-season-detail')?.scrollIntoView({ block: 'start', behavior: (window.matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.classList.contains('reduce-motion')) ? 'instant' : 'smooth' }));
   };
   const share = async () => {
     const blob = await timelineImage(team.name, id.primary, seasons);

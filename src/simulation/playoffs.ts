@@ -172,8 +172,9 @@ function playPostseasonGame(league: League, teamAId: string, teamBId: string, te
   const teamB = league.teams.find((t) => t.teamId === teamBId)!;
   const injuries = league.injuries ?? {};
   const isOut = (playerId: string) => (injuries[playerId]?.gamesRemaining ?? 0) > 0;
-  const availableA = teamA.seasons.filter((s) => !isOut(s.playerId));
-  const availableB = teamB.seasons.filter((s) => !isOut(s.playerId));
+  // Two-way players are not eligible for the playoffs.
+  const availableA = teamA.seasons.filter((s) => !isOut(s.playerId) && !s.twoWay);
+  const availableB = teamB.seasons.filter((s) => !isOut(s.playerId) && !s.twoWay);
   const seasonsA = availableA.length >= 5 ? availableA : teamA.seasons;
   const seasonsB = availableB.length >= 5 ? availableB : teamB.seasons;
   const side = (t: typeof teamA, seasons: typeof seasonsA, home: boolean) => ({ teamId: t.teamId, seasons, coach: t.coach, chemistry: t.chemistry, coachIdentity: gameStaffCoach(t), rotationOrder: t.rotationOrder, ...gameBoost(league, t, seasons.map(s => s.playerId), home) });

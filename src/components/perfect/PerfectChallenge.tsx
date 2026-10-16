@@ -366,7 +366,7 @@ function QuickDraft({ h, run, setRun }: { h: NbaHistory; run: PerfectRun; setRun
   const spin = () => {
     if (spinning) return;
     setSpinning(true);
-    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || document.documentElement.classList.contains('lite');
+    const reduce = (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || document.documentElement.classList.contains('reduce-motion')) || document.documentElement.classList.contains('lite');
     spinTimer.current = window.setTimeout(() => {
       setSpinning(false); setLanded(target);
       // A Star landing gets the big treatment: gold sparks and a shake.
@@ -487,7 +487,7 @@ function useCategoryReel(all: CategoryInfo[], landing: CategoryInfo, rollKey: st
   const audio = useRef<CourtAudio | null>(null);
   useEffect(() => {
     setLanded(false);
-    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const reduce = (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || document.documentElement.classList.contains('reduce-motion'));
     if (reduce) { setFace([landing]); setLanded(true); return; }
     if (sound) { try { audio.current ??= new CourtAudio(); } catch { audio.current = null; } }
     let n = 0, delay = 45, t = 0;

@@ -5,6 +5,7 @@ import type { CoachTendencies } from '../league';
 import { defaultCoachTendencies } from '../league';
 import type { LeagueRulesSettings } from '../leagueRules';
 import { computeRuleMods } from './ruleMods';
+import { applyEraRules } from '../eraRules';
 import { RNG } from './rng';
 import { resolveEffectivePlayer, CAREER_RATING_MAX } from './effective';
 import { simulatePossession, type OnCourtPlayer, type PlayCall, type LastShotType, type PossessionResult } from './possession';
@@ -147,7 +148,7 @@ export function simulateGame(opts: SimulateGameOptions): GameResult {
   const { home, away, settings } = opts;
   const customBadges = opts.customBadges ?? [];
   const rng = new RNG(settings.seed);
-  const ruleMods = computeRuleMods(opts.rules);
+  const ruleMods = applyEraRules(computeRuleMods(opts.rules), settings);
   const homeCoach = home.coach ?? defaultCoachTendencies();
   const awayCoach = away.coach ?? defaultCoachTendencies();
   const paceModifier = (homeCoach.paceTendency + awayCoach.paceTendency) / 2;

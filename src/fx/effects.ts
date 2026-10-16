@@ -6,7 +6,7 @@ import './fx.css';
  * All of them do nothing (or jump straight to the end) for players who ask for reduced motion or run Lite graphics.
  */
 
-const reduced = () => typeof window === 'undefined' || !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || document.documentElement.classList.contains('lite');
+const reduced = () => typeof window === 'undefined' || !!(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || document.documentElement.classList.contains('reduce-motion')) || document.documentElement.classList.contains('lite');
 
 interface Bit { x: number; y: number; vx: number; vy: number; life: number; max: number; size: number; color: string; spin: number }
 let canvas: HTMLCanvasElement | null = null, bits: Bit[] = [], frame = 0;

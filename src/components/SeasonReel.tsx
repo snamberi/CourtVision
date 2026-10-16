@@ -1,9 +1,10 @@
+import { prefersReducedMotion } from '../lib/accessibility';
 import { useEffect, useRef, useState } from 'react';
 import { drawReel, reelLength, REEL_W, REEL_H, type Reel } from '../recap/reel';
 import { Modal } from './Modal';
 
 const GIF_FPS = 8;
-const reducedMotion = () => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+const reducedMotion = prefersReducedMotion;
 
 /** The season reel on screen: plays by itself (paused when motion is reduced), and saves as a GIF. */
 export function SeasonReel({ reel, onClose }: { reel: Reel; onClose: () => void }) {

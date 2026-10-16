@@ -21,7 +21,7 @@ import { burst, celebrate } from '../../fx/effects';
 
 const pct = (odds: number) => `${+(odds * 100).toFixed(2)}%`;
 const fmtLuck = (n: number) => `+${+n.toFixed(1)}%`;
-const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+const reduceMotion = () => typeof window !== 'undefined' && (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || document.documentElement.classList.contains('reduce-motion'));
 /** Pulls worth a full-screen moment. */
 const isBig = (r: SpinResult) => r.kind === 'secret' || r.rarity === 'legendary' || r.rarity === 'mythic';
 const nameOf = (r: SpinResult) => (r.kind === 'secret' ? SECRET_BY_ID.get(r.id as never)?.name : RELIC_BY_ID.get(r.id)?.name) ?? r.id;

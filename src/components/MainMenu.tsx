@@ -151,7 +151,7 @@ export function MainMenu({ onStart, saves, onOpenContinue, busy = null, onLocker
       const bar = document.querySelector('.menu-bar')?.getBoundingClientRect();
       const bottom = bar && bar.height ? bar.top - 16 : window.innerHeight - 24;
       const delta = rect.bottom > bottom ? rect.bottom - bottom : rect.top < 88 ? rect.top - 88 : 0;
-      if (delta) window.scrollBy({ top: delta, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.classList.contains('lite') ? 'instant' : 'smooth' });
+      if (delta) window.scrollBy({ top: delta, behavior: (window.matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.classList.contains('reduce-motion')) || document.documentElement.classList.contains('lite') ? 'instant' : 'smooth' });
     }, 240);
     return () => window.clearTimeout(timer);
   }, [selectedMode]);

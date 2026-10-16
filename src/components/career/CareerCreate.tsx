@@ -23,7 +23,7 @@ import { RatingGroupsEditor, type RatingGroup } from '../RatingGroupsEditor';
 const SLICE = 132;
 /** Slices the strip travels before it stops, and slices kept after the stop (so the right side is never empty). */
 const LEAD = 40, TAIL = 16, START = 6;
-const reducedMotion = () => typeof window !== 'undefined' && (!!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || document.documentElement.classList.contains('lite'));
+const reducedMotion = () => typeof window !== 'undefined' && (!!(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || document.documentElement.classList.contains('reduce-motion')) || document.documentElement.classList.contains('lite'));
 
 /**
  * One wheel: a strip of real players that spins to a stop; the slices either side are the Move Left/Right options.

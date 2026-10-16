@@ -6,6 +6,8 @@ const TimeMachinePicker = lazy(() => import('./TimeMachinePicker').then(m => ({ 
 import type { TradeDifficulty } from '../simulation/gm';
 import { nbaHistoryYearRange } from '../simulation/calendar';
 import { SCENARIOS, loadRebuildRecords } from '../simulation/rebuildChallenge';
+import { MOMENTS, momentById } from '../history/moments';
+import '../improvements.css';
 import { DataCredits } from './DataCredits';
 import { DifficultyCards } from './DifficultyCards';
 import { PixelIcon } from './PixelIcon';
@@ -27,7 +29,7 @@ import './create.css';
 export type Challenge = 'free' | 'decade' | 'dynasty' | 'rebuild' | 'draft' | 'worldgames' | 'timeMachine';
 export type LeagueSource = 'history' | 'random' | 'csv' | 'world';
 export type CreateChoice =
-  | { kind: 'league'; source: LeagueSource; /** Other leagues (source 'world'): which one. */ world?: WorldLeagueId; name: string; year: string; difficulty: TradeDifficulty; real: { realDevelopment: boolean; forceRosters: boolean; userTeamToo: boolean; allPlayers: boolean }; settings: CreateSettings; /** Dynasty Mode: the living world switched on (see simulation/dynasty.ts). */ dynasty?: boolean; /** Build a Dynasty in 10 Seasons (see simulation/decadeChallenge.ts). */ decade?: boolean; /** GM Career: start as the scout (see simulation/gmCareer.ts). */ gmCareer?: boolean }
+  | { kind: 'league'; source: LeagueSource; /** Other leagues (source 'world'): which one. */ world?: WorldLeagueId; name: string; year: string; difficulty: TradeDifficulty; real: { realDevelopment: boolean; forceRosters: boolean; userTeamToo: boolean; allPlayers: boolean }; settings: CreateSettings; /** A take-over moment (history/moments.ts): start running its team. */ moment?: string; /** Dynasty Mode: the living world switched on (see simulation/dynasty.ts). */ dynasty?: boolean; /** Build a Dynasty in 10 Seasons (see simulation/decadeChallenge.ts). */ decade?: boolean; /** GM Career: start as the scout (see simulation/gmCareer.ts). */ gmCareer?: boolean }
   | { kind: 'rebuild'; scenario: string }
   | { kind: 'draft' }
   | { kind: 'worldgames'; games: GamesId; country: string }
@@ -73,10 +75,11 @@ export function FranchiseCreate({ onBack, onStart, busy = null, initial = 'free'
   const [wgCountry, setWgCountry] = useState('USA');
   const [tm, setTm] = useState<TimeMachinePick | null>(null);
   const [worldId, setWorldId] = useState<WorldLeagueId>('euro');
+  const [moment, setMoment] = useState<string | null>(null);
   const historical = source === 'history';
   // Other leagues start with their own season length and game length (shown, and changeable, in League settings).
   // A name the player has not typed follows the league they pick.
-  const autoName = (n: string) => n === 'My League' || NAMES.includes(n) || WORLD_LEAGUE_IDS.some(i => WORLD_LEAGUES[i].name === n);
+  const autoName = (n: string) => n === 'My League' || NAMES.includes(n) || WORLD_LEAGUE_IDS.some(i => WORLD_LEAGUES[i].name === n) || MOMENTS.some(m => m.title === n);
   const pickSource = (next: LeagueSource) => {
     if (next === 'world') { const d = WORLD_LEAGUES[worldId]; setSettings(x => ({ ...x, games: d.games, periods: d.periods, quarterMinutes: d.minutes })); setName(n => (autoName(n) ? d.name : n)); }
     else if (source === 'world') setName(n => (autoName(n) ? 'My League' : n));
@@ -94,10 +97,10 @@ export function FranchiseCreate({ onBack, onStart, busy = null, initial = 'free'
     else if (challenge === 'draft') onStart({ kind: 'draft' });
     else if (challenge === 'worldgames') onStart({ kind: 'worldgames', games: wgGames, country: wgCountry });
     else if (challenge === 'timeMachine') { if (tm?.replace) onStart({ kind: 'timeMachine', from: tm.from, year: tm.year, replace: tm.replace }); }
-    else onStart({ kind: 'league', source, ...(source === 'world' ? { world: worldId } : {}), name: name.trim() || (challenge === 'dynasty' ? 'My Dynasty' : challenge === 'decade' ? 'Ten-Year Plan' : 'My League'), year, difficulty, real: { realDevelopment, forceRosters, userTeamToo, allPlayers }, settings, ...(challenge === 'dynasty' ? { dynasty: true } : {}), ...(challenge === 'decade' ? { decade: true } : {}), ...(asScout ? { gmCareer: true } : {}) });
+    else onStart({ kind: 'league', source, ...(source === 'world' ? { world: worldId } : {}), name: name.trim() || (challenge === 'dynasty' ? 'My Dynasty' : challenge === 'decade' ? 'Ten-Year Plan' : 'My League'), year, difficulty, real: { realDevelopment, forceRosters, userTeamToo, allPlayers }, settings, ...(historical && moment ? { moment } : {}), ...(challenge === 'dynasty' ? { dynasty: true } : {}), ...(challenge === 'decade' ? { decade: true } : {}), ...(asScout ? { gmCareer: true } : {}) });
   };
   const sc = SCENARIOS.find(s => s.id === scenario)!;
-  const startLabel = busy ?? (challenge === 'rebuild' ? `Start: ${sc.title}` : challenge === 'draft' ? 'Go to the draft room' : challenge === 'worldgames' ? `Coach ${wgCountry}` : challenge === 'timeMachine' ? (tm ? `Travel to ${seasonName(tm.year)}` : 'Loading NBA history…') : historical ? `Start the ${seasonName(Number(historyYear))} NBA` : source === 'random' ? 'Create the random league' : source === 'world' ? `Start the ${WORLD_LEAGUES[worldId].short}` : 'Create the league');
+  const startLabel = busy ?? (challenge === 'rebuild' ? `Start: ${sc.title}` : challenge === 'draft' ? 'Go to the draft room' : challenge === 'worldgames' ? `Coach ${wgCountry}` : challenge === 'timeMachine' ? (tm ? `Travel to ${seasonName(tm.year)}` : 'Loading NBA history…') : historical ? (moment ? `Take over: ${momentById(moment)?.title}` : `Start the ${seasonName(Number(historyYear))} NBA`) : source === 'random' ? 'Create the random league' : source === 'world' ? `Start the ${WORLD_LEAGUES[worldId].short}` : 'Create the league');
 
   return <div className="create-page mode-environment" data-environment="franchise">
     <header className="create-top">
@@ -157,7 +160,7 @@ export function FranchiseCreate({ onBack, onStart, busy = null, initial = 'free'
           </label>
           {source !== 'csv' && <label className="create-field"><span>Starting season</span>
             {historical
-              ? <select className="year-input" value={historyYear} onChange={e => setHistoryYear(e.target.value)}>{HISTORY_START_YEARS.map(y => <option key={y} value={y}>{seasonName(y)}</option>)}</select>
+              ? <select className="year-input" value={historyYear} onChange={e => { setHistoryYear(e.target.value); setMoment(null); }}>{HISTORY_START_YEARS.map(y => <option key={y} value={y}>{seasonName(y)}</option>)}</select>
               : <select className="year-input" value={randomYear} onChange={e => setRandomYear(e.target.value)}>{randomYears.map(y => <option key={y} value={y}>{seasonName(y)}</option>)}</select>}
             <small>{historical ? `Every season from 1946–47 to ${seasonName(Number(historyYear) - 1)} is loaded as history; ${seasonName(Number(historyYear))} starts unplayed.` : 'Only sets the calendar: every player is new.'}</small>
           </label>}
@@ -166,6 +169,17 @@ export function FranchiseCreate({ onBack, onStart, busy = null, initial = 'free'
           </div>
         </div>
       </section>
+
+      {historical && <section className="create-step" aria-labelledby="create-step-moments">
+        <h2 id="create-step-moments"><span className="create-num">★</span> Or start at a famous moment</h2>
+        <p className="hint-text">Pick one and you take over that team in that season. Everything else below still applies.</p>
+        <div className="moment-grid" role="radiogroup" aria-label="Famous moments">
+          {MOMENTS.map(m => <button key={m.id} role="radio" aria-checked={moment === m.id} className={`moment-card ${moment === m.id ? 'selected' : ''}`}
+            onClick={() => { if (moment === m.id) { setMoment(null); return; } setMoment(m.id); setHistoryYear(String(m.year)); setName(n => (autoName(n) ? m.title : n)); }}>
+            <span className="moment-year">{seasonName(m.year)} · {m.team}</span><b>{m.title}</b><small>{m.blurb}</small>
+          </button>)}
+        </div>
+      </section>}
 
       {historical && <section className="create-step" aria-labelledby="create-step-real">
         <h2 id="create-step-real"><span className="create-num">4</span> Real league options</h2>

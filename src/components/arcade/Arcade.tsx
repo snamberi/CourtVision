@@ -18,9 +18,10 @@ import '../hunt/hunt.css';
 import '../locker/locker.css';
 import './arcade.css';
 
-export type ArcadeTab = 'grid' | 'guess' | 'categorize' | 'guessTeam' | 'hilo' | 'bracket' | 'quiz' | 'legends' | 'street' | 'oneOnOne' | 'tour';
+export type ArcadeTab = 'grid' | 'guess' | 'categorize' | 'guessTeam' | 'hilo' | 'bracket' | 'quiz' | 'legends' | 'street' | 'oneOnOne' | 'tour' | 'dailyDraft';
 const TABS: { id: ArcadeTab; label: string; icon: string }[] = [
   { id: 'grid', label: 'Daily Grid', icon: 'list' },
+  { id: 'dailyDraft', label: 'Daily Draft', icon: 'trophy' },
   { id: 'guess', label: 'Guess the Player', icon: 'search' },
   { id: 'categorize', label: 'Categorize', icon: 'grid' },
   { id: 'guessTeam', label: 'Guess the Team', icon: 'team' },
@@ -37,6 +38,7 @@ import { OneOnOne } from './OneOnOne';
 import { GridGame } from './GridGame';
 import { CategorizeGame } from './CategorizeGame';
 import { GuessTeamGame } from './GuessTeamGame';
+import { DailyDraftGame } from './DailyDraftGame';
 const SITE = 'https://courtvisiongame.com';
 
 function useArcade(): ArcadeRecords {
@@ -66,11 +68,11 @@ export function Arcade({ tab, onTab, onExit }: { tab: ArcadeTab; onTab: (t: Arca
       <div className="hunt-title"><span className="pixel-eyebrow">QUICK GAMES · REAL NBA HISTORY</span><h1>{TABS.find(t => t.id === tab)!.label}</h1></div>
     </header>
     <nav className="arcade-tabs" role="tablist" aria-label="Quick games">
-      {TABS.map(t => <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'selected' : ''} onClick={() => onTab(t.id)}><ModeIcon mode={t.id === 'legends' ? 'legendsT' : t.id} size={28} /> {t.label}</button>)}
+      {TABS.map(t => <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'selected' : ''} onClick={() => onTab(t.id)}><ModeIcon mode={t.id === 'legends' ? 'legendsT' : t.id === 'dailyDraft' ? 'draft' : t.id} size={28} /> {t.label}</button>)}
     </nav>
     {error ? <p className="empty-state">Could not load the NBA history data: {error}</p>
       : !h ? <p className="empty-state">Loading 80 years of basketball…</p>
-      : tab === 'grid' ? <GridGame h={h} /> : tab === 'guess' ? <GuessGame h={h} onNext={() => onTab('hilo')} /> : tab === 'categorize' ? <CategorizeGame h={h} /> : tab === 'guessTeam' ? <GuessTeamGame h={h} /> : tab === 'hilo' ? <HiloGame h={h} /> : tab === 'quiz' ? <QuizGame h={h} /> : tab === 'legends' ? <LegendsGame h={h} /> : tab === 'street' ? <StreetGame h={h} /> : tab === 'oneOnOne' ? <OneOnOne h={h} /> : tab === 'tour' ? <GmTournament h={h} /> : <BracketGame h={h} />}
+      : tab === 'grid' ? <GridGame h={h} /> : tab === 'dailyDraft' ? <DailyDraftGame h={h} /> : tab === 'guess' ? <GuessGame h={h} onNext={() => onTab('hilo')} /> : tab === 'categorize' ? <CategorizeGame h={h} /> : tab === 'guessTeam' ? <GuessTeamGame h={h} /> : tab === 'hilo' ? <HiloGame h={h} /> : tab === 'quiz' ? <QuizGame h={h} /> : tab === 'legends' ? <LegendsGame h={h} /> : tab === 'street' ? <StreetGame h={h} /> : tab === 'oneOnOne' ? <OneOnOne h={h} /> : tab === 'tour' ? <GmTournament h={h} /> : <BracketGame h={h} />}
   </div>;
 }
 

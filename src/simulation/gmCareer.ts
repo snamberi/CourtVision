@@ -28,7 +28,7 @@ export const startGmCareer = (league: League): League => ({ ...league, gmCareer:
 export const joinTeam = (league: League, teamId: string | null): League => (league.gmCareer && !league.gmCareer.teamId && teamId ? { ...league, gmCareer: { ...league.gmCareer, teamId } } : league);
 export const gmRole = (league: League): GmRole => league.gmCareer?.role ?? 'gm';
 /** Who the AI should treat as yours: as the scout, the GM above you runs the roster moves. */
-export const aiUserTeam = (league: League, controlledTeamId: string | null) => (league.gmCareer?.role === 'scout' ? null : controlledTeamId);
+export const aiUserTeam = (league: League, controlledTeamId: string | null) => (league.gmCareer?.role === 'scout' || league.settings.coachOnly ? null : controlledTeamId);
 
 /** End of a season: promotion, or an offer from a team that needs a GM. */
 export function gmCareerSeasonEnd(league: League, teamSeasons: { teamId: string; teamName: string; wins: number; losses: number }[], previousSeason: string): League {

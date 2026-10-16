@@ -9,7 +9,7 @@ import { CookieSettingsLink } from '../consent/ConsentBanner';
 import { PrivacyLink } from './PrivacyLink';
 import { IS_DESKTOP_BUILD } from '../appMode';
 import { liteMode, performanceSetting, setPerformanceSetting, type PerformanceSetting } from '../lib/performanceMode';
-import { colourSafe, setColourSafe, setTextSize, textSize, type TextSize } from '../lib/accessibility';
+import { colourSafe, setColourSafe, setTextSize, textSize, reduceMotionSetting, setReduceMotion, type TextSize } from '../lib/accessibility';
 import { DifficultyCards } from './DifficultyCards';
 import { LEVELS, LEVEL_NAME, defaultLevel, setDefaultLevel, type Level } from '../retention/challenge';
 import { GOLD_UNLOCK_SECONDS, goldProgress, goldUnlocked, menuStyle, setMenuStyle, type MenuStyle } from '../lib/menuStyle';
@@ -27,17 +27,19 @@ export function PerformanceToggle() {
   </div>;
 }
 
-/** Accessibility: text size and colour-blind-safe rarity colours. */
+/** Accessibility: text size, colour-blind-safe colours and reduced motion. */
 export function AccessibilityToggles() {
   const [size, setSize] = useState<TextSize>(() => textSize());
   const [safe, setSafe] = useState(() => colourSafe());
+  const [calm, setCalm] = useState(() => reduceMotionSetting());
   const sizes: { id: TextSize; label: string }[] = [{ id: 'normal', label: 'Normal' }, { id: 'large', label: 'Large' }, { id: 'larger', label: 'Larger' }];
   return <>
     <div className="hunt-pills perf-choice" role="radiogroup" aria-label="Text size">
       {sizes.map(o => <button key={o.id} role="radio" aria-checked={size === o.id} className={`hunt-pill ${size === o.id ? 'on' : ''}`}
         onClick={() => { setTextSize(o.id); setSize(o.id); }}>{o.label} text</button>)}
     </div>
-    <label className="settings-check"><input type="checkbox" checked={safe} onChange={e => { setColourSafe(e.target.checked); setSafe(e.target.checked); }} /> Colour-blind-safe rarity colours</label>
+    <label className="settings-check"><input type="checkbox" checked={safe} onChange={e => { setColourSafe(e.target.checked); setSafe(e.target.checked); }} /> Colour-blind-safe colours (rarities, wins and losses, charts)</label>
+    <label className="settings-check"><input type="checkbox" checked={calm} onChange={e => { setReduceMotion(e.target.checked); setCalm(e.target.checked); }} /> Reduce motion (no animations, spins land at once)</label>
   </>;
 }
 

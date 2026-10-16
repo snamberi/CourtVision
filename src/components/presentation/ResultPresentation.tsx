@@ -7,7 +7,7 @@ import './presentation.css';
 
 /** The final number is exposed to assistive technology, without announcing every animation frame. */
 export function ResultCount({ value, decimals = 0 }: { value: number; decimals?: number }) {
-  const still = typeof window !== 'undefined' && (!!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || document.documentElement.classList.contains('lite'));
+  const still = typeof window !== 'undefined' && (!!(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || document.documentElement.classList.contains('reduce-motion')) || document.documentElement.classList.contains('lite'));
   const [shown, setShown] = useState(0);
   useEffect(() => {
     if (still) return;

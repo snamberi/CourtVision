@@ -1,6 +1,6 @@
 import { plural } from '../lib/humanize';
 import { useEffect, useRef, useState } from 'react';
-import { createRestorePoint, createSave, getSave, listRestorePoints, listSaves, recoverRestorePoint, type RestorePoint, type SaveSummary } from '../storage/saves';
+import { createRestorePoint, createSave, getSave, listRestorePoints, listSaves, loadRestorePoint, recoverRestorePoint, restorePointInfo, type RestorePoint, type SaveSummary } from '../storage/saves';
 import { downloadSnapshot, readUniverseFromFile } from '../storage/universeIO';
 
 export function SaveRecoveryPanel({ saveId, beforeAction, onOpen }: {
@@ -61,8 +61,8 @@ export function SaveRecoveryPanel({ saveId, beforeAction, onOpen }: {
     {busy && <p role="status">Working with your backup…</p>}
     {!visiblePoints.length ? <p className="hint-text">No restore points yet. Create one now or keep playing to let autosave make one.</p> : <ul className="backup-list">
       {visiblePoints.map(point => <li key={point.id}>
-        <div><strong>{point.label}</strong><small>{new Date(point.createdAt).toLocaleString()} · {point.snapshot.league.season ?? 'Unknown season'} · {point.snapshot.league.seasonPhase ?? 'regular season'} · {plural(point.snapshot.league.schedule.filter(g => g.played).length, 'game')} played</small></div>
-        <button disabled={busy} onClick={() => void run(async () => { downloadSnapshot(point.snapshot, `courtvision-restore-${point.createdAt}.json`); })}>Download</button>
+        <div><strong>{point.label}</strong><small>{new Date(point.createdAt).toLocaleString()} · {restorePointInfo(point).season ?? 'Unknown season'} · {restorePointInfo(point).phase ?? 'regular season'} · {plural(restorePointInfo(point).games, 'game')} played</small></div>
+        <button disabled={busy} onClick={() => void run(async () => { downloadSnapshot(await loadRestorePoint(point), `courtvision-restore-${point.createdAt}.json`); })}>Download</button>
         <button disabled={busy} onClick={() => void run(async () => { await onOpen(await recoverRestorePoint(current, point.id)); })}>Restore as New League</button>
       </li>)}
     </ul>}

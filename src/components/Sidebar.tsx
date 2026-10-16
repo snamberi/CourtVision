@@ -23,6 +23,10 @@ interface Props {
   pendingTradeOfferCount?: number;
   /** Your team's games since you last opened CourtChat (a badge on its menu item). */
   courtChatNew?: number;
+  /** Unread Inbox messages (a badge on its menu item). */
+  inboxUnread?: number;
+  /** Pages this league does not use (e.g. the front office in coach-only leagues). */
+  hiddenTabs?: string[];
   /** The league was started from the built-in NBA history (shows the NBA History archive). */
   historical?: boolean;
   /** Simple shows five places to go; Full (the default) is the complete menu. */
@@ -52,7 +56,7 @@ function ModeSwitch({ mode, onChange }: { mode: NavMode; onChange: (mode: NavMod
 export function Sidebar(props: Props) {
   const {
     tab, onNavigate, onNavigateLeagueSettings, sandboxMode = false, onMainMenu, collapsed, hasControlledTeam, seasonPhase,
-    pendingTradeOfferCount = 0, courtChatNew = 0, historical = false, navMode = 'full', onNavModeChange,
+    pendingTradeOfferCount = 0, courtChatNew = 0, inboxUnread = 0, historical = false, navMode = 'full', onNavModeChange,
   } = props;
   const [lastHub, setLastHub] = useState<HubId>('home');
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -96,6 +100,7 @@ export function Sidebar(props: Props) {
       if (item.onlyDuringPhase && item.onlyDuringPhase !== seasonPhase) return false;
       if (item.requiresHistorical && !historical) return false;
       if (item.sandboxOnly && !sandboxMode) return false;
+      if (props.hiddenTabs?.includes(item.tab)) return false;
       return !lockedTabs.has(item.tab);
     };
     const renderHub = (hubId: HubId) => {
@@ -125,7 +130,7 @@ export function Sidebar(props: Props) {
             <div className="simple-hub-items">
               {subItems.map((item) => {
                 const current = tab === item.tab;
-                const badge = item.tab === 'tradeOffers' ? pendingTradeOfferCount : item.tab === 'courtChat' ? courtChatNew : 0;
+                const badge = item.tab === 'tradeOffers' ? pendingTradeOfferCount : item.tab === 'courtChat' ? courtChatNew : item.tab === 'inbox' ? inboxUnread : 0;
                 return (
                   <button
                     key={item.label}
@@ -179,6 +184,7 @@ export function Sidebar(props: Props) {
           if (item.requiresControlledTeam && !hasControlledTeam) return false;
           if (item.onlyDuringPhase && item.onlyDuringPhase !== seasonPhase) return false;
           if (item.requiresHistorical && !historical) return false;
+          if (props.hiddenTabs?.includes(item.tab)) return false;
           return true;
         });
         if (visibleItems.length === 0) return null;
@@ -186,7 +192,7 @@ export function Sidebar(props: Props) {
           <div className="sidebar-group" key={group.title} data-tour={DATA_TOUR_FULL[group.title]}>
             {!collapsed && <div className="sidebar-group-title">{group.title}</div>}
             {visibleItems.map((item) => {
-              const badge = item.tab === 'tradeOffers' ? pendingTradeOfferCount : item.tab === 'courtChat' ? courtChatNew : 0;
+              const badge = item.tab === 'tradeOffers' ? pendingTradeOfferCount : item.tab === 'courtChat' ? courtChatNew : item.tab === 'inbox' ? inboxUnread : 0;
               return (
                 <button
                   key={`${group.title}-${item.label}`}

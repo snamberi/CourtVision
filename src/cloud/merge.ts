@@ -40,6 +40,8 @@ export const SYNC_KEYS = [
   'cv-world-games', 'cv-week-log', 'cv-likeness',
   // Holiday event coins (earned and spent per event), and your 1v1 record.
   'cv-holiday', 'cv-1v1',
+  // Pick'em right calls (the XP ledger) and Daily Draft results.
+  'cv-pickem', 'cv-daily-draft',
 ] as const;
 export type SyncKey = typeof SYNC_KEYS[number];
 
@@ -140,7 +142,7 @@ export function mergeValue(key: SyncKey, local: string | null | undefined, cloud
   switch (key) {
     case 'courtvision:gmLegacy': return JSON.stringify(mergeLegacy(parse(local, { version: 1, achievements: {}, leagues: {} } as GmLegacy), parse(cloud, { version: 1, achievements: {}, leagues: {} } as GmLegacy)));
     case 'cv-hunt-records': return JSON.stringify(mergeHunt(parse(local, { runs: 0, wins: 0, bestStop: 0 }), parse(cloud, { runs: 0, wins: 0, bestStop: 0 })));
-    case 'cv-hunt-album': case 'cv-rebuild-records-done': return JSON.stringify([...new Set([...parse<string[]>(cloud, []), ...parse<string[]>(local, [])])]);
+    case 'cv-hunt-album': case 'cv-rebuild-records-done': case 'cv-pickem': return JSON.stringify([...new Set([...parse<string[]>(cloud, []), ...parse<string[]>(local, [])])]);
     case 'cv-rebuild-records': return JSON.stringify(mergeRebuild(parse(local, {}), parse(cloud, {})));
     case 'cv-weekly-records': return JSON.stringify(mergeWeekly(parse(local, {}), parse(cloud, {})));
     case 'cv-daily-history': return JSON.stringify(mergeDays(parse(local, {}), parse(cloud, {})));
@@ -186,6 +188,12 @@ export function mergeValue(key: SyncKey, local: string | null | undefined, cloud
     case 'cv-holiday': return JSON.stringify(mergeHoliday(loadHoliday(() => local), loadHoliday(() => cloud)));
     case 'cv-1v1': return JSON.stringify(mergeOne(loadOne(() => local), loadOne(() => cloud)));
     case 'cv-week-log': return JSON.stringify(mergeWeekLog(parse(local, {}), parse(cloud, {})));
+    // Daily Draft: each day's draft from whichever device scored more.
+    case 'cv-daily-draft': {
+      const out = { ...parse<Record<string, Obj>>(cloud, {}) };
+      for (const [day, x] of Object.entries(parse<Record<string, Obj>>(local, {}))) if (!out[day] || num(x.score) >= num(out[day].score)) out[day] = x;
+      return JSON.stringify(out);
+    }
     // Real-player looks: every fix from both devices, this device's when both changed the same player.
     case 'cv-likeness': return JSON.stringify({ ...parse<Obj>(cloud, {}), ...parse<Obj>(local, {}) });
     case 'cv-pets': {

@@ -38,6 +38,250 @@ function cleanName(raw, max = 24) {
 	if (!/^[\p{L}\p{N}][\p{L}\p{N} ._'-]*$/u.test(name) || name.length < 2 || name.length > max) return null;
 	return isClean(name) ? name : null;
 }
+function readPickemWins(read = localRead) {
+	try {
+		const v = JSON.parse(read("cv-pickem") ?? "[]");
+		return Array.isArray(v) ? v.filter((x) => typeof x === "string") : [];
+	} catch {
+		return [];
+	}
+}
+function readDailyDraftWith(read) {
+	try {
+		const v = JSON.parse(read("cv-daily-draft") ?? "{}");
+		return v && typeof v === "object" && !Array.isArray(v) ? v : {};
+	} catch {
+		return {};
+	}
+}
+/** XP for one finished Daily Draft: 30, plus more for a better grade. */
+const dailyDraftXp = (grade) => 30 + ({
+	"A+": 40,
+	A: 30,
+	B: 20,
+	C: 10
+}[grade] ?? 0);
+const PASS_REWARDS = Array.from({ length: 30 }, (_, i) => {
+	const tier = i + 1;
+	return {
+		tier,
+		trophies: tier % 5 === 0 ? 1e3 : 250,
+		...tier === 10 ? { title: "Season Grinder" } : tier === 20 ? { title: "Season Veteran" } : tier === 30 ? { title: "Pass Master" } : {}
+	};
+});
+function readPass(read = localRead) {
+	try {
+		const p = JSON.parse(read("cv-pass") ?? "null");
+		const months = {};
+		for (const [m, v] of Object.entries(p?.months ?? {})) if (/^\d{4}-\d{2}$/.test(m) && v && typeof v.start === "number" && Number.isInteger(v.tier) && v.tier >= 0 && v.tier <= 30) months[m] = {
+			start: Math.max(0, v.start),
+			tier: v.tier
+		};
+		const seasons = {};
+		for (const [id, v] of Object.entries(p?.seasons ?? {})) if (/^[a-z0-9-]{1,24}$/.test(id) && v && typeof v.start === "number" && Number.isInteger(v.tier) && v.tier >= 0 && v.tier <= 1e3) seasons[id] = {
+			start: Math.max(0, v.start),
+			tier: v.tier,
+			paid: Math.max(0, Math.min(v.tier, Number.isInteger(v.paid) ? v.paid : 0)),
+			...Number.isFinite(v.bonus) && v.bonus > 0 ? { bonus: Math.min(1e6, Math.floor(v.bonus)) } : {},
+			...typeof v.bonusDay === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v.bonusDay) ? { bonusDay: v.bonusDay } : {}
+		};
+		return {
+			months,
+			...Object.keys(seasons).length ? { seasons } : {}
+		};
+	} catch {
+		return { months: {} };
+	}
+}
+/** Two devices: per month, the earlier start and the higher tier. */
+function mergePass(a, b) {
+	const months = { ...b.months };
+	for (const [m, x] of Object.entries(a.months)) {
+		const y = months[m];
+		months[m] = y ? {
+			start: Math.min(x.start, y.start),
+			tier: Math.max(x.tier, y.tier)
+		} : x;
+	}
+	const seasons = { ...b.seasons ?? {} };
+	for (const [id, x] of Object.entries(a.seasons ?? {})) {
+		const y = seasons[id];
+		if (!y) {
+			seasons[id] = x;
+			continue;
+		}
+		const bonus = Math.max(x.bonus ?? 0, y.bonus ?? 0), day = [x.bonusDay, y.bonusDay].filter(Boolean).sort().at(-1);
+		seasons[id] = {
+			start: Math.min(x.start, y.start),
+			tier: Math.max(x.tier, y.tier),
+			paid: Math.max(x.paid, y.paid),
+			...bonus ? { bonus } : {},
+			...day ? { bonusDay: day } : {}
+		};
+	}
+	return {
+		months: Object.fromEntries(Object.entries(months).sort(([x], [y]) => x.localeCompare(y))),
+		...Object.keys(seasons).length ? { seasons } : {}
+	};
+}
+const passTrophies = (p) => Object.values(p.months).reduce((n, m) => n + PASS_REWARDS.filter((r) => r.tier <= m.tier).reduce((t, r) => t + r.trophies, 0), 0);
+const passBestTier = (p) => Math.max(0, ...Object.values(p.months).map((m) => m.tier));
+const passTitles = (bestTier) => PASS_REWARDS.filter((r) => r.title && bestTier >= r.tier).map((r) => r.title);
+//#endregion
+//#region src/retention/weeklyEvent.ts
+const WEEKLY_EVENTS = [
+	{
+		id: "coinRush",
+		name: "Coin Rush",
+		blurb: "Every finished run pays double coins."
+	},
+	{
+		id: "spinStorm",
+		name: "Spin Storm",
+		blurb: "Every finished run that pays spins pays one extra Relic Spin."
+	},
+	{
+		id: "passBoost",
+		name: "Pass Boost",
+		blurb: "Your daily streak bonus fills the Season Pass twice as fast."
+	},
+	{
+		id: "giftWeek",
+		name: "Gift Week",
+		blurb: "Gifts you collect from friends pay double coins."
+	},
+	{
+		id: "secretWeek",
+		name: "Secret Week",
+		blurb: "Secret cosmetics drop from spins three times as often."
+	},
+	{
+		id: "doubleRelics",
+		name: "Double Relics",
+		blurb: "Every spin opens two relics, and counts as two spins toward the guaranteed rarities."
+	}
+];
+/** The first five events took turns until Double Relics joined: from week ROTATION_6_FROM all six take turns, it first. */
+const FIRST_FIVE = WEEKLY_EVENTS.slice(0, 5);
+[WEEKLY_EVENTS[5], ...FIRST_FIVE];
+//#endregion
+//#region src/retention/season.ts
+const SEASONS = [
+	{
+		id: "glitch",
+		number: 1,
+		name: "Glitch",
+		tagline: "Reality is buffering. Your gear is corrupted. Wear it anyway.",
+		start: "2026-10-01",
+		end: "2027-01-01"
+	},
+	{
+		id: "frozen",
+		number: 2,
+		name: "Frozen",
+		tagline: "The court froze over. Lace up your skates and play through the blizzard.",
+		start: "2027-01-01",
+		end: "2027-04-01"
+	},
+	{
+		id: "inferno",
+		number: 3,
+		name: "Inferno",
+		tagline: "The floor is lava. The rims are glowing. Play hot or get burned.",
+		start: "2027-04-01",
+		end: "2027-07-01"
+	}
+];
+const seasonById = (id) => SEASONS.find((s) => s.id === id);
+const c$1 = (tier, kind, id, name, label) => ({
+	tier,
+	kind,
+	id,
+	name,
+	label
+});
+const SEASON_REWARDS = {
+	glitch: [
+		c$1(5, "icon", "glitch", "Corrupted Ball", "Profile icon"),
+		c$1(10, "color", "glitch", "Glitch", "Name colour"),
+		c$1(15, "skin", "glitch", "Corrupted", "Body colour"),
+		c$1(20, "frame", "glitch", "Glitch", "Share card frame"),
+		c$1(25, "hairColor", "glitch", "Glitch", "Hair colour"),
+		c$1(30, "title", "Glitched", "Glitched", "Title"),
+		c$1(35, "hair", "glitchSpikes", "Glitch spikes", "Hair"),
+		c$1(40, "floor", "glitch", "Corrupted court", "Court floor"),
+		c$1(45, "beard", "glitchBeard", "Pixel beard", "Beard"),
+		c$1(50, "phone", "glitch", "Glitch", "Menu phone"),
+		c$1(55, "eyes", "glitchVisor", "Glitch visor", "Eyewear"),
+		c$1(60, "titleColor", "glitch", "Glitch", "Title colour"),
+		c$1(65, "outfit", "glitchSuit", "Corrupted suit", "Outfit"),
+		c$1(70, "hat", "glitchHalo", "Error halo", "Headwear"),
+		c$1(75, "avatarFrame", "glitch", "Glitch", "Picture frame"),
+		c$1(80, "shoes", "glitch", "Glitch kicks", "Shoes"),
+		c$1(85, "neck", "glitchWings", "Data wings", "Neck & back"),
+		c$1(90, "look", "glitch", "Glitch", "App look"),
+		c$1(95, "aura", "glitch", "Glitch aura", "Aura"),
+		c$1(100, "title", "Corrupted Legend", "Corrupted Legend", "Final title")
+	],
+	frozen: [
+		c$1(5, "icon", "frozen", "Frozen Ball", "Profile icon"),
+		c$1(10, "color", "frost", "Frostbite", "Name colour"),
+		c$1(15, "skin", "frozen", "Ice", "Body colour"),
+		c$1(20, "frame", "frozen", "Frozen", "Share card frame"),
+		c$1(25, "hairColor", "frozen", "Frost white", "Hair colour"),
+		c$1(30, "title", "Frostbitten", "Frostbitten", "Title"),
+		c$1(35, "hair", "iceSpikes", "Icicle hair", "Hair"),
+		c$1(40, "floor", "frozen", "Frozen rink", "Court floor"),
+		c$1(45, "beard", "frostBeard", "Frost beard", "Beard"),
+		c$1(50, "phone", "frozen", "Frozen", "Menu phone"),
+		c$1(55, "eyes", "snowGoggles", "Snow goggles", "Eyewear"),
+		c$1(60, "titleColor", "frozen", "Frozen", "Title colour"),
+		c$1(65, "outfit", "frostParka", "Frost parka", "Outfit"),
+		c$1(70, "hat", "iceCrown", "Ice crown", "Headwear"),
+		c$1(75, "avatarFrame", "frozen", "Frozen", "Picture frame"),
+		c$1(80, "shoes", "iceSkates", "Ice skates", "Shoes"),
+		c$1(85, "neck", "frostCape", "Frost cape", "Neck & back"),
+		c$1(90, "look", "frozen", "Frozen", "App look"),
+		c$1(95, "aura", "blizzard", "Blizzard", "Aura"),
+		c$1(100, "title", "Absolute Zero", "Absolute Zero", "Final title")
+	],
+	inferno: [
+		c$1(5, "icon", "inferno", "Molten Ball", "Profile icon"),
+		c$1(10, "color", "magma", "Magma", "Name colour"),
+		c$1(15, "skin", "inferno", "Molten", "Body colour"),
+		c$1(20, "frame", "inferno", "Inferno", "Share card frame"),
+		c$1(25, "hairColor", "inferno", "Ember", "Hair colour"),
+		c$1(30, "title", "Scorched", "Scorched", "Title"),
+		c$1(35, "hair", "magmaSpikes", "Magma spikes", "Hair"),
+		c$1(40, "floor", "inferno", "Lava court", "Court floor"),
+		c$1(45, "beard", "emberBeard", "Ember beard", "Beard"),
+		c$1(50, "phone", "inferno", "Inferno", "Menu phone"),
+		c$1(55, "eyes", "lavaGoggles", "Lava goggles", "Eyewear"),
+		c$1(60, "titleColor", "inferno", "Inferno", "Title colour"),
+		c$1(65, "outfit", "magmaArmor", "Magma armour", "Outfit"),
+		c$1(70, "hat", "flameCrown", "Flame crown", "Headwear"),
+		c$1(75, "avatarFrame", "inferno", "Inferno", "Picture frame"),
+		c$1(80, "shoes", "magmaBoots", "Magma boots", "Shoes"),
+		c$1(85, "neck", "flameCape", "Flame cape", "Neck & back"),
+		c$1(90, "look", "inferno", "Inferno", "App look"),
+		c$1(95, "aura", "inferno", "Inferno aura", "Aura"),
+		c$1(100, "title", "Living Inferno", "Living Inferno", "Final title")
+	]
+};
+/** The tier a season cosmetic opens at, if it is one. */
+const seasonTierOf = (kind, id, season = "glitch") => SEASON_REWARDS[season]?.find((r) => r.kind === kind && r.id === id)?.tier;
+/** The unlock rule for a season cosmetic (see cosmetics.ts `isOpen`). */
+const seasonRule = (kind, id, season = "glitch") => ({
+	season,
+	tier: seasonTierOf(kind, id, season) ?? 100
+});
+const seasonHow = (r) => `Season ${seasonById(r.season)?.number ?? ""} pass tier ${r.tier}`.replace("  ", " ");
+/** Tiers reached in each season (the owner's account has everything; see cosmetics.ts). */
+function seasonTiers(read = localRead) {
+	return Object.fromEntries(Object.entries(readPass(read).seasons ?? {}).map(([id, s]) => [id, s.tier]));
+}
+/** Titles the seasons have given you. */
+const seasonTitles = (tiers) => Object.entries(SEASON_REWARDS).flatMap(([id, list]) => list.filter((r) => r.kind === "title" && (tiers[id] ?? 0) >= r.tier).map((r) => r.id));
 //#endregion
 //#region src/simulation/badges.ts
 const NORMAL_BADGES = [
@@ -489,6 +733,1053 @@ function emptySeasonStatTotals() {
 	};
 }
 Object.keys(emptySeasonStatTotals());
+//#endregion
+//#region src/history/jerseyNumbers.ts
+const TABLE$1 = {
+	jordami01: "23,CHI@1995-1995=45",
+	bryanko01: "LAL@1997-2006=8,LAL@2007-=24",
+	jamesle01: "23,MIA=6,LAL@2022-2023=6",
+	curryst01: "30",
+	duranke01: "35,BRK=7",
+	onealsh01: "32,LAL=34,CLE=33,BOS=36",
+	johnsma02: "32",
+	birdla01: "33",
+	abdulka01: "33",
+	chambwi01: "13",
+	russebi01: "6",
+	duncati01: "21",
+	garneke01: "21,BOS=5,BRK=2",
+	nowitdi01: "41",
+	iversal01: "3,DET=1",
+	cartevi01: "15,PHO=25,DAL=25",
+	mcgratr01: "1",
+	piercpa01: "34",
+	allenra02: "34,BOS=20",
+	kiddja01: "5,PHO=32,DAL@2008-2012=2",
+	nashst01: "13,LAL=10",
+	wadedw01: "3,CLE=9",
+	anthoca01: "15,NYK=7,OKC=7,HOU=7,POR=0,LAL=7",
+	paulch01: "3",
+	hardeja01: "13,PHI=1,LAC=1",
+	westbru01: "0,WAS=4,DEN=4",
+	leonaka01: "2",
+	antetgi01: "34",
+	jokicni01: "15",
+	doncilu01: "77",
+	embiijo01: "21",
+	tatumja01: "0",
+	davisan02: "23,LAL=3",
+	irvinky01: "2,BOS=11,BRK=11,DAL=11",
+	georgpa01: "13,IND@2011-2014=24,PHI=8",
+	lillada01: "0",
+	butleji01: "21,MIN=23,PHI=23,MIA=22",
+	thompkl01: "11,DAL=31",
+	greendr01: "23",
+	millere01: "31",
+	paytoga01: "20",
+	hillgr01: "33",
+	mournal01: "33",
+	webbech01: "4,DET=84",
+	gasolpa01: "16",
+	parketo01: "9",
+	ginobma01: "20",
+	mingya01: "11",
+	olajuha01: "34",
+	robinda01: "50",
+	malonka01: "32,LAL=11",
+	stockjo01: "12",
+	barklch01: "34,HOU=4",
+	ewingpa01: "33,ORL=6",
+	pippesc01: "33",
+	rodmade01: "10,CHI=91,LAL=73,DAL=70",
+	drexlcl01: "22",
+	thomais01: "11",
+	wilkido01: "21",
+	ervinju01: "6",
+	roberos01: "14,MIL=1",
+	westje01: "44",
+	bayloel01: "22",
+	havlijo01: "17",
+	cousybo01: "14",
+	pettibo01: "9",
+	malonmo01: "24,PHI=2",
+	gervige01: "44",
+	mchalke01: "32",
+	parisro01: "0",
+	worthja01: "42",
+	dumarjo01: "4",
+	fraziwa01: "10",
+	reedwi01: "19",
+	maravpe01: "7,ATL=44,BOS=44",
+	cowenda01: "18",
+	unselwe01: "41",
+	hayesel01: "44,WSB=11,CAP=11",
+	waltobi01: "32,BOS=5",
+	howardw01: "12",
+	loveke01: "42,CLE=0",
+	griffbl01: "32,DET=23,BRK=2,BOS=91",
+	edwaran01: "5,MIN@2021-2021=1",
+	moranja01: "12",
+	willizi01: "1",
+	youngtr01: "11",
+	bookede01: "1",
+	mitchdo01: "45",
+	gilgesh01: "2",
+	wembavi01: "1",
+	murraja01: "27",
+	adebaba01: "13",
+	brownja02: "7",
+	townska01: "32",
+	derozde01: "10,CHI=11",
+	lowryky01: "7",
+	hardati01: "10",
+	mullich01: "17",
+	kempsh01: "40",
+	mutomdi01: "55",
+	wallabe01: "3",
+	wallara01: "30,DET=36",
+	billuch01: "1",
+	hamilri01: "32",
+	stoudam01: "32,NYK=1",
+	boshch01: "4,MIA=1",
+	randoza01: "50",
+	gasolma01: "33",
+	brandel01: "42",
+	houstal01: "20",
+	ricegl01: "41",
+	sprewla01: "15,NYK=8",
+	onealje01: "7",
+	francst01: "3",
+	arenagi01: "0,ORL=1",
+	kingbe01: "30",
+	dantlad01: "4",
+	englial01: "2",
+	chambto01: "24",
+	pricema01: "25",
+	nancela01: "22",
+	moncrsi01: "4",
+	gilmoar01: "53",
+	laniebo01: "16",
+	architi01: "1,BOS=7",
+	monroea01: "10,NYK=15",
+	bingda01: "21",
+	greerha01: "15",
+	schaydo01: "4",
+	mikange01: "99",
+	thurmna01: "42",
+	barryri01: "24,HOU=2",
+	lucasje01: "16",
+	arizipa01: "11",
+	jonessa01: "24",
+	heinsto01: "15",
+	sharmbi01: "21",
+	joneskc01: "25",
+	goodrga01: "25",
+	hawkico01: "42",
+	haywosp01: "24",
+	mcadobo01: "11",
+	cunnibi01: "32"
+};
+const parsed = /* @__PURE__ */ new Map();
+function rules(id) {
+	if (!(id in TABLE$1)) return void 0;
+	let r = parsed.get(id);
+	if (!r) {
+		r = TABLE$1[id].split(",").map((part) => {
+			const m = /^(?:([A-Z]{3})(?:@(\d{4})-(\d{4})?)?=)?(\d{1,2})$/.exec(part.trim());
+			if (!m) throw new Error(`Bad jersey entry ${id}: ${part}`);
+			return {
+				team: m[1],
+				from: m[2] ? Number(m[2]) : void 0,
+				to: m[3] ? Number(m[3]) : void 0,
+				number: Number(m[4])
+			};
+		});
+		parsed.set(id, r);
+	}
+	return r;
+}
+/** His real number with this team in this season (END year), when the table knows it. */
+function realJerseyNumber(realId, teamAbbr, endYear) {
+	const r = rules(realId);
+	if (!r) return void 0;
+	const inRange = (x) => (x.from == null || endYear >= x.from) && (x.to == null || endYear <= x.to);
+	return (r.find((x) => x.team && x.team === teamAbbr && (x.from != null || x.to != null) && inRange(x)) ?? r.find((x) => x.team && x.team === teamAbbr && x.from == null && x.to == null) ?? r.find((x) => !x.team))?.number;
+}
+Object.keys(TABLE$1);
+//#endregion
+//#region src/worldGames/data.ts
+const COUNTRIES = [
+	{
+		name: "USA",
+		code: "USA",
+		colors: ["#1d3c78", "#c8102e"],
+		home: 60
+	},
+	{
+		name: "Serbia",
+		code: "SRB",
+		colors: ["#c6363c", "#0c4076"],
+		home: 56
+	},
+	{
+		name: "Spain",
+		code: "ESP",
+		colors: ["#c60b1e", "#ffc400"],
+		home: 56
+	},
+	{
+		name: "France",
+		code: "FRA",
+		colors: ["#0055a4", "#ef4135"],
+		home: 55
+	},
+	{
+		name: "Greece",
+		code: "GRE",
+		colors: ["#0d5eaf", "#ffffff"],
+		home: 54
+	},
+	{
+		name: "Lithuania",
+		code: "LTU",
+		colors: ["#006a44", "#fdb913"],
+		home: 54
+	},
+	{
+		name: "Slovenia",
+		code: "SLO",
+		colors: ["#005da4", "#ed1c24"],
+		home: 53
+	},
+	{
+		name: "Australia",
+		code: "AUS",
+		colors: ["#00843d", "#ffcd00"],
+		home: 53
+	},
+	{
+		name: "Germany",
+		code: "GER",
+		colors: ["#222222", "#dd0000"],
+		home: 53
+	},
+	{
+		name: "Canada",
+		code: "CAN",
+		colors: ["#d80621", "#ffffff"],
+		home: 52
+	},
+	{
+		name: "Argentina",
+		code: "ARG",
+		colors: ["#74acdf", "#ffffff"],
+		home: 53
+	},
+	{
+		name: "Croatia",
+		code: "CRO",
+		colors: ["#ff0000", "#171796"],
+		home: 52
+	},
+	{
+		name: "Italy",
+		code: "ITA",
+		colors: ["#0066b3", "#ffffff"],
+		home: 53
+	},
+	{
+		name: "Turkey",
+		code: "TUR",
+		colors: ["#e30a17", "#ffffff"],
+		home: 52
+	},
+	{
+		name: "Brazil",
+		code: "BRA",
+		colors: ["#009c3b", "#ffdf00"],
+		home: 51
+	},
+	{
+		name: "Russia",
+		code: "RUS",
+		colors: ["#d52b1e", "#0039a6"],
+		home: 52
+	},
+	{
+		name: "Latvia",
+		code: "LAT",
+		colors: ["#9e3039", "#ffffff"],
+		home: 50
+	},
+	{
+		name: "Montenegro",
+		code: "MNE",
+		colors: ["#c40308", "#d4af3a"],
+		home: 50
+	},
+	{
+		name: "Puerto Rico",
+		code: "PUR",
+		colors: ["#ed0a3f", "#0050f0"],
+		home: 49
+	},
+	{
+		name: "Dominican Republic",
+		code: "DOM",
+		colors: ["#002d62", "#ce1126"],
+		home: 48
+	},
+	{
+		name: "Nigeria",
+		code: "NGR",
+		colors: ["#008751", "#ffffff"],
+		home: 47
+	},
+	{
+		name: "China",
+		code: "CHN",
+		colors: ["#de2910", "#ffde00"],
+		home: 48
+	},
+	{
+		name: "Japan",
+		code: "JPN",
+		colors: ["#bc002d", "#ffffff"],
+		home: 46
+	},
+	{
+		name: "Czech Republic",
+		code: "CZE",
+		colors: ["#11457e", "#d7141a"],
+		home: 49
+	},
+	{
+		name: "Georgia",
+		code: "GEO",
+		colors: ["#ff0000", "#ffffff"],
+		home: 48
+	},
+	{
+		name: "Venezuela",
+		code: "VEN",
+		colors: ["#ffcc00", "#cf142b"],
+		home: 47
+	},
+	{
+		name: "Israel",
+		code: "ISR",
+		colors: ["#0038b8", "#ffffff"],
+		home: 48
+	},
+	{
+		name: "Ukraine",
+		code: "UKR",
+		colors: ["#0057b7", "#ffd700"],
+		home: 47
+	},
+	{
+		name: "Bosnia and Herzegovina",
+		code: "BIH",
+		colors: ["#002395", "#fecb00"],
+		home: 48
+	},
+	{
+		name: "Finland",
+		code: "FIN",
+		colors: ["#003580", "#ffffff"],
+		home: 48
+	},
+	{
+		name: "Poland",
+		code: "POL",
+		colors: ["#dc143c", "#ffffff"],
+		home: 47
+	},
+	{
+		name: "Senegal",
+		code: "SEN",
+		colors: ["#00853f", "#fdef42"],
+		home: 45
+	},
+	{
+		name: "Cameroon",
+		code: "CMR",
+		colors: ["#007a5e", "#ce1126"],
+		home: 44
+	},
+	{
+		name: "DR Congo",
+		code: "COD",
+		colors: ["#007fff", "#f7d618"],
+		home: 43
+	},
+	{
+		name: "Great Britain",
+		code: "GBR",
+		colors: ["#012169", "#c8102e"],
+		home: 46
+	},
+	{
+		name: "Netherlands",
+		code: "NED",
+		colors: ["#ff6200", "#21468b"],
+		home: 45
+	},
+	{
+		name: "Mexico",
+		code: "MEX",
+		colors: ["#006847", "#ce1126"],
+		home: 45
+	},
+	{
+		name: "New Zealand",
+		code: "NZL",
+		colors: ["#000000", "#ffffff"],
+		home: 46
+	},
+	{
+		name: "Bahamas",
+		code: "BAH",
+		colors: ["#00abc9", "#fae042"],
+		home: 43
+	},
+	{
+		name: "Switzerland",
+		code: "SUI",
+		colors: ["#d52b1e", "#ffffff"],
+		home: 44
+	},
+	{
+		name: "Sweden",
+		code: "SWE",
+		colors: ["#006aa7", "#fecc00"],
+		home: 44
+	},
+	{
+		name: "Sudan",
+		code: "SUD",
+		colors: ["#d21034", "#007229"],
+		home: 40
+	},
+	{
+		name: "Austria",
+		code: "AUT",
+		colors: ["#ed2939", "#ffffff"],
+		home: 43
+	},
+	{
+		name: "Belgium",
+		code: "BEL",
+		colors: ["#000000", "#fdda24"],
+		home: 45
+	}
+];
+new Map(COUNTRIES.map((c) => [c.name, c]));
+/** National teams of the NBA's international players (everyone else is American). */
+const BY_COUNTRY = {
+	Serbia: [
+		"Vlade Divac",
+		"Peja Stojaković",
+		"Nikola Jokić",
+		"Bogdan Bogdanović",
+		"Nemanja Bjelica",
+		"Miloš Teodosić",
+		"Vasilije Micić",
+		"Nikola Jović",
+		"Marko Gudurić",
+		"Filip Petrušev",
+		"Aleksandar Đorđević",
+		"Sasha Danilović",
+		"Žarko Paspalj",
+		"Željko Rebrača",
+		"Darko Miličić",
+		"Vladimir Radmanović",
+		"Marko Jarić",
+		"Nenad Krstić",
+		"Miroslav Raduljica",
+		"Ognjen Kuzmić",
+		"Aleksej Pokuševski",
+		"Boban Marjanović",
+		"Dragan Tarlać",
+		"Igor Rakočević",
+		"Kosta Perović"
+	],
+	Montenegro: [
+		"Nikola Vučević",
+		"Žarko Čabarkapa",
+		"Nikola Peković"
+	],
+	Croatia: [
+		"Toni Kukoč",
+		"Dražen Petrović",
+		"Dino Rađa",
+		"Stojko Vranković",
+		"Žan Tabak",
+		"Gordan Giriček",
+		"Zoran Planinić",
+		"Bojan Bogdanović",
+		"Dario Šarić",
+		"Mario Hezonja",
+		"Ivica Zubac",
+		"Ante Žižić",
+		"Damir Markota",
+		"Roko Ukić",
+		"Dragan Bender"
+	],
+	Slovenia: [
+		"Luka Dončić",
+		"Goran Dragić",
+		"Zoran Dragić",
+		"Beno Udrih",
+		"Primož Brezec",
+		"Rašho Nesterović",
+		"Sasha Vujačić",
+		"Boštjan Nachbar",
+		"Vlatko Čančar",
+		"Marko Milič"
+	],
+	"Bosnia and Herzegovina": [
+		"Jusuf Nurkić",
+		"Mirza Teletović",
+		"Džanan Musa"
+	],
+	Lithuania: [
+		"Arvydas Sabonis",
+		"Šarūnas Marčiulionis",
+		"Žydrūnas Ilgauskas",
+		"Šarūnas Jasikevičius",
+		"Darius Songaila",
+		"Linas Kleiza",
+		"Jonas Valančiūnas",
+		"Domantas Sabonis",
+		"Donatas Motiejūnas",
+		"Mindaugas Kuzminskas",
+		"Arnoldas Kulboka",
+		"Martynas Andriuškevičius"
+	],
+	Latvia: [
+		"Kristaps Porziņģis",
+		"Dāvis Bertāns",
+		"Andris Biedriņš",
+		"Gundars Vētra"
+	],
+	Russia: [
+		"Andrei Kirilenko",
+		"Timofey Mozgov",
+		"Alexey Shved",
+		"Sasha Kaun",
+		"Viktor Khryapa",
+		"Sergei Monia"
+	],
+	Ukraine: [
+		"Alex Len",
+		"Svi Mykhailiuk",
+		"Kyrylo Fesenko",
+		"Stanislav Medvedenko",
+		"Vitaly Potapenko",
+		"Oleksiy Pecherov"
+	],
+	Georgia: [
+		"Zaza Pachulia",
+		"Nikoloz Tskitishvili",
+		"Goga Bitadze",
+		"Sandro Mamukelashvili",
+		"Tornike Shengelia"
+	],
+	Greece: [
+		"Giannis Antetokounmpo",
+		"Thanasis Antetokounmpo",
+		"Kostas Antetokounmpo",
+		"Kostas Papanikolaou",
+		"Kosta Koufos",
+		"Vassilis Spanoulis",
+		"Andreas Glyniadakis",
+		"Tyler Dorsey"
+	],
+	Turkey: [
+		"Hedo Türkoğlu",
+		"Mehmet Okur",
+		"Ersan İlyasova",
+		"Enes Freedom",
+		"Cedi Osman",
+		"Furkan Korkmaz",
+		"Alperen Şengün",
+		"Ömer Aşık",
+		"Semih Erden",
+		"Furkan Aldemir"
+	],
+	Germany: [
+		"Dirk Nowitzki",
+		"Detlef Schrempf",
+		"Uwe Blab",
+		"Chris Welp",
+		"Shawn Bradley",
+		"Chris Kaman",
+		"Dennis Schröder",
+		"Maxi Kleber",
+		"Daniel Theis",
+		"Moritz Wagner",
+		"Franz Wagner",
+		"Isaiah Hartenstein",
+		"Paul Zipser",
+		"Tibor Pleiß",
+		"Isaac Bonga",
+		"Tristan da Silva"
+	],
+	France: [
+		"Tony Parker",
+		"Boris Diaw",
+		"Nicolas Batum",
+		"Rudy Gobert",
+		"Evan Fournier",
+		"Joakim Noah",
+		"Ronny Turiaf",
+		"Mickaël Piétrus",
+		"Ian Mahinmi",
+		"Johan Petro",
+		"Alexis Ajinça",
+		"Kevin Séraphin",
+		"Nando de Colo",
+		"Frank Ntilikina",
+		"Timothé Luwawu-Cabarrot",
+		"Guerschon Yabusele",
+		"Vincent Poirier",
+		"Victor Wembanyama",
+		"Bilal Coulibaly",
+		"Zaccharie Risacher",
+		"Alex Sarr",
+		"Tidjane Salaün",
+		"Antoine Rigaudeau",
+		"Tariq Abdul-Wahad",
+		"Jérôme Moïso",
+		"Mickaël Gelabale",
+		"Rodrigue Beaubois",
+		"Élie Okobo",
+		"Killian Hayes",
+		"Sekou Doumbouya",
+		"Théo Maledon",
+		"Olivier Sarr",
+		"Petr Cornelie",
+		"Axel Toupane"
+	],
+	Spain: [
+		"Pau Gasol",
+		"Marc Gasol",
+		"Rudy Fernández",
+		"José Calderón",
+		"Juan Carlos Navarro",
+		"Ricky Rubio",
+		"Sergio Rodríguez",
+		"Jorge Garbajosa",
+		"Raül López",
+		"Serge Ibaka",
+		"Víctor Claver",
+		"Nikola Mirotić",
+		"Willy Hernangómez",
+		"Juancho Hernangómez",
+		"Álex Abrines",
+		"Fernando Martín",
+		"Usman Garuba",
+		"Santi Aldama"
+	],
+	Italy: [
+		"Andrea Bargnani",
+		"Danilo Gallinari",
+		"Marco Belinelli",
+		"Gigi Datome",
+		"Simone Fontecchio",
+		"Nicolò Melli",
+		"Vincenzo Esposito"
+	],
+	Netherlands: ["Rik Smits"],
+	"Czech Republic": [
+		"Tomáš Satoranský",
+		"Jan Veselý",
+		"Jiří Welsch",
+		"Vít Krejčí"
+	],
+	Poland: [
+		"Marcin Gortat",
+		"Cezary Trybański",
+		"Maciej Lampe"
+	],
+	Finland: ["Lauri Markkanen", "Hanno Möttölä"],
+	Sweden: ["Jonas Jerebko"],
+	Switzerland: ["Thabo Sefolosha", "Clint Capela"],
+	Austria: ["Jakob Poeltl"],
+	"Great Britain": [
+		"Luol Deng",
+		"Joel Freeland",
+		"OG Anunoby"
+	],
+	Israel: [
+		"Omri Casspi",
+		"Gal Mekel",
+		"Deni Avdija"
+	],
+	Canada: [
+		"Steve Nash",
+		"Rick Fox",
+		"Jamaal Magloire",
+		"Andrew Wiggins",
+		"Shai Gilgeous-Alexander",
+		"Jamal Murray",
+		"RJ Barrett",
+		"Dillon Brooks",
+		"Kelly Olynyk",
+		"Tristan Thompson",
+		"Cory Joseph",
+		"Dwight Powell",
+		"Luguentz Dort",
+		"Nickeil Alexander-Walker",
+		"Andrew Nembhard",
+		"Trey Lyles",
+		"Khem Birch",
+		"Chris Boucher",
+		"Bennedict Mathurin",
+		"Zach Edey",
+		"Anthony Bennett",
+		"Nik Stauskas",
+		"Joel Anthony",
+		"Todd MacCulloch",
+		"Bill Wennington",
+		"Mike Smrek",
+		"Leo Rautins",
+		"Oshae Brissett"
+	],
+	Australia: [
+		"Luc Longley",
+		"Andrew Bogut",
+		"Patty Mills",
+		"Joe Ingles",
+		"Ben Simmons",
+		"Matthew Dellavedova",
+		"Aron Baynes",
+		"Dante Exum",
+		"Josh Giddey",
+		"Matisse Thybulle",
+		"Josh Green",
+		"Jock Landale",
+		"Thon Maker",
+		"Andrew Gaze",
+		"Chris Anstey",
+		"Nathan Jawai",
+		"David Andersen",
+		"Dyson Daniels",
+		"Duop Reath"
+	],
+	"New Zealand": [
+		"Kirk Penney",
+		"Sean Marks",
+		"Steven Adams"
+	],
+	Argentina: [
+		"Manu Ginóbili",
+		"Luis Scola",
+		"Andrés Nocioni",
+		"Fabricio Oberto",
+		"Carlos Delfino",
+		"Walter Herrmann",
+		"Pepe Sánchez",
+		"Rubén Wolkowyski",
+		"Pablo Prigioni",
+		"Facundo Campazzo",
+		"Gabriel Deck",
+		"Leandro Bolmaro"
+	],
+	Brazil: [
+		"Nenê",
+		"Leandro Barbosa",
+		"Anderson Varejão",
+		"Tiago Splitter",
+		"Raul Neto",
+		"Bruno Caboclo",
+		"Cristiano Felício",
+		"Lucas Nogueira",
+		"Rafael Araújo"
+	],
+	"Puerto Rico": [
+		"J.J. Barea",
+		"Carlos Arroyo",
+		"Butch Lee",
+		"Daniel Santiago",
+		"Peter John Ramos"
+	],
+	"Dominican Republic": [
+		"Al Horford",
+		"Karl-Anthony Towns",
+		"Francisco García",
+		"Charlie Villanueva",
+		"Chris Duarte",
+		"Felipe López"
+	],
+	Mexico: [
+		"Eduardo Nájera",
+		"Gustavo Ayón",
+		"Jorge Gutiérrez",
+		"Juan Toscano-Anderson"
+	],
+	Venezuela: [
+		"Óscar Torres",
+		"Greivis Vásquez",
+		"Carl Herrera"
+	],
+	Bahamas: [
+		"Mychal Thompson",
+		"Buddy Hield",
+		"Deandre Ayton",
+		"Kai Jones",
+		"Eric Gordon"
+	],
+	China: [
+		"Yao Ming",
+		"Wang Zhizhi",
+		"Mengke Bateer",
+		"Yi Jianlian",
+		"Sun Yue",
+		"Zhou Qi"
+	],
+	Japan: [
+		"Rui Hachimura",
+		"Yuta Watanabe",
+		"Yuta Tabuse",
+		"Yuki Kawamura"
+	],
+	Nigeria: [
+		"Olumide Oyedeji",
+		"Ike Diogu",
+		"Al-Farouq Aminu",
+		"Josh Okogie",
+		"Chimezie Metu",
+		"Gabe Vincent",
+		"Jordan Nwora"
+	],
+	Senegal: [
+		"DeSagana Diop",
+		"Gorgui Dieng",
+		"Mamadou N'Diaye",
+		"Tacko Fall"
+	],
+	Cameroon: [
+		"Pascal Siakam",
+		"Luc Mbah a Moute",
+		"Christian Koloko"
+	],
+	"DR Congo": [
+		"Dikembe Mutombo",
+		"Bismack Biyombo",
+		"Christian Eyenga",
+		"Jonathan Kuminga"
+	],
+	Sudan: ["Manute Bol"]
+};
+/** A player listed for two countries takes this one. */
+const OVERRIDES = {};
+const norm = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[đĐ]/g, "dj").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+const TABLE = (() => {
+	const m = /* @__PURE__ */ new Map();
+	for (const [country, names] of Object.entries(BY_COUNTRY)) for (const n of names) m.set(norm(n), country);
+	for (const [n, c] of Object.entries(OVERRIDES)) m.set(norm(n), c);
+	return m;
+})();
+Object.entries(BY_COUNTRY).flatMap(([c, names]) => names.map((n) => [n, OVERRIDES[n] ?? c]));
+/** A real player's national team, by name: listed internationals, otherwise USA. */
+const realNationality = (name) => TABLE.get(norm(name)) ?? "USA";
+//#endregion
+//#region src/simulation/worldLeagues.ts
+const club = (name, abbr, primary, secondary) => ({
+	name,
+	abbr,
+	primary,
+	secondary
+});
+const WORLD_LEAGUES = {
+	euro: {
+		id: "euro",
+		name: "EuroLeague",
+		short: "Euro",
+		blurb: "Europe's top clubs: 18 teams, 34 games, FIBA rules, best-of-five playoffs.",
+		clubs: [
+			club("Real Madrid", "RMB", "#f4f0e6", "#3d195b"),
+			club("FC Barcelona", "BAR", "#a50044", "#004d98"),
+			club("Olympiacos", "OLY", "#d6001c", "#f4f0e6"),
+			club("Panathinaikos", "PAO", "#007a3d", "#f4f0e6"),
+			club("Fenerbahçe", "FEN", "#00205b", "#ffd200"),
+			club("Anadolu Efes", "EFS", "#0b3c7d", "#d6001c"),
+			club("Maccabi Tel Aviv", "MTA", "#ffd200", "#0038a8"),
+			club("Žalgiris Kaunas", "ZAL", "#006a44", "#f4f0e6"),
+			club("Partizan Belgrade", "PAR", "#121212", "#f4f0e6"),
+			club("Crvena Zvezda", "CZV", "#d6001c", "#f4f0e6"),
+			club("AS Monaco", "MCO", "#d6001c", "#f4f0e6"),
+			club("Bayern Munich", "FCB", "#dc052d", "#0066b2"),
+			club("Virtus Bologna", "VIR", "#121212", "#f4f0e6"),
+			club("Olimpia Milano", "MIL", "#d6001c", "#f4f0e6"),
+			club("Baskonia", "BKN", "#0b2a5b", "#d6001c"),
+			club("ASVEL Villeurbanne", "ASV", "#121212", "#c0c0c0"),
+			club("Paris Basketball", "PAR2", "#121212", "#e5007e"),
+			club("Valencia Basket", "VBC", "#f28c28", "#121212")
+		],
+		games: 34,
+		periods: 4,
+		minutes: 10,
+		shotClock: 24,
+		line: 22.15,
+		playoffs: {
+			teams: 8,
+			gamesToWin: 3
+		},
+		ratingShift: 5,
+		mix: [
+			["USA", 34],
+			["Spain", 8],
+			["Serbia", 8],
+			["Greece", 8],
+			["Turkey", 7],
+			["France", 8],
+			["Lithuania", 6],
+			["Germany", 5],
+			["Slovenia", 3],
+			["Croatia", 4],
+			["Italy", 6],
+			["Israel", 3]
+		],
+		ages: [19, 36],
+		prospectAges: [18, 21],
+		rosterSize: 15
+	},
+	china: {
+		id: "china",
+		name: "Chinese Basketball Association",
+		short: "CBA",
+		blurb: "The CBA: 20 clubs, 42 games, FIBA rules, a 16-team playoff.",
+		clubs: [
+			club("Guangdong Southern Tigers", "GDT", "#d6001c", "#121212"),
+			club("Liaoning Flying Leopards", "LNF", "#0b3c7d", "#f4f0e6"),
+			club("Xinjiang Flying Tigers", "XJT", "#00843d", "#f4f0e6"),
+			club("Zhejiang Lions", "ZJL", "#d6001c", "#ffd200"),
+			club("Zhejiang Golden Bulls", "ZJB", "#0b3c7d", "#ffd200"),
+			club("Shanghai Sharks", "SHS", "#0b3c7d", "#d6001c"),
+			club("Beijing Ducks", "BJD", "#0b2a5b", "#ffd200"),
+			club("Beijing Royal Fighters", "BRF", "#6a0dad", "#ffd200"),
+			club("Shenzhen Leopards", "SZL", "#121212", "#ffd200"),
+			club("Shandong Heroes", "SDH", "#f28c28", "#121212"),
+			club("Shanxi Loongs", "SXL", "#d6001c", "#f4f0e6"),
+			club("Qingdao Eagles", "QDE", "#0066b2", "#f4f0e6"),
+			club("Jilin Northeast Tigers", "JLT", "#d6001c", "#121212"),
+			club("Tianjin Pioneers", "TJP", "#0b3c7d", "#f4f0e6"),
+			club("Sichuan Blue Whales", "SCW", "#0066b2", "#f4f0e6"),
+			club("Fujian Sturgeons", "FJS", "#0b3c7d", "#d6001c"),
+			club("Jiangsu Dragons", "JSD", "#d6001c", "#0b3c7d"),
+			club("Nanjing Monkey Kings", "NJM", "#ffd200", "#121212"),
+			club("Guangzhou Loong Lions", "GZL", "#d6001c", "#ffd200"),
+			club("Ningbo Rockets", "NBR", "#0b3c7d", "#f4f0e6")
+		],
+		games: 42,
+		periods: 4,
+		minutes: 10,
+		shotClock: 24,
+		line: 22.15,
+		playoffs: {
+			teams: 16,
+			gamesToWin: 3
+		},
+		ratingShift: 8,
+		mix: [
+			["China", 86],
+			["USA", 12],
+			["Nigeria", 1],
+			["Australia", 1]
+		],
+		ages: [19, 35],
+		prospectAges: [18, 21],
+		rosterSize: 15
+	},
+	georgia: {
+		id: "georgia",
+		name: "Georgian Superleague",
+		short: "Superleague",
+		blurb: "Georgia's top league: 10 clubs, 36 games, FIBA rules, an 8-team playoff.",
+		clubs: [
+			club("Dinamo Tbilisi", "DIN", "#0b3c7d", "#f4f0e6"),
+			club("Rustavi", "RUS", "#d6001c", "#f4f0e6"),
+			club("Kutaisi", "KUT", "#00843d", "#f4f0e6"),
+			club("Batumi", "BAT", "#0066b2", "#ffd200"),
+			club("Vera Tbilisi", "VER", "#6a0dad", "#f4f0e6"),
+			club("Olimpi Tbilisi", "OLI", "#ffd200", "#0b3c7d"),
+			club("TSU Tbilisi", "TSU", "#0b2a5b", "#d6001c"),
+			club("Telavi", "TEL", "#7a1f3d", "#f4f0e6"),
+			club("Zugdidi", "ZUG", "#f28c28", "#121212"),
+			club("Gori", "GOR", "#121212", "#d6001c")
+		],
+		games: 36,
+		periods: 4,
+		minutes: 10,
+		shotClock: 24,
+		line: 22.15,
+		playoffs: {
+			teams: 8,
+			gamesToWin: 3
+		},
+		ratingShift: 14,
+		mix: [
+			["Georgia", 70],
+			["USA", 24],
+			["Serbia", 3],
+			["Lithuania", 3]
+		],
+		ages: [18, 35],
+		prospectAges: [17, 20],
+		rosterSize: 14
+	},
+	college: {
+		id: "college",
+		name: "College Conference",
+		short: "College",
+		blurb: "Sixteen famous programs, 30 games, two 20-minute halves, a 30-second clock and a one-game-a-round tournament. Players leave after four years.",
+		clubs: [
+			club("Duke Blue Devils", "DUKE", "#00539b", "#f4f0e6"),
+			club("North Carolina Tar Heels", "UNC", "#7bafd4", "#13294b"),
+			club("Kentucky Wildcats", "UK", "#0033a0", "#f4f0e6"),
+			club("Kansas Jayhawks", "KU", "#0051ba", "#e8000d"),
+			club("UCLA Bruins", "UCLA", "#2d68c4", "#f2a900"),
+			club("Gonzaga Bulldogs", "GONZ", "#041e42", "#c8102e"),
+			club("Michigan State Spartans", "MSU", "#18453b", "#f4f0e6"),
+			club("Villanova Wildcats", "NOVA", "#00205b", "#13b5ea"),
+			club("Arizona Wildcats", "ARIZ", "#cc0033", "#003366"),
+			club("UConn Huskies", "CONN", "#000e2f", "#f4f0e6"),
+			club("Houston Cougars", "HOU", "#c8102e", "#f4f0e6"),
+			club("Purdue Boilermakers", "PUR", "#cfb991", "#121212"),
+			club("Baylor Bears", "BAY", "#154734", "#ffb81c"),
+			club("Indiana Hoosiers", "IND", "#990000", "#f4f0e6"),
+			club("Syracuse Orange", "SYR", "#f76900", "#002d72"),
+			club("Louisville Cardinals", "LOU", "#ad0000", "#121212")
+		],
+		games: 30,
+		periods: 2,
+		minutes: 20,
+		shotClock: 30,
+		line: 22.15,
+		playoffs: {
+			teams: 16,
+			gamesToWin: 1
+		},
+		ratingShift: 10,
+		mix: [
+			["USA", 88],
+			["Canada", 3],
+			["Australia", 3],
+			["Nigeria", 3],
+			["France", 3]
+		],
+		ages: [18, 22],
+		prospectAges: [18, 18],
+		rosterSize: 15,
+		leaveAfterAge: 22
+	}
+};
+Object.keys(WORLD_LEAGUES);
+const isWorldLeagueId = (v) => typeof v === "string" && v in WORLD_LEAGUES;
 //#endregion
 //#region src/simulation/archetypes.ts
 const P = (PG, SG, SF, PF, C) => ({
@@ -1518,7 +2809,8 @@ function computeRuleMods(rules) {
 		rimProtection: mult(rules, "rimProtection"),
 		freeThrowFrequency: mult(rules, "freeThrowFrequency"),
 		doubleTeamFrequency: mult(rules, "helpDefense") * mult(rules, "defensiveRotations"),
-		paceMultiplier: mult(rules, "possessionsPerGame")
+		paceMultiplier: mult(rules, "possessionsPerGame"),
+		fourPointLine: rules?.fourPointLine === true
 	};
 }
 computeRuleMods(void 0);
@@ -1789,7 +3081,7 @@ new Map([
 //#endregion
 //#region src/storage/gmLegacy.ts
 const KEY$2 = "courtvision:gmLegacy";
-const empty = () => ({
+const empty$3 = () => ({
 	version: 1,
 	achievements: {},
 	leagues: {}
@@ -1798,9 +3090,9 @@ function readLegacy(read = localRead) {
 	try {
 		const raw = read(KEY$2);
 		const parsed = raw ? JSON.parse(raw) : null;
-		return parsed?.version === 1 && parsed.achievements && parsed.leagues ? parsed : empty();
+		return parsed?.version === 1 && parsed.achievements && parsed.leagues ? parsed : empty$3();
 	} catch {
-		return empty();
+		return empty$3();
 	}
 }
 function legacyTotals(legacy) {
@@ -1829,6 +3121,869 @@ function mergeFeats(a, b) {
 	const out = {};
 	for (const k of [.../* @__PURE__ */ new Set([...Object.keys(a), ...Object.keys(b)])].sort()) out[k] = Math.max(a[k] ?? 0, b[k] ?? 0);
 	return out;
+}
+//#endregion
+//#region src/hunt/eras.ts
+const ERAS$1 = [
+	{
+		id: "60s",
+		label: "The 1960s",
+		from: 1955,
+		to: 1969,
+		pace: 85,
+		threes: "none",
+		handCheck: true,
+		blurb: "No three-point line. Run, rebound, run again. Big men rule."
+	},
+	{
+		id: "70s",
+		label: "The 1970s",
+		from: 1970,
+		to: 1979,
+		pace: 70,
+		threes: "none",
+		handCheck: true,
+		blurb: "Still no three. Physical, fast, and all about the paint."
+	},
+	{
+		id: "80s",
+		label: "The 1980s",
+		from: 1980,
+		to: 1989,
+		pace: 68,
+		threes: "rare",
+		handCheck: true,
+		blurb: "The three arrives but nobody trusts it. Showtime and Celtic pride."
+	},
+	{
+		id: "90s",
+		label: "The 1990s",
+		from: 1990,
+		to: 1999,
+		pace: 42,
+		threes: "rare",
+		handCheck: true,
+		blurb: "Hand-checking, elbows, grind-it-out half-court. Defense wins."
+	},
+	{
+		id: "00s",
+		label: "The 2000s",
+		from: 2e3,
+		to: 2009,
+		pace: 45,
+		threes: "normal",
+		handCheck: false,
+		blurb: "Hand-checking gone in 2004-05; the drive-and-kick era begins."
+	},
+	{
+		id: "10s",
+		label: "The 2010s",
+		from: 2010,
+		to: 2019,
+		pace: 60,
+		threes: "heavy",
+		handCheck: false,
+		blurb: "Pace and space. Threes rain down; shooters are gold."
+	},
+	{
+		id: "20s",
+		label: "Today",
+		from: 2020,
+		to: 2030,
+		pace: 66,
+		threes: "heavy",
+		handCheck: false,
+		blurb: "Everyone shoots. Fast, spaced and relentless."
+	}
+];
+//#endregion
+//#region src/relics/secretCosmetics.ts
+const SECRET_COSMETIC_KEYS = [
+	"secret-skin-nebula",
+	"secret-hairColor-phantom",
+	"secret-shoes-stardust",
+	"secret-outfit-shadowTux",
+	"secret-crown-void",
+	"secret-goat-cosmic",
+	"secret-prism",
+	"secret-tc-eclipse"
+];
+//#endregion
+//#region src/relics/relics.ts
+const RARITY_ORDER = [
+	"common",
+	"rare",
+	"epic",
+	"legendary",
+	"mythic"
+];
+const RELIC_RARITY = {
+	common: {
+		name: "Common",
+		odds: .5487,
+		luck: 1,
+		coins: 43
+	},
+	rare: {
+		name: "Rare",
+		odds: .28,
+		luck: 2,
+		coins: 85
+	},
+	epic: {
+		name: "Epic",
+		odds: .1243,
+		luck: 3,
+		coins: 213
+	},
+	legendary: {
+		name: "Legendary",
+		odds: .045,
+		luck: 4,
+		coins: 510
+	},
+	mythic: {
+		name: "Mythic",
+		odds: .002,
+		luck: 5,
+		coins: 2550
+	}
+};
+/** Every relic's luck is scaled by this (a 20% nerf on the table above, stacking relics included). */
+const RELIC_LUCK_SCALE = .8;
+const RELICS = [
+	{
+		id: "netScrap",
+		name: "Torn Net Scrap",
+		rarity: "common",
+		blurb: "Cut down after a pickup game nobody remembers.",
+		icon: "court"
+	},
+	{
+		id: "chalkBag",
+		name: "Chalk Bag",
+		rarity: "common",
+		blurb: "One clap and the arena knows.",
+		icon: "star"
+	},
+	{
+		id: "rookieCard",
+		name: "Creased Rookie Card",
+		rarity: "common",
+		blurb: "Worth nothing. Priceless to you.",
+		icon: "list"
+	},
+	{
+		id: "wristband",
+		name: "Sweat-Soaked Wristband",
+		rarity: "common",
+		blurb: "Still damp. Somehow.",
+		icon: "heart"
+	},
+	{
+		id: "ticketStub",
+		name: "Nosebleed Ticket Stub",
+		rarity: "common",
+		blurb: "Row ZZ. Best seat in the house.",
+		icon: "calendar"
+	},
+	{
+		id: "whistle",
+		name: "Referee's Whistle",
+		rarity: "rare",
+		blurb: "Every call goes your way. Allegedly.",
+		icon: "warning"
+	},
+	{
+		id: "clipboard",
+		name: "Coach's Clipboard",
+		rarity: "rare",
+		blurb: "The last play is still drawn on it.",
+		icon: "chart"
+	},
+	{
+		id: "gameBall",
+		name: "Game-Winner Ball",
+		rarity: "rare",
+		blurb: "Signed by everyone on the floor that night.",
+		icon: "play"
+	},
+	{
+		id: "warmups",
+		name: "Throwback Warm-ups",
+		rarity: "rare",
+		blurb: "Tear-away snaps still work.",
+		icon: "jersey"
+	},
+	{
+		id: "floorboard",
+		name: "Old Arena Floorboard",
+		rarity: "rare",
+		blurb: "From a building they tore down years ago.",
+		icon: "court"
+	},
+	{
+		id: "goldShoes",
+		name: "Gold Sneakers",
+		rarity: "epic",
+		blurb: "Laced for a Finals game. Never washed.",
+		icon: "shoe"
+	},
+	{
+		id: "banner",
+		name: "Rafters Banner",
+		rarity: "epic",
+		blurb: "A number nobody will ever wear again.",
+		icon: "trophy"
+	},
+	{
+		id: "champagne",
+		name: "Locker-Room Champagne",
+		rarity: "epic",
+		blurb: "The cork is still in your pocket.",
+		icon: "flame"
+	},
+	{
+		id: "scoutNotes",
+		name: "Legendary Scout's Notebook",
+		rarity: "epic",
+		blurb: "He saw them all coming.",
+		icon: "search"
+	},
+	{
+		id: "ring",
+		name: "Championship Ring",
+		rarity: "legendary",
+		blurb: "Heavy. In the best way.",
+		icon: "crown"
+	},
+	{
+		id: "trophy",
+		name: "The Larry O'Brien Replica",
+		rarity: "legendary",
+		blurb: "Gold, and it knows it.",
+		icon: "trophy"
+	},
+	{
+		id: "mvpBall",
+		name: "MVP Game Ball",
+		rarity: "legendary",
+		blurb: "From the night the league crowned him.",
+		icon: "star"
+	},
+	{
+		id: "firstBall",
+		name: "The First Basketball",
+		rarity: "mythic",
+		blurb: "Leather, laces and 1891.",
+		icon: "crown"
+	},
+	{
+		id: "peachBasket",
+		name: "The Peach Basket",
+		rarity: "mythic",
+		blurb: "Before nets. Before everything.",
+		icon: "trophy"
+	},
+	{
+		id: "benchTowel",
+		name: "Bench Towel",
+		rarity: "common",
+		blurb: "Waved for every three from the corner.",
+		icon: "jersey"
+	},
+	{
+		id: "headband",
+		name: "Terry Headband",
+		rarity: "common",
+		blurb: "Pulled low for the fourth quarter.",
+		icon: "heart"
+	},
+	{
+		id: "gameProgram",
+		name: "Game Program",
+		rarity: "common",
+		blurb: "The starting lineups, circled in pen.",
+		icon: "list"
+	},
+	{
+		id: "foamFinger",
+		name: "Foam Finger",
+		rarity: "common",
+		blurb: "We're number one. Probably.",
+		icon: "up"
+	},
+	{
+		id: "bobblehead",
+		name: "Giveaway Bobblehead",
+		rarity: "common",
+		blurb: "First 10,000 fans. You were 9,998.",
+		icon: "team"
+	},
+	{
+		id: "mouthguard",
+		name: "Chewed Mouthguard",
+		rarity: "common",
+		blurb: "Hanging out of a mouth on a game-winner.",
+		icon: "check"
+	},
+	{
+		id: "scoreSheet",
+		name: "Scorer's Sheet",
+		rarity: "common",
+		blurb: "Every point, by hand.",
+		icon: "chart"
+	},
+	{
+		id: "clockBulb",
+		name: "Shot Clock Bulb",
+		rarity: "common",
+		blurb: "Burned out at 0.4 seconds.",
+		icon: "clock"
+	},
+	{
+		id: "luckyPenny",
+		name: "Lucky Penny",
+		rarity: "common",
+		blurb: "Heads up, found at center court.",
+		icon: "star",
+		stack: true
+	},
+	{
+		id: "luckySocks",
+		name: "Lucky Socks",
+		rarity: "common",
+		blurb: "Unwashed since the streak began.",
+		icon: "shoe",
+		stack: true
+	},
+	{
+		id: "paradeConfetti",
+		name: "Parade Confetti",
+		rarity: "common",
+		blurb: "Still finding it in your coat.",
+		icon: "flame",
+		stack: true
+	},
+	{
+		id: "fanAutograph",
+		name: "Fan Autograph",
+		rarity: "common",
+		blurb: "On a napkin. Still counts.",
+		icon: "list",
+		stack: true
+	},
+	{
+		id: "pressPass",
+		name: "Press Pass",
+		rarity: "rare",
+		blurb: "Access all areas, one night only.",
+		icon: "phone"
+	},
+	{
+		id: "lockerPlate",
+		name: "Locker Nameplate",
+		rarity: "rare",
+		blurb: "Pried off when the old arena closed.",
+		icon: "lock"
+	},
+	{
+		id: "playbook",
+		name: "Dog-Eared Playbook",
+		rarity: "rare",
+		blurb: "Page 42: the play that won it.",
+		icon: "menu"
+	},
+	{
+		id: "draftCap",
+		name: "Draft Night Cap",
+		rarity: "rare",
+		blurb: "The sticker's still on the brim.",
+		icon: "calendar"
+	},
+	{
+		id: "allStarJersey",
+		name: "All-Star Jersey",
+		rarity: "rare",
+		blurb: "Worn for one weekend, framed forever.",
+		icon: "jersey"
+	},
+	{
+		id: "tunnelSign",
+		name: "Tunnel Sign",
+		rarity: "rare",
+		blurb: "Touched by every player, every night.",
+		icon: "warning"
+	},
+	{
+		id: "tipoffBall",
+		name: "Opening Tip Ball",
+		rarity: "rare",
+		blurb: "The first ball of a dynasty season.",
+		icon: "play"
+	},
+	{
+		id: "signedSneaker",
+		name: "Signed Sneaker",
+		rarity: "rare",
+		blurb: "Just the left one.",
+		icon: "shoe"
+	},
+	{
+		id: "rookiePack",
+		name: "Unopened Card Pack",
+		rarity: "rare",
+		blurb: "Could be anything in there.",
+		icon: "list",
+		stack: true
+	},
+	{
+		id: "seasonTicket",
+		name: "Season Ticket",
+		rarity: "rare",
+		blurb: "Forty-one home games of hope.",
+		icon: "calendar",
+		stack: true
+	},
+	{
+		id: "benchChain",
+		name: "Bench Mob Chain",
+		rarity: "rare",
+		blurb: "Passed down the bench after every big play.",
+		icon: "team",
+		stack: true
+	},
+	{
+		id: "bentRim",
+		name: "Bent Dunk Rim",
+		rarity: "epic",
+		blurb: "They had to stop the game.",
+		icon: "court"
+	},
+	{
+		id: "buzzerClock",
+		name: "Buzzer-Beater Clock",
+		rarity: "epic",
+		blurb: "Frozen at 0.0, forever.",
+		icon: "clock"
+	},
+	{
+		id: "coachTie",
+		name: "Coach's Lucky Tie",
+		rarity: "epic",
+		blurb: "Worn for every Game 7.",
+		icon: "settings"
+	},
+	{
+		id: "allStarMvp",
+		name: "All-Star MVP Trophy",
+		rarity: "epic",
+		blurb: "A Sunday night to remember.",
+		icon: "trophy"
+	},
+	{
+		id: "streakBall",
+		name: "Win Streak Ball",
+		rarity: "epic",
+		blurb: "Signed after win number 33.",
+		icon: "flame"
+	},
+	{
+		id: "iceBag",
+		name: "Ice Veins Bag",
+		rarity: "epic",
+		blurb: "Kept the closer cool.",
+		icon: "ice"
+	},
+	{
+		id: "bannerThread",
+		name: "Banner Thread",
+		rarity: "epic",
+		blurb: "A loose thread from a title banner.",
+		icon: "trophy",
+		stack: true
+	},
+	{
+		id: "hofBallot",
+		name: "Hall of Fame Ballot",
+		rarity: "epic",
+		blurb: "One vote. It counted.",
+		icon: "check",
+		stack: true
+	},
+	{
+		id: "game7Ball",
+		name: "Game 7 Ball",
+		rarity: "legendary",
+		blurb: "The last ball of the last game.",
+		icon: "play"
+	},
+	{
+		id: "retiredJersey",
+		name: "Retired Jersey",
+		rarity: "legendary",
+		blurb: "Lowered from the rafters for one night.",
+		icon: "jersey"
+	},
+	{
+		id: "dynastyRing",
+		name: "Dynasty Ring",
+		rarity: "legendary",
+		blurb: "The third one in a row.",
+		icon: "crown"
+	},
+	{
+		id: "fluSneakers",
+		name: "Flu Game Sneakers",
+		rarity: "legendary",
+		blurb: "He could barely stand. He scored 38.",
+		icon: "shoe"
+	},
+	{
+		id: "lastWhiteboard",
+		name: "Last-Shot Whiteboard",
+		rarity: "legendary",
+		blurb: "The X's and O's of a miracle.",
+		icon: "chart"
+	},
+	{
+		id: "hofJacket",
+		name: "Hall of Fame Jacket",
+		rarity: "legendary",
+		blurb: "Orange, and earned.",
+		icon: "jersey",
+		stack: true
+	},
+	{
+		id: "goldenNet",
+		name: "The Golden Net",
+		rarity: "mythic",
+		blurb: "Every shot through it went in.",
+		icon: "court"
+	},
+	{
+		id: "firstJumpBall",
+		name: "The First Jump Ball",
+		rarity: "mythic",
+		blurb: "Tossed up before there was a league.",
+		icon: "up"
+	},
+	{
+		id: "gavel",
+		name: "The Commissioner's Gavel",
+		rarity: "mythic",
+		blurb: "It decides everything.",
+		icon: "settings"
+	}
+];
+const RELIC_BY_ID = new Map(RELICS.map((r) => [r.id, r]));
+const SECRET_RELICS = [
+	{
+		id: "eternalSpin",
+		name: "The Eternal Spin",
+		mode: "Career Mode",
+		ability: "Always +1 respin on the Career wheel.",
+		hint: "Voted in on the first ballot, the wheel turns once more.",
+		feat: "Retire a first-ballot Hall of Famer in Career Mode."
+	},
+	{
+		id: "secondWind",
+		name: "Second Wind",
+		mode: "League Hunt",
+		ability: "Start every hunt with one extra life.",
+		hint: "Survive the hardest road and you breathe twice.",
+		feat: "Win a League Hunt on Legend."
+	},
+	{
+		id: "goldenTouch",
+		name: "Golden Touch",
+		mode: "League Hunt",
+		ability: "Start every hunt with 30 extra coins.",
+		hint: "Only luck finds the hand that turns leather to gold."
+	},
+	{
+		id: "ironWill",
+		name: "Iron Will",
+		mode: "Survival",
+		ability: "Start every Survival run with one extra Shield.",
+		hint: "Fifteen times they came for your best. Fifteen times you stood.",
+		feat: "Win 15 rounds in one Survival run."
+	},
+	{
+		id: "extraPick",
+		name: "The Extra Pick",
+		mode: "82-0 Challenge",
+		ability: "One extra reroll in every 82-0 run.",
+		hint: "Eighty-two up, none down, and a pick to spare.",
+		feat: "Finish an 82-0 regular season."
+	},
+	{
+		id: "clutchGene",
+		name: "The Clutch Gene",
+		mode: "Story Mode",
+		ability: "Your story player starts with +2 grit.",
+		hint: "From the park with no nets to a legend's ending.",
+		feat: "Reach the legend ending in Story Mode."
+	},
+	{
+		id: "ownersFavorite",
+		name: "Owner's Favorite",
+		mode: "Franchise",
+		ability: "The owner's demands ask for one fewer win.",
+		hint: "Luck alone gets you a seat in the owner's box."
+	},
+	{
+		id: "lastLook",
+		name: "The Last Look",
+		mode: "Daily Grid",
+		ability: "One extra guess on Endless grids.",
+		hint: "Luck alone gives you one more look at the board."
+	},
+	{
+		id: "luckyCharm",
+		name: "The Lucky Charm",
+		mode: "Career Mode",
+		ability: "One extra Lucky Spin on the Career wheel.",
+		hint: "Luck alone finds the charm that finds more luck."
+	},
+	{
+		id: "sixthSense",
+		name: "Sixth Sense",
+		mode: "Categorize",
+		ability: "One extra mistake on Endless boards.",
+		hint: "See every group without a single wrong guess.",
+		feat: "Solve a Categorize board with no mistakes."
+	},
+	{
+		id: "filmRoom",
+		name: "The Film Room",
+		mode: "Guess the Team",
+		ability: "One extra guess on every team.",
+		hint: "Ten teams in a row and the tapes start talking.",
+		feat: "Name 10 teams in a row in Guess the Team."
+	},
+	{
+		id: "phoneTree",
+		name: "The Phone Tree",
+		mode: "Franchise",
+		ability: "Seek trade brings in 4 more offers.",
+		hint: "Luck alone gets every GM to pick up."
+	},
+	{
+		id: "ultraCheat",
+		name: "Ultra Cheat",
+		mode: "Career Mode",
+		ability: "Spend 2 Lucky Spins on the Career wheel for one category of your choice rated 125.",
+		hint: "Own every relic in the vault and the last door opens.",
+		feat: "Own every relic in the vault.",
+		earnedOnly: true
+	}
+];
+/** Every relic in the vault owned (the key to Ultra Cheat). */
+const ownsEveryRelic = (s) => RELICS.every((r) => (s.owned[r.id] ?? 0) > 0);
+/** Secrets a collection has earned on its own (Ultra Cheat once every relic is owned). */
+const withEarnedSecrets = (s) => ownsEveryRelic(s) && !s.secrets.includes("ultraCheat") ? {
+	...s,
+	secrets: [...s.secrets, "ultraCheat"]
+} : s;
+const SECRET_BY_ID = new Map(SECRET_RELICS.map((r) => [r.id, r]));
+const empty$2 = () => ({
+	v: 1,
+	spins: 0,
+	coins: 0,
+	owned: {},
+	secrets: [],
+	granted: [],
+	history: [],
+	upgraded: [],
+	equipped: [],
+	slotsBought: 0,
+	pity: {
+		epic: 0,
+		legendary: 0,
+		mythic: 0,
+		lucky: 0
+	},
+	opens: 0,
+	ledger: [],
+	rewards: []
+});
+function loadRelics(read = localRead) {
+	try {
+		const r = JSON.parse(read("cv-relics") ?? "null");
+		if (r && r.v === 1) {
+			const base = {
+				...empty$2(),
+				...r,
+				owned: r.owned ?? {},
+				secrets: (r.secrets ?? []).filter((s) => SECRET_BY_ID.has(s)),
+				granted: r.granted ?? [],
+				history: r.history ?? [],
+				upgraded: (r.upgraded ?? []).filter((id) => RELIC_BY_ID.has(id)),
+				pity: {
+					...empty$2().pity,
+					...r.pity
+				},
+				ledger: r.ledger ?? [],
+				rewards: r.rewards ?? [],
+				slotsBought: Math.max(0, Math.min(5, r.slotsBought ?? 0)),
+				opens: r.opens ?? 0,
+				equipped: [],
+				fused: Object.fromEntries(Object.entries(r.fused ?? {}).filter(([id, n]) => RELIC_BY_ID.has(id) && Number.isInteger(n) && n > 0)),
+				luckySpins: Math.max(0, Math.floor(Number(r.luckySpins) || 0))
+			};
+			return withEarnedSecrets({
+				...base,
+				equipped: Array.isArray(r.equipped) ? r.equipped.filter((id) => (base.owned[id] ?? 0) > 0 && RELIC_BY_ID.has(id)).slice(0, slotCount(base)) : autoEquip(base)
+			});
+		}
+	} catch {}
+	return empty$2();
+}
+/** Luck from one relic: its rarity's luck (+50% upgraded), or a little a copy for a stacking relic; `power` is 2 with the 15th slot. */
+function relicLuck(relic, count, upgraded = false, power = 1) {
+	if (count <= 0) return 0;
+	const raw = relic.stack ? Math.min(count, 5) * 1 : RELIC_RARITY[relic.rarity].luck * (upgraded ? 1.5 : 1);
+	return Math.round(raw * RELIC_LUCK_SCALE * power * 100) / 100;
+}
+const slotCount = (s) => 10 + Math.max(0, Math.min(5, s.slotsBought ?? 0));
+/** 2 once the 15th slot is bought: every relic gives twice the luck. */
+const relicPower = (s) => slotCount({ slotsBought: s.slotsBought ?? 0 }) >= 15 ? 2 : 1;
+const luckOf = (s, id) => {
+	const r = RELIC_BY_ID.get(id);
+	return r ? relicLuck(r, s.owned[id] ?? 0, (s.upgraded ?? []).includes(id), relicPower(s)) : 0;
+};
+/** The best relics you own, as many as fit. */
+function autoEquip(s) {
+	return Object.keys(s.owned).filter((id) => (s.owned[id] ?? 0) > 0 && RELIC_BY_ID.has(id)).sort((a, b) => luckOf(s, b) - luckOf(s, a)).slice(0, slotCount({ slotsBought: s.slotsBought ?? 0 }));
+}
+const RELIC_SETS = [
+	{
+		id: "finalsNight",
+		name: "Finals Night",
+		relics: [
+			"game7Ball",
+			"champagne",
+			"buzzerClock",
+			"paradeConfetti"
+		],
+		bonus: 2
+	},
+	{
+		id: "streetBall",
+		name: "Street Ball",
+		relics: [
+			"netScrap",
+			"chalkBag",
+			"wristband",
+			"mouthguard",
+			"luckySocks"
+		],
+		bonus: 2
+	},
+	{
+		id: "oldArena",
+		name: "The Old Arena",
+		relics: [
+			"floorboard",
+			"lockerPlate",
+			"tunnelSign",
+			"clockBulb",
+			"ticketStub"
+		],
+		bonus: 2
+	},
+	{
+		id: "draftDay",
+		name: "Draft Day",
+		relics: [
+			"draftCap",
+			"rookieCard",
+			"rookiePack",
+			"scoutNotes"
+		],
+		bonus: 2
+	},
+	{
+		id: "coachesRoom",
+		name: "The Coaches' Room",
+		relics: [
+			"clipboard",
+			"playbook",
+			"coachTie",
+			"lastWhiteboard",
+			"whistle"
+		],
+		bonus: 2
+	},
+	{
+		id: "hallOfFame",
+		name: "Hall of Fame",
+		relics: [
+			"hofBallot",
+			"hofJacket",
+			"retiredJersey",
+			"banner",
+			"mvpBall"
+		],
+		bonus: 3
+	},
+	{
+		id: "origins",
+		name: "Origins",
+		relics: [
+			"firstBall",
+			"peachBasket",
+			"firstJumpBall"
+		],
+		bonus: 5
+	}
+];
+const setComplete = (s, set) => set.relics.every((id) => (s.owned[id] ?? 0) > 0);
+(() => {
+	const raw = {
+		common: 0,
+		rare: RELIC_RARITY.rare.odds,
+		epic: RELIC_RARITY.epic.odds * 2,
+		legendary: RELIC_RARITY.legendary.odds * 2,
+		mythic: RELIC_RARITY.mythic.odds * 2
+	};
+	const sum = Object.values(raw).reduce((a, b) => a + b, 0);
+	return Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, v / sum]));
+})();
+/**
+* Two copies of the vault (this device and the cloud): the collection is a union (the most copies of each relic,
+* every secret, upgrade and paid reward), while spins, coins, slots, pity and the shop come from the copy that has
+* done more, so nothing can be spent twice.
+*/
+const mergeMax = (a = {}, b = {}) => {
+	const out = { ...b };
+	for (const [k, v] of Object.entries(a)) out[k] = Math.max(v, out[k] ?? 0);
+	return out;
+};
+function mergeRelics(a, b) {
+	const progress = (s) => s.opens * 4 + s.granted.length * 2 + s.ledger.length;
+	const [base, other] = progress(b) > progress(a) ? [b, a] : [a, b];
+	const owned = { ...other.owned };
+	for (const [id, n] of Object.entries(base.owned)) owned[id] = Math.max(n, owned[id] ?? 0);
+	const uniq = (xs) => [...new Set(xs)];
+	const merged = {
+		...base,
+		owned,
+		secrets: uniq([...base.secrets, ...other.secrets]),
+		granted: uniq([...base.granted, ...other.granted]).slice(-2e3),
+		upgraded: uniq([...base.upgraded, ...other.upgraded]),
+		fused: mergeMax(base.fused, other.fused),
+		cosmetics: uniq([...base.cosmetics ?? [], ...other.cosmetics ?? []]),
+		wishlist: uniq([...base.wishlist ?? [], ...other.wishlist ?? []]),
+		opens: Math.max(a.opens, b.opens),
+		secretPityDone: !!(a.secretPityDone || b.secretPityDone),
+		achSeeded: !!(a.achSeeded || b.achSeeded)
+	};
+	return {
+		...merged,
+		equipped: merged.equipped.filter((id) => (owned[id] ?? 0) > 0).slice(0, slotCount(merged))
+	};
 }
 //#endregion
 //#region src/hunt/coaches.ts
@@ -1957,6 +4112,55 @@ const COACHES = [
 	c("nephew", "The Owner's Nephew", -2, "threes", [], "Read a blog post about analytics.")
 ];
 new Map(COACHES.map((x) => [x.id, x]));
+//#endregion
+//#region src/hunt/statLines.ts
+/** The record book's categories: the best single game in each. */
+const HIGH_CATS = [
+	"pts",
+	"reb",
+	"ast",
+	"stl",
+	"blk",
+	"tpm"
+];
+//#endregion
+//#region src/profile/favorites.ts
+/** Today's franchises by city (the game ships no official team names). */
+const REAL_FRANCHISES = [
+	["ATL", "Atlanta"],
+	["BOS", "Boston"],
+	["BRK", "Brooklyn"],
+	["CHO", "Charlotte"],
+	["CHI", "Chicago"],
+	["CLE", "Cleveland"],
+	["DAL", "Dallas"],
+	["DEN", "Denver"],
+	["DET", "Detroit"],
+	["GSW", "Golden State"],
+	["HOU", "Houston"],
+	["IND", "Indiana"],
+	["LAC", "LA"],
+	["LAL", "Los Angeles"],
+	["MEM", "Memphis"],
+	["MIA", "Miami"],
+	["MIL", "Milwaukee"],
+	["MIN", "Minnesota"],
+	["NOP", "New Orleans"],
+	["NYK", "New York"],
+	["OKC", "Oklahoma City"],
+	["ORL", "Orlando"],
+	["PHI", "Philadelphia"],
+	["PHO", "Phoenix"],
+	["POR", "Portland"],
+	["SAC", "Sacramento"],
+	["SAS", "San Antonio"],
+	["TOR", "Toronto"],
+	["UTA", "Utah"],
+	["WAS", "Washington"]
+].map(([id, city]) => ({
+	id,
+	city
+}));
 const DECKS = {
 	classic: {
 		id: "classic",
@@ -1999,6 +4203,14 @@ const DECKS = {
 		coins: 0,
 		items: [],
 		unlock: "Win a hunt."
+	},
+	category: {
+		id: "category",
+		name: "Category Draft",
+		blurb: "Every round of spins rolls a category (\"MVPs\", \"Lakers\", \"Duke\"...) and the reels only show players from it, at their prime unless the category is about a season. 30 more coins to start.",
+		coins: 30,
+		items: [],
+		unlock: "Always open."
 	}
 };
 const DIFFICULTIES = {
@@ -2042,7 +4254,7 @@ const DIFFICULTIES = {
 //#endregion
 //#region src/hunt/storage.ts
 const RECORDS_KEY = "cv-hunt-records";
-const EMPTY = {
+const EMPTY$3 = {
 	runs: 0,
 	wins: 0,
 	bestStop: 0
@@ -2050,15 +4262,64 @@ const EMPTY = {
 function loadRecords(read = localRead) {
 	try {
 		return {
-			...EMPTY,
+			...EMPTY$3,
 			...JSON.parse(read(RECORDS_KEY) ?? "{}")
 		};
 	} catch {
-		return { ...EMPTY };
+		return { ...EMPTY$3 };
 	}
 }
 Object.keys(DECKS);
 Object.keys(DIFFICULTIES);
+/** How a Daily Legend or Weekly Hunt result ranks: winning beats everything, then how far you got. */
+const huntScore = (d) => d.won ? 1e3 + (d.wins - d.losses) * 10 : d.stop * 100 + d.wins * 2;
+//#endregion
+//#region src/retention/week.ts
+/** ISO week in UTC, e.g. "2026-W39". Weeks start on Monday. */
+function weekKey(now = /* @__PURE__ */ new Date()) {
+	const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+	const day = d.getUTCDay() || 7;
+	d.setUTCDate(d.getUTCDate() + 4 - day);
+	const yearStart = Date.UTC(d.getUTCFullYear(), 0, 1);
+	const week = Math.ceil(((d.getTime() - yearStart) / 864e5 + 1) / 7);
+	return `${d.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
+}
+function weeklySeed(kind, week) {
+	let h = 2166136261;
+	for (const ch of `courtvision-weekly|${kind}|${week}`) {
+		h ^= ch.charCodeAt(0);
+		h = Math.imul(h, 16777619);
+	}
+	return (h >>> 0) % 1e9;
+}
+/** The most bonus XP one week can give. */
+const WEEKLY_BONUS_CAP = 3e3;
+function readBonusLog(read = localRead) {
+	try {
+		const v = JSON.parse(read("cv-bonus-xp") ?? "{}");
+		return v && typeof v === "object" ? v : {};
+	} catch {
+		return {};
+	}
+}
+/** Bonus XP earned, after the weekly cap. */
+function bonusXp(log) {
+	const byWeek = /* @__PURE__ */ new Map();
+	let runs = 0;
+	for (const e of Object.values(log)) {
+		if (!e || typeof e.xp !== "number" || e.xp <= 0 || typeof e.week !== "string") continue;
+		byWeek.set(e.week, (byWeek.get(e.week) ?? 0) + Math.round(e.xp));
+		runs++;
+	}
+	return {
+		xp: [...byWeek.values()].reduce((n, v) => n + Math.min(WEEKLY_BONUS_CAP, v), 0),
+		runs
+	};
+}
+const mergeBonusLog = (a, b) => ({
+	...b,
+	...a
+});
 //#endregion
 //#region src/simulation/rebuildScenarios.ts
 const SCENARIOS = [
@@ -2273,25 +4534,6 @@ function loadRebuildRecords(read = localRead) {
 	}
 }
 //#endregion
-//#region src/retention/week.ts
-/** ISO week in UTC, e.g. "2026-W39". Weeks start on Monday. */
-function weekKey(now = /* @__PURE__ */ new Date()) {
-	const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-	const day = d.getUTCDay() || 7;
-	d.setUTCDate(d.getUTCDate() + 4 - day);
-	const yearStart = Date.UTC(d.getUTCFullYear(), 0, 1);
-	const week = Math.ceil(((d.getTime() - yearStart) / 864e5 + 1) / 7);
-	return `${d.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
-}
-function weeklySeed(kind, week) {
-	let h = 2166136261;
-	for (const ch of `courtvision-weekly|${kind}|${week}`) {
-		h ^= ch.charCodeAt(0);
-		h = Math.imul(h, 16777619);
-	}
-	return (h >>> 0) % 1e9;
-}
-//#endregion
 //#region src/retention/weekly.ts
 const TWISTS = [
 	{
@@ -2363,7 +4605,1396 @@ function dailyGoalXp(read = localRead) {
 	}
 }
 //#endregion
+//#region src/visuals/likeness.ts
+const hb = (hatColor = 6) => ({
+	hatStyle: "headband",
+	hatColor
+});
+const noHat = { hatStyle: "none" };
+({ ...noHat }), { ...hb(6) }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...hb(6) }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...hb(6) }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...hb(4) }, { ...hb(0) }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...hb(6) }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...hb(6) }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat }, { ...noHat };
+const LIKENESS_EVENT = "courtvision:likeness";
+try {
+	window.addEventListener(LIKENESS_EVENT, () => {});
+} catch {}
+//#endregion
+//#region src/visuals/playerSprite.ts
+const HAIR_STYLES = [
+	"bald",
+	"lowFade",
+	"buzzCut",
+	"short",
+	"shortWide",
+	"crop",
+	"cropWide",
+	"medium",
+	"mediumWide",
+	"curlyShort",
+	"curlyMedium",
+	"afroSmall",
+	"afroMedium",
+	"afroLarge",
+	"afroFlatTop",
+	"mohawkThin",
+	"mohawkThick",
+	"mohawkFade",
+	"highTopFlat",
+	"highTopFade",
+	"cornrows",
+	"dreadsShort",
+	"dreadsMedium",
+	"dreadsLong",
+	"dreadsPiled",
+	"waves",
+	"sidePart",
+	"slickBack",
+	"undercut",
+	"curlyFade",
+	"twists",
+	"boxBraids"
+];
+const BEARD_STYLES = [
+	"none",
+	"stubbleLight",
+	"stubbleFull",
+	"soulPatch",
+	"goatee",
+	"goateeWide",
+	"vandyke",
+	"mustache",
+	"mustacheThick",
+	"chinstrap",
+	"chinstrapThick",
+	"shortBoxed",
+	"shortRound",
+	"fullShort",
+	"fullMedium",
+	"fullWide",
+	"fullLong",
+	"fullLongWide",
+	"lumberjack",
+	"lumberjackXL",
+	"circleBeard",
+	"balboa",
+	"mutton",
+	"anchor",
+	"thinLine"
+];
+const HAT_STYLES = [
+	"beanie",
+	"beanieCuffed",
+	"skullCap",
+	"cap",
+	"capBack",
+	"bucket",
+	"headband",
+	"headbandWide",
+	"durag",
+	"visor"
+];
+//#endregion
+//#region src/profile/avatar.ts
+const FREE = { level: 1 };
+/** Game Owner only (see ownerAccess.ts): hidden from everyone else. */
+const OWNER = { staff: true };
+const lv = (level) => ({ level });
+/** Trophy Road stops for the character (see TROPHY_ROAD in trophyRoad.ts: the two lists are kept in step by a test). */
+const AVATAR_TROPHY_ROAD = [
+	[
+		5e3,
+		"outfit",
+		"gi"
+	],
+	[
+		1e4,
+		"hat",
+		"ninjaBand"
+	],
+	[
+		15e3,
+		"outfit",
+		"ninja"
+	],
+	[
+		2e4,
+		"aura",
+		"fire"
+	],
+	[
+		25e3,
+		"hat",
+		"strawHat"
+	],
+	[
+		3e4,
+		"outfit",
+		"pirate"
+	],
+	[
+		35e3,
+		"skin",
+		"green"
+	],
+	[
+		4e4,
+		"hair",
+		"superSpikes"
+	],
+	[
+		45e3,
+		"outfit",
+		"scout"
+	],
+	[
+		5e4,
+		"aura",
+		"golden"
+	],
+	[
+		55e3,
+		"outfit",
+		"haori"
+	],
+	[
+		6e4,
+		"eyes",
+		"scouter"
+	],
+	[
+		65e3,
+		"outfit",
+		"gakuran"
+	],
+	[
+		7e4,
+		"skin",
+		"red"
+	],
+	[
+		75e3,
+		"outfit",
+		"hero"
+	],
+	[
+		8e4,
+		"neck",
+		"scarf"
+	],
+	[
+		85e3,
+		"outfit",
+		"plugsuit"
+	],
+	[
+		9e4,
+		"aura",
+		"lightning"
+	],
+	[
+		95e3,
+		"outfit",
+		"cloudrobe"
+	],
+	[
+		1e5,
+		"hairColor",
+		"rainbow"
+	],
+	[
+		105e3,
+		"outfit",
+		"kimono"
+	],
+	[
+		11e4,
+		"skin",
+		"blue"
+	],
+	[
+		115e3,
+		"outfit",
+		"sailor"
+	],
+	[
+		12e4,
+		"eyes",
+		"glowRed"
+	],
+	[
+		125e3,
+		"outfit",
+		"captain"
+	],
+	[
+		13e4,
+		"aura",
+		"shadow"
+	],
+	[
+		135e3,
+		"outfit",
+		"flamecloak"
+	],
+	[
+		14e4,
+		"neck",
+		"angelWings"
+	],
+	[
+		145e3,
+		"outfit",
+		"royal"
+	],
+	[
+		15e4,
+		"skin",
+		"gold"
+	],
+	[
+		155e3,
+		"outfit",
+		"wizard"
+	],
+	[
+		16e4,
+		"aura",
+		"cosmic"
+	],
+	[
+		165e3,
+		"shoes",
+		"rocket"
+	],
+	[
+		17e4,
+		"neck",
+		"batWings"
+	],
+	[
+		175e3,
+		"hat",
+		"halo"
+	],
+	[
+		18e4,
+		"aura",
+		"rainbow"
+	],
+	[
+		185e3,
+		"eyes",
+		"sparkle"
+	],
+	[
+		19e4,
+		"hair",
+		"flowingLong"
+	],
+	[
+		195e3,
+		"neck",
+		"jetpack"
+	],
+	[
+		2e5,
+		"skin",
+		"rainbow"
+	],
+	[
+		25e4,
+		"hair",
+		"spikyWarrior"
+	],
+	[
+		3e5,
+		"outfit",
+		"warriorArmor"
+	],
+	[
+		35e4,
+		"neck",
+		"tail"
+	],
+	[
+		4e5,
+		"hair",
+		"flameWarrior"
+	],
+	[
+		45e4,
+		"neck",
+		"weightedCape"
+	],
+	[
+		55e4,
+		"shoes",
+		"warriorBoots"
+	],
+	[
+		65e4,
+		"hairColor",
+		"superBlue"
+	],
+	[
+		75e4,
+		"aura",
+		"superWarrior"
+	],
+	[
+		1e4,
+		"hair",
+		"spikyNinja"
+	],
+	[
+		25e3,
+		"outfit",
+		"trainer"
+	],
+	[
+		4e4,
+		"eyes",
+		"starEyes"
+	],
+	[
+		55e3,
+		"outfit",
+		"arcade80s"
+	],
+	[
+		7e4,
+		"hat",
+		"foxMask"
+	],
+	[
+		85e3,
+		"outfit",
+		"contestant"
+	],
+	[
+		1e5,
+		"hat",
+		"guardMask"
+	],
+	[
+		105e3,
+		"outfit",
+		"guard"
+	],
+	[
+		12e4,
+		"outfit",
+		"demonHunter"
+	],
+	[
+		125e3,
+		"neck",
+		"katana"
+	],
+	[
+		14e4,
+		"eyes",
+		"sharingan"
+	],
+	[
+		16e4,
+		"outfit",
+		"webHero"
+	],
+	[
+		18e4,
+		"aura",
+		"sakura"
+	],
+	[
+		2e5,
+		"outfit",
+		"soulReaper"
+	],
+	[
+		5e5,
+		"hair",
+		"sorcererSpikes"
+	],
+	[
+		6e5,
+		"eyes",
+		"blindfold"
+	],
+	[
+		7e5,
+		"aura",
+		"cursed"
+	]
+];
+/** Level Road stops for the character, past level 250 (LEVEL_ROAD in cosmetics.ts lists them). */
+const AVATAR_LEVEL_ROAD = [
+	[
+		350,
+		"outfit",
+		"gi-blue"
+	],
+	[
+		450,
+		"hairColor",
+		"ember"
+	],
+	[
+		500,
+		"aura",
+		"storm"
+	],
+	[
+		550,
+		"neck",
+		"capeGold"
+	],
+	[
+		600,
+		"outfit",
+		"gi-black"
+	],
+	[
+		650,
+		"hairColor",
+		"platinumGlow"
+	],
+	[
+		750,
+		"skin",
+		"diamond"
+	]
+];
+const road$1 = (cat, id) => {
+	const hit = AVATAR_TROPHY_ROAD.find(([, c, i]) => c === cat && i === id);
+	if (hit) return { trophies: hit[0] };
+	const lvl = AVATAR_LEVEL_ROAD.find(([, c, i]) => c === cat && i === id);
+	return lvl ? { level: lvl[0] } : void 0;
+};
+/** A Season Pass piece (see retention/season.ts). */
+const season = (cat, id, s = "glitch") => seasonRule(cat, id, s);
+const frozen = (cat, id) => season(cat, id, "frozen");
+const inferno = (cat, id) => season(cat, id, "inferno");
+/** A Relic Shop piece: bought with coins (relics/shopCosmetics.ts). Its key is shop-<category>-<id>. */
+const shop = (cat, id) => ({ shop: `shop-${cat}-${id}` });
+/** A secret piece: only a Relic Vault spin can drop it (relics/secretCosmetics.ts). */
+const secret = (cat, id) => ({ shop: `secret-${cat}-${id}` });
+/** A holiday event piece: bought with event coins while its event is on (retention/holidayShop.ts). */
+const evt = (holiday, cat, id) => ({ shop: `evt-${holiday}-${cat}-${id}` });
+const item = (cat, id, name, rule = FREE, extra = {}) => ({
+	id,
+	name,
+	rule: road$1(cat, id) ?? rule,
+	...extra
+});
+const SKINS = [
+	...[
+		[
+			"s1",
+			"Light",
+			"#f2c9a0"
+		],
+		[
+			"s2",
+			"Fair",
+			"#ffe0bd"
+		],
+		[
+			"s3",
+			"Tan",
+			"#d9a066"
+		],
+		[
+			"s4",
+			"Golden",
+			"#c68a5a"
+		],
+		[
+			"s5",
+			"Brown",
+			"#a86b3c"
+		],
+		[
+			"s6",
+			"Deep brown",
+			"#8d5a34"
+		],
+		[
+			"s7",
+			"Dark",
+			"#5c3a21"
+		],
+		[
+			"s8",
+			"Deepest",
+			"#3d2616"
+		]
+	].map(([id, name, hex]) => item("skin", id, name, FREE, { hex })),
+	item("skin", "pink", "Bubblegum", lv(20), { hex: "#ff9fc8" }),
+	item("skin", "purple", "Violet", lv(40), { hex: "#9a6bff" }),
+	item("skin", "zombie", "Zombie", lv(60), { hex: "#8fbf6a" }),
+	item("skin", "ghost", "Ghost white", lv(80), { hex: "#eef2f8" }),
+	item("skin", "shadow", "Shadow", lv(100), { hex: "#3a3450" }),
+	item("skin", "teal", "Alien teal", lv(125), { hex: "#3fc1c9" }),
+	item("skin", "silver", "Chrome", lv(150), { hex: "#c9d1dc" }),
+	item("skin", "lava", "Lava", lv(175), { hex: "#ff6b2d" }),
+	item("skin", "green", "Green", FREE, { hex: "#4fbf5f" }),
+	item("skin", "red", "Red", FREE, { hex: "#e04848" }),
+	item("skin", "blue", "Blue", FREE, { hex: "#4a86e8" }),
+	item("skin", "gold", "Solid gold", FREE, { hex: "#f2c230" }),
+	item("skin", "rainbow", "Rainbow", FREE, { hex: "rainbow" }),
+	item("skin", "diamond", "Diamond", FREE, { hex: "#bfe9ff" }),
+	item("skin", "abyss", "Abyss blue", OWNER, { hex: "#1a2a78" }),
+	item("skin", "glitch", "Corrupted", season("skin", "glitch"), { hex: "glitch" }),
+	item("skin", "frozen", "Ice", frozen("skin", "frozen"), { hex: "frozen" }),
+	item("skin", "inferno", "Molten", inferno("skin", "inferno"), { hex: "inferno" }),
+	item("skin", "obsidian", "Obsidian", shop("skin", "obsidian"), { hex: "#2a2238" }),
+	item("skin", "jade", "Jade", shop("skin", "jade"), { hex: "#2fae8a" }),
+	item("skin", "coral", "Coral", shop("skin", "coral"), { hex: "#ff7a6b" }),
+	item("skin", "nebula", "Nebula", secret("skin", "nebula"), { hex: "#5b3fd6" }),
+	item("skin", "pumpkin", "Pumpkin", evt("halloween", "skin", "pumpkin"), { hex: "#ff7a1a" }),
+	item("skin", "gingerbread", "Gingerbread", evt("christmas", "skin", "gingerbread"), { hex: "#b8743a" })
+];
+const HAIR_COLORS = [
+	...[
+		[
+			"black",
+			"Black",
+			"#0b0b0b"
+		],
+		[
+			"dark",
+			"Dark brown",
+			"#2b1a10"
+		],
+		[
+			"brown",
+			"Brown",
+			"#5a3a1a"
+		],
+		[
+			"blonde",
+			"Blonde",
+			"#d8b25a"
+		],
+		[
+			"gray",
+			"Gray",
+			"#8a8a8a"
+		],
+		[
+			"auburn",
+			"Auburn",
+			"#8a3a1a"
+		],
+		[
+			"platinum",
+			"Platinum",
+			"#e8e4d8"
+		],
+		[
+			"white",
+			"White",
+			"#f4f4f4"
+		]
+	].map(([id, name, hex]) => item("hairColor", id, name, FREE, { hex })),
+	item("hairColor", "red", "Fire red", lv(10), { hex: "#e8322e" }),
+	item("hairColor", "orange", "Orange", lv(15), { hex: "#ff8a1f" }),
+	item("hairColor", "pink", "Pink", lv(25), { hex: "#ff6fb8" }),
+	item("hairColor", "blue", "Blue", lv(35), { hex: "#3f7bff" }),
+	item("hairColor", "green", "Green", lv(45), { hex: "#36c25a" }),
+	item("hairColor", "purple", "Purple", lv(55), { hex: "#8e4fe0" }),
+	item("hairColor", "cyan", "Cyan", lv(70), { hex: "#2fd6e6" }),
+	item("hairColor", "super", "Super gold", lv(90), { hex: "#ffe14d" }),
+	item("hairColor", "silver", "Silver", lv(110), { hex: "#c9d1dc" }),
+	item("hairColor", "rainbow", "Rainbow", FREE, { hex: "rainbow" }),
+	item("hairColor", "superBlue", "Super blue", FREE, { hex: "#3fc8ff" }),
+	item("hairColor", "ember", "Ember", FREE, { hex: "#ff5a1f" }),
+	item("hairColor", "platinumGlow", "Platinum glow", FREE, { hex: "#fff4c9" }),
+	item("hairColor", "blueFire", "Blue fire", OWNER, { hex: "#3fa9ff" }),
+	item("hairColor", "glitch", "Glitch", season("hairColor", "glitch"), { hex: "glitch" }),
+	item("hairColor", "frozen", "Frost white", frozen("hairColor", "frozen"), { hex: "frozen" }),
+	item("hairColor", "inferno", "Ember", inferno("hairColor", "inferno"), { hex: "inferno" }),
+	item("hairColor", "sunset", "Sunset", shop("hairColor", "sunset"), { hex: "#ff7e5f" }),
+	item("hairColor", "mint", "Mint", shop("hairColor", "mint"), { hex: "#6ff0c2" }),
+	item("hairColor", "lilac", "Lilac", shop("hairColor", "lilac"), { hex: "#c9a0ff" }),
+	item("hairColor", "phantom", "Phantom", secret("hairColor", "phantom"), { hex: "#9fffe0" }),
+	item("hairColor", "slime", "Witch green", evt("halloween", "hairColor", "slime"), { hex: "#7ee03a" }),
+	item("hairColor", "frostTips", "Frost tips", evt("christmas", "hairColor", "frostTips"), { hex: "#dff6ff" })
+];
+const LABEL = (id) => id.replace(/([A-Z])/g, " $1").replace(/^./, (c) => c.toUpperCase()).replace(/X L$/, "XL");
+/** The new styles the character adds to the 25 every player can have. */
+const NEW_HAIR = [
+	"spikyWarrior",
+	"flameWarrior",
+	"superSpikes",
+	"wildSpikes",
+	"longStraight",
+	"ponytail",
+	"topknot",
+	"spaceBuns",
+	"twinTails",
+	"sideSwept",
+	"pompadour",
+	"bowlCut",
+	"punkSpikes",
+	"flowingLong",
+	"spikyNinja",
+	"sorcererSpikes"
+];
+const HAIR_NAMES = {
+	superSpikes: "Super spikes",
+	spikyWarrior: "Spiky warrior hair",
+	flameWarrior: "Prince's flame hair",
+	spikyNinja: "Spiky ninja hair",
+	sorcererSpikes: "Sorcerer spikes"
+};
+const HAIR_LEVELS = {
+	wildSpikes: 30,
+	longStraight: 20,
+	ponytail: 12,
+	topknot: 65,
+	spaceBuns: 50,
+	twinTails: 75,
+	sideSwept: 8,
+	pompadour: 40,
+	bowlCut: 5,
+	punkSpikes: 85
+};
+const HAIRS = [
+	...HAIR_STYLES.map((id) => item("hair", id, LABEL(id))),
+	...NEW_HAIR.map((id) => item("hair", id, HAIR_NAMES[id] ?? LABEL(id), lv(HAIR_LEVELS[id] ?? 1))),
+	item("hair", "sovereignFlame", "Sovereign flame", OWNER),
+	item("hair", "glitchSpikes", "Glitch spikes", season("hair", "glitchSpikes")),
+	item("hair", "iceSpikes", "Icicle hair", frozen("hair", "iceSpikes")),
+	item("hair", "magmaSpikes", "Magma spikes", inferno("hair", "magmaSpikes"))
+];
+const NEW_BEARDS = [
+	"wizard",
+	"viking",
+	"handlebar",
+	"sideburns",
+	"flameBeard"
+];
+const BEARD_LEVELS = {
+	wizard: 120,
+	viking: 95,
+	handlebar: 35,
+	sideburns: 18,
+	flameBeard: 140
+};
+const BEARDS = [
+	...BEARD_STYLES.map((id) => item("beard", id, id === "none" ? "Clean shaven" : LABEL(id))),
+	...NEW_BEARDS.map((id) => item("beard", id, id === "flameBeard" ? "Flame beard" : id === "wizard" ? "Wizard beard" : id === "viking" ? "Viking braids" : LABEL(id), lv(BEARD_LEVELS[id]))),
+	item("beard", "stardust", "Stardust", OWNER),
+	item("beard", "glitchBeard", "Pixel beard", season("beard", "glitchBeard")),
+	item("beard", "frostBeard", "Frost beard", frozen("beard", "frostBeard")),
+	item("beard", "emberBeard", "Ember beard", inferno("beard", "emberBeard"))
+];
+const fit = (id, name, kind, main, trim, rule = FREE, extra = {}) => ({
+	...item("outfit", id, name, rule),
+	kind,
+	main,
+	trim,
+	...extra
+});
+const OUTFITS = [
+	fit("jersey-fav", "Your team jersey", "jersey", "#f47b20", "#f4f0e6", FREE, { number: 23 }),
+	fit("jersey-red", "Red jersey", "jersey", "#c8102e", "#f4f0e6", FREE, { number: 1 }),
+	fit("jersey-blue", "Blue jersey", "jersey", "#1d428a", "#ffc72c", FREE, {
+		number: 30,
+		style: "stripe"
+	}),
+	fit("jersey-green", "Green jersey", "jersey", "#007a33", "#f4f0e6", FREE, { number: 33 }),
+	fit("jersey-purple", "Purple jersey", "jersey", "#552583", "#fdb927", FREE, {
+		number: 24,
+		style: "split"
+	}),
+	fit("jersey-black", "Black jersey", "jersey", "#1a1f2a", "#e85d5d", FREE, { number: 0 }),
+	fit("jersey-white", "Home whites", "jersey", "#f4f0e6", "#1d428a", FREE, { number: 11 }),
+	fit("jersey-gold", "Gold jersey", "jersey", "#ffd166", "#1a1f2a", lv(100), {
+		number: 99,
+		style: "stripe"
+	}),
+	fit("tee-white", "White tee", "tee", "#f4f0e6", "#3b5b8f"),
+	fit("tee-black", "Black tee", "tee", "#1f2430", "#3b5b8f"),
+	fit("tee-red", "Red tee", "tee", "#d33a3a", "#2b2f3a"),
+	fit("tee-blue", "Blue tee", "tee", "#3f7bd9", "#2b2f3a"),
+	fit("tee-green", "Green tee", "tee", "#3fae5f", "#3b5b8f"),
+	fit("hoodie-gray", "Gray hoodie", "hoodie", "#8a93a3", "#2b2f3a"),
+	fit("hoodie-black", "Black hoodie", "hoodie", "#22262f", "#2b2f3a"),
+	fit("hoodie-orange", "Orange hoodie", "hoodie", "#f47b20", "#2b2f3a"),
+	fit("hoodie-navy", "Navy hoodie", "hoodie", "#1f3566", "#8a93a3"),
+	fit("hoodie-pink", "Pink hoodie", "hoodie", "#ff8fc8", "#2b2f3a"),
+	fit("track-red", "Red tracksuit", "track", "#c8102e", "#f4f0e6"),
+	fit("track-blue", "Blue tracksuit", "track", "#1d428a", "#f4f0e6"),
+	fit("track-black", "Black tracksuit", "track", "#1a1f2a", "#ffd166"),
+	fit("suit-navy", "Navy suit", "suit", "#1f2f55", "#c8102e", lv(10)),
+	fit("suit-charcoal", "Charcoal suit", "suit", "#3a3f4a", "#ffd166", lv(30)),
+	fit("tux", "Tuxedo", "tux", "#12151c", "#f4f0e6", lv(60)),
+	fit("varsity-red", "Red varsity jacket", "varsity", "#b0122a", "#f4f0e6", lv(15)),
+	fit("varsity-blue", "Blue varsity jacket", "varsity", "#1d428a", "#f4f0e6", lv(25)),
+	fit("varsity-green", "Green varsity jacket", "varsity", "#0b6b3a", "#f2d27a", lv(45)),
+	fit("overalls", "Overalls", "overalls", "#3b6db3", "#d33a3a", lv(20)),
+	fit("labcoat", "Lab coat", "labcoat", "#f4f6fa", "#3f7bd9", lv(35)),
+	fit("chef", "Chef whites", "chef", "#f4f6fa", "#22262f", lv(50)),
+	fit("referee", "Referee stripes", "referee", "#f4f6fa", "#12151c", lv(55)),
+	fit("hawaiian", "Island shirt", "hawaiian", "#2fb3a8", "#d9c08a", lv(70)),
+	fit("santa", "Holiday suit", "santa", "#c8102e", "#f4f6fa", lv(80)),
+	fit("astronaut", "Space suit", "astronaut", "#eef1f6", "#8a93a3", lv(150)),
+	fit("armor", "Knight armour", "armor", "#b8c0cc", "#5b6b82", lv(200)),
+	fit("gi", "Martial arts gi", "gi", "#f47b20", "#1d4fa0"),
+	fit("ninja", "Ninja jumpsuit", "ninja", "#ff8a1f", "#1a1f2a"),
+	fit("pirate", "Pirate captain vest", "pirate", "#d0202e", "#ffd166"),
+	fit("scout", "Scout cloak", "scout", "#2f6b3f", "#8a5a2b"),
+	fit("haori", "Checkered haori", "haori", "#1f7a4a", "#12151c"),
+	fit("gakuran", "School uniform", "gakuran", "#161a24", "#ffd166"),
+	fit("hero", "Hero suit", "hero", "#2f6fd9", "#e8322e"),
+	fit("plugsuit", "Mech pilot suit", "plugsuit", "#6a3fb5", "#6fdc93"),
+	fit("cloudrobe", "Red cloud cloak", "cloudrobe", "#14161c", "#d0202e"),
+	fit("kimono", "White kimono", "kimono", "#f4f0e6", "#c8102e"),
+	fit("sailor", "Sailor uniform", "sailor", "#f4f6fa", "#1f3566"),
+	fit("captain", "Admiral's coat", "captain", "#f4f6fa", "#ffd166"),
+	fit("flamecloak", "Flame cloak", "flamecloak", "#f4f0e6", "#e8322e"),
+	fit("royal", "Royal robe", "royal", "#5a2d91", "#ffd166"),
+	fit("wizard", "Starry wizard robe", "wizard", "#1f2f6b", "#ffd166"),
+	fit("warriorArmor", "Warrior battle armour", "warriorArmor", "#f4f6fa", "#e8b84a"),
+	fit("gi-blue", "Blue training gi", "gi", "#2f5fb3", "#f47b20"),
+	fit("gi-black", "Black training gi", "gi", "#22262f", "#e8322e"),
+	fit("trainer", "Monster trainer outfit", "trainer", "#2f6fd9", "#1a1f2a"),
+	fit("arcade80s", "'80s arcade ringer tee", "arcade80s", "#f4f0e6", "#d0202e"),
+	fit("contestant", "Survival game tracksuit", "contestant", "#2f8a6b", "#f4f6fa"),
+	fit("guard", "Pink guard jumpsuit", "guard", "#e8508a", "#161a24"),
+	fit("demonHunter", "Demon hunter uniform", "demonHunter", "#161a24", "#f4f6fa"),
+	fit("webHero", "Web hero suit", "webHero", "#d0202e", "#1f4fa0"),
+	fit("soulReaper", "Soul reaper robe", "soulReaper", "#14161c", "#f4f6fa"),
+	fit("capedHero", "One-punch hero suit", "capedHero", "#ffd84a", "#e8322e", lv(120)),
+	fit("sorcerer", "Sorcerer school uniform", "sorcerer", "#1c2440", "#ffd166", lv(180)),
+	fit("airNomad", "Air monk robes", "airNomad", "#f2b632", "#e8742a", lv(75)),
+	fit("sovereign", "Sovereign robe", "royal", "#0e1a5a", "#6fd3ff", OWNER),
+	fit("sovereignGold", "Sovereign gold robe", "sovereign", "#1a3fb8", "#ffd166", OWNER),
+	fit("glitchSuit", "Corrupted suit", "plugsuit", "#12141f", "#00f0ff", season("outfit", "glitchSuit")),
+	fit("frostParka", "Frost parka", "hoodie", "#dff4ff", "#4d86b3", frozen("outfit", "frostParka")),
+	fit("magmaArmor", "Magma armour", "armor", "#2a0d08", "#ff6b2d", inferno("outfit", "magmaArmor")),
+	fit("royalTux", "Royal tux", "tux", "#2a1a4a", "#ffd166", shop("outfit", "royalTux")),
+	fit("neonTrack", "Neon tracksuit", "track", "#0f1020", "#7dff5a", shop("outfit", "neonTrack")),
+	fit("crimsonSuit", "Crimson suit", "suit", "#8a1020", "#f4f0e6", shop("outfit", "crimsonSuit")),
+	fit("oceanHoodie", "Ocean hoodie", "hoodie", "#1f6fb5", "#9fe7ff", shop("outfit", "oceanHoodie")),
+	fit("goldVarsity", "Gold varsity jacket", "varsity", "#1a1f2a", "#ffd166", shop("outfit", "goldVarsity")),
+	fit("shadowTux", "Shadow tux", "tux", "#0b0b12", "#b983ff", secret("outfit", "shadowTux")),
+	fit("pumpkinHoodie", "Pumpkin hoodie", "hoodie", "#ff7a1a", "#1a1024", evt("halloween", "outfit", "pumpkinHoodie")),
+	fit("skeletonRobe", "Skeleton robe", "soulReaper", "#101014", "#f4f0e6", evt("halloween", "outfit", "skeletonRobe")),
+	fit("uglySweater", "Ugly holiday sweater", "hoodie", "#1f8a3a", "#e8323c", evt("christmas", "outfit", "uglySweater")),
+	fit("elfSuit", "Elf suit", "santa", "#1f8a3a", "#ffd166", evt("christmas", "outfit", "elfSuit"))
+];
+const NEW_HATS = [
+	"crown",
+	"halo",
+	"ninjaBand",
+	"strawHat",
+	"foxMask",
+	"guardMask",
+	"catEars",
+	"devilHorns",
+	"bunnyEars",
+	"wizardHat",
+	"topHat",
+	"vikingHelmet",
+	"partyHat",
+	"chefHat",
+	"propeller",
+	"santaHat"
+];
+const HAT_LEVELS = {
+	crown: 200,
+	catEars: 22,
+	devilHorns: 66,
+	bunnyEars: 44,
+	wizardHat: 130,
+	topHat: 75,
+	vikingHelmet: 105,
+	partyHat: 12,
+	chefHat: 50,
+	propeller: 28,
+	santaHat: 80
+};
+const HATS = [
+	item("hat", "none", "Nothing"),
+	...HAT_STYLES.map((id) => item("hat", id, LABEL(id))),
+	...NEW_HATS.map((id) => item("hat", id, {
+		ninjaBand: "Ninja headband",
+		strawHat: "Straw hat",
+		foxMask: "Fox spirit mask",
+		guardMask: "Guard mask"
+	}[id] ?? LABEL(id), lv(HAT_LEVELS[id] ?? 1))),
+	item("hat", "blueCrown", "Sovereign's blue crown", OWNER),
+	item("hat", "glitchHalo", "Error halo", season("hat", "glitchHalo")),
+	item("hat", "iceCrown", "Ice crown", frozen("hat", "iceCrown")),
+	item("hat", "flameCrown", "Flame crown", inferno("hat", "flameCrown")),
+	item("hat", "pumpkinHead", "Pumpkin head", evt("halloween", "hat", "pumpkinHead")),
+	item("hat", "witchHat", "Witch hat", evt("halloween", "hat", "witchHat")),
+	item("hat", "reindeerAntlers", "Reindeer antlers", evt("christmas", "hat", "reindeerAntlers")),
+	item("hat", "elfHat", "Elf hat", evt("christmas", "hat", "elfHat"))
+];
+const EYES = [
+	item("eyes", "none", "Nothing"),
+	item("eyes", "glasses", "Glasses"),
+	item("eyes", "shades", "Shades"),
+	item("eyes", "goggles", "Sport goggles", lv(8)),
+	item("eyes", "threeD", "3D glasses", lv(24)),
+	item("eyes", "heartShades", "Heart shades", lv(38)),
+	item("eyes", "monocle", "Monocle", lv(52)),
+	item("eyes", "eyepatch", "Eye patch", lv(68)),
+	item("eyes", "skiGoggles", "Ski goggles", lv(88)),
+	item("eyes", "cyberVisor", "Cyber visor", lv(160)),
+	item("eyes", "scouter", "Power scouter"),
+	item("eyes", "glowRed", "Crimson eyes"),
+	item("eyes", "sparkle", "Sparkle eyes"),
+	item("eyes", "starEyes", "Idol star eyes"),
+	item("eyes", "sharingan", "Spinning red eyes"),
+	item("eyes", "blindfold", "Sorcerer blindfold"),
+	item("eyes", "voidFace", "Faceless void", OWNER),
+	item("eyes", "glitchVisor", "Glitch visor", season("eyes", "glitchVisor")),
+	item("eyes", "snowGoggles", "Snow goggles", frozen("eyes", "snowGoggles")),
+	item("eyes", "lavaGoggles", "Lava goggles", inferno("eyes", "lavaGoggles"))
+];
+const NECKS = [
+	item("neck", "none", "Nothing"),
+	item("neck", "goldChain", "Gold chain"),
+	item("neck", "headphones", "Headphones"),
+	item("neck", "whistle", "Coach whistle", lv(6)),
+	item("neck", "silverChain", "Silver chain", lv(14)),
+	item("neck", "bowtie", "Bow tie", lv(26)),
+	item("neck", "medal", "Gold medal", lv(42)),
+	item("neck", "backpack", "Backpack", lv(58)),
+	item("neck", "capeRed", "Red cape", lv(72)),
+	item("neck", "capeBlack", "Black cape", lv(115)),
+	item("neck", "scarf", "Hero scarf"),
+	item("neck", "angelWings", "Angel wings"),
+	item("neck", "batWings", "Bat wings"),
+	item("neck", "jetpack", "Jetpack"),
+	item("neck", "weightedCape", "Weighted cape"),
+	item("neck", "tail", "Warrior tail"),
+	item("neck", "capeGold", "Gold cape"),
+	item("neck", "katana", "Katana"),
+	item("neck", "blackWings", "Black angel wings", OWNER),
+	item("neck", "sovereignCape", "Sovereign golden cape", OWNER),
+	item("neck", "glitchWings", "Data wings", season("neck", "glitchWings")),
+	item("neck", "frostCape", "Frost cape", frozen("neck", "frostCape")),
+	item("neck", "flameCape", "Flame cape", inferno("neck", "flameCape")),
+	item("neck", "ghostCape", "Ghost cape", evt("halloween", "neck", "ghostCape")),
+	item("neck", "holidayScarf", "Holiday scarf", evt("christmas", "neck", "holidayScarf"))
+];
+const SHOES = [
+	item("shoes", "team", "Match the outfit"),
+	item("shoes", "white", "White", FREE, { hex: "#f4f6fa" }),
+	item("shoes", "black", "Black", FREE, { hex: "#1a1f2a" }),
+	item("shoes", "red", "Red", FREE, { hex: "#d33a3a" }),
+	item("shoes", "blue", "Blue", FREE, { hex: "#3f7bd9" }),
+	item("shoes", "green", "Green", lv(16), { hex: "#3fae5f" }),
+	item("shoes", "gold", "Gold", lv(90), { hex: "#ffd166" }),
+	item("shoes", "neon", "Neon", lv(62), { hex: "#7dff5a" }),
+	item("shoes", "boots", "Boots", lv(34)),
+	item("shoes", "sandals", "Wooden sandals", lv(48)),
+	item("shoes", "heroBoots", "Hero boots", lv(135)),
+	item("shoes", "rocket", "Rocket boots"),
+	item("shoes", "warriorBoots", "Warrior boots"),
+	item("shoes", "cosmicBoots", "Blue fire boots", OWNER),
+	item("shoes", "glitch", "Glitch kicks", season("shoes", "glitch"), { hex: "#00f0ff" }),
+	item("shoes", "iceSkates", "Ice skates", frozen("shoes", "iceSkates"), { hex: "#dff4ff" }),
+	item("shoes", "magmaBoots", "Magma boots", inferno("shoes", "magmaBoots"), { hex: "#ff6b2d" }),
+	item("shoes", "lava", "Lava runners", shop("shoes", "lava"), { hex: "#ff4d1a" }),
+	item("shoes", "midnight", "Midnight kicks", shop("shoes", "midnight"), { hex: "#262b6b" }),
+	item("shoes", "chrome", "Chrome kicks", shop("shoes", "chrome"), { hex: "#d8dee8" }),
+	item("shoes", "stardust", "Stardust kicks", secret("shoes", "stardust"), { hex: "#ffe7a3" }),
+	item("shoes", "batKicks", "Bat kicks", evt("halloween", "shoes", "batKicks"), { hex: "#5a2d91" }),
+	item("shoes", "candyCane", "Candy cane kicks", evt("christmas", "shoes", "candyCane"), { hex: "#e8323c" })
+];
+const AURAS = [
+	item("aura", "none", "Nothing"),
+	item("aura", "sparkles", "Sparkles", lv(32)),
+	item("aura", "hearts", "Hearts", lv(64)),
+	item("aura", "ice", "Frost", lv(96)),
+	item("aura", "toxic", "Toxic", lv(180)),
+	item("aura", "fire", "Fire"),
+	item("aura", "golden", "Super golden"),
+	item("aura", "lightning", "Lightning"),
+	item("aura", "shadow", "Shadow"),
+	item("aura", "cosmic", "Cosmic"),
+	item("aura", "rainbow", "Rainbow"),
+	item("aura", "superWarrior", "Super warrior aura"),
+	item("aura", "storm", "Storm"),
+	item("aura", "sakura", "Cherry blossoms"),
+	item("aura", "cursed", "Cursed energy"),
+	item("aura", "hunter", "Hunter's flames", { honor: "hunt-week-10" }),
+	item("aura", "cosmicFire", "Cosmic blue fire", OWNER),
+	item("aura", "glitch", "Glitch aura", season("aura", "glitch")),
+	item("aura", "blizzard", "Blizzard", frozen("aura", "blizzard")),
+	item("aura", "inferno", "Inferno aura", inferno("aura", "inferno")),
+	item("aura", "haunted", "Haunted", evt("halloween", "aura", "haunted")),
+	item("aura", "snowfall", "Snowfall", evt("christmas", "aura", "snowfall"))
+];
+const AVATAR_CATEGORIES = [
+	{
+		id: "skin",
+		label: "Body colour",
+		items: SKINS
+	},
+	{
+		id: "hair",
+		label: "Hair",
+		items: HAIRS
+	},
+	{
+		id: "hairColor",
+		label: "Hair colour",
+		items: HAIR_COLORS
+	},
+	{
+		id: "beard",
+		label: "Beard",
+		items: BEARDS
+	},
+	{
+		id: "outfit",
+		label: "Outfit",
+		items: OUTFITS
+	},
+	{
+		id: "hat",
+		label: "Headwear",
+		items: HATS
+	},
+	{
+		id: "eyes",
+		label: "Eyewear",
+		items: EYES
+	},
+	{
+		id: "neck",
+		label: "Neck & back",
+		items: NECKS
+	},
+	{
+		id: "shoes",
+		label: "Shoes",
+		items: SHOES
+	},
+	{
+		id: "aura",
+		label: "Aura",
+		items: AURAS
+	}
+];
+const DEFAULT_AVATAR = {
+	skin: "s3",
+	hair: "short",
+	hairColor: "black",
+	beard: "none",
+	outfit: "jersey-fav",
+	hat: "none",
+	eyes: "none",
+	neck: "none",
+	shoes: "team",
+	aura: "none"
+};
+/** Unknown ids (an old or edited save) fall back to the default piece. */
+function cleanAvatar(raw) {
+	const out = { ...DEFAULT_AVATAR };
+	for (const c of AVATAR_CATEGORIES) {
+		const v = raw?.[c.id];
+		if (typeof v === "string" && c.items.some((i) => i.id === v)) out[c.id] = v;
+	}
+	if (typeof raw?.kitTeam === "string" && REAL_FRANCHISES.some((t) => t.id === raw.kitTeam)) out.kitTeam = raw.kitTeam;
+	if (typeof raw?.kitNumber === "number" && Number.isInteger(raw.kitNumber) && raw.kitNumber >= 0 && raw.kitNumber <= 99) out.kitNumber = raw.kitNumber;
+	return out;
+}
+/** When the character was last changed by hand (0 for the random first one). */
+function avatarSavedAt(raw) {
+	try {
+		const at = JSON.parse(raw ?? "null")?.at;
+		return typeof at === "number" ? at : 0;
+	} catch {
+		return 0;
+	}
+}
+const EMPTY$2 = {
+	last: "",
+	current: 0,
+	best: 0
+};
+const STREAK_REWARDS = [
+	{
+		days: 3,
+		trophies: 500
+	},
+	{
+		days: 7,
+		trophies: 1500,
+		title: "Regular"
+	},
+	{
+		days: 14,
+		trophies: 3e3,
+		title: "Dedicated"
+	},
+	{
+		days: 30,
+		trophies: 8e3,
+		title: "Ironman"
+	},
+	{
+		days: 60,
+		trophies: 15e3,
+		title: "Unstoppable"
+	}
+];
+function readStreak(read = localRead) {
+	try {
+		const s = JSON.parse(read("cv-streak") ?? "null");
+		if (!s || typeof s.last !== "string") return { ...EMPTY$2 };
+		const n = (v) => typeof v === "number" && Number.isInteger(v) && v >= 0 && v < 1e5 ? v : 0;
+		return {
+			last: s.last,
+			current: n(s.current),
+			best: Math.max(n(s.best), n(s.current))
+		};
+	} catch {
+		return { ...EMPTY$2 };
+	}
+}
+/** Two devices: the later visit's streak, and the best of both. */
+function mergeStreak(a, b) {
+	const later = a.last > b.last || a.last === b.last && a.current >= b.current ? a : b;
+	return {
+		last: later.last,
+		current: later.current,
+		best: Math.max(a.best, b.best)
+	};
+}
+const streakTrophies = (s) => STREAK_REWARDS.filter((r) => s.best >= r.days).reduce((n, r) => n + r.trophies, 0);
+const streakTitles = (best) => STREAK_REWARDS.filter((r) => r.title && best >= r.days).map((r) => r.title);
+const player = (c, x) => x.h.byId.get(c.playerId);
+const decade = (from) => (c) => c.end - 1 >= from && c.end - 1 < from + 10;
+[...[
+	1960,
+	1970,
+	1980,
+	1990,
+	2e3,
+	2010
+].map((y) => ({
+	id: `d${y}`,
+	name: `${String(y).slice(2)}s players`,
+	blurb: `At their best season of the ${y}s`,
+	group: "Eras",
+	test: decade(y)
+}))];
+[...[
+	"Kentucky",
+	"Duke",
+	"UCLA",
+	"UNC",
+	"Kansas",
+	"Indiana",
+	"Michigan",
+	"Arizona",
+	"Louisville",
+	"Michigan State",
+	"Villanova",
+	"Syracuse",
+	"Georgetown",
+	"UConn",
+	"Ohio State",
+	"LSU",
+	"Texas",
+	"Florida",
+	"Wake Forest",
+	"Georgia Tech",
+	"Notre Dame",
+	"Maryland"
+].map((n) => ({
+	id: `col-${n.toLowerCase().replace(/\W+/g, "")}`,
+	name: `${n} players`,
+	blurb: `Everyone who went to ${n}`,
+	group: "College",
+	prime: true,
+	test: ((c, x) => player(c, x)?.college === n)
+}))];
+const NAME_LAST = [
+	"Johnson",
+	"Williams",
+	"Jones",
+	"Smith",
+	"Brown",
+	"Davis",
+	"Thomas",
+	"Robinson",
+	"Anderson",
+	"Miller"
+];
+const NAME_FIRST = [
+	"Michael",
+	"Kevin",
+	"Chris",
+	"Anthony",
+	"James",
+	"John",
+	"Larry",
+	"Tony",
+	"Mike",
+	"David"
+];
+[...NAME_LAST.map((n) => ({
+	id: `last-${n.toLowerCase()}`,
+	name: `Named ${n}`,
+	blurb: `Every ${n} in NBA history`,
+	group: "Names",
+	prime: true,
+	test: ((c) => c.name.split(" ").at(-1) === n)
+})), ...NAME_FIRST.map((n) => ({
+	id: `first-${n.toLowerCase()}`,
+	name: `First name ${n}`,
+	blurb: `Every ${n} in NBA history`,
+	group: "Names",
+	prime: true,
+	test: ((c) => c.name.split(" ")[0] === n)
+}))];
+[...COUNTRIES.filter((c) => c.name !== "USA").map((k) => ({
+	id: `country-${k.code.toLowerCase()}`,
+	prime: true,
+	name: `${k.name} players`,
+	blurb: `Everyone from ${k.name} who made the NBA`,
+	group: "World",
+	test: ((c) => realNationality(c.name) === k.name)
+}))];
+[
+	["jordami01", "Michael Jordan"],
+	["jamesle01", "LeBron James"],
+	["bryanko01", "Kobe Bryant"],
+	["abdulka01", "Kareem Abdul-Jabbar"],
+	["russebi01", "Bill Russell"],
+	["duncati01", "Tim Duncan"],
+	["johnsma02", "Magic Johnson"],
+	["onealsh01", "Shaquille O'Neal"],
+	["curryst01", "Stephen Curry"],
+	["birdla01", "Larry Bird"],
+	["chambwi01", "Wilt Chamberlain"],
+	["nowitdi01", "Dirk Nowitzki"]
+].map(([id, name]) => ({
+	id: `mate-${id}`,
+	name: `${name}'s teammates`,
+	blurb: `At a season they played with ${name.split(" ").slice(-1)[0]}`,
+	group: "Teammates",
+	test: ((c, x) => c.playerId !== id && (x.stints.get(id)?.has(`${c.team}|${c.end}`) ?? false))
+}));
+[
+	23,
+	33,
+	32,
+	3,
+	34,
+	24,
+	8,
+	1,
+	6,
+	11,
+	21,
+	0
+].map((n) => ({
+	id: `num-${n}`,
+	name: `Wore #${n}`,
+	blurb: `At a season they wore number ${n}`,
+	group: "Jerseys",
+	test: ((c) => realJerseyNumber(c.playerId, c.team, c.end) === n)
+}));
+[{ ...ERAS$1[0] }, ...ERAS$1];
+const EMPTY$1 = {
+	runs: 0,
+	titles: 0,
+	perfectSeasons: 0,
+	perfect98: 0,
+	bestWins: 0
+};
+function loadPerfectRecords(read = localRead) {
+	try {
+		return {
+			...EMPTY$1,
+			...JSON.parse(read("cv-perfect-records") ?? "{}")
+		};
+	} catch {
+		return { ...EMPTY$1 };
+	}
+}
+/** A title beats no title; then more wins. */
+const bestCategory = (a, b) => !a ? b : b.champion && !a.champion || b.champion === a.champion && b.w > a.w ? b : a;
+/** Best of both devices. */
+function mergePerfectRecords(a, b) {
+	const daily = { ...b.daily ?? {} };
+	for (const [day, x] of Object.entries(a.daily ?? {})) {
+		const y = daily[day];
+		daily[day] = !y ? x : {
+			...x.score >= y.score ? x : y,
+			tries: Math.max(x.tries, y.tries)
+		};
+	}
+	const best = !a.best ? b.best : !b.best ? a.best : a.best.score >= b.best.score ? a.best : b.best;
+	const huntSquadBest = !a.huntSquadBest ? b.huntSquadBest : !b.huntSquadBest ? a.huntSquadBest : a.huntSquadBest.score >= b.huntSquadBest.score ? a.huntSquadBest : b.huntSquadBest;
+	const categories = { ...b.categories ?? {} };
+	for (const [id, x] of Object.entries(a.categories ?? {})) categories[id] = bestCategory(categories[id], x);
+	const whatIf = { ...b.whatIf ?? {} };
+	for (const [id, x] of Object.entries(a.whatIf ?? {})) whatIf[id] = bestCategory(whatIf[id], x);
+	const weekCat = { ...b.weekCat ?? {} };
+	for (const [wk, x] of Object.entries(a.weekCat ?? {})) {
+		const y = weekCat[wk];
+		weekCat[wk] = !y ? x : {
+			...x.score >= y.score ? x : y,
+			tries: Math.max(x.tries, y.tries)
+		};
+	}
+	return {
+		...Object.keys(categories).length ? { categories } : {},
+		...Object.keys(weekCat).length ? { weekCat } : {},
+		...Object.keys(whatIf).length ? { whatIf } : {},
+		runs: Math.max(a.runs, b.runs),
+		titles: Math.max(a.titles, b.titles),
+		perfectSeasons: Math.max(a.perfectSeasons, b.perfectSeasons),
+		perfect98: Math.max(a.perfect98, b.perfect98),
+		bestWins: Math.max(a.bestWins, b.bestWins),
+		...best ? { best } : {},
+		...huntSquadBest ? { huntSquadBest } : {},
+		...Object.keys(daily).length ? { daily } : {}
+	};
+}
+/** Your best Daily 82-0 score in each week (the online weekly board). */
+function perfectWeeks(r) {
+	const out = {};
+	for (const [day, d] of Object.entries(r.daily ?? {})) {
+		const t = Date.parse(`${day}T12:00:00Z`);
+		if (!Number.isFinite(t)) continue;
+		const wk = weekKey(new Date(t));
+		if (!out[wk] || d.score > out[wk].score) out[wk] = {
+			score: d.score,
+			w: d.w,
+			l: d.l,
+			pw: d.pw,
+			pl: d.pl,
+			champion: d.champion,
+			mode: d.mode
+		};
+	}
+	return out;
+}
+/** Trophy Road points: your best season, your titles and the perfect seasons. */
+const perfectTrophies = (r) => r.bestWins * 10 + Math.min(r.titles, 50) * 60 + r.perfectSeasons * 1500 + r.perfect98 * 3e3 + categoryTitles(r) * 100;
+/** Categories you have won the title with (Category Roll starters). */
+const categoryTitles = (r) => Object.values(r.categories ?? {}).filter((x) => x.champion).length;
+/** Team categories won (out of 30), a D-tier title, an 82-0 with a category. */
+const categoryTeamTitles = (r) => Object.entries(r.categories ?? {}).filter(([id, x]) => id.startsWith("team-") && x.champion).length;
+const categoryBrutal = (r) => Object.values(r.categories ?? {}).filter((x) => x.champion && x.tier === "D").length;
+const categoryPerfect = (r) => Object.values(r.categories ?? {}).filter((x) => x.l === 0 && x.w >= 82).length;
+//#endregion
 //#region src/profile/trophyRoad.ts
+const TROPHIES = {
+	gmWin: 12,
+	gmSeason: 200,
+	gmTitle: 2500,
+	achievement: 250,
+	careerRetired: 500,
+	careerLegacy: 2,
+	careerHof: 1e3,
+	huntRun: 80,
+	huntWin: 1800,
+	huntDaily: 120,
+	rebuildAttempt: 150,
+	rebuildStar: 450,
+	rebuildTitle: 1200,
+	weekly: 600,
+	dailyGoal: 40,
+	legendStar: 350,
+	card: 25,
+	ownerSeason: 150,
+	ownerLegacy: 40
+};
+const json$3 = (read, key, fallback) => {
+	try {
+		return JSON.parse(read(key) ?? "null") ?? fallback;
+	} catch {
+		return fallback;
+	}
+};
+function trophyParts(read = localRead) {
+	const gm = legacyTotals(readLegacy(read));
+	const c = json$3(read, "cv-profile-careers", {});
+	const hunt = loadRecords(read);
+	const rebuild = Object.values(loadRebuildRecords(read));
+	const weeks = Object.values(loadWeeklyRecords(read)).reduce((n, w) => n + (w.rebuild ? 1 : 0) + (w.career ? 1 : 0), 0);
+	const legend = Object.values(json$3(read, "cv-legend-records", {}));
+	const cards = Object.keys(json$3(read, "cv-card-album", {})).length;
+	const owners = json$3(read, "cv-owner-records", []);
+	const T = TROPHIES;
+	return [
+		{
+			id: "gm",
+			label: "GM leagues",
+			trophies: gm.wins * T.gmWin + gm.seasons * T.gmSeason + gm.titles * T.gmTitle + gm.achievements * T.achievement
+		},
+		{
+			id: "career",
+			label: "Career Mode",
+			trophies: (c.retired ?? 0) * T.careerRetired + Math.max(0, c.legacy ?? 0) * T.careerLegacy + (c.hallOfFame ?? 0) * T.careerHof
+		},
+		{
+			id: "hunt",
+			label: "League Hunt",
+			trophies: hunt.runs * T.huntRun + hunt.wins * T.huntWin + Object.keys(hunt.daily ?? {}).length * T.huntDaily
+		},
+		{
+			id: "rebuild",
+			label: "Rebuild Challenge",
+			trophies: rebuild.reduce((n, r) => n + r.attempts * T.rebuildAttempt + r.stars * T.rebuildStar + (r.titleIn != null ? T.rebuildTitle : 0), 0)
+		},
+		{
+			id: "weekly",
+			label: "Weekly challenges",
+			trophies: weeks * T.weekly
+		},
+		{
+			id: "daily",
+			label: "Daily goals",
+			trophies: dailyGoalXp(read).done * T.dailyGoal
+		},
+		{
+			id: "legend",
+			label: "Legend Challenges",
+			trophies: legend.reduce((n, r) => n + r.stars, 0) * T.legendStar
+		},
+		{
+			id: "cards",
+			label: "Card album",
+			trophies: cards * T.card
+		},
+		{
+			id: "owner",
+			label: "Owner's Box",
+			trophies: owners.reduce((n, r) => n + (r.seasons ?? 0) * T.ownerSeason + Math.max(0, r.legacy ?? 0) * T.ownerLegacy, 0)
+		},
+		{
+			id: "streak",
+			label: "Daily streak",
+			trophies: streakTrophies(readStreak(read))
+		},
+		{
+			id: "perfect",
+			label: "82-0 Challenge",
+			trophies: perfectTrophies(loadPerfectRecords(read))
+		},
+		{
+			id: "pass",
+			label: "Season Pass",
+			trophies: passTrophies(readPass(read))
+		}
+	];
+}
+const totalTrophies = (read = localRead) => trophyParts(read).reduce((n, p) => n + p.trophies, 0);
 /** One or two rewards every 5,000 trophies. The last stops are the rarest things in the game. */
 const TROPHY_ROAD = [
 	[
@@ -2645,17 +6276,677 @@ const TROPHY_ROAD = [
 		2e5,
 		"look",
 		"immortal"
+	],
+	[
+		25e4,
+		"title",
+		"Beyond Legendary"
+	],
+	[
+		25e4,
+		"color",
+		"plasma"
+	],
+	[
+		3e5,
+		"title",
+		"Galactic GM"
+	],
+	[
+		3e5,
+		"icon",
+		"fireball-blue"
+	],
+	[
+		35e4,
+		"titleColor",
+		"plasma"
+	],
+	[
+		4e5,
+		"title",
+		"Unstoppable"
+	],
+	[
+		4e5,
+		"icon",
+		"trophy-diamond-shine"
+	],
+	[
+		45e4,
+		"color",
+		"borealis"
+	],
+	[
+		5e5,
+		"title",
+		"Half a Million"
+	],
+	[
+		5e5,
+		"icon",
+		"crown-blueflame"
+	],
+	[
+		5e5,
+		"titleColor",
+		"supernova"
+	],
+	[
+		55e4,
+		"color",
+		"starfire"
+	],
+	[
+		6e5,
+		"title",
+		"Myth Maker"
+	],
+	[
+		6e5,
+		"icon",
+		"phoenix-gold"
+	],
+	[
+		65e4,
+		"titleColor",
+		"cosmos"
+	],
+	[
+		7e5,
+		"title",
+		"Living Myth"
+	],
+	[
+		7e5,
+		"icon",
+		"ball-galaxy"
+	],
+	[
+		7e5,
+		"color",
+		"eternalflame"
+	],
+	[
+		75e4,
+		"title",
+		"Court Vision God"
+	],
+	[
+		75e4,
+		"titleColor",
+		"divine"
+	],
+	[
+		75e4,
+		"color",
+		"divine"
 	]
 ];
+TROPHY_ROAD.push([
+	1e4,
+	"floor",
+	"cherry"
+], [
+	15e3,
+	"frame",
+	"diamond"
+], [
+	25e3,
+	"frame",
+	"jade"
+], [
+	3e4,
+	"floor",
+	"sand"
+], [
+	35e3,
+	"frame",
+	"pixel"
+], [
+	4e4,
+	"floor",
+	"retro"
+], [
+	45e3,
+	"frame",
+	"ice"
+], [
+	55e3,
+	"floor",
+	"herringbone"
+], [
+	65e3,
+	"frame",
+	"lightning"
+], [
+	8e4,
+	"floor",
+	"ebony"
+], [
+	85e3,
+	"frame",
+	"ember"
+], [
+	95e3,
+	"floor",
+	"ice"
+], [
+	105e3,
+	"frame",
+	"royal"
+], [
+	12e4,
+	"floor",
+	"neon"
+], [
+	14e4,
+	"frame",
+	"galaxy"
+], [
+	16e4,
+	"floor",
+	"lava"
+], [
+	18e4,
+	"frame",
+	"rainbow"
+], [
+	25e4,
+	"floor",
+	"gold"
+], [
+	3e5,
+	"frame",
+	"legend"
+], [
+	4e5,
+	"floor",
+	"galaxy"
+]);
+TROPHY_ROAD.push([
+	2e4,
+	"phone",
+	"ice"
+], [
+	5e4,
+	"phone",
+	"gold"
+], [
+	1e5,
+	"phone",
+	"lava"
+], [
+	15e4,
+	"phone",
+	"galaxy"
+], [
+	35e4,
+	"phone",
+	"diamond"
+]);
+for (const [t, cat, id] of AVATAR_TROPHY_ROAD) TROPHY_ROAD.push([
+	t,
+	"avatar",
+	`${cat}:${id}`
+]);
+TROPHY_ROAD.push([
+	75e3,
+	"avatarFrame",
+	"blaze"
+], [
+	25e4,
+	"avatarFrame",
+	"dragon"
+], [
+	6e5,
+	"avatarFrame",
+	"celestial"
+]);
+TROPHY_ROAD.sort((a, b) => a[0] - b[0]);
 const trophyNeed = (kind, id) => TROPHY_ROAD.find(([, k, i]) => k === kind && i === id)?.[0];
-TROPHY_ROAD.filter(([, k]) => k === "title").map(([t, , id]) => ({
+const TROPHY_TITLES = TROPHY_ROAD.filter(([, k]) => k === "title").map(([t, , id]) => ({
 	id,
 	trophies: t
 }));
+const n = (v) => Number.isFinite(Number(v)) && Number(v) >= 0 ? Math.floor(Number(v)) : 0;
+function readEndless(e) {
+	return {
+		guess: {
+			played: n(e?.guess?.played),
+			won: n(e?.guess?.won),
+			streak: n(e?.guess?.streak),
+			best: n(e?.guess?.best)
+		},
+		bracket: {
+			played: n(e?.bracket?.played),
+			best: Math.min(n(e?.bracket?.best), 320)
+		},
+		quiz: {
+			played: n(e?.quiz?.played),
+			best: n(e?.quiz?.best),
+			right: n(e?.quiz?.right),
+			answered: n(e?.quiz?.answered)
+		},
+		categorize: {
+			played: n(e?.categorize?.played),
+			won: n(e?.categorize?.won),
+			perfect: n(e?.categorize?.perfect),
+			streak: n(e?.categorize?.streak),
+			best: n(e?.categorize?.best)
+		},
+		guessTeam: {
+			played: n(e?.guessTeam?.played),
+			won: n(e?.guessTeam?.won),
+			streak: n(e?.guessTeam?.streak),
+			best: n(e?.guessTeam?.best)
+		}
+	};
+}
+/** Grid days, keeping only well-formed ones. */
+function readGrid(g) {
+	const out = {};
+	for (const [day, d] of Object.entries(g)) {
+		const x = d;
+		if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !x || !Array.isArray(x.cells) || x.cells.length !== 9) continue;
+		out[day] = {
+			cells: x.cells.map((c) => typeof c === "string" ? c.slice(0, 20) : ""),
+			used: Math.min(9, n(x.used))
+		};
+	}
+	return out;
+}
+/** This browser's endless records (never missing). */
+const endlessOf = (r) => readEndless(r.endless);
+const empty$1 = () => ({
+	guess: {},
+	hilo: {
+		best: 0,
+		runs: 0,
+		weeks: {}
+	},
+	bracket: {}
+});
+function readArcade(read = (k) => {
+	try {
+		return localStorage.getItem(k);
+	} catch {
+		return null;
+	}
+}) {
+	try {
+		const r = JSON.parse(read("cv-arcade") ?? "null");
+		if (!r || typeof r !== "object") return empty$1();
+		return {
+			guess: r.guess && typeof r.guess === "object" ? r.guess : {},
+			hilo: {
+				best: Number(r.hilo?.best) || 0,
+				runs: Number(r.hilo?.runs) || 0,
+				weeks: r.hilo?.weeks && typeof r.hilo.weeks === "object" ? r.hilo.weeks : {}
+			},
+			bracket: r.bracket && typeof r.bracket === "object" ? r.bracket : {},
+			endless: readEndless(r.endless),
+			...r.grid && typeof r.grid === "object" ? { grid: readGrid(r.grid) } : {}
+		};
+	} catch {
+		return empty$1();
+	}
+}
+/** Two devices' records: a finished day beats an unfinished one, best streaks, a played bracket beats an unplayed one. */
+function mergeArcade(a, b) {
+	const out = {
+		guess: { ...b.guess },
+		hilo: {
+			best: Math.max(a.hilo.best, b.hilo.best),
+			runs: Math.max(a.hilo.runs, b.hilo.runs),
+			weeks: { ...b.hilo.weeks }
+		},
+		bracket: { ...b.bracket }
+	};
+	const done = (d) => !!d && (d.won || d.guesses.length >= 6);
+	for (const [day, d] of Object.entries(a.guess)) {
+		const o = out.guess[day];
+		if (!o || done(d) && !done(o) || done(d) === done(o) && d.guesses.length > o.guesses.length) out.guess[day] = d;
+	}
+	for (const [w, s] of Object.entries(a.hilo.weeks)) out.hilo.weeks[w] = Math.max(s, out.hilo.weeks[w] ?? 0);
+	for (const [w, x] of Object.entries(a.bracket)) {
+		const o = out.bracket[w];
+		if (!o || x.played && !o.played || x.played === o.played && x.score > o.score) out.bracket[w] = x;
+	}
+	if (a.grid || b.grid) {
+		const grid = { ...b.grid ?? {} };
+		for (const [day, d] of Object.entries(a.grid ?? {})) {
+			const o = grid[day], f = (x) => x.cells.filter(Boolean).length;
+			if (!o || f(d) > f(o) || f(d) === f(o) && d.used > o.used) grid[day] = d;
+		}
+		out.grid = grid;
+	}
+	if (a.endless || b.endless) {
+		const ea = endlessOf(a), eb = endlessOf(b), max = (x, y) => Object.fromEntries(Object.keys(x).map((k) => [k, Math.max(x[k], y[k])]));
+		out.endless = {
+			guess: max(ea.guess, eb.guess),
+			bracket: max(ea.bracket, eb.bracket),
+			quiz: max(ea.quiz, eb.quiz),
+			categorize: max(ea.categorize, eb.categorize),
+			guessTeam: max(ea.guessTeam, eb.guessTeam)
+		};
+	}
+	return out;
+}
+/** A day of Guess the Player: 600 for the first try, 100 less for each one after; nothing for a miss. */
+const guessPoints = (d) => d.won && d.guesses.length >= 1 && d.guesses.length <= 6 ? (7 - d.guesses.length) * 100 : 0;
+/** The weekly Guess the Player score: the week's days added up. */
+function guessWeeks(r) {
+	const out = {};
+	for (const [day, d] of Object.entries(r.guess)) {
+		if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !Array.isArray(d?.guesses)) continue;
+		const w = weekKey(/* @__PURE__ */ new Date(`${day}T12:00:00Z`)), o = out[w] ?? {
+			score: 0,
+			days: 0,
+			solved: 0
+		};
+		o.score += guessPoints(d);
+		o.days++;
+		if (guessPoints(d)) o.solved++;
+		out[w] = o;
+	}
+	return out;
+}
+/** XP from the quick games: 20 a solved Guess the Player day, 40 a played bracket (plus a tenth of its score), and each week's best Higher or Lower streak at 2 XP a step (up to 20 steps). */
+function arcadeXp(r) {
+	const solved = Object.entries(r.guess).filter(([day, d]) => /^\d{4}-\d{2}-\d{2}$/.test(day) && Array.isArray(d?.guesses) && guessPoints(d) > 0).length;
+	const played = Object.values(r.bracket).filter((b) => b?.played && Number.isInteger(b.score) && b.score >= 0 && b.score <= 320);
+	const hilo = Object.values(r.hilo.weeks).filter((n) => Number.isInteger(n) && n > 0);
+	return {
+		xp: solved * 20 + played.reduce((n, b) => n + 40 + Math.floor(b.score / 10), 0) + hilo.reduce((n, s) => n + Math.min(20, s) * 2, 0),
+		solved,
+		brackets: played.length,
+		hiloWeeks: hilo.length
+	};
+}
+const run = (mode, n, label, xp) => ({
+	id: `${mode}-${n}`,
+	label,
+	xp,
+	goal: {
+		kind: "runs",
+		mode,
+		n
+	}
+});
+const MISSION_POOL = [
+	run("hunt", 1, "Finish a League Hunt run", 120),
+	run("hunt", 3, "Finish 3 League Hunt runs", 250),
+	run("perfect", 1, "Finish an 82-0 run", 120),
+	run("perfect", 3, "Finish 3 82-0 runs", 250),
+	run("career", 1, "Retire a Career Mode player", 200),
+	run("rebuild", 1, "Finish a Rebuild Challenge", 200),
+	run("draft", 1, "Finish an All-Time Draft", 200),
+	run("guess", 2, "Play Guess the Player on 2 days", 120),
+	run("hilo", 3, "Finish 3 Higher or Lower runs", 120),
+	run("bracket", 1, "Fill and tip off a Playoff Bracket", 120),
+	run("quiz", 3, "Finish 3 quiz rounds", 120),
+	{
+		id: "any-5",
+		label: "Finish 5 runs in any modes",
+		xp: 200,
+		goal: {
+			kind: "anyRuns",
+			n: 5
+		}
+	},
+	{
+		id: "modes-3",
+		label: "Play 3 different modes",
+		xp: 200,
+		goal: {
+			kind: "modes",
+			n: 3
+		}
+	},
+	{
+		id: "time-30",
+		label: "Play for 30 minutes",
+		xp: 100,
+		goal: {
+			kind: "minutes",
+			n: 30
+		}
+	},
+	{
+		id: "time-90",
+		label: "Play for 90 minutes",
+		xp: 200,
+		goal: {
+			kind: "minutes",
+			n: 90
+		}
+	},
+	{
+		id: "records-1",
+		label: "Set a new record in your record book",
+		xp: 150,
+		goal: {
+			kind: "records",
+			n: 1
+		}
+	}
+];
+const BY_ID = new Map(MISSION_POOL.map((m) => [m.id, m]));
+/** Mission titles: claimed missions over all weeks. */
+const MISSION_TITLES = [
+	{
+		n: 10,
+		title: "Mission Runner"
+	},
+	{
+		n: 30,
+		title: "Task Master"
+	},
+	{
+		n: 75,
+		title: "Mission Legend"
+	}
+];
+function readMissions(read = localRead) {
+	try {
+		const raw = JSON.parse(read("cv-missions") ?? "null");
+		const weeks = {};
+		for (const [w, ids] of Object.entries(raw?.weeks ?? {})) if (/^\d{4}-W\d{2}$/.test(w) && Array.isArray(ids)) weeks[w] = [...new Set(ids.filter((id) => typeof id === "string" && BY_ID.has(id)))];
+		return { weeks };
+	} catch {
+		return { weeks: {} };
+	}
+}
+const missionsClaimed = (st) => Object.values(st.weeks).reduce((n, ids) => n + ids.length, 0);
+const missionsXp = (st) => Object.values(st.weeks).reduce((n, ids) => n + ids.reduce((t, id) => t + (BY_ID.get(id)?.xp ?? 0), 0), 0);
+const missionTitles = (claimed) => MISSION_TITLES.filter((t) => claimed >= t.n).map((t) => t.title);
+/** Two devices: per week, every mission claimed on either. */
+function mergeMissions(a, b) {
+	const weeks = { ...b.weeks };
+	for (const [w, ids] of Object.entries(a.weeks)) weeks[w] = [.../* @__PURE__ */ new Set([...weeks[w] ?? [], ...ids])];
+	return { weeks: Object.fromEntries(Object.entries(weeks).sort(([x], [y]) => x.localeCompare(y))) };
+}
+//#endregion
+//#region src/tutorial/tutorialState.ts
+/** Seasons finished since the tutorial began (0 during the first season, 1 from the first draft on). */
+function seasonsCompleted(league, t) {
+	return Math.max(0, (league.franchiseHistory?.length ?? 0) - t.startHistory);
+}
+/** Regular-season (or current-schedule) games the team has played. */
+function teamGamesPlayed(league, teamId) {
+	if (!teamId) return 0;
+	return league.schedule.filter((g) => g.played && (g.homeTeamId === teamId || g.awayTeamId === teamId)).length;
+}
+//#endregion
+//#region src/tutorial/lessons.ts
+const AFTER_REGULAR_SEASON = ["playoffs", "awards_recap"];
+const LESSONS = [
+	{
+		id: "team",
+		title: "Choose your team",
+		detail: "Done when you picked a franchise.",
+		go: {
+			tab: "yourTeam",
+			hint: "rotation"
+		},
+		done: (_l, _t, teamId) => !!teamId
+	},
+	{
+		id: "tour",
+		title: "Take the coach's tour",
+		detail: "Eight quick stops around the game.",
+		go: { tour: true },
+		done: (_l, t) => t.tourStatus === "finished"
+	},
+	{
+		id: "firstGame",
+		title: "Play your first game",
+		detail: "Press Play, then 1 Game or Watch Next Game.",
+		go: {
+			tab: "dashboard",
+			hint: "play"
+		},
+		done: (l, t, teamId) => seasonsCompleted(l, t) >= 1 || teamGamesPlayed(l, teamId) >= 1
+	},
+	{
+		id: "rotation",
+		title: "Look over your rotation",
+		detail: "The top five on My Team › Rotation start.",
+		go: {
+			tab: "yourTeam",
+			hint: "rotation"
+		},
+		done: (_l, t) => t.visited.includes("yourTeam")
+	},
+	{
+		id: "development",
+		title: "Check on player development",
+		detail: "Practice, plans and projects for each player.",
+		feature: "development",
+		go: {
+			tab: "development",
+			hint: "development"
+		},
+		done: (_l, t) => t.visited.includes("development") || t.visited.includes("playerDevelopment")
+	},
+	{
+		id: "trade",
+		title: "Look for a trade",
+		detail: "Build an offer on Front Office › Trade.",
+		feature: "trades",
+		go: {
+			tab: "trade",
+			hint: "trade"
+		},
+		done: (_l, t) => t.visited.includes("trade")
+	},
+	{
+		id: "finishSeason",
+		title: "Finish the regular season",
+		detail: "Keep pressing Play. Rest of Season sims every game left.",
+		go: {
+			tab: "dashboard",
+			hint: "finishSeason"
+		},
+		done: (l, t) => seasonsCompleted(l, t) >= 1 || AFTER_REGULAR_SEASON.includes(l.seasonPhase ?? "regular_season") || (l.seasonPhase ?? "regular_season") === "regular_season" && l.schedule.length > 0 && l.schedule.every((g) => g.played)
+	},
+	{
+		id: "draft",
+		title: "Draft your first rookie",
+		detail: "Scout the class, then pick on draft night.",
+		feature: "draft",
+		go: {
+			tab: "draft",
+			hint: "draft"
+		},
+		done: (l, t) => seasonsCompleted(l, t) >= 2 || seasonsCompleted(l, t) >= 1 && (l.seasonPhase ?? "regular_season") !== "draft"
+	}
+];
+const QUEST_XP = {
+	team: 25,
+	tour: 50,
+	firstGame: 25,
+	rotation: 40,
+	development: 40,
+	trade: 60,
+	finishSeason: 100,
+	draft: 80
+};
+const questXp = (id) => QUEST_XP[id] ?? 30;
+function readQuests(read = localRead) {
+	try {
+		const v = JSON.parse(read("cv-quests") ?? "[]");
+		return Array.isArray(v) ? v.filter((x) => typeof x === "string" && LESSONS.some((l) => l.id === x)) : [];
+	} catch {
+		return [];
+	}
+}
+const questsXp = (ids) => ids.reduce((n, id) => n + questXp(id), 0);
+const mergeQuests = (a, b) => [.../* @__PURE__ */ new Set([...a, ...b])];
+//#endregion
+//#region src/profile/ownerAccess.ts
+const OWNER_ACCESS_KEY = "courtvision-owner";
+const OWNER_TITLE = "Game Owner";
+const SOVEREIGN_TITLE = "The Sovereign";
+function hasOwnerAccess(read = (k) => localStorage.getItem(k)) {
+	try {
+		return read(OWNER_ACCESS_KEY) === "1";
+	} catch {
+		return false;
+	}
+}
+//#endregion
+//#region src/profile/founding.ts
+const FOUNDING_KEY = "cv-founding";
+const FOUNDING_TITLE = "Founding GM";
+const hasFoundingAccount = (read = localRead) => read(FOUNDING_KEY) === "1";
+//#endregion
+//#region src/relics/shopOwned.ts
+/** The Relic Shop cosmetics you own (their keys), read straight from the relic save so the cosmetic lists need no import of the vault. */
+function shopOwned(read = localRead) {
+	try {
+		const s = JSON.parse(read("cv-relics") ?? "null");
+		return Array.isArray(s?.cosmetics) ? s.cosmetics.filter((k) => typeof k === "string") : [];
+	} catch {
+		return [];
+	}
+}
 //#endregion
 //#region src/profile/cosmetics.ts
+/** Complete team sets and legendary cards in the album (read straight from storage; see cards/cards.ts). */
+function albumCounts(read) {
+	try {
+		const album = JSON.parse(read("cv-card-album") ?? "{}");
+		return {
+			sets: Object.values(JSON.parse(read("cv-card-sets") ?? "{}")).filter((s) => s.ids.every((id) => album[id])).length,
+			legendary: Object.values(album).filter((c) => c.rarity === "legendary").length
+		};
+	} catch {
+		return {
+			sets: 0,
+			legendary: 0
+		};
+	}
+}
 const byTrophies = (kind, id) => ({ trophies: trophyNeed(kind, id) ?? 5e3 });
+/** Owner's Box rewards, by your best owner legacy anywhere (see ownerBox.ts). */
+const OWNER_REWARD = {
+	title: 15,
+	skybox: 35,
+	goldSuit: 50,
+	tycoon: 60
+};
+const OWNER_TITLES = [{
+	title: "Team Owner",
+	legacy: OWNER_REWARD.title
+}, {
+	title: "Tycoon",
+	legacy: OWNER_REWARD.tycoon
+}];
+/** Your best owner legacy in this browser (the records ownerBox.ts keeps). */
 const trophyHow = (r) => "trophies" in r ? `${r.trophies.toLocaleString()} trophies` : "";
+const ownerHow = (r) => "owner" in r ? `Owner legacy ${r.owner}` : "";
 const albumHow = (r) => "album" in r ? r.album === "sets" ? `Complete ${r.n} team card set${r.n === 1 ? "" : "s"}` : `Collect ${r.n} legendary cards` : "";
 /** Every 5 levels, one or two rewards (levels 5 to 250); every 25 levels also an app look (src/theme/themes.ts). */
 const LEVEL_ROAD = [
@@ -3158,12 +7449,180 @@ const LEVEL_ROAD = [
 		250,
 		"look",
 		"championship"
+	],
+	[
+		300,
+		"title",
+		"Basketball Sage"
+	],
+	[
+		300,
+		"icon",
+		"jersey-rainbow"
+	],
+	[
+		300,
+		"color",
+		"cobalt"
+	],
+	[
+		350,
+		"title",
+		"Court Philosopher"
+	],
+	[
+		350,
+		"icon",
+		"crown-diamond"
+	],
+	[
+		400,
+		"title",
+		"Era Definer"
+	],
+	[
+		400,
+		"color",
+		"ultraviolet"
+	],
+	[
+		400,
+		"icon",
+		"trophy-diamond"
+	],
+	[
+		450,
+		"title",
+		"Grandmaster GM"
+	],
+	[
+		450,
+		"icon",
+		"shield-gold"
+	],
+	[
+		500,
+		"title",
+		"Five Hundred Club"
+	],
+	[
+		500,
+		"color",
+		"moltencore"
+	],
+	[
+		500,
+		"icon",
+		"ball-diamond"
+	],
+	[
+		550,
+		"title",
+		"Dynasty Emperor"
+	],
+	[
+		550,
+		"icon",
+		"rocket-gold"
+	],
+	[
+		600,
+		"title",
+		"Timeless"
+	],
+	[
+		600,
+		"color",
+		"sunrise"
+	],
+	[
+		650,
+		"title",
+		"Architect of Legends"
+	],
+	[
+		650,
+		"icon",
+		"star-rainbow"
+	],
+	[
+		700,
+		"title",
+		"Legendary Ascendant"
+	],
+	[
+		700,
+		"color",
+		"celestialblue"
+	],
+	[
+		750,
+		"title",
+		"The Final Boss"
+	],
+	[
+		750,
+		"color",
+		"infinity"
+	],
+	[
+		750,
+		"icon",
+		"goat-gold"
 	]
 ];
+LEVEL_ROAD.push([
+	20,
+	"phone",
+	"courtside"
+], [
+	45,
+	"phone",
+	"hardwood"
+], [
+	85,
+	"phone",
+	"jersey"
+], [
+	140,
+	"phone",
+	"neon"
+], [
+	185,
+	"phone",
+	"handheld"
+]);
+LEVEL_ROAD.push([
+	30,
+	"avatarFrame",
+	"rookie"
+], [
+	120,
+	"avatarFrame",
+	"courtside"
+], [
+	300,
+	"avatarFrame",
+	"neon"
+]);
+for (const [l, cat, id] of AVATAR_LEVEL_ROAD) LEVEL_ROAD.push([
+	l,
+	"avatar",
+	`${cat}:${id}`
+]);
+LEVEL_ROAD.sort((a, b) => a[0] - b[0]);
 /** The level a road reward opens at (undefined when it isn't on the road). */
 const roadLevel = (kind, id) => LEVEL_ROAD.find(([, k, i]) => k === kind && i === id)?.[0];
 const byRoad = (kind, id, fallback = 1) => ({ level: roadLevel(kind, id) ?? fallback });
 const levelHow = (r) => "level" in r ? r.level <= 1 ? "Everyone" : `Level ${r.level}` : "";
+const TIERS$1 = [
+	"bronze",
+	"silver",
+	"gold",
+	"platinum",
+	"diamond",
+	"legend"
+];
 const icon = (id, name, base = id, recolor, rule = byRoad("icon", id)) => ({
 	id,
 	name,
@@ -3244,6 +7703,38 @@ const jersey = (id, name, main, dark, trim = "#f4f0e6") => icon(id, name, "jerse
 	icon("sun", "Sun"),
 	icon("moon", "Moon"),
 	icon("snowflake", "Snowflake"),
+	jersey("jersey-rainbow", "Rainbow jersey", "#b983ff", "#ff6fd8", "#ffd166"),
+	icon("crown-diamond", "Diamond crown", "crown", {
+		g: "#bfe9ff",
+		G: "#6db8ff",
+		r: "#ffffff",
+		b: "#b983ff"
+	}),
+	icon("trophy-diamond", "Diamond trophy", "trophy", {
+		g: "#bfe9ff",
+		G: "#6db8ff"
+	}),
+	icon("ball-diamond", "Diamond ball", "ball", {
+		o: "#bfe9ff",
+		O: "#6db8ff"
+	}),
+	icon("shield-gold", "Gold shield", "shield", {
+		b: "#ffd166",
+		B: "#c9971f",
+		w: "#fff3c4"
+	}),
+	icon("rocket-gold", "Gold rocket", "rocket", {
+		w: "#ffd166",
+		b: "#ff6fd8"
+	}),
+	icon("star-rainbow", "Rainbow star", "star", {
+		g: "#ff6fd8",
+		G: "#6db8ff"
+	}),
+	icon("goat-gold", "Golden GOAT", "goat", {
+		w: "#ffd166",
+		s: "#c9971f"
+	}),
 	{ ...icon("diamond", "Diamond", "diamond", void 0, { rank: 4 }) },
 	{ ...icon("ghost", "Ghost", "ghost", void 0, { mode: "pvp-1200" }) },
 	{ ...icon("medal", "Medal", "medal", void 0, { anyHonor: true }) },
@@ -3347,6 +7838,58 @@ const jersey = (id, name, main, dark, trim = "#f4f0e6") => icon(id, name, "jerse
 			"goatcrown",
 			void 0,
 			"glow"
+		],
+		[
+			"fireball-blue",
+			"Blue fireball",
+			"fireball",
+			{
+				o: "#4da3ff",
+				O: "#1f4fd9"
+			},
+			"flicker"
+		],
+		[
+			"trophy-diamond-shine",
+			"Gleaming diamond trophy",
+			"trophy",
+			{
+				g: "#bfe9ff",
+				G: "#6db8ff"
+			},
+			"shine"
+		],
+		[
+			"crown-blueflame",
+			"Crown of blue fire",
+			"crown",
+			{
+				g: "#9fe7ff",
+				G: "#1f4fd9",
+				r: "#ffffff",
+				b: "#ffffff"
+			},
+			"flicker"
+		],
+		[
+			"phoenix-gold",
+			"Golden phoenix",
+			"phoenix",
+			{
+				r: "#ffd166",
+				o: "#ffb300"
+			},
+			"flicker"
+		],
+		[
+			"ball-galaxy",
+			"Galaxy ball",
+			"ball",
+			{
+				o: "#6a45c0",
+				O: "#ff7ad9"
+			},
+			"twinkle"
 		]
 	].map(([id, name, base, recolor, anim]) => {
 		const rule = byTrophies("icon", id);
@@ -3357,17 +7900,94 @@ const jersey = (id, name, main, dark, trim = "#f4f0e6") => icon(id, name, "jerse
 			recolor,
 			anim,
 			rule,
-			how: trophyHow(rule)
+			how: trophyHow(rule),
+			.../blue/.test(id) ? { fx: "blue" } : /gold/.test(id) ? { fx: "gold" } : {}
 		};
 	}),
 	albumHow({
 		album: "sets",
 		n: 3
 	}),
+	(OWNER_REWARD.skybox, ownerHow({ owner: OWNER_REWARD.skybox })),
+	(seasonRule("icon", "glitch"), seasonHow(seasonRule("icon", "glitch"))),
 	albumHow({
 		album: "legendary",
 		n: 10
-	})
+	}),
+	(seasonRule("icon", "frozen", "frozen"), seasonHow(seasonRule("icon", "frozen", "frozen"))),
+	(seasonRule("icon", "inferno", "inferno"), seasonHow(seasonRule("icon", "inferno", "inferno"))),
+	...[
+		[
+			"shop-ball-obsidian",
+			"Obsidian ball",
+			"ball",
+			{
+				o: "#2a2238",
+				O: "#b983ff"
+			},
+			"glow"
+		],
+		[
+			"shop-crown-emerald",
+			"Emerald crown",
+			"crown",
+			{
+				g: "#4fd38a",
+				G: "#1f8a55",
+				r: "#ffffff",
+				b: "#9fffcf"
+			},
+			"shine"
+		],
+		[
+			"shop-phoenix-ice",
+			"Ice phoenix",
+			"phoenix",
+			{
+				r: "#9fe7ff",
+				o: "#4da3ff"
+			},
+			"flicker"
+		],
+		[
+			"shop-star-sunset",
+			"Sunset star",
+			"star",
+			{
+				g: "#ff7e5f",
+				G: "#feb47b"
+			},
+			"twinkle"
+		],
+		[
+			"shop-trophy-ruby",
+			"Ruby trophy",
+			"trophy",
+			{
+				g: "#ff4d6d",
+				G: "#a3123a"
+			},
+			"shine"
+		],
+		[
+			"shop-fireball-violet",
+			"Violet fireball",
+			"fireball",
+			{
+				o: "#c084ff",
+				O: "#6a2fd6"
+			},
+			"flicker"
+		]
+	].map(([id, name, base, recolor, anim]) => ({
+		id,
+		name,
+		base,
+		recolor,
+		anim,
+		rule: { shop: id },
+		how: "Relic Shop"
+	}))
 ];
 const color = (id, name, css, rule = byRoad("color", id)) => ({
 	id,
@@ -3387,17 +8007,488 @@ const animated = (id, name, css, anim) => {
 		how: trophyHow(rule)
 	};
 };
-color("cream", "Cream", "#f4f0e6", { level: 1 }), color("orange", "Court orange", "#ff9d3d"), color("red", "Red", "#ff6b6b"), color("sky", "Sky", "#6db8ff"), color("pink", "Pink", "#ff8fc8"), color("mint", "Mint", "#6fdc93"), color("teal", "Teal", "#4fd6d6"), color("lime", "Lime", "#b8e05a"), color("violet", "Violet", "#c79bff"), color("silver", "Silver", "#d7dde6"), color("bronze", "Bronze", "#d99a5c"), color("sand", "Sand", "#e6cf9a"), color("coral", "Coral", "#ff8a6b"), color("gold", "Gold", "#ffd166"), color("lavender", "Lavender", "#b8a8ff"), color("crimson", "Crimson", "#ff4d6a"), color("emerald", "Emerald", "#3fd98a"), color("ice", "Ice", "#bfe6ff"), color("platinum", "Platinum", "linear-gradient(90deg, #e8edf3, #9fb0c4, #e8edf3)"), color("obsidian", "Obsidian", "linear-gradient(90deg, #8a93a6, #f4f0e6, #8a93a6)"), color("inferno", "Inferno", "linear-gradient(90deg, #ff4d2e, #ff9d3d, #ffd166, #ff9d3d, #ff4d2e)"), { ...color("ember", "Ember", "#ff6b3d", { rank: 5 }) }, { ...color("prism", "Prism", "linear-gradient(90deg, #ff9d3d, #ffd166, #6fdc93, #6db8ff, #c79bff)", { honor: "first" }) }, { ...color("aurora", "Aurora", "linear-gradient(90deg, #6fdc93, #4fd6d6, #b8a8ff, #ff8fc8)", { supporter: true }) }, { ...color("supporter", "Supporter pink", "#ff5fa2", { supporter: true }) }, animated("emberflow", "Ember flow", "linear-gradient(90deg, #ff4d2e, #ff9d3d, #ffd166, #ff9d3d, #ff4d2e)", "flow"), animated("neonwave", "Neon wave", "linear-gradient(90deg, #ff4dd2, #6fd3ff, #7dff9b, #6fd3ff, #ff4dd2)", "flow"), animated("lava", "Lava", "linear-gradient(90deg, #7a1200, #ff3d1f, #ffb347, #ff3d1f, #7a1200)", "pulse"), animated("galaxy", "Galaxy", "linear-gradient(90deg, #6a45c0, #ff7ad9, #6fd3ff, #ffffff, #6a45c0)", "flow"), animated("goldrush", "Gold rush", "linear-gradient(90deg, #c9971f, #fff3c4, #ffd166, #fff3c4, #c9971f)", "shimmer"), animated("dsheen", "Diamond sheen", "linear-gradient(90deg, #6db8ff, #ffffff, #bfe6ff, #ffffff, #6db8ff)", "shimmer"), animated("sunset", "Sunset", "linear-gradient(90deg, #ff5f6d, #ffc371, #ff8fc8, #ffc371, #ff5f6d)", "flow"), animated("phantom", "Phantom", "linear-gradient(90deg, #5b6b82, #ffffff, #b8a8ff, #ffffff, #5b6b82)", "pulse"), animated("solar", "Solar flare", "linear-gradient(90deg, #ff3d1f, #ffe066, #ffffff, #ffe066, #ff3d1f)", "flow"), animated("nebula", "Nebula", "linear-gradient(90deg, #3b1d82, #ff4dd2, #4fd6d6, #b983ff, #3b1d82)", "flow"), animated("celestial", "Celestial", "linear-gradient(90deg, #ffd166, #ffffff, #8fa8ff, #ffffff, #ffd166)", "shimmer"), { ...animated("holo", "Holo foil", "linear-gradient(90deg, #ff8fc8, #6fd3ff, #7dff9b, #ffe38a, #ff8fc8)", "flow") }, albumHow({
-	album: "legendary",
-	n: 5
-}), animated("immortal", "Immortal", "linear-gradient(90deg, #ff4d2e, #ffd166, #6fdc93, #4fd6d6, #c79bff, #ff4dd2, #ff4d2e)", "flow");
+[
+	color("cream", "Cream", "#f4f0e6", { level: 1 }),
+	color("orange", "Court orange", "#ff9d3d"),
+	color("red", "Red", "#ff6b6b"),
+	color("sky", "Sky", "#6db8ff"),
+	color("pink", "Pink", "#ff8fc8"),
+	color("mint", "Mint", "#6fdc93"),
+	color("teal", "Teal", "#4fd6d6"),
+	color("lime", "Lime", "#b8e05a"),
+	color("violet", "Violet", "#c79bff"),
+	color("silver", "Silver", "#d7dde6"),
+	color("bronze", "Bronze", "#d99a5c"),
+	color("sand", "Sand", "#e6cf9a"),
+	color("coral", "Coral", "#ff8a6b"),
+	color("gold", "Gold", "#ffd166"),
+	color("lavender", "Lavender", "#b8a8ff"),
+	color("crimson", "Crimson", "#ff4d6a"),
+	color("emerald", "Emerald", "#3fd98a"),
+	color("ice", "Ice", "#bfe6ff"),
+	color("platinum", "Platinum", "linear-gradient(90deg, #e8edf3, #9fb0c4, #e8edf3)"),
+	color("obsidian", "Obsidian", "linear-gradient(90deg, #8a93a6, #f4f0e6, #8a93a6)"),
+	color("inferno", "Inferno", "linear-gradient(90deg, #ff4d2e, #ff9d3d, #ffd166, #ff9d3d, #ff4d2e)"),
+	color("cobalt", "Cobalt", "#5b84ff"),
+	color("ultraviolet", "Ultraviolet", "#a66bff"),
+	color("moltencore", "Molten core", "linear-gradient(90deg, #7a1200, #ff6b2d, #ffd166, #ff6b2d, #7a1200)"),
+	color("sunrise", "Sunrise", "linear-gradient(90deg, #ff8a6b, #ffd166, #fff3c4, #ffd166, #ff8a6b)"),
+	color("celestialblue", "Celestial blue", "linear-gradient(90deg, #6db8ff, #ffffff, #b8a8ff, #ffffff, #6db8ff)"),
+	color("infinity", "Infinity", "linear-gradient(90deg, #ff4d4d, #ffd166, #6fdc93, #6db8ff, #b983ff, #ff6fd8, #ff4d4d)"),
+	{ ...color("ember", "Ember", "#ff6b3d", { rank: 5 }) },
+	{ ...color("prism", "Prism", "linear-gradient(90deg, #ff9d3d, #ffd166, #6fdc93, #6db8ff, #c79bff)", { honor: "first" }) },
+	{ ...color("aurora", "Aurora", "linear-gradient(90deg, #6fdc93, #4fd6d6, #b8a8ff, #ff8fc8)", { supporter: true }) },
+	{ ...color("supporter", "Supporter pink", "#ff5fa2", { supporter: true }) },
+	animated("emberflow", "Ember flow", "linear-gradient(90deg, #ff4d2e, #ff9d3d, #ffd166, #ff9d3d, #ff4d2e)", "flow"),
+	animated("neonwave", "Neon wave", "linear-gradient(90deg, #ff4dd2, #6fd3ff, #7dff9b, #6fd3ff, #ff4dd2)", "flow"),
+	animated("lava", "Lava", "linear-gradient(90deg, #7a1200, #ff3d1f, #ffb347, #ff3d1f, #7a1200)", "pulse"),
+	animated("galaxy", "Galaxy", "linear-gradient(90deg, #6a45c0, #ff7ad9, #6fd3ff, #ffffff, #6a45c0)", "flow"),
+	animated("goldrush", "Gold rush", "linear-gradient(90deg, #c9971f, #fff3c4, #ffd166, #fff3c4, #c9971f)", "shimmer"),
+	animated("dsheen", "Diamond sheen", "linear-gradient(90deg, #6db8ff, #ffffff, #bfe6ff, #ffffff, #6db8ff)", "shimmer"),
+	animated("sunset", "Sunset", "linear-gradient(90deg, #ff5f6d, #ffc371, #ff8fc8, #ffc371, #ff5f6d)", "flow"),
+	animated("phantom", "Phantom", "linear-gradient(90deg, #5b6b82, #ffffff, #b8a8ff, #ffffff, #5b6b82)", "pulse"),
+	animated("solar", "Solar flare", "linear-gradient(90deg, #ff3d1f, #ffe066, #ffffff, #ffe066, #ff3d1f)", "flow"),
+	animated("nebula", "Nebula", "linear-gradient(90deg, #3b1d82, #ff4dd2, #4fd6d6, #b983ff, #3b1d82)", "flow"),
+	animated("celestial", "Celestial", "linear-gradient(90deg, #ffd166, #ffffff, #8fa8ff, #ffffff, #ffd166)", "shimmer"),
+	({ ...animated("holo", "Holo foil", "linear-gradient(90deg, #ff8fc8, #6fd3ff, #7dff9b, #ffe38a, #ff8fc8)", "flow") }, albumHow({
+		album: "legendary",
+		n: 5
+	})),
+	animated("plasma", "Plasma", "linear-gradient(90deg, #3fc8ff, #ffffff, #b983ff, #ffffff, #3fc8ff)", "flow"),
+	animated("borealis", "Borealis", "linear-gradient(90deg, #1f9e5c, #6fffb0, #4fd6d6, #b8a8ff, #1f9e5c)", "flow"),
+	animated("starfire", "Starfire", "linear-gradient(90deg, #ff4d2e, #ffffff, #ffd166, #ffffff, #ff4d2e)", "shimmer"),
+	animated("eternalflame", "Eternal flame", "linear-gradient(90deg, #1f4fd9, #4da3ff, #ffffff, #ffd166, #ff4d2e, #1f4fd9)", "flow"),
+	animated("divine", "Divine", "linear-gradient(90deg, #fff3c4, #ffd166, #ffffff, #9fe7ff, #ffffff, #ffd166, #fff3c4)", "shimmer"),
+	(seasonRule("color", "glitch"), seasonHow(seasonRule("color", "glitch"))),
+	(seasonRule("color", "frost", "frozen"), seasonHow(seasonRule("color", "frost", "frozen"))),
+	(seasonRule("color", "magma", "inferno"), seasonHow(seasonRule("color", "magma", "inferno"))),
+	...[
+		[
+			"shop-aurora",
+			"Aurora",
+			"linear-gradient(90deg, #4fd38a, #4da3ff, #b983ff, #4da3ff, #4fd38a)",
+			"flow"
+		],
+		[
+			"shop-sunset",
+			"Sunset",
+			"linear-gradient(90deg, #ff7e5f, #feb47b, #ff5f9e, #feb47b, #ff7e5f)",
+			"flow"
+		],
+		[
+			"shop-toxic",
+			"Toxic",
+			"linear-gradient(90deg, #7dff5a, #d4ff3f, #7dff5a)",
+			"pulse"
+		],
+		[
+			"shop-ruby",
+			"Ruby",
+			"linear-gradient(90deg, #a3123a, #ff4d6d, #ffd1dc, #ff4d6d, #a3123a)",
+			"shimmer"
+		],
+		[
+			"shop-ocean",
+			"Deep ocean",
+			"linear-gradient(90deg, #0b4f8a, #3fc8ff, #9fe7ff, #3fc8ff, #0b4f8a)",
+			"flow"
+		],
+		[
+			"shop-royal",
+			"Royal violet",
+			"linear-gradient(90deg, #6a2fd6, #c084ff, #ffd166, #c084ff, #6a2fd6)",
+			"shimmer"
+		]
+	].map(([id, name, css, anim]) => ({
+		id,
+		name,
+		css,
+		anim,
+		rule: { shop: id },
+		how: "Relic Shop"
+	})),
+	animated("immortal", "Immortal", "linear-gradient(90deg, #ff4d2e, #ffd166, #6fdc93, #4fd6d6, #c79bff, #ff4dd2, #ff4d2e)", "flow")
+];
 /** Titles on the level road, in order (Rookie GM is everyone's first). */
 const ROAD_TITLES = ["Rookie GM", ...LEVEL_ROAD.filter(([, k]) => k === "title").map(([, , id]) => id)];
+const SUPPORTER_TITLE = "Supporter";
+/** Leaderboard honors the server can grant (see server/honors.ts). `first` is any #1. */
+const HONORS = [
+	{
+		id: "gm-1",
+		title: "#1 GM",
+		how: "#1 on the GM leaderboard",
+		first: true
+	},
+	{
+		id: "gm-10",
+		title: "Top 10 GM",
+		how: "Top 10 on the GM leaderboard"
+	},
+	{
+		id: "gm-100",
+		title: "Top 100 GM",
+		how: "Top 100 on the GM leaderboard"
+	},
+	{
+		id: "weekly-1",
+		title: "Weekly Champion",
+		how: "#1 on a finished weekly board",
+		first: true
+	},
+	{
+		id: "daily-1",
+		title: "Daily Legend Champion",
+		how: "#1 on a finished Daily Legend board",
+		first: true
+	},
+	{
+		id: "ranked-10",
+		title: "Ranked Top 10",
+		how: "Top 10 in a ranked season"
+	},
+	{
+		id: "ranked-1",
+		title: "Season Champion",
+		how: "#1 when a ranked season ends",
+		first: true
+	},
+	{
+		id: "ranked-2",
+		title: "Season Runner-up",
+		how: "#2 when a ranked season ends"
+	},
+	{
+		id: "ranked-3",
+		title: "Season Podium",
+		how: "#3 when a ranked season ends"
+	},
+	{
+		id: "hunt-week-10",
+		title: "Weekly Hunter",
+		how: "Top 10% of a finished Weekly Hunt"
+	},
+	{
+		id: "pvp-10",
+		title: "PvP Elite",
+		how: "Top 10 in Hunt PvP"
+	}
+];
+/** Titles earned by mode achievements. */
+const MODE_TITLES = [
+	{
+		mode: "career-hof",
+		title: "Hall of Fame Maker",
+		how: "Put a created player in the Hall of Fame"
+	},
+	{
+		mode: "career-top10",
+		title: "Pantheon",
+		how: "Retire a created player in the all-time Top 10"
+	},
+	{
+		mode: "hunt-legend",
+		title: "Legend Slayer",
+		how: "Win a League Hunt on Legend"
+	},
+	{
+		mode: "rebuild-architect",
+		title: "Master Builder",
+		how: "Three stars in five rebuilds"
+	},
+	{
+		mode: "draft-title",
+		title: "All-Time Champion",
+		how: "Win a title with an All-Time Draft team"
+	},
+	{
+		mode: "pvp-ten",
+		title: "Ghost Hunter",
+		how: "Win ten PvP series"
+	},
+	{
+		mode: "goals-streak",
+		title: "The Grinder",
+		how: "Daily goals seven days in a row"
+	},
+	{
+		mode: "perfect-82",
+		title: "Undefeated",
+		how: "Go 82-0 in the 82-0 Challenge"
+	},
+	{
+		mode: "perfect-98",
+		title: "Perfection",
+		how: "Go 82-0 and 16-0 in the 82-0 Challenge"
+	},
+	{
+		mode: "cat-82x5",
+		title: "Category King",
+		how: "Go 82-0 with 5 different Category Roll categories"
+	},
+	{
+		mode: "survival-15",
+		title: "Last One Standing",
+		how: "Win 15 rounds in one Survival run"
+	},
+	{
+		mode: "story-legend",
+		title: "Street Legend",
+		how: "Reach \"The Legend Begins\" in Story Mode"
+	},
+	{
+		mode: "relic-collector",
+		title: "Collector",
+		how: "Own every Common relic"
+	},
+	{
+		mode: "relic-mythic",
+		title: "Mythic Hunter",
+		how: "Find a Mythic relic"
+	},
+	{
+		mode: "relic-secrets",
+		title: "Keeper of Secrets",
+		how: "Uncover all eight secret relics"
+	}
+];
+const HONORS_KEY = "cv-board-honors";
+/** Passes bought (written from the account by src/billing/billing.ts). */
+const ENTITLEMENTS_KEY = "cv-entitlements";
+const json$2 = (read, key, fallback) => {
+	try {
+		return JSON.parse(read(key) ?? "null") ?? fallback;
+	} catch {
+		return fallback;
+	}
+};
+/** Leaderboard honors kept in this browser (granted by the server at sync). */
+const readHonors = (read = localRead) => json$2(read, HONORS_KEY, []).filter((h) => HONORS.some((x) => x.id === h));
+/** Whether this browser's account has an active pass (`noAds`, `supporter`). */
+function hasEntitlement(kind, read = localRead) {
+	const e = json$2(read, ENTITLEMENTS_KEY, {});
+	const supporter = !!e.supporter && (!e.supporterUntil || Date.parse(e.supporterUntil) > Date.now());
+	return kind === "noAds" ? !!e.noAds || supporter : supporter;
+}
+/** What unlocks read: the level is passed in; the rest comes from this browser. */
+function unlockContext(level, read = localRead) {
+	if (hasOwnerAccess(read)) return {
+		level: Math.max(level, 1e5),
+		rank: TIERS$1.length - 1,
+		honors: HONORS.map((h) => h.id),
+		modes: MODE_TITLES.map((t) => t.mode),
+		supporter: true,
+		trophies: 1e9,
+		album: {
+			sets: 1e6,
+			legendary: 1e6
+		},
+		owner: 1e6,
+		streak: 1e6,
+		pass: 1e6,
+		missions: 1e6,
+		staff: true,
+		account: true,
+		seasons: Object.fromEntries(SEASONS.map((s) => [s.id, 1e6]))
+	};
+	return {
+		seasons: seasonTiers(read),
+		level,
+		rank: TIERS$1.indexOf(read("cv-ranked-best") ?? ""),
+		honors: readHonors(read),
+		modes: json$2(read, "cv-mode-ach-seen", []),
+		supporter: hasEntitlement("supporter", read),
+		trophies: totalTrophies(read),
+		album: albumCounts(read),
+		owner: ownerBest(read),
+		streak: readStreak(read).best,
+		pass: passBestTier(readPass(read)),
+		missions: missionsClaimed(readMissions(read)),
+		account: hasFoundingAccount(read),
+		shop: shopOwned(read)
+	};
+}
+/** Titles bought in a holiday event shop (retention/holidayShop.ts). */
+const EVENT_TITLES = [{
+	title: "Pumpkin King",
+	key: "evt-halloween-title",
+	how: "Spooky Season event shop"
+}, {
+	title: "Holiday Hooper",
+	key: "evt-christmas-title",
+	how: "Winter Wonderland event shop"
+}];
+/** Titles from the leaderboards, the modes and the Supporter pass that are open. */
+const earnedExtraTitles = (c) => [
+	...EVENT_TITLES.filter((t) => (c.shop ?? []).includes(t.key)).map((t) => t.title),
+	...HONORS.filter((h) => c.honors.includes(h.id)).map((h) => h.title),
+	...MODE_TITLES.filter((t) => c.modes.includes(t.mode)).map((t) => t.title),
+	...c.supporter ? [SUPPORTER_TITLE] : [],
+	...TROPHY_TITLES.filter((t) => c.trophies >= t.trophies).map((t) => t.id),
+	...ALBUM_TITLES.filter((t) => ((t.kind === "sets" ? c.album?.sets : c.album?.legendary) ?? 0) >= t.n).map((t) => t.title),
+	...OWNER_TITLES.filter((t) => (c.owner ?? 0) >= t.legacy).map((t) => t.title),
+	...streakTitles(c.streak ?? 0),
+	...passTitles(c.pass ?? 0),
+	...missionTitles(c.missions ?? 0),
+	...seasonTitles(c.seasons ?? {}),
+	...c.account ? [FOUNDING_TITLE] : [],
+	...c.staff ? [OWNER_TITLE, SOVEREIGN_TITLE] : []
+];
+function ownerBest(read = localRead) {
+	try {
+		return (JSON.parse(read("cv-owner-records") ?? "[]") ?? []).reduce((m, r) => Math.max(m, r.legacy ?? 0), 0);
+	} catch {
+		return 0;
+	}
+}
+/** Titles from the card album. */
+const ALBUM_TITLES = [
+	{
+		title: "Collector",
+		kind: "sets",
+		n: 1
+	},
+	{
+		title: "Set Master",
+		kind: "sets",
+		n: 10
+	},
+	{
+		title: "Legendary Collector",
+		kind: "legendary",
+		n: 15
+	}
+];
+//#endregion
+//#region src/profile/avatarFrames.ts
+const lvl = (id) => roadLevel("avatarFrame", id) ?? 750;
+const tro = (id) => trophyNeed("avatarFrame", id) ?? 75e4;
+const AVATAR_FRAMES = [
+	{
+		id: "none",
+		name: "No frame",
+		blurb: "Just your character."
+	},
+	{
+		id: "rookie",
+		name: "Rookie Ring",
+		blurb: "An orange ring studded with basketballs.",
+		level: lvl("rookie")
+	},
+	{
+		id: "courtside",
+		name: "Courtside Crest",
+		blurb: "A hardwood crest with brass rivets.",
+		level: lvl("courtside")
+	},
+	{
+		id: "neon",
+		name: "Neon Pulse",
+		blurb: "Two arcade rings that pulse.",
+		level: lvl("neon")
+	},
+	{
+		id: "blaze",
+		name: "Blaze",
+		blurb: "A ring of fire that never goes out.",
+		trophies: tro("blaze")
+	},
+	{
+		id: "dragon",
+		name: "Jade Dragon",
+		blurb: "Jade wings and a dragon crest.",
+		trophies: tro("dragon")
+	},
+	{
+		id: "celestial",
+		name: "Celestial",
+		blurb: "Stars orbiting a cosmic halo.",
+		trophies: tro("celestial")
+	},
+	{
+		id: "bronzeCrest",
+		name: "Season Podium",
+		blurb: "Bronze shield and wings: a top-3 ranked season.",
+		honors: [
+			"ranked-1",
+			"ranked-2",
+			"ranked-3"
+		]
+	},
+	{
+		id: "silverWings",
+		name: "Season Runner-up",
+		blurb: "Silver wings: a top-2 ranked season.",
+		honors: ["ranked-1", "ranked-2"]
+	},
+	{
+		id: "goldCrown",
+		name: "Season Champion",
+		blurb: "Gold wings and a crown: #1 when a ranked season ended.",
+		honors: ["ranked-1"]
+	},
+	{
+		id: "undefeated",
+		name: "Undefeated",
+		blurb: "A steel banner reading 82-0: an undefeated 82-0 Challenge season.",
+		modes: ["perfect-82", "perfect-98"]
+	},
+	{
+		id: "perfectGold",
+		name: "Perfection",
+		blurb: "Gold laurels and 98-0: 82-0, then 16-0 in the playoffs.",
+		modes: ["perfect-98"]
+	},
+	{
+		id: "sovereign",
+		name: "Sovereign",
+		blurb: "Black wings, blue fire and a royal crown. Game Owner only.",
+		staff: true
+	},
+	{
+		id: "founding",
+		name: "Founding GM",
+		blurb: "An orange-and-cream crest with the Founder banner: for making a free account.",
+		account: true
+	},
+	{
+		id: "glitch",
+		name: "Glitch",
+		blurb: "A corrupted ring that splits into cyan and magenta and tears apart. Season 1.",
+		season: seasonRule("avatarFrame", "glitch")
+	},
+	{
+		id: "frozen",
+		name: "Frozen",
+		blurb: "A ring of ice with icicles and drifting snow. Season 2.",
+		season: seasonRule("avatarFrame", "frozen", "frozen")
+	},
+	{
+		id: "inferno",
+		name: "Inferno",
+		blurb: "A ring of molten rock with flames licking up and embers rising. Season 3.",
+		season: seasonRule("avatarFrame", "inferno", "inferno")
+	},
+	{
+		id: "cobweb",
+		name: "Cobweb",
+		blurb: "A haunted ring of cobwebs, a dangling spider and pumpkins. Spooky Season.",
+		shop: "evt-halloween-frame"
+	},
+	{
+		id: "giftWrap",
+		name: "Gift Wrap",
+		blurb: "Wrapped up in red ribbon with a bow and holly on top. Winter Wonderland.",
+		shop: "evt-christmas-frame"
+	}
+];
+const avatarFrameDef = (id) => AVATAR_FRAMES.find((f) => f.id === id) ?? AVATAR_FRAMES[0];
 //#endregion
 //#region src/profile/profile.ts
 const CAREER_KEY = "cv-profile-careers";
 /** The career summary behind XP and the Career achievements (the server builds the same one from synced careers). */
-function careerCacheOf(metas) {
+function careerCacheOf(all) {
+	const metas = all.filter((m) => m.mode !== "sandbox");
 	const retired = metas.filter((m) => m.retired);
 	const awards = (m, key) => (m.years ?? []).reduce((n, y) => n + (y.awards ?? []).filter((a) => a.key === key).length, 0);
 	const points = (m) => (m.years ?? []).reduce((n, y) => n + (y.stats?.points ?? 0), 0);
@@ -3444,7 +8535,12 @@ const XP = {
 	rebuildTitle: 250,
 	careerRetired: 150,
 	careerHof: 150,
-	weekly: 150
+	weekly: 150,
+	perfectRun: 40,
+	perfectDaily: 40,
+	perfectTitle: 250,
+	perfectSeason: 1e3,
+	perfect98: 1500
 };
 function xpParts(read = localRead) {
 	const gm = legacyTotals(readLegacy(read));
@@ -3455,6 +8551,13 @@ function xpParts(read = localRead) {
 	const c = careerCache(read);
 	const weeks = Object.values(loadWeeklyRecords(read)).reduce((n, w) => n + (w.rebuild ? 1 : 0) + (w.career ? 1 : 0), 0);
 	const goals = dailyGoalXp(read);
+	const p820 = loadPerfectRecords(read), p820Days = Object.keys(p820.daily ?? {}).length;
+	const bonus = bonusXp(readBonusLog(read));
+	const arcade = arcadeXp(readArcade(read));
+	const missions = readMissions(read), done = missionsClaimed(missions);
+	const quests = readQuests(read);
+	const pickem = readPickemWins(read).length;
+	const drafts = Object.values(readDailyDraftWith(read));
 	return [
 		{
 			id: "gm",
@@ -3475,6 +8578,12 @@ function xpParts(read = localRead) {
 			detail: `${hunt.runs} run${hunt.runs === 1 ? "" : "s"} · ${hunt.wins} won · ${daily} Daily Legend${daily === 1 ? "" : "s"}`
 		},
 		{
+			id: "perfect",
+			label: "82-0 Challenge",
+			xp: p820.runs * XP.perfectRun + p820Days * XP.perfectDaily + p820.titles * XP.perfectTitle + p820.perfectSeasons * XP.perfectSeason + p820.perfect98 * XP.perfect98,
+			detail: `${p820.runs} run${p820.runs === 1 ? "" : "s"} · ${p820.titles} title${p820.titles === 1 ? "" : "s"} · ${p820.perfectSeasons} perfect season${p820.perfectSeasons === 1 ? "" : "s"}`
+		},
+		{
 			id: "rebuild",
 			label: "Rebuild Challenge",
 			xp: rbAttempts * XP.rebuildAttempt + rbStars * XP.rebuildStar + rbTitles * XP.rebuildTitle,
@@ -3491,28 +8600,241 @@ function xpParts(read = localRead) {
 			label: "Daily goals",
 			xp: goals.xp,
 			detail: `${goals.done} goal${goals.done === 1 ? "" : "s"} done`
+		},
+		{
+			id: "bonus",
+			label: "Mode of the Week",
+			xp: bonus.xp,
+			detail: `Double XP on ${bonus.runs} run${bonus.runs === 1 ? "" : "s"}`
+		},
+		{
+			id: "quests",
+			label: "Tutorial quests",
+			xp: questsXp(quests),
+			detail: `${quests.length} first-season lesson${quests.length === 1 ? "" : "s"} done`
+		},
+		{
+			id: "missions",
+			label: "Weekly missions",
+			xp: missionsXp(missions),
+			detail: `${done} mission${done === 1 ? "" : "s"} done`
+		},
+		{
+			id: "pickem",
+			label: "Playoff pick'em",
+			xp: pickem * 20,
+			detail: `${pickem} right call${pickem === 1 ? "" : "s"}`
+		},
+		{
+			id: "dailyDraft",
+			label: "Daily Draft",
+			xp: drafts.reduce((n, d) => n + dailyDraftXp(d.grade), 0),
+			detail: `${drafts.length} draft${drafts.length === 1 ? "" : "s"} played`
+		},
+		{
+			id: "arcade",
+			label: "Quick games",
+			xp: arcade.xp,
+			detail: `${arcade.solved} puzzle${arcade.solved === 1 ? "" : "s"} solved · ${arcade.brackets} bracket${arcade.brackets === 1 ? "" : "s"} · ${arcade.hiloWeeks} Higher or Lower week${arcade.hiloWeeks === 1 ? "" : "s"}`
 		}
 	];
 }
 const totalXp = (parts = xpParts()) => parts.reduce((n, p) => n + p.xp, 0);
-/** XP needed to go from `level` to the next: 175, 200, 225… (the level road runs to 250; see cosmetics.ts). */
+/** XP needed to go from `level` to the next: 175, 200, 225… (the level road runs to 750; see cosmetics.ts). */
 const levelCost = (level) => 150 + 25 * level;
 function levelFor(xp) {
 	let level = 1, left = xp;
-	while (level < 250 && left >= levelCost(level)) {
+	while (level < 750 && left >= levelCost(level)) {
 		left -= levelCost(level);
 		level++;
 	}
 	return {
 		level,
 		into: left,
-		need: level >= 250 ? 0 : levelCost(level)
+		need: level >= 750 ? 0 : levelCost(level)
 	};
 }
 const road = (kind, id) => roadLevel(kind, id) ?? 1;
-road("frame", "gold"), road("frame", "hardwood"), road("frame", "neon"), road("frame", "banner"), road("frame", "fire");
-road("floor", "planks"), road("floor", "parquet"), road("floor", "blonde"), road("floor", "midnight"), road("floor", "asphalt");
-ROAD_TITLES.map((id) => ({
+[
+	road("frame", "gold"),
+	road("frame", "hardwood"),
+	road("frame", "neon"),
+	road("frame", "banner"),
+	road("frame", "fire"),
+	...[
+		[
+			"diamond",
+			"Diamond",
+			"Ice-blue double border with corner gems."
+		],
+		[
+			"jade",
+			"Jade",
+			"Green lacquer with knotted corners."
+		],
+		[
+			"pixel",
+			"8-bit",
+			"Alternating pixel blocks all round."
+		],
+		[
+			"ice",
+			"Icicles",
+			"Frost along the top, icicles hanging."
+		],
+		[
+			"lightning",
+			"Lightning",
+			"A zigzag bolt top and bottom."
+		],
+		[
+			"ember",
+			"Ember",
+			"Glowing coals along the border."
+		],
+		[
+			"royal",
+			"Royal",
+			"Purple velvet and gold corners."
+		],
+		[
+			"galaxy",
+			"Galaxy",
+			"Deep space, scattered with stars."
+		],
+		[
+			"rainbow",
+			"Rainbow",
+			"Every colour, all the way round."
+		],
+		[
+			"legend",
+			"Legend",
+			"Gold and white with stars: the rarest frame."
+		]
+	].map(([id, name, blurb]) => ({
+		id,
+		name,
+		blurb,
+		level: 1,
+		trophies: trophyNeed("frame", id) ?? 75e4
+	})),
+	seasonRule("frame", "glitch"),
+	seasonRule("frame", "frozen", "frozen"),
+	seasonRule("frame", "inferno", "inferno")
+];
+[
+	road("floor", "planks"),
+	road("floor", "parquet"),
+	road("floor", "blonde"),
+	road("floor", "midnight"),
+	road("floor", "asphalt"),
+	...[
+		[
+			"cherry",
+			"Cherry wood",
+			"Rich red-brown planks."
+		],
+		[
+			"sand",
+			"Beach court",
+			"Packed sand, sun-bleached."
+		],
+		[
+			"retro",
+			"Retro checker",
+			"A 70s checkerboard."
+		],
+		[
+			"herringbone",
+			"Herringbone",
+			"Zigzag wood blocks."
+		],
+		[
+			"ebony",
+			"Ebony",
+			"Black wood with gold seams."
+		],
+		[
+			"ice",
+			"Frozen court",
+			"Ice tiles with frost lines."
+		],
+		[
+			"neon",
+			"Neon grid",
+			"A dark floor with glowing lines."
+		],
+		[
+			"lava",
+			"Lava floor",
+			"Cooled rock with glowing cracks."
+		],
+		[
+			"gold",
+			"Gold rush",
+			"Polished gold planks."
+		],
+		[
+			"galaxy",
+			"Galaxy court",
+			"Play among the stars."
+		]
+	].map(([id, name, blurb]) => ({
+		id,
+		name,
+		blurb,
+		level: 1,
+		trophies: trophyNeed("floor", id) ?? 75e4
+	})),
+	seasonRule("floor", "glitch"),
+	seasonRule("floor", "frozen", "frozen"),
+	seasonRule("floor", "inferno", "inferno")
+];
+[
+	road("phone", "courtside"),
+	road("phone", "hardwood"),
+	road("phone", "jersey"),
+	road("phone", "neon"),
+	road("phone", "handheld"),
+	...[
+		[
+			"ice",
+			"Frost",
+			"Pale blue ice with frosted corners."
+		],
+		[
+			"gold",
+			"Gold",
+			"Polished gold, for champions."
+		],
+		[
+			"lava",
+			"Lava",
+			"Black rock with glowing cracks."
+		],
+		[
+			"galaxy",
+			"Galaxy",
+			"Deep space and drifting stars."
+		],
+		[
+			"diamond",
+			"Diamond",
+			"Cut crystal that catches the light."
+		]
+	].map(([id, name, blurb]) => ({
+		id,
+		name,
+		blurb,
+		level: 1,
+		trophies: trophyNeed("phone", id) ?? 75e4
+	})),
+	seasonRule("phone", "glitch"),
+	seasonRule("phone", "frozen", "frozen"),
+	seasonRule("phone", "inferno", "inferno")
+];
+const TITLES = ROAD_TITLES.map((id) => ({
 	id,
 	name: id,
 	level: id === "Rookie GM" ? 1 : road("title", id),
@@ -3642,6 +8964,254 @@ const MODE_ACHIEVEMENTS = [
 		description: "Hold 300 cards in your album.",
 		icon: "allStarMvp",
 		progress: (s) => at(s.album, 300)
+	},
+	{
+		id: "perfect-60",
+		mode: "perfect",
+		name: "Sixty Wins",
+		description: "Win 60 games in an 82-0 Challenge season.",
+		icon: "pom",
+		progress: (s) => at(s.p82Wins, 60)
+	},
+	{
+		id: "perfect-title",
+		mode: "perfect",
+		name: "Ring Chaser",
+		description: "Win the title in the 82-0 Challenge.",
+		icon: "champion",
+		progress: (s) => at(s.p82Titles, 1)
+	},
+	{
+		id: "perfect-74",
+		mode: "perfect",
+		name: "Better Than 73-9",
+		description: "Win 74 games in an 82-0 Challenge season.",
+		icon: "mvp",
+		progress: (s) => at(s.p82Wins, 74)
+	},
+	{
+		id: "perfect-82",
+		mode: "perfect",
+		name: "Undefeated",
+		description: "Go 82-0 in the 82-0 Challenge.",
+		icon: "fmvp",
+		progress: (s) => at(s.p82Perfect, 1)
+	},
+	{
+		id: "cat-5",
+		mode: "perfect",
+		name: "Category Collector",
+		description: "Win the title with 5 different Category Roll categories.",
+		icon: "champion",
+		progress: (s) => at(s.catTitles, 5)
+	},
+	{
+		id: "cat-25",
+		mode: "perfect",
+		name: "Category Master",
+		description: "Win the title with 25 different categories.",
+		icon: "mvp",
+		progress: (s) => at(s.catTitles, 25)
+	},
+	{
+		id: "cat-teams",
+		mode: "perfect",
+		name: "Every Franchise",
+		description: "Win the title with all 30 team categories.",
+		icon: "fmvp",
+		progress: (s) => at(s.catTeams, 30)
+	},
+	{
+		id: "cat-brutal",
+		mode: "perfect",
+		name: "Brutal",
+		description: "Win the title with a D-tier category.",
+		icon: "hustle",
+		progress: (s) => at(s.catBrutal, 1)
+	},
+	{
+		id: "cat-82",
+		mode: "perfect",
+		name: "Perfect Category",
+		description: "Go 82-0 in a Category Roll.",
+		icon: "eoy",
+		progress: (s) => at(s.catPerfect, 1)
+	},
+	{
+		id: "cat-82x5",
+		mode: "perfect",
+		name: "Category King",
+		description: "Go 82-0 with 5 different Category Roll categories.",
+		icon: "mvp",
+		progress: (s) => at(s.catPerfect, 5)
+	},
+	{
+		id: "perfect-98",
+		mode: "perfect",
+		name: "Perfection",
+		description: "Go 82-0, then 16-0 in the playoffs.",
+		icon: "eoy",
+		progress: (s) => at(s.p82Perfect98, 1)
+	},
+	{
+		id: "survival-5",
+		mode: "survival",
+		name: "Still Standing",
+		description: "Win 5 rounds in one Survival run.",
+		icon: "ironMan",
+		progress: (s) => at(s.survivalBest, 5)
+	},
+	{
+		id: "survival-15",
+		mode: "survival",
+		name: "Last One Standing",
+		description: "Win 15 rounds in one Survival run.",
+		icon: "mvp",
+		progress: (s) => at(s.survivalBest, 15)
+	},
+	{
+		id: "survival-bosses",
+		mode: "survival",
+		name: "Giant Killer",
+		description: "Beat 5 Survival bosses (real champions).",
+		icon: "champion",
+		progress: (s) => at(s.survivalBosses, 5)
+	},
+	{
+		id: "story-done",
+		mode: "story",
+		name: "Street to the League",
+		description: "Finish Story Mode.",
+		icon: "allRookie1",
+		progress: (s) => at(s.storyFinished, 1)
+	},
+	{
+		id: "story-legend",
+		mode: "story",
+		name: "Street Legend",
+		description: "Reach the ending \"The Legend Begins\".",
+		icon: "roy",
+		progress: (s) => at(s.storyLegend, 1)
+	},
+	{
+		id: "relic-collector",
+		mode: "relics",
+		name: "Collector",
+		description: "Own every Common relic.",
+		icon: "allStar",
+		progress: (s) => at(s.relicCommons, RELICS.filter((r) => r.rarity === "common").length)
+	},
+	{
+		id: "relic-set",
+		mode: "relics",
+		name: "Set Builder",
+		description: "Complete a relic set.",
+		icon: "champion",
+		progress: (s) => at(s.relicSets, 1)
+	},
+	{
+		id: "relic-mythic",
+		mode: "relics",
+		name: "Mythic Hunter",
+		description: "Find a Mythic relic.",
+		icon: "mvp",
+		progress: (s) => at(s.relicMythics, 1)
+	},
+	{
+		id: "relic-secrets",
+		mode: "relics",
+		name: "Keeper of Secrets",
+		description: "Uncover all eight secret relics.",
+		icon: "fmvp",
+		progress: (s) => at(s.relicSecrets, SECRET_RELICS.length)
+	},
+	{
+		id: "social-first-gift",
+		mode: "social",
+		name: "Good Teammate",
+		description: "Send a friend a gift.",
+		icon: "teammate",
+		progress: (s) => at(s.giftsSent, 1)
+	},
+	{
+		id: "social-gifts-50",
+		mode: "social",
+		name: "Team Player",
+		description: "Send 50 gifts to friends.",
+		icon: "teammate",
+		progress: (s) => at(s.giftsSent, 50)
+	},
+	{
+		id: "social-collect",
+		mode: "social",
+		name: "Thank You!",
+		description: "Collect 10 gifts from friends.",
+		icon: "allStar",
+		progress: (s) => at(s.giftsCollected, 10)
+	},
+	{
+		id: "social-shop-1",
+		mode: "social",
+		name: "Window Shopper",
+		description: "Buy a shop cosmetic.",
+		icon: "allStar",
+		progress: (s) => at(s.shopCosmetics, 1)
+	},
+	{
+		id: "social-shop-10",
+		mode: "social",
+		name: "Fashion Icon",
+		description: "Own 10 shop cosmetics.",
+		icon: "mvp",
+		progress: (s) => at(s.shopCosmetics, 10)
+	},
+	{
+		id: "social-secret-1",
+		mode: "social",
+		name: "Lucky Find",
+		description: "Find a secret cosmetic in a spin.",
+		icon: "pow",
+		progress: (s) => at(s.secretCosmetics, 1)
+	},
+	{
+		id: "social-secret-8",
+		mode: "social",
+		name: "Hidden Wardrobe",
+		description: "Find all eight secret cosmetics.",
+		icon: "fmvp",
+		progress: (s) => at(s.secretCosmetics, SECRET_COSMETIC_KEYS.length)
+	},
+	{
+		id: "social-showdown",
+		mode: "social",
+		name: "Weekend Warriors",
+		description: "Win a Weekend Showdown with your club.",
+		icon: "champion",
+		progress: (s) => at(s.showdownWins, 1)
+	},
+	{
+		id: "social-tour",
+		mode: "social",
+		name: "Tournament Champion",
+		description: "Win a weekly GM Tournament (Quick Games).",
+		icon: "champion",
+		progress: (s) => at(s.tourTitles, 1)
+	},
+	{
+		id: "social-pass-100",
+		mode: "social",
+		name: "Pass Master",
+		description: "Reach tier 100 of a Season Pass.",
+		icon: "champion",
+		progress: (s) => at(s.seasonBest, 100)
+	},
+	{
+		id: "story-all",
+		mode: "story",
+		name: "Every Road",
+		description: "See all four Story Mode endings.",
+		icon: "eoy",
+		progress: (s) => at(s.storyEndings, 4)
 	},
 	{
 		id: "rebuild-star",
@@ -3785,7 +9355,7 @@ const MODE_ACHIEVEMENTS = [
 	}
 ];
 new Map(MODE_ACHIEVEMENTS.map((a) => [a.id, a]));
-const RANK_ORDER = [
+const RANK_ORDER$1 = [
 	"bronze",
 	"silver",
 	"gold",
@@ -3818,7 +9388,12 @@ function modeStats(read = localRead, extra = {}) {
 	const legacy = readLegacy(read);
 	const weeks = Object.values(loadWeeklyRecords(read)).reduce((n, w) => n + (w.rebuild ? 1 : 0) + (w.career ? 1 : 0), 0);
 	const goals = json$1(read, "cv-daily-history", {});
-	const rankedLocal = RANK_ORDER.indexOf(read("cv-ranked-best") ?? "");
+	const rankedLocal = RANK_ORDER$1.indexOf(read("cv-ranked-best") ?? "");
+	const p82 = loadPerfectRecords(read);
+	const surv = json$1(read, "cv-survival-records", {});
+	const story = json$1(read, "cv-story-endings", {});
+	const relics = loadRelics(read);
+	const has = (id) => (relics.owned[id] ?? 0) > 0;
 	return {
 		retired: c.retired,
 		hallOfFame: c.hallOfFame,
@@ -3844,7 +9419,31 @@ function modeStats(read = localRead, extra = {}) {
 		rankedTier: Math.max(feats.rankedTier ?? 0, rankedLocal, extra.rankedTier ?? 0),
 		weeks,
 		perfectDays: Object.values(goals).filter((g) => g.done >= 3).length,
-		goalStreak: longestStreak(Object.entries(goals).filter(([, g]) => g.done > 0).map(([d]) => d))
+		goalStreak: longestStreak(Object.entries(goals).filter(([, g]) => g.done > 0).map(([d]) => d)),
+		p82Wins: p82.bestWins,
+		p82Titles: p82.titles,
+		p82Perfect: p82.perfectSeasons,
+		p82Perfect98: p82.perfect98,
+		catTitles: categoryTitles(p82),
+		catTeams: categoryTeamTitles(p82),
+		catBrutal: categoryBrutal(p82),
+		catPerfect: categoryPerfect(p82),
+		survivalBest: Math.max(0, ...Object.values(surv.best ?? {}).map((b) => b?.wins ?? 0)),
+		survivalBosses: surv.bossesBeaten ?? 0,
+		storyFinished: story.finished ?? 0,
+		storyLegend: story.tiers?.legend ?? 0,
+		storyEndings: Object.keys(story.tiers ?? {}).length,
+		relicCommons: RELICS.filter((r) => r.rarity === "common" && has(r.id)).length,
+		relicMythics: RELICS.filter((r) => r.rarity === "mythic" && has(r.id)).length,
+		relicSecrets: relics.secrets.length,
+		relicSets: RELIC_SETS.filter((st) => setComplete(relics, st)).length,
+		shopCosmetics: (relics.cosmetics ?? []).filter((k) => k.startsWith("shop-")).length,
+		secretCosmetics: (relics.cosmetics ?? []).filter((k) => k.startsWith("secret-")).length,
+		seasonBest: Math.max(0, ...Object.values(readPass(read).seasons ?? {}).map((x) => x.tier)),
+		giftsSent: feats.giftsSent ?? 0,
+		giftsCollected: feats.giftsCollected ?? 0,
+		showdownWins: feats.showdownWins ?? 0,
+		tourTitles: feats.tourTitles ?? 0
 	};
 }
 const isEarned = (a, s) => {
@@ -3958,6 +9557,20 @@ function decodeLeagueCode(raw) {
 			teamId
 		};
 	}
+	if (head.startsWith("W")) {
+		const m = head.match(/^W([A-Z]+)(\d{4})$/), world = m?.[1].toLowerCase();
+		if (!m || !isWorldLeagueId(world)) throw new Error("This code is for a league this version of the game does not have.");
+		return {
+			origin: {
+				kind: "world",
+				seed,
+				difficulty,
+				year: Number(m[2]),
+				world
+			},
+			teamId
+		};
+	}
 	const kind = head[0] === "G" ? "random" : head[0] === "H" ? "history" : null;
 	const year = Number(head.slice(1));
 	if (!kind || !Number.isInteger(year) || year < 1946 || year > 2100) throw new Error("That is not a Court Vision league code.");
@@ -3970,12 +9583,196 @@ function decodeLeagueCode(raw) {
 			...kind === "history" ? {
 				realDevelopment: !!(rest & 1),
 				forceRosters: !!(rest & 2),
-				allPlayers: !!(rest & 4)
+				allPlayers: !!(rest & 4),
+				...rest & 8 ? { userTeamToo: true } : {}
 			} : rest & 8 ? { balanced: true } : {}
 		},
 		teamId
 	};
 }
+//#endregion
+//#region src/retention/codeResults.ts
+/** A code's board score (the server posts the same): two a win, plus how far the playoffs went. */
+const codeScore = (r) => r.wins * 2 + (FINISH_POINTS[r.finish] ?? 0);
+const EMPTY = {
+	highs: {},
+	finals: []
+};
+const MAX_FINALS = 30;
+function readRecordBook(read = localRead) {
+	try {
+		const r = JSON.parse(read("cv-record-book") ?? "null");
+		return r && typeof r === "object" ? {
+			highs: r.highs && typeof r.highs === "object" ? r.highs : {},
+			finals: Array.isArray(r.finals) ? r.finals : []
+		} : EMPTY;
+	} catch {
+		return EMPTY;
+	}
+}
+/** Two devices: the better game in each category, and every Finals MVP once. */
+function mergeRecordBook(a, b) {
+	const highs = { ...b.highs };
+	for (const k of HIGH_CATS) {
+		const x = a.highs[k], y = b.highs[k];
+		if (x && (!y || x.v > y.v || x.v === y.v && x.at < y.at)) highs[k] = x;
+	}
+	const seen = /* @__PURE__ */ new Set(), finals = [];
+	for (const f of [...a.finals, ...b.finals].sort((x, y) => y.at - x.at)) {
+		const key = `${f.at}|${f.name}`;
+		if (!seen.has(key)) {
+			seen.add(key);
+			finals.push(f);
+		}
+	}
+	return {
+		highs,
+		finals: finals.slice(0, MAX_FINALS)
+	};
+}
+new Map([{
+	id: "halloween",
+	name: "Spooky Season",
+	coin: "Candy",
+	coins: "Candy",
+	month: 9,
+	day: 31,
+	blurb: "Pumpkins on the hardwood and ghosts in the rafters. Play anything to collect Candy, then spend it in the Spooky Shop.",
+	colors: {
+		bg: "#140a1f",
+		panel: "#24123a",
+		accent: "#ff7a1a",
+		text: "#fbeee0",
+		glow: "#8bdc3f"
+	}
+}, {
+	id: "christmas",
+	name: "Winter Wonderland",
+	coin: "Snowflake",
+	coins: "Snowflakes",
+	month: 11,
+	day: 25,
+	blurb: "Snow on the court and lights on the rim. Play anything to collect Snowflakes, then spend them in the Holiday Shop.",
+	colors: {
+		bg: "#071a14",
+		panel: "#0f2e24",
+		accent: "#e8323c",
+		text: "#f4fbff",
+		glow: "#9fd8ff"
+	}
+}].map((h) => [h.id, h]));
+const empty = () => ({
+	v: 1,
+	earned: {},
+	spent: {},
+	counted: []
+});
+const nums = (x) => Object.fromEntries(Object.entries(x && typeof x === "object" ? x : {}).filter(([, v]) => Number.isFinite(Number(v)) && Number(v) >= 0).map(([k, v]) => [k, Math.floor(Number(v))]));
+function loadHoliday(read = localRead) {
+	try {
+		const x = JSON.parse(read("cv-holiday") ?? "null");
+		if (!x || typeof x !== "object") return empty();
+		return {
+			v: 1,
+			earned: nums(x.earned),
+			spent: nums(x.spent),
+			counted: Array.isArray(x.counted) ? x.counted.filter((k) => typeof k === "string").slice(-500) : []
+		};
+	} catch {
+		return empty();
+	}
+}
+/** Two copies (this device and the cloud): the most earned and the most spent per event, and every game counted. */
+function mergeHoliday(a, b) {
+	const max = (x, y) => Object.fromEntries([.../* @__PURE__ */ new Set([...Object.keys(x), ...Object.keys(y)])].map((k) => [k, Math.max(x[k] ?? 0, y[k] ?? 0)]));
+	return {
+		v: 1,
+		earned: max(a.earned, b.earned),
+		spent: max(a.spent, b.spent),
+		counted: [.../* @__PURE__ */ new Set([...b.counted, ...a.counted])].slice(-500)
+	};
+}
+const USERS_MAX = 300;
+const count$1 = (v) => Number.isFinite(Number(v)) ? Math.max(0, Math.min(1e6, Math.floor(Number(v)))) : 0;
+const okId = (s) => typeof s === "string" && s.length > 0 && s.length <= 80;
+function cleanOne(raw) {
+	const x = raw && typeof raw === "object" ? raw : {};
+	const users = {};
+	for (const [k, v] of Object.entries(x.users && typeof x.users === "object" ? x.users : {}).slice(0, USERS_MAX)) if (okId(k)) users[k.toLowerCase()] = {
+		w: count$1(v?.w),
+		l: count$1(v?.l)
+	};
+	const day = typeof x.day === "string" && /^\d{4}-\d{2}-\d{2}$/.test(x.day) ? x.day : "";
+	return {
+		v: 1,
+		w: count$1(x.w),
+		l: count$1(x.l),
+		beaten: [...new Set((Array.isArray(x.beaten) ? x.beaten : []).filter(okId))].slice(-3e3),
+		users,
+		day,
+		today: day ? count$1(x.today) : 0
+	};
+}
+function loadOne(read = localRead) {
+	try {
+		return cleanOne(JSON.parse(read("cv-1v1") ?? "null"));
+	} catch {
+		return cleanOne(null);
+	}
+}
+/** Two devices' records: the bigger counts, every player beaten. */
+function mergeOne(a, b) {
+	const users = { ...b.users };
+	for (const [k, v] of Object.entries(a.users)) users[k] = {
+		w: Math.max(v.w, users[k]?.w ?? 0),
+		l: Math.max(v.l, users[k]?.l ?? 0)
+	};
+	const day = a.day > b.day ? a.day : b.day, today = Math.max(a.day === day ? a.today : 0, b.day === day ? b.today : 0);
+	return cleanOne({
+		v: 1,
+		w: Math.max(a.w, b.w),
+		l: Math.max(a.l, b.l),
+		beaten: [.../* @__PURE__ */ new Set([...b.beaten, ...a.beaten])],
+		users,
+		day,
+		today
+	});
+}
+function readPlayTime(read = localRead) {
+	try {
+		const r = JSON.parse(read("cv-play-time") ?? "null");
+		return r && Number.isFinite(r.total) ? {
+			total: Math.max(0, r.total),
+			areas: r.areas && typeof r.areas === "object" ? r.areas : {}
+		} : {
+			total: 0,
+			areas: {}
+		};
+	} catch {
+		return {
+			total: 0,
+			areas: {}
+		};
+	}
+}
+/** Two devices can't add up safely (each holds what it has seen), so each area keeps the larger count. */
+function mergePlayTime(a, b) {
+	const areas = {};
+	for (const k of /* @__PURE__ */ new Set([...Object.keys(a.areas), ...Object.keys(b.areas)])) areas[k] = Math.max(a.areas[k] ?? 0, b.areas[k] ?? 0);
+	const sum = Object.values(areas).reduce((n, v) => n + (v ?? 0), 0);
+	return {
+		total: Math.max(a.total, b.total, sum),
+		areas
+	};
+}
+function readChallenge(read = localRead) {
+	try {
+		return { days: (JSON.parse(read("cv-daily-challenge") ?? "null")?.days ?? []).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort().slice(-400) };
+	} catch {
+		return { days: [] };
+	}
+}
+const mergeChallenge = (a, b) => ({ days: [.../* @__PURE__ */ new Set([...a.days, ...b.days])].sort().slice(-400) });
 //#endregion
 //#region src/cloud/merge.ts
 /** The stored values that belong to the account (everything else is per device). */
@@ -3992,7 +9789,43 @@ const SYNC_KEYS = [
 	"cv-feats",
 	"cv-legend-records",
 	"cv-card-album",
-	"cv-card-sets"
+	"cv-card-sets",
+	"cv-avatar",
+	"cv-streak",
+	"cv-pass",
+	"cv-perfect-records",
+	"cv-bonus-xp",
+	"cv-record-book",
+	"cv-play-time",
+	"cv-arcade",
+	"cv-missions",
+	"cv-quests",
+	"cv-trophy-case",
+	"cv-relics",
+	"cv-daily-challenge",
+	"cv-survival-records",
+	"cv-story-endings",
+	"cv-owner-records",
+	"cv-battle-records",
+	"cv-decade-best",
+	"cv-street-best",
+	"cv-ranked-best",
+	"cv-founding",
+	"cv-theme",
+	"cv-menu-style",
+	"cv-favorites",
+	"cv-profile-name",
+	"cv-phone-order",
+	"cv-avatar-presets-v1",
+	"cv-my-ratings",
+	"cv-pets",
+	"cv-world-games",
+	"cv-week-log",
+	"cv-likeness",
+	"cv-holiday",
+	"cv-1v1",
+	"cv-pickem",
+	"cv-daily-draft"
 ];
 const parse = (raw, fallback) => {
 	if (!raw) return fallback;
@@ -4028,12 +9861,21 @@ function mergeHunt(a, b) {
 		const o = daily[d];
 		if (!o || r.won && !o.won || r.won === o.won && r.stop > o.stop) daily[d] = r;
 	}
+	const weekly = { ...b.weekly ?? {} };
+	for (const [w, r] of Object.entries(a.weekly ?? {})) {
+		const o = weekly[w];
+		weekly[w] = !o ? r : {
+			...huntScore(r) > huntScore(o) ? r : o,
+			tries: max(r.tries, o.tries)
+		};
+	}
 	return {
 		runs: max(a.runs, b.runs),
 		wins: max(a.wins, b.wins),
 		bestStop: max(a.bestStop, b.bestStop),
 		...a.lastSeed != null ? { lastSeed: a.lastSeed } : b.lastSeed != null ? { lastSeed: b.lastSeed } : {},
-		daily
+		daily,
+		...Object.keys(weekly).length ? { weekly } : {}
 	};
 }
 function mergeRebuild(a, b) {
@@ -4079,6 +9921,81 @@ function mergeCodes(a, b) {
 	}
 	return out;
 }
+const RANK_ORDER = [
+	"bronze",
+	"silver",
+	"gold",
+	"platinum",
+	"diamond",
+	"legend"
+];
+const num = (v) => Number.isFinite(Number(v)) ? Number(v) : 0;
+/** Two sets of counters: the larger of each. */
+const maxEach = (a = {}, b = {}) => Object.fromEntries([.../* @__PURE__ */ new Set([...Object.keys(a), ...Object.keys(b)])].map((k) => [k, Math.max(num(a[k]), num(b[k]))]));
+function mergeSurvival(a, b) {
+	const best = { ...b.best ?? {} };
+	for (const [lv, r] of Object.entries(a.best ?? {})) {
+		const o = best[lv], x = r;
+		if (!o || num(x.score) > num(o.score) || num(x.score) === num(o.score) && num(x.wins) > num(o.wins)) best[lv] = r;
+	}
+	return {
+		...b,
+		...a,
+		runs: Math.max(num(a.runs), num(b.runs)),
+		bossesBeaten: Math.max(num(a.bossesBeaten), num(b.bossesBeaten)),
+		best,
+		daily: {
+			...b.daily ?? {},
+			...a.daily ?? {}
+		}
+	};
+}
+function mergeWorldGames(a, b) {
+	const pa = a.best_place ?? {}, pb = b.best_place ?? {};
+	const best_place = Object.fromEntries([.../* @__PURE__ */ new Set([...Object.keys(pa), ...Object.keys(pb)])].map((k) => [k, Math.min(num(pa[k]) || 99, num(pb[k]) || 99)]));
+	return {
+		...maxEach({
+			played: a.played,
+			best: a.best,
+			gold: a.gold,
+			silver: a.silver,
+			bronze: a.bronze
+		}, {
+			played: b.played,
+			best: b.best,
+			gold: b.gold,
+			silver: b.silver,
+			bronze: b.bronze
+		}),
+		best_place
+	};
+}
+/** The week log: each week's bigger counts and better bests, the last eight weeks. */
+function mergeWeekLog(a, b) {
+	const weeks = [.../* @__PURE__ */ new Set([...Object.keys(a), ...Object.keys(b)])].sort().slice(-8);
+	return Object.fromEntries(weeks.map((w) => {
+		const x = a[w], y = b[w];
+		if (!x || !y) return [w, x ?? y];
+		const best = { ...y.best ?? {} };
+		for (const [m, v] of Object.entries(x.best ?? {})) if (!best[m] || num(v.score) > num(best[m].score)) best[m] = v;
+		const ids = [.../* @__PURE__ */ new Set([...y.ids ?? [], ...x.ids ?? []])].slice(-200);
+		return [w, {
+			seconds: Math.max(num(x.seconds), num(y.seconds)),
+			runs: maxEach(x.runs, y.runs),
+			best,
+			records: Math.max(num(x.records), num(y.records)),
+			...ids.length ? { ids } : {}
+		}];
+	}));
+}
+function mergeOwners(a, b) {
+	const byKey = new Map(b.map((r) => [String(r.key), r]));
+	for (const r of a) {
+		const o = byKey.get(String(r.key));
+		if (!o || num(r.legacy) >= num(o.legacy)) byKey.set(String(r.key), r);
+	}
+	return [...byKey.values()];
+}
 /** Merges one stored value. `local` wins ties for per-device choices (the frame and floor you just equipped). */
 function mergeValue(key, local, cloud) {
 	if (local == null || local === "") return cloud ?? null;
@@ -4103,13 +10020,27 @@ function mergeValue(key, local, cloud) {
 			bestStop: 0
 		})));
 		case "cv-hunt-album":
-		case "cv-rebuild-records-done": return JSON.stringify([.../* @__PURE__ */ new Set([...parse(cloud, []), ...parse(local, [])])]);
+		case "cv-rebuild-records-done":
+		case "cv-pickem": return JSON.stringify([.../* @__PURE__ */ new Set([...parse(cloud, []), ...parse(local, [])])]);
 		case "cv-rebuild-records": return JSON.stringify(mergeRebuild(parse(local, {}), parse(cloud, {})));
 		case "cv-weekly-records": return JSON.stringify(mergeWeekly(parse(local, {}), parse(cloud, {})));
 		case "cv-daily-history": return JSON.stringify(mergeDays(parse(local, {}), parse(cloud, {})));
 		case "cv-code-results": return JSON.stringify(mergeCodes(parse(local, {}), parse(cloud, {})));
 		case "cv-feats": return JSON.stringify(mergeFeats(readFeats(() => local), readFeats(() => cloud)));
 		case "cv-profile-equip": return local;
+		case "cv-avatar": return avatarSavedAt(cloud) > avatarSavedAt(local) ? cloud : local;
+		case "cv-streak": return JSON.stringify(mergeStreak(readStreak(() => local), readStreak(() => cloud)));
+		case "cv-trophy-case": return local;
+		case "cv-quests": return JSON.stringify(mergeQuests(readQuests(() => local), readQuests(() => cloud)));
+		case "cv-missions": return JSON.stringify(mergeMissions(readMissions(() => local), readMissions(() => cloud)));
+		case "cv-bonus-xp": return JSON.stringify(mergeBonusLog(readBonusLog(() => local), readBonusLog(() => cloud)));
+		case "cv-perfect-records": return JSON.stringify(mergePerfectRecords(loadPerfectRecords(() => local), loadPerfectRecords(() => cloud)));
+		case "cv-record-book": return JSON.stringify(mergeRecordBook(readRecordBook(() => local), readRecordBook(() => cloud)));
+		case "cv-play-time": return JSON.stringify(mergePlayTime(readPlayTime(() => local), readPlayTime(() => cloud)));
+		case "cv-arcade": return JSON.stringify(mergeArcade(readArcade(() => local), readArcade(() => cloud)));
+		case "cv-pass": return JSON.stringify(mergePass(readPass(() => local), readPass(() => cloud)));
+		case "cv-relics": return JSON.stringify(mergeRelics(loadRelics(() => local), loadRelics(() => cloud)));
+		case "cv-daily-challenge": return JSON.stringify(mergeChallenge(readChallenge(() => local), readChallenge(() => cloud)));
 		case "cv-legend-records": {
 			const out = { ...parse(cloud, {}) };
 			for (const [id, x] of Object.entries(parse(local, {}))) {
@@ -4127,6 +10058,61 @@ function mergeValue(key, local, cloud) {
 			...parse(cloud, {}),
 			...parse(local, {})
 		});
+		case "cv-survival-records": return JSON.stringify(mergeSurvival(parse(local, {}), parse(cloud, {})));
+		case "cv-story-endings": {
+			const a = parse(local, {}), b = parse(cloud, {});
+			return JSON.stringify({
+				finished: Math.max(num(a.finished), num(b.finished)),
+				tiers: maxEach(a.tiers, b.tiers)
+			});
+		}
+		case "cv-owner-records": return JSON.stringify(mergeOwners(parse(local, []), parse(cloud, [])));
+		case "cv-battle-records": {
+			const a = parse(local, {}), b = parse(cloud, {}), ra = a.byRival ?? {}, rb = b.byRival ?? {};
+			const byRival = Object.fromEntries([.../* @__PURE__ */ new Set([...Object.keys(ra), ...Object.keys(rb)])].map((k) => [k, maxEach(ra[k], rb[k])]));
+			return JSON.stringify({
+				played: Math.max(num(a.played), num(b.played)),
+				won: Math.max(num(a.won), num(b.won)),
+				byRival
+			});
+		}
+		case "cv-decade-best": return num(parse(cloud, {}).score) > num(parse(local, {}).score) ? cloud : local;
+		case "cv-street-best": return String(Math.max(num(local), num(cloud)));
+		case "cv-ranked-best": return RANK_ORDER.indexOf(cloud) > RANK_ORDER.indexOf(local) ? cloud : local;
+		case "cv-founding": return local === "1" || cloud === "1" ? "1" : local;
+		case "cv-world-games": return JSON.stringify(mergeWorldGames(parse(local, {}), parse(cloud, {})));
+		case "cv-holiday": return JSON.stringify(mergeHoliday(loadHoliday(() => local), loadHoliday(() => cloud)));
+		case "cv-1v1": return JSON.stringify(mergeOne(loadOne(() => local), loadOne(() => cloud)));
+		case "cv-week-log": return JSON.stringify(mergeWeekLog(parse(local, {}), parse(cloud, {})));
+		case "cv-daily-draft": {
+			const out = { ...parse(cloud, {}) };
+			for (const [day, x] of Object.entries(parse(local, {}))) if (!out[day] || num(x.score) >= num(out[day].score)) out[day] = x;
+			return JSON.stringify(out);
+		}
+		case "cv-likeness": return JSON.stringify({
+			...parse(cloud, {}),
+			...parse(local, {})
+		});
+		case "cv-pets": {
+			const a = parse(local, {}), b = parse(cloud, {}), list = (x) => Array.isArray(x.second) ? x.second : [];
+			const second = [.../* @__PURE__ */ new Set([...list(b), ...list(a)])];
+			return JSON.stringify({
+				...b,
+				...a,
+				looks: {
+					...b.looks ?? {},
+					...a.looks ?? {}
+				},
+				...second.length ? { second } : {}
+			});
+		}
+		case "cv-theme":
+		case "cv-menu-style":
+		case "cv-favorites":
+		case "cv-profile-name":
+		case "cv-phone-order":
+		case "cv-avatar-presets-v1":
+		case "cv-my-ratings": return local;
 	}
 }
 function mergeStorage(local, cloud) {
@@ -4249,6 +10235,9 @@ const emptyResume = () => ({
 	blk: 0
 });
 //#endregion
+//#region src/career/bigMoments.ts
+const storyLegacy = (picks) => (picks ?? []).reduce((n, p) => n + (p.legacy ?? 0), 0);
+//#endregion
 //#region src/career/career.ts
 function careerResume(meta) {
 	const r = emptyResume();
@@ -4271,7 +10260,88 @@ function careerResume(meta) {
 		else if (a.key === "allDefense2") r.allDef2++;
 		else if (a.key === "roy") r.roy++;
 	}
+	r.story = storyLegacy(meta.bigMoments);
 	return r;
+}
+//#endregion
+//#region src/profile/myRatings.ts
+const MY_SKILLS = CATEGORIES.filter((c) => c.id !== "size").map((c) => ({
+	id: c.id,
+	name: c.name,
+	short: c.short
+}));
+const baseRatings = () => ({
+	v: 1,
+	skills: Object.fromEntries(MY_SKILLS.map((s) => [s.id, 45])),
+	height: 63
+});
+/** Points earned by a profile level: 7 for every 5 levels. */
+const pointsEarned = (level) => Math.floor(Math.max(0, level) / 5) * 7;
+/** What the next point of a skill costs, from its current rating: 1, then 2 from 70, 3 from 90, 5 from 100. */
+const skillStepCost = (v) => v >= 100 ? 5 : v >= 90 ? 3 : v >= 70 ? 2 : 1;
+/** What the next inch costs, from the current height: 5, then 7 from 6'2", 12 from 6'8", 20 from 7'5". */
+const inchStepCost = (h) => h >= 89 ? 20 : h >= 80 ? 12 : h >= 74 ? 7 : 5;
+const sumSteps = (from, to, cost) => {
+	let n = 0;
+	for (let v = from; v < to; v++) n += cost(v);
+	return n;
+};
+const pointsSpent = (r) => MY_SKILLS.reduce((n, s) => n + sumSteps(45, r.skills[s.id], skillStepCost), 0) + sumSteps(63, r.height, inchStepCost);
+/** Keeps a stored build legal (ratings in range, three 99+ at most, never more points than the level has earned). */
+function cleanRatings(raw, level) {
+	const x = raw;
+	const r = baseRatings();
+	if (!x || typeof x !== "object") return r;
+	const num = (v, lo, hi, d) => Number.isFinite(Number(v)) ? Math.max(lo, Math.min(hi, Math.round(Number(v)))) : d;
+	r.height = num(x.height, 63, 94, 63);
+	let elite = 0;
+	for (const s of [...MY_SKILLS].sort((a, b) => num(x.skills?.[b.id], 0, 120, 0) - num(x.skills?.[a.id], 0, 120, 0))) {
+		let v = num(x.skills?.[s.id], 45, 120, 45);
+		if (v >= 99) {
+			if (elite >= 3) v = 98;
+			else elite++;
+		}
+		r.skills[s.id] = v;
+	}
+	while (pointsSpent(r) > pointsEarned(level)) {
+		const top = [...MY_SKILLS].sort((a, b) => r.skills[b.id] - r.skills[a.id])[0];
+		if (r.skills[top.id] > 45) r.skills[top.id]--;
+		else if (r.height > 63) r.height--;
+		else break;
+	}
+	return r;
+}
+function loadMyRatings(level, read = localRead) {
+	try {
+		return cleanRatings(JSON.parse(read("cv-my-ratings") ?? "null"), level);
+	} catch {
+		return baseRatings();
+	}
+}
+const ORDER = [
+	"skin",
+	"hair",
+	"hairColor",
+	"beard",
+	"outfit",
+	"hat",
+	"eyes",
+	"neck",
+	"shoes",
+	"aura"
+];
+function encodeAvatar(look, frame = "none") {
+	const parts = ORDER.map((cat) => Math.max(0, AVATAR_CATEGORIES.find((c) => c.id === cat).items.findIndex((i) => i.id === look[cat])).toString(36));
+	const team = look.kitTeam ? REAL_FRANCHISES.findIndex((t) => t.id === look.kitTeam) + 1 : 0;
+	const number = look.kitNumber != null ? look.kitNumber + 1 : 0;
+	const f = Math.max(0, AVATAR_FRAMES.findIndex((x) => x.id === frame));
+	return [
+		"1",
+		...parts,
+		team.toString(36),
+		number.toString(36),
+		f.toString(36)
+	].join(".");
 }
 //#endregion
 //#region server/derive.ts
@@ -4291,7 +10361,7 @@ function sanitizeBlob(raw) {
 	const storage = {};
 	for (const k of SYNC_KEYS) {
 		const v = b.storage[k];
-		if (typeof v === "string" && v.length < 4e5) storage[k] = v;
+		if (typeof v === "string" && v.length < 2e6) storage[k] = v;
 	}
 	return {
 		version: 1,
@@ -4309,6 +10379,11 @@ function derive(blob, now = /* @__PURE__ */ new Date()) {
 	for (const m of blob.careers) {
 		const r = m.retired, name = cleanName(m.playerId);
 		if (m.status !== "retired" || !r || !name || !int(Math.round(r.legacy), 0, 400) || !Array.isArray(m.years) || !int(m.years.length, 1, 25)) continue;
+		if (m.mode === "sandbox") continue;
+		if (m.difficulty === "rookie" || m.mode === "yourplayer") {
+			counted.push(m);
+			continue;
+		}
 		const res = careerResume(m), legacy = Math.round(r.legacy), g = Math.max(1, res.games);
 		if (res.titles > m.years.length || res.mvp > m.years.length || res.games > 3300) continue;
 		const hall = ["yes", "first-ballot"].includes(r.hallOfFame) ? r.hallOfFame : "no";
@@ -4340,7 +10415,7 @@ function derive(blob, now = /* @__PURE__ */ new Date()) {
 	}
 	const careerCache = {
 		...careerCacheOf(counted),
-		careers: blob.careers.length,
+		careers: blob.careers.filter((c) => c && c.mode !== "sandbox").length,
 		retired: players.length,
 		legacy: legacySum,
 		hallOfFame: hof
@@ -4388,6 +10463,69 @@ function derive(blob, now = /* @__PURE__ */ new Date()) {
 		}
 	}
 	const hunt = loadRecords(read);
+	for (const [week, w] of Object.entries(hunt.weekly ?? {})) {
+		if (!/^\d{4}-W\d{2}$/.test(week) || week < FIRST_WEEK || week > thisWeek || !w || !int(w.stop, 0, 10) || !int(w.wins, 0, 70) || !int(w.losses, 0, 70)) continue;
+		const won = !!w.won && w.wins >= 40;
+		weekly.push({
+			board: "hunt",
+			week,
+			score: huntScore({
+				...w,
+				won
+			}),
+			detail: won ? `Beat the boss · ${w.wins}-${w.losses} in games` : `Reached series ${w.stop + 1} · ${w.wins}-${w.losses}`
+		});
+	}
+	const p82 = loadPerfectRecords(read);
+	for (const [week, d] of Object.entries(perfectWeeks(p82))) {
+		if (!/^\d{4}-W\d{2}$/.test(week) || week < FIRST_WEEK || week > thisWeek || !int(d.score, 0, 6e4) || !int(d.w, 0, 82) || !int(d.l, 0, 82) || d.w + d.l > 82 || !int(d.pw, 0, 16) || !int(d.pl, 0, 12)) continue;
+		weekly.push({
+			board: "perfect",
+			week,
+			score: d.score,
+			detail: `${d.w}-${d.l}${d.pw + d.pl ? ` · playoffs ${d.pw}-${d.pl}` : ""}${d.champion ? " · champions" : ""}`
+		});
+	}
+	for (const [week, d] of Object.entries(p82.weekCat ?? {})) {
+		if (!/^\d{4}-W\d{2}$/.test(week) || week < FIRST_WEEK || week > thisWeek || !d || !int(d.score, 0, 6e4) || !int(d.w, 0, 82) || !int(d.l, 0, 82) || d.w + d.l > 82 || !int(d.pw, 0, 16) || !int(d.pl, 0, 12)) continue;
+		weekly.push({
+			board: "category",
+			week,
+			score: d.score,
+			detail: `${d.w}-${d.l}${d.pw + d.pl ? ` · playoffs ${d.pw}-${d.pl}` : ""}${d.champion ? " · champions" : ""}`
+		});
+	}
+	const arcade = readArcade(read);
+	for (const [week, g] of Object.entries(guessWeeks({
+		...arcade,
+		guess: Object.fromEntries(Object.entries(arcade.guess).filter(([day, d]) => day >= FIRST_DAY && day <= today && Array.isArray(d?.guesses) && d.guesses.length >= 1 && d.guesses.length <= 6))
+	}))) {
+		if (week < FIRST_WEEK || week > thisWeek || !int(g.score, 0, 4200) || g.score === 0) continue;
+		weekly.push({
+			board: "guess",
+			week,
+			score: g.score,
+			detail: `${plural(g.solved, "day")} solved of ${g.days}`
+		});
+	}
+	for (const [week, best] of Object.entries(arcade.hilo.weeks)) {
+		if (!/^\d{4}-W\d{2}$/.test(week) || week < FIRST_WEEK || week > thisWeek || !int(best, 1, 1e3)) continue;
+		weekly.push({
+			board: "hilo",
+			week,
+			score: best,
+			detail: `Streak of ${best}`
+		});
+	}
+	for (const [week, b] of Object.entries(arcade.bracket)) {
+		if (!/^\d{4}-W\d{2}$/.test(week) || week < FIRST_WEEK || week > thisWeek || !b?.played || !int(b.score, 0, 320) || b.score % 10) continue;
+		weekly.push({
+			board: "bracket",
+			week,
+			score: b.score,
+			detail: `${b.score}/320${typeof b.champion === "string" ? ` · champion ${b.champion.split("@")[0].slice(0, 6)} ${b.champion.split("@")[1]?.slice(0, 4) ?? ""}` : ""}`
+		});
+	}
 	const daily = [];
 	for (const [day, d] of Object.entries(hunt.daily ?? {})) {
 		if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || day < FIRST_DAY || day > today || !d || !int(d.stop, 0, 10) || !int(d.wins, 0, 40) || !int(d.losses, 0, 40)) continue;
@@ -4441,7 +10579,7 @@ function derive(blob, now = /* @__PURE__ */ new Date()) {
 				wins: c.wins,
 				losses: c.losses,
 				finish: c.finish,
-				score: c.wins * 2 + (FINISH_POINTS[c.finish] ?? 0)
+				score: codeScore(c)
 			});
 		}
 	} catch {}
@@ -4458,6 +10596,7 @@ function derive(blob, now = /* @__PURE__ */ new Date()) {
 		achievements: gm.achievements,
 		huntRuns: hunt.runs,
 		huntWins: hunt.wins,
+		huntBest: int(hunt.bestStop, 0, 10) ? hunt.bestStop : 0,
 		dailyWins: daily.filter((d) => d.won).length,
 		rebuildStars: rebuild.reduce((n, r) => n + r.stars, 0),
 		rebuildTitles: rebuild.filter((r) => r.title_in != null).length,
@@ -4465,7 +10604,13 @@ function derive(blob, now = /* @__PURE__ */ new Date()) {
 		hallOfFame: hof,
 		bestPlayer: best,
 		xpParts: Object.fromEntries(parts.map((p) => [p.id, p.xp])),
-		summary: `${plural(gm.titles, "title")} · ${plural(hof, "Hall of Famer")} · ${plural(hunt.wins, "hunt")} won`
+		summary: `${plural(gm.titles, "title")} · ${plural(hof, "Hall of Famer")} · ${plural(hunt.wins, "hunt")} won`,
+		relicShelf: relicShelf(read),
+		showcase: showcase(read, levelFor(xp).level, hunt.wins),
+		myPlayer: (({ skills, height }) => ({
+			skills,
+			height
+		}))(loadMyRatings(levelFor(xp).level, read))
 	};
 	const modes = earnedModeAchievements(readWithCareers, { rankedTier: TIERS.findIndex((t) => t.id === stats.rankedBest) }).map((id) => `mode-${id}`);
 	return {
@@ -4485,6 +10630,65 @@ function derive(blob, now = /* @__PURE__ */ new Date()) {
 		codes,
 		ranked
 	};
+}
+/** The relic museum on a public profile: up to six relics you own, rarest first, and how many secrets. */
+function relicShelf(read) {
+	const s = loadRelics(read);
+	return {
+		ids: Object.keys(s.owned).filter((id) => (s.owned[id] ?? 0) > 0 && RELIC_BY_ID.has(id)).sort((a, b) => RARITY_ORDER.indexOf(RELIC_BY_ID.get(b).rarity) - RARITY_ORDER.indexOf(RELIC_BY_ID.get(a).rarity) || a.localeCompare(b)).slice(0, 6),
+		secrets: s.secrets.length
+	};
+}
+/** The first three things on your trophy shelf that the server can check (titles you've earned, runs from your records). */
+function showcase(read, level, huntWins) {
+	let shelf = [];
+	try {
+		const v = JSON.parse(read("cv-trophy-case") ?? "[]");
+		if (Array.isArray(v)) shelf = v.filter((x) => typeof x === "string");
+	} catch {}
+	const titles = /* @__PURE__ */ new Set([...TITLES.filter((t) => t.level <= level).map((t) => t.name), ...earnedExtraTitles(unlockContext(level, read))]);
+	const perfect = loadPerfectRecords(read), streak = readStreak(read);
+	const out = [];
+	for (const id of shelf) {
+		if (out.length >= 3) break;
+		if (id.startsWith("title:") && titles.has(id.slice(6))) out.push(id.slice(6));
+		else if (id === "run:hunt" && huntWins > 0) out.push(`${huntWins} League Hunt win${huntWins === 1 ? "" : "s"}`);
+		else if (id === "run:perfect" && perfect.titles > 0) out.push(`${perfect.titles} 82-0 title${perfect.titles === 1 ? "" : "s"}`);
+		else if (id === "run:streak" && streak.best >= 3) out.push(`${streak.best}-day streak`);
+	}
+	return out;
+}
+/**
+* Your character for the boards, as a look code (src/profile/avatarCode.ts). Pieces and frames won on the
+* leaderboards need the honor, and level pieces the level; anything else that isn't earned falls back to the default.
+*/
+/** `owner`: the game owner's account (profiles.role), with everything open, keeps every piece. */
+function publicAvatar(blob, level, honors, owner = false) {
+	const read = objectRead(blob.storage);
+	const raw = read("cv-avatar");
+	if (!raw) return null;
+	let look;
+	try {
+		look = cleanAvatar(JSON.parse(raw));
+	} catch {
+		return null;
+	}
+	const bought = shopOwned(read);
+	for (const c of owner ? [] : AVATAR_CATEGORIES) {
+		const r = c.items.find((i) => i.id === look[c.id])?.rule;
+		if (r && ("staff" in r || "honor" in r && !honors.includes(r.honor) || "level" in r && r.level > level || "shop" in r && !bought.includes(r.shop))) look = {
+			...look,
+			[c.id]: DEFAULT_AVATAR[c.id]
+		};
+	}
+	let frame;
+	try {
+		frame = JSON.parse(read("cv-profile-equip") ?? "{}").avatarFrame;
+	} catch {}
+	const f = avatarFrameDef(frame);
+	const modes = f.modes ? earnedModeAchievements(read) : [];
+	const ok = owner || (f.staff ? false : f.account ? true : f.modes ? f.modes.some((m) => modes.includes(m)) : f.honors ? f.honors.some((h) => honors.includes(h)) : f.level != null ? level >= f.level : true);
+	return encodeAvatar(look, ok ? f.id : "none");
 }
 //#endregion
 //#region server/supabase.ts
@@ -4568,7 +10772,9 @@ const MIN_FIELD = {
 	weekly: 3,
 	daily: 3,
 	pvp: 20,
-	ranked: 20
+	ranked: 20,
+	podium: 5,
+	weeklyHunt: 5
 };
 const enc = encodeURIComponent;
 async function computeHonors(env, userId, d, now, previous, f = fetch) {
@@ -4595,12 +10801,66 @@ async function computeHonors(env, userId, d, now, previous, f = fetch) {
 		const q = `lb_ranked?select=user_id&season=eq.${enc(season)}&${others}`;
 		if (await count(env, q, f) + 1 >= MIN_FIELD.ranked && await count(env, `${q}&points=gt.${mine}`, f) < 10) honors.add("ranked-10");
 	}
+	const lastSeason = seasonOf(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 0)).toISOString().slice(0, 10));
+	const last = d.ranked.filter((r) => r.season === lastSeason).reduce((n, r) => n + r.points, 0);
+	if (last > 0) {
+		const q = `lb_ranked?select=user_id&season=eq.${enc(lastSeason)}&${others}`;
+		if (await count(env, q, f) + 1 >= MIN_FIELD.podium) {
+			const place = await count(env, `${q}&points=gt.${last}`, f) + 1;
+			if (place <= 3) honors.add(`ranked-${place}`);
+		}
+	}
+	for (const w of d.weekly.filter((x) => x.board === "hunt" && x.week < thisWeek).slice(-4)) {
+		const q = `weekly_scores?select=user_id&board=eq.hunt&week=eq.${enc(w.week)}&${others}`;
+		const field = await count(env, q, f) + 1;
+		if (field >= MIN_FIELD.weeklyHunt && await count(env, `${q}&score=gt.${w.score}`, f) + 1 <= Math.max(1, Math.ceil(field * .1))) honors.add("hunt-week-10");
+	}
 	return [...honors].sort();
 }
 /** PvP is rated on the server (hunt_ghosts), so its honor is checked there after each result. */
 async function pvpHonor(env, userId, rating, f = fetch) {
 	const q = `hunt_ghosts?select=user_id&user_id=neq.${userId}`;
 	return await count(env, q, f) + 1 >= MIN_FIELD.pvp && await count(env, `${q}&rating=gt.${rating}`, f) < 10;
+}
+const MAX_RAW_BYTES = 6e6;
+const tooLarge = (size) => json({
+	error: `Your progress is too large to sync (${(size / 1e6).toFixed(1)} MB; the limit is ${MAX_RAW_BYTES / 1e6} MB).`,
+	size
+}, 413);
+/** The request body as text: gzip-compressed when the game says so (much smaller on the wire), plain otherwise. */
+async function bodyText(req) {
+	const raw = new Uint8Array(await req.arrayBuffer());
+	if (raw.length > 8e5) return { error: tooLarge(raw.length) };
+	if (req.headers.get("X-Sync-Encoding") !== "gzip") return {
+		text: new TextDecoder().decode(raw),
+		wire: raw.length
+	};
+	try {
+		const reader = new Blob([raw]).stream().pipeThrough(new DecompressionStream("gzip")).getReader(), chunks = [];
+		let total = 0;
+		for (;;) {
+			const { done, value } = await reader.read();
+			if (done) break;
+			total += value.length;
+			if (total > 6e6) {
+				await reader.cancel();
+				return { error: tooLarge(total) };
+			}
+			chunks.push(value);
+		}
+		const all = new Uint8Array(total);
+		let at = 0;
+		for (const c of chunks) {
+			all.set(c, at);
+			at += c.length;
+		}
+		return {
+			text: new TextDecoder().decode(all),
+			wire: raw.length
+		};
+	} catch {
+		return { error: json({ error: "Bad progress data." }, 400) };
+	}
 }
 const careerRows = (list) => list.filter((c) => typeof c.id === "string" && typeof c.updatedAt === "number");
 async function handleSync(req, env, now = /* @__PURE__ */ new Date(), f = fetch) {
@@ -4615,8 +10875,10 @@ async function handleSync(req, env, now = /* @__PURE__ */ new Date(), f = fetch)
 			return json({ ok: true });
 		}
 		if (req.method !== "POST") return json({ error: "Method not allowed." }, 405);
-		const text = await req.text();
-		if (text.length > 8e5) return json({ error: "Your progress is too large to sync." }, 413);
+		const body = await bodyText(req);
+		if ("error" in body) return body.error;
+		const { text } = body;
+		if (text.length > 6e6) return tooLarge(text.length);
 		let blob;
 		try {
 			blob = sanitizeBlob(JSON.parse(text));
@@ -4636,7 +10898,7 @@ async function handleSync(req, env, now = /* @__PURE__ */ new Date(), f = fetch)
 			careers: mergeCareers(careerRows(blob.careers), careerRows(prev.careers))
 		};
 		const size = JSON.stringify(blob).length;
-		if (size > 8e5) return json({ error: "Your progress is too large to sync." }, 413);
+		if (size > 6e6) return tooLarge(size);
 		const d = derive(blob, now);
 		const own = (rows) => rows.map((r) => ({
 			...r,
@@ -4648,7 +10910,8 @@ async function handleSync(req, env, now = /* @__PURE__ */ new Date(), f = fetch)
 			size,
 			updated_at: now.toISOString()
 		}], "user_id", f);
-		const current = (await rest(env, "GET", `profiles?id=eq.${id}&select=stats`, void 0, void 0, f))?.[0];
+		const current = (await rest(env, "GET", `profiles?id=eq.${id}&select=stats,role`, void 0, void 0, f).catch(() => rest(env, "GET", `profiles?id=eq.${id}&select=stats`, void 0, void 0, f)))?.[0];
+		const owner = current?.role === "owner";
 		const previous = Array.isArray(current?.stats?.honors) ? current.stats.honors.filter((h) => typeof h === "string") : [];
 		let honors = previous;
 		try {
@@ -4656,37 +10919,49 @@ async function handleSync(req, env, now = /* @__PURE__ */ new Date(), f = fetch)
 			const ghost = (await rest(env, "GET", `hunt_ghosts?${eq}&select=rating`, void 0, void 0, f))?.[0];
 			if (ghost && !honors.includes("pvp-10") && await pvpHonor(env, id, ghost.rating, f)) honors = [...honors, "pvp-10"].sort();
 		} catch {}
-		await Promise.all([
-			rest(env, "PATCH", `profiles?id=eq.${id}`, {
+		const avatar = publicAvatar(blob, d.profile.level, honors, owner);
+		if (avatar) await rest(env, "PATCH", `profiles?id=eq.${id}`, { avatar }, "return=minimal", f).catch(() => null);
+		const stamp = now.toISOString();
+		const weeklyRow = (w) => ({
+			...w,
+			updated_at: stamp
+		});
+		const writes = [
+			["profile", rest(env, "PATCH", `profiles?id=eq.${id}`, {
 				level: d.profile.level,
 				xp: d.profile.xp,
 				stats: {
 					...d.profile.stats,
-					honors
+					honors,
+					lastSeen: stamp
 				},
-				updated_at: now.toISOString()
-			}, "return=minimal", f),
-			rest(env, "DELETE", `user_achievements?${eq}`, void 0, "return=minimal", f).then(() => upsert(env, "user_achievements", own(d.achievements.map((a) => ({ achievement_id: a }))), "user_id,achievement_id", f)),
-			upsert(env, "created_players", own(d.players), "user_id,career_id", f),
-			upsert(env, "weekly_scores", own(d.weekly.map((w) => ({
-				...w,
-				updated_at: now.toISOString()
-			}))), "board,week,user_id", f),
-			upsert(env, "daily_legend", own(d.daily), "day,user_id", f),
-			upsert(env, "rebuild_records", own(d.rebuild), "scenario,user_id", f),
-			upsert(env, "code_results", own(d.codes.map((c) => ({
+				updated_at: stamp
+			}, "return=minimal", f)],
+			["achievements", rest(env, "DELETE", `user_achievements?${eq}`, void 0, "return=minimal", f).then(() => upsert(env, "user_achievements", own(d.achievements.map((a) => ({ achievement_id: a }))), "user_id,achievement_id", f))],
+			["created_players", upsert(env, "created_players", own(d.players), "user_id,career_id", f)],
+			...[...new Set(d.weekly.map((w) => w.board))].map((board) => [`weekly:${board}`, upsert(env, "weekly_scores", own(d.weekly.filter((w) => w.board === board).map(weeklyRow)), "board,week,user_id", f)]),
+			["daily_legend", upsert(env, "daily_legend", own(d.daily), "day,user_id", f)],
+			["rebuild_records", upsert(env, "rebuild_records", own(d.rebuild), "scenario,user_id", f)],
+			["code_results", upsert(env, "code_results", own(d.codes.map((c) => ({
 				...c,
-				updated_at: now.toISOString()
-			}))), "code,user_id", f),
-			upsert(env, "ranked_events", own(d.ranked), "user_id,event", f)
-		]);
+				updated_at: stamp
+			}))), "code,user_id", f)],
+			["ranked_events", upsert(env, "ranked_events", own(d.ranked), "user_id,event", f)]
+		];
+		const settled = await Promise.allSettled(writes.map(([, w]) => w));
+		const skipped = writes.map(([name], i) => settled[i].status === "rejected" ? name : null).filter((n) => !!n);
+		if (skipped.length) console.error("sync: skipped", skipped.join(", "), settled.filter((r) => r.status === "rejected").map((r) => String(r.reason)).join(" | "));
 		return json({
 			ok: true,
 			level: d.profile.level,
 			xp: d.profile.xp,
-			honors
+			honors,
+			avatar,
+			owner,
+			...skipped.length ? { skipped } : {}
 		});
-	} catch {
+	} catch (e) {
+		console.error("sync: failed", e instanceof Error ? e.message : String(e));
 		return json({ error: "Cloud sync is having trouble. Your progress is safe on this device; it will sync later." }, 502);
 	}
 }

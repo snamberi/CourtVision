@@ -1,3 +1,4 @@
+import { endHoldout } from './holdouts';
 import type { League } from './league';
 import type { GMLeagueExtras, Contract } from './gm';
 import { computeAskingSalary } from './gm';
@@ -75,7 +76,7 @@ export function signExtension(league: League, extras: GMLeagueExtras, playerId: 
   if (!c) return { league, extras };
   const contracts = { ...extras.contracts, [playerId]: { ...c, extension: { annualSalary: deal.annualSalary, years: deal.years, agreedSeason: league.season ?? '' } } };
   const teams = league.teams.map(t => ({ ...t, seasons: t.seasons.map(p => p.playerId === playerId ? { ...p, contractYear: undefined } : p) }));
-  return { league: { ...league, teams }, extras: { ...extras, contracts } };
+  return { league: endHoldout({ ...league, teams }, playerId), extras: { ...extras, contracts } };
 }
 
 /** At a contract's end, an agreed extension becomes the new contract. */

@@ -1,3 +1,20 @@
+import { PickemCard } from './components/PickemCard';
+import { COACH_ONLY_HIDDEN } from './simulation/coachOnly';
+import { CoachOnlyCard, CoachOnlyNotice } from './components/CoachOnlyCard';
+import { HistoryTour, historyTourDone } from './components/HistoryTour';
+import { RewindPage } from './components/RewindPage';
+import { prepareRewind } from './storage/saves';
+import { appendInbox, loadInbox, unreadCount } from './inbox';
+import { InboxPage } from './components/InboxPage';
+import { SeasonPreviewPage } from './components/SeasonPreviewPage';
+import { withSeasonPreview } from './simulation/seasonPreview';
+import { LineupLabPage } from './components/LineupLabPage';
+import { TwoWayCard } from './components/TwoWayCard';
+import { assignHoldouts } from './simulation/holdouts';
+import { RosterResetPreview } from './components/RosterResetPreview';
+import { RealVsYoursPage } from './components/RealVsYoursPage';
+import { DynastyRankingsPage } from './components/DynastyRankingsPage';
+import { momentById } from './history/moments';
 import { plural } from './lib/humanize';
 import { initializeCoaching } from './simulation/staffManagement';
 import { noteHolidayFinish } from './retention/holiday';
@@ -298,7 +315,7 @@ function buildInitialExtras(league: League): GMLeagueExtras {
 }
 
 type Screen = 'continue' | 'menu' | 'chooseTeam' | 'app' | 'hunt' | 'perfect' | 'survival' | 'story' | 'relics' | 'shop' | 'levelRoad' | 'trophyRoad' | 'seasonPass' | 'career' | 'locker' | 'profile' | 'community' | 'draft' | 'settings' | 'arcade' | 'create' | 'worldGamesMode' | 'friends' | 'clubs' | 'online' | 'friendList' | 'closet' | 'holiday' | 'updates';
-const ARCADE_HASH: Record<ArcadeTab, string> = { grid: '#/grid', guess: '#/guess', categorize: '#/categorize', guessTeam: '#/guess-the-team', hilo: '#/higher-lower', bracket: '#/bracket', quiz: '#/quiz', legends: '#/legends', street: '#/street', oneOnOne: '#/1v1', tour: '#/tournament' };
+const ARCADE_HASH: Record<ArcadeTab, string> = { grid: '#/grid', guess: '#/guess', categorize: '#/categorize', guessTeam: '#/guess-the-team', hilo: '#/higher-lower', bracket: '#/bracket', quiz: '#/quiz', legends: '#/legends', street: '#/street', oneOnOne: '#/1v1', tour: '#/tournament', dailyDraft: '#/daily-draft' };
 const arcadeTabOf = (hash: string) => (Object.entries(ARCADE_HASH).find(([, h]) => h === hash)?.[0] as ArcadeTab | undefined);
 
 const debouncedSave = createDebouncedSave();
@@ -309,6 +326,8 @@ function App() {
   const [profileTab, setProfileTab] = useState<'profile' | 'achievements'>('profile');
   const [saveSummaries, setSaveSummaries] = useState<SaveSummary[]>([]);
   const [activeSaveId, setActiveSaveId] = useState<string | null>(null);
+  const [inboxUnread, setInboxUnread] = useState(0);
+  const [tourClosed, setTourClosed] = useState(false);
   const [pendingLeagueName, setPendingLeagueName] = useState('My League');
   const [league, setLeague] = useState<League>(buildInitialLeague);
   const [extras, setExtras] = useState<GMLeagueExtras>(() => buildInitialExtras(league));
@@ -339,9 +358,13 @@ function App() {
   const [seasonSummary, setSeasonSummary] = useState<SeasonTransitionSummary | null>(null);
   const [ownerVerdict, setOwnerVerdict] = useState<{ review: OwnerReview; newAchievements: string[] } | null>(null);
   const [toasts, setToasts] = useState<ToastData[]>([]);
+  // Where toasts are filed in the league's Inbox (refreshed every render; see inbox.ts).
+  const inboxCtx = useRef<{ saveId: string | null; season?: string; date?: string; inLeague: boolean }>({ saveId: null, inLeague: false });
   const pushToast = useCallback((message: string, tone: 'info' | 'success' | 'error' = 'info') => {
     const id = Date.now() + Math.random();
     setToasts((t) => [...t, { id, message, tone }]); // each toast times itself out (see ToastStack) based on its length
+    const ctx = inboxCtx.current;
+    if (ctx.inLeague) appendInbox(ctx.saveId, { text: message, tone, season: ctx.season, date: ctx.date });
   }, []);
   useEffect(() => {
     const failed = () => pushToast('Autosave failed. Your previous save is intact. Export your universe to keep your latest progress.', 'error');
@@ -499,12 +522,12 @@ function App() {
 
   const [menuBusy, setMenuBusy] = useState<string | null>(null);
   /** Builds a league from its origin (a new game, the weekly challenge, or a league code) and opens it. */
-  const startFromOrigin = (origin: LeagueOrigin, o: { name: string; teamId?: string | null; weekly?: WeeklyRebuild | null; settings?: CreateSettings; dynasty?: boolean; decade?: boolean; gmCareer?: boolean }) => {
+  const startFromOrigin = (origin: LeagueOrigin, o: { name: string; teamId?: string | null; intro?: string; weekly?: WeeklyRebuild | null; settings?: CreateSettings; dynasty?: boolean; decade?: boolean; gmCareer?: boolean }) => {
     const openWithTeam = (built: League, builtExtras: GMLeagueExtras) => {
       // League settings picked on the New Franchise page; Dynasty Mode switches on the living world.
       const set = o.settings ? applyCreateSettings(built, builtExtras, o.settings, origin.kind === 'random' || origin.kind === 'world') : { league: built, extras: builtExtras };
       const extras = set.extras, dyn0 = o.dynasty ? startDynasty(set.league) : set.league, dyn = o.decade ? startDecade(dyn0) : dyn0, league = o.gmCareer ? startGmCareer(dyn) : dyn;
-      if (o.teamId && league.teams.some(t => t.teamId === o.teamId)) { enterApp(league, extras, o.teamId, o.name); setTab('dashboard'); return; }
+      if (o.teamId && league.teams.some(t => t.teamId === o.teamId)) { enterApp(league, extras, o.teamId, o.name); setTab('dashboard'); if (o.intro) pushToast(o.intro, 'info'); return; }
       setPendingLeague(league);
       setPendingExtras(extras);
       setPendingLeagueName(o.name);
@@ -607,7 +630,10 @@ function App() {
     track('mode_start', { mode: c.source === 'random' ? 'random' : c.source === 'world' ? 'world' : 'real', variant: c.source === 'world' ? c.world ?? 'euro' : c.source });
     if (c.source === 'world') startFromOrigin({ kind: 'world', world: c.world ?? 'euro', year: parseInt(c.year, 10), seed, difficulty: c.difficulty }, { name: c.name, settings: c.settings, dynasty: c.dynasty, decade: c.decade, gmCareer: c.gmCareer });
     else if (c.source === 'random') startFromOrigin({ kind: 'random', year: parseInt(c.year, 10), seed, difficulty: c.difficulty, balanced: true }, { name: c.name, settings: c.settings, dynasty: c.dynasty, decade: c.decade, gmCareer: c.gmCareer });
-    else if (c.source === 'history') startFromOrigin({ kind: 'history', year: parseInt(c.year, 10), seed, difficulty: c.difficulty, ...c.real }, { name: c.name, settings: c.settings, dynasty: c.dynasty, decade: c.decade, gmCareer: c.gmCareer });
+    else if (c.source === 'history') {
+      const m = c.moment ? momentById(c.moment) : undefined;
+      startFromOrigin({ kind: 'history', year: parseInt(c.year, 10), seed, difficulty: c.difficulty, ...c.real }, { name: c.name, settings: c.settings, dynasty: c.dynasty, decade: c.decade, gmCareer: c.gmCareer, ...(m ? { teamId: m.team, intro: `${m.title}: ${m.blurb}` } : {}) });
+    }
     else startGameMode('real', c.difficulty, c.year, c.name, { source: 'csv', realDevelopment: true });
   };
 
@@ -934,15 +960,15 @@ function App() {
 
   const historicalSeason = league.historical ? league.season : null;
   // Older historical saves: load each real season's length and pace; leagues with Historical rosters on follow them.
-  const needsSeasonShape = !!league.historical && !league.historical.realSeasonGames;
+  const needsSeasonShape = !!league.historical && (!league.historical.realSeasonGames || !league.historical.realThreeVolume);
   useEffect(() => {
     if (!needsSeasonShape || jobs.busy) return;
     let cancelled = false;
     historyTools().then(({ h, realSeasonShape }) => {
       if (cancelled) return;
       const shape = realSeasonShape(h);
-      setLeague(l => !l.historical || l.historical.realSeasonGames ? l : {
-        ...l, historical: { ...l.historical, realSeasonGames: shape.games, realPace: shape.pace },
+      setLeague(l => !l.historical || (l.historical.realSeasonGames && l.historical.realThreeVolume) ? l : {
+        ...l, historical: { ...l.historical, realSeasonGames: shape.games, realPace: shape.pace, realThreeVolume: shape.threes },
         settings: l.historical.forceRosters && l.settings.yearAccurate === undefined ? { ...l.settings, yearAccurate: true } : l.settings,
       });
     }).catch(() => { /* tried again next time the league opens */ });
@@ -1159,7 +1185,7 @@ function App() {
     let current = { league, extras };
     let totalSignings = 0;
     for (let i = 0; i < extras.freeAgencyDaysRemaining; i++) {
-      const result = runFreeAgencyAI(current.league, current.extras, controlledTeamId, Date.now() + i);
+      const result = runFreeAgencyAI(current.league, current.extras, aiUserTeam(current.league, controlledTeamId), Date.now() + i);
       totalSignings += result.signings.length;
       current = { league: result.league, extras: result.extras };
     }
@@ -1235,7 +1261,7 @@ function App() {
   const startRegularSeason = () => {
     setPlayoffBracket(null);
     const ready = manageCoachRosters(finalizeNewSeasonSchedule(league), extras, [aiUserTeam(league, controlledTeamId)]);
-    setLeague(ready.league);
+    setLeague(withSeasonPreview(assignHoldouts(ready.league, ready.extras, seed + Number(ready.league.season ?? 0))));
     setExtras(ensureUpcomingDraftClass(ready.league, ready.extras));
     setTab('standings');
   };
@@ -1489,19 +1515,33 @@ function App() {
   const navMode: NavMode = tutorial?.navMode ?? 'full';
   const unlockCtx = { league, controlledTeamId, pendingTradeOffers: extras.pendingTradeOffers.length };
   const locked = lockedFeatures(unlockCtx);
-  const lockedTabSet = new Set([...locked.flatMap((s) => s.feature.tabs), ...(league.gmCareer ? ROLE_LOCKED[gmRole(league)] : [])]);
+  // Coach-only leagues: the front-office pages stay closed even when opened from a link or a button.
+  const coachLocked = !!league.settings.coachOnly && COACH_ONLY_HIDDEN.includes(tab);
+  const lockedTabSet = new Set([...locked.flatMap((s) => s.feature.tabs), ...(league.gmCareer ? ROLE_LOCKED[gmRole(league)] : []), ...(league.settings.coachOnly ? COACH_ONLY_HIDDEN : [])]);
   const freshTabs = newFeatureTabs(unlockCtx);
   // Every page you can open right now, for the Ctrl+K quick jump (same rules as the sidebar, locked pages left out).
   const jumpItems: JumpItem[] = [
     ...GROUPS.flatMap(g => g.items.filter(i => !(i.requiresControlledTeam && !controlledTeam) && !(i.onlyDuringPhase && i.onlyDuringPhase !== seasonPhase)
       && !(i.requiresHistorical && !league.historical) && !lockedTabSet.has(i.tab)).map(i => ({ label: i.label, tab: i.tab, group: g.title, sub: i.leagueSettingsSub }))),
     { label: 'Main Menu', tab: 'mainMenu', group: 'Leave' },
+    ...league.teams.map(t => ({ label: t.name, tab: 'teamProfile', group: 'Team', kind: 'team' as const, id: t.teamId })),
+    ...league.teams.flatMap(t => t.seasons.map(p => ({ label: p.playerId, tab: 'editor', group: t.name, kind: 'player' as const, id: p.playerId }))),
+    ...extras.freeAgents.map(p => ({ label: p.playerId, tab: 'editor', group: 'Free agent', kind: 'player' as const, id: p.playerId })),
   ];
   const jumpTo = (item: JumpItem) => {
     if (item.tab === 'mainMenu') { setConfirmation('exit'); return; }
+    if (item.kind === 'player' && item.id) { selectPlayer(item.id); return; }
+    if (item.kind === 'team' && item.id) { setViewedTeamId(item.id); setTab('teamProfile'); return; }
     if (item.sub) setLeagueSettingsSub(item.sub);
     navigateFromMenu(item.tab);
   };
+  useEffect(() => {
+    const refresh = () => setInboxUnread(unreadCount(loadInbox(activeSaveId)));
+    refresh();
+    window.addEventListener('courtvision:inbox', refresh);
+    return () => window.removeEventListener('courtvision:inbox', refresh);
+  }, [activeSaveId]);
+  inboxCtx.current = { saveId: activeSaveId, season: league.season, date: league.calendarDate ? formatDisplayDate(league.calendarDate) : undefined, inLeague: screen === 'app' && league.teams.length > 0 };
   shortcutRef.current = (e: KeyboardEvent) => {
     if (screen !== 'app' || league.teams.length === 0 || confirmation) return;
     if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'k') { e.preventDefault(); setOverlay(o => o === 'jump' ? null : 'jump'); return; }
@@ -1509,7 +1549,7 @@ function App() {
     const key = e.key.toLowerCase();
     if (e.key === '?') { e.preventDefault(); setOverlay('keys'); return; }
     if (e.key === '/') { e.preventDefault(); setOverlay('jump'); return; }
-    const pages: Record<string, string> = { d: 'dashboard', r: 'roster', t: 'trade', s: 'standings', f: 'freeAgency', p: 'playerStats' };
+    const pages: Record<string, string> = { d: 'dashboard', r: 'roster', t: 'trade', s: 'standings', f: 'freeAgency', p: 'playerStats', l: 'lineupLab', i: 'inbox' };
     if (pages[key]) { if (!lockedTabSet.has(pages[key])) { e.preventDefault(); navigateFromMenu(pages[key]); } return; }
     if (key === 'n') {
       e.preventDefault();
@@ -1517,6 +1557,11 @@ function App() {
       else if (jobs.busy) pushToast('A simulation is already running.', 'info');
       else if (isDeadlineDayOpen(league)) { setTab('deadline'); pushToast('Trade Deadline Day is open: finish it first.', 'info'); }
       else simulateGamesCount(1);
+    }
+    if (key === 'w') {
+      e.preventDefault();
+      if (seasonPhase !== 'regular_season' || leagueUnplayedCount === 0 || jobs.busy || isDeadlineDayOpen(league)) pushToast('Nothing to sim right now. Use the Play button.', 'info');
+      else simulateGamesCount(7);
     }
   };
   const unlockNotice: Feature | undefined = pendingUnlockNotices(unlockCtx)[0];
@@ -1818,7 +1863,7 @@ function App() {
         onViewSeasonRecap={beginAwardsRecap}
         onContinueToDraft={beginDraftPhase}
         draftPicksRemaining={draftPicksRemaining}
-        hasUpcomingDraftPick={hasUpcomingDraftPick}
+        hasUpcomingDraftPick={hasUpcomingDraftPick && !league.settings.coachOnly}
         onSimToMyNextPick={simToMyNextDraftPick}
         onSimEntireDraftAndContinue={simEntireDraftAndContinue}
         onContinueToResignWaive={() => beginResignWaivePhase()}
@@ -1834,7 +1879,7 @@ function App() {
           {seasonSummary.expiredToFreeAgencyIds.length} hit free agency, {seasonSummary.newDraftClassSize} new draft prospects.
           {seasonSummary.seasonAwards.mvp && <> MVP: {seasonSummary.seasonAwards.mvp.playerId}.</>}
           {seasonSummary.pickProtectionsTriggered.length > 0 && (
-            <> {seasonSummary.pickProtectionsTriggered.length} traded pick{seasonSummary.pickProtectionsTriggered.length === 1 ? '' : 's'} stayed home this year (protection triggered).</>
+            <> {seasonSummary.pickProtectionsTriggered.length} traded pick{seasonSummary.pickProtectionsTriggered.length === 1 ? '' : 's'} stayed home this year (protection triggered) and rolled over to next year's pick with looser protection.</>
           )}
           <button onClick={() => setSeasonSummary(null)} aria-label="Dismiss">×</button>
         </div>
@@ -1883,11 +1928,14 @@ function App() {
           seasonPhase={seasonPhase}
           onNavigateLeagueSettings={(sub) => { setLeagueSettingsSub(sub); setTab('leagueSettings'); }}
           pendingTradeOfferCount={extras.pendingTradeOffers.length}
+          inboxUnread={inboxUnread}
+          hiddenTabs={league.settings.coachOnly ? COACH_ONLY_HIDDEN : undefined}
           courtChatNew={courtChatNew}
         />
         <main tabIndex={0} aria-label="Game content">
         <AdBanner slot="top" refreshKey={tab} />
         <Suspense fallback={<p className="empty-state page-loading" role="status">Loading…</p>}>
+        {coachLocked && <CoachOnlyNotice onOpenSettings={() => { setLeagueSettingsSub('rules'); setTab('leagueSettings'); }} />}
         {tab === 'teamProfile' && <TeamProfilePage league={league} extras={extras} teamId={viewedTeamId} onSelectPlayer={selectPlayer} />}
         {tab === 'sandbox' && <SandboxPage enabled={sandboxMode} league={league} extras={extras} onChange={(l, e) => { setLeague(l); setExtras(e); }} onToast={pushToast} onToggle={() => { if (sandboxMode) { setSandboxMode(false); setTab('sandbox'); } else setConfirmation('sandbox'); }} />}
         {confirmation && <ConfirmationDialog title={confirmation === 'sandbox' ? 'Enable Sandbox Mode?' : 'Return to Main Menu?'} confirmLabel={confirmation === 'sandbox' ? 'Enable Sandbox' : 'Save & Exit'} onCancel={() => setConfirmation(null)} onConfirm={async () => {
@@ -1919,7 +1967,8 @@ function App() {
         )}
 
         {tab === 'yourTeam' && controlledTeamId && (
-          <YourTeamPage currentChampion={playoffBracket?.championTeamId} league={league} controlledTeamId={controlledTeamId} onSelectPlayer={selectPlayer} onChange={setLeague} />
+          <><TwoWayCard league={league} teamId={controlledTeamId} onChange={setLeague} onSelectPlayer={selectPlayer} />
+          <YourTeamPage currentChampion={playoffBracket?.championTeamId} league={league} controlledTeamId={controlledTeamId} onSelectPlayer={selectPlayer} onChange={setLeague} /></>
         )}
 
         {tab === 'roster' && (
@@ -1977,10 +2026,11 @@ function App() {
             : <FastEditPage teams={league.teams} sandboxMode={sandboxMode} onUpdatePlayer={updatePlayerOnTeam} onSelectPlayer={selectPlayer} />
         )}
 
+        {tab === 'lineupLab' && <LineupLabPage league={league} controlledTeamId={controlledTeamId} onSelectPlayer={selectPlayer} />}
         {tab === 'compare' && (
           league.teams.length === 0
             ? <p className="empty-state">No teams yet.</p>
-            : <ComparePage teams={league.teams} />
+            : <ComparePage teams={league.teams} league={league} extras={extras} onSelectPlayer={selectPlayer} />
         )}
 
         {tab === 'standings' && (
@@ -1998,7 +2048,7 @@ function App() {
         {tab === 'playoffs' && (
           league.teams.length < 4
             ? <p className="empty-state">Need at least four teams for a playoff bracket.</p>
-            : <PlayoffsPage league={league} onChange={setLeague} bracket={playoffBracket} onBracketChange={setPlayoffBracket} onCelebrate={replayCelebration} controlledTeamId={controlledTeamId} />
+            : <><PickemCard league={league} bracket={playoffBracket} saveId={activeSaveId} onChange={setLeague} onToast={m => pushToast(m, 'success')} /><PlayoffsPage league={league} onChange={setLeague} bracket={playoffBracket} onBracketChange={setPlayoffBracket} onCelebrate={replayCelebration} controlledTeamId={controlledTeamId} /></>
         )}
 
         {tab === 'finances' && (
@@ -2010,7 +2060,7 @@ function App() {
               />
         )}
 
-        {tab === 'trade' && (
+        {tab === 'trade' && !coachLocked && (
           league.teams.length === 0
             ? <p className="empty-state">No teams yet.</p>
             : <TradePage
@@ -2021,7 +2071,7 @@ function App() {
               />
         )}
 
-        {tab === 'tradeBlock' && (
+        {tab === 'tradeBlock' && !coachLocked && (
           league.teams.length === 0
             ? <p className="empty-state">No teams yet.</p>
             : <TradeBlockPage
@@ -2031,7 +2081,7 @@ function App() {
         )}
 
 
-        {tab === 'tradeOffers' && (
+        {tab === 'tradeOffers' && !coachLocked && (
           league.teams.length === 0
             ? <p className="empty-state">No teams yet.</p>
             : <TradeOffersPage
@@ -2040,7 +2090,11 @@ function App() {
               />
         )}
 
-        {tab === 'freeAgency' && (
+        {(tab === 'freeAgency' || tab === 'resignWaive' || tab === 'draft') && (
+          <RosterResetPreview league={league} extras={extras} teamId={controlledTeamId} onSelectPlayer={selectPlayer}
+            onKeepRoster={() => { setLeague(l => (l.historical ? { ...l, historical: { ...l.historical, userTeamToo: false } } : l)); pushToast('Historical rosters will leave your team alone from now on.', 'info'); }} />
+        )}
+        {tab === 'freeAgency' && !coachLocked && (
           league.teams.length === 0
             ? <p className="empty-state">No teams yet.</p>
             : <><FreeAgencyPage sandboxMode={sandboxMode}
@@ -2054,7 +2108,7 @@ function App() {
           league.teams.length === 0
             ? <p className="empty-state">No teams yet.</p>
             : <DraftPage
-                league={league} extras={extras} controlledTeamId={managerId}
+                league={league} extras={extras} controlledTeamId={league.settings.coachOnly && managerId ? '__spectator__' : managerId}
                 onChange={(l, e) => { setLeague(l); setExtras(e); }} onSelectPlayer={selectPlayer}
                 summerLeagueReady={canPlaySummerLeague(league, extras)} onOpenSummerLeague={() => setTab('summerLeague')}
               />
@@ -2087,8 +2141,8 @@ function App() {
             : <InjuryReportPage sandboxMode={sandboxMode} league={league} controlledTeamId={controlledTeamId} onChange={setLeague} onSelectPlayer={selectPlayer} />
         )}
 
-        {tab === 'threeTeam' && <ThreeTeamTradePage league={league} extras={extras} controlledTeamId={controlledTeamId} onChange={(l, e) => { setLeague(l); setExtras(e); }} />}
-        {tab === 'extensions' && <ExtensionsPage league={league} extras={extras} controlledTeamId={controlledTeamId} onChange={(l, e) => { setLeague(l); setExtras(e); }} onSelectPlayer={selectPlayer} />}
+        {tab === 'threeTeam' && !coachLocked && <ThreeTeamTradePage league={league} extras={extras} controlledTeamId={controlledTeamId} onChange={(l, e) => { setLeague(l); setExtras(e); }} />}
+        {tab === 'extensions' && !coachLocked && <ExtensionsPage league={league} extras={extras} controlledTeamId={controlledTeamId} onChange={(l, e) => { setLeague(l); setExtras(e); }} onSelectPlayer={selectPlayer} />}
         {tab === 'storylines' && <StorylinesPage league={league} extras={extras} controlledTeamId={controlledTeamId} onSelectPlayer={selectPlayer} />}
         {tab === 'courtChat' && <CourtChatPage league={league} extras={extras} controlledTeamId={controlledTeamId} onSelectPlayer={selectPlayer} onChange={setLeague} />}
         {tab === 'summerCamp' && <SummerCampPage league={league} controlledTeamId={controlledTeamId} onChange={setLeague} onSelectPlayer={selectPlayer} />}
@@ -2124,9 +2178,11 @@ function App() {
         {tab === 'records' && <RecordsPage league={league} extras={extras} onSelectPlayer={selectPlayer} />}
         {tab === 'historyBook' && <HistoryBookPage league={league} onSelectPlayer={selectPlayer} />}
         {tab === 'almanac' && <AlmanacPage league={league} extras={extras} awardSettings={awardSettings} onSelectPlayer={selectPlayer} />}
+        {tab === 'realVsYours' && <RealVsYoursPage league={league} extras={extras} onSelectPlayer={selectPlayer} />}
+        {tab === 'dynastyRankings' && <DynastyRankingsPage league={league} userTeamId={controlledTeamId} onSelectTeam={id => { setViewedTeamId(id); setTab('teamHistory'); }} />}
         {tab === 'nbaArchive' && <NbaArchivePage key={archiveQuery} league={league} extras={extras} onSelectPlayer={selectPlayer} initialQuery={archiveQuery} onLoadRetirees={loadRetirees} />}
 
-        {tab === 'resignWaive' && (
+        {tab === 'resignWaive' && !coachLocked && (
           <ResignWaivePage
             league={league} extras={extras} controlledTeamId={managerId} summary={seasonSummary}
             onChange={(l, e) => { setLeague(l); setExtras(e); }}
@@ -2164,7 +2220,7 @@ function App() {
             </nav>
             {leagueSettingsSub === 'awards' && <Suspense fallback={<p className="empty-state page-loading" role="status">Loading…</p>}><LeagueSettingsPage settings={awardSettings} onChange={setAwardSettings} seasonGames={seasonGamesPerTeam(league)} onSave={() => { handleSaveNow(); pushToast('Award settings saved.', 'success'); }} /></Suspense>}
             {leagueSettingsSub === 'rules' && (
-              <><HistoricalSettingsCard league={league} extras={extras} onChange={setLeague} /><GameLengthCard league={league} onChange={setLeague} /><section className="settings-card">
+              <><HistoricalSettingsCard league={league} extras={extras} onChange={setLeague} /><GameLengthCard league={league} onChange={setLeague} /><CoachOnlyCard league={league} onChange={setLeague} /><section className="settings-card">
                 <h4>Roster and trade rules</h4><p className="hint-text">10–18 players for regular-season games. Coaches sign or waive players to meet the limits. Draft and offseason moves can temporarily exceed them.</p>
                 <label className="trade-value-toggle"><input type="checkbox" checked={extras.tradeSettings.showValues === true} onChange={e => setExtras(prev => ({ ...prev, tradeSettings: { ...prev.tradeSettings, showValues: e.target.checked } }))} /> Show trade values</label>
               </section><LeagueRulesPage
@@ -2322,6 +2378,8 @@ function App() {
         })()}
 
         {tab === 'dashboard' && controlledTeamId && league.frontOffice?.demand?.status === 'active' && league.frontOffice.demand.season === league.season && (() => { const d = league.frontOffice!.demand!, pr = demandProgress(league, d, controlledTeamId); return <div className="tm-banner demand-banner" role="note"><PixelIcon name="warning" size={16} /> <b>Owner's demand</b> Win {d.need} of {d.games}: {pr.won}-{pr.played - pr.won} so far, {d.games - pr.played} to play. <small>{d.text}</small></div>; })()}
+        {tab === 'dashboard' && league.historical && !tourClosed && !historyTourDone() && <HistoryTour league={league} onClose={() => setTourClosed(true)}
+          onNavigate={(t, sub) => { if (sub) setLeagueSettingsSub(sub); navigateFromMenu(t); }} />}
         {tab === 'dashboard' && league.timeMachine && <div className="tm-banner" role="note"><PixelIcon name="clock" size={16} /> <b>Time Machine</b> The {league.timeMachine.fromLabel} in the {league.timeMachine.year}-{String(league.timeMachine.year + 1).slice(2)} NBA, in place of the {league.timeMachine.replaced}.</div>}
         {(tab === 'dashboard' || tab === 'database') && league.rebuildChallenge && <Suspense fallback={null}><ChallengeBanner league={league} contracts={extras.contracts} onMenu={() => setConfirmation('exit')} /></Suspense>}
         {tab === 'dashboard' && controlledTeamId && <DailyGoalsCard official={isOfficialLeague(league)} />}
@@ -2372,13 +2430,25 @@ function App() {
         )}
 
         {tab === 'powerRankings' && <PowerRankingsPage league={league} />}
+        {tab === 'rewind' && <RewindPage saveId={activeSaveId} onRewind={async (pointId, label) => {
+          if (!activeSaveId) return;
+          try {
+            await debouncedSave.flush();
+            const snap = await prepareRewind(activeSaveId, pointId);
+            enterApp(snap.league, snap.extras, snap.controlledTeamId ?? null, undefined, activeSaveId);
+            setTab('dashboard');
+            pushToast(`Rewound to "${label}". Where you were is saved in Rewind as "Before rewind".`, 'success');
+          } catch (err) { pushToast(`Could not rewind: ${err instanceof Error ? err.message : String(err)}`, 'error'); }
+        }} />}
+        {tab === 'inbox' && <InboxPage league={league} extras={extras} saveId={activeSaveId} teamId={controlledTeamId} onNavigate={navigateFromMenu} onSelectPlayer={selectPlayer} />}
+        {tab === 'seasonPreview' && <SeasonPreviewPage league={league} onChange={setLeague} onSelectPlayer={selectPlayer} />}
 
         {tab === 'cup' && <CupPage league={league} controlledTeamId={controlledTeamId} onSelectPlayer={selectPlayer} />}
 
-        {tab === 'deadline' && <DeadlineDayPage league={league} extras={extras} controlledTeamId={controlledTeamId}
+        {tab === 'deadline' && !coachLocked && <DeadlineDayPage league={league} extras={extras} controlledTeamId={controlledTeamId}
           onChange={(l, e) => { setLeague(l); setExtras(e); }} onAdvanceHour={advanceDeadline} onSkipToDeadline={skipDeadline} onGoTo={(t) => setTab(t as Tab)} />}
 
-        {tab === 'gmOffice' && <GmOfficePage league={league} extras={extras} onAcceptOffer={acceptOffer} onSpectate={spectate} onToggleFiring={setFiringEnabled} />}
+        {tab === 'gmOffice' && !coachLocked && <GmOfficePage league={league} extras={extras} onAcceptOffer={acceptOffer} onSpectate={spectate} onToggleFiring={setFiringEnabled} />}
 
         {tab === 'transactions' && <TransactionsPage league={league} extras={extras} onSelectPlayer={selectPlayer} />}
 
