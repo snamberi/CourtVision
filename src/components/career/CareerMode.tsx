@@ -47,6 +47,7 @@ import '../hunt/hunt.css';
 import { relicRunOpts } from '../../relics/apply';
 import { rewardRun, careerSpins, careerSecret, careerRewardKey } from '../../relics/rewards';
 import { RelicReward, RelicCase } from '../relics/RelicReward';
+import { PostGameRewardPopup, type PostGameRewardData } from '../PostGameRewardPopup';
 import './career.css';
 
 type View = { k: 'hub' } | { k: 'wheel'; seed: number } | { k: 'myplayer'; seed: number } | { k: 'sandbox'; seed: number } | { k: 'identity'; seed: number; prime: Prime; mode: Mode; locks?: Record<string, number> } | { k: 'career' };
@@ -69,6 +70,7 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
   const [tradeAsked, setTradeAsked] = useState<string | null>(null);
   const [draftYear, setDraftYear] = useState<number | null>(null);
   const [weekly, setWeekly] = useState<string | null>(null);
+  const [pendingReward, setPendingReward] = useState<PostGameRewardData | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -86,9 +88,11 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
       saveCareer(meta).then(() => dropWorld(meta.id)).then(refresh); return;
     }
     if (meta.status === 'retired') {
+      const xpBefore = totalXp();
       if (meta.weekly && meta.retired) recordWeekly('career', meta.weekly, { best: meta.retired.legacy, label: meta.playerId });
       if (meta.retired) rewardRun(careerRewardKey(meta), careerSpins(meta.retired.hallOfFame), { secret: careerSecret(meta.retired.hallOfFame), why: 'Career Mode' });
       if (meta.retired) noteWeekRun('career', { score: meta.retired.legacy, line: `${meta.playerId}, Legacy ${meta.retired.legacy.toFixed(1)}` }, `career-${meta.id}`);
+      if (meta.retired) setPendingReward({ rewardKey: careerRewardKey(meta), xpBefore, mode: 'Career', result: 'retired' });
       noteHolidayFinish(!!meta.retired && meta.retired.hallOfFame !== 'no', `career-${meta.id}`);
       trackOnce(`career-${meta.id}`, 'mode_finish', { mode: 'career', variant: meta.weekly ? 'weekly' : meta.mode, seasons: meta.years.length, legacy: meta.retired?.legacy ?? 0, hall: meta.retired?.hallOfFame ?? 'no', past_draft: !!meta.draftYear });
       saveCareer(meta).then(() => dropWorld(meta.id)).then(refresh); return;
@@ -214,6 +218,7 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
   if (!h) return <div className="hunt">{header}<p className="empty-state">Loading 80 years of basketball…</p></div>;
 
   return <div className="hunt cv mode-environment" data-environment="career">
+    {pendingReward && <PostGameRewardPopup data={pendingReward} onClose={() => setPendingReward(null)} />}
     {header}
     <ModeBackdrop mode="career" />
     {busy && <div className="cv-busy" role="status"><span>{busy.label}</span>{busy.pct != null && <div className="hunt-cap-bar"><i style={{ width: `${busy.pct}%` }} /></div>}
