@@ -1,6 +1,6 @@
 import { PickemCard } from './components/PickemCard';
 import { COACH_ONLY_HIDDEN } from './simulation/coachOnly';
-import { CoachOnlyCard } from './components/CoachOnlyCard';
+import { CoachOnlyCard, CoachOnlyNotice } from './components/CoachOnlyCard';
 import { HistoryTour, historyTourDone } from './components/HistoryTour';
 import { RewindPage } from './components/RewindPage';
 import { prepareRewind } from './storage/saves';
@@ -1515,6 +1515,8 @@ function App() {
   const navMode: NavMode = tutorial?.navMode ?? 'full';
   const unlockCtx = { league, controlledTeamId, pendingTradeOffers: extras.pendingTradeOffers.length };
   const locked = lockedFeatures(unlockCtx);
+  // Coach-only leagues: the front-office pages stay closed even when opened from a link or a button.
+  const coachLocked = !!league.settings.coachOnly && COACH_ONLY_HIDDEN.includes(tab);
   const lockedTabSet = new Set([...locked.flatMap((s) => s.feature.tabs), ...(league.gmCareer ? ROLE_LOCKED[gmRole(league)] : []), ...(league.settings.coachOnly ? COACH_ONLY_HIDDEN : [])]);
   const freshTabs = newFeatureTabs(unlockCtx);
   // Every page you can open right now, for the Ctrl+K quick jump (same rules as the sidebar, locked pages left out).
@@ -1933,6 +1935,7 @@ function App() {
         <main tabIndex={0} aria-label="Game content">
         <AdBanner slot="top" refreshKey={tab} />
         <Suspense fallback={<p className="empty-state page-loading" role="status">Loading…</p>}>
+        {coachLocked && <CoachOnlyNotice onOpenSettings={() => { setLeagueSettingsSub('rules'); setTab('leagueSettings'); }} />}
         {tab === 'teamProfile' && <TeamProfilePage league={league} extras={extras} teamId={viewedTeamId} onSelectPlayer={selectPlayer} />}
         {tab === 'sandbox' && <SandboxPage enabled={sandboxMode} league={league} extras={extras} onChange={(l, e) => { setLeague(l); setExtras(e); }} onToast={pushToast} onToggle={() => { if (sandboxMode) { setSandboxMode(false); setTab('sandbox'); } else setConfirmation('sandbox'); }} />}
         {confirmation && <ConfirmationDialog title={confirmation === 'sandbox' ? 'Enable Sandbox Mode?' : 'Return to Main Menu?'} confirmLabel={confirmation === 'sandbox' ? 'Enable Sandbox' : 'Save & Exit'} onCancel={() => setConfirmation(null)} onConfirm={async () => {
@@ -2057,7 +2060,7 @@ function App() {
               />
         )}
 
-        {tab === 'trade' && (
+        {tab === 'trade' && !coachLocked && (
           league.teams.length === 0
             ? <p className="empty-state">No teams yet.</p>
             : <TradePage
@@ -2068,7 +2071,7 @@ function App() {
               />
         )}
 
-        {tab === 'tradeBlock' && (
+        {tab === 'tradeBlock' && !coachLocked && (
           league.teams.length === 0
             ? <p className="empty-state">No teams yet.</p>
             : <TradeBlockPage
@@ -2078,7 +2081,7 @@ function App() {
         )}
 
 
-        {tab === 'tradeOffers' && (
+        {tab === 'tradeOffers' && !coachLocked && (
           league.teams.length === 0
             ? <p className="empty-state">No teams yet.</p>
             : <TradeOffersPage
@@ -2091,7 +2094,7 @@ function App() {
           <RosterResetPreview league={league} extras={extras} teamId={controlledTeamId} onSelectPlayer={selectPlayer}
             onKeepRoster={() => { setLeague(l => (l.historical ? { ...l, historical: { ...l.historical, userTeamToo: false } } : l)); pushToast('Historical rosters will leave your team alone from now on.', 'info'); }} />
         )}
-        {tab === 'freeAgency' && (
+        {tab === 'freeAgency' && !coachLocked && (
           league.teams.length === 0
             ? <p className="empty-state">No teams yet.</p>
             : <><FreeAgencyPage sandboxMode={sandboxMode}
@@ -2138,8 +2141,8 @@ function App() {
             : <InjuryReportPage sandboxMode={sandboxMode} league={league} controlledTeamId={controlledTeamId} onChange={setLeague} onSelectPlayer={selectPlayer} />
         )}
 
-        {tab === 'threeTeam' && <ThreeTeamTradePage league={league} extras={extras} controlledTeamId={controlledTeamId} onChange={(l, e) => { setLeague(l); setExtras(e); }} />}
-        {tab === 'extensions' && <ExtensionsPage league={league} extras={extras} controlledTeamId={controlledTeamId} onChange={(l, e) => { setLeague(l); setExtras(e); }} onSelectPlayer={selectPlayer} />}
+        {tab === 'threeTeam' && !coachLocked && <ThreeTeamTradePage league={league} extras={extras} controlledTeamId={controlledTeamId} onChange={(l, e) => { setLeague(l); setExtras(e); }} />}
+        {tab === 'extensions' && !coachLocked && <ExtensionsPage league={league} extras={extras} controlledTeamId={controlledTeamId} onChange={(l, e) => { setLeague(l); setExtras(e); }} onSelectPlayer={selectPlayer} />}
         {tab === 'storylines' && <StorylinesPage league={league} extras={extras} controlledTeamId={controlledTeamId} onSelectPlayer={selectPlayer} />}
         {tab === 'courtChat' && <CourtChatPage league={league} extras={extras} controlledTeamId={controlledTeamId} onSelectPlayer={selectPlayer} onChange={setLeague} />}
         {tab === 'summerCamp' && <SummerCampPage league={league} controlledTeamId={controlledTeamId} onChange={setLeague} onSelectPlayer={selectPlayer} />}
@@ -2179,7 +2182,7 @@ function App() {
         {tab === 'dynastyRankings' && <DynastyRankingsPage league={league} userTeamId={controlledTeamId} onSelectTeam={id => { setViewedTeamId(id); setTab('teamHistory'); }} />}
         {tab === 'nbaArchive' && <NbaArchivePage key={archiveQuery} league={league} extras={extras} onSelectPlayer={selectPlayer} initialQuery={archiveQuery} onLoadRetirees={loadRetirees} />}
 
-        {tab === 'resignWaive' && (
+        {tab === 'resignWaive' && !coachLocked && (
           <ResignWaivePage
             league={league} extras={extras} controlledTeamId={managerId} summary={seasonSummary}
             onChange={(l, e) => { setLeague(l); setExtras(e); }}
@@ -2442,10 +2445,10 @@ function App() {
 
         {tab === 'cup' && <CupPage league={league} controlledTeamId={controlledTeamId} onSelectPlayer={selectPlayer} />}
 
-        {tab === 'deadline' && <DeadlineDayPage league={league} extras={extras} controlledTeamId={controlledTeamId}
+        {tab === 'deadline' && !coachLocked && <DeadlineDayPage league={league} extras={extras} controlledTeamId={controlledTeamId}
           onChange={(l, e) => { setLeague(l); setExtras(e); }} onAdvanceHour={advanceDeadline} onSkipToDeadline={skipDeadline} onGoTo={(t) => setTab(t as Tab)} />}
 
-        {tab === 'gmOffice' && <GmOfficePage league={league} extras={extras} onAcceptOffer={acceptOffer} onSpectate={spectate} onToggleFiring={setFiringEnabled} />}
+        {tab === 'gmOffice' && !coachLocked && <GmOfficePage league={league} extras={extras} onAcceptOffer={acceptOffer} onSpectate={spectate} onToggleFiring={setFiringEnabled} />}
 
         {tab === 'transactions' && <TransactionsPage league={league} extras={extras} onSelectPlayer={selectPlayer} />}
 

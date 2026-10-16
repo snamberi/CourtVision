@@ -40,7 +40,7 @@ export function DailyDraftGame({ h }: { h: NbaHistory }) {
   return (
     <div className="daily-draft">
       <div className="rvy-score">
-        <div className="grade-badge" aria-hidden>{result ? result.grade : `${mine.length}/${d.slots.length}`}</div>
+        <div className={`grade-badge ${result ? '' : 'wide'}`} aria-hidden>{result ? result.grade : `${mine.length}/${d.slots.length}`}</div>
         <div><b>The {d.year} NBA Draft</b>
           <span>Your picks: {d.slots.map(s => `#${s}`).join(', ')}{streak ? ` · ${streak}-day streak` : ''}</span>
           <small>{finished ? 'Draft complete. Careers revealed below.' : state.onClock ? `You're on the clock at #${state.onClock}. Everyone else drafts in real order.` : ''} A new class every day at midnight UTC.</small></div>

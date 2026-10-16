@@ -38,6 +38,29 @@ function cleanName(raw, max = 24) {
 	if (!/^[\p{L}\p{N}][\p{L}\p{N} ._'-]*$/u.test(name) || name.length < 2 || name.length > max) return null;
 	return isClean(name) ? name : null;
 }
+function readPickemWins(read = localRead) {
+	try {
+		const v = JSON.parse(read("cv-pickem") ?? "[]");
+		return Array.isArray(v) ? v.filter((x) => typeof x === "string") : [];
+	} catch {
+		return [];
+	}
+}
+function readDailyDraftWith(read) {
+	try {
+		const v = JSON.parse(read("cv-daily-draft") ?? "{}");
+		return v && typeof v === "object" && !Array.isArray(v) ? v : {};
+	} catch {
+		return {};
+	}
+}
+/** XP for one finished Daily Draft: 30, plus more for a better grade. */
+const dailyDraftXp = (grade) => 30 + ({
+	"A+": 40,
+	A: 30,
+	B: 20,
+	C: 10
+}[grade] ?? 0);
 const PASS_REWARDS = Array.from({ length: 30 }, (_, i) => {
 	const tier = i + 1;
 	return {
@@ -8533,6 +8556,8 @@ function xpParts(read = localRead) {
 	const arcade = arcadeXp(readArcade(read));
 	const missions = readMissions(read), done = missionsClaimed(missions);
 	const quests = readQuests(read);
+	const pickem = readPickemWins(read).length;
+	const drafts = Object.values(readDailyDraftWith(read));
 	return [
 		{
 			id: "gm",
@@ -8593,6 +8618,18 @@ function xpParts(read = localRead) {
 			label: "Weekly missions",
 			xp: missionsXp(missions),
 			detail: `${done} mission${done === 1 ? "" : "s"} done`
+		},
+		{
+			id: "pickem",
+			label: "Playoff pick'em",
+			xp: pickem * 20,
+			detail: `${pickem} right call${pickem === 1 ? "" : "s"}`
+		},
+		{
+			id: "dailyDraft",
+			label: "Daily Draft",
+			xp: drafts.reduce((n, d) => n + dailyDraftXp(d.grade), 0),
+			detail: `${drafts.length} draft${drafts.length === 1 ? "" : "s"} played`
 		},
 		{
 			id: "arcade",
@@ -9786,7 +9823,9 @@ const SYNC_KEYS = [
 	"cv-week-log",
 	"cv-likeness",
 	"cv-holiday",
-	"cv-1v1"
+	"cv-1v1",
+	"cv-pickem",
+	"cv-daily-draft"
 ];
 const parse = (raw, fallback) => {
 	if (!raw) return fallback;
@@ -9981,7 +10020,8 @@ function mergeValue(key, local, cloud) {
 			bestStop: 0
 		})));
 		case "cv-hunt-album":
-		case "cv-rebuild-records-done": return JSON.stringify([.../* @__PURE__ */ new Set([...parse(cloud, []), ...parse(local, [])])]);
+		case "cv-rebuild-records-done":
+		case "cv-pickem": return JSON.stringify([.../* @__PURE__ */ new Set([...parse(cloud, []), ...parse(local, [])])]);
 		case "cv-rebuild-records": return JSON.stringify(mergeRebuild(parse(local, {}), parse(cloud, {})));
 		case "cv-weekly-records": return JSON.stringify(mergeWeekly(parse(local, {}), parse(cloud, {})));
 		case "cv-daily-history": return JSON.stringify(mergeDays(parse(local, {}), parse(cloud, {})));
@@ -10044,6 +10084,11 @@ function mergeValue(key, local, cloud) {
 		case "cv-holiday": return JSON.stringify(mergeHoliday(loadHoliday(() => local), loadHoliday(() => cloud)));
 		case "cv-1v1": return JSON.stringify(mergeOne(loadOne(() => local), loadOne(() => cloud)));
 		case "cv-week-log": return JSON.stringify(mergeWeekLog(parse(local, {}), parse(cloud, {})));
+		case "cv-daily-draft": {
+			const out = { ...parse(cloud, {}) };
+			for (const [day, x] of Object.entries(parse(local, {}))) if (!out[day] || num(x.score) >= num(out[day].score)) out[day] = x;
+			return JSON.stringify(out);
+		}
 		case "cv-likeness": return JSON.stringify({
 			...parse(cloud, {}),
 			...parse(local, {})

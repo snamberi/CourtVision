@@ -1,4 +1,4 @@
-import { savesDb, type SaveRow } from './saves';
+import { savesDb, refreshSaveMeta, type SaveRow } from './saves';
 import { exportUniverse, importUniverse, type UniverseExport } from './db';
 import { dumpCareers, restoreCareers } from '../career/storage';
 import type { CareerMeta } from '../career/career';
@@ -72,7 +72,7 @@ export async function readBackup(file: Blob): Promise<Backup> {
 /** Puts a backup back: adds and replaces by id, keeps everything else. */
 export async function restoreBackup(b: Backup): Promise<void> {
   try { for (const [k, v] of Object.entries(b.localStorage ?? {})) if (KEEP(k)) localStorage.setItem(k, v); } catch { /* storage blocked */ }
-  if (b.saves?.length) await savesDb.saves.bulkPut(b.saves);
+  if (b.saves?.length) { await savesDb.saves.bulkPut(b.saves); await refreshSaveMeta(b.saves.map(s => s.id)); }
   if (b.careers) await restoreCareers(b.careers);
   if (b.universe) await importUniverse(b.universe);
   if (b.story?.length) await restoreStoryWorlds(b.story);

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { listRestorePoints, type RestorePoint } from '../storage/saves';
+import { listRestorePoints, restorePointInfo, type RestorePoint } from '../storage/saves';
 import { formatSeasonYear } from '../simulation/calendar';
 import '../improvements.css';
 
@@ -13,9 +13,9 @@ export function RewindPage({ saveId, onRewind }: { saveId: string | null; onRewi
   if (!points) return <p className="empty-state">Loading saved moments…</p>;
   const key = points.filter(p => p.key), routine = points.filter(p => !p.key);
   const row = (p: RestorePoint) => {
-    const l = p.snapshot.league;
+    const i = restorePointInfo(p);
     return <li key={p.id} className={`rewind-row ${p.key ? 'key' : ''}`}>
-      <div><b>{p.label}</b><small>{formatSeasonYear(l.season)} · {l.seasonPhase?.replace('_', ' ') ?? 'regular season'} · {l.schedule.filter(g => g.played).length} games played · saved {new Date(p.createdAt).toLocaleString()}</small></div>
+      <div><b>{p.label}</b><small>{formatSeasonYear(i.season)} · {i.phase?.replace('_', ' ') ?? 'regular season'} · {i.games} games played · saved {new Date(p.createdAt).toLocaleString()}</small></div>
       <button disabled={!!busy} onClick={() => setConfirm(p)}>Rewind here</button>
     </li>;
   };

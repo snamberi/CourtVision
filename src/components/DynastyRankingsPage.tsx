@@ -32,7 +32,7 @@ export function DynastyRankingsPage({ league, userTeamId, onSelectTeam }: { leag
     <div className="dynasty-rank-page">
       <div className="season-feature-header"><div><span className="pixel-eyebrow">ALL-TIME</span><h2>Dynasty Rankings</h2></div></div>
       <div className="rvy-score" role="status">
-        <div className="grade-badge" aria-hidden>{lead ? `#${lead.rank}` : '—'}</div>
+        <div className="grade-badge wide" aria-hidden>{lead ? `#${lead.rank}` : '—'}</div>
         {lead ? <div>
           <b>{lead.yours ? 'Your best run' : 'This league’s best run'}: {lead.teamName} {span(lead)}</b>
           <span>{lead.titles.length} titles · ranks #{lead.rank} of {total} all-time · {tierOf(lead)}</span>

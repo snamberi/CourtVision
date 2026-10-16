@@ -78,6 +78,7 @@
 
 /* Season preview grade */
 .grade-badge { flex: 0 0 auto; width: 54px; height: 54px; display: grid; place-items: center; font-family: var(--font-pixel); font-size: 22px; border: 3px solid currentColor; background: var(--c-bg-0b1018, #0b1018); }
+.grade-badge.wide { width: auto; min-width: 54px; padding: 0 8px; font-size: 15px; }
 .grade-A { color: var(--c-fg-55c878, #55c878); } .grade-B { color: var(--c-fg-4da3ff, #4da3ff); } .grade-C { color: var(--c-fg-ffd166, #ffd166); } .grade-D { color: var(--c-fg-ff9d3d, #ff9d3d); } .grade-F { color: var(--c-fg-e85d5d, #e85d5d); }
 
 /* Inbox */
