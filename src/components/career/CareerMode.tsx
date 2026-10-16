@@ -14,7 +14,7 @@ import { calculateOverall } from '../../simulation/engine/overall';
 import { formatSeasonYear as fy } from '../../simulation/calendar';
 import { initializeCoaching } from '../../simulation/staffManagement';
 import { DEFAULT_AWARD_SETTINGS } from '../../simulation/awards';
-import { CATEGORIES, categoryScore, type CategoryId } from '../../career/categories';
+import { CATEGORIES, CATEGORY_ICON, categoryScore, type CategoryId } from '../../career/categories';
 import { startProgress, valuesAt, primeOverall, primeFromRatings, primeShape, type Prime } from '../../career/create';
 import { loadMyRatings } from '../../profile/myRatings';
 import { totalXp, levelFor } from '../../profile/profile';
@@ -390,7 +390,7 @@ function YearsTable({ years }: { years: CareerYear[] }) {
 function Ratings({ meta }: { meta: CareerMeta }) {
   const now = valuesAt(meta.prime, meta.progress, meta.readiness);
   return <ul className="cv-ratings">{CATEGORIES.filter(c => c.id !== 'size').map(c => { const v = categoryScore(now[c.id]), top = categoryScore(meta.prime[c.id]); return <li key={c.id} className={meta.training.includes(c.id) ? 'training' : ''}>
-    <span>{c.name}</span><div className="hunt-cap-bar"><i className={v > 99 ? 'elite' : ''} style={{ width: `${Math.min(100, v)}%` }} /></div><b className={v > 99 ? 'cv-elite' : ''}>{v}</b><small>/ {top}</small></li>; })}</ul>;
+    <span><PixelIcon name={CATEGORY_ICON[c.id]} size={13} />{c.name}</span><div className="hunt-cap-bar"><i className={v > 99 ? 'elite' : ''} style={{ width: `${Math.min(100, v)}%` }} /></div><b className={v > 99 ? 'cv-elite' : ''}>{v}</b><small>/ {top}</small></li>; })}</ul>;
 }
 
 function CareerView({ h, a, busy, tradeAsked, onPlay, onAutopilot, onTraining, onSign, onTrade, onRetire, onNew }: {
@@ -445,7 +445,7 @@ function CareerView({ h, a, busy, tradeAsked, onPlay, onAutopilot, onTraining, o
     {current === 'plan' && <div className="cv-panel">
       <GoalList title={`Goals for ${offseason ? 'next' : 'this'} season`} goals={seasonGoals(last)} />
       <h3 className="hunt-subhead">Training focus <small>(pick two; they grow faster and can pass his prime)</small></h3>
-      <div className="hunt-replace">{CATEGORIES.filter(c => c.id !== 'size').map(c => <button key={c.id} aria-pressed={meta.training.includes(c.id)} className={meta.training.includes(c.id) ? 'active' : ''} disabled={busy} onClick={() => toggle(c.id)}>{c.name}</button>)}</div>
+      <div className="hunt-replace">{CATEGORIES.filter(c => c.id !== 'size').map(c => <button key={c.id} aria-pressed={meta.training.includes(c.id)} className={meta.training.includes(c.id) ? 'active' : ''} disabled={busy} onClick={() => toggle(c.id)}><PixelIcon name={CATEGORY_ICON[c.id]} size={13} />{c.name}</button>)}</div>
       {offers.length > 0 && <><h3 className="hunt-subhead">Free agency: pick your team</h3>
         <div className="hunt-roads">{offers.map((o, i) => <button key={o.teamId} className="hunt-road" disabled={busy} onClick={() => onSign(i)}><b>{o.teamName}</b><span>{OFFER_LABEL[o.kind]} · {o.years} yrs · ${(o.salary / 1_000_000).toFixed(1)}M/yr · won {o.wins} last season</span></button>)}</div>
         <p className="hint-text">Or play on and let the market decide.</p></>}

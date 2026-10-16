@@ -335,13 +335,13 @@ function PlayerCard({ season, ratings, badgeNames, awardsHistory, league, family
         <h4>Ratings</h4>
         <table className="db-table">
           <tbody>
-            <tr><td>Overall</td><td>{ratings.overall}</td></tr>
-            <tr><td>Offensive Rating</td><td>{Math.round(ratings.offensiveRating)}</td></tr>
-            <tr><td>Defensive Rating</td><td>{Math.round(ratings.defensiveRating)}</td></tr>
-            <tr><td>Shooting Rating</td><td>{Math.round(ratings.shootingRating)}</td></tr>
-            <tr><td>Playmaking Rating</td><td>{Math.round(ratings.playmakingRating)}</td></tr>
-            <tr><td>Rebounding Rating</td><td>{Math.round(ratings.reboundingRating)}</td></tr>
-            <tr><td>Physical Rating</td><td>{Math.round(ratings.physicalRating)}</td></tr>
+            <tr><td><PixelIcon name="trophy" size={14} /> Overall</td><td>{ratings.overall}</td></tr>
+            <tr><td><PixelIcon name="flame" size={14} /> Offensive Rating</td><td>{Math.round(ratings.offensiveRating)}</td></tr>
+            <tr><td><PixelIcon name="shield" size={14} /> Defensive Rating</td><td>{Math.round(ratings.defensiveRating)}</td></tr>
+            <tr><td><PixelIcon name="threepoint" size={14} /> Shooting Rating</td><td>{Math.round(ratings.shootingRating)}</td></tr>
+            <tr><td><PixelIcon name="trade" size={14} /> Playmaking Rating</td><td>{Math.round(ratings.playmakingRating)}</td></tr>
+            <tr><td><PixelIcon name="up" size={14} /> Rebounding Rating</td><td>{Math.round(ratings.reboundingRating)}</td></tr>
+            <tr><td><PixelIcon name="lightning" size={14} /> Physical Rating</td><td>{Math.round(ratings.physicalRating)}</td></tr>
           </tbody>
         </table>
         {season.real && <RealPlayerFacts player={season} league={league} />}
