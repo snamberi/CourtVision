@@ -374,12 +374,18 @@ function QuickGames({ onOpen, onOpenMode }: { onOpen: (game: 'grid' | 'guess' | 
  *  the pages that otherwise live only in the phone (Season Pass, Relic Vault, the roads, profile, friends, settings). */
 function MenuQuickLinks({ onContinue, onRoad, onRelics, onProfile, onFriends, onCloset, onSettings }: { onContinue: () => void; onRoad?: (r: 'level' | 'trophy' | 'season') => void; onRelics?: () => void; onProfile?: () => void; onFriends?: () => void; onCloset?: () => void; onSettings?: () => void }) {
   const go = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  const links: [string, string, (() => void) | undefined][] = [
+  const [spins, setSpins] = useState(() => loadRelics().spins);
+  useEffect(() => {
+    const refresh = () => setSpins(loadRelics().spins);
+    window.addEventListener(RELICS_EVENT, refresh);
+    return () => window.removeEventListener(RELICS_EVENT, refresh);
+  }, []);
+  const links: [string, string, (() => void) | undefined, number?][] = [
     ['play', 'Modes', () => go('menu-modes')],
     ['calendar', 'Daily', () => go('menu-daily')],
     ['list', 'Continue franchise', onContinue],
     ['star', 'Season Pass', onRoad && (() => onRoad('season'))],
-    ['crown', 'Relics', onRelics],
+    ['crown', 'Relics', onRelics, spins > 0 ? spins : undefined],
     ['chart', 'Level Road', onRoad && (() => onRoad('level'))],
     ['trophy', 'Trophy Road', onRoad && (() => onRoad('trophy'))],
     ['team', 'Profile', onProfile],
@@ -388,7 +394,12 @@ function MenuQuickLinks({ onContinue, onRoad, onRelics, onProfile, onFriends, on
     ['settings', 'Settings', onSettings],
   ];
   return <nav className="menu-quick" aria-label="Quick links">
-    {links.filter(([, , on]) => on).map(([icon, label, on]) => <button key={label} onClick={on}><PixelIcon name={icon} size={14} /> {label}</button>)}
+    {links.filter(([, , on]) => on).map(([icon, label, on, badge]) => (
+      <button key={label} onClick={on} style={{ position: 'relative' }}>
+        <PixelIcon name={icon} size={14} /> {label}
+        {badge != null && <span className="sidebar-item-badge">{badge > 99 ? '99+' : badge}</span>}
+      </button>
+    ))}
   </nav>;
 }
 

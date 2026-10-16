@@ -253,6 +253,7 @@ function Over({ h, run, records, onNew, onExit }: { h: NbaHistory; run: Survival
   const pool = cardPool(h);
   const [copied, setCopied] = useState(false);
   const w = wins(run), bosses = run.games.filter(g => g.won && g.boss).length, score = survivalScore(run);
+  const bestStreak = (() => { let max = 0, cur = 0; for (const g of run.games) { cur = g.won ? cur + 1 : 0; if (cur > max) max = cur; } return max; })();
   const last = run.games.at(-1);
   const best = records.best[run.level];
   const text = survivalShareText(run, SITE);
@@ -266,6 +267,7 @@ function Over({ h, run, records, onNew, onExit }: { h: NbaHistory; run: Survival
       {last && !last.won && <p>Knocked out {last.us}-{last.them} by the {last.oppName}.</p>}
       <div className="hunt-over-stats">
         <div><small>WINS</small><b><ResultCount value={w} /></b></div><div><small>BOSSES</small><b><ResultCount value={bosses} /></b></div><div><small>SCORE</small><b><ResultCount value={score} /></b></div>
+        <div><small>STREAK</small><b><ResultCount value={bestStreak} /></b></div>
         <div><small>BEST</small><b><ResultCount value={best?.wins ?? w} /></b></div>
       </div>
     </div>

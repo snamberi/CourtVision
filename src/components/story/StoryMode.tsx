@@ -24,6 +24,7 @@ import { noteWeekRun } from '../../retention/weekLog';
 import '../hunt/hunt.css';
 import { relicRunOpts } from '../../relics/apply';
 import { rewardRun, storySpins, storySecret, storyRewardKey } from '../../relics/rewards';
+import { loadRelics, saveRelics, grantReward } from '../../relics/relics';
 import { RelicReward } from '../relics/RelicReward';
 import { totalXp } from '../../profile/profile';
 import { PostGameRewardPopup, type PostGameRewardData } from '../PostGameRewardPopup';
@@ -56,6 +57,11 @@ export function StoryMode({ onExit }: { onExit: () => void }) {
     current.current = s;
     setStoryState(s);
     saveStory(s);
+    if (s && !s.done && !s.nba && prev && !prev.nba && s.games.length > (prev?.games.length ?? 0)) {
+      let streak = 0;
+      for (let i = s.games.length - 1; i >= 0 && s.games[i].won; i--) streak++;
+      if (streak > 0 && streak % 3 === 0) { const rs = loadRelics(); saveRelics(grantReward(rs, `story-streak-${s.seed}-${streak}`, { spins: 0, coins: 10, why: 'Story win streak' })); }
+    }
     if (s && s.done && prev && !prev.done) {
       const xpBefore = totalXp();
       const e = storyEnding(s);

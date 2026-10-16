@@ -21,7 +21,10 @@ export function PostGameRewardPopup({ data, onClose }: { data: PostGameRewardDat
   const leveled = levelNow > levelBefore;
   const secret = reward?.secret ? SECRET_BY_ID.get(reward.secret) : undefined;
   const won = data.result === 'won';
-  const lost = data.result === 'lost';
+  const isLost = data.result === 'lost' || data.result === 'over';
+
+  const RESULT_LABEL: Record<string, string> = { won: 'Victory', lost: 'Run Over', over: 'Run Over', retired: 'Career Over', done: 'Story Complete' };
+  const resultLabel = RESULT_LABEL[data.result ?? ''] ?? 'Finished';
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -29,7 +32,23 @@ export function PostGameRewardPopup({ data, onClose }: { data: PostGameRewardDat
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  const resultLabel = won ? 'Victory' : lost ? 'Run Over' : 'Finished';
+  useEffect(() => {
+    if (!leveled) return;
+    try {
+      type WkAudio = typeof AudioContext;
+      const Ctor: WkAudio | undefined = window.AudioContext ?? (window as unknown as Record<string, unknown>)['webkitAudioContext'] as WkAudio | undefined;
+      if (!Ctor) return;
+      const ctx = new Ctor();
+      const note = (freq: number, t: number) => {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = 'sine'; o.frequency.value = freq;
+        g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.15, t + 0.03); g.gain.exponentialRampToValueAtTime(0.001, t + 0.38);
+        o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t + 0.4);
+      };
+      ctx.resume().then(() => { const now = ctx.currentTime; note(523, now); note(659, now + 0.12); note(784, now + 0.24); }, () => {});
+      setTimeout(() => { ctx.close().catch(() => {}); }, 1400);
+    } catch { /* audio not available */ }
+  }, [leveled]);
 
   return (
     <div
@@ -40,7 +59,7 @@ export function PostGameRewardPopup({ data, onClose }: { data: PostGameRewardDat
       <div className="share-box pgr-box" role="dialog" aria-modal="true" aria-label="Run rewards">
         <div className="pgr-head">
           <span className="pixel-eyebrow">{data.mode.toUpperCase()}</span>
-          <h2 className={`pgr-result ${won ? 'pgr-won' : lost ? 'pgr-lost' : 'pgr-done'}`}>{resultLabel}</h2>
+          <h2 className={`pgr-result ${won ? 'pgr-won' : isLost ? 'pgr-lost' : 'pgr-done'}`}>{resultLabel}</h2>
         </div>
         <ul className="pgr-rows">
           {xpEarned > 0 && (
