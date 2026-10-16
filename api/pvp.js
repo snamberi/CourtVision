@@ -450,6 +450,873 @@ function emptySeasonStatTotals() {
 	};
 }
 Object.keys(emptySeasonStatTotals());
+new Map([
+	{
+		name: "USA",
+		code: "USA",
+		colors: ["#1d3c78", "#c8102e"],
+		home: 60
+	},
+	{
+		name: "Serbia",
+		code: "SRB",
+		colors: ["#c6363c", "#0c4076"],
+		home: 56
+	},
+	{
+		name: "Spain",
+		code: "ESP",
+		colors: ["#c60b1e", "#ffc400"],
+		home: 56
+	},
+	{
+		name: "France",
+		code: "FRA",
+		colors: ["#0055a4", "#ef4135"],
+		home: 55
+	},
+	{
+		name: "Greece",
+		code: "GRE",
+		colors: ["#0d5eaf", "#ffffff"],
+		home: 54
+	},
+	{
+		name: "Lithuania",
+		code: "LTU",
+		colors: ["#006a44", "#fdb913"],
+		home: 54
+	},
+	{
+		name: "Slovenia",
+		code: "SLO",
+		colors: ["#005da4", "#ed1c24"],
+		home: 53
+	},
+	{
+		name: "Australia",
+		code: "AUS",
+		colors: ["#00843d", "#ffcd00"],
+		home: 53
+	},
+	{
+		name: "Germany",
+		code: "GER",
+		colors: ["#222222", "#dd0000"],
+		home: 53
+	},
+	{
+		name: "Canada",
+		code: "CAN",
+		colors: ["#d80621", "#ffffff"],
+		home: 52
+	},
+	{
+		name: "Argentina",
+		code: "ARG",
+		colors: ["#74acdf", "#ffffff"],
+		home: 53
+	},
+	{
+		name: "Croatia",
+		code: "CRO",
+		colors: ["#ff0000", "#171796"],
+		home: 52
+	},
+	{
+		name: "Italy",
+		code: "ITA",
+		colors: ["#0066b3", "#ffffff"],
+		home: 53
+	},
+	{
+		name: "Turkey",
+		code: "TUR",
+		colors: ["#e30a17", "#ffffff"],
+		home: 52
+	},
+	{
+		name: "Brazil",
+		code: "BRA",
+		colors: ["#009c3b", "#ffdf00"],
+		home: 51
+	},
+	{
+		name: "Russia",
+		code: "RUS",
+		colors: ["#d52b1e", "#0039a6"],
+		home: 52
+	},
+	{
+		name: "Latvia",
+		code: "LAT",
+		colors: ["#9e3039", "#ffffff"],
+		home: 50
+	},
+	{
+		name: "Montenegro",
+		code: "MNE",
+		colors: ["#c40308", "#d4af3a"],
+		home: 50
+	},
+	{
+		name: "Puerto Rico",
+		code: "PUR",
+		colors: ["#ed0a3f", "#0050f0"],
+		home: 49
+	},
+	{
+		name: "Dominican Republic",
+		code: "DOM",
+		colors: ["#002d62", "#ce1126"],
+		home: 48
+	},
+	{
+		name: "Nigeria",
+		code: "NGR",
+		colors: ["#008751", "#ffffff"],
+		home: 47
+	},
+	{
+		name: "China",
+		code: "CHN",
+		colors: ["#de2910", "#ffde00"],
+		home: 48
+	},
+	{
+		name: "Japan",
+		code: "JPN",
+		colors: ["#bc002d", "#ffffff"],
+		home: 46
+	},
+	{
+		name: "Czech Republic",
+		code: "CZE",
+		colors: ["#11457e", "#d7141a"],
+		home: 49
+	},
+	{
+		name: "Georgia",
+		code: "GEO",
+		colors: ["#ff0000", "#ffffff"],
+		home: 48
+	},
+	{
+		name: "Venezuela",
+		code: "VEN",
+		colors: ["#ffcc00", "#cf142b"],
+		home: 47
+	},
+	{
+		name: "Israel",
+		code: "ISR",
+		colors: ["#0038b8", "#ffffff"],
+		home: 48
+	},
+	{
+		name: "Ukraine",
+		code: "UKR",
+		colors: ["#0057b7", "#ffd700"],
+		home: 47
+	},
+	{
+		name: "Bosnia and Herzegovina",
+		code: "BIH",
+		colors: ["#002395", "#fecb00"],
+		home: 48
+	},
+	{
+		name: "Finland",
+		code: "FIN",
+		colors: ["#003580", "#ffffff"],
+		home: 48
+	},
+	{
+		name: "Poland",
+		code: "POL",
+		colors: ["#dc143c", "#ffffff"],
+		home: 47
+	},
+	{
+		name: "Senegal",
+		code: "SEN",
+		colors: ["#00853f", "#fdef42"],
+		home: 45
+	},
+	{
+		name: "Cameroon",
+		code: "CMR",
+		colors: ["#007a5e", "#ce1126"],
+		home: 44
+	},
+	{
+		name: "DR Congo",
+		code: "COD",
+		colors: ["#007fff", "#f7d618"],
+		home: 43
+	},
+	{
+		name: "Great Britain",
+		code: "GBR",
+		colors: ["#012169", "#c8102e"],
+		home: 46
+	},
+	{
+		name: "Netherlands",
+		code: "NED",
+		colors: ["#ff6200", "#21468b"],
+		home: 45
+	},
+	{
+		name: "Mexico",
+		code: "MEX",
+		colors: ["#006847", "#ce1126"],
+		home: 45
+	},
+	{
+		name: "New Zealand",
+		code: "NZL",
+		colors: ["#000000", "#ffffff"],
+		home: 46
+	},
+	{
+		name: "Bahamas",
+		code: "BAH",
+		colors: ["#00abc9", "#fae042"],
+		home: 43
+	},
+	{
+		name: "Switzerland",
+		code: "SUI",
+		colors: ["#d52b1e", "#ffffff"],
+		home: 44
+	},
+	{
+		name: "Sweden",
+		code: "SWE",
+		colors: ["#006aa7", "#fecc00"],
+		home: 44
+	},
+	{
+		name: "Sudan",
+		code: "SUD",
+		colors: ["#d21034", "#007229"],
+		home: 40
+	},
+	{
+		name: "Austria",
+		code: "AUT",
+		colors: ["#ed2939", "#ffffff"],
+		home: 43
+	},
+	{
+		name: "Belgium",
+		code: "BEL",
+		colors: ["#000000", "#fdda24"],
+		home: 45
+	}
+].map((c) => [c.name, c]));
+/** National teams of the NBA's international players (everyone else is American). */
+const BY_COUNTRY = {
+	Serbia: [
+		"Vlade Divac",
+		"Peja Stojaković",
+		"Nikola Jokić",
+		"Bogdan Bogdanović",
+		"Nemanja Bjelica",
+		"Miloš Teodosić",
+		"Vasilije Micić",
+		"Nikola Jović",
+		"Marko Gudurić",
+		"Filip Petrušev",
+		"Aleksandar Đorđević",
+		"Sasha Danilović",
+		"Žarko Paspalj",
+		"Željko Rebrača",
+		"Darko Miličić",
+		"Vladimir Radmanović",
+		"Marko Jarić",
+		"Nenad Krstić",
+		"Miroslav Raduljica",
+		"Ognjen Kuzmić",
+		"Aleksej Pokuševski",
+		"Boban Marjanović",
+		"Dragan Tarlać",
+		"Igor Rakočević",
+		"Kosta Perović"
+	],
+	Montenegro: [
+		"Nikola Vučević",
+		"Žarko Čabarkapa",
+		"Nikola Peković"
+	],
+	Croatia: [
+		"Toni Kukoč",
+		"Dražen Petrović",
+		"Dino Rađa",
+		"Stojko Vranković",
+		"Žan Tabak",
+		"Gordan Giriček",
+		"Zoran Planinić",
+		"Bojan Bogdanović",
+		"Dario Šarić",
+		"Mario Hezonja",
+		"Ivica Zubac",
+		"Ante Žižić",
+		"Damir Markota",
+		"Roko Ukić",
+		"Dragan Bender"
+	],
+	Slovenia: [
+		"Luka Dončić",
+		"Goran Dragić",
+		"Zoran Dragić",
+		"Beno Udrih",
+		"Primož Brezec",
+		"Rašho Nesterović",
+		"Sasha Vujačić",
+		"Boštjan Nachbar",
+		"Vlatko Čančar",
+		"Marko Milič"
+	],
+	"Bosnia and Herzegovina": [
+		"Jusuf Nurkić",
+		"Mirza Teletović",
+		"Džanan Musa"
+	],
+	Lithuania: [
+		"Arvydas Sabonis",
+		"Šarūnas Marčiulionis",
+		"Žydrūnas Ilgauskas",
+		"Šarūnas Jasikevičius",
+		"Darius Songaila",
+		"Linas Kleiza",
+		"Jonas Valančiūnas",
+		"Domantas Sabonis",
+		"Donatas Motiejūnas",
+		"Mindaugas Kuzminskas",
+		"Arnoldas Kulboka",
+		"Martynas Andriuškevičius"
+	],
+	Latvia: [
+		"Kristaps Porziņģis",
+		"Dāvis Bertāns",
+		"Andris Biedriņš",
+		"Gundars Vētra"
+	],
+	Russia: [
+		"Andrei Kirilenko",
+		"Timofey Mozgov",
+		"Alexey Shved",
+		"Sasha Kaun",
+		"Viktor Khryapa",
+		"Sergei Monia"
+	],
+	Ukraine: [
+		"Alex Len",
+		"Svi Mykhailiuk",
+		"Kyrylo Fesenko",
+		"Stanislav Medvedenko",
+		"Vitaly Potapenko",
+		"Oleksiy Pecherov"
+	],
+	Georgia: [
+		"Zaza Pachulia",
+		"Nikoloz Tskitishvili",
+		"Goga Bitadze",
+		"Sandro Mamukelashvili",
+		"Tornike Shengelia"
+	],
+	Greece: [
+		"Giannis Antetokounmpo",
+		"Thanasis Antetokounmpo",
+		"Kostas Antetokounmpo",
+		"Kostas Papanikolaou",
+		"Kosta Koufos",
+		"Vassilis Spanoulis",
+		"Andreas Glyniadakis",
+		"Tyler Dorsey"
+	],
+	Turkey: [
+		"Hedo Türkoğlu",
+		"Mehmet Okur",
+		"Ersan İlyasova",
+		"Enes Freedom",
+		"Cedi Osman",
+		"Furkan Korkmaz",
+		"Alperen Şengün",
+		"Ömer Aşık",
+		"Semih Erden",
+		"Furkan Aldemir"
+	],
+	Germany: [
+		"Dirk Nowitzki",
+		"Detlef Schrempf",
+		"Uwe Blab",
+		"Chris Welp",
+		"Shawn Bradley",
+		"Chris Kaman",
+		"Dennis Schröder",
+		"Maxi Kleber",
+		"Daniel Theis",
+		"Moritz Wagner",
+		"Franz Wagner",
+		"Isaiah Hartenstein",
+		"Paul Zipser",
+		"Tibor Pleiß",
+		"Isaac Bonga",
+		"Tristan da Silva"
+	],
+	France: [
+		"Tony Parker",
+		"Boris Diaw",
+		"Nicolas Batum",
+		"Rudy Gobert",
+		"Evan Fournier",
+		"Joakim Noah",
+		"Ronny Turiaf",
+		"Mickaël Piétrus",
+		"Ian Mahinmi",
+		"Johan Petro",
+		"Alexis Ajinça",
+		"Kevin Séraphin",
+		"Nando de Colo",
+		"Frank Ntilikina",
+		"Timothé Luwawu-Cabarrot",
+		"Guerschon Yabusele",
+		"Vincent Poirier",
+		"Victor Wembanyama",
+		"Bilal Coulibaly",
+		"Zaccharie Risacher",
+		"Alex Sarr",
+		"Tidjane Salaün",
+		"Antoine Rigaudeau",
+		"Tariq Abdul-Wahad",
+		"Jérôme Moïso",
+		"Mickaël Gelabale",
+		"Rodrigue Beaubois",
+		"Élie Okobo",
+		"Killian Hayes",
+		"Sekou Doumbouya",
+		"Théo Maledon",
+		"Olivier Sarr",
+		"Petr Cornelie",
+		"Axel Toupane"
+	],
+	Spain: [
+		"Pau Gasol",
+		"Marc Gasol",
+		"Rudy Fernández",
+		"José Calderón",
+		"Juan Carlos Navarro",
+		"Ricky Rubio",
+		"Sergio Rodríguez",
+		"Jorge Garbajosa",
+		"Raül López",
+		"Serge Ibaka",
+		"Víctor Claver",
+		"Nikola Mirotić",
+		"Willy Hernangómez",
+		"Juancho Hernangómez",
+		"Álex Abrines",
+		"Fernando Martín",
+		"Usman Garuba",
+		"Santi Aldama"
+	],
+	Italy: [
+		"Andrea Bargnani",
+		"Danilo Gallinari",
+		"Marco Belinelli",
+		"Gigi Datome",
+		"Simone Fontecchio",
+		"Nicolò Melli",
+		"Vincenzo Esposito"
+	],
+	Netherlands: ["Rik Smits"],
+	"Czech Republic": [
+		"Tomáš Satoranský",
+		"Jan Veselý",
+		"Jiří Welsch",
+		"Vít Krejčí"
+	],
+	Poland: [
+		"Marcin Gortat",
+		"Cezary Trybański",
+		"Maciej Lampe"
+	],
+	Finland: ["Lauri Markkanen", "Hanno Möttölä"],
+	Sweden: ["Jonas Jerebko"],
+	Switzerland: ["Thabo Sefolosha", "Clint Capela"],
+	Austria: ["Jakob Poeltl"],
+	"Great Britain": [
+		"Luol Deng",
+		"Joel Freeland",
+		"OG Anunoby"
+	],
+	Israel: [
+		"Omri Casspi",
+		"Gal Mekel",
+		"Deni Avdija"
+	],
+	Canada: [
+		"Steve Nash",
+		"Rick Fox",
+		"Jamaal Magloire",
+		"Andrew Wiggins",
+		"Shai Gilgeous-Alexander",
+		"Jamal Murray",
+		"RJ Barrett",
+		"Dillon Brooks",
+		"Kelly Olynyk",
+		"Tristan Thompson",
+		"Cory Joseph",
+		"Dwight Powell",
+		"Luguentz Dort",
+		"Nickeil Alexander-Walker",
+		"Andrew Nembhard",
+		"Trey Lyles",
+		"Khem Birch",
+		"Chris Boucher",
+		"Bennedict Mathurin",
+		"Zach Edey",
+		"Anthony Bennett",
+		"Nik Stauskas",
+		"Joel Anthony",
+		"Todd MacCulloch",
+		"Bill Wennington",
+		"Mike Smrek",
+		"Leo Rautins",
+		"Oshae Brissett"
+	],
+	Australia: [
+		"Luc Longley",
+		"Andrew Bogut",
+		"Patty Mills",
+		"Joe Ingles",
+		"Ben Simmons",
+		"Matthew Dellavedova",
+		"Aron Baynes",
+		"Dante Exum",
+		"Josh Giddey",
+		"Matisse Thybulle",
+		"Josh Green",
+		"Jock Landale",
+		"Thon Maker",
+		"Andrew Gaze",
+		"Chris Anstey",
+		"Nathan Jawai",
+		"David Andersen",
+		"Dyson Daniels",
+		"Duop Reath"
+	],
+	"New Zealand": [
+		"Kirk Penney",
+		"Sean Marks",
+		"Steven Adams"
+	],
+	Argentina: [
+		"Manu Ginóbili",
+		"Luis Scola",
+		"Andrés Nocioni",
+		"Fabricio Oberto",
+		"Carlos Delfino",
+		"Walter Herrmann",
+		"Pepe Sánchez",
+		"Rubén Wolkowyski",
+		"Pablo Prigioni",
+		"Facundo Campazzo",
+		"Gabriel Deck",
+		"Leandro Bolmaro"
+	],
+	Brazil: [
+		"Nenê",
+		"Leandro Barbosa",
+		"Anderson Varejão",
+		"Tiago Splitter",
+		"Raul Neto",
+		"Bruno Caboclo",
+		"Cristiano Felício",
+		"Lucas Nogueira",
+		"Rafael Araújo"
+	],
+	"Puerto Rico": [
+		"J.J. Barea",
+		"Carlos Arroyo",
+		"Butch Lee",
+		"Daniel Santiago",
+		"Peter John Ramos"
+	],
+	"Dominican Republic": [
+		"Al Horford",
+		"Karl-Anthony Towns",
+		"Francisco García",
+		"Charlie Villanueva",
+		"Chris Duarte",
+		"Felipe López"
+	],
+	Mexico: [
+		"Eduardo Nájera",
+		"Gustavo Ayón",
+		"Jorge Gutiérrez",
+		"Juan Toscano-Anderson"
+	],
+	Venezuela: [
+		"Óscar Torres",
+		"Greivis Vásquez",
+		"Carl Herrera"
+	],
+	Bahamas: [
+		"Mychal Thompson",
+		"Buddy Hield",
+		"Deandre Ayton",
+		"Kai Jones",
+		"Eric Gordon"
+	],
+	China: [
+		"Yao Ming",
+		"Wang Zhizhi",
+		"Mengke Bateer",
+		"Yi Jianlian",
+		"Sun Yue",
+		"Zhou Qi"
+	],
+	Japan: [
+		"Rui Hachimura",
+		"Yuta Watanabe",
+		"Yuta Tabuse",
+		"Yuki Kawamura"
+	],
+	Nigeria: [
+		"Olumide Oyedeji",
+		"Ike Diogu",
+		"Al-Farouq Aminu",
+		"Josh Okogie",
+		"Chimezie Metu",
+		"Gabe Vincent",
+		"Jordan Nwora"
+	],
+	Senegal: [
+		"DeSagana Diop",
+		"Gorgui Dieng",
+		"Mamadou N'Diaye",
+		"Tacko Fall"
+	],
+	Cameroon: [
+		"Pascal Siakam",
+		"Luc Mbah a Moute",
+		"Christian Koloko"
+	],
+	"DR Congo": [
+		"Dikembe Mutombo",
+		"Bismack Biyombo",
+		"Christian Eyenga",
+		"Jonathan Kuminga"
+	],
+	Sudan: ["Manute Bol"]
+};
+/** A player listed for two countries takes this one. */
+const OVERRIDES = {};
+const norm = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[đĐ]/g, "dj").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+(() => {
+	const m = /* @__PURE__ */ new Map();
+	for (const [country, names] of Object.entries(BY_COUNTRY)) for (const n of names) m.set(norm(n), country);
+	for (const [n, c] of Object.entries(OVERRIDES)) m.set(norm(n), c);
+	return m;
+})();
+Object.entries(BY_COUNTRY).flatMap(([c, names]) => names.map((n) => [n, OVERRIDES[n] ?? c]));
+//#endregion
+//#region src/simulation/worldLeagues.ts
+const club = (name, abbr, primary, secondary) => ({
+	name,
+	abbr,
+	primary,
+	secondary
+});
+const WORLD_LEAGUES = {
+	euro: {
+		id: "euro",
+		name: "EuroLeague",
+		short: "Euro",
+		blurb: "Europe's top clubs: 18 teams, 34 games, FIBA rules, best-of-five playoffs.",
+		clubs: [
+			club("Real Madrid", "RMB", "#f4f0e6", "#3d195b"),
+			club("FC Barcelona", "BAR", "#a50044", "#004d98"),
+			club("Olympiacos", "OLY", "#d6001c", "#f4f0e6"),
+			club("Panathinaikos", "PAO", "#007a3d", "#f4f0e6"),
+			club("Fenerbahçe", "FEN", "#00205b", "#ffd200"),
+			club("Anadolu Efes", "EFS", "#0b3c7d", "#d6001c"),
+			club("Maccabi Tel Aviv", "MTA", "#ffd200", "#0038a8"),
+			club("Žalgiris Kaunas", "ZAL", "#006a44", "#f4f0e6"),
+			club("Partizan Belgrade", "PAR", "#121212", "#f4f0e6"),
+			club("Crvena Zvezda", "CZV", "#d6001c", "#f4f0e6"),
+			club("AS Monaco", "MCO", "#d6001c", "#f4f0e6"),
+			club("Bayern Munich", "FCB", "#dc052d", "#0066b2"),
+			club("Virtus Bologna", "VIR", "#121212", "#f4f0e6"),
+			club("Olimpia Milano", "MIL", "#d6001c", "#f4f0e6"),
+			club("Baskonia", "BKN", "#0b2a5b", "#d6001c"),
+			club("ASVEL Villeurbanne", "ASV", "#121212", "#c0c0c0"),
+			club("Paris Basketball", "PAR2", "#121212", "#e5007e"),
+			club("Valencia Basket", "VBC", "#f28c28", "#121212")
+		],
+		games: 34,
+		periods: 4,
+		minutes: 10,
+		shotClock: 24,
+		line: 22.15,
+		playoffs: {
+			teams: 8,
+			gamesToWin: 3
+		},
+		ratingShift: 5,
+		mix: [
+			["USA", 34],
+			["Spain", 8],
+			["Serbia", 8],
+			["Greece", 8],
+			["Turkey", 7],
+			["France", 8],
+			["Lithuania", 6],
+			["Germany", 5],
+			["Slovenia", 3],
+			["Croatia", 4],
+			["Italy", 6],
+			["Israel", 3]
+		],
+		ages: [19, 36],
+		prospectAges: [18, 21],
+		rosterSize: 15
+	},
+	china: {
+		id: "china",
+		name: "Chinese Basketball Association",
+		short: "CBA",
+		blurb: "The CBA: 20 clubs, 42 games, FIBA rules, a 16-team playoff.",
+		clubs: [
+			club("Guangdong Southern Tigers", "GDT", "#d6001c", "#121212"),
+			club("Liaoning Flying Leopards", "LNF", "#0b3c7d", "#f4f0e6"),
+			club("Xinjiang Flying Tigers", "XJT", "#00843d", "#f4f0e6"),
+			club("Zhejiang Lions", "ZJL", "#d6001c", "#ffd200"),
+			club("Zhejiang Golden Bulls", "ZJB", "#0b3c7d", "#ffd200"),
+			club("Shanghai Sharks", "SHS", "#0b3c7d", "#d6001c"),
+			club("Beijing Ducks", "BJD", "#0b2a5b", "#ffd200"),
+			club("Beijing Royal Fighters", "BRF", "#6a0dad", "#ffd200"),
+			club("Shenzhen Leopards", "SZL", "#121212", "#ffd200"),
+			club("Shandong Heroes", "SDH", "#f28c28", "#121212"),
+			club("Shanxi Loongs", "SXL", "#d6001c", "#f4f0e6"),
+			club("Qingdao Eagles", "QDE", "#0066b2", "#f4f0e6"),
+			club("Jilin Northeast Tigers", "JLT", "#d6001c", "#121212"),
+			club("Tianjin Pioneers", "TJP", "#0b3c7d", "#f4f0e6"),
+			club("Sichuan Blue Whales", "SCW", "#0066b2", "#f4f0e6"),
+			club("Fujian Sturgeons", "FJS", "#0b3c7d", "#d6001c"),
+			club("Jiangsu Dragons", "JSD", "#d6001c", "#0b3c7d"),
+			club("Nanjing Monkey Kings", "NJM", "#ffd200", "#121212"),
+			club("Guangzhou Loong Lions", "GZL", "#d6001c", "#ffd200"),
+			club("Ningbo Rockets", "NBR", "#0b3c7d", "#f4f0e6")
+		],
+		games: 42,
+		periods: 4,
+		minutes: 10,
+		shotClock: 24,
+		line: 22.15,
+		playoffs: {
+			teams: 16,
+			gamesToWin: 3
+		},
+		ratingShift: 8,
+		mix: [
+			["China", 86],
+			["USA", 12],
+			["Nigeria", 1],
+			["Australia", 1]
+		],
+		ages: [19, 35],
+		prospectAges: [18, 21],
+		rosterSize: 15
+	},
+	georgia: {
+		id: "georgia",
+		name: "Georgian Superleague",
+		short: "Superleague",
+		blurb: "Georgia's top league: 10 clubs, 36 games, FIBA rules, an 8-team playoff.",
+		clubs: [
+			club("Dinamo Tbilisi", "DIN", "#0b3c7d", "#f4f0e6"),
+			club("Rustavi", "RUS", "#d6001c", "#f4f0e6"),
+			club("Kutaisi", "KUT", "#00843d", "#f4f0e6"),
+			club("Batumi", "BAT", "#0066b2", "#ffd200"),
+			club("Vera Tbilisi", "VER", "#6a0dad", "#f4f0e6"),
+			club("Olimpi Tbilisi", "OLI", "#ffd200", "#0b3c7d"),
+			club("TSU Tbilisi", "TSU", "#0b2a5b", "#d6001c"),
+			club("Telavi", "TEL", "#7a1f3d", "#f4f0e6"),
+			club("Zugdidi", "ZUG", "#f28c28", "#121212"),
+			club("Gori", "GOR", "#121212", "#d6001c")
+		],
+		games: 36,
+		periods: 4,
+		minutes: 10,
+		shotClock: 24,
+		line: 22.15,
+		playoffs: {
+			teams: 8,
+			gamesToWin: 3
+		},
+		ratingShift: 14,
+		mix: [
+			["Georgia", 70],
+			["USA", 24],
+			["Serbia", 3],
+			["Lithuania", 3]
+		],
+		ages: [18, 35],
+		prospectAges: [17, 20],
+		rosterSize: 14
+	},
+	college: {
+		id: "college",
+		name: "College Conference",
+		short: "College",
+		blurb: "Sixteen famous programs, 30 games, two 20-minute halves, a 30-second clock and a one-game-a-round tournament. Players leave after four years.",
+		clubs: [
+			club("Duke Blue Devils", "DUKE", "#00539b", "#f4f0e6"),
+			club("North Carolina Tar Heels", "UNC", "#7bafd4", "#13294b"),
+			club("Kentucky Wildcats", "UK", "#0033a0", "#f4f0e6"),
+			club("Kansas Jayhawks", "KU", "#0051ba", "#e8000d"),
+			club("UCLA Bruins", "UCLA", "#2d68c4", "#f2a900"),
+			club("Gonzaga Bulldogs", "GONZ", "#041e42", "#c8102e"),
+			club("Michigan State Spartans", "MSU", "#18453b", "#f4f0e6"),
+			club("Villanova Wildcats", "NOVA", "#00205b", "#13b5ea"),
+			club("Arizona Wildcats", "ARIZ", "#cc0033", "#003366"),
+			club("UConn Huskies", "CONN", "#000e2f", "#f4f0e6"),
+			club("Houston Cougars", "HOU", "#c8102e", "#f4f0e6"),
+			club("Purdue Boilermakers", "PUR", "#cfb991", "#121212"),
+			club("Baylor Bears", "BAY", "#154734", "#ffb81c"),
+			club("Indiana Hoosiers", "IND", "#990000", "#f4f0e6"),
+			club("Syracuse Orange", "SYR", "#f76900", "#002d72"),
+			club("Louisville Cardinals", "LOU", "#ad0000", "#121212")
+		],
+		games: 30,
+		periods: 2,
+		minutes: 20,
+		shotClock: 30,
+		line: 22.15,
+		playoffs: {
+			teams: 16,
+			gamesToWin: 1
+		},
+		ratingShift: 10,
+		mix: [
+			["USA", 88],
+			["Canada", 3],
+			["Australia", 3],
+			["Nigeria", 3],
+			["France", 3]
+		],
+		ages: [18, 22],
+		prospectAges: [18, 18],
+		rosterSize: 15,
+		leaveAfterAge: 22
+	}
+};
+Object.keys(WORLD_LEAGUES);
 //#endregion
 //#region src/simulation/archetypes.ts
 const P = (PG, SG, SF, PF, C) => ({
@@ -1500,7 +2367,8 @@ function computeRuleMods(rules) {
 		rimProtection: mult(rules, "rimProtection"),
 		freeThrowFrequency: mult(rules, "freeThrowFrequency"),
 		doubleTeamFrequency: mult(rules, "helpDefense") * mult(rules, "defensiveRotations"),
-		paceMultiplier: mult(rules, "possessionsPerGame")
+		paceMultiplier: mult(rules, "possessionsPerGame"),
+		fourPointLine: rules?.fourPointLine === true
 	};
 }
 computeRuleMods(void 0);
@@ -1578,6 +2446,615 @@ const ERAS = [
 		blurb: "Everyone shoots. Fast, spaced and relentless."
 	}
 ];
+//#endregion
+//#region src/retention/weeklyEvent.ts
+const WEEKLY_EVENTS = [
+	{
+		id: "coinRush",
+		name: "Coin Rush",
+		blurb: "Every finished run pays double coins."
+	},
+	{
+		id: "spinStorm",
+		name: "Spin Storm",
+		blurb: "Every finished run that pays spins pays one extra Relic Spin."
+	},
+	{
+		id: "passBoost",
+		name: "Pass Boost",
+		blurb: "Your daily streak bonus fills the Season Pass twice as fast."
+	},
+	{
+		id: "giftWeek",
+		name: "Gift Week",
+		blurb: "Gifts you collect from friends pay double coins."
+	},
+	{
+		id: "secretWeek",
+		name: "Secret Week",
+		blurb: "Secret cosmetics drop from spins three times as often."
+	},
+	{
+		id: "doubleRelics",
+		name: "Double Relics",
+		blurb: "Every spin opens two relics, and counts as two spins toward the guaranteed rarities."
+	}
+];
+/** The first five events took turns until Double Relics joined: from week ROTATION_6_FROM all six take turns, it first. */
+const FIRST_FIVE = WEEKLY_EVENTS.slice(0, 5);
+[WEEKLY_EVENTS[5], ...FIRST_FIVE];
+//#endregion
+//#region src/relics/relics.ts
+const RELIC_RARITY = {
+	common: {
+		name: "Common",
+		odds: .5487,
+		luck: 1,
+		coins: 43
+	},
+	rare: {
+		name: "Rare",
+		odds: .28,
+		luck: 2,
+		coins: 85
+	},
+	epic: {
+		name: "Epic",
+		odds: .1243,
+		luck: 3,
+		coins: 213
+	},
+	legendary: {
+		name: "Legendary",
+		odds: .045,
+		luck: 4,
+		coins: 510
+	},
+	mythic: {
+		name: "Mythic",
+		odds: .002,
+		luck: 5,
+		coins: 2550
+	}
+};
+new Map([
+	{
+		id: "netScrap",
+		name: "Torn Net Scrap",
+		rarity: "common",
+		blurb: "Cut down after a pickup game nobody remembers.",
+		icon: "court"
+	},
+	{
+		id: "chalkBag",
+		name: "Chalk Bag",
+		rarity: "common",
+		blurb: "One clap and the arena knows.",
+		icon: "star"
+	},
+	{
+		id: "rookieCard",
+		name: "Creased Rookie Card",
+		rarity: "common",
+		blurb: "Worth nothing. Priceless to you.",
+		icon: "list"
+	},
+	{
+		id: "wristband",
+		name: "Sweat-Soaked Wristband",
+		rarity: "common",
+		blurb: "Still damp. Somehow.",
+		icon: "heart"
+	},
+	{
+		id: "ticketStub",
+		name: "Nosebleed Ticket Stub",
+		rarity: "common",
+		blurb: "Row ZZ. Best seat in the house.",
+		icon: "calendar"
+	},
+	{
+		id: "whistle",
+		name: "Referee's Whistle",
+		rarity: "rare",
+		blurb: "Every call goes your way. Allegedly.",
+		icon: "warning"
+	},
+	{
+		id: "clipboard",
+		name: "Coach's Clipboard",
+		rarity: "rare",
+		blurb: "The last play is still drawn on it.",
+		icon: "chart"
+	},
+	{
+		id: "gameBall",
+		name: "Game-Winner Ball",
+		rarity: "rare",
+		blurb: "Signed by everyone on the floor that night.",
+		icon: "play"
+	},
+	{
+		id: "warmups",
+		name: "Throwback Warm-ups",
+		rarity: "rare",
+		blurb: "Tear-away snaps still work.",
+		icon: "jersey"
+	},
+	{
+		id: "floorboard",
+		name: "Old Arena Floorboard",
+		rarity: "rare",
+		blurb: "From a building they tore down years ago.",
+		icon: "court"
+	},
+	{
+		id: "goldShoes",
+		name: "Gold Sneakers",
+		rarity: "epic",
+		blurb: "Laced for a Finals game. Never washed.",
+		icon: "shoe"
+	},
+	{
+		id: "banner",
+		name: "Rafters Banner",
+		rarity: "epic",
+		blurb: "A number nobody will ever wear again.",
+		icon: "trophy"
+	},
+	{
+		id: "champagne",
+		name: "Locker-Room Champagne",
+		rarity: "epic",
+		blurb: "The cork is still in your pocket.",
+		icon: "flame"
+	},
+	{
+		id: "scoutNotes",
+		name: "Legendary Scout's Notebook",
+		rarity: "epic",
+		blurb: "He saw them all coming.",
+		icon: "search"
+	},
+	{
+		id: "ring",
+		name: "Championship Ring",
+		rarity: "legendary",
+		blurb: "Heavy. In the best way.",
+		icon: "crown"
+	},
+	{
+		id: "trophy",
+		name: "The Larry O'Brien Replica",
+		rarity: "legendary",
+		blurb: "Gold, and it knows it.",
+		icon: "trophy"
+	},
+	{
+		id: "mvpBall",
+		name: "MVP Game Ball",
+		rarity: "legendary",
+		blurb: "From the night the league crowned him.",
+		icon: "star"
+	},
+	{
+		id: "firstBall",
+		name: "The First Basketball",
+		rarity: "mythic",
+		blurb: "Leather, laces and 1891.",
+		icon: "crown"
+	},
+	{
+		id: "peachBasket",
+		name: "The Peach Basket",
+		rarity: "mythic",
+		blurb: "Before nets. Before everything.",
+		icon: "trophy"
+	},
+	{
+		id: "benchTowel",
+		name: "Bench Towel",
+		rarity: "common",
+		blurb: "Waved for every three from the corner.",
+		icon: "jersey"
+	},
+	{
+		id: "headband",
+		name: "Terry Headband",
+		rarity: "common",
+		blurb: "Pulled low for the fourth quarter.",
+		icon: "heart"
+	},
+	{
+		id: "gameProgram",
+		name: "Game Program",
+		rarity: "common",
+		blurb: "The starting lineups, circled in pen.",
+		icon: "list"
+	},
+	{
+		id: "foamFinger",
+		name: "Foam Finger",
+		rarity: "common",
+		blurb: "We're number one. Probably.",
+		icon: "up"
+	},
+	{
+		id: "bobblehead",
+		name: "Giveaway Bobblehead",
+		rarity: "common",
+		blurb: "First 10,000 fans. You were 9,998.",
+		icon: "team"
+	},
+	{
+		id: "mouthguard",
+		name: "Chewed Mouthguard",
+		rarity: "common",
+		blurb: "Hanging out of a mouth on a game-winner.",
+		icon: "check"
+	},
+	{
+		id: "scoreSheet",
+		name: "Scorer's Sheet",
+		rarity: "common",
+		blurb: "Every point, by hand.",
+		icon: "chart"
+	},
+	{
+		id: "clockBulb",
+		name: "Shot Clock Bulb",
+		rarity: "common",
+		blurb: "Burned out at 0.4 seconds.",
+		icon: "clock"
+	},
+	{
+		id: "luckyPenny",
+		name: "Lucky Penny",
+		rarity: "common",
+		blurb: "Heads up, found at center court.",
+		icon: "star",
+		stack: true
+	},
+	{
+		id: "luckySocks",
+		name: "Lucky Socks",
+		rarity: "common",
+		blurb: "Unwashed since the streak began.",
+		icon: "shoe",
+		stack: true
+	},
+	{
+		id: "paradeConfetti",
+		name: "Parade Confetti",
+		rarity: "common",
+		blurb: "Still finding it in your coat.",
+		icon: "flame",
+		stack: true
+	},
+	{
+		id: "fanAutograph",
+		name: "Fan Autograph",
+		rarity: "common",
+		blurb: "On a napkin. Still counts.",
+		icon: "list",
+		stack: true
+	},
+	{
+		id: "pressPass",
+		name: "Press Pass",
+		rarity: "rare",
+		blurb: "Access all areas, one night only.",
+		icon: "phone"
+	},
+	{
+		id: "lockerPlate",
+		name: "Locker Nameplate",
+		rarity: "rare",
+		blurb: "Pried off when the old arena closed.",
+		icon: "lock"
+	},
+	{
+		id: "playbook",
+		name: "Dog-Eared Playbook",
+		rarity: "rare",
+		blurb: "Page 42: the play that won it.",
+		icon: "menu"
+	},
+	{
+		id: "draftCap",
+		name: "Draft Night Cap",
+		rarity: "rare",
+		blurb: "The sticker's still on the brim.",
+		icon: "calendar"
+	},
+	{
+		id: "allStarJersey",
+		name: "All-Star Jersey",
+		rarity: "rare",
+		blurb: "Worn for one weekend, framed forever.",
+		icon: "jersey"
+	},
+	{
+		id: "tunnelSign",
+		name: "Tunnel Sign",
+		rarity: "rare",
+		blurb: "Touched by every player, every night.",
+		icon: "warning"
+	},
+	{
+		id: "tipoffBall",
+		name: "Opening Tip Ball",
+		rarity: "rare",
+		blurb: "The first ball of a dynasty season.",
+		icon: "play"
+	},
+	{
+		id: "signedSneaker",
+		name: "Signed Sneaker",
+		rarity: "rare",
+		blurb: "Just the left one.",
+		icon: "shoe"
+	},
+	{
+		id: "rookiePack",
+		name: "Unopened Card Pack",
+		rarity: "rare",
+		blurb: "Could be anything in there.",
+		icon: "list",
+		stack: true
+	},
+	{
+		id: "seasonTicket",
+		name: "Season Ticket",
+		rarity: "rare",
+		blurb: "Forty-one home games of hope.",
+		icon: "calendar",
+		stack: true
+	},
+	{
+		id: "benchChain",
+		name: "Bench Mob Chain",
+		rarity: "rare",
+		blurb: "Passed down the bench after every big play.",
+		icon: "team",
+		stack: true
+	},
+	{
+		id: "bentRim",
+		name: "Bent Dunk Rim",
+		rarity: "epic",
+		blurb: "They had to stop the game.",
+		icon: "court"
+	},
+	{
+		id: "buzzerClock",
+		name: "Buzzer-Beater Clock",
+		rarity: "epic",
+		blurb: "Frozen at 0.0, forever.",
+		icon: "clock"
+	},
+	{
+		id: "coachTie",
+		name: "Coach's Lucky Tie",
+		rarity: "epic",
+		blurb: "Worn for every Game 7.",
+		icon: "settings"
+	},
+	{
+		id: "allStarMvp",
+		name: "All-Star MVP Trophy",
+		rarity: "epic",
+		blurb: "A Sunday night to remember.",
+		icon: "trophy"
+	},
+	{
+		id: "streakBall",
+		name: "Win Streak Ball",
+		rarity: "epic",
+		blurb: "Signed after win number 33.",
+		icon: "flame"
+	},
+	{
+		id: "iceBag",
+		name: "Ice Veins Bag",
+		rarity: "epic",
+		blurb: "Kept the closer cool.",
+		icon: "ice"
+	},
+	{
+		id: "bannerThread",
+		name: "Banner Thread",
+		rarity: "epic",
+		blurb: "A loose thread from a title banner.",
+		icon: "trophy",
+		stack: true
+	},
+	{
+		id: "hofBallot",
+		name: "Hall of Fame Ballot",
+		rarity: "epic",
+		blurb: "One vote. It counted.",
+		icon: "check",
+		stack: true
+	},
+	{
+		id: "game7Ball",
+		name: "Game 7 Ball",
+		rarity: "legendary",
+		blurb: "The last ball of the last game.",
+		icon: "play"
+	},
+	{
+		id: "retiredJersey",
+		name: "Retired Jersey",
+		rarity: "legendary",
+		blurb: "Lowered from the rafters for one night.",
+		icon: "jersey"
+	},
+	{
+		id: "dynastyRing",
+		name: "Dynasty Ring",
+		rarity: "legendary",
+		blurb: "The third one in a row.",
+		icon: "crown"
+	},
+	{
+		id: "fluSneakers",
+		name: "Flu Game Sneakers",
+		rarity: "legendary",
+		blurb: "He could barely stand. He scored 38.",
+		icon: "shoe"
+	},
+	{
+		id: "lastWhiteboard",
+		name: "Last-Shot Whiteboard",
+		rarity: "legendary",
+		blurb: "The X's and O's of a miracle.",
+		icon: "chart"
+	},
+	{
+		id: "hofJacket",
+		name: "Hall of Fame Jacket",
+		rarity: "legendary",
+		blurb: "Orange, and earned.",
+		icon: "jersey",
+		stack: true
+	},
+	{
+		id: "goldenNet",
+		name: "The Golden Net",
+		rarity: "mythic",
+		blurb: "Every shot through it went in.",
+		icon: "court"
+	},
+	{
+		id: "firstJumpBall",
+		name: "The First Jump Ball",
+		rarity: "mythic",
+		blurb: "Tossed up before there was a league.",
+		icon: "up"
+	},
+	{
+		id: "gavel",
+		name: "The Commissioner's Gavel",
+		rarity: "mythic",
+		blurb: "It decides everything.",
+		icon: "settings"
+	}
+].map((r) => [r.id, r]));
+new Map([
+	{
+		id: "eternalSpin",
+		name: "The Eternal Spin",
+		mode: "Career Mode",
+		ability: "Always +1 respin on the Career wheel.",
+		hint: "Voted in on the first ballot, the wheel turns once more.",
+		feat: "Retire a first-ballot Hall of Famer in Career Mode."
+	},
+	{
+		id: "secondWind",
+		name: "Second Wind",
+		mode: "League Hunt",
+		ability: "Start every hunt with one extra life.",
+		hint: "Survive the hardest road and you breathe twice.",
+		feat: "Win a League Hunt on Legend."
+	},
+	{
+		id: "goldenTouch",
+		name: "Golden Touch",
+		mode: "League Hunt",
+		ability: "Start every hunt with 30 extra coins.",
+		hint: "Only luck finds the hand that turns leather to gold."
+	},
+	{
+		id: "ironWill",
+		name: "Iron Will",
+		mode: "Survival",
+		ability: "Start every Survival run with one extra Shield.",
+		hint: "Fifteen times they came for your best. Fifteen times you stood.",
+		feat: "Win 15 rounds in one Survival run."
+	},
+	{
+		id: "extraPick",
+		name: "The Extra Pick",
+		mode: "82-0 Challenge",
+		ability: "One extra reroll in every 82-0 run.",
+		hint: "Eighty-two up, none down, and a pick to spare.",
+		feat: "Finish an 82-0 regular season."
+	},
+	{
+		id: "clutchGene",
+		name: "The Clutch Gene",
+		mode: "Story Mode",
+		ability: "Your story player starts with +2 grit.",
+		hint: "From the park with no nets to a legend's ending.",
+		feat: "Reach the legend ending in Story Mode."
+	},
+	{
+		id: "ownersFavorite",
+		name: "Owner's Favorite",
+		mode: "Franchise",
+		ability: "The owner's demands ask for one fewer win.",
+		hint: "Luck alone gets you a seat in the owner's box."
+	},
+	{
+		id: "lastLook",
+		name: "The Last Look",
+		mode: "Daily Grid",
+		ability: "One extra guess on Endless grids.",
+		hint: "Luck alone gives you one more look at the board."
+	},
+	{
+		id: "luckyCharm",
+		name: "The Lucky Charm",
+		mode: "Career Mode",
+		ability: "One extra Lucky Spin on the Career wheel.",
+		hint: "Luck alone finds the charm that finds more luck."
+	},
+	{
+		id: "sixthSense",
+		name: "Sixth Sense",
+		mode: "Categorize",
+		ability: "One extra mistake on Endless boards.",
+		hint: "See every group without a single wrong guess.",
+		feat: "Solve a Categorize board with no mistakes."
+	},
+	{
+		id: "filmRoom",
+		name: "The Film Room",
+		mode: "Guess the Team",
+		ability: "One extra guess on every team.",
+		hint: "Ten teams in a row and the tapes start talking.",
+		feat: "Name 10 teams in a row in Guess the Team."
+	},
+	{
+		id: "phoneTree",
+		name: "The Phone Tree",
+		mode: "Franchise",
+		ability: "Seek trade brings in 4 more offers.",
+		hint: "Luck alone gets every GM to pick up."
+	},
+	{
+		id: "ultraCheat",
+		name: "Ultra Cheat",
+		mode: "Career Mode",
+		ability: "Spend 2 Lucky Spins on the Career wheel for one category of your choice rated 125.",
+		hint: "Own every relic in the vault and the last door opens.",
+		feat: "Own every relic in the vault.",
+		earnedOnly: true
+	}
+].map((r) => [r.id, r]));
+(() => {
+	const raw = {
+		common: 0,
+		rare: RELIC_RARITY.rare.odds,
+		epic: RELIC_RARITY.epic.odds * 2,
+		legendary: RELIC_RARITY.legendary.odds * 2,
+		mythic: RELIC_RARITY.mythic.odds * 2
+	};
+	const sum = Object.values(raw).reduce((a, b) => a + b, 0);
+	return Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, v / sum]));
+})();
 //#endregion
 //#region src/hunt/coaches.ts
 const c = (id, name, bonus, style, franchises, blurb) => ({
@@ -1705,6 +3182,41 @@ const COACHES = [
 	c("nephew", "The Owner's Nephew", -2, "threes", [], "Read a blog post about analytics.")
 ];
 new Map(COACHES.map((x) => [x.id, x]));
+[
+	["ATL", "Atlanta"],
+	["BOS", "Boston"],
+	["BRK", "Brooklyn"],
+	["CHO", "Charlotte"],
+	["CHI", "Chicago"],
+	["CLE", "Cleveland"],
+	["DAL", "Dallas"],
+	["DEN", "Denver"],
+	["DET", "Detroit"],
+	["GSW", "Golden State"],
+	["HOU", "Houston"],
+	["IND", "Indiana"],
+	["LAC", "LA"],
+	["LAL", "Los Angeles"],
+	["MEM", "Memphis"],
+	["MIA", "Miami"],
+	["MIL", "Milwaukee"],
+	["MIN", "Minnesota"],
+	["NOP", "New Orleans"],
+	["NYK", "New York"],
+	["OKC", "Oklahoma City"],
+	["ORL", "Orlando"],
+	["PHI", "Philadelphia"],
+	["PHO", "Phoenix"],
+	["POR", "Portland"],
+	["SAC", "Sacramento"],
+	["SAS", "San Antonio"],
+	["TOR", "Toronto"],
+	["UTA", "Utah"],
+	["WAS", "Washington"]
+].map(([id, city]) => ({
+	id,
+	city
+}));
 //#endregion
 //#region src/hunt/pvp.ts
 /** Elo: the expected score and the change for the challenger (K = 32). */
