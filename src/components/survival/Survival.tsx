@@ -266,9 +266,11 @@ function Over({ h, run, records, onNew, onExit }: { h: NbaHistory; run: Survival
       <h2>You lasted {w} round{w === 1 ? '' : 's'}</h2>
       {last && !last.won && <p>Knocked out {last.us}-{last.them} by the {last.oppName}.</p>}
       <div className="hunt-over-stats">
-        <div><small>WINS</small><b><ResultCount value={w} /></b></div><div><small>BOSSES</small><b><ResultCount value={bosses} /></b></div><div><small>SCORE</small><b><ResultCount value={score} /></b></div>
-        <div><small>STREAK</small><b><ResultCount value={bestStreak} /></b></div>
-        <div><small>BEST</small><b><ResultCount value={best?.wins ?? w} /></b></div>
+        <div><small><PixelIcon name="check" size={11} /> WINS</small><b><ResultCount value={w} /></b></div>
+        <div><small><PixelIcon name="boss" size={11} /> BOSSES</small><b><ResultCount value={bosses} /></b></div>
+        <div><small><PixelIcon name="chart" size={11} /> SCORE</small><b><ResultCount value={score} /></b></div>
+        <div><small><PixelIcon name="flame" size={11} /> STREAK</small><b><ResultCount value={bestStreak} /></b></div>
+        <div><small><PixelIcon name="crown" size={11} /> BEST</small><b><ResultCount value={best?.wins ?? w} /></b></div>
       </div>
     </div>
     <RelicReward rewardKey={survivalRewardKey(run)} />

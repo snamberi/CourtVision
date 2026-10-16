@@ -78,7 +78,7 @@ export function PostGameRewardPopup({ data, onClose }: { data: PostGameRewardDat
           )}
           {(reward?.coins ?? 0) > 0 && (
             <li className="pgr-row">
-              <PixelIcon name="flame" size={18} />
+              <PixelIcon name="coin" size={18} />
               <span>Coins</span>
               <b>+{reward!.coins.toLocaleString()}</b>
             </li>
