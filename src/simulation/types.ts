@@ -525,6 +525,12 @@ export interface GameSettings {
   yearAccurate?: boolean;
   /** Possessions multiplier for the era (1 = today's NBA pace); set each season by year-accurate leagues. */
   eraPace?: number;
+  /** Year-accurate leagues: false plays every season by today's rules (see eraRules.ts). */
+  eraRules?: boolean;
+  /** Set while a season plays by its real era's rules: that season's start year. */
+  eraYear?: number;
+  /** Three-point volume of the era relative to today's (0 before the line). */
+  eraThreeVolume?: number;
 }
 
 export const REALISTIC_ERA_MODERN: EraRules = {

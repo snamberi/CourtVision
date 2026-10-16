@@ -1,3 +1,5 @@
+import { withRingNight } from './ringNight';
+import { seasonEraSettings } from './eraRules';
 import { ownerSeasonEnd } from './ownerBox';
 import { rollBusinessSeason } from './business';
 import { withLegacySons } from './family';
@@ -486,8 +488,7 @@ export function withYearAccurateSeason(league: League): League {
   const real = meta.realSeasonGames[league.season ?? ''];
   const games = real ?? 82;
   const eraPace = meta.realPace?.[league.season ?? ''] ?? 1;
-  if (league.settings.gamesPerSeason === games && league.settings.eraPace === eraPace) return league;
-  return { ...league, settings: { ...league.settings, gamesPerSeason: games, eraPace } };
+  return { ...league, settings: seasonEraSettings({ ...league.settings, gamesPerSeason: games, eraPace }, Number(league.season), meta.realThreeVolume, meta.lastDataStartYear) };
 }
 
 /**
@@ -501,7 +502,7 @@ export function finalizeNewSeasonSchedule(input: League): League {
   const league = withYearAccurateSeason(input);
   const gamesPerTeam = league.settings.gamesPerSeason
     ?? (league.teams[0] ? totalGamesForTeam(league, league.teams[0].teamId) || 82 : 82);
-  const schedule = generateSeasonSchedule(league.teams.map((t) => t.teamId), gamesPerTeam);
+  const schedule = withRingNight(generateSeasonSchedule(league.teams.map((t) => t.teamId), gamesPerTeam), league.franchiseHistory);
   const teams = league.teams.map((t) => {
     const before = t.offseasonStartRosterIds;
     if (!before) return t;

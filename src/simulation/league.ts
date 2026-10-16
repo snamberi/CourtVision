@@ -192,6 +192,8 @@ export interface ScheduledGame {
   result?: GameResult;
   /** In-Season Cup group this regular-season game also counts for (see cup.ts). */
   cupGroupId?: string;
+  /** Opening night: the defending champions raise their banner against last year's Finals opponent (see ringNight.ts). */
+  ringNight?: boolean;
 }
 
 export type SeasonPhase = 'regular_season' | 'all_star' | 'playoffs' | 'awards_recap' | 'draft' | 'resign_waive' | 'free_agency' | 'preseason';

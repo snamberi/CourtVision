@@ -1,3 +1,6 @@
+import { RosterResetPreview } from './components/RosterResetPreview';
+import { RealVsYoursPage } from './components/RealVsYoursPage';
+import { momentById } from './history/moments';
 import { plural } from './lib/humanize';
 import { initializeCoaching } from './simulation/staffManagement';
 import { noteHolidayFinish } from './retention/holiday';
@@ -499,12 +502,12 @@ function App() {
 
   const [menuBusy, setMenuBusy] = useState<string | null>(null);
   /** Builds a league from its origin (a new game, the weekly challenge, or a league code) and opens it. */
-  const startFromOrigin = (origin: LeagueOrigin, o: { name: string; teamId?: string | null; weekly?: WeeklyRebuild | null; settings?: CreateSettings; dynasty?: boolean; decade?: boolean; gmCareer?: boolean }) => {
+  const startFromOrigin = (origin: LeagueOrigin, o: { name: string; teamId?: string | null; intro?: string; weekly?: WeeklyRebuild | null; settings?: CreateSettings; dynasty?: boolean; decade?: boolean; gmCareer?: boolean }) => {
     const openWithTeam = (built: League, builtExtras: GMLeagueExtras) => {
       // League settings picked on the New Franchise page; Dynasty Mode switches on the living world.
       const set = o.settings ? applyCreateSettings(built, builtExtras, o.settings, origin.kind === 'random' || origin.kind === 'world') : { league: built, extras: builtExtras };
       const extras = set.extras, dyn0 = o.dynasty ? startDynasty(set.league) : set.league, dyn = o.decade ? startDecade(dyn0) : dyn0, league = o.gmCareer ? startGmCareer(dyn) : dyn;
-      if (o.teamId && league.teams.some(t => t.teamId === o.teamId)) { enterApp(league, extras, o.teamId, o.name); setTab('dashboard'); return; }
+      if (o.teamId && league.teams.some(t => t.teamId === o.teamId)) { enterApp(league, extras, o.teamId, o.name); setTab('dashboard'); if (o.intro) pushToast(o.intro, 'info'); return; }
       setPendingLeague(league);
       setPendingExtras(extras);
       setPendingLeagueName(o.name);
@@ -607,7 +610,10 @@ function App() {
     track('mode_start', { mode: c.source === 'random' ? 'random' : c.source === 'world' ? 'world' : 'real', variant: c.source === 'world' ? c.world ?? 'euro' : c.source });
     if (c.source === 'world') startFromOrigin({ kind: 'world', world: c.world ?? 'euro', year: parseInt(c.year, 10), seed, difficulty: c.difficulty }, { name: c.name, settings: c.settings, dynasty: c.dynasty, decade: c.decade, gmCareer: c.gmCareer });
     else if (c.source === 'random') startFromOrigin({ kind: 'random', year: parseInt(c.year, 10), seed, difficulty: c.difficulty, balanced: true }, { name: c.name, settings: c.settings, dynasty: c.dynasty, decade: c.decade, gmCareer: c.gmCareer });
-    else if (c.source === 'history') startFromOrigin({ kind: 'history', year: parseInt(c.year, 10), seed, difficulty: c.difficulty, ...c.real }, { name: c.name, settings: c.settings, dynasty: c.dynasty, decade: c.decade, gmCareer: c.gmCareer });
+    else if (c.source === 'history') {
+      const m = c.moment ? momentById(c.moment) : undefined;
+      startFromOrigin({ kind: 'history', year: parseInt(c.year, 10), seed, difficulty: c.difficulty, ...c.real }, { name: c.name, settings: c.settings, dynasty: c.dynasty, decade: c.decade, gmCareer: c.gmCareer, ...(m ? { teamId: m.team, intro: `${m.title}: ${m.blurb}` } : {}) });
+    }
     else startGameMode('real', c.difficulty, c.year, c.name, { source: 'csv', realDevelopment: true });
   };
 
@@ -934,15 +940,15 @@ function App() {
 
   const historicalSeason = league.historical ? league.season : null;
   // Older historical saves: load each real season's length and pace; leagues with Historical rosters on follow them.
-  const needsSeasonShape = !!league.historical && !league.historical.realSeasonGames;
+  const needsSeasonShape = !!league.historical && (!league.historical.realSeasonGames || !league.historical.realThreeVolume);
   useEffect(() => {
     if (!needsSeasonShape || jobs.busy) return;
     let cancelled = false;
     historyTools().then(({ h, realSeasonShape }) => {
       if (cancelled) return;
       const shape = realSeasonShape(h);
-      setLeague(l => !l.historical || l.historical.realSeasonGames ? l : {
-        ...l, historical: { ...l.historical, realSeasonGames: shape.games, realPace: shape.pace },
+      setLeague(l => !l.historical || (l.historical.realSeasonGames && l.historical.realThreeVolume) ? l : {
+        ...l, historical: { ...l.historical, realSeasonGames: shape.games, realPace: shape.pace, realThreeVolume: shape.threes },
         settings: l.historical.forceRosters && l.settings.yearAccurate === undefined ? { ...l.settings, yearAccurate: true } : l.settings,
       });
     }).catch(() => { /* tried again next time the league opens */ });
@@ -2040,6 +2046,10 @@ function App() {
               />
         )}
 
+        {(tab === 'freeAgency' || tab === 'resignWaive' || tab === 'draft') && (
+          <RosterResetPreview league={league} extras={extras} teamId={controlledTeamId} onSelectPlayer={selectPlayer}
+            onKeepRoster={() => { setLeague(l => (l.historical ? { ...l, historical: { ...l.historical, userTeamToo: false } } : l)); pushToast('Historical rosters will leave your team alone from now on.', 'info'); }} />
+        )}
         {tab === 'freeAgency' && (
           league.teams.length === 0
             ? <p className="empty-state">No teams yet.</p>
@@ -2124,6 +2134,7 @@ function App() {
         {tab === 'records' && <RecordsPage league={league} extras={extras} onSelectPlayer={selectPlayer} />}
         {tab === 'historyBook' && <HistoryBookPage league={league} onSelectPlayer={selectPlayer} />}
         {tab === 'almanac' && <AlmanacPage league={league} extras={extras} awardSettings={awardSettings} onSelectPlayer={selectPlayer} />}
+        {tab === 'realVsYours' && <RealVsYoursPage league={league} extras={extras} onSelectPlayer={selectPlayer} />}
         {tab === 'nbaArchive' && <NbaArchivePage key={archiveQuery} league={league} extras={extras} onSelectPlayer={selectPlayer} initialQuery={archiveQuery} onLoadRetirees={loadRetirees} />}
 
         {tab === 'resignWaive' && (

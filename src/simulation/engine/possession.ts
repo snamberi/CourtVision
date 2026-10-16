@@ -143,7 +143,9 @@ export function simulatePossession(input: PossessionInput): PossessionResult {
     onCourt: true,
     iq: iqs[i],
   }));
-  const call = input.playCall;
+  // Before the 3-point line (era rules) a last-shot call for a three becomes a jumper.
+  const call = input.playCall?.kind === 'lastShot' && (input.playCall.shot ?? 'three') === 'three' && mods.shotTypeWeight.three === 0
+    ? { ...input.playCall, shot: 'mid' as const } : input.playCall;
   const focus = call?.focusId ? offense.find(p => p.playerId === call.focusId) : undefined;
   // Isolations, post-ups and last shots go to the player the coach named.
   const ballHandlerId = focus && (call!.kind === 'iso' || call!.kind === 'post' || call!.kind === 'lastShot') ? focus.playerId : chooseBallHandler(bhCandidates, rng);

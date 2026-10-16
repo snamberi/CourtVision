@@ -91,7 +91,7 @@ export function SchedulePage({ league, controlledTeamId, onViewGame }: Props) {
           <span className="sched-next-at">{next.home ? 'VS' : '@'}</span>
           {byId.get(next.opponent) && <div className="sched-next-team"><TeamLogo team={byId.get(next.opponent)!} size={56} /><b><TeamLink teamId={next.opponent} /></b><small>{record(next.opponent)}</small></div>}
         </div>
-        <p className="hint-text">{next.home ? 'Home game' : 'On the road'}{next.game.cupGroupId ? ' · counts for the In-Season Cup' : ''}</p>
+        <p className="hint-text">{next.home ? 'Home game' : 'On the road'}{next.game.cupGroupId ? ' · counts for the In-Season Cup' : ''}{next.game.ringNight ? ' · Ring Night: the champions raise their banner' : ''}</p>
       </section>}
 
       {[...months].map(([month, list]) => <section key={month} className="sched-month">
@@ -103,7 +103,7 @@ export function SchedulePage({ league, controlledTeamId, onViewGame }: Props) {
             <span className="sched-date"><b>{fmt(g.date, { day: 'numeric' })}</b>{fmt(g.date, { weekday: 'short' })}</span>
             {opp && <TeamLogo team={opp} size={28} />}
             <span className="sched-opp"><small>{g.home ? 'vs' : '@'}</small>{opp?.name ?? g.opponent}</span>
-            {g.game.cupGroupId && <span className="cup-tag" title="Also an In-Season Cup group game">CUP</span>}
+            {g.game.cupGroupId && <span className="cup-tag" title="Also an In-Season Cup group game">CUP</span>}{g.game.ringNight && <span className="cup-tag" title="Opening night: the champions raise their banner">RING NIGHT</span>}
             <span className="sched-result">{g.outcome ? <><i>{g.outcome}</i>{g.us}-{g.them}</> : isNext ? 'NEXT' : '—'}</span>
           </button>;
         })}</div>
@@ -126,7 +126,7 @@ export function SchedulePage({ league, controlledTeamId, onViewGame }: Props) {
         return <article key={g.id} className={`sched-matchup${g.played ? ' played' : ''}`}>
           {side(g.awayTeamId, r?.awayScore, homeWon === false)}
           {side(g.homeTeamId, r?.homeScore, homeWon === true)}
-          <footer>{g.cupGroupId && <span className="cup-tag">CUP</span>}{g.played ? <button className="link-button" onClick={() => onViewGame(g.id)}>Box score</button> : <span className="hint-text">Upcoming</span>}</footer>
+          <footer>{g.cupGroupId && <span className="cup-tag">CUP</span>}{g.ringNight && <span className="cup-tag">RING NIGHT</span>}{g.played ? <button className="link-button" onClick={() => onViewGame(g.id)}>Box score</button> : <span className="hint-text">Upcoming</span>}</footer>
         </article>;
       })}</div>
     </>}

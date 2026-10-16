@@ -161,3 +161,15 @@ export function applyHistoricalDeadline(league: League, extras: GMLeagueExtras, 
   const settled = enforceSticky({ ...league, teams, historical }, { ...extras, contracts, freeAgents });
   return { league: settled.league, extras: settled.extras, moved };
 }
+
+/**
+ * What Historical rosters will do to your own team ("Your team too") when the coming preseason starts: who leaves and
+ * who arrives. Null when the reset does not touch your team this season.
+ */
+export function historicalRosterPreview(league: League, extras: GMLeagueExtras, teamId: string | null): { leaving: string[]; arriving: string[] } | null {
+  const meta = league.historical;
+  if (!teamId || !meta?.forceRosters || !meta.userTeamToo || !meta.realRosters?.[league.season ?? '']?.[teamId]) return null;
+  const before = new Set(league.teams.find(t => t.teamId === teamId)?.seasons.map(p => p.playerId) ?? []);
+  const after = new Set(applyHistoricalRosters(league, extras, teamId).league.teams.find(t => t.teamId === teamId)?.seasons.map(p => p.playerId) ?? []);
+  return { leaving: [...before].filter(id => !after.has(id)), arriving: [...after].filter(id => !before.has(id)) };
+}
