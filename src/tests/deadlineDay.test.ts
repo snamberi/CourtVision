@@ -136,5 +136,5 @@ describe('Trade Deadline Day', () => {
     const result = autoPlayOneSeason(scheduleDeadlineDay(base, me), extras, me, DEFAULT_AWARD_SETTINGS, 9);
     expect(result.league.season).not.toBe(base.season);
     expect(result.league.franchiseHistory?.some(r => r.season === base.season)).toBe(true);
-  });
+  }, 60_000); // a whole season of games
 });

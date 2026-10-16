@@ -1,3 +1,4 @@
+import { withSeasonPreview } from './seasonPreview';
 import { assignHoldouts } from './holdouts';
 import { applyHistoricalRosters } from '../history/realRollover';
 import { runWorldGamesIfDue, resolvePending } from '../worldGames/league';
@@ -429,7 +430,7 @@ function seasonFromDraft(
   // 6. Preseason -> open the fresh regular-season schedule.
   currentLeague = finalizeNewSeasonSchedule({ ...currentLeague, seasonPhase: 'regular_season' });
   const prepared = manageCoachRosters(currentLeague, currentExtras);
-  currentLeague = assignHoldouts(prepared.league, prepared.extras, seed + 41_000);
+  currentLeague = withSeasonPreview(assignHoldouts(prepared.league, prepared.extras, seed + 41_000));
   currentExtras = prepared.extras;
   // Next summer's class goes on the board for the new season.
   currentExtras = ensureUpcomingDraftClass(currentLeague, currentExtras);

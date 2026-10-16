@@ -1,3 +1,6 @@
+import { SeasonPreviewPage } from './components/SeasonPreviewPage';
+import { withSeasonPreview } from './simulation/seasonPreview';
+import { LineupLabPage } from './components/LineupLabPage';
 import { TwoWayCard } from './components/TwoWayCard';
 import { assignHoldouts } from './simulation/holdouts';
 import { RosterResetPreview } from './components/RosterResetPreview';
@@ -1243,7 +1246,7 @@ function App() {
   const startRegularSeason = () => {
     setPlayoffBracket(null);
     const ready = manageCoachRosters(finalizeNewSeasonSchedule(league), extras, [aiUserTeam(league, controlledTeamId)]);
-    setLeague(assignHoldouts(ready.league, ready.extras, seed + Number(ready.league.season ?? 0)));
+    setLeague(withSeasonPreview(assignHoldouts(ready.league, ready.extras, seed + Number(ready.league.season ?? 0))));
     setExtras(ensureUpcomingDraftClass(ready.league, ready.extras));
     setTab('standings');
   };
@@ -1986,10 +1989,11 @@ function App() {
             : <FastEditPage teams={league.teams} sandboxMode={sandboxMode} onUpdatePlayer={updatePlayerOnTeam} onSelectPlayer={selectPlayer} />
         )}
 
+        {tab === 'lineupLab' && <LineupLabPage league={league} controlledTeamId={controlledTeamId} onSelectPlayer={selectPlayer} />}
         {tab === 'compare' && (
           league.teams.length === 0
             ? <p className="empty-state">No teams yet.</p>
-            : <ComparePage teams={league.teams} />
+            : <ComparePage teams={league.teams} league={league} extras={extras} onSelectPlayer={selectPlayer} />
         )}
 
         {tab === 'standings' && (
@@ -2386,6 +2390,7 @@ function App() {
         )}
 
         {tab === 'powerRankings' && <PowerRankingsPage league={league} />}
+        {tab === 'seasonPreview' && <SeasonPreviewPage league={league} onChange={setLeague} onSelectPlayer={selectPlayer} />}
 
         {tab === 'cup' && <CupPage league={league} controlledTeamId={controlledTeamId} onSelectPlayer={selectPlayer} />}
 

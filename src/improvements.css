@@ -36,3 +36,46 @@
 .cv-chip.gold { color: var(--c-fg-ffd166, #ffd166); border-color: var(--c-border-7a6326, #7a6326); }
 .num { font-variant-numeric: tabular-nums; text-align: right; }
 .muted { color: var(--text-muted, var(--c-fg-94a0b2, #94a0b2)); }
+
+/* Compare: career curves and comps */
+.cmp-curve { margin: 10px 0; max-width: 420px; }
+.cmp-curve svg { width: 100%; height: auto; background: var(--c-bg-0b1018, #0b1018); border: 2px solid var(--border, var(--c-border-2a3546, #2a3546)); }
+.cmp-axis { stroke: var(--c-border-2a3546, #2a3546); stroke-width: 1; }
+.cmp-tick { fill: var(--c-bg-94a0b2, #94a0b2); font-size: 9px; }
+.cmp-line { fill: none; stroke-width: 2; }
+.cmp-line.a, .cmp-dot.a, .cmp-key.a { stroke: var(--c-border-f47b20, #f47b20); fill: var(--c-bg-f47b20, #f47b20); background: var(--c-bg-f47b20, #f47b20); }
+.cmp-line.b, .cmp-dot.b, .cmp-key.b { stroke: var(--c-border-4da3ff, #4da3ff); fill: var(--c-bg-4da3ff, #4da3ff); background: var(--c-bg-4da3ff, #4da3ff); }
+.cmp-line.a, .cmp-line.b { fill: none; }
+.cmp-key { display: inline-block; width: 10px; height: 10px; margin: 0 2px 0 8px; }
+.cmp-curve figcaption { font-size: 11px; color: var(--c-fg-94a0b2, #94a0b2); }
+.cmp-comps { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-top: 12px; }
+.cmp-comps ul { padding-left: 16px; margin: 4px 0; }
+
+/* Lineup Lab + shot chart */
+.lineup-table td.col-name { white-space: normal; }
+.good-text { color: var(--c-fg-55c878, #55c878); }
+.bad-text { color: var(--c-fg-e85d5d, #e85d5d); }
+.shot-wrap { display: grid; grid-template-columns: minmax(240px, 360px) 1fr; gap: 12px; align-items: start; }
+.shot-court { width: 100%; height: auto; }
+.shot-floor { fill: var(--c-bg-3a2716, #3a2716); stroke: var(--c-border-f4f0e6, #f4f0e6); stroke-width: 2; }
+.shot-zone { stroke: var(--c-border-f4f0e6, #f4f0e6); stroke-width: 1; fill: var(--c-bg-5a4630, #5a4630); opacity: .9; }
+.shot-zone.hot { fill: var(--c-bg-2f7a49, #2f7a49); }
+.shot-zone.cold { fill: var(--c-bg-8a3434, #8a3434); }
+.shot-zone.even { fill: var(--c-bg-6b5a3a, #6b5a3a); }
+.shot-pct { fill: var(--c-bg-f4f0e6, #f4f0e6); font-size: 11px; font-weight: 700; text-anchor: middle; }
+.shot-count { fill: var(--c-bg-f4f0e6, #f4f0e6); font-size: 8px; text-anchor: middle; opacity: .85; }
+@media (max-width: 640px) { .shot-wrap { grid-template-columns: 1fr; } }
+
+/* Hall of Fame ceremony and ballots */
+.hof-ceremony { border: 2px solid var(--c-border-7a6326, #7a6326); background: linear-gradient(180deg, var(--c-bg-1d1a10, #1d1a10), var(--c-bg-121926, #121926)); padding: 12px 14px; margin: 8px 0 14px; box-shadow: 2px 2px 0 var(--c-shadow-7a6326, #7a6326); text-align: center; }
+.hof-ceremony h3 { margin: 4px 0 10px; color: var(--c-fg-ffd166, #ffd166); }
+.hof-ceremony-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.hof-inductee { display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border: 2px solid var(--c-border-ffd166, #ffd166); background: var(--c-bg-121926, #121926); cursor: pointer; }
+.hof-inductee small { color: var(--c-fg-94a0b2, #94a0b2); }
+.hof-ballots { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.hof-ballot h5 { margin: 0 0 4px; }
+.hof-yes td { color: var(--c-fg-ffd166, #ffd166); }
+
+/* Season preview grade */
+.grade-badge { flex: 0 0 auto; width: 54px; height: 54px; display: grid; place-items: center; font-family: var(--font-pixel); font-size: 22px; border: 3px solid currentColor; background: var(--c-bg-0b1018, #0b1018); }
+.grade-A { color: var(--c-fg-55c878, #55c878); } .grade-B { color: var(--c-fg-4da3ff, #4da3ff); } .grade-C { color: var(--c-fg-ffd166, #ffd166); } .grade-D { color: var(--c-fg-ff9d3d, #ff9d3d); } .grade-F { color: var(--c-fg-e85d5d, #e85d5d); }
