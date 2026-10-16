@@ -147,6 +147,8 @@ export interface FutureDraftPick {
   originalTeamId: TeamId; // whichever team's record actually determines where this pick lands
   currentOwnerTeamId: TeamId; // who gets to use it (or trade it again) - starts equal to originalTeamId
   protection: PickProtection | null;
+  /** Set when an earlier protected pick stayed home and the obligation rolled onto this one, e.g. "2026 R1 (Top-10 Protected)". */
+  rolledFrom?: string;
 }
 
 /** "Top-N protected": if the original team's own record would land the pick within the top N of its round, the pick stays home this year instead of conveying, and the trade partner gets nothing for it that year (a real common NBA deal term). */
@@ -242,6 +244,30 @@ export function resolveTradedPicksIntoOrder(
     resolved[i] = pick.currentOwnerTeamId;
   }
   return { order: resolved, protectionsTriggered };
+}
+
+/** Next year's protection when a protected pick stays home: it loosens each year until the pick conveys unprotected. */
+export function loosenedProtection(p: PickProtection | null): PickProtection | null {
+  if (!p) return null;
+  const options = [...PICK_PROTECTION_OPTIONS].sort((a, b) => b.topN - a.topN);
+  return options.find(o => o.topN < p.topN) ?? null;
+}
+
+/**
+ * Real NBA practice: a protected pick that stays home rolls over to the original team's pick of the same round the next
+ * year, owed to the same team with looser protection (Top-4 then conveys unprotected). Only rolls onto a pick the
+ * original team still owns; otherwise the obligation lapses, as before.
+ */
+export function rollOverProtectedPicks(futurePicks: FutureDraftPick[], year: number, triggered: { originalTeamId: TeamId; round: 1 | 2 }[]): FutureDraftPick[] {
+  let out = futurePicks;
+  for (const t of triggered) {
+    const kept = out.find(p => p.year === year && p.round === t.round && p.originalTeamId === t.originalTeamId);
+    const next = out.find(p => p.year === year + 1 && p.round === t.round && p.originalTeamId === t.originalTeamId);
+    if (!kept || !next || next.currentOwnerTeamId !== t.originalTeamId) continue;
+    const rolled: FutureDraftPick = { ...next, currentOwnerTeamId: kept.currentOwnerTeamId, protection: loosenedProtection(kept.protection), rolledFrom: `${year} R${t.round}${kept.protection ? ` (${kept.protection.label})` : ''}` };
+    out = out.map(p => (p.id === next.id ? rolled : p));
+  }
+  return out;
 }
 
 /** Called once a draft year's order has been resolved: that year is done (no longer tradeable), so drop it and extend the ledger with a fresh year so the trading window stays a constant length. */

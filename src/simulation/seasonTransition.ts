@@ -1,3 +1,4 @@
+import { gLeagueGrowth } from './twoWay';
 import { withRingNight } from './ringNight';
 import { seasonEraSettings } from './eraRules';
 import { ownerSeasonEnd } from './ownerBox';
@@ -38,7 +39,7 @@ import { gameMinutes } from './gameLength';
 import { worldDefOf } from './worldLeagues';
 import {
   generateDraftClass, buildTwoRoundDraftOrder, pickDraftClassSize, resolveTradedPicksIntoOrder,
-  rollFutureDraftPicksForward, FUTURE_PICK_WINDOW_YEARS, priorTeamId, type GMLeagueExtras, type Contract,
+  rollFutureDraftPicksForward, rollOverProtectedPicks, computeAskingSalary, FUTURE_PICK_WINDOW_YEARS, priorTeamId, type GMLeagueExtras, type Contract,
 } from './gm';
 import { appendHistoryEvent } from './playerHistory';
 import { resignVerdict } from './freeAgentDecision';
@@ -173,14 +174,15 @@ function aiResign(team: LeagueTeam, player: PlayerSeason, rank: number, extras: 
  *  - a plain expiring contract (no options) always tests free agency, as before.
  * Options are single-use: once resolved, the resulting 1-year extension carries no option.
  */
-function resolveExpiringContract(contract: Contract, overall: number, age: number): { retained: boolean; extended?: Contract } {
+export function resolveExpiringContract(contract: Contract, overall: number, age: number, marketSalary = 0): { retained: boolean; extended?: Contract } {
   if (contract.teamOption) {
     const teamDeclines = overall < 50 || (age >= 33 && overall < 65);
     if (teamDeclines) return { retained: false };
     return { retained: true, extended: { ...contract, yearsRemaining: 1, teamOption: false } };
   }
   if (contract.playerOption) {
-    const playerOptsOut = overall >= 70 && age <= 29;
+    // He opts out when he can do clearly better on the open market (or is a young star), and opts in otherwise.
+    const playerOptsOut = (overall >= 70 && age <= 29) || (age <= 31 && marketSalary >= contract.annualSalary * 1.15);
     if (playerOptsOut) return { retained: false };
     return { retained: true, extended: { ...contract, yearsRemaining: 1, playerOption: false } };
   }
@@ -277,6 +279,8 @@ export function beginNewSeasonRoster(
       const realStep = followsRealDevelopment(season, league) ? applyRealDevelopment(season, newSeason) : null;
       let developed = realStep ?? developOffseasonPlayer(season, rng, league.rulesSettings, developmentMultiplier * (1 + (teachingQuality(team, season.training?.plan.coachId) - 1) * (league.rulesSettings?.coachingImpact ?? 100) / 100), team.coach?.trainingFocus, league.settings.sandboxMode ? 200 : 100, gameMinutes(league.settings.era));
       if (!realStep && followsRealDevelopment(season, league)) developed = markRealFallback(developed, newSeason);
+      // Two-way players log real minutes in the G League: young ones grow a little faster than bench riders.
+      if (season.twoWay && !realStep && !ratingsHeld(season, league)) developed = gLeagueGrowth(season, developed);
       if (team.teamId === userTeamId) {
         // Your summer camp, on top of normal development (real players on Real Player Development follow their real careers).
         const plan = camp?.plans[season.playerId];
@@ -329,7 +333,7 @@ export function beginNewSeasonRoster(
           continue;
         }
         if (yearsRemaining <= 0) {
-          const resolution = resolveExpiringContract(contract, calculateOverall(withHistory), withHistory.age);
+          const resolution = resolveExpiringContract(contract, calculateOverall(withHistory), withHistory.age, computeAskingSalary(calculateOverall(withHistory), extras.capSettings));
           if (resolution.retained && resolution.extended) {
             contracts[withHistory.playerId] = resolution.extended;
             retainedViaOptionIds.push(withHistory.playerId);
@@ -346,7 +350,7 @@ export function beginNewSeasonRoster(
           }
           expiredToFreeAgencyIds.push(withHistory.playerId);
           delete contracts[withHistory.playerId];
-          freeAgentsFromExpiry.push(appendHistoryEvent({ ...withHistory, teamId: null }, 'waived', `Contract expired with ${team.name} — entered free agency`, team.teamId));
+          freeAgentsFromExpiry.push(appendHistoryEvent({ ...withHistory, teamId: null }, 'waived', contract.playerOption ? `Opted out of his player option with ${team.name} — entered free agency` : `Contract expired with ${team.name} — entered free agency`, team.teamId));
           continue;
         }
         contracts[withHistory.playerId] = { ...contract, yearsRemaining };
@@ -391,7 +395,7 @@ export function beginNewSeasonRoster(
   const standingsDraftOrder = buildTwoRoundDraftOrder(league, Math.floor(rng.next() * 1_000_000), draftYear);
   const { order: draftOrder, protectionsTriggered } = resolveTradedPicksIntoOrder(standingsDraftOrder, draftYear, extras.futurePicks ?? []);
   const lottery = lotteryResult(league, standingsDraftOrder.slice(0, teams.length), newSeason, draftYear);
-  const futurePicks = rollFutureDraftPicksForward(extras.futurePicks ?? [], teams.map((t) => t.teamId), draftYear, FUTURE_PICK_WINDOW_YEARS);
+  const futurePicks = rollFutureDraftPicksForward(rollOverProtectedPicks(extras.futurePicks ?? [], draftYear, protectionsTriggered), teams.map((t) => t.teamId), draftYear, FUTURE_PICK_WINDOW_YEARS);
 
   const historyRecord: FranchiseHistoryRecord = {
     season: previousSeason,

@@ -1,3 +1,4 @@
+import { isHoldingOut } from './holdouts';
 import { prepareCoachingForGame, finishCoachingGame, type GameEvidence } from './playerDevelopment';
 import { advanceCup } from './cup';
 import { isDeadlineDayBlocking } from './deadlineDay';
@@ -255,6 +256,8 @@ export interface League {
   settings: GameSettings;
   season?: string; // current season label, e.g. "2026-27"; absent on older/imported saves
   injuries?: Record<string, InjuryRecord>; // keyed by playerId; absent/undefined players are fully healthy
+  /** Players refusing to report until they get a new deal, by player id (see holdouts.ts). */
+  holdouts?: Record<string, import('./holdouts').Holdout>;
   retiredPlayers?: RetiredPlayerRecord[]; // everyone who has ever retired in this league, most recent last
   /** Your summer development plans for the coming offseason (see summerCamp.ts). */
   summerCamp?: import('./summerCamp').SummerCampState;
@@ -688,9 +691,11 @@ function prepareGame(league: League, idx: number, seedBase: number, injuries: Re
 
   // Out: injured, or rested tonight by load management. Fragile returning players carry a raised injury risk.
   const gameNumber = (teamId: string) => league.schedule.filter(x => x.played && (x.homeTeamId === teamId || x.awayTeamId === teamId)).length + 1;
-  const isOut = (playerId: string, teamId: string) => (injuries[playerId]?.gamesRemaining ?? 0) > 0 || restsTonight(league.medical, playerId, gameNumber(teamId), league.seasonPhase);
-  let homeAvailable = home.seasons.filter((s) => !isOut(s.playerId, home.teamId)).map(s => withContractYear(withMedicalRisk(league.medical, s)));
-  let awayAvailable = away.seasons.filter((s) => !isOut(s.playerId, away.teamId)).map(s => withContractYear(withMedicalRisk(league.medical, s)));
+  // Also out: a contract holdout, and two-way players who were not called up (they play in the G League).
+  const isOut = (s: PlayerSeason, teamId: string) => (injuries[s.playerId]?.gamesRemaining ?? 0) > 0 || restsTonight(league.medical, s.playerId, gameNumber(teamId), league.seasonPhase)
+    || isHoldingOut(league, s.playerId, teamId, gameNumber(teamId)) || (!!s.twoWay && !s.calledUp);
+  let homeAvailable = home.seasons.filter((s) => !isOut(s, home.teamId)).map(s => withContractYear(withMedicalRisk(league.medical, s)));
+  let awayAvailable = away.seasons.filter((s) => !isOut(s, away.teamId)).map(s => withContractYear(withMedicalRisk(league.medical, s)));
   homeAvailable = ensureMinimumAvailable(home.seasons, homeAvailable, injuries);
   awayAvailable = ensureMinimumAvailable(away.seasons, awayAvailable, injuries);
 

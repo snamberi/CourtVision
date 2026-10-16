@@ -26,7 +26,7 @@ interface Props {
 }
 
 function pickLabel(pick: FutureDraftPick): string {
-  return `${pick.year} Round ${pick.round}${pick.protection ? ` (${pick.protection.label})` : ''}`;
+  return `${pick.year} Round ${pick.round}${pick.protection ? ` (${pick.protection.label})` : ''}${pick.rolledFrom ? ` · rolled over from ${pick.rolledFrom}` : ''}`;
 }
 
 export function TradePage({ league, extras, controlledTeamId, onChange, onToast, onOnlineOffer, sandboxMode = false }: Props) {

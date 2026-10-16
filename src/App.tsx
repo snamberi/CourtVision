@@ -1,3 +1,5 @@
+import { TwoWayCard } from './components/TwoWayCard';
+import { assignHoldouts } from './simulation/holdouts';
 import { RosterResetPreview } from './components/RosterResetPreview';
 import { RealVsYoursPage } from './components/RealVsYoursPage';
 import { momentById } from './history/moments';
@@ -1241,7 +1243,7 @@ function App() {
   const startRegularSeason = () => {
     setPlayoffBracket(null);
     const ready = manageCoachRosters(finalizeNewSeasonSchedule(league), extras, [aiUserTeam(league, controlledTeamId)]);
-    setLeague(ready.league);
+    setLeague(assignHoldouts(ready.league, ready.extras, seed + Number(ready.league.season ?? 0)));
     setExtras(ensureUpcomingDraftClass(ready.league, ready.extras));
     setTab('standings');
   };
@@ -1840,7 +1842,7 @@ function App() {
           {seasonSummary.expiredToFreeAgencyIds.length} hit free agency, {seasonSummary.newDraftClassSize} new draft prospects.
           {seasonSummary.seasonAwards.mvp && <> MVP: {seasonSummary.seasonAwards.mvp.playerId}.</>}
           {seasonSummary.pickProtectionsTriggered.length > 0 && (
-            <> {seasonSummary.pickProtectionsTriggered.length} traded pick{seasonSummary.pickProtectionsTriggered.length === 1 ? '' : 's'} stayed home this year (protection triggered).</>
+            <> {seasonSummary.pickProtectionsTriggered.length} traded pick{seasonSummary.pickProtectionsTriggered.length === 1 ? '' : 's'} stayed home this year (protection triggered) and rolled over to next year's pick with looser protection.</>
           )}
           <button onClick={() => setSeasonSummary(null)} aria-label="Dismiss">×</button>
         </div>
@@ -1925,7 +1927,8 @@ function App() {
         )}
 
         {tab === 'yourTeam' && controlledTeamId && (
-          <YourTeamPage currentChampion={playoffBracket?.championTeamId} league={league} controlledTeamId={controlledTeamId} onSelectPlayer={selectPlayer} onChange={setLeague} />
+          <><TwoWayCard league={league} teamId={controlledTeamId} onChange={setLeague} onSelectPlayer={selectPlayer} />
+          <YourTeamPage currentChampion={playoffBracket?.championTeamId} league={league} controlledTeamId={controlledTeamId} onSelectPlayer={selectPlayer} onChange={setLeague} /></>
         )}
 
         {tab === 'roster' && (

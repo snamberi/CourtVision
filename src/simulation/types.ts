@@ -304,6 +304,10 @@ export interface PlayerSeason {
   contractYear?: boolean;
   /** Career Mode's player: he retires only when his career says so, never on the league's random rolls. */
   careerPlayer?: boolean;
+  /** Two-way contract: plays in the G League (faster development) and only suits up when called up. Not part of the 15-man roster. */
+  twoWay?: boolean;
+  /** A two-way player called up to the NBA roster for now. */
+  calledUp?: boolean;
   /** Edit Player (Sandbox): his ratings stay exactly as they are every summer (he still ages), even under Real Player
    *  Development; while he is still good (Overall 60+) he never retires on age. */
   lockRatings?: boolean;
