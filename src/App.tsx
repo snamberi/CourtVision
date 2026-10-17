@@ -2471,7 +2471,7 @@ function App() {
         {tab === 'hallOfFame' && <HallOfFamePage league={league} onSelectPlayer={selectPlayer} />}
 
         <AdBanner slot="inline" refreshKey={tab} />
-        <footer className="legal-footer"><PrivacyLink /> · <CookieSettingsLink /></footer>
+        <footer className="legal-footer"><PrivacyLink /> · <CookieSettingsLink /><span className="studio-mark">A NinefoldVision™ game</span></footer>
         </Suspense>
       </main>
       <ConsentBanner />
