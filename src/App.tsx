@@ -70,7 +70,7 @@ import { compactLeagueLogs } from './simulation/logPacking';
 import { DEFAULT_GAME_SETTINGS } from './simulation/types';
 import type { GameResult } from './simulation/boxscore';
 import type { League, LeagueTeam } from './simulation/league';
-import { generateRoundRobinSchedule, simulateFullRound, simulateToRound, roundTargetForTeamGames, roundTargetForDays, gamesRemainingForTeam, computeStandings, computeConferenceStandings, hasConferenceStructure, isAllStarBreakPending } from './simulation/league';
+import { generateRoundRobinSchedule, simulateFullRound, simulateToRound, roundTargetForTeamGames, roundTargetForDays, sortUnplayedByRound, gamesRemainingForTeam, computeStandings, computeConferenceStandings, hasConferenceStructure, isAllStarBreakPending } from './simulation/league';
 import { generateFullLeague } from './simulation/leagueGenerator';
 import { developOffseasonLeague } from './simulation/engine/development';
 import { followsRealDevelopment } from './simulation/realDevelopmentGate';
@@ -494,7 +494,9 @@ function App() {
     const { repairs } = repaired;
     const rostered = normalizeRosterRules(repaired.league, repaired.extras);
     // Potential is never below Overall, and equals it once a player reaches (or passes) their prime.
-    const { league: normalizedLeague, extras: e } = syncLeaguePotentials(rostered.league, rostered.extras);
+    const { league: synced, extras: e } = syncLeaguePotentials(rostered.league, rostered.extras);
+    // Saves made while Ring Night left the schedule out of round order (see sortUnplayedByRound).
+    const normalizedLeague = { ...synced, schedule: sortUnplayedByRound(synced.schedule) };
     // Older saves: seed the record book from the games still stored this season.
     // Owners, goals and your job security; older leagues gain them here.
     // This season's In-Season Cup draw, when the league is early enough in the season to hold one.
@@ -1141,9 +1143,9 @@ function App() {
   const simulateToTarget = (target: (l: League) => number | null) => {
     const ready = prepareRegularSeason();
     if (!ready) return;
-    const first = ready.league.schedule.find(g => !g.played)?.round;
     const end = target(ready.league);
-    if (first == null || end == null) return;
+    if (end == null) return;
+    const first = Math.min(...ready.league.schedule.filter(g => !g.played).map(g => g.round));
     simTargetRef.current = { round: end, seedBase: seed };
     if (end - first <= 1 || jobs.seasonSim.running || jobs.autoPlay.running) applyLeagueAIPass(simulateToRound(ready.league, end, seed), ready.extras);
     else jobs.seasonSim.start(ready.league, seed, end - first);

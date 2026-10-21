@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { generateSeasonSchedule, gamesRemainingForTeam, roundTargetForDays, roundTargetForTeamGames, simulateToRound, type League } from '../simulation/league';
+import { generateSeasonSchedule, gamesRemainingForTeam, roundTargetForDays, roundTargetForTeamGames, simulateToRound, sortUnplayedByRound, type League } from '../simulation/league';
+import { withRingNight } from '../simulation/ringNight';
 import { DEFAULT_GAME_SETTINGS } from '../simulation/types';
 import { buildDemoTeam } from '../simulation/presets/samplePlayers';
 
@@ -32,5 +33,26 @@ describe('Play menu presets play the amount they say', () => {
     expect(played(league, week, 'T1')).toBe(3);
     const month = simulateToRound(week, roundTargetForDays(week, 30)!, 3);
     expect(played(week, month, 'T1')).toBe(15);
+  });
+});
+
+describe('Ring Night keeps the schedule in round order', () => {
+  it('1 Week in a league with a Ring Night opener plays ~3 games, not 50+', () => {
+    const ids = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6'];
+    const base = leagueOf(ids, 40);
+    const history = [{ championTeamId: 'T3', teamSeasons: [{ teamId: 'T5', playoffFinish: 'Finals' }] }] as unknown as Parameters<typeof withRingNight>[1];
+    const league = { ...base, schedule: withRingNight(base.schedule, history) };
+    expect(league.schedule.find(g => g.ringNight)?.round).toBe(0);
+    expect(league.schedule[0].round).toBe(0);
+    const week = simulateToRound(league, roundTargetForDays(league, 7)!, 3);
+    expect(played(league, week, 'T1')).toBe(3);
+  });
+
+  it('repairs saves whose unplayed games are out of round order', () => {
+    const base = leagueOf(['T1', 'T2', 'T3', 'T4'], 12);
+    const scrambled = [...base.schedule.slice(6), ...base.schedule.slice(0, 6)];
+    const fixed = sortUnplayedByRound(scrambled);
+    expect(fixed.map(g => g.round)).toEqual([...scrambled.map(g => g.round)].sort((a, b) => a - b));
+    expect(sortUnplayedByRound(fixed)).toBe(fixed);
   });
 });

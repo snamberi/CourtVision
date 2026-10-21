@@ -1,4 +1,5 @@
 import type { FranchiseHistoryRecord, ScheduledGame } from './league';
+import { sortUnplayedByRound } from './league';
 
 /* Ring night: the defending champions open the season at home against the team they beat in the Finals.
  * The whole first game day is swapped with the day holding that meeting, so every team still plays once a day. */
@@ -20,5 +21,5 @@ export function withRingNight(schedule: ScheduledGame[], history: FranchiseHisto
   const from = meeting.round;
   const marked = (g: ScheduledGame): ScheduledGame => (g === meeting ? { ...g, round: first, ringNight: true } : g);
   if (from === first) return schedule.map(marked);
-  return schedule.map(g => (g === meeting ? marked(g) : g.round === from ? { ...g, round: first } : g.round === first ? { ...g, round: from } : g));
+  return sortUnplayedByRound(schedule.map(g => (g === meeting ? marked(g) : g.round === from ? { ...g, round: first } : g.round === first ? { ...g, round: from } : g)));
 }

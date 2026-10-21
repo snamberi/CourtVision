@@ -922,8 +922,20 @@ export function roundTargetForDays(league: League, days: number): number | null 
   const unplayed = league.schedule.filter((g) => !g.played);
   if (unplayed.length === 0) return null;
   const first = Math.min(...unplayed.map((g) => g.round));
-  const last = Math.max(league.calendarRound ?? -1, first - 1);
-  return Math.max(first + 1, last + Math.floor(days / DAYS_PER_ROUND) + 1);
+  // A game day already under way (a watched game) counts as today.
+  const today = league.calendarRound === first ? 1 : 0;
+  return first + Math.max(1, Math.floor(days / DAYS_PER_ROUND) + today);
+}
+
+/**
+ * The engine plays the schedule in array order, so unplayed games must be sorted by round. Ring Night used to swap
+ * two rounds' numbers in place, leaving round 49 first in line: Play then counted from round 49 and "1 Week" played
+ * 52 games. Played games keep their order; returns the same schedule when it's already in order.
+ */
+export function sortUnplayedByRound(schedule: ScheduledGame[]): ScheduledGame[] {
+  const unplayed = schedule.filter((g) => !g.played);
+  if (unplayed.every((g, i) => i === 0 || unplayed[i - 1].round <= g.round)) return schedule;
+  return [...schedule.filter((g) => g.played), ...[...unplayed].sort((a, b) => a.round - b.round)];
 }
 
 /** Plays every unplayed game before schedule round `targetRound` (stops early at a pending All-Star break). */
