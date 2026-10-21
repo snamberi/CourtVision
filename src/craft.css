@@ -198,3 +198,49 @@
 :root .mode-of-week b, :root .this-week article b { font: 600 18px/1.2 var(--font-display); letter-spacing: .03em; text-transform: uppercase; }
 :root .menu-quick button { font: 500 13px/1 var(--font-display); letter-spacing: .06em; text-transform: uppercase; }
 :root .mode-tile-body { flex: 1; grid-template-rows: auto 1fr auto; }
+
+/* ================================================================ App shell */
+
+/* Toasts drop in under the top bar, clear of the Play button and its menu. */
+:root .toast-stack { top: 78px; bottom: auto; right: 18px; }
+@media (max-width: 720px) { :root .toast-stack { top: 64px; bottom: auto; } }
+@keyframes cv-toast-in { from { opacity: 0; transform: translateX(14px); } to { opacity: 1; transform: none; } }
+:root .toast-item { animation: cv-toast-in var(--dur-2) var(--ease-out) both; }
+
+/* The Play menu: one primary (watch), presets on an even grid, settings set apart. */
+:root .play-menu { width: min(380px, calc(100vw - 24px)); padding: 14px 16px 16px; gap: 12px; }
+:root .play-menu-section { gap: 8px; }
+:root .play-menu-section + .play-menu-section, :root .play-menu-custom + .play-menu-custom { border-top: 1px solid var(--line); padding-top: 10px; }
+:root .play-menu-presets { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+:root .play-menu-presets button { grid-column: span 3; }
+:root .play-menu-presets button:nth-child(-n+3) { grid-column: span 2; }
+:root .play-menu-presets button:nth-child(4):last-child { grid-column: 1 / -1; }
+:root .play-menu-presets button { min-width: 0; padding: 8px 6px; font: 19px/1.1 var(--font-ui); }
+:root .play-menu-presets:has(button:nth-child(5):last-child) button:nth-child(n+4) { grid-column: span 1; }
+:root .play-menu-secondary { width: 100%; background: transparent; border-color: var(--amber); color: var(--amber); }
+:root .play-menu-secondary:hover:not(:disabled) { background: color-mix(in srgb, var(--amber) 14%, transparent); color: var(--court); }
+:root .play-menu-custom { display: flex; align-items: center; gap: 8px; font: 12.5px/1.3 var(--font-data); color: var(--text-dim); }
+:root .play-menu-custom input[type='number'] { width: 64px; padding: 5px 8px; }
+:root .play-menu-toggle { align-items: flex-start; font-size: 12px; line-height: 1.4; }
+:root .play-menu-toggle { gap: 10px; }
+:root .play-menu-toggle input { width: 16px; height: 16px; margin: 1px 0 0; flex: none; }
+
+/* The top bar already carries the logo; the sidebar's copy only shows when the sidebar is a phone drawer. */
+@media (min-width: 901px) { :root .sidebar-brand { display: none; } }
+:root .play-button-fixed { font-size: 21px; padding: 11px 20px; }
+
+/* ================================================================ Dashboard */
+
+/* Today's cards share one header style: a display-face title with its icon, and the detail on the right. */
+:root .dashboard-today { display: grid; gap: 14px; }
+:root .dashboard-today > * { margin: 0; }
+:root .dashboard-today :is(.daily-goals > header > .pixel-eyebrow, .locker-moment > h5, .cc-card-head > h5) {
+  display: inline-flex; align-items: center; gap: 8px; margin: 0;
+  font: 600 15px/1.2 var(--font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--court); text-shadow: none;
+}
+:root .dashboard-today :is(.daily-goals > header > .pixel-eyebrow, .locker-moment > h5, .cc-card-head > h5) .pixel-icon { color: var(--amber); }
+:root .daily-goals > header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+:root .dashboard-hero { margin-top: 2px; }
+:root .dashboard-today h5::before { content: none; }
+:root .dashboard-today .locker-moment > h5 { background: none; padding: 0 0 10px; border-bottom: 1px solid var(--line); margin-bottom: 12px; width: 100%; }
+:root .dashboard-hero-record .hint-text { font-size: 13px; }

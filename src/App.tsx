@@ -2393,11 +2393,7 @@ function App() {
           onNavigate={(t, sub) => { if (sub) setLeagueSettingsSub(sub); navigateFromMenu(t); }} />}
         {tab === 'dashboard' && league.timeMachine && <div className="tm-banner" role="note"><PixelIcon name="clock" size={16} /> <b>Time Machine</b> The {league.timeMachine.fromLabel} in the {league.timeMachine.year}-{String(league.timeMachine.year + 1).slice(2)} NBA, in place of the {league.timeMachine.replaced}.</div>}
         {(tab === 'dashboard' || tab === 'database') && league.rebuildChallenge && <Suspense fallback={null}><ChallengeBanner league={league} contracts={extras.contracts} onMenu={() => setConfirmation('exit')} /></Suspense>}
-        {tab === 'dashboard' && controlledTeamId && <DailyGoalsCard official={isOfficialLeague(league)} />}
         {tab === 'dashboard' && league.gmCareer && <GmCareerCard league={league} onTakeOffer={() => { const teamId = league.gmCareer?.offer?.teamId; if (teamId) { acceptOffer(teamId); setLeague(l => takeGmOffer(l)); } }} />}
-        {tab === 'dashboard' && controlledTeamId && <LockerRoomCard league={league} teamId={controlledTeamId} onChange={adoptLeague} />}
-        {tab === 'dashboard' && controlledTeamId && <CourtChatCard league={league} teamId={controlledTeamId} onOpen={() => setTab('courtChat')} onSelectPlayer={selectPlayer} />}
-        {tab === 'dashboard' && league.origin && <LeagueCodeBox origin={league.origin} teamId={controlledTeamId} teamName={league.teams.find(t => t.teamId === controlledTeamId)?.name} />}
         {tab === 'dashboard' && (
           <DashboardPage
             league={league} extras={extras} controlledTeamId={controlledTeamId} seasonPhase={seasonPhase}
@@ -2413,6 +2409,12 @@ function App() {
               : null}
             headerExtra={checklistChip}
             hideFinances={lockedTabSet.has('finances')}
+            today={controlledTeamId ? <>
+              <DailyGoalsCard official={isOfficialLeague(league)} />
+              <LockerRoomCard league={league} teamId={controlledTeamId} onChange={adoptLeague} />
+              <CourtChatCard league={league} teamId={controlledTeamId} onOpen={() => setTab('courtChat')} onSelectPlayer={selectPlayer} />
+            </> : null}
+            footer={league.origin ? <LeagueCodeBox origin={league.origin} teamId={controlledTeamId} teamName={league.teams.find(t => t.teamId === controlledTeamId)?.name} /> : null}
           />
         )}
 

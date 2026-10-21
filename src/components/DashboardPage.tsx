@@ -42,6 +42,10 @@ interface Props {
   headerExtra?: ReactNode;
   /** Simple mode before Staff & finances unlocks. */
   hideFinances?: boolean;
+  /** Today's items (daily goals, the locker room, CourtChat), under the team header. */
+  today?: ReactNode;
+  /** Last on the page (the league code to share). */
+  footer?: ReactNode;
 }
 
 const PHASE_LABEL: Record<SeasonPhase, string> = {
@@ -60,7 +64,7 @@ function leaderIn(players: PlayerSeason[], key: 'ppg' | 'rpg' | 'apg'): { player
   return best;
 }
 
-export function DashboardPage({ league, extras, controlledTeamId, seasonPhase, onGoTo, onSelectPlayer, roadMap, checklist, headerExtra, hideFinances = false }: Props) {
+export function DashboardPage({ league, extras, controlledTeamId, seasonPhase, onGoTo, onSelectPlayer, roadMap, checklist, headerExtra, hideFinances = false, today, footer }: Props) {
   const standings = computeStandings(league);
   const team = controlledTeamId ? league.teams.find((t) => t.teamId === controlledTeamId) : league.teams[0];
   const record = team ? standings.find((r) => r.teamId === team.teamId) : null;
@@ -103,15 +107,9 @@ export function DashboardPage({ league, extras, controlledTeamId, seasonPhase, o
         <div><span className="pixel-eyebrow">{formatSeasonYear(league.season)} / {PHASE_LABEL[seasonPhase]}</span><h1>Franchise HQ</h1></div>
         <div className="dashboard-heading-actions">{headerExtra}<button onClick={() => onGoTo('roster')}><PixelIcon name="team" size={16} /> Manage roster</button></div>
       </div>
-      <LeagueTicker league={league} extras={extras} />
-      <DecadeCard league={league} teamId={controlledTeamId} />
-      {controlledTeamId && <CoachIdentityCard league={league} teamId={controlledTeamId} onCoaching={() => onGoTo('coaching')} />}
-      {controlledTeamId && <OfficeRoom league={league} extras={extras} teamId={controlledTeamId} onGoTo={onGoTo} />}
-      {(roadMap || checklist) && <div className={`home-top ${checklist ? 'with-checklist' : ''}`}>{roadMap}{checklist}</div>}
       <div className="dashboard-hero" style={identity ? { ['--team-1' as string]: identity.primary, ['--team-2' as string]: identity.secondary } : undefined}>
         <div className="dashboard-franchise"><span className="pixel-eyebrow">{controlledTeamId ? 'YOUR FRANCHISE' : 'LEAGUE SPOTLIGHT'}</span>
-          <div className="dashboard-franchise-row">{team && <TeamLogo team={team} size={64} />}<h2><TeamLink name={team?.name ?? 'Court Vision'} /></h2></div>
-          <span className="dashboard-season">{PHASE_LABEL[seasonPhase]} · {total - unplayed} / {total} games</span></div>
+          <div className="dashboard-franchise-row">{team && <TeamLogo team={team} size={64} />}<h2><TeamLink name={team?.name ?? 'Court Vision'} /></h2></div></div>
         <div className="dashboard-hero-record">
           <span className="dashboard-hero-wl">{record ? `${record.wins}-${record.losses}` : '0-0'}</span>
           <span className="hint-text">
@@ -126,6 +124,12 @@ export function DashboardPage({ league, extras, controlledTeamId, seasonPhase, o
         </div>
       </div>
 
+      <LeagueTicker league={league} extras={extras} />
+      {today && <div className="dashboard-today">{today}</div>}
+      {(roadMap || checklist) && <div className={`home-top ${checklist ? 'with-checklist' : ''}`}>{roadMap}{checklist}</div>}
+      {controlledTeamId && <CoachIdentityCard league={league} teamId={controlledTeamId} onCoaching={() => onGoTo('coaching')} />}
+      {controlledTeamId && <OfficeRoom league={league} extras={extras} teamId={controlledTeamId} onGoTo={onGoTo} />}
+      <DecadeCard league={league} teamId={controlledTeamId} />
       {starters.length > 0 && <section className="lineup-showcase" aria-label="Starting five">
         <div className="lineup-showcase-header"><h5><PixelIcon name="court" size={16} /> Starting five</h5><span className="hint-text">Select a player to scout</span></div>
         <div className="lineup-sprites">
@@ -268,6 +272,7 @@ export function DashboardPage({ league, extras, controlledTeamId, seasonPhase, o
         )}
         <button className="dashboard-link" onClick={() => onGoTo('roster')}>» Full Roster</button>
       </section>
+      {footer}
     </div>
   );
 }

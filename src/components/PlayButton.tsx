@@ -169,7 +169,7 @@ export function PlayButton(props: PlayButtonProps) {
             <div className="play-menu-section">
               <p className="hint-text">{props.teamUnplayedCount != null ? `${props.teamUnplayedCount} of your games left (${leagueUnplayedCount} around the league).` : `Generate up to ${leagueUnplayedCount} more games this season.`}</p>
               {props.onWatchNext && <button className="primary" disabled={leagueUnplayedCount === 0} onClick={() => doAndClose(props.onWatchNext!)}>Watch Next Game</button>}
-              {props.onCoachNext && <button className="primary" disabled={leagueUnplayedCount === 0} onClick={() => doAndClose(props.onCoachNext!)}>Coach Next Game Live</button>}
+              {props.onCoachNext && <button className="play-menu-secondary" disabled={leagueUnplayedCount === 0} onClick={() => doAndClose(props.onCoachNext!)}>Coach Next Game Live</button>}
               <div className="play-menu-presets">
                 {PRESETS.map((p) => (
                   <button key={p.label} disabled={leagueUnplayedCount === 0} onClick={() => doAndClose(() => p.days ? onSimulateDays(p.days) : onSimulateGames(p.games ?? 1))}>
