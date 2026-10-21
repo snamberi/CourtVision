@@ -182,6 +182,8 @@ import {
 // Pages load on demand (code-split): the first paint only needs the shell, sidebar and Play button.
 import { needsRetireeData } from './history/retirees';
 import { pendingOffers } from './simulation/staffPoaching';
+// Last, so the shared type, control and motion rules win over page styles.
+import './craft.css';
 const PrivacyPolicyPage = lazy(() => import('./components/PrivacyPolicyPage').then(m => ({ default: m.PrivacyPolicyPage })));
 const WorldGamesPage = lazy(() => import('./components/worldGames/WorldGamesPage').then(m => ({ default: m.WorldGamesPage })));
 const StaffPage = lazy(() => import('./components/StaffPage').then(m => ({ default: m.StaffPage })));

@@ -206,7 +206,7 @@ export function MainMenu({ onStart, saves, onOpenContinue, busy = null, onLocker
 
       <MenuQuickLinks onContinue={onOpenContinue} onRoad={onRoad} onRelics={onRelics} onProfile={onProfile ?? onLocker} onFriends={onFriendList ?? onFriends} onCloset={onCloset} onSettings={onSettings} />
 
-      <div className="menu-section-heading"><h2>Choose your game</h2><span>YOUR NEXT CHAPTER STARTS HERE</span></div>
+      <div className="menu-section-heading"><h2>Choose your game</h2></div>
 
       <div className="mode-grid" id="menu-modes">
         {MODES.map((m) => {
@@ -223,7 +223,7 @@ export function MainMenu({ onStart, saves, onOpenContinue, busy = null, onLocker
               {modeById(m.id) && <ModeArt entry={modeById(m.id)!} />}
               <span className="mode-card-kicker"><ModeIcon mode={m.id} size={30} /><span>{m.kicker}</span>{(m.badge || hot) && <span className="mode-flags">{hot && <span className="mode-xp" title={`Mode of the Week: double XP for ${FEATURED_NAME[featured]} runs finished this week`}>2× XP</span>}{m.badge && <span className={`mode-badge mode-badge-${m.badge}`}><PixelIcon name={m.badge === 'popular' ? 'flame' : 'star'} size={12} /> {BADGE_LABEL[m.badge]}</span>}</span>}<span className="mode-selection-dot" /></span>
               <h3>{m.title}</h3>
-              <span className={`mode-progress ${inProgress ? 'active' : ''}`}><PixelIcon name={inProgress ? 'play' : records[m.id] ? 'trophy' : 'star'} size={12} />{inProgress ? `Current: ${inProgress}` : records[m.id] ?? 'Your first chapter awaits'}</span>
+              {(inProgress || records[m.id]) && <span className={`mode-progress ${inProgress ? 'active' : ''}`}><PixelIcon name={inProgress ? 'play' : 'trophy'} size={12} />{inProgress ? `Current: ${inProgress}` : records[m.id]}</span>}
               <p>{MODE_SHORT[m.id]}</p>
               <span className="mode-meta"><span className="mode-time" title="How long a sitting takes"><PixelIcon name="clock" size={12} /> {m.time}</span>{m.tags.map(t => <span key={t} className="mode-tag">{t}</span>)}</span>
             </button>
@@ -255,11 +255,13 @@ export function MainMenu({ onStart, saves, onOpenContinue, busy = null, onLocker
         </div>)}
       </div>
 
-      {onRoad && <SeasonStrip onOpen={() => onRoad('season')} />}
-      {onRelics && <RelicStrip onOpen={onRelics} />}
       {seasonPay.cosmetics.length > 0 && <Suspense fallback={null}><SeasonTierUp cosmetics={seasonPay.cosmetics} spins={seasonPay.spins} onClose={() => setSeasonPay({ spins: 0, cosmetics: [] })} onOpenPass={onRoad && (() => onRoad('season'))} /></Suspense>}
-
-      <DailyChallengeCard onPlay={m => m === 'perfect' ? onStart('perfect', 'normal', '', '') : m === 'hunt' ? onStart('legends', 'normal', '', '') : onArcade?.(m)} />
+      {/* Today: the daily challenge, the season pass and the vault side by side. */}
+      <div className="menu-today">
+        <DailyChallengeCard onPlay={m => m === 'perfect' ? onStart('perfect', 'normal', '', '') : m === 'hunt' ? onStart('legends', 'normal', '', '') : onArcade?.(m)} />
+        {onRoad && <SeasonStrip onOpen={() => onRoad('season')} />}
+        {onRelics && <RelicStrip onOpen={onRelics} />}
+      </div>
       {onArcade && <QuickGames onOpen={onArcade} onOpenMode={onOpenMode} />}
 
 

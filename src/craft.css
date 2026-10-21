@@ -1,0 +1,200 @@
+/* Craft layer (loaded last). One set of rules for type, controls, motion and surfaces so every screen reads as
+ * the same game. Colors come from the theme variables, so all looks still apply.
+ *
+ * Type roles
+ *   --font-pixel   Press Start 2P: the logo, eyebrows and tags only. Short, uppercase, 8-10px.
+ *   --font-ui      VT323: big pixel controls and scoreboard numbers. Never below 18px: it turns to mush.
+ *   --font-display Oswald: headings, panel titles, small buttons, tabs and chips.
+ *   --font-data    Inter: sentences, tables and every number you compare.
+ *
+ * Motion
+ *   Quick and physical: things press down, lift on hover and settle. Nothing in a common action waits on an animation.
+ */
+:root {
+  --dur-1: 90ms;   /* presses, hovers */
+  --dur-2: 160ms;  /* panels, menus */
+  --dur-3: 280ms;  /* entrances */
+  --ease-out: cubic-bezier(.2, .7, .2, 1);
+  --ease-snap: cubic-bezier(.3, 1.4, .5, 1);
+  --hard-shadow: 3px 3px 0 var(--c-shadow-050a12, #050a12);
+}
+
+/* ---------------------------------------------------------------- Controls */
+
+/* Buttons that a page shrinks below 18px switch from VT323 to the condensed display face (generated from every
+ * CSS rule that sets a small font-size on a button, tab or chip). */
+  :root .arcade .arcade-tabs button,
+  :root .award-placement-chip,
+  :root .award-race-head .stats-view-toggle button,
+  :root .badge-chip,
+  :root .board-nav-group button,
+  :root .bracket-detail-games button,
+  :root .cc-chip,
+  :root .cc-follow,
+  :root .cc-kinds button,
+  :root .checklist-go,
+  :root .coach-guide .guide-card button.coach-skip,
+  :root .code-mode-actions button,
+  :root .community .community-tabs button,
+  :root .consent-btn-primary,
+  :root .consent-btn-secondary,
+  :root .consent-toggle-fixed,
+  :root .cv-chip,
+  :root .cv-spin-btn,
+  :root .draft-pick-actions button,
+  :root .draft-timer-toggle,
+  :root .expense-effect-chip,
+  :root .expense-level-stepper button,
+  :root .fa-actions button,
+  :root .fo-toggle,
+  :root .hunt-hub-tabs button,
+  :root .hunt-item-chip,
+  :root .import-toast button,
+  :root .install-tabs button,
+  :root .league-controls button,
+  :root .menu-bar-tab,
+  :root .menu-gold .menu-bar-tab,
+  :root .menu-masthead .account-chip,
+  :root .menu-masthead .profile-chip,
+  :root .menu-phone-edit button,
+  :root .menu-quick button,
+  :root .mp-stepper button,
+  :root .mp-summary button,
+  :root .my-ratings-list button,
+  :root .news-chip,
+  :root .news-chip-all,
+  :root .profile-chip,
+  :root .profile-jump button,
+  :root .profile-tabs button,
+  :root .record-holder .link-button,
+  :root .relic-luck-chip,
+  :root .rg-list > li > .link-button,
+  :root .rg-stepper button,
+  :root .roster-actions button,
+  :root .roster-controls button,
+  :root .rotation-arrows button,
+  :root .rotation-toggle,
+  :root .saved-league-actions button,
+  :root .sim-lab-buttons button,
+  :root .story-filters button,
+  :root .story-tabs button,
+  :root .studio-actions button,
+  :root .studio-categories button,
+  :root .studio-equipped button,
+  :root .studio-slot button,
+  :root .studio-tryon button,
+  :root .studio-view button,
+  :root .subtabs button,
+  :root .summer-game-line button,
+  :root .sync-chip,
+  :root .sync-chip .link-button,
+  :root .tabs button,
+  :root .tm-famous button,
+  :root .toast-item button,
+  :root .tp-btn,
+  :root .trade-actions button,
+  :root .unlock-notice-actions button,
+  :root .watch-controls button,
+  :root .watch-reel-banner button,
+  :root :root .cv-tabs button,
+  :root :root .series-reel-btn,
+  :root button.dashboard-link {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+:root .modal-close, :root .toast-item button, :root button[aria-label='Close'], :root .play-menu-close {
+  font: 600 16px/1 var(--font-data); text-transform: none; letter-spacing: 0;
+}
+
+/* Card-like buttons (an avatar or art plus lines of text): names in the display face, details in Inter. */
+:root button :is(small, em) { font-family: var(--font-data); letter-spacing: .01em; text-transform: none; }
+:root :is(.lineup-reserve, .mode-tile, .fa-card, .menu-quick-card, .studio-slot) b { font: 600 14px/1.2 var(--font-display); letter-spacing: .03em; }
+:root .lineup-reserve small { font-size: 10.5px; color: var(--text-dim); }
+:root .lineup-reserve em { font-size: 11.5px; font-style: normal; }
+:root .qs-label { font: 500 12px/1.2 var(--font-display); letter-spacing: .08em; }
+
+/* Every button lifts a pixel on hover and presses into its shadow: the same physical feel everywhere. */
+:root button { transition: transform var(--dur-1) var(--ease-out), box-shadow var(--dur-1) var(--ease-out), background-color var(--dur-1), border-color var(--dur-1), color var(--dur-1); }
+:root button:not(:disabled):not(.sidebar-item):not(.link-button):hover { transform: translate(-1px, -1px); }
+:root button:not(:disabled):not(.sidebar-item):not(.link-button):active { transform: translate(2px, 2px); box-shadow: none; transition-duration: 40ms; }
+:root button.primary:not(:disabled):hover { box-shadow: 4px 4px 0 var(--c-shadow-050a12, #050a12); }
+
+/* Links in tables and feeds: a quiet underline that wakes up on hover, instead of a wall of underlines. */
+:root .team-link, :root .player-link { text-decoration-thickness: 1px; text-decoration-color: color-mix(in srgb, currentColor 28%, transparent); text-underline-offset: 3px; transition: color var(--dur-1), text-decoration-color var(--dur-1); }
+:root .team-link:hover, :root .player-link:hover { text-decoration-color: currentColor; }
+
+/* ---------------------------------------------------------------- Small type */
+
+/* Tags and badges: one legible size (10.5px Inter, semibold, tracked) instead of 8-10px in five faces. */
+:root :is(.ad-label, .mode-badge, .mode-xp, .mode-time, .mode-tag, .cc-type, .cc-yours, .cup-tag, .origin-tag,
+  .transaction-type-tag, .fa-tag-long, .fa-last-season-tag, .rule-live-tag, .road-stop-here, .road-stop-note,
+  .checklist-xp, .mode-tile-badge, .league-rule-value, .expense-effects-title) {
+  font-family: var(--font-data); font-size: 10.5px; font-weight: 600; letter-spacing: .04em; line-height: 1.3;
+}
+:root .sidebar-brand-text small, :root .menu-masthead small { font-size: 10px; letter-spacing: .16em; }
+:root .topbar-jump { font: 500 13px/1 var(--font-data); }
+:root .topbar-jump kbd { font: 600 10.5px/1.2 var(--font-data); }
+
+/* Pixel eyebrows stay short; long ones and small headings use the display face. */
+:root :is(.records-page h5, .record-card h5, .draft-page summary, .dynasty-empty b) { font: 600 13px/1.3 var(--font-display); letter-spacing: .06em; text-transform: uppercase; }
+
+/* ---------------------------------------------------------------- Numbers */
+
+:root :is(td, th, .stat, .num, .dashboard-stat, .topbar-record) { font-variant-numeric: tabular-nums; }
+
+/* ---------------------------------------------------------------- Motion */
+
+/* Pages and panels settle in instead of popping. */
+@keyframes cv-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes cv-pop { 0% { opacity: 0; transform: scale(.94); } 70% { opacity: 1; transform: scale(1.015); } 100% { transform: none; } }
+:root .app-body main > * { animation: cv-rise var(--dur-3) var(--ease-out) both; }
+:root .app-body main > *:nth-child(2) { animation-delay: 30ms; }
+:root .app-body main > *:nth-child(3) { animation-delay: 60ms; }
+:root .app-body main > *:nth-child(n+4) { animation-delay: 90ms; }
+:root :is(.play-menu, .modal-card, .share-box, [role='dialog'] > div) { animation: cv-pop var(--dur-2) var(--ease-snap) both; }
+:root .toast-item { animation: cv-pop var(--dur-2) var(--ease-snap) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  :root *, :root *::before, :root *::after { animation-duration: .001ms !important; animation-delay: 0ms !important; transition-duration: .001ms !important; }
+}
+
+/* ================================================================ Main menu */
+
+/* Today: three equal cards (challenge, season pass, vault) with the action pinned to the bottom of each. */
+:root .menu-today { width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 6px 0 4px; }
+:root .menu-today > section {
+  position: relative; display: grid; grid-template-rows: auto 1fr auto; align-content: start; gap: 6px; margin: 0; min-height: 132px;
+  padding: 14px 16px 14px; background: var(--panel); border: 2px solid var(--line-strong); box-shadow: var(--hard-shadow);
+}
+:root .menu-today > section::before { content: ''; position: absolute; left: -2px; right: -2px; top: -2px; height: 4px; background: var(--today-accent, var(--line-bright)); }
+:root .menu-today .daily-challenge { --today-accent: var(--amber); border-color: var(--line-strong); }
+:root .menu-today .daily-challenge.done { --today-accent: var(--make); }
+:root .menu-today .menu-season { --today-accent: var(--blue); grid-template-columns: auto 1fr; grid-template-rows: 1fr auto; align-items: start; }
+:root .menu-today .menu-season > button { grid-column: 1 / -1; }
+:root .menu-today .menu-relics { --today-accent: var(--tov); grid-template-columns: auto 1fr; grid-template-rows: 1fr auto; align-items: start; }
+:root .menu-today .menu-relics > button { grid-column: 1 / -1; }
+:root .menu-today .menu-relics.ready { --today-accent: var(--c-any-ffd166, #ffd166); }
+:root .menu-today b { font: 600 17px/1.2 var(--font-display); letter-spacing: .03em; text-transform: uppercase; color: var(--court); }
+:root .menu-today small { font: 12.5px/1.45 var(--font-data); color: var(--text-dim); }
+:root .menu-today > section > button { justify-self: start; align-self: end; min-width: 0; font: 20px/1.1 var(--font-ui); text-transform: none; letter-spacing: .01em; }
+:root .menu-today .menu-season-text { display: grid; gap: 6px; }
+:root .menu-today .menu-season-bar { display: block; height: 8px; }
+:root .daily-challenge-meta { font: 600 12px/1.3 var(--font-data); }
+@media (max-width: 960px) { :root .menu-today { grid-template-columns: 1fr; } :root .menu-today > section { min-height: 0; } }
+
+/* Quick games: column counts that divide the twelve games evenly, so no row is left half empty. */
+:root .quick-games-tiles { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 1240px) { :root .quick-games-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 860px) { :root .quick-games-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 600px) { :root .quick-games-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+:root .mode-tile-body small { font: 12.5px/1.45 var(--font-data); }
+:root .mode-tile-play { font: 600 12px/1 var(--font-display); letter-spacing: .08em; text-transform: uppercase; }
+:root .mode-tile { transition: transform var(--dur-1) var(--ease-out), border-color var(--dur-1), box-shadow var(--dur-1); }
+:root .mode-tile:hover { box-shadow: 4px 4px 0 var(--c-shadow-050a12, #050a12); }
+
+/* Weekly cards: titles in the display face, not 14px Press Start. */
+:root .mode-of-week b, :root .this-week article b { font: 600 18px/1.2 var(--font-display); letter-spacing: .03em; text-transform: uppercase; }
+:root .menu-quick button { font: 500 13px/1 var(--font-display); letter-spacing: .06em; text-transform: uppercase; }
+:root .mode-tile-body { flex: 1; grid-template-rows: auto 1fr auto; }
