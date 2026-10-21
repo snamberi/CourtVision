@@ -895,6 +895,48 @@ export function simulateDays(league: League, numberOfDays: number, seedBase = 1)
   return simulateRounds(league, rounds, seedBase);
 }
 
+/**
+ * The first schedule round NOT to play so `teamId` plays `games` more games (every other team plays the same game
+ * days). With no team, it's `games` game days. Works on actual round numbers, so gaps and rest days (odd team counts,
+ * where a team sits out a round) don't make "Next Game" play nothing or "10 games" play too few.
+ */
+export function roundTargetForTeamGames(league: League, teamId: string | null, games: number): number | null {
+  const unplayed = league.schedule.filter((g) => !g.played);
+  if (unplayed.length === 0) return null;
+  const want = Math.max(1, Math.floor(games));
+  const mine = teamId ? unplayed.filter((g) => g.homeTeamId === teamId || g.awayTeamId === teamId) : [];
+  if (teamId && mine.length > 0) {
+    const rounds = [...new Set(mine.map((g) => g.round))].sort((a, b) => a - b);
+    return rounds[Math.min(want, rounds.length) - 1] + 1;
+  }
+  const rounds = [...new Set(unplayed.map((g) => g.round))].sort((a, b) => a - b);
+  return rounds[Math.min(want, rounds.length) - 1] + 1;
+}
+
+/**
+ * The first schedule round NOT to play to cover the next `days` calendar days (each round is `DAYS_PER_ROUND` days
+ * after the last one played), so "1 Week" plays ~3 games per team and "1 Month" ~15 — not 7 and 30. Always includes
+ * the next game day.
+ */
+export function roundTargetForDays(league: League, days: number): number | null {
+  const unplayed = league.schedule.filter((g) => !g.played);
+  if (unplayed.length === 0) return null;
+  const first = Math.min(...unplayed.map((g) => g.round));
+  const last = Math.max(league.calendarRound ?? -1, first - 1);
+  return Math.max(first + 1, last + Math.floor(days / DAYS_PER_ROUND) + 1);
+}
+
+/** Plays every unplayed game before schedule round `targetRound` (stops early at a pending All-Star break). */
+export function simulateToRound(league: League, targetRound: number, seedBase = 1): League {
+  let current = league;
+  while (current.schedule.some((g) => !g.played && g.round < targetRound)) {
+    const next = simulateFullRound(current, seedBase);
+    if (next === current) break;
+    current = next;
+  }
+  return current;
+}
+
 /** Number of games remaining for a single team (defaults to the whole league's remaining games when teamId is null). */
 export function gamesRemainingForTeam(league: League, teamId: string | null): number {
   if (!teamId) return league.schedule.filter((g) => !g.played).length;

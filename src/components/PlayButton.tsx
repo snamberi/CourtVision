@@ -7,10 +7,11 @@ import type { AutoPlayProgress, SeasonSimProgress } from '../workers/useBackgrou
 import type { ProgressStore } from '../workers/progressStore';
 import type { PlayoffBracket } from '../simulation/playoffs';
 
-const GAME_PRESETS = [
-  { label: '1 Game', games: 1 },
-  { label: '1 Week', games: 7 },
-  { label: '1 Month', games: 30 },
+/** "Next Game" counts your team's games; a week and a month are calendar time (a game every other day: ~3 and ~15). */
+const PRESETS: { label: string; games?: number; days?: number }[] = [
+  { label: 'Next Game', games: 1 },
+  { label: '1 Week', days: 7 },
+  { label: '1 Month', days: 30 },
 ];
 
 export interface PlayButtonProps {
@@ -36,7 +37,10 @@ export interface PlayButtonProps {
   onToggleHandsOff?: (on: boolean) => void;
   /** Runs Deadline Day to the 3 PM deadline in one go. */
   onSkipDeadline?: () => void;
-  onSimulateGames: (count: number) => void; // simulates up to `count` scheduled rounds
+  /** Plays your team's next `count` games (with no team: `count` game days). */
+  onSimulateGames: (count: number) => void;
+  /** Plays the next `days` calendar days. */
+  onSimulateDays: (days: number) => void;
   onSimulateToDeadline: () => void;
   /** The Deadline Day clock ("11:00 AM") while the day is under way. */
   deadlineClockLabel?: string | null;
@@ -74,7 +78,7 @@ export interface PlayButtonProps {
 export function PlayButton(props: PlayButtonProps) {
   const {
     seasonPhase, rosterIssues,
-    leagueUnplayedCount, tradeDeadlinePassed, onSimulateGames, onSimulateToDeadline, seasonSimJob, autoPlayJob,
+    leagueUnplayedCount, tradeDeadlinePassed, onSimulateGames, onSimulateDays, onSimulateToDeadline, seasonSimJob, autoPlayJob,
     seasonComplete, onBeginPlayoffs, playoffBracket, onSimulateEntirePlayoffs, onViewSeasonRecap,
     onContinueToDraft, draftPicksRemaining, hasUpcomingDraftPick, onSimToMyNextPick, onSimEntireDraftAndContinue,
     onContinueToResignWaive, onContinueToFreeAgency, freeAgencyDaysRemaining, onSkipFreeAgencyAndContinue, onStartRegularSeason,
@@ -100,6 +104,8 @@ export function PlayButton(props: PlayButtonProps) {
   const blocked = false;
   const rosterNote = seasonPhase === 'regular_season' && !seasonComplete && rosterIssues.length > 0;
 
+  // Custom counts your team's games, so it's capped at those (the league total when you don't run a team).
+  const customMax = Math.max(1, props.teamUnplayedCount || leagueUnplayedCount);
   const doAndClose = (fn: () => void) => { fn(); setOpen(false); };
 
   // What the button itself shows without opening the menu — a short label for the single most useful next step.
@@ -165,8 +171,8 @@ export function PlayButton(props: PlayButtonProps) {
               {props.onWatchNext && <button className="primary" disabled={leagueUnplayedCount === 0} onClick={() => doAndClose(props.onWatchNext!)}>Watch Next Game</button>}
               {props.onCoachNext && <button className="primary" disabled={leagueUnplayedCount === 0} onClick={() => doAndClose(props.onCoachNext!)}>Coach Next Game Live</button>}
               <div className="play-menu-presets">
-                {GAME_PRESETS.map((p) => (
-                  <button key={p.label} disabled={leagueUnplayedCount === 0} onClick={() => doAndClose(() => onSimulateGames(p.games))}>
+                {PRESETS.map((p) => (
+                  <button key={p.label} disabled={leagueUnplayedCount === 0} onClick={() => doAndClose(() => p.days ? onSimulateDays(p.days) : onSimulateGames(p.games ?? 1))}>
                     {p.label}
                   </button>
                 ))}
@@ -178,8 +184,8 @@ export function PlayButton(props: PlayButtonProps) {
               <label className="play-menu-custom">
                 Custom:
                 <input
-                  type="number" min={1} max={Math.max(1, leagueUnplayedCount)} value={customGames}
-                  onChange={(e) => setCustomGames(Math.max(1, Math.min(leagueUnplayedCount, Number(e.target.value) || 1)))}
+                  type="number" min={1} max={customMax} value={customGames}
+                  onChange={(e) => setCustomGames(Math.max(1, Math.min(customMax, Number(e.target.value) || 1)))}
                 />
                 games
                 <button disabled={leagueUnplayedCount === 0} onClick={() => doAndClose(() => onSimulateGames(customGames))}>Go</button>

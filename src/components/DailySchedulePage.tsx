@@ -2,7 +2,7 @@ import { PixelIcon } from './PixelIcon';
 import { TeamLink } from './TeamLink';
 import { useMemo, useState } from 'react';
 import type { League } from '../simulation/league';
-import { computeStandings, simulateRounds } from '../simulation/league';
+import { computeStandings, simulateToRound } from '../simulation/league';
 import { calculateOverall } from '../simulation/engine/overall';
 import { teamLeader } from '../simulation/teamStatus';
 
@@ -23,8 +23,7 @@ export function DailySchedulePage({ league, onChange }: Props) {
 
   const simToThisDay = () => {
     if (round <= (league.calendarRound ?? -1)) return;
-    const delta = round - (league.calendarRound ?? -1);
-    onChange(simulateRounds(league, delta, Date.now()));
+    onChange(simulateToRound(league, round + 1, Date.now()));
   };
 
   const teamCard = (teamId: string) => {

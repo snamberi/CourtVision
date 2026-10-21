@@ -70,7 +70,7 @@ import { compactLeagueLogs } from './simulation/logPacking';
 import { DEFAULT_GAME_SETTINGS } from './simulation/types';
 import type { GameResult } from './simulation/boxscore';
 import type { League, LeagueTeam } from './simulation/league';
-import { generateRoundRobinSchedule, simulateFullRound, simulateRounds, gamesRemainingForTeam, computeStandings, computeConferenceStandings, hasConferenceStructure, isAllStarBreakPending } from './simulation/league';
+import { generateRoundRobinSchedule, simulateFullRound, simulateToRound, roundTargetForTeamGames, roundTargetForDays, gamesRemainingForTeam, computeStandings, computeConferenceStandings, hasConferenceStructure, isAllStarBreakPending } from './simulation/league';
 import { generateFullLeague } from './simulation/leagueGenerator';
 import { developOffseasonLeague } from './simulation/engine/development';
 import { followsRealDevelopment } from './simulation/realDevelopmentGate';
@@ -1137,15 +1137,21 @@ function App() {
     setLeague(weekend.league);
     pushToast(`All-Star Weekend complete. MVP: ${weekend.mvpPlayerId ?? '—'} · 3PT: ${weekend.threePointChampionId ?? '—'} · Dunk: ${weekend.dunkChampionId ?? '—'}.`, 'success');
   };
-  const simulateGamesCount = (count: number) => {
+  /** Plays every game day before schedule round `target`: one day runs here, longer stretches in the background worker. */
+  const simulateToTarget = (target: (l: League) => number | null) => {
     const ready = prepareRegularSeason();
     if (!ready) return;
-    const first = ready.league.schedule.find(g => !g.played)?.round ?? 0;
-    simTargetRef.current = { round: first + count, seedBase: seed };
-    // A single game day is quick; a week or month runs in the background worker so the page never freezes.
-    if (count <= 1 || jobs.seasonSim.running || jobs.autoPlay.running) applyLeagueAIPass(simulateRounds(ready.league, count, seed), ready.extras);
-    else jobs.seasonSim.start(ready.league, seed, count);
+    const first = ready.league.schedule.find(g => !g.played)?.round;
+    const end = target(ready.league);
+    if (first == null || end == null) return;
+    simTargetRef.current = { round: end, seedBase: seed };
+    if (end - first <= 1 || jobs.seasonSim.running || jobs.autoPlay.running) applyLeagueAIPass(simulateToRound(ready.league, end, seed), ready.extras);
+    else jobs.seasonSim.start(ready.league, seed, end - first);
   };
+  /** Your team's next `count` games (the whole league plays the same days); with no team, `count` game days. */
+  const simulateGamesCount = (count: number) => simulateToTarget(l => roundTargetForTeamGames(l, controlledTeamId, count));
+  /** The next `days` calendar days: 1 Week is ~3 games per team, 1 Month ~15. */
+  const simulateDaysCount = (days: number) => simulateToTarget(l => roundTargetForDays(l, days));
 
   const simulateEntirePlayoffsAndUpdate = () => {
     const bracket = playoffBracket ?? autoGeneratePlayoffBracket(league);
@@ -1561,7 +1567,7 @@ function App() {
     if (key === 'w') {
       e.preventDefault();
       if (seasonPhase !== 'regular_season' || leagueUnplayedCount === 0 || jobs.busy || isDeadlineDayOpen(league)) pushToast('Nothing to sim right now. Use the Play button.', 'info');
-      else simulateGamesCount(7);
+      else simulateDaysCount(7);
     }
   };
   const unlockNotice: Feature | undefined = pendingUnlockNotices(unlockCtx)[0];
@@ -1825,6 +1831,7 @@ function App() {
         onToggleHandsOff={toggleHandsOff}
         onSkipDeadline={skipDeadline}
         onSimulateGames={simulateGamesCount}
+        onSimulateDays={simulateDaysCount}
         onSimulateToDeadline={simulateToTradeDeadline}
         deadlineClockLabel={isDeadlineDayOpen(league) ? deadlineClock(league.deadlineDay!.hour) : null}
         onOpenDeadline={() => setTab('deadline')}
