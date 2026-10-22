@@ -42,6 +42,11 @@ export interface AdConfig {
    * cookie banner, and Google itself withholds ads until the visitor has answered. Leave false to use the built-in banner.
    */
   googleCmp: boolean;
+  /**
+   * The hostnames registered in AdSense > Sites. A production build requests ads only on these, so a preview deploy,
+   * a local copy or someone else's mirror never sends ad requests that misdeclare the site. Empty = any host.
+   */
+  siteHosts: string[];
   /** Milliseconds between creatives when a slot has more than one sponsor. */
   rotateEveryMs: number;
   sponsors: Sponsor[];
@@ -54,6 +59,7 @@ export const AD_CONFIG: AdConfig = {
   // Google's consent message handles the EEA, UK and Switzerland; everyone else sees ads without an opt-in click.
   // Publish the message in AdSense > Privacy & messaging (European regulations, and US state regulations).
   googleCmp: true,
+  siteHosts: ['courtvisiongame.com', 'www.courtvisiongame.com'],
   rotateEveryMs: 12_000,
   sponsors: [
     {
