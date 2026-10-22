@@ -75,7 +75,9 @@ describe('roster-reset preview', () => {
     const offseason: League = { ...league, season: '2017', seasonPhase: 'free_agency' };
     const p = historicalRosterPreview(offseason, extras, 'CLE')!;
     expect(p.leaving).toContain('Kyrie Irving');
-    expect(p.arriving).toContain('Isaiah Thomas');
+    // Rosters are the ones teams finished the real season with: George Hill came to Cleveland at the 2018 deadline.
+    expect(p.arriving).toContain('George Hill');
+    expect(p.arriving).not.toContain('Isaiah Thomas');
     expect(historicalRosterPreview({ ...offseason, historical: { ...offseason.historical!, userTeamToo: false } }, extras, 'CLE')).toBeNull();
   });
 });

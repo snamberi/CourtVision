@@ -44,7 +44,15 @@ describe('playtime', () => {
     const played = simulateRounds(withTeam(team.seasons.map(s => plan[s.playerId] != null ? exact(s, plan[s.playerId]) : s)), 8, 5);
     for (const g of played.schedule.filter(x => x.result && (x.homeTeamId === team.teamId || x.awayTeamId === team.teamId))) {
       const box = g.homeTeamId === team.teamId ? g.result!.homeBox : g.result!.awayBox;
-      for (const [id, want] of Object.entries(plan)) expect(Math.abs((box.players[id]?.minutes ?? 0) - want)).toBeLessThanOrEqual(1);
+      // Overtime is extra: a player set to 48 also plays the five-minute overtime periods.
+      const overtimeMinutes = Math.max(0, Math.max(...g.result!.possessionLog.map(e => e.quarter)) - 4) * 5;
+      for (const [id, want] of Object.entries(plan)) {
+        const got = box.players[id]?.minutes ?? 0;
+        // Fouling out (or getting hurt) ends a night early, whatever the plan.
+        const leftEarly = (box.players[id]?.pf ?? 0) >= 6 || g.result!.injuries.some(i => i.playerId === id);
+        if (!leftEarly) expect(got).toBeGreaterThanOrEqual(want - 1);
+        expect(got).toBeLessThanOrEqual(want === 0 ? 0 : want + 1 + overtimeMinutes);
+      }
     }
   });
 

@@ -68,10 +68,26 @@ describe('historical rosters', () => {
     const cle = res.league.teams.find(t => t.teamId === mine)!;
     expect(cle.seasons.some(p => p.playerId === 'Kyrie Irving')).toBe(false);
     expect(res.league.teams.find(t => t.seasons.some(p => p.playerId === 'Kyrie Irving'))!.teamId).toBe('BOS');
-    expect(cle.seasons.some(p => p.playerId === 'Isaiah Thomas')).toBe(true);
+    // Rosters are the ones teams finished the real season with: Isaiah Thomas ended 2017-18 a Laker, Jordan Clarkson a Cavalier.
+    expect(cle.seasons.some(p => p.playerId === 'Isaiah Thomas')).toBe(false);
+    expect(cle.seasons.some(p => p.playerId === 'Jordan Clarkson')).toBe(true);
   });
   it('AI teams make no trades among themselves while rosters are historical', () => {
     const r = runTradeMarketAI(built.league, built.extras, null, 5, 5);
     expect(r.trades).toHaveLength(0);
+  });
+});
+
+describe('nobody vanishes from real rosters', () => {
+  it('a star who missed most of a season keeps his roster spot (Stephen Curry, 5 games in 2019-20)', () => {
+    const plan = built.league.historical!.realRosters!['2019'];
+    expect(plan.GSW.ids).toContain('curryst01');
+  });
+  it('a player who sat the whole season out is on the team he joined next (Kevin Durant, 2019-20 Nets)', () => {
+    const plan = built.league.historical!.realRosters!['2019'];
+    expect(plan.BRK.ids).toContain('duranke01');
+  });
+  it('rosters hold at most 15', () => {
+    for (const season of Object.values(built.league.historical!.realRosters!)) for (const t of Object.values(season)) expect(t.ids.length).toBeLessThanOrEqual(15);
   });
 });

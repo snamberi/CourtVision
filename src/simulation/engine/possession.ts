@@ -11,6 +11,8 @@ import type { FatigueState } from './fatigue';
 import { fatiguePenaltyMultiplier } from './fatigue';
 import { NEUTRAL_RULE_MODS, type RuleMods } from './ruleMods';
 
+/** Share of assisted shots whose last pass comes from someone other than the ball handler (ball movement). */
+const ASSIST_SWING = 0.34;
 /** How hard a Pure Scorer's share cuts his passing: measured over 3 x 46 games, about +10-20% points and 10-12% fewer assists. */
 export const PURE_SCORER_PASS_CUT = 0.85;
 
@@ -250,6 +252,10 @@ export function simulatePossession(input: PossessionInput): PossessionResult {
     });
     shooter = teammates[rng.weightedPick(weights)];
     assistCandidate = bh;
+    // The ball swings before the shot: about a third of the time the last pass comes from a teammate, not the man who
+    // brought it up, so assists spread around and the lead guard lands near the NBA's 10-12 a game rather than 15-20.
+    const swingers = teammates.filter(p => p !== shooter);
+    if (swingers.length && rng.chance(ASSIST_SWING)) assistCandidate = swingers[rng.weightedPick(swingers.map(p => 1 + p.attributes.offense.passingIQ / 20 + p.role.secondaryBallHandler / 40))];
     events.push(`Pass to ${shooter.playerId}`);
   }
   const shooterDefender = defense[input.matchups[offense.indexOf(shooter)]] ?? primaryDefender;
@@ -361,7 +367,8 @@ export function simulatePossession(input: PossessionInput): PossessionResult {
     }
 
     if (assistCandidate) {
-      const assistChance = Math.min(0.94, (0.63 + assistCandidate.attributes.offense.passingIQ * 0.005 + assistCandidate.role.primaryBallHandler * 0.0012) * mods.assistFrequency + iqs[offense.indexOf(assistCandidate)] * 0.15);
+      // Not every pass before a make is an assist (the shooter often beats his man first).
+      const assistChance = Math.min(0.9, (0.6 + assistCandidate.attributes.offense.passingIQ * 0.0042 + assistCandidate.role.primaryBallHandler * 0.0008) * mods.assistFrequency + iqs[offense.indexOf(assistCandidate)] * 0.12);
       if (assistCandidate.flags.automaticAssist || rng.chance(assistChance)) {
         addDelta(statDeltas, assistCandidate.playerId, { ast: 1 });
         events.push(`${assistCandidate.playerId} AST`);
