@@ -343,3 +343,21 @@
 
 /* Data tables: a tighter row so a full roster fits on screen. */
 :root :is(.db-table, .stat-line-table) td { padding-top: 5px; padding-bottom: 5px; }
+
+/* Player ratings: label, a 20-block pixel bar and the value. Gold only for elite (85+). */
+:root .rating-bars { list-style: none; margin: 0; padding: 4px 0; display: grid; border: 1px solid var(--line-strong); background: var(--panel); }
+:root .rating-bars li { display: grid; grid-template-columns: 150px 1fr 40px; align-items: center; gap: 14px; padding: 6px 12px; border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
+:root .rating-bars li:last-child { border-bottom: 0; }
+:root .rating-bars span { display: inline-flex; align-items: center; gap: 8px; font: 500 13px/1.2 var(--font-data); color: var(--text); }
+:root .rating-bars i {
+  --block: calc((100% - 19 * 2px) / 20);
+  height: 10px;
+  background:
+    repeating-linear-gradient(90deg, var(--bar, var(--amber)) 0 var(--block), transparent var(--block) calc(var(--block) + 2px)) 0 0 / calc(var(--fill) * (var(--block) + 2px)) 100% no-repeat,
+    repeating-linear-gradient(90deg, var(--panel-3) 0 var(--block), transparent var(--block) calc(var(--block) + 2px));
+}
+:root .rating-bars li.elite { --bar: var(--c-any-ffd166, #ffd166); }
+:root .rating-bars b { font: 600 17px/1 var(--font-display); text-align: right; font-variant-numeric: tabular-nums; color: var(--court); }
+:root .rating-bars li:first-child b { color: var(--amber); }
+:root .rating-bars { max-width: 720px; --bar: var(--blue); }
+:root .rating-bars li:first-child { --bar: var(--amber); }

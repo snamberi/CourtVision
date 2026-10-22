@@ -333,17 +333,19 @@ function PlayerCard({ season, ratings, badgeNames, awardsHistory, league, family
 
       <section>
         <h4>Ratings</h4>
-        <table className="db-table">
-          <tbody>
-            <tr><td><PixelIcon name="trophy" size={14} /> Overall</td><td>{ratings.overall}</td></tr>
-            <tr><td><PixelIcon name="flame" size={14} /> Offensive Rating</td><td>{Math.round(ratings.offensiveRating)}</td></tr>
-            <tr><td><PixelIcon name="shield" size={14} /> Defensive Rating</td><td>{Math.round(ratings.defensiveRating)}</td></tr>
-            <tr><td><PixelIcon name="threepoint" size={14} /> Shooting Rating</td><td>{Math.round(ratings.shootingRating)}</td></tr>
-            <tr><td><PixelIcon name="trade" size={14} /> Playmaking Rating</td><td>{Math.round(ratings.playmakingRating)}</td></tr>
-            <tr><td><PixelIcon name="up" size={14} /> Rebounding Rating</td><td>{Math.round(ratings.reboundingRating)}</td></tr>
-            <tr><td><PixelIcon name="lightning" size={14} /> Physical Rating</td><td>{Math.round(ratings.physicalRating)}</td></tr>
-          </tbody>
-        </table>
+        {/* Each rating with a segmented pixel bar (one block per 5 points), so strengths read at a glance. */}
+        <ul className="rating-bars">
+          {([['trophy', 'Overall', ratings.overall], ['flame', 'Offensive', ratings.offensiveRating], ['shield', 'Defensive', ratings.defensiveRating],
+            ['threepoint', 'Shooting', ratings.shootingRating], ['trade', 'Playmaking', ratings.playmakingRating], ['up', 'Rebounding', ratings.reboundingRating],
+            ['lightning', 'Physical', ratings.physicalRating]] as const).map(([icon, label, raw]) => {
+            const v = Math.round(raw);
+            return <li key={label} className={v >= 85 ? 'elite' : ''}>
+              <span><PixelIcon name={icon} size={14} /> {label}</span>
+              <i aria-hidden="true" style={{ ['--fill' as string]: Math.max(0, Math.min(20, Math.round(v / 5))) }} />
+              <b>{v}</b>
+            </li>;
+          })}
+        </ul>
         {season.real && <RealPlayerFacts player={season} league={league} />}
       </section>
 
