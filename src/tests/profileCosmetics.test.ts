@@ -105,7 +105,7 @@ describe('leaderboard honors on the server', () => {
   it('a finished weekly board you top is a Weekly Champion; this week does not count yet', async () => {
     const now = new Date('2026-10-05T12:00:00Z'); // week 41
     const weekly = [{ board: 'rebuild' as const, week: '2026-W40', score: 900, detail: '' }, { board: 'rebuild' as const, week: '2026-W41', score: 999, detail: '' }];
-    const f = counts([['score=gt', 0], ['weekly_scores', 8], ['lb_users', 2]]);
+    const f = counts([['score=gt', 0], ['lb_weekly', 8], ['lb_users', 2]]);
     expect(await computeHonors(env, 'me', derived({ weekly }), now, [], f)).toEqual(['weekly-1']);
     expect(await computeHonors(env, 'me', derived({ weekly: [weekly[1]] }), now, [], f)).toEqual([]);
   });

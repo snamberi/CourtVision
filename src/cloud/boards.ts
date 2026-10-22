@@ -1,4 +1,5 @@
 import { supa, getAccount } from './account';
+import { AREA_LABEL, formatPlayTime, type PlayArea } from '../retention/playTime';
 
 /*
  * The online boards, read straight from the database's public views (see supabase/schema.sql). Each query returns
@@ -16,11 +17,16 @@ export type BoardSpec =
   | { kind: 'rebuild'; scenario: string }
   | { kind: 'ranked'; season: string }
   | { kind: 'pvp' }
+  | { kind: 'playtime' }
   | { kind: 'code'; code: string }
   | { kind: 'friends' };
 
 interface Q { view: string; score: string; filters: [string, string | number][]; detail: (r: Record<string, unknown>) => string; asc?: boolean }
 const plural = (n: unknown, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
+const playDetail = (s: { playSeconds?: number; playTop?: string } | null) => {
+  const top = s?.playTop && s.playTop in AREA_LABEL ? AREA_LABEL[s.playTop as PlayArea] : null;
+  return `${formatPlayTime(Number(s?.playSeconds ?? 0))} played${top ? ` · most in ${top}` : ''}`;
+};
 
 function query(spec: BoardSpec): Q {
   switch (spec.kind) {
@@ -33,6 +39,7 @@ function query(spec: BoardSpec): Q {
     case 'ranked': return { view: 'lb_ranked', score: 'points', filters: [['season', spec.season]], detail: r => plural(r.events, 'result') };
     case 'pvp': return { view: 'lb_pvp', score: 'rating', filters: [], detail: r => `${r.wins}-${r.losses}` };
     case 'code': return { view: 'lb_codes', score: 'score', filters: [['code', spec.code]], detail: r => `${r.wins}-${r.losses} · ${r.finish}${r.team ? ` · ${r.team}` : ''}` };
+    case 'playtime': return { view: 'lb_users', score: 'play_hours', filters: [], detail: r => playDetail(r.stats as { playSeconds?: number; playTop?: string } | null) };
     case 'friends': return { view: 'lb_users', score: 'xp', filters: [], detail: r => `LV ${r.level} · ${(r.stats as { summary?: string })?.summary ?? ''}` };
   }
 }

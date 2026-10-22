@@ -6,7 +6,8 @@ import { seasonOf } from '../src/cloud/ranked';
 /*
  * Leaderboard honors, worked out at sync by comparing the player with everyone else on the boards. Once earned they
  * stay (a #1 finish is a #1 finish). They unlock titles, the medal icon and the prism name colour in the game
- * (src/profile/cosmetics.ts). A board needs a real field before it hands out honors, so an empty league can't.
+ * (src/profile/cosmetics.ts). A board needs a real field before it hands out honors, so an empty league can't. Every
+ * count reads the public board views, which leave out banned accounts and the owner.
  */
 
 const MIN_FIELD = { gm: 10, weekly: 3, daily: 3, pvp: 20, ranked: 20, podium: 5, weeklyHunt: 5 };
@@ -26,11 +27,11 @@ export async function computeHonors(env: SupaEnv, userId: string, d: Derived, no
   // Weekly boards and Daily Legends that are over: #1 of a real field.
   const today = now.toISOString().slice(0, 10), thisWeek = weekKey(now);
   for (const w of d.weekly.filter(x => x.week < thisWeek).slice(-6)) {
-    const q = `weekly_scores?select=user_id&board=eq.${enc(w.board)}&week=eq.${enc(w.week)}&${others}`;
+    const q = `lb_weekly?select=user_id&board=eq.${enc(w.board)}&week=eq.${enc(w.week)}&${others}`;
     if ((await count(env, q, f)) + 1 >= MIN_FIELD.weekly && (await count(env, `${q}&score=gt.${w.score}`, f)) === 0) honors.add('weekly-1');
   }
   for (const day of d.daily.filter(x => x.day < today).slice(-7)) {
-    const q = `daily_legend?select=user_id&day=eq.${enc(day.day)}&${others}`;
+    const q = `lb_daily?select=user_id&day=eq.${enc(day.day)}&${others}`;
     if ((await count(env, q, f)) + 1 >= MIN_FIELD.daily && (await count(env, `${q}&score=gt.${day.score}`, f)) === 0) honors.add('daily-1');
   }
   // Ranked this month (the points board).
@@ -52,7 +53,7 @@ export async function computeHonors(env: SupaEnv, userId: string, d: Derived, no
   }
   // Weekly Hunts that are over: the top 10% of a real field.
   for (const w of d.weekly.filter(x => x.board === 'hunt' && x.week < thisWeek).slice(-4)) {
-    const q = `weekly_scores?select=user_id&board=eq.hunt&week=eq.${enc(w.week)}&${others}`;
+    const q = `lb_weekly?select=user_id&board=eq.hunt&week=eq.${enc(w.week)}&${others}`;
     const field = (await count(env, q, f)) + 1;
     if (field >= MIN_FIELD.weeklyHunt && (await count(env, `${q}&score=gt.${w.score}`, f)) + 1 <= Math.max(1, Math.ceil(field * 0.1))) honors.add('hunt-week-10');
   }
@@ -61,6 +62,6 @@ export async function computeHonors(env: SupaEnv, userId: string, d: Derived, no
 
 /** PvP is rated on the server (hunt_ghosts), so its honor is checked there after each result. */
 export async function pvpHonor(env: SupaEnv, userId: string, rating: number, f: Fetch = fetch): Promise<boolean> {
-  const q = `hunt_ghosts?select=user_id&user_id=neq.${userId}`;
+  const q = `lb_pvp?select=user_id&user_id=neq.${userId}`;
   return (await count(env, q, f)) + 1 >= MIN_FIELD.pvp && (await count(env, `${q}&rating=gt.${rating}`, f)) < 10;
 }

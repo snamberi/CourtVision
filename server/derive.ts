@@ -26,6 +26,7 @@ import { loadRelics, RELIC_BY_ID, RARITY_ORDER } from '../src/relics/relics';
 import { unlockContext, earnedExtraTitles } from '../src/profile/cosmetics';
 import { TITLES } from '../src/profile/profile';
 import { readStreak } from '../src/retention/streak';
+import { readPlayTime, topArea } from '../src/retention/playTime';
 
 /*
  * Turns a player's synced progress into their public rows: profile level and stats, achievements, created players,
@@ -194,7 +195,7 @@ export function derive(blob: ProgressBlob, now = new Date()): Derived {
     seasons: gm.seasons, wins: gm.wins, titles: gm.titles, achievements: gm.achievements,
     huntRuns: hunt.runs, huntWins: hunt.wins, huntBest: int(hunt.bestStop, 0, 10) ? hunt.bestStop : 0, dailyWins: daily.filter(d => d.won).length,
     rebuildStars: rebuild.reduce((n, r) => n + r.stars, 0), rebuildTitles: rebuild.filter(r => r.title_in != null).length,
-    careers: players.length, hallOfFame: hof, bestPlayer: best, xpParts: Object.fromEntries(parts.map(p => [p.id, p.xp])),
+    careers: players.length, hallOfFame: hof, bestPlayer: best, ...playTime(read, now), xpParts: Object.fromEntries(parts.map(p => [p.id, p.xp])),
     summary: `${plural(gm.titles, 'title')} · ${plural(hof, 'Hall of Famer')} · ${plural(hunt.wins, 'hunt')} won`,
     relicShelf: relicShelf(read), showcase: showcase(read, levelFor(xp).level, hunt.wins),
     // Your Player (the Closet ratings), kept within the points this level has earned: others play 1v1 against it.
@@ -204,6 +205,13 @@ export function derive(blob: ProgressBlob, now = new Date()): Derived {
   const modes = earnedModeAchievements(readWithCareers, { rankedTier: TIERS.findIndex(t => t.id === stats.rankedBest) }).map(id => `mode-${id}`);
   return { profile: { level: levelFor(xp).level, xp, stats: { ...stats, modeAchievements: modes.length } }, achievements: [...Object.keys(legacy.achievements).filter(a => /^[\w-]{1,40}$/.test(a)).slice(0, 200), ...modes],
     players, weekly, daily, rebuild, codes, ranked };
+}
+
+/** Time played for the profile and the Time played board: never more than the time since the game's first day. */
+function playTime(read: (k: string) => string | null, now: Date): { playSeconds: number; playTop: string | null } {
+  const t = readPlayTime(read);
+  const cap = Math.max(0, Math.floor((now.getTime() - Date.parse(`${FIRST_DAY}T00:00:00Z`)) / 1000));
+  return { playSeconds: Math.min(cap, Math.floor(t.total)), playTop: topArea(t) };
 }
 
 /** The relic museum on a public profile: up to six relics you own, rarest first, and how many secrets. */

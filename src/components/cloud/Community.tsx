@@ -33,11 +33,12 @@ import '../locker/locker.css';
 import { lastSeenLabel } from '../../cloud/lastSeen';
 import { loadVisitors, noteProfileView } from '../../cloud/social';
 import { myAvatarCode } from '../../profile/avatarCode';
+import { AREA_LABEL, formatPlayTime, readPlayTime, topArea, type PlayArea } from '../../retention/playTime';
 
 type Tab = 'boards' | 'ranked' | 'pvp' | 'friends' | 'me';
-type BoardId = 'gms' | 'players' | 'whunt' | 'w820' | 'wcat' | 'wrebuild' | 'wcareer' | 'wguess' | 'whilo' | 'wbracket' | 'daily' | 'rebuild' | 'friends';
+type BoardId = 'gms' | 'playtime' | 'players' | 'whunt' | 'w820' | 'wcat' | 'wrebuild' | 'wcareer' | 'wguess' | 'whilo' | 'wbracket' | 'daily' | 'rebuild' | 'friends';
 const BOARDS: { id: BoardId; label: string; icon: string; group: 'All time' | 'This week' | 'Today' }[] = [
-  { id: 'gms', label: 'GMs', icon: 'trophy', group: 'All time' }, { id: 'players', label: 'Created players', icon: 'jersey', group: 'All time' },
+  { id: 'gms', label: 'GMs', icon: 'trophy', group: 'All time' }, { id: 'playtime', label: 'Time played', icon: 'hourglass', group: 'All time' }, { id: 'players', label: 'Created players', icon: 'jersey', group: 'All time' },
   { id: 'rebuild', label: 'Rebuild records', icon: 'chart', group: 'All time' }, { id: 'friends', label: 'Friends', icon: 'team', group: 'All time' },
   { id: 'whunt', label: 'Weekly Hunt', icon: 'crown', group: 'This week' }, { id: 'w820', label: 'Daily 82-0', icon: 'star', group: 'This week' },
   { id: 'wrebuild', label: 'Rebuild of the Week', icon: 'shuffle', group: 'This week' }, { id: 'wcareer', label: 'Career of the Week', icon: 'up', group: 'This week' },
@@ -92,6 +93,7 @@ function Boards({ onUser }: { onUser: (u: string) => void }) {
   let spec: BoardSpec, label: string, blurb: string;
   switch (board) {
     case 'gms': spec = { kind: 'gms' }; label = 'XP'; blurb = 'Every GM by profile XP: seasons, titles, careers, hunts, rebuilds, weekly challenges and daily goals, in every mode.'; break;
+    case 'playtime': spec = { kind: 'playtime' }; label = 'Hours'; blurb = 'Every GM by time played: hours in the game with the tab open, on every device you sync.'; break;
     case 'players': spec = { kind: 'players', week: weeklyPlayers ? weeks.now : null }; label = 'Legacy'; blurb = weeklyPlayers ? `Career of the Week (${weeklyCareer().draftYear ?? 2026} draft): the best careers this week.` : 'The greatest created players from every GM, by Legacy Score (the same scale as the all-time Top 100).'; break;
     case 'whunt': spec = { kind: 'weekly', board: 'hunt', week }; label = 'Score'; blurb = 'The same hunt for everyone this week, as many tries as you like: your best counts. The top 10% when the week ends win the Weekly Hunter title and aura.'; break;
     case 'w820': spec = { kind: 'weekly', board: 'perfect', week }; label = 'Score'; blurb = 'Everyone gets the same 82-0 spins each day. Your best day of the week counts: wins, margins, bosses beaten and the playoffs.'; break;
@@ -237,6 +239,9 @@ function ProfileView({ username, onUser }: { username: string; onUser: (u: strin
   const followerCount = d.followers + (following == null || following === d.following ? 0 : following ? 1 : -1);
   const rarest = [...d.achievements].filter(id => rarity[id] != null).sort((a, b) => rarity[a] - rarity[b]).slice(0, 3);
   const huntBest = Number(s.huntBest ?? 0);
+  // Your own time played counts this device too (the online copy catches up when you sync).
+  const playSeconds = Math.max(Number(s.playSeconds ?? 0) || 0, isMe ? readPlayTime().total : 0);
+  const playTop = (isMe ? topArea(readPlayTime()) : null) ?? (typeof s.playTop === 'string' && s.playTop in AREA_LABEL ? s.playTop as PlayArea : null);
   return <>
     <section className="locker-bay profile-showcase">
       <div className="showcase-stage">
@@ -271,6 +276,7 @@ function ProfileView({ username, onUser }: { username: string; onUser: (u: strin
       <div className="hunt-over-stats locker-totals">
         <div><small>GM TITLES</small><b>{Number(s.titles ?? 0)}</b></div><div><small>SEASONS</small><b>{Number(s.seasons ?? 0)}</b></div><div><small>HALL OF FAMERS</small><b>{Number(s.hallOfFame ?? 0)}</b></div>
         <div><small>HUNTS WON</small><b>{Number(s.huntWins ?? 0)}</b></div><div><small>REBUILD STARS</small><b>{Number(s.rebuildStars ?? 0)}</b></div><div><small>PVP</small><b>{d.pvp ? d.pvp.rating : '—'}</b></div>
+        <div title={playTop ? `Most in ${AREA_LABEL[playTop]}` : undefined}><small>TIME PLAYED</small><b>{playSeconds > 0 ? formatPlayTime(playSeconds) : '—'}</b></div>
       </div>
       {!isMe && acct.status === 'signedIn' && <div className="contest-actions">
         <button className={follows ? '' : 'primary'} onClick={() => void setFollow(d.profile.id, !follows).then(() => setFollowing(!follows), e => setMsg(String(e.message ?? e)))}>{follows ? 'Following ✓' : 'Follow'}</button>
