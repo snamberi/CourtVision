@@ -361,3 +361,15 @@
 :root .rating-bars li:first-child b { color: var(--amber); }
 :root .rating-bars { max-width: 720px; --bar: var(--blue); }
 :root .rating-bars li:first-child { --bar: var(--amber); }
+
+/* ================================================================ Game modes */
+
+/* Every mode screen shares one column: the header and the scene banner sit on the same 1180px centered grid
+ * (some modes ran them edge to edge, others at 1080 or inside a 1180 box with extra padding). */
+:root .hunt > .hunt-top, :root .hunt > .mode-room, :root .cv > .hunt-top { width: 100%; max-width: 1180px; margin-inline: auto; box-sizing: border-box; }
+:root .hunt.p820 { max-width: none; }
+:root .hunt.p820 > :not(.hunt-top):not(.mode-room) { max-width: 1180px; margin-inline: auto; }
+:root .hunt-title h1 { font: 600 32px/1.1 var(--font-display); letter-spacing: .03em; text-transform: uppercase; }
+/* Difficulty cards: the tier name in the display face (it was 14px VT323). */
+:root .difficulty-card b { font: 600 15px/1.2 var(--font-display); letter-spacing: .04em; text-transform: uppercase; }
+:root .difficulty-card small, :root .difficulty-card span:not(.difficulty-meter) { font-family: var(--font-data); }
