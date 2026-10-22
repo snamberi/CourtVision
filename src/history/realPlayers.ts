@@ -101,11 +101,11 @@ function groupsFrom(prof: RealProfile | null, heightIn: number, weightLb: number
 }
 
 /**
- * The highest three-point rating a real 3P% supports: gentle up to an average shooter (34% -> about 58, LeBron James),
- * steep past it, because 40%+ is rare (40% -> about 91, 41%+ -> 98-99: Stephen Curry, JJ Redick).
+ * The highest three-point rating a real 3P% supports: gentle up to an average shooter (31% -> about 58, 34% -> 67:
+ * LeBron James), steep past it, because 40%+ is rare (40% -> about 95, 41%+ -> 99: Stephen Curry, JJ Redick).
  */
 export function threeCeiling(threePct: number): number {
-  const v = threePct <= 0.36 ? 30 + (threePct - 0.25) * 300 : 63 + (threePct - 0.36) * 700;
+  const v = threePct <= 0.36 ? 40 + (threePct - 0.25) * 300 : 73 + (threePct - 0.36) * 560;
   return clamp(Math.round(v), 35, 99);
 }
 

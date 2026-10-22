@@ -33,8 +33,8 @@ describe('real players shoot threes like they really did', () => {
     const h = await loadHistoryForTests();
     const all = buildHistoricalLeague(h, 2016, { realDevelopment: true, forceRosters: true, difficulty: 'normal', seed: 3 }).league.teams.flatMap(t => t.seasons);
     const three = (name: string) => all.find(p => p.playerId === name)!.attributes.offense.corner3;
-    expect(three('LeBron James')).toBeLessThan(62);
-    expect(three('Russell Westbrook')).toBeLessThan(62);
+    expect(three('LeBron James')).toBeLessThan(70);
+    expect(three('Russell Westbrook')).toBeLessThan(70);
     expect(three('Stephen Curry')).toBeGreaterThan(90);
   }, 120_000);
 });
