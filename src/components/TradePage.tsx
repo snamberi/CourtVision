@@ -7,7 +7,8 @@ import {
   validateTrade, validateTradeAssets, executeTrade, computeTradeValue, evaluateTradeSides, tradeTolerance, canManageTeam, isTradeDeadlinePassed,
   tradeableFuturePicks, computeFutureDraftPickValue, canProtectPick, setPickProtection, PICK_PROTECTION_OPTIONS,
 } from '../simulation/gm';
-import { computeTeamOverallAverage } from '../simulation/teamStatus';
+import { computeTeamOverallAverage, primaryPosition } from '../simulation/teamStatus';
+import { calculateOverall } from '../simulation/engine/overall';
 import { tradeVerdict, TradePlayerCompareTable, ImprovementMeter } from './gmShared';
 import { PlayerNameTag } from './PlayerAvatar';
 import { TradeScale } from './trade/TradeScale';
@@ -171,6 +172,23 @@ export function TradePage({ league, extras, controlledTeamId, onChange, onToast,
     )
   );
 
+  /** One aligned row per player, best first: pick box, player, position, overall, then salary (and value). */
+  const renderRoster = (team: LeagueTeam, selected: string[], setSelected: (ids: string[]) => void) => (
+    <div className="trade-roster" role="group" aria-label={`${team.name} players`}>
+      <div className="trade-roster-head" aria-hidden="true"><span /><span>Player</span><span>Pos</span><span>OVR</span><span>Salary</span>{showValues && <span>Value</span>}</div>
+      {[...team.seasons].sort((a, b) => calculateOverall(b) - calculateOverall(a)).map((s) => (
+        <label key={s.playerId} className={`trade-roster-row ${selected.includes(s.playerId) ? 'on' : ''}`}>
+          <input type="checkbox" checked={selected.includes(s.playerId)} onChange={() => toggle(selected, setSelected, s.playerId)} />
+          <PlayerNameTag playerId={s.playerId} teamId={s.teamId} jerseyNumber={s.jerseyNumber} size={22} />
+          <span className="trade-roster-pos">{primaryPosition(s)}</span>
+          <b className="trade-roster-ovr">{calculateOverall(s)}</b>
+          <span className="trade-roster-money">{shortMoney(extras.contracts[s.playerId]?.annualSalary ?? 0)}</span>
+          {showValues && <span className="trade-roster-money">{computeTradeValue(s).toFixed(0)}</span>}
+        </label>
+      ))}
+    </div>
+  );
+
   return (
     <div className="trade-view">
       <label className="trade-value-toggle"><input type="checkbox" checked={showValues} onChange={e => onChange(league, { ...extras, tradeSettings: { ...extras.tradeSettings, showValues: e.target.checked } })} /> Show trade values across the league</label>
@@ -181,14 +199,7 @@ export function TradePage({ league, extras, controlledTeamId, onChange, onToast,
           {sandboxMode ? <select value={teamAId} onChange={(e) => { setTeamAId(e.target.value); setFromA([]); setPicksFromA([]); }}>
             {league.teams.map((t) => <option key={t.teamId} value={t.teamId}>{t.name}</option>)}
           </select> : <h3><TeamLink name={teamA.name} /></h3>}
-          <div className="badge-grid">
-            {teamA.seasons.map((s) => (
-              <label key={s.playerId} className="badge-chip">
-                <input type="checkbox" checked={fromA.includes(s.playerId)} onChange={() => toggle(fromA, setFromA, s.playerId)} />
-                <PlayerNameTag playerId={s.playerId} teamId={s.teamId} jerseyNumber={s.jerseyNumber} size={22} /> ({shortMoney(extras.contracts[s.playerId]?.annualSalary ?? 0)}{showValues && <>, value {computeTradeValue(s).toFixed(0)}</>})
-              </label>
-            ))}
-          </div>
+          {renderRoster(teamA, fromA, setFromA)}
           <h5 className="stats-subheading">Draft Picks</h5>
           {renderPickList(teamAPicks, picksFromA, setPicksFromA)}
         </div>
@@ -196,14 +207,7 @@ export function TradePage({ league, extras, controlledTeamId, onChange, onToast,
           <select value={teamBId} onChange={(e) => { setTeamBId(e.target.value); setFromB([]); setPicksFromB([]); }}>
             {league.teams.map((t) => <option key={t.teamId} value={t.teamId}>{t.name}</option>)}
           </select>
-          <div className="badge-grid">
-            {teamB.seasons.map((s) => (
-              <label key={s.playerId} className="badge-chip">
-                <input type="checkbox" checked={fromB.includes(s.playerId)} onChange={() => toggle(fromB, setFromB, s.playerId)} />
-                <PlayerNameTag playerId={s.playerId} teamId={s.teamId} jerseyNumber={s.jerseyNumber} size={22} /> ({shortMoney(extras.contracts[s.playerId]?.annualSalary ?? 0)}{showValues && <>, value {computeTradeValue(s).toFixed(0)}</>})
-              </label>
-            ))}
-          </div>
+          {renderRoster(teamB, fromB, setFromB)}
           <h5 className="stats-subheading">Draft Picks</h5>
           {renderPickList(teamBPicks, picksFromB, setPicksFromB)}
         </div>

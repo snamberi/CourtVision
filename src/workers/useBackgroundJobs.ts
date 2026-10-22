@@ -132,7 +132,7 @@ export function useBackgroundJobs(handlers: Handlers) {
 
   const startSeasonSim = useCallback((league: League, seedBase: number, rounds?: number) => {
     if (autoPlayWorker.current || seasonWorker.current) return;
-    const first = league.schedule.find((g) => !g.played)?.round ?? 0;
+    const first = Math.min(...league.schedule.filter((g) => !g.played).map((g) => g.round));
     const total = league.schedule.filter((g) => !g.played && (rounds == null || g.round < first + rounds)).length;
     if (total === 0) return;
     setSeasonSimRunning(true);

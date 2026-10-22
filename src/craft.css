@@ -1,0 +1,390 @@
+/* Craft layer (loaded last). One set of rules for type, controls, motion and surfaces so every screen reads as
+ * the same game. Colors come from the theme variables, so all looks still apply.
+ *
+ * Type roles
+ *   --font-pixel   Press Start 2P: the logo, eyebrows and tags only. Short, uppercase, 8-10px.
+ *   --font-ui      VT323: big pixel controls and scoreboard numbers. Never below 18px: it turns to mush.
+ *   --font-display Oswald: headings, panel titles, small buttons, tabs and chips.
+ *   --font-data    Inter: sentences, tables and every number you compare.
+ *
+ * Motion
+ *   Quick and physical: things press down, lift on hover and settle. Nothing in a common action waits on an animation.
+ */
+:root {
+  --dur-1: 90ms;   /* presses, hovers */
+  --dur-2: 160ms;  /* panels, menus */
+  --dur-3: 280ms;  /* entrances */
+  --ease-out: cubic-bezier(.2, .7, .2, 1);
+  --ease-snap: cubic-bezier(.3, 1.4, .5, 1);
+  --hard-shadow: 3px 3px 0 var(--c-shadow-050a12, #050a12);
+}
+
+/* ---------------------------------------------------------------- Controls */
+
+/* Buttons that a page shrinks below 18px switch from VT323 to the condensed display face (generated from every
+ * CSS rule that sets a small font-size on a button, tab or chip). */
+  :root .arcade .arcade-tabs button,
+  :root .award-placement-chip,
+  :root .award-race-head .stats-view-toggle button,
+  :root .badge-chip,
+  :root .board-nav-group button,
+  :root .bracket-detail-games button,
+  :root .cc-chip,
+  :root .cc-follow,
+  :root .cc-kinds button,
+  :root .checklist-go,
+  :root .coach-guide .guide-card button.coach-skip,
+  :root .code-mode-actions button,
+  :root .community .community-tabs button,
+  :root .consent-btn-primary,
+  :root .consent-btn-secondary,
+  :root .consent-toggle-fixed,
+  :root .cv-chip,
+  :root .cv-spin-btn,
+  :root .draft-pick-actions button,
+  :root .draft-timer-toggle,
+  :root .expense-effect-chip,
+  :root .expense-level-stepper button,
+  :root .fa-actions button,
+  :root .fo-toggle,
+  :root .hunt-hub-tabs button,
+  :root .hunt-item-chip,
+  :root .import-toast button,
+  :root .install-tabs button,
+  :root .league-controls button,
+  :root .menu-bar-tab,
+  :root .menu-gold .menu-bar-tab,
+  :root .menu-masthead .account-chip,
+  :root .menu-masthead .profile-chip,
+  :root .menu-phone-edit button,
+  :root .menu-quick button,
+  :root .mp-stepper button,
+  :root .mp-summary button,
+  :root .my-ratings-list button,
+  :root .news-chip,
+  :root .news-chip-all,
+  :root .profile-chip,
+  :root .profile-jump button,
+  :root .profile-tabs button,
+  :root .record-holder .link-button,
+  :root .relic-luck-chip,
+  :root .rg-list > li > .link-button,
+  :root .rg-stepper button,
+  :root .roster-actions button,
+  :root .roster-controls button,
+  :root .rotation-arrows button,
+  :root .rotation-toggle,
+  :root .saved-league-actions button,
+  :root .sim-lab-buttons button,
+  :root .story-filters button,
+  :root .story-tabs button,
+  :root .studio-actions button,
+  :root .studio-categories button,
+  :root .studio-equipped button,
+  :root .studio-slot button,
+  :root .studio-tryon button,
+  :root .studio-view button,
+  :root .subtabs button,
+  :root .summer-game-line button,
+  :root .sync-chip,
+  :root .sync-chip .link-button,
+  :root .tabs button,
+  :root .tm-famous button,
+  :root .toast-item button,
+  :root .tp-btn,
+  :root .trade-actions button,
+  :root .unlock-notice-actions button,
+  :root .watch-controls button,
+  :root .watch-reel-banner button,
+  :root :root .cv-tabs button,
+  :root :root .series-reel-btn,
+  :root button.dashboard-link {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+:root .modal-close, :root .toast-item button, :root button[aria-label='Close'], :root .play-menu-close {
+  font: 600 16px/1 var(--font-data); text-transform: none; letter-spacing: 0;
+}
+
+/* Card-like buttons (an avatar or art plus lines of text): names in the display face, details in Inter. */
+:root button :is(small, em) { font-family: var(--font-data); letter-spacing: .01em; text-transform: none; }
+:root :is(.lineup-reserve, .mode-tile, .fa-card, .menu-quick-card, .studio-slot) b { font: 600 14px/1.2 var(--font-display); letter-spacing: .03em; }
+:root .lineup-reserve small { font-size: 10.5px; color: var(--text-dim); }
+:root .lineup-reserve em { font-size: 11.5px; font-style: normal; }
+:root .qs-label { font: 500 12px/1.2 var(--font-display); letter-spacing: .08em; }
+
+/* Every button lifts a pixel on hover and presses into its shadow: the same physical feel everywhere. */
+:root button { transition: transform var(--dur-1) var(--ease-out), box-shadow var(--dur-1) var(--ease-out), background-color var(--dur-1), border-color var(--dur-1), color var(--dur-1); }
+:root button:not(:disabled):not(.sidebar-item):not(.link-button):hover { transform: translate(-1px, -1px); }
+:root button:not(:disabled):not(.sidebar-item):not(.link-button):active { transform: translate(2px, 2px); box-shadow: none; transition-duration: 40ms; }
+:root button.primary:not(:disabled):hover { box-shadow: 4px 4px 0 var(--c-shadow-050a12, #050a12); }
+
+/* Links in tables and feeds: a quiet underline that wakes up on hover, instead of a wall of underlines. */
+:root .team-link, :root .player-link { text-decoration-thickness: 1px; text-decoration-color: color-mix(in srgb, currentColor 28%, transparent); text-underline-offset: 3px; transition: color var(--dur-1), text-decoration-color var(--dur-1); }
+:root .team-link:hover, :root .player-link:hover { text-decoration-color: currentColor; }
+
+/* ---------------------------------------------------------------- Small type */
+
+/* Tags and badges: one legible size (10.5px Inter, semibold, tracked) instead of 8-10px in five faces. */
+:root :is(.ad-label, .mode-badge, .mode-xp, .mode-time, .mode-tag, .cc-type, .cc-yours, .cup-tag, .origin-tag,
+  .transaction-type-tag, .fa-tag-long, .fa-last-season-tag, .rule-live-tag, .road-stop-here, .road-stop-note,
+  .checklist-xp, .mode-tile-badge, .league-rule-value, .expense-effects-title) {
+  font-family: var(--font-data); font-size: 10.5px; font-weight: 600; letter-spacing: .04em; line-height: 1.3;
+}
+:root .sidebar-brand-text small, :root .menu-masthead small { font-size: 10px; letter-spacing: .16em; }
+:root .topbar-jump { font: 500 13px/1 var(--font-data); }
+:root .topbar-jump kbd { font: 600 10.5px/1.2 var(--font-data); }
+
+/* Pixel eyebrows stay short; long ones and small headings use the display face. */
+:root :is(.records-page h5, .record-card h5, .draft-page summary, .dynasty-empty b) { font: 600 13px/1.3 var(--font-display); letter-spacing: .06em; text-transform: uppercase; }
+
+/* ---------------------------------------------------------------- Numbers */
+
+:root :is(td, th, .stat, .num, .dashboard-stat, .topbar-record) { font-variant-numeric: tabular-nums; }
+
+/* ---------------------------------------------------------------- Motion */
+
+/* Pages and panels settle in instead of popping. */
+@keyframes cv-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes cv-pop { 0% { opacity: 0; transform: scale(.94); } 70% { opacity: 1; transform: scale(1.015); } 100% { transform: none; } }
+:root .app-body main > * { animation: cv-rise var(--dur-3) var(--ease-out) both; }
+:root .app-body main > *:nth-child(2) { animation-delay: 30ms; }
+:root .app-body main > *:nth-child(3) { animation-delay: 60ms; }
+:root .app-body main > *:nth-child(n+4) { animation-delay: 90ms; }
+:root :is(.play-menu, .modal-card, .share-box, [role='dialog'] > div) { animation: cv-pop var(--dur-2) var(--ease-snap) both; }
+:root .toast-item { animation: cv-pop var(--dur-2) var(--ease-snap) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  :root *, :root *::before, :root *::after { animation-duration: .001ms !important; animation-delay: 0ms !important; transition-duration: .001ms !important; }
+}
+
+/* ================================================================ Main menu */
+
+/* Today: three equal cards (challenge, season pass, vault) with the action pinned to the bottom of each. */
+:root .menu-today { width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 6px 0 4px; }
+:root .menu-today > section {
+  position: relative; display: grid; grid-template-rows: auto 1fr auto; align-content: start; gap: 6px; margin: 0; min-height: 132px;
+  padding: 14px 16px 14px; background: var(--panel); border: 2px solid var(--line-strong); box-shadow: var(--hard-shadow);
+}
+:root .menu-today > section::before { content: ''; position: absolute; left: -2px; right: -2px; top: -2px; height: 4px; background: var(--today-accent, var(--line-bright)); }
+:root .menu-today .daily-challenge { --today-accent: var(--amber); border-color: var(--line-strong); }
+:root .menu-today .daily-challenge.done { --today-accent: var(--make); }
+:root .menu-today .menu-season { --today-accent: var(--blue); grid-template-columns: auto 1fr; grid-template-rows: 1fr auto; align-items: start; }
+:root .menu-today .menu-season > button { grid-column: 1 / -1; }
+:root .menu-today .menu-relics { --today-accent: var(--tov); grid-template-columns: auto 1fr; grid-template-rows: 1fr auto; align-items: start; }
+:root .menu-today .menu-relics > button { grid-column: 1 / -1; }
+:root .menu-today .menu-relics.ready { --today-accent: var(--c-any-ffd166, #ffd166); }
+:root .menu-today b { font: 600 17px/1.2 var(--font-display); letter-spacing: .03em; text-transform: uppercase; color: var(--court); }
+:root .menu-today small { font: 12.5px/1.45 var(--font-data); color: var(--text-dim); }
+:root .menu-today > section > button { justify-self: start; align-self: end; min-width: 0; font: 20px/1.1 var(--font-ui); text-transform: none; letter-spacing: .01em; }
+:root .menu-today .menu-season-text { display: grid; gap: 6px; }
+:root .menu-today .menu-season-bar { display: block; height: 8px; }
+:root .daily-challenge-meta { font: 600 12px/1.3 var(--font-data); }
+@media (max-width: 960px) { :root .menu-today { grid-template-columns: 1fr; } :root .menu-today > section { min-height: 0; } }
+
+/* Quick games: column counts that divide the twelve games evenly, so no row is left half empty. */
+:root .quick-games-tiles { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 1240px) { :root .quick-games-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 860px) { :root .quick-games-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 600px) { :root .quick-games-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+:root .mode-tile-body small { font: 12.5px/1.45 var(--font-data); }
+:root .mode-tile-play { font: 600 12px/1 var(--font-display); letter-spacing: .08em; text-transform: uppercase; }
+:root .mode-tile { transition: transform var(--dur-1) var(--ease-out), border-color var(--dur-1), box-shadow var(--dur-1); }
+:root .mode-tile:hover { box-shadow: 4px 4px 0 var(--c-shadow-050a12, #050a12); }
+
+/* Weekly cards: titles in the display face, not 14px Press Start. */
+:root .mode-of-week b, :root .this-week article b { font: 600 18px/1.2 var(--font-display); letter-spacing: .03em; text-transform: uppercase; }
+:root .menu-quick button { font: 500 13px/1 var(--font-display); letter-spacing: .06em; text-transform: uppercase; }
+:root .mode-tile-body { flex: 1; grid-template-rows: auto 1fr auto; }
+
+/* ================================================================ App shell */
+
+/* Toasts drop in under the top bar, clear of the Play button and its menu. */
+:root .toast-stack { top: 78px; bottom: auto; right: 18px; }
+@media (max-width: 720px) { :root .toast-stack { top: 64px; bottom: auto; } }
+@keyframes cv-toast-in { from { opacity: 0; transform: translateX(14px); } to { opacity: 1; transform: none; } }
+:root .toast-item { animation: cv-toast-in var(--dur-2) var(--ease-out) both; }
+
+/* The Play menu: one primary (watch), presets on an even grid, settings set apart. */
+:root .play-menu { width: min(380px, calc(100vw - 24px)); padding: 14px 16px 16px; gap: 12px; }
+:root .play-menu-section { gap: 8px; }
+:root .play-menu-section + .play-menu-section, :root .play-menu-custom + .play-menu-custom { border-top: 1px solid var(--line); padding-top: 10px; }
+:root .play-menu-presets { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+:root .play-menu-presets button { grid-column: span 3; }
+:root .play-menu-presets button:nth-child(-n+3) { grid-column: span 2; }
+:root .play-menu-presets button:nth-child(4):last-child { grid-column: 1 / -1; }
+:root .play-menu-presets button { min-width: 0; padding: 8px 6px; font: 19px/1.1 var(--font-ui); }
+:root .play-menu-presets:has(button:nth-child(5):last-child) button:nth-child(n+4) { grid-column: span 1; }
+:root .play-menu-secondary { width: 100%; background: transparent; border-color: var(--amber); color: var(--amber); }
+:root .play-menu-secondary:hover:not(:disabled) { background: color-mix(in srgb, var(--amber) 14%, transparent); color: var(--court); }
+:root .play-menu-custom { display: flex; align-items: center; gap: 8px; font: 12.5px/1.3 var(--font-data); color: var(--text-dim); }
+:root .play-menu-custom input[type='number'] { width: 64px; padding: 5px 8px; }
+:root .play-menu-toggle { align-items: flex-start; font-size: 12px; line-height: 1.4; }
+:root .play-menu-toggle { gap: 10px; }
+:root .play-menu-toggle input { width: 16px; height: 16px; margin: 1px 0 0; flex: none; }
+
+/* The top bar already carries the logo; the sidebar's copy only shows when the sidebar is a phone drawer. */
+@media (min-width: 901px) { :root .sidebar-brand { display: none; } }
+:root .play-button-fixed { font-size: 21px; padding: 11px 20px; }
+
+/* ================================================================ Dashboard */
+
+/* Today's cards share one header style: a display-face title with its icon, and the detail on the right. */
+:root .dashboard-today { display: grid; gap: 14px; }
+:root .dashboard-today > * { margin: 0; }
+:root .dashboard-today :is(.daily-goals > header > .pixel-eyebrow, .locker-moment > h5, .cc-card-head > h5) {
+  display: inline-flex; align-items: center; gap: 8px; margin: 0;
+  font: 600 15px/1.2 var(--font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--court); text-shadow: none;
+}
+:root .dashboard-today :is(.daily-goals > header > .pixel-eyebrow, .locker-moment > h5, .cc-card-head > h5) .pixel-icon { color: var(--amber); }
+:root .daily-goals > header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+:root .dashboard-hero { margin-top: 2px; }
+:root .dashboard-today h5::before { content: none; }
+:root .dashboard-today .locker-moment > h5 { background: none; padding: 0 0 10px; border-bottom: 1px solid var(--line); margin-bottom: 12px; width: 100%; }
+:root .dashboard-hero-record .hint-text { font-size: 13px; }
+
+/* ================================================================ Watch game */
+
+/* The court is the show: it comes first, with a compact transport bar under it. The arena's own scorebug carries
+ * the score and clock, so the old scoreboard panel stays only for screen readers. */
+:root .watch-game { display: flex; flex-direction: column; }
+:root .watch-game > * { order: 5; }
+:root .watch-game > .occasion-banner, :root .watch-game > .watch-heading { order: 0; }
+:root .watch-game > .watch-stage { order: 1; }
+:root .watch-game > .watch-live-header { order: 2; }
+:root .watch-game > .watch-sound-note { order: 3; }
+:root .watch-game > .watch-call { order: 3; }
+:root .watch-game > .watch-flow { order: 4; }
+:root .watch-game > .watch-seek { order: 4; }
+:root .watch-game > .watch-options { order: 6; }
+:root .watch-heading { margin-bottom: 10px; }
+:root .watch-heading h2 { font-size: 26px; }
+:root .watch-stage { border: 2px solid var(--line-strong); box-shadow: var(--hard-shadow); }
+
+:root .watch-scoreboard { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+:root .watch-live-header { position: static; display: grid; grid-template-columns: 1fr; gap: 0; margin: 0; background: var(--panel); border: 2px solid var(--line-strong); border-top: 0; }
+:root .watch-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; padding: 8px 10px; background: transparent; border: 0; }
+:root .watch-controls > button:not(.primary) { padding: 6px 10px; font: 500 12.5px/1.1 var(--font-display); letter-spacing: .06em; text-transform: uppercase; border-bottom-width: 2px; }
+:root .watch-controls > button.primary { min-width: 92px; padding: 6px 16px; font: 21px/1 var(--font-ui); }
+:root .watch-controls > label { font: 500 12px/1 var(--font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--text-dim); margin-right: 6px; }
+:root .watch-controls > button:last-child { margin-left: auto; }
+:root .watch-momentum { padding: 6px 12px 10px; border-top: 1px solid var(--line); }
+:root .watch-call { min-height: 0; margin: 12px 0; padding: 12px 18px; }
+:root .watch-seek { margin: 10px 0 14px; }
+@media (max-width: 700px) { :root .watch-controls > button:last-child { margin-left: 0; } }
+
+/* ================================================================ Rewards */
+
+/* Post-game rewards: the result stamps in, then each row lands in turn. */
+@keyframes cv-stamp { 0% { opacity: 0; transform: scale(1.6); } 60% { opacity: 1; transform: scale(.94); } 100% { transform: none; } }
+@keyframes cv-row-in { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
+:root .pgr-result { animation: cv-stamp 360ms var(--ease-snap) both; }
+:root .pgr-row { animation: cv-row-in 240ms var(--ease-out) both; }
+:root .pgr-row:nth-child(1) { animation-delay: 300ms; }
+:root .pgr-row:nth-child(2) { animation-delay: 420ms; }
+:root .pgr-row:nth-child(3) { animation-delay: 540ms; }
+:root .pgr-row:nth-child(4) { animation-delay: 660ms; }
+:root .pgr-row b { font-variant-numeric: tabular-nums; }
+:root .pgr-secret { animation: cv-pop var(--dur-3) var(--ease-snap) 800ms both; }
+
+/* ================================================================ Trophies */
+
+/* Trophy case: each row stands on its own wooden shelf, and the count tag sits on its trophy's shoulder
+ * (it used to float at the far edge of a 160px cell). */
+:root .trophy-shelf { column-gap: 0; row-gap: 14px; background: none; box-shadow: none; padding: 14px 12px 8px; }
+:root .trophy-shelf .trophy-slot {
+  padding: 8px 4px 14px; min-height: 88px; justify-content: flex-end;
+  background: linear-gradient(180deg, transparent calc(100% - 9px), var(--c-bg-6b4a2f, #6b4a2f) calc(100% - 9px), var(--c-bg-6b4a2f, #6b4a2f) calc(100% - 6px), var(--c-bg-3a2a1e, #3a2a1e) calc(100% - 6px));
+}
+:root .trophy-shelf .trophy-count { left: calc(50% + 10px); right: auto; top: 2px; font: 600 11px/15px var(--font-data); letter-spacing: .02em; }
+:root .trophy-slot small { font: 500 11px/1.2 var(--font-data); max-width: 110px; }
+:root .trophy-slot .pixel-trophy { transition: transform var(--dur-1) steps(2), filter var(--dur-1); }
+
+/* ================================================================ Front office */
+
+/* Trade builder: an aligned roster per side instead of a wrapped cloud of chips. */
+:root .trade-roster { display: grid; margin: 6px 0 14px; border: 1px solid var(--line-strong); background: var(--panel); }
+:root .trade-roster-head, :root .trade-roster-row { display: grid; grid-template-columns: 22px minmax(0, 1fr) 34px 36px 72px; align-items: center; gap: 10px; padding: 6px 10px; }
+:root .trade-roster:has(.trade-roster-head > span:nth-child(6)) :is(.trade-roster-head, .trade-roster-row) { grid-template-columns: 22px minmax(0, 1fr) 34px 36px 72px 48px; }
+:root .trade-roster-head { font: 500 11px/1 var(--font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--text-dim); background: var(--panel-2); border-bottom: 1px solid var(--line); }
+:root .trade-roster-head span:nth-child(n+3) { text-align: right; }
+:root .trade-roster-row { cursor: pointer; border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); transition: background-color var(--dur-1); }
+:root .trade-roster-row:last-child { border-bottom: 0; }
+:root .trade-roster-row:hover { background: var(--panel-2); }
+:root .trade-roster-row.on { background: color-mix(in srgb, var(--amber) 13%, var(--panel)); box-shadow: inset 3px 0 0 var(--amber); }
+:root .trade-roster-row input { margin: 0; width: 16px; height: 16px; }
+:root .trade-roster-row > :nth-child(2) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:root .trade-roster-pos { font: 500 12px/1 var(--font-display); letter-spacing: .06em; color: var(--text-dim); text-align: right; }
+:root .trade-roster-ovr { font: 600 15px/1 var(--font-display); text-align: right; color: var(--court); }
+:root .trade-roster-money { font: 13px/1 var(--font-data); font-variant-numeric: tabular-nums; text-align: right; }
+:root .fa-last-season-tag { margin-left: 5px; padding: 0 3px; font: 600 9.5px/14px var(--font-data); letter-spacing: .04em; color: var(--text-dim); background: transparent; border: 1px solid var(--line-strong); vertical-align: 1px; }
+
+/* News: headlines in the display face (a 24px all-caps pixel line is hard to read), and quiet filter chips where
+ * "on" is a lit underline rather than fifteen solid orange blocks. */
+:root .news-card h3.news-card-body { font: 600 19px/1.25 var(--font-display); letter-spacing: .02em; text-transform: none; text-shadow: none; }
+:root button.news-chip { padding: 5px 9px; background: transparent; color: var(--text-dim); border: 1px solid var(--line); box-shadow: none; }
+:root button.news-chip.active { background: var(--panel-3); color: var(--court); border-color: var(--line-bright); box-shadow: inset 0 -2px 0 var(--amber); }
+:root button.news-chip:hover:not(:disabled) { color: var(--court); }
+:root span.news-chip { padding: 2px 6px; font: 600 10.5px/1.3 var(--font-data); letter-spacing: .04em; text-transform: uppercase; color: var(--text-dim); background: transparent; border: 1px solid var(--line-strong); }
+:root .news-links { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 10px; }
+:root .news-links button { padding: 6px 10px; font: 500 12.5px/1.1 var(--font-display); letter-spacing: .06em; text-transform: uppercase; border-bottom-width: 2px; }
+:root .news-card { display: flex; flex-direction: column; }
+
+/* Fact grids (team profile: coaching, plan, finances): one spec sheet with hairline cells instead of a dozen
+ * separate boxes; values in the display face so they scan. */
+:root .team-profile-facts { gap: 0; border: 1px solid var(--line-strong); background: var(--panel); box-shadow: var(--hard-shadow); margin: 0 0 6px; }
+:root .team-profile-facts > div { background: transparent; border: 0; box-shadow: inset -1px -1px 0 var(--line); padding: 10px 14px; }
+:root .team-profile-facts small, :root .team-profile-facts dt { margin-bottom: 4px; font: 500 11px/1.3 var(--font-display); letter-spacing: .08em; text-transform: uppercase; }
+:root .team-profile-facts strong, :root .team-profile-facts dd { font: 600 18px/1.2 var(--font-display); letter-spacing: .02em; text-transform: capitalize; color: var(--court); }
+:root .team-profile-page > p:first-of-type { font: 600 15px/1.3 var(--font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--text-dim); }
+:root .team-profile-page > section > h3 { margin: 22px 0 10px; }
+
+/* Data tables: a tighter row so a full roster fits on screen. */
+:root :is(.db-table, .stat-line-table) td { padding-top: 5px; padding-bottom: 5px; }
+
+/* Player ratings: label, a 20-block pixel bar and the value. Gold only for elite (85+). */
+:root .rating-bars { list-style: none; margin: 0; padding: 4px 0; display: grid; border: 1px solid var(--line-strong); background: var(--panel); }
+:root .rating-bars li { display: grid; grid-template-columns: 150px 1fr 40px; align-items: center; gap: 14px; padding: 6px 12px; border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
+:root .rating-bars li:last-child { border-bottom: 0; }
+:root .rating-bars span { display: inline-flex; align-items: center; gap: 8px; font: 500 13px/1.2 var(--font-data); color: var(--text); }
+:root .rating-bars i {
+  --block: calc((100% - 19 * 2px) / 20);
+  height: 10px;
+  background:
+    repeating-linear-gradient(90deg, var(--bar, var(--amber)) 0 var(--block), transparent var(--block) calc(var(--block) + 2px)) 0 0 / calc(var(--fill) * (var(--block) + 2px)) 100% no-repeat,
+    repeating-linear-gradient(90deg, var(--panel-3) 0 var(--block), transparent var(--block) calc(var(--block) + 2px));
+}
+:root .rating-bars li.elite { --bar: var(--c-any-ffd166, #ffd166); }
+:root .rating-bars b { font: 600 17px/1 var(--font-display); text-align: right; font-variant-numeric: tabular-nums; color: var(--court); }
+:root .rating-bars li:first-child b { color: var(--amber); }
+:root .rating-bars { max-width: 720px; --bar: var(--blue); }
+:root .rating-bars li:first-child { --bar: var(--amber); }
+
+/* ================================================================ Game modes */
+
+/* Every mode screen shares one column: the header and the scene banner sit on the same 1180px centered grid
+ * (some modes ran them edge to edge, others at 1080 or inside a 1180 box with extra padding). */
+:root .hunt > .hunt-top, :root .hunt > .mode-room, :root .cv > .hunt-top { width: 100%; max-width: 1180px; margin-inline: auto; box-sizing: border-box; }
+:root .hunt.p820 { max-width: none; }
+:root .hunt.p820 > :not(.hunt-top):not(.mode-room) { max-width: 1180px; margin-inline: auto; }
+:root .hunt-title h1 { font: 600 32px/1.1 var(--font-display); letter-spacing: .03em; text-transform: uppercase; }
+/* Difficulty cards: the tier name in the display face (it was 14px VT323). */
+:root .difficulty-card b { font: 600 15px/1.2 var(--font-display); letter-spacing: .04em; text-transform: uppercase; }
+:root .difficulty-card small, :root .difficulty-card span:not(.difficulty-meter) { font-family: var(--font-data); }
+
+/* ================================================================ Onboarding */
+
+:root .team-pick-preview strong { font: 600 13px/1.25 var(--font-data); }
+:root .team-pick-preview span { font-size: 22px; }
+:root .main-menu > .mode-grid .mode-card { min-height: 0; padding-bottom: 18px; }
+
+/* Create a league: card titles in the display face; famous moments lead with the headline, not the blurb. */
+:root .create-choice-head b { font: 600 17px/1.2 var(--font-display); letter-spacing: .03em; text-transform: uppercase; }
+:root .moment-card b { display: block; margin: 4px 0 6px; font: 600 16px/1.2 var(--font-display); letter-spacing: .02em; color: var(--court); }
+:root .moment-card small { font: 12.5px/1.45 var(--font-data); color: var(--text-dim); }
+:root .create-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+:root .create-field:has(.difficulty-cards) { grid-column: 1 / -1; }
+:root .create-field .difficulty-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 720px) { :root .create-fields, :root .create-field .difficulty-cards { grid-template-columns: 1fr; } }

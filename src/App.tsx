@@ -70,7 +70,7 @@ import { compactLeagueLogs } from './simulation/logPacking';
 import { DEFAULT_GAME_SETTINGS } from './simulation/types';
 import type { GameResult } from './simulation/boxscore';
 import type { League, LeagueTeam } from './simulation/league';
-import { generateRoundRobinSchedule, simulateFullRound, simulateRounds, gamesRemainingForTeam, computeStandings, computeConferenceStandings, hasConferenceStructure, isAllStarBreakPending } from './simulation/league';
+import { generateRoundRobinSchedule, simulateFullRound, simulateToRound, roundTargetForTeamGames, roundTargetForDays, sortUnplayedByRound, gamesRemainingForTeam, computeStandings, computeConferenceStandings, hasConferenceStructure, isAllStarBreakPending } from './simulation/league';
 import { generateFullLeague } from './simulation/leagueGenerator';
 import { developOffseasonLeague } from './simulation/engine/development';
 import { followsRealDevelopment } from './simulation/realDevelopmentGate';
@@ -182,6 +182,8 @@ import {
 // Pages load on demand (code-split): the first paint only needs the shell, sidebar and Play button.
 import { needsRetireeData } from './history/retirees';
 import { pendingOffers } from './simulation/staffPoaching';
+// Last, so the shared type, control and motion rules win over page styles.
+import './craft.css';
 const PrivacyPolicyPage = lazy(() => import('./components/PrivacyPolicyPage').then(m => ({ default: m.PrivacyPolicyPage })));
 const WorldGamesPage = lazy(() => import('./components/worldGames/WorldGamesPage').then(m => ({ default: m.WorldGamesPage })));
 const StaffPage = lazy(() => import('./components/StaffPage').then(m => ({ default: m.StaffPage })));
@@ -494,7 +496,9 @@ function App() {
     const { repairs } = repaired;
     const rostered = normalizeRosterRules(repaired.league, repaired.extras);
     // Potential is never below Overall, and equals it once a player reaches (or passes) their prime.
-    const { league: normalizedLeague, extras: e } = syncLeaguePotentials(rostered.league, rostered.extras);
+    const { league: synced, extras: e } = syncLeaguePotentials(rostered.league, rostered.extras);
+    // Saves made while Ring Night left the schedule out of round order (see sortUnplayedByRound).
+    const normalizedLeague = { ...synced, schedule: sortUnplayedByRound(synced.schedule) };
     // Older saves: seed the record book from the games still stored this season.
     // Owners, goals and your job security; older leagues gain them here.
     // This season's In-Season Cup draw, when the league is early enough in the season to hold one.
@@ -1137,15 +1141,21 @@ function App() {
     setLeague(weekend.league);
     pushToast(`All-Star Weekend complete. MVP: ${weekend.mvpPlayerId ?? '—'} · 3PT: ${weekend.threePointChampionId ?? '—'} · Dunk: ${weekend.dunkChampionId ?? '—'}.`, 'success');
   };
-  const simulateGamesCount = (count: number) => {
+  /** Plays every game day before schedule round `target`: one day runs here, longer stretches in the background worker. */
+  const simulateToTarget = (target: (l: League) => number | null) => {
     const ready = prepareRegularSeason();
     if (!ready) return;
-    const first = ready.league.schedule.find(g => !g.played)?.round ?? 0;
-    simTargetRef.current = { round: first + count, seedBase: seed };
-    // A single game day is quick; a week or month runs in the background worker so the page never freezes.
-    if (count <= 1 || jobs.seasonSim.running || jobs.autoPlay.running) applyLeagueAIPass(simulateRounds(ready.league, count, seed), ready.extras);
-    else jobs.seasonSim.start(ready.league, seed, count);
+    const end = target(ready.league);
+    if (end == null) return;
+    const first = Math.min(...ready.league.schedule.filter(g => !g.played).map(g => g.round));
+    simTargetRef.current = { round: end, seedBase: seed };
+    if (end - first <= 1 || jobs.seasonSim.running || jobs.autoPlay.running) applyLeagueAIPass(simulateToRound(ready.league, end, seed), ready.extras);
+    else jobs.seasonSim.start(ready.league, seed, end - first);
   };
+  /** Your team's next `count` games (the whole league plays the same days); with no team, `count` game days. */
+  const simulateGamesCount = (count: number) => simulateToTarget(l => roundTargetForTeamGames(l, controlledTeamId, count));
+  /** The next `days` calendar days: 1 Week is ~3 games per team, 1 Month ~15. */
+  const simulateDaysCount = (days: number) => simulateToTarget(l => roundTargetForDays(l, days));
 
   const simulateEntirePlayoffsAndUpdate = () => {
     const bracket = playoffBracket ?? autoGeneratePlayoffBracket(league);
@@ -1561,7 +1571,7 @@ function App() {
     if (key === 'w') {
       e.preventDefault();
       if (seasonPhase !== 'regular_season' || leagueUnplayedCount === 0 || jobs.busy || isDeadlineDayOpen(league)) pushToast('Nothing to sim right now. Use the Play button.', 'info');
-      else simulateGamesCount(7);
+      else simulateDaysCount(7);
     }
   };
   const unlockNotice: Feature | undefined = pendingUnlockNotices(unlockCtx)[0];
@@ -1825,6 +1835,7 @@ function App() {
         onToggleHandsOff={toggleHandsOff}
         onSkipDeadline={skipDeadline}
         onSimulateGames={simulateGamesCount}
+        onSimulateDays={simulateDaysCount}
         onSimulateToDeadline={simulateToTradeDeadline}
         deadlineClockLabel={isDeadlineDayOpen(league) ? deadlineClock(league.deadlineDay!.hour) : null}
         onOpenDeadline={() => setTab('deadline')}
@@ -2382,11 +2393,7 @@ function App() {
           onNavigate={(t, sub) => { if (sub) setLeagueSettingsSub(sub); navigateFromMenu(t); }} />}
         {tab === 'dashboard' && league.timeMachine && <div className="tm-banner" role="note"><PixelIcon name="clock" size={16} /> <b>Time Machine</b> The {league.timeMachine.fromLabel} in the {league.timeMachine.year}-{String(league.timeMachine.year + 1).slice(2)} NBA, in place of the {league.timeMachine.replaced}.</div>}
         {(tab === 'dashboard' || tab === 'database') && league.rebuildChallenge && <Suspense fallback={null}><ChallengeBanner league={league} contracts={extras.contracts} onMenu={() => setConfirmation('exit')} /></Suspense>}
-        {tab === 'dashboard' && controlledTeamId && <DailyGoalsCard official={isOfficialLeague(league)} />}
         {tab === 'dashboard' && league.gmCareer && <GmCareerCard league={league} onTakeOffer={() => { const teamId = league.gmCareer?.offer?.teamId; if (teamId) { acceptOffer(teamId); setLeague(l => takeGmOffer(l)); } }} />}
-        {tab === 'dashboard' && controlledTeamId && <LockerRoomCard league={league} teamId={controlledTeamId} onChange={adoptLeague} />}
-        {tab === 'dashboard' && controlledTeamId && <CourtChatCard league={league} teamId={controlledTeamId} onOpen={() => setTab('courtChat')} onSelectPlayer={selectPlayer} />}
-        {tab === 'dashboard' && league.origin && <LeagueCodeBox origin={league.origin} teamId={controlledTeamId} teamName={league.teams.find(t => t.teamId === controlledTeamId)?.name} />}
         {tab === 'dashboard' && (
           <DashboardPage
             league={league} extras={extras} controlledTeamId={controlledTeamId} seasonPhase={seasonPhase}
@@ -2402,6 +2409,12 @@ function App() {
               : null}
             headerExtra={checklistChip}
             hideFinances={lockedTabSet.has('finances')}
+            today={controlledTeamId ? <>
+              <DailyGoalsCard official={isOfficialLeague(league)} />
+              <LockerRoomCard league={league} teamId={controlledTeamId} onChange={adoptLeague} />
+              <CourtChatCard league={league} teamId={controlledTeamId} onOpen={() => setTab('courtChat')} onSelectPlayer={selectPlayer} />
+            </> : null}
+            footer={league.origin ? <LeagueCodeBox origin={league.origin} teamId={controlledTeamId} teamName={league.teams.find(t => t.teamId === controlledTeamId)?.name} /> : null}
           />
         )}
 
