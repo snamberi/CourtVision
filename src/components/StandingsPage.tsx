@@ -30,7 +30,7 @@ export function StandingsPage({ league }: Props) {
             <td><span className="team-name-logo"><TeamLogo team={league.teams.find(t => t.teamId === r.teamId) ?? { teamId: r.teamId, name: r.teamId }} size={28} /><TeamLink name={teamName(r.teamId)} /></span></td>
             <td>{r.wins}</td>
             <td>{r.losses}</td>
-            <td>{r.winPct.toFixed(3)}</td>
+            <td>{r.winPct.toFixed(3).replace(/^0/, '')}</td>
             <td>{r.pointsFor}</td>
             <td>{r.pointsAgainst}</td>
             <td>{r.pointDiff >= 0 ? '+' : ''}{r.pointDiff}</td>
