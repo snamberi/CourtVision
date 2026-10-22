@@ -14,19 +14,18 @@ beforeAll(async () => { h = await loadHistoryForTests(); built = buildHistorical
 const teamOf = (l: League, id: string) => l.teams.find(t => t.seasons.some(p => p.playerId === id))?.teamId ?? null;
 
 describe('historical rosters: real mid-season moves and real picks', () => {
-  it('after the deadline, DeMarcus Cousins goes from Sacramento to New Orleans, once', () => {
-    expect(teamOf(built.league, 'DeMarcus Cousins')).toBe('SAC');
-    expect(built.league.historical!.realMoves!['2016'].some(m => m.to === 'NOP')).toBe(true);
+  it('players start with the team they finished the real season with: DeMarcus Cousins opens 2016-17 in New Orleans', () => {
+    expect(teamOf(built.league, 'DeMarcus Cousins')).toBe('NOP');
+    expect(built.extras.contracts['DeMarcus Cousins'].teamId).toBe('NOP');
+    // The real deadline deal is already done, so the deadline moves nobody (and stays a no-op).
     const r = applyHistoricalDeadline(built.league, built.extras, 'BOS');
     expect(teamOf(r.league, 'DeMarcus Cousins')).toBe('NOP');
-    expect(r.extras.contracts['DeMarcus Cousins'].teamId).toBe('NOP');
-    expect(r.moved.length).toBeGreaterThan(5);
-    expect(applyHistoricalDeadline(r.league, r.extras, 'BOS').moved).toHaveLength(0); // applied once
+    expect(r.moved).toHaveLength(0);
   });
 
   it("your team's players stay put", () => {
-    const r = applyHistoricalDeadline(built.league, built.extras, 'SAC');
-    expect(teamOf(r.league, 'DeMarcus Cousins')).toBe('SAC');
+    const r = applyHistoricalDeadline(built.league, built.extras, 'NOP');
+    expect(teamOf(r.league, 'DeMarcus Cousins')).toBe('NOP');
   });
 
   it('AI teams draft the real picks in real order', () => {

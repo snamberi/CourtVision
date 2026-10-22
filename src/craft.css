@@ -406,3 +406,28 @@
 :root .roster-table td .playtime.set input { border-color: var(--amber) !important; color: var(--court) !important; }
 :root .playtime input::placeholder { color: var(--text-dim); font-weight: 400; }
 :root .playtime .link-button { font: 500 11px/1 var(--font-display); letter-spacing: .06em; text-transform: uppercase; }
+
+/* ================================================================ Fixes */
+
+/* Lineup Lab "Best five": the names read as one line ("A, B, C"), not five stacked lines that start with commas. */
+:root .rvy-score span span { display: inline; font-weight: 600; }
+:root .rvy-score b { font: 600 17px/1.2 var(--font-display); letter-spacing: .04em; text-transform: uppercase; }
+
+/* The league ticker fades at its edges instead of cutting a word in half under its label. */
+:root .league-ticker-track { -webkit-mask-image: linear-gradient(90deg, transparent, var(--c-any-000000, #000) 28px, var(--c-any-000000, #000) calc(100% - 28px), transparent); mask-image: linear-gradient(90deg, transparent, var(--c-any-000000, #000) 28px, var(--c-any-000000, #000) calc(100% - 28px), transparent); }
+
+/* Sidebar labels fit ("Dynasty Rankings", "Three-Team Trade" were cut off). */
+:root .app-body .sidebar:not(.collapsed) { width: 238px; }
+
+/* Trade builder draft picks: an aligned two-column list, not a ragged cloud. */
+:root .trade-columns .badge-grid:has(.pick-protection-toggle), :root .trade-columns .stats-subheading + .badge-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+:root .trade-columns .stats-subheading + .badge-grid .badge-chip { display: flex; align-items: center; gap: 8px; margin: 0; padding: 6px 10px; }
+:root .trade-columns .pick-protection-toggle { margin-left: auto; }
+
+/* The floating Play button: a touch smaller so it hides less of the table it floats over. */
+:root .play-button-fixed { font-size: 19px; padding: 9px 16px; }
+
+/* League Analytics: wide tables scroll inside their column instead of spilling over (and clipping) the next one. */
+:root .analytics-grid > * { min-width: 0; overflow-x: auto; }
+:root .yt-header .rating-row { flex-wrap: nowrap; min-width: 0; }
+:root .yt-header .rating-row input[type='range'] { min-width: 0; width: 100%; max-width: 120px; }

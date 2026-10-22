@@ -112,15 +112,33 @@ export function AdBanner({ slot, refreshKey }: { slot: AdSlot; refreshKey?: stri
     return () => clearInterval(t);
   }, [sponsors.length]);
 
+  // The end-of-page unit only shows on pages long enough to need it: on a short page it would sit a screen or less
+  // under the top one, two ads stacked on little content.
+  const anchor = useRef<HTMLSpanElement>(null);
+  const [tooClose, setTooClose] = useState(false);
+  useEffect(() => {
+    if (slot !== 'inline') return;
+    const el = anchor.current, main = el?.closest('main');
+    if (!el || !main) return;
+    const check = () => setTooClose(el.offsetTop < Math.max(900, main.clientHeight * 1.2));
+    check();
+    const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(check) : null;
+    ro?.observe(main.firstElementChild ?? main);
+    return () => ro?.disconnect();
+  }, [slot, refreshKey]);
+
   if (!AD_CONFIG.enabled || noAds) return null;
   if (!useAdsense && sponsors.length === 0) return null;
+  // The anchor stays mounted either way, so the measurement keeps working as the page grows or shrinks.
+  const marker = slot === 'inline' ? <span ref={anchor} className="ad-anchor" aria-hidden="true" /> : null;
+  if (slot === 'inline' && tooClose) return <>{marker}</>;
 
   return (
-    <aside className={`ad-banner ad-${slot}`} aria-label="Advertisement" data-state={useAdsense ? (filled ? 'filled' : 'waiting') : 'sponsor'}>
+    <>{marker}<aside className={`ad-banner ad-${slot}`} aria-label="Advertisement" data-state={useAdsense ? (filled ? 'filled' : 'waiting') : 'sponsor'}>
       <span className="ad-label">Advertisement</span>
       {useAdsense
         ? <AdsenseUnit key={attempt} client={AD_CONFIG.adsenseClient} slotId={adsenseSlotId!} onUnavailable={fail} onFilled={fill} />
         : <SponsorCreative sponsor={sponsors[index % sponsors.length]} />}
-    </aside>
+    </aside></>
   );
 }

@@ -365,7 +365,8 @@ function App() {
   const inboxCtx = useRef<{ saveId: string | null; season?: string; date?: string; inLeague: boolean }>({ saveId: null, inLeague: false });
   const pushToast = useCallback((message: string, tone: 'info' | 'success' | 'error' = 'info') => {
     const id = Date.now() + Math.random();
-    setToasts((t) => [...t, { id, message, tone }]); // each toast times itself out (see ToastStack) based on its length
+    // Each toast times itself out (see ToastStack) based on its length; one already on screen isn't stacked again.
+    setToasts((t) => (t.some((x) => x.message === message) ? t : [...t, { id, message, tone }]));
     const ctx = inboxCtx.current;
     if (ctx.inLeague) appendInbox(ctx.saveId, { text: message, tone, season: ctx.season, date: ctx.date });
   }, []);

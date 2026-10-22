@@ -25,6 +25,13 @@ describe('inbox', () => {
     expect(loadInbox('a')).toHaveLength(0);
     appendInbox(null, { text: 'nowhere', tone: 'info' });
   });
+  it('logs the same news once per in-game day, even with other messages between', () => {
+    appendInbox('c', { text: '3 reporters want a word', tone: 'info', date: '2016-11-28' });
+    appendInbox('c', { text: 'Daily goal done', tone: 'success', date: '2016-11-28' });
+    appendInbox('c', { text: '3 reporters want a word', tone: 'info', date: '2016-11-28' });
+    appendInbox('c', { text: '3 reporters want a word', tone: 'info', date: '2016-11-30' });
+    expect(loadInbox('c').map(m => `${m.date} ${m.text}`)).toEqual(['2016-11-28 3 reporters want a word', '2016-11-28 Daily goal done', '2016-11-30 3 reporters want a word']);
+  });
 });
 
 describe('Ctrl+K search', () => {

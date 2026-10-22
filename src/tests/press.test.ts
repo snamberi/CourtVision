@@ -7,7 +7,7 @@ import { playerMorale } from '../simulation/personality';
 
 const { league: base, extras } = generateFullLeague(71, 10, 13, 30, '2026', { priorSeasons: false });
 const me = base.teams[0].teamId;
-const played = simulateRounds(ensureFrontOffice(base, me), 25, 4);
+const played = simulateRounds(ensureFrontOffice(base, me), 25, 6);
 
 describe('press room', () => {
   it('queues press conferences from real results, at most three, and is stable when nothing is new', () => {

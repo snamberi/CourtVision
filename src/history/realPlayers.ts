@@ -41,7 +41,7 @@ export interface RealPlayerInfo {
   /** Season from which Court Vision development took over because the reference trajectory had ended. */
   fallbackSince?: string;
   /** Highest blocking and rebounding his real rates allow (see rateCeilings); real development never passes them. */
-  caps?: { block: number; dreb: number; oreb: number };
+  caps?: { block: number; dreb: number; oreb: number; /** From his real 3P% (absent on older saves). */ three?: number };
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
@@ -77,7 +77,8 @@ function groupsFrom(prof: RealProfile | null, heightIn: number, weightLb: number
   const shooting3 = pr?.threeRate == null ? (big ? 0.72 : 0.9) : threeRate < 0.03 ? 0.62 : clamp(0.78 + (threePct - 0.32) * 2.6 + Math.min(0.2, threeRate * 0.35), 0.6, 1.3);
   const ft = clamp(0.72 + (nz(pr?.ftPct, 0.74) - 0.6) * 1.6, 0.55, 1.3);
   const two = nz(pr?.twoPct ?? pr?.fgPct, 0.47);
-  const finishing = clamp(0.84 + (two - 0.46) * 2.4 + nz(pr?.ftRate, 0.28) * 0.25 + (big ? 0.06 : 0), 0.65, 1.3);
+  // Calibrated so a real league makes about the NBA's share of its twos (it ran near 59% against a real 50-54%).
+  const finishing = clamp(0.76 + (two - 0.46) * 2.4 + nz(pr?.ftRate, 0.28) * 0.25 + (big ? 0.06 : 0), 0.62, 1.24);
   const ast = nz(pr?.astPct, guard ? 22 : big ? 9 : 13);
   const passing = clamp(0.72 + ast * 0.018, 0.65, 1.38);
   const handling = clamp(0.74 + ast * 0.014 + (guard ? 0.06 : 0) - nz(pr?.tovPct, 12) * 0.006, 0.62, 1.32);
@@ -85,11 +86,11 @@ function groupsFrom(prof: RealProfile | null, heightIn: number, weightLb: number
   // (a narrow range left star guards with near-center rebounding and blocking once their level rose).
   const reb = clamp(0.38 + nz(pr?.trbPct, big ? 15 : 8) * 0.036, 0.45, 1.18);
   const steals = clamp(0.78 + nz(pr?.stlPct, 1.5) * 0.13, 0.7, 1.3);
-  const blocks = clamp(0.36 + nz(pr?.blkPct, big ? 2.5 : 0.8) * 0.16, 0.38, 1.35);
+  const blocks = clamp(0.5 + nz(pr?.blkPct, big ? 2.5 : 0.8) * 0.16, 0.48, 1.35);
   const dIQ = clamp(1 + nz(pr?.dbpm, 0) * 0.045, 0.78, 1.25);
   const usg = nz(pr?.usgPct, 19);
   return {
-    finishing, postGame: clamp(big ? 0.95 + (two - 0.48) * 1.5 - threeRate * 0.6 : 0.8, 0.6, 1.2), midrange: clamp((ft + finishing) / 2 + (usg - 20) * 0.006, 0.65, 1.25),
+    finishing, postGame: clamp(big ? 0.95 + (two - 0.48) * 1.5 - threeRate * 0.6 : 0.8, 0.6, 1.2), midrange: clamp((ft + finishing) / 2 - 0.05 + (usg - 20) * 0.006, 0.62, 1.2),
     threePoint: shooting3, freeThrow: ft, handling, passing, offBall: clamp(0.9 + (nz(pr?.obpm, 0)) * 0.03 + (usg - 20) * 0.004, 0.72, 1.25),
     perimeterD: clamp((guard ? 1.02 : big ? 0.86 : 0.98) * (0.85 + steals * 0.15) * dIQ, 0.65, 1.3),
     interiorD: clamp((big ? 1.05 : 0.85) * (0.8 + blocks * 0.2) * dIQ, 0.62, 1.32), steals, blocks, rebounding: reb, defensiveIQ: dIQ,
@@ -99,13 +100,31 @@ function groupsFrom(prof: RealProfile | null, heightIn: number, weightLb: number
   };
 }
 
+/**
+ * The highest three-point rating a real 3P% supports: gentle up to an average shooter (31% -> about 58, 34% -> 67:
+ * LeBron James), steep past it, because 40%+ is rare (40% -> about 95, 41%+ -> 99: Stephen Curry, JJ Redick).
+ */
+export function threeCeiling(threePct: number): number {
+  const v = threePct <= 0.36 ? 40 + (threePct - 0.25) * 300 : 73 + (threePct - 0.36) * 560;
+  return clamp(Math.round(v), 35, 99);
+}
+
 /** The most a player's blocking and rebounding can be, from his real rates (unrecorded eras leave them open). */
-export function rateCeilings(pr: RealProfile | null): { block: number; dreb: number; oreb: number } {
+export function rateCeilings(pr: RealProfile | null): { block: number; dreb: number; oreb: number; three?: number } {
   return {
+    // Three-point shooting tops out where his real 3P% says (see threeCeiling): a star's Overall no longer drags a
+    // so-so shooter's threes up to elite.
+    ...(pr?.threePct != null && (pr.threeRate ?? 0) >= 0.05 ? { three: threeCeiling(pr.threePct) } : {}),
     block: pr?.blkPct == null ? 99 : clamp(Math.round(36 + pr.blkPct * 12), 40, 99),
     dreb: pr?.trbPct == null ? 99 : clamp(Math.round(42 + pr.trbPct * 2.25), 50, 92),
     oreb: pr?.orbPct == null ? 99 : clamp(Math.round(36 + pr.orbPct * 4), 40, 90),
   };
+}
+
+const THREE_KEYS = ['threePoint', 'corner3', 'aboveBreak3', 'pullUp3', 'catchAndShoot'] as const;
+/** Holds three-point skills at `cap` (never below what he already had, `floor`). */
+function capThrees(o: PlayerSeason['attributes']['offense'], cap: number, floor?: PlayerSeason['attributes']['offense']) {
+  for (const k of THREE_KEYS) o[k] = Math.min(o[k], Math.max(cap, floor?.[k] ?? 0));
 }
 
 function build(seed: RealPlayerSeed, season: string, teamId: string | null, age: number, caliber: number): PlayerSeason {
@@ -120,6 +139,8 @@ function build(seed: RealPlayerSeed, season: string, teamId: string | null, age:
   o.finishing = a(g.finishing); o.touch = a((g.finishing + g.midrange) / 2); o.postHook = a(g.postGame); o.postFade = a(g.postGame); o.postControl = a(g.postGame);
   o.midrange = a(g.midrange); o.longMidrange = a(g.midrange); o.threePoint = a(g.threePoint); o.corner3 = a(g.threePoint); o.aboveBreak3 = a(g.threePoint);
   o.pullUp3 = a(g.threePoint * (g.handling > 1.05 ? 1.04 : 0.9)); o.catchAndShoot = a(g.offBall * g.threePoint); o.freeThrow = a(g.freeThrow);
+  const threeCap = rateCeilings(seed.profile).three;
+  if (threeCap != null) capThrees(o, threeCap);
   o.ballHandling = a(g.handling); o.ballSecurity = a(g.handling); o.speedWithBall = a((g.handling + g.athleticism) / 2);
   o.passing = a(g.passing); o.passingAccuracy = a(g.passing); o.passingIQ = a(g.passing); o.offensiveIQ = a(g.offBall); o.shotIQ = a(g.offBall);
   o.decisionMaking = a((g.passing + g.offBall) / 2); o.offensiveConsistency = a(1, 8); o.offensiveRebounding = a(g.rebounding * 0.92);
@@ -148,8 +169,9 @@ function build(seed: RealPlayerSeed, season: string, teamId: string | null, age:
   const t = s.tendencies;
   t.shot.corner3 = clamp(Math.round(threeRate * 90), 1, 99); t.shot.aboveBreak3 = clamp(Math.round(threeRate * 110), 1, 99);
   t.shot.catchAndShoot3 = clamp(Math.round(threeRate * 100 * (usg < 20 ? 1.1 : 0.8)), 1, 99); t.shot.pullUp3 = clamp(Math.round(threeRate * 70 * (usg > 24 ? 1.3 : 0.7)), 1, 99);
-  t.shot.rim = clamp(Math.round(30 + ftRate * 80 + (pos.C >= 90 ? 20 : 0)), 5, 99); t.shot.dunk = clamp(Math.round((heightIn - 74) * 5 + ftRate * 30), 2, 95);
-  t.shot.layup = clamp(Math.round(35 + ftRate * 50), 5, 95); t.shot.postShot = clamp(Math.round(pos.C >= 90 || pos.PF >= 90 ? 45 - threeRate * 80 : 8), 1, 80);
+  // Rim attempts sized to the NBA's ~30% of shots (it was over 40%, which pushed real leagues to 59% on twos).
+  t.shot.rim = clamp(Math.round(16 + ftRate * 66 + (pos.C >= 90 ? 18 : 0)), 5, 99); t.shot.dunk = clamp(Math.round((heightIn - 75) * 4 + ftRate * 22), 2, 90);
+  t.shot.layup = clamp(Math.round(22 + ftRate * 44), 5, 95); t.shot.postShot = clamp(Math.round(pos.C >= 90 || pos.PF >= 90 ? 45 - threeRate * 80 : 8), 1, 80);
   t.shot.hook = clamp(Math.round(pos.C >= 90 ? 35 - threeRate * 60 : 3), 1, 70); t.shot.midrange = clamp(Math.round(45 - threeRate * 40), 5, 90);
   t.shot.longMidrange = clamp(Math.round(30 - threeRate * 40), 2, 80); t.shot.stepback = clamp(Math.round(usg > 26 ? 30 : 8), 1, 70);
   t.passing.passFrequency = clamp(Math.round(30 + ast * 1.15), 15, 90); t.passing.assistCreation = clamp(Math.round(20 + ast * 1.35), 10, 90);
@@ -240,6 +262,7 @@ export function rescaleToOverall(p: PlayerSeason, targetCv: number): PlayerSeaso
       d.block = Math.min(d.block, Math.max(caps.block, src.defense.block)); d.blockTiming = Math.min(d.blockTiming, Math.max(caps.block, src.defense.blockTiming));
       d.defensiveRebounding = Math.min(d.defensiveRebounding, Math.max(caps.dreb, src.defense.defensiveRebounding));
       o.offensiveRebounding = Math.min(o.offensiveRebounding, Math.max(caps.oreb, src.offense.offensiveRebounding));
+      if (caps.three != null) capThrees(o, caps.three, src.offense);
     }
     return next;
   };
