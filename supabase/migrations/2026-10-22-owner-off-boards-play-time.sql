@@ -5,13 +5,19 @@
 -- daily, rebuild, league code, ranked or PvP boards, and its results add nothing to a clan's XP or weekly points (it
 -- stays listed as a clan member, with 0 points). Weekly and daily #1 checks read these views too, so the owner's
 -- scores never decide anyone else's honors.
--- lb_users gains play_hours: time played from the synced save (stats.playSeconds, written by /api/sync).
+-- lb_users gains play_hours: time played from the synced save (stats.playSeconds, written by /api/sync). The boards
+-- read lb_gms, the same GMs without the owner; lb_users stays the directory that profiles and search use.
 
+-- lb_users stays the public GM directory (profiles, search, friends, clan names), owner included; lb_gms is the
+-- same list for the boards, without the owner.
+drop view if exists public.lb_gms;
 drop view if exists public.lb_users;
 create view public.lb_users with (security_invoker = on) as
   select p.id, p.username, p.title, p.frame, p.level, p.xp, p.stats, p.icon, p.color, p.avatar,
     case when jsonb_typeof(p.stats->'playSeconds') = 'number' then round((p.stats->>'playSeconds')::numeric / 3600, 1) else 0 end as play_hours
-  from public.profiles p where p.username is not null and not p.banned and p.role is distinct from 'owner';
+  from public.profiles p where p.username is not null and not p.banned;
+create view public.lb_gms with (security_invoker = on) as
+  select u.* from public.lb_users u join public.profiles p on p.id = u.id where p.role is distinct from 'owner';
 
 drop view if exists public.lb_players;
 create view public.lb_players with (security_invoker = on) as
@@ -51,7 +57,7 @@ create view public.lb_pvp with (security_invoker = on) as
   from public.hunt_ghosts g join public.profiles p on p.id = g.user_id
   where p.username is not null and not p.banned and p.role is distinct from 'owner';
 
-grant select on public.lb_users, public.lb_players, public.lb_weekly, public.lb_daily, public.lb_rebuild, public.lb_codes, public.lb_ranked, public.lb_pvp to anon, authenticated;
+grant select on public.lb_users, public.lb_gms, public.lb_players, public.lb_weekly, public.lb_daily, public.lb_rebuild, public.lb_codes, public.lb_ranked, public.lb_pvp to anon, authenticated;
 
 -- Clans: the owner's XP and weekly results count for nobody.
 drop view if exists public.lb_clubs;

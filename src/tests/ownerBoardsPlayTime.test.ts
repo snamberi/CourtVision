@@ -21,12 +21,14 @@ describe('time played on the profile and its board', () => {
 
   it('the GM view exposes hours played for the Time played board', () => {
     expect(migration).toMatch(/create view public\.lb_users[\s\S]*as play_hours/);
+    // The directory keeps the owner: their profile, search and clan names still work.
+    expect(migration.split('create view public.lb_users ')[1].split(';')[0]).not.toContain('owner');
   });
 });
 
 describe('the owner is on no leaderboard', () => {
   it('every board view leaves the owner out', () => {
-    for (const view of ['lb_users', 'lb_players', 'lb_weekly', 'lb_daily', 'lb_rebuild', 'lb_codes', 'lb_ranked', 'lb_pvp', 'lb_clubs', 'lb_club_weekly', 'lb_club_members']) {
+    for (const view of ['lb_gms', 'lb_players', 'lb_weekly', 'lb_daily', 'lb_rebuild', 'lb_codes', 'lb_ranked', 'lb_pvp', 'lb_clubs', 'lb_club_weekly', 'lb_club_members']) {
       const def = migration.split(`create view public.${view} `)[1]?.split(';')[0] ?? '';
       expect(def, view).toContain("p.role is distinct from 'owner'");
     }

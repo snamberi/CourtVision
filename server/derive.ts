@@ -24,9 +24,14 @@ import { shopOwned } from '../src/relics/shopOwned';
 import { readArcade, guessWeeks, BRACKET_MAX, GUESS_TRIES } from '../src/arcade/storage';
 import { loadRelics, RELIC_BY_ID, RARITY_ORDER } from '../src/relics/relics';
 import { unlockContext, earnedExtraTitles } from '../src/profile/cosmetics';
-import { TITLES } from '../src/profile/profile';
+import { TITLES, rankTitles } from '../src/profile/profile';
 import { readStreak } from '../src/retention/streak';
-import { readPlayTime, topArea } from '../src/retention/playTime';
+import { readPlayTime, topArea, AREA_LABEL } from '../src/retention/playTime';
+import { readActivity } from '../src/retention/activity';
+import { readPublicProfile } from '../src/profile/publicProfile';
+import { ACHIEVEMENT_BY_ID } from '../src/simulation/frontOffice';
+import { MODE_ACHIEVEMENT_BY_ID } from '../src/profile/modeAchievements';
+import { isClean } from '../src/lib/names';
 
 /*
  * Turns a player's synced progress into their public rows: profile level and stats, achievements, created players,
@@ -202,9 +207,28 @@ export function derive(blob: ProgressBlob, now = new Date()): Derived {
     myPlayer: (({ skills, height }) => ({ skills, height }))(loadMyRatings(levelFor(xp).level, read)),
   };
   // Mode achievements count for rarity too, as mode-<id>.
-  const modes = earnedModeAchievements(readWithCareers, { rankedTier: TIERS.findIndex(t => t.id === stats.rankedBest) }).map(id => `mode-${id}`);
-  return { profile: { level: levelFor(xp).level, xp, stats: { ...stats, modeAchievements: modes.length } }, achievements: [...Object.keys(legacy.achievements).filter(a => /^[\w-]{1,40}$/.test(a)).slice(0, 200), ...modes],
+  const earnedModes = earnedModeAchievements(readWithCareers, { rankedTier: TIERS.findIndex(t => t.id === stats.rankedBest) });
+  const modes = earnedModes.map(id => `mode-${id}`);
+  const extras = publicExtras(read, levelFor(xp).level, Object.keys(legacy.achievements), earnedModes);
+  return { profile: { level: levelFor(xp).level, xp, stats: { ...stats, ...extras, modeAchievements: modes.length } }, achievements: [...Object.keys(legacy.achievements).filter(a => /^[\w-]{1,40}$/.test(a)).slice(0, 200), ...modes],
     players, weekly, daily, rebuild, codes, ranked };
+}
+
+/**
+ * What the player picked for the public profile (src/profile/publicProfile.ts), each piece checked: the featured trophy
+ * must be earned, the bio clean; plus the last five things finished and time played by mode.
+ */
+function publicExtras(read: (k: string) => string | null, level: number, gmAchievements: string[], modeAchievements: string[]) {
+  const pick = readPublicProfile(read);
+  let featured: { kind: 'title' | 'achievement'; name: string; detail?: string } | null = null;
+  const [kind, id] = [pick.featured?.split(':')[0], pick.featured?.slice(pick.featured.indexOf(':') + 1) ?? ''];
+  if (kind === 'title' && new Set([...TITLES.filter(t => t.level <= level).map(t => t.name), ...rankTitles(read), ...earnedExtraTitles(unlockContext(level, read))]).has(id)) featured = { kind: 'title', name: id };
+  else if (kind === 'ach' && gmAchievements.includes(id) && ACHIEVEMENT_BY_ID.has(id)) featured = { kind: 'achievement', name: ACHIEVEMENT_BY_ID.get(id)!.name, detail: ACHIEVEMENT_BY_ID.get(id)!.description };
+  else if (kind === 'mode' && modeAchievements.includes(id) && MODE_ACHIEVEMENT_BY_ID.has(id)) featured = { kind: 'achievement', name: MODE_ACHIEVEMENT_BY_ID.get(id)!.name, detail: MODE_ACHIEVEMENT_BY_ID.get(id)!.description };
+  const activity = readActivity(read).filter(a => isClean(a.line) && !/[<>]/.test(a.line)).slice(0, 5).map(a => ({ at: a.at, kind: a.kind.slice(0, 20), line: a.line.slice(0, 120) }));
+  const areas = readPlayTime(read).areas;
+  const playAreas = Object.fromEntries(Object.entries(areas).filter(([k, v]) => k in AREA_LABEL && Number.isFinite(v) && (v ?? 0) >= 60).map(([k, v]) => [k, Math.floor(v!)]));
+  return { featured, bio: pick.bio ?? null, banner: pick.banner ?? 'none', activity, playAreas };
 }
 
 /** Time played for the profile and the Time played board: never more than the time since the game's first day. */
@@ -258,6 +282,7 @@ export function publicAvatar(blob: ProgressBlob, level: number, honors: string[]
   try { frame = (JSON.parse(read('cv-profile-equip') ?? '{}') as { avatarFrame?: string }).avatarFrame; } catch { /* none */ }
   const f = avatarFrameDef(frame);
   const modes = f.modes ? earnedModeAchievements(read) : [];
-  const ok = owner || (f.staff ? false : f.account ? true : f.modes ? f.modes.some(m => modes.includes(m)) : f.honors ? f.honors.some(h => honors.includes(h)) : f.level != null ? level >= f.level : true);
+  const hours = playTime(read, new Date()).playSeconds / 3600;
+  const ok = owner || (f.staff ? false : f.account ? true : f.hours != null ? hours >= f.hours : f.modes ? f.modes.some(m => modes.includes(m)) : f.honors ? f.honors.some(h => honors.includes(h)) : f.level != null ? level >= f.level : true);
   return encodeAvatar(look, ok ? f.id : 'none');
 }

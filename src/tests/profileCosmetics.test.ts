@@ -96,8 +96,8 @@ describe('leaderboard honors on the server', () => {
 
   it('ranks on the GM board once the field is real, and keeps what was earned', async () => {
     const now = new Date('2026-10-05T12:00:00Z');
-    expect(await computeHonors(env, 'me', derived(), now, [], counts([['xp=gt', 0], ['lb_users', 50]]))).toEqual(['gm-1', 'gm-10', 'gm-100']);
-    expect(await computeHonors(env, 'me', derived(), now, [], counts([['xp=gt', 30], ['lb_users', 50]]))).toEqual(['gm-100']);
+    expect(await computeHonors(env, 'me', derived(), now, [], counts([['xp=gt', 0], ['lb_gms', 50]]))).toEqual(['gm-1', 'gm-10', 'gm-100']);
+    expect(await computeHonors(env, 'me', derived(), now, [], counts([['xp=gt', 30], ['lb_gms', 50]]))).toEqual(['gm-100']);
     // Too small a field hands out nothing new; earlier honors stay.
     expect(await computeHonors(env, 'me', derived(), now, ['weekly-1'], counts([['lb_users', 4]]))).toEqual(['weekly-1']);
   });
@@ -105,7 +105,7 @@ describe('leaderboard honors on the server', () => {
   it('a finished weekly board you top is a Weekly Champion; this week does not count yet', async () => {
     const now = new Date('2026-10-05T12:00:00Z'); // week 41
     const weekly = [{ board: 'rebuild' as const, week: '2026-W40', score: 900, detail: '' }, { board: 'rebuild' as const, week: '2026-W41', score: 999, detail: '' }];
-    const f = counts([['score=gt', 0], ['lb_weekly', 8], ['lb_users', 2]]);
+    const f = counts([['score=gt', 0], ['lb_weekly', 8], ['lb_gms', 2]]);
     expect(await computeHonors(env, 'me', derived({ weekly }), now, [], f)).toEqual(['weekly-1']);
     expect(await computeHonors(env, 'me', derived({ weekly: [weekly[1]] }), now, [], f)).toEqual([]);
   });
@@ -113,17 +113,17 @@ describe('leaderboard honors on the server', () => {
   it('a ranked season that ended: #1, #2 or #3 of a real field earns a podium honor (and its frame)', async () => {
     const now = new Date('2026-10-05T12:00:00Z');
     const ranked = [{ event: 'dl:2026-09-20', season: '2026-09', points: 300 }];
-    expect(await computeHonors(env, 'me', derived({ ranked }), now, [], counts([['points=gt', 1], ['lb_ranked', 12], ['lb_users', 2]]))).toEqual(['ranked-2']);
-    expect(await computeHonors(env, 'me', derived({ ranked }), now, [], counts([['points=gt', 3], ['lb_ranked', 12], ['lb_users', 2]]))).toEqual([]);
+    expect(await computeHonors(env, 'me', derived({ ranked }), now, [], counts([['points=gt', 1], ['lb_ranked', 12], ['lb_gms', 2]]))).toEqual(['ranked-2']);
+    expect(await computeHonors(env, 'me', derived({ ranked }), now, [], counts([['points=gt', 3], ['lb_ranked', 12], ['lb_gms', 2]]))).toEqual([]);
     // Too few played that season.
-    expect(await computeHonors(env, 'me', derived({ ranked }), now, [], counts([['points=gt', 0], ['lb_ranked', 2], ['lb_users', 2]]))).toEqual([]);
+    expect(await computeHonors(env, 'me', derived({ ranked }), now, [], counts([['points=gt', 0], ['lb_ranked', 2], ['lb_gms', 2]]))).toEqual([]);
   });
 
   it('the top 10% of a finished Weekly Hunt earn Weekly Hunter', async () => {
     const now = new Date('2026-10-05T12:00:00Z');
     const weekly = [{ board: 'hunt' as const, week: '2026-W40', score: 700, detail: '' }];
     // 30 played: the top 3 make the cut. Fourth does not.
-    expect(await computeHonors(env, 'me', derived({ weekly }), now, [], counts([['score=gt', 2], ['board=eq.hunt', 29], ['lb_users', 2]]))).toContain('hunt-week-10');
-    expect(await computeHonors(env, 'me', derived({ weekly }), now, [], counts([['score=gt', 3], ['board=eq.hunt', 29], ['lb_users', 2]]))).not.toContain('hunt-week-10');
+    expect(await computeHonors(env, 'me', derived({ weekly }), now, [], counts([['score=gt', 2], ['board=eq.hunt', 29], ['lb_gms', 2]]))).toContain('hunt-week-10');
+    expect(await computeHonors(env, 'me', derived({ weekly }), now, [], counts([['score=gt', 3], ['board=eq.hunt', 29], ['lb_gms', 2]]))).not.toContain('hunt-week-10');
   });
 });

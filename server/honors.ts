@@ -17,9 +17,9 @@ export async function computeHonors(env: SupaEnv, userId: string, d: Derived, no
   const honors = new Set(previous);
   const others = `user_id=neq.${userId}`;
   // The GM board, by XP.
-  const gms = await count(env, `lb_users?select=id`, f);
+  const gms = await count(env, `lb_gms?select=id`, f);
   if (gms >= MIN_FIELD.gm) {
-    const rank = (await count(env, `lb_users?select=id&xp=gt.${d.profile.xp}&id=neq.${userId}`, f)) + 1;
+    const rank = (await count(env, `lb_gms?select=id&xp=gt.${d.profile.xp}&id=neq.${userId}`, f)) + 1;
     if (rank === 1) honors.add('gm-1');
     if (rank <= 10) honors.add('gm-10');
     if (rank <= 100) honors.add('gm-100');

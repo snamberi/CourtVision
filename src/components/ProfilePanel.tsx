@@ -1,4 +1,10 @@
 import { syncNow } from '../cloud/sync';
+import { readPublicProfile, setPublicProfile, bioProblem, BIO_MAX, PUBLIC_PROFILE_EVENT } from '../profile/publicProfile';
+import { REAL_FRANCHISES } from '../profile/favorites';
+import { readLegacy } from '../storage/gmLegacy';
+import { ACHIEVEMENT_BY_ID } from '../simulation/frontOffice';
+import { earnedModeAchievements, MODE_ACHIEVEMENT_BY_ID } from '../profile/modeAchievements';
+import { PlayTimeBar } from './cloud/ProfileExtras';
 import { readPlayTime, formatPlayTime, topArea, AREA_LABEL, type PlayArea } from '../retention/playTime';
 import { eventPieceHidden } from '../retention/holiday';
 import { PLAY_TIME_EVENT } from '../retention/usePlayClock';
@@ -171,7 +177,43 @@ function PlayTimeLine() {
   const top = topArea(t);
   const areas = (Object.entries(t.areas) as [PlayArea, number][]).filter(([, v]) => v >= 60).sort((a, b) => b[1] - a[1]);
   return <div className="play-time"><PixelIcon name="calendar" size={16} /><b>{formatPlayTime(t.total)} played</b>{top && <span>· most in {AREA_LABEL[top]}</span>}
-    <ul>{areas.map(([k, v]) => <li key={k}><small>{AREA_LABEL[k]}</small> {formatPlayTime(v)}</li>)}</ul></div>;
+    <PlayTimeBar areas={Object.fromEntries(areas)} /></div>;
+}
+
+/** What others see on your public profile: one featured trophy, a short bio and a banner behind your name. */
+function PublicProfileEditor({ ctx, level, signedIn }: { ctx: UnlockContext; level: number; signedIn: boolean }) {
+  const [pp, setPp] = useState(readPublicProfile);
+  const [bio, setBio] = useState(pp.bio ?? '');
+  useEffect(() => { const bump = () => setPp(readPublicProfile()); window.addEventListener(PUBLIC_PROFILE_EVENT, bump); return () => window.removeEventListener(PUBLIC_PROFILE_EVENT, bump); }, []);
+  const save = (patch: Parameters<typeof setPublicProfile>[0]) => { setPublicProfile(patch); if (signedIn) void syncNow(); };
+  const problem = bioProblem(bio);
+  const titles = [...new Set([...TITLES.filter(t => t.level <= level).map(t => t.name), ...rankTitles(), ...earnedExtraTitles(ctx)])];
+  const gm = Object.keys(readLegacy().achievements).filter(id => ACHIEVEMENT_BY_ID.has(id));
+  const modes = earnedModeAchievements().filter(id => MODE_ACHIEVEMENT_BY_ID.has(id));
+  return <div className="public-profile-editor">
+    <h3 className="hunt-subhead">Your public profile</h3>
+    <label><span>Featured trophy</span>
+      <select className="year-input" value={pp.featured ?? ''} onChange={e => save({ featured: e.target.value || undefined })}>
+        <option value="">None</option>
+        {gm.length + modes.length > 0 && <optgroup label="Achievements">
+          {gm.map(id => <option key={id} value={`ach:${id}`}>{ACHIEVEMENT_BY_ID.get(id)!.name}</option>)}
+          {modes.map(id => <option key={id} value={`mode:${id}`}>{MODE_ACHIEVEMENT_BY_ID.get(id)!.name}</option>)}
+        </optgroup>}
+        <optgroup label="Titles">{titles.map(t => <option key={t} value={`title:${t}`}>{t}</option>)}</optgroup>
+      </select></label>
+    <label><span>Banner behind your name</span>
+      <select className="year-input" value={pp.banner ?? 'none'} onChange={e => save({ banner: e.target.value })}>
+        <option value="none">None</option>
+        <option value="clan">My clan's flag</option>
+        <optgroup label="Team colours">{REAL_FRANCHISES.map(t => <option key={t.id} value={`team:${t.id}`}>{t.city} ({t.id})</option>)}</optgroup>
+      </select></label>
+    <label className="public-bio"><span>Bio <small>{bio.trim().length}/{BIO_MAX}</small></span>
+      <input className="year-input" value={bio} maxLength={BIO_MAX} placeholder="A line about you as a GM" onChange={e => setBio(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !problem) save({ bio: bio.trim() || undefined }); }} />
+      <button onClick={() => save({ bio: bio.trim() || undefined })} disabled={!!problem || bio.trim() === (pp.bio ?? '')}>Save bio</button>
+      {problem && <small className="public-bio-problem" role="alert">{problem}</small>}
+    </label>
+    <small className="hint-text">{signedIn ? 'Shows on your public profile once it syncs.' : 'Sign in to show these on your public profile.'}</small>
+  </div>;
 }
 
 
@@ -199,6 +241,7 @@ export function ProfilePanel({ extras, onCloset }: { /** Shown right under your 
       {signedIn && <SyncChip />}
       {!signedIn && <label className="profile-name-edit"><span>Profile name</span><input className="year-input" value={localName() === 'You' ? '' : localName()} placeholder="You" maxLength={18} onChange={e => setLocalName(e.target.value)} /><small>Sign in to claim a GM name on the boards.</small></label>}
     </div>
+    <PublicProfileEditor ctx={ctx} level={p.level} signedIn={signedIn} />
     {extras}
     {onCloset && <p className="profile-closet-link"><button className="primary" onClick={onCloset}><PixelIcon name="star" size={14} /> Open your Closet</button> <small>Your character, picture frame, icon, colours, titles, card frame, court, phone and app look all live in the Closet.</small></p>}
     <table className="db-table profile-xp"><tbody>{p.parts.map(x => <tr key={x.id}><td className="col-name">{x.label}</td><td className="col-name">{x.detail}</td><td>{x.xp.toLocaleString()} XP</td></tr>)}</tbody></table>
