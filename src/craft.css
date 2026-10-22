@@ -373,3 +373,18 @@
 /* Difficulty cards: the tier name in the display face (it was 14px VT323). */
 :root .difficulty-card b { font: 600 15px/1.2 var(--font-display); letter-spacing: .04em; text-transform: uppercase; }
 :root .difficulty-card small, :root .difficulty-card span:not(.difficulty-meter) { font-family: var(--font-data); }
+
+/* ================================================================ Onboarding */
+
+:root .team-pick-preview strong { font: 600 13px/1.25 var(--font-data); }
+:root .team-pick-preview span { font-size: 22px; }
+:root .main-menu > .mode-grid .mode-card { min-height: 0; padding-bottom: 18px; }
+
+/* Create a league: card titles in the display face; famous moments lead with the headline, not the blurb. */
+:root .create-choice-head b { font: 600 17px/1.2 var(--font-display); letter-spacing: .03em; text-transform: uppercase; }
+:root .moment-card b { display: block; margin: 4px 0 6px; font: 600 16px/1.2 var(--font-display); letter-spacing: .02em; color: var(--court); }
+:root .moment-card small { font: 12.5px/1.45 var(--font-data); color: var(--text-dim); }
+:root .create-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+:root .create-field:has(.difficulty-cards) { grid-column: 1 / -1; }
+:root .create-field .difficulty-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 720px) { :root .create-fields, :root .create-field .difficulty-cards { grid-template-columns: 1fr; } }
