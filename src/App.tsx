@@ -182,6 +182,7 @@ import {
 // Pages load on demand (code-split): the first paint only needs the shell, sidebar and Play button.
 import { needsRetireeData } from './history/retirees';
 import { pendingOffers } from './simulation/staffPoaching';
+import { setScoringOption } from './simulation/scoringOptions';
 // Last, so the shared type, control and motion rules win over page styles.
 import './craft.css';
 const PrivacyPolicyPage = lazy(() => import('./components/PrivacyPolicyPage').then(m => ({ default: m.PrivacyPolicyPage })));
@@ -1486,8 +1487,8 @@ function App() {
     const away = league.teams.find((t) => t.teamId === exhibitionAwayId);
     if (!home || !away) return;
     const result = simulateGame({
-      home: { teamId: home.teamId, seasons: home.seasons, coach: home.coach, chemistry: home.chemistry, coachIdentity: home.coachIdentity, rotationOrder: home.rotationOrder },
-      away: { teamId: away.teamId, seasons: away.seasons, coach: away.coach, chemistry: away.chemistry, coachIdentity: away.coachIdentity, rotationOrder: away.rotationOrder },
+      home: { teamId: home.teamId, seasons: home.seasons, coach: home.coach, chemistry: home.chemistry, coachIdentity: home.coachIdentity, rotationOrder: home.rotationOrder, scoringOptions: home.scoringOptions },
+      away: { teamId: away.teamId, seasons: away.seasons, coach: away.coach, chemistry: away.chemistry, coachIdentity: away.coachIdentity, rotationOrder: away.rotationOrder, scoringOptions: away.scoringOptions },
       settings,
     });
     setGameResult(result);
@@ -1989,6 +1990,11 @@ function App() {
               showTradeValues={extras.tradeSettings.showValues === true}
                 franchiseHistory={league.franchiseHistory} currentChampion={playoffBracket?.championTeamId} currentSeason={league.season}
                 canEditIdentity={teamId => sandboxMode || teamId === controlledTeamId}
+                gameMinutes={league.settings.era.numberOfQuarters * league.settings.era.quarterLengthMinutes}
+                onScoringOption={(teamId, playerId, option) => canEditTeam(sandboxMode, controlledTeamId, teamId) && setLeague(l => ({ ...l, teams: l.teams.map(t => t.teamId === teamId ? { ...t, scoringOptions: setScoringOption(t.scoringOptions, playerId, option) } : t) }))}
+                onPlaytime={(teamId, playerId, minutes) => canEditTeam(sandboxMode, controlledTeamId, teamId) && setLeague(l => ({ ...l, teams: l.teams.map(t => t.teamId !== teamId ? t : { ...t, seasons: t.seasons.map(p => p.playerId !== playerId ? p
+                  // A set playtime is EXACT minutes every game; Auto hands the player back to the coach's rotation.
+                  : { ...p, minutes: minutes == null ? { ...p.minutes, mode: 'AI' as const } : { ...p.minutes, mode: 'EXACT' as const, target: minutes, baselineTarget: undefined } }) }) }))}
                 onIdentityChange={(teamId, identity) => canEditTeam(sandboxMode, controlledTeamId, teamId) && setLeague(l => ({ ...l, teams: l.teams.map(t => t.teamId === teamId ? { ...t, identity } : t) }))}
                 teams={league.teams} onRunDevelopmentPass={sandboxMode ? runDevelopmentPass : undefined} onSelectPlayer={selectPlayer} injuries={league.injuries}
                 contracts={extras.contracts} capSettings={extras.capSettings} standings={computeStandings(league)}

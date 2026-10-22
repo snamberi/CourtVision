@@ -13,6 +13,7 @@ import { calculateOverall } from '../simulation/engine/overall';
 import { computeTradeValue } from '../simulation/gm';
 import type { Contract, SalaryCapSettings } from '../simulation/gm';
 import type { PlayerSeason } from '../simulation/types';
+import { SCORING_OPTION_LABEL, optionOf, type ScoringOption } from '../simulation/scoringOptions';
 import { perGameAverages } from '../simulation/careerStats';
 import { teamLeader, effectiveRotation, primaryPosition } from '../simulation/teamStatus';
 import { StarIcon } from './Icons';
@@ -45,13 +46,19 @@ interface Props {
   retiredPlayers?: { playerId: string; finalTeamId: string }[];
   onRetireJersey?: (teamId: string, number: number, playerId: string) => void;
   onUnretireJersey?: (teamId: string, number: number) => void;
+  /** Your team: set a player's scoring option (null clears it). */
+  onScoringOption?: (teamId: string, playerId: string, option: ScoringOption | null) => void;
+  /** Your team: set a player's playtime in minutes a game (null hands it back to the coach). */
+  onPlaytime?: (teamId: string, playerId: string, minutes: number | null) => void;
+  /** Minutes in a game (48 in the NBA), the most one player can be set to play. */
+  gameMinutes?: number;
 }
 
 export function TeamRosterPage({
   showTradeValues = false, initialTeamId, teams, onRunDevelopmentPass, onSelectPlayer, injuries,
   contracts, capSettings, standings, onRelease, onTradeAway, schedule,
   onOpenCoachMarket, onHireCoach, coachCandidates,
-  retiredPlayers, onRetireJersey, onUnretireJersey, franchiseHistory, currentChampion, currentSeason, canEditIdentity, onIdentityChange,
+  retiredPlayers, onRetireJersey, onUnretireJersey, onScoringOption, onPlaytime, gameMinutes = 48, franchiseHistory, currentChampion, currentSeason, canEditIdentity, onIdentityChange,
 }: Props) {
   const [retireNumber, setRetireNumber] = useState('');
   const [retirePlayerId, setRetirePlayerId] = useState('');
@@ -62,6 +69,10 @@ export function TeamRosterPage({
   const leader = team ? teamLeader(team) : null;
   const rotation = team ? effectiveRotation(team) : {};
   const coach = team?.coachIdentity;
+  const canPlan = canManage && !!onScoringOption && !!onPlaytime;
+  // Five players are on the floor, so a game has five times its length in minutes to hand out.
+  const setMinutes = team ? team.seasons.filter(s => s.minutes.mode === 'EXACT').reduce((n, s) => n + s.minutes.target, 0) : 0;
+  const teamMinutes = gameMinutes * 5;
 
   return (
     <div className="roster-page">
@@ -222,11 +233,17 @@ export function TeamRosterPage({
       </p>
 
       {team && <LockerRoomPanel team={team} />}
+      {team && canPlan && <div className={`roster-plan-note ${setMinutes > teamMinutes ? 'over' : ''}`} role="status">
+        <b>Game plan</b>
+        <span><b>Option</b>: your 1st option gets the most shots, then the 2nd and 3rd; everyone else defers to them.</span>
+        <span><b>Playtime</b>: minutes a game from 0 to {gameMinutes}; that player plays it every game. Leave it blank (Auto) and the coach decides.</span>
+        <span className="roster-plan-total">Set so far: <b>{Math.round(setMinutes)}</b> of {teamMinutes} team minutes{setMinutes > teamMinutes ? ' · more than a game holds, so some players will fall short' : ''}</span>
+      </div>}
       {team && (
         <table className="db-table roster-table">
           <thead>
             <tr>
-              <th>Player</th><th>Role</th><th>Pos</th><th>Age</th><th>OVR</th><th>POT</th><th>Delta</th>
+              <th>Player</th>{canPlan && <><th title="Scoring option: who gets the most shots">Option</th><th title="Minutes a game (blank = the coach decides)">Playtime</th></>}<th>Role</th><th>Pos</th><th>Age</th><th>OVR</th><th>POT</th><th>Delta</th>
               <th>Contract</th><th>YWT</th>{showTradeValues && <th>Trade Value</th>}
               <th>PPG</th>{schedule && <th title="Points in the last five games">Form</th>}<th>RPG</th><th>APG</th><th>MPG</th><th>EFF</th><th>Mood</th><th>Status</th>
               {canManage && (onRelease || onTradeAway) && <th>Actions</th>}
@@ -251,6 +268,18 @@ export function TeamRosterPage({
                       <PlayerNameTag playerId={s.playerId} teamId={s.teamId} jerseyNumber={s.jerseyNumber} size={24} />
                       {isInjured && <span className="injury-plus">+</span>}
                     </td>
+                    {canPlan && <>
+                      <td className="roster-option">
+                        <select aria-label={`${s.playerId} scoring option`} className={optionOf(team.scoringOptions, s.playerId) ? `opt-${optionOf(team.scoringOptions, s.playerId)}` : ''} value={optionOf(team.scoringOptions, s.playerId) ?? ''}
+                          onChange={e => onScoringOption!(team.teamId, s.playerId, e.target.value ? Number(e.target.value) as ScoringOption : null)}>
+                          <option value="">—</option>
+                          {([1, 2, 3] as const).map(o => <option key={o} value={o}>{SCORING_OPTION_LABEL[o]}</option>)}
+                        </select>
+                      </td>
+                      <td className="roster-playtime">
+                        <PlaytimeInput key={`${s.playerId}-${s.minutes.mode}-${s.minutes.target}`} player={s} max={gameMinutes} onSet={m => onPlaytime!(team.teamId, s.playerId, m)} />
+                      </td>
+                    </>}
                     <td>{rotation[s.playerId] === 'starter' ? 'Starter' : 'Bench'}</td>
                     <td>{primaryPosition(s)}</td>
                     <td>{s.age}</td>
@@ -288,6 +317,25 @@ export function TeamRosterPage({
       {team && <ChemistryWeb team={team} onSelectPlayer={onSelectPlayer} />}
     </div>
   );
+}
+
+/** Minutes a game for one player: a number from 0 to a full game, or blank for Auto (the coach decides). */
+function PlaytimeInput({ player, max, onSet }: { player: PlayerSeason; max: number; onSet: (minutes: number | null) => void }) {
+  const exact = player.minutes.mode === 'EXACT';
+  const [text, setText] = useState(exact ? String(Math.round(player.minutes.target)) : '');
+  const commit = () => {
+    const t = text.trim();
+    if (!t) { if (exact) onSet(null); return; }
+    const n = Math.max(0, Math.min(max, Math.round(Number(t))));
+    if (!Number.isFinite(n)) { setText(exact ? String(Math.round(player.minutes.target)) : ''); return; }
+    setText(String(n));
+    if (!exact || n !== Math.round(player.minutes.target)) onSet(n);
+  };
+  return <span className={`playtime ${exact ? 'set' : ''}`}>
+    <input type="number" inputMode="numeric" min={0} max={max} step={1} placeholder="Auto" aria-label={`${player.playerId} minutes a game`}
+      value={text} onChange={e => setText(e.target.value)} onBlur={commit} onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} />
+    {exact && <button type="button" className="link-button" title="Let the coach decide" onClick={() => { setText(''); onSet(null); }}>Auto</button>}
+  </span>;
 }
 
 /** How many seasons this player's history shows them joining/being on this same team, minimum 1. */

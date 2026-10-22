@@ -93,6 +93,8 @@ export interface LeagueTeam {
   chemistry?: number; // 0-100, optional system (spec section 90); defaults to a neutral 70 if unset
   previousOverallAverage?: number; // team-wide average full-attribute Overall as of the last season rollover, for improve/decline tracking
   offseasonStartRosterIds?: string[]; // roster snapshot taken right as the offseason begins (post-retirement, pre-draft/FA), used to measure continuity for chemistry drift
+  /** The coach's shot pecking order (1st/2nd/3rd option), set on the Roster page; see scoringOptions.ts. */
+  scoringOptions?: import('./scoringOptions').ScoringOptions;
   rotationOrder?: string[]; // explicit depth-chart order (drag-and-drop reorderable); first 5 are starters. Missing/new players are appended by minutes.target.
   conferenceId?: 'east' | 'west'; // absent on older saves / small sandbox leagues that predate conference support
   divisionId?: string; // e.g. "Atlantic" — always paired with a conferenceId when present
@@ -673,7 +675,7 @@ export function teamGameInput(league: League, teamId: string): PreparedGame['inp
   const team = league.teams.find((t) => t.teamId === teamId)!;
   const injuries = league.injuries ?? {};
   const available = ensureMinimumAvailable(team.seasons, team.seasons.filter((s) => !((injuries[s.playerId]?.gamesRemaining ?? 0) > 0)), injuries);
-  return { teamId, seasons: available, coach: team.coach, chemistry: team.chemistry, coachIdentity: gameStaffCoach(team), rotationOrder: team.rotationOrder };
+  return { teamId, seasons: available, coach: team.coach, chemistry: team.chemistry, coachIdentity: gameStaffCoach(team), rotationOrder: team.rotationOrder, scoringOptions: team.scoringOptions };
 }
 
 /** Tonight's extra edge for a team: a strong duo whose partner dressed, and (at home) the arena's upgrades. */
@@ -705,8 +707,8 @@ function prepareGame(league: League, idx: number, seedBase: number, injuries: Re
   awayAvailable = ensureMinimumAvailable(away.seasons, awayAvailable, injuries);
 
   const input: PreparedGame['input'] = {
-    home: { teamId: home.teamId, seasons: homeAvailable, coach: home.coach, chemistry: home.chemistry, coachIdentity: gameStaffCoach(home), rotationOrder: home.rotationOrder, ...gameBoost(league, home, homeAvailable.map(s => s.playerId), true, g.id) },
-    away: { teamId: away.teamId, seasons: awayAvailable, coach: away.coach, chemistry: away.chemistry, coachIdentity: gameStaffCoach(away), rotationOrder: away.rotationOrder, ...gameBoost(league, away, awayAvailable.map(s => s.playerId), false, g.id) },
+    home: { teamId: home.teamId, seasons: homeAvailable, coach: home.coach, chemistry: home.chemistry, coachIdentity: gameStaffCoach(home), rotationOrder: home.rotationOrder, scoringOptions: home.scoringOptions, ...gameBoost(league, home, homeAvailable.map(s => s.playerId), true, g.id) },
+    away: { teamId: away.teamId, seasons: awayAvailable, coach: away.coach, chemistry: away.chemistry, coachIdentity: gameStaffCoach(away), rotationOrder: away.rotationOrder, scoringOptions: away.scoringOptions, ...gameBoost(league, away, awayAvailable.map(s => s.playerId), false, g.id) },
     settings: { ...league.settings, seed: seedBase + idx },
     rules: league.rulesSettings, moraleImpact: league.coachingSettings?.moraleImpact,
     liveCoaching,
