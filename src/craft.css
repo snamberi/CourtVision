@@ -288,3 +288,34 @@
 :root .pgr-row:nth-child(4) { animation-delay: 660ms; }
 :root .pgr-row b { font-variant-numeric: tabular-nums; }
 :root .pgr-secret { animation: cv-pop var(--dur-3) var(--ease-snap) 800ms both; }
+
+/* ================================================================ Trophies */
+
+/* Trophy case: each row stands on its own wooden shelf, and the count tag sits on its trophy's shoulder
+ * (it used to float at the far edge of a 160px cell). */
+:root .trophy-shelf { column-gap: 0; row-gap: 14px; background: none; box-shadow: none; padding: 14px 12px 8px; }
+:root .trophy-shelf .trophy-slot {
+  padding: 8px 4px 14px; min-height: 88px; justify-content: flex-end;
+  background: linear-gradient(180deg, transparent calc(100% - 9px), var(--c-bg-6b4a2f, #6b4a2f) calc(100% - 9px), var(--c-bg-6b4a2f, #6b4a2f) calc(100% - 6px), var(--c-bg-3a2a1e, #3a2a1e) calc(100% - 6px));
+}
+:root .trophy-shelf .trophy-count { left: calc(50% + 10px); right: auto; top: 2px; font: 600 11px/15px var(--font-data); letter-spacing: .02em; }
+:root .trophy-slot small { font: 500 11px/1.2 var(--font-data); max-width: 110px; }
+:root .trophy-slot .pixel-trophy { transition: transform var(--dur-1) steps(2), filter var(--dur-1); }
+
+/* ================================================================ Front office */
+
+/* Trade builder: an aligned roster per side instead of a wrapped cloud of chips. */
+:root .trade-roster { display: grid; margin: 6px 0 14px; border: 1px solid var(--line-strong); background: var(--panel); }
+:root .trade-roster-head, :root .trade-roster-row { display: grid; grid-template-columns: 22px minmax(0, 1fr) 34px 36px 72px; align-items: center; gap: 10px; padding: 6px 10px; }
+:root .trade-roster:has(.trade-roster-head > span:nth-child(6)) :is(.trade-roster-head, .trade-roster-row) { grid-template-columns: 22px minmax(0, 1fr) 34px 36px 72px 48px; }
+:root .trade-roster-head { font: 500 11px/1 var(--font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--text-dim); background: var(--panel-2); border-bottom: 1px solid var(--line); }
+:root .trade-roster-head span:nth-child(n+3) { text-align: right; }
+:root .trade-roster-row { cursor: pointer; border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); transition: background-color var(--dur-1); }
+:root .trade-roster-row:last-child { border-bottom: 0; }
+:root .trade-roster-row:hover { background: var(--panel-2); }
+:root .trade-roster-row.on { background: color-mix(in srgb, var(--amber) 13%, var(--panel)); box-shadow: inset 3px 0 0 var(--amber); }
+:root .trade-roster-row input { margin: 0; width: 16px; height: 16px; }
+:root .trade-roster-row > :nth-child(2) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:root .trade-roster-pos { font: 500 12px/1 var(--font-display); letter-spacing: .06em; color: var(--text-dim); text-align: right; }
+:root .trade-roster-ovr { font: 600 15px/1 var(--font-display); text-align: right; color: var(--court); }
+:root .trade-roster-money { font: 13px/1 var(--font-data); font-variant-numeric: tabular-nums; text-align: right; }
