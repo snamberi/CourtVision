@@ -388,3 +388,21 @@
 :root .create-field:has(.difficulty-cards) { grid-column: 1 / -1; }
 :root .create-field .difficulty-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 @media (max-width: 720px) { :root .create-fields, :root .create-field .difficulty-cards { grid-template-columns: 1fr; } }
+
+/* ================================================================ Roster game plan */
+
+:root .roster-plan-note { display: grid; gap: 4px; margin: 10px 0 12px; padding: 10px 14px; background: var(--panel); border: 1px solid var(--line-strong); border-left: 4px solid var(--amber); font: 12.5px/1.45 var(--font-data); color: var(--text-dim); }
+:root .roster-plan-note > b { font: 600 14px/1.2 var(--font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--court); }
+:root .roster-plan-note span b { color: var(--text); }
+:root .roster-plan-total b { color: var(--amber); font-variant-numeric: tabular-nums; }
+:root .roster-plan-note.over { border-left-color: var(--miss); }
+:root .roster-plan-note.over .roster-plan-total { color: var(--miss); }
+:root .roster-option select { min-width: 104px; padding: 3px 6px; font: 500 12.5px/1.2 var(--font-display); letter-spacing: .04em; text-transform: uppercase; }
+:root .roster-table td.roster-option select.opt-1 { border-color: var(--tov) !important; color: var(--tov) !important; }
+:root .roster-table td.roster-option select.opt-2 { border-color: var(--amber) !important; color: var(--amber) !important; }
+:root .roster-table td.roster-option select.opt-3 { border-color: var(--blue) !important; color: var(--blue) !important; }
+:root .playtime { display: inline-flex; align-items: center; gap: 6px; }
+:root .playtime input { width: 62px; padding: 3px 6px; font: 600 13px/1.2 var(--font-data); font-variant-numeric: tabular-nums; text-align: right; }
+:root .roster-table td .playtime.set input { border-color: var(--amber) !important; color: var(--court) !important; }
+:root .playtime input::placeholder { color: var(--text-dim); font-weight: 400; }
+:root .playtime .link-button { font: 500 11px/1 var(--font-display); letter-spacing: .06em; text-transform: uppercase; }

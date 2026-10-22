@@ -59,12 +59,15 @@ export function redistributeMinutesForInjuries(
   const deficit = totalTeamMinutes - currentSum;
   if (deficit <= 0) return team; // healthy rotation's baseline already covers a full game
 
-  const weights = healthy.map((s) => Math.max(baselineOf(s), 5)); // small floor so bench players still get a share
+  // Players with a playtime the coach set themselves (EXACT minutes) keep it; the others absorb the missing minutes.
+  const flexible = healthy.filter((s) => s.minutes.mode !== 'EXACT');
+  if (flexible.length === 0) return team;
+  const weights = flexible.map((s) => Math.max(baselineOf(s), 5)); // small floor so bench players still get a share
   const totalWeight = weights.reduce((a, b) => a + b, 0);
 
   const seasons = team.seasons.map((s) => {
-    if (isOut(s.playerId)) return s;
-    const idx = healthy.findIndex((h) => h.playerId === s.playerId);
+    if (isOut(s.playerId) || s.minutes.mode === 'EXACT') return s;
+    const idx = flexible.findIndex((h) => h.playerId === s.playerId);
     const baseline = baselineOf(s);
     const share = weights[idx] / totalWeight;
     const proposedTarget = baseline + deficit * share;

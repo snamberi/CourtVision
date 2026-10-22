@@ -1,4 +1,5 @@
 import { playbackFromPossession } from '../gamePlayback';
+import { withScoringOptions } from '../scoringOptions';
 import { topPlaysFor } from '../highlights';
 import type { GameSettings, PlayerId, PlayerSeason, Badge } from '../types';
 import type { CoachTendencies } from '../league';
@@ -24,6 +25,8 @@ import type { ShotType } from './shot';
 export interface TeamInput {
   teamId: string;
   rotationOrder?: string[];
+  /** 1st/2nd/3rd scoring options (scoringOptions.ts). */
+  scoringOptions?: import('../scoringOptions').ScoringOptions;
   seasons: PlayerSeason[];
   coach?: CoachTendencies;
   chemistry?: number;
@@ -208,8 +211,9 @@ export function simulateGame(opts: SimulateGameOptions): GameResult {
   const noFlags = {} as any;
 
   const possessionLog: PossessionLogEntry[] = [];
-  const homeBySeasonId = new Map(home.seasons.map((s) => [s.playerId, s]));
-  const awayBySeasonId = new Map(away.seasons.map((s) => [s.playerId, s]));
+  // Scoring options (1st/2nd/3rd, set on the Roster page) steer who gets the ball and the shots; teams without any play as before.
+  const homeBySeasonId = new Map(withScoringOptions(home.seasons, home.scoringOptions).map((s) => [s.playerId, s]));
+  const awayBySeasonId = new Map(withScoringOptions(away.seasons, away.scoringOptions).map((s) => [s.playerId, s]));
   const injuredPlayers = new Set<PlayerId>();
   const injuries: GameResult['injuries'] = [];
 
