@@ -331,3 +331,15 @@
 :root .news-links { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 10px; }
 :root .news-links button { padding: 6px 10px; font: 500 12.5px/1.1 var(--font-display); letter-spacing: .06em; text-transform: uppercase; border-bottom-width: 2px; }
 :root .news-card { display: flex; flex-direction: column; }
+
+/* Fact grids (team profile: coaching, plan, finances): one spec sheet with hairline cells instead of a dozen
+ * separate boxes; values in the display face so they scan. */
+:root .team-profile-facts { gap: 0; border: 1px solid var(--line-strong); background: var(--panel); box-shadow: var(--hard-shadow); margin: 0 0 6px; }
+:root .team-profile-facts > div { background: transparent; border: 0; box-shadow: inset -1px -1px 0 var(--line); padding: 10px 14px; }
+:root .team-profile-facts small, :root .team-profile-facts dt { margin-bottom: 4px; font: 500 11px/1.3 var(--font-display); letter-spacing: .08em; text-transform: uppercase; }
+:root .team-profile-facts strong, :root .team-profile-facts dd { font: 600 18px/1.2 var(--font-display); letter-spacing: .02em; text-transform: capitalize; color: var(--court); }
+:root .team-profile-page > p:first-of-type { font: 600 15px/1.3 var(--font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--text-dim); }
+:root .team-profile-page > section > h3 { margin: 22px 0 10px; }
+
+/* Data tables: a tighter row so a full roster fits on screen. */
+:root :is(.db-table, .stat-line-table) td { padding-top: 5px; padding-bottom: 5px; }
