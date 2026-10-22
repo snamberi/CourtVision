@@ -1,4 +1,5 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { burst, floatText, useCountUp } from '../fx/effects';
 import { loadRelics, rewardOf, SECRET_BY_ID } from '../relics/relics';
 import { totalXp, levelFor } from '../profile/profile';
 import { RelicArt } from './relics/RelicArt';
@@ -22,6 +23,17 @@ export function PostGameRewardPopup({ data, onClose }: { data: PostGameRewardDat
   const secret = reward?.secret ? SECRET_BY_ID.get(reward.secret) : undefined;
   const won = data.result === 'won';
   const isLost = data.result === 'lost' || data.result === 'over';
+
+  const head = useRef<HTMLHeadingElement>(null);
+  const xpShown = useCountUp(xpEarned, 1100);
+  // A win pops sparks off the result; a level up rises over it once the rows have landed.
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      if (won) burst(head.current, { colors: ['#ffd166', '#55c878', '#f4f0e6'], count: 34, power: 6 });
+      if (leveled) floatText(head.current, `LEVEL ${levelNow}`, '#ffd166');
+    }, 380);
+    return () => window.clearTimeout(t);
+  }, [won, leveled, levelNow]);
 
   const RESULT_LABEL: Record<string, string> = { won: 'Victory', lost: 'Run Over', over: 'Run Over', retired: 'Career Over', done: 'Story Complete' };
   const resultLabel = RESULT_LABEL[data.result ?? ''] ?? 'Finished';
@@ -59,14 +71,14 @@ export function PostGameRewardPopup({ data, onClose }: { data: PostGameRewardDat
       <div className="share-box pgr-box" role="dialog" aria-modal="true" aria-label="Run rewards">
         <div className="pgr-head">
           <span className="pixel-eyebrow">{data.mode.toUpperCase()}</span>
-          <h2 className={`pgr-result ${won ? 'pgr-won' : isLost ? 'pgr-lost' : 'pgr-done'}`}>{resultLabel}</h2>
+          <h2 ref={head} className={`pgr-result ${won ? 'pgr-won' : isLost ? 'pgr-lost' : 'pgr-done'}`}>{resultLabel}</h2>
         </div>
         <ul className="pgr-rows">
           {xpEarned > 0 && (
             <li className="pgr-row">
               <PixelIcon name="chart" size={18} />
               <span>XP earned</span>
-              <b>+{xpEarned.toLocaleString()}</b>
+              <b>+{xpShown.toLocaleString()}</b>
             </li>
           )}
           {leveled && (

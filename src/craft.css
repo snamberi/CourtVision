@@ -274,3 +274,17 @@
 :root .watch-call { min-height: 0; margin: 12px 0; padding: 12px 18px; }
 :root .watch-seek { margin: 10px 0 14px; }
 @media (max-width: 700px) { :root .watch-controls > button:last-child { margin-left: 0; } }
+
+/* ================================================================ Rewards */
+
+/* Post-game rewards: the result stamps in, then each row lands in turn. */
+@keyframes cv-stamp { 0% { opacity: 0; transform: scale(1.6); } 60% { opacity: 1; transform: scale(.94); } 100% { transform: none; } }
+@keyframes cv-row-in { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
+:root .pgr-result { animation: cv-stamp 360ms var(--ease-snap) both; }
+:root .pgr-row { animation: cv-row-in 240ms var(--ease-out) both; }
+:root .pgr-row:nth-child(1) { animation-delay: 300ms; }
+:root .pgr-row:nth-child(2) { animation-delay: 420ms; }
+:root .pgr-row:nth-child(3) { animation-delay: 540ms; }
+:root .pgr-row:nth-child(4) { animation-delay: 660ms; }
+:root .pgr-row b { font-variant-numeric: tabular-nums; }
+:root .pgr-secret { animation: cv-pop var(--dur-3) var(--ease-snap) 800ms both; }
