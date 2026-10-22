@@ -7,7 +7,7 @@ import { defineConfig, type Plugin } from 'vite'
 /** The offline Windows edition shows no network ads, so its page drops the AdSense tag. */
 const stripAdsense = (): Plugin => ({
   name: 'strip-adsense',
-  transformIndexHtml: html => html.replace(/\s*<!-- AdSense publisher tag[\s\S]*?<\/script>/, '').replace(/\s*<!-- AMP auto ads \(keep[\s\S]*?<\/script>/, '').replace(/\s*<!-- AMP auto ads tag -->[\s\S]*?<!-- \/AMP auto ads tag -->/, '')
+  transformIndexHtml: html => html.replace(/\s*<!-- AdSense publisher tag[\s\S]*?<\/script>/, '')
     .replace(/\s*<!-- PWA -->[\s\S]*?<!-- \/PWA -->/, ''),
 })
 

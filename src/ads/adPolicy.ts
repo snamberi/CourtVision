@@ -8,10 +8,14 @@ import type { ConsentSnapshot } from '../consent/consent';
  *    (EEA, UK, Switzerland) and withholds ads there until they answer; elsewhere ads load with the page. A Global
  *    Privacy Control signal from the browser still means no ad requests.
  *  - In-app banner (googleCmp off): ads only after the visitor turns Advertising on.
- * The offline Windows edition never loads ads.
+ * The offline Windows edition never loads ads, and a production build loads them only on the site's own hostnames.
  */
-export function advertisingPermitted(consent: ConsentSnapshot, cfg: AdConfig = AD_CONFIG, desktop = IS_DESKTOP_BUILD): boolean {
+export function advertisingPermitted(
+  consent: ConsentSnapshot, cfg: AdConfig = AD_CONFIG, desktop = IS_DESKTOP_BUILD,
+  host: string | null = import.meta.env.PROD ? location.hostname : null,
+): boolean {
   if (!cfg.enabled || desktop || !cfg.adsenseClient) return false;
+  if (host !== null && cfg.siteHosts.length > 0 && !cfg.siteHosts.includes(host)) return false;
   if (cfg.googleCmp) return !consent.gpc;
   return consent.advertisingAllowed;
 }
