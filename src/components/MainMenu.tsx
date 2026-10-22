@@ -204,7 +204,7 @@ export function MainMenu({ onStart, saves, onOpenContinue, busy = null, onLocker
           onAchievements={onProfileTab && (() => onProfileTab('achievements'))} streak={visit.v.streak} />
       </div>
 
-      <MenuQuickLinks onContinue={onOpenContinue} onRoad={onRoad} onRelics={onRelics} onProfile={onProfile ?? onLocker} onFriends={onFriendList ?? onFriends} onCloset={onCloset} onSettings={onSettings} />
+      <MenuQuickLinks onClans={onOpenMode && (() => onOpenMode(modeById('clubs')!))} onContinue={onOpenContinue} onRoad={onRoad} onRelics={onRelics} onProfile={onProfile ?? onLocker} onFriends={onFriendList ?? onFriends} onCloset={onCloset} onSettings={onSettings} />
 
       <div className="menu-section-heading"><h2>Choose your game</h2></div>
 
@@ -263,6 +263,7 @@ export function MainMenu({ onStart, saves, onOpenContinue, busy = null, onLocker
         {onRelics && <RelicStrip onOpen={onRelics} />}
       </div>
       {onArcade && <QuickGames onOpen={onArcade} onOpenMode={onOpenMode} />}
+      {onOpenMode && <PlayWithOthers onOpenMode={onOpenMode} />}
 
 
 
@@ -372,9 +373,19 @@ function QuickGames({ onOpen, onOpenMode }: { onOpen: (game: 'grid' | 'guess' | 
   </section>;
 }
 
+/** Clans, online leagues, the boards and friend games: on a phone they live in the Compete tab, here they get a row. */
+function PlayWithOthers({ onOpenMode }: { onOpenMode: (e: ModeEntry) => void }) {
+  return <section className="quick-games play-with-others" id="menu-compete" aria-labelledby="play-with-others-title">
+    <div className="menu-section-heading"><h2 id="play-with-others-title">Play with others</h2><span>CLANS · ONLINE · LEADERBOARDS</span></div>
+    <div className="mode-tiles quick-games-tiles">
+      {modesIn('compete').filter(e => e.action.kind === 'screen').map(e => <ModeCard key={e.id} entry={e} onOpen={onOpenMode} />)}
+    </div>
+  </section>;
+}
+
 /** One row of the places people look for most: jumps down the menu (modes, today's challenge, saved leagues) and opens
  *  the pages that otherwise live only in the phone (Season Pass, Relic Vault, the roads, profile, friends, settings). */
-function MenuQuickLinks({ onContinue, onRoad, onRelics, onProfile, onFriends, onCloset, onSettings }: { onContinue: () => void; onRoad?: (r: 'level' | 'trophy' | 'season') => void; onRelics?: () => void; onProfile?: () => void; onFriends?: () => void; onCloset?: () => void; onSettings?: () => void }) {
+function MenuQuickLinks({ onClans, onContinue, onRoad, onRelics, onProfile, onFriends, onCloset, onSettings }: { onClans?: () => void; onContinue: () => void; onRoad?: (r: 'level' | 'trophy' | 'season') => void; onRelics?: () => void; onProfile?: () => void; onFriends?: () => void; onCloset?: () => void; onSettings?: () => void }) {
   const go = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   const [spins, setSpins] = useState(() => loadRelics().spins);
   useEffect(() => {
@@ -385,6 +396,7 @@ function MenuQuickLinks({ onContinue, onRoad, onRelics, onProfile, onFriends, on
   const links: [string, string, (() => void) | undefined, number?][] = [
     ['play', 'Modes', () => go('menu-modes')],
     ['calendar', 'Daily', () => go('menu-daily')],
+    ['team', 'Clans', onClans ?? (() => go('menu-compete'))],
     ['list', 'Continue franchise', onContinue],
     ['star', 'Season Pass', onRoad && (() => onRoad('season'))],
     ['crown', 'Relics', onRelics, spins > 0 ? spins : undefined],

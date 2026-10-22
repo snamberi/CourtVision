@@ -1,4 +1,5 @@
 import { supa, getAccount } from './account';
+import { AREA_LABEL, formatPlayTime, type PlayArea } from '../retention/playTime';
 
 /*
  * The online boards, read straight from the database's public views (see supabase/schema.sql). Each query returns
@@ -16,15 +17,20 @@ export type BoardSpec =
   | { kind: 'rebuild'; scenario: string }
   | { kind: 'ranked'; season: string }
   | { kind: 'pvp' }
+  | { kind: 'playtime' }
   | { kind: 'code'; code: string }
   | { kind: 'friends' };
 
 interface Q { view: string; score: string; filters: [string, string | number][]; detail: (r: Record<string, unknown>) => string; asc?: boolean }
 const plural = (n: unknown, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
+const playDetail = (s: { playSeconds?: number; playTop?: string } | null) => {
+  const top = s?.playTop && s.playTop in AREA_LABEL ? AREA_LABEL[s.playTop as PlayArea] : null;
+  return `${formatPlayTime(Number(s?.playSeconds ?? 0))} played${top ? ` · most in ${top}` : ''}`;
+};
 
 function query(spec: BoardSpec): Q {
   switch (spec.kind) {
-    case 'gms': return { view: 'lb_users', score: 'xp', filters: [], detail: r => `LV ${r.level} · ${(r.stats as { summary?: string })?.summary ?? ''}` };
+    case 'gms': return { view: 'lb_gms', score: 'xp', filters: [], detail: r => `LV ${r.level} · ${(r.stats as { summary?: string })?.summary ?? ''}` };
     case 'players': return { view: 'lb_players', score: 'legacy', filters: spec.week ? [['weekly', spec.week]] : [],
       detail: r => `${r.name} · ${plural(r.seasons, 'season')} · ${r.ppg}/${r.rpg}/${r.apg} · ${plural(r.titles, 'title')} · ${plural(r.mvps, 'MVP')}${r.hall_of_fame !== 'no' ? ' · HOF' : ''}` };
     case 'weekly': return { view: 'lb_weekly', score: 'score', filters: [['board', spec.board], ['week', spec.week]], detail: r => String(r.detail ?? '') };
@@ -33,10 +39,11 @@ function query(spec: BoardSpec): Q {
     case 'ranked': return { view: 'lb_ranked', score: 'points', filters: [['season', spec.season]], detail: r => plural(r.events, 'result') };
     case 'pvp': return { view: 'lb_pvp', score: 'rating', filters: [], detail: r => `${r.wins}-${r.losses}` };
     case 'code': return { view: 'lb_codes', score: 'score', filters: [['code', spec.code]], detail: r => `${r.wins}-${r.losses} · ${r.finish}${r.team ? ` · ${r.team}` : ''}` };
-    case 'friends': return { view: 'lb_users', score: 'xp', filters: [], detail: r => `LV ${r.level} · ${(r.stats as { summary?: string })?.summary ?? ''}` };
+    case 'playtime': return { view: 'lb_gms', score: 'play_hours', filters: [], detail: r => playDetail(r.stats as { playSeconds?: number; playTop?: string } | null) };
+    case 'friends': return { view: 'lb_gms', score: 'xp', filters: [], detail: r => `LV ${r.level} · ${(r.stats as { summary?: string })?.summary ?? ''}` };
   }
 }
-const idColumn = (view: string) => (view === 'lb_users' ? 'id' : 'user_id');
+const idColumn = (view: string) => (view === 'lb_users' || view === 'lb_gms' ? 'id' : 'user_id');
 
 export async function loadBoard(spec: BoardSpec, limit = 100): Promise<BoardResult> {
   const client = await supa();
@@ -150,4 +157,21 @@ export async function friendActivity(limit = 20): Promise<ActivityItem[]> {
   for (const r of (daily.data ?? []) as Record<string, unknown>[]) items.push({ at: `${String(r.day)}T12:00:00Z`, username: String(r.username ?? ''), icon: r.icon as string | undefined, color: r.color as string | undefined,
     text: r.won ? `won the Daily Legend (${r.wins}-${r.losses} in games)` : `reached series ${Number(r.stop) + 1} of the Daily Legend` });
   return items.sort((a, b) => b.at.localeCompare(a.at)).slice(0, limit);
+}
+
+const WEEKLY_LABEL: Record<string, string> = { hunt: 'Weekly Hunt', perfect: 'Daily 82-0', rebuild: 'Rebuild of the Week', career: 'Career of the Week', guess: 'Guess the Player', hilo: 'Higher or Lower', bracket: 'Bracket Challenge', category: 'Category Challenge' };
+
+/** A GM's place on each weekly board they are on this week, best first. */
+export async function loadWeeklyRanks(userId: string, week: string): Promise<{ board: string; label: string; rank: number; of: number }[]> {
+  const client = await supa();
+  const { data } = await client.from('lb_weekly').select('board, score').eq('user_id', userId).eq('week', week);
+  const rows = (data ?? []) as { board: string; score: number }[];
+  const ranked = await Promise.all(rows.map(async r => {
+    const [{ count: above }, { count: of }] = await Promise.all([
+      client.from('lb_weekly').select('*', { count: 'exact', head: true }).eq('board', r.board).eq('week', week).gt('score', r.score),
+      client.from('lb_weekly').select('*', { count: 'exact', head: true }).eq('board', r.board).eq('week', week),
+    ]);
+    return { board: r.board, label: WEEKLY_LABEL[r.board] ?? r.board, rank: (above ?? 0) + 1, of: of ?? 0 };
+  }));
+  return ranked.sort((a, b) => a.rank - b.rank);
 }

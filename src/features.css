@@ -468,6 +468,45 @@ button.tcard:hover, button.tcard:focus-visible { transform: translateY(-3px); ou
 .friendly small { color: var(--c-fg-94a0b2, #94a0b2); }
 @media (max-width: 700px) { .profile-showcase { grid-template-columns: 1fr; } }
 
+/* Banner, bio, featured trophy, recent activity and the time-played bar (ProfileExtras.tsx) */
+.profile-banner { position: relative; overflow: hidden; margin: 2px 0 10px; padding: 8px 12px; border: 2px solid var(--c-border-0b1018, #0b1018); background: var(--c-bg-121926, #121926); }
+.profile-banner.team { background: linear-gradient(100deg, var(--banner-a) 0 58%, var(--banner-b) 58% 64%, var(--banner-a) 64% 70%, var(--banner-b) 70%); }
+.profile-banner.team::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, var(--c-bg-05080ecc, #05080ecc), transparent 75%); pointer-events: none; }
+.profile-banner-flag { position: absolute; right: -10px; top: 50%; transform: translateY(-50%); opacity: .45; pointer-events: none; }
+.profile-banner-body { position: relative; z-index: 1; }
+.profile-banner h2, .showcase-facts .profile-banner h2 { margin: 2px 0 4px; }
+.profile-bio { margin: 0 0 8px; color: var(--c-fg-c9ced8, #c9ced8); font-style: italic; overflow-wrap: anywhere; }
+.profile-banner .profile-bio { margin: 0; color: var(--c-fg-f4f0e6, #f4f0e6); }
+.featured-trophy { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; padding: 8px 12px; background: var(--c-bg-0b1018, #0b1018); border: 2px solid var(--c-border-ffd166, #ffd166); box-shadow: 3px 3px 0 var(--c-shadow-060a11, #060a11); }
+.featured-trophy-icon { display: grid; place-items: center; width: 38px; height: 38px; background: var(--c-bg-192333, #192333); color: var(--c-fg-ffd166, #ffd166); border: 2px solid var(--c-border-2a3546, #2a3546); flex: none; }
+.featured-trophy div { display: grid; gap: 1px; min-width: 0; }
+.featured-trophy small { font-size: 10px; letter-spacing: .08em; color: var(--c-fg-94a0b2, #94a0b2); }
+.featured-trophy b { color: var(--c-fg-ffd166, #ffd166); }
+.featured-trophy span { font-size: 12px; color: var(--c-fg-c9ced8, #c9ced8); }
+.recent-activity ul { list-style: none; margin: 4px 0 10px; padding: 0; display: grid; gap: 4px; }
+.recent-activity li { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; padding: 6px 10px; background: var(--c-bg-0b1018, #0b1018); border-left: 3px solid var(--c-border-2a3546, #2a3546); font-size: 13px; }
+.recent-activity li.weekly { border-left-color: var(--c-border-ffd166, #ffd166); }
+.recent-activity li.weekly b { color: var(--c-fg-ffd166, #ffd166); }
+.recent-activity li small { color: var(--c-fg-94a0b2, #94a0b2); white-space: nowrap; }
+.recent-activity li span { min-width: 0; overflow-wrap: anywhere; }
+.play-bar { display: grid; gap: 6px; margin: 4px 0 10px; width: 100%; }
+.play-bar-track { display: flex; height: 12px; background: var(--c-bg-0b1018, #0b1018); border: 2px solid var(--c-border-0b1018, #0b1018); }
+.play-bar-track i { display: block; min-width: 2px; height: 100%; }
+.play-bar-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; }
+.play-bar-legend li { display: flex; align-items: center; gap: 5px; }
+.play-bar-legend i { width: 9px; height: 9px; border: 1px solid var(--c-border-0b1018, #0b1018); }
+.play-bar-legend small { color: var(--c-fg-94a0b2, #94a0b2); }
+.play-time .play-bar { flex-basis: 100%; }
+.public-profile-editor { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px 14px; margin: 12px 0; padding: 12px; background: var(--c-bg-121926, #121926); border: 2px solid var(--c-border-2a3546, #2a3546); }
+.public-profile-editor h3, .public-profile-editor > small { grid-column: 1 / -1; margin: 0; }
+.public-profile-editor label { display: grid; gap: 4px; font-size: 12px; color: var(--c-fg-94a0b2, #94a0b2); min-width: 0; }
+.public-profile-editor select, .public-profile-editor input { width: 100%; min-width: 0; }
+.public-bio { grid-column: 1 / -1; grid-template-columns: 1fr auto; }
+.public-bio > span, .public-bio-problem { grid-column: 1 / -1; }
+.public-bio > span { display: flex; justify-content: space-between; }
+.public-bio-problem { color: var(--c-fg-e85d5d, #e85d5d); }
+
+
 /* ---------- Season Pass and the daily streak ---------- */
 .pass-track { list-style: none; margin: 12px 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
 .pass-track li { display: grid; gap: 2px; padding: 8px; background: var(--c-bg-121926, #121926); border: 2px solid var(--c-border-2a3546, #2a3546); text-align: center; }

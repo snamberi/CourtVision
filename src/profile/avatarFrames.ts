@@ -5,12 +5,12 @@ import { seasonTier, seasonRule, seasonHow } from '../retention/season';
 /*
  * Profile-picture frames: an ornate border around your character's portrait, wherever it shows (your profile chip,
  * the boards, your public profile). Three are won on the ranked ladder (finish a season #1, #2 or #3); six are on
- * the Level Road and the Trophy Road. The art is in src/components/AvatarFrame.tsx.
+ * the Level Road and the Trophy Road; four come with hours played. The art is in src/components/AvatarFrame.tsx.
  *
  * The list is append-only: a frame's place in it is part of the look code (avatarCode.ts).
  */
 
-export type AvatarFrameId = 'none' | 'rookie' | 'courtside' | 'neon' | 'blaze' | 'dragon' | 'celestial' | 'bronzeCrest' | 'silverWings' | 'goldCrown' | 'undefeated' | 'perfectGold' | 'sovereign' | 'founding' | 'glitch' | 'frozen' | 'inferno' | 'cobweb' | 'giftWrap';
+export type AvatarFrameId = 'none' | 'rookie' | 'courtside' | 'neon' | 'blaze' | 'dragon' | 'celestial' | 'bronzeCrest' | 'silverWings' | 'goldCrown' | 'undefeated' | 'perfectGold' | 'sovereign' | 'founding' | 'glitch' | 'frozen' | 'inferno' | 'cobweb' | 'giftWrap' | 'clock10' | 'clock50' | 'clock100' | 'clock500';
 export interface AvatarFrameDef {
   id: AvatarFrameId; name: string; blurb: string;
   /** How it opens: a level, trophies, or one of these leaderboard honors. */
@@ -25,6 +25,8 @@ export interface AvatarFrameDef {
   season?: { season: string; tier: number };
   /** Bought in a shop (its key in the relic save's cosmetics: a holiday event piece). */
   shop?: string;
+  /** Hours played (src/retention/playTime.ts). */
+  hours?: number;
 }
 
 const lvl = (id: AvatarFrameId) => roadLevel('avatarFrame', id) ?? 750;
@@ -49,13 +51,18 @@ export const AVATAR_FRAMES: AvatarFrameDef[] = [
   { id: 'inferno', name: 'Inferno', blurb: 'A ring of molten rock with flames licking up and embers rising. Season 3.', season: seasonRule('avatarFrame', 'inferno', 'inferno') },
   { id: 'cobweb', name: 'Cobweb', blurb: 'A haunted ring of cobwebs, a dangling spider and pumpkins. Spooky Season.', shop: 'evt-halloween-frame' },
   { id: 'giftWrap', name: 'Gift Wrap', blurb: 'Wrapped up in red ribbon with a bow and holly on top. Winter Wonderland.', shop: 'evt-christmas-frame' },
+  { id: 'clock10', name: 'Ten Hours', blurb: 'A copper clock ring with a stopwatch crown: 10 hours played.', hours: 10 },
+  { id: 'clock50', name: 'Fifty Hours', blurb: 'A silver clock ring: 50 hours played.', hours: 50 },
+  { id: 'clock100', name: 'Hundred Hours', blurb: 'A gold clock ring set with gems: 100 hours played.', hours: 100 },
+  { id: 'clock500', name: 'Five Hundred Hours', blurb: 'A sapphire clock ring under a crown: 500 hours played.', hours: 500 },
 ];
 export const avatarFrameDef = (id: string | null | undefined) => AVATAR_FRAMES.find(f => f.id === id) ?? AVATAR_FRAMES[0];
 
-export function avatarFrameOpen(f: AvatarFrameDef, ctx: { level: number; trophies: number; honors: string[]; modes?: string[]; staff?: boolean; account?: boolean; shop?: string[] }): boolean {
+export function avatarFrameOpen(f: AvatarFrameDef, ctx: { level: number; trophies: number; honors: string[]; modes?: string[]; staff?: boolean; account?: boolean; shop?: string[]; hours?: number }): boolean {
   if (ctx.staff) return true;
   if (f.staff) return false;
   if (f.shop) return (ctx.shop ?? []).includes(f.shop);
+  if (f.hours != null) return (ctx.hours ?? 0) >= f.hours;
   if (f.account) return !!ctx.account;
   if (f.season) return seasonTier(f.season.season) >= f.season.tier;
   if (f.modes) return f.modes.some(m => ctx.modes?.includes(m));
@@ -63,4 +70,4 @@ export function avatarFrameOpen(f: AvatarFrameDef, ctx: { level: number; trophie
   if (f.trophies != null) return ctx.trophies >= f.trophies;
   return ctx.level >= (f.level ?? 1);
 }
-export const avatarFrameHow = (f: AvatarFrameDef) => f.shop ? (f.shop.startsWith('evt-halloween-') ? 'Spooky Season event shop' : 'Winter Wonderland event shop') : f.season ? seasonHow(f.season) : f.staff ? 'Game Owner only' : f.account ? 'Create a free account' : f.modes ? (f.id === 'perfectGold' ? 'Go 98-0' : 'Go 82-0') : f.honors ? f.blurb.split(': ')[1] ?? 'Ranked' : f.trophies != null ? `${f.trophies.toLocaleString()} trophies` : f.level && f.level > 1 ? `Level ${f.level}` : 'Everyone';
+export const avatarFrameHow = (f: AvatarFrameDef) => f.hours != null ? `Play ${f.hours} hours` : f.shop ? (f.shop.startsWith('evt-halloween-') ? 'Spooky Season event shop' : 'Winter Wonderland event shop') : f.season ? seasonHow(f.season) : f.staff ? 'Game Owner only' : f.account ? 'Create a free account' : f.modes ? (f.id === 'perfectGold' ? 'Go 98-0' : 'Go 82-0') : f.honors ? f.blurb.split(': ')[1] ?? 'Ranked' : f.trophies != null ? `${f.trophies.toLocaleString()} trophies` : f.level && f.level > 1 ? `Level ${f.level}` : 'Everyone';
