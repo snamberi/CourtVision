@@ -43,6 +43,8 @@ export const SYNC_KEYS = [
   'cv-holiday', 'cv-1v1',
   // Pick'em right calls (the XP ledger) and Daily Draft results.
   'cv-pickem', 'cv-daily-draft',
+  // Your Career: the player you are playing now, and your best finished careers.
+  'cv-your-career', 'cv-your-career-records',
 ] as const;
 export type SyncKey = typeof SYNC_KEYS[number];
 
@@ -159,6 +161,8 @@ export function mergeValue(key: SyncKey, local: string | null | undefined, cloud
     case 'cv-bonus-xp': return JSON.stringify(mergeBonusLog(readBonusLog(() => local), readBonusLog(() => cloud)));
     case 'cv-perfect-records': return JSON.stringify(mergePerfectRecords(loadPerfectRecords(() => local), loadPerfectRecords(() => cloud)));
     case 'cv-record-book': return JSON.stringify(mergeRecordBook(readRecordBook(() => local), readRecordBook(() => cloud)));
+    case 'cv-your-career': return local;
+    case 'cv-your-career-records': { type R = { name: string; at: number; legacy: number }; const all = [...parse<R[]>(local, []), ...parse<R[]>(cloud, [])]; return JSON.stringify([...new Map(all.map(r => [`${r.name}-${r.at}`, r])).values()].sort((a, b) => b.legacy - a.legacy).slice(0, 10)); }
     case 'cv-activity': return JSON.stringify(mergeActivity(readActivity(() => local), readActivity(() => cloud)));
     // What you show on your public profile: this device's choice.
     case 'cv-profile-public': return local;

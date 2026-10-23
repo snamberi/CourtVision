@@ -6,15 +6,17 @@ export function modeRecords(): Partial<Record<string, string>> {
   const perfect = read<{ runs: number; bestWins: number; perfect98: number }>('cv-perfect-records');
   const survival = read<{ runs: number; best: Record<string, { wins?: number }> }>('cv-survival-records');
   const story = read<{ name: string; done: boolean }>('cv-story');
+  const yours = (() => { try { const v = JSON.parse(localStorage.getItem('cv-your-career-records') ?? '[]'); return Array.isArray(v) && v[0] && typeof v[0].name === 'string' ? v[0] as { name: string; legacy: number } : null; } catch { return null; } })();
   const bestSurvival = Math.max(0, ...Object.values(survival.best ?? {}).map(v => count((v as { wins?: number } | null)?.wins)));
   return {
     ...(count(hunt.runs) ? { legends: count(hunt.wins) ? `${count(hunt.wins)} hunts conquered` : `Best: series ${Math.min(10, count(hunt.bestStop) + 1)} / 10` } : {}),
     ...(count(perfect.runs) ? { perfect: count(perfect.perfect98) ? `98–0 achieved · ${count(perfect.perfect98)} perfect run${count(perfect.perfect98) === 1 ? '' : 's'}` : `Best season: ${Math.min(82, count(perfect.bestWins))}–${82 - Math.min(82, count(perfect.bestWins))}` } : {}),
     ...(count(survival.runs) ? { survival: `Best: ${bestSurvival} wins survived` } : {}),
+    ...(yours ? { yourCareer: `Best: ${yours.name} · Legacy ${count(yours.legacy)}` } : {}),
     ...(story.done === true ? { story: `${typeof story.name === 'string' ? story.name : 'Your player'} · story complete` } : {}),
   };
 }
 
 export const MODE_SHORT: Record<string, string> = {
-  franchise: 'Build a team. Turn seasons into a dynasty.', legends: 'Draft legends. Conquer ten all-time teams.', perfect: '82 wins. Zero losses. Then chase the title.', career: 'From draft night to the Hall of Fame.', survival: 'Every win costs a player. One loss ends it.', story: 'From the park to the league. Your choices matter.',
+  franchise: 'Build a team. Turn seasons into a dynasty.', legends: 'Draft legends. Conquer ten all-time teams.', perfect: '82 wins. Zero losses. Then chase the title.', career: 'From draft night to the Hall of Fame.', survival: 'Every win costs a player. One loss ends it.', story: 'From the park to the league. Your choices matter.', yourCareer: 'Age 13 to the Hall of Fame. Every season, your call.',
 };
