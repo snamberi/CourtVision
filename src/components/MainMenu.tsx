@@ -48,7 +48,7 @@ import { readArcade, guessStreak, isGuessDone, endlessOf, gridStreak } from '../
 import { challengeFor, challengeStreak, claimChallenge, readChallenge, today as challengeToday, CHALLENGE_INFO, type ChallengeMode } from '../retention/dailyChallenge';
 import { weekKey } from '../retention/week';
 
-export type GameMode = 'random' | 'real' | 'legends' | 'perfect' | 'category' | 'career' | 'rebuild' | 'draft' | 'survival' | 'story' | 'timeMachine';
+export type GameMode = 'random' | 'real' | 'legends' | 'perfect' | 'category' | 'career' | 'rebuild' | 'draft' | 'survival' | 'story' | 'timeMachine' | 'yourCareer';
 export interface RealLeagueOptions { source: 'history' | 'csv'; realDevelopment: boolean; forceRosters?: boolean; userTeamToo?: boolean; allPlayers?: boolean }
 
 interface Props {
@@ -91,7 +91,7 @@ interface Props {
 
 /** The cards on the menu. Franchise opens the New Franchise page (a real or random league, the Rebuild Challenge and
  *  the All-Time Draft); the others open their own setup screens. `badge` marks a highlight. */
-export type MenuMode = 'franchise' | 'legends' | 'perfect' | 'career' | 'survival' | 'story';
+export type MenuMode = 'franchise' | 'legends' | 'perfect' | 'career' | 'survival' | 'story' | 'yourCareer';
 const MODES: { id: MenuMode; title: string; blurb: string; kicker: string; icon: string; time: string; tags: string[]; badge?: 'popular' | 'fun' }[] = [
   {
     id: 'franchise', kicker: '01 / FRANCHISE', icon: 'court', time: 'Unlimited', tags: ['Real NBA', 'Random', 'Challenges'], badge: 'popular',
@@ -122,6 +122,11 @@ const MODES: { id: MenuMode; title: string; blurb: string; kicker: string; icon:
     id: 'story', kicker: '06 / STORY', icon: 'calendar', time: '20-40 min', tags: ['New', 'Story', 'Choices'],
     title: 'Story Mode',
     blurb: 'Street to the League: from a park with no nets to fifteen seasons in the real NBA. Five chapters on the way up, 80 story cards, every game on the real engine, a best friend, a mentor, a little sister, a rival named Ice, and nine endings.',
+  },
+  {
+    id: 'yourCareer', kicker: '07 / LIVE IT', icon: 'user', time: '10-30 min', tags: ['New', 'Choices', 'Age 13+'],
+    title: 'Your Career',
+    blurb: 'Build a player at 13: name, number, country, position, height and how he plays. Then every season is your call: which club, which high school, which college, when to declare for the draft, which contract, how to train and what to do when it goes wrong. Draft night, awards, the Hall of Fame.',
   },
 ];
 /** The menu card a Mode of the Week falls under. */
@@ -245,7 +250,7 @@ export function MainMenu({ onStart, saves, onOpenContinue, busy = null, onLocker
           </div>;
         })}
         {/* Room for the next modes. */}
-        {[7].map(n => <div key={n} className="mode-card-wrap soon">
+        {[8].map(n => <div key={n} className="mode-card-wrap soon">
           <button className="mode-card mode-soon" disabled aria-label="Coming soon">
             <span className="mode-card-kicker"><PixelIcon name="lock" size={24} /><span>0{n} / SOON</span></span>
             <h3>Coming soon</h3>

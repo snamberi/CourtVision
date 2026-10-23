@@ -205,6 +205,7 @@ const Survival = lazy(() => import('./components/survival/Survival').then(m => (
 const RoadPage = lazy(() => import('./components/roads/RoadPage').then(m => ({ default: m.RoadPage })));
 const SeasonPassPage = lazy(() => import('./components/roads/SeasonPassPage').then(m => ({ default: m.SeasonPassPage })));
 const RelicVault = lazy(() => import('./components/relics/RelicVault').then(m => ({ default: m.RelicVault })));
+const YourCareer = lazy(() => import('./components/yourCareer/YourCareer').then(m => ({ default: m.YourCareer })));
 const StoryMode = lazy(() => import('./components/story/StoryMode').then(m => ({ default: m.StoryMode })));
 const PerfectChallenge = lazy(() => import('./components/perfect/PerfectChallenge').then(m => ({ default: m.PerfectChallenge })));
 const LeagueHunt = lazy(() => import('./components/hunt/LeagueHunt').then(m => ({ default: m.LeagueHunt })));
@@ -317,7 +318,7 @@ function buildInitialExtras(league: League): GMLeagueExtras {
   };
 }
 
-type Screen = 'continue' | 'menu' | 'chooseTeam' | 'app' | 'hunt' | 'perfect' | 'survival' | 'story' | 'relics' | 'shop' | 'levelRoad' | 'trophyRoad' | 'seasonPass' | 'career' | 'locker' | 'profile' | 'community' | 'draft' | 'settings' | 'arcade' | 'create' | 'worldGamesMode' | 'friends' | 'clubs' | 'online' | 'friendList' | 'closet' | 'holiday' | 'updates';
+type Screen = 'continue' | 'menu' | 'chooseTeam' | 'app' | 'hunt' | 'perfect' | 'survival' | 'story' | 'relics' | 'shop' | 'levelRoad' | 'trophyRoad' | 'seasonPass' | 'career' | 'locker' | 'profile' | 'community' | 'draft' | 'settings' | 'arcade' | 'create' | 'worldGamesMode' | 'friends' | 'clubs' | 'online' | 'friendList' | 'closet' | 'holiday' | 'updates' | 'yourCareer';
 const ARCADE_HASH: Record<ArcadeTab, string> = { grid: '#/grid', guess: '#/guess', categorize: '#/categorize', guessTeam: '#/guess-the-team', hilo: '#/higher-lower', bracket: '#/bracket', quiz: '#/quiz', legends: '#/legends', street: '#/street', oneOnOne: '#/1v1', tour: '#/tournament', dailyDraft: '#/daily-draft' };
 const arcadeTabOf = (hash: string) => (Object.entries(ARCADE_HASH).find(([, h]) => h === hash)?.[0] as ArcadeTab | undefined);
 
@@ -335,7 +336,7 @@ function App() {
   const [league, setLeague] = useState<League>(buildInitialLeague);
   const [extras, setExtras] = useState<GMLeagueExtras>(() => buildInitialExtras(league));
   const [pendingLeague, setPendingLeague] = useState<League | null>(null);
-  usePlayClock(screen === 'app' ? (league.rebuildChallenge ? 'rebuild' : 'gm') : screen === 'hunt' || screen === 'perfect' || screen === 'career' || screen === 'draft' ? screen : screen === 'arcade' ? 'arcade' : 'menu');
+  usePlayClock(screen === 'app' ? (league.rebuildChallenge ? 'rebuild' : 'gm') : screen === 'hunt' || screen === 'perfect' || screen === 'career' || screen === 'draft' ? screen : screen === 'yourCareer' ? 'career' : screen === 'arcade' ? 'arcade' : 'menu');
   const [pendingExtras, setPendingExtras] = useState<GMLeagueExtras | null>(null);
   const [controlledTeamId, setControlledTeamId] = useState<string | null>(null);
   const sandboxMode = league.settings.sandboxMode === true;
@@ -419,7 +420,7 @@ function App() {
   const [worldGamesRun, setWorldGamesRun] = useState<{ games: GamesId; country: string } | null>(null);
   const [boxscoreSource, setBoxscoreSource] = useState<'league' | 'exhibition'>('league');
 
-  const currentRoute = screen === 'continue' ? '#/continue' : screen === 'menu' ? '#/menu' : screen === 'chooseTeam' ? '#/choose-team' : screen === 'hunt' ? '#/hunt' : screen === 'perfect' ? '#/82-0' : screen === 'survival' ? '#/survival' : screen === 'story' ? '#/story' : screen === 'relics' ? '#/relics' : screen === 'shop' ? '#/shop' : screen === 'levelRoad' ? '#/level-road' : screen === 'trophyRoad' ? '#/trophy-road' : screen === 'seasonPass' ? '#/season-pass' : screen === 'career' ? '#/career' : screen === 'locker' ? '#/locker' : screen === 'profile' ? '#/profile' : screen === 'settings' ? '#/settings' : screen === 'create' ? '#/new-league' : screen === 'worldGamesMode' ? '#/world-games' : screen === 'friends' ? '#/friends' : screen === 'friendList' ? '#/friend-list' : screen === 'closet' ? '#/closet' : screen === 'holiday' ? '#/event' : screen === 'updates' ? '#/updates' : screen === 'clubs' ? '#/clubs' : screen === 'online' ? '#/online' : screen === 'draft' ? '#/draft' : screen === 'arcade' ? ARCADE_HASH[arcadeTab] : screen === 'community' ? (communityUser ? `#/u/${encodeURIComponent(communityUser)}` : '#/community')
+  const currentRoute = screen === 'continue' ? '#/continue' : screen === 'menu' ? '#/menu' : screen === 'chooseTeam' ? '#/choose-team' : screen === 'hunt' ? '#/hunt' : screen === 'perfect' ? '#/82-0' : screen === 'survival' ? '#/survival' : screen === 'story' ? '#/story' : screen === 'yourCareer' ? '#/your-career' : screen === 'relics' ? '#/relics' : screen === 'shop' ? '#/shop' : screen === 'levelRoad' ? '#/level-road' : screen === 'trophyRoad' ? '#/trophy-road' : screen === 'seasonPass' ? '#/season-pass' : screen === 'career' ? '#/career' : screen === 'locker' ? '#/locker' : screen === 'profile' ? '#/profile' : screen === 'settings' ? '#/settings' : screen === 'create' ? '#/new-league' : screen === 'worldGamesMode' ? '#/world-games' : screen === 'friends' ? '#/friends' : screen === 'friendList' ? '#/friend-list' : screen === 'closet' ? '#/closet' : screen === 'holiday' ? '#/event' : screen === 'updates' ? '#/updates' : screen === 'clubs' ? '#/clubs' : screen === 'online' ? '#/online' : screen === 'draft' ? '#/draft' : screen === 'arcade' ? ARCADE_HASH[arcadeTab] : screen === 'community' ? (communityUser ? `#/u/${encodeURIComponent(communityUser)}` : '#/community')
     : activeSaveId ? routeHash({ saveId: activeSaveId, tab, player: selectedPlayerId,
       team: viewedTeamId, game: viewedGameId ?? undefined, source: boxscoreSource, sub: leagueSettingsSub }) : null;
   const { restoring, showPrivacy, closePrivacy } = useGameHistory(currentRoute, async (hash, isCurrent) => {
@@ -439,7 +440,7 @@ function App() {
       setCommunityUser(profileMatch ? decodeURIComponent(profileMatch[1]) : null);
       const arcade = arcadeTabOf(hash);
       if (arcade) setArcadeTab(arcade);
-      setScreen(arcade ? 'arcade' : hash === '#/choose-team' && pendingLeague ? 'chooseTeam' : hash === '#/hunt' ? 'hunt' : hash === '#/82-0' ? 'perfect' : hash === '#/survival' ? 'survival' : hash === '#/story' ? 'story' : hash === '#/relics' ? 'relics' : hash === '#/shop' ? 'shop' : hash === '#/level-road' ? 'levelRoad' : hash === '#/trophy-road' ? 'trophyRoad' : hash === '#/season-pass' ? 'seasonPass' : hash === '#/career' ? 'career' : hash === '#/locker' ? 'locker' : hash === '#/profile' ? 'profile' : hash === '#/settings' ? 'settings' : hash === '#/continue' ? 'continue' : hash === '#/new-league' ? 'create' : hash === '#/world-games' && worldGamesRun ? 'worldGamesMode' : hash === '#/friends' ? 'friends' : hash === '#/friend-list' ? 'friendList' : hash === '#/closet' ? 'closet' : hash === '#/event' ? 'holiday' : hash === '#/updates' ? 'updates' : hash === '#/clubs' ? 'clubs' : hash === '#/online' ? 'online' : hash === '#/community' || profileMatch ? 'community' : hash === '#/draft' ? 'draft' : 'menu');
+      setScreen(arcade ? 'arcade' : hash === '#/choose-team' && pendingLeague ? 'chooseTeam' : hash === '#/hunt' ? 'hunt' : hash === '#/82-0' ? 'perfect' : hash === '#/survival' ? 'survival' : hash === '#/story' ? 'story' : hash === '#/your-career' ? 'yourCareer' : hash === '#/relics' ? 'relics' : hash === '#/shop' ? 'shop' : hash === '#/level-road' ? 'levelRoad' : hash === '#/trophy-road' ? 'trophyRoad' : hash === '#/season-pass' ? 'seasonPass' : hash === '#/career' ? 'career' : hash === '#/locker' ? 'locker' : hash === '#/profile' ? 'profile' : hash === '#/settings' ? 'settings' : hash === '#/continue' ? 'continue' : hash === '#/new-league' ? 'create' : hash === '#/world-games' && worldGamesRun ? 'worldGamesMode' : hash === '#/friends' ? 'friends' : hash === '#/friend-list' ? 'friendList' : hash === '#/closet' ? 'closet' : hash === '#/event' ? 'holiday' : hash === '#/updates' ? 'updates' : hash === '#/clubs' ? 'clubs' : hash === '#/online' ? 'online' : hash === '#/community' || profileMatch ? 'community' : hash === '#/draft' ? 'draft' : 'menu');
       refreshSaves();
       return;
     }
@@ -676,6 +677,8 @@ function App() {
       setScreen('survival');
     } else if (mode === 'story') {
       setScreen('story');
+    } else if (mode === 'yourCareer') {
+      setScreen('yourCareer');
     } else if (mode === 'category') {
       // The Category Draft card opens the 82-0 Challenge straight into a Category Roll (or the run in progress).
       try { localStorage.setItem('cv-p820-start', 'category'); } catch { /* storage blocked */ }
@@ -1719,6 +1722,9 @@ function App() {
   }
   if (screen === 'seasonPass') {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} />{menuBar}<Suspense fallback={<main role="status" className="navigation-loading">Opening the Season Pass…</main>}><SeasonPassPage onExit={() => setScreen('menu')} onRelics={() => setScreen('relics')} /></Suspense></>;
+  }
+  if (screen === 'yourCareer') {
+    return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Your Career…</main>}><YourCareer onExit={() => setScreen('menu')} /></Suspense></>;
   }
   if (screen === 'story') {
     return <><ToastStack toasts={toasts} onDismiss={dismissToast} /><Suspense fallback={<main role="status" className="navigation-loading">Opening Story Mode…</main>}><StoryMode onExit={() => setScreen('menu')} /></Suspense></>;
