@@ -236,6 +236,8 @@
 /* Court Vision on TikTok and Instagram: the brands' own tile colours. */
 .app-tile.tiktok { background: #010101; border-color: #010101; }
 .app-tile.instagram { background: linear-gradient(45deg, #feda75 0%, #fa7e1e 25%, #d62976 50%, #962fbf 75%, #4f5bd5 100%); border-color: #962fbf; }
+.app-tile.youtube { background: #ff0033; border-color: #cc0029; }
+.app-tile.reddit { background: #ff4500; border-color: #cc3700; }
 a.menu-phone-app { text-decoration: none; }
 .menu-phone-home { justify-self: center; width: 34px; height: 3px; border-radius: 2px; background-color: var(--look-muted); opacity: .6; }
 

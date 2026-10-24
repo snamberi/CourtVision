@@ -28,6 +28,8 @@ const PER_PAGE = 6;
 export const SOCIALS = {
   tiktok: 'https://www.tiktok.com/@courtvision.game',
   instagram: 'https://www.instagram.com/courtvision.game/',
+  youtube: 'https://www.youtube.com/@NineFoldVision',
+  reddit: 'https://www.reddit.com/r/NineFoldVision/',
 } as const;
 
 /** The TikTok note and the Instagram camera, drawn in pixels (16x16). */
@@ -35,6 +37,12 @@ const TikTokGlyph = () => <svg viewBox="0 0 16 16" width="20" height="20" shapeR
   <path fill="#25f4ee" d="M7 2h2v9h-1v2H5v-1H4v-2h1V9h3V2z" transform="translate(-1 1)" />
   <path fill="#fe2c55" d="M7 2h2v9h-1v2H5v-1H4v-2h1V9h3V2z" transform="translate(1 0)" />
   <path fill="#fff" d="M7 2h2v1h1v1h2v2h-3v5H8v2H5v-1H4v-2h1V9h2V2z" />
+</svg>;
+const YouTubeGlyph = () => <svg viewBox="0 0 16 16" width="20" height="20" shapeRendering="crispEdges" aria-hidden="true">
+  <path fill="#fff" d="M2 4h12v1h1v6h-1v1H2v-1H1V5h1z" /><path fill="#ff0033" d="M6 6h1v1h1v1h1v1H8v1H7v1H6z" />
+</svg>;
+const RedditGlyph = () => <svg viewBox="0 0 16 16" width="20" height="20" shapeRendering="crispEdges" aria-hidden="true">
+  <path fill="#fff" d="M10 2h2v2h-2zM8 3h2v1H8v2H7V3zM4 6h8v1h1v1h1v3h-1v1h-1v1H4v-1H3v-1H2V8h1V7h1z" /><path fill="#ff4500" d="M5 9h1v1H5zM10 9h1v1h-1zM6 11h4v1H6z" />
 </svg>;
 const InstagramGlyph = () => <svg viewBox="0 0 16 16" width="20" height="20" shapeRendering="crispEdges" aria-hidden="true">
   <path fill="#fff" d="M4 2h8v1h1v1h1v8h-1v1h-1v1H4v-1H3v-1H2V4h1V3h1zm0 2v8h8V4zm4 1h1v1h1v1h1v2h-1v1H9v1H7v-1H6V9H5V7h1V6h1V5zm0 2v2h1V7zm3-3h1v1h-1z" />
@@ -106,6 +114,8 @@ export function MenuPhone({ onFriendList, onCloset, onBoards, onFriends, onProfi
     </button> },
     { key: 'tiktok', node: <a className="menu-phone-app" href={SOCIALS.tiktok} target="_blank" rel="noopener noreferrer" aria-label="Court Vision on TikTok (opens a new tab)"><span className="app-tile tiktok"><TikTokGlyph /></span><small>TikTok</small></a> },
     { key: 'instagram', node: <a className="menu-phone-app" href={SOCIALS.instagram} target="_blank" rel="noopener noreferrer" aria-label="Court Vision on Instagram (opens a new tab)"><span className="app-tile instagram"><InstagramGlyph /></span><small>Instagram</small></a> },
+    { key: 'youtube', node: <a className="menu-phone-app" href={SOCIALS.youtube} target="_blank" rel="noopener noreferrer" aria-label="NineFoldVision on YouTube (opens a new tab)"><span className="app-tile youtube"><YouTubeGlyph /></span><small>YouTube</small></a> },
+    { key: 'reddit', node: <a className="menu-phone-app" href={SOCIALS.reddit} target="_blank" rel="noopener noreferrer" aria-label="NineFoldVision on Reddit (opens a new tab)"><span className="app-tile reddit"><RedditGlyph /></span><small>Reddit</small></a> },
     onRelics && { key: 'relics', node: <button className="menu-phone-app" onClick={onRelics} aria-label={`Relic Vault${relics.spins ? `, ${relics.spins} spin${relics.spins === 1 ? '' : 's'} waiting` : ''}`}><span className="app-tile relics"><PixelIcon name="crown" size={20} />{relics.spins > 0 && <em className="app-badge">{relics.spins}</em>}</span><small>Relics</small></button> },
     (onShop || onRelics) && { key: 'shop', node: <button className="menu-phone-app" onClick={openShop} aria-label={`Relic Shop, ${relics.coins} coins${relics.wish ? `, ${relics.wish} starred cosmetic${relics.wish === 1 ? '' : 's'} on sale today` : shopNew ? ', new relics today' : ''}`}><span className="app-tile shop"><PixelIcon name="star" size={20} /><em>{relics.coins >= 1000 ? `${Math.floor(relics.coins / 1000)}k` : relics.coins}</em>{relics.wish > 0 ? <em className="app-badge wish" aria-hidden="true">★</em> : shopNew && dot}</span><small>Shop</small></button> },
     onSettings && { key: 'settings', node: <button className="menu-phone-app" onClick={onSettings}><span className="app-tile settings"><PixelIcon name="gear" size={20} /></span><small>Settings</small></button> },
