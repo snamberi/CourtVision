@@ -75,9 +75,10 @@ export async function handleSync(req: Request, env: SupaEnv | null, now = new Da
     const previous = Array.isArray(current?.stats?.honors) ? (current!.stats!.honors as unknown[]).filter((h): h is string => typeof h === 'string') : [];
     let honors = previous;
     try {
-      honors = await computeHonors(env, id, d, now, previous, f);
+      // The owner is on no board, so it earns no board honors either.
+      if (!owner) honors = await computeHonors(env, id, d, now, previous, f);
       const ghost = ((await rest(env, 'GET', `hunt_ghosts?${eq}&select=rating`, undefined, undefined, f)) as { rating: number }[] | null)?.[0];
-      if (ghost && !honors.includes('pvp-10') && await pvpHonor(env, id, ghost.rating, f)) honors = [...honors, 'pvp-10'].sort();
+      if (ghost && !owner && !honors.includes('pvp-10') && await pvpHonor(env, id, ghost.rating, f)) honors = [...honors, 'pvp-10'].sort();
     } catch { /* keep the honors already earned */ }
     // Your character on the boards (a database without the avatar column yet just skips it).
     const avatar = publicAvatar(blob, d.profile.level, honors, owner);

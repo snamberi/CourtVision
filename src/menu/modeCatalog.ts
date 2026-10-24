@@ -6,7 +6,7 @@
 
 export type ArcadeTabId = 'grid' | 'guess' | 'hilo' | 'bracket' | 'quiz' | 'legends' | 'street' | 'oneOnOne' | 'tour' | 'categorize' | 'guessTeam' | 'dailyDraft';
 export type CreateChallengeId = 'free' | 'decade' | 'dynasty' | 'rebuild' | 'draft' | 'worldgames' | 'timeMachine';
-export type StartModeId = 'legends' | 'perfect' | 'category' | 'career' | 'survival' | 'story';
+export type StartModeId = 'legends' | 'perfect' | 'category' | 'career' | 'survival' | 'story' | 'yourCareer';
 
 export type ModeAction =
   | { kind: 'create'; challenge: CreateChallengeId }
@@ -19,7 +19,7 @@ export interface ModeEntry {
   id: string;
   group: ModeGroup;
   /** For a sub-mode: the main mode it belongs to. */
-  parent?: 'franchise' | 'legends' | 'perfect' | 'career' | 'survival' | 'story';
+  parent?: 'franchise' | 'legends' | 'perfect' | 'career' | 'survival' | 'story' | 'yourCareer';
   title: string;
   desc: string;
   icon: string;
@@ -44,6 +44,7 @@ export const MODE_CATALOG: ModeEntry[] = [
   { id: 'category', group: 'perfect', parent: 'perfect', title: 'Category Draft', desc: 'Draft your 82-0 team from a category: MVPs, the 90s, the Lakers.', icon: 'grid', art: ['#1f2f4f', '#a77b4c', '#4da3ff'], action: { kind: 'start', mode: 'category' } },
   { id: 'career', group: 'main', parent: 'career', title: 'Career Mode', desc: 'One player, one whole career: draft night to the Hall of Fame.', icon: 'user', art: ['#13314a', '#b98a55', '#55c878'], action: { kind: 'start', mode: 'career' } },
   { id: 'survival', group: 'main', parent: 'survival', title: 'Survival', desc: 'Ten greats. Every win costs you one. One loss ends it.', icon: 'shield', art: ['#3d1212', '#8f5a35', '#e85d5d'], action: { kind: 'start', mode: 'survival' } },
+  { id: 'yourCareer', group: 'main', parent: 'yourCareer', title: 'Your Career', desc: 'Build a player at 13. Every season you choose: school, draft, contracts.', icon: 'user', art: ['#1a2b45', '#b98a55', '#ffd166'], action: { kind: 'start', mode: 'yourCareer' } },
   { id: 'story', group: 'main', parent: 'story', title: 'Story Mode', desc: 'From the park to fifteen seasons in the real NBA: your choices, nine endings.', icon: 'book', art: ['#22223b', '#9a7048', '#f4a259'], action: { kind: 'start', mode: 'story' } },
 
   // Quick Games

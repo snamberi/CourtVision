@@ -93,6 +93,8 @@ export interface LeagueTeam {
   chemistry?: number; // 0-100, optional system (spec section 90); defaults to a neutral 70 if unset
   previousOverallAverage?: number; // team-wide average full-attribute Overall as of the last season rollover, for improve/decline tracking
   offseasonStartRosterIds?: string[]; // roster snapshot taken right as the offseason begins (post-retirement, pre-draft/FA), used to measure continuity for chemistry drift
+  /** The coach's shot pecking order (1st/2nd/3rd option), set on the Roster page; see scoringOptions.ts. */
+  scoringOptions?: import('./scoringOptions').ScoringOptions;
   rotationOrder?: string[]; // explicit depth-chart order (drag-and-drop reorderable); first 5 are starters. Missing/new players are appended by minutes.target.
   conferenceId?: 'east' | 'west'; // absent on older saves / small sandbox leagues that predate conference support
   divisionId?: string; // e.g. "Atlantic" — always paired with a conferenceId when present
@@ -673,7 +675,7 @@ export function teamGameInput(league: League, teamId: string): PreparedGame['inp
   const team = league.teams.find((t) => t.teamId === teamId)!;
   const injuries = league.injuries ?? {};
   const available = ensureMinimumAvailable(team.seasons, team.seasons.filter((s) => !((injuries[s.playerId]?.gamesRemaining ?? 0) > 0)), injuries);
-  return { teamId, seasons: available, coach: team.coach, chemistry: team.chemistry, coachIdentity: gameStaffCoach(team), rotationOrder: team.rotationOrder };
+  return { teamId, seasons: available, coach: team.coach, chemistry: team.chemistry, coachIdentity: gameStaffCoach(team), rotationOrder: team.rotationOrder, scoringOptions: team.scoringOptions };
 }
 
 /** Tonight's extra edge for a team: a strong duo whose partner dressed, and (at home) the arena's upgrades. */
@@ -705,8 +707,8 @@ function prepareGame(league: League, idx: number, seedBase: number, injuries: Re
   awayAvailable = ensureMinimumAvailable(away.seasons, awayAvailable, injuries);
 
   const input: PreparedGame['input'] = {
-    home: { teamId: home.teamId, seasons: homeAvailable, coach: home.coach, chemistry: home.chemistry, coachIdentity: gameStaffCoach(home), rotationOrder: home.rotationOrder, ...gameBoost(league, home, homeAvailable.map(s => s.playerId), true, g.id) },
-    away: { teamId: away.teamId, seasons: awayAvailable, coach: away.coach, chemistry: away.chemistry, coachIdentity: gameStaffCoach(away), rotationOrder: away.rotationOrder, ...gameBoost(league, away, awayAvailable.map(s => s.playerId), false, g.id) },
+    home: { teamId: home.teamId, seasons: homeAvailable, coach: home.coach, chemistry: home.chemistry, coachIdentity: gameStaffCoach(home), rotationOrder: home.rotationOrder, scoringOptions: home.scoringOptions, ...gameBoost(league, home, homeAvailable.map(s => s.playerId), true, g.id) },
+    away: { teamId: away.teamId, seasons: awayAvailable, coach: away.coach, chemistry: away.chemistry, coachIdentity: gameStaffCoach(away), rotationOrder: away.rotationOrder, scoringOptions: away.scoringOptions, ...gameBoost(league, away, awayAvailable.map(s => s.playerId), false, g.id) },
     settings: { ...league.settings, seed: seedBase + idx },
     rules: league.rulesSettings, moraleImpact: league.coachingSettings?.moraleImpact,
     liveCoaching,
@@ -893,6 +895,60 @@ export function simulateRounds(league: League, numberOfRounds: number, seedBase 
 export function simulateDays(league: League, numberOfDays: number, seedBase = 1): League {
   const rounds = Math.max(1, Math.ceil(numberOfDays / DAYS_PER_ROUND));
   return simulateRounds(league, rounds, seedBase);
+}
+
+/**
+ * The first schedule round NOT to play so `teamId` plays `games` more games (every other team plays the same game
+ * days). With no team, it's `games` game days. Works on actual round numbers, so gaps and rest days (odd team counts,
+ * where a team sits out a round) don't make "Next Game" play nothing or "10 games" play too few.
+ */
+export function roundTargetForTeamGames(league: League, teamId: string | null, games: number): number | null {
+  const unplayed = league.schedule.filter((g) => !g.played);
+  if (unplayed.length === 0) return null;
+  const want = Math.max(1, Math.floor(games));
+  const mine = teamId ? unplayed.filter((g) => g.homeTeamId === teamId || g.awayTeamId === teamId) : [];
+  if (teamId && mine.length > 0) {
+    const rounds = [...new Set(mine.map((g) => g.round))].sort((a, b) => a - b);
+    return rounds[Math.min(want, rounds.length) - 1] + 1;
+  }
+  const rounds = [...new Set(unplayed.map((g) => g.round))].sort((a, b) => a - b);
+  return rounds[Math.min(want, rounds.length) - 1] + 1;
+}
+
+/**
+ * The first schedule round NOT to play to cover the next `days` calendar days (each round is `DAYS_PER_ROUND` days
+ * after the last one played), so "1 Week" plays ~3 games per team and "1 Month" ~15 — not 7 and 30. Always includes
+ * the next game day.
+ */
+export function roundTargetForDays(league: League, days: number): number | null {
+  const unplayed = league.schedule.filter((g) => !g.played);
+  if (unplayed.length === 0) return null;
+  const first = Math.min(...unplayed.map((g) => g.round));
+  // A game day already under way (a watched game) counts as today.
+  const today = league.calendarRound === first ? 1 : 0;
+  return first + Math.max(1, Math.floor(days / DAYS_PER_ROUND) + today);
+}
+
+/**
+ * The engine plays the schedule in array order, so unplayed games must be sorted by round. Ring Night used to swap
+ * two rounds' numbers in place, leaving round 49 first in line: Play then counted from round 49 and "1 Week" played
+ * 52 games. Played games keep their order; returns the same schedule when it's already in order.
+ */
+export function sortUnplayedByRound(schedule: ScheduledGame[]): ScheduledGame[] {
+  const unplayed = schedule.filter((g) => !g.played);
+  if (unplayed.every((g, i) => i === 0 || unplayed[i - 1].round <= g.round)) return schedule;
+  return [...schedule.filter((g) => g.played), ...[...unplayed].sort((a, b) => a.round - b.round)];
+}
+
+/** Plays every unplayed game before schedule round `targetRound` (stops early at a pending All-Star break). */
+export function simulateToRound(league: League, targetRound: number, seedBase = 1): League {
+  let current = league;
+  while (current.schedule.some((g) => !g.played && g.round < targetRound)) {
+    const next = simulateFullRound(current, seedBase);
+    if (next === current) break;
+    current = next;
+  }
+  return current;
 }
 
 /** Number of games remaining for a single team (defaults to the whole league's remaining games when teamId is null). */

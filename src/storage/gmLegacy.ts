@@ -1,5 +1,6 @@
 import type { League } from '../simulation/league';
-import { isOfficialLeague } from '../simulation/frontOffice';
+import { isOfficialLeague, ACHIEVEMENT_BY_ID } from '../simulation/frontOffice';
+import { noteActivity } from '../retention/activity';
 import { localRead, type Read } from '../lib/kv';
 
 /* Your GM legacy across every league played in this browser: achievements earned anywhere and career totals per
@@ -66,6 +67,20 @@ export function recordLeagueLegacy(saveId: string, name: string, league: League)
   const after = mergeLeague(before, saveId, name, league);
   const strip = (l: GmLegacy) => JSON.stringify({ a: Object.fromEntries(Object.entries(l.achievements).map(([k, v]) => [k, v.saveIds])), l: Object.fromEntries(Object.entries(l.leagues).map(([k, v]) => [k, { ...v, updatedAt: 0 }])) });
   if (strip(before) !== strip(after)) write(after);
+  noteLegacyActivity(before, after, saveId, league);
+}
+
+/** A new GM title or achievement goes on your profile's recent activity. */
+function noteLegacyActivity(before: GmLegacy, after: GmLegacy, saveId: string, league: League): void {
+  const was = before.leagues[saveId]?.titles ?? 0, now = after.leagues[saveId]?.titles ?? 0;
+  if (now > was) {
+    const won = (league.frontOffice?.reviews ?? []).filter(r => r.finish === 'Champion' && !r.unofficial).at(-1);
+    if (won) noteActivity('title', `Won the title with ${won.teamName} (${won.season})`, `title-${saveId}-${won.season}`);
+  }
+  for (const id of Object.keys(after.achievements)) {
+    if (before.achievements[id]) continue;
+    noteActivity('achievement', `Unlocked ${ACHIEVEMENT_BY_ID.get(id)?.name ?? id}`, `ach-${id}`);
+  }
 }
 
 export function legacyTotals(legacy: GmLegacy) {

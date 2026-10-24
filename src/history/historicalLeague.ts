@@ -263,48 +263,61 @@ export function seedFor(h: NbaHistory, p: HistPlayer, end: number, profileEnds: 
 }
 
 /**
- * Each later season's real opening rosters (a player's first team that season, the top 15 by minutes), keyed by the
+ * Each later season's rosters (the team each player finished that season with, the 15 best by rating), keyed by the
  * league's team ids (franchises that moved keep their id), for Historical rosters.
  */
+/**
+ * Where each player belongs at the start of a season: the team he FINISHED that real season with (his playoff team),
+ * so a deadline deal is already done on opening night. Keyed by player index.
+ */
+function finalTeamRows(h: NbaHistory, end: number): Map<number, HistSeasonRow> {
+  const last = new Map<number, HistSeasonRow>();
+  for (const r of h.seasons) {
+    if (r.season !== end || r.isAggregate || !NBA.has(r.league)) continue;
+    const cur = last.get(r.player);
+    if (!cur || r.stintIndex > cur.stintIndex) last.set(r.player, r);
+  }
+  // A player who sat the whole season out (Kevin Durant's 2019-20 after his Achilles) is still on a roster: the team he
+  // played for next, as he really was. Only for a one- or two-season gap in a continuing career.
+  for (const [idx, rows] of h.seasonsByPlayer) {
+    if (last.has(idx)) continue;
+    const nba = rows.filter(r => NBA.has(r.league) && !r.isAggregate);
+    const before = nba.filter(r => r.season < end), after = nba.filter(r => r.season > end);
+    if (!before.length || !after.length) continue;
+    const prev = Math.max(...before.map(r => r.season)), next = Math.min(...after.map(r => r.season));
+    if (end - prev > 2 || next - end > 2) continue;
+    const joins = after.filter(r => r.season === next).sort((a, b) => a.stintIndex - b.stintIndex)[0];
+    last.set(idx, { ...joins, season: end, stintIndex: 0, age: joins.age == null ? null : joins.age - (next - end), stats: { ...joins.stats, g: 0, gs: 0, mp: 0, pts: 0 } });
+  }
+  return last;
+}
+
+/**
+ * Best first for a 15-man roster: that season's rating, then minutes. Ranking on minutes alone cut stars who missed
+ * most of a year (Stephen Curry played 5 games in 2019-20 and fell off the Warriors).
+ */
+function rosterOrder(h: NbaHistory, end: number) {
+  // The better of this season's and last season's rating (a part-season rating can be far too low: Jordan Clarkson's
+  // 2017-18 reads 41, his 2016-17 53), plus a little for the minutes he played with this team.
+  const rated = (r: HistSeasonRow) => Math.max(h.ratingsByPlayer.get(r.player)?.get(end)?.ovr ?? 0, h.ratingsByPlayer.get(r.player)?.get(end - 1)?.ovr ?? 0);
+  const minutes = (r: HistSeasonRow) => r.stats.mp ?? (r.stats.g ?? 0) * 20;
+  const score = (r: HistSeasonRow) => rated(r) + Math.min(25, minutes(r) / 80);
+  return (a: HistSeasonRow, b: HistSeasonRow) => score(b) - score(a) || (b.stats.pts ?? 0) - (a.stats.pts ?? 0);
+}
+
 export function historicalRosterPlan(h: NbaHistory, fromEnd: number, toEnd: number, teamIds: Set<string>, mapTeam: (abbr: string) => string): Record<string, Record<string, { abbr: string; ids: string[] }>> {
   const plan: Record<string, Record<string, { abbr: string; ids: string[] }>> = {};
   for (let end = fromEnd; end <= toEnd; end++) {
-    const first = new Map<number, HistSeasonRow>();
-    for (const r of h.seasons) {
-      if (r.season !== end || r.isAggregate || !NBA.has(r.league)) continue;
-      const cur = first.get(r.player);
-      if (!cur || r.stintIndex < cur.stintIndex) first.set(r.player, r);
-    }
     const byTeam = new Map<string, HistSeasonRow[]>();
-    for (const r of first.values()) { const id = mapTeam(r.team); if (!teamIds.has(id)) continue; (byTeam.get(id) ?? byTeam.set(id, []).get(id)!).push(r); }
+    for (const r of finalTeamRows(h, end).values()) { const id = mapTeam(r.team); if (!teamIds.has(id)) continue; (byTeam.get(id) ?? byTeam.set(id, []).get(id)!).push(r); }
     const season: Record<string, { abbr: string; ids: string[] }> = {};
     for (const [id, rows] of byTeam) {
-      rows.sort((a, b) => (b.stats.mp ?? (b.stats.g ?? 0) * 20) - (a.stats.mp ?? (a.stats.g ?? 0) * 20));
+      rows.sort(rosterOrder(h, end));
       season[id] = { abbr: rows[0].team, ids: rows.slice(0, 15).map(r => h.players[r.player].id) };
     }
     if (Object.keys(season).length) plan[String(endToStart(end))] = season;
   }
   return plan;
-}
-
-/** Real mid-season moves: a player who played for more than one team finished the season with the last of them. */
-export function historicalMidseasonMoves(h: NbaHistory, fromEnd: number, toEnd: number, teamIds: Set<string>, mapTeam: (abbr: string) => string): Record<string, { id: string; to: string }[]> {
-  const out: Record<string, { id: string; to: string }[]> = {};
-  const byKey = new Map<string, HistSeasonRow[]>();
-  for (const r of h.seasons) {
-    if (r.season < fromEnd || r.season > toEnd || r.isAggregate || !NBA.has(r.league)) continue;
-    const k = `${r.season}|${r.player}`;
-    (byKey.get(k) ?? byKey.set(k, []).get(k)!).push(r);
-  }
-  for (const [k, rows] of byKey) {
-    if (rows.length < 2) continue;
-    const last = [...rows].sort((a, b) => b.stintIndex - a.stintIndex)[0];
-    const to = mapTeam(last.team);
-    if (!teamIds.has(to) || mapTeam(rows.sort((a, b) => a.stintIndex - b.stintIndex)[0].team) === to) continue;
-    const season = String(endToStart(Number(k.split('|')[0])));
-    (out[season] ??= []).push({ id: h.players[last.player].id, to });
-  }
-  return out;
 }
 
 /** Seed for a draft prospect of draft year `draftYear` (debut rating from his first NBA season, or his draft slot if he never played). */
@@ -401,7 +414,7 @@ export function buildHistoricalLeague(h: NbaHistory, startYear: number, opts: { 
   const rng = new RNG(opts.seed ?? startYear * 7919);
   const season = label(startYear);
   const notes: string[] = [
-    `Rosters are reconstructed from ${startYear}–${String(E).slice(2)} season participation (each player's first team that season, top 15 by minutes); they are not verified opening-night rosters. Others start as free agents.`,
+    `Rosters are reconstructed from ${startYear}–${String(E).slice(2)} season participation: each player starts with the team he finished that season with (his playoff team), the 15 best by that season's rating. They are not verified opening-night rosters. Everyone else starts as a free agent.`,
     'Contracts, coaches, budgets, schedules and game rules are generated by Court Vision, not historical.',
     'Player ratings are Court Vision\'s own, computed from statistics only: each season\'s players are ranked by production and given the Overall spread of a generated league. All skill attributes are estimated from statistics.',
     'Teams use city names (e.g. "Golden State"); official team names are not included. You can type your own in League Settings → League Rules → NBA history.',
@@ -415,15 +428,14 @@ export function buildHistoricalLeague(h: NbaHistory, startYear: number, opts: { 
   const gamesPerTeam = Math.max(...teamRows.map(t => (t.w ?? 0) + (t.l ?? 0)), 40);
 
   // ---- who is where at the start
-  const startRows = h.seasons.filter(r => r.season === E && NBA.has(r.league) && !r.isAggregate);
-  const firstTeam = new Map<number, HistSeasonRow>();
-  for (const r of startRows) { const cur = firstTeam.get(r.player); if (!cur || r.stintIndex < cur.stintIndex) firstTeam.set(r.player, r); }
+  // Each player starts with the team he finished the real season with (his playoff team).
+  const finalTeam = finalTeamRows(h, E);
   const byTeam = new Map<string, HistSeasonRow[]>();
-  for (const r of firstTeam.values()) { const list = byTeam.get(r.team) ?? []; list.push(r); byTeam.set(r.team, list); }
+  for (const r of finalTeam.values()) { const list = byTeam.get(r.team) ?? []; list.push(r); byTeam.set(r.team, list); }
   const rosterIdx = new Map<number, string>(); // player idx -> team abbr
   const freeAgentIdx = new Set<number>();
   for (const [abbr, rows] of byTeam) {
-    rows.sort((a, b) => (b.stats.mp ?? (b.stats.g ?? 0) * 20) - (a.stats.mp ?? (a.stats.g ?? 0) * 20) || (b.stats.pts ?? 0) - (a.stats.pts ?? 0));
+    rows.sort(rosterOrder(h, E));
     rows.forEach((r, i) => (i < 15 ? rosterIdx.set(r.player, abbr) : freeAgentIdx.add(r.player)));
   }
   // Established players absent this season but back later (injury / overseas) start as free agents.
@@ -439,7 +451,7 @@ export function buildHistoricalLeague(h: NbaHistory, startYear: number, opts: { 
   const makePlayer = (idx: number, teamId: string | null): PlayerSeason => {
     const p = h.players[idx];
     const seed = seedFor(h, p, E, [E - 1, E - 2, E]);
-    const startRow = firstTeam.get(idx);
+    const startRow = finalTeam.get(idx);
     const age = ageAt(p, startYear, startRow?.age ?? null);
     const pl = buildRealPlayer(seed, season, teamId, age, seed.rating.ovr, NBA_HISTORY_DATASET);
     return { ...pl, careerHistory: realCareer(ctx, p), historicalAwards: realAwards(ctx, idx), ...medalsOf(p.displayName, E), birthDate: p.birthDate ?? undefined } as PlayerSeason;
@@ -530,7 +542,8 @@ export function buildHistoricalLeague(h: NbaHistory, startYear: number, opts: { 
 
   const teamIds = teams.map(t => t.teamId);
   const realRosters = opts.forceRosters ? historicalRosterPlan(h, E + 1, lastEnd, new Set(teamIds), mapTeam) : undefined;
-  const realMoves = opts.forceRosters ? historicalMidseasonMoves(h, E, lastEnd, new Set(teamIds), mapTeam) : undefined;
+  // Every roster is the one its team finished the real season with, so there are no mid-season moves left to replay.
+  const realMoves = opts.forceRosters ? {} : undefined;
   // Year accurate (the default): every season the data covers takes its real length and pace.
   const yearAccurate = opts.yearAccurate !== false;
   const shape = realSeasonShape(h);

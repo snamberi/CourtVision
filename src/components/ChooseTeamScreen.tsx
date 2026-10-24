@@ -36,7 +36,7 @@ export function ChooseTeamScreen({ league, extras, onConfirm }: Props) {
       <div className="mode-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
         <button className={`mode-card ${mode === 'pick' ? 'selected' : ''}`} onClick={() => setMode('pick')}>
           <h3>Pick an Existing Team</h3>
-          <p>Take over one of the {league.teams.length} generated teams as-is.</p>
+          <p>Take over one of the league's {league.teams.length} teams as-is{league.historical ? ', with its real roster' : ''}.</p>
         </button>
         <button className={`mode-card ${mode === 'create' ? 'selected' : ''}`} onClick={() => setMode('create')}>
           <h3>Create Your Own Team</h3>

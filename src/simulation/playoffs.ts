@@ -177,7 +177,7 @@ function playPostseasonGame(league: League, teamAId: string, teamBId: string, te
   const availableB = teamB.seasons.filter((s) => !isOut(s.playerId) && !s.twoWay);
   const seasonsA = availableA.length >= 5 ? availableA : teamA.seasons;
   const seasonsB = availableB.length >= 5 ? availableB : teamB.seasons;
-  const side = (t: typeof teamA, seasons: typeof seasonsA, home: boolean) => ({ teamId: t.teamId, seasons, coach: t.coach, chemistry: t.chemistry, coachIdentity: gameStaffCoach(t), rotationOrder: t.rotationOrder, ...gameBoost(league, t, seasons.map(s => s.playerId), home) });
+  const side = (t: typeof teamA, seasons: typeof seasonsA, home: boolean) => ({ teamId: t.teamId, seasons, coach: t.coach, chemistry: t.chemistry, coachIdentity: gameStaffCoach(t), rotationOrder: t.rotationOrder, scoringOptions: t.scoringOptions, ...gameBoost(league, t, seasons.map(s => s.playerId), home) });
   const result = simulateGame({
     home: teamAHosts ? side(teamA, seasonsA, true) : side(teamB, seasonsB, true),
     away: teamAHosts ? side(teamB, seasonsB, false) : side(teamA, seasonsA, false),

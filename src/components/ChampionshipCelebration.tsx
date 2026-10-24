@@ -7,6 +7,7 @@ import { resolveTeamIdentity } from '../simulation/teamIdentity';
 import { PlayerAvatar } from './PlayerAvatar';
 import { PixelTrophy } from './PixelTrophy';
 import { TeamLogo } from './TeamLogo';
+import { celebrate } from '../fx/effects';
 
 /* The title celebration: the whole championship roster around the trophy, the Finals MVP in the
  * middle holding his trophy overhead, confetti in team colors and camera flashes. */
@@ -30,6 +31,13 @@ export function ChampionshipCelebration({ league, info, onClose, onSelectPlayer 
   const identity = team ? resolveTeamIdentity(team) : null;
   const dialog = useRef<HTMLDivElement>(null);
   useEffect(() => { dialog.current?.focus(); }, []);
+  // Confetti cannons in the champions' colors as the curtain rises (skipped for reduced motion).
+  const primary = identity?.primary, secondary = identity?.secondary;
+  useEffect(() => {
+    if (!primary || !secondary) return;
+    const t = window.setTimeout(() => celebrate([primary, secondary, '#ffd166', '#f4f0e6']), 450);
+    return () => window.clearTimeout(t);
+  }, [primary, secondary]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onKey);

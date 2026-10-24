@@ -111,8 +111,9 @@ export function rollFreeAgentsForward(league: League, freeAgents: PlayerSeason[]
     const next: PlayerSeason = { ...developed, season: newSeason, seasonStats: undefined, seasonMilestones: undefined, playoffStats: undefined, seasonStints: undefined,
       careerHistory: archived ? [...(fa.careerHistory ?? []), archived] : fa.careerHistory };
     const overall = calculateOverall(next);
-    // A real player who really played this season stays in the league while his trajectory continues.
-    if (realStep && realCareerContinues(fa, newSeason)) { out.push(next); continue; }
+    // A real player who really played this season stays in the league while his real career continues, whatever the
+    // development setting: real players never vanish early.
+    if (realCareerContinues(fa, newSeason)) { out.push(next); continue; }
     const leavesLeague = next.age >= 24 && (overall < 45 ? rng.chance(0.5) : overall < 52 ? rng.chance(0.2) : false);
     if (!isStuck(next) && !next.careerPlayer && (shouldRetire(next, rng, league.rulesSettings, worldDefOf(league)?.leaveAfterAge) || leavesLeague)) {
       retired.push({ playerId: next.playerId, finalTeamId: lastTeam ?? '', finalTeamName: teamName(lastTeam), finalSeason: previousSeason,
@@ -302,7 +303,7 @@ export function beginNewSeasonRoster(
         careerHistory: [...(season.careerHistory ?? []), archived],
       };
 
-      if (!isStuck(withHistory) && !withHistory.careerPlayer && !(realStep && realCareerContinues(season, newSeason)) && shouldRetire(withHistory, rng, league.rulesSettings, worldDefOf(league)?.leaveAfterAge)) {
+      if (!isStuck(withHistory) && !withHistory.careerPlayer && !realCareerContinues(season, newSeason) && shouldRetire(withHistory, rng, league.rulesSettings, worldDefOf(league)?.leaveAfterAge)) {
         retiredPlayerIds.push(withHistory.playerId);
         delete contracts[withHistory.playerId];
         newlyRetired.push({

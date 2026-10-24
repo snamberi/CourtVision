@@ -48,7 +48,7 @@ import { readArcade, guessStreak, isGuessDone, endlessOf, gridStreak } from '../
 import { challengeFor, challengeStreak, claimChallenge, readChallenge, today as challengeToday, CHALLENGE_INFO, type ChallengeMode } from '../retention/dailyChallenge';
 import { weekKey } from '../retention/week';
 
-export type GameMode = 'random' | 'real' | 'legends' | 'perfect' | 'category' | 'career' | 'rebuild' | 'draft' | 'survival' | 'story' | 'timeMachine';
+export type GameMode = 'random' | 'real' | 'legends' | 'perfect' | 'category' | 'career' | 'rebuild' | 'draft' | 'survival' | 'story' | 'timeMachine' | 'yourCareer';
 export interface RealLeagueOptions { source: 'history' | 'csv'; realDevelopment: boolean; forceRosters?: boolean; userTeamToo?: boolean; allPlayers?: boolean }
 
 interface Props {
@@ -91,7 +91,7 @@ interface Props {
 
 /** The cards on the menu. Franchise opens the New Franchise page (a real or random league, the Rebuild Challenge and
  *  the All-Time Draft); the others open their own setup screens. `badge` marks a highlight. */
-export type MenuMode = 'franchise' | 'legends' | 'perfect' | 'career' | 'survival' | 'story';
+export type MenuMode = 'franchise' | 'legends' | 'perfect' | 'career' | 'survival' | 'story' | 'yourCareer';
 const MODES: { id: MenuMode; title: string; blurb: string; kicker: string; icon: string; time: string; tags: string[]; badge?: 'popular' | 'fun' }[] = [
   {
     id: 'franchise', kicker: '01 / FRANCHISE', icon: 'court', time: 'Unlimited', tags: ['Real NBA', 'Random', 'Challenges'], badge: 'popular',
@@ -122,6 +122,11 @@ const MODES: { id: MenuMode; title: string; blurb: string; kicker: string; icon:
     id: 'story', kicker: '06 / STORY', icon: 'calendar', time: '20-40 min', tags: ['New', 'Story', 'Choices'],
     title: 'Story Mode',
     blurb: 'Street to the League: from a park with no nets to fifteen seasons in the real NBA. Five chapters on the way up, 80 story cards, every game on the real engine, a best friend, a mentor, a little sister, a rival named Ice, and nine endings.',
+  },
+  {
+    id: 'yourCareer', kicker: '07 / LIVE IT', icon: 'user', time: '10-30 min', tags: ['New', 'Choices', 'Age 13+'],
+    title: 'Your Career',
+    blurb: 'Build a player at 13: name, number, country, position, height and how he plays. Then every season is your call: which club, which high school, which college, when to declare for the draft, which contract, how to train and what to do when it goes wrong. Draft night, awards, the Hall of Fame.',
   },
 ];
 /** The menu card a Mode of the Week falls under. */
@@ -204,9 +209,9 @@ export function MainMenu({ onStart, saves, onOpenContinue, busy = null, onLocker
           onAchievements={onProfileTab && (() => onProfileTab('achievements'))} streak={visit.v.streak} />
       </div>
 
-      <MenuQuickLinks onContinue={onOpenContinue} onRoad={onRoad} onRelics={onRelics} onProfile={onProfile ?? onLocker} onFriends={onFriendList ?? onFriends} onCloset={onCloset} onSettings={onSettings} />
+      <MenuQuickLinks onClans={onOpenMode && (() => onOpenMode(modeById('clubs')!))} onContinue={onOpenContinue} onRoad={onRoad} onRelics={onRelics} onProfile={onProfile ?? onLocker} onFriends={onFriendList ?? onFriends} onCloset={onCloset} onSettings={onSettings} />
 
-      <div className="menu-section-heading"><h2>Choose your game</h2><span>YOUR NEXT CHAPTER STARTS HERE</span></div>
+      <div className="menu-section-heading"><h2>Choose your game</h2></div>
 
       <div className="mode-grid" id="menu-modes">
         {MODES.map((m) => {
@@ -223,7 +228,7 @@ export function MainMenu({ onStart, saves, onOpenContinue, busy = null, onLocker
               {modeById(m.id) && <ModeArt entry={modeById(m.id)!} />}
               <span className="mode-card-kicker"><ModeIcon mode={m.id} size={30} /><span>{m.kicker}</span>{(m.badge || hot) && <span className="mode-flags">{hot && <span className="mode-xp" title={`Mode of the Week: double XP for ${FEATURED_NAME[featured]} runs finished this week`}>2× XP</span>}{m.badge && <span className={`mode-badge mode-badge-${m.badge}`}><PixelIcon name={m.badge === 'popular' ? 'flame' : 'star'} size={12} /> {BADGE_LABEL[m.badge]}</span>}</span>}<span className="mode-selection-dot" /></span>
               <h3>{m.title}</h3>
-              <span className={`mode-progress ${inProgress ? 'active' : ''}`}><PixelIcon name={inProgress ? 'play' : records[m.id] ? 'trophy' : 'star'} size={12} />{inProgress ? `Current: ${inProgress}` : records[m.id] ?? 'Your first chapter awaits'}</span>
+              {(inProgress || records[m.id]) && <span className={`mode-progress ${inProgress ? 'active' : ''}`}><PixelIcon name={inProgress ? 'play' : 'trophy'} size={12} />{inProgress ? `Current: ${inProgress}` : records[m.id]}</span>}
               <p>{MODE_SHORT[m.id]}</p>
               <span className="mode-meta"><span className="mode-time" title="How long a sitting takes"><PixelIcon name="clock" size={12} /> {m.time}</span>{m.tags.map(t => <span key={t} className="mode-tag">{t}</span>)}</span>
             </button>
@@ -245,7 +250,7 @@ export function MainMenu({ onStart, saves, onOpenContinue, busy = null, onLocker
           </div>;
         })}
         {/* Room for the next modes. */}
-        {[7].map(n => <div key={n} className="mode-card-wrap soon">
+        {[8].map(n => <div key={n} className="mode-card-wrap soon">
           <button className="mode-card mode-soon" disabled aria-label="Coming soon">
             <span className="mode-card-kicker"><PixelIcon name="lock" size={24} /><span>0{n} / SOON</span></span>
             <h3>Coming soon</h3>
@@ -255,12 +260,15 @@ export function MainMenu({ onStart, saves, onOpenContinue, busy = null, onLocker
         </div>)}
       </div>
 
-      {onRoad && <SeasonStrip onOpen={() => onRoad('season')} />}
-      {onRelics && <RelicStrip onOpen={onRelics} />}
       {seasonPay.cosmetics.length > 0 && <Suspense fallback={null}><SeasonTierUp cosmetics={seasonPay.cosmetics} spins={seasonPay.spins} onClose={() => setSeasonPay({ spins: 0, cosmetics: [] })} onOpenPass={onRoad && (() => onRoad('season'))} /></Suspense>}
-
-      <DailyChallengeCard onPlay={m => m === 'perfect' ? onStart('perfect', 'normal', '', '') : m === 'hunt' ? onStart('legends', 'normal', '', '') : onArcade?.(m)} />
+      {/* Today: the daily challenge, the season pass and the vault side by side. */}
+      <div className="menu-today">
+        <DailyChallengeCard onPlay={m => m === 'perfect' ? onStart('perfect', 'normal', '', '') : m === 'hunt' ? onStart('legends', 'normal', '', '') : onArcade?.(m)} />
+        {onRoad && <SeasonStrip onOpen={() => onRoad('season')} />}
+        {onRelics && <RelicStrip onOpen={onRelics} />}
+      </div>
       {onArcade && <QuickGames onOpen={onArcade} onOpenMode={onOpenMode} />}
+      {onOpenMode && <PlayWithOthers onOpenMode={onOpenMode} />}
 
 
 
@@ -370,9 +378,19 @@ function QuickGames({ onOpen, onOpenMode }: { onOpen: (game: 'grid' | 'guess' | 
   </section>;
 }
 
+/** Clans, online leagues, the boards and friend games: on a phone they live in the Compete tab, here they get a row. */
+function PlayWithOthers({ onOpenMode }: { onOpenMode: (e: ModeEntry) => void }) {
+  return <section className="quick-games play-with-others" id="menu-compete" aria-labelledby="play-with-others-title">
+    <div className="menu-section-heading"><h2 id="play-with-others-title">Play with others</h2><span>CLANS · ONLINE · LEADERBOARDS</span></div>
+    <div className="mode-tiles quick-games-tiles">
+      {modesIn('compete').filter(e => e.action.kind === 'screen').map(e => <ModeCard key={e.id} entry={e} onOpen={onOpenMode} />)}
+    </div>
+  </section>;
+}
+
 /** One row of the places people look for most: jumps down the menu (modes, today's challenge, saved leagues) and opens
  *  the pages that otherwise live only in the phone (Season Pass, Relic Vault, the roads, profile, friends, settings). */
-function MenuQuickLinks({ onContinue, onRoad, onRelics, onProfile, onFriends, onCloset, onSettings }: { onContinue: () => void; onRoad?: (r: 'level' | 'trophy' | 'season') => void; onRelics?: () => void; onProfile?: () => void; onFriends?: () => void; onCloset?: () => void; onSettings?: () => void }) {
+function MenuQuickLinks({ onClans, onContinue, onRoad, onRelics, onProfile, onFriends, onCloset, onSettings }: { onClans?: () => void; onContinue: () => void; onRoad?: (r: 'level' | 'trophy' | 'season') => void; onRelics?: () => void; onProfile?: () => void; onFriends?: () => void; onCloset?: () => void; onSettings?: () => void }) {
   const go = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   const [spins, setSpins] = useState(() => loadRelics().spins);
   useEffect(() => {
@@ -383,6 +401,7 @@ function MenuQuickLinks({ onContinue, onRoad, onRelics, onProfile, onFriends, on
   const links: [string, string, (() => void) | undefined, number?][] = [
     ['play', 'Modes', () => go('menu-modes')],
     ['calendar', 'Daily', () => go('menu-daily')],
+    ['team', 'Clans', onClans ?? (() => go('menu-compete'))],
     ['list', 'Continue franchise', onContinue],
     ['star', 'Season Pass', onRoad && (() => onRoad('season'))],
     ['crown', 'Relics', onRelics, spins > 0 ? spins : undefined],

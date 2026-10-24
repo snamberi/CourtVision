@@ -189,8 +189,26 @@ export function frameArtwork(id: AvatarFrameId): { under?: ReactNode; over: Reac
       <path d="M50 4L38 -2L40 12ZM50 4L62 -2L60 12Z" fill="#e8323c" stroke={INK} strokeWidth="1.2" /><path d="M50 12L46 22H49L50 18L51 22H54Z" fill="#c8102e" stroke={INK} strokeWidth=".8" /><circle cx="50" cy="8" r="3.2" fill="#ff5a64" stroke={INK} strokeWidth="1" />
       {[[22,84],[78,84]].map(([x,y])=><g key={x}><path d={`M${x} ${y}l-7 -3l3 -2l-3 -3l6 1z M${x} ${y}l7 -3l-3 -2l3 -3l-6 1z`} fill="#1f8a3a" stroke={INK} strokeWidth=".8" /><circle cx={x-1} cy={y+1} r="1.6" fill="#e8323c" /><circle cx={x+1.5} cy={y+2} r="1.6" fill="#e8323c" /></g>)}
     </> };
+    case 'clock10': return clockFrame('10H', copper);
+    case 'clock50': return clockFrame('50H', silver);
+    case 'clock100': return clockFrame('100H', gold, true);
+    case 'clock500': return clockFrame('500H', blue, true, true);
     default: return { over:<circle cx="50" cy="50" r="32" fill="none" stroke="#3a4a5f" strokeWidth="1.5" /> };
   }
 }
 
-export const frameAccent = (id: string): CSSProperties => ({ '--frame-accent': ({ rookie:'#e79857', courtside:'#dabb83', neon:'#6fe3ee', blaze:'#ff935c', dragon:'#7ae0ae', celestial:'#b8a0f4', bronzeCrest:'#d7a277', silverWings:'#c0deef', goldCrown:'#f7d278', undefeated:'#b8d4e5', perfectGold:'#f7d278', founding:'#efb57e', sovereign:'#79c9ff', cobweb:'#a87ef0', giftWrap:'#e8323c' } as Record<string,string>)[id] ?? '#8797ac' } as CSSProperties);
+/** The time-played frames: a clock face, a metal ring, a stopwatch crown and the hours on a plate. */
+function clockFrame(text: string, metal: Metal, gems = false, crown = false): { under: ReactNode; over: ReactNode } {
+  return {
+    under: <><circle cx="50" cy="50" r="41" fill="#111c2b" stroke={INK} strokeWidth="1.5" />{around(12, 39, (x, y, i) => <rect x={x - 1} y={y - 1} width={i % 3 ? 2 : 3} height={i % 3 ? 2 : 3} fill={i % 3 ? metal.dark : metal.light} />)}</>,
+    over: <>
+      <Ring metal={metal} rivets />
+      {gems && around(4, 34, (x, y) => <Gem x={x} y={y} color={metal.gem} size={2.5} />, 45)}
+      {crown ? <Crown metal={gold} sapphire /> : <g><rect x="45" y="3" width="10" height="5" fill={metal.base} stroke={INK} strokeWidth="1.2" /><rect x="48" y="8" width="4" height="5" fill={metal.dark} stroke={INK} strokeWidth="1" /><path d="M46 4H54" stroke={metal.light} /></g>}
+      <Label text={text} metal={metal} dark />
+      {crown && <><Spark x={16} y={30} color={metal.light} size={.7} /><Spark x={84} y={60} color={metal.light} delay={1.4} size={.65} /></>}
+    </>,
+  };
+}
+
+export const frameAccent = (id: string): CSSProperties => ({ '--frame-accent': ({ rookie:'#e79857', courtside:'#dabb83', neon:'#6fe3ee', blaze:'#ff935c', dragon:'#7ae0ae', celestial:'#b8a0f4', bronzeCrest:'#d7a277', silverWings:'#c0deef', goldCrown:'#f7d278', undefeated:'#b8d4e5', perfectGold:'#f7d278', founding:'#efb57e', sovereign:'#79c9ff', cobweb:'#a87ef0', giftWrap:'#e8323c', clock10:'#d48643', clock50:'#b2cddd', clock100:'#edbd49', clock500:'#4b9eff' } as Record<string,string>)[id] ?? '#8797ac' } as CSSProperties);

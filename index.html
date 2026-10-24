@@ -10,13 +10,10 @@
     <!-- AdSense site verification (keep in sync with AD_CONFIG.adsenseClient). Inert: loads nothing and sets no cookies;
          the ad script itself still waits for the visitor's consent. -->
     <meta name="google-adsense-account" content="ca-pub-4282337217431581" />
-    <!-- AdSense publisher tag (keep in sync with AD_CONFIG.adsenseClient). Removed from the offline Windows build by vite.config.ts. -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4282337217431581"
-     crossorigin="anonymous"></script>
-    <!-- AMP auto ads (keep in sync with AD_CONFIG.adsenseClient). Removed from the offline Windows build by vite.config.ts. -->
-    <script async custom-element="amp-auto-ads"
-            src="https://cdn.ampproject.org/v0/amp-auto-ads-0.1.js">
-    </script>
+    <!-- AdSense publisher tag (keep in sync with AD_CONFIG.adsenseClient and AD_CONFIG.siteHosts). Removed from the offline
+         Windows build by vite.config.ts. Loads only on courtvisiongame.com, so preview, local and copied hosts never send ad
+         requests that declare a site URL the AdSense account doesn't own. -->
+    <script>if (/^(www\.)?courtvisiongame\.com$/.test(location.hostname)) { var s = document.createElement('script'); s.async = true; s.crossOrigin = 'anonymous'; s.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4282337217431581'; document.head.appendChild(s); }</script>
     <title>Court Vision: free basketball GM and simulation game</title>
     <meta name="description" content="Court Vision is a free browser basketball GM and simulation game: run a real NBA franchise from any season since 1946, or play the 82-0 Challenge, League Hunt, Career Mode, the Rebuild Challenge and the All-Time Draft." />
     <meta name="author" content="NinefoldVision™" />
@@ -39,9 +36,6 @@
     <script type="application/ld+json">{"@context": "https://schema.org", "@graph": [{"@type": "VideoGame", "@id": "https://courtvisiongame.com/#game", "name": "Court Vision", "alternateName": "Court Vision Basketball GM", "url": "https://courtvisiongame.com/", "description": "Court Vision is a free browser basketball GM and simulation game: run a real NBA franchise from any season since 1946, or play the 82-0 Challenge, League Hunt, Career Mode, the Rebuild Challenge and the All-Time Draft.", "image": "https://courtvisiongame.com/og-image.png", "genre": ["Sports", "Simulation", "Strategy", "Basketball management"], "gamePlatform": ["Web browser", "Windows", "Android", "iOS"], "applicationCategory": "GameApplication", "operatingSystem": "Any (web browser)", "playMode": ["SinglePlayer", "MultiPlayer"], "isAccessibleForFree": true, "inLanguage": "en", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD", "availability": "https://schema.org/InStock"}, "publisher": {"@id": "https://courtvisiongame.com/#org"}, "hasPart": [{"@type": "WebPage", "name": "82-0 Challenge", "url": "https://courtvisiongame.com/guides/82-0-challenge.html"}, {"@type": "WebPage", "name": "League Hunt", "url": "https://courtvisiongame.com/guides/league-hunt.html"}, {"@type": "WebPage", "name": "Career Mode", "url": "https://courtvisiongame.com/guides/career-mode.html"}, {"@type": "WebPage", "name": "All-Time Draft", "url": "https://courtvisiongame.com/guides/all-time-draft.html"}, {"@type": "WebPage", "name": "Rebuild Challenge", "url": "https://courtvisiongame.com/guides/rebuild-challenge.html"}, {"@type": "WebPage", "name": "Real NBA history", "url": "https://courtvisiongame.com/guides/real-nba-history.html"}]}, {"@type": "WebSite", "@id": "https://courtvisiongame.com/#site", "name": "Court Vision", "url": "https://courtvisiongame.com/", "publisher": {"@id": "https://courtvisiongame.com/#org"}}, {"@type": "Organization", "@id": "https://courtvisiongame.com/#org", "name": "Court Vision", "url": "https://courtvisiongame.com/", "logo": "https://courtvisiongame.com/icons/icon-512.png", "sameAs": ["https://discord.gg/5uGK5HDS8e", "https://www.tiktok.com/@courtvision.game", "https://www.instagram.com/courtvision.game/"]}]}</script>
   </head>
   <body>
-    <!-- AMP auto ads tag --><amp-auto-ads type="adsense"
-            data-ad-client="ca-pub-4282337217431581">
-    </amp-auto-ads><!-- /AMP auto ads tag -->
     <div id="root"><noscript>
       <h1>Court Vision: a free basketball GM and simulation game</h1>
       <p>Run a basketball franchise in your browser: draft, trade, sign, coach and play every game possession by possession. Free, no download, no account needed.</p>

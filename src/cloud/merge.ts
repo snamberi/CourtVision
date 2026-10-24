@@ -3,6 +3,7 @@ import { readArcade, mergeArcade } from '../arcade/storage';
 import { mergeHoliday, loadHoliday } from '../retention/holiday';
 import { mergeOne, loadOne } from '../arcade/oneOnOne';
 import { readPlayTime, mergePlayTime } from '../retention/playTime';
+import { readActivity, mergeActivity } from '../retention/activity';
 /*
  * Cloud progress: which stored values travel with an account, and how two copies (this device and the cloud) are
  * merged. Every merge keeps the best of both, so signing in on a second device can never erase progress:
@@ -30,7 +31,7 @@ export const SYNC_KEYS = [
   'courtvision:gmLegacy', 'cv-hunt-records', 'cv-hunt-album', 'cv-rebuild-records', 'cv-rebuild-records-done',
   'cv-weekly-records', 'cv-daily-history', 'cv-profile-equip', 'cv-code-results', 'cv-feats',
   'cv-legend-records', 'cv-card-album', 'cv-card-sets', 'cv-avatar', 'cv-streak', 'cv-pass',
-  'cv-perfect-records', 'cv-bonus-xp', 'cv-record-book', 'cv-play-time', 'cv-arcade', 'cv-missions', 'cv-quests', 'cv-trophy-case',
+  'cv-perfect-records', 'cv-bonus-xp', 'cv-record-book', 'cv-play-time', 'cv-activity', 'cv-profile-public', 'cv-arcade', 'cv-missions', 'cv-quests', 'cv-trophy-case',
   'cv-relics', 'cv-daily-challenge',
   // More records the achievements read, and the rest of your look (theme, menu style, favourites, phone layout, saved
   // characters, profile name, your player's ratings and your pets).
@@ -42,6 +43,8 @@ export const SYNC_KEYS = [
   'cv-holiday', 'cv-1v1',
   // Pick'em right calls (the XP ledger) and Daily Draft results.
   'cv-pickem', 'cv-daily-draft',
+  // Your Career: the player you are playing now, and your best finished careers.
+  'cv-your-career', 'cv-your-career-records',
 ] as const;
 export type SyncKey = typeof SYNC_KEYS[number];
 
@@ -158,6 +161,11 @@ export function mergeValue(key: SyncKey, local: string | null | undefined, cloud
     case 'cv-bonus-xp': return JSON.stringify(mergeBonusLog(readBonusLog(() => local), readBonusLog(() => cloud)));
     case 'cv-perfect-records': return JSON.stringify(mergePerfectRecords(loadPerfectRecords(() => local), loadPerfectRecords(() => cloud)));
     case 'cv-record-book': return JSON.stringify(mergeRecordBook(readRecordBook(() => local), readRecordBook(() => cloud)));
+    case 'cv-your-career': return local;
+    case 'cv-your-career-records': { type R = { name: string; at: number; legacy: number }; const all = [...parse<R[]>(local, []), ...parse<R[]>(cloud, [])]; return JSON.stringify([...new Map(all.map(r => [`${r.name}-${r.at}`, r])).values()].sort((a, b) => b.legacy - a.legacy).slice(0, 10)); }
+    case 'cv-activity': return JSON.stringify(mergeActivity(readActivity(() => local), readActivity(() => cloud)));
+    // What you show on your public profile: this device's choice.
+    case 'cv-profile-public': return local;
     case 'cv-play-time': return JSON.stringify(mergePlayTime(readPlayTime(() => local), readPlayTime(() => cloud)));
     case 'cv-arcade': return JSON.stringify(mergeArcade(readArcade(() => local), readArcade(() => cloud)));
     case 'cv-pass': return JSON.stringify(mergePass(readPass(() => local), readPass(() => cloud)));

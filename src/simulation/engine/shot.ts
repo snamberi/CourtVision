@@ -88,6 +88,11 @@ const CONTEST_DELTA: Record<ShotCategory, Record<ContestLevel, number>> = {
 // The pivot sits near the average *effective* (post-fatigue) ability players actually shoot with,
 // so a league of average shooters lands near the base rates above rather than systematically under them.
 const ABILITY_SLOPE = 0.006;
+const THREE_SLOPE_UP = 0.0026;
+const THREE_SLOPE_DOWN = 0.005;
+const THREE_SOFT_CAP = 0.42;
+/** Lifts every three back to the NBA's ~36% league average after the flatter skill curve above. */
+const THREE_CALIBRATION = 0.025;
 export const RIM_FINISH_CALIBRATION = 0.06;
 export const THREE_POINT_VOLUME = 1.12;
 const ABILITY_PIVOT = 58;
@@ -155,7 +160,10 @@ export function computeMakeProbability(
   }
   baseRate = Math.max(0.05, Math.min(0.99, baseRate));
 
-  let p = baseRate + (ability - ABILITY_PIVOT) * ABILITY_SLOPE;
+  // Threes: skill above average buys far less than on twos (the best shooters ever sit near 42-45%), while poor
+  // shooters still fall off quickly.
+  let p = baseRate + (ability - ABILITY_PIVOT) * (category === 'three' ? (ability > ABILITY_PIVOT ? THREE_SLOPE_UP : THREE_SLOPE_DOWN) : ABILITY_SLOPE);
+  if (category === 'three') p += THREE_CALIBRATION;
 
   // Contest swing, softened for skilled shot-selectors (high shotIQ shooters take/avoid contests better).
   let contestDelta = CONTEST_DELTA[category][ctx.contest];
@@ -216,6 +224,9 @@ export function computeMakeProbability(
     if (p > 0.7) p = 0.7 + (p - 0.7) * 0.35;
   }
 
+  // A soft ceiling on threes: past 42% each extra point counts a quarter, so even a wide-open all-time shooter tops
+  // out around 50% on a single look and near Curry's 43% over a season.
+  if (category === 'three' && p > THREE_SOFT_CAP) p = THREE_SOFT_CAP + (p - THREE_SOFT_CAP) * 0.25;
   const floor = category === 'rim' ? 0.12 : 0.06;
   return Math.max(floor, Math.min(0.98, p));
 }
@@ -275,6 +286,6 @@ export function andOneProbability(type: ShotType, contest: ContestLevel): number
 
 export function resolveFreeThrow(freeThrowRating: number, rng: RNG, difficultyMultiplier = 1): boolean {
   // An average rating lands near the NBA's ~78%; poor shooters sit in the 60s, specialists near 90%.
-  const p = Math.max(0.45, Math.min(0.97, 0.48 + freeThrowRating * 0.0056 * (2 - difficultyMultiplier)));
+  const p = Math.max(0.45, Math.min(0.95, 0.445 + freeThrowRating * 0.0056 * (2 - difficultyMultiplier)));
   return rng.chance(p);
 }

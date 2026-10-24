@@ -8,7 +8,7 @@ type IconSpec = { motif: Motif; tone: Tone; mark?: string };
 const spec = (motif: Motif, tone: Tone, mark?: string): IconSpec => ({ motif, tone, mark });
 const MODE_ICON_ART: Record<string, IconSpec> = {
   franchise: spec('arena', 'orange'), legends: spec('trophy', 'gold'), perfect: spec('score', 'orange'),
-  career: spec('jersey', 'green'), survival: spec('shield', 'red'), story: spec('book', 'purple'),
+  career: spec('jersey', 'green'), survival: spec('shield', 'red'), story: spec('book', 'purple'), yourCareer: spec('jersey', 'gold', '13'),
   decade: spec('calendar', 'gold', '10'), dynasty: spec('crown', 'gold'), rebuild: spec('hammer', 'green'),
   draft: spec('cards', 'blue'), timeMachine: spec('clock', 'purple'), worldgames: spec('globe', 'cyan'),
   category: spec('grid', 'blue'), grid: spec('grid', 'green'), guess: spec('mystery', 'blue'), hilo: spec('chart', 'purple'), categorize: spec('grid', 'purple', '4'), guessTeam: spec('team', 'orange'),

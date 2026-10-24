@@ -1,5 +1,6 @@
 import { localRead, type Read } from '../lib/kv';
 import { weekKey } from './week';
+import { noteActivity } from './activity';
 
 /*
  * The week log behind the weekly recap: time played, runs finished and the best of each, and record-book entries,
@@ -13,6 +14,7 @@ export interface WeekBest { score: number; line: string }
 export interface WeekEntry { seconds: number; runs: Partial<Record<LogMode, number>>; best: Partial<Record<LogMode, WeekBest>>; records: number; /** Runs already counted (a save can come through twice). */ ids?: string[] }
 export type WeekLog = Record<string, WeekEntry>;
 const KEEP = 8;
+const QUICK = new Set<LogMode>(['guess', 'hilo', 'quiz', 'grid', 'categorize', 'guessTeam']);
 
 export function readWeekLog(read: Read = localRead): WeekLog {
   try { const r = JSON.parse(read(WEEK_LOG_KEY) ?? '{}') as WeekLog; return r && typeof r === 'object' ? r : {}; } catch { return {}; }
@@ -28,6 +30,8 @@ export const noteWeekTime = (seconds: number, now = new Date()) => update(e => (
 export const noteWeekRecords = (n: number, now = new Date()) => { if (n > 0) update(e => ({ ...e, records: e.records + n }), now); };
 /** A finished run, game or career: counted once (by `id`), and kept if it is the week's best in its mode. */
 export function noteWeekRun(mode: LogMode, best?: WeekBest, id?: string, now = new Date()): void {
+  // The bigger runs also go on your profile's recent activity (the quick games would crowd it out).
+  if (best && !QUICK.has(mode)) noteActivity(mode, `${LOG_LABEL[mode][0][0].toUpperCase()}${LOG_LABEL[mode][0].slice(1)}: ${best.line}`, id ?? `${mode}-${now.getTime()}`, now.getTime());
   update(e => {
     if (id && e.ids?.includes(id)) return e;
     return { ...e, runs: { ...e.runs, [mode]: (e.runs[mode] ?? 0) + 1 }, best: best && best.score > (e.best[mode]?.score ?? -Infinity) ? { ...e.best, [mode]: best } : e.best, ...(id ? { ids: [...(e.ids ?? []), id].slice(-200) } : {}) };

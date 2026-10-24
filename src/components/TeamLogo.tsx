@@ -28,10 +28,12 @@ export function TeamLogo({ team, size = 64 }: { team: Pick<LeagueTeam, 'teamId' 
     {/* The mark with a hard drop shadow and an ink outline. */}
     <path d={MARKS[identity.logo] ?? MARKS.star} fill="#0b1018" fillRule="evenodd" transform="translate(1.5,1.5)" opacity=".55" />
     <TeamMark logo={identity.logo} accent={identity.secondary} />
-    {/* The abbreviation in the game's pixel font on a dark plate. */}
-    <rect x="5" y="41" width="40" height="13" fill="#0b1018" />
-    <rect x="6" y="42" width="38" height="1" fill={identity.secondary} opacity=".8" />
-    <path d="M6 52H44V53H6ZM4 8H5V10H4ZM45 8H46V10H45" fill="#fff3df" opacity=".25" />
-    <path d={text} fill="#f3e7ca" transform={`translate(${(25 - w / 2).toFixed(2)},${(47.5 - 3.5 * px).toFixed(2)})`} />
+    {/* The abbreviation in the game's pixel font on a dark plate; below 40px it's unreadable, and the name sits beside the logo anyway. */}
+    {size >= 40 && <>
+      <rect x="5" y="41" width="40" height="13" fill="#0b1018" />
+      <rect x="6" y="42" width="38" height="1" fill={identity.secondary} opacity=".8" />
+      <path d="M6 52H44V53H6ZM4 8H5V10H4ZM45 8H46V10H45" fill="#fff3df" opacity=".25" />
+      <path d={text} fill="#f3e7ca" transform={`translate(${(25 - w / 2).toFixed(2)},${(47.5 - 3.5 * px).toFixed(2)})`} />
+    </>}
   </svg>;
 }

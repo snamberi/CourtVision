@@ -19,7 +19,7 @@ self.onmessage = async (e: MessageEvent<SeasonWorkerInMessage>) => {
   const pool = e.data.ports?.length ? new EnginePool(e.data.ports) : null;
   try {
     let league = e.data.league;
-    const firstRound = league.schedule.find((g) => !g.played)?.round ?? 0;
+    const firstRound = Math.min(...league.schedule.filter((g) => !g.played).map((g) => g.round));
     const endRound = e.data.rounds != null ? firstRound + e.data.rounds : Infinity;
     const inRange = (l: League) => l.schedule.filter((g) => !g.played && g.round < endRound).length;
     const total = inRange(league);

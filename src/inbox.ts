@@ -25,6 +25,8 @@ export function appendInbox(saveId: string | null, msg: Omit<InboxMessage, 'id' 
   const list = loadInbox(saveId);
   const last = list.at(-1);
   if (last && last.text === msg.text && Date.now() - last.at < 2000) return; // the same toast twice in a row
+  // The same news on the same day (a reminder that fires after every sim) is logged once.
+  if (msg.date && list.some(m => m.date === msg.date && m.text === msg.text)) return;
   save(saveId, [...list, { ...msg, id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, at: Date.now() }]);
 }
 
