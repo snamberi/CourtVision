@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en" class="no-js">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Read The Seal of Earth Zero · NineFoldVision</title>
+  <meta name="description" content="Read The Seal of Earth Zero, the first story of the NineFoldVision Vision universe: fifty chapters, free, with your place saved as you go.">
+  <meta name="theme-color" content="#121317">
+  <link rel="icon" type="image/png" href="assets/img/logo-favicon.png">
+  <link rel="apple-touch-icon" href="assets/img/logo-icon.png">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="NineFoldVision">
+  <meta property="og:title" content="Read The Seal of Earth Zero · NineFoldVision">
+  <meta property="og:description" content="Read The Seal of Earth Zero, the first story of the NineFoldVision Vision universe: fifty chapters, free, with your place saved as you go.">
+  <meta property="og:image" content="assets/img/logo-1-primary.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&amp;family=Inter:wght@400;500;600&amp;family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&amp;display=swap">
+  <link rel="stylesheet" href="assets/css/site.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="wrap">
+      <a class="brand" href="index.html" aria-label="NineFoldVision home">
+        <img src="assets/img/logo-icon-transparent.png" alt="" width="770" height="500">
+        <span>NineFold<b>Vision</b></span>
+      </a>
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Menu">&#9776;</button>
+      <nav class="nav" id="site-nav" aria-label="Main">
+        <a href="index.html">Home</a>
+        <a href="games.html">Games</a>
+        <a href="updates.html">Updates</a>
+        <a href="universe.html">Universe</a>
+        <a href="story.html">Story</a>
+        <a href="about.html">Studio</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <div id="library">
+      <section class="page-hero">
+        <div class="wrap book-feature">
+          <div class="book-cover" aria-hidden="true">
+            <svg viewBox="0 0 200 200">
+              <circle cx="100" cy="100" r="80" fill="none" stroke="#c9cbd1" stroke-opacity=".25"/>
+              <g fill="#f6892f"><circle cx="100" cy="20" r="6"/><circle cx="151.4" cy="38.7" r="6"/><circle cx="178.8" cy="86.1" r="6"/><circle cx="169.3" cy="140" r="6"/><circle cx="127.4" cy="175.2" r="6"/><circle cx="72.6" cy="175.2" r="6"/><circle cx="30.7" cy="140" r="6"/><circle cx="21.2" cy="86.1" r="6"/><circle cx="48.6" cy="38.7" r="6"/></g>
+            </svg>
+            <small data-book="series">The Vision universe · Book One</small>
+            <strong data-book="title">The Seal of Earth Zero</strong>
+          </div>
+          <div>
+            <p class="eyebrow" data-book="eyebrow">The Vision universe · Book One</p>
+            <h1 data-book="h1">The Seal of Earth Zero</h1>
+            <p class="lead">A young man repairing a basketball hoop, an invasion from the stars, nine glass spheres and a god in an ordinary coat. The first story of the Vision universe, free to read.</p>
+            <div class="tags" style="margin:18px 0 26px" id="book-stats"></div>
+            <div id="book-progress" style="max-width:440px;margin-bottom:24px" hidden>
+              <div class="progress"><i></i></div>
+              <p class="muted" style="margin:8px 0 0;font-size:.9rem"></p>
+            </div>
+            <div class="btn-row">
+              <a class="btn btn-primary" id="book-start" href="#ch-1">Start reading</a>
+              <a class="btn btn-ghost" href="universe.html">Explore the universe</a>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section class="section">
+        <div class="wrap">
+          <div class="section-head">
+            <div><p class="eyebrow">Contents</p><h2>Fifty chapters</h2></div>
+            <button class="chip" type="button" id="reset-progress" hidden>Reset my progress</button>
+          </div>
+          <ol class="toc" id="toc"></ol>
+        </div>
+      </section>
+    </div>
+
+    <div id="reader" class="reader" hidden>
+      <div class="reader-bar">
+        <div class="wrap">
+          <a class="chip" href="#" id="to-contents">&larr; Contents</a>
+          <label class="sr-only" for="chapter-select">Chapter</label>
+          <select id="chapter-select" class="reader-select"></select>
+          <span class="spacer"></span>
+          <div class="reader-tools" role="group" aria-label="Reading settings">
+            <button type="button" class="chip" data-size="-1" aria-label="Smaller text">A&minus;</button>
+            <button type="button" class="chip" data-size="1" aria-label="Larger text">A+</button>
+            <button type="button" class="chip swatch" data-theme="dark" aria-label="Dark page"></button>
+            <button type="button" class="chip swatch" data-theme="sepia" aria-label="Sepia page"></button>
+            <button type="button" class="chip swatch" data-theme="light" aria-label="Light page"></button>
+          </div>
+        </div>
+        <div class="reader-line"><i id="reader-line"></i></div>
+      </div>
+      <article class="reader-text" id="reader-text" aria-live="polite"></article>
+      <nav class="reader-pager" id="reader-pager" aria-label="Chapters"></nav>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <div class="footer-grid">
+        <div>
+          <img src="assets/img/logo-transparent.png" alt="NineFoldVision" width="700" height="122">
+          <p>An independent game studio. Every game we make, every update we ship, and the universe that ties them together.</p>
+        </div>
+        <div>
+          <h4>Games</h4>
+          <ul data-game-links><li><a href="games.html">All games</a></li></ul>
+        </div>
+        <div>
+          <h4>Universe</h4>
+          <ul>
+            <li><a href="universe.html">The Vision universe</a></li>
+            <li><a href="story.html">Read the story</a></li>
+            <li><a href="updates.html">Updates</a></li>
+          </ul>
+        </div>
+        <div data-studio-contact-block>
+          <h4>Studio</h4>
+          <ul>
+            <li><a href="about.html">About NineFoldVision</a></li>
+          </ul>
+          <ul data-studio-contact style="margin-top:8px"></ul>
+        </div>
+      </div>
+      <div class="footer-base">
+        <span>&copy; <span data-year>2026</span> NineFoldVision. All rights reserved.</span>
+        <span>One studio. Many worlds.</span>
+      </div>
+    </div>
+  </footer>
+  <script src="data/studio.js"></script>
+  <script src="data/games.js"></script>
+  <script src="data/books.js"></script>
+  <script src="assets/js/site.js"></script>
+  <script>
+    (function () {
+      const { esc, store, progress } = NFV;
+      const book = (window.NFV_BOOKS || [])[0];
+      if (!book) return;
+      const total = book.chapters.length;
+      const library = document.getElementById('library');
+      const reader = document.getElementById('reader');
+      const textEl = document.getElementById('reader-text');
+      const pager = document.getElementById('reader-pager');
+      const select = document.getElementById('chapter-select');
+      const minutes = w => Math.max(1, Math.round(w / 230));
+      const settings = Object.assign({ size: 1, theme: 'dark' }, store.get('nfv:reader', {}));
+
+      // Book details from the generated shelf, so a new edition only needs the Markdown file.
+      const label = `${book.series} · Book ${['One', 'Two', 'Three', 'Four', 'Five'][book.book - 1] || book.book}`;
+      document.querySelectorAll('[data-book="series"], [data-book="eyebrow"]').forEach(el => { el.textContent = label; });
+      document.querySelectorAll('[data-book="title"], [data-book="h1"]').forEach(el => { el.textContent = book.title; });
+      const hours = Math.floor(minutes(book.words) / 60), mins = minutes(book.words) % 60;
+      document.getElementById('book-stats').innerHTML = [`${total} chapters`, `${book.words.toLocaleString()} words`, `About ${hours} h ${mins} min`, 'Free']
+        .map(t => `<span class="tag">${esc(t)}</span>`).join('');
+      select.innerHTML = book.chapters.map(c => `<option value="${c.n}">${c.n}. ${esc(c.title)}</option>`).join('');
+
+      function renderLibrary() {
+        const p = progress.get(book.slug);
+        document.getElementById('toc').innerHTML = book.chapters.map(c => `<li>
+            <a href="#ch-${c.n}" class="toc-item${p.done.has(c.n) ? ' done' : ''}${p.last === c.n ? ' current' : ''}">
+              <span class="toc-n">${String(c.n).padStart(2, '0')}</span>
+              <span class="toc-title">${esc(c.title)}</span>
+              <span class="toc-meta">${p.done.has(c.n) ? '✓ Read' : p.last === c.n ? 'Reading' : `${minutes(c.words)} min`}</span>
+            </a></li>`).join('');
+        const started = p.last || p.done.size;
+        const box = document.getElementById('book-progress');
+        box.hidden = !started;
+        document.getElementById('reset-progress').hidden = !started;
+        const start = document.getElementById('book-start');
+        if (started) {
+          box.querySelector('i').style.width = `${Math.round(p.done.size / total * 100)}%`;
+          box.querySelector('p').textContent = `${p.done.size} of ${total} chapters read`;
+          const next = p.last && !p.done.has(p.last) ? p.last : Math.min(total, (p.last || 0) + 1);
+          start.textContent = p.done.size === total ? 'Read it again' : `Continue: chapter ${next}`;
+          start.href = `#ch-${p.done.size === total ? 1 : next}`;
+        } else { start.textContent = 'Start reading'; start.href = '#ch-1'; }
+      }
+
+      function applySettings() {
+        reader.dataset.theme = settings.theme;
+        reader.style.setProperty('--reader-scale', [0.9, 1, 1.12, 1.25, 1.4][settings.size]);
+        reader.querySelectorAll('[data-theme]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.theme === settings.theme)));
+        store.set('nfv:reader', settings);
+      }
+
+      // The full text is loaded only when someone starts reading.
+      let loading;
+      function loadText() {
+        const have = () => window.NFV_BOOK_TEXT && window.NFV_BOOK_TEXT[book.slug];
+        if (have()) return Promise.resolve(have());
+        return loading || (loading = new Promise((resolve, reject) => {
+          const s = document.createElement('script');
+          s.src = `data/book-${book.slug}.js`;
+          s.onload = () => resolve(have());
+          s.onerror = () => { loading = null; reject(new Error('load')); };
+          document.head.appendChild(s);
+        }));
+      }
+
+      let endObserver;
+      async function openChapter(n) {
+        library.hidden = true;
+        reader.hidden = false;
+        const meta = book.chapters[n - 1];
+        document.title = `${n}. ${meta.title} · ${book.title}`;
+        select.value = String(n);
+        textEl.innerHTML = `<p class="eyebrow">Chapter ${n} of ${total}</p><h1>${esc(meta.title)}</h1><p class="muted">Loading…</p>`;
+        window.scrollTo(0, 0);
+        let chapters;
+        try { chapters = await loadText(); } catch {
+          textEl.innerHTML = `<p class="eyebrow">Chapter ${n}</p><h1>${esc(meta.title)}</h1><p>This chapter couldn't load. Check your connection and <a href="#ch-${n}" onclick="location.reload()">try again</a>.</p>`;
+          return;
+        }
+        if (currentChapter() !== n) return;
+        const c = chapters[n - 1];
+        textEl.innerHTML = `<p class="eyebrow">Chapter ${n} of ${total}</p><h1>${esc(c.title)}</h1>`
+          + c.paragraphs.map((t, i) => `<p${i === 0 ? ' class="opening"' : ''}>${esc(t)}</p>`).join('');
+        const prev = book.chapters[n - 2], next = book.chapters[n];
+        pager.innerHTML = `${prev ? `<a class="card" href="#ch-${prev.n}"><span class="muted">&larr; Previous</span><strong>${prev.n}. ${esc(prev.title)}</strong></a>` : '<span></span>'}
+          ${next ? `<a class="card next" href="#ch-${next.n}"><span class="muted">Next &rarr;</span><strong>${next.n}. ${esc(next.title)}</strong></a>`
+                 : `<a class="card next" href="universe.html"><span class="muted">The end of Book One</span><strong>Explore the Vision universe &rarr;</strong></a>`}`;
+        const p = progress.get(book.slug);
+        p.last = n;
+        progress.save(book.slug, p);
+        // Reaching the end of a chapter marks it read.
+        endObserver && endObserver.disconnect();
+        endObserver = new IntersectionObserver(entries => {
+          if (entries.some(e => e.isIntersecting)) {
+            const q = progress.get(book.slug);
+            q.done.add(n);
+            progress.save(book.slug, q);
+            endObserver.disconnect();
+          }
+        });
+        endObserver.observe(pager);
+        textEl.focus({ preventScroll: true });
+      }
+
+      const currentChapter = () => { const m = location.hash.match(/^#ch-(\d+)$/); const n = m && Number(m[1]); return n >= 1 && n <= total ? n : 0; };
+      function route() {
+        const n = currentChapter();
+        if (n) openChapter(n);
+        else { reader.hidden = true; library.hidden = false; document.title = `${book.title} · NineFoldVision`; renderLibrary(); }
+      }
+
+      const line = document.getElementById('reader-line');
+      window.addEventListener('scroll', () => {
+        if (reader.hidden) return;
+        const max = document.documentElement.scrollHeight - innerHeight;
+        line.style.width = `${max > 0 ? Math.min(100, scrollY / max * 100) : 100}%`;
+      }, { passive: true });
+      window.addEventListener('hashchange', route);
+      select.addEventListener('change', () => { location.hash = `ch-${select.value}`; });
+      document.getElementById('to-contents').addEventListener('click', e => { e.preventDefault(); history.pushState(null, '', location.pathname); route(); });
+      document.getElementById('reset-progress').addEventListener('click', () => {
+        if (confirm('Forget which chapters you have read? Spoilers on the Universe page will be hidden again.')) { progress.save(book.slug, { last: 0, done: new Set() }); renderLibrary(); }
+      });
+      reader.querySelector('.reader-tools').addEventListener('click', e => {
+        const b = e.target.closest('button');
+        if (!b) return;
+        if (b.dataset.size) settings.size = Math.max(0, Math.min(4, settings.size + Number(b.dataset.size)));
+        if (b.dataset.theme) settings.theme = b.dataset.theme;
+        applySettings();
+      });
+      document.addEventListener('keydown', e => {
+        if (reader.hidden || e.altKey || e.ctrlKey || e.metaKey || /input|select|textarea/i.test(e.target.tagName)) return;
+        const n = currentChapter();
+        if (e.key === 'ArrowRight' && n < total) location.hash = `ch-${n + 1}`;
+        if (e.key === 'ArrowLeft' && n > 1) location.hash = `ch-${n - 1}`;
+      });
+      textEl.tabIndex = -1;
+      applySettings();
+      route();
+    })();
+  </script>
+</body>
+</html>

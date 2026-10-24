@@ -1,0 +1,12 @@
+// NineFoldVision studio site: a static site on Cloudflare Workers, separate from the Court Vision Worker.
+// Create a second Worker in the Cloudflare dashboard named "ninefoldvision", connect this repository, and set
+// root directory: ninefoldvision · build command: (none) · deploy command: npx wrangler deploy
+{
+  "$schema": "https://unpkg.com/wrangler/config-schema.json",
+  "name": "ninefoldvision",
+  "compatibility_date": "2026-09-01",
+  "assets": {
+    "directory": "./site",
+    "not_found_handling": "404-page"
+  }
+}
