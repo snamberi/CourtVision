@@ -131,6 +131,7 @@ ${body}
 <footer class="site"><div class="in">
 <p><a href="${prefix}about.html">About</a> · <a href="${prefix}how-to-play.html">How to Play</a> · <a href="${prefix}guides/">Guides</a> · <a href="${prefix}faq.html">FAQ</a> · <a href="${prefix}changelog.html">Changelog</a> · <a href="${prefix}privacy.html">Privacy Policy</a></p>
 <p>NBA history data: <a href="https://www.basketball-reference.com/" target="_blank" rel="noopener noreferrer">Basketball-Reference.com</a> via <a href="https://github.com/sumitrodatta/bball-reference-datasets" target="_blank" rel="noopener noreferrer">bball-reference-datasets</a> and <a href="https://www.nba.com/news/history-all-time-awards" target="_blank" rel="noopener noreferrer">NBA.com</a>. Court Vision is an independent fan project, not affiliated with or endorsed by the NBA, its teams or players. Last updated ${esc(content.updated)}.</p>
+<p class="studio">Court Vision is a NinefoldVision™ game. © ${esc(content.updated).slice(0, 4)} NinefoldVision™.</p>
 </div></footer>
 </body>
 </html>

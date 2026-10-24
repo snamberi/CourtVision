@@ -7,6 +7,7 @@ import type { CareerMeta } from '../career/career';
 import { LEGACY_EVENT } from '../storage/gmLegacy';
 import { PROFILE_EVENT, equipped } from '../profile/profile';
 import { updateProfile } from './account';
+import { publishNinefold } from './ninefold';
 import { DAILY_EVENT } from '../profile/dailyGoals';
 import { AVATAR_EVENT } from '../profile/avatar';
 import { RELICS_EVENT } from '../relics/relics';
@@ -112,6 +113,8 @@ export function syncNow(): Promise<void> {
       if (prof && (prof.title !== e.title || prof.frame !== e.frame || (prof.icon ?? 'ball') !== e.icon || (prof.color ?? 'cream') !== packed)) await updateProfile({ title: e.title, frame: e.frame, icon: e.icon, color: packed });
       writeOwner(userId);
       setAccount({ sync: { state: 'ok', at: Date.now(), message: null, size: lastSize ?? undefined } });
+      // The public Ninefold profile card (never blocks or fails the sync).
+      void publishNinefold(client, userId, getAccount().profile);
     } catch (e) {
       setAccount({ sync: { state: 'error', at: getAccount().sync.at, message: e instanceof Error ? e.message : String(e), size: lastSize ?? undefined } });
     }

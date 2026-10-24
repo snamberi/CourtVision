@@ -2068,6 +2068,7 @@ a.ad-creative:hover .ad-cta { background: var(--c-bg-ff8f3c, #ff8f3c); }
 
 /* --- Privacy policy page + legal footer links --- */
 .legal-footer { margin: 24px 0 8px; text-align: center; font-size: 0.72rem; }
+.legal-footer .studio-mark { display: block; margin-top: 4px; color: var(--text-dim, var(--c-fg-99aaaa, #9aa)); letter-spacing: 0.04em; }
 .legal-link { color: var(--text-dim, var(--c-fg-99aaaa, #9aa)); text-decoration: underline; }
 .legal-link:hover { color: var(--amber); }
 
