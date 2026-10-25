@@ -106,13 +106,15 @@ export default defineConfig(({ mode }) => ({
     // Accounts: the Supabase address and public key (safe to ship; row level security guards the data).
     'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || ''),
     'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || ''),
-    // Passes: the Lemon Squeezy checkout links (public; see docs/BILLING_SETUP.md). Empty hides the buy buttons.
-    'import.meta.env.VITE_LEMONSQUEEZY_NO_ADS_URL': JSON.stringify(process.env.VITE_LEMONSQUEEZY_NO_ADS_URL || process.env.LEMONSQUEEZY_NO_ADS_URL || ''),
-    'import.meta.env.VITE_LEMONSQUEEZY_SUPPORTER_URL': JSON.stringify(process.env.VITE_LEMONSQUEEZY_SUPPORTER_URL || process.env.LEMONSQUEEZY_SUPPORTER_URL || ''),
-    'import.meta.env.VITE_LEMONSQUEEZY_BUNDLE_SUPPORTER_URL': JSON.stringify(process.env.VITE_LEMONSQUEEZY_BUNDLE_SUPPORTER_URL || process.env.LEMONSQUEEZY_BUNDLE_SUPPORTER_URL || ''),
-    'import.meta.env.VITE_LEMONSQUEEZY_BUNDLE_VISIONARY_URL': JSON.stringify(process.env.VITE_LEMONSQUEEZY_BUNDLE_VISIONARY_URL || process.env.LEMONSQUEEZY_BUNDLE_VISIONARY_URL || ''),
-    'import.meta.env.VITE_LEMONSQUEEZY_BUNDLE_FOUNDER_URL': JSON.stringify(process.env.VITE_LEMONSQUEEZY_BUNDLE_FOUNDER_URL || process.env.LEMONSQUEEZY_BUNDLE_FOUNDER_URL || ''),
-    'import.meta.env.VITE_LEMONSQUEEZY_BUNDLE_CUSTOM_URL': JSON.stringify(process.env.VITE_LEMONSQUEEZY_BUNDLE_CUSTOM_URL || process.env.LEMONSQUEEZY_BUNDLE_CUSTOM_URL || ''),
+    // The Support Shop: Paddle's client-side token and price ids (public; see docs/BILLING_SETUP.md). Empty hides the buy buttons.
+    'import.meta.env.VITE_PADDLE_CLIENT_TOKEN': JSON.stringify(process.env.VITE_PADDLE_CLIENT_TOKEN || process.env.PADDLE_CLIENT_TOKEN || ''),
+    'import.meta.env.VITE_PADDLE_ENV': JSON.stringify(process.env.VITE_PADDLE_ENV || process.env.PADDLE_ENV || ''),
+    'import.meta.env.VITE_PADDLE_PRICE_SUPPORTER': JSON.stringify(process.env.VITE_PADDLE_PRICE_SUPPORTER || process.env.PADDLE_PRICE_SUPPORTER || ''),
+    'import.meta.env.VITE_PADDLE_PRICE_NO_ADS': JSON.stringify(process.env.VITE_PADDLE_PRICE_NO_ADS || process.env.PADDLE_PRICE_NO_ADS || ''),
+    'import.meta.env.VITE_PADDLE_PRICE_BUNDLE_SUPPORTER': JSON.stringify(process.env.VITE_PADDLE_PRICE_BUNDLE_SUPPORTER || process.env.PADDLE_PRICE_BUNDLE_SUPPORTER || ''),
+    'import.meta.env.VITE_PADDLE_PRICE_BUNDLE_VISIONARY': JSON.stringify(process.env.VITE_PADDLE_PRICE_BUNDLE_VISIONARY || process.env.PADDLE_PRICE_BUNDLE_VISIONARY || ''),
+    'import.meta.env.VITE_PADDLE_PRICE_BUNDLE_FOUNDER': JSON.stringify(process.env.VITE_PADDLE_PRICE_BUNDLE_FOUNDER || process.env.PADDLE_PRICE_BUNDLE_FOUNDER || ''),
+    'import.meta.env.VITE_PADDLE_PRICE_BUNDLE_CUSTOM': JSON.stringify(process.env.VITE_PADDLE_PRICE_BUNDLE_CUSTOM || process.env.PADDLE_PRICE_BUNDLE_CUSTOM || ''),
   },
   plugins: mode === 'desktop' ? [react(), stripAdsense()] : [react(), siteMaps(), serviceWorker(), buildStampPlugin(), versionFile()],
   // `--mode desktop` is the offline Windows package: relative asset paths, its own output folder.

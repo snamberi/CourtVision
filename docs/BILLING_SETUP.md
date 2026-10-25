@@ -1,7 +1,7 @@
-# Setting up the Support Shop (Lemon Squeezy) for Court Vision
+# Setting up the Support Shop (Paddle) for Court Vision
 
 The **Support Shop** (`#/support`, the heart button in the menu header) sells six optional products through
-**Lemon Squeezy** (the merchant of record: it takes the payment, handles sales tax and VAT, sends receipts and handles
+**Paddle** (the merchant of record: it takes the payment, handles sales tax and VAT, sends receipts and handles
 refunds and subscriptions). The page says up front that nobody has to buy anything and that the money goes to hosting.
 
 | Product | Price | Type | Unlocks |
@@ -14,13 +14,14 @@ refunds and subscriptions). The page says up front that nobody has to buy anythi
 | **Custom Support Bundle** | $0.99+ (pay what you want) | one-time | *Gift Box* icon, *Kindness* colour, *Patron* title |
 
 Nothing changes the game: no ratings, spins, XP, picks or modes are for sale. The names, prices and perks shown in the
-game live in `src/billing/products.ts`; keep them matching Lemon Squeezy. Purchases belong to an account, so
-**accounts must be set up first** (see [ACCOUNTS_SETUP.md](ACCOUNTS_SETUP.md)). A product without a checkout link
-shows "Not on sale here yet".
+game live in `src/billing/products.ts`; keep them matching Paddle. Purchases belong to an account, so **accounts must
+be set up first** (see [ACCOUNTS_SETUP.md](ACCOUNTS_SETUP.md)). A product without a price ID shows "Not on sale here yet".
 
-After a purchase reaches the game, a **thank-you popup** shows what it unlocked (once per product). Monthly passes have
-a **Cancel pass** button on their card: one confirmation, and the game cancels it through the Lemon Squeezy API
-(perks last to the end of the paid month). Without an API key it opens Lemon Squeezy's own page instead.
+Buying opens **Paddle's checkout over the game** (no new tab). When it finishes, the shop checks for the purchase a few
+times and a **thank-you popup** shows what it unlocked (once per product). Monthly passes have a **Cancel pass**
+button: one confirmation, and the game cancels it through the Paddle API at the end of the paid month (without an API
+key it opens Paddle's cancel page instead). The **Custom Support Bundle** has an amount picker ($0.99 to $500): with an
+API key the server makes a one-off price for the amount chosen; without one, it sells at the bundle's catalog price.
 
 Time needed: about 30 minutes.
 
@@ -30,83 +31,83 @@ Supabase → **SQL Editor** → paste the whole of [`supabase/schema.sql`](../su
 re-run), or just [`supabase/migrations/2026-10-25-support-shop.sql`](../supabase/migrations/2026-10-25-support-shop.sql)
 if the `entitlements` table already exists. Players can read only their own row, and only the server can write it.
 
-## 2. The products in Lemon Squeezy
+## 2. Paddle
 
-1. Sign up at [lemonsqueezy.com](https://www.lemonsqueezy.com/), create a store and finish the payout and identity
-   steps (the store must be activated before it can take real payments; test mode works straight away).
-2. Create the six products above (**Subscription**, monthly, for the two passes; **Single payment** for the bundles;
-   for the Custom Support Bundle turn on **pay what you want** with a $0.99 minimum).
-3. For each product, note the **variant id** (the number in the variant's URL, or in the product's "Share" dialog).
-4. For each product, **Share → copy the checkout link** (`https://YOURSTORE.lemonsqueezy.com/buy/…`).
-5. Recommended: in each product's **Confirmation modal / Redirect URL**, set the button link to
-   `https://YOUR-SITE/#/support` so players land back in the shop, where the thank-you popup greets them.
-6. For the in-game cancel button: **Settings → API → +** to create an API key (keep it for step 4).
+Work in the **sandbox** first ([sandbox-vendors.paddle.com](https://sandbox-vendors.paddle.com/)), then repeat in live.
 
-## 3. Create the webhook
+1. **Catalog → Products**: the six products above. Give the two passes a **monthly recurring** price and the bundles a
+   **one-time** price ($0.99 for the Custom Support Bundle). Note each **product ID** (`pro_…`) and **price ID** (`pri_…`).
+2. **Checkout → Checkout settings**: set the **default payment link** to your site (for example
+   `https://courtvisiongame.com/`) and approve the domain if Paddle asks. The checkout opens over the game.
+3. **Developer tools → Authentication**: create a **client-side token** (`live_…` / `test_…`), and an **API key** with
+   permission for subscriptions (write) and transactions (write). The API key powers the Cancel button and custom amounts.
+4. **Developer tools → Notifications → New destination**:
+   - **URL**: `https://YOUR-SITE/api/billing`
+   - **Events**: `transaction.completed`, `subscription.created`, `subscription.activated`, `subscription.updated`,
+     `subscription.canceled`, `subscription.past_due`, `subscription.paused`, `subscription.resumed`,
+     `adjustment.created`, `adjustment.updated`
+   - Save, then copy its **secret key** (`pdl_ntfset_…`).
 
-Lemon Squeezy → **Settings → Webhooks → +**:
-
-- **Callback URL**: `https://YOUR-SITE/api/billing`
-- **Signing secret**: make up a long random string (for example the output of `openssl rand -hex 32`) and keep it
-  for step 4.
-- **Events**: `order_created`, `order_refunded`, `subscription_created`, `subscription_updated`,
-  `subscription_cancelled`, `subscription_resumed`, `subscription_expired`, `subscription_paused`,
-  `subscription_unpaused`.
-
-## 4. Add the settings
+## 3. Add the settings
 
 On Cloudflare: the Worker's **Settings → Variables and Secrets** for the server values, and **Builds → Variables** for
-the `VITE_` links (they are built into the game). On Vercel: **Settings → Environment Variables** for all of them.
+the `VITE_` values (they are built into the game). On Vercel: **Settings → Environment Variables** for all of them.
 
 | Name | Value |
 |---|---|
-| `LEMONSQUEEZY_WEBHOOK_SECRET` | the signing secret from step 3 |
-| `LEMONSQUEEZY_API_KEY` | the API key from step 2.6 (optional: enables the one-tap cancel) |
-| `LEMONSQUEEZY_SUPPORTER_VARIANT_ID` | Supporter Pass variant id (comma-separated if more than one) |
-| `LEMONSQUEEZY_NO_ADS_VARIANT_ID` | No-Ads Pass (monthly) variant id |
-| `LEMONSQUEEZY_BUNDLE_SUPPORTER_VARIANT_ID` | Supporter Bundle variant id |
-| `LEMONSQUEEZY_BUNDLE_VISIONARY_VARIANT_ID` | Visionary Supporter Bundle variant id |
-| `LEMONSQUEEZY_BUNDLE_FOUNDER_VARIANT_ID` | Eternal Founder Bundle variant id |
-| `LEMONSQUEEZY_BUNDLE_CUSTOM_VARIANT_ID` | Custom Support Bundle variant id |
-| `LEMONSQUEEZY_NO_ADS_LIFETIME_VARIANT_ID` | only if you once sold a one-time No-Ads Pass: its variant id, so refunds still work |
-| `VITE_LEMONSQUEEZY_SUPPORTER_URL` | Supporter Pass checkout link |
-| `VITE_LEMONSQUEEZY_NO_ADS_URL` | No-Ads Pass checkout link |
-| `VITE_LEMONSQUEEZY_BUNDLE_SUPPORTER_URL` | Supporter Bundle checkout link |
-| `VITE_LEMONSQUEEZY_BUNDLE_VISIONARY_URL` | Visionary Supporter Bundle checkout link |
-| `VITE_LEMONSQUEEZY_BUNDLE_FOUNDER_URL` | Eternal Founder Bundle checkout link |
-| `VITE_LEMONSQUEEZY_BUNDLE_CUSTOM_URL` | Custom Support Bundle checkout link |
+| `PADDLE_WEBHOOK_SECRET` | the notification destination's secret key |
+| `PADDLE_API_KEY` | the API key (optional: enables the one-tap cancel and custom amounts) |
+| `PADDLE_ENV` | `sandbox` while testing; leave empty for live |
+| `PADDLE_PRODUCT_SUPPORTER` | Supporter Pass product ID (comma-separated if more than one) |
+| `PADDLE_PRODUCT_NO_ADS` | No-Ads Pass product ID |
+| `PADDLE_PRODUCT_BUNDLE_SUPPORTER` | Supporter Bundle product ID |
+| `PADDLE_PRODUCT_BUNDLE_VISIONARY` | Visionary Supporter Bundle product ID |
+| `PADDLE_PRODUCT_BUNDLE_FOUNDER` | Eternal Founder Bundle product ID |
+| `PADDLE_PRODUCT_BUNDLE_CUSTOM` | Custom Support Bundle product ID |
+| `VITE_PADDLE_CLIENT_TOKEN` | the client-side token |
+| `VITE_PADDLE_ENV` | `sandbox` while testing; leave empty for live |
+| `VITE_PADDLE_PRICE_SUPPORTER` | Supporter Pass price ID |
+| `VITE_PADDLE_PRICE_NO_ADS` | No-Ads Pass price ID |
+| `VITE_PADDLE_PRICE_BUNDLE_SUPPORTER` | Supporter Bundle price ID |
+| `VITE_PADDLE_PRICE_BUNDLE_VISIONARY` | Visionary Supporter Bundle price ID |
+| `VITE_PADDLE_PRICE_BUNDLE_FOUNDER` | Eternal Founder Bundle price ID |
+| `VITE_PADDLE_PRICE_BUNDLE_CUSTOM` | Custom Support Bundle price ID ($0.99) |
 
-The `VITE_…` links are public; the secret, API key and variant ids stay on the server. **Redeploy** after adding them.
+The `VITE_…` values are public; the secret, API key and product IDs stay on the server. **Redeploy** after adding them.
 
-## 5. Test it
+## 4. Test it
 
-1. Put the store in **Test mode**, sign in to the game, open the **Support Shop** (heart button in the menu header) and
-   buy a bundle with the test card `4242 4242 4242 4242` (any future date, any CVC).
-2. Within a few seconds the webhook runs (Lemon Squeezy → Webhooks shows each delivery and its response). Back in the
-   game the thank-you popup appears and the card says **Owned**; the icon, colour and title are in the Profile. If
-   not, press **Check again**.
+1. With the sandbox values set, sign in to the game, open the **Support Shop** and buy a bundle with Paddle's test
+   card `4242 4242 4242 4242` (any future date, CVC `100`).
+2. Within a few seconds the webhook runs (Paddle → Notifications → the destination → **Logs** shows each delivery and
+   our answer). The thank-you popup appears and the card says **Owned**; the icon, colour and title are in the
+   Profile. If not, press **Check again**.
 3. Subscribe to a monthly pass the same way: the card shows **Active** and the ads are gone. Press **Cancel pass** →
    **Yes, cancel**: the card shows **Cancelled · perks until …**.
-4. Switch the store to live mode when you are happy. (Test-mode and live-mode products have different variant ids and
-   checkout links: update step 4 if you created separate ones.)
+4. Try the Custom Support Bundle with an amount like $7.50.
+5. Switch to the live values (`PADDLE_ENV` and `VITE_PADDLE_ENV` empty, live token, key, secret and IDs) and redeploy.
 
 ## How it works
 
-- The buy button opens the checkout link with `checkout[custom][user_id]` set to the signed-in player's account id
-  (and their email pre-filled). Lemon Squeezy sends that id back with every webhook for the order or subscription.
-- `/api/billing` (`server/billing.ts`) checks the `X-Signature` HMAC with the signing secret, then records:
-  - `order_created` for a bundle variant → adds it to `bundles`; `order_refunded` → removes it (a lifetime No-Ads
-    variant sets `no_ads` the same way);
-  - any `subscription_*` for a Supporter or No-Ads variant (each in its own columns) → `supporter_until` or `no_ads_until`: the renewal date plus 3 days while active,
-    on trial or past due; the end of the paid period once cancelled; nothing once expired, unpaid or paused.
-    Events that arrive out of order never overwrite a newer state.
+- The game opens Paddle.js's overlay checkout with `customData.user_id` set to the signed-in player's account id (and
+  their email pre-filled). Paddle copies it onto the transaction and the subscription, and sends it with every webhook.
+  Paddle.js is loaded only when someone presses a buy button.
+- `/api/billing` (`server/billing.ts`) checks the `Paddle-Signature` (HMAC-SHA256 of `timestamp:body`, rejected after
+  5 minutes), matches products by product ID, then records:
+  - `transaction.completed` for a bundle → adds it to `bundles` and remembers the order in `bundle_orders`; an
+    approved full refund (`adjustment.*`) of that order → removes it;
+  - any `subscription.*` for a Supporter or No-Ads product (each in its own columns) → `supporter_until` or
+    `no_ads_until`: the period end plus 3 days while active, trialing or past due; exactly the period end once a cancel
+    is scheduled; nothing once canceled or paused. Events that arrive out of order never overwrite a newer state.
+- `?action=cancel` asks Paddle to cancel at `next_billing_period`; `?action=checkout` creates a transaction with a
+  one-off price for the Custom Support Bundle. Both check the player's own access token.
 - The game reads the row when the player signs in, opens the game, or returns to the Support Shop, and keeps a copy in
-  the browser (`cv-entitlements`) so it works offline. A lapsed Supporter Pass ends on its date even offline.
+  the browser (`cv-entitlements`) so it works offline. A lapsed monthly pass ends on its date even offline.
   Signing out forgets the copy; backups never include it.
-- Deleting an account deletes its passes. It does **not** cancel a Lemon Squeezy subscription; the Support Shop tells
-  players to cancel first, and you can cancel one from the Lemon Squeezy dashboard.
+- Deleting an account deletes what it owns. It does **not** cancel a Paddle subscription; the Support Shop tells
+  players to cancel first, and you can cancel one from the Paddle dashboard.
 
 ## Refunds
 
-Refunds are issued from the Lemon Squeezy dashboard (Orders → the order → Refund). A refunded bundle is taken back
-automatically; for a monthly pass, cancel the subscription too.
+Refunds are issued from the Paddle dashboard (Transactions → the transaction → Refund). A fully refunded bundle is
+taken back automatically once Paddle approves the refund; for a monthly pass, cancel the subscription too.

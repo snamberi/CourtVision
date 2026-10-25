@@ -106,3 +106,11 @@
   .thank-you .shop-modal-box { animation: none; }
   .shop-card-glow { display: block; }
 }
+
+/* The Custom Support Bundle's amount picker. */
+.shop-amount { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; }
+.shop-amount-pick { min-height: 34px; padding: 4px 9px; cursor: pointer; font: 12px/1 var(--font-data); color: var(--text); background: var(--c-bg-0b1018, #0b1018); border: 2px solid var(--line, var(--c-border-2a3546, #2a3546)); }
+.shop-amount-pick.on { border-color: var(--accent); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.shop-amount-own { display: inline-flex; align-items: center; gap: 4px; padding: 0 8px; background: var(--c-bg-0b1018, #0b1018); border: 2px solid var(--line, var(--c-border-2a3546, #2a3546)); font: 12px/1 var(--font-data); color: var(--text-dim); }
+.shop-amount-own input { width: 72px; min-height: 30px; border: 0; background: transparent; color: var(--text); font: 13px/1 var(--font-data); }
+.shop-amount-own:focus-within { border-color: var(--accent); }

@@ -4,7 +4,7 @@ import { ProfileIcon, NameTag } from '../ProfileIcon';
 import { ICONS, NAME_COLORS, type Rule } from '../../profile/cosmetics';
 import { useAccount, refreshProfile, cloudEnabled, accessToken } from '../../cloud/account';
 import { openSignIn } from '../../cloud/signIn';
-import { useEntitlements, checkoutUrl, passesOnSale, PASS_URLS, activeProducts, cancelSubscription, type Entitlements, type SubscriptionKind } from '../../billing/billing';
+import { useEntitlements, openCheckout, customAmountCheckout, onSale, passesOnSale, activeProducts, cancelSubscription, type Entitlements, type SubscriptionKind } from '../../billing/billing';
 import { PRODUCTS, type Product } from '../../billing/products';
 import { IS_DESKTOP_BUILD } from '../../appMode';
 import './shop.css';
@@ -16,8 +16,8 @@ const day = (iso?: string | null) => (iso ? new Date(iso).toLocaleDateString(und
 const unlocks = (p: Product) => (rule: Rule) => p.id === 'supporter' ? 'supporter' in rule : 'product' in rule && rule.product === p.id;
 const cosmeticsOf = (p: Product) => ({ icons: ICONS.filter(i => unlocks(p)(i.rule)), colors: NAME_COLORS.filter(c => unlocks(p)(c.rule)) });
 
-const buyLabel = (p: Product) => {
-  if (p.flexible) return 'Choose your amount';
+const buyLabel = (p: Product, amount: string) => {
+  if (p.flexible) return `Give $${Number(amount) >= 0 ? amount : '…'}`;
   return p.billing === 'monthly' ? `Subscribe · ${p.price}/mo` : `Buy · ${p.price}`;
 };
 const priceNote = (p: Product) => {
@@ -25,7 +25,17 @@ const priceNote = (p: Product) => {
   return p.flexible ? 'or more, you choose' : 'one-time';
 };
 
-/** A monthly pass's state: when it renews or ends, and where Lemon Squeezy lets the buyer manage it. */
+/** Quick picks for the Custom Support Bundle, in dollars. */
+const AMOUNTS = ['0.99', '2.99', '4.99', '9.99', '19.99'];
+const CENTS_PER_DOLLAR = 100;
+const MIN_CENTS = 99;
+const MAX_CENTS = 50_000;
+const toCents = (dollars: string) => Math.round(Number(dollars) * CENTS_PER_DOLLAR);
+/** How often, and how many times, the shop looks for a purchase right after Paddle says the checkout finished. */
+const RECHECK_MS = 2500;
+const RECHECKS = 6;
+
+/** A monthly pass's state: when it renews or ends, and where Paddle lets the buyer manage it. */
 function subState(kind: SubscriptionKind, e: Entitlements) {
   return kind === 'supporter'
     ? { until: e.supporterUntil, status: e.supporterStatus, portal: e.portal }
@@ -33,7 +43,7 @@ function subState(kind: SubscriptionKind, e: Entitlements) {
 }
 
 /**
- * The Support Shop (#/support): the two monthly passes and the four one-time bundles, sold through Lemon Squeezy.
+ * The Support Shop (#/support): the two monthly passes and the four one-time bundles, sold through Paddle.
  * Everything is optional and cosmetic; the header says so before anything else.
  */
 export function SupportShop({ onExit, onProfile }: { onExit: () => void; onProfile: () => void }) {
@@ -41,9 +51,35 @@ export function SupportShop({ onExit, onProfile }: { onExit: () => void; onProfi
   const owned = useEntitlements();
   const [checking, setChecking] = useState(false);
   const [confirm, setConfirm] = useState<Product | null>(null);
+  const [amount, setAmount] = useState('4.99');
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const signedIn = account.status === 'signedIn' && !!account.userId;
   const active = activeProducts(owned);
-  // Coming back from a checkout tab: look again for the purchase.
+  // Paddle's checkout finished: the webhook usually lands within seconds, so look a few times.
+  const afterPaying = () => {
+    let n = 0;
+    const tick = () => { void refreshQuietly(); n += 1; if (n < RECHECKS) window.setTimeout(tick, RECHECK_MS); };
+    tick();
+  };
+  const buy = async (p: Product) => {
+    if (!signedIn) { openSignIn(); return; }
+    setError(null); setBusy(p.id);
+    const o = { userId: account.userId!, email: account.email, onDone: afterPaying };
+    let err: string | null;
+    const cents = toCents(amount);
+    if (p.flexible && cents !== MIN_CENTS) {
+      if (!Number.isFinite(cents) || cents < MIN_CENTS || cents > MAX_CENTS) err = 'Pick an amount from $0.99 to $500.';
+      else {
+        const token = accessToken();
+        const r = token ? await customAmountCheckout(cents, token) : 'Sign in again, then try once more.';
+        if (r === 'catalog') err = await openCheckout(p.id, o);
+        else err = typeof r === 'string' ? r : await openCheckout(p.id, { ...o, transactionId: r.transactionId });
+      }
+    } else err = await openCheckout(p.id, o);
+    setError(err); setBusy(null);
+  };
+  // Coming back to the tab (a checkout in another window, or Paddle's emails): look again for the purchase.
   useEffect(() => {
     if (!signedIn) return;
     const again = () => { if (document.visibilityState === 'visible') void refreshQuietly(); };
@@ -59,7 +95,6 @@ export function SupportShop({ onExit, onProfile }: { onExit: () => void; onProfi
     const monthly = p.billing === 'monthly';
     const sub = monthly ? subState(p.id as SubscriptionKind, owned) : null;
     const cancelled = sub?.status === 'cancelled';
-    const url = signedIn ? checkoutUrl(p.id, account.userId!, account.email) : null;
     let action: React.ReactNode;
     if (has && monthly) {
       action = <>
@@ -70,12 +105,18 @@ export function SupportShop({ onExit, onProfile }: { onExit: () => void; onProfi
       action = <strong className="shop-status ok"><PixelIcon name="check" size={14} /> Owned · thank you!</strong>;
     } else if (p.id === 'noAds' && owned.noAds) {
       action = <strong className="shop-status ok">{owned.supporter ? 'Ads are already off with your Supporter Pass' : 'You already have the lifetime No-Ads Pass'}</strong>;
-    } else if (!PASS_URLS[p.id]) {
+    } else if (!onSale(p.id)) {
       action = <small className="shop-status">Not on sale here yet</small>;
-    } else if (!url) {
+    } else if (!signedIn) {
       action = <button type="button" className="shop-buy" onClick={openSignIn}>Sign in to buy</button>;
     } else {
-      action = <a className="shop-buy" href={url} target="_blank" rel="noopener noreferrer">{buyLabel(p)}</a>;
+      action = <>
+        {p.flexible && <div className="shop-amount" role="group" aria-label="Choose your amount">
+          {AMOUNTS.map(a => <button key={a} type="button" className={`shop-amount-pick${amount === a ? ' on' : ''}`} aria-pressed={amount === a} onClick={() => setAmount(a)}>${a}</button>)}
+          <label className="shop-amount-own"><span>$</span><input type="number" inputMode="decimal" min="0.99" max="500" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} aria-label="Your own amount in US dollars" /></label>
+        </div>}
+        <button type="button" className="shop-buy" disabled={busy !== null} onClick={() => void buy(p)}>{busy === p.id ? 'Opening checkout…' : buyLabel(p, amount)}</button>
+      </>;
     }
     return <article key={p.id} className={`shop-card${has ? ' owned' : ''}${p.id === 'bundleFounder' ? ' legendary' : ''}`} style={{ '--accent': p.accent } as React.CSSProperties}>
       <div className="shop-card-art" aria-hidden="true">
@@ -122,8 +163,9 @@ export function SupportShop({ onExit, onProfile }: { onExit: () => void; onProfi
         <div className="shop-grid">{PRODUCTS.filter(p => p.billing === 'once').map(card)}</div>
       </section>
       {active.length > 0 && <p className="hint-text">Your cosmetics are in your <button type="button" className="link-button" onClick={onProfile}>Profile</button>: pick an icon, name colour and title.</p>}
+      {error && <p className="shop-error" role="alert">{error}</p>}
       {signedIn && passesOnSale() && <p className="hint-text">Just paid? It can take a minute to arrive. <button type="button" className="link-button" disabled={checking} onClick={recheck}>{checking ? 'Checking…' : 'Check again'}</button></p>}
-      <p className="hint-text shop-fine">Payments, receipts, tax and refunds are handled by Lemon Squeezy, our reseller and merchant of record. Monthly passes renew each month until you cancel;
+      <p className="hint-text shop-fine">Payments, receipts, tax and refunds are handled by Paddle, our reseller and merchant of record. Monthly passes renew each month until you cancel;
         cancelling stops the next payment and you keep the perks until the end of the month you paid for. Bundles are one-time and yours for good. Deleting your account removes what you own and doesn't cancel a monthly pass, so cancel first.
         Questions or a refund? Ask on our Discord.</p>
     </>}
@@ -131,7 +173,7 @@ export function SupportShop({ onExit, onProfile }: { onExit: () => void; onProfi
   </main>;
 }
 
-/** "Are you sure?" for cancelling a monthly pass, then the cancel itself (or Lemon Squeezy's page as a fallback). */
+/** "Are you sure?" for cancelling a monthly pass, then the cancel itself (or Paddle's cancel page as a fallback). */
 function CancelDialog({ product, owned, onClose }: { product: Product; owned: Entitlements; onClose: () => void }) {
   const kind = product.id as SubscriptionKind;
   const sub = subState(kind, owned);
@@ -148,7 +190,7 @@ function CancelDialog({ product, owned, onClose }: { product: Product; owned: En
     setBusy(true); setError(null);
     const r = await cancelSubscription(kind, token);
     if (r === 'portal') {
-      if (sub.portal) { window.open(sub.portal, '_blank', 'noopener'); onClose(); } else setError('Open the receipt email from Lemon Squeezy and use "Manage subscription" to cancel.');
+      if (sub.portal) { window.open(sub.portal, '_blank', 'noopener'); onClose(); } else setError('Open the receipt email from Paddle and use its "Manage subscription" link to cancel.');
     } else if (r) setError(r);
     else { setDone(true); void refreshQuietly(); }
     setBusy(false);
@@ -167,7 +209,7 @@ function CancelDialog({ product, owned, onClose }: { product: Product; owned: En
           <button type="button" className="shop-keep" onClick={onClose} disabled={busy} autoFocus>Keep it</button>
           <button type="button" className="shop-cancel" onClick={() => void go()} disabled={busy}>{busy ? 'Cancelling…' : 'Yes, cancel'}</button>
         </div>
-        {sub.portal && <p className="hint-text"><a href={sub.portal} target="_blank" rel="noopener noreferrer">Or manage it on Lemon Squeezy</a></p>}
+        {sub.portal && <p className="hint-text"><a href={sub.portal} target="_blank" rel="noopener noreferrer">Or manage it on Paddle</a></p>}
       </>}
     </div>
   </div>;

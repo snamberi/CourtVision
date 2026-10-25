@@ -102,10 +102,10 @@ currently used on Vercel, remove it from the Vercel project afterwards. Update `
   site. Discord and Google need no change.
 - **Google AdSense → Sites:** add the new domain. `ads.txt` is served at `/ads.txt` already.
 - **Google Search Console** (optional): add the new address and submit `/sitemap.xml`.
-- **Lemon Squeezy** (later, when payments are on): webhook URL → `https://<new address>/api/billing`, and add the
-  `LEMONSQUEEZY_*` values from `BILLING_SETUP.md`:
-  - the webhook secret and variant IDs under A3;
-  - the `VITE_` checkout links under A2.
+- **Paddle** (later, when payments are on): notification destination URL → `https://<new address>/api/billing`, and
+  add the `PADDLE_*` values from `BILLING_SETUP.md`:
+  - the webhook secret, API key and product IDs under A3;
+  - the `VITE_PADDLE_*` client token and price IDs under A2.
 
 ### A7. Analytics
 

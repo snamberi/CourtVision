@@ -7,3 +7,5 @@ alter table public.entitlements add column if not exists no_ads_subscription_id 
 alter table public.entitlements add column if not exists no_ads_updated_at timestamptz;
 alter table public.entitlements add column if not exists no_ads_portal_url text;
 alter table public.entitlements add column if not exists bundles text[] not null default '{}';
+-- Which bundle each Paddle order bought (txn id → bundle), so a refund takes back the right one.
+alter table public.entitlements add column if not exists bundle_orders jsonb not null default '{}';

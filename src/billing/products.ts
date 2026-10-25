@@ -1,5 +1,5 @@
 /*
- * Everything sold in the Support Shop, sold through Lemon Squeezy. All of it is optional and cosmetic: the game is
+ * Everything sold in the Support Shop, sold through Paddle. All of it is optional and cosmetic: the game is
  * free, and nothing here makes a team, a player, a spin or a pick any better. Each product unlocks its own icon,
  * name colour and title (the cosmetics are in profile/cosmetics.ts, with the rule { product: id }).
  *

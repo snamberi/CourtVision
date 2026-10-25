@@ -24,7 +24,7 @@ import { STREAK_REWARDS } from '../retention/streak';
 import { PASS_REWARDS } from '../retention/pass';
 import { MISSION_TITLES } from '../retention/missions';
 import { useAccount } from '../cloud/account';
-import { passesOnSale, PASS_URLS } from '../billing/billing';
+import { passesOnSale, onSale } from '../billing/billing';
 import { productById, type ProductId } from '../billing/products';
 import { ThemeSection } from './ThemePicker';
 import { PetSprite } from './locker/PetSprite';
@@ -77,7 +77,7 @@ const pickerId = (label: string) => `pick-${label.toLowerCase().replace(/[^a-z]+
 
 /** Supporter and Support Shop cosmetics are listed only while they're on sale (or already owned). */
 const showSupporter = (c: UnlockContext) => c.supporter || passesOnSale();
-const showProduct = (rule: object, c: UnlockContext) => !('product' in rule) || (c.products ?? []).includes((rule as { product: ProductId }).product) || !!PASS_URLS[(rule as { product: ProductId }).product];
+const showProduct = (rule: object, c: UnlockContext) => !('product' in rule) || (c.products ?? []).includes((rule as { product: ProductId }).product) || onSale((rule as { product: ProductId }).product);
 const listed = <T extends { rule: object }>(list: T[], c: UnlockContext) => list.filter(x => (!('supporter' in x.rule) || showSupporter(c)) && showProduct(x.rule, c) && (!('staff' in x.rule) || !!c.staff) && !eventPieceHidden('shop' in x.rule ? (x.rule as { shop: string }).shop : null, c.shop ?? []));
 
 /** Every title and where it comes from: levels, ranked seasons, leaderboards and the modes. */
@@ -89,7 +89,7 @@ function titleGroups(c: UnlockContext) {
     { label: 'Leaderboards', items: HONORS.map(h => ({ title: h.title, open: c.honors.includes(h.id), how: h.how })) },
     { label: 'Achievements', items: MODE_TITLES.map(m => ({ title: m.title, open: c.modes.includes(m.mode), how: m.how })) },
     { label: 'Supporter', items: [{ title: SUPPORTER_TITLE, open: c.supporter, how: 'Supporter pass' },
-      ...PRODUCT_TITLES.filter(t => (c.products ?? []).includes(t.product) || !!PASS_URLS[t.product]).map(t => ({ title: t.title, open: (c.products ?? []).includes(t.product), how: `${productById(t.product)?.name ?? 'Support Shop'} (Support Shop)` }))] },
+      ...PRODUCT_TITLES.filter(t => (c.products ?? []).includes(t.product) || onSale(t.product)).map(t => ({ title: t.title, open: (c.products ?? []).includes(t.product), how: `${productById(t.product)?.name ?? 'Support Shop'} (Support Shop)` }))] },
     { label: 'Trophy Road', items: TROPHY_TITLES.map(t => ({ title: t.id, open: c.trophies >= t.trophies, how: `${t.trophies.toLocaleString()} trophies`, progress: c.trophies / t.trophies })) },
     { label: 'Daily streak', items: STREAK_REWARDS.filter(r => r.title).map(r => ({ title: r.title!, open: (c.streak ?? 0) >= r.days, how: `Visit ${r.days} days in a row`, progress: (c.streak ?? 0) / r.days })) },
     { label: 'Season Pass', items: [

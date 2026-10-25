@@ -69,17 +69,75 @@ const BUNDLE_ENV = {
 	bundleCustom: "CUSTOM"
 };
 function billingEnv(env = globalThis.process?.env ?? {}) {
-	const secret = env.LEMONSQUEEZY_WEBHOOK_SECRET;
+	const secret = env.PADDLE_WEBHOOK_SECRET;
+	const sandbox = (env.PADDLE_ENV ?? env.VITE_PADDLE_ENV ?? "").toLowerCase() === "sandbox";
 	return secret ? {
 		secret,
-		noAds: ids(env.LEMONSQUEEZY_NO_ADS_VARIANT_ID),
-		supporter: ids(env.LEMONSQUEEZY_SUPPORTER_VARIANT_ID),
-		noAdsLifetime: ids(env.LEMONSQUEEZY_NO_ADS_LIFETIME_VARIANT_ID),
-		bundles: Object.fromEntries(BUNDLES.map((b) => [b, ids(env[`LEMONSQUEEZY_BUNDLE_${BUNDLE_ENV[b]}_VARIANT_ID`])])),
-		apiKey: env.LEMONSQUEEZY_API_KEY || void 0
+		noAds: ids(env.PADDLE_PRODUCT_NO_ADS),
+		supporter: ids(env.PADDLE_PRODUCT_SUPPORTER),
+		bundles: Object.fromEntries(BUNDLES.map((b) => [b, ids(env[`PADDLE_PRODUCT_BUNDLE_${BUNDLE_ENV[b]}`])])),
+		apiKey: env.PADDLE_API_KEY || void 0,
+		api: sandbox ? "https://sandbox-api.paddle.com" : "https://api.paddle.com"
 	} : null;
 }
+/** HTTP statuses the endpoint answers with. */
+const HTTP = {
+	badRequest: 400,
+	unauthorized: 401,
+	notFound: 404,
+	notAllowed: 405,
+	serverError: 500,
+	notImplemented: 501,
+	badGateway: 502,
+	unavailable: 503
+};
+const HEX_RADIX = 16;
+const BYTE_HEX_DIGITS = 2;
+const MS_PER_S = 1e3;
+const enc = new TextEncoder();
+const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(HEX_RADIX).padStart(BYTE_HEX_DIGITS, "0")).join("");
+async function hmac(secret, text) {
+	const key = await crypto.subtle.importKey("raw", enc.encode(secret), {
+		name: "HMAC",
+		hash: "SHA-256"
+	}, false, ["sign"]);
+	return hex(await crypto.subtle.sign("HMAC", key, enc.encode(text)));
+}
+/** Compares in constant time, so the check leaks nothing about how close a forged signature came. */
+function sameHex(a, b) {
+	if (a.length !== b.length) return false;
+	return [...a].reduce((diff, ch, i) => diff | ch.charCodeAt(0) ^ b.charCodeAt(i), 0) === 0;
+}
+const MAX_AGE_S = 300;
+async function verified(header, body, secret, now) {
+	const parts = Object.fromEntries(header.split(";").map((p) => p.split("=")));
+	const ts = Number(parts.ts);
+	if (!Number.isFinite(ts) || Math.abs(now / MS_PER_S - ts) > MAX_AGE_S) return false;
+	const want = await hmac(secret, `${ts}:${body}`);
+	return header.split(";").filter((p) => p.startsWith("h1=")).some((p) => sameHex(p.slice(3).toLowerCase(), want));
+}
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** A subscription is paid through its billing period (plus a few days for a late renewal webhook). */
+const DAY_MS = 864e5;
+const GRACE_MS = 3 * DAY_MS;
+const LIVE = /* @__PURE__ */ new Set([
+	"active",
+	"trialing",
+	"past_due"
+]);
+const MONTH_DAYS = 31;
+/** How long a monthly pass in this state keeps its perks (null: none). */
+function paidUntil(s, now = Date.now()) {
+	if (!LIVE.has(s.status ?? "")) return null;
+	const end = Date.parse(s.current_billing_period?.ends_at ?? "");
+	if (s.scheduled_change?.action === "cancel") return new Date(Date.parse(s.scheduled_change.effective_at ?? "") || end || now).toISOString();
+	return new Date((Number.isFinite(end) ? end : now + MONTH_DAYS * DAY_MS) + GRACE_MS).toISOString();
+}
+/** What the game shows: "cancelled" once a cancel is scheduled, even though Paddle still says active. */
+const shownStatus = (s) => s.scheduled_change?.action === "cancel" && LIVE.has(s.status ?? "") ? "cancelled" : s.status ?? null;
 /** The columns each monthly pass writes. */
+const TXN_ID = /^txn_\w+$/;
+const SUB_ID = /^sub_\w+$/;
 const SUB_COLS = {
 	supporter: {
 		until: "supporter_until",
@@ -96,118 +154,110 @@ const SUB_COLS = {
 		portal: "no_ads_portal_url"
 	}
 };
-const enc = new TextEncoder();
-const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
-async function signBody(secret, body) {
-	const key = await crypto.subtle.importKey("raw", enc.encode(secret), {
-		name: "HMAC",
-		hash: "SHA-256"
-	}, false, ["sign"]);
-	return hex(await crypto.subtle.sign("HMAC", key, enc.encode(body)));
-}
-/** Compares in constant time, so the check leaks nothing about how close a forged signature came. */
-function sameHex(a, b) {
-	if (a.length !== b.length) return false;
-	let diff = 0;
-	for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-	return diff === 0;
-}
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-/** A subscription is paid through its renewal date (plus a few days for a late renewal webhook). */
-const GRACE_MS = 2592e5;
-const LIVE = /* @__PURE__ */ new Set([
-	"active",
-	"on_trial",
-	"past_due"
-]);
-/** How long a Supporter subscription in this state keeps its perks (null: none). */
-function supporterUntil(a, now = Date.now()) {
-	const t = (s) => s ? Date.parse(s) : NaN;
-	if (LIVE.has(a.status ?? "")) {
-		const renew = t(a.renews_at);
-		return new Date((Number.isFinite(renew) ? renew : now + 26784e5) + GRACE_MS).toISOString();
-	}
-	if (a.status === "cancelled" && Number.isFinite(t(a.ends_at))) return new Date(t(a.ends_at)).toISOString();
-	return null;
-}
 async function handleBilling(req, supa, bill, f = fetch, now = Date.now()) {
 	try {
-		return await record(req, supa, bill, f, now);
+		return await route(req, supa, bill, f, now);
 	} catch (e) {
 		if (e instanceof Error && e.message.includes("23503")) return json({
 			ok: true,
 			ignored: "no such account"
 		});
-		return json({ error: "Could not record the purchase." }, 500);
+		return json({ error: "Could not record the purchase." }, HTTP.serverError);
 	}
 }
-async function record(req, supa, bill, f, now) {
-	if (req.method !== "POST") return json({ error: "POST only" }, 405);
-	if (new URL(req.url).searchParams.get("action") === "cancel") return cancel(req, supa, bill, f, now);
-	if (!supa || !bill) return json({ error: "Billing is not set up on this server." }, 503);
+async function route(req, supa, bill, f, now) {
+	if (req.method !== "POST") return json({ error: "POST only" }, HTTP.notAllowed);
+	const action = new URL(req.url).searchParams.get("action");
+	if (action === "cancel") return cancel(req, supa, bill, f, now);
+	if (action === "checkout") return customCheckout(req, supa, bill, f);
+	if (!supa || !bill) return json({ error: "Billing is not set up on this server." }, HTTP.unavailable);
 	const body = await req.text();
-	const sig = (req.headers.get("x-signature") ?? "").toLowerCase();
-	if (!sig || !sameHex(sig, await signBody(bill.secret, body))) return json({ error: "Bad signature" }, 401);
+	if (!await verified(req.headers.get("paddle-signature") ?? "", body, bill.secret, now)) return json({ error: "Bad signature" }, HTTP.unauthorized);
 	let p;
 	try {
 		p = JSON.parse(body);
 	} catch {
-		return json({ error: "Bad JSON" }, 400);
+		return json({ error: "Bad JSON" }, HTTP.badRequest);
 	}
-	const event = p.meta?.event_name ?? "";
-	const userId = p.meta?.custom_data?.user_id ?? "";
-	const a = p.data?.attributes ?? {};
+	return record(p, supa, bill, f, now);
+}
+const productOf = (items) => (items ?? []).map((i) => i.price?.product_id ?? "").filter(Boolean);
+const bundleOf = (bill, items) => BUNDLES.find((b) => productOf(items).some((id) => bill.bundles[b].includes(id)));
+const subKindOf = (bill, items) => {
+	const products = productOf(items);
+	if (products.some((id) => bill.supporter.includes(id))) return "supporter";
+	return products.some((id) => bill.noAds.includes(id)) ? "noAds" : null;
+};
+async function record(p, supa, bill, f, now) {
+	const event = p.event_type ?? "";
+	const d = p.data ?? {};
+	const stampNow = new Date(now).toISOString();
+	if (event.startsWith("adjustment.")) {
+		if (d.action !== "refund" || d.status !== "approved" || d.type !== "full" || !TXN_ID.test(d.transaction_id ?? "")) return json({
+			ok: true,
+			ignored: "not an approved full refund"
+		});
+		const row = (await rest(supa, "GET", `entitlements?bundle_orders->>${d.transaction_id}=not.is.null&select=user_id,bundles,bundle_orders`, void 0, void 0, f))?.[0];
+		if (!row) return json({
+			ok: true,
+			ignored: "not a bundle order"
+		});
+		const bundle = row.bundle_orders?.[d.transaction_id];
+		const orders = { ...row.bundle_orders };
+		delete orders[d.transaction_id];
+		const stillOwned = Object.values(orders).includes(bundle ?? "");
+		await upsert(supa, "entitlements", [{
+			user_id: row.user_id,
+			bundles: stillOwned ? row.bundles ?? [] : (row.bundles ?? []).filter((b) => b !== bundle),
+			bundle_orders: orders,
+			updated_at: stampNow
+		}], "user_id", f);
+		return json({
+			ok: true,
+			refunded: bundle
+		});
+	}
+	const userId = d.custom_data?.user_id ?? "";
 	if (!UUID.test(userId)) return json({
 		ok: true,
 		ignored: "no user_id on the checkout"
 	});
-	const variant = String(a.first_order_item?.variant_id ?? a.variant_id ?? "");
 	const base = {
 		user_id: userId,
-		customer_id: a.customer_id != null ? String(a.customer_id) : null,
-		updated_at: new Date(now).toISOString()
+		customer_id: d.customer_id ?? null,
+		updated_at: stampNow
 	};
-	if (event === "order_created" || event === "order_refunded") {
-		const owned = event === "order_created" && a.status !== "refunded";
-		const bundle = BUNDLES.find((b) => bill.bundles[b].includes(variant));
-		if (bundle) {
-			const had = (await rest(supa, "GET", `entitlements?user_id=eq.${userId}&select=bundles`, void 0, void 0, f))?.[0]?.bundles ?? [];
-			const next = owned ? [.../* @__PURE__ */ new Set([...had, bundle])] : had.filter((b) => b !== bundle);
-			await upsert(supa, "entitlements", [{
-				...base,
-				bundles: next
-			}], "user_id", f);
-			return json({
-				ok: true,
-				bundle,
-				owned
-			});
-		}
-		if (!bill.noAdsLifetime.includes(variant)) return json({
+	if (event === "transaction.completed" || event === "transaction.paid") {
+		if (d.subscription_id) return json({
 			ok: true,
-			ignored: "not a one-time product (subscriptions are recorded from subscription_* events)"
+			ignored: "subscription payment"
 		});
+		const bundle = bundleOf(bill, d.items);
+		if (!bundle || !d.id) return json({
+			ok: true,
+			ignored: "not a bundle"
+		});
+		const had = (await rest(supa, "GET", `entitlements?user_id=eq.${userId}&select=bundles,bundle_orders`, void 0, void 0, f))?.[0];
 		await upsert(supa, "entitlements", [{
 			...base,
-			no_ads: owned,
-			no_ads_order: p.data?.id ?? null
+			bundles: [.../* @__PURE__ */ new Set([...had?.bundles ?? [], bundle])],
+			bundle_orders: {
+				...had?.bundle_orders,
+				[d.id]: bundle
+			}
 		}], "user_id", f);
 		return json({
 			ok: true,
-			noAds: owned
+			bundle
 		});
 	}
-	if (event.startsWith("subscription_")) {
-		const kind = bill.supporter.includes(variant) ? "supporter" : bill.noAds.includes(variant) ? "noAds" : null;
+	if (event.startsWith("subscription.")) {
+		const kind = subKindOf(bill, d.items);
 		if (!kind) return json({
 			ok: true,
 			ignored: "not a monthly pass"
 		});
-		if (p.data?.type !== "subscriptions") return json({
-			ok: true,
-			ignored: "not a subscription object"
-		});
-		const until = await saveSubscription(supa, kind, base, p.data?.id ?? null, a, f, now);
+		const until = await saveSubscription(supa, kind, base, d, f, now);
 		return until === false ? json({
 			ok: true,
 			ignored: "stale"
@@ -222,51 +272,99 @@ async function record(req, supa, bill, f, now) {
 	});
 }
 /** Records a subscription's state; false when a newer state is already recorded (webhooks can arrive out of order). */
-async function saveSubscription(supa, kind, base, id, a, f, now) {
+async function saveSubscription(supa, kind, base, s, f, now) {
 	const col = SUB_COLS[kind];
-	const stamp = a.updated_at ?? new Date(now).toISOString();
+	const stamp = s.updated_at ?? new Date(now).toISOString();
 	const seen = (await rest(supa, "GET", `entitlements?user_id=eq.${base.user_id}&select=${col.stamp}`, void 0, void 0, f))?.[0]?.[col.stamp];
 	if (seen && Date.parse(seen) > Date.parse(stamp)) return false;
-	const until = supporterUntil(a, now);
+	const until = paidUntil(s, now);
 	await upsert(supa, "entitlements", [{
 		...base,
 		[col.until]: until,
-		[col.status]: a.status ?? null,
-		[col.id]: id,
+		[col.status]: shownStatus(s),
+		[col.id]: s.id ?? null,
 		[col.stamp]: stamp,
-		[col.portal]: a.urls?.customer_portal ?? null
+		[col.portal]: s.management_urls?.update_payment_method ?? s.management_urls?.cancel ?? null
 	}], "user_id", f);
 	return until;
 }
-/** Cancels the signed-in player's own monthly pass. The perks stay until the end of the period already paid for. */
-async function cancel(req, supa, bill, f, now) {
-	if (!supa || !bill) return json({ error: "Billing is not set up on this server." }, 503);
-	if (!bill.apiKey) return json({ error: "Cancel from the Lemon Squeezy page." }, 501);
+async function signedInUser(req, supa, f) {
 	const token = bearer(req);
-	const user = token ? await getUser(supa, token, f).catch(() => null) : null;
-	if (!user) return json({ error: "Sign in again, then try once more." }, 401);
+	if (!token) return null;
+	try {
+		return await getUser(supa, token, f);
+	} catch {
+		return null;
+	}
+}
+const paddle = (bill, path, body, f) => f(`${bill.api}${path}`, {
+	method: "POST",
+	headers: {
+		Authorization: `Bearer ${bill.apiKey}`,
+		"Content-Type": "application/json"
+	},
+	body: JSON.stringify(body)
+});
+/** Cancels the signed-in player's own monthly pass at the end of the period already paid for. */
+async function cancel(req, supa, bill, f, now) {
+	if (!supa || !bill) return json({ error: "Billing is not set up on this server." }, HTTP.unavailable);
+	if (!bill.apiKey) return json({ error: "Cancel from the Paddle page." }, HTTP.notImplemented);
+	const user = await signedInUser(req, supa, f);
+	if (!user) return json({ error: "Sign in again, then try once more." }, HTTP.unauthorized);
 	const { kind } = await req.json().catch(() => ({}));
-	if (kind !== "supporter" && kind !== "noAds") return json({ error: "Unknown pass." }, 400);
+	if (kind !== "supporter" && kind !== "noAds") return json({ error: "Unknown pass." }, HTTP.badRequest);
 	const col = SUB_COLS[kind];
 	const id = (await rest(supa, "GET", `entitlements?user_id=eq.${user.id}&select=${col.id}`, void 0, void 0, f))?.[0]?.[col.id];
-	if (!id || !/^\d+$/.test(id)) return json({ error: "No active pass to cancel." }, 404);
-	const res = await f(`https://api.lemonsqueezy.com/v1/subscriptions/${id}`, {
-		method: "DELETE",
-		headers: {
-			Accept: "application/vnd.api+json",
-			"Content-Type": "application/vnd.api+json",
-			Authorization: `Bearer ${bill.apiKey}`
-		}
-	});
-	if (!res.ok) return json({ error: "Lemon Squeezy could not cancel it right now. Try again, or use Manage on the Lemon Squeezy page." }, 502);
-	const body = await res.json().catch(() => ({}));
+	if (!id || !SUB_ID.test(id)) return json({ error: "No active pass to cancel." }, HTTP.notFound);
+	const res = await paddle(bill, `/subscriptions/${id}/cancel`, { effective_from: "next_billing_period" }, f);
+	if (!res.ok) return json({ error: "Paddle could not cancel it right now. Try again, or use the link in your Paddle receipt email." }, HTTP.badGateway);
+	const sub = (await res.json().catch(() => ({}))).data ?? {
+		status: "active",
+		scheduled_change: { action: "cancel" }
+	};
 	const until = await saveSubscription(supa, kind, {
 		user_id: user.id,
 		updated_at: new Date(now).toISOString()
-	}, id, body.data?.attributes ?? { status: "cancelled" }, f, now);
+	}, {
+		...sub,
+		id
+	}, f, now);
 	return json({
 		ok: true,
 		until: until === false ? null : until
+	});
+}
+/** Creates a one-off transaction for the Custom Support Bundle at the player's chosen amount; the game opens it. */
+async function customCheckout(req, supa, bill, f) {
+	if (!supa || !bill) return json({ error: "Billing is not set up on this server." }, HTTP.unavailable);
+	const product = bill.bundles.bundleCustom[0];
+	if (!bill.apiKey || !product) return json({ error: "Custom amounts are not set up." }, HTTP.notImplemented);
+	const user = await signedInUser(req, supa, f);
+	if (!user) return json({ error: "Sign in again, then try once more." }, HTTP.unauthorized);
+	const { cents } = await req.json().catch(() => ({}));
+	if (!Number.isInteger(cents) || cents < 99 || cents > 5e4) return json({ error: "Pick an amount from $0.99 to $500." }, HTTP.badRequest);
+	const res = await paddle(bill, "/transactions", {
+		items: [{
+			quantity: 1,
+			price: {
+				product_id: product,
+				description: "Custom Support Bundle",
+				name: "Custom Support Bundle",
+				tax_mode: "account_setting",
+				unit_price: {
+					amount: String(cents),
+					currency_code: "USD"
+				}
+			}
+		}],
+		custom_data: { user_id: user.id },
+		...user.email ? { customer: { email: user.email } } : {}
+	}, f);
+	const body = await res.json().catch(() => ({}));
+	if (!res.ok || !body.data?.id) return json({ error: "Paddle could not start the checkout. Try again in a minute." }, HTTP.badGateway);
+	return json({
+		ok: true,
+		transactionId: body.data.id
 	});
 }
 //#endregion
