@@ -1,28 +1,52 @@
-import { rest, upsert, json, type SupaEnv, type Fetch } from './supabase';
+import { rest, upsert, json, bearer, getUser, type SupaEnv, type Fetch } from './supabase';
 
 /*
  * /api/billing: the Lemon Squeezy webhook. Lemon Squeezy is the merchant of record (it takes the payment, handles tax
  * and refunds); this only records what a signed-in player owns, in public.entitlements, which the game reads back.
  *
- *   No-Ads Pass     one-time order        order_created → no_ads; order_refunded → taken back
- *   Supporter Pass  monthly subscription  subscription_* → supporter_until (paid-through date; ads off too)
+ *   Supporter Pass, No-Ads Pass   monthly subscriptions   subscription_* → supporter_until / no_ads_until (paid-through)
+ *   Supporter, Visionary, Eternal Founder, Custom Support bundles   one-time   order_created → bundles; order_refunded → removed
+ *   No-Ads Pass from before it was monthly   one-time   order_created → no_ads (lifetime); order_refunded → taken back
  *
  * Every request must carry X-Signature, the HMAC-SHA256 of the raw body with the webhook's signing secret. The buyer
  * is the checkout's custom user_id (the game adds it to the checkout link), never an email match.
+ *
+ * /api/billing?action=cancel (POST, the player's access token) cancels that player's own monthly pass through the
+ * Lemon Squeezy API, so the game can offer a one-tap cancel. It needs LEMONSQUEEZY_API_KEY; without it the game
+ * opens Lemon Squeezy's customer portal instead.
  */
 
+export const BUNDLES = ['bundleSupporter', 'bundleVisionary', 'bundleFounder', 'bundleCustom'] as const;
+export type Bundle = typeof BUNDLES[number];
 export interface BillingEnv {
   secret: string;
-  /** Variant ids (comma lists allowed) of each pass, from the Lemon Squeezy dashboard. */
+  /** Variant ids (comma lists allowed) of each product, from the Lemon Squeezy dashboard. */
   noAds: string[];
   supporter: string[];
+  /** The old one-time No-Ads Pass, for refunds and any sales still open. */
+  noAdsLifetime: string[];
+  bundles: Record<Bundle, string[]>;
+  /** An API key, for cancelling from the game. */
+  apiKey?: string;
 }
 type Env = Record<string, string | undefined>;
 const ids = (v: string | undefined) => (v ?? '').split(',').map(s => s.trim()).filter(Boolean);
+const BUNDLE_ENV: Record<Bundle, string> = { bundleSupporter: 'SUPPORTER', bundleVisionary: 'VISIONARY', bundleFounder: 'FOUNDER', bundleCustom: 'CUSTOM' };
 export function billingEnv(env: Env = (globalThis as { process?: { env: Env } }).process?.env ?? {}): BillingEnv | null {
   const secret = env.LEMONSQUEEZY_WEBHOOK_SECRET;
-  return secret ? { secret, noAds: ids(env.LEMONSQUEEZY_NO_ADS_VARIANT_ID), supporter: ids(env.LEMONSQUEEZY_SUPPORTER_VARIANT_ID) } : null;
+  return secret ? {
+    secret, noAds: ids(env.LEMONSQUEEZY_NO_ADS_VARIANT_ID), supporter: ids(env.LEMONSQUEEZY_SUPPORTER_VARIANT_ID), noAdsLifetime: ids(env.LEMONSQUEEZY_NO_ADS_LIFETIME_VARIANT_ID),
+    bundles: Object.fromEntries(BUNDLES.map(b => [b, ids(env[`LEMONSQUEEZY_BUNDLE_${BUNDLE_ENV[b]}_VARIANT_ID`])])) as Record<Bundle, string[]>,
+    apiKey: env.LEMONSQUEEZY_API_KEY || undefined,
+  } : null;
 }
+
+/** The columns each monthly pass writes. */
+const SUB_COLS = {
+  supporter: { until: 'supporter_until', status: 'supporter_status', id: 'subscription_id', stamp: 'subscription_updated_at', portal: 'portal_url' },
+  noAds: { until: 'no_ads_until', status: 'no_ads_status', id: 'no_ads_subscription_id', stamp: 'no_ads_updated_at', portal: 'no_ads_portal_url' },
+} as const;
+type SubKind = keyof typeof SUB_COLS;
 
 const enc = new TextEncoder();
 const hex = (buf: ArrayBuffer) => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
@@ -78,6 +102,7 @@ export async function handleBilling(req: Request, supa: SupaEnv | null, bill: Bi
 
 async function record(req: Request, supa: SupaEnv | null, bill: BillingEnv | null, f: Fetch, now: number): Promise<Response> {
   if (req.method !== 'POST') return json({ error: 'POST only' }, 405);
+  if (new URL(req.url).searchParams.get('action') === 'cancel') return cancel(req, supa, bill, f, now);
   if (!supa || !bill) return json({ error: 'Billing is not set up on this server.' }, 503);
   const body = await req.text();
   const sig = (req.headers.get('x-signature') ?? '').toLowerCase();
@@ -94,27 +119,63 @@ async function record(req: Request, supa: SupaEnv | null, bill: BillingEnv | nul
   const base = { user_id: userId, customer_id: a.customer_id != null ? String(a.customer_id) : null, updated_at: new Date(now).toISOString() };
 
   if (event === 'order_created' || event === 'order_refunded') {
-    if (!bill.noAds.includes(variant)) return json({ ok: true, ignored: 'not the No-Ads Pass' });
     const owned = event === 'order_created' && a.status !== 'refunded';
+    const bundle = BUNDLES.find(b => bill.bundles[b].includes(variant));
+    if (bundle) {
+      const rows = await rest(supa, 'GET', `entitlements?user_id=eq.${userId}&select=bundles`, undefined, undefined, f) as { bundles?: string[] | null }[] | null;
+      const had = rows?.[0]?.bundles ?? [];
+      const next = owned ? [...new Set([...had, bundle])] : had.filter(b => b !== bundle);
+      await upsert(supa, 'entitlements', [{ ...base, bundles: next }], 'user_id', f);
+      return json({ ok: true, bundle, owned });
+    }
+    if (!bill.noAdsLifetime.includes(variant)) return json({ ok: true, ignored: 'not a one-time product (subscriptions are recorded from subscription_* events)' });
     await upsert(supa, 'entitlements', [{ ...base, no_ads: owned, no_ads_order: p.data?.id ?? null }], 'user_id', f);
     return json({ ok: true, noAds: owned });
   }
 
   if (event.startsWith('subscription_')) {
-    if (!bill.supporter.includes(variant)) return json({ ok: true, ignored: 'not the Supporter Pass' });
+    const kind: SubKind | null = bill.supporter.includes(variant) ? 'supporter' : bill.noAds.includes(variant) ? 'noAds' : null;
+    if (!kind) return json({ ok: true, ignored: 'not a monthly pass' });
     // Payment events carry an invoice, not the subscription; the subscription_updated that follows has the dates.
     if (p.data?.type !== 'subscriptions') return json({ ok: true, ignored: 'not a subscription object' });
-    // Webhooks can arrive out of order: never let an older state overwrite a newer one.
-    const stamp = a.updated_at ?? new Date(now).toISOString();
-    const rows = await rest(supa, 'GET', `entitlements?user_id=eq.${userId}&select=subscription_updated_at`, undefined, undefined, f) as { subscription_updated_at?: string | null }[] | null;
-    const seen = rows?.[0]?.subscription_updated_at;
-    if (seen && Date.parse(seen) > Date.parse(stamp)) return json({ ok: true, ignored: 'stale' });
-    const until = supporterUntil(a, now);
-    await upsert(supa, 'entitlements', [{
-      ...base, supporter_until: until, supporter_status: a.status ?? null, subscription_id: p.data?.id ?? null,
-      subscription_updated_at: stamp, portal_url: a.urls?.customer_portal ?? null,
-    }], 'user_id', f);
-    return json({ ok: true, supporterUntil: until });
+    const until = await saveSubscription(supa, kind, base, p.data?.id ?? null, a, f, now);
+    return until === false ? json({ ok: true, ignored: 'stale' }) : json({ ok: true, [kind === 'supporter' ? 'supporterUntil' : 'noAdsUntil']: until });
   }
   return json({ ok: true, ignored: event || 'no event' });
+}
+
+/** Records a subscription's state; false when a newer state is already recorded (webhooks can arrive out of order). */
+async function saveSubscription(supa: SupaEnv, kind: SubKind, base: Record<string, unknown>, id: string | null, a: Attributes, f: Fetch, now: number): Promise<string | null | false> {
+  const col = SUB_COLS[kind];
+  const stamp = a.updated_at ?? new Date(now).toISOString();
+  const rows = await rest(supa, 'GET', `entitlements?user_id=eq.${base.user_id as string}&select=${col.stamp}`, undefined, undefined, f) as Record<string, string | null>[] | null;
+  const seen = rows?.[0]?.[col.stamp];
+  if (seen && Date.parse(seen) > Date.parse(stamp)) return false;
+  const until = supporterUntil(a, now);
+  await upsert(supa, 'entitlements', [{
+    ...base, [col.until]: until, [col.status]: a.status ?? null, [col.id]: id, [col.stamp]: stamp, [col.portal]: a.urls?.customer_portal ?? null,
+  }], 'user_id', f);
+  return until;
+}
+
+/** Cancels the signed-in player's own monthly pass. The perks stay until the end of the period already paid for. */
+async function cancel(req: Request, supa: SupaEnv | null, bill: BillingEnv | null, f: Fetch, now: number): Promise<Response> {
+  if (!supa || !bill) return json({ error: 'Billing is not set up on this server.' }, 503);
+  if (!bill.apiKey) return json({ error: 'Cancel from the Lemon Squeezy page.' }, 501);
+  const token = bearer(req);
+  const user = token ? await getUser(supa, token, f).catch(() => null) : null;
+  if (!user) return json({ error: 'Sign in again, then try once more.' }, 401);
+  const { kind } = await req.json().catch(() => ({})) as { kind?: string };
+  if (kind !== 'supporter' && kind !== 'noAds') return json({ error: 'Unknown pass.' }, 400);
+  const col = SUB_COLS[kind];
+  const rows = await rest(supa, 'GET', `entitlements?user_id=eq.${user.id}&select=${col.id}`, undefined, undefined, f) as Record<string, string | null>[] | null;
+  const id = rows?.[0]?.[col.id];
+  if (!id || !/^\d+$/.test(id)) return json({ error: 'No active pass to cancel.' }, 404);
+  const res = await f(`https://api.lemonsqueezy.com/v1/subscriptions/${id}`, {
+    method: 'DELETE', headers: { Accept: 'application/vnd.api+json', 'Content-Type': 'application/vnd.api+json', Authorization: `Bearer ${bill.apiKey}` },
+  });
+  if (!res.ok) return json({ error: 'Lemon Squeezy could not cancel it right now. Try again, or use Manage on the Lemon Squeezy page.' }, 502);
+  const body = await res.json().catch(() => ({})) as { data?: { attributes?: Attributes } };
+  const until = await saveSubscription(supa, kind, { user_id: user.id, updated_at: new Date(now).toISOString() }, id, body.data?.attributes ?? { status: 'cancelled' }, f, now);
+  return json({ ok: true, until: until === false ? null : until });
 }

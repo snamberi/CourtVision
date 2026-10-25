@@ -16,6 +16,19 @@ const keyHeaders = (key) => key.startsWith("sb_") ? { apikey: key } : {
 	apikey: key,
 	Authorization: `Bearer ${key}`
 };
+/** The signed-in user behind an access token, or null. */
+async function getUser(env, token, f = fetch) {
+	const res = await f(`${env.url}/auth/v1/user`, { headers: {
+		apikey: env.publicKey,
+		Authorization: `Bearer ${token}`
+	} });
+	if (!res.ok) return null;
+	const u = await res.json();
+	return u.id ? {
+		id: u.id,
+		email: u.email
+	} : null;
+}
 /** A PostgREST call with the service key (row level security does not apply). */
 async function rest(env, method, path, body, prefer, f = fetch) {
 	const res = await f(`${env.url}/rest/v1/${path}`, {
@@ -39,17 +52,50 @@ const json = (body, status = 200) => new Response(JSON.stringify(body), {
 		"Cache-Control": "no-store"
 	}
 });
+const bearer = (req) => req.headers.get("authorization")?.match(/^Bearer\s+(.+)$/i)?.[1] ?? null;
 //#endregion
 //#region server/billing.ts
+const BUNDLES = [
+	"bundleSupporter",
+	"bundleVisionary",
+	"bundleFounder",
+	"bundleCustom"
+];
 const ids = (v) => (v ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+const BUNDLE_ENV = {
+	bundleSupporter: "SUPPORTER",
+	bundleVisionary: "VISIONARY",
+	bundleFounder: "FOUNDER",
+	bundleCustom: "CUSTOM"
+};
 function billingEnv(env = globalThis.process?.env ?? {}) {
 	const secret = env.LEMONSQUEEZY_WEBHOOK_SECRET;
 	return secret ? {
 		secret,
 		noAds: ids(env.LEMONSQUEEZY_NO_ADS_VARIANT_ID),
-		supporter: ids(env.LEMONSQUEEZY_SUPPORTER_VARIANT_ID)
+		supporter: ids(env.LEMONSQUEEZY_SUPPORTER_VARIANT_ID),
+		noAdsLifetime: ids(env.LEMONSQUEEZY_NO_ADS_LIFETIME_VARIANT_ID),
+		bundles: Object.fromEntries(BUNDLES.map((b) => [b, ids(env[`LEMONSQUEEZY_BUNDLE_${BUNDLE_ENV[b]}_VARIANT_ID`])])),
+		apiKey: env.LEMONSQUEEZY_API_KEY || void 0
 	} : null;
 }
+/** The columns each monthly pass writes. */
+const SUB_COLS = {
+	supporter: {
+		until: "supporter_until",
+		status: "supporter_status",
+		id: "subscription_id",
+		stamp: "subscription_updated_at",
+		portal: "portal_url"
+	},
+	noAds: {
+		until: "no_ads_until",
+		status: "no_ads_status",
+		id: "no_ads_subscription_id",
+		stamp: "no_ads_updated_at",
+		portal: "no_ads_portal_url"
+	}
+};
 const enc = new TextEncoder();
 const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
 async function signBody(secret, body) {
@@ -97,6 +143,7 @@ async function handleBilling(req, supa, bill, f = fetch, now = Date.now()) {
 }
 async function record(req, supa, bill, f, now) {
 	if (req.method !== "POST") return json({ error: "POST only" }, 405);
+	if (new URL(req.url).searchParams.get("action") === "cancel") return cancel(req, supa, bill, f, now);
 	if (!supa || !bill) return json({ error: "Billing is not set up on this server." }, 503);
 	const body = await req.text();
 	const sig = (req.headers.get("x-signature") ?? "").toLowerCase();
@@ -121,11 +168,25 @@ async function record(req, supa, bill, f, now) {
 		updated_at: new Date(now).toISOString()
 	};
 	if (event === "order_created" || event === "order_refunded") {
-		if (!bill.noAds.includes(variant)) return json({
-			ok: true,
-			ignored: "not the No-Ads Pass"
-		});
 		const owned = event === "order_created" && a.status !== "refunded";
+		const bundle = BUNDLES.find((b) => bill.bundles[b].includes(variant));
+		if (bundle) {
+			const had = (await rest(supa, "GET", `entitlements?user_id=eq.${userId}&select=bundles`, void 0, void 0, f))?.[0]?.bundles ?? [];
+			const next = owned ? [.../* @__PURE__ */ new Set([...had, bundle])] : had.filter((b) => b !== bundle);
+			await upsert(supa, "entitlements", [{
+				...base,
+				bundles: next
+			}], "user_id", f);
+			return json({
+				ok: true,
+				bundle,
+				owned
+			});
+		}
+		if (!bill.noAdsLifetime.includes(variant)) return json({
+			ok: true,
+			ignored: "not a one-time product (subscriptions are recorded from subscription_* events)"
+		});
 		await upsert(supa, "entitlements", [{
 			...base,
 			no_ads: owned,
@@ -137,37 +198,75 @@ async function record(req, supa, bill, f, now) {
 		});
 	}
 	if (event.startsWith("subscription_")) {
-		if (!bill.supporter.includes(variant)) return json({
+		const kind = bill.supporter.includes(variant) ? "supporter" : bill.noAds.includes(variant) ? "noAds" : null;
+		if (!kind) return json({
 			ok: true,
-			ignored: "not the Supporter Pass"
+			ignored: "not a monthly pass"
 		});
 		if (p.data?.type !== "subscriptions") return json({
 			ok: true,
 			ignored: "not a subscription object"
 		});
-		const stamp = a.updated_at ?? new Date(now).toISOString();
-		const seen = (await rest(supa, "GET", `entitlements?user_id=eq.${userId}&select=subscription_updated_at`, void 0, void 0, f))?.[0]?.subscription_updated_at;
-		if (seen && Date.parse(seen) > Date.parse(stamp)) return json({
+		const until = await saveSubscription(supa, kind, base, p.data?.id ?? null, a, f, now);
+		return until === false ? json({
 			ok: true,
 			ignored: "stale"
-		});
-		const until = supporterUntil(a, now);
-		await upsert(supa, "entitlements", [{
-			...base,
-			supporter_until: until,
-			supporter_status: a.status ?? null,
-			subscription_id: p.data?.id ?? null,
-			subscription_updated_at: stamp,
-			portal_url: a.urls?.customer_portal ?? null
-		}], "user_id", f);
-		return json({
+		}) : json({
 			ok: true,
-			supporterUntil: until
+			[kind === "supporter" ? "supporterUntil" : "noAdsUntil"]: until
 		});
 	}
 	return json({
 		ok: true,
 		ignored: event || "no event"
+	});
+}
+/** Records a subscription's state; false when a newer state is already recorded (webhooks can arrive out of order). */
+async function saveSubscription(supa, kind, base, id, a, f, now) {
+	const col = SUB_COLS[kind];
+	const stamp = a.updated_at ?? new Date(now).toISOString();
+	const seen = (await rest(supa, "GET", `entitlements?user_id=eq.${base.user_id}&select=${col.stamp}`, void 0, void 0, f))?.[0]?.[col.stamp];
+	if (seen && Date.parse(seen) > Date.parse(stamp)) return false;
+	const until = supporterUntil(a, now);
+	await upsert(supa, "entitlements", [{
+		...base,
+		[col.until]: until,
+		[col.status]: a.status ?? null,
+		[col.id]: id,
+		[col.stamp]: stamp,
+		[col.portal]: a.urls?.customer_portal ?? null
+	}], "user_id", f);
+	return until;
+}
+/** Cancels the signed-in player's own monthly pass. The perks stay until the end of the period already paid for. */
+async function cancel(req, supa, bill, f, now) {
+	if (!supa || !bill) return json({ error: "Billing is not set up on this server." }, 503);
+	if (!bill.apiKey) return json({ error: "Cancel from the Lemon Squeezy page." }, 501);
+	const token = bearer(req);
+	const user = token ? await getUser(supa, token, f).catch(() => null) : null;
+	if (!user) return json({ error: "Sign in again, then try once more." }, 401);
+	const { kind } = await req.json().catch(() => ({}));
+	if (kind !== "supporter" && kind !== "noAds") return json({ error: "Unknown pass." }, 400);
+	const col = SUB_COLS[kind];
+	const id = (await rest(supa, "GET", `entitlements?user_id=eq.${user.id}&select=${col.id}`, void 0, void 0, f))?.[0]?.[col.id];
+	if (!id || !/^\d+$/.test(id)) return json({ error: "No active pass to cancel." }, 404);
+	const res = await f(`https://api.lemonsqueezy.com/v1/subscriptions/${id}`, {
+		method: "DELETE",
+		headers: {
+			Accept: "application/vnd.api+json",
+			"Content-Type": "application/vnd.api+json",
+			Authorization: `Bearer ${bill.apiKey}`
+		}
+	});
+	if (!res.ok) return json({ error: "Lemon Squeezy could not cancel it right now. Try again, or use Manage on the Lemon Squeezy page." }, 502);
+	const body = await res.json().catch(() => ({}));
+	const until = await saveSubscription(supa, kind, {
+		user_id: user.id,
+		updated_at: new Date(now).toISOString()
+	}, id, body.data?.attributes ?? { status: "cancelled" }, f, now);
+	return json({
+		ok: true,
+		until: until === false ? null : until
 	});
 }
 //#endregion

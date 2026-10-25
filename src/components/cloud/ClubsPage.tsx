@@ -21,7 +21,7 @@ import '../locker/locker.css';
  */
 
 // Club badges: everyday icons (no animated, owner-only or Supporter ones).
-const BADGES = ICONS.filter(i => !i.anim && !('staff' in i.rule) && !('supporter' in i.rule) && !('owner' in i.rule)).slice(0, 18);
+const BADGES = ICONS.filter(i => !i.anim && !('staff' in i.rule) && !('supporter' in i.rule) && !('product' in i.rule) && !('owner' in i.rule)).slice(0, 18);
 const COLORS = NAME_COLORS.filter(c => !c.anim && !c.css.startsWith('linear')).slice(0, 12);
 const colorCss = (id: string) => NAME_COLORS.find(c => c.id === id)?.css ?? '#ff9d3d';
 

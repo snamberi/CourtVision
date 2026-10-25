@@ -128,3 +128,5 @@
 .friend-row > button:last-child { white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
 .gift-inbox { border-color: var(--c-border-ffd166, #ffd166); }
 @media (max-width: 520px) { .friend-row { grid-template-columns: auto 1fr; } .friend-row > button:last-child { grid-column: 1 / -1; justify-content: center; } }
+.pass-owned { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.pass-owned li { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: 2px solid var(--c-border-55c878, #55c878); font-size: 13px; }

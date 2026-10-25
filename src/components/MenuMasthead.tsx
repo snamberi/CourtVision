@@ -3,6 +3,7 @@ import { PixelIcon } from './PixelIcon';
 import { AccountButton } from './cloud/AccountButton';
 import { DiscordLink } from './DiscordLink';
 import { useInstallState, startInstall, downloadsWindows } from '../pwa/pwa';
+import { IS_DESKTOP_BUILD } from '../appMode';
 
 interface Props {
   onProfile?: () => void;
@@ -10,7 +11,7 @@ interface Props {
   onSettings?: () => void;
 }
 
-/** The menu header: the brand, then Sign in (gone once you are signed in), Install app (gone once installed), a Settings gear and Discord. Leaderboards,
+/** The menu header: the brand, then Sign in (gone once you are signed in), Install app (gone once installed), the Support Shop, a Settings gear and Discord. Leaderboards,
  *  friends, your profile and streak live on the menu phone (MenuPhone); the look is changed in Settings. */
 export function MenuMasthead({ onProfile, onCommunity, onSettings }: Props) {
   const install = useInstallState();
@@ -20,6 +21,7 @@ export function MenuMasthead({ onProfile, onCommunity, onSettings }: Props) {
     <div className="mh-actions mh-simple" role="group" aria-label="Account">
       {onCommunity && <AccountButton onCommunity={onCommunity} onProfile={onProfile} boards={false} signedInChip={false} />}
       {install !== 'installed' && <button type="button" className="account-chip menu-install-app" onClick={() => void startInstall('menu')} title="Install Court Vision as an app on this PC or phone"><PixelIcon name="down" size={16} /><span>{downloadsWindows(install) ? 'Download' : 'Install app'}</span></button>}
+      {!IS_DESKTOP_BUILD && <button type="button" className="account-chip menu-support-shop" aria-label="Support" onClick={() => { location.hash = '#/support'; }} title="Support Court Vision: optional passes and bundles that help pay for hosting"><PixelIcon name="heart" size={16} /><span>Support</span></button>}
       {onSettings && <button type="button" className="account-chip menu-settings" onClick={onSettings} aria-label="Settings" title="Settings: look, backups, graphics, install, privacy"><PixelIcon name="gear" size={18} /></button>}
       <DiscordLink className="menu-discord" />
     </div>

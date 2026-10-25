@@ -10,12 +10,13 @@ vi.mock('../components/UserAvatar', () => ({ MyAvatar: () => <i /> }));
 afterEach(cleanup);
 
 describe('menu header', () => {
-  it('holds only sign in, Install app, Settings and Discord', () => {
+  it('holds only sign in, Install app, the Support Shop, Settings and Discord', () => {
     const settings = vi.fn();
     render(<MenuMasthead onSettings={settings} onCommunity={() => {}} onProfile={() => {}} />);
     const header = screen.getByRole('banner');
     const labels = [...header.querySelectorAll('button, a')].map(e => e.getAttribute('aria-label') ?? e.textContent?.trim());
-    expect(labels).toHaveLength(4);
+    expect(labels).toHaveLength(5);
+    expect(labels).toContain('Support');
     expect(labels).toContain('Sign in');
     expect(labels).toContain('Install app');
     expect(labels).toContain('Settings');

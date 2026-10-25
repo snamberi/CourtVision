@@ -1,22 +1,28 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
-import { handleBilling, signBody, supporterUntil, billingEnv } from '../../server/billing';
+import { handleBilling, signBody, supporterUntil, billingEnv, type BillingEnv } from '../../server/billing';
 import type { SupaEnv } from '../../server/supabase';
-import { fromRow, checkoutUrl, writeEntitlements, readEntitlements } from '../billing/billing';
-import { hasEntitlement, unlockContext, ENTITLEMENTS_KEY } from '../profile/cosmetics';
+import { fromRow, checkoutUrl, writeEntitlements, readEntitlements, activeProducts } from '../billing/billing';
+import { hasEntitlement, unlockContext, isOpen, earnedExtraTitles, ICONS, NAME_COLORS, ENTITLEMENTS_KEY } from '../profile/cosmetics';
+import { PRODUCTS } from '../billing/products';
 import 'fake-indexeddb/auto';
 import { buildBackup } from '../storage/backup';
 
 const supa: SupaEnv = { url: 'http://db', serviceKey: 'service', publicKey: 'anon' };
-const bill = { secret: 'shh', noAds: ['111'], supporter: ['222', '223'] };
+const bill: BillingEnv = { secret: 'shh', noAds: ['333'], noAdsLifetime: ['111'], supporter: ['222', '223'], bundles: { bundleSupporter: ['401'], bundleVisionary: ['402'], bundleFounder: ['403'], bundleCustom: ['404'] }, apiKey: 'ls-key' };
 const USER = '0f3c2a8e-6b1d-4c1e-9a55-3f2b8c7d9e01';
 const NOW = Date.parse('2026-09-28T12:00:00Z');
 
 /** A fake PostgREST: one entitlements table keyed by user. */
 function fakeDb() {
   const rows = new Map<string, Record<string, unknown>>();
+  const calls: string[] = [];
   const f = (async (url: string, init?: RequestInit) => {
     const u = new URL(url);
+    calls.push(`${init?.method ?? 'GET'} ${u.host}${u.pathname}`);
+    // The signed-in player behind a token, and Lemon Squeezy's cancel.
+    if (u.pathname === '/auth/v1/user') return new Response(JSON.stringify(new Headers(init?.headers).get('authorization') === 'Bearer good' ? { id: USER } : {}), { status: new Headers(init?.headers).get('authorization') === 'Bearer good' ? 200 : 401 });
+    if (u.host === 'api.lemonsqueezy.com') return new Response(JSON.stringify({ data: { attributes: { status: 'cancelled', ends_at: '2026-10-20T12:00:00Z', updated_at: '2026-09-28T12:00:00Z' } } }), { status: 200 });
     if (init?.method === 'GET') {
       const id = u.searchParams.get('user_id')?.replace('eq.', '') ?? '';
       return new Response(JSON.stringify(rows.has(id) ? [rows.get(id)] : []), { status: 200 });
@@ -24,7 +30,7 @@ function fakeDb() {
     for (const r of JSON.parse(String(init?.body)) as Record<string, unknown>[]) rows.set(String(r.user_id), { ...rows.get(String(r.user_id)), ...r });
     return new Response('', { status: 201 });
   }) as typeof fetch;
-  return { rows, f };
+  return { rows, f, calls };
 }
 async function hook(payload: unknown, db: ReturnType<typeof fakeDb>, secret = bill.secret) {
   const body = JSON.stringify(payload);
@@ -47,7 +53,7 @@ describe('Lemon Squeezy webhook', () => {
     expect(billingEnv({ LEMONSQUEEZY_WEBHOOK_SECRET: 's', LEMONSQUEEZY_SUPPORTER_VARIANT_ID: '1, 2' })?.supporter).toEqual(['1', '2']);
   });
 
-  it('No-Ads Pass: an order grants it, a refund takes it back; other products and anonymous checkouts are ignored', async () => {
+  it('the old lifetime No-Ads Pass: an order grants it, a refund takes it back; other products and anonymous checkouts are ignored', async () => {
     const db = fakeDb();
     expect((await hook(order('order_created'), db)).body.noAds).toBe(true);
     expect(db.rows.get(USER)).toMatchObject({ no_ads: true, no_ads_order: '9001', customer_id: '5' });
@@ -76,6 +82,40 @@ describe('Lemon Squeezy webhook', () => {
     expect((await hook({ ...sub('subscription_created', { status: 'active', variant_id: 111 }) }, db)).body.ignored).toBeTruthy();
     expect(supporterUntil({ status: 'past_due', renews_at: '2026-10-01T00:00:00Z' }, NOW)).not.toBeNull();
     expect(supporterUntil({ status: 'paused' }, NOW)).toBeNull();
+  });
+
+  it('monthly No-Ads Pass: recorded in its own columns, never as a lifetime pass', async () => {
+    const db = fakeDb();
+    // Its first order is not a lifetime grant.
+    expect((await hook(order('order_created', 333), db)).body.ignored).toBeTruthy();
+    await hook(sub('subscription_created', { variant_id: 333, status: 'active', renews_at: '2026-10-28T12:00:00Z', updated_at: '2026-09-28T12:00:00Z' }), db);
+    expect(db.rows.get(USER)).toMatchObject({ no_ads_status: 'active', no_ads_subscription_id: '77', no_ads_portal_url: 'https://shop/portal' });
+    expect(db.rows.get(USER)!.no_ads).toBeUndefined();
+    expect(db.rows.get(USER)!.supporter_until).toBeUndefined();
+    expect(Date.parse(String(db.rows.get(USER)!.no_ads_until))).toBeGreaterThan(Date.parse('2026-10-28T12:00:00Z'));
+  });
+
+  it('bundles: each order adds its bundle for good, a refund removes only that one', async () => {
+    const db = fakeDb();
+    expect((await hook(order('order_created', 401), db)).body).toMatchObject({ bundle: 'bundleSupporter', owned: true });
+    await hook(order('order_created', 403), db);
+    await hook(order('order_created', 403), db); // a second purchase of the same bundle
+    expect(db.rows.get(USER)!.bundles).toEqual(['bundleSupporter', 'bundleFounder']);
+    await hook(order('order_refunded', 401, USER, 'refunded'), db);
+    expect(db.rows.get(USER)!.bundles).toEqual(['bundleFounder']);
+  });
+
+  it("cancel: only the signed-in player's own pass, through the Lemon Squeezy API; without an API key the game uses the portal", async () => {
+    const db = fakeDb();
+    await hook(sub('subscription_created', { status: 'active', renews_at: '2026-10-28T12:00:00Z', updated_at: '2026-09-27T12:00:00Z' }), db);
+    const ask = (token: string, kind: string, b = bill) => handleBilling(new Request('http://x/api/billing?action=cancel', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ kind }) }), supa, b, db.f, NOW);
+    expect((await ask('bad', 'supporter')).status).toBe(401);
+    expect((await ask('good', 'noAds')).status).toBe(404); // has no No-Ads Pass
+    expect((await ask('good', 'supporter', { ...bill, apiKey: undefined })).status).toBe(501);
+    const res = await ask('good', 'supporter');
+    expect(res.status).toBe(200);
+    expect(db.calls).toContain('DELETE api.lemonsqueezy.com/v1/subscriptions/77');
+    expect(db.rows.get(USER)).toMatchObject({ supporter_status: 'cancelled', supporter_until: '2026-10-20T12:00:00.000Z' });
   });
 });
 
@@ -110,5 +150,27 @@ describe('passes in the game', () => {
   it('the checkout link carries the account id (and email) for the webhook, or is absent when not on sale', () => {
     // No checkout links in the test build.
     expect(checkoutUrl('noAds', USER)).toBeNull();
+  });
+
+  it('every product has its own icon, name colour and title, unlocked only while owned', () => {
+    const later = new Date(Date.now() + 86_400_000).toISOString();
+    for (const p of PRODUCTS.filter(x => x.id !== 'supporter')) {
+      const icons = ICONS.filter(i => 'product' in i.rule && i.rule.product === p.id), colors = NAME_COLORS.filter(c => 'product' in c.rule && c.rule.product === p.id);
+      expect(icons).toHaveLength(1);
+      expect(colors).toHaveLength(1);
+      expect(isOpen(icons[0].rule, unlockContext(1))).toBe(false);
+    }
+    expect(new Set(PRODUCTS.map(p => p.title)).size).toBe(PRODUCTS.length);
+    writeEntitlements({ noAds: false, supporter: false, noAdsUntil: later, bundles: ['bundleFounder'] });
+    const c = unlockContext(1);
+    expect(c.products).toEqual(['noAds', 'bundleFounder']);
+    expect(earnedExtraTitles(c)).toEqual(expect.arrayContaining(['Ad-Free Baller', 'Eternal Founder']));
+    expect(earnedExtraTitles(c)).not.toContain('Visionary');
+    expect(hasEntitlement('noAds')).toBe(true);
+    // A monthly No-Ads Pass ends on its date.
+    writeEntitlements({ noAds: false, supporter: false, noAdsUntil: new Date(Date.now() - 1000).toISOString(), bundles: ['bundleCustom'] });
+    expect(hasEntitlement('noAds')).toBe(false);
+    expect(activeProducts(readEntitlements())).toEqual(['bundleCustom']);
+    expect(fromRow({ no_ads: false, supporter_until: null, supporter_status: null, portal_url: null, bundles: ['bundleVisionary', 'junk'] }).bundles).toEqual(['bundleVisionary']);
   });
 });

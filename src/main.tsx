@@ -31,6 +31,7 @@ import { WebAnalytics } from './components/WebAnalytics'
 import { CloudRoot } from './components/cloud/CloudRoot'
 import { startPwa } from './pwa/pwa'
 import { InstallGuideHost } from './components/InstallGuide'
+import { ThankYouPopup } from './components/shop/ThankYouPopup'
 import { applyPerformanceMode } from './lib/performanceMode'
 import { applyAccessibility } from './lib/accessibility'
 import './a11y.css'
@@ -52,5 +53,6 @@ createRoot(document.getElementById('root')!).render(
     <WebAnalytics />
     <CloudRoot />
     <InstallGuideHost />
+    <ThankYouPopup onProfile={() => { location.hash = '#/profile' }} />
   </StrictMode>,
 )

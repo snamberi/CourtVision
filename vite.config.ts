@@ -109,6 +109,10 @@ export default defineConfig(({ mode }) => ({
     // Passes: the Lemon Squeezy checkout links (public; see docs/BILLING_SETUP.md). Empty hides the buy buttons.
     'import.meta.env.VITE_LEMONSQUEEZY_NO_ADS_URL': JSON.stringify(process.env.VITE_LEMONSQUEEZY_NO_ADS_URL || process.env.LEMONSQUEEZY_NO_ADS_URL || ''),
     'import.meta.env.VITE_LEMONSQUEEZY_SUPPORTER_URL': JSON.stringify(process.env.VITE_LEMONSQUEEZY_SUPPORTER_URL || process.env.LEMONSQUEEZY_SUPPORTER_URL || ''),
+    'import.meta.env.VITE_LEMONSQUEEZY_BUNDLE_SUPPORTER_URL': JSON.stringify(process.env.VITE_LEMONSQUEEZY_BUNDLE_SUPPORTER_URL || process.env.LEMONSQUEEZY_BUNDLE_SUPPORTER_URL || ''),
+    'import.meta.env.VITE_LEMONSQUEEZY_BUNDLE_VISIONARY_URL': JSON.stringify(process.env.VITE_LEMONSQUEEZY_BUNDLE_VISIONARY_URL || process.env.LEMONSQUEEZY_BUNDLE_VISIONARY_URL || ''),
+    'import.meta.env.VITE_LEMONSQUEEZY_BUNDLE_FOUNDER_URL': JSON.stringify(process.env.VITE_LEMONSQUEEZY_BUNDLE_FOUNDER_URL || process.env.LEMONSQUEEZY_BUNDLE_FOUNDER_URL || ''),
+    'import.meta.env.VITE_LEMONSQUEEZY_BUNDLE_CUSTOM_URL': JSON.stringify(process.env.VITE_LEMONSQUEEZY_BUNDLE_CUSTOM_URL || process.env.LEMONSQUEEZY_BUNDLE_CUSTOM_URL || ''),
   },
   plugins: mode === 'desktop' ? [react(), stripAdsense()] : [react(), siteMaps(), serviceWorker(), buildStampPlugin(), versionFile()],
   // `--mode desktop` is the offline Windows package: relative asset paths, its own output folder.

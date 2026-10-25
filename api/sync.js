@@ -2835,7 +2835,7 @@ const DEFAULT_DPOY_WEIGHTS = {
 	defensiveWinShares: 1.8
 };
 ({ ...DEFAULT_MVP_WEIGHTS }), { ...DEFAULT_DPOY_WEIGHTS };
-new Map([
+const ACHIEVEMENT_BY_ID = new Map([
 	{
 		id: "first_season",
 		name: "Welcome to the Office",
@@ -3078,6 +3078,21 @@ new Map([
 		icon: "cup"
 	}
 ].map((a) => [a.id, a]));
+const valid = (a) => !!a && typeof a.id === "string" && typeof a.kind === "string" && typeof a.line === "string" && Number.isFinite(a.at);
+function readActivity(read = localRead) {
+	try {
+		const v = JSON.parse(read("cv-activity") ?? "[]");
+		return Array.isArray(v) ? v.filter(valid) : [];
+	} catch {
+		return [];
+	}
+}
+/** Every entry from both lists (one per id), newest first. */
+function mergeActivity(a, b) {
+	const byId = /* @__PURE__ */ new Map();
+	for (const x of [...b, ...a]) if (!byId.has(x.id) || byId.get(x.id).at < x.at) byId.set(x.id, x);
+	return [...byId.values()].sort((x, y) => y.at - x.at).slice(0, 20);
+}
 //#endregion
 //#region src/storage/gmLegacy.ts
 const KEY$2 = "courtvision:gmLegacy";
@@ -6896,6 +6911,45 @@ function hasOwnerAccess(read = (k) => localStorage.getItem(k)) {
 		return false;
 	}
 }
+const AREA_LABEL = {
+	gm: "GM Mode",
+	career: "Career",
+	hunt: "League Hunt",
+	perfect: "82-0 Challenge",
+	draft: "All-Time Draft",
+	rebuild: "Rebuild",
+	arcade: "Quick games",
+	menu: "Menus and profile",
+	other: "Everything else"
+};
+function readPlayTime(read = localRead) {
+	try {
+		const r = JSON.parse(read("cv-play-time") ?? "null");
+		return r && Number.isFinite(r.total) ? {
+			total: Math.max(0, r.total),
+			areas: r.areas && typeof r.areas === "object" ? r.areas : {}
+		} : {
+			total: 0,
+			areas: {}
+		};
+	} catch {
+		return {
+			total: 0,
+			areas: {}
+		};
+	}
+}
+/** Two devices can't add up safely (each holds what it has seen), so each area keeps the larger count. */
+function mergePlayTime(a, b) {
+	const areas = {};
+	for (const k of /* @__PURE__ */ new Set([...Object.keys(a.areas), ...Object.keys(b.areas)])) areas[k] = Math.max(a.areas[k] ?? 0, b.areas[k] ?? 0);
+	const sum = Object.values(areas).reduce((n, v) => n + (v ?? 0), 0);
+	return {
+		total: Math.max(a.total, b.total, sum),
+		areas
+	};
+}
+const topArea = (t) => Object.entries(t.areas).filter(([k]) => k !== "menu" && k !== "other").sort((x, y) => y[1] - x[1])[0]?.[0] ?? null;
 //#endregion
 //#region src/profile/founding.ts
 const FOUNDING_KEY = "cv-founding";
@@ -6912,6 +6966,103 @@ function shopOwned(read = localRead) {
 		return [];
 	}
 }
+//#endregion
+//#region src/billing/products.ts
+const PRODUCTS = [
+	{
+		id: "supporter",
+		name: "Supporter Pass",
+		price: "$4.99",
+		billing: "monthly",
+		accent: "#ff5fa2",
+		title: "Supporter",
+		tagline: "Keep the courts lit every month.",
+		perks: [
+			"No ads while it is active",
+			"Gold ball, blackout sneaker, gold jersey and heart icons",
+			"Aurora and Supporter pink name colours",
+			"The Supporter title"
+		]
+	},
+	{
+		id: "noAds",
+		name: "No-Ads Pass",
+		price: "$3.99",
+		billing: "monthly",
+		accent: "#6fd3ff",
+		title: "Ad-Free Baller",
+		tagline: "A clean court, no banners.",
+		perks: [
+			"No ad banners anywhere while it is active",
+			"On every device you sign in on",
+			"Clean Court icon and Clear Sky name colour",
+			"The Ad-Free Baller title"
+		]
+	},
+	{
+		id: "bundleSupporter",
+		name: "Supporter Bundle",
+		price: "$0.99",
+		billing: "once",
+		accent: "#ff9a5c",
+		title: "Backer",
+		tagline: "A small thank-you that goes a long way.",
+		perks: [
+			"Thank-You Heart icon (it bounces)",
+			"Warm Thanks name colour",
+			"The Backer title",
+			"Yours for good"
+		]
+	},
+	{
+		id: "bundleVisionary",
+		name: "Visionary Supporter Bundle",
+		price: "$2.99",
+		billing: "once",
+		accent: "#b983ff",
+		title: "Visionary",
+		tagline: "For the ones who saw it coming.",
+		perks: [
+			"Vision Eye icon (it twinkles)",
+			"Visionary name colour, a flowing violet",
+			"The Visionary title",
+			"Yours for good"
+		]
+	},
+	{
+		id: "bundleFounder",
+		name: "Eternal Founder Bundle",
+		price: "$9.99",
+		billing: "once",
+		accent: "#ffd166",
+		title: "Eternal Founder",
+		tagline: "Your name in gold, from the early days.",
+		perks: [
+			"Eternal Phoenix icon, burning gold",
+			"Eternal Gold name colour, a shimmering foil",
+			"The Eternal Founder title",
+			"Yours for good"
+		]
+	},
+	{
+		id: "bundleCustom",
+		name: "Custom Support Bundle",
+		price: "$0.99+",
+		billing: "once",
+		accent: "#55c878",
+		title: "Patron",
+		flexible: true,
+		tagline: "Pick your own amount. Every bit helps.",
+		perks: [
+			"Gift Box icon (it shines)",
+			"Kindness name colour",
+			"The Patron title",
+			"Yours for good, whatever you give"
+		]
+	}
+];
+const productById = (id) => PRODUCTS.find((p) => p.id === id);
+const BUNDLE_IDS = PRODUCTS.filter((p) => p.billing === "once").map((p) => p.id);
 //#endregion
 //#region src/profile/cosmetics.ts
 /** Complete team sets and legendary cards in the album (read straight from storage; see cards/cards.ts). */
@@ -7636,6 +7787,16 @@ const jersey = (id, name, main, dark, trim = "#f4f0e6") => icon(id, name, "jerse
 	J: dark,
 	w: trim
 });
+/** Where a Support Shop cosmetic comes from. */
+function productHow(id) {
+	const p = productById(id);
+	return p ? `${p.name} (Support Shop)` : "Support Shop";
+}
+/** The titles from the Support Shop (the Supporter Pass's own "Supporter" title is SUPPORTER_TITLE). */
+const PRODUCT_TITLES = PRODUCTS.filter((p) => p.id !== "supporter").map((p) => ({
+	title: p.title,
+	product: p.id
+}));
 [
 	icon("ball", "Basketball", "ball", void 0, { level: 1 }),
 	icon("hoop", "Hoop", "hoop", void 0, { level: 1 }),
@@ -7749,6 +7910,11 @@ const jersey = (id, name, main, dark, trim = "#f4f0e6") => icon(id, name, "jerse
 	}, { supporter: true }) },
 	{ ...jersey("jersey-gold", "Gold jersey", "#ffd166", "#c9971f", "#0b1018") },
 	{ ...icon("heart", "Heart", "heart", void 0, { supporter: true }) },
+	productHow("noAds"),
+	productHow("bundleSupporter"),
+	productHow("bundleVisionary"),
+	productHow("bundleFounder"),
+	productHow("bundleCustom"),
 	...[
 		[
 			"fireball",
@@ -8039,6 +8205,11 @@ const animated = (id, name, css, anim) => {
 	{ ...color("prism", "Prism", "linear-gradient(90deg, #ff9d3d, #ffd166, #6fdc93, #6db8ff, #c79bff)", { honor: "first" }) },
 	{ ...color("aurora", "Aurora", "linear-gradient(90deg, #6fdc93, #4fd6d6, #b8a8ff, #ff8fc8)", { supporter: true }) },
 	{ ...color("supporter", "Supporter pink", "#ff5fa2", { supporter: true }) },
+	productHow("noAds"),
+	productHow("bundleSupporter"),
+	productHow("bundleVisionary"),
+	productHow("bundleFounder"),
+	productHow("bundleCustom"),
 	animated("emberflow", "Ember flow", "linear-gradient(90deg, #ff4d2e, #ff9d3d, #ffd166, #ff9d3d, #ff4d2e)", "flow"),
 	animated("neonwave", "Neon wave", "linear-gradient(90deg, #ff4dd2, #6fd3ff, #7dff9b, #6fd3ff, #ff4dd2)", "flow"),
 	animated("lava", "Lava", "linear-gradient(90deg, #7a1200, #ff3d1f, #ffb347, #ff3d1f, #7a1200)", "pulse"),
@@ -8264,11 +8435,22 @@ const json$2 = (read, key, fallback) => {
 };
 /** Leaderboard honors kept in this browser (granted by the server at sync). */
 const readHonors = (read = localRead) => json$2(read, HONORS_KEY, []).filter((h) => HONORS.some((x) => x.id === h));
+const liveUntil = (until) => !!until && Date.parse(until) > Date.now();
 /** Whether this browser's account has an active pass (`noAds`, `supporter`). */
 function hasEntitlement(kind, read = localRead) {
 	const e = json$2(read, ENTITLEMENTS_KEY, {});
-	const supporter = !!e.supporter && (!e.supporterUntil || Date.parse(e.supporterUntil) > Date.now());
-	return kind === "noAds" ? !!e.noAds || supporter : supporter;
+	const supporter = !!e.supporter && (!e.supporterUntil || liveUntil(e.supporterUntil));
+	const noAds = !!e.noAds && !e.noAdsUntil || liveUntil(e.noAdsUntil);
+	return kind === "noAds" ? noAds || supporter : supporter;
+}
+/** Every Support Shop product this browser's account has right now. */
+function ownedProducts(read = localRead) {
+	const e = json$2(read, ENTITLEMENTS_KEY, {});
+	return [
+		...hasEntitlement("supporter", read) ? ["supporter"] : [],
+		...liveUntil(e.noAdsUntil) ? ["noAds"] : [],
+		...BUNDLE_IDS.filter((id) => (e.bundles ?? []).includes(id))
+	];
 }
 /** What unlocks read: the level is passed in; the rest comes from this browser. */
 function unlockContext(level, read = localRead) {
@@ -8289,6 +8471,8 @@ function unlockContext(level, read = localRead) {
 		missions: 1e6,
 		staff: true,
 		account: true,
+		hours: 1e6,
+		products: PRODUCTS.map((p) => p.id),
 		seasons: Object.fromEntries(SEASONS.map((s) => [s.id, 1e6]))
 	};
 	return {
@@ -8305,7 +8489,9 @@ function unlockContext(level, read = localRead) {
 		pass: passBestTier(readPass(read)),
 		missions: missionsClaimed(readMissions(read)),
 		account: hasFoundingAccount(read),
-		shop: shopOwned(read)
+		shop: shopOwned(read),
+		hours: readPlayTime(read).total / 3600,
+		products: ownedProducts(read)
 	};
 }
 /** Titles bought in a holiday event shop (retention/holidayShop.ts). */
@@ -8324,6 +8510,7 @@ const earnedExtraTitles = (c) => [
 	...HONORS.filter((h) => c.honors.includes(h.id)).map((h) => h.title),
 	...MODE_TITLES.filter((t) => c.modes.includes(t.mode)).map((t) => t.title),
 	...c.supporter ? [SUPPORTER_TITLE] : [],
+	...PRODUCT_TITLES.filter((t) => (c.products ?? []).includes(t.product)).map((t) => t.title),
 	...TROPHY_TITLES.filter((t) => c.trophies >= t.trophies).map((t) => t.id),
 	...ALBUM_TITLES.filter((t) => ((t.kind === "sets" ? c.album?.sets : c.album?.legendary) ?? 0) >= t.n).map((t) => t.title),
 	...OWNER_TITLES.filter((t) => (c.owner ?? 0) >= t.legacy).map((t) => t.title),
@@ -8480,6 +8667,30 @@ const AVATAR_FRAMES = [
 		name: "Gift Wrap",
 		blurb: "Wrapped up in red ribbon with a bow and holly on top. Winter Wonderland.",
 		shop: "evt-christmas-frame"
+	},
+	{
+		id: "clock10",
+		name: "Ten Hours",
+		blurb: "A copper clock ring with a stopwatch crown: 10 hours played.",
+		hours: 10
+	},
+	{
+		id: "clock50",
+		name: "Fifty Hours",
+		blurb: "A silver clock ring: 50 hours played.",
+		hours: 50
+	},
+	{
+		id: "clock100",
+		name: "Hundred Hours",
+		blurb: "A gold clock ring set with gems: 100 hours played.",
+		hours: 100
+	},
+	{
+		id: "clock500",
+		name: "Five Hundred Hours",
+		blurb: "A sapphire clock ring under a crown: 500 hours played.",
+		hours: 500
 	}
 ];
 const avatarFrameDef = (id) => AVATAR_FRAMES.find((f) => f.id === id) ?? AVATAR_FRAMES[0];
@@ -8840,6 +9051,41 @@ const TITLES = ROAD_TITLES.map((id) => ({
 	level: id === "Rookie GM" ? 1 : road("title", id),
 	blurb: ""
 }));
+/** Titles earned in ranked seasons (the best tier you have reached; kept in this browser after each sync). */
+const RANK_TITLES = [
+	{
+		id: "Gold GM",
+		tier: "gold",
+		order: 2
+	},
+	{
+		id: "Platinum GM",
+		tier: "platinum",
+		order: 3
+	},
+	{
+		id: "Diamond GM",
+		tier: "diamond",
+		order: 4
+	},
+	{
+		id: "Legend GM",
+		tier: "legend",
+		order: 5
+	}
+];
+const TIER_ORDER = [
+	"bronze",
+	"silver",
+	"gold",
+	"platinum",
+	"diamond",
+	"legend"
+];
+function rankTitles(read = localRead) {
+	const best = hasOwnerAccess(read) ? Infinity : TIER_ORDER.indexOf(read("cv-ranked-best") ?? "");
+	return RANK_TITLES.filter((t) => best >= t.order).map((t) => t.id);
+}
 //#endregion
 //#region src/profile/modeAchievements.ts
 const TIER_NAMES = [
@@ -9354,7 +9600,7 @@ const MODE_ACHIEVEMENTS = [
 		progress: (s) => at(s.goalStreak, 7)
 	}
 ];
-new Map(MODE_ACHIEVEMENTS.map((a) => [a.id, a]));
+const MODE_ACHIEVEMENT_BY_ID = new Map(MODE_ACHIEVEMENTS.map((a) => [a.id, a]));
 const RANK_ORDER$1 = [
 	"bronze",
 	"silver",
@@ -9738,33 +9984,6 @@ function mergeOne(a, b) {
 		today
 	});
 }
-function readPlayTime(read = localRead) {
-	try {
-		const r = JSON.parse(read("cv-play-time") ?? "null");
-		return r && Number.isFinite(r.total) ? {
-			total: Math.max(0, r.total),
-			areas: r.areas && typeof r.areas === "object" ? r.areas : {}
-		} : {
-			total: 0,
-			areas: {}
-		};
-	} catch {
-		return {
-			total: 0,
-			areas: {}
-		};
-	}
-}
-/** Two devices can't add up safely (each holds what it has seen), so each area keeps the larger count. */
-function mergePlayTime(a, b) {
-	const areas = {};
-	for (const k of /* @__PURE__ */ new Set([...Object.keys(a.areas), ...Object.keys(b.areas)])) areas[k] = Math.max(a.areas[k] ?? 0, b.areas[k] ?? 0);
-	const sum = Object.values(areas).reduce((n, v) => n + (v ?? 0), 0);
-	return {
-		total: Math.max(a.total, b.total, sum),
-		areas
-	};
-}
 function readChallenge(read = localRead) {
 	try {
 		return { days: (JSON.parse(read("cv-daily-challenge") ?? "null")?.days ?? []).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort().slice(-400) };
@@ -9797,6 +10016,8 @@ const SYNC_KEYS = [
 	"cv-bonus-xp",
 	"cv-record-book",
 	"cv-play-time",
+	"cv-activity",
+	"cv-profile-public",
 	"cv-arcade",
 	"cv-missions",
 	"cv-quests",
@@ -9825,7 +10046,9 @@ const SYNC_KEYS = [
 	"cv-holiday",
 	"cv-1v1",
 	"cv-pickem",
-	"cv-daily-draft"
+	"cv-daily-draft",
+	"cv-your-career",
+	"cv-your-career-records"
 ];
 const parse = (raw, fallback) => {
 	if (!raw) return fallback;
@@ -10036,6 +10259,13 @@ function mergeValue(key, local, cloud) {
 		case "cv-bonus-xp": return JSON.stringify(mergeBonusLog(readBonusLog(() => local), readBonusLog(() => cloud)));
 		case "cv-perfect-records": return JSON.stringify(mergePerfectRecords(loadPerfectRecords(() => local), loadPerfectRecords(() => cloud)));
 		case "cv-record-book": return JSON.stringify(mergeRecordBook(readRecordBook(() => local), readRecordBook(() => cloud)));
+		case "cv-your-career": return local;
+		case "cv-your-career-records": {
+			const all = [...parse(local, []), ...parse(cloud, [])];
+			return JSON.stringify([...new Map(all.map((r) => [`${r.name}-${r.at}`, r])).values()].sort((a, b) => b.legacy - a.legacy).slice(0, 10));
+		}
+		case "cv-activity": return JSON.stringify(mergeActivity(readActivity(() => local), readActivity(() => cloud)));
+		case "cv-profile-public": return local;
 		case "cv-play-time": return JSON.stringify(mergePlayTime(readPlayTime(() => local), readPlayTime(() => cloud)));
 		case "cv-arcade": return JSON.stringify(mergeArcade(readArcade(() => local), readArcade(() => cloud)));
 		case "cv-pass": return JSON.stringify(mergePass(readPass(() => local), readPass(() => cloud)));
@@ -10343,6 +10573,38 @@ function encodeAvatar(look, frame = "none") {
 		f.toString(36)
 	].join(".");
 }
+/** Why a bio can't be shown, or null when it can (an empty bio is fine). */
+function bioProblem(raw) {
+	const bio = raw.replace(/\s+/g, " ").trim();
+	if (!bio) return null;
+	if (bio.length > 80) return `Keep it to 80 characters.`;
+	if (/[\p{Cc}\p{Cf}<>]/u.test(bio)) return "Use letters, numbers and everyday punctuation.";
+	if (/https?:|www\.|\.(com|net|org|gg|io|ru|xyz)\b/i.test(bio)) return "No links in your bio.";
+	if (!isClean(bio)) return "Pick different words.";
+	return null;
+}
+/** The bio as it goes on the profile, or null for none. */
+function cleanBio(raw) {
+	if (typeof raw !== "string") return null;
+	const bio = raw.normalize("NFC").replace(/\s+/g, " ").trim();
+	return bio && !bioProblem(bio) ? bio : null;
+}
+const isTeamBanner = (b) => b.startsWith("team:") && REAL_FRANCHISES.some((t) => t.id === b.slice(5));
+const cleanBanner = (raw) => raw === "clan" ? "clan" : typeof raw === "string" && isTeamBanner(raw) ? raw : "none";
+const cleanFeatured = (raw) => typeof raw === "string" && /^(title|ach|mode):.{1,60}$/.test(raw) ? raw : void 0;
+function readPublicProfile(read = localRead) {
+	try {
+		const r = JSON.parse(read("cv-profile-public") ?? "{}");
+		const out = {};
+		const featured = cleanFeatured(r.featured), bio = cleanBio(r.bio), banner = cleanBanner(r.banner);
+		if (featured) out.featured = featured;
+		if (bio) out.bio = bio;
+		if (banner !== "none") out.banner = banner;
+		return out;
+	} catch {
+		return {};
+	}
+}
 //#endregion
 //#region server/derive.ts
 const FIRST_WEEK = "2026-W39";
@@ -10603,6 +10865,7 @@ function derive(blob, now = /* @__PURE__ */ new Date()) {
 		careers: players.length,
 		hallOfFame: hof,
 		bestPlayer: best,
+		...playTime(read, now),
 		xpParts: Object.fromEntries(parts.map((p) => [p.id, p.xp])),
 		summary: `${plural(gm.titles, "title")} · ${plural(hof, "Hall of Famer")} · ${plural(hunt.wins, "hunt")} won`,
 		relicShelf: relicShelf(read),
@@ -10612,13 +10875,16 @@ function derive(blob, now = /* @__PURE__ */ new Date()) {
 			height
 		}))(loadMyRatings(levelFor(xp).level, read))
 	};
-	const modes = earnedModeAchievements(readWithCareers, { rankedTier: TIERS.findIndex((t) => t.id === stats.rankedBest) }).map((id) => `mode-${id}`);
+	const earnedModes = earnedModeAchievements(readWithCareers, { rankedTier: TIERS.findIndex((t) => t.id === stats.rankedBest) });
+	const modes = earnedModes.map((id) => `mode-${id}`);
+	const extras = publicExtras(read, levelFor(xp).level, Object.keys(legacy.achievements), earnedModes);
 	return {
 		profile: {
 			level: levelFor(xp).level,
 			xp,
 			stats: {
 				...stats,
+				...extras,
 				modeAchievements: modes.length
 			}
 		},
@@ -10629,6 +10895,56 @@ function derive(blob, now = /* @__PURE__ */ new Date()) {
 		rebuild,
 		codes,
 		ranked
+	};
+}
+/**
+* What the player picked for the public profile (src/profile/publicProfile.ts), each piece checked: the featured trophy
+* must be earned, the bio clean; plus the last five things finished and time played by mode.
+*/
+function publicExtras(read, level, gmAchievements, modeAchievements) {
+	const pick = readPublicProfile(read);
+	let featured = null;
+	const [kind, id] = [pick.featured?.split(":")[0], pick.featured?.slice(pick.featured.indexOf(":") + 1) ?? ""];
+	if (kind === "title" && (/* @__PURE__ */ new Set([
+		...TITLES.filter((t) => t.level <= level).map((t) => t.name),
+		...rankTitles(read),
+		...earnedExtraTitles(unlockContext(level, read))
+	])).has(id)) featured = {
+		kind: "title",
+		name: id
+	};
+	else if (kind === "ach" && gmAchievements.includes(id) && ACHIEVEMENT_BY_ID.has(id)) featured = {
+		kind: "achievement",
+		name: ACHIEVEMENT_BY_ID.get(id).name,
+		detail: ACHIEVEMENT_BY_ID.get(id).description
+	};
+	else if (kind === "mode" && modeAchievements.includes(id) && MODE_ACHIEVEMENT_BY_ID.has(id)) featured = {
+		kind: "achievement",
+		name: MODE_ACHIEVEMENT_BY_ID.get(id).name,
+		detail: MODE_ACHIEVEMENT_BY_ID.get(id).description
+	};
+	const activity = readActivity(read).filter((a) => isClean(a.line) && !/[<>]/.test(a.line)).slice(0, 5).map((a) => ({
+		at: a.at,
+		kind: a.kind.slice(0, 20),
+		line: a.line.slice(0, 120)
+	}));
+	const areas = readPlayTime(read).areas;
+	const playAreas = Object.fromEntries(Object.entries(areas).filter(([k, v]) => k in AREA_LABEL && Number.isFinite(v) && (v ?? 0) >= 60).map(([k, v]) => [k, Math.floor(v)]));
+	return {
+		featured,
+		bio: pick.bio ?? null,
+		banner: pick.banner ?? "none",
+		activity,
+		playAreas
+	};
+}
+/** Time played for the profile and the Time played board: never more than the time since the game's first day. */
+function playTime(read, now) {
+	const t = readPlayTime(read);
+	const cap = Math.max(0, Math.floor((now.getTime() - Date.parse(`${FIRST_DAY}T00:00:00Z`)) / 1e3));
+	return {
+		playSeconds: Math.min(cap, Math.floor(t.total)),
+		playTop: topArea(t)
 	};
 }
 /** The relic museum on a public profile: up to six relics you own, rarest first, and how many secrets. */
@@ -10687,7 +11003,8 @@ function publicAvatar(blob, level, honors, owner = false) {
 	} catch {}
 	const f = avatarFrameDef(frame);
 	const modes = f.modes ? earnedModeAchievements(read) : [];
-	const ok = owner || (f.staff ? false : f.account ? true : f.modes ? f.modes.some((m) => modes.includes(m)) : f.honors ? f.honors.some((h) => honors.includes(h)) : f.level != null ? level >= f.level : true);
+	const hours = playTime(read, /* @__PURE__ */ new Date()).playSeconds / 3600;
+	const ok = owner || (f.staff ? false : f.account ? true : f.hours != null ? hours >= f.hours : f.modes ? f.modes.some((m) => modes.includes(m)) : f.honors ? f.honors.some((h) => honors.includes(h)) : f.level != null ? level >= f.level : true);
 	return encodeAvatar(look, ok ? f.id : "none");
 }
 //#endregion
@@ -10780,19 +11097,19 @@ const enc = encodeURIComponent;
 async function computeHonors(env, userId, d, now, previous, f = fetch) {
 	const honors = new Set(previous);
 	const others = `user_id=neq.${userId}`;
-	if (await count(env, `lb_users?select=id`, f) >= MIN_FIELD.gm) {
-		const rank = await count(env, `lb_users?select=id&xp=gt.${d.profile.xp}&id=neq.${userId}`, f) + 1;
+	if (await count(env, `lb_gms?select=id`, f) >= MIN_FIELD.gm) {
+		const rank = await count(env, `lb_gms?select=id&xp=gt.${d.profile.xp}&id=neq.${userId}`, f) + 1;
 		if (rank === 1) honors.add("gm-1");
 		if (rank <= 10) honors.add("gm-10");
 		if (rank <= 100) honors.add("gm-100");
 	}
 	const today = now.toISOString().slice(0, 10), thisWeek = weekKey(now);
 	for (const w of d.weekly.filter((x) => x.week < thisWeek).slice(-6)) {
-		const q = `weekly_scores?select=user_id&board=eq.${enc(w.board)}&week=eq.${enc(w.week)}&${others}`;
+		const q = `lb_weekly?select=user_id&board=eq.${enc(w.board)}&week=eq.${enc(w.week)}&${others}`;
 		if (await count(env, q, f) + 1 >= MIN_FIELD.weekly && await count(env, `${q}&score=gt.${w.score}`, f) === 0) honors.add("weekly-1");
 	}
 	for (const day of d.daily.filter((x) => x.day < today).slice(-7)) {
-		const q = `daily_legend?select=user_id&day=eq.${enc(day.day)}&${others}`;
+		const q = `lb_daily?select=user_id&day=eq.${enc(day.day)}&${others}`;
 		if (await count(env, q, f) + 1 >= MIN_FIELD.daily && await count(env, `${q}&score=gt.${day.score}`, f) === 0) honors.add("daily-1");
 	}
 	const season = seasonOf(today);
@@ -10811,7 +11128,7 @@ async function computeHonors(env, userId, d, now, previous, f = fetch) {
 		}
 	}
 	for (const w of d.weekly.filter((x) => x.board === "hunt" && x.week < thisWeek).slice(-4)) {
-		const q = `weekly_scores?select=user_id&board=eq.hunt&week=eq.${enc(w.week)}&${others}`;
+		const q = `lb_weekly?select=user_id&board=eq.hunt&week=eq.${enc(w.week)}&${others}`;
 		const field = await count(env, q, f) + 1;
 		if (field >= MIN_FIELD.weeklyHunt && await count(env, `${q}&score=gt.${w.score}`, f) + 1 <= Math.max(1, Math.ceil(field * .1))) honors.add("hunt-week-10");
 	}
@@ -10819,7 +11136,7 @@ async function computeHonors(env, userId, d, now, previous, f = fetch) {
 }
 /** PvP is rated on the server (hunt_ghosts), so its honor is checked there after each result. */
 async function pvpHonor(env, userId, rating, f = fetch) {
-	const q = `hunt_ghosts?select=user_id&user_id=neq.${userId}`;
+	const q = `lb_pvp?select=user_id&user_id=neq.${userId}`;
 	return await count(env, q, f) + 1 >= MIN_FIELD.pvp && await count(env, `${q}&rating=gt.${rating}`, f) < 10;
 }
 const MAX_RAW_BYTES = 6e6;
@@ -10915,9 +11232,9 @@ async function handleSync(req, env, now = /* @__PURE__ */ new Date(), f = fetch)
 		const previous = Array.isArray(current?.stats?.honors) ? current.stats.honors.filter((h) => typeof h === "string") : [];
 		let honors = previous;
 		try {
-			honors = await computeHonors(env, id, d, now, previous, f);
+			if (!owner) honors = await computeHonors(env, id, d, now, previous, f);
 			const ghost = (await rest(env, "GET", `hunt_ghosts?${eq}&select=rating`, void 0, void 0, f))?.[0];
-			if (ghost && !honors.includes("pvp-10") && await pvpHonor(env, id, ghost.rating, f)) honors = [...honors, "pvp-10"].sort();
+			if (ghost && !owner && !honors.includes("pvp-10") && await pvpHonor(env, id, ghost.rating, f)) honors = [...honors, "pvp-10"].sort();
 		} catch {}
 		const avatar = publicAvatar(blob, d.profile.level, honors, owner);
 		if (avatar) await rest(env, "PATCH", `profiles?id=eq.${id}`, { avatar }, "return=minimal", f).catch(() => null);

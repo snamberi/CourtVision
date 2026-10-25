@@ -193,6 +193,13 @@ create table if not exists public.entitlements (
   customer_id text,
   updated_at timestamptz not null default now()
 );
+-- The Support Shop: the monthly No-Ads Pass and the one-time bundles (docs/BILLING_SETUP.md).
+alter table public.entitlements add column if not exists no_ads_until timestamptz;
+alter table public.entitlements add column if not exists no_ads_status text;
+alter table public.entitlements add column if not exists no_ads_subscription_id text;
+alter table public.entitlements add column if not exists no_ads_updated_at timestamptz;
+alter table public.entitlements add column if not exists no_ads_portal_url text;
+alter table public.entitlements add column if not exists bundles text[] not null default '{}';
 
 -- ---------------------------------------------------------------- views for the boards
 

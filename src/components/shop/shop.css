@@ -1,0 +1,108 @@
+/* The Support Shop (#/support) and the thank-you popup. Each card takes its product's colour from --accent. */
+.support-shop { width: min(1120px, 100%); margin: 0 auto; padding: 18px 16px 120px; display: grid; gap: 22px; }
+.shop-top { display: flex; }
+.shop-top .chip-button { display: inline-flex; align-items: center; gap: 6px; }
+
+.shop-hero { display: grid; gap: 10px; }
+.shop-hero h1 { margin: 0; font: 22px/1.4 var(--font-pixel); color: var(--text); }
+.shop-disclaimer { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; background: color-mix(in srgb, var(--c-bg-55c878, #55c878) 12%, var(--panel, var(--c-bg-121a26, #121a26)));
+  border: 2px solid var(--c-border-55c878, #55c878); box-shadow: 4px 4px 0 var(--shadow, var(--c-shadow-000000, #000)); color: var(--text); }
+.shop-disclaimer .pixel-icon { flex: none; color: var(--c-fg-ff5fa2, #ff5fa2); margin-top: 2px; }
+.shop-disclaimer p { margin: 0; font: 14px/1.6 var(--font-ui, system-ui); }
+.shop-disclaimer b { color: var(--c-fg-7dff9b, #7dff9b); }
+.shop-signin { margin: 0; font: 13px/1.6 var(--font-data); color: var(--text-dim); }
+
+.shop-section { display: grid; gap: 12px; }
+.shop-section h2 { display: flex; align-items: center; gap: 8px; margin: 0; font: 13px/1.6 var(--font-pixel); color: var(--amber); }
+.shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
+
+.shop-card { --accent: var(--amber); position: relative; display: flex; flex-direction: column; gap: 10px; padding: 0 14px 14px; overflow: hidden;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 16%, var(--panel, var(--c-bg-121a26, #121a26))), var(--panel, var(--c-bg-121a26, #121a26)) 46%);
+  border: 2px solid color-mix(in srgb, var(--accent) 55%, var(--line, var(--c-border-2a3546, #2a3546))); box-shadow: 4px 4px 0 var(--shadow, var(--c-shadow-000000, #000)); transition: transform .08s steps(2), box-shadow .08s steps(2); }
+.shop-card:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--shadow, var(--c-shadow-000000, #000)), 0 0 0 1px var(--accent); }
+.shop-card.owned { border-color: var(--c-border-55c878, #55c878); }
+.shop-card.legendary { border-color: var(--accent); }
+.shop-card.legendary::after { content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(115deg, transparent 30%, var(--c-bg-fff1b838, rgba(255, 241, 184, .22)) 45%, transparent 60%); background-size: 250% 100%; animation: shop-sheen 3.2s steps(24) infinite; }
+@keyframes shop-sheen { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+
+.shop-card-art { position: relative; display: grid; place-items: center; height: 118px; margin: 0 -14px;
+  background: repeating-linear-gradient(0deg, transparent 0 7px, var(--c-bg-ffffff08, rgba(255, 255, 255, .03)) 7px 8px), color-mix(in srgb, var(--accent) 22%, var(--c-bg-0b1018, #0b1018));
+  border-bottom: 2px solid color-mix(in srgb, var(--accent) 45%, transparent); }
+.shop-card-glow { position: absolute; width: 104px; height: 104px; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--accent) 55%, transparent), transparent 70%);
+  animation: shop-pulse 2.4s steps(8) infinite alternate; }
+@keyframes shop-pulse { from { opacity: .55; transform: scale(.9); } to { opacity: 1; transform: scale(1.08); } }
+.shop-card-art .profile-icon, .shop-card-art svg, .shop-card-art canvas { position: relative; filter: drop-shadow(3px 3px 0 var(--c-shadow-0000008c, rgba(0, 0, 0, .55))); }
+
+.shop-card header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.shop-card h3 { margin: 0; font: 11px/1.6 var(--font-pixel); color: var(--text); }
+.shop-price { display: grid; justify-items: end; text-align: right; flex: none; }
+.shop-price b { font: 16px/1.2 var(--font-pixel); color: var(--accent); }
+.shop-price small { font: 11px/1.4 var(--font-data); color: var(--text-dim); max-width: 110px; }
+.shop-tagline { margin: 0; font: 13px/1.5 var(--font-ui, system-ui); color: var(--text-dim); font-style: italic; }
+.shop-preview { padding: 8px 10px; background: var(--c-bg-0b1018, #0b1018); border: 1px dashed color-mix(in srgb, var(--accent) 50%, var(--line, var(--c-border-2a3546, #2a3546))); }
+.shop-perks { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; font: 13px/1.5 var(--font-ui, system-ui); color: var(--text); }
+.shop-perks li { position: relative; padding-left: 16px; }
+.shop-perks li::before { content: ''; position: absolute; left: 2px; top: .55em; width: 6px; height: 6px; background: var(--accent); box-shadow: 1px 1px 0 var(--c-shadow-000000, #000); }
+.shop-icons { display: flex; gap: 6px; flex-wrap: wrap; }
+.shop-card footer { margin-top: auto; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; padding-top: 4px; }
+
+.shop-buy, .shop-cancel, .shop-keep { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 8px 14px; cursor: pointer; text-decoration: none;
+  font: 10px/1.4 var(--font-pixel); border: 2px solid var(--c-border-000000, #000); box-shadow: 3px 3px 0 var(--c-shadow-000000, #000); }
+.shop-buy { background: var(--accent, var(--amber)); color: var(--c-fg-0b1018, #0b1018); flex: 1 1 auto; }
+.shop-buy:hover { filter: brightness(1.1); color: var(--c-fg-0b1018, #0b1018); }
+.shop-buy:active, .shop-cancel:active, .shop-keep:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--c-shadow-000000, #000); }
+.shop-cancel { background: var(--c-bg-2a1418, #2a1418); color: var(--c-fg-ff9a9a, #ff9a9a); border-color: var(--c-border-e85d5d, #e85d5d); }
+.shop-cancel:hover { background: var(--c-bg-3a181e, #3a181e); }
+.shop-keep { background: var(--panel, var(--c-bg-121a26, #121a26)); color: var(--text); border-color: var(--line-strong, var(--c-border-3a475c, #3a475c)); }
+.shop-buy:focus-visible, .shop-cancel:focus-visible, .shop-keep:focus-visible { outline: 3px solid var(--c-border-ffffff, #fff); outline-offset: 2px; }
+.shop-buy:disabled, .shop-cancel:disabled, .shop-keep:disabled { opacity: .6; cursor: wait; }
+.shop-status { font: 12px/1.5 var(--font-data); color: var(--text-dim); display: inline-flex; align-items: center; gap: 6px; }
+.shop-status.ok { color: var(--c-fg-7dff9b, #7dff9b); }
+.shop-fine { max-width: 80ch; }
+.shop-error { color: var(--c-fg-ff9a9a, #ff9a9a); font: 13px/1.5 var(--font-data); margin: 0; }
+
+/* The cancel dialog and the thank-you popup. */
+.shop-modal { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 16px; background: var(--c-bg-04070cc7, rgba(4, 7, 12, .78)); }
+.shop-modal-box { --accent: var(--amber); position: relative; width: min(440px, 100%); display: grid; gap: 12px; padding: 20px; background: var(--panel, var(--c-bg-121a26, #121a26));
+  border: 2px solid var(--accent); box-shadow: 6px 6px 0 var(--c-shadow-000000, #000); color: var(--text); }
+.shop-modal-box h2 { margin: 0; font: 14px/1.5 var(--font-pixel); }
+.shop-modal-box p { margin: 0; font: 14px/1.6 var(--font-ui, system-ui); }
+.shop-modal-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; }
+
+.thank-you .shop-modal-box { --accent: inherit; text-align: center; justify-items: center; animation: thanks-pop .35s steps(5) both;
+  background: radial-gradient(circle at 50% 0, color-mix(in srgb, var(--accent) 30%, transparent), transparent 60%), var(--panel, var(--c-bg-121a26, #121a26)); }
+.thank-you { --accent: var(--amber); }
+.thanks-box h2 { font-size: 22px; color: var(--accent); text-shadow: 3px 3px 0 var(--c-shadow-000000, #000); }
+.thanks-icon { display: grid; place-items: center; width: 120px; height: 120px; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--accent) 45%, transparent), transparent 70%);
+  animation: thanks-bob 1.2s steps(6) infinite alternate; }
+.thanks-unlocks { list-style: none; margin: 0; padding: 10px 12px; display: grid; gap: 6px; justify-items: start; width: 100%; background: var(--c-bg-0b1018, #0b1018); border: 1px dashed var(--accent);
+  font: 13px/1.5 var(--font-ui, system-ui); text-align: left; }
+.thanks-unlocks li { display: flex; align-items: center; gap: 8px; }
+.thank-you .shop-modal-actions { justify-content: center; }
+@keyframes thanks-pop { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes thanks-bob { from { transform: translateY(0); } to { transform: translateY(-6px); } }
+.thanks-confetti { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+.thanks-confetti i { position: absolute; top: -12px; width: 8px; height: 8px; background: var(--accent); animation: thanks-fall 2.6s linear both; }
+.thanks-confetti i.hue-1 { background: var(--c-bg-ffd166, #ffd166); }
+.thanks-confetti i.hue-2 { background: var(--c-bg-ffffff, #fff); }
+@keyframes thanks-fall { to { transform: translateY(105vh) rotate(calc(var(--spin, 1) * 540deg)); } }
+
+/* The masthead's Support Shop chip. */
+.menu-support-shop { color: var(--c-fg-ff8fc8, #ff8fc8); }
+.menu-support-shop .pixel-icon { color: var(--c-fg-ff5fa2, #ff5fa2); }
+
+@media (max-width: 560px) {
+  .menu-masthead .menu-support-shop { padding: 6px 8px; }
+  .menu-masthead .menu-support-shop span { display: none; }
+  /* With the Support chip the header's buttons can outgrow a phone: let them wrap onto a second row. */
+  :root .menu-masthead .mh-actions.mh-simple.mh-simple { flex-wrap: wrap; justify-content: flex-end; row-gap: 6px; }
+  .shop-hero h1 { font-size: 16px; }
+  .shop-grid { grid-template-columns: 1fr; }
+  .shop-modal-actions > * { flex: 1 1 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shop-card.legendary::after, .shop-card-glow, .thanks-icon, .thanks-confetti { animation: none; display: none; }
+  .thank-you .shop-modal-box { animation: none; }
+  .shop-card-glow { display: block; }
+}

@@ -15,7 +15,7 @@ describe('profile cosmetics', () => {
       for (const row of rows) { expect(row.length, `${id}: ${row}`).toBe(10); for (const ch of row) expect(ch === '.' || ch in PALETTE, `${id}: ${ch}`).toBe(true); }
     }
     for (const icon of ICONS) expect(SPRITES[icon.base], icon.id).toBeTruthy();
-    expect(ICONS.length).toBe(84);
+    expect(ICONS.length).toBe(89);
     expect(new Set(ICONS.map(i => i.id)).size).toBe(ICONS.length);
     expect(new Set(NAME_COLORS.map(c => c.id)).size).toBe(NAME_COLORS.length);
   });
