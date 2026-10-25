@@ -1,4 +1,5 @@
 import { execSync } from 'node:child_process'
+import { PADDLE_CATALOG } from './server/paddleCatalog.ts'
 import react from '@vitejs/plugin-react'
 import { readFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
@@ -106,9 +107,15 @@ export default defineConfig(({ mode }) => ({
     // Accounts: the Supabase address and public key (safe to ship; row level security guards the data).
     'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || ''),
     'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || ''),
-    // Passes: the Lemon Squeezy checkout links (public; see docs/BILLING_SETUP.md). Empty hides the buy buttons.
-    'import.meta.env.VITE_LEMONSQUEEZY_NO_ADS_URL': JSON.stringify(process.env.VITE_LEMONSQUEEZY_NO_ADS_URL || process.env.LEMONSQUEEZY_NO_ADS_URL || ''),
-    'import.meta.env.VITE_LEMONSQUEEZY_SUPPORTER_URL': JSON.stringify(process.env.VITE_LEMONSQUEEZY_SUPPORTER_URL || process.env.LEMONSQUEEZY_SUPPORTER_URL || ''),
+    // The Support Shop: Paddle's client-side token and price ids (public; see docs/BILLING_SETUP.md). Empty hides the buy buttons.
+    'import.meta.env.VITE_PADDLE_CLIENT_TOKEN': JSON.stringify(process.env.VITE_PADDLE_CLIENT_TOKEN || process.env.PADDLE_CLIENT_TOKEN || PADDLE_CATALOG.clientToken),
+    'import.meta.env.VITE_PADDLE_ENV': JSON.stringify(process.env.VITE_PADDLE_ENV || process.env.PADDLE_ENV || ''),
+    'import.meta.env.VITE_PADDLE_PRICE_SUPPORTER': JSON.stringify(process.env.VITE_PADDLE_PRICE_SUPPORTER || process.env.PADDLE_PRICE_SUPPORTER || PADDLE_CATALOG.prices.supporter),
+    'import.meta.env.VITE_PADDLE_PRICE_NO_ADS': JSON.stringify(process.env.VITE_PADDLE_PRICE_NO_ADS || process.env.PADDLE_PRICE_NO_ADS || PADDLE_CATALOG.prices.noAds),
+    'import.meta.env.VITE_PADDLE_PRICE_BUNDLE_SUPPORTER': JSON.stringify(process.env.VITE_PADDLE_PRICE_BUNDLE_SUPPORTER || process.env.PADDLE_PRICE_BUNDLE_SUPPORTER || PADDLE_CATALOG.prices.bundleSupporter),
+    'import.meta.env.VITE_PADDLE_PRICE_BUNDLE_VISIONARY': JSON.stringify(process.env.VITE_PADDLE_PRICE_BUNDLE_VISIONARY || process.env.PADDLE_PRICE_BUNDLE_VISIONARY || PADDLE_CATALOG.prices.bundleVisionary),
+    'import.meta.env.VITE_PADDLE_PRICE_BUNDLE_FOUNDER': JSON.stringify(process.env.VITE_PADDLE_PRICE_BUNDLE_FOUNDER || process.env.PADDLE_PRICE_BUNDLE_FOUNDER || PADDLE_CATALOG.prices.bundleFounder),
+    'import.meta.env.VITE_PADDLE_PRICE_BUNDLE_CUSTOM': JSON.stringify(process.env.VITE_PADDLE_PRICE_BUNDLE_CUSTOM || process.env.PADDLE_PRICE_BUNDLE_CUSTOM || PADDLE_CATALOG.prices.bundleCustom),
   },
   plugins: mode === 'desktop' ? [react(), stripAdsense()] : [react(), siteMaps(), serviceWorker(), buildStampPlugin(), versionFile()],
   // `--mode desktop` is the offline Windows package: relative asset paths, its own output folder.

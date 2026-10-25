@@ -10,6 +10,7 @@ import { readMissions, missionsClaimed, missionTitles } from '../retention/missi
 import { seasonTiers, seasonTitles, seasonRule, seasonHow, SEASONS } from '../retention/season';
 import { shopOwned } from '../relics/shopOwned';
 import { SECRET_HOW } from '../relics/secretCosmetics';
+import { PRODUCTS, productById, BUNDLE_IDS, type ProductId } from '../billing/products';
 
 /** Complete team sets and legendary cards in the album (read straight from storage; see cards/cards.ts). */
 function albumCounts(read: Read): { sets: number; legendary: number } {
@@ -31,7 +32,7 @@ function albumCounts(read: Read): { sets: number; legendary: number } {
  */
 
 export type RewardKind = 'icon' | 'color' | 'title' | 'frame' | 'floor' | 'look' | 'avatar' | 'avatarFrame' | 'phone';
-export type Rule = { level: number } | { season: string; tier: number } | { rank: number } | { honor: string } | { mode: string } | { anyHonor: true } | { supporter: true } | { trophies: number } | { album: 'sets' | 'legendary'; n: number } | { owner: number } | { staff: true } | { shop: string };
+export type Rule = { level: number } | { season: string; tier: number } | { rank: number } | { honor: string } | { mode: string } | { anyHonor: true } | { supporter: true } | { trophies: number } | { album: 'sets' | 'legendary'; n: number } | { owner: number } | { staff: true } | { shop: string } | { product: ProductId };
 /** Animated cosmetics (the Trophy Road): see features.css `.anim-*` and `.icon-anim-*`. */
 export type IconAnim = 'flicker' | 'shine' | 'spin' | 'twinkle' | 'flash' | 'glow' | 'bob' | 'glitch';
 export type ColorAnim = 'flow' | 'shimmer' | 'pulse' | 'glitch';
@@ -140,6 +141,11 @@ const icon = (id: string, name: string, base = id, recolor?: Record<string, stri
   ({ id, name, base, recolor, rule, how: levelHow(rule) });
 const jersey = (id: string, name: string, main: string, dark: string, trim = '#f4f0e6') => icon(id, name, 'jersey', { j: main, J: dark, w: trim });
 
+/** Where a Support Shop cosmetic comes from. */
+function productHow(id: ProductId): string { const p = productById(id); return p ? `${p.name} (Support Shop)` : 'Support Shop'; }
+/** The titles from the Support Shop (the Supporter Pass's own "Supporter" title is SUPPORTER_TITLE). */
+export const PRODUCT_TITLES: { title: string; product: ProductId }[] = PRODUCTS.filter(p => p.id !== 'supporter').map(p => ({ title: p.title, product: p.id }));
+
 export const ICONS: IconDef[] = [
   icon('ball', 'Basketball', 'ball', undefined, { level: 1 }),
   icon('hoop', 'Hoop', 'hoop', undefined, { level: 1 }),
@@ -173,6 +179,12 @@ export const ICONS: IconDef[] = [
   { ...icon('sneaker-black', 'Blackout sneaker', 'sneaker', { w: '#2a3546', o: '#ff9d3d', O: '#f4f0e6' }, { supporter: true }), how: 'Supporter pass' },
   { ...jersey('jersey-gold', 'Gold jersey', '#ffd166', '#c9971f', '#0b1018'), rule: { supporter: true }, how: 'Supporter pass' },
   { ...icon('heart', 'Heart', 'heart', undefined, { supporter: true }), how: 'Supporter pass' },
+  // The Support Shop: one icon for each pass and bundle.
+  { id: 'pass-clean', name: 'Clean Court', base: 'hoop', recolor: { o: '#6fd3ff', w: '#e8fbff' }, anim: 'glow' as IconAnim, rule: { product: 'noAds' } as Rule, how: productHow('noAds') },
+  { id: 'bundle-heart', name: 'Thank-You Heart', base: 'heart', recolor: { r: '#ff8a5c', w: '#ffe0b3' }, anim: 'bob' as IconAnim, rule: { product: 'bundleSupporter' } as Rule, how: productHow('bundleSupporter') },
+  { id: 'bundle-eye', name: 'Vision Eye', base: 'eye', anim: 'twinkle' as IconAnim, rule: { product: 'bundleVisionary' } as Rule, how: productHow('bundleVisionary') },
+  { id: 'bundle-phoenix', name: 'Eternal Phoenix', base: 'phoenix', recolor: { r: '#ffd166', o: '#fff1b8' }, anim: 'flicker' as IconAnim, fx: 'gold' as const, rule: { product: 'bundleFounder' } as Rule, how: productHow('bundleFounder') },
+  { id: 'bundle-gift', name: 'Gift Box', base: 'gift', anim: 'shine' as IconAnim, rule: { product: 'bundleCustom' } as Rule, how: productHow('bundleCustom') },
   // The Trophy Road: animated icons.
   ...([
     ['fireball', 'Fireball', 'fireball', undefined, 'flicker'], ['trophy-shine', 'Gleaming trophy', 'trophy', undefined, 'shine'],
@@ -238,6 +250,12 @@ export const NAME_COLORS: (Cosmetic & { css: string; anim?: ColorAnim })[] = [
   { ...color('prism', 'Prism', 'linear-gradient(90deg, #ff9d3d, #ffd166, #6fdc93, #6db8ff, #c79bff)', { honor: 'first' }), how: 'Finish #1 on a leaderboard' },
   { ...color('aurora', 'Aurora', 'linear-gradient(90deg, #6fdc93, #4fd6d6, #b8a8ff, #ff8fc8)', { supporter: true }), how: 'Supporter pass' },
   { ...color('supporter', 'Supporter pink', '#ff5fa2', { supporter: true }), how: 'Supporter pass' },
+  // The Support Shop: one name colour for each pass and bundle.
+  { id: 'pass-clear', name: 'Clear Sky', css: 'linear-gradient(90deg, #6fd3ff, #e8fbff, #6fd3ff)', anim: 'shimmer' as ColorAnim, rule: { product: 'noAds' } as Rule, how: productHow('noAds') },
+  { id: 'bundle-warm', name: 'Warm Thanks', css: 'linear-gradient(90deg, #ff8a5c, #ffd1a6, #ff8a5c)', anim: 'pulse' as ColorAnim, rule: { product: 'bundleSupporter' } as Rule, how: productHow('bundleSupporter') },
+  { id: 'bundle-visionary', name: 'Visionary', css: 'linear-gradient(90deg, #7e4fc9, #b983ff, #6fd3ff, #b983ff, #7e4fc9)', anim: 'flow' as ColorAnim, rule: { product: 'bundleVisionary' } as Rule, how: productHow('bundleVisionary') },
+  { id: 'bundle-eternal', name: 'Eternal Gold', css: 'linear-gradient(90deg, #c9971f, #ffd166, #fff6d6, #ffd166, #c9971f)', anim: 'shimmer' as ColorAnim, rule: { product: 'bundleFounder' } as Rule, how: productHow('bundleFounder') },
+  { id: 'bundle-kind', name: 'Kindness', css: 'linear-gradient(90deg, #55c878, #a8f0c0, #ff8fc8, #a8f0c0, #55c878)', anim: 'flow' as ColorAnim, rule: { product: 'bundleCustom' } as Rule, how: productHow('bundleCustom') },
   // The Trophy Road: animated name colours.
   animated('emberflow', 'Ember flow', 'linear-gradient(90deg, #ff4d2e, #ff9d3d, #ffd166, #ff9d3d, #ff4d2e)', 'flow'),
   animated('neonwave', 'Neon wave', 'linear-gradient(90deg, #ff4dd2, #6fd3ff, #7dff9b, #6fd3ff, #ff4dd2)', 'flow'),
@@ -326,19 +344,32 @@ export function noteHonors(honors: unknown): void {
   const next = [...new Set([...readHonors(), ...honors.filter((h): h is string => typeof h === 'string')])].filter(h => HONORS.some(x => x.id === h)).sort();
   try { if (JSON.stringify(next) !== localStorage.getItem(HONORS_KEY)) localStorage.setItem(HONORS_KEY, JSON.stringify(next)); } catch { /* storage blocked */ }
 }
+interface StoredEntitlements { noAds?: boolean; supporter?: boolean; supporterUntil?: string | null; noAdsUntil?: string | null; bundles?: string[] }
+const liveUntil = (until?: string | null) => !!until && Date.parse(until) > Date.now();
 /** Whether this browser's account has an active pass (`noAds`, `supporter`). */
 export function hasEntitlement(kind: 'noAds' | 'supporter', read: Read = localRead): boolean {
-  const e = json<{ noAds?: boolean; supporter?: boolean; supporterUntil?: string | null }>(read, ENTITLEMENTS_KEY, {});
+  const e = json<StoredEntitlements>(read, ENTITLEMENTS_KEY, {});
   // A lapsed subscription ends on its date even before the game next hears from the server.
-  const supporter = !!e.supporter && (!e.supporterUntil || Date.parse(e.supporterUntil) > Date.now());
-  return kind === 'noAds' ? !!e.noAds || supporter : supporter;
+  const supporter = !!e.supporter && (!e.supporterUntil || liveUntil(e.supporterUntil));
+  // The monthly No-Ads Pass ends on its date the same way; `noAds` alone is a lifetime pass bought before it was monthly.
+  const noAds = (!!e.noAds && !e.noAdsUntil) || liveUntil(e.noAdsUntil);
+  return kind === 'noAds' ? noAds || supporter : supporter;
+}
+/** Every Support Shop product this browser's account has right now. */
+export function ownedProducts(read: Read = localRead): ProductId[] {
+  const e = json<StoredEntitlements>(read, ENTITLEMENTS_KEY, {});
+  return [
+    ...(hasEntitlement('supporter', read) ? ['supporter' as const] : []),
+    ...(liveUntil(e.noAdsUntil) ? ['noAds' as const] : []),
+    ...BUNDLE_IDS.filter(id => (e.bundles ?? []).includes(id)),
+  ];
 }
 
-export interface UnlockContext { /** Tiers reached in each season's pass (season.ts). */ seasons?: Record<string, number>; level: number; rank: number; honors: string[]; modes: string[]; supporter: boolean; trophies: number; album?: { sets: number; legendary: number }; owner?: number; /** Best daily streak and best Season Pass tier. */ streak?: number; pass?: number; /** Weekly missions claimed in all. */ missions?: number; /** The game owner's account: everything is open (ownerAccess.ts). */ staff?: boolean; /** This browser has signed in to an account (the Founding GM reward). */ account?: boolean; /** Cosmetics bought in the Relic Shop. */ shop?: string[]; /** Hours played (the time-played frames). */ hours?: number }
+export interface UnlockContext { /** Tiers reached in each season's pass (season.ts). */ seasons?: Record<string, number>; level: number; rank: number; honors: string[]; modes: string[]; supporter: boolean; trophies: number; album?: { sets: number; legendary: number }; owner?: number; /** Best daily streak and best Season Pass tier. */ streak?: number; pass?: number; /** Weekly missions claimed in all. */ missions?: number; /** The game owner's account: everything is open (ownerAccess.ts). */ staff?: boolean; /** This browser has signed in to an account (the Founding GM reward). */ account?: boolean; /** Cosmetics bought in the Relic Shop. */ shop?: string[]; /** Hours played (the time-played frames). */ hours?: number; /** Support Shop products owned (passes while active). */ products?: ProductId[] }
 /** What unlocks read: the level is passed in; the rest comes from this browser. */
 export function unlockContext(level: number, read: Read = localRead): UnlockContext {
-  if (hasOwnerAccess(read)) return { level: Math.max(level, 100_000), rank: TIERS.length - 1, honors: HONORS.map(h => h.id), modes: MODE_TITLES.map(t => t.mode), supporter: true, trophies: 1e9, album: { sets: 1e6, legendary: 1e6 }, owner: 1e6, streak: 1e6, pass: 1e6, missions: 1e6, staff: true, account: true, hours: 1e6, seasons: Object.fromEntries(SEASONS.map(s => [s.id, 1e6])) };
-  return { seasons: seasonTiers(read), level, rank: TIERS.indexOf(read('cv-ranked-best') ?? ''), honors: readHonors(read), modes: json<string[]>(read, 'cv-mode-ach-seen', []), supporter: hasEntitlement('supporter', read), trophies: totalTrophies(read), album: albumCounts(read), owner: ownerBest(read), streak: readStreak(read).best, pass: passBestTier(readPass(read)), missions: missionsClaimed(readMissions(read)), account: hasFoundingAccount(read), shop: shopOwned(read), hours: readPlayTime(read).total / 3600 };
+  if (hasOwnerAccess(read)) return { level: Math.max(level, 100_000), rank: TIERS.length - 1, honors: HONORS.map(h => h.id), modes: MODE_TITLES.map(t => t.mode), supporter: true, trophies: 1e9, album: { sets: 1e6, legendary: 1e6 }, owner: 1e6, streak: 1e6, pass: 1e6, missions: 1e6, staff: true, account: true, hours: 1e6, products: PRODUCTS.map(p => p.id), seasons: Object.fromEntries(SEASONS.map(s => [s.id, 1e6])) };
+  return { seasons: seasonTiers(read), level, rank: TIERS.indexOf(read('cv-ranked-best') ?? ''), honors: readHonors(read), modes: json<string[]>(read, 'cv-mode-ach-seen', []), supporter: hasEntitlement('supporter', read), trophies: totalTrophies(read), album: albumCounts(read), owner: ownerBest(read), streak: readStreak(read).best, pass: passBestTier(readPass(read)), missions: missionsClaimed(readMissions(read)), account: hasFoundingAccount(read), shop: shopOwned(read), hours: readPlayTime(read).total / 3600, products: ownedProducts(read) };
 }
 export function isOpen(rule: Rule, c: UnlockContext): boolean {
   if (c.staff) return true;
@@ -352,6 +383,7 @@ export function isOpen(rule: Rule, c: UnlockContext): boolean {
   if ('trophies' in rule) return c.trophies >= rule.trophies;
   if ('owner' in rule) return (c.owner ?? 0) >= rule.owner;
   if ('shop' in rule) return (c.shop ?? []).includes(rule.shop);
+  if ('product' in rule) return (c.products ?? []).includes(rule.product);
   if ('album' in rule) return (rule.album === 'sets' ? c.album?.sets ?? 0 : c.album?.legendary ?? 0) >= rule.n;
   return rule.honor === 'first' ? c.honors.some(h => HONORS.find(x => x.id === h)?.first) : c.honors.includes(rule.honor);
 }
@@ -367,6 +399,7 @@ export const earnedExtraTitles = (c: UnlockContext): string[] => [
   ...HONORS.filter(h => c.honors.includes(h.id)).map(h => h.title),
   ...MODE_TITLES.filter(t => c.modes.includes(t.mode)).map(t => t.title),
   ...(c.supporter ? [SUPPORTER_TITLE] : []),
+  ...PRODUCT_TITLES.filter(t => (c.products ?? []).includes(t.product)).map(t => t.title),
   ...TROPHY_TITLES.filter(t => c.trophies >= t.trophies).map(t => t.id),
   ...ALBUM_TITLES.filter(t => ((t.kind === 'sets' ? c.album?.sets : c.album?.legendary) ?? 0) >= t.n).map(t => t.title),
   ...OWNER_TITLES.filter(t => (c.owner ?? 0) >= t.legacy).map(t => t.title),
@@ -425,5 +458,7 @@ export const SPRITES: Record<string, string[]> = {
   sovereign: ['.o..oo..o.', 'oOo.oO.oOo', 'kgk.gg.kgk', 'kgkggggkGk', 'kggwgggGGk', 'kgbgggbgGk', 'kggggggGGk', 'kGGGGGGGGk', 'kkkkkkkkkk', '.o.oOOo.o.'],
   skybox: ['kkkkkkkkkk', 'kggggggggk', 'kgbwgbwgGk', 'kgbbgbbgGk', 'kggggggggk', 'kkkkkkkkkk', '.kdddddddk', '.kdwdwdwdk', '.kdddddddk', '.kkkkkkkk.'],
   card: ['.kkkkkkkk.', 'kbbbbbbbbk', 'kbwwwwwwBk', 'kbwoowwwBk', 'kbwoowwwBk', 'kbwwwwwwBk', 'kbwkkkkwBk', 'kbwwwwwwBk', 'kBBBBBBBBk', '.kkkkkkkk.'],
+  eye: ['..........', '..kkkkkk..', '.kwwwwwwk.', 'kwwpPPpwwk', 'kwpPkkPpwk', 'kwpPkwPpwk', 'kwwpPPpwwk', '.kwwwwwwk.', '..kkkkkk..', '..........'],
+  gift: ['...k..k...', '..kgkkgk..', '...kggk...', 'kkkkkkkkkk', 'krrrgrrrrk', 'kkkkgkkkkk', '.krrgrrrk.', '.krrgrrrk.', '.krrgrrrk.', '.kkkkkkkk.'],
   heart: ['..........', '.kkk..kkk.', 'krrrkkrrrk', 'krwrrrrrrk', 'krrrrrrrrk', '.krrrrrrk.', '..krrrrk..', '...krrk...', '....kk....', '..........'],
 };

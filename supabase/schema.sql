@@ -180,7 +180,7 @@ create table if not exists public.pvp_matches (
 );
 create index if not exists pvp_matches_challenger on public.pvp_matches (challenger, created_at desc);
 
--- Passes bought through Lemon Squeezy (written only by /api/billing with the service key; see docs/BILLING_SETUP.md).
+-- Support Shop purchases through Paddle (written only by /api/billing with the service key; see docs/BILLING_SETUP.md).
 create table if not exists public.entitlements (
   user_id uuid primary key references auth.users on delete cascade,
   no_ads boolean not null default false,
@@ -193,6 +193,15 @@ create table if not exists public.entitlements (
   customer_id text,
   updated_at timestamptz not null default now()
 );
+-- The Support Shop: the monthly No-Ads Pass and the one-time bundles (docs/BILLING_SETUP.md).
+alter table public.entitlements add column if not exists no_ads_until timestamptz;
+alter table public.entitlements add column if not exists no_ads_status text;
+alter table public.entitlements add column if not exists no_ads_subscription_id text;
+alter table public.entitlements add column if not exists no_ads_updated_at timestamptz;
+alter table public.entitlements add column if not exists no_ads_portal_url text;
+alter table public.entitlements add column if not exists bundles text[] not null default '{}';
+-- Which bundle each Paddle order bought (txn id → bundle), so a refund takes back the right one.
+alter table public.entitlements add column if not exists bundle_orders jsonb not null default '{}';
 
 -- ---------------------------------------------------------------- views for the boards
 
