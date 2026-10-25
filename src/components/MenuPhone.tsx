@@ -26,8 +26,8 @@ const PER_PAGE = 6;
 
 
 export const SOCIALS = {
-  tiktok: 'https://www.tiktok.com/@courtvision.game',
-  instagram: 'https://www.instagram.com/courtvision.game/',
+  tiktok: 'https://www.tiktok.com/@ninefoldvision',
+  instagram: 'https://www.instagram.com/ninefoldvision/',
   youtube: 'https://www.youtube.com/@NineFoldVision',
   reddit: 'https://www.reddit.com/r/NineFoldVision/',
 } as const;
