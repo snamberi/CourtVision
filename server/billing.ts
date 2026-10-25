@@ -1,4 +1,5 @@
 import { rest, upsert, json, bearer, getUser, type SupaEnv, type Fetch } from './supabase';
+import { PADDLE_CATALOG } from './paddleCatalog';
 
 /*
  * /api/billing: the Paddle webhook, plus two small actions for the Support Shop. Paddle is the merchant of record (it
@@ -38,8 +39,8 @@ export function billingEnv(env: Env = (globalThis as { process?: { env: Env } })
   const secret = env.PADDLE_WEBHOOK_SECRET;
   const sandbox = (env.PADDLE_ENV ?? env.VITE_PADDLE_ENV ?? '').toLowerCase() === 'sandbox';
   return secret ? {
-    secret, noAds: ids(env.PADDLE_PRODUCT_NO_ADS), supporter: ids(env.PADDLE_PRODUCT_SUPPORTER),
-    bundles: Object.fromEntries(BUNDLES.map(b => [b, ids(env[`PADDLE_PRODUCT_BUNDLE_${BUNDLE_ENV[b]}`])])) as Record<Bundle, string[]>,
+    secret, noAds: ids(env.PADDLE_PRODUCT_NO_ADS ?? PADDLE_CATALOG.products.noAds), supporter: ids(env.PADDLE_PRODUCT_SUPPORTER ?? PADDLE_CATALOG.products.supporter),
+    bundles: Object.fromEntries(BUNDLES.map(b => [b, ids(env[`PADDLE_PRODUCT_BUNDLE_${BUNDLE_ENV[b]}`] ?? PADDLE_CATALOG.products[b])])) as Record<Bundle, string[]>,
     apiKey: env.PADDLE_API_KEY || undefined, api: sandbox ? 'https://sandbox-api.paddle.com' : 'https://api.paddle.com',
   } : null;
 }

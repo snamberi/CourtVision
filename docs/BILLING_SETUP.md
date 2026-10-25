@@ -50,6 +50,13 @@ Work in the **sandbox** first ([sandbox-vendors.paddle.com](https://sandbox-vend
 
 ## 3. Add the settings
 
+**Already done for the live store:** the client token, product IDs and price IDs are in
+[`server/paddleCatalog.ts`](../server/paddleCatalog.ts) (they are public by design). On Cloudflare you only need to add
+the two **secrets**, in the Worker's **Settings → Variables and Secrets** (type *Secret*), then deploy:
+`PADDLE_API_KEY` and `PADDLE_WEBHOOK_SECRET`. Never commit those two: this repository is public.
+
+The settings below override the catalog file, for example to test against the sandbox.
+
 On Cloudflare: the Worker's **Settings → Variables and Secrets** for the server values, and **Builds → Variables** for
 the `VITE_` values (they are built into the game). On Vercel: **Settings → Environment Variables** for all of them.
 
