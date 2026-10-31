@@ -1,6 +1,6 @@
 # Court Vision: full guide text
 
-Source: https://courtvisiongame.com/ (updated 2026-10-01). Court Vision is a free browser basketball GM and simulation game.
+Source: https://courtvisiongame.com/ (updated 2026-10-31). Court Vision is a free browser basketball GM and simulation game.
 
 ---
 
@@ -8,7 +8,7 @@ Source: https://courtvisiongame.com/ (updated 2026-10-01). Court Vision is a fre
 
 URL: https://courtvisiongame.com/about.html
 
-Court Vision is a free basketball management and simulation game that runs in your browser. You run a franchise (drafting, trading, signing, coaching) and every game is played out possession by possession by a full simulation engine, not decided by a coin flip.
+CourtVision is a free browser basketball management and simulation game developed by NineFoldVision. Its focus is letting you explore basketball decisions: build a roster, change a rotation, replay a historical matchup or follow a player’s career, then see how those choices play out possession by possession.
 
 ## What you can do
 
@@ -19,6 +19,9 @@ Court Vision is a free basketball management and simulation game that runs in yo
 - **Rebuild Challenge.** Take over a real team at its lowest point and win a title before time runs out. See the [Rebuild Challenge guide](https://courtvisiongame.com/guides/rebuild-challenge.html).
 - **82-0 Challenge.** Spin or pick a ten-man team from all of history and try to go 82-0, then 16-0 in the playoffs, against real teams and boss teams like the 72-10 Bulls. See the [82-0 Challenge guide](https://courtvisiongame.com/guides/82-0-challenge.html).
 - **All-Time Draft.** Thirty teams, thirteen rounds, every player in history at his best: draft against AI GMs, then play the season. See the [All-Time Draft guide](https://courtvisiongame.com/guides/all-time-draft.html).
+- **Survival.** Keep a team competitive while defeated opponents claim players from your roster. Protect your Franchise Player and decide when to spend shields.
+- **Story Mode.** Follow Street to the League through basketball games, characters and decisions.
+- **Your Career.** Begin at age 13 and choose a route through youth basketball and professional opportunities. Compare all seven main modes in the [FAQ](https://courtvisiongame.com/faq.html).
 
 ## How the simulation works
 
@@ -28,7 +31,7 @@ You can watch any game on a pixel-art court, coach it live from the sideline (ti
 
 ## Your saves stay with you
 
-Accounts are optional. Everything you play is saved in your own browser, and a free account (Discord or Google) also keeps your progress with you on every device. You can export a single backup file with every league, career and record from the GM Locker or the main menu, and restore it on any device. The [Privacy Policy](https://courtvisiongame.com/privacy.html) explains exactly what is stored and how advertising works on the web version.
+Local leagues and in-progress Career Mode worlds stay in your browser. An optional account syncs supported profile progress and retired Career Mode records; it is not a full league backup. Download a backup from the GM Locker or Backups before moving devices or clearing browser data. The [FAQ](https://courtvisiongame.com/faq.html) explains recovery, and the [Privacy Policy](https://courtvisiongame.com/privacy.html) describes storage and advertising.
 
 You can also install Court Vision as an app on your PC or phone: it gets its own icon and window and plays offline. Open [courtvisiongame.com/#/install](https://courtvisiongame.com/./#/install) for the steps.
 
@@ -52,7 +55,7 @@ This guide walks you through your first season as general manager, from picking 
 
 ## 1. Start a league
 
-1. On the main menu, choose **Random Players** (a freshly generated 30-team league) or **Real League** (real NBA history from any season since 1946-47).
+1. On the main menu, choose **Franchise**, then select a generated league, a real historical league or one of the available challenge setups.
 2. Pick a trade difficulty. **Normal** means trades need roughly matched value; **Hard** puts a premium on young high-potential players.
 3. Choose a team to run, or create an expansion team through a real expansion draft where every club files a protection list first.
 4. Pick **Simple** navigation for a guided sidebar, or **Full** to see every page. You can switch any time.
@@ -413,97 +416,225 @@ The Top 100 is a fixed, hand-ordered list: LeBron James is 1, Michael Jordan 2, 
 
 URL: https://courtvisiongame.com/faq.html
 
-Quick answers to the questions players ask most. Anything missing? Ask on our [Discord](https://discord.gg/5uGK5HDS8e).
+Choose a topic or search for a question. These answers explain the game available now, from your first franchise to protecting a long-running save. For a step-by-step franchise walkthrough, read [How to Play](https://courtvisiongame.com/how-to-play.html).
+
+## What is CourtVision?
+
+CourtVision is a basketball management and simulation game by NineFoldVision. You make roster, training and coaching decisions, then the simulation plays out possessions and produces results. You can run a franchise, build historical teams for short challenges, or follow one player through a career. Pixel-art games let you watch the action as well as read the statistics.
 
 ## Is Court Vision free?
 
-Yes. Court Vision is free, in the browser and as an installed app, and supported by ads.
+Yes. You can play the browser game for free. The web version includes advertising support and an optional Support Shop with passes and supporter bundles; buying something is not required to start playing. Ad availability depends on your settings, connection and whether an ad is served.
+
+## How do I start playing?
+
+Open the game and choose a mode on the main menu. Choose **Franchise** for a league you manage over multiple seasons; its setup includes real historical leagues, generated leagues and challenges. Choose **82-0 Challenge** for a focused team-building run, or **Career Mode** to follow one player. Read the setup rules before starting: each mode has its own goals and options.
+
+For your first franchise, pick a team, inspect its roster, set a rotation and simulate a game before advancing a whole season. The [beginner guide](https://courtvisiongame.com/how-to-play.html) walks through trades, the schedule and the offseason.
 
 ## Do I need an account?
 
-No. Everything works without an account, exactly as before. An account is free and optional: sign in with **Discord** or **Google** (no password) from the main menu.
-
-With an account, your GM level, achievements, trophies, League Hunt, 82-0 Challenge, Rebuild and weekly results, daily goals and retired Career Mode players follow you to every device, and you appear on the online leaderboards, ranked seasons and League Hunt PvP. GM leagues and careers still in progress stay on the device where you play them: they are several megabytes each, so use **Backup everything** to move those.
-
-## What game modes are there, and how long do they take?
-
-Seven. Pick by how much time you have:
-
-| Mode | How long | What it is |
-| --- | --- | --- |
-| 82-0 Challenge | 5-10 minutes | Build a ten-man team from all of history and try to go 82-0, then 16-0 in the playoffs. |
-| Career Mode | 5-15 minutes | Create one player and live his whole career, from draft night to the Hall of Fame. |
-| Rebuild Challenge | 10-20 minutes | Take over a real team at its lowest point and win a title before time runs out. |
-| All-Time Draft | 10-20 minutes | Thirty teams draft every player in history at his best, then play the season. |
-| League Hunt | 15-30 minutes a run | Spin a six-man squad and beat ten great teams from every era in best-of-seven series. |
-| Real League | Unlimited | Run a real NBA franchise from any season since 1946-47. |
-| Random Players | Unlimited | A generated 30-team league with nothing real: pure franchise building. |
-
-## What is the 82-0 Challenge?
-
-A quick mode about one question: can your team go undefeated? Spin ten players and a coach (Quick Spin), or roll a franchise and an era and pick one player from everyone who played there (Franchise Spin). Then play all 82 games against real teams from every era, including boss teams like the 72-10 Bulls and the 73-9 Warriors, and four playoff rounds. Every run gets a score, there is a Daily 82-0 with the same spins for everyone, and going 82-0 unlocks the Undefeated title and profile frame. See the [82-0 Challenge guide](https://courtvisiongame.com/guides/82-0-challenge.html).
-
-## What is the Mode of the Week?
-
-Each week one mode (the 82-0 Challenge, League Hunt, Career Mode or the Rebuild Challenge) earns **double XP**: every run you finish in it that week gives its XP twice, up to 3,000 bonus XP a week. It changes every Monday and is shown on the main menu.
+No account is required for local single-player play. An optional account enables cloud progress and online features such as posting results and maintaining a public profile. Those features require an internet connection and an available account service; they are not the same as local saves.
 
 ## Can I play on my phone?
 
-Yes. Court Vision runs in any modern phone browser, and you can install it as an app from the main menu (on iPhone: Share, then Add to Home Screen). The quick modes (82-0 Challenge, Career Mode, League Hunt) are made for short sessions on a phone.
+The game includes mobile layouts and runs in modern phone browsers. Large roster tables may need horizontal scrolling, and longer simulations can take more time on a phone. Try a short challenge first, keep the tab open while it runs, and use a larger screen when you want more room for detailed management.
 
-## Is Court Vision affiliated with the NBA?
+If Google sign-in fails inside Instagram or another in-app browser, open CourtVision in your normal browser and start sign-in there.
 
-No. Court Vision is an independent fan project, not affiliated with or endorsed by the NBA, its teams or its players. Historical statistics come from [Basketball-Reference.com](https://www.basketball-reference.com/); the ratings are Court Vision's own.
+## Is downloading required?
 
-## Where are my saves? Can I lose them?
+No. The browser version starts from the website. Installation is optional: the [installation guide](https://courtvisiongame.com/./#/install) explains adding the app to supported devices. A Windows download is also linked there. Your browser and the installed edition may keep separate local saves, so use a backup when moving between them.
 
-Saves live in your browser's storage. Clearing your browsing data, using a private window, or switching browsers or devices means you won't see them. To keep them safe, download a backup of everything from the GM Locker or from Backups on the main menu. One file holds every league, career, League Hunt record and achievement.
+## What game modes are there, and how long do they take?
 
-Signed in, your progress (not your GM leagues) is also kept with your account, so clearing this browser no longer loses your level, trophies, records or retired careers.
+The seven main menu choices are **Franchise, League Hunt, 82-0 Challenge, Career Mode, Survival, Story Mode and Your Career**. Franchise includes additional setups such as Rebuild Challenge and All-Time Draft. Some modes offer daily, weekly or difficulty variants.
 
-## How do I move my progress to another device?
+Short challenges can fit a brief session, while franchise management can continue for many seasons. Actual time depends on your device, how much you watch and how many decisions you make; menu time estimates are not limits.
 
-Download a backup on the old device, open Court Vision on the new one, and choose Restore from a file. Restoring adds and replaces; it never deletes anything already there.
+## How does Franchise Mode work?
 
-## Can I play offline?
+Manage a team across the season and offseason: set rotations, hire staff, trade, negotiate contracts, scout prospects and draft. Real historical setups and generated leagues offer different starting points. Budgets, roster needs and player development make a strong team a longer-term project than simply collecting high overall ratings.
 
-Yes. **Install the app:** press Install app in the top-right corner of the game. On Chrome or Edge (PC) and Chrome (Android) it installs in one click; on iPhone, tap Share, then Add to Home Screen. It gets its own icon and window, and after your first visit it opens without a connection: any mode you have played once keeps working offline.
+The Franchise setup also includes Rebuild Challenge, All-Time Draft, Time Machine and World Games options. Check each setup for its rules. Start with [How to Play](https://courtvisiongame.com/how-to-play.html), then use the [guides](https://courtvisiongame.com/guides/) for a particular challenge.
 
-## Are the players and ratings real?
+## How does Hunt Mode work?
 
-Real League, League Hunt, Career Mode and Rebuild Challenge use real NBA players and their real statistics. The ratings are Court Vision's own, computed from those statistics. Random leagues use generated players. See [Real NBA history](https://courtvisiongame.com/guides/real-nba-history.html).
+In **League Hunt**, spin a six-player squad and a coach, lock your choices, and choose a training focus. The standard road contains ten best-of-seven series under historical era rules, with a semi-boss and a final boss. Between series you choose boosts and visit shops at designated stops.
 
-## Why does a simulated season take a few seconds?
+Losing a series costs a life; the starting number depends on difficulty. Spend resources with the next matchup in mind, rather than only raising one star’s rating. Special variants and bonus opponents can change the run. See the [League Hunt guide](https://courtvisiongame.com/guides/league-hunt.html).
 
-Every game is simulated possession by possession by a full engine, around 1,230 games a season plus the playoffs. It runs in background workers so the game stays responsive.
+## What is the 82-0 Challenge?
+
+Build a ten-player team and choose a coach, then try to win all 82 regular-season games and go 16-0 in the playoffs. Setup choices include quick spins, franchise-and-era selections and category-based drafting. A team of scorers still needs defense, rebounding and a workable rotation.
+
+Daily and other variants have their own setup rules. Results and records let you compare runs even when you fall short of perfection. Read the [82-0 guide](https://courtvisiongame.com/guides/82-0-challenge.html).
+
+## How does Career Mode work?
+
+Create a player through the historical-player wheel or the MyPlayer builder, then follow his seasons, training, team changes, awards and retirement. Wheel choices combine different aspects of real players into your created player; they do not copy one historical career exactly.
+
+Career Mode summarizes a whole playing career and evaluates its legacy. It is separate from **Your Career**, which starts younger and focuses on season-by-season life and basketball choices. See the [Career Mode guide](https://courtvisiongame.com/guides/career-mode.html).
+
+## How does Your Career Mode work?
+
+Start a player at age 13 and choose his identity, position and playing style. Decisions shape training and the route through youth basketball, school, college and professional opportunities. Later choices include entering the draft and selecting contracts.
+
+Read the options each season: this mode is about shaping a path over time, rather than using the Career Mode wheel to assemble a finished starting build.
+
+## How does Survival Mode work?
+
+Choose ten players from the opening deal and designate a Franchise Player who cannot be taken. Play historical opponents one game at a time. After a win, the opponent can claim one of your strongest players and you choose a replacement from its offers. Difficulty changes which players are at risk.
+
+Shields protect against player claims; they do not normally erase a lost game. A loss ends the run. Boss opponents appear every fifth round, so saving a shield and maintaining a balanced rotation matter. The Daily Survival uses a shared seed and disables relic bonuses.
+
+## How does Story Mode work?
+
+**Street to the League** follows a basketball story from the park toward a professional career. Story cards, relationships and decisions connect the games, with different endings depending on the path you take. Games use the simulation engine, while the story gives those results a narrative setting.
+
+Choose Story Mode when you want characters and choices alongside basketball, rather than full control of an entire franchise.
+
+## How do player ratings and attributes work?
+
+Overall is a summary, not a guarantee of performance. Individual shooting, finishing, passing, defense, rebounding and physical attributes describe different skills. Tendencies influence what a player attempts, while roles, minutes, teammates and opponents affect the opportunities he gets.
+
+Compare attributes relevant to your lineup: a shooter needs spacing and touches; a defensive big can help without leading the scoring. Rating scales and caps differ between modes and special options. The [ratings guide](https://courtvisiongame.com/guides/ratings-explained.html) explains the main summaries.
+
+## How do historical basketball eras work?
+
+Historical franchise setups start with teams and players from the selected season. Era settings and historical challenge matchups can change rules and styles, including three-point availability, pace and defensive conditions. A modern shooting lineup therefore does not play every historical matchup under today’s conditions.
+
+Historical statistics supply inputs, but CourtVision’s ratings and simulated outcomes are its own model. A replay is not a promise to reproduce real standings or careers. Read [Real NBA history](https://courtvisiongame.com/guides/real-nba-history.html).
+
+## How do draft classes and scouting work?
+
+Franchise drafts let you compare prospects and use scouting information before making a selection. Historical and generated setups provide different prospect pools. Scout estimates of potential are not certain forecasts: current ability, development and your team’s needs all matter.
+
+Inspect the available reports and player details, compare prospects at the positions you need, and keep more than one target in mind before your pick. The highest estimated potential is not automatically the best immediate starter.
+
+## How do players develop?
+
+Players change over seasons rather than remaining fixed at their starting rating. Age, potential and development systems affect their progression; training choices let you emphasize aspects of a player’s game. Historical development settings can also influence how real players progress.
+
+Use the player’s current skills and role when choosing training. A promising prospect still needs time, and an older star may decline. The outcome is a simulation, not a guaranteed growth schedule.
+
+## Can I watch games and coach?
+
+Yes. The game supports simulated results and a pixel-art Watch Game view. Coaching controls include rotations and tactical decisions; the available controls depend on the mode and screen. Team construction and coaching influence the simulation, but do not guarantee the result of an individual possession.
+
+For franchise management, review the box score as well as the result. Shooting efficiency, turnovers, rebounds and playing time can help explain why a higher-rated roster lost.
 
 ## What is Sandbox mode?
 
-Sandbox unlocks tools such as editing any player, God Mode, importing any real player from any era, and sticking players to teams. Leagues where Sandbox has been used no longer count toward GM achievements or the Rebuild Challenge board.
+Sandbox provides editing tools for experimenting with a league, including player editing and importing historical players. It changes the competitive context: leagues marked as using Sandbox do not qualify for the normal GM achievement and Rebuild Challenge checks. Keep a separate save if you want both an experiment and a competitive franchise.
 
-## How do ads and privacy work?
+## How do relics and rarity work?
 
-The web version shows ads through Google AdSense when your consent choices allow it, and uses cookie-free aggregate analytics, including anonymous counts of which modes are started and finished (never names, save contents or identifiers; nothing is sent when your browser sends Do Not Track or Global Privacy Control). The [Privacy Policy](https://courtvisiongame.com/privacy.html) explains what is stored and your choices.
+The Relic Vault contains Common, Rare, Epic, Legendary and Mythic relics, plus Secret relics with special abilities. Regular relics contribute luck when equipped in available slots. Duplicate rewards, stacking, upgrades and extra slots are handled by the Vault; simply owning every relic does not equip them all.
 
-## Can I play the same league as a friend?
+Earned rewards and coins can supply more spins. Read the Vault’s current descriptions and odds before spending coins. Shared daily and weekly challenges can disable luck and special abilities to keep their starting conditions comparable.
 
-Yes. Every league started in this version has a **league code** on its dashboard. Send it to a friend; when they type it into Have a league code? on the main menu, they get the exact same starting league: the same rosters, generated players, draft classes and schedule, and the same team if you included it. Games are simulated fresh for each of you, so how the season goes is up to you.
+## What are Lucky Spins?
 
-For a weekly competition, play the Rebuild of the Week or the Career of the Week and post your result to the online leaderboard.
+In the Relic Vault, Lucky Spins use a different rarity distribution and exclude Common relics. They can use earned Lucky Spins or the displayed coin price. They improve the distribution; they do not make every result a Mythic or Secret.
+
+The Career wheel also uses the phrase Lucky Spin for its own player-building mechanic. Follow the explanation on the screen you are using: a Vault spin rewards a relic, while a Career wheel choice affects your player build.
 
 ## What is my GM level?
 
-Your GM Profile level adds up everything you finish in every mode: GM seasons, wins, titles and achievements in official leagues, retired careers and Hall of Famers, League Hunt runs, Rebuild stars, weekly challenges and daily goals. Progress from before levels existed counts too. Levels unlock share-card frames, court floors for Watch Game and titles, which you equip in the GM Locker.
+Your profile accumulates XP from supported completed activities and achievements across modes. Level and achievement rewards include progression and cosmetic unlocks, which you can inspect in the profile and GM Locker. The game checks eligibility, so not every edited or experimental result earns competitive progress.
 
-## How do ranked seasons and PvP work?
+## What is the Mode of the Week?
 
-**Ranked** runs one season per calendar month. The Daily Legend, the Rebuild of the Week, the Career of the Week and your daily goals earn rank points, your best result per event counting, and the total places you in a tier: Bronze, Silver, Gold, Platinum, Diamond or Legend. Reaching Gold or higher unlocks that GM title for good.
+The menu highlights a featured mode that earns bonus XP. Check the current featured-mode panel before starting a run, because the selection rotates and reward limits apply. Daily goals and achievements offer other objectives when you want something more specific than another season.
 
-**League Hunt PvP**: when you finish a League Hunt, that squad (with its coach, training, boosts and items) becomes your PvP team. Challenge other GMs' teams in a best-of-seven under a random era's rules; ratings move by Elo, and your team defends your rating while you are away.
+## How do leaderboards work?
+
+Community boards compare supported results, profile progression and other records. Sign in to associate online submissions with your account. Different boards measure different things: XP, a career legacy score and a challenge result are not interchangeable rankings.
+
+Shared challenges use their own seeds and eligibility rules. A result must sync successfully before it can appear online; a local record alone does not prove that the server received it.
+
+## Where are my saves? Can I lose them?
+
+Leagues and in-progress Career Mode worlds are stored locally in the browser, using browser databases and local storage. Clearing site data, using private browsing, changing browser profiles or switching devices can make those saves unavailable.
+
+An account syncs supported profile progress and retired Career Mode records, not a full copy of every league. Use **Backup everything** in Backups or the GM Locker to download a separate file. A successful cloud sync is not a replacement for a league backup.
+
+Online Leagues are an explicit exception: they share league snapshots through the server. Your Career also syncs its player progress with an account. These features do not turn every local franchise save into a cloud backup.
+
+## How do I move my progress to another device?
+
+Download **Backup everything** on the original device. Open CourtVision on the destination device and choose **Restore from a file**. Read the confirmation before restoring: matching records can be replaced, while other records remain. Back up the destination device first if it has progress you want to preserve.
+
+Account sign-in can bring supported synced progress across devices, but active leagues and in-progress Career Mode worlds require a backup. Authentication sessions and account passes are not transferred as ordinary backup data.
+
+## What should I do if the game crashes?
+
+First reopen CourtVision in the same browser and profile, then check your saved games. Do not clear site data as a first troubleshooting step: that can delete the local save you are trying to recover. A crash before a save completes may lose recent actions.
+
+For a franchise, check the save recovery controls for available restore points. **Restore as New League** opens a separate recovered save. A downloaded backup is another option. Recovery is only possible if a usable save, restore point or backup exists.
+
+## Why does a simulated season take a few seconds?
+
+A season involves many games, each with possessions and player statistics, plus league updates and offseason work. Larger leagues and longer careers require more calculation. The game uses background workers for simulation jobs, but device speed, memory and browser limits still affect completion time.
+
+Keep the tab open while a job runs and avoid repeatedly starting the same action. If it appears stuck, note the mode, season, action and any error message before reopening the game or reporting it.
+
+## Can I play offline?
+
+The installed web app can reuse cached files, and the Windows edition is designed for offline play. Open the modes you need while connected first; cached data can be missing or cleared, so offline availability is not guaranteed for every first-time action.
+
+Signing in, cloud sync, online boards and other server-backed features need a connection. Keep a local backup before relying on offline play or switching editions.
 
 ## I found a bug or have an idea
 
-Tell us on [Discord](https://discord.gg/5uGK5HDS8e). A backup file helps us reproduce bugs in a league.
+Use the [Contact and support page](https://courtvisiongame.com/contact.html) to reach the existing Discord community. Include your mode, browser, device, what you expected, what happened and the steps that trigger it. A screenshot of an error can help.
+
+Do not post passwords, sign-in links or account tokens. Backup files contain your game data; share one only when needed for diagnosis and after checking what it includes. For recovery steps, see the crash and saving answers above.
+
+## How do accounts work?
+
+The web game supports optional Google or Discord sign-in through Supabase Auth. CourtVision uses the provider’s sign-in flow instead of asking you to create a separate game password. A session is kept in your browser so you can stay signed in.
+
+Choose your GM name and check the account’s sync status when moving between devices. On a shared computer, take care which account is signed in: switching accounts can replace the local set of synced profile progress with the other account’s progress.
+
+## What information is stored with my account?
+
+The account system uses an account identifier, email and provider details, a GM profile, and supported game progress. Public profiles and boards display information such as your GM name, level, statistics and submitted results. Retired created players can also be public.
+
+Local league saves are separate from cloud profile progress. Optional online features and purchases can process additional records. Read the [Privacy Policy](https://courtvisiongame.com/privacy.html) for the current disclosures, and avoid putting private information in your public GM name.
+
+If you deliberately create or join an Online League, its shared league state is uploaded to Supabase storage so other members can play it. That is separate from ordinary single-player franchise saves. Your Career also includes account-synced player progress; this differs from an in-progress Career Mode world.
+
+## Can I delete my account or request help with my data?
+
+The account screen in Community includes account deletion. It calls the server to delete the account; wait for confirmation rather than assuming a failed request worked. Local progress is separate and is not erased just by deleting the account.
+
+If you have a recurring Support Shop pass, cancel the subscription first: deleting a game account is not the same as cancelling billing. For a privacy request or a deletion problem, use [Contact and support](https://courtvisiongame.com/contact.html).
+
+## How are cookies and browser storage used?
+
+The game uses local storage and browser databases for saves, settings and account-related state. Google advertising can use cookies or similar technologies. The web version also integrates host analytics and Umami for usage measurements; these are distinct from saving a league.
+
+Open **Cookie Settings** in the game to revisit the configured advertising consent options. Existing third-party cookies may need to be removed using browser controls. Clearing all site data also removes local game progress, so download a backup first. See the [Privacy Policy](https://courtvisiongame.com/privacy.html).
+
+## Does CourtVision display advertisements?
+
+The web version is configured for Google AdSense banner placements. Whether an ad appears depends on consent handling, ad availability, connection, blockers and any active ad-free entitlement. Advertising does not need to load for local gameplay to work. The offline Windows build excludes network ads.
+
+Google’s regional consent message is managed through the site’s advertising configuration. Read the [Privacy Policy](https://courtvisiongame.com/privacy.html) and use the game’s Cookie Settings for your available choices.
+
+## Is Court Vision affiliated with the NBA?
+
+No. CourtVision is an independent game by NineFoldVision, not an official NBA product and not endorsed by the NBA, its teams or players. The [About page](https://courtvisiongame.com/about.html) identifies the historical data sources and distinguishes those statistics from the game’s own ratings and simulation.
+
+## Can I play the same league as a friend?
+
+A league code lets a friend start from the same league setup while playing a separate simulation. Online Leagues are a different feature: signed-in members share a league state through the server. Check the relevant setup and account status before choosing between a parallel challenge and a shared league.
+
+## How do ranked seasons and PvP work?
+
+Ranked competition and League Hunt PvP are available through the online community features. Ranked events contribute points under their own rules; Hunt PvP uses a submitted squad against other players’ teams and tracks a rating. These features require account services and differ from a local single-player run. Check the current event and submission screens for eligibility and results.
 
 ---
 
@@ -574,3 +705,33 @@ The biggest recent additions to Court Vision, newest first.
 - Press conferences, storylines, franchise business (tickets, arena, merchandise) and the Year in Review show.
 - Real history: mid-season trades, real draft picks, real jersey numbers and every real player's career.
 - New arena and court look, team colors and logos, and a faster simulation engine.
+
+---
+
+# Contact and support
+
+URL: https://courtvisiongame.com/contact.html
+
+CourtVision is developed by NineFoldVision. The existing [Discord community](https://discord.gg/5uGK5HDS8e) is the published way to reach the developer, report problems and discuss the game. Discord is an external service and requires its own account to participate.
+
+## Report a bug
+
+Describe the mode and action that failed, the result you expected and what actually happened. Include your browser, device and whether you were signed in or offline. Exact steps and an error screenshot are more useful than “it does not work.”
+
+- Note the season, round or screen where the problem happened.
+- Say whether it happens again after reopening the same save.
+- Never post passwords, sign-in links, account tokens or payment information. Backup files contain game data: review them and agree on an appropriate support channel before sharing.
+
+## Save and account help
+
+Do not clear browser data when investigating a missing save. First check the same browser and profile, then look for save recovery points or a downloaded backup. The [FAQ](https://courtvisiongame.com/faq.html) explains the difference between local saves and cloud progress.
+
+Account deletion is available from the account screen in Community. If it fails, report the error without sharing authentication details. Cancel any recurring Support Shop subscription before deleting the account.
+
+## Privacy requests
+
+Read the [Privacy Policy](https://courtvisiongame.com/privacy.html) for the data disclosures and controls. If you need help reaching the developer about a privacy request, use the Discord community to ask for an appropriate private contact route; do not post personal information in public channels. No response-time guarantee is made.
+
+## Ideas and gameplay questions
+
+For a gameplay question, begin with the [FAQ](https://courtvisiongame.com/faq.html), [beginner guide](https://courtvisiongame.com/how-to-play.html) or [mode guides](https://courtvisiongame.com/guides/). When suggesting a change, explain the situation it would improve and which mode it affects. Keeping reports specific helps a solo developer reproduce and prioritize them.

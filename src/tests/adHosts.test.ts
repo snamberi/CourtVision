@@ -15,11 +15,13 @@ describe('ad requests only declare the real site', () => {
     }
   });
 
-  it('the page carries no AMP ad markup and gates the publisher tag to the site hostname', () => {
+  it('the page retains verification but cannot bypass the runtime advertising policy', () => {
     const html = indexHtml;
     expect(html).not.toMatch(/amp-auto-ads|cdn\.ampproject\.org/);
     expect(html).not.toMatch(/<script[^>]+src="https:\/\/pagead2\.googlesyndication\.com/);
-    expect(html).toContain('courtvisiongame\\.com$/.test(location.hostname)');
+    expect(html).not.toContain('adsbygoogle.js');
+    expect(html).toContain(`content="${AD_CONFIG.adsenseClient}"`);
+    expect(advertisingPermitted({ ...consent, gpc: true }, AD_CONFIG, false, 'courtvisiongame.com')).toBe(false);
     expect(adsTxt).toContain(`google.com, ${AD_CONFIG.adsenseClient.replace('ca-', '')}, DIRECT`);
   });
 });

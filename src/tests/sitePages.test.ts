@@ -8,12 +8,7 @@ const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
 
 /** Resolves a relative href from a page to a path under public/. */
 function resolve(from: string, href: string): string {
-  const parts = from.split('/').slice(0, -1);
-  for (const seg of href.split('/')) {
-    if (seg === '..') parts.pop();
-    else if (seg && seg !== '.') parts.push(seg);
-  }
-  return parts.join('/') + (href.endsWith('/') || href === '' ? '/' : '');
+  return new URL(href, `https://courtvisiongame.com/${from}`).pathname.slice(1);
 }
 
 describe('crawlable site pages', () => {
@@ -33,8 +28,9 @@ describe('crawlable site pages', () => {
   it('every internal link resolves to a page or file', () => {
     const known = new Set([...Object.keys(files), 'favicon.png', 'downloads/CourtVision-Windows.zip']);
     for (const [path, html] of Object.entries(files)) {
-      for (const [, href] of html.matchAll(/href="([^"#]*)(?:#[^"]*)?"/g)) {
-        if (/^(https?:|mailto:)/.test(href)) continue;
+      for (const [, href] of html.matchAll(/href="([^"]*)"/g)) {
+        if (/^(https?:|mailto:|#)/.test(href)) continue;
+        expect(href, `${path}: empty links reload the current page`).not.toBe('');
         const target = resolve(path, href);
         const ok = target === '/' || target === '' || (target.endsWith('/') ? known.has(`${target}index.html`) : known.has(target));
         expect(ok, `${path} -> ${href}`).toBe(true);

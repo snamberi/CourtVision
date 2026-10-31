@@ -34,7 +34,7 @@ function block(b) {
     case 'contact':
       return policy.contactEmail
         ? `<p>Email: <a href="mailto:${esc(policy.contactEmail)}">${esc(policy.contactEmail)}</a></p>`
-        : '<p>Please use the contact details published on the website or download page where you obtained CourtVision.</p>';
+        : '<p>For support and privacy requests, visit the <a href="contact.html">Contact and support page</a>.</p>';
     default: throw new Error(`Unknown block type: ${b.type}`);
   }
 }
