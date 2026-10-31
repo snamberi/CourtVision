@@ -25,7 +25,7 @@ function block(b, prefix, from) {
     case 'ul': return `<ul>\n${b.items.map((i) => `  <li>${inline(i, prefix)}</li>`).join('\n')}\n</ul>`;
     case 'ol': return `<ol>\n${b.items.map((i) => `  <li>${inline(i, prefix)}</li>`).join('\n')}\n</ol>`;
     case 'table':
-      return `<div class="table-wrap"><table>\n<thead><tr>${b.columns.map((c) => `<th>${esc(c)}</th>`).join('')}</tr></thead>\n<tbody>\n${
+      return `<div class="table-wrap"><table>\n<thead><tr>${b.columns.map((c) => `<th scope="col">${esc(c)}</th>`).join('')}</tr></thead>\n<tbody>\n${
         b.rows.map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join('')}</tr>`).join('\n')}\n</tbody></table></div>`;
     default: throw new Error(`Unknown block type ${b.type} in ${from}`);
   }
@@ -61,6 +61,18 @@ const STYLE = `
   .guides { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; padding: 0; list-style: none; }
   .guides li { margin: 0; padding: 12px 14px; background: #121926; border: 1px solid #2a3546; }
   .guides a { font-weight: 700; }
+  [hidden] { display: none !important; }
+  :focus-visible { outline: 3px solid #ffd166; outline-offset: 4px; }
+  .skip-link { position: absolute; left: 16px; top: -100px; padding: 12px; background: #121926; z-index: 10; }
+  .skip-link:focus { top: 8px; }
+  .faq-tools { margin: 24px 0; padding: 16px; background: #121926; border: 1px solid #2a3546; }
+  .faq-tools label { display: block; font-weight: 700; }
+  .faq-tools input { box-sizing: border-box; width: 100%; margin: 8px 0; padding: 12px; font: inherit; color: inherit; background: #0b1018; border: 1px solid #94a0b2; }
+  .faq-tools button { padding: 10px 14px; font: inherit; color: inherit; background: #192333; border: 1px solid #94a0b2; cursor: pointer; }
+  .faq-item { margin: 10px 0; border: 1px solid #2a3546; background: #121926; scroll-margin-top: 16px; }
+  .faq-item summary { padding: 16px; cursor: pointer; font-weight: 700; color: #f4f0e6; }
+  .faq-item summary h3 { display: inline; font-size: 1rem; }
+  .faq-answer { padding: 0 16px 8px; }
   @media (max-width: 560px) { h1 { font-size: 1.7rem; } body { font-size: 16px; } }`;
 
 const pages = content.pages;
@@ -123,13 +135,14 @@ function layout(page, prefix, body) {
 </style>
 </head>
 <body>
-<header class="site"><div class="in"><a class="brand" href="${prefix}">COURT VISION</a><nav aria-label="Site">${nav}</nav><a class="play" href="${prefix}">Play free</a></div></header>
-<main>
+<a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site"><div class="in"><a class="brand" href="${prefix || './'}">COURT VISION</a><nav aria-label="Site">${nav}</nav><a class="play" href="${prefix || './'}">Play free</a></div></header>
+<main id="main-content">
 ${body}
-<div class="cta"><strong>Ready to play?</strong> Court Vision is free and runs in your browser. <a href="${prefix}">Start a league</a>, or join the <a href="https://discord.gg/5uGK5HDS8e" target="_blank" rel="noopener noreferrer">Discord</a>.</div>
+<div class="cta"><strong>Ready to play?</strong> Court Vision is free and runs in your browser. <a href="${prefix || './'}">Start a league</a>, or join the <a href="https://discord.gg/5uGK5HDS8e" target="_blank" rel="noopener noreferrer">Discord</a>.</div>
 </main>
 <footer class="site"><div class="in">
-<p><a href="${prefix}about.html">About</a> · <a href="${prefix}how-to-play.html">How to Play</a> · <a href="${prefix}guides/">Guides</a> · <a href="${prefix}faq.html">FAQ</a> · <a href="${prefix}changelog.html">Changelog</a> · <a href="${prefix}privacy.html">Privacy Policy</a></p>
+<p><a href="${prefix}about.html">About</a> · <a href="${prefix}how-to-play.html">How to Play</a> · <a href="${prefix}guides/">Guides</a> · <a href="${prefix}faq.html">FAQ</a> · <a href="${prefix}changelog.html">Changelog</a> · <a href="${prefix}privacy.html">Privacy Policy</a> · <a href="${prefix}contact.html">Contact</a></p>
 <p>NBA history data: <a href="https://www.basketball-reference.com/" target="_blank" rel="noopener noreferrer">Basketball-Reference.com</a> via <a href="https://github.com/sumitrodatta/bball-reference-datasets" target="_blank" rel="noopener noreferrer">bball-reference-datasets</a> and <a href="https://www.nba.com/news/history-all-time-awards" target="_blank" rel="noopener noreferrer">NBA.com</a>. Court Vision is an independent fan project, not affiliated with or endorsed by the NBA, its teams or players. Last updated ${esc(content.updated)}.</p>
 <p class="studio">Court Vision is a NinefoldVision™ game. © ${esc(content.updated).slice(0, 4)} NinefoldVision™.</p>
 </div></footer>
@@ -141,8 +154,19 @@ ${body}
 const written = [];
 for (const page of pages) {
   const prefix = page.path.includes('/') ? '../' : '';
-  const toc = page.sections.length >= 4 ? `<nav class="toc" aria-label="On this page"><strong>On this page</strong><ol>${page.sections.map((s) => `<li><a href="#${slug(s.h2)}">${esc(s.h2)}</a></li>`).join('')}</ol></nav>\n` : '';
-  const body = `<h1>${esc(page.h1)}</h1>\n<p class="lead">${inline(page.lead, prefix)}</p>\n${toc}${page.sections.map((s) => `<h2 id="${slug(s.h2)}">${esc(s.h2)}</h2>\n${s.blocks.map((b) => block(b, prefix, page.path)).join('\n')}`).join('\n')}`;
+  let body;
+  if (page.path === 'faq.html') {
+    const categories = [...new Set(page.sections.map(s => s.category))];
+    const toc = `<nav class="toc" aria-label="FAQ topics"><strong>Choose a topic</strong><ol>${categories.map(cat => `<li><a href="#topic-${slug(cat)}">${esc(cat)}</a></li>`).join('')}</ol></nav>`;
+    body = `<h1>${esc(page.h1)}</h1><p class="lead">${inline(page.lead, prefix)}</p>${toc}
+<div class="faq-tools" hidden><label for="faq-search">Search questions and answers</label><input type="search" id="faq-search" placeholder="Try saves, relics or accounts" autocomplete="off"><button type="button" id="faq-clear">Clear search</button><p id="faq-count" role="status" aria-live="polite"></p></div>
+<p id="faq-empty" hidden>No matching answers. Try another word or <a href="contact.html">contact support</a>.</p>
+${categories.map(cat => `<section class="faq-category" aria-labelledby="topic-${slug(cat)}"><h2 id="topic-${slug(cat)}">${esc(cat)}</h2>${page.sections.filter(s => s.category === cat).map(s => `<details class="faq-item" id="${slug(s.h2)}"><summary><h3>${esc(s.h2)}</h3></summary>${(s.aliases || []).map(id => `<span id="${esc(id)}"></span>`).join('')}<div class="faq-answer">${s.blocks.map(b => block(b, prefix, page.path)).join('\n')}</div></details>`).join('\n')}</section>`).join('\n')}
+<script src="faq.js" defer></script>`;
+  } else {
+    const toc = page.sections.length >= 4 ? `<nav class="toc" aria-label="On this page"><strong>On this page</strong><ol>${page.sections.map((s) => `<li><a href="#${slug(s.h2)}">${esc(s.h2)}</a></li>`).join('')}</ol></nav>\n` : '';
+    body = `<h1>${esc(page.h1)}</h1>\n<p class="lead">${inline(page.lead, prefix)}</p>\n${toc}${page.sections.map((s) => `<h2 id="${slug(s.h2)}">${esc(s.h2)}</h2>\n${s.blocks.map((b) => block(b, prefix, page.path)).join('\n')}`).join('\n')}`;
+  }
   const out = join(root, 'public', page.path);
   mkdirSync(dirname(out), { recursive: true });
   writeFileSync(out, layout(page, prefix, body));
@@ -177,8 +201,11 @@ const llms = `# Court Vision
 | Rebuild Challenge | 10-20 min | Take over a real team at its lowest point in NBA history and win a title before time runs out. |
 | All-Time Draft | 10-20 min | Thirty teams draft every player in history at his best, then play a full season. |
 | League Hunt | 15-30 min a run | Spin a six-man squad and a coach from all of history and win ten best-of-seven series against great teams from every era. |
-| Real League | Unlimited | Run a real NBA franchise from any season since 1946-47: draft, trade, sign, coach. |
-| Random Players | Unlimited | A generated 30-team league for pure franchise building. |
+| Survival | Varies | Protect a Franchise Player while historical opponents claim players after wins. One loss ends the run. |
+| Story Mode | Varies | Street to the League combines simulated games, characters and choices. |
+| Your Career | Varies | Begin at age 13 and choose a path through youth basketball, training and professional opportunities. |
+| Real League (Franchise) | Unlimited | Run a real NBA franchise from any season since 1946-47: draft, trade, sign, coach. |
+| Random Players (Franchise) | Unlimited | A generated 30-team league for pure franchise building. |
 
 ## Guides
 

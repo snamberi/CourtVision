@@ -50,7 +50,7 @@ function renderBlock(block: Block, i: number) {
         <p key={i}>
           {policy.contactEmail
             ? <>Email: <a href={`mailto:${policy.contactEmail}`}>{policy.contactEmail}</a></>
-            : <>Please use the contact details published on the website or download page where you obtained CourtVision.</>}
+            : <>For support and privacy requests, visit the <a href="./contact.html">Contact and support page</a>.</>}
         </p>
       );
   }

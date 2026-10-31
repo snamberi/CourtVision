@@ -17,8 +17,11 @@
 | Rebuild Challenge | 10-20 min | Take over a real team at its lowest point in NBA history and win a title before time runs out. |
 | All-Time Draft | 10-20 min | Thirty teams draft every player in history at his best, then play a full season. |
 | League Hunt | 15-30 min a run | Spin a six-man squad and a coach from all of history and win ten best-of-seven series against great teams from every era. |
-| Real League | Unlimited | Run a real NBA franchise from any season since 1946-47: draft, trade, sign, coach. |
-| Random Players | Unlimited | A generated 30-team league for pure franchise building. |
+| Survival | Varies | Protect a Franchise Player while historical opponents claim players after wins. One loss ends the run. |
+| Story Mode | Varies | Street to the League combines simulated games, characters and choices. |
+| Your Career | Varies | Begin at age 13 and choose a path through youth basketball, training and professional opportunities. |
+| Real League (Franchise) | Unlimited | Run a real NBA franchise from any season since 1946-47: draft, trade, sign, coach. |
+| Random Players (Franchise) | Unlimited | A generated 30-team league for pure franchise building. |
 
 ## Guides
 
@@ -34,8 +37,9 @@
 
 - [About](https://courtvisiongame.com/about.html): Court Vision is a free, browser-based pixel-art basketball management game with real NBA history, a full simulation engine, and seven game modes, from franchise GM to the 82-0 Challenge.
 - [How to Play](https://courtvisiongame.com/how-to-play.html): Start your first Court Vision league: choosing a team, setting a rotation, the season calendar, trades, the draft, free agency and the offseason.
-- [FAQ](https://courtvisiongame.com/faq.html): Answers to common questions about Court Vision: every game mode and how long it takes, the 82-0 Challenge, saves, accounts, playing on a phone or offline, real player data and ads.
+- [FAQ](https://courtvisiongame.com/faq.html): Learn how to play CourtVision, choose between seven basketball simulation modes, understand ratings and relics, back up saves, and manage accounts and privacy.
 - [Changelog](https://courtvisiongame.com/changelog.html): What's new in Court Vision: the 82-0 Challenge, Mode of the Week, Career Mode big moments, the All-Time Draft, League Hunt and more.
+- [Contact](https://courtvisiongame.com/contact.html): Get CourtVision support through the NineFoldVision Discord community. Learn what to include in a bug report and how to find save recovery and account deletion controls.
 
 ## Full text
 
