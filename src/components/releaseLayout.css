@@ -1,0 +1,45 @@
+.page-jumps { display:flex; align-items:center; gap:8px; overflow-x:auto; padding:12px 0; margin:8px 0 20px; border-block:1px solid var(--look-line, #39424e); }
+.page-jumps[hidden] { display:none; }
+.page-jumps > * { flex:none; }
+.page-jumps button { min-height:40px; max-width:220px; text-align:left; font-size:12px; }
+.release-page :is(h2,h3) { scroll-margin-top:24px; }
+.release-page :is(.relic-shop-grid,.holiday-grid,.profile-extras,.friends-grid,.settings-grid) { gap:16px; }
+.release-page :is(.relic-offer,.relic-card,.friend-row,.setting-card,.pet-detail,.club-card) { min-width:0; overflow-wrap:anywhere; }
+.release-page :is(.profile-tabs,.code-mode-actions) { gap:8px; flex-wrap:wrap; }
+.release-page :is(.profile-tabs,.code-mode-actions) button { min-height:44px; }
+.release-page :is(.relic-collection,.pets-grid,.showcase-list) { gap:12px; }
+.release-page .showcase-list { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr)); }
+.release-page .showcase-list li { padding:12px; border:1px solid var(--look-line,#39424e); border-radius:8px; }
+.release-page :is(.activity-feed li,.recent-activity li) { display:flex; flex-wrap:wrap; align-items:baseline; gap:8px; padding:12px 0; border-bottom:1px solid var(--look-line,#39424e); }
+.release-page :is(.activity-feed li,.recent-activity li) > small { margin-left:auto; }
+.road-jumps { display:flex; flex-wrap:wrap; gap:8px; margin:16px 0; align-items:center; }
+.road-jumps button,.road-jumps select { min-height:44px; }
+.holiday-event-tabs { display:flex; flex-wrap:wrap; gap:8px; }
+.holiday-event-tabs button { min-height:44px; }
+.attribute-groups { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr)); gap:16px; margin-block:24px; }
+.attribute-group { border:1px solid var(--look-line,#39424e); border-top:4px solid var(--look-accent,#ff9d3d); padding:16px; border-radius:8px; }
+.attribute-group h3 { margin-top:0; }
+.attribute-group dl { display:grid; grid-template-columns:1fr auto; gap:8px; }
+.attribute-group dd { margin:0; font-variant-numeric:tabular-nums; }
+.attribute-group meter { width:100%; height:14px; accent-color:var(--look-accent,#ff9d3d); }
+.my-ratings-list { display:grid !important; grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr)); gap:12px; }
+.my-ratings-list li { grid-template-columns:minmax(0,1fr) 40px 52px 40px !important; padding:14px !important; border:1px solid var(--look-line,#39424e); border-radius:8px; }
+.my-ratings-list button { min-width:40px; min-height:40px; }
+.streak-rewards { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr)); gap:12px; }
+.streak-rewards li { display:flex; flex-direction:column; gap:8px; padding:16px; }
+.clubs-page .clubs-how ul { padding-left:20px; display:grid; gap:12px; }
+.clans-steps { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; padding:0; list-style:none; }
+.clans-steps li { border:1px solid var(--look-line,#39424e); padding:16px; border-radius:8px; }
+@media (min-width:1500px) {
+ .release-page { padding-right:170px !important; }
+ .page-jumps { position:fixed; right:12px; top:90px; width:145px; max-height:75vh; overflow-y:auto; flex-direction:column; align-items:stretch; z-index:10; background:var(--look-bg,#111820); padding:10px; border:1px solid var(--look-line,#39424e); border-radius:8px; }
+ .page-jumps button { width:100%; }
+}
+@media (max-width:600px) {
+ .clans-steps { grid-template-columns:1fr; }
+ .release-page :is(.relic-shop-grid,.profile-extras,.settings-grid) { grid-template-columns:1fr; }
+ .release-page .pet-detail { flex-direction:column; }
+ .release-page :is(.friend-row,.relic-offer) { flex-wrap:wrap; }
+}
+
+.my-ratings-list .my-ratings-bar { grid-column:1 / -1; }

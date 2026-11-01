@@ -1,3 +1,4 @@
+import { PageJumps } from './PageJumps';
 import { useState, type ReactNode } from 'react';
 import { SmallRoom } from './presentation/SmallRoom';
 import { ModeIcon } from './ModeIcon';
@@ -88,6 +89,7 @@ export function SettingsPage({ onExit, backup, recovery }: { onExit: () => void;
       <button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button>
       <div className="hunt-title"><span className="pixel-eyebrow">LOOK, MENU STYLE, DIFFICULTY, BACKUPS, GRAPHICS, ACCESSIBILITY, PRIVACY</span><h1>Settings</h1></div>
     </header>
+    <PageJumps />
     <SmallRoom kind="settings" title="Make the game yours." detail="Set your look, tune the graphics and keep your leagues backed up." />
     <div className="setting-cards">
       <SettingCard icon="star" title="Look" blurb="The colours, fonts and menu art of the whole game. Pick from every look.">

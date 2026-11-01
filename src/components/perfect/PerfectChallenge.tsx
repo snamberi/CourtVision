@@ -12,7 +12,7 @@ import { COACH_STYLE, coachRarity } from '../../hunt/coaches';
 import { eraOf } from '../../hunt/eras';
 import {
   makeTrade, tradePending, tradeFits, TRADE_UP,
-  newPerfectRun, weeklyRule, ERA_RULES, type EraRule, pickPlayer, quickSpinCard, reelFiller, rerollTeam, rerollEra, applyPrime, rerollSpin, luckySpin, spinsLeft, luckyLeft, rollRerollsLeft, lineupOf, swapLineup, setLineup, ROTATION_MINUTES, pickCoach, playNext, rollPool, franchiseName, franchiseAbbr, franchiseIndex, eraShort, ROLL_ERAS, eraById, teamBonds,
+  newPerfectRun, weeklyRule, ERA_RULES, type EraRule, pickPlayer, quickSpinCard, reelFiller, rerollTeam, rerollEra, applyPrime, rerollSpin, luckySpin, spinsLeft, luckyLeft, rollRerollsLeft, lineupOf, swapLineup, setLineup, ROTATION_MINUTES, rerollCoach, pickCoach, playNext, rollPool, franchiseName, franchiseAbbr, franchiseIndex, eraShort, ROLL_ERAS, eraById, teamBonds,
   perfectRating, teamRating, summary, starCount, starCapReached, MAX_STARS, coachMatchup, coachMatchupText, streakPressure, STREAK_STEP, STREAK_MAX, OPP_EDGE, verdict, BOSS_TEAMS, QUICK_SLOTS, QUICK_SLOT_LABEL, SQUAD, SEASON_GAMES, ROUND_NAMES, WINS_NEEDED, SCORE, COACH_BY_ID,
   newWhatIfRun, isFreeMode, type WhatIf, type WhatIfKind,
   isCategoryMode, categoryPool, rerollCategory, categoryMultiplier, picksFromCategory, STARTERS, optionMultiplier, OPTION_MULTIPLIER, SHOT_CLOCK, autoPick, categoryLocked, bestFive, type CategoryOptions,
@@ -661,6 +661,7 @@ function CoachPick({ h, run, setRun }: { h: NbaHistory; run: PerfectRun; setRun:
   return <section className="p820-draft">
     <div className="p820-stage">
       <span className="pixel-eyebrow">LAST SPIN</span><h2>{run.mode === 'quick' ? 'Spin your coach' : 'Pick your coach'}</h2>
+      {shown && (run.coachRerolls ?? 0) > 0 && <button onClick={() => setRun(rerollCoach(h, run))}>Free coach reroll ({run.coachRerolls})</button>}
       {!shown ? <button className="primary p820-big" onClick={() => setShown(true)}>SPIN THE COACH</button>
         : <div className="p820-coaches">{offer.map(x => <button key={x.id} className={`p820-coach rarity-${coachRarity(x)}`} onClick={() => setRun(pickCoach(h, run, x.id))}>
           <b>{x.name}</b><span className="p820-ovr-mini" title={ratingsShown(run) ? 'Coach bonus' : 'Coach rating hidden until the season is over'}>{ratingsShown(run) ? `${x.bonus >= 0 ? '+' : ''}${x.bonus}` : HIDDEN}</span><small>{COACH_STYLE[x.style]}</small><small className="p820-coach-eras">{coachMatchupText(x.style)}</small><i>{x.blurb}</i><em>{run.mode === 'quick' ? 'Start the season' : 'Choose'}</em></button>)}</div>}

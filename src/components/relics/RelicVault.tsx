@@ -1,9 +1,10 @@
+import { PageJumps } from '../PageJumps';
 import { useEffect, useRef, useState } from 'react';
 import {
   loadRelics, saveRelics, spinRelic, spinMany, luckySpin, freeLuckySpin, fuseDuplicates, spareCopies, relicOfWeek, weeklyLuck, totalLuck, FUSE_COST, WEEKLY_BOOST, buySpin, buyRelic, buySlot, upgradeRelic, equipRelic, unequipRelic, refreshShop, canUpgrade,
   canGain, relicLuck, collectionProgress, collectDailyCoins, slotCount, setComplete, setBonus, RELICS, RELIC_BY_ID, RELIC_RARITY,
   RARITY_ORDER, RELIC_SETS, LUCKY_ODDS, SECRET_RELICS, SECRET_BY_ID, SECRET_CHANCE, PITY, LUCKY_PITY, BASE_SLOTS, EXTRA_SLOTS, SLOT_PRICES,
-  DAILY_COINS, RELICS_EVENT, RELICS_FOCUS_KEY, SHOP_SEEN_KEY, SPIN_PRICE, LUCKY_SPIN_PRICE, RELIC_PRICE, UPGRADE_PRICE, STACK_MAX, STACK_LUCK, RELIC_LUCK_SCALE, MAX_SLOTS, relicPower, discounted,
+  DAILY_COINS, RELICS_EVENT, RELICS_FOCUS_KEY, SHOP_SEEN_KEY, SPIN_PRICE, LUCKY_SPIN_PRICE, RELIC_PRICE, UPGRADE_PRICE, STACK_MAX, STACK_LUCK, RELIC_LUCK_SCALE, MAX_SLOTS, moveToPowerSlot, relicPower, discounted,
   type RelicState, type SpinResult, type Relic, refreshCosmeticShop } from '../../relics/relics';
 import { claimAchievementSpins, runCoins } from '../../relics/rewards';
 import { PixelIcon } from '../PixelIcon';
@@ -104,6 +105,7 @@ export function RelicVault({ onExit, view = 'vault', onSwitch }: { onExit: () =>
       <div className="hunt-title"><span className="pixel-eyebrow">{shop ? 'SPEND YOUR COINS · NEW RELICS EVERY DAY' : 'YOUR COLLECTION · EVERY MODE'}</span><h1>{shop ? 'Relic Shop' : 'Relic Vault'}</h1></div>
       {onSwitch && <button className="relic-switch" onClick={onSwitch}><PixelIcon name={shop ? 'crown' : 'star'} size={16} /> {shop ? 'Relic Vault' : 'Shop'}</button>}
     </header>
+    <PageJumps />
 
     <SmallRoom kind={shop ? 'shop' : 'archive'} title={shop ? 'The collector’s counter' : 'Your collection, on display'} detail={shop ? 'Browse today’s relics, find your next cosmetic and build your collection.' : 'Inspect your relics and choose what to equip for your next run.'} />
     <section className="relic-stats" aria-label="Your relics">
@@ -169,7 +171,7 @@ export function RelicVault({ onExit, view = 'vault', onSwitch }: { onExit: () =>
           <button className="primary" onClick={() => spin(true)} disabled={rolling || state.coins < luckyPrice}>{luckyPrice} coins{off ? ` (−${off}%)` : ''}</button>
         </div>
         {state.slotsBought < EXTRA_SLOTS && <div className="relic-offer">
-          <PixelIcon name="unlock" size={24} /><span><b>Relic slot {slots + 1}</b><small>{slots + 1 === MAX_SLOTS ? 'The last slot: every relic gets 2× power.' : `One more relic adds its luck. ${EXTRA_SLOTS - state.slotsBought} left to buy.`}</small></span>
+          <PixelIcon name="unlock" size={24} /><span><b>Relic slot {slots + 1}</b><small>{slots + 1 === MAX_SLOTS ? 'Slot 15 doubles only the relic equipped there.' : `One more relic adds its luck. ${EXTRA_SLOTS - state.slotsBought} left to buy.`}</small></span>
           <button onClick={() => commit(buySlot)} disabled={rolling || state.coins < SLOT_PRICES[state.slotsBought]}>{SLOT_PRICES[state.slotsBought].toLocaleString()} coins</button>
         </div>}
       </div>
@@ -188,14 +190,15 @@ export function RelicVault({ onExit, view = 'vault', onSwitch }: { onExit: () =>
     {!shop && <>
     <section className="relic-section" aria-labelledby="relic-slots">
       <h2 id="relic-slots">Your slots <small className="relic-count">{state.equipped.length}/{slots}</small></h2>
-      <p className="relic-help">Only relics in your slots add luck. New relics go into a free slot by themselves; swap them in the collection below. {BASE_SLOTS} slots to start, {EXTRA_SLOTS} more in the shop. The {MAX_SLOTS}th slot doubles every relic's power.</p>
+      <p className="relic-help">Only relics in your slots add luck. New relics go into a free slot by themselves; swap them in the collection below. {BASE_SLOTS} slots to start, {EXTRA_SLOTS} more in the shop. Slot {MAX_SLOTS} doubles only the relic equipped there.</p>
+      {state.equipped.length === MAX_SLOTS && <label>Double-power slot <select value={state.equipped[14]} onChange={e => commit(s => moveToPowerSlot(s, e.target.value))}>{state.equipped.map(id => <option key={id} value={id}>{RELIC_BY_ID.get(id)?.name}</option>)}</select></label>}
       <div className="relic-slots">
         {Array.from({ length: BASE_SLOTS + EXTRA_SLOTS }, (_, i) => {
           const id = state.equipped[i], r = id ? RELIC_BY_ID.get(id) : undefined;
           if (i >= slots) return <div key={i} className="relic-socket locked" title={`Buy in the shop: ${SLOT_PRICES[i - BASE_SLOTS].toLocaleString()} coins`}><PixelIcon name="lock" size={16} /><small>{SLOT_PRICES[i - BASE_SLOTS].toLocaleString()}</small></div>;
           if (!r) return <div key={i} className="relic-socket empty"><small>Empty</small></div>;
-          return <button key={id} className={`relic-socket r-${r.rarity}`} onClick={() => commit(st => unequipRelic(st, id))} title={`${r.name}: ${fmtLuck(relicLuck(r, state.owned[id] ?? 0, state.upgraded.includes(id), power))} luck. Click to take it out.`} aria-label={`${r.name}, in a slot. Take it out`}>
-            <RelicArt id={r.id} size={48} /><small>{fmtLuck(relicLuck(r, state.owned[id] ?? 0, state.upgraded.includes(id), power))}</small>
+          return <button key={id} className={`relic-socket r-${r.rarity}`} onClick={() => commit(st => unequipRelic(st, id))} title={`${r.name}: ${fmtLuck(relicLuck(r, state.owned[id] ?? 0, state.upgraded.includes(id), relicPower(state, id)))} luck. Click to take it out.`} aria-label={`${r.name}, in a slot. Take it out`}>
+            <RelicArt id={r.id} size={48} /><small>{fmtLuck(relicLuck(r, state.owned[id] ?? 0, state.upgraded.includes(id), relicPower(state, id)))}</small>
           </button>;
         })}
       </div>
@@ -227,10 +230,10 @@ export function RelicVault({ onExit, view = 'vault', onSwitch }: { onExit: () =>
 
     <section className="relic-section">
       <h2>Secret relics</h2>
-      <p className="relic-help">All {SECRET_RELICS.length} secret relics, each a permanent ability (no slot needed). Any spin has a {pct(SECRET_CHANCE)} chance to uncover one you don't have, some answer to a feat, and Ultra Cheat opens only when you own every relic in the vault.</p>
+      <p className="relic-help">All {SECRET_RELICS.length} secret relics, each a permanent ability (no slot needed). Normal spins have a {pct(SECRET_CHANCE)} chance at a regular Secret. Event Secrets require their matching event spin; mission Secrets require their listed feat, and Ultra Cheat opens only when you own every relic in the vault.</p>
       <div className="relic-grid">{SECRET_RELICS.map(s => {
         const got = state.secrets.includes(s.id);
-        const how = s.earnedOnly ? s.feat : s.feat ? `${s.feat} Or any spin, by luck.` : 'Any spin, by luck alone.';
+        const how = s.event ? s.hint : s.earnedOnly ? s.feat : s.feat ? `${s.feat} Or any spin, by luck.` : 'Any spin, by luck alone.';
         return <div key={s.id} className={`relic-card r-secret ${got ? '' : 'missing'}`}>
           <RelicArt id={got ? s.id : undefined} locked={!got} />
           <span><b>{s.name}{got ? '' : ' · locked'}</b><small>{s.mode}: {s.ability}</small>{!got && <small className="relic-secret-how">How to find it: {how}</small>}</span>
@@ -273,7 +276,7 @@ function SpinReel() {
 }
 
 function RelicCard({ relic: x, state, discount, onUpgrade, onToggle }: { relic: Relic; state: RelicState; discount: number; onUpgrade: () => void; onToggle: () => void }) {
-  const n = state.owned[x.id] ?? 0, up = state.upgraded.includes(x.id), cost = discounted(UPGRADE_PRICE[x.rarity], discount), on = state.equipped.includes(x.id), power = relicPower(state);
+  const n = state.owned[x.id] ?? 0, up = state.upgraded.includes(x.id), cost = discounted(UPGRADE_PRICE[x.rarity], discount), on = state.equipped.includes(x.id), power = relicPower(state, x.id);
   const full = !on && state.equipped.length >= slotCount(state);
   return <div className={`relic-card r-${x.rarity} ${n ? '' : 'missing'} ${up ? 'upgraded' : ''} ${on ? 'equipped' : ''}`}>
     <RelicArt id={x.id} locked={!n} />

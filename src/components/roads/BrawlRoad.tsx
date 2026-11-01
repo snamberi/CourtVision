@@ -24,7 +24,8 @@ export function BrawlRoad({ stops, value, marker, label, icon = 'trophy' }: { st
     const el = scroller.current;
     if (el) el.scrollLeft = Math.max(0, pos - el.clientWidth / 2);
   }, [pos]);
-  return <div className="brawl-road" ref={scroller} role="region" aria-label={label} tabIndex={0}>
+  const jump = (left: number) => scroller.current?.scrollTo({ left: Math.max(0, left), behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  return <><nav className="road-jumps" aria-label={`${label} navigation`}><button onClick={() => jump(0)}>Start</button><button onClick={() => jump(pos - (scroller.current?.clientWidth ?? 0) / 2)}>My progress</button><button disabled={next < 0} onClick={() => jump(next * W)}>Next reward</button><label>Jump to <select defaultValue="" onChange={e => jump(Number(e.target.value) * W)}><option value="" disabled>Choose milestone</option>{stops.map((s, i) => <option key={s.at} value={i}>{s.tick}</option>)}</select></label></nav><div className="brawl-road" ref={scroller} role="region" aria-label={label} tabIndex={0}>
     <div className="brawl-inner" style={{ width: stops.length * W, ['--road-col' as string]: `${W}px` }}>
       <ol className="brawl-cards">{stops.map((s, i) => {
         const got = i <= latest, state = i === latest ? 'latest' : i === next ? 'next' : got ? 'got' : 'ahead';
@@ -46,5 +47,5 @@ export function BrawlRoad({ stops, value, marker, label, icon = 'trophy' }: { st
         <b className="brawl-value" style={{ left: mark }}>{marker}</b>
       </div>
     </div>
-  </div>;
+  </div></>;
 }

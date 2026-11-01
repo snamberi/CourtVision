@@ -1,3 +1,4 @@
+import './releaseLayout.css';
 import { Modal } from './Modal';
 import { PixelIcon } from './PixelIcon';
 import { STREAK_REWARDS, streakTrophies } from '../retention/streak';

@@ -1,3 +1,4 @@
+import { PageJumps } from '../PageJumps';
 import { useEffect, useState, type ReactNode } from 'react';
 import { LEVEL_ROAD } from '../../profile/cosmetics';
 import { TROPHY_ROAD, TROPHY_MAX, trophyParts } from '../../profile/trophyRoad';
@@ -33,6 +34,7 @@ export function RoadPage({ road, onExit, onSwitch }: { road: 'level' | 'trophy';
       <div className="hunt-title"><span className="pixel-eyebrow">{level ? 'XP FROM EVERY MODE' : 'WIN TO CLIMB'}</span><h1>{level ? 'Level Road' : 'Trophy Road'}</h1></div>
       {onSwitch && <button className="relic-switch" onClick={onSwitch}><PixelIcon name={level ? 'trophy' : 'chart'} size={16} /> {level ? 'Trophy Road' : 'Level Road'}</button>}
     </header>
+    <PageJumps />
     {level ? <LevelRoadView /> : <TrophyRoadView />}
   </div>;
 }

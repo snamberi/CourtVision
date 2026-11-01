@@ -3,10 +3,10 @@ import { PixelIcon } from '../PixelIcon';
 import { UserAvatar, useAvatar } from '../UserAvatar';
 import { FramedAvatar } from '../AvatarFrame';
 import { ProfileIcon } from '../ProfileIcon';
-import { activeHoliday, daysLeft, eventCoins, loadHoliday, HOLIDAY_EVENT, FINISH_COINS, WIN_COINS, type HolidayRun } from '../../retention/holiday';
+import { activeHoliday, activeHolidays, HOLIDAYS, type HolidayId, daysLeft, eventCoins, loadHoliday, HOLIDAY_EVENT, FINISH_COINS, WIN_COINS, type HolidayRun } from '../../retention/holiday';
 import { piecesFor, type EventPiece } from '../../retention/holidayShop';
-import { buyEventPiece } from '../../retention/holidayBuy';
-import { loadRelics, RELICS_EVENT } from '../../relics/relics';
+import { buyEventPiece, buyEventKey } from '../../retention/holidayBuy';
+import { loadRelics, saveRelics, spinEventRelic, eventKeysLeft, SECRET_BY_ID, RELIC_BY_ID, RELICS_EVENT } from '../../relics/relics';
 import { THEME_BY_ID } from '../../theme/themes';
 import { burst } from '../../fx/effects';
 import type { CSSProperties } from 'react';
@@ -15,7 +15,8 @@ import '../hunt/hunt.css';
 const varsOf = (run: HolidayRun): CSSProperties => ({ '--hol-bg': run.holiday.colors.bg, '--hol-panel': run.holiday.colors.panel, '--hol-accent': run.holiday.colors.accent, '--hol-text': run.holiday.colors.text, '--hol-glow': run.holiday.colors.glow } as CSSProperties);
 
 /** The event's own art: a pixel pumpkin or snowman, drawn in SVG rects. */
-export function HolidayArt({ id, size = 64 }: { id: 'halloween' | 'christmas'; size?: number }) {
+export function HolidayArt({ id, size = 64 }: { id: HolidayId; size?: number }) {
+  if (id !== 'halloween' && id !== 'christmas') return <span style={{ fontSize: size * .7 }} aria-hidden="true">{({ newyear: '🎆', valentine: '❤️', allstar: '🏀', easter: '🐣', playoffs: '🏆', summer: '☀️', anniversary: '🎂' })[id]}</span>;
   const px: [number, number, number, number, string][] = id === 'halloween'
     ? [[3, 4, 10, 9, '#ff7a1a'], [2, 6, 1, 5, '#ff7a1a'], [13, 6, 1, 5, '#ff7a1a'], [6, 4, 1, 9, '#d9580b'], [9, 4, 1, 9, '#d9580b'], [7, 1, 2, 3, '#3f7a24'],
       [4, 7, 2, 2, '#ffd166'], [10, 7, 2, 2, '#ffd166'], [5, 10, 6, 1, '#ffd166'], [4, 9, 1, 1, '#ffd166'], [11, 9, 1, 1, '#ffd166']]
@@ -38,13 +39,15 @@ function Preview({ piece }: { piece: EventPiece }) {
 
 /** The holiday event: its coins, how to earn them, and its shop. Only reachable while the event is on. */
 export function HolidayEventPage({ onExit, onCloset }: { onExit: () => void; onCloset: () => void }) {
-  const [run] = useState(() => activeHoliday());
+  const [run, setRun] = useState(() => activeHoliday());
   const [coins, setCoins] = useState(() => (run ? eventCoins(loadHoliday(), run.key) : 0));
   const [owned, setOwned] = useState(() => loadRelics().cosmetics ?? []);
+  const [keys, setKeys] = useState(() => run ? eventKeysLeft(loadRelics(), run.key) : 0);
   const [note, setNote] = useState<string | null>(null);
   useEffect(() => {
     if (!run) return;
-    const sync = () => { setCoins(eventCoins(loadHoliday(), run.key)); setOwned(loadRelics().cosmetics ?? []); };
+    const sync = () => { setKeys(eventKeysLeft(loadRelics(), run.key)); setCoins(eventCoins(loadHoliday(), run.key)); setOwned(loadRelics().cosmetics ?? []); };
+    sync();
     window.addEventListener(HOLIDAY_EVENT, sync); window.addEventListener(RELICS_EVENT, sync);
     return () => { window.removeEventListener(HOLIDAY_EVENT, sync); window.removeEventListener(RELICS_EVENT, sync); };
   }, [run]);
@@ -63,6 +66,7 @@ export function HolidayEventPage({ onExit, onCloset }: { onExit: () => void; onC
       <div className="hunt-title"><span className="pixel-eyebrow">HOLIDAY EVENT · {left} DAY{left === 1 ? '' : 'S'} LEFT</span><h1>{h.name}</h1></div>
       <button className="relic-switch" onClick={onCloset}><PixelIcon name="team" size={16} /> Closet</button>
     </header>
+    <nav aria-label="Active events" className="holiday-event-tabs">{activeHolidays().map(r => <button key={r.key} aria-pressed={r.key === run.key} onClick={() => { setRun(r); setNote(null); }}>{r.holiday.name}</button>)}</nav>
     <section className="holiday-banner">
       <span className="holiday-art"><HolidayArt id={h.id} size={72} /></span>
       <span className="pixel-eyebrow">{run.start.toISOString().slice(5, 10).replace('-', '/')} → {new Date(run.end.getTime() - 86_400_000).toISOString().slice(5, 10).replace('-', '/')}</span>
@@ -76,6 +80,14 @@ export function HolidayEventPage({ onExit, onCloset }: { onExit: () => void; onC
       </ul>
     </section>
     {note && <p className="relic-note" role="status">{note}</p>}
+    <section className="holiday-banner" aria-labelledby="event-spin-heading">
+      <h2 id="event-spin-heading">{h.keyName} spin · 2× luck</h2>
+      <p>{keys} keys available. Keys and currency belong to this event year. Unlocks stay yours after it ends.</p>
+      <p>Twice the normal chance for each non-common rarity and Secret unlock; Common fills the remaining odds. Mission relics cannot drop. Pity guarantees still apply.</p>
+      <button disabled={coins < 10} onClick={() => setNote(buyEventKey(h.id) === 'ok' ? `${h.keyName} added.` : 'Unable to buy: check your currency or event dates.')}>Buy {h.keyName} · 10 {h.coins}</button>
+      <button disabled={keys < 1} onClick={() => { const result = spinEventRelic(loadRelics(), h.id); if (!result) { setNote('No key available, or the event has ended.'); return; } saveRelics(result.state); const found = result.result; setNote(`Found ${found.kind === 'secret' ? SECRET_BY_ID.get(found.id as never)?.name : RELIC_BY_ID.get(found.id)?.name}${found.duplicate ? ' (duplicate)' : ''}.`); }}>Use {h.keyName}</button>
+    </section>
+    <details><summary>Annual event calendar (UTC)</summary><ul>{HOLIDAYS.map(e => <li key={e.id}>{e.name}: starts {e.month + 1}/{e.day} · {e.coins} · {e.keyName}</li>)}</ul></details>
     <h2 className="hunt-subhead">The {h.id === 'halloween' ? 'Spooky' : 'Holiday'} Shop</h2>
     <div className="holiday-grid">{pieces.map(p => { const have = owned.includes(p.key); return <div key={p.key} className={`holiday-item ${have ? 'owned' : ''}`}>
       <div className="holiday-preview"><Preview piece={p} /></div>

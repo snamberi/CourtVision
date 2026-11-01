@@ -7,7 +7,7 @@ import { LuckChip } from '../relics/RelicReward';
 import type { NbaHistory } from '../../history/nbaHistoryData';
 import { cardPool, seasonLabel, RARITY_LABEL } from '../../hunt/cards';
 import { CATEGORIES, categoryLabel, categoryScore, feetInches, type CategoryId, type CategoryValues } from '../../career/categories';
-import { eliteRanks, newWheel, spin, respin, move, take, landed, neighbour, wheelCategories, primeBoost, mustTake, canSpin, isComplete, openWheels, luckyLeft, boostLeft, ultraCheat, ultraOptions, REEL_LENGTH, STAR_BONUS, ELITE_MAX, PRIME_BOOST_POINTS, ULTRA_COST, ULTRA_RATING, ULTRA_CARD, type WheelState, type Wheel, type WheelRelics } from '../../career/wheel';
+import { eliteRanks, rerollLowest, newWheel, spin, respin, move, take, landed, neighbour, wheelCategories, primeBoost, mustTake, canSpin, isComplete, openWheels, luckyLeft, boostLeft, ultraCheat, ultraOptions, REEL_LENGTH, STAR_BONUS, ELITE_MAX, PRIME_BOOST_POINTS, ULTRA_COST, ULTRA_RATING, ULTRA_CARD, type WheelState, type Wheel, type WheelRelics } from '../../career/wheel';
 import {
   READINESS, NORMAL_READINESS, sandboxBuild, setSandbox, primeFromSandbox, categoryPaths, SANDBOX_MIN, SANDBOX_MAX, SANDBOX_HEIGHT, SANDBOX_WEIGHT, type SandboxBuild,
   suggestPosition, primeOverall, projectedPrime, buildPlayer, startProgress, primeFromBuild, capFor, buildSpent, rollPotential, RATING_CATEGORIES, BUILD_MIN, START_AGE, POTENTIAL_REROLLS,
@@ -159,6 +159,7 @@ export function WheelBuilder({ h, seed, fav, relics, onDone, onBack }: { h: NbaH
       </div>}
       <WheelBoard h={h} s={s} settled={settled} onTake={cat => setS(take(h, s, 0, cat))} />
     </div>
+    {done && s.cursedDice && <button onClick={() => setS(rerollLowest(h, s))}>Cursed Dice: reroll lowest skill category (free · once)</button>}
     {done && <button className="primary hunt-play" onClick={() => onDone(Object.fromEntries(CATEGORIES.map(c => [c.id, s.picks[c.id]!.values])) as Prime)}>Next: name your player</button>}
     <button className="link-button" onClick={onBack}>Back</button>
   </section>;

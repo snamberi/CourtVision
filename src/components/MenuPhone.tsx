@@ -50,8 +50,8 @@ const InstagramGlyph = () => <svg viewBox="0 0 16 16" width="20" height="20" sha
 
 const clock = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 
-export function MenuPhone({ onFriendList, onCloset, onBoards, onFriends, onProfile, onRelics, onShop, onRoad, onSettings, onWhatsNew, onAchievements, streak }: {
-  onFriendList?: () => void; onCloset?: () => void; onBoards?: () => void; onFriends?: () => void; onProfile?: () => void; onRelics?: () => void; onShop?: () => void;
+export function MenuPhone({ onClans, onFriendList, onCloset, onBoards, onFriends, onProfile, onRelics, onShop, onRoad, onSettings, onWhatsNew, onAchievements, streak }: {
+  onClans?: () => void; onFriendList?: () => void; onCloset?: () => void; onBoards?: () => void; onFriends?: () => void; onProfile?: () => void; onRelics?: () => void; onShop?: () => void;
   onRoad?: (road: 'level' | 'trophy' | 'season') => void;
   onSettings?: () => void; onWhatsNew?: () => void; onAchievements?: () => void;
   streak: { current: number; best: number };
@@ -124,6 +124,7 @@ export function MenuPhone({ onFriendList, onCloset, onBoards, onFriends, onProfi
     onRoad && { key: 'pass', node: <button className="menu-phone-app" onClick={() => onRoad('season')} aria-label={`Season Pass${luckySpins ? `, ${luckySpins} free Lucky Spin${luckySpins === 1 ? '' : 's'}` : ''}`}><span className="app-tile pass"><PixelIcon name="calendar" size={20} />{luckySpins > 0 && <em className="app-badge">{luckySpins}</em>}</span><small>Season Pass</small></button> },
     onRoad && { key: 'levelroad', node: <button className="menu-phone-app" onClick={() => onRoad('level')} aria-label={`Level Road, level ${level}`}><span className="app-tile levelroad"><PixelIcon name="chart" size={20} /><em>{level}</em></span><small>Level Road</small></button> },
     onRoad && { key: 'trophyroad', node: <button className="menu-phone-app" onClick={() => onRoad('trophy')}><span className="app-tile trophyroad"><PixelIcon name="trophy" size={20} /></span><small>Trophy Road</small></button> },
+    onClans && { key: 'clans', node: <button className="menu-phone-app" onClick={onClans}><span className="app-tile friends"><PixelIcon name="team" size={20} /></span><small>Clans</small></button> },
   ] as (App | false | undefined)[]).filter((x): x is App => !!x);
 
   // Your order (saved), then any app it doesn't know yet.
@@ -148,7 +149,10 @@ export function MenuPhone({ onFriendList, onCloset, onBoards, onFriends, onProfi
 
   // Swiping: touch and trackpads scroll the pager natively (it snaps to pages); a mouse can drag it.
   const pager = useRef<HTMLDivElement>(null);
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(() => Math.max(0, Math.min(pages.length - 1, Number(read('cv-phone-page')) || 0)));
+  const initialPage = useRef(page);
+  useEffect(() => { const el = pager.current; if (el) el.scrollLeft = initialPage.current * el.clientWidth; }, []);
+  useEffect(() => { write('cv-phone-page', String(page)); }, [page]);
   const drag = useRef<{ x: number; moved: boolean } | null>(null);
   const goTo = (i: number) => { const el = pager.current; if (!el) return; const n = Math.max(0, Math.min(pages.length - 1, i)); el.scrollTo({ left: n * el.clientWidth, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); setPage(n); };
   const onScroll = () => { const el = pager.current; if (el && el.clientWidth) setPage(Math.round(el.scrollLeft / el.clientWidth)); window.clearTimeout(hold.current); };
@@ -190,11 +194,11 @@ export function MenuPhone({ onFriendList, onCloset, onBoards, onFriends, onProfi
           if (!picked) setPicked(k); else { swap(picked, k); setPicked(null); }
         }}
         onKeyDown={e => { if (e.key === 'ArrowRight') goTo(page + 1); else if (e.key === 'ArrowLeft') goTo(page - 1); else if (e.key === 'Escape' && editing) { setEditing(false); setPicked(null); } }}>
-        {pages.map((p, i) => <div key={i} className="menu-phone-apps" role="group" aria-roledescription="page" aria-label={`Page ${i + 1} of ${pages.length}`} aria-hidden={i !== page || undefined}>
+        {pages.map((p, i) => <div key={i} className="menu-phone-apps" role="group" aria-roledescription="page" aria-label={`Page ${i + 1} of ${pages.length}`} aria-hidden={i !== page || undefined} inert={i !== page}>
           {p.map(k => <div key={k} data-app={k} className={`menu-phone-slot ${picked === k ? 'picked' : ''}`}>{byKey.get(k)}</div>)}
         </div>)}
       </div>
-      {pages.length > 1 && <div className="menu-phone-dots">{pages.map((_, i) => <button key={i} type="button" className={i === page ? 'on' : ''} aria-label={`Apps page ${i + 1}`} aria-current={i === page || undefined} onClick={() => goTo(i)} />)}</div>}
+      {pages.length > 1 && <div className="menu-phone-dots">{pages.map((_, i) => <button key={i} type="button" className={i === page ? 'on' : ''} aria-label={`Apps page ${i + 1}`} aria-current={i === page || undefined} onClick={() => goTo(i)}>{i + 1}</button>)}</div>}
       {editing ? <div className="menu-phone-edit"><small>{picked ? 'Now tap where it goes' : 'Drag an app onto another, or tap two to swap'}</small><button type="button" onClick={() => { setEditing(false); setPicked(null); }}>Done</button></div>
         : <button type="button" className="menu-phone-arrange link-button" onClick={() => setEditing(true)}>Rearrange</button>}
       <i className="menu-phone-home" aria-hidden="true" />

@@ -1,3 +1,4 @@
+import { PageJumps } from '../PageJumps';
 import { useEffect, useState } from 'react';
 import { PixelIcon } from '../PixelIcon';
 import { NameTag } from '../ProfileIcon';
@@ -57,6 +58,7 @@ export function FriendListPage({ onExit, onUser, onFind }: { onExit: () => void;
       <div className="hunt-title"><span className="pixel-eyebrow">YOUR FRIENDS · FREE DAILY GIFTS</span><h1>Friend list</h1></div>
       {onFind && <button className="relic-switch" onClick={onFind}><PixelIcon name="search" size={16} /> Find GMs</button>}
     </header>
+    <PageJumps />
 
     {!cloudEnabled || !signedIn ? <section className="locker-bay">
       <h2>Sign in to see your friends</h2>

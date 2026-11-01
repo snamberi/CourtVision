@@ -341,6 +341,7 @@ export interface PlayerSeason {
   draftYear?: string | null; // the season string the player was drafted in, e.g. "2024-25"; null/undefined for undrafted
   draftRound?: number | null; // 1 or 2; null for undrafted
   draftPick?: number | null; // overall pick number (1-indexed); null for undrafted
+  draftedByUser?: boolean;
   draftTeamId?: string | null; // team that originally drafted them, kept even after trades
 
   /** Append-only career event log — contract signings, trades, waives, injuries — never cleared on season rollover. */

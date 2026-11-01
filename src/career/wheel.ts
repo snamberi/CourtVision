@@ -60,11 +60,12 @@ export interface WheelState {
   relicLuck?: number;
   /** Ultra Cheat (a secret relic): Lucky Spins can be traded for a category rated 125. */
   ultra?: boolean;
+  cursedDice?: boolean;
 }
 
-export interface WheelRelics { luck?: number; eternalSpin?: boolean; luckyCharm?: boolean; ultraCheat?: boolean; /** Your pet: the Fox adds a respin. */ pet?: string | null }
+export interface WheelRelics { secrets?: readonly string[]; luck?: number; eternalSpin?: boolean; luckyCharm?: boolean; ultraCheat?: boolean; /** Your pet: the Fox adds a respin. */ pet?: string | null }
 export const newWheel = (seed: number, fav?: string, relics?: WheelRelics): WheelState => ({ seed, spinCount: 0, current: null, takenFrom: [], picks: {}, moves: { left: true, right: true },
-  respins: RESPINS + (relics?.eternalSpin ? 1 : 0) + (relics?.pet === 'fox' ? 1 : 0), triple: true, lucky: LUCKY_SPINS + (relics?.luckyCharm ? 1 : 0), ...(fav ? { fav } : {}),
+  cursedDice: relics?.secrets?.includes('cursedDice'), respins: RESPINS + ['midnightReset', 'foundersWhistle'].filter(id => relics?.secrets?.includes(id)).length + (relics?.eternalSpin ? 1 : 0) + (relics?.pet === 'fox' ? 1 : 0), triple: true, lucky: LUCKY_SPINS + (relics?.luckyCharm ? 1 : 0), ...(fav ? { fav } : {}),
   ...(relics?.luck ? { relicLuck: Math.round(relics.luck * 100) / 100 } : {}), ...(relics?.ultraCheat ? { ultra: true } : {}) });
 export const luckyLeft = (s: WheelState) => s.lucky ?? LUCKY_SPINS;
 export const boostLeft = (s: WheelState) => s.boost ?? PRIME_BOOSTS;
@@ -379,3 +380,15 @@ export const wheelCategories = (h: NbaHistory, w: Wheel) => {
 
 /** Wheels that can still be taken from in the current spin. */
 export const openWheels = (s: WheelState) => (s.current ?? []).map((_, i) => i).filter(i => !s.takenFrom.includes(i));
+
+/** Cursed Dice is an optional one-shot replacement after the starting build is complete. */
+export function rerollLowest(h: NbaHistory, s: WheelState): WheelState {
+  if (!s.cursedDice || !isComplete(s)) return s;
+  const cat = CATEGORIES.map(c => c.id).filter(id => id !== 'size').sort((a, b) => categoryScore(s.picks[a]!.values) - categoryScore(s.picks[b]!.values))[0];
+  const pool = wheelPool(h).filter(c => c.id !== s.picks[cat]!.cardId);
+  if (!pool.length) return s;
+  const rng = new RNG(s.seed * 89 + 731);
+  const cardId = pool[rng.nextInt(pool.length)].id;
+  const values = wheelCategories(h, { reel: [cardId], stop: 0 })[cat];
+  return { ...s, cursedDice: false, picks: { ...s.picks, [cat]: { cardId, values } } };
+}

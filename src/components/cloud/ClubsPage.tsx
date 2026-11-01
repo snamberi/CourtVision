@@ -1,3 +1,4 @@
+import { PageJumps } from '../PageJumps';
 import { useCallback, useEffect, useState } from 'react';
 import { cloudEnabled, useAccount } from '../../cloud/account';
 import { openSignIn } from '../../cloud/signIn';
@@ -47,10 +48,12 @@ export function ClubsPage({ onExit, onUser }: { onExit: () => void; onUser: (use
     return () => { live = false; };
   }, [signedIn, tick]);
   return <div className="hunt locker clubs-page">
+    <ol className="clans-steps"><li><b>1 · Join your crew</b><p>Join an open clan, accept an invitation, or create your own.</p></li><li><b>2 · Play weekly modes</b><p>Your weekly leaderboard results contribute to your clan’s points.</p></li><li><b>3 · Climb together</b><p>Compare clan standings and take part in a weekly clash.</p></li></ol>
     <header className="hunt-top">
       <button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button>
       <div className="hunt-title"><span className="pixel-eyebrow">PLAY TOGETHER</span><h1>Clans</h1></div>
     </header>
+    <PageJumps />
     {!cloudEnabled ? <p className="empty-state">Accounts and clans are not switched on for this site yet.</p> : <div className="clubs-grid">
       {error && <p className="empty-state" role="alert">{error}</p>}
       {joinCode && <JoinLink code={joinCode} inClan={!!club} onDone={() => { setJoinCode(null); refresh(); }} />}

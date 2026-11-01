@@ -205,7 +205,7 @@ export function MainMenu({ onStart, saves, onOpenContinue, busy = null, onLocker
           <PlayerAvatar playerId="Court Vision Center" primaryColor="#ec852b" secondaryColor="#fcdfad" jerseyNumber={23} size={100} />
           <PixelBall size={48} />
         </div>
-        <MenuPhone onFriendList={onFriendList} onCloset={onCloset} onBoards={onCommunity && (() => onCommunity('boards'))} onFriends={onFriends ?? (onCommunity && (() => onCommunity('friends')))} onProfile={onProfile ?? onLocker} onRelics={onRelics} onShop={onShop} onRoad={onRoad} onSettings={onSettings} onWhatsNew={() => { location.hash = '#/updates'; }}
+        <MenuPhone onClans={onOpenMode && (() => onOpenMode(modeById('clubs')!))} onFriendList={onFriendList} onCloset={onCloset} onBoards={onCommunity && (() => onCommunity('boards'))} onFriends={onFriends ?? (onCommunity && (() => onCommunity('friends')))} onProfile={onProfile ?? onLocker} onRelics={onRelics} onShop={onShop} onRoad={onRoad} onSettings={onSettings} onWhatsNew={() => { location.hash = '#/updates'; }}
           onAchievements={onProfileTab && (() => onProfileTab('achievements'))} streak={visit.v.streak} />
       </div>
 

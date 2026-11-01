@@ -30,8 +30,8 @@ describe('relics', () => {
     expect(SECRET_CHANCE).toBeLessThan(RELIC_RARITY.mythic.odds);
     expect(RARITY_ORDER.map(r => RELIC_RARITY[r].luck)).toEqual([1, 2, 3, 4, 5]);
     for (const r of RARITY_ORDER) expect(RELICS.some(x => x.rarity === r)).toBe(true);
-    expect(SECRET_RELICS).toHaveLength(13);
-    expect(SECRET_RELICS.filter(r => r.earnedOnly).map(r => r.id)).toEqual(['ultraCheat']);
+    expect(SECRET_RELICS).toHaveLength(31);
+    expect(SECRET_RELICS.filter(r => r.earnedOnly).map(r => r.id)).toEqual(['draftWhisperer', 'loyaltyPays', 'rebuilder', 'ultraCheat']);
   });
 
   it('maps rolls to rarities, rarest first', () => {
@@ -72,8 +72,9 @@ describe('relics', () => {
   });
 
   it('a tiny chance uncovers a secret you lack, never one you have', () => {
-    const got = spinRelic(base({ spins: 1, secrets: SECRET_RELICS.slice(1).map(s => s.id) }), seq(SECRET_CHANCE / 2, 0.9))!;
-    expect(got.result).toMatchObject({ kind: 'secret', id: SECRET_RELICS[0].id });
+    const target = SECRET_RELICS.find(r => !r.earnedOnly && !r.event)!;
+    const got = spinRelic(base({ spins: 1, secrets: SECRET_RELICS.filter(r => r.id !== target.id).map(s => s.id) }), seq(SECRET_CHANCE / 2, 0.9))!;
+    expect(got.result).toMatchObject({ kind: 'secret', id: target.id });
     // All found: the secret roll is skipped.
     const all = spinRelic(base({ spins: 1, secrets: SECRET_RELICS.map(s => s.id) }), seq(0, 0.5, 0))!;
     expect(all.result.kind).toBe('relic');

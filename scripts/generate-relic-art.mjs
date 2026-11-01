@@ -221,15 +221,45 @@ const ART = {
   mystery(){path('M15 7H33V12H39V37H33V42H15V37H9V12H15Z',C.ink);path('M17 10H31V15H36V34H31V39H17V34H12V15H17Z',C.deep);line('M17 11h13M13 16v16M18 37h12',C.steel);text('?',18,17,C.silver,2);rect(14,12,2,2,C.goldDark);rect(32,34,2,2,C.goldDark);},
 };
 
+// Release secrets retain the existing pixel grid and palette.
+Object.assign(ART, {
+  draftWhisperer(){ paper(C.paper); text('HOF',17,15,C.purpleDark); line('M16 26h16M16 31h10',C.woodDark,2); shine(36,9,C.sun); },
+  loyaltyPays(){ ring(C.sun,true); text('5',22,21,C.ink); },
+  rebuilder(){ rect(8,34,32,7,C.woodDark);rect(12,26,24,7,C.orange);rect(16,18,16,7,C.sun);star(24,9,C.cream,.8); },
+  forbiddenPlaybook(){ paper(C.purpleDark);line('M17 15l14 17M31 15L17 32',C.lilac,2);disc(24,24,5,[C.ink,C.redDark,C.red,C.pink]); },
+  trickOrTreat(){ path('M10 18H38L34 40H14Z',C.orange);line('M16 18V9h16v9',C.purple,3);rect(16,25,5,4,C.ink);rect(28,25,5,4,C.ink);line('M18 33h12',C.cream,2); },
+  secondLife(){ path('M13 40V15L18 8H30L35 15V40L29 35L24 40L19 35Z',C.ice);rect(18,18,3,5,C.ink);rect(27,18,3,5,C.ink);shine(37,9,C.mint); },
+  cursedDice(){ rect(9,9,30,30,C.ink);rect(12,12,24,24,C.purple);for(const [x,y]of [[16,16],[29,16],[22,23],[16,29],[29,29]])rect(x,y,3,3,C.lilac);shine(39,7,C.red); },
+  winterScout(){ paper(C.ice);line('M16 17h16M16 23h12M16 29h16',C.blue,2);shine(34,8,C.cyan); },
+  snowGlobe(){disc(24,20,16,[C.ink,C.blueDark,C.cyan,C.ice]);rect(15,36,18,6,C.woodDark);rect(22,18,4,12,C.green);shine(24,14,C.white);},
+  stockingStuffer(){path('M21 8H35V30H28V40H9V29H21Z',C.red);rect(19,6,18,7,C.ice);rect(11,33,10,5,C.green);shine(37,19,C.sun);},
+  winterGuard(){path('M8 10H40V29L24 43L8 29Z',C.blueDark);path('M12 14H36V27L24 37L12 27Z',C.cyan);shine(24,24,C.white,6);},
+  midnightReset(){disc(24,24,18,[C.ink,C.goldDark,C.gold,C.sun]);disc(24,24,13,[C.ink,C.deep,C.deep,C.deep]);line('M24 12v12h9',C.cream,2);shine(7,7,C.pink);},
+  heartOfTeam(){path('M8 12H19L24 18L29 12H40V26L24 41L8 26Z',C.red);path('M12 16H18L22 21H14V28H12Z',C.pink);},
+  allStarClipboard(){clipboard(true);star(24,24,C.sun,1);},
+  goldenEgg(){path('M18 5H30V9H34V16H38V34H34V39H14V34H10V16H14V9H18Z',C.gold);line('M12 25h24',C.purple,3);shine(23,14,C.cream);},
+  playoffArmor(){path('M8 8H40V29L24 43L8 29Z',C.goldDark);path('M12 12H36V27L24 37L12 27Z',C.gold);star(24,23,C.cream,.8);},
+  summerFilm(){rect(7,10,34,30,C.ink);rect(11,14,26,22,C.orange);for(const y of [14,23,32]){rect(8,y,3,3,C.white);rect(37,y,3,3,C.white);}disc(24,24,7,[C.orangeDark,C.gold,C.sun,C.cream]);},
+  foundersWhistle(){path('M10 20H26V12H38V29H30V37H16L10 31Z',C.purple);rect(27,14,9,5,C.lilac);disc(21,28,7,[C.ink,C.goldDark,C.gold,C.sun]);text('1',20,26,C.ink);shine(10,9,C.ice);},
+});
+
+// These earlier secrets have hand-authored checked-in art. Preserve it verbatim.
+const handAuthored = ['luckyCharm', 'sixthSense', 'filmRoom', 'phoneTree', 'ultraCheat'];
+for (const id of handAuthored) {
+  ART[id] = () => { const svg = readFileSync(`${output}/relic-${id}.svg`, 'utf8'); parts = [svg.slice(svg.indexOf('>') + 1, svg.lastIndexOf('</svg>'))]; };
+}
+
 // Stop regeneration if a newly added collectible has not been illustrated yet.
 const catalog = readFileSync(new URL('../src/relics/relics.ts', import.meta.url), 'utf8');
 const catalogParts = ['RELICS: Relic[]', 'SECRET_RELICS: SecretRelic[]'].map(marker => catalog.split(`export const ${marker} = [`)[1].split('];')[0]);
+catalogParts.push(readFileSync(new URL('../src/relics/releaseSecrets.ts', import.meta.url), 'utf8'));
 const ids = catalogParts.flatMap(s => [...s.matchAll(/\bid: '([^']+)'/g)].map(m => m[1]));
 const missing = ids.filter(id => !ART[id]);
 const extra = Object.keys(ART).filter(id => id !== 'mystery' && !ids.includes(id));
 if (missing.length || extra.length) throw new Error(`Relic artwork mismatch. Missing: ${missing.join(', ')}. Extra: ${extra.join(', ')}`);
 mkdirSync(output, { recursive: true });
 for (const [id, draw] of Object.entries(ART)) {
+  if (handAuthored.includes(id)) continue;
   parts = [];
   path('M12 43H36V45H12Z', C.ink);
   draw();

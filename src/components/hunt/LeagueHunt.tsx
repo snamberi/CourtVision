@@ -17,7 +17,7 @@ import { cardPool, seasonLabel, RARITY_LABEL, type HuntCard } from '../../hunt/c
 import { huntTeams, teamLabel, type HuntTeam } from '../../hunt/teams';
 import { ERAS, eraOf } from '../../hunt/eras';
 import {
-  newRun, stopReels, lockReel, openSpins, chooseFocus, playSeries, takeBoost, buyCard, buyCoach, buyItem, buyLife, canBuyLife, train, leaveShop, gameBonuses, squadRating, baseSquadRating, opponentRating, buffValue, coachBonus,
+  rerollOfferedPlayer, newRun, stopReels, lockReel, openSpins, chooseFocus, playSeries, takeBoost, buyCard, buyCoach, buyItem, buyLife, canBuyLife, train, leaveShop, gameBonuses, squadRating, baseSquadRating, opponentRating, buffValue, coachBonus,
   cardPrice, coachPrice, maxLives, spinWeights, draftGrade, slotName, shopItems, NEUTRAL_GAME, SPINS, SLOTS, FOCUS, FOCUS_IDS, DECKS, DIFFICULTIES, SERIES_COUNT, WINS_NEEDED, LIFE_PRICE, TRAIN_PRICE, TRAIN_STEP, MAX_TRAINING, BOOST_CAP, MAX_BOOSTS,
   type HuntRun, type HuntSeries, type SeriesPlay, type Focus, type Slot, type SpinKind, type DeckId, type Difficulty,
 } from '../../hunt/run';
@@ -255,6 +255,7 @@ function SlotMachine({ h, run, onRun, onAbandon }: { h: NbaHistory; run: HuntRun
     <p className="hunt-slots-msg" role="status">{message} <LuckChip luck={run.luck} /></p>
     <div className="hunt-reel-grid">{SLOTS.map(s => tile(s))}</div>
     {tile('COACH')}
+    {run.forbiddenPlaybook && allSettled && <div aria-label="Forbidden Playbook"><p>Reroll one offered player free · once per run</p>{open.filter(k => k !== 'COACH').map(k => <button key={k} onClick={() => onRun(rerollOfferedPlayer(h, run, k, roundCat))}>Reroll {REEL_LABEL[k]}</button>)}</div>}
     {!frozen ? <button className="hunt-stop" onClick={stop} autoFocus><span aria-hidden="true">■</span> STOP</button>
       : <p className={`hunt-lock-hint ${allSettled ? 'ready' : ''}`}><PixelIcon name="lock" size={14} /> PICK ONE TO LOCK</p>}
     <p className="hint-text hunt-slots-odds">{run.view?.numbers ? 'Ratings shown (your choice).' : 'Ratings are hidden until you lock.'} Odds this round: Star {pct(w.legendary / total * 100)} · Great {pct(w.epic / total * 100)} · Good {pct(w.rare / total * 100)}; every round is a little poorer. {guaranteed && <b className="hunt-guarantee">{guaranteed}</b>}</p>

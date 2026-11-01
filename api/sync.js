@@ -283,6 +283,1163 @@ function seasonTiers(read = localRead) {
 /** Titles the seasons have given you. */
 const seasonTitles = (tiers) => Object.entries(SEASON_REWARDS).flatMap(([id, list]) => list.filter((r) => r.kind === "title" && (tiers[id] ?? 0) >= r.tier).map((r) => r.id));
 //#endregion
+//#region src/relics/releaseSecrets.ts
+const RELEASE_SECRETS = [
+	{
+		id: "draftWhisperer",
+		name: "The Draft Whisperer",
+		mode: "Franchise",
+		ability: "+1 detailed prospect scouting report per draft.",
+		hint: "Draft three future Hall of Famers with one franchise.",
+		feat: "Draft 3 players who later enter the Hall of Fame with the same franchise.",
+		earnedOnly: true
+	},
+	{
+		id: "loyaltyPays",
+		name: "Loyalty Pays",
+		mode: "Franchise",
+		ability: "+1 contract negotiation retry per offseason.",
+		hint: "Bring five titles home to the same franchise.",
+		feat: "Win 5 titles with the same franchise.",
+		earnedOnly: true
+	},
+	{
+		id: "rebuilder",
+		name: "The Rebuilder",
+		mode: "Franchise",
+		ability: "+1 trade proposal refresh per season.",
+		hint: "Turn a 20-win season into a championship.",
+		feat: "Take a franchise from 20 or fewer wins to a later championship.",
+		earnedOnly: true
+	},
+	{
+		id: "forbiddenPlaybook",
+		name: "Forbidden Playbook",
+		mode: "League Hunt",
+		ability: "Reroll one offered player free, once per run.",
+		event: "halloween",
+		hint: "Found only in Halloween spins."
+	},
+	{
+		id: "trickOrTreat",
+		name: "Trick or Treat",
+		mode: "82-0 Challenge",
+		ability: "One extra coach-only reroll per run.",
+		event: "halloween",
+		hint: "Found only in Halloween spins."
+	},
+	{
+		id: "secondLife",
+		name: "Second Life",
+		mode: "Survival",
+		ability: "Survive one loss per run and return with one Shield.",
+		event: "halloween",
+		hint: "Found only in Halloween spins."
+	},
+	{
+		id: "cursedDice",
+		name: "Cursed Dice",
+		mode: "Career Mode",
+		ability: "Reroll your lowest completed starting category free once.",
+		event: "halloween",
+		hint: "Found only in Halloween spins."
+	},
+	{
+		id: "winterScout",
+		name: "Winter Scout",
+		mode: "Franchise",
+		ability: "One extra prospect workout per draft.",
+		event: "christmas",
+		hint: "Found only in Christmas spins."
+	},
+	{
+		id: "snowGlobe",
+		name: "Snow Globe",
+		mode: "Story Mode",
+		ability: "Begin with +3 grit.",
+		event: "christmas",
+		hint: "Found only in Christmas spins."
+	},
+	{
+		id: "stockingStuffer",
+		name: "Stocking Stuffer",
+		mode: "League Hunt",
+		ability: "Start with 20 extra run coins.",
+		event: "christmas",
+		hint: "Found only in Christmas spins."
+	},
+	{
+		id: "winterGuard",
+		name: "Winter Guard",
+		mode: "Survival",
+		ability: "Start with one extra Shield.",
+		event: "christmas",
+		hint: "Found only in Christmas spins."
+	},
+	{
+		id: "midnightReset",
+		name: "Midnight Reset",
+		mode: "Career Mode",
+		ability: "Start with one extra wheel respin.",
+		event: "newyear",
+		hint: "Found only in New Year spins."
+	},
+	{
+		id: "heartOfTeam",
+		name: "Heart of the Team",
+		mode: "Story Mode",
+		ability: "Begin with +2 grit.",
+		event: "valentine",
+		hint: "Found only in Valentine spins."
+	},
+	{
+		id: "allStarClipboard",
+		name: "All-Star Clipboard",
+		mode: "82-0 Challenge",
+		ability: "One extra coach-only reroll per run.",
+		event: "allstar",
+		hint: "Found only in All-Star spins."
+	},
+	{
+		id: "goldenEgg",
+		name: "Golden Egg",
+		mode: "League Hunt",
+		ability: "Start with 15 extra run coins.",
+		event: "easter",
+		hint: "Found only in Easter spins."
+	},
+	{
+		id: "playoffArmor",
+		name: "Playoff Armor",
+		mode: "Survival",
+		ability: "Start with one extra Shield.",
+		event: "playoffs",
+		hint: "Found only in Playoff Fever spins."
+	},
+	{
+		id: "summerFilm",
+		name: "Summer Film",
+		mode: "Franchise",
+		ability: "One extra prospect workout per draft.",
+		event: "summer",
+		hint: "Found only in Summer Heat spins."
+	},
+	{
+		id: "foundersWhistle",
+		name: "Founder’s Whistle",
+		mode: "Career Mode",
+		ability: "Start with one extra wheel respin.",
+		event: "anniversary",
+		hint: "Found only in Anniversary spins, September 27–30."
+	}
+];
+new Map([
+	{
+		id: "halloween",
+		name: "Spooky Season",
+		coin: "Candy",
+		coins: "Candy",
+		month: 9,
+		day: 1,
+		endMonth: 10,
+		endDay: 1,
+		keyName: "Haunted Key",
+		blurb: "Pumpkins on the hardwood and ghosts in the rafters. Play anything to collect Candy, then spend it in the Spooky Shop.",
+		colors: {
+			bg: "#140a1f",
+			panel: "#24123a",
+			accent: "#ff7a1a",
+			text: "#fbeee0",
+			glow: "#8bdc3f"
+		}
+	},
+	{
+		id: "christmas",
+		name: "Winter Wonderland",
+		coin: "Snowflake",
+		coins: "Snowflakes",
+		month: 11,
+		day: 1,
+		endMonth: 12,
+		endDay: 1,
+		keyName: "Frost Key",
+		blurb: "Snow on the court and lights on the rim. Play anything to collect Snowflakes, then spend them in the Holiday Shop.",
+		colors: {
+			bg: "#071a14",
+			panel: "#0f2e24",
+			accent: "#e8323c",
+			text: "#f4fbff",
+			glow: "#9fd8ff"
+		}
+	},
+	{
+		id: "newyear",
+		name: "New Year",
+		coin: "Spark",
+		coins: "Sparks",
+		month: 11,
+		day: 26,
+		endMonth: 12,
+		endDay: 8,
+		keyName: "Midnight Key",
+		blurb: "Fireworks and a fresh start.",
+		colors: {
+			bg: "#0b1018",
+			panel: "#182437",
+			accent: "#ffd166",
+			text: "#f4f0e6",
+			glow: "#ffd166"
+		}
+	},
+	{
+		id: "valentine",
+		name: "Valentine’s",
+		coin: "Heart",
+		coins: "Hearts",
+		month: 1,
+		day: 1,
+		endMonth: 2,
+		endDay: 1,
+		keyName: "Heart Key",
+		blurb: "Celebrate your teammates.",
+		colors: {
+			bg: "#0b1018",
+			panel: "#182437",
+			accent: "#ff77aa",
+			text: "#f4f0e6",
+			glow: "#ff77aa"
+		}
+	},
+	{
+		id: "allstar",
+		name: "All-Star Weekend",
+		coin: "Star",
+		coins: "Stars",
+		month: 1,
+		day: 14,
+		endMonth: 1,
+		endDay: 22,
+		keyName: "All-Star Key",
+		blurb: "An exhibition of basketball greatness.",
+		colors: {
+			bg: "#0b1018",
+			panel: "#182437",
+			accent: "#b48aff",
+			text: "#f4f0e6",
+			glow: "#b48aff"
+		}
+	},
+	{
+		id: "easter",
+		name: "Easter",
+		coin: "Egg",
+		coins: "Eggs",
+		month: 2,
+		day: 1,
+		endMonth: 4,
+		endDay: 1,
+		keyName: "Egg Key",
+		blurb: "Collect spring treasures on the court.",
+		colors: {
+			bg: "#0b1018",
+			panel: "#182437",
+			accent: "#b7ef83",
+			text: "#f4f0e6",
+			glow: "#b7ef83"
+		}
+	},
+	{
+		id: "playoffs",
+		name: "Playoff Fever",
+		coin: "Banner",
+		coins: "Banners",
+		month: 3,
+		day: 1,
+		endMonth: 6,
+		endDay: 1,
+		keyName: "Finals Key",
+		blurb: "Every win brings you closer to the rafters.",
+		colors: {
+			bg: "#0b1018",
+			panel: "#182437",
+			accent: "#ffd166",
+			text: "#f4f0e6",
+			glow: "#ffd166"
+		}
+	},
+	{
+		id: "summer",
+		name: "Summer Heat",
+		coin: "Sun Token",
+		coins: "Sun Tokens",
+		month: 5,
+		day: 1,
+		endMonth: 8,
+		endDay: 1,
+		keyName: "Sun Key",
+		blurb: "Summer courts and bright rewards.",
+		colors: {
+			bg: "#0b1018",
+			panel: "#182437",
+			accent: "#ffb85c",
+			text: "#f4f0e6",
+			glow: "#ffb85c"
+		}
+	},
+	{
+		id: "anniversary",
+		name: "CourtVision Anniversary",
+		coin: "Founder Token",
+		coins: "Founder Tokens",
+		month: 8,
+		day: 27,
+		endMonth: 9,
+		endDay: 1,
+		keyName: "Founder Key",
+		blurb: "Celebrate CourtVision every September 27.",
+		colors: {
+			bg: "#0b1018",
+			panel: "#182437",
+			accent: "#b9a0ff",
+			text: "#f4f0e6",
+			glow: "#b9a0ff"
+		}
+	}
+].map((h) => [h.id, h]));
+const empty$3 = () => ({
+	v: 1,
+	earned: {},
+	spent: {},
+	counted: []
+});
+const nums = (x) => Object.fromEntries(Object.entries(x && typeof x === "object" ? x : {}).filter(([, v]) => Number.isFinite(Number(v)) && Number(v) >= 0).map(([k, v]) => [k, Math.floor(Number(v))]));
+function loadHoliday(read = localRead) {
+	try {
+		const x = JSON.parse(read("cv-holiday") ?? "null");
+		if (!x || typeof x !== "object") return empty$3();
+		return {
+			v: 1,
+			earned: nums(x.earned),
+			spent: nums(x.spent),
+			counted: Array.isArray(x.counted) ? x.counted.filter((k) => typeof k === "string").slice(-500) : []
+		};
+	} catch {
+		return empty$3();
+	}
+}
+/** Two copies (this device and the cloud): the most earned and the most spent per event, and every game counted. */
+function mergeHoliday(a, b) {
+	const max = (x, y) => Object.fromEntries([.../* @__PURE__ */ new Set([...Object.keys(x), ...Object.keys(y)])].map((k) => [k, Math.max(x[k] ?? 0, y[k] ?? 0)]));
+	return {
+		v: 1,
+		earned: max(a.earned, b.earned),
+		spent: max(a.spent, b.spent),
+		counted: [.../* @__PURE__ */ new Set([...b.counted, ...a.counted])].slice(-500)
+	};
+}
+//#endregion
+//#region src/relics/secretCosmetics.ts
+const SECRET_COSMETIC_KEYS = [
+	"secret-skin-nebula",
+	"secret-hairColor-phantom",
+	"secret-shoes-stardust",
+	"secret-outfit-shadowTux",
+	"secret-crown-void",
+	"secret-goat-cosmic",
+	"secret-prism",
+	"secret-tc-eclipse"
+];
+//#endregion
+//#region src/relics/relics.ts
+const RARITY_ORDER = [
+	"common",
+	"rare",
+	"epic",
+	"legendary",
+	"mythic"
+];
+const RELIC_RARITY = {
+	common: {
+		name: "Common",
+		odds: .5487,
+		luck: 1,
+		coins: 43
+	},
+	rare: {
+		name: "Rare",
+		odds: .28,
+		luck: 2,
+		coins: 85
+	},
+	epic: {
+		name: "Epic",
+		odds: .1243,
+		luck: 3,
+		coins: 213
+	},
+	legendary: {
+		name: "Legendary",
+		odds: .045,
+		luck: 4,
+		coins: 510
+	},
+	mythic: {
+		name: "Mythic",
+		odds: .002,
+		luck: 5,
+		coins: 2550
+	}
+};
+/** Every relic's luck is scaled by this (a 20% nerf on the table above, stacking relics included). */
+const RELIC_LUCK_SCALE = .8;
+const RELICS = [
+	{
+		id: "netScrap",
+		name: "Torn Net Scrap",
+		rarity: "common",
+		blurb: "Cut down after a pickup game nobody remembers.",
+		icon: "court"
+	},
+	{
+		id: "chalkBag",
+		name: "Chalk Bag",
+		rarity: "common",
+		blurb: "One clap and the arena knows.",
+		icon: "star"
+	},
+	{
+		id: "rookieCard",
+		name: "Creased Rookie Card",
+		rarity: "common",
+		blurb: "Worth nothing. Priceless to you.",
+		icon: "list"
+	},
+	{
+		id: "wristband",
+		name: "Sweat-Soaked Wristband",
+		rarity: "common",
+		blurb: "Still damp. Somehow.",
+		icon: "heart"
+	},
+	{
+		id: "ticketStub",
+		name: "Nosebleed Ticket Stub",
+		rarity: "common",
+		blurb: "Row ZZ. Best seat in the house.",
+		icon: "calendar"
+	},
+	{
+		id: "whistle",
+		name: "Referee's Whistle",
+		rarity: "rare",
+		blurb: "Every call goes your way. Allegedly.",
+		icon: "warning"
+	},
+	{
+		id: "clipboard",
+		name: "Coach's Clipboard",
+		rarity: "rare",
+		blurb: "The last play is still drawn on it.",
+		icon: "chart"
+	},
+	{
+		id: "gameBall",
+		name: "Game-Winner Ball",
+		rarity: "rare",
+		blurb: "Signed by everyone on the floor that night.",
+		icon: "play"
+	},
+	{
+		id: "warmups",
+		name: "Throwback Warm-ups",
+		rarity: "rare",
+		blurb: "Tear-away snaps still work.",
+		icon: "jersey"
+	},
+	{
+		id: "floorboard",
+		name: "Old Arena Floorboard",
+		rarity: "rare",
+		blurb: "From a building they tore down years ago.",
+		icon: "court"
+	},
+	{
+		id: "goldShoes",
+		name: "Gold Sneakers",
+		rarity: "epic",
+		blurb: "Laced for a Finals game. Never washed.",
+		icon: "shoe"
+	},
+	{
+		id: "banner",
+		name: "Rafters Banner",
+		rarity: "epic",
+		blurb: "A number nobody will ever wear again.",
+		icon: "trophy"
+	},
+	{
+		id: "champagne",
+		name: "Locker-Room Champagne",
+		rarity: "epic",
+		blurb: "The cork is still in your pocket.",
+		icon: "flame"
+	},
+	{
+		id: "scoutNotes",
+		name: "Legendary Scout's Notebook",
+		rarity: "epic",
+		blurb: "He saw them all coming.",
+		icon: "search"
+	},
+	{
+		id: "ring",
+		name: "Championship Ring",
+		rarity: "legendary",
+		blurb: "Heavy. In the best way.",
+		icon: "crown"
+	},
+	{
+		id: "trophy",
+		name: "The Larry O'Brien Replica",
+		rarity: "legendary",
+		blurb: "Gold, and it knows it.",
+		icon: "trophy"
+	},
+	{
+		id: "mvpBall",
+		name: "MVP Game Ball",
+		rarity: "legendary",
+		blurb: "From the night the league crowned him.",
+		icon: "star"
+	},
+	{
+		id: "firstBall",
+		name: "The First Basketball",
+		rarity: "mythic",
+		blurb: "Leather, laces and 1891.",
+		icon: "crown"
+	},
+	{
+		id: "peachBasket",
+		name: "The Peach Basket",
+		rarity: "mythic",
+		blurb: "Before nets. Before everything.",
+		icon: "trophy"
+	},
+	{
+		id: "benchTowel",
+		name: "Bench Towel",
+		rarity: "common",
+		blurb: "Waved for every three from the corner.",
+		icon: "jersey"
+	},
+	{
+		id: "headband",
+		name: "Terry Headband",
+		rarity: "common",
+		blurb: "Pulled low for the fourth quarter.",
+		icon: "heart"
+	},
+	{
+		id: "gameProgram",
+		name: "Game Program",
+		rarity: "common",
+		blurb: "The starting lineups, circled in pen.",
+		icon: "list"
+	},
+	{
+		id: "foamFinger",
+		name: "Foam Finger",
+		rarity: "common",
+		blurb: "We're number one. Probably.",
+		icon: "up"
+	},
+	{
+		id: "bobblehead",
+		name: "Giveaway Bobblehead",
+		rarity: "common",
+		blurb: "First 10,000 fans. You were 9,998.",
+		icon: "team"
+	},
+	{
+		id: "mouthguard",
+		name: "Chewed Mouthguard",
+		rarity: "common",
+		blurb: "Hanging out of a mouth on a game-winner.",
+		icon: "check"
+	},
+	{
+		id: "scoreSheet",
+		name: "Scorer's Sheet",
+		rarity: "common",
+		blurb: "Every point, by hand.",
+		icon: "chart"
+	},
+	{
+		id: "clockBulb",
+		name: "Shot Clock Bulb",
+		rarity: "common",
+		blurb: "Burned out at 0.4 seconds.",
+		icon: "clock"
+	},
+	{
+		id: "luckyPenny",
+		name: "Lucky Penny",
+		rarity: "common",
+		blurb: "Heads up, found at center court.",
+		icon: "star",
+		stack: true
+	},
+	{
+		id: "luckySocks",
+		name: "Lucky Socks",
+		rarity: "common",
+		blurb: "Unwashed since the streak began.",
+		icon: "shoe",
+		stack: true
+	},
+	{
+		id: "paradeConfetti",
+		name: "Parade Confetti",
+		rarity: "common",
+		blurb: "Still finding it in your coat.",
+		icon: "flame",
+		stack: true
+	},
+	{
+		id: "fanAutograph",
+		name: "Fan Autograph",
+		rarity: "common",
+		blurb: "On a napkin. Still counts.",
+		icon: "list",
+		stack: true
+	},
+	{
+		id: "pressPass",
+		name: "Press Pass",
+		rarity: "rare",
+		blurb: "Access all areas, one night only.",
+		icon: "phone"
+	},
+	{
+		id: "lockerPlate",
+		name: "Locker Nameplate",
+		rarity: "rare",
+		blurb: "Pried off when the old arena closed.",
+		icon: "lock"
+	},
+	{
+		id: "playbook",
+		name: "Dog-Eared Playbook",
+		rarity: "rare",
+		blurb: "Page 42: the play that won it.",
+		icon: "menu"
+	},
+	{
+		id: "draftCap",
+		name: "Draft Night Cap",
+		rarity: "rare",
+		blurb: "The sticker's still on the brim.",
+		icon: "calendar"
+	},
+	{
+		id: "allStarJersey",
+		name: "All-Star Jersey",
+		rarity: "rare",
+		blurb: "Worn for one weekend, framed forever.",
+		icon: "jersey"
+	},
+	{
+		id: "tunnelSign",
+		name: "Tunnel Sign",
+		rarity: "rare",
+		blurb: "Touched by every player, every night.",
+		icon: "warning"
+	},
+	{
+		id: "tipoffBall",
+		name: "Opening Tip Ball",
+		rarity: "rare",
+		blurb: "The first ball of a dynasty season.",
+		icon: "play"
+	},
+	{
+		id: "signedSneaker",
+		name: "Signed Sneaker",
+		rarity: "rare",
+		blurb: "Just the left one.",
+		icon: "shoe"
+	},
+	{
+		id: "rookiePack",
+		name: "Unopened Card Pack",
+		rarity: "rare",
+		blurb: "Could be anything in there.",
+		icon: "list",
+		stack: true
+	},
+	{
+		id: "seasonTicket",
+		name: "Season Ticket",
+		rarity: "rare",
+		blurb: "Forty-one home games of hope.",
+		icon: "calendar",
+		stack: true
+	},
+	{
+		id: "benchChain",
+		name: "Bench Mob Chain",
+		rarity: "rare",
+		blurb: "Passed down the bench after every big play.",
+		icon: "team",
+		stack: true
+	},
+	{
+		id: "bentRim",
+		name: "Bent Dunk Rim",
+		rarity: "epic",
+		blurb: "They had to stop the game.",
+		icon: "court"
+	},
+	{
+		id: "buzzerClock",
+		name: "Buzzer-Beater Clock",
+		rarity: "epic",
+		blurb: "Frozen at 0.0, forever.",
+		icon: "clock"
+	},
+	{
+		id: "coachTie",
+		name: "Coach's Lucky Tie",
+		rarity: "epic",
+		blurb: "Worn for every Game 7.",
+		icon: "settings"
+	},
+	{
+		id: "allStarMvp",
+		name: "All-Star MVP Trophy",
+		rarity: "epic",
+		blurb: "A Sunday night to remember.",
+		icon: "trophy"
+	},
+	{
+		id: "streakBall",
+		name: "Win Streak Ball",
+		rarity: "epic",
+		blurb: "Signed after win number 33.",
+		icon: "flame"
+	},
+	{
+		id: "iceBag",
+		name: "Ice Veins Bag",
+		rarity: "epic",
+		blurb: "Kept the closer cool.",
+		icon: "ice"
+	},
+	{
+		id: "bannerThread",
+		name: "Banner Thread",
+		rarity: "epic",
+		blurb: "A loose thread from a title banner.",
+		icon: "trophy",
+		stack: true
+	},
+	{
+		id: "hofBallot",
+		name: "Hall of Fame Ballot",
+		rarity: "epic",
+		blurb: "One vote. It counted.",
+		icon: "check",
+		stack: true
+	},
+	{
+		id: "game7Ball",
+		name: "Game 7 Ball",
+		rarity: "legendary",
+		blurb: "The last ball of the last game.",
+		icon: "play"
+	},
+	{
+		id: "retiredJersey",
+		name: "Retired Jersey",
+		rarity: "legendary",
+		blurb: "Lowered from the rafters for one night.",
+		icon: "jersey"
+	},
+	{
+		id: "dynastyRing",
+		name: "Dynasty Ring",
+		rarity: "legendary",
+		blurb: "The third one in a row.",
+		icon: "crown"
+	},
+	{
+		id: "fluSneakers",
+		name: "Flu Game Sneakers",
+		rarity: "legendary",
+		blurb: "He could barely stand. He scored 38.",
+		icon: "shoe"
+	},
+	{
+		id: "lastWhiteboard",
+		name: "Last-Shot Whiteboard",
+		rarity: "legendary",
+		blurb: "The X's and O's of a miracle.",
+		icon: "chart"
+	},
+	{
+		id: "hofJacket",
+		name: "Hall of Fame Jacket",
+		rarity: "legendary",
+		blurb: "Orange, and earned.",
+		icon: "jersey",
+		stack: true
+	},
+	{
+		id: "goldenNet",
+		name: "The Golden Net",
+		rarity: "mythic",
+		blurb: "Every shot through it went in.",
+		icon: "court"
+	},
+	{
+		id: "firstJumpBall",
+		name: "The First Jump Ball",
+		rarity: "mythic",
+		blurb: "Tossed up before there was a league.",
+		icon: "up"
+	},
+	{
+		id: "gavel",
+		name: "The Commissioner's Gavel",
+		rarity: "mythic",
+		blurb: "It decides everything.",
+		icon: "settings"
+	}
+];
+const RELIC_BY_ID = new Map(RELICS.map((r) => [r.id, r]));
+const SECRET_RELICS = [
+	...RELEASE_SECRETS,
+	{
+		id: "eternalSpin",
+		name: "The Eternal Spin",
+		mode: "Career Mode",
+		ability: "Always +1 respin on the Career wheel.",
+		hint: "Voted in on the first ballot, the wheel turns once more.",
+		feat: "Retire a first-ballot Hall of Famer in Career Mode."
+	},
+	{
+		id: "secondWind",
+		name: "Second Wind",
+		mode: "League Hunt",
+		ability: "Start every hunt with one extra life.",
+		hint: "Survive the hardest road and you breathe twice.",
+		feat: "Win a League Hunt on Legend."
+	},
+	{
+		id: "goldenTouch",
+		name: "Golden Touch",
+		mode: "League Hunt",
+		ability: "Start every hunt with 30 extra coins.",
+		hint: "Only luck finds the hand that turns leather to gold."
+	},
+	{
+		id: "ironWill",
+		name: "Iron Will",
+		mode: "Survival",
+		ability: "Start every Survival run with one extra Shield.",
+		hint: "Fifteen times they came for your best. Fifteen times you stood.",
+		feat: "Win 15 rounds in one Survival run."
+	},
+	{
+		id: "extraPick",
+		name: "The Extra Pick",
+		mode: "82-0 Challenge",
+		ability: "One extra reroll in every 82-0 run.",
+		hint: "Eighty-two up, none down, and a pick to spare.",
+		feat: "Finish an 82-0 regular season."
+	},
+	{
+		id: "clutchGene",
+		name: "The Clutch Gene",
+		mode: "Story Mode",
+		ability: "Your story player starts with +2 grit.",
+		hint: "From the park with no nets to a legend's ending.",
+		feat: "Reach the legend ending in Story Mode."
+	},
+	{
+		id: "ownersFavorite",
+		name: "Owner's Favorite",
+		mode: "Franchise",
+		ability: "The owner's demands ask for one fewer win.",
+		hint: "Luck alone gets you a seat in the owner's box."
+	},
+	{
+		id: "lastLook",
+		name: "The Last Look",
+		mode: "Daily Grid",
+		ability: "One extra guess on Endless grids.",
+		hint: "Luck alone gives you one more look at the board."
+	},
+	{
+		id: "luckyCharm",
+		name: "The Lucky Charm",
+		mode: "Career Mode",
+		ability: "One extra Lucky Spin on the Career wheel.",
+		hint: "Luck alone finds the charm that finds more luck."
+	},
+	{
+		id: "sixthSense",
+		name: "Sixth Sense",
+		mode: "Categorize",
+		ability: "One extra mistake on Endless boards.",
+		hint: "See every group without a single wrong guess.",
+		feat: "Solve a Categorize board with no mistakes."
+	},
+	{
+		id: "filmRoom",
+		name: "The Film Room",
+		mode: "Guess the Team",
+		ability: "One extra guess on every team.",
+		hint: "Ten teams in a row and the tapes start talking.",
+		feat: "Name 10 teams in a row in Guess the Team."
+	},
+	{
+		id: "phoneTree",
+		name: "The Phone Tree",
+		mode: "Franchise",
+		ability: "Seek trade brings in 4 more offers.",
+		hint: "Luck alone gets every GM to pick up."
+	},
+	{
+		id: "ultraCheat",
+		name: "Ultra Cheat",
+		mode: "Career Mode",
+		ability: "Spend 2 Lucky Spins on the Career wheel for one category of your choice rated 125.",
+		hint: "Own every relic in the vault and the last door opens.",
+		feat: "Own every relic in the vault.",
+		earnedOnly: true
+	}
+];
+/** Every relic in the vault owned (the key to Ultra Cheat). */
+const ownsEveryRelic = (s) => RELICS.every((r) => (s.owned[r.id] ?? 0) > 0);
+/** Secrets a collection has earned on its own (Ultra Cheat once every relic is owned). */
+const withEarnedSecrets = (s) => ownsEveryRelic(s) && !s.secrets.includes("ultraCheat") ? {
+	...s,
+	secrets: [...s.secrets, "ultraCheat"]
+} : s;
+const SECRET_BY_ID = new Map(SECRET_RELICS.map((r) => [r.id, r]));
+const keyCounter = (n) => typeof n === "number" && Number.isSafeInteger(n) && n >= 0 ? n : 0;
+const keyCounters = (v) => Object.fromEntries(Object.entries(v && typeof v === "object" && !Array.isArray(v) ? v : {}).map(([k, n]) => [k, keyCounter(n)]));
+const empty$2 = () => ({
+	v: 1,
+	spins: 0,
+	coins: 0,
+	owned: {},
+	secrets: [],
+	granted: [],
+	history: [],
+	upgraded: [],
+	equipped: [],
+	slotsBought: 0,
+	pity: {
+		epic: 0,
+		legendary: 0,
+		mythic: 0,
+		lucky: 0
+	},
+	opens: 0,
+	ledger: [],
+	rewards: []
+});
+function loadRelics(read = localRead) {
+	try {
+		const r = JSON.parse(read("cv-relics") ?? "null");
+		if (r && r.v === 1) {
+			const base = {
+				...empty$2(),
+				...r,
+				eventKeys: keyCounters(r.eventKeys),
+				eventKeysUsed: keyCounters(r.eventKeysUsed),
+				owned: r.owned ?? {},
+				secrets: (r.secrets ?? []).filter((s) => SECRET_BY_ID.has(s)),
+				granted: r.granted ?? [],
+				history: r.history ?? [],
+				upgraded: (r.upgraded ?? []).filter((id) => RELIC_BY_ID.has(id)),
+				pity: {
+					...empty$2().pity,
+					...r.pity
+				},
+				ledger: r.ledger ?? [],
+				rewards: r.rewards ?? [],
+				slotsBought: Math.max(0, Math.min(5, r.slotsBought ?? 0)),
+				opens: r.opens ?? 0,
+				equipped: [],
+				fused: Object.fromEntries(Object.entries(r.fused ?? {}).filter(([id, n]) => RELIC_BY_ID.has(id) && Number.isInteger(n) && n > 0)),
+				luckySpins: Math.max(0, Math.floor(Number(r.luckySpins) || 0))
+			};
+			return withEarnedSecrets({
+				...base,
+				equipped: Array.isArray(r.equipped) ? r.equipped.filter((id) => (base.owned[id] ?? 0) > 0 && RELIC_BY_ID.has(id)).slice(0, slotCount(base)) : autoEquip(base)
+			});
+		}
+	} catch {}
+	return empty$2();
+}
+/** Luck from one relic: its rarity's luck (+50% upgraded), or a little a copy for a stacking relic; `power` is 2 with the 15th slot. */
+function relicLuck(relic, count, upgraded = false, power = 1) {
+	if (count <= 0) return 0;
+	const raw = relic.stack ? Math.min(count, 5) * 1 : RELIC_RARITY[relic.rarity].luck * (upgraded ? 1.5 : 1);
+	return Math.round(raw * RELIC_LUCK_SCALE * power * 100) / 100;
+}
+const slotCount = (s) => 10 + Math.max(0, Math.min(5, s.slotsBought ?? 0));
+/** 2 once the 15th slot is bought: only the relic equipped in slot 15 gives twice the luck. */
+const relicPower = (s, id) => id && slotCount({ slotsBought: s.slotsBought ?? 0 }) >= 15 && s.equipped?.[14] === id ? 2 : 1;
+const luckOf = (s, id) => {
+	const r = RELIC_BY_ID.get(id);
+	return r ? relicLuck(r, s.owned[id] ?? 0, (s.upgraded ?? []).includes(id), relicPower(s, id)) : 0;
+};
+/** The best relics you own, as many as fit. */
+function autoEquip(s) {
+	const base = {
+		...s,
+		equipped: []
+	};
+	const ids = Object.keys(s.owned).filter((id) => (s.owned[id] ?? 0) > 0 && RELIC_BY_ID.has(id)).sort((a, b) => luckOf(base, b) - luckOf(base, a)).slice(0, slotCount({ slotsBought: s.slotsBought ?? 0 }));
+	if (ids.length === 15) [ids[0], ids[14]] = [ids[14], ids[0]];
+	return ids;
+}
+const RELIC_SETS = [
+	{
+		id: "finalsNight",
+		name: "Finals Night",
+		relics: [
+			"game7Ball",
+			"champagne",
+			"buzzerClock",
+			"paradeConfetti"
+		],
+		bonus: 2
+	},
+	{
+		id: "streetBall",
+		name: "Street Ball",
+		relics: [
+			"netScrap",
+			"chalkBag",
+			"wristband",
+			"mouthguard",
+			"luckySocks"
+		],
+		bonus: 2
+	},
+	{
+		id: "oldArena",
+		name: "The Old Arena",
+		relics: [
+			"floorboard",
+			"lockerPlate",
+			"tunnelSign",
+			"clockBulb",
+			"ticketStub"
+		],
+		bonus: 2
+	},
+	{
+		id: "draftDay",
+		name: "Draft Day",
+		relics: [
+			"draftCap",
+			"rookieCard",
+			"rookiePack",
+			"scoutNotes"
+		],
+		bonus: 2
+	},
+	{
+		id: "coachesRoom",
+		name: "The Coaches' Room",
+		relics: [
+			"clipboard",
+			"playbook",
+			"coachTie",
+			"lastWhiteboard",
+			"whistle"
+		],
+		bonus: 2
+	},
+	{
+		id: "hallOfFame",
+		name: "Hall of Fame",
+		relics: [
+			"hofBallot",
+			"hofJacket",
+			"retiredJersey",
+			"banner",
+			"mvpBall"
+		],
+		bonus: 3
+	},
+	{
+		id: "origins",
+		name: "Origins",
+		relics: [
+			"firstBall",
+			"peachBasket",
+			"firstJumpBall"
+		],
+		bonus: 5
+	}
+];
+const setComplete = (s, set) => set.relics.every((id) => (s.owned[id] ?? 0) > 0);
+(() => {
+	const raw = {
+		common: 0,
+		rare: RELIC_RARITY.rare.odds,
+		epic: RELIC_RARITY.epic.odds * 2,
+		legendary: RELIC_RARITY.legendary.odds * 2,
+		mythic: RELIC_RARITY.mythic.odds * 2
+	};
+	const sum = Object.values(raw).reduce((a, b) => a + b, 0);
+	return Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, v / sum]));
+})();
+/**
+* Two copies of the vault (this device and the cloud): the collection is a union (the most copies of each relic,
+* every secret, upgrade and paid reward), while spins, coins, slots, pity and the shop come from the copy that has
+* done more, so nothing can be spent twice.
+*/
+const mergeMax = (a = {}, b = {}) => {
+	const out = { ...b };
+	for (const [k, v] of Object.entries(a)) out[k] = Math.max(v, out[k] ?? 0);
+	return out;
+};
+function mergeRelics(a, b) {
+	const progress = (s) => s.opens * 4 + s.granted.length * 2 + s.ledger.length;
+	const [base, other] = progress(b) > progress(a) ? [b, a] : [a, b];
+	const owned = { ...other.owned };
+	for (const [id, n] of Object.entries(base.owned)) owned[id] = Math.max(n, owned[id] ?? 0);
+	const uniq = (xs) => [...new Set(xs)];
+	const merged = {
+		...base,
+		owned,
+		eventKeys: mergeMax(a.eventKeys, b.eventKeys),
+		eventKeysUsed: mergeMax(a.eventKeysUsed, b.eventKeysUsed),
+		secrets: uniq([...base.secrets, ...other.secrets]),
+		granted: uniq([...base.granted, ...other.granted]).slice(-2e3),
+		upgraded: uniq([...base.upgraded, ...other.upgraded]),
+		fused: mergeMax(base.fused, other.fused),
+		cosmetics: uniq([...base.cosmetics ?? [], ...other.cosmetics ?? []]),
+		wishlist: uniq([...base.wishlist ?? [], ...other.wishlist ?? []]),
+		opens: Math.max(a.opens, b.opens),
+		secretPityDone: !!(a.secretPityDone || b.secretPityDone),
+		achSeeded: !!(a.achSeeded || b.achSeeded)
+	};
+	return {
+		...merged,
+		equipped: merged.equipped.filter((id) => (owned[id] ?? 0) > 0).slice(0, slotCount(merged))
+	};
+}
+//#endregion
 //#region src/simulation/badges.ts
 const NORMAL_BADGES = [
 	{
@@ -3096,7 +4253,7 @@ function mergeActivity(a, b) {
 //#endregion
 //#region src/storage/gmLegacy.ts
 const KEY$2 = "courtvision:gmLegacy";
-const empty$3 = () => ({
+const empty$1 = () => ({
 	version: 1,
 	achievements: {},
 	leagues: {}
@@ -3105,9 +4262,9 @@ function readLegacy(read = localRead) {
 	try {
 		const raw = read(KEY$2);
 		const parsed = raw ? JSON.parse(raw) : null;
-		return parsed?.version === 1 && parsed.achievements && parsed.leagues ? parsed : empty$3();
+		return parsed?.version === 1 && parsed.achievements && parsed.leagues ? parsed : empty$1();
 	} catch {
-		return empty$3();
+		return empty$1();
 	}
 }
 function legacyTotals(legacy) {
@@ -3211,795 +4368,6 @@ const ERAS$1 = [
 		blurb: "Everyone shoots. Fast, spaced and relentless."
 	}
 ];
-//#endregion
-//#region src/relics/secretCosmetics.ts
-const SECRET_COSMETIC_KEYS = [
-	"secret-skin-nebula",
-	"secret-hairColor-phantom",
-	"secret-shoes-stardust",
-	"secret-outfit-shadowTux",
-	"secret-crown-void",
-	"secret-goat-cosmic",
-	"secret-prism",
-	"secret-tc-eclipse"
-];
-//#endregion
-//#region src/relics/relics.ts
-const RARITY_ORDER = [
-	"common",
-	"rare",
-	"epic",
-	"legendary",
-	"mythic"
-];
-const RELIC_RARITY = {
-	common: {
-		name: "Common",
-		odds: .5487,
-		luck: 1,
-		coins: 43
-	},
-	rare: {
-		name: "Rare",
-		odds: .28,
-		luck: 2,
-		coins: 85
-	},
-	epic: {
-		name: "Epic",
-		odds: .1243,
-		luck: 3,
-		coins: 213
-	},
-	legendary: {
-		name: "Legendary",
-		odds: .045,
-		luck: 4,
-		coins: 510
-	},
-	mythic: {
-		name: "Mythic",
-		odds: .002,
-		luck: 5,
-		coins: 2550
-	}
-};
-/** Every relic's luck is scaled by this (a 20% nerf on the table above, stacking relics included). */
-const RELIC_LUCK_SCALE = .8;
-const RELICS = [
-	{
-		id: "netScrap",
-		name: "Torn Net Scrap",
-		rarity: "common",
-		blurb: "Cut down after a pickup game nobody remembers.",
-		icon: "court"
-	},
-	{
-		id: "chalkBag",
-		name: "Chalk Bag",
-		rarity: "common",
-		blurb: "One clap and the arena knows.",
-		icon: "star"
-	},
-	{
-		id: "rookieCard",
-		name: "Creased Rookie Card",
-		rarity: "common",
-		blurb: "Worth nothing. Priceless to you.",
-		icon: "list"
-	},
-	{
-		id: "wristband",
-		name: "Sweat-Soaked Wristband",
-		rarity: "common",
-		blurb: "Still damp. Somehow.",
-		icon: "heart"
-	},
-	{
-		id: "ticketStub",
-		name: "Nosebleed Ticket Stub",
-		rarity: "common",
-		blurb: "Row ZZ. Best seat in the house.",
-		icon: "calendar"
-	},
-	{
-		id: "whistle",
-		name: "Referee's Whistle",
-		rarity: "rare",
-		blurb: "Every call goes your way. Allegedly.",
-		icon: "warning"
-	},
-	{
-		id: "clipboard",
-		name: "Coach's Clipboard",
-		rarity: "rare",
-		blurb: "The last play is still drawn on it.",
-		icon: "chart"
-	},
-	{
-		id: "gameBall",
-		name: "Game-Winner Ball",
-		rarity: "rare",
-		blurb: "Signed by everyone on the floor that night.",
-		icon: "play"
-	},
-	{
-		id: "warmups",
-		name: "Throwback Warm-ups",
-		rarity: "rare",
-		blurb: "Tear-away snaps still work.",
-		icon: "jersey"
-	},
-	{
-		id: "floorboard",
-		name: "Old Arena Floorboard",
-		rarity: "rare",
-		blurb: "From a building they tore down years ago.",
-		icon: "court"
-	},
-	{
-		id: "goldShoes",
-		name: "Gold Sneakers",
-		rarity: "epic",
-		blurb: "Laced for a Finals game. Never washed.",
-		icon: "shoe"
-	},
-	{
-		id: "banner",
-		name: "Rafters Banner",
-		rarity: "epic",
-		blurb: "A number nobody will ever wear again.",
-		icon: "trophy"
-	},
-	{
-		id: "champagne",
-		name: "Locker-Room Champagne",
-		rarity: "epic",
-		blurb: "The cork is still in your pocket.",
-		icon: "flame"
-	},
-	{
-		id: "scoutNotes",
-		name: "Legendary Scout's Notebook",
-		rarity: "epic",
-		blurb: "He saw them all coming.",
-		icon: "search"
-	},
-	{
-		id: "ring",
-		name: "Championship Ring",
-		rarity: "legendary",
-		blurb: "Heavy. In the best way.",
-		icon: "crown"
-	},
-	{
-		id: "trophy",
-		name: "The Larry O'Brien Replica",
-		rarity: "legendary",
-		blurb: "Gold, and it knows it.",
-		icon: "trophy"
-	},
-	{
-		id: "mvpBall",
-		name: "MVP Game Ball",
-		rarity: "legendary",
-		blurb: "From the night the league crowned him.",
-		icon: "star"
-	},
-	{
-		id: "firstBall",
-		name: "The First Basketball",
-		rarity: "mythic",
-		blurb: "Leather, laces and 1891.",
-		icon: "crown"
-	},
-	{
-		id: "peachBasket",
-		name: "The Peach Basket",
-		rarity: "mythic",
-		blurb: "Before nets. Before everything.",
-		icon: "trophy"
-	},
-	{
-		id: "benchTowel",
-		name: "Bench Towel",
-		rarity: "common",
-		blurb: "Waved for every three from the corner.",
-		icon: "jersey"
-	},
-	{
-		id: "headband",
-		name: "Terry Headband",
-		rarity: "common",
-		blurb: "Pulled low for the fourth quarter.",
-		icon: "heart"
-	},
-	{
-		id: "gameProgram",
-		name: "Game Program",
-		rarity: "common",
-		blurb: "The starting lineups, circled in pen.",
-		icon: "list"
-	},
-	{
-		id: "foamFinger",
-		name: "Foam Finger",
-		rarity: "common",
-		blurb: "We're number one. Probably.",
-		icon: "up"
-	},
-	{
-		id: "bobblehead",
-		name: "Giveaway Bobblehead",
-		rarity: "common",
-		blurb: "First 10,000 fans. You were 9,998.",
-		icon: "team"
-	},
-	{
-		id: "mouthguard",
-		name: "Chewed Mouthguard",
-		rarity: "common",
-		blurb: "Hanging out of a mouth on a game-winner.",
-		icon: "check"
-	},
-	{
-		id: "scoreSheet",
-		name: "Scorer's Sheet",
-		rarity: "common",
-		blurb: "Every point, by hand.",
-		icon: "chart"
-	},
-	{
-		id: "clockBulb",
-		name: "Shot Clock Bulb",
-		rarity: "common",
-		blurb: "Burned out at 0.4 seconds.",
-		icon: "clock"
-	},
-	{
-		id: "luckyPenny",
-		name: "Lucky Penny",
-		rarity: "common",
-		blurb: "Heads up, found at center court.",
-		icon: "star",
-		stack: true
-	},
-	{
-		id: "luckySocks",
-		name: "Lucky Socks",
-		rarity: "common",
-		blurb: "Unwashed since the streak began.",
-		icon: "shoe",
-		stack: true
-	},
-	{
-		id: "paradeConfetti",
-		name: "Parade Confetti",
-		rarity: "common",
-		blurb: "Still finding it in your coat.",
-		icon: "flame",
-		stack: true
-	},
-	{
-		id: "fanAutograph",
-		name: "Fan Autograph",
-		rarity: "common",
-		blurb: "On a napkin. Still counts.",
-		icon: "list",
-		stack: true
-	},
-	{
-		id: "pressPass",
-		name: "Press Pass",
-		rarity: "rare",
-		blurb: "Access all areas, one night only.",
-		icon: "phone"
-	},
-	{
-		id: "lockerPlate",
-		name: "Locker Nameplate",
-		rarity: "rare",
-		blurb: "Pried off when the old arena closed.",
-		icon: "lock"
-	},
-	{
-		id: "playbook",
-		name: "Dog-Eared Playbook",
-		rarity: "rare",
-		blurb: "Page 42: the play that won it.",
-		icon: "menu"
-	},
-	{
-		id: "draftCap",
-		name: "Draft Night Cap",
-		rarity: "rare",
-		blurb: "The sticker's still on the brim.",
-		icon: "calendar"
-	},
-	{
-		id: "allStarJersey",
-		name: "All-Star Jersey",
-		rarity: "rare",
-		blurb: "Worn for one weekend, framed forever.",
-		icon: "jersey"
-	},
-	{
-		id: "tunnelSign",
-		name: "Tunnel Sign",
-		rarity: "rare",
-		blurb: "Touched by every player, every night.",
-		icon: "warning"
-	},
-	{
-		id: "tipoffBall",
-		name: "Opening Tip Ball",
-		rarity: "rare",
-		blurb: "The first ball of a dynasty season.",
-		icon: "play"
-	},
-	{
-		id: "signedSneaker",
-		name: "Signed Sneaker",
-		rarity: "rare",
-		blurb: "Just the left one.",
-		icon: "shoe"
-	},
-	{
-		id: "rookiePack",
-		name: "Unopened Card Pack",
-		rarity: "rare",
-		blurb: "Could be anything in there.",
-		icon: "list",
-		stack: true
-	},
-	{
-		id: "seasonTicket",
-		name: "Season Ticket",
-		rarity: "rare",
-		blurb: "Forty-one home games of hope.",
-		icon: "calendar",
-		stack: true
-	},
-	{
-		id: "benchChain",
-		name: "Bench Mob Chain",
-		rarity: "rare",
-		blurb: "Passed down the bench after every big play.",
-		icon: "team",
-		stack: true
-	},
-	{
-		id: "bentRim",
-		name: "Bent Dunk Rim",
-		rarity: "epic",
-		blurb: "They had to stop the game.",
-		icon: "court"
-	},
-	{
-		id: "buzzerClock",
-		name: "Buzzer-Beater Clock",
-		rarity: "epic",
-		blurb: "Frozen at 0.0, forever.",
-		icon: "clock"
-	},
-	{
-		id: "coachTie",
-		name: "Coach's Lucky Tie",
-		rarity: "epic",
-		blurb: "Worn for every Game 7.",
-		icon: "settings"
-	},
-	{
-		id: "allStarMvp",
-		name: "All-Star MVP Trophy",
-		rarity: "epic",
-		blurb: "A Sunday night to remember.",
-		icon: "trophy"
-	},
-	{
-		id: "streakBall",
-		name: "Win Streak Ball",
-		rarity: "epic",
-		blurb: "Signed after win number 33.",
-		icon: "flame"
-	},
-	{
-		id: "iceBag",
-		name: "Ice Veins Bag",
-		rarity: "epic",
-		blurb: "Kept the closer cool.",
-		icon: "ice"
-	},
-	{
-		id: "bannerThread",
-		name: "Banner Thread",
-		rarity: "epic",
-		blurb: "A loose thread from a title banner.",
-		icon: "trophy",
-		stack: true
-	},
-	{
-		id: "hofBallot",
-		name: "Hall of Fame Ballot",
-		rarity: "epic",
-		blurb: "One vote. It counted.",
-		icon: "check",
-		stack: true
-	},
-	{
-		id: "game7Ball",
-		name: "Game 7 Ball",
-		rarity: "legendary",
-		blurb: "The last ball of the last game.",
-		icon: "play"
-	},
-	{
-		id: "retiredJersey",
-		name: "Retired Jersey",
-		rarity: "legendary",
-		blurb: "Lowered from the rafters for one night.",
-		icon: "jersey"
-	},
-	{
-		id: "dynastyRing",
-		name: "Dynasty Ring",
-		rarity: "legendary",
-		blurb: "The third one in a row.",
-		icon: "crown"
-	},
-	{
-		id: "fluSneakers",
-		name: "Flu Game Sneakers",
-		rarity: "legendary",
-		blurb: "He could barely stand. He scored 38.",
-		icon: "shoe"
-	},
-	{
-		id: "lastWhiteboard",
-		name: "Last-Shot Whiteboard",
-		rarity: "legendary",
-		blurb: "The X's and O's of a miracle.",
-		icon: "chart"
-	},
-	{
-		id: "hofJacket",
-		name: "Hall of Fame Jacket",
-		rarity: "legendary",
-		blurb: "Orange, and earned.",
-		icon: "jersey",
-		stack: true
-	},
-	{
-		id: "goldenNet",
-		name: "The Golden Net",
-		rarity: "mythic",
-		blurb: "Every shot through it went in.",
-		icon: "court"
-	},
-	{
-		id: "firstJumpBall",
-		name: "The First Jump Ball",
-		rarity: "mythic",
-		blurb: "Tossed up before there was a league.",
-		icon: "up"
-	},
-	{
-		id: "gavel",
-		name: "The Commissioner's Gavel",
-		rarity: "mythic",
-		blurb: "It decides everything.",
-		icon: "settings"
-	}
-];
-const RELIC_BY_ID = new Map(RELICS.map((r) => [r.id, r]));
-const SECRET_RELICS = [
-	{
-		id: "eternalSpin",
-		name: "The Eternal Spin",
-		mode: "Career Mode",
-		ability: "Always +1 respin on the Career wheel.",
-		hint: "Voted in on the first ballot, the wheel turns once more.",
-		feat: "Retire a first-ballot Hall of Famer in Career Mode."
-	},
-	{
-		id: "secondWind",
-		name: "Second Wind",
-		mode: "League Hunt",
-		ability: "Start every hunt with one extra life.",
-		hint: "Survive the hardest road and you breathe twice.",
-		feat: "Win a League Hunt on Legend."
-	},
-	{
-		id: "goldenTouch",
-		name: "Golden Touch",
-		mode: "League Hunt",
-		ability: "Start every hunt with 30 extra coins.",
-		hint: "Only luck finds the hand that turns leather to gold."
-	},
-	{
-		id: "ironWill",
-		name: "Iron Will",
-		mode: "Survival",
-		ability: "Start every Survival run with one extra Shield.",
-		hint: "Fifteen times they came for your best. Fifteen times you stood.",
-		feat: "Win 15 rounds in one Survival run."
-	},
-	{
-		id: "extraPick",
-		name: "The Extra Pick",
-		mode: "82-0 Challenge",
-		ability: "One extra reroll in every 82-0 run.",
-		hint: "Eighty-two up, none down, and a pick to spare.",
-		feat: "Finish an 82-0 regular season."
-	},
-	{
-		id: "clutchGene",
-		name: "The Clutch Gene",
-		mode: "Story Mode",
-		ability: "Your story player starts with +2 grit.",
-		hint: "From the park with no nets to a legend's ending.",
-		feat: "Reach the legend ending in Story Mode."
-	},
-	{
-		id: "ownersFavorite",
-		name: "Owner's Favorite",
-		mode: "Franchise",
-		ability: "The owner's demands ask for one fewer win.",
-		hint: "Luck alone gets you a seat in the owner's box."
-	},
-	{
-		id: "lastLook",
-		name: "The Last Look",
-		mode: "Daily Grid",
-		ability: "One extra guess on Endless grids.",
-		hint: "Luck alone gives you one more look at the board."
-	},
-	{
-		id: "luckyCharm",
-		name: "The Lucky Charm",
-		mode: "Career Mode",
-		ability: "One extra Lucky Spin on the Career wheel.",
-		hint: "Luck alone finds the charm that finds more luck."
-	},
-	{
-		id: "sixthSense",
-		name: "Sixth Sense",
-		mode: "Categorize",
-		ability: "One extra mistake on Endless boards.",
-		hint: "See every group without a single wrong guess.",
-		feat: "Solve a Categorize board with no mistakes."
-	},
-	{
-		id: "filmRoom",
-		name: "The Film Room",
-		mode: "Guess the Team",
-		ability: "One extra guess on every team.",
-		hint: "Ten teams in a row and the tapes start talking.",
-		feat: "Name 10 teams in a row in Guess the Team."
-	},
-	{
-		id: "phoneTree",
-		name: "The Phone Tree",
-		mode: "Franchise",
-		ability: "Seek trade brings in 4 more offers.",
-		hint: "Luck alone gets every GM to pick up."
-	},
-	{
-		id: "ultraCheat",
-		name: "Ultra Cheat",
-		mode: "Career Mode",
-		ability: "Spend 2 Lucky Spins on the Career wheel for one category of your choice rated 125.",
-		hint: "Own every relic in the vault and the last door opens.",
-		feat: "Own every relic in the vault.",
-		earnedOnly: true
-	}
-];
-/** Every relic in the vault owned (the key to Ultra Cheat). */
-const ownsEveryRelic = (s) => RELICS.every((r) => (s.owned[r.id] ?? 0) > 0);
-/** Secrets a collection has earned on its own (Ultra Cheat once every relic is owned). */
-const withEarnedSecrets = (s) => ownsEveryRelic(s) && !s.secrets.includes("ultraCheat") ? {
-	...s,
-	secrets: [...s.secrets, "ultraCheat"]
-} : s;
-const SECRET_BY_ID = new Map(SECRET_RELICS.map((r) => [r.id, r]));
-const empty$2 = () => ({
-	v: 1,
-	spins: 0,
-	coins: 0,
-	owned: {},
-	secrets: [],
-	granted: [],
-	history: [],
-	upgraded: [],
-	equipped: [],
-	slotsBought: 0,
-	pity: {
-		epic: 0,
-		legendary: 0,
-		mythic: 0,
-		lucky: 0
-	},
-	opens: 0,
-	ledger: [],
-	rewards: []
-});
-function loadRelics(read = localRead) {
-	try {
-		const r = JSON.parse(read("cv-relics") ?? "null");
-		if (r && r.v === 1) {
-			const base = {
-				...empty$2(),
-				...r,
-				owned: r.owned ?? {},
-				secrets: (r.secrets ?? []).filter((s) => SECRET_BY_ID.has(s)),
-				granted: r.granted ?? [],
-				history: r.history ?? [],
-				upgraded: (r.upgraded ?? []).filter((id) => RELIC_BY_ID.has(id)),
-				pity: {
-					...empty$2().pity,
-					...r.pity
-				},
-				ledger: r.ledger ?? [],
-				rewards: r.rewards ?? [],
-				slotsBought: Math.max(0, Math.min(5, r.slotsBought ?? 0)),
-				opens: r.opens ?? 0,
-				equipped: [],
-				fused: Object.fromEntries(Object.entries(r.fused ?? {}).filter(([id, n]) => RELIC_BY_ID.has(id) && Number.isInteger(n) && n > 0)),
-				luckySpins: Math.max(0, Math.floor(Number(r.luckySpins) || 0))
-			};
-			return withEarnedSecrets({
-				...base,
-				equipped: Array.isArray(r.equipped) ? r.equipped.filter((id) => (base.owned[id] ?? 0) > 0 && RELIC_BY_ID.has(id)).slice(0, slotCount(base)) : autoEquip(base)
-			});
-		}
-	} catch {}
-	return empty$2();
-}
-/** Luck from one relic: its rarity's luck (+50% upgraded), or a little a copy for a stacking relic; `power` is 2 with the 15th slot. */
-function relicLuck(relic, count, upgraded = false, power = 1) {
-	if (count <= 0) return 0;
-	const raw = relic.stack ? Math.min(count, 5) * 1 : RELIC_RARITY[relic.rarity].luck * (upgraded ? 1.5 : 1);
-	return Math.round(raw * RELIC_LUCK_SCALE * power * 100) / 100;
-}
-const slotCount = (s) => 10 + Math.max(0, Math.min(5, s.slotsBought ?? 0));
-/** 2 once the 15th slot is bought: every relic gives twice the luck. */
-const relicPower = (s) => slotCount({ slotsBought: s.slotsBought ?? 0 }) >= 15 ? 2 : 1;
-const luckOf = (s, id) => {
-	const r = RELIC_BY_ID.get(id);
-	return r ? relicLuck(r, s.owned[id] ?? 0, (s.upgraded ?? []).includes(id), relicPower(s)) : 0;
-};
-/** The best relics you own, as many as fit. */
-function autoEquip(s) {
-	return Object.keys(s.owned).filter((id) => (s.owned[id] ?? 0) > 0 && RELIC_BY_ID.has(id)).sort((a, b) => luckOf(s, b) - luckOf(s, a)).slice(0, slotCount({ slotsBought: s.slotsBought ?? 0 }));
-}
-const RELIC_SETS = [
-	{
-		id: "finalsNight",
-		name: "Finals Night",
-		relics: [
-			"game7Ball",
-			"champagne",
-			"buzzerClock",
-			"paradeConfetti"
-		],
-		bonus: 2
-	},
-	{
-		id: "streetBall",
-		name: "Street Ball",
-		relics: [
-			"netScrap",
-			"chalkBag",
-			"wristband",
-			"mouthguard",
-			"luckySocks"
-		],
-		bonus: 2
-	},
-	{
-		id: "oldArena",
-		name: "The Old Arena",
-		relics: [
-			"floorboard",
-			"lockerPlate",
-			"tunnelSign",
-			"clockBulb",
-			"ticketStub"
-		],
-		bonus: 2
-	},
-	{
-		id: "draftDay",
-		name: "Draft Day",
-		relics: [
-			"draftCap",
-			"rookieCard",
-			"rookiePack",
-			"scoutNotes"
-		],
-		bonus: 2
-	},
-	{
-		id: "coachesRoom",
-		name: "The Coaches' Room",
-		relics: [
-			"clipboard",
-			"playbook",
-			"coachTie",
-			"lastWhiteboard",
-			"whistle"
-		],
-		bonus: 2
-	},
-	{
-		id: "hallOfFame",
-		name: "Hall of Fame",
-		relics: [
-			"hofBallot",
-			"hofJacket",
-			"retiredJersey",
-			"banner",
-			"mvpBall"
-		],
-		bonus: 3
-	},
-	{
-		id: "origins",
-		name: "Origins",
-		relics: [
-			"firstBall",
-			"peachBasket",
-			"firstJumpBall"
-		],
-		bonus: 5
-	}
-];
-const setComplete = (s, set) => set.relics.every((id) => (s.owned[id] ?? 0) > 0);
-(() => {
-	const raw = {
-		common: 0,
-		rare: RELIC_RARITY.rare.odds,
-		epic: RELIC_RARITY.epic.odds * 2,
-		legendary: RELIC_RARITY.legendary.odds * 2,
-		mythic: RELIC_RARITY.mythic.odds * 2
-	};
-	const sum = Object.values(raw).reduce((a, b) => a + b, 0);
-	return Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, v / sum]));
-})();
-/**
-* Two copies of the vault (this device and the cloud): the collection is a union (the most copies of each relic,
-* every secret, upgrade and paid reward), while spins, coins, slots, pity and the shop come from the copy that has
-* done more, so nothing can be spent twice.
-*/
-const mergeMax = (a = {}, b = {}) => {
-	const out = { ...b };
-	for (const [k, v] of Object.entries(a)) out[k] = Math.max(v, out[k] ?? 0);
-	return out;
-};
-function mergeRelics(a, b) {
-	const progress = (s) => s.opens * 4 + s.granted.length * 2 + s.ledger.length;
-	const [base, other] = progress(b) > progress(a) ? [b, a] : [a, b];
-	const owned = { ...other.owned };
-	for (const [id, n] of Object.entries(base.owned)) owned[id] = Math.max(n, owned[id] ?? 0);
-	const uniq = (xs) => [...new Set(xs)];
-	const merged = {
-		...base,
-		owned,
-		secrets: uniq([...base.secrets, ...other.secrets]),
-		granted: uniq([...base.granted, ...other.granted]).slice(-2e3),
-		upgraded: uniq([...base.upgraded, ...other.upgraded]),
-		fused: mergeMax(base.fused, other.fused),
-		cosmetics: uniq([...base.cosmetics ?? [], ...other.cosmetics ?? []]),
-		wishlist: uniq([...base.wishlist ?? [], ...other.wishlist ?? []]),
-		opens: Math.max(a.opens, b.opens),
-		secretPityDone: !!(a.secretPityDone || b.secretPityDone),
-		achSeeded: !!(a.achSeeded || b.achSeeded)
-	};
-	return {
-		...merged,
-		equipped: merged.equipped.filter((id) => (owned[id] ?? 0) > 0).slice(0, slotCount(merged))
-	};
-}
 //#endregion
 //#region src/hunt/coaches.ts
 const c = (id, name, bonus, style, franchises, blurb) => ({
@@ -6573,7 +6941,7 @@ function readGrid(g) {
 }
 /** This browser's endless records (never missing). */
 const endlessOf = (r) => readEndless(r.endless);
-const empty$1 = () => ({
+const empty = () => ({
 	guess: {},
 	hilo: {
 		best: 0,
@@ -6591,7 +6959,7 @@ function readArcade(read = (k) => {
 }) {
 	try {
 		const r = JSON.parse(read("cv-arcade") ?? "null");
-		if (!r || typeof r !== "object") return empty$1();
+		if (!r || typeof r !== "object") return empty();
 		return {
 			guess: r.guess && typeof r.guess === "object" ? r.guess : {},
 			hilo: {
@@ -6604,7 +6972,7 @@ function readArcade(read = (k) => {
 			...r.grid && typeof r.grid === "object" ? { grid: readGrid(r.grid) } : {}
 		};
 	} catch {
-		return empty$1();
+		return empty();
 	}
 }
 /** Two devices' records: a finished day beats an unfinished one, best streaks, a played bracket beats an unplayed one. */
@@ -6911,6 +7279,262 @@ function hasOwnerAccess(read = (k) => localStorage.getItem(k)) {
 		return false;
 	}
 }
+//#endregion
+//#region src/profile/releaseTitles.ts
+/** Fifty permanent progression titles, earned from existing saved totals. */
+const RELEASE_TITLES = [
+	{
+		title: "Bench Spark",
+		kind: "level",
+		need: 5
+	},
+	{
+		title: "Practice Captain",
+		kind: "level",
+		need: 10
+	},
+	{
+		title: "Court Cartographer",
+		kind: "level",
+		need: 15
+	},
+	{
+		title: "Film Fanatic",
+		kind: "level",
+		need: 20
+	},
+	{
+		title: "Rotation Reader",
+		kind: "level",
+		need: 25
+	},
+	{
+		title: "Sixth-Man Scholar",
+		kind: "level",
+		need: 30
+	},
+	{
+		title: "Paint Professor",
+		kind: "level",
+		need: 35
+	},
+	{
+		title: "Pick-and-Roll Poet",
+		kind: "level",
+		need: 40
+	},
+	{
+		title: "Corner Specialist",
+		kind: "level",
+		need: 45
+	},
+	{
+		title: "Tempo Tactician",
+		kind: "level",
+		need: 50
+	},
+	{
+		title: "Roster Architect",
+		kind: "level",
+		need: 55
+	},
+	{
+		title: "Deadline Dealer",
+		kind: "level",
+		need: 60
+	},
+	{
+		title: "Scouting Savant",
+		kind: "level",
+		need: 65
+	},
+	{
+		title: "Cap Strategist",
+		kind: "level",
+		need: 70
+	},
+	{
+		title: "Timeout Technician",
+		kind: "level",
+		need: 75
+	},
+	{
+		title: "Backcourt Brain",
+		kind: "level",
+		need: 80
+	},
+	{
+		title: "Glass Guardian",
+		kind: "level",
+		need: 85
+	},
+	{
+		title: "Clutch Conductor",
+		kind: "level",
+		need: 90
+	},
+	{
+		title: "Fastbreak Foreman",
+		kind: "level",
+		need: 95
+	},
+	{
+		title: "Playbook Curator",
+		kind: "level",
+		need: 100
+	},
+	{
+		title: "Dynasty Dreamer",
+		kind: "level",
+		need: 105
+	},
+	{
+		title: "Draft Day Detective",
+		kind: "level",
+		need: 110
+	},
+	{
+		title: "Locker Room Leader",
+		kind: "level",
+		need: 115
+	},
+	{
+		title: "Possession Professor",
+		kind: "level",
+		need: 120
+	},
+	{
+		title: "Hardwood Historian",
+		kind: "level",
+		need: 125
+	},
+	{
+		title: "Era Explorer",
+		kind: "level",
+		need: 130
+	},
+	{
+		title: "Basketball Archivist",
+		kind: "level",
+		need: 135
+	},
+	{
+		title: "Baseline Boss",
+		kind: "level",
+		need: 140
+	},
+	{
+		title: "Sideline Sage",
+		kind: "level",
+		need: 145
+	},
+	{
+		title: "Shot Clock Scholar",
+		kind: "level",
+		need: 150
+	},
+	{
+		title: "Trophy Curator",
+		kind: "trophies",
+		need: 1e3
+	},
+	{
+		title: "Silverware Seeker",
+		kind: "trophies",
+		need: 2e3
+	},
+	{
+		title: "Banner Collector",
+		kind: "trophies",
+		need: 3e3
+	},
+	{
+		title: "Podium Regular",
+		kind: "trophies",
+		need: 4e3
+	},
+	{
+		title: "Medal Magnet",
+		kind: "trophies",
+		need: 5e3
+	},
+	{
+		title: "Ringside Royalty",
+		kind: "trophies",
+		need: 6e3
+	},
+	{
+		title: "Victory Librarian",
+		kind: "trophies",
+		need: 7e3
+	},
+	{
+		title: "Rafters Resident",
+		kind: "trophies",
+		need: 8e3
+	},
+	{
+		title: "Championship Chronicler",
+		kind: "trophies",
+		need: 9e3
+	},
+	{
+		title: "Hardware Hero",
+		kind: "trophies",
+		need: 1e4
+	},
+	{
+		title: "Daily Regular",
+		kind: "streak",
+		need: 3
+	},
+	{
+		title: "Morning Shootaround",
+		kind: "streak",
+		need: 7
+	},
+	{
+		title: "Streak Specialist",
+		kind: "streak",
+		need: 14
+	},
+	{
+		title: "Routine Royalty",
+		kind: "streak",
+		need: 30
+	},
+	{
+		title: "Calendar Captain",
+		kind: "streak",
+		need: 60
+	},
+	{
+		title: "Mission Rookie",
+		kind: "missions",
+		need: 5
+	},
+	{
+		title: "Mission Scout",
+		kind: "missions",
+		need: 10
+	},
+	{
+		title: "Mission Captain",
+		kind: "missions",
+		need: 25
+	},
+	{
+		title: "Mission Commander",
+		kind: "missions",
+		need: 50
+	},
+	{
+		title: "Mission Legend",
+		kind: "missions",
+		need: 100
+	}
+];
+const releaseTitleProgress = (c, t) => (c[t.kind] ?? 0) / t.need;
 const AREA_LABEL = {
 	gm: "GM Mode",
 	career: "Career",
@@ -8174,6 +8798,13 @@ const animated = (id, name, css, anim) => {
 	};
 };
 [
+	color("event-newyear", "Firework Gold", "#ffd166", { shop: "evt-newyear-color" }),
+	color("event-valentine", "Heart Pink", "#ff77aa", { shop: "evt-valentine-color" }),
+	color("event-allstar", "All-Star Violet", "#b48aff", { shop: "evt-allstar-color" }),
+	color("event-easter", "Spring Mint", "#b7ef83", { shop: "evt-easter-color" }),
+	color("event-playoffs", "Finals Gold", "#e8bc44", { shop: "evt-playoffs-color" }),
+	color("event-summer", "Sunset Orange", "#ffb85c", { shop: "evt-summer-color" }),
+	color("event-anniversary", "Founder Lilac", "#b9a0ff", { shop: "evt-anniversary-color" }),
 	color("cream", "Cream", "#f4f0e6", { level: 1 }),
 	color("orange", "Court orange", "#ff9d3d"),
 	color("red", "Red", "#ff6b6b"),
@@ -8285,6 +8916,32 @@ const ROAD_TITLES = ["Rookie GM", ...LEVEL_ROAD.filter(([, k]) => k === "title")
 const SUPPORTER_TITLE = "Supporter";
 /** Leaderboard honors the server can grant (see server/honors.ts). `first` is any #1. */
 const HONORS = [
+	{
+		id: "gm-2",
+		title: "Silver Strategist",
+		how: "#2 on the GM leaderboard (at least 10 GMs)"
+	},
+	{
+		id: "gm-3",
+		title: "Bronze Mastermind",
+		how: "#3 on the GM leaderboard (at least 10 GMs)"
+	},
+	{
+		id: "trophy-1",
+		title: "Trophy Sovereign",
+		how: "#1 on the trophy leaderboard (at least 10 GMs)",
+		first: true
+	},
+	{
+		id: "trophy-2",
+		title: "Silver Trophy Keeper",
+		how: "#2 on the trophy leaderboard (at least 10 GMs)"
+	},
+	{
+		id: "trophy-3",
+		title: "Bronze Trophy Keeper",
+		how: "#3 on the trophy leaderboard (at least 10 GMs)"
+	},
 	{
 		id: "gm-1",
 		title: "#1 GM",
@@ -8495,17 +9152,56 @@ function unlockContext(level, read = localRead) {
 	};
 }
 /** Titles bought in a holiday event shop (retention/holidayShop.ts). */
-const EVENT_TITLES = [{
-	title: "Pumpkin King",
-	key: "evt-halloween-title",
-	how: "Spooky Season event shop"
-}, {
-	title: "Holiday Hooper",
-	key: "evt-christmas-title",
-	how: "Winter Wonderland event shop"
-}];
+const EVENT_TITLES = [
+	{
+		title: "Midnight Maestro",
+		key: "evt-newyear-title",
+		how: "Available in the matching annual event shop"
+	},
+	{
+		title: "Heart of the Court",
+		key: "evt-valentine-title",
+		how: "Available in the matching annual event shop"
+	},
+	{
+		title: "Starlight Captain",
+		key: "evt-allstar-title",
+		how: "Available in the matching annual event shop"
+	},
+	{
+		title: "Golden Egg Hunter",
+		key: "evt-easter-title",
+		how: "Available in the matching annual event shop"
+	},
+	{
+		title: "Banner Chaser",
+		key: "evt-playoffs-title",
+		how: "Available in the matching annual event shop"
+	},
+	{
+		title: "Sunset Baller",
+		key: "evt-summer-title",
+		how: "Available in the matching annual event shop"
+	},
+	{
+		title: "September Original",
+		key: "evt-anniversary-title",
+		how: "Available in the matching annual event shop"
+	},
+	{
+		title: "Pumpkin King",
+		key: "evt-halloween-title",
+		how: "Spooky Season event shop"
+	},
+	{
+		title: "Holiday Hooper",
+		key: "evt-christmas-title",
+		how: "Winter Wonderland event shop"
+	}
+];
 /** Titles from the leaderboards, the modes and the Supporter pass that are open. */
 const earnedExtraTitles = (c) => [
+	...RELEASE_TITLES.filter((t) => releaseTitleProgress(c, t) >= 1).map((t) => t.title),
 	...EVENT_TITLES.filter((t) => (c.shop ?? []).includes(t.key)).map((t) => t.title),
 	...HONORS.filter((h) => c.honors.includes(h.id)).map((h) => h.title),
 	...MODE_TITLES.filter((t) => c.modes.includes(t.mode)).map((t) => t.title),
@@ -9876,68 +10572,6 @@ function mergeRecordBook(a, b) {
 		finals: finals.slice(0, MAX_FINALS)
 	};
 }
-new Map([{
-	id: "halloween",
-	name: "Spooky Season",
-	coin: "Candy",
-	coins: "Candy",
-	month: 9,
-	day: 31,
-	blurb: "Pumpkins on the hardwood and ghosts in the rafters. Play anything to collect Candy, then spend it in the Spooky Shop.",
-	colors: {
-		bg: "#140a1f",
-		panel: "#24123a",
-		accent: "#ff7a1a",
-		text: "#fbeee0",
-		glow: "#8bdc3f"
-	}
-}, {
-	id: "christmas",
-	name: "Winter Wonderland",
-	coin: "Snowflake",
-	coins: "Snowflakes",
-	month: 11,
-	day: 25,
-	blurb: "Snow on the court and lights on the rim. Play anything to collect Snowflakes, then spend them in the Holiday Shop.",
-	colors: {
-		bg: "#071a14",
-		panel: "#0f2e24",
-		accent: "#e8323c",
-		text: "#f4fbff",
-		glow: "#9fd8ff"
-	}
-}].map((h) => [h.id, h]));
-const empty = () => ({
-	v: 1,
-	earned: {},
-	spent: {},
-	counted: []
-});
-const nums = (x) => Object.fromEntries(Object.entries(x && typeof x === "object" ? x : {}).filter(([, v]) => Number.isFinite(Number(v)) && Number(v) >= 0).map(([k, v]) => [k, Math.floor(Number(v))]));
-function loadHoliday(read = localRead) {
-	try {
-		const x = JSON.parse(read("cv-holiday") ?? "null");
-		if (!x || typeof x !== "object") return empty();
-		return {
-			v: 1,
-			earned: nums(x.earned),
-			spent: nums(x.spent),
-			counted: Array.isArray(x.counted) ? x.counted.filter((k) => typeof k === "string").slice(-500) : []
-		};
-	} catch {
-		return empty();
-	}
-}
-/** Two copies (this device and the cloud): the most earned and the most spent per event, and every game counted. */
-function mergeHoliday(a, b) {
-	const max = (x, y) => Object.fromEntries([.../* @__PURE__ */ new Set([...Object.keys(x), ...Object.keys(y)])].map((k) => [k, Math.max(x[k] ?? 0, y[k] ?? 0)]));
-	return {
-		v: 1,
-		earned: max(a.earned, b.earned),
-		spent: max(a.spent, b.spent),
-		counted: [.../* @__PURE__ */ new Set([...b.counted, ...a.counted])].slice(-500)
-	};
-}
 const USERS_MAX = 300;
 const count$1 = (v) => Number.isFinite(Number(v)) ? Math.max(0, Math.min(1e6, Math.floor(Number(v)))) : 0;
 const okId = (s) => typeof s === "string" && s.length > 0 && s.length <= 80;
@@ -10856,6 +11490,9 @@ function derive(blob, now = /* @__PURE__ */ new Date()) {
 		wins: gm.wins,
 		titles: gm.titles,
 		achievements: gm.achievements,
+		trophies: Math.max(0, Math.floor(totalTrophies(readWithCareers))),
+		perfectTitles: p82.titles,
+		perfect98: p82.perfect98,
 		huntRuns: hunt.runs,
 		huntWins: hunt.wins,
 		huntBest: int(hunt.bestStop, 0, 10) ? hunt.bestStop : 0,
@@ -11097,11 +11734,17 @@ const enc = encodeURIComponent;
 async function computeHonors(env, userId, d, now, previous, f = fetch) {
 	const honors = new Set(previous);
 	const others = `user_id=neq.${userId}`;
-	if (await count(env, `lb_gms?select=id`, f) >= MIN_FIELD.gm) {
-		const rank = await count(env, `lb_gms?select=id&xp=gt.${d.profile.xp}&id=neq.${userId}`, f) + 1;
-		if (rank === 1) honors.add("gm-1");
+	const gms = await count(env, `lb_gms?select=id`, f);
+	if (gms >= MIN_FIELD.gm) {
+		const rank = await count(env, `lb_gms?select=id&or=(xp.gt.${d.profile.xp},and(xp.eq.${d.profile.xp},id.lt.${userId}))&id=neq.${userId}`, f) + 1;
+		if (rank <= 3) honors.add(`gm-${rank}`);
 		if (rank <= 10) honors.add("gm-10");
 		if (rank <= 100) honors.add("gm-100");
+	}
+	const trophies = Number(d.profile.stats.trophies ?? 0);
+	if (Number.isFinite(trophies) && trophies > 0 && gms >= MIN_FIELD.gm) {
+		const rank = await count(env, `lb_progress?select=id&or=(trophies.gt.${trophies},and(trophies.eq.${trophies},id.lt.${userId}))&id=neq.${userId}`, f) + 1;
+		if (rank <= 3) honors.add(`trophy-${rank}`);
 	}
 	const today = now.toISOString().slice(0, 10), thisWeek = weekKey(now);
 	for (const w of d.weekly.filter((x) => x.week < thisWeek).slice(-6)) {

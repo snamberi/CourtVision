@@ -4,6 +4,7 @@ import { xpParts, totalXp, levelFor, careerCacheOf, type CareerXpCache } from '.
 import { earnedModeAchievements } from '../src/profile/modeAchievements';
 import { TIERS } from '../src/cloud/ranked';
 import { readLegacy, legacyTotals } from '../src/storage/gmLegacy';
+import { totalTrophies } from '../src/profile/trophyRoad';
 import { loadRecords, huntScore } from '../src/hunt/storage';
 import { loadPerfectRecords, perfectWeeks } from '../src/perfect/storage';
 import { loadRebuildRecords } from '../src/simulation/rebuildChallenge';
@@ -198,6 +199,7 @@ export function derive(blob: ProgressBlob, now = new Date()): Derived {
   const stats = {
     ranked: bySeason, rankedBest: tierFor(rankedBest).tier.id,
     seasons: gm.seasons, wins: gm.wins, titles: gm.titles, achievements: gm.achievements,
+    trophies: Math.max(0, Math.floor(totalTrophies(readWithCareers))), perfectTitles: p82.titles, perfect98: p82.perfect98,
     huntRuns: hunt.runs, huntWins: hunt.wins, huntBest: int(hunt.bestStop, 0, 10) ? hunt.bestStop : 0, dailyWins: daily.filter(d => d.won).length,
     rebuildStars: rebuild.reduce((n, r) => n + r.stars, 0), rebuildTitles: rebuild.filter(r => r.title_in != null).length,
     careers: players.length, hallOfFame: hof, bestPlayer: best, ...playTime(read, now), xpParts: Object.fromEntries(parts.map(p => [p.id, p.xp])),

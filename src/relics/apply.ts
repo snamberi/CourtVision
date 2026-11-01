@@ -9,6 +9,7 @@ import { totalXp, levelFor, xpParts } from '../profile/profile';
  */
 export interface RelicRunOpts {
   luck: number;
+  secrets: SecretId[];
   secondWind: boolean; goldenTouch: boolean; ironWill: boolean; extraPick: boolean; clutchGene: boolean; eternalSpin: boolean; lastLook: boolean; ownersFavorite: boolean;
   luckyCharm: boolean; sixthSense: boolean; filmRoom: boolean; phoneTree: boolean; ultraCheat: boolean;
   /** The pet you brought along (profile/pets.ts), whose ability the mode applies. */
@@ -22,7 +23,7 @@ export function relicRunOpts(read: Read = localRead): RelicRunOpts {
   let pet: PetId | null = null;
   try { pet = activePet(levelFor(totalXp(xpParts(read))).level, read); } catch { /* no profile yet */ }
   return {
-    pet,
+    pet, secrets: s.secrets,
     luck: totalLuck(s) / 100 + (pet === 'bunny' ? BUNNY_LUCK : 0),
     secondWind: has('secondWind'), goldenTouch: has('goldenTouch'), ironWill: has('ironWill'), extraPick: has('extraPick'),
     clutchGene: has('clutchGene'), eternalSpin: has('eternalSpin'), lastLook: has('lastLook'), ownersFavorite: has('ownersFavorite'),

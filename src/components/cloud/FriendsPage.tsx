@@ -1,3 +1,4 @@
+import { PageJumps } from '../PageJumps';
 import { useEffect, useState } from 'react';
 import { cloudEnabled, useAccount } from '../../cloud/account';
 import { searchUsers, friendActivity, type ActivityItem } from '../../cloud/boards';
@@ -25,6 +26,7 @@ export function FriendsPage({ onExit, onUser, onCommunity, onClubs, onOnline }: 
       <button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button>
       <div className="hunt-title"><span className="pixel-eyebrow">YOUR CREW</span><h1>Friends</h1></div>
     </header>
+    <PageJumps />
     {!cloudEnabled ? <p className="empty-state">Accounts and friends are not switched on for this site yet.</p> : <div className="friends-grid">
       {!signedIn && <section className="locker-bay friends-signin">
         <h2><PixelIcon name="team" size={18} /> Play with your friends</h2>
@@ -138,10 +140,14 @@ const ago = (iso: string) => { const m = Math.max(1, Math.round((Date.now() - Da
 /** The activity feed: what the GMs you follow have been doing lately. */
 function ActivityFeed({ onUser }: { onUser: (username: string) => void }) {
   const [items, setItems] = useState<ActivityItem[] | null>(null);
-  useEffect(() => { let live = true; void friendActivity().then(x => { if (live) setItems(x); }, () => { if (live) setItems([]); }); return () => { live = false; }; }, []);
+  const [error, setError] = useState('');
+  const [refresh, setRefresh] = useState(0);
+  useEffect(() => { let live = true; void friendActivity().then(x => { if (live) setItems(x); }, () => { if (live) { setItems([]); setError('Could not load activity. Try again.'); } }); return () => { live = false; }; }, [refresh]);
   return <section className="locker-bay friends-activity">
     <h2><PixelIcon name="chart" size={18} /> Friend activity</h2>
-    {items == null ? <p className="hint-text">Loading…</p> : !items.length ? <p className="hint-text">Nothing yet. Follow some GMs and their results show up here.</p>
+    <button disabled={items == null} onClick={() => { setItems(null); setError(''); setRefresh(n => n + 1); }}>Refresh activity</button>
+    {error && <p role="alert">{error}</p>}
+    {items == null ? <p className="hint-text">Loading…</p> : !items.length && !error ? <p className="hint-text">Nothing yet. Follow some GMs and their results show up here.</p>
       : <ul className="activity-feed">{items.map((a, i) => <li key={i}><button className="link-button" onClick={() => onUser(a.username)}><NameTag name={`@${a.username}`} icon={a.icon} color={a.color} /></button> <span>{a.text}</span><small>{ago(a.at)}</small></li>)}</ul>}
   </section>;
 }

@@ -96,8 +96,8 @@ describe('leaderboard honors on the server', () => {
 
   it('ranks on the GM board once the field is real, and keeps what was earned', async () => {
     const now = new Date('2026-10-05T12:00:00Z');
-    expect(await computeHonors(env, 'me', derived(), now, [], counts([['xp=gt', 0], ['lb_gms', 50]]))).toEqual(['gm-1', 'gm-10', 'gm-100']);
-    expect(await computeHonors(env, 'me', derived(), now, [], counts([['xp=gt', 30], ['lb_gms', 50]]))).toEqual(['gm-100']);
+    expect(await computeHonors(env, 'me', derived(), now, [], counts([['xp.gt.', 0], ['lb_gms', 50]]))).toEqual(['gm-1', 'gm-10', 'gm-100']);
+    expect(await computeHonors(env, 'me', derived(), now, [], counts([['xp.gt.', 30], ['lb_gms', 50]]))).toEqual(['gm-100']);
     // Too small a field hands out nothing new; earlier honors stay.
     expect(await computeHonors(env, 'me', derived(), now, ['weekly-1'], counts([['lb_users', 4]]))).toEqual(['weekly-1']);
   });
@@ -125,5 +125,18 @@ describe('leaderboard honors on the server', () => {
     // 30 played: the top 3 make the cut. Fourth does not.
     expect(await computeHonors(env, 'me', derived({ weekly }), now, [], counts([['score=gt', 2], ['board=eq.hunt', 29], ['lb_gms', 2]]))).toContain('hunt-week-10');
     expect(await computeHonors(env, 'me', derived({ weekly }), now, [], counts([['score=gt', 3], ['board=eq.hunt', 29], ['lb_gms', 2]]))).not.toContain('hunt-week-10');
+  });
+});
+
+describe('release podium honors', () => {
+  const env = { url: 'https://example.supabase.co', serviceKey: 'test', publicKey: 'test' };
+  it('grants GM and trophy podium titles using stable tie ordering', async () => {
+    const requests: string[] = [];
+    const f = (async (url: string) => { const u = decodeURIComponent(String(url)); requests.push(u); const n = u.includes('or=') ? 1 : 20; return new Response('[]', { status: 200, headers: { 'content-range': `0-0/${n}` } }); }) as typeof fetch;
+    const d = { profile: { level: 20, xp: 9000, stats: { trophies: 5000 } }, achievements: [], players: [], weekly: [], daily: [], rebuild: [], codes: [], ranked: [] };
+    const honors = await computeHonors(env, '00000000-0000-0000-0000-000000000002', d, new Date('2026-10-31'), [], f);
+    expect(honors).toContain('gm-2'); expect(honors).toContain('trophy-2');
+    expect(honors).not.toContain('gm-1'); expect(honors).not.toContain('trophy-1');
+    expect(requests.some(u => u.includes('id.lt.00000000-0000-0000-0000-000000000002'))).toBe(true);
   });
 });
