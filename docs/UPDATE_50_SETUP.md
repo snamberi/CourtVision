@@ -38,3 +38,9 @@ References for this implementation: [Push API](https://www.w3.org/TR/push-api/) 
 - Rewarded ads remain disabled until a real approved provider is configured and its completed-view callback is verified. No simulated ad is represented as a real ad view.
 
 The broader game economy retains its existing client-managed merge model. Durable receipts solve recoverable reward delivery; they do not make every offline coin/spin transaction server-authoritative.
+
+## Saving-only release — November 3, 2026
+
+PR #48 merged manual Career cloud saving and account-switch sync guards into main. This draft includes that fix; the remaining Update 50 features are still held. Hosted Supabase Career schema, ownership policies and RPC grants were verified. No additional SQL run is required for the existing configured project.
+
+Remaining activation checks: confirm the Cloudflare production deployment of main, then authenticated save/load on two devices. Background push still needs Cloudflare VAPID secrets and a production delivery test; no Cloudflare connection was available in this session. Rewarded ads still need an approved provider. Neither live delivery nor multi-device gameplay is claimed as tested.

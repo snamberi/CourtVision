@@ -87,18 +87,22 @@ export function syncNow(): Promise<void> {
       writeLocal(storage);
       // Careers: yours, plus careers made on this device before any account claimed it.
       const mine = (await localCareers()).filter(c => c.cloudOwner === userId || (!c.cloudOwner && !foreign));
+      if (getAccount().userId !== userId) return;
       const careers = mergeCareers(mine, (cloud?.careers ?? []) as CareerMeta[]).map(c => (c.cloudOwner === userId ? c : { ...c, cloudOwner: userId }));
       const fresh = careers.filter(c => !mine.some(m => m.id === c.id && m.updatedAt >= c.updatedAt));
       const tag = mine.filter(m => m.cloudOwner !== userId).map(m => ({ ...m, cloudOwner: userId }));
       if (fresh.length || tag.length) { await restoreCareers({ metas: [...tag.filter(t => !fresh.some(f => f.id === t.id)), ...fresh], worlds: [] }); noteCareers(await listCareers()); window.dispatchEvent(new Event(PROGRESS_EVENT)); }
+      if (getAccount().userId !== userId) return;
       const blob: ProgressBlob = { version: 1, updatedAt: Date.now(), storage, careers };
       const body = JSON.stringify(blob);
       const fingerprint = JSON.stringify({ userId, storage, careers: careers.map(c => [c.id, c.updatedAt]) });
       if ((fingerprint !== lastPushed || Date.now() - lastPushAt > SEEN_EVERY) && !serverOff) {
         // Gzip on the way up (game data shrinks about ten times); browsers without it send plain JSON.
         const packed = await gzip(body);
+        if (getAccount().userId !== userId) return;
         const res = await fetch('/api/sync', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken() ?? token}`, ...(packed ? { 'X-Sync-Encoding': 'gzip' } : {}) }, body: packed ?? body });
         const out = await res.json().catch(() => null) as { error?: string; vault?: string } | null;
+        if (getAccount().userId !== userId) return;
         // Another sync (this device or another) just landed: try again shortly with the merged result.
         if (res.status === 429) { setAccount({ sync: { ...getAccount().sync, state: 'ok' } }); syncSoon(5_000); return; }
         if (res.status === 503) serverOff = true;
@@ -110,15 +114,18 @@ export function syncNow(): Promise<void> {
         lastSize = { raw: body.length, wire: packed?.byteLength ?? body.length, careers: JSON.stringify(careers).length };
         await refreshProfile(client);
       }
+      if (getAccount().userId !== userId) return;
       // The title and frame shown on the boards follow what is equipped here.
       const e = equipped(), prof = getAccount().profile;
       const packed = packColors(e.color, e.titleColor);
       if (prof && (prof.title !== e.title || prof.frame !== e.frame || (prof.icon ?? 'ball') !== e.icon || (prof.color ?? 'cream') !== packed)) await updateProfile({ title: e.title, frame: e.frame, icon: e.icon, color: packed });
+      if (getAccount().userId !== userId) return;
       writeOwner(userId);
       setAccount({ sync: { state: 'ok', at: Date.now(), message: null, size: lastSize ?? undefined } });
       // The public Ninefold profile card (never blocks or fails the sync).
       void publishNinefold(client, userId, getAccount().profile);
     } catch (e) {
+      if (getAccount().userId !== userId) return;
       setAccount({ sync: { state: 'error', at: getAccount().sync.at, message: e instanceof Error ? e.message : String(e), size: lastSize ?? undefined } });
     }
   })().finally(() => { running = null; });
