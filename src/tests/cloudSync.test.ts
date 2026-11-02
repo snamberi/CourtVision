@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CareerMeta } from '../career/career';
 
 // A fake account + cloud row + career store, so syncNow runs end to end without a network.
-const h = vi.hoisted(() => ({ userId: 'u1', cloud: null as unknown, careers: [] as CareerMeta[], pushed: [] as unknown[] }));
+const h = vi.hoisted(() => ({ userId: 'u1', cloud: null as unknown, careers: [] as CareerMeta[], pushed: [] as unknown[], onList: null as (() => void) | null }));
 vi.mock('../cloud/account', () => {
   let state = { status: 'signedIn', userId: h.userId, profile: null, sync: { state: 'idle', at: null, message: null } } as Record<string, unknown>;
   return {
@@ -17,7 +17,7 @@ vi.mock('../cloud/account', () => {
   };
 });
 vi.mock('../career/storage', () => ({
-  listCareers: async () => h.careers,
+  listCareers: async () => { h.onList?.(); return h.careers; },
   restoreCareers: async ({ metas }: { metas: CareerMeta[] }) => { for (const m of metas) h.careers = [...h.careers.filter(c => c.id !== m.id), m]; },
 }));
 
@@ -26,7 +26,7 @@ const career = (id: string, owner?: string) => ({ id, name: id, status: 'retired
 
 beforeEach(() => {
   localStorage.clear();
-  h.cloud = null; h.careers = []; h.pushed = [];
+  h.cloud = null; h.careers = []; h.pushed = []; h.onList = null;
   globalThis.fetch = vi.fn(async (_u: unknown, init?: RequestInit) => { h.pushed.push(JSON.parse(String(init?.body))); return new Response('{}', { status: 200 }); }) as typeof fetch;
 });
 
@@ -60,4 +60,12 @@ describe('cloud sync ownership', () => {
     await syncNow();
     expect(localStorage.getItem('cv-rebuild-records')).toBeNull();
   });
+});
+
+it('does not upload the previous account data when the account changes while reading careers', async () => {
+ h.userId = 'first';
+ h.onList = () => { h.userId = 'second'; };
+ await syncNow();
+ expect(fetch).not.toHaveBeenCalled();
+ expect(localStorage.getItem('cv-cloud-owner')).toBeNull();
 });
