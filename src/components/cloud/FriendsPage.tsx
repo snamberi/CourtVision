@@ -36,7 +36,7 @@ export function FriendsPage({ onExit, onUser, onCommunity, onClubs, onOnline }: 
       {signedIn && <WeeklyRivalCard onUser={onUser} />}
       {signedIn && <section className="locker-bay friends-list">
         <h2><PixelIcon name="team" size={18} /> You and the GMs you follow</h2>
-        <BoardTable spec={{ kind: 'friends' }} scoreLabel="XP" onUser={onUser} empty="You don't follow anyone yet. Find a GM below and press Follow on their profile." />
+        <BoardTable spec={{ kind: 'friends' }} scoreLabel="Court Score" onUser={onUser} empty="You don't follow anyone yet. Find a GM below and press Follow on their profile." />
       </section>}
       {onOnline && <section className="locker-bay friends-online">
         <h2><PixelIcon name="court" size={18} /> Online leagues</h2>

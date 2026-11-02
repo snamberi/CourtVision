@@ -94,3 +94,17 @@ describe('holiday events', () => {
     expect(mergeHoliday(a as HolidayState, a as HolidayState).earned).toEqual(a.earned);
   });
 });
+
+describe('annual event carryover', () => {
+  it('spends older currency without copying it or mixing other events/future years', () => {
+    const s: HolidayState = { v: 1, earned: { 'halloween-2026': 30, 'christmas-2026': 99, 'halloween-2028': 100 }, spent: { 'halloween-2026': 10 }, counted: [] };
+    const next = spendEventCoins(s, 15, new Date('2027-10-02T12:00:00Z'), 'halloween')!;
+    expect(next.earned).toEqual(s.earned);
+    expect(next.spent['halloween-2027']).toBe(15);
+    expect(eventCoins(next, 'halloween-2027')).toBe(5);
+    expect(eventCoins(next, 'christmas-2027')).toBe(99);
+    expect(eventCoins(mergeHoliday(s, next), 'halloween-2027')).toBe(5);
+    expect(spendEventCoins(next, 6, new Date('2027-10-02T12:00:00Z'), 'halloween')).toBeNull();
+    expect(spendEventCoins(next, 1, OFF, 'halloween')).toBeNull();
+  });
+});

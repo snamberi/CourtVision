@@ -7,7 +7,7 @@ Branch: `release/update-50`. Keep this release in draft. Do not merge or deploy 
 - Three permanent Franchise mission Secrets: Draft Whisperer, Loyalty Pays and The Rebuilder.
 - Four Halloween Secrets and four Christmas Secrets, with actual run/league effects rather than catalog entries alone.
 - Seven further event Secrets, making 18 new Secrets total. Each has pixel-grid SVG artwork.
-- Nine annual UTC events, independent year-specific currency and spin-key balances, overlap-aware rewards, event shops, event selector, and event-only Secret drops. Halloween and Christmas retain their existing cosmetics; the seven new shops each add a title and name color.
+- Nine annual UTC events, independent event currency and spin-key balances with annual carryover, overlap-aware rewards, event shops, event selector, and event-only Secret drops. Halloween and Christmas retain their existing cosmetics; the seven new shops each add a title and name color.
 - Event spins double each non-common rarity probability and the Secret/cosmetic drop chance. Common takes the remainder; pity still applies. Mission-only Secrets never drop from spins. Personal run bonuses are excluded from daily and weekly shared-seed runs.
 - Slot 15 doubles only its equipped relic. A selector swaps a chosen equipped relic into that slot when all 15 slots are filled. Auto-equip puts the strongest selected relic there.
 - 50 permanent titles with level, trophy, streak and weekly-mission requirements, shown with unlock progress in the profile picker.
@@ -46,7 +46,7 @@ These are game-event windows, not claims about the dates of real-world tournamen
 | Summer Heat | June 1–August 31 | Sun Tokens | Sun Key |
 | Anniversary | September 27–30, every year | Founder Tokens | Founder Key |
 
-Keys cost 10 of the matching event currency. Old event-year balances do not transfer to a new year. Unlocked cosmetics and Secrets remain owned.
+Keys cost 10 of the matching event currency. Unused currency and keys carry into future occurrences of the same event. Annual earned/spent counters remain separate for cloud merging; balances are pooled without copying rewards. Unlocked cosmetics and Secrets remain owned.
 
 ## Release checks and manual work
 
@@ -81,3 +81,7 @@ Keys cost 10 of the matching event currency. Old event-year balances do not tran
 ## Next mode idea: The Expansion Draft
 
 Build a new franchise from the players established teams leave unprotected. Start with limited scouting and a strict payroll, choose a development identity, then chase a playoff berth over a short five-season campaign. A shared weekly version could give everyone the same protected lists and budget, with scoring for wins, payroll efficiency and homegrown development. This is a proposal only; no new game mode or simulation engine rewrite is included here.
+
+## Expansion continuation
+
+See [UPDATE_50_EXPANSION.md](UPDATE_50_EXPANSION.md) for the subsequent economy, Career spin, social, notification and carryover changes and their remaining release gates. Earlier validation above describes the initial release commit.

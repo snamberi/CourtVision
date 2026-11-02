@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { claimDailyChest, loadRelics, saveRelics } from '../relics/relics';
 import './releaseLayout.css';
 import { Modal } from './Modal';
 import { PixelIcon } from './PixelIcon';
@@ -6,11 +8,14 @@ import { plural } from '../lib/humanize';
 
 /** The phone's Streak app: your streak today, your best, and every streak reward with how far away it is. */
 export function StreakDialog({ streak, onClose, onProfile }: { streak: { current: number; best: number }; onClose: () => void; onProfile?: () => void }) {
+  const [chest, setChest] = useState(() => loadRelics());
+  const [message, setMessage] = useState('');
   const next = STREAK_REWARDS.find(r => streak.best < r.days);
   const prevDays = [...STREAK_REWARDS].reverse().find(r => streak.best >= r.days)?.days ?? 0;
   const pct = next ? Math.round(((streak.current - prevDays) / (next.days - prevDays)) * 100) : 100;
   const earned = streakTrophies({ last: '', current: streak.current, best: streak.best });
   return <Modal label="Your daily streak" onClose={onClose} className="streak-dialog">
+    <section className="streak-next"><h2>Daily chest</h2><p>2 spins, 200 coins before relic bonuses, 2–5 relic drops and 12–30 gems. Resets at midnight UTC.</p><button disabled={chest.chestDay === new Date().toISOString().slice(0, 10)} onClick={() => { const out = claimDailyChest(loadRelics()); if (!out) return; saveRelics(out.state); setChest(out.state); setMessage(`Opened: 2 spins, coins, ${out.results.length} relic drops and ${out.gems} gems.`); }}>Open daily chest</button><p role="status">{message || (chest.chestDay === new Date().toISOString().slice(0, 10) ? 'Come back tomorrow for your next chest.' : '')}</p></section>
     <div className="streak-hero">
       <span className="streak-flame"><PixelIcon name="flame" size={40} /></span>
       <div>{streak.current > 0 ? <><b>{plural(streak.current, 'day')}</b><small>in a row · best {plural(streak.best, 'day')}</small></> : <><b>No streak yet</b><small>come back tomorrow to start one{streak.best ? ` · best ${plural(streak.best, 'day')}` : ''}</small></>}</div>

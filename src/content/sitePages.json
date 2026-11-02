@@ -48,7 +48,7 @@
           "blocks": [
             {
               "type": "p",
-              "text": "Local leagues and in-progress Career Mode worlds stay in your browser. An optional account syncs supported profile progress and retired Career Mode records; it is not a full league backup. Download a backup from the GM Locker or Backups before moving devices or clearing browser data. The [FAQ](faq.html) explains recovery, and the [Privacy Policy](privacy.html) describes storage and advertising."
+              "text": "Local leagues and Career Mode worlds save in your browser. Settings also offers optional complete active Career cloud snapshots. An optional account syncs supported profile progress and retired Career Mode records; it is not a full league backup. Download a backup from the GM Locker or Backups before moving devices or clearing browser data. The [FAQ](faq.html) explains recovery, and the [Privacy Policy](privacy.html) describes storage and advertising."
             },
             {
               "type": "p",
@@ -1266,7 +1266,7 @@
           "blocks": [
             {
               "type": "p",
-              "text": "Leagues and in-progress Career Mode worlds are stored locally in the browser, using browser databases and local storage. Clearing site data, using private browsing, changing browser profiles or switching devices can make those saves unavailable."
+              "text": "Leagues and Career Mode worlds save locally in browser databases. You can also explicitly save a complete active Career world to your account from Settings. Clearing site data, using private browsing, changing browser profiles or switching devices can make those saves unavailable."
             },
             {
               "type": "p",
@@ -1288,7 +1288,7 @@
             },
             {
               "type": "p",
-              "text": "Account sign-in can bring supported synced progress across devices, but active leagues and in-progress Career Mode worlds require a backup. Authentication sessions and account passes are not transferred as ordinary backup data."
+              "text": "Account sign-in can bring supported synced progress across devices, while active leagues require a backup. For an active Career, use Settings → Active Career cloud saves to upload and load its complete world, or keep a downloadable backup. Authentication sessions and account passes are not transferred as ordinary backup data."
             }
           ]
         },
@@ -1376,7 +1376,7 @@
             },
             {
               "type": "p",
-              "text": "If you deliberately create or join an Online League, its shared league state is uploaded to Supabase storage so other members can play it. That is separate from ordinary single-player franchise saves. Your Career also includes account-synced player progress; this differs from an in-progress Career Mode world."
+              "text": "If you deliberately create or join an Online League, its shared league state is uploaded to Supabase storage so other members can play it. That is separate from ordinary single-player franchise saves. Your Career also includes account-synced player progress; complete in-progress Career Mode worlds can separately be saved through Settings → Active Career cloud saves."
             }
           ]
         },

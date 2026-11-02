@@ -1,3 +1,4 @@
+import { ClanRewards } from './ClanRewards';
 import { PageJumps } from '../PageJumps';
 import { useCallback, useEffect, useState } from 'react';
 import { cloudEnabled, useAccount } from '../../cloud/account';
@@ -62,6 +63,7 @@ export function ClubsPage({ onExit, onUser }: { onExit: () => void; onUser: (use
         <p>A clan is up to {CLUB_MAX} GMs with a name, a tag and a flag you design yourself. Every weekly board you play adds clan points, your clan's flag shows on your profile, and clan leaders can challenge another clan to a one-week clash.</p>
         <button className="primary" onClick={openSignIn}>Sign in</button>
       </section>}
+      {signedIn && <ClanRewards />}
       {signedIn && club && <MyClub club={club} onUser={onUser} onChange={refresh} />}
       {signedIn && club === null && !error && <MyInvites onJoined={refresh} />}
       {signedIn && club === null && !error && <ClanForm onDone={refresh} />}

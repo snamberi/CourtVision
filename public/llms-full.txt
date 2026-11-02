@@ -31,7 +31,7 @@ You can watch any game on a pixel-art court, coach it live from the sideline (ti
 
 ## Your saves stay with you
 
-Local leagues and in-progress Career Mode worlds stay in your browser. An optional account syncs supported profile progress and retired Career Mode records; it is not a full league backup. Download a backup from the GM Locker or Backups before moving devices or clearing browser data. The [FAQ](https://courtvisiongame.com/faq.html) explains recovery, and the [Privacy Policy](https://courtvisiongame.com/privacy.html) describes storage and advertising.
+Local leagues and Career Mode worlds save in your browser. Settings also offers optional complete active Career cloud snapshots. An optional account syncs supported profile progress and retired Career Mode records; it is not a full league backup. Download a backup from the GM Locker or Backups before moving devices or clearing browser data. The [FAQ](https://courtvisiongame.com/faq.html) explains recovery, and the [Privacy Policy](https://courtvisiongame.com/privacy.html) describes storage and advertising.
 
 You can also install Court Vision as an app on your PC or phone: it gets its own icon and window and plays offline. Open [courtvisiongame.com/#/install](https://courtvisiongame.com/./#/install) for the steps.
 
@@ -556,7 +556,7 @@ Shared challenges use their own seeds and eligibility rules. A result must sync 
 
 ## Where are my saves? Can I lose them?
 
-Leagues and in-progress Career Mode worlds are stored locally in the browser, using browser databases and local storage. Clearing site data, using private browsing, changing browser profiles or switching devices can make those saves unavailable.
+Leagues and Career Mode worlds save locally in browser databases. You can also explicitly save a complete active Career world to your account from Settings. Clearing site data, using private browsing, changing browser profiles or switching devices can make those saves unavailable.
 
 An account syncs supported profile progress and retired Career Mode records, not a full copy of every league. Use **Backup everything** in Backups or the GM Locker to download a separate file. A successful cloud sync is not a replacement for a league backup.
 
@@ -566,7 +566,7 @@ Online Leagues are an explicit exception: they share league snapshots through th
 
 Download **Backup everything** on the original device. Open CourtVision on the destination device and choose **Restore from a file**. Read the confirmation before restoring: matching records can be replaced, while other records remain. Back up the destination device first if it has progress you want to preserve.
 
-Account sign-in can bring supported synced progress across devices, but active leagues and in-progress Career Mode worlds require a backup. Authentication sessions and account passes are not transferred as ordinary backup data.
+Account sign-in can bring supported synced progress across devices, while active leagues require a backup. For an active Career, use Settings → Active Career cloud saves to upload and load its complete world, or keep a downloadable backup. Authentication sessions and account passes are not transferred as ordinary backup data.
 
 ## What should I do if the game crashes?
 
@@ -604,7 +604,7 @@ The account system uses an account identifier, email and provider details, a GM 
 
 Local league saves are separate from cloud profile progress. Optional online features and purchases can process additional records. Read the [Privacy Policy](https://courtvisiongame.com/privacy.html) for the current disclosures, and avoid putting private information in your public GM name.
 
-If you deliberately create or join an Online League, its shared league state is uploaded to Supabase storage so other members can play it. That is separate from ordinary single-player franchise saves. Your Career also includes account-synced player progress; this differs from an in-progress Career Mode world.
+If you deliberately create or join an Online League, its shared league state is uploaded to Supabase storage so other members can play it. That is separate from ordinary single-player franchise saves. Your Career also includes account-synced player progress; complete in-progress Career Mode worlds can separately be saved through Settings → Active Career cloud saves.
 
 ## Can I delete my account or request help with my data?
 

@@ -1,3 +1,4 @@
+import { CareerCloud } from './cloud/CareerCloud';
 import { PageJumps } from './PageJumps';
 import { useState, type ReactNode } from 'react';
 import { SmallRoom } from './presentation/SmallRoom';
@@ -118,6 +119,7 @@ export function SettingsPage({ onExit, backup, recovery }: { onExit: () => void;
         {import.meta.env.VITE_BUILD_STAMP && <p className="hint-text settings-build">Version {import.meta.env.VITE_BUILD_STAMP}</p>}
       </SettingCard>
       {!IS_DESKTOP_BUILD && <SettingCard icon="settings" title="Advanced" blurb="Checks the online services (accounts and leaderboards).">
+        <CareerCloud />
         <details className="settings-advanced"><summary>Online status</summary><OnlineStatus /></details>
       </SettingCard>}
     </div>

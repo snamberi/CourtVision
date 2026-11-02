@@ -1,3 +1,5 @@
+import { NotificationApp } from './cloud/NotificationCentre';
+import { CourtChat } from './CourtChat';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { hasUnseenRelease } from '../content/whatsNewLatest';
 import { PixelIcon } from './PixelIcon';
@@ -66,6 +68,7 @@ export function MenuPhone({ onClans, onFriendList, onCloset, onBoards, onFriends
     return () => { window.removeEventListener(PROFILE_EVENT, sync); window.removeEventListener('courtvision:progress', sync); };
   }, []);
   const { level, skin } = state;
+  const [chatOpen, setChatOpen] = useState(false);
   const [streakOpen, setStreakOpen] = useState(false);
   const days = streak.current;
   // Spins waiting and coins, for the Relics and Shop badges.
@@ -124,6 +127,8 @@ export function MenuPhone({ onClans, onFriendList, onCloset, onBoards, onFriends
     onRoad && { key: 'pass', node: <button className="menu-phone-app" onClick={() => onRoad('season')} aria-label={`Season Pass${luckySpins ? `, ${luckySpins} free Lucky Spin${luckySpins === 1 ? '' : 's'}` : ''}`}><span className="app-tile pass"><PixelIcon name="calendar" size={20} />{luckySpins > 0 && <em className="app-badge">{luckySpins}</em>}</span><small>Season Pass</small></button> },
     onRoad && { key: 'levelroad', node: <button className="menu-phone-app" onClick={() => onRoad('level')} aria-label={`Level Road, level ${level}`}><span className="app-tile levelroad"><PixelIcon name="chart" size={20} /><em>{level}</em></span><small>Level Road</small></button> },
     onRoad && { key: 'trophyroad', node: <button className="menu-phone-app" onClick={() => onRoad('trophy')}><span className="app-tile trophyroad"><PixelIcon name="trophy" size={20} /></span><small>Trophy Road</small></button> },
+    { key: 'courtchat', node: <button className="menu-phone-app" onClick={() => setChatOpen(true)}><span className="app-tile friends"><PixelIcon name="team" size={20} /></span><small>CourtChat</small></button> },
+    { key: 'notifications', node: <NotificationApp onFriends={onFriends} onFriendList={onFriendList} /> },
     onClans && { key: 'clans', node: <button className="menu-phone-app" onClick={onClans}><span className="app-tile friends"><PixelIcon name="team" size={20} /></span><small>Clans</small></button> },
   ] as (App | false | undefined)[]).filter((x): x is App => !!x);
 
@@ -163,6 +168,7 @@ export function MenuPhone({ onClans, onFriendList, onCloset, onBoards, onFriends
   const appKey = (t: EventTarget | null) => (t as HTMLElement | null)?.closest?.('[data-app]')?.getAttribute('data-app') ?? null;
   return <aside className={`menu-phone phone-skin-${skin} ${editing ? 'editing' : ''}`} aria-label="Your phone">
     <div className="menu-phone-body">
+      {chatOpen && <CourtChat onClose={() => setChatOpen(false)} />}
       {skin !== 'classic' && <span className="phone-case-detail" aria-hidden="true" />}
       <div className="menu-phone-status" aria-hidden="true"><span>{time}</span><i className="menu-phone-notch" /><span className="menu-phone-icons"><i className="sig" /><i className="bat" /></span></div>
       <div className={`menu-phone-pages ${hint && pages.length > 1 ? 'hint' : ''}`} ref={pager} onScroll={onScroll} role="group" aria-roledescription="carousel" aria-label="Apps"

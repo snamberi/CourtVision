@@ -1,3 +1,4 @@
+import { GEM_COSMETICS } from '../relics/gemShop';
 import { RELEASE_TITLES, releaseTitleProgress } from './releaseTitles';
 import { localRead, type Read } from '../lib/kv';
 import { readPlayTime } from '../retention/playTime';
@@ -234,6 +235,7 @@ export type ColorId = string;
 const color = (id: string, name: string, css: string, rule: Rule = byRoad('color', id)) => ({ id, name, css, rule, how: levelHow(rule) });
 const animated = (id: string, name: string, css: string, anim: ColorAnim) => { const rule = byTrophies('color', id); return { id, name, css, anim, rule, how: trophyHow(rule) }; };
 export const NAME_COLORS: (Cosmetic & { css: string; anim?: ColorAnim })[] = [
+  ...GEM_COSMETICS.map(c => ({ id: c.id, name: c.name, css: c.css, how: `Buy for ${c.price} gems in the Relic Shop.`, rule: { shop: c.key } })),
   color('event-newyear', 'Firework Gold', '#ffd166', { shop: 'evt-newyear-color' }),
   color('event-valentine', 'Heart Pink', '#ff77aa', { shop: 'evt-valentine-color' }),
   color('event-allstar', 'All-Star Violet', '#b48aff', { shop: 'evt-allstar-color' }),

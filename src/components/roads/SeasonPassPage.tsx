@@ -1,3 +1,4 @@
+import { RoadTier } from './RoadTier';
 import { PageJumps } from '../PageJumps';
 import { useEffect, useRef, useState } from 'react';
 import { totalXp, PROFILE_EVENT } from '../../profile/profile';
@@ -64,6 +65,7 @@ export function SeasonPassPage({ onExit, onRelics }: { onExit: () => void; onRel
       {onRelics && <button className="relic-switch" onClick={onRelics}><PixelIcon name="flame" size={16} /> Relic Vault{free ? ` · ${free} free Lucky Spin${free === 1 ? '' : 's'}` : ''}</button>}
     </header>
     <PageJumps />
+    <RoadTier completed={tier} total={SEASON_TIERS} />
 
     {upcoming && <div className="sp-season-tabs" role="tablist" aria-label="Seasons">
       <button role="tab" aria-selected={!preview} className={!preview ? 'active' : ''} onClick={() => setPreview(false)}>Season {p.season.number}: {p.season.name}</button>

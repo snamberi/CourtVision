@@ -30,7 +30,7 @@ export function scoutingAccuracy(league: League, teamId: string | null): number 
 }
 /** Pre-draft workout invitations a team can hand out: 3 on a minimum budget, up to 8 on a maximum one. */
 export function workoutSlots(league: League, teamId: string | null): number {
-  return WORKOUT_SLOTS_MIN + Math.round(scoutingLevel(league, teamId) / 20) + (teamId && league.frontOffice?.teamId === teamId ? ['draftWhisperer', 'winterScout', 'summerFilm'].filter(id => hasSecret(id as 'draftWhisperer' | 'winterScout' | 'summerFilm')).length : 0);
+  return WORKOUT_SLOTS_MIN + Math.round(scoutingLevel(league, teamId) / 20) + (teamId && league.frontOffice?.teamId === teamId ? ['draftWhisperer', 'winterScout', 'summerFilm', 'scoutsLens'].filter(id => hasSecret(id as 'draftWhisperer' | 'winterScout' | 'summerFilm' | 'scoutsLens')).length : 0);
 }
 export function workoutsFor(extras: GMLeagueExtras, teamId: string | null): string[] {
   if (!teamId) return [];

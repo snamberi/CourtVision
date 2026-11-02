@@ -155,6 +155,7 @@ export async function friendActivity(limit = 20): Promise<ActivityItem[]> {
     client.from('lb_weekly').select('*').in('user_id', ids).order('updated_at', { ascending: false }).limit(limit),
     client.from('lb_daily').select('*').in('user_id', ids).order('day', { ascending: false }).limit(limit),
   ]);
+  if (weekly.error || daily.error) throw new Error('Could not load friend activity.');
   const items: ActivityItem[] = [];
   for (const r of (weekly.data ?? []) as Record<string, unknown>[]) items.push({ at: String(r.updated_at ?? ''), username: String(r.username ?? ''), icon: r.icon as string | undefined, color: r.color as string | undefined,
     text: `scored ${Number(r.score).toLocaleString()} on ${BOARD_NAME[String(r.board)] ?? String(r.board)}${r.detail ? ` (${String(r.detail).slice(0, 60)})` : ''}` });

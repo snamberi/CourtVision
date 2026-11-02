@@ -82,7 +82,7 @@ export function HolidayEventPage({ onExit, onCloset }: { onExit: () => void; onC
     {note && <p className="relic-note" role="status">{note}</p>}
     <section className="holiday-banner" aria-labelledby="event-spin-heading">
       <h2 id="event-spin-heading">{h.keyName} spin · 2× luck</h2>
-      <p>{keys} keys available. Keys and currency belong to this event year. Unlocks stay yours after it ends.</p>
+      <p>{keys} keys available. Unused keys and currency carry over when this event returns next year. Unlocks stay yours.</p>
       <p>Twice the normal chance for each non-common rarity and Secret unlock; Common fills the remaining odds. Mission relics cannot drop. Pity guarantees still apply.</p>
       <button disabled={coins < 10} onClick={() => setNote(buyEventKey(h.id) === 'ok' ? `${h.keyName} added.` : 'Unable to buy: check your currency or event dates.')}>Buy {h.keyName} · 10 {h.coins}</button>
       <button disabled={keys < 1} onClick={() => { const result = spinEventRelic(loadRelics(), h.id); if (!result) { setNote('No key available, or the event has ended.'); return; } saveRelics(result.state); const found = result.result; setNote(`Found ${found.kind === 'secret' ? SECRET_BY_ID.get(found.id as never)?.name : RELIC_BY_ID.get(found.id)?.name}${found.duplicate ? ' (duplicate)' : ''}.`); }}>Use {h.keyName}</button>

@@ -110,3 +110,5 @@
 .sp-banner.season-frozen .sp-name::after { display: none; }
 .sp-banner.season-frozen small { color: var(--c-fg-bfe6ff, #bfe6ff); }
 
+
+.road-tier{display:grid;gap:8px;padding:16px;margin:16px 0;background:#13273c;border:1px solid #466078}.road-tier strong{color:#ffb25f;font-size:22px}.road-tier progress{width:100%;accent-color:#ffb25f}.road-tier ol{display:flex;gap:8px;padding:0;list-style:none;flex-wrap:wrap}.road-tier li{padding:7px;border:1px solid #466078;color:#8ca0b3}.road-tier .unlocked{color:#e7eff9}.road-tier [aria-current=step]{border-color:#ffb25f;background:#654529}

@@ -1,3 +1,4 @@
+import { readFavorites, REAL_FRANCHISES } from '../src/profile/favorites';
 import { objectRead } from '../src/lib/kv';
 import { cleanName } from '../src/lib/names';
 import { xpParts, totalXp, levelFor, careerCacheOf, type CareerXpCache } from '../src/profile/profile';
@@ -196,7 +197,9 @@ export function derive(blob: ProgressBlob, now = new Date()): Derived {
   const bySeason: Record<string, number> = {};
   for (const e of ranked) bySeason[e.season] = (bySeason[e.season] ?? 0) + e.points;
   const rankedBest = Object.values(bySeason).reduce((b, p) => (tierFor(p).tier.min > tierFor(b).tier.min ? p : b), 0);
+  const favorites = readFavorites(read);
   const stats = {
+    favoriteTeam: REAL_FRANCHISES.find(t => t.id === favorites.team)?.city ?? '', favoritePlayer: favorites.playerName ?? favorites.player ?? '',
     ranked: bySeason, rankedBest: tierFor(rankedBest).tier.id,
     seasons: gm.seasons, wins: gm.wins, titles: gm.titles, achievements: gm.achievements,
     trophies: Math.max(0, Math.floor(totalTrophies(readWithCareers))), perfectTitles: p82.titles, perfect98: p82.perfect98,

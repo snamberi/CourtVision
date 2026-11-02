@@ -1,7 +1,7 @@
 import { localRead, type Read } from '../lib/kv';
 
 /** Annual UTC event windows. Overlapping events each award their own currency.
- * Each year's balances are separate; previously unlocked cosmetics remain owned. */
+ * Unspent currency carries into later years of the same event; unlocks remain owned. */
 
 export type HolidayId = 'halloween' | 'christmas' | 'newyear' | 'valentine' | 'allstar' | 'easter' | 'playoffs' | 'summer' | 'anniversary';
 export interface Holiday {
@@ -74,8 +74,19 @@ export function saveHoliday(s: HolidayState): void {
   try { localStorage.setItem(HOLIDAY_KEY, JSON.stringify(s)); } catch { /* storage blocked */ }
   try { window.dispatchEvent(new Event(HOLIDAY_EVENT)); } catch { /* no window (tests) */ }
 }
-/** Coins left to spend in a run of an event. */
-export const eventCoins = (s: HolidayState, runKey: string) => Math.max(0, (s.earned[runKey] ?? 0) - (s.spent[runKey] ?? 0));
+/** Retain annual monotonic counters for cloud merges; pool balances without copying old money.
+ * Subtract across all years before clamping: current-year spending can consume older earnings. */
+export function annualEventBalance(earned: Record<string, number>, spent: Record<string, number>, runKey: string): number {
+  const match = /^(.*)-(\d{4})$/.exec(runKey);
+  if (!match || !HOLIDAY_BY_ID.has(match[1] as HolidayId)) return 0;
+  const year = Number(match[2]), prefix = `${match[1]}-`;
+  const valid = (key: string) => key.startsWith(prefix) && /^\d{4}$/.test(key.slice(prefix.length)) && Number(key.slice(prefix.length)) <= year;
+  const count = (n: number | undefined) => typeof n === 'number' && Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0;
+  const keys = new Set([...Object.keys(earned), ...Object.keys(spent)]);
+  return Math.max(0, [...keys].filter(valid).reduce((total, key) => total + count(earned[key]) - count(spent[key]), 0));
+}
+/** Coins available through this year's occurrence of the matching event. */
+export const eventCoins = (s: HolidayState, runKey: string) => annualEventBalance(s.earned, s.spent, runKey);
 export const FINISH_COINS = 1, WIN_COINS = 2;
 
 /** A finished game during an event: 1 coin, or 2 for a win (each game once, by `id` when it has one). Pure. */

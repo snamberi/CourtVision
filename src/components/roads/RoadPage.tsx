@@ -31,7 +31,7 @@ export function RoadPage({ road, onExit, onSwitch }: { road: 'level' | 'trophy';
   return <div className="hunt road-page">
     <header className="hunt-top">
       <button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button>
-      <div className="hunt-title"><span className="pixel-eyebrow">{level ? 'XP FROM EVERY MODE' : 'WIN TO CLIMB'}</span><h1>{level ? 'Level Road' : 'Trophy Road'}</h1></div>
+      <div className="hunt-title"><span className="pixel-eyebrow">{level ? 'COURT SCORE FROM EVERY MODE' : 'WIN TO CLIMB'}</span><h1>{level ? 'Level Road' : 'Trophy Road'}</h1></div>
       {onSwitch && <button className="relic-switch" onClick={onSwitch}><PixelIcon name={level ? 'trophy' : 'chart'} size={16} /> {level ? 'Trophy Road' : 'Level Road'}</button>}
     </header>
     <PageJumps />
@@ -53,7 +53,7 @@ function LevelRoadView() {
     <div className="road-summary">
       <div className="road-big"><small>LEVEL</small><b>{level}</b></div>
       <div><strong>{next ? `Next reward at level ${next}` : 'The whole road is yours'}</strong>
-        <small>{xp.toLocaleString()} XP{need ? ` · ${(need - into).toLocaleString()} XP to level ${level + 1}` : ''} · {opened} of {LEVEL_ROAD.length} rewards · max level {MAX_LEVEL}</small></div>
+        <small>{xp.toLocaleString()} Court Score{need ? ` · ${(need - into).toLocaleString()} Court Score to level ${level + 1}` : ''} · {opened} of {LEVEL_ROAD.length} rewards · max level {MAX_LEVEL}</small></div>
     </div>
     <BrawlRoad stops={stops} value={level + (need ? into / need : 0)} marker={`LV ${level}`} label="Level Road" icon="star" />
     <p className="hint-text">XP comes from everything you finish in every mode. Wear what you unlock in your Closet (a phone app). Ranked tiers, leaderboards, achievements and the Season Pass unlock more on top of the road.</p>

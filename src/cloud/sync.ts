@@ -79,6 +79,7 @@ export function syncNow(): Promise<void> {
       const client = await supa();
       const { data, error } = await client.from('progress').select('data').eq('user_id', userId).maybeSingle();
       if (error) throw new Error(error.message);
+      if (getAccount().userId !== userId) return;
       const cloud = (data?.data ?? null) as ProgressBlob | null;
       const owner = readOwner(), foreign = !!owner && owner !== userId;
       const storage = mergeStorage(foreign ? {} : readLocal(), cloud?.storage ?? {});
@@ -97,11 +98,13 @@ export function syncNow(): Promise<void> {
         // Gzip on the way up (game data shrinks about ten times); browsers without it send plain JSON.
         const packed = await gzip(body);
         const res = await fetch('/api/sync', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken() ?? token}`, ...(packed ? { 'X-Sync-Encoding': 'gzip' } : {}) }, body: packed ?? body });
-        const out = await res.json().catch(() => null) as { error?: string } | null;
+        const out = await res.json().catch(() => null) as { error?: string; vault?: string } | null;
         // Another sync (this device or another) just landed: try again shortly with the merged result.
         if (res.status === 429) { setAccount({ sync: { ...getAccount().sync, state: 'ok' } }); syncSoon(5_000); return; }
         if (res.status === 503) serverOff = true;
         if (!res.ok) throw new Error(out?.error ?? `Sync failed (${res.status}).`);
+        if (getAccount().userId !== userId) return;
+        if (out?.vault) writeLocal(mergeStorage(readLocal(), { 'cv-relics': out.vault }));
         lastPushed = fingerprint;
         lastPushAt = Date.now();
         lastSize = { raw: body.length, wire: packed?.byteLength ?? body.length, careers: JSON.stringify(careers).length };

@@ -243,6 +243,21 @@ Object.assign(ART, {
   foundersWhistle(){path('M10 20H26V12H38V29H30V37H16L10 31Z',C.purple);rect(27,14,9,5,C.lilac);disc(21,28,7,[C.ink,C.goldDark,C.gold,C.sun]);text('1',20,26,C.ink);shine(10,9,C.ice);},
 });
 
+Object.assign(ART, {
+  dynastyLedger(){paper(C.gold);line('M16 17h16M16 23h12M16 29h16',C.purple,2);},
+  immortalJersey(){path('M14 8H34L42 18L34 24V40H14V24L6 18Z',C.purple);text('1',22,22,C.gold);},
+  celestialCourt(){rect(5,10,38,30,C.blueDark);rect(8,13,32,24,C.purple);line('M24 13v24',C.gold,2);star(24,25,C.sun,.7);},
+  foundersRing(){disc(24,24,17,[C.ink,C.goldDark,C.gold,C.sun]);disc(24,24,9,[C.ink,C.purple,C.purple,C.lilac]);},
+  eternalScoreboard(){rect(5,10,38,28,C.ink);rect(8,13,32,22,C.purple);text('99',14,20,C.gold);},
+  platinumWhistle(){path('M10 20H26V12H38V29H30V37H16L10 31Z',C.ice);disc(21,28,7,[C.ink,C.blueDark,C.cyan,C.white]);},
+  championsCompass(){disc(24,24,18,[C.ink,C.goldDark,C.gold,C.sun]);path('M24 9L29 24L24 39L19 24Z',C.purple);},
+  legacyCrown(){path('M7 13L16 21L24 8L32 21L41 13L36 37H12Z',C.gold);rect(14,30,20,4,C.purple);},
+  infinitePlaybook(){paper(C.purple);disc(18,24,7,[C.goldDark,C.gold,C.sun,C.gold]);disc(30,24,7,[C.goldDark,C.gold,C.sun,C.gold]);},
+  auroraBall(){disc(24,24,18,[C.ink,C.purple,C.pink,C.lilac]);line('M7 24h34M24 7v34',C.gold,2);},
+  overtimeToken(){disc(24,24,17,[C.ink,C.goldDark,C.gold,C.sun]);text('OT',14,20,C.ink);},
+  scoutsLens(){disc(20,20,13,[C.ink,C.goldDark,C.cyan,C.ice]);line('M29 29l12 12',C.purple,5);},
+});
+
 // These earlier secrets have hand-authored checked-in art. Preserve it verbatim.
 const handAuthored = ['luckyCharm', 'sixthSense', 'filmRoom', 'phoneTree', 'ultraCheat'];
 for (const id of handAuthored) {

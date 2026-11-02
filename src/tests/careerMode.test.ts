@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { loadHistoryForTests } from './helpers/nbaHistoryFixture';
 import { cardPool } from '../hunt/cards';
 import { top100, top100Rank, legacyScore, emptyResume } from '../career/legacy';
-import { newWheel, spin, respin, move, take, landed, neighbour, mustTake, canSpin, isComplete, donor, RESPINS, eliteRanks, takenValues, eliteBonus, eliteTarget, wheelPool, ELITE_MAX, luckyLeft, sliceWeight, LUCKY_SPINS, STAR_BONUS, primeBoost, boostLeft, PRIME_BOOST_POINTS, type WheelState } from '../career/wheel';
+import { careerRarity, newWheel, spin, respin, move, take, landed, neighbour, mustTake, canSpin, isComplete, donor, RESPINS, eliteRanks, takenValues, eliteBonus, eliteTarget, wheelPool, ELITE_MAX, luckyLeft, sliceWeight, LUCKY_SPINS, STAR_BONUS, primeBoost, boostLeft, PRIME_BOOST_POINTS, type WheelState } from '../career/wheel';
 import { legendRank } from '../draft/allTimeDraft';
 import { resolveEffectivePlayer } from '../simulation/engine/effective';
 import { CATEGORIES, categoryValues, categoryScore, type CategoryId } from '../career/categories';
@@ -106,7 +106,6 @@ describe('Career Mode', () => {
 
   it('lucky spins, famous Stars and the Star bonus', async () => {
     const h = await loadHistoryForTests();
-    const pool = cardPool(h);
     // Two lucky spins, then no more.
     let s = newWheel(9);
     expect(luckyLeft(s)).toBe(LUCKY_SPINS);
@@ -119,11 +118,15 @@ describe('Career Mode', () => {
     // Builds started before lucky spins existed get the full count.
     const { lucky: _gone, ...old } = newWheel(9);
     expect(luckyLeft(old)).toBe(LUCKY_SPINS);
-    // A lucky spin always lands on a Star or a Great.
-    for (let i = 0; i < 60; i++) { const w = spin(h, { ...newWheel(100 + i), lucky: 1 }, false, true).current![0]; expect(['legendary', 'epic']).toContain(pool.byId.get(w.reel[w.stop])!.rarity); }
-    // Lucky odds: Stars and Greats about 2.5x as common.
-    const share = (lucky: boolean) => { let n = 0, rare = 0, w = newWheel(4); for (let i = 0; i < 200; i++) { w = spin(h, { ...w, current: null, takenFrom: [], lucky: 2 }, false, lucky); for (const id of w.current![0].reel) { n++; if (['legendary', 'epic'].includes(pool.byId.get(id)!.rarity)) rare++; } } return rare / n; };
-    expect(share(true) / share(false)).toBeGreaterThan(1.7);
+    // Every visible Lucky slice uses Career tiers, with a 70/30 landing split.
+    let mythics = 0;
+    for (let i = 0; i < 500; i++) {
+      const w = spin(h, { ...newWheel(100 + i), lucky: 1 }, false, true).current![0];
+      for (const id of w.reel) expect(['legendary', 'mythic']).toContain(careerRarity(h, id));
+      if (careerRarity(h, w.reel[w.stop]) === 'mythic') mythics++;
+    }
+    expect(mythics / 500).toBeGreaterThan(0.23);
+    expect(mythics / 500).toBeLessThan(0.37);
     // Among Stars, the all-time greats come up most: Curry weighs more than an unranked Star.
     const stars = wheelPool(h).filter(c => c.rarity === 'legendary');
     const curry = stars.find(c => c.name === 'Stephen Curry')!;
@@ -134,6 +137,17 @@ describe('Career Mode', () => {
     const raw = categoryValues(donor(h, plainStar.id), 'playmaking'), taken = takenValues(h, plainStar.id, 'playmaking');
     for (const [k, v] of Object.entries(raw)) expect(taken[k]).toBe(Math.min(ELITE_MAX, v + STAR_BONUS));
     expect(takenValues(h, plainStar.id, 'size')['physical.heightInches']).toBe(categoryValues(donor(h, plainStar.id), 'size')['physical.heightInches']);
+  }, 120_000);
+
+  it('Career Mythics have a 110 rating and Legendaries have a 100 rating', async () => {
+    const h = await loadHistoryForTests();
+    const measures = new Set(['physical.heightInches', 'physical.wingspanInches', 'physical.standingReachInches', 'physical.weightLbs']);
+    for (const card of wheelPool(h)) {
+      const tier = careerRarity(h, card.id);
+      if (tier !== 'mythic' && tier !== 'legendary') continue;
+      const ratings = CATEGORIES.flatMap(c => Object.entries(takenValues(h, card.id, c.id)).filter(([key])=>!measures.has(key)).map(([,value])=>value));
+      expect(Math.max(...ratings), card.name).toBeGreaterThanOrEqual(tier === 'mythic' ? 110 : 100);
+    }
   }, 120_000);
 
   it('Prime Boost: +7 to every rating; one, free; never height, never past 120', async () => {

@@ -1,6 +1,8 @@
 import type { HolidayId } from '../retention/holiday';
 
 export const RELEASE_SECRETS = [
+  { id: 'overtimeToken', name: 'Overtime Token', mode: 'Career Mode', ability: 'Start each personal Career wheel with one extra respin.', hint: 'A rare regular Secret spin drop.' },
+  { id: 'scoutsLens', name: 'Scout’s Lens', mode: 'Franchise', ability: 'One extra prospect workout per draft.', hint: 'A rare regular Secret spin drop.' },
   { id: 'draftWhisperer', name: 'The Draft Whisperer', mode: 'Franchise', ability: '+1 detailed prospect scouting report per draft.', hint: 'Draft three future Hall of Famers with one franchise.', feat: 'Draft 3 players who later enter the Hall of Fame with the same franchise.', earnedOnly: true },
   { id: 'loyaltyPays', name: 'Loyalty Pays', mode: 'Franchise', ability: '+1 contract negotiation retry per offseason.', hint: 'Bring five titles home to the same franchise.', feat: 'Win 5 titles with the same franchise.', earnedOnly: true },
   { id: 'rebuilder', name: 'The Rebuilder', mode: 'Franchise', ability: '+1 trade proposal refresh per season.', hint: 'Turn a 20-win season into a championship.', feat: 'Take a franchise from 20 or fewer wins to a later championship.', earnedOnly: true },

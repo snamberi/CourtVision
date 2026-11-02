@@ -1,0 +1,1323 @@
+-- CourtVision Update 50 — ONE complete Supabase SQL script
+-- Supabase -> SQL Editor -> New query -> paste ALL of this file -> Run.
+-- Run as the project owner. Do not run the old individual migrations afterward.
+-- Supports a fresh project or the existing CourtVision schema. Safe to rerun.
+-- Keeps accounts/saves. Does not set an owner account or embed any keys.
+-- Run before deploying the matching release branch. Push also needs Cloudflare VAPID secrets.
+-- For push: generate keys with node scripts/generate-push-keys.mjs, then set
+-- PUSH_VAPID_PUBLIC_KEY, PUSH_VAPID_PRIVATE_KEY (secret), PUSH_VAPID_SUBJECT
+-- in Cloudflare. SQL alone cannot enable browser push or configure an ad provider.
+-- All changes share one transaction: an error rolls back this run.
+begin;
+-- Complete core schema (final view definitions only)
+-- Court Vision: accounts, cloud progress, leaderboards, ranked seasons and League Hunt PvP.
+-- Paste this whole file into Supabase → SQL Editor → New query → Run. It is safe to run again (idempotent).
+--
+-- Who writes what:
+--   * Clients (the game, with the signed-in user's token) can read every public table, choose their username,
+--     title, frame, icon and name colour, follow people and file reports. Nothing competitive can be written from the browser.
+--   * The Vercel Functions (/api/sync, /api/pvp) write everything else with the service key, after checking it.
+
+create extension if not exists citext;
+
+-- ---------------------------------------------------------------- profiles
+
+create table if not exists public.profiles (
+  id uuid primary key references auth.users on delete cascade,
+  username citext unique check (username ~ '^[A-Za-z0-9_]{3,18}$'),
+  title text not null default 'Rookie GM' check (length(title) <= 40),
+  frame text not null default 'classic' check (length(frame) <= 20),
+  level int not null default 1,
+  xp int not null default 0,
+  stats jsonb not null default '{}'::jsonb,
+  banned boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists profiles_xp on public.profiles (xp desc);
+-- Profile icon and name colour (cosmetic, chosen by the player; earned in game).
+alter table public.profiles add column if not exists icon text not null default 'ball' check (length(icon) <= 20);
+alter table public.profiles add column if not exists color text not null default 'cream' check (length(color) <= 20);
+-- Your character as a look code (src/profile/avatarCode.ts). Written only by the server at sync, after checking it.
+alter table public.profiles add column if not exists avatar text check (length(avatar) <= 64);
+-- 'owner' opens every cosmetic for that account. Set only here, in the SQL editor (not in the update grant below):
+--   update public.profiles set role = 'owner' where username = 'YourName';
+alter table public.profiles add column if not exists role text check (role in ('owner'));
+
+-- A profile row for every new account.
+create or replace function public.handle_new_user() returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  insert into public.profiles (id) values (new.id) on conflict do nothing;
+  return new;
+end $$;
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created after insert on auth.users for each row execute function public.handle_new_user();
+
+-- ---------------------------------------------------------------- private cloud progress
+
+create table if not exists public.progress (
+  user_id uuid primary key references auth.users on delete cascade,
+  data jsonb not null,
+  size int not null default 0 check (size <= 800000),
+  updated_at timestamptz not null default now()
+);
+
+-- ---------------------------------------------------------------- public results (written by /api/sync)
+
+create table if not exists public.user_achievements (
+  user_id uuid references public.profiles on delete cascade,
+  achievement_id text not null,
+  primary key (user_id, achievement_id)
+);
+
+create table if not exists public.created_players (
+  user_id uuid references public.profiles on delete cascade,
+  career_id text not null,
+  name text not null,
+  legacy int not null,
+  rank int,
+  seasons int not null,
+  titles int not null default 0,
+  mvps int not null default 0,
+  all_stars int not null default 0,
+  hall_of_fame text not null default 'no',
+  draft_year int,
+  weekly text,
+  ppg real, rpg real, apg real, points int,
+  retired_at timestamptz not null default now(),
+  primary key (user_id, career_id)
+);
+create index if not exists created_players_legacy on public.created_players (legacy desc);
+create index if not exists created_players_weekly on public.created_players (weekly, legacy desc);
+
+create table if not exists public.weekly_scores (
+  board text not null check (board in ('rebuild', 'career')),
+  week text not null,
+  user_id uuid references public.profiles on delete cascade,
+  score int not null,
+  detail text not null default '',
+  updated_at timestamptz not null default now(),
+  primary key (board, week, user_id)
+);
+create index if not exists weekly_scores_rank on public.weekly_scores (board, week, score desc);
+-- The Weekly Hunt board joined the weekly boards later.
+alter table public.weekly_scores drop constraint if exists weekly_scores_board_check;
+alter table public.weekly_scores add constraint weekly_scores_board_check check (board in ('rebuild', 'career', 'hunt', 'perfect', 'category', 'guess', 'hilo', 'bracket'));
+
+create table if not exists public.daily_legend (
+  day date not null,
+  user_id uuid references public.profiles on delete cascade,
+  won boolean not null,
+  stop int not null,
+  wins int not null,
+  losses int not null,
+  score int not null,
+  primary key (day, user_id)
+);
+create index if not exists daily_legend_rank on public.daily_legend (day, score desc);
+
+create table if not exists public.rebuild_records (
+  scenario text not null,
+  user_id uuid references public.profiles on delete cascade,
+  best int not null,
+  stars int not null,
+  title_in int,
+  primary key (scenario, user_id)
+);
+create index if not exists rebuild_records_rank on public.rebuild_records (scenario, best desc);
+
+-- Friend challenges: everyone who played a league code, and how their first season went.
+create table if not exists public.code_results (
+  code text not null,
+  user_id uuid references public.profiles on delete cascade,
+  team text,
+  wins int not null,
+  losses int not null,
+  finish text not null,
+  score int not null,
+  updated_at timestamptz not null default now(),
+  primary key (code, user_id)
+);
+
+-- Ranked: one row per scoring event (a Daily Legend, a weekly result, a day's goals); a season is a month (UTC).
+create table if not exists public.ranked_events (
+  user_id uuid references public.profiles on delete cascade,
+  event text not null,
+  season text not null,
+  points int not null,
+  primary key (user_id, event)
+);
+create index if not exists ranked_events_season on public.ranked_events (season);
+
+-- ---------------------------------------------------------------- social
+
+create table if not exists public.follows (
+  user_id uuid references public.profiles on delete cascade,
+  target_id uuid references public.profiles on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (user_id, target_id),
+  check (user_id <> target_id)
+);
+
+create table if not exists public.reports (
+  id bigint generated always as identity primary key,
+  reporter uuid references public.profiles on delete cascade default auth.uid(),
+  target uuid references public.profiles on delete cascade,
+  reason text not null check (length(reason) <= 200),
+  created_at timestamptz not null default now()
+);
+
+-- ---------------------------------------------------------------- League Hunt PvP
+
+create table if not exists public.hunt_ghosts (
+  user_id uuid primary key references public.profiles on delete cascade,
+  squad jsonb not null,
+  rating int not null default 1000,
+  wins int not null default 0,
+  losses int not null default 0,
+  updated_at timestamptz not null default now()
+);
+create index if not exists hunt_ghosts_rating on public.hunt_ghosts (rating desc);
+
+create table if not exists public.pvp_matches (
+  id uuid primary key default gen_random_uuid(),
+  challenger uuid references public.profiles on delete cascade,
+  defender uuid references public.profiles on delete cascade,
+  seed bigint not null,
+  era text not null,
+  status text not null default 'pending' check (status in ('pending', 'won', 'lost')),
+  games jsonb,
+  delta int,
+  created_at timestamptz not null default now()
+);
+create index if not exists pvp_matches_challenger on public.pvp_matches (challenger, created_at desc);
+
+-- Support Shop purchases through Paddle (written only by /api/billing with the service key; see docs/BILLING_SETUP.md).
+create table if not exists public.entitlements (
+  user_id uuid primary key references auth.users on delete cascade,
+  no_ads boolean not null default false,
+  no_ads_order text,
+  supporter_until timestamptz,
+  supporter_status text,
+  subscription_id text,
+  subscription_updated_at timestamptz,
+  portal_url text,
+  customer_id text,
+  updated_at timestamptz not null default now()
+);
+-- The Support Shop: the monthly No-Ads Pass and the one-time bundles (docs/BILLING_SETUP.md).
+alter table public.entitlements add column if not exists no_ads_until timestamptz;
+alter table public.entitlements add column if not exists no_ads_status text;
+alter table public.entitlements add column if not exists no_ads_subscription_id text;
+alter table public.entitlements add column if not exists no_ads_updated_at timestamptz;
+alter table public.entitlements add column if not exists no_ads_portal_url text;
+alter table public.entitlements add column if not exists bundles text[] not null default '{}';
+-- Which bundle each Paddle order bought (txn id → bundle), so a refund takes back the right one.
+alter table public.entitlements add column if not exists bundle_orders jsonb not null default '{}';
+
+-- ---------------------------------------------------------------- views for the boards
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- How many GMs hold each achievement (rarity).
+create or replace view public.achievement_rarity with (security_invoker = on) as
+  select a.achievement_id, count(*)::int as holders,
+    round(100.0 * count(*) / greatest(1, (select count(*) from public.profiles where username is not null)), 1) as pct
+  from public.user_achievements a group by a.achievement_id;
+
+-- ---------------------------------------------------------------- row level security
+
+alter table public.profiles enable row level security;
+alter table public.progress enable row level security;
+alter table public.user_achievements enable row level security;
+alter table public.created_players enable row level security;
+alter table public.weekly_scores enable row level security;
+alter table public.daily_legend enable row level security;
+alter table public.rebuild_records enable row level security;
+alter table public.code_results enable row level security;
+alter table public.ranked_events enable row level security;
+alter table public.follows enable row level security;
+alter table public.reports enable row level security;
+alter table public.hunt_ghosts enable row level security;
+alter table public.pvp_matches enable row level security;
+alter table public.entitlements enable row level security;
+
+do $$
+declare t text;
+begin
+  -- Public reading for the boards and profiles.
+  foreach t in array array['profiles','user_achievements','created_players','weekly_scores','daily_legend','rebuild_records','code_results','ranked_events','follows','hunt_ghosts','pvp_matches'] loop
+    execute format('drop policy if exists "public read" on public.%I', t);
+    execute format('create policy "public read" on public.%I for select using (true)', t);
+  end loop;
+end $$;
+
+drop policy if exists "own progress" on public.progress;
+create policy "own progress" on public.progress for select using (auth.uid() = user_id);
+
+-- Profiles: you may change only your username, title and frame (the column grants below), on your own row.
+drop policy if exists "own profile" on public.profiles;
+create policy "own profile" on public.profiles for update using (auth.uid() = id) with check (auth.uid() = id);
+revoke update on public.profiles from anon, authenticated;
+grant update (username, title, frame, icon, color, updated_at) on public.profiles to authenticated;
+
+-- Passes: you may read your own row; nobody writes it but the billing webhook (service key).
+drop policy if exists "own entitlements" on public.entitlements;
+create policy "own entitlements" on public.entitlements for select using (auth.uid() = user_id);
+revoke insert, update, delete on public.entitlements from anon, authenticated;
+
+drop policy if exists "follow" on public.follows;
+create policy "follow" on public.follows for insert with check (auth.uid() = user_id);
+drop policy if exists "unfollow" on public.follows;
+create policy "unfollow" on public.follows for delete using (auth.uid() = user_id);
+
+drop policy if exists "report" on public.reports;
+create policy "report" on public.reports for insert with check (auth.uid() = reporter);
+
+
+
+-- ---------------------------------------------------------------- clubs (also in migrations/2026-10-04-clubs.sql)
+create table if not exists public.clubs (
+  id uuid primary key default gen_random_uuid(),
+  name citext unique not null check (name ~ '^[A-Za-z0-9][A-Za-z0-9 _-]{1,22}[A-Za-z0-9]$'),
+  tag text not null check (tag ~ '^[A-Z0-9]{2,4}$'),
+  badge text not null default 'ball' check (length(badge) <= 20),
+  color text not null default 'orange' check (length(color) <= 20),
+  motto text not null default '' check (length(motto) <= 80),
+  owner uuid not null references public.profiles on delete cascade,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.club_members (
+  user_id uuid primary key references public.profiles on delete cascade,
+  club_id uuid not null references public.clubs on delete cascade,
+  joined_at timestamptz not null default now()
+);
+create index if not exists club_members_club on public.club_members (club_id);
+
+-- A clash: two clubs, one week; whoever scores more club points that week wins.
+create table if not exists public.club_clashes (
+  id uuid primary key default gen_random_uuid(),
+  week text not null check (week ~ '^\d{4}-W\d{2}$'),
+  club_a uuid not null references public.clubs on delete cascade,
+  club_b uuid not null references public.clubs on delete cascade,
+  created_at timestamptz not null default now(),
+  check (club_a <> club_b)
+);
+create unique index if not exists club_clashes_a on public.club_clashes (week, club_a);
+create unique index if not exists club_clashes_b on public.club_clashes (week, club_b);
+
+alter table public.clubs enable row level security;
+alter table public.club_members enable row level security;
+alter table public.club_clashes enable row level security;
+drop policy if exists "public read" on public.clubs;
+create policy "public read" on public.clubs for select using (true);
+drop policy if exists "public read" on public.club_members;
+create policy "public read" on public.club_members for select using (true);
+drop policy if exists "public read" on public.club_clashes;
+create policy "public read" on public.club_clashes for select using (true);
+revoke insert, update, delete on public.clubs, public.club_members, public.club_clashes from anon, authenticated;
+
+-- ---------------------------------------------------------------- actions
+
+create or replace function public.create_club(p_name text, p_tag text, p_badge text, p_color text, p_motto text default '')
+returns uuid language plpgsql security definer set search_path = public as $$
+declare me uuid := auth.uid(); cid uuid;
+begin
+  if me is null then raise exception 'Sign in first.'; end if;
+  if not exists (select 1 from profiles where id = me and username is not null and not banned) then raise exception 'Pick a GM name first.'; end if;
+  if exists (select 1 from club_members where user_id = me) then raise exception 'Leave your club first.'; end if;
+  insert into clubs (name, tag, badge, color, motto, owner) values (trim(p_name), upper(trim(p_tag)), coalesce(p_badge, 'ball'), coalesce(p_color, 'orange'), coalesce(trim(p_motto), ''), me) returning id into cid;
+  insert into club_members (user_id, club_id) values (me, cid);
+  return cid;
+end $$;
+
+create or replace function public.join_club(p_club uuid)
+returns void language plpgsql security definer set search_path = public as $$
+declare me uuid := auth.uid();
+begin
+  if me is null then raise exception 'Sign in first.'; end if;
+  if not exists (select 1 from profiles where id = me and username is not null and not banned) then raise exception 'Pick a GM name first.'; end if;
+  if exists (select 1 from club_members where user_id = me) then raise exception 'Leave your club first.'; end if;
+  if (select count(*) from club_members where club_id = p_club) >= 20 then raise exception 'That club is full (20 GMs).'; end if;
+  insert into club_members (user_id, club_id) values (me, p_club);
+end $$;
+
+-- Leaving: the oldest member takes over a club its owner leaves; the last one out closes it.
+create or replace function public.leave_club()
+returns void language plpgsql security definer set search_path = public as $$
+declare me uuid := auth.uid(); cid uuid; heir uuid;
+begin
+  select club_id into cid from club_members where user_id = me;
+  if cid is null then return; end if;
+  delete from club_members where user_id = me;
+  if exists (select 1 from clubs where id = cid and owner = me) then
+    select user_id into heir from club_members where club_id = cid order by joined_at limit 1;
+    if heir is null then delete from clubs where id = cid; else update clubs set owner = heir where id = cid; end if;
+  end if;
+end $$;
+
+-- The club owner challenges another club for this week (one clash per club per week).
+create or replace function public.challenge_club(p_target uuid, p_week text)
+returns uuid language plpgsql security definer set search_path = public as $$
+declare me uuid := auth.uid(); mine uuid; xid uuid;
+begin
+  select id into mine from clubs where owner = me;
+  if mine is null then raise exception 'Only a club owner can start a clash.'; end if;
+  if mine = p_target then raise exception 'Pick another club.'; end if;
+  if exists (select 1 from club_clashes where week = p_week and (club_a in (mine, p_target) or club_b in (mine, p_target))) then raise exception 'One of the clubs already has a clash this week.'; end if;
+  insert into club_clashes (week, club_a, club_b) values (p_week, mine, p_target) returning id into xid;
+  return xid;
+end $$;
+
+revoke all on function public.create_club(text, text, text, text, text), public.join_club(uuid), public.leave_club(), public.challenge_club(uuid, text) from public, anon;
+grant execute on function public.create_club(text, text, text, text, text), public.join_club(uuid), public.leave_club(), public.challenge_club(uuid, text) to authenticated;
+
+-- ---------------------------------------------------------------- boards
+
+-- Clubs with their members and total XP.
+
+
+
+-- Club points for the week: every member's result on each weekly board scores 0-100 against that board's best
+-- that week, so the Rebuild, the Hunt and the quick games all count the same.
+
+
+
+-- Each member's club points this week (for the club page).
+
+
+
+
+-- ---------------------------------------------------------------- online GM leagues (also in migrations/2026-10-05-online-leagues.sql)
+create table if not exists public.online_leagues (
+  id uuid primary key default gen_random_uuid(),
+  code text unique not null check (code ~ '^[A-Z0-9]{6}$'),
+  name text not null check (length(name) between 1 and 40),
+  commissioner uuid not null references public.profiles on delete cascade,
+  teams jsonb not null default '[]'::jsonb,
+  version int not null default 0,
+  state_path text,
+  season text not null default '',
+  phase text not null default '',
+  status_line text not null default '' check (length(status_line) <= 120),
+  deadline_hours int not null default 24 check (deadline_hours between 1 and 168),
+  advanced_at timestamptz not null default now(),
+  saved_by uuid references public.profiles on delete set null,
+  updated_at timestamptz not null default now(),
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.online_league_members (
+  league_id uuid not null references public.online_leagues on delete cascade,
+  user_id uuid not null references public.profiles on delete cascade,
+  team_id text not null,
+  ready boolean not null default false,
+  joined_at timestamptz not null default now(),
+  primary key (league_id, user_id),
+  unique (league_id, team_id)
+);
+create index if not exists online_league_members_user on public.online_league_members (user_id);
+
+-- Trades between two friends' teams: proposed by one, accepted (and applied) by the other.
+create table if not exists public.online_trades (
+  id uuid primary key default gen_random_uuid(),
+  league_id uuid not null references public.online_leagues on delete cascade,
+  from_user uuid not null references public.profiles on delete cascade,
+  to_user uuid not null references public.profiles on delete cascade,
+  proposal jsonb not null,
+  status text not null default 'pending' check (status in ('pending', 'accepted', 'declined', 'cancelled')),
+  created_at timestamptz not null default now()
+);
+create index if not exists online_trades_league on public.online_trades (league_id, created_at desc);
+
+-- Is the caller in this league? (security definer so the policies below don't recurse.)
+create or replace function public.is_online_member(p_league uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from online_league_members where league_id = p_league and user_id = auth.uid());
+$$;
+
+alter table public.online_leagues enable row level security;
+alter table public.online_league_members enable row level security;
+alter table public.online_trades enable row level security;
+drop policy if exists "members read" on public.online_leagues;
+create policy "members read" on public.online_leagues for select using (public.is_online_member(id));
+drop policy if exists "members read" on public.online_league_members;
+create policy "members read" on public.online_league_members for select using (public.is_online_member(league_id));
+drop policy if exists "members read" on public.online_trades;
+create policy "members read" on public.online_trades for select using (public.is_online_member(league_id));
+revoke insert, update, delete on public.online_leagues, public.online_league_members, public.online_trades from anon, authenticated;
+
+-- ---------------------------------------------------------------- actions
+
+create or replace function public.create_online_league(p_name text, p_teams jsonb, p_team text, p_deadline_hours int default 24)
+returns table (league_id uuid, league_code text) language plpgsql security definer set search_path = public as $$
+declare me uuid := auth.uid(); lid uuid; c text; tries int := 0;
+begin
+  if me is null then raise exception 'Sign in first.'; end if;
+  if not exists (select 1 from profiles p where p.id = me and p.username is not null and not p.banned) then raise exception 'Pick a GM name first.'; end if;
+  if (select count(*) from online_league_members m where m.user_id = me) >= 5 then raise exception 'You are in five online leagues already.'; end if;
+  if jsonb_typeof(p_teams) <> 'array' or jsonb_array_length(p_teams) < 2 or jsonb_array_length(p_teams) > 40 then raise exception 'That league has no teams.'; end if;
+  loop
+    c := upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 6));
+    exit when not exists (select 1 from online_leagues o where o.code = c);
+    tries := tries + 1; if tries > 20 then raise exception 'Try again.'; end if;
+  end loop;
+  insert into online_leagues (code, name, commissioner, teams, deadline_hours) values (c, trim(p_name), me, p_teams, greatest(1, least(168, coalesce(p_deadline_hours, 24)))) returning online_leagues.id into lid;
+  insert into online_league_members (league_id, user_id, team_id) values (lid, me, p_team);
+  return query select lid, c;
+end $$;
+
+-- What a code is (name, teams, which are taken) before you join.
+create or replace function public.peek_online_league(p_code text)
+returns table (id uuid, name text, teams jsonb, taken text[], members int, season text)
+language sql stable security definer set search_path = public as $$
+  select o.id, o.name, o.teams, coalesce(array_agg(m.team_id) filter (where m.team_id is not null), '{}'), count(m.user_id)::int, o.season
+  from online_leagues o left join online_league_members m on m.league_id = o.id
+  where o.code = upper(trim(p_code)) group by o.id;
+$$;
+
+create or replace function public.join_online_league(p_code text, p_team text)
+returns uuid language plpgsql security definer set search_path = public as $$
+declare me uuid := auth.uid(); lid uuid; tms jsonb;
+begin
+  if me is null then raise exception 'Sign in first.'; end if;
+  if not exists (select 1 from profiles p where p.id = me and p.username is not null and not p.banned) then raise exception 'Pick a GM name first.'; end if;
+  select o.id, o.teams into lid, tms from online_leagues o where o.code = upper(trim(p_code));
+  if lid is null then raise exception 'No league has that code.'; end if;
+  if exists (select 1 from online_league_members where league_id = lid and user_id = me) then return lid; end if;
+  if (select count(*) from online_league_members where league_id = lid) >= 8 then raise exception 'That league is full (8 GMs).'; end if;
+  if not exists (select 1 from jsonb_array_elements(tms) t where t->>'id' = p_team) then raise exception 'That team is not in the league.'; end if;
+  if exists (select 1 from online_league_members where league_id = lid and team_id = p_team) then raise exception 'Someone already runs that team.'; end if;
+  insert into online_league_members (league_id, user_id, team_id) values (lid, me, p_team);
+  return lid;
+end $$;
+
+create or replace function public.leave_online_league(p_league uuid)
+returns void language plpgsql security definer set search_path = public as $$
+declare me uuid := auth.uid(); heir uuid;
+begin
+  delete from online_league_members where league_id = p_league and user_id = me;
+  if exists (select 1 from online_leagues where id = p_league and commissioner = me) then
+    select user_id into heir from online_league_members where league_id = p_league order by joined_at limit 1;
+    if heir is null then delete from online_leagues where id = p_league; else update online_leagues set commissioner = heir where id = p_league; end if;
+  end if;
+end $$;
+
+create or replace function public.set_online_ready(p_league uuid, p_ready boolean)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  update online_league_members set ready = p_ready where league_id = p_league and user_id = auth.uid();
+end $$;
+
+-- Saves a new version of the league. Fails if someone else saved since you loaded (p_expected).
+-- p_advanced: the league moved forward (games played, a new phase); that resets everyone's Ready.
+create or replace function public.commit_online_league(p_league uuid, p_expected int, p_path text, p_season text, p_phase text, p_status text, p_advanced boolean)
+returns int language plpgsql security definer set search_path = public as $$
+declare v int;
+begin
+  if not public.is_online_member(p_league) then raise exception 'You are not in this league.'; end if;
+  if p_path !~ ('^' || p_league::text || '/[0-9]+-[a-z0-9]+\.json(\.gz)?$') then raise exception 'Bad file.'; end if;
+  update online_leagues set version = version + 1, state_path = p_path, season = left(coalesce(p_season, ''), 20), phase = left(coalesce(p_phase, ''), 20),
+    status_line = left(coalesce(p_status, ''), 120), saved_by = auth.uid(), updated_at = now(),
+    advanced_at = case when p_advanced then now() else advanced_at end
+    where id = p_league and version = p_expected returning version into v;
+  if v is null then raise exception 'stale: someone saved the league after you loaded it.'; end if;
+  if p_advanced then update online_league_members set ready = false where league_id = p_league; end if;
+  return v;
+end $$;
+
+create or replace function public.propose_online_trade(p_league uuid, p_to uuid, p_proposal jsonb)
+returns uuid language plpgsql security definer set search_path = public as $$
+declare tid uuid;
+begin
+  if not public.is_online_member(p_league) then raise exception 'You are not in this league.'; end if;
+  if not exists (select 1 from online_league_members where league_id = p_league and user_id = p_to) then raise exception 'That GM is not in this league.'; end if;
+  if (select count(*) from online_trades where league_id = p_league and from_user = auth.uid() and status = 'pending') >= 10 then raise exception 'You have ten offers waiting already.'; end if;
+  insert into online_trades (league_id, from_user, to_user, proposal) values (p_league, auth.uid(), p_to, p_proposal) returning id into tid;
+  return tid;
+end $$;
+
+-- The receiver accepts or declines; the sender may cancel. (Accepting is recorded after the receiver's game applied it.)
+create or replace function public.answer_online_trade(p_trade uuid, p_status text)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if p_status not in ('accepted', 'declined', 'cancelled') then raise exception 'Bad answer.'; end if;
+  update online_trades set status = p_status where id = p_trade and status = 'pending'
+    and ((p_status in ('accepted', 'declined') and to_user = auth.uid()) or (p_status = 'cancelled' and from_user = auth.uid()));
+end $$;
+
+revoke all on function public.create_online_league(text, jsonb, text, int), public.peek_online_league(text), public.join_online_league(text, text), public.leave_online_league(uuid),
+  public.set_online_ready(uuid, boolean), public.commit_online_league(uuid, int, text, text, text, text, boolean), public.propose_online_trade(uuid, uuid, jsonb), public.answer_online_trade(uuid, text) from public, anon;
+grant execute on function public.create_online_league(text, jsonb, text, int), public.peek_online_league(text), public.join_online_league(text, text), public.leave_online_league(uuid),
+  public.set_online_ready(uuid, boolean), public.commit_online_league(uuid, int, text, text, text, text, boolean), public.propose_online_trade(uuid, uuid, jsonb), public.answer_online_trade(uuid, text) to authenticated;
+
+-- Members with their GM names (for the league bar).
+create or replace view public.online_members_view with (security_invoker = on) as
+  select m.league_id, m.user_id, m.team_id, m.ready, m.joined_at, p.username, p.icon, p.color
+  from public.online_league_members m join public.profiles p on p.id = m.user_id;
+grant select on public.online_members_view to authenticated;
+
+-- ---------------------------------------------------------------- the save files
+
+insert into storage.buckets (id, name, public, file_size_limit) values ('online-leagues', 'online-leagues', false, 52428800)
+  on conflict (id) do nothing;
+drop policy if exists "online league members read" on storage.objects;
+create policy "online league members read" on storage.objects for select to authenticated
+  using (bucket_id = 'online-leagues' and public.is_online_member(((storage.foldername(name))[1])::uuid));
+drop policy if exists "online league members write" on storage.objects;
+create policy "online league members write" on storage.objects for insert to authenticated
+  with check (bucket_id = 'online-leagues' and public.is_online_member(((storage.foldername(name))[1])::uuid));
+drop policy if exists "online league members tidy" on storage.objects;
+create policy "online league members tidy" on storage.objects for delete to authenticated
+  using (bucket_id = 'online-leagues' and public.is_online_member(((storage.foldername(name))[1])::uuid));
+
+-- ---------------------------------------------------------------- gifts and profile visitors (also in migrations/2026-10-12-gifts-visitors.sql)
+
+-- A free daily gift from one GM to a GM they follow: 150 coins and a Lucky Spin for the friend, nothing spent by
+-- the sender. Each GM can send 10 a day, one per friend. "claimed" flips once, when the friend collects it.
+create table if not exists public.gifts (
+  id uuid primary key default gen_random_uuid(),
+  sender uuid not null references public.profiles(id) on delete cascade,
+  recipient uuid not null references public.profiles(id) on delete cascade,
+  day date not null,
+  coins int not null default 150,
+  lucky int not null default 1,
+  claimed boolean not null default false,
+  created_at timestamptz not null default now(),
+  unique (sender, recipient, day),
+  check (sender <> recipient)
+);
+create index if not exists gifts_recipient_idx on public.gifts (recipient, claimed);
+create index if not exists gifts_sender_day_idx on public.gifts (sender, day);
+alter table public.gifts enable row level security;
+
+-- Who looked at whose public profile, one row per viewer, profile and day (for "3 GMs visited today").
+create table if not exists public.profile_views (
+  viewer uuid not null references public.profiles(id) on delete cascade,
+  target uuid not null references public.profiles(id) on delete cascade,
+  day date not null,
+  primary key (viewer, target, day),
+  check (viewer <> target)
+);
+create index if not exists profile_views_target_idx on public.profile_views (target, day);
+alter table public.profile_views enable row level security;
+
+-- ---------------------------------------------------------------- clans (also in migrations/2026-10-15-clans.sql)
+
+alter table public.clubs add column if not exists description text not null default '' check (length(description) <= 300);
+alter table public.clubs add column if not exists flag text not null default '' check (length(flag) <= 200);
+alter table public.clubs add column if not exists open boolean not null default true;
+
+-- The join link's code. Private: only the clan's leader can read it (so a closed clan stays closed).
+create table if not exists public.club_codes (
+  club_id uuid primary key references public.clubs on delete cascade,
+  code text unique not null default substr(replace(gen_random_uuid()::text, '-', ''), 1, 12)
+);
+insert into public.club_codes (club_id) select id from public.clubs on conflict do nothing;
+
+-- Invites from a clan's leader to a GM (the GM sees them on the Clans page, and can join even a closed clan).
+create table if not exists public.club_invites (
+  club_id uuid not null references public.clubs on delete cascade,
+  user_id uuid not null references public.profiles on delete cascade,
+  invited_by uuid references public.profiles on delete set null,
+  created_at timestamptz not null default now(),
+  primary key (club_id, user_id)
+);
+create index if not exists club_invites_user on public.club_invites (user_id);
+
+-- GMs a leader removed: they can't walk back into an open clan without a new invite or the link.
+create table if not exists public.club_kicks (
+  club_id uuid not null references public.clubs on delete cascade,
+  user_id uuid not null references public.profiles on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (club_id, user_id)
+);
+
+alter table public.club_codes enable row level security;
+alter table public.club_invites enable row level security;
+alter table public.club_kicks enable row level security;
+drop policy if exists "leader read" on public.club_codes;
+create policy "leader read" on public.club_codes for select using (exists (select 1 from public.clubs c where c.id = club_id and c.owner = auth.uid()));
+drop policy if exists "invitee or leader read" on public.club_invites;
+create policy "invitee or leader read" on public.club_invites for select using (user_id = auth.uid() or exists (select 1 from public.clubs c where c.id = club_id and c.owner = auth.uid()));
+revoke insert, update, delete on public.club_codes, public.club_invites, public.club_kicks from anon, authenticated;
+
+-- ---------------------------------------------------------------- helpers
+
+-- Coins in a GM's synced save (0 when there is no save or it can't be read).
+create or replace function public.synced_coins(p_user uuid)
+returns numeric language plpgsql stable security definer set search_path = public as $$
+declare raw text; n numeric;
+begin
+  select data->'storage'->>'cv-relics' into raw from progress where user_id = p_user;
+  if raw is null then return 0; end if;
+  n := (raw::jsonb->>'coins')::numeric;
+  return coalesce(n, 0);
+exception when others then return 0;
+end $$;
+revoke all on function public.synced_coins(uuid) from public, anon, authenticated;
+
+-- Joins a GM to a clan after the shared checks (signed in, has a name, not in a clan, the clan isn't full).
+create or replace function public.club_enter(p_user uuid, p_club uuid)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if p_user is null then raise exception 'Sign in first.'; end if;
+  if not exists (select 1 from profiles where id = p_user and username is not null and not banned) then raise exception 'Pick a GM name first.'; end if;
+  if not exists (select 1 from clubs where id = p_club) then raise exception 'That clan is gone.'; end if;
+  if exists (select 1 from club_members where user_id = p_user) then raise exception 'Leave your clan first.'; end if;
+  if (select count(*) from club_members where club_id = p_club) >= 20 then raise exception 'That clan is full (20 GMs).'; end if;
+  insert into club_members (user_id, club_id) values (p_user, p_club);
+  delete from club_invites where user_id = p_user and club_id = p_club;
+  delete from club_kicks where user_id = p_user and club_id = p_club;
+end $$;
+revoke all on function public.club_enter(uuid, uuid) from public, anon, authenticated;
+
+-- ---------------------------------------------------------------- actions
+
+drop function if exists public.create_club(text, text, text, text, text);
+create or replace function public.create_club(p_name text, p_tag text, p_badge text, p_color text, p_motto text default '', p_description text default '', p_flag text default '', p_open boolean default true)
+returns uuid language plpgsql security definer set search_path = public as $$
+declare me uuid := auth.uid(); cid uuid;
+begin
+  if me is null then raise exception 'Sign in first.'; end if;
+  if not exists (select 1 from profiles where id = me and username is not null and not banned) then raise exception 'Pick a GM name first.'; end if;
+  if exists (select 1 from club_members where user_id = me) then raise exception 'Leave your clan first.'; end if;
+  if public.synced_coins(me) < 100000 then raise exception 'A clan costs 100,000 coins, and your synced save has fewer. Play a game while signed in so your coins sync, then try again.'; end if;
+  insert into clubs (name, tag, badge, color, motto, description, flag, open, owner)
+    values (trim(p_name), upper(trim(p_tag)), coalesce(p_badge, 'ball'), coalesce(p_color, 'orange'), coalesce(trim(p_motto), ''), coalesce(trim(p_description), ''), coalesce(p_flag, ''), coalesce(p_open, true), me)
+    returning id into cid;
+  insert into club_members (user_id, club_id) values (me, cid);
+  insert into club_codes (club_id) values (cid) on conflict do nothing;
+  return cid;
+end $$;
+
+-- The leader edits the clan: name, tag, motto, description, flag, badge, colour, open or closed.
+create or replace function public.update_club(p_name text, p_tag text, p_badge text, p_color text, p_motto text, p_description text, p_flag text, p_open boolean)
+returns void language plpgsql security definer set search_path = public as $$
+declare me uuid := auth.uid(); cid uuid;
+begin
+  select id into cid from clubs where owner = me;
+  if cid is null then raise exception 'Only the clan leader can edit the clan.'; end if;
+  update clubs set name = trim(p_name), tag = upper(trim(p_tag)), badge = coalesce(p_badge, badge), color = coalesce(p_color, color), motto = coalesce(trim(p_motto), ''),
+    description = coalesce(trim(p_description), ''), flag = coalesce(p_flag, ''), open = coalesce(p_open, open) where id = cid;
+end $$;
+
+-- Open clans: anyone joins. Closed clans: only with an invite (or the link, below).
+drop function if exists public.join_club(uuid);
+create or replace function public.join_club(p_club uuid)
+returns void language plpgsql security definer set search_path = public as $$
+declare me uuid := auth.uid(); invited boolean;
+begin
+  invited := exists (select 1 from club_invites where club_id = p_club and user_id = me);
+  if not invited and not coalesce((select open from clubs where id = p_club), true) then raise exception 'That clan is closed: you need its invite link or an invite from its leader.'; end if;
+  if not invited and exists (select 1 from club_kicks where club_id = p_club and user_id = me) then raise exception 'The leader removed you from this clan. Ask them for an invite.'; end if;
+  perform public.club_enter(me, p_club);
+end $$;
+
+-- Joining with the link's code works for open and closed clans alike.
+create or replace function public.join_club_code(p_code text)
+returns uuid language plpgsql security definer set search_path = public as $$
+declare me uuid := auth.uid(); cid uuid;
+begin
+  select club_id into cid from club_codes where code = lower(trim(p_code));
+  if cid is null then raise exception 'That invite link has expired. Ask the clan leader for a new one.'; end if;
+  perform public.club_enter(me, cid);
+  return cid;
+end $$;
+
+-- What a link leads to (shown before you join; works signed out too). The code itself is never returned.
+create or replace function public.club_by_code(p_code text)
+returns table (id uuid, name text, tag text, flag text, description text, members int) language sql stable security definer set search_path = public as $$
+  select c.id, c.name::text, c.tag, c.flag, c.description, (select count(*)::int from club_members m where m.club_id = c.id)
+  from club_codes k join clubs c on c.id = k.club_id where k.code = lower(trim(p_code));
+$$;
+
+-- A new link (the old one stops working).
+create or replace function public.new_club_code()
+returns text language plpgsql security definer set search_path = public as $$
+declare me uuid := auth.uid(); cid uuid; fresh text := substr(replace(gen_random_uuid()::text, '-', ''), 1, 12);
+begin
+  select id into cid from clubs where owner = me;
+  if cid is null then raise exception 'Only the clan leader can make a new link.'; end if;
+  insert into club_codes (club_id, code) values (cid, fresh) on conflict (club_id) do update set code = excluded.code;
+  return fresh;
+end $$;
+
+create or replace function public.invite_to_club(p_username text)
+returns void language plpgsql security definer set search_path = public as $$
+declare me uuid := auth.uid(); cid uuid; target uuid;
+begin
+  select id into cid from clubs where owner = me;
+  if cid is null then raise exception 'Only the clan leader can invite.'; end if;
+  select id into target from profiles where username = trim(both '@' from trim(p_username)) and not banned;
+  if target is null then raise exception 'No GM called @%.', trim(both '@' from trim(p_username)); end if;
+  if exists (select 1 from club_members where user_id = target and club_id = cid) then raise exception 'They are already in your clan.'; end if;
+  if (select count(*) from club_invites where club_id = cid) >= 50 then raise exception 'Your clan has 50 open invites: wait for some answers first.'; end if;
+  insert into club_invites (club_id, user_id, invited_by) values (cid, target, me) on conflict do nothing;
+  delete from club_kicks where club_id = cid and user_id = target;
+end $$;
+
+-- An invite turned down (by the GM) or taken back (by the leader).
+create or replace function public.drop_club_invite(p_club uuid, p_user uuid default null)
+returns void language plpgsql security definer set search_path = public as $$
+declare me uuid := auth.uid();
+begin
+  if p_user is null or p_user = me then delete from club_invites where club_id = p_club and user_id = me; return; end if;
+  if not exists (select 1 from clubs where id = p_club and owner = me) then raise exception 'Only the clan leader can take an invite back.'; end if;
+  delete from club_invites where club_id = p_club and user_id = p_user;
+end $$;
+
+create or replace function public.kick_from_club(p_user uuid)
+returns void language plpgsql security definer set search_path = public as $$
+declare me uuid := auth.uid(); cid uuid;
+begin
+  select id into cid from clubs where owner = me;
+  if cid is null then raise exception 'Only the clan leader can remove members.'; end if;
+  if p_user = me then raise exception 'To step away, use Leave the clan.'; end if;
+  delete from club_members where user_id = p_user and club_id = cid;
+  insert into club_kicks (club_id, user_id) values (cid, p_user) on conflict do nothing;
+end $$;
+
+revoke all on function public.create_club(text, text, text, text, text, text, text, boolean), public.update_club(text, text, text, text, text, text, text, boolean), public.join_club(uuid),
+  public.join_club_code(text), public.new_club_code(), public.invite_to_club(text), public.drop_club_invite(uuid, uuid), public.kick_from_club(uuid), public.club_by_code(text) from public, anon;
+grant execute on function public.create_club(text, text, text, text, text, text, text, boolean), public.update_club(text, text, text, text, text, text, text, boolean), public.join_club(uuid),
+  public.join_club_code(text), public.new_club_code(), public.invite_to_club(text), public.drop_club_invite(uuid, uuid), public.kick_from_club(uuid) to authenticated;
+grant execute on function public.club_by_code(text) to anon, authenticated;
+
+-- ---------------------------------------------------------------- boards (the same views, now with the flag)
+
+
+
+
+
+
+
+
+
+-- ---------------------------------------------------------------- owner off the boards, time played (also in migrations/2026-10-22-owner-off-boards-play-time.sql)
+
+
+-- lb_users stays the public GM directory (profiles, search, friends, clan names), owner included; lb_gms is the
+-- same list for the boards, without the owner.
+
+
+create or replace view public.lb_users with (security_invoker = on) as
+  select p.id, p.username, p.title, p.frame, p.level, p.xp, p.stats, p.icon, p.color, p.avatar,
+    case when jsonb_typeof(p.stats->'playSeconds') = 'number' then round((p.stats->>'playSeconds')::numeric / 3600, 1) else 0 end as play_hours
+  from public.profiles p where p.username is not null and not p.banned;
+create or replace view public.lb_gms with (security_invoker = on) as
+  select u.* from public.lb_users u join public.profiles p on p.id = u.id where p.role is distinct from 'owner';
+
+
+create or replace view public.lb_players with (security_invoker = on) as
+  select c.*, p.username, p.icon, p.color, p.avatar from public.created_players c join public.profiles p on p.id = c.user_id
+  where p.username is not null and not p.banned and p.role is distinct from 'owner';
+
+
+create or replace view public.lb_weekly with (security_invoker = on) as
+  select w.*, p.username, p.title, p.icon, p.color, p.avatar from public.weekly_scores w join public.profiles p on p.id = w.user_id
+  where p.username is not null and not p.banned and p.role is distinct from 'owner';
+
+
+create or replace view public.lb_daily with (security_invoker = on) as
+  select d.*, p.username, p.title, p.icon, p.color, p.avatar from public.daily_legend d join public.profiles p on p.id = d.user_id
+  where p.username is not null and not p.banned and p.role is distinct from 'owner';
+
+
+create or replace view public.lb_rebuild with (security_invoker = on) as
+  select r.*, p.username, p.title, p.icon, p.color, p.avatar from public.rebuild_records r join public.profiles p on p.id = r.user_id
+  where p.username is not null and not p.banned and p.role is distinct from 'owner';
+
+
+create or replace view public.lb_codes with (security_invoker = on) as
+  select c.*, p.username, p.icon, p.color, p.avatar from public.code_results c join public.profiles p on p.id = c.user_id
+  where p.username is not null and not p.banned and p.role is distinct from 'owner';
+
+
+create or replace view public.lb_ranked with (security_invoker = on) as
+  select e.season, e.user_id, p.username, p.title, sum(e.points)::int as points, count(*)::int as events, p.icon, p.color, p.avatar
+  from public.ranked_events e join public.profiles p on p.id = e.user_id
+  where p.username is not null and not p.banned and p.role is distinct from 'owner'
+  group by e.season, e.user_id, p.username, p.title, p.icon, p.color, p.avatar;
+
+
+create or replace view public.lb_pvp with (security_invoker = on) as
+  select g.user_id, p.username, p.title, g.rating, g.wins, g.losses, g.squad, g.updated_at, p.icon, p.color, p.avatar
+  from public.hunt_ghosts g join public.profiles p on p.id = g.user_id
+  where p.username is not null and not p.banned and p.role is distinct from 'owner';
+
+
+
+-- Clans: the owner's XP and weekly results count for nobody.
+
+create or replace view public.lb_clubs with (security_invoker = on) as
+  select c.id, c.name, c.tag, c.badge, c.color, c.motto, c.owner, c.created_at, count(m.user_id)::int as members, coalesce(sum(p.xp), 0)::bigint as xp,
+    c.description, c.flag, c.open
+  from public.clubs c left join public.club_members m on m.club_id = c.id
+  left join public.profiles p on p.id = m.user_id and not p.banned and p.role is distinct from 'owner'
+  group by c.id;
+
+
+create or replace view public.lb_club_weekly with (security_invoker = on) as
+  with s as (
+    select w.board, w.week, w.user_id, w.score, max(w.score) over (partition by w.board, w.week) as top
+    from public.weekly_scores w join public.profiles p on p.id = w.user_id where not p.banned and p.role is distinct from 'owner'
+  )
+  select m.club_id, c.name, c.tag, c.badge, c.color, s.week,
+    sum(round(100.0 * greatest(s.score, 0) / greatest(s.top, 1)))::int as points, count(distinct s.user_id)::int as players, c.flag
+  from s join public.club_members m on m.user_id = s.user_id join public.clubs c on c.id = m.club_id
+  group by m.club_id, c.name, c.tag, c.badge, c.color, s.week, c.flag;
+
+
+create or replace view public.lb_club_members with (security_invoker = on) as
+  with s as (
+    select w.board, w.week, w.user_id, w.score, max(w.score) over (partition by w.board, w.week) as top
+    from public.weekly_scores w join public.profiles p on p.id = w.user_id where not p.banned and p.role is distinct from 'owner'
+  )
+  select m.club_id, m.user_id, m.joined_at, p.username, p.title, p.icon, p.color, p.avatar, p.level, p.xp, s.week,
+    coalesce(sum(round(100.0 * greatest(s.score, 0) / greatest(s.top, 1))), 0)::int as points
+  from public.club_members m join public.profiles p on p.id = m.user_id
+  left join s on s.user_id = m.user_id
+  where p.username is not null and not p.banned
+  group by m.club_id, m.user_id, m.joined_at, p.username, p.title, p.icon, p.color, p.avatar, p.level, p.xp, s.week;
+
+
+
+grant select on public.lb_users, public.lb_players, public.lb_weekly, public.lb_daily, public.lb_rebuild, public.lb_codes, public.lb_ranked, public.lb_pvp, public.achievement_rarity to anon, authenticated;
+grant select on public.lb_clubs, public.lb_club_weekly, public.lb_club_members to anon, authenticated;
+grant select on public.lb_clubs, public.lb_club_weekly to anon, authenticated;
+grant select on public.lb_users, public.lb_gms, public.lb_players, public.lb_weekly, public.lb_daily, public.lb_rebuild, public.lb_codes, public.lb_ranked, public.lb_pvp to anon, authenticated;
+grant select on public.lb_clubs, public.lb_club_weekly, public.lb_club_members to anon, authenticated;
+
+-- 2026-10-25-ninefold-accounts.sql
+-- Ninefold accounts: one login (auth.users + profiles.username) shared by Court Vision, Dragon Vision and the
+-- NineFoldVision site. Each game keeps its own progress in its own rows, so one game can never change another's.
+-- Additive only: no existing table, column or policy is changed. Friends reuse public.follows (mutual = friends).
+
+-- Private per-game cloud saves (Court Vision keeps using public.progress).
+create table if not exists public.game_saves (
+  user_id uuid not null references auth.users on delete cascade,
+  game text not null check (game in ('dragonvision')),
+  data jsonb not null,
+  size int not null default 0,
+  updated_at timestamptz not null default now(),
+  primary key (user_id, game),
+  constraint game_saves_size check (octet_length(data::text) < 2000000)
+);
+
+-- Public per-game profile card (e.g. Dragon Vision: strongest fighters, highest stage, forged legends).
+create table if not exists public.game_summaries (
+  user_id uuid not null references auth.users on delete cascade,
+  game text not null check (game in ('courtvision', 'dragonvision')),
+  summary jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now(),
+  primary key (user_id, game),
+  constraint game_summaries_size check (octet_length(summary::text) < 20000)
+);
+
+-- Achievements from games that don't already have a table (Court Vision uses public.user_achievements).
+create table if not exists public.game_trophies (
+  user_id uuid not null references auth.users on delete cascade,
+  game text not null check (game in ('dragonvision')),
+  trophy_id text not null check (trophy_id ~ '^[a-z0-9:_-]{1,64}$'),
+  earned_at timestamptz not null default now(),
+  primary key (user_id, game, trophy_id)
+);
+
+-- The six trophies a player shows on their NineFoldVision profile, from any game: [{"game":"...","id":"..."}].
+create table if not exists public.trophy_showcase (
+  user_id uuid primary key references auth.users on delete cascade,
+  picks jsonb not null default '[]'::jsonb,
+  updated_at timestamptz not null default now(),
+  constraint trophy_showcase_picks check (jsonb_typeof(picks) = 'array' and jsonb_array_length(picks) <= 6)
+);
+
+-- Short public activity lines across games ("Cleared stage 100 in Dragon Vision").
+create table if not exists public.activity (
+  id bigint generated always as identity primary key,
+  user_id uuid not null references auth.users on delete cascade,
+  game text not null check (game in ('courtvision', 'dragonvision', 'ninefold')),
+  kind text not null check (kind ~ '^[a-z0-9_-]{1,32}$'),
+  text text not null check (length(text) between 1 and 140),
+  created_at timestamptz not null default now()
+);
+create index if not exists activity_user_recent on public.activity (user_id, created_at desc);
+
+alter table public.game_saves enable row level security;
+alter table public.game_summaries enable row level security;
+alter table public.game_trophies enable row level security;
+alter table public.trophy_showcase enable row level security;
+alter table public.activity enable row level security;
+
+-- Saves: only the owner.
+drop policy if exists game_saves_owner on public.game_saves;
+create policy game_saves_owner on public.game_saves for all to authenticated
+  using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+
+-- Summaries, trophies, showcase, activity: anyone can read; only the owner writes their own rows.
+drop policy if exists game_summaries_read on public.game_summaries;
+create policy game_summaries_read on public.game_summaries for select to anon, authenticated using (true);
+drop policy if exists game_summaries_write on public.game_summaries;
+create policy game_summaries_write on public.game_summaries for insert to authenticated with check ((select auth.uid()) = user_id);
+drop policy if exists game_summaries_update on public.game_summaries;
+create policy game_summaries_update on public.game_summaries for update to authenticated
+  using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+
+drop policy if exists game_trophies_read on public.game_trophies;
+create policy game_trophies_read on public.game_trophies for select to anon, authenticated using (true);
+drop policy if exists game_trophies_write on public.game_trophies;
+create policy game_trophies_write on public.game_trophies for insert to authenticated with check ((select auth.uid()) = user_id);
+drop policy if exists game_trophies_delete on public.game_trophies;
+create policy game_trophies_delete on public.game_trophies for delete to authenticated using ((select auth.uid()) = user_id);
+
+drop policy if exists trophy_showcase_read on public.trophy_showcase;
+create policy trophy_showcase_read on public.trophy_showcase for select to anon, authenticated using (true);
+drop policy if exists trophy_showcase_write on public.trophy_showcase;
+create policy trophy_showcase_write on public.trophy_showcase for insert to authenticated with check ((select auth.uid()) = user_id);
+drop policy if exists trophy_showcase_update on public.trophy_showcase;
+create policy trophy_showcase_update on public.trophy_showcase for update to authenticated
+  using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+
+drop policy if exists activity_read on public.activity;
+create policy activity_read on public.activity for select to anon, authenticated using (true);
+drop policy if exists activity_write on public.activity;
+create policy activity_write on public.activity for insert to authenticated with check ((select auth.uid()) = user_id);
+drop policy if exists activity_delete on public.activity;
+create policy activity_delete on public.activity for delete to authenticated using ((select auth.uid()) = user_id);
+
+grant select on public.game_summaries, public.game_trophies, public.trophy_showcase, public.activity to anon, authenticated;
+grant insert, update, delete on public.game_saves, public.game_summaries, public.game_trophies, public.trophy_showcase, public.activity to authenticated;
+grant select on public.game_saves to authenticated;
+
+
+-- 2026-10-25-support-shop.sql
+-- The Support Shop: the monthly No-Ads Pass and the one-time bundles (Supporter, Visionary, Eternal Founder, Custom).
+-- Run this once in the Supabase SQL editor (or re-run supabase/schema.sql). Until it runs, the game reads the old
+-- columns and only the Supporter Pass and a lifetime No-Ads Pass are recorded.
+alter table public.entitlements add column if not exists no_ads_until timestamptz;
+alter table public.entitlements add column if not exists no_ads_status text;
+alter table public.entitlements add column if not exists no_ads_subscription_id text;
+alter table public.entitlements add column if not exists no_ads_updated_at timestamptz;
+alter table public.entitlements add column if not exists no_ads_portal_url text;
+alter table public.entitlements add column if not exists bundles text[] not null default '{}';
+-- Which bundle each Paddle order bought (txn id → bundle), so a refund takes back the right one.
+alter table public.entitlements add column if not exists bundle_orders jsonb not null default '{}';
+
+
+-- 2026-10-31-release-progress.sql
+-- Release update-50. Review and apply only at release time, before deploying its API.
+-- All figures are derived by /api/sync; clients get SELECT access only.
+
+create or replace view public.lb_progress with (security_invoker = on) as
+select p.*,
+  case when jsonb_typeof(stats->'trophies') = 'number' then greatest(0, (stats->>'trophies')::numeric) else 0 end as trophies,
+  case when jsonb_typeof(stats->'huntWins') = 'number' then greatest(0, (stats->>'huntWins')::numeric) else 0 end as hunt_wins,
+  case when jsonb_typeof(stats->'perfectTitles') = 'number' then greatest(0, (stats->>'perfectTitles')::numeric) else 0 end as perfect_titles,
+  case when jsonb_typeof(stats->'perfect98') = 'number' then greatest(0, (stats->>'perfect98')::numeric) else 0 end as perfect98
+from public.lb_gms p;
+grant select on public.lb_progress to anon, authenticated;
+
+create table if not exists public.leader_reigns (
+ id bigint generated always as identity primary key,
+ board text not null check (board in ('gms','playtime','players','trophies','hunt','perfect')),
+ user_id uuid not null references public.profiles(id) on delete cascade,
+ started_at timestamptz not null default now(), ended_at timestamptz,
+ check (ended_at is null or ended_at >= started_at)
+);
+create unique index if not exists leader_reigns_one_current on public.leader_reigns(board) where ended_at is null;
+alter table public.leader_reigns enable row level security;
+drop policy if exists leader_reigns_read on public.leader_reigns;
+drop policy if exists leader_reigns_read on public.leader_reigns;
+create policy leader_reigns_read on public.leader_reigns for select using (true);
+revoke all on public.leader_reigns from anon, authenticated;
+grant select on public.leader_reigns to anon, authenticated;
+create or replace view public.leader_reigns_public with (security_invoker = on) as
+select r.*, p.username from public.leader_reigns r join public.profiles p on p.id = r.user_id
+where p.username is not null and not p.banned and p.role is distinct from 'owner';
+grant select on public.leader_reigns_public to anon, authenticated;
+
+-- Serialized, database-observed tenures, not invented past history. Public callers cannot run this function.
+create or replace function public.refresh_leader_reigns() returns trigger
+language plpgsql security definer set search_path = pg_catalog, public as $$
+declare b text; winner uuid; current_winner uuid; stamp timestamptz;
+begin
+ perform pg_advisory_xact_lock(50312750);
+ stamp := clock_timestamp();
+ foreach b in array array['gms','playtime','players','trophies','hunt','perfect'] loop
+   winner := null;
+   if b = 'players' then
+     select user_id into winner from public.lb_players where legacy > 0 order by legacy desc, user_id, career_id limit 1;
+   else
+     select id into winner from public.lb_progress
+     where (case b when 'gms' then xp when 'playtime' then play_hours when 'trophies' then trophies when 'hunt' then hunt_wins else perfect_titles end) > 0
+     order by (case b when 'gms' then xp when 'playtime' then play_hours when 'trophies' then trophies when 'hunt' then hunt_wins else perfect_titles end) desc, id limit 1;
+   end if;
+   current_winner := null;
+   select user_id into current_winner from public.leader_reigns where board = b and ended_at is null;
+   if winner is distinct from current_winner then
+     update public.leader_reigns set ended_at = greatest(stamp, started_at) where board = b and ended_at is null;
+     if winner is not null then insert into public.leader_reigns(board,user_id,started_at) values(b,winner,stamp); end if;
+   end if;
+ end loop;
+ return null;
+end $$;
+revoke all on function public.refresh_leader_reigns() from public, anon, authenticated;
+drop trigger if exists progress_reigns on public.profiles;
+create trigger progress_reigns after insert or update or delete on public.profiles for each statement execute function public.refresh_leader_reigns();
+drop trigger if exists career_reigns on public.created_players;
+create trigger career_reigns after insert or update or delete on public.created_players for each statement execute function public.refresh_leader_reigns();
+
+-- Repair existing numeric title payloads without claiming we know their full unlock list.
+update public.game_summaries set summary = jsonb_set(summary, '{cosmetics}',
+ (summary->'cosmetics') || jsonb_build_object('titleCount', summary #> '{cosmetics,titles}',
+ 'titles', case when coalesce(summary->>'title','') <> '' then jsonb_build_array(summary->>'title') else '[]'::jsonb end))
+where game = 'courtvision' and jsonb_typeof(summary #> '{cosmetics,titles}') = 'number';
+
+
+-- 2026-11-01-courtchat.sql
+-- Review and run on staging before an approved release. No client can write messages directly.
+
+create table if not exists public.courtchat_messages (
+ id bigint generated always as identity primary key,
+ user_id uuid not null references public.profiles(id) on delete cascade,
+ body text not null check (char_length(body) between 1 and 400),
+ created_at timestamptz not null default now()
+);
+create index if not exists courtchat_recent on public.courtchat_messages(created_at desc);
+create table if not exists public.courtchat_presence (
+ user_id uuid primary key references public.profiles(id) on delete cascade,
+ last_seen timestamptz not null default now(), last_message timestamptz
+);
+alter table public.courtchat_messages enable row level security;
+alter table public.courtchat_presence enable row level security;
+revoke all on public.courtchat_messages, public.courtchat_presence from anon, authenticated;
+create or replace function public.courtchat_presence() returns void language plpgsql security definer set search_path=public,pg_temp as $$
+begin
+ if auth.uid() is null or not exists(select 1 from profiles where id=auth.uid() and not coalesce(banned,false)) then raise exception 'Sign in with an active account.'; end if;
+ insert into courtchat_presence(user_id,last_seen) values(auth.uid(),now()) on conflict(user_id) do update set last_seen=excluded.last_seen;
+end $$;
+create or replace function public.courtchat_send(message text) returns void language plpgsql security definer set search_path=public,pg_temp as $$
+declare last_at timestamptz;
+begin
+ perform courtchat_presence();
+ if char_length(trim(message)) not between 1 and 400 then raise exception 'Use 1–400 characters.'; end if;
+ select last_message into last_at from courtchat_presence where user_id=auth.uid() for update;
+ if last_at > clock_timestamp()-interval '5 seconds' then raise exception 'Wait five seconds between messages.'; end if;
+ update courtchat_presence set last_message=clock_timestamp() where user_id=auth.uid();
+ insert into courtchat_messages(user_id,body) values(auth.uid(),trim(message));
+ delete from courtchat_messages where created_at < now()-interval '7 days';
+end $$;
+create or replace function public.courtchat_read() returns jsonb language plpgsql security definer set search_path=public,pg_temp as $$
+begin
+ if auth.uid() is null then raise exception 'Sign in first.'; end if;
+ return jsonb_build_object('online',(select count(*) from courtchat_presence cp join profiles p on p.id=cp.user_id where cp.last_seen>now()-interval '60 seconds' and not coalesce(p.banned,false)), 'messages',coalesce((select jsonb_agg(q order by q.created_at) from (select m.id,p.username,m.body,m.created_at from courtchat_messages m join profiles p on p.id=m.user_id where not coalesce(p.banned,false) and m.created_at>now()-interval '7 days' order by m.created_at desc limit 50) q),'[]'::jsonb));
+end $$;
+revoke all on function public.courtchat_presence(),public.courtchat_send(text),public.courtchat_read() from public;
+grant execute on function public.courtchat_presence(),public.courtchat_send(text),public.courtchat_read() to authenticated;
+
+
+-- 2026-11-01-custom-gifts.sql
+
+alter table public.gifts add column if not exists message text not null default '' check (char_length(message)<=300);
+alter table public.gifts add column if not exists spins integer not null default 0 check(spins between 0 and 10000);
+alter table public.gifts add column if not exists gems integer not null default 0 check(gems between 0 and 100000);
+alter table public.gifts add column if not exists items jsonb not null default '[]' check(jsonb_typeof(items)='array' and jsonb_array_length(items)<=20);
+alter table public.gifts add column if not exists cosmetics jsonb not null default '[]' check(jsonb_typeof(cosmetics)='array' and jsonb_array_length(cosmetics)<=20);
+
+
+-- 2026-11-02-deliveries.sql
+
+create table if not exists public.reward_receipts (
+ id text primary key, user_id uuid not null references public.profiles(id) on delete cascade,
+ coins integer not null default 0 check(coins>=0), spins integer not null default 0 check(spins>=0),
+ lucky integer not null default 0 check(lucky>=0), gems integer not null default 0 check(gems>=0),
+ items jsonb not null default '[]', cosmetics jsonb not null default '[]', label text not null,
+ created_at timestamptz not null default now()
+);
+create index if not exists reward_receipts_owner on public.reward_receipts(user_id,id);
+alter table public.reward_receipts enable row level security;
+revoke all on public.reward_receipts from anon, authenticated;
+grant select on public.reward_receipts to authenticated;
+drop policy if exists "own rewards" on public.reward_receipts;
+create policy "own rewards" on public.reward_receipts for select to authenticated using(user_id=auth.uid());
+create or replace function public.claim_gifts_v2()
+returns table(id text, coins integer, spins integer, lucky integer, gems integer, items jsonb, cosmetics jsonb, label text)
+language plpgsql security definer set search_path=public as $$
+declare me uuid := auth.uid(); g public.gifts%rowtype; rotation_week integer; coin_multiplier integer;
+begin
+ if me is null or not exists(select 1 from profiles p where p.id=me and not p.banned) then raise exception 'Sign in to collect gifts.'; end if;
+ rotation_week:=floor(extract(epoch from (now()-timestamptz '2026-01-05 00:00:00+00'))/604800);
+ coin_multiplier:=case when (rotation_week<41 and mod(mod(rotation_week,5)+5,5)=3) or (rotation_week>=41 and mod(rotation_week-41,6)=4) then 2 else 1 end;
+ -- Receipt insertion and marking the gift claimed share one transaction. No acknowledgement window.
+ for g in select * from gifts where recipient=me and not claimed for update loop
+  insert into reward_receipts(id,user_id,coins,spins,lucky,gems,items,cosmetics,label)
+  values('gift:'||g.id,me,g.coins*coin_multiplier,g.spins,g.lucky,g.gems,g.items,g.cosmetics,'Gift from '||coalesce((select username::text from profiles where profiles.id=g.sender),'a friend'))
+  on conflict do nothing;
+  update gifts set claimed=true where gifts.id=g.id;
+ end loop;
+ -- Durable history permits recovery after a dropped response or a full local disk.
+ return query select r.id,r.coins,r.spins,r.lucky,r.gems,r.items,r.cosmetics,r.label from reward_receipts r where r.user_id=me and r.id like 'gift:%' order by r.created_at desc limit 1000;
+end $$;
+revoke all on function public.claim_gifts_v2() from public,anon;
+grant execute on function public.claim_gifts_v2() to authenticated;
+
+create table if not exists public.clan_reward_weeks(week text primary key, settled_at timestamptz not null default now());
+create table if not exists public.clan_reward_results(
+ week text not null references public.clan_reward_weeks(week), club_id uuid not null,
+ place integer not null, points integer not null, primary key(week,club_id)
+);
+alter table public.clan_reward_weeks enable row level security;
+alter table public.clan_reward_results enable row level security;
+revoke all on public.clan_reward_weeks,public.clan_reward_results from anon,authenticated;
+grant select on public.clan_reward_results to authenticated;
+drop policy if exists "read settled results" on public.clan_reward_results;
+create policy "read settled results" on public.clan_reward_results for select to authenticated using(true);
+create or replace function public.claim_clan_rewards()
+returns table(id text, coins integer, spins integer, lucky integer, gems integer, items jsonb, cosmetics jsonb, label text)
+language plpgsql security definer set search_path=public as $$
+declare me uuid:=auth.uid(); wk text; starts timestamptz; cid uuid; total_xp bigint; tier integer;
+begin
+ if me is null or not exists(select 1 from profiles p where p.id=me and not p.banned) then raise exception 'Sign in first.'; end if;
+ starts:=date_trunc('week',now() at time zone 'UTC') at time zone 'UTC' - interval '7 days';
+ wk:=to_char(starts at time zone 'UTC','IYYY-"W"IW');
+ -- One immutable settlement for the completed week, shared by simultaneous claims.
+ perform pg_advisory_xact_lock(hashtextextended('cv-clan-rewards:'||wk,0));
+ if not exists(select 1 from clan_reward_weeks where week=wk) then
+  insert into clan_reward_weeks(week) values(wk);
+  insert into clan_reward_results(week,club_id,place,points)
+   select wk,b.club_id,row_number() over(order by b.points desc,b.club_id)::integer,b.points
+   from lb_club_weekly b where b.week=wk and b.points>0;
+  insert into reward_receipts(id,user_id,coins,spins,gems,label)
+   select 'clanweek:'||wk||':'||m.user_id,m.user_id,
+    case when r.place=1 then 3000 when r.place<=3 then 2000 when r.place<=10 then 1000 else 500 end,
+    case when r.place=1 then 5 when r.place<=3 then 4 when r.place<=10 then 3 else 2 end,
+    case when r.place=1 then 50 when r.place<=3 then 30 when r.place<=10 then 20 else 10 end,
+    'Clan weekly reward · '||wk||' · #'||r.place
+   from clan_reward_results r join club_members m on m.club_id=r.club_id
+   join profiles p on p.id=m.user_id and not p.banned and p.role is distinct from 'owner'
+   where r.week=wk and m.joined_at<=starts
+    and exists(select 1 from weekly_scores s where s.user_id=m.user_id and s.week=wk and s.score>0)
+   on conflict do nothing;
+ end if;
+ select m.club_id into cid from club_members m where m.user_id=me;
+ if cid is not null then
+  select coalesce(sum(p.xp),0) into total_xp from club_members m join profiles p on p.id=m.user_id where m.club_id=cid and not p.banned and p.role is distinct from 'owner';
+  for tier in 1..least(10,(total_xp/25000)::integer) loop
+   insert into reward_receipts(id,user_id,coins,spins,gems,label)
+    values('clanpass:'||me||':'||(tier*5),me,500,1,5,'Clan pass · tier '||(tier*5)) on conflict do nothing;
+  end loop;
+ end if;
+ return query select r.id,r.coins,r.spins,r.lucky,r.gems,r.items,r.cosmetics,r.label from reward_receipts r where r.user_id=me and r.id like 'clan%' order by r.created_at desc limit 1000;
+end $$;
+revoke all on function public.claim_clan_rewards() from public,anon;
+grant execute on function public.claim_clan_rewards() to authenticated;
+
+
+-- 2026-11-02-career-cloud.sql
+
+create table if not exists public.career_snapshots(
+ user_id uuid not null references public.profiles(id) on delete cascade,
+ career_id text not null check(length(career_id) between 1 and 120),
+ revision bigint not null default 1, meta jsonb not null, world jsonb not null,
+ updated_at timestamptz not null default now(), primary key(user_id,career_id)
+);
+alter table public.career_snapshots enable row level security;
+revoke all on public.career_snapshots from anon,authenticated;
+grant select,delete on public.career_snapshots to authenticated;
+drop policy if exists "own career read" on public.career_snapshots;
+create policy "own career read" on public.career_snapshots for select to authenticated using(user_id=auth.uid());
+drop policy if exists "own career delete" on public.career_snapshots;
+create policy "own career delete" on public.career_snapshots for delete to authenticated using(user_id=auth.uid());
+create or replace function public.save_career_snapshot(p_id text,p_revision bigint,p_meta jsonb,p_world jsonb)
+returns bigint language plpgsql security definer set search_path=public as $$
+declare me uuid:=auth.uid(); current_revision bigint; next_revision bigint;
+begin
+ if me is null or not exists(select 1 from profiles where profiles.id=me and not banned) then raise exception 'Sign in first.'; end if;
+ if p_id is null or length(p_id) not between 1 and 120 or p_revision is null or p_revision<0
+ or jsonb_typeof(p_meta) is distinct from 'object' or jsonb_typeof(p_world) is distinct from 'object'
+ or p_meta->>'id' is distinct from p_id or p_world->>'id' is distinct from p_id
+ or p_meta->>'status' is distinct from 'active' or jsonb_typeof(p_world->'league') is distinct from 'object'
+ or jsonb_typeof(p_world->'extras') is distinct from 'object'
+ or p_world->>'phase' is null or p_world->>'phase' not in ('atDraft','inSeason','over')
+ then raise exception 'Invalid career snapshot.'; end if;
+ if octet_length(p_meta::text)+octet_length(p_world::text)>20000000 then raise exception 'Career exceeds the 20 MB cloud limit.'; end if;
+ perform pg_advisory_xact_lock(hashtextextended('cv-career:'||me,0));
+ select revision into current_revision from career_snapshots where user_id=me and career_id=p_id for update;
+ if coalesce(current_revision,0)<>p_revision then raise exception 'CAREER_CONFLICT: another device saved this career. Load the cloud copy or keep your local copy.'; end if;
+ if current_revision is null and (select count(*) from career_snapshots where user_id=me)>=10 then raise exception 'Ten cloud careers are saved. Remove an old cloud copy first.'; end if;
+ next_revision:=coalesce(current_revision,0)+1;
+ insert into career_snapshots(user_id,career_id,revision,meta,world)
+ values(me,p_id,next_revision,jsonb_set(p_meta,'{cloudOwner}',to_jsonb(me::text)),p_world)
+ on conflict(user_id,career_id) do update set revision=excluded.revision,meta=excluded.meta,world=excluded.world,updated_at=now();
+ return next_revision;
+end $$;
+revoke all on function public.save_career_snapshot(text,bigint,jsonb,jsonb) from public,anon;
+grant execute on function public.save_career_snapshot(text,bigint,jsonb,jsonb) to authenticated;
+
+
+-- 2026-11-02-push.sql
+
+create table if not exists public.push_subscriptions(endpoint text primary key,user_id uuid not null references public.profiles(id) on delete cascade,created_at timestamptz not null default now());
+create index if not exists push_subscriptions_user on public.push_subscriptions(user_id);
+create table if not exists public.push_jobs(id uuid primary key default gen_random_uuid(),user_id uuid not null references public.profiles(id) on delete cascade,event_key text unique not null,created_at timestamptz not null default now(),next_attempt timestamptz not null default now(),attempts integer not null default 0,lease uuid,leased_until timestamptz,delivered_at timestamptz);
+create index if not exists push_jobs_pending on public.push_jobs(next_attempt) where delivered_at is null;
+alter table public.push_subscriptions enable row level security;
+alter table public.push_jobs enable row level security;
+revoke all on public.push_subscriptions,public.push_jobs from anon,authenticated;
+create or replace function public.register_push_subscription(p_user uuid,p_endpoint text) returns void language plpgsql security definer set search_path=public as $$
+begin
+ if not exists(select 1 from profiles where id=p_user and not banned) then raise exception 'Account unavailable.'; end if;
+ if (select count(*) from push_subscriptions where user_id=p_user and endpoint<>p_endpoint)>=5 then raise exception 'Five notification devices are already registered.'; end if;
+ insert into push_subscriptions(endpoint,user_id) values(p_endpoint,p_user) on conflict(endpoint) do update set user_id=excluded.user_id,created_at=now();
+end $$;
+create or replace function public.enqueue_gift_push() returns trigger language plpgsql security definer set search_path=public as $$
+begin
+ if exists(select 1 from push_subscriptions where user_id=new.recipient) then insert into push_jobs(user_id,event_key) values(new.recipient,'gift:'||new.id) on conflict do nothing; end if;return new;
+end $$;
+drop trigger if exists gift_push on public.gifts;
+create trigger gift_push after insert on public.gifts for each row execute function public.enqueue_gift_push();
+create or replace function public.enqueue_activity_push() returns trigger language plpgsql security definer set search_path=public as $$
+begin
+ if tg_op='UPDATE' and new.score<=old.score then return new; end if;
+ insert into push_jobs(user_id,event_key)
+ select f.user_id,'activity:'||new.user_id||':'||f.user_id||':'||to_char(now() at time zone 'UTC','YYYY-MM-DD-HH24')
+ from follows f join profiles p on p.id=f.user_id and not p.banned
+ where f.target_id=new.user_id and exists(select 1 from push_subscriptions s where s.user_id=f.user_id)
+ on conflict do nothing;return new;
+end $$;
+drop trigger if exists activity_push on public.weekly_scores;
+create trigger activity_push after insert or update on public.weekly_scores for each row execute function public.enqueue_activity_push();
+create or replace function public.lease_push_jobs() returns table(id uuid,user_id uuid,lease uuid) language plpgsql security definer set search_path=public as $$
+begin
+ delete from push_jobs where created_at<now()-interval '7 days';
+ return query with selected as (
+ select j.id from push_jobs j join profiles p on p.id=j.user_id and not p.banned where j.delivered_at is null and j.next_attempt<=now() and j.attempts<5 and (j.leased_until is null or j.leased_until<now()) order by j.created_at for update of j skip locked limit 5
+ ) update push_jobs j set lease=gen_random_uuid(),leased_until=now()+interval '5 minutes',attempts=j.attempts+1 from selected s where j.id=s.id returning j.id,j.user_id,j.lease;
+end $$;
+create or replace function public.finish_push_job(p_id uuid,p_lease uuid,p_retry boolean) returns void language sql security definer set search_path=public as $$
+ update push_jobs set delivered_at=case when p_retry then null else now() end,next_attempt=now()+interval '5 minutes',leased_until=null,lease=null where id=p_id and lease=p_lease;
+$$;
+revoke all on function public.register_push_subscription(uuid,text),public.lease_push_jobs(),public.finish_push_job(uuid,uuid,boolean),public.enqueue_gift_push(),public.enqueue_activity_push() from public,anon,authenticated;
+grant execute on function public.register_push_subscription(uuid,text),public.lease_push_jobs(),public.finish_push_job(uuid,uuid,boolean) to service_role;
+
+-- Match the API's existing 6 MB unpacked progress limit.
+alter table public.progress drop constraint if exists progress_size_check;
+alter table public.progress add constraint progress_size_check check(size>=0 and size<=6000000);
+-- PostgREST exposes newly created tables/functions after this commit.
+notify pgrst, 'reload schema';
+commit;

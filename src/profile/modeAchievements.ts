@@ -48,7 +48,32 @@ const TIER_NAMES = ['Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Legend']
 const tierLabel = (n: number) => `Best so far: ${TIER_NAMES[n]}`;
 const at = (n: number, goal: number): [number, number] => [Math.min(n, goal), goal];
 
+/** Update 50: five meaningful milestones across twenty recorded accomplishments. */
+export const RELEASE_ACHIEVEMENTS: ModeAchievement[] = ([
+  ['retired','career','Career archivist',[5,10,25,50,100]],
+  ['hallOfFame','career','Hall curator',[3,5,10,25,50]],
+  ['firstBallot','career','First-ballot club',[3,5,10,20,40]],
+  ['top10','career','All-time contender',[3,5,10,20,30]],
+  ['mvpCareers','career','MVP factory',[3,5,10,20,40]],
+  ['huntWins','hunt','Hunt veteran',[10,25,50,100,200]],
+  ['huntLegendWins','hunt','Legend hunter',[3,5,10,25,50]],
+  ['dailyWins','hunt','Daily champion',[5,10,25,50,100]],
+  ['album','hunt','Album curator',[50,100,200,400,800]],
+  ['rebuildTitles','rebuild','Rescue specialist',[3,5,8,12,16]],
+  ['drafts','draft','Draft veteran',[10,25,50,100,200]],
+  ['pvpWins','pvp','Rival conqueror',[10,25,50,100,200]],
+  ['weeks','weekly','Weekly regular',[4,8,16,32,52]],
+  ['perfectDays','daily','Daily perfection',[5,10,25,50,100]],
+  ['p82Titles','perfect','Championship architect',[5,10,25,50,100]],
+  ['p82Perfect98','perfect','Unbeaten dynasty',[2,3,5,10,20]],
+  ['storyFinished','story','Story collector',[3,5,10,20,50]],
+  ['survivalBosses','survival','Boss specialist',[5,10,25,50,100]],
+  ['giftsSent','social','Generous GM',[10,25,50,100,250]],
+  ['showdownWins','social','Clan champion',[3,5,10,25,50]],
+] satisfies [keyof ModeStats, Mode, string, number[]][]).flatMap(([key,mode,name,goals]) => goals.map((goal,i) => ({ id: `u50-${key}-${goal}`, mode, name: `${name} ${['I','II','III','IV','V'][i]}`, description: `Reach ${goal} ${key.replace(/([A-Z])/g,' $1').toLowerCase()}.`, icon: 'champion' as const, progress: (s: ModeStats) => at(s[key], goal) })));
+
 export const MODE_ACHIEVEMENTS: ModeAchievement[] = [
+  ...RELEASE_ACHIEVEMENTS,
   { id: 'career-retire', mode: 'career', name: 'Hang Them Up', description: 'Retire a created player.', icon: 'teammate', progress: s => at(s.retired, 1) },
   { id: 'career-hof', mode: 'career', name: 'Enshrined', description: 'Put a created player in the Hall of Fame.', icon: 'eoy', progress: s => at(s.hallOfFame, 1) },
   { id: 'career-first-ballot', mode: 'career', name: 'First Ballot', description: 'A first-ballot Hall of Famer (Legacy 90+).', icon: 'eoy', progress: s => at(s.firstBallot, 1) },
