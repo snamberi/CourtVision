@@ -35,6 +35,7 @@ export async function saveCareer(meta: CareerMeta, world?: CareerWorld): Promise
       await db.metas.put({ ...meta, updatedAt: Date.now() });
       if (world) await db.worlds.put(world);
     });
+    if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(CAREER_SAVED_EVENT, { detail: meta.id }));
   } catch { /* storage blocked or full: the career lasts as long as the page is open */ }
 }
 /** A finished career keeps its story; its league is dropped (it is big and nothing reads it again). */
@@ -53,4 +54,16 @@ export async function restoreCareers(data: { metas: CareerMeta[]; worlds: Career
     if (data.metas.length) await db.metas.bulkPut(data.metas);
     if (data.worlds.length) await db.worlds.bulkPut(data.worlds);
   });
+}
+
+export const CAREER_SAVED_EVENT = 'courtvision:career-saved';
+/** Consistent metadata/world pair: never upload half of an in-progress local save. */
+export async function readCareerSnapshot(id: string): Promise<{ meta: CareerMeta; world: CareerWorld } | null> {
+  return db.transaction('r', db.metas, db.worlds, async () => {
+    const meta = await db.metas.get(id), world = await db.worlds.get(id);
+    return meta && world ? { meta, world } : null;
+  });
+}
+export async function tagCareerOwner(id: string, userId: string): Promise<void> {
+  await db.metas.update(id, { cloudOwner: userId });
 }
