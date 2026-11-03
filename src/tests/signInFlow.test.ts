@@ -3,8 +3,8 @@ import { explainAuthError, inAppBrowser } from '../cloud/account';
 
 describe('sign-in errors and browsers', () => {
   it('explains why a sign-in did not finish', () => {
-    expect(explainAuthError('invalid request: both auth code and code verifier should be non-empty')).toMatch(/another tab or on another address/);
-    expect(explainAuthError('PKCE code verifier not found in storage')).toMatch(/another tab/);
+    expect(explainAuthError('invalid request: both auth code and code verifier should be non-empty')).toMatch(/verification data is missing/);
+    expect(explainAuthError('PKCE code verifier not found in storage')).toMatch(/verification data is missing/);
     expect(explainAuthError('access_denied')).toMatch(/cancelled/);
     expect(explainAuthError('Failed to fetch')).toMatch(/connection dropped/);
     expect(explainAuthError('something odd')).toMatch(/something odd/);
