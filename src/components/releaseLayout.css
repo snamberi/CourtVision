@@ -30,11 +30,6 @@
 .clubs-page .clubs-how ul { padding-left:20px; display:grid; gap:12px; }
 .clans-steps { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; padding:0; list-style:none; }
 .clans-steps li { border:1px solid var(--look-line,#39424e); padding:16px; border-radius:8px; }
-@media (min-width:1500px) {
- .release-page { padding-right:170px !important; }
- .page-jumps { position:fixed; right:12px; top:90px; width:145px; max-height:75vh; overflow-y:auto; flex-direction:column; align-items:stretch; z-index:10; background:var(--look-bg,#111820); padding:10px; border:1px solid var(--look-line,#39424e); border-radius:8px; }
- .page-jumps button { width:100%; }
-}
 @media (max-width:600px) {
  .clans-steps { grid-template-columns:1fr; }
  .release-page :is(.relic-shop-grid,.profile-extras,.settings-grid) { grid-template-columns:1fr; }
@@ -59,3 +54,35 @@
 .notification-list li > div { display:flex; gap:8px; flex-wrap:wrap; }
 .notification-unread { color:#e8a14b; }
 .notification-centre button { min-height:40px; }
+
+/* Fixed section navigation: right edge at every viewport size. */
+.page-jumps { position:fixed; right:max(10px, env(safe-area-inset-right)); top:90px; width:170px; max-height:calc(100dvh - 120px); overflow:auto; display:block; z-index:40; background:var(--look-bg,#111820); color:var(--look-text,#edf5ff); padding:10px; margin:0; border:1px solid var(--look-line,#39424e); border-radius:10px; box-shadow:0 6px 24px #0005; box-sizing:border-box; }
+.page-jumps-links { display:flex; flex-direction:column; gap:8px; }
+.page-jumps button { width:100%; white-space:normal; overflow-wrap:anywhere; }
+.page-jumps .page-jumps-toggle { display:none; }
+.release-page { padding-right:200px !important; }
+.qol-panel,.qol-save-status { border:1px solid var(--look-line,#39424e); border-radius:8px; padding:14px; margin:16px 0; }
+.qol-save-status small { display:block; font-size:11px; margin-top:4px; }
+.qol-panel li { margin-bottom:14px; }
+.qol-glossary { max-height:420px; overflow:auto; }
+.qol-glossary details { padding:10px 0; border-bottom:1px solid var(--look-line,#39424e); }
+.qol-next-rewards { display:flex; flex-wrap:wrap; gap:12px; padding:0; list-style:none; }
+.qol-next-rewards li { flex:1; min-width:140px; border:1px solid var(--look-line,#39424e); padding:12px; }
+.relic-vault.compact-inventory .relic-grid { grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); }
+.relic-vault.compact-inventory .relic-card { padding:8px; min-height:0; }
+.relic-vault.compact-inventory .relic-card svg { width:32px; height:32px; }
+.relic-vault.compact-inventory *, .relic-vault.compact-inventory *::before, .relic-vault.compact-inventory *::after { animation:none !important; transition:none !important; }
+.phone-pins { display:flex; gap:8px; overflow:auto; padding:8px; border-bottom:1px solid #ffffff33; }
+.phone-pins > div { flex:0 0 60px; }
+.phone-pin-picker { max-height:120px; overflow:auto; display:flex; flex-wrap:wrap; gap:6px; }
+.phone-pin-picker button { min-height:36px; font-size:11px; }
+@media (max-width:900px) {
+ .release-page { padding-right:16px !important; }
+ .page-jumps { top:auto; bottom:calc(16px + env(safe-area-inset-bottom)); width:132px; max-height:65dvh; }
+ .page-jumps.is-open { width:min(260px,calc(100vw - 24px)); }
+ .page-jumps .page-jumps-toggle { display:block; }
+ .page-jumps-links { display:none; margin-top:10px; }
+ .page-jumps.is-open .page-jumps-links { display:flex; }
+}
+
+.page-jumps[hidden] { display:none; }

@@ -1,3 +1,4 @@
+import { BestComparison } from '../qol/BestComparison';
 import { ResultCount, ResultCrest, MvpSpotlight } from '../presentation/ResultPresentation';
 import { LineupBoard } from '../presentation/LineupBoard';
 import { noteHolidayFinish } from '../../retention/holiday';
@@ -841,6 +842,7 @@ function Finished({ h, run, records, onAgain }: { h: NbaHistory; run: PerfectRun
       {s.multiplier !== 1 && <tr><td>{isCategoryMode(run.mode) ? 'Total multiplier' : 'Challenge'} ({LEVEL_NAME[run.level ?? 'pro']}{run.view?.numbers ? ', ratings shown' : ''}{run.view && !run.view.colors ? ', colours hidden' : ''})</td><td>×{s.multiplier}</td></tr>}
       <tr className="total"><td>Score</td><td><ResultCount value={s.score} /></td></tr>
     </tbody></table>
+    <BestComparison current={s.score} best={records.best?.score} />
     <p className="hint-text">Best ever: {records.best ? `${records.best.w}-${records.best.l}, ${records.best.score.toLocaleString()} points` : '—'} · {records.titles} title{records.titles === 1 ? '' : 's'} · {records.perfectSeasons} perfect season{records.perfectSeasons === 1 ? '' : 's'}{run.daily ? ' · Daily 82-0: your best try today counts on the weekly board.' : ''}</p>
     <SquadPanel h={h} run={run} />
     <RunStatsTable lines={run.lines} title="Regular season stats" />

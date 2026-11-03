@@ -1,3 +1,4 @@
+import { SaveStatus } from './qol/SaveStatus';
 import { NotificationApp } from './cloud/NotificationCentre';
 import { CourtChat } from './CourtChat';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
@@ -134,12 +135,16 @@ export function MenuPhone({ onClans, onFriendList, onCloset, onBoards, onFriends
 
   // Your order (saved), then any app it doesn't know yet.
   const [order, setOrder] = useState<string[]>(savedOrder);
+  const [pins, setPins] = useState<string[]>(() => {try {const x: unknown = JSON.parse(read('cv-phone-pins') ?? '[]'); return Array.isArray(x) ? [...new Set(x.filter((k): k is string => typeof k === 'string'))].slice(0,4) : [];} catch {return [];}});
+  const pinLabels: Record<string,string> = { friendlist:'Friend list', levelroad:'Level Road', trophyroad:'Trophy Road', pass:'Season Pass', relics:'Relic Vault', news: "What's new", courtchat:'CourtChat', tiktok:'TikTok', youtube:'YouTube' };
   const keys = all.map(a => a.key);
-  const sorted = [...order.filter(k => keys.includes(k)), ...keys.filter(k => !order.includes(k))];
+  const original = [...order.filter(k => keys.includes(k)), ...keys.filter(k => !order.includes(k))];
+  const sorted = [...pins.filter(k => keys.includes(k)), ...original.filter(k => !pins.includes(k))];
+  const togglePin = (k: string) => {const next = pins.includes(k) ? pins.filter(x => x !== k) : [...pins,k].slice(0,4); setPins(next); write('cv-phone-pins',JSON.stringify(next));};
   const byKey = new Map(all.map(a => [a.key, a.node]));
   const swap = (a: string, b: string) => {
     if (a === b) return;
-    const next = [...sorted]; const i = next.indexOf(a), j = next.indexOf(b);
+    const next = [...original]; const i = next.indexOf(a), j = next.indexOf(b);
     [next[i], next[j]] = [next[j], next[i]];
     setOrder(next); write(ORDER_KEY, JSON.stringify(next));
   };
@@ -167,6 +172,7 @@ export function MenuPhone({ onClans, onFriendList, onCloset, onBoards, onFriends
 
   const appKey = (t: EventTarget | null) => (t as HTMLElement | null)?.closest?.('[data-app]')?.getAttribute('data-app') ?? null;
   return <aside className={`menu-phone phone-skin-${skin} ${editing ? 'editing' : ''}`} aria-label="Your phone">
+    <SaveStatus compact />
     <div className="menu-phone-body">
       {chatOpen && <CourtChat onClose={() => setChatOpen(false)} />}
       {skin !== 'classic' && <span className="phone-case-detail" aria-hidden="true" />}
@@ -205,6 +211,7 @@ export function MenuPhone({ onClans, onFriendList, onCloset, onBoards, onFriends
         </div>)}
       </div>
       {pages.length > 1 && <div className="menu-phone-dots">{pages.map((_, i) => <button key={i} type="button" className={i === page ? 'on' : ''} aria-label={`Apps page ${i + 1}`} aria-current={i === page || undefined} onClick={() => goTo(i)}>{i + 1}</button>)}</div>}
+      {editing && <div><small>Pin up to four apps first. Unpinning restores their original positions.</small><div className="phone-pin-picker">{keys.map(k => <button key={k} disabled={!pins.includes(k) && pins.length >= 4} aria-pressed={pins.includes(k)} onClick={() => togglePin(k)}>{pins.includes(k) ? 'Unpin' : 'Pin'} {pinLabels[k] ?? (k[0].toUpperCase() + k.slice(1))}</button>)}</div></div>}
       {editing ? <div className="menu-phone-edit"><small>{picked ? 'Now tap where it goes' : 'Drag an app onto another, or tap two to swap'}</small><button type="button" onClick={() => { setEditing(false); setPicked(null); }}>Done</button></div>
         : <button type="button" className="menu-phone-arrange link-button" onClick={() => setEditing(true)}>Rearrange</button>}
       <i className="menu-phone-home" aria-hidden="true" />

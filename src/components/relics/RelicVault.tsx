@@ -1,3 +1,7 @@
+import { UndoPurchase } from '../qol/UndoPurchase';
+import { useAccount } from '../../cloud/account';
+import { RelicLoadouts } from '../qol/RelicLoadouts';
+import { LOADOUT_MODES } from '../../qol/relicLoadouts';
 import { RewardedSpin } from './RewardedSpin';
 import { GEM_COSMETICS } from '../../relics/gemShop';
 import { PageJumps } from '../PageJumps';
@@ -38,6 +42,11 @@ const shownLuck = (luck: number, power = 1) => +(luck * (luck === RELIC_RARITY.m
  */
 export function RelicVault({ onExit, view = 'vault', onSwitch }: { onExit: () => void; view?: 'vault' | 'shop'; onSwitch?: () => void }) {
   const shop = view === 'shop';
+  const account = useAccount();
+  const [query, setQuery] = useState('');
+  const [modeFilter, setModeFilter] = useState('General');
+  const [compact, setCompact] = useState(() => { try { return localStorage.getItem('cv-compact-inventory') === '1'; } catch { return false; } });
+  const matches = (text: string, mode?: string) => text.toLowerCase().includes(query.trim().toLowerCase()) && (modeFilter === 'General' || !mode || mode.toLowerCase().includes(modeFilter.toLowerCase()));
   // Today's shop is rolled, and the daily coins paid, on the first visit of the day.
   const [state, setState] = useState<RelicState>(() => { const s = loadRelics(), r = refreshCosmeticShop(collectDailyCoins(refreshShop(s)), SHOP_COSMETIC_WEIGHTS); if (r !== s) saveRelics(r); return r; });
   const [result, setResult] = useState<SpinResult | null>(null);
@@ -75,10 +84,10 @@ export function RelicVault({ onExit, view = 'vault', onSwitch }: { onExit: () =>
       setState(out.state); setRolling(false);
       if (out.bonus) setBatch(all); else setResult(out.result);
       const best = [...all].sort((a, b) => rank(b) - rank(a))[0];
-      if (isBig(best)) setBig(best);
+      if (!compact && isBig(best)) setBig(best);
       const look = all.find(r => r.cosmetic)?.cosmetic;
       if (look) setSecretLook(look);
-    }, reduceMotion() ? 0 : 900);
+    }, (compact || reduceMotion()) ? 0 : 900);
   };
   /** Opens up to ten spins at once. */
   const spinAll = () => {
@@ -91,23 +100,24 @@ export function RelicVault({ onExit, view = 'vault', onSwitch }: { onExit: () =>
     timer.current = window.setTimeout(() => {
       setState(out.state); setBatch(out.results); setRolling(false);
       const best = [...out.results].sort((a, b) => rank(b) - rank(a))[0];
-      if (best && isBig(best)) setBig(best);
+      if (!compact && best && isBig(best)) setBig(best);
       const look = out.results.find(r => r.cosmetic)?.cosmetic;
       if (look) setSecretLook(look);
-    }, reduceMotion() ? 0 : 1100);
+    }, (compact || reduceMotion()) ? 0 : 1100);
   };
 
   const luck = totalLuck(state), weekly = weeklyLuck(state), star = relicOfWeek(), prog = collectionProgress(state), slots = slotCount(state), power = relicPower(state);
   const spinPrice = discounted(SPIN_PRICE, discount), luckyPrice = discounted(LUCKY_SPIN_PRICE, discount), off = Math.round(discount * 100);
   const toEpic = PITY.epic - state.pity.epic, toLegendary = PITY.legendary - state.pity.legendary, toMythic = PITY.mythic - state.pity.mythic;
   const toLucky = LUCKY_PITY - (state.pity.lucky % LUCKY_PITY);
-  return <div className="hunt relic-vault">
+  return <div className={`hunt relic-vault ${compact ? 'compact-inventory' : ''}`}>
     <header className="hunt-top">
       <button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button>
       <div className="hunt-title"><span className="pixel-eyebrow">{shop ? 'SPEND YOUR COINS · NEW RELICS EVERY DAY' : 'YOUR COLLECTION · EVERY MODE'}</span><h1>{shop ? 'Relic Shop' : 'Relic Vault'}</h1></div>
       {onSwitch && <button className="relic-switch" onClick={onSwitch}><PixelIcon name={shop ? 'crown' : 'star'} size={16} /> {shop ? 'Relic Vault' : 'Shop'}</button>}
     </header>
     <PageJumps />
+    <label><input type="checkbox" checked={compact} onChange={e => {setCompact(e.target.checked); try {localStorage.setItem('cv-compact-inventory', e.target.checked ? '1' : '0');} catch { /* session only */ }}} /> Compact inventory · no reveal animations</label>
 
     <SmallRoom kind={shop ? 'shop' : 'archive'} title={shop ? 'The collector’s counter' : 'Your collection, on display'} detail={shop ? 'Browse today’s relics, find your next cosmetic and build your collection.' : 'Inspect your relics and choose what to equip for your next run.'} />
     <section className="relic-stats" aria-label="Your relics">
@@ -155,7 +165,7 @@ export function RelicVault({ onExit, view = 'vault', onSwitch }: { onExit: () =>
         const have = spareCopies(state, r), up = RARITY_ORDER[i + 1];
         return <div key={r} className={`relic-offer r-${up}`}>
           <PixelIcon name="shuffle" size={24} /><span><b>{RELIC_RARITY[r].name} → {RELIC_RARITY[up].name}</b><small>{have} spare{have === 1 ? '' : 's'} · needs {fuseCost(r)}</small></span>
-          <button onClick={() => { const out = fuseDuplicates(loadRelics(), r); if (!out) return; saveRelics(out.state); setState(out.state); setBatch(null); setResult(out.result); if (isBig(out.result)) setBig(out.result); }} disabled={rolling || have < fuseCost(r)}>Fuse</button>
+          <button onClick={() => { const out = fuseDuplicates(loadRelics(), r); if (!out) return; saveRelics(out.state); setState(out.state); setBatch(null); setResult(out.result); if (!compact && isBig(out.result)) setBig(out.result); }} disabled={rolling || have < fuseCost(r)}>Fuse</button>
         </div>;
       })}</div>
     </section>}
@@ -165,7 +175,7 @@ export function RelicVault({ onExit, view = 'vault', onSwitch }: { onExit: () =>
       <RewardedSpin />
       <p className="relic-help">You have <b>{state.coins.toLocaleString()} coins</b>. Earn them from finished runs, duplicates and daily rewards. Equipped relics: +{relicCoinBoost(state).toFixed(2)}% coin income. Gems: {state.gems ?? 0}.</p>
       <div className="relic-shop-grid">
-        <div className="relic-offer r-mythic"><span><b>Ultra Lucky Spin</b><small>Epic or better. 1% regular Secret chance; mission and event Secrets excluded.</small></span><button disabled={rolling || (state.gems ?? 0) < 20} onClick={() => { const out = ultraLuckySpin(loadRelics()); if (!out) return; saveRelics(out.state); setState(out.state); setBatch(null); setResult(out.result); if (isBig(out.result)) setBig(out.result); }}>20 gems</button></div>
+        <div className="relic-offer r-mythic"><span><b>Ultra Lucky Spin</b><small>Epic or better. 1% regular Secret chance; mission and event Secrets excluded.</small></span><button disabled={rolling || (state.gems ?? 0) < 20} onClick={() => { const out = ultraLuckySpin(loadRelics()); if (!out) return; saveRelics(out.state); setState(out.state); setBatch(null); setResult(out.result); if (!compact && isBig(out.result)) setBig(out.result); }}>20 gems</button></div>
         <div className="relic-offer">
           <PixelIcon name="star" size={24} /><span><b>Relic Spin</b><small>A normal spin, saved for when you want it.</small></span>
           <button onClick={() => commit(s => buySpin(s, discount))} disabled={rolling || state.coins < spinPrice}>{spinPrice} coins{off ? ` (−${off}%)` : ''}</button>
@@ -188,11 +198,12 @@ export function RelicVault({ onExit, view = 'vault', onSwitch }: { onExit: () =>
           <button onClick={() => commit(s => buyRelic(s, id))} disabled={rolling || sold || full || state.coins < price}>{sold ? 'Bought' : full ? 'Owned' : `${price.toLocaleString()} coins`}</button>
         </div>;
       })}{!state.shop?.offers.length && <p className="relic-help">Nothing left to sell you today. Impressive.</p>}</div>
-      <h3>Gem cosmetics</h3><div className="relic-shop-grid">{GEM_COSMETICS.map(c => <div key={c.key} className="relic-offer"><span><b>{c.name}</b><small>Name colour</small></span><button disabled={rolling || (state.cosmetics ?? []).includes(c.key) || (state.gems ?? 0) < c.price} onClick={() => commit(s => buyGemCosmetic(s,c.key))}>{(state.cosmetics ?? []).includes(c.key) ? 'Owned' : `${c.price} gems`}</button></div>)}</div>
+      <h3>Gem cosmetics</h3><div className="relic-shop-grid">{GEM_COSMETICS.map(c => <div key={c.key} className="relic-offer"><span><b>{c.name}</b><small>Name colour</small></span><UndoPurchase accountId={account.userId} disabled={rolling || (state.cosmetics ?? []).includes(c.key) || (state.gems ?? 0) < c.price} purchase={() => commit(s => buyGemCosmetic(s,c.key))}>{(state.cosmetics ?? []).includes(c.key) ? 'Owned' : `${c.price} gems`}</UndoPurchase></div>)}</div>
       <ShopCosmetics state={state} commit={commit} busy={rolling} />
     </section>}
 
     {!shop && <>
+    <RelicLoadouts state={state} commit={commit} />
     <section className="relic-section" aria-labelledby="relic-slots">
       <h2 id="relic-slots">Your slots <small className="relic-count">{state.equipped.length}/{slots}</small></h2>
       <p className="relic-help">Only relics in your slots add luck. New relics go into a free slot by themselves; swap them in the collection below. {BASE_SLOTS} slots to start, {EXTRA_SLOTS} more in the shop. Slot {MAX_SLOTS} doubles only the relic equipped there.</p>
@@ -225,10 +236,14 @@ export function RelicVault({ onExit, view = 'vault', onSwitch }: { onExit: () =>
 
     <section className="relic-section">
       <h2>Relics</h2>
+      <label>Search relic names and effects <input type="search" value={query} onChange={e => setQuery(e.target.value)} /></label>
+      <label>Eligible mode <select value={modeFilter} onChange={e => setModeFilter(e.target.value)}>{LOADOUT_MODES.map(m => <option key={m}>{m}</option>)}</select></label>
+      <p>Ordinary relics add global luck and coin bonuses; mode filters also narrow the Secret abilities below. Shared-seed runs ignore personal luck.</p>
       <p className="relic-help">Each relic in a slot adds its luck once; a duplicate pays coins instead. <b>Stacking</b> relics add +{shownLuck(STACK_LUCK, power)}% a copy, up to {STACK_MAX} copies. <b>Upgrade</b> any other relic with coins for +50% luck{off ? ` (${off}% off with your pet)` : ''}. Luck makes the best results of a spin likelier in League Hunt, the 82-0 Challenge, the Career wheel and the Survival deal, with no cap. Dailies, Weeklies and duels ignore luck, so boards stay fair.</p>
-      {RARITY_ORDER.map(r => <div key={r} className="relic-tier">
+      {!RELICS.some(x => matches(`${x.name} ${x.blurb} ${x.rarity} luck coin`)) && <p>No ordinary relics match your search.</p>}
+      {RARITY_ORDER.filter(r => RELICS.some(x => x.rarity === r && matches(`${x.name} ${x.blurb} ${x.rarity} luck coin`))).map(r => <div key={r} className="relic-tier">
         <h3 className={`r-${r}`}>{RELIC_RARITY[r].name} <small>{pct(RELIC_RARITY[r].odds)} · +{shownLuck(RELIC_RARITY[r].luck, power)}% luck · duplicate {RELIC_RARITY[r].coins} coins</small></h3>
-        <div className="relic-grid">{RELICS.filter(x => x.rarity === r).map(x => <RelicCard key={x.id} relic={x} state={state} discount={discount} onUpgrade={() => commit(s => upgradeRelic(s, x.id, discount))}
+        <div className="relic-grid">{RELICS.filter(x => x.rarity === r && matches(`${x.name} ${x.blurb} ${x.rarity} luck coin`)).map(x => <RelicCard key={x.id} relic={x} state={state} discount={discount} onUpgrade={() => commit(s => upgradeRelic(s, x.id, discount))}
           onToggle={() => commit(s => (s.equipped.includes(x.id) ? unequipRelic(s, x.id) : equipRelic(s, x.id)))} />)}</div>
       </div>)}
     </section>
@@ -236,7 +251,8 @@ export function RelicVault({ onExit, view = 'vault', onSwitch }: { onExit: () =>
     <section className="relic-section">
       <h2>Secret relics</h2>
       <p className="relic-help">All {SECRET_RELICS.length} secret relics, each a permanent ability (no slot needed). Normal spins have a {pct(SECRET_CHANCE)} chance at a regular Secret. Event Secrets require their matching event spin; mission Secrets require their listed feat, and Ultra Cheat opens only when you own every relic in the vault.</p>
-      <div className="relic-grid">{SECRET_RELICS.map(s => {
+      {!SECRET_RELICS.some(s => matches(`${s.name} ${s.ability} ${s.mode}`, s.mode)) && <p>No Secret relics match these filters.</p>}
+      <div className="relic-grid">{SECRET_RELICS.filter(s => matches(`${s.name} ${s.ability} ${s.mode}`, s.mode)).map(s => {
         const got = state.secrets.includes(s.id);
         const how = s.event ? s.hint : s.earnedOnly ? s.feat : s.feat ? `${s.feat} Or any spin, by luck.` : 'Any spin, by luck alone.';
         return <div key={s.id} className={`relic-card r-secret ${got ? '' : 'missing'}`}>

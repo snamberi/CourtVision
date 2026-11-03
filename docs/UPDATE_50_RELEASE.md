@@ -60,23 +60,34 @@ Keys cost 10 of the matching event currency. Unused currency and keys carry into
 - Older numeric profile summaries require the included migration or a fresh profile sync. A defensive renderer fix in the separate NineFoldVision repository would additionally protect against malformed third-party summaries.
 - Currency/progression retains the existing local-save/cloud-merge architecture; this release does not introduce a server-authoritative wallet.
 
-## Fifteen suggested follow-up QoL changes
+## Fifteen follow-up QoL changes — implemented on the draft branch
 
-1. Search relics by name, effect and eligible game mode.
-2. Save named relic loadouts for each mode.
-3. Compare current versus proposed loadout luck before equipping.
-4. Preview the next three progression rewards in a compact card.
-5. Add an event calendar with countdowns and explicit UTC times.
-6. Show a save-status badge with the latest successful cloud sync time.
-7. Warn before leaving a simulation with unsaved decisions.
-8. Add a one-click diagnostic report that excludes account tokens and private save data.
-9. Add filters for friends who are online, recently active or have gifts waiting.
-10. Let players pin favorite phone apps without changing the remaining order.
-11. Add a personal best versus current run comparison on result screens.
-12. Provide a searchable glossary for ratings, relic effects and currencies.
-13. Add an undo step for accidental cosmetic purchases where technically safe.
-14. Offer a compact/reduced-animation inventory view for slower phones.
-15. Explain leaderboard eligibility, tie rules and the next rank's score in place.
+1. Search ordinary/Secret relics by name and effect, with mode filters for Secret abilities and empty-result feedback.
+2. Save up to 30 named relic loadouts, organized by mode, on this browser. Equipping is explicit and keeps only owned relics within available slots.
+3. Preview current and proposed loadout luck, including the point difference, before equipping.
+4. Preview the next three level/trophy road milestones and season-pass tiers.
+5. Open the event calendar in Settings or the event page, with countdowns and explicit exclusive UTC endpoints, including New Year carryover.
+6. See account cloud-sync status and the latest successful sync time in Settings and the phone. Switching accounts clears the timestamp; active Career cloud copies remain manual and GM leagues local.
+7. Pending GM decisions trigger the browser's leave/reload warning. Internal league navigation flushes first and stays in place with an error if saving fails. Failed snapshots remain retryable; a browser shutdown cannot guarantee an asynchronous save.
+8. Download diagnostics from Settings. An explicit allowlist excludes account identifiers, tokens, raw errors, URLs and saved games.
+9. Filter friends by online status, activity within seven days, or gifts waiting from them.
+10. Pin up to four phone apps through Rearrange. Unpinning restores their positions in the saved base order; remaining apps keep their order.
+11. Compare the current Hunt, 82-0 or Survival result with the personal best, explicitly including the just-finished run.
+12. Search the Settings glossary for ratings, relic effects and currencies.
+13. Coin/gem shop cosmetics have an eight-second pending purchase window with Undo. No charge happens before the window ends; leaving the component or switching accounts cancels it. The final purchase rechecks ownership and funds. No refund ledger or event-currency refund is introduced.
+14. Compact inventory reduces card sizes and disables inventory/reveal animation, with a browser-local preference.
+15. Leaderboard details explain eligibility, stable tie ordering and the next rank's score when that row is loaded.
+
+Quick jumps now stay fixed at the right edge while scrolling. Desktop reserves space for the rail; screens at or below 900px show a collapsible bottom-right control. Closed details are excluded until opened; jumps move keyboard focus and honor reduced motion.
+
+### QoL validation
+
+- Production build passed, including TypeScript, generated API/site/legal files, Windows packaging and Vite. Existing chunk-size/dynamic-import warnings remain.
+- Lint: 58 existing warnings, no errors.
+- Targeted regression results are recorded in `UPDATE_50_SETUP.md`.
+- DOM interaction tests cover jump focus, collapsing/expanding, dynamically opened sections, phone persistence and pin/unpin order. Persistence tests cover pending/newer writes and retry after storage failure; purchase tests cover timing, undo, leaving and account changes.
+- A new Chromium visual pass could not run: the browser installer received invalid/truncated downloads. Desktop/mobile visual inspection remains a release check; earlier fixture-based browser results apply to the prior feature set.
+- This remains draft Update 50. Expansion Draft mode is excluded. Nothing in this QoL pass requires a new SQL migration or authorizes deployment.
 
 ## Next mode idea: The Expansion Draft
 

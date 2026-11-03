@@ -1,3 +1,4 @@
+import { BestComparison } from '../qol/BestComparison';
 import { prefersReducedMotion } from '../../lib/accessibility';
 import { ResultCount, ResultCrest, MvpSpotlight } from '../presentation/ResultPresentation';
 import { LineupBoard } from '../presentation/LineupBoard';
@@ -491,6 +492,7 @@ function RunOver({ h, run, records, onNew, onExit }: { h: NbaHistory; run: HuntR
     {lines.length > 0 && <RunStatsTable lines={run.lines} title="Squad stats" />}
     <RunHighs highs={run.highs} mode="hunt" />
     <SlotBoard h={h} run={run} />
+    <BestComparison current={run.stage === 'won' ? SERIES_COUNT : run.seriesIndex + 1} best={records.bestStop + 1} label="series reached" />
     <p className="hint-text">Your hunts: {records.runs} · won {records.wins} · furthest series {records.bestStop + 1} of {SERIES_COUNT}{records.bestGrade ? ` · best draft grade ${records.bestGrade}` : ''}</p>
     {won && <div className="hunt-crossover"><span className="pixel-eyebrow">BONUS RUN</span><b>Can this squad go 82-0?</b>
       <p>Take your six and your coach into the 82-0 Challenge: spin four bench players, then play all 82 and the playoffs. Hunt squads get their own record.</p>

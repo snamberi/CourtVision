@@ -1,3 +1,4 @@
+import { EventCalendar } from '../qol/EventCalendar';
 import { useEffect, useState } from 'react';
 import { PixelIcon } from '../PixelIcon';
 import { UserAvatar, useAvatar } from '../UserAvatar';
@@ -61,6 +62,7 @@ export function HolidayEventPage({ onExit, onCloset }: { onExit: () => void; onC
     setCoins(eventCoins(loadHoliday(), run.key)); setOwned(loadRelics().cosmetics ?? []);
   };
   return <div className="hunt holiday" style={varsOf(run)}>
+    <details><summary>Event calendar</summary><EventCalendar /></details>
     <header className="hunt-top">
       <button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button>
       <div className="hunt-title"><span className="pixel-eyebrow">HOLIDAY EVENT · {left} DAY{left === 1 ? '' : 'S'} LEFT</span><h1>{h.name}</h1></div>

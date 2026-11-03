@@ -1,3 +1,4 @@
+import { readAuthCallback, exchangeAuthCallback } from './authCallback';
 import { noteFoundingAccount } from '../profile/founding';
 import { useSyncExternalStore } from 'react';
 import type { SupabaseClient, Session } from '@supabase/supabase-js';
@@ -36,7 +37,11 @@ export interface AccountState {
 
 let state: AccountState = { status: cloudEnabled ? 'idle' : 'off', userId: null, email: null, provider: null, profile: null, sync: { state: 'idle', at: null, message: null } };
 const listeners = new Set<() => void>();
-export function setAccount(patch: Partial<AccountState>) { state = { ...state, ...patch }; listeners.forEach(l => l()); }
+export function setAccount(patch: Partial<AccountState>) {
+  const changedOwner = patch.userId !== undefined && patch.userId !== state.userId;
+  state = { ...state, ...patch, ...(changedOwner ? { sync: { state: 'idle' as const, at: null, message: null } } : {}) };
+  listeners.forEach(l => l());
+}
 export const getAccount = () => state;
 export const useAccount = () => useSyncExternalStore(cb => { listeners.add(cb); return () => listeners.delete(cb); }, getAccount, getAccount);
 
@@ -102,41 +107,33 @@ export const useAuthError = () => useSyncExternalStore(cb => { errorSubs.add(cb)
 export function explainAuthError(raw: string): string {
   const m = raw.toLowerCase();
   if (/code verifier|flow state|pkce|both auth code and code verifier/.test(m))
-    return 'Sign-in started in another tab or on another address of the site (www or not). Press Continue with Google again here and finish it in this tab.';
+    return 'This sign-in attempt expired or its browser verification data is missing. Open courtvisiongame.com in your regular browser, allow site storage, and start Continue with Google again. Keep the same site address until sign-in finishes.';
   if (/access_denied|cancel/.test(m)) return 'Sign-in was cancelled. Try again whenever you like.';
   if (/disallowed_useragent|webview/.test(m)) return 'Google does not allow signing in from inside this app. Open the site in Chrome, Safari or Edge and sign in there.';
   if (/fetch|network|failed to fetch|load failed/.test(m)) return 'The connection dropped while signing in. Check your internet and try again.';
   return `Sign-in didn't finish: ${raw}. Please try again.`;
 }
 
-/** Changes the code from a sign-in that just came back for a session; one retry if the network drops. */
-async function finishSignIn(client: SupabaseClient, code: string): Promise<string | null> {
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const { error } = await client.auth.exchangeCodeForSession(code);
-    if (!error) return null;
-    // A network blip can be retried with the same code; anything else (used or unknown code) cannot.
-    if (!/fetch|network|load failed/i.test(error.message) || attempt === 1) return error.message;
-    await new Promise(r => setTimeout(r, 1200));
-  }
-  return null;
+/** On start: restore a stored session, or finish a sign-in that just came back. Loads nothing otherwise. */
+let accountStartup: Promise<void> | null = null;
+export function startAccounts(): Promise<void> {
+  return accountStartup ??= initializeAccounts();
 }
 
-/** On start: restore a stored session, or finish a sign-in that just came back. Loads nothing otherwise. */
-export async function startAccounts(): Promise<void> {
+async function initializeAccounts(): Promise<void> {
   if (!cloudEnabled) return;
   let stored = false;
   try { stored = !!localStorage.getItem(AUTH_STORAGE_KEY); } catch { /* storage blocked */ }
-  const params = new URLSearchParams(location.search);
-  const code = params.get('code'), failed = params.get('error_description') ?? params.get('error');
+  const { code, flowId, failed, cleanUrl } = readAuthCallback(location.href);
   if (!stored && !code && !failed) { setAccount({ status: 'signedOut' }); return; }
   setAccount({ status: 'loading' });
   // Drop ?code=… from the address straight away, so a reload never tries to use it twice.
-  if (code || failed) history.replaceState(history.state, '', location.pathname + location.hash);
+  if (code || failed) history.replaceState(history.state, '', cleanUrl);
   try {
     const client = await supa();
     if (failed) setAuthError(explainAuthError(failed));
     else if (code) {
-      const problem = await finishSignIn(client, code);
+      const problem = await exchangeAuthCallback(client, code, flowId);
       if (problem) setAuthError(explainAuthError(problem));
     }
     const { data } = await client.auth.getSession();

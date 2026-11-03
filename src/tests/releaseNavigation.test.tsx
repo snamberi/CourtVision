@@ -30,3 +30,26 @@ it('section jumps follow the visible tab headings', async () => {
   page.rerender(<main><PageJumps /><h2>Pets</h2><h2>Abilities</h2></main>);
   await waitFor(() => expect(screen.getByRole('button', { name: 'Abilities' })).toBeTruthy());
 });
+it('collapses quick jumps after selecting a section and tracks opened details', async () => {
+  const view = render(<main><PageJumps /><h2>Collection</h2><h2>Shop</h2><details><summary>More</summary><h2>Hidden glossary</h2></details></main>);
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Shop' })).toBeTruthy());
+  expect(screen.queryByRole('button', {name:'Hidden glossary'})).toBeNull();
+  const toggle = screen.getByRole('button', {name:/Quick jumps/});
+  fireEvent.click(toggle); expect(toggle.getAttribute('aria-expanded')).toBe('true');
+  fireEvent.click(screen.getByRole('button', {name:'Shop'}));
+  expect(toggle.getAttribute('aria-expanded')).toBe('false');
+  view.container.querySelector('details')!.open = true;
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Hidden glossary' })).toBeTruthy());
+});
+it('pinning and unpinning keeps the existing custom app order intact', () => {
+  localStorage.setItem('cv-phone-pins', JSON.stringify(['settings']));
+  const fn = vi.fn();
+  render(<MenuPhone streak={{current:0,best:0}} onSettings={fn} onRelics={fn} />);
+  expect(document.querySelector('.menu-phone-app')?.textContent).toContain('Settings');
+  fireEvent.click(screen.getByRole('button', {name:'Rearrange'}));
+  fireEvent.click(screen.getByRole('button', {name:'Unpin Settings'}));
+  expect(document.querySelector('.menu-phone-app')?.textContent).not.toContain('Settings');
+  fireEvent.click(screen.getByRole('button', {name:'Pin Settings'}));
+  expect(document.querySelector('.menu-phone-app')?.textContent).toContain('Settings');
+  expect(localStorage.getItem('cv-phone-order')).toBeNull();
+});

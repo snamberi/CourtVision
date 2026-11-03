@@ -427,6 +427,10 @@ function App() {
   const { restoring, showPrivacy, closePrivacy } = useGameHistory(currentRoute, async (hash, isCurrent) => {
     await debouncedSave.flush();
     if (!isCurrent()) return;
+    if (debouncedSave.isDirty()) {
+      pushToast('Your latest decisions could not be saved. Stay here and retry saving before leaving.', 'error');
+      return;
+    }
     const route = parseRoute(hash);
     if (!route) {
       // A duel link: remember the run to start, then open its mode.
@@ -478,9 +482,17 @@ function App() {
   useEffect(() => {
     const flush = () => debouncedSave.flush();
     const onVisibility = () => { if (document.visibilityState === 'hidden') flush(); };
+    const beforeUnload = (event: BeforeUnloadEvent) => {
+      if (!debouncedSave.isDirty()) return;
+      event.preventDefault();
+      event.returnValue = '';
+      void flush();
+    };
+    window.addEventListener('beforeunload', beforeUnload);
     window.addEventListener('pagehide', flush);
     document.addEventListener('visibilitychange', onVisibility);
     return () => {
+      window.removeEventListener('beforeunload', beforeUnload);
       window.removeEventListener('pagehide', flush);
       document.removeEventListener('visibilitychange', onVisibility);
     };
@@ -715,7 +727,10 @@ function App() {
   const returnToMenu = async () => {
     jobs.resetAll();
     await debouncedSave.flush();
-    if (activeSaveId) await updateSave(activeSaveId, league, extras, controlledTeamId);
+    if (debouncedSave.isDirty()) { pushToast('Your latest decisions could not be saved. Retry saving before leaving.', 'error'); return; }
+    try {
+      if (activeSaveId) await updateSave(activeSaveId, league, extras, controlledTeamId);
+    } catch { pushToast('Your latest decisions could not be saved. Retry saving before leaving.', 'error'); return; }
     setScreen('menu');
     refreshSaves();
   };

@@ -65,6 +65,7 @@ export function SeasonPassPage({ onExit, onRelics }: { onExit: () => void; onRel
       {onRelics && <button className="relic-switch" onClick={onRelics}><PixelIcon name="flame" size={16} /> Relic Vault{free ? ` · ${free} free Lucky Spin${free === 1 ? '' : 's'}` : ''}</button>}
     </header>
     <PageJumps />
+    <section className="qol-panel"><h2>Next three tier rewards</h2>{tier >= SEASON_TIERS ? <p>All tiers completed.</p> : <ol className="qol-next-rewards">{Array.from({length: Math.min(3, SEASON_TIERS - tier)}, (_, i) => tier + i + 1).map(next => <li key={next}><b>Tier {next}</b><p>1 Lucky Spin{rewards.find(r => r.tier === next) ? ` + ${rewards.find(r => r.tier === next)!.name}` : ''}</p></li>)}</ol>}</section>
     <RoadTier completed={tier} total={SEASON_TIERS} />
 
     {upcoming && <div className="sp-season-tabs" role="tablist" aria-label="Seasons">

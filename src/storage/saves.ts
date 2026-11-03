@@ -224,18 +224,23 @@ export async function migrateLegacyAutosaveIfNeeded(): Promise<void> {
 /**
  * Simple debounce so rapid state changes (e.g. slider drags) don't hammer IndexedDB. Call with the currently
  * active save id. `flush()` writes any pending change immediately - used when the tab is hidden or closed so
- * the last second or two of play is never lost.
+ * pending changes can be written before navigation. Browser shutdown cannot guarantee completion.
  */
 export function createDebouncedSave(delayMs = 1500) {
   let timer: ReturnType<typeof setTimeout> | null = null;
   let pending: (() => Promise<void>) | null = null;
 
+  let revision = 0;
+  let savedRevision = 0;
   let inFlight: Promise<void> = Promise.resolve();
   const run = () => {
     timer = null;
     const job = pending;
     pending = null;
-    if (job) inFlight = job().catch((err) => {
+    const writingRevision = revision;
+    if (job) inFlight = inFlight.then(job).then(() => { savedRevision = writingRevision; }).catch((err) => {
+      // Keep the failed snapshot available for a retry unless a newer one is queued.
+      if (!pending && revision === writingRevision) pending = job;
       console.warn('Save failed:', err);
       if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('courtvision:save-error'));
     });
@@ -245,9 +250,11 @@ export function createDebouncedSave(delayMs = 1500) {
   const schedule = (saveId: string | null, league: League, extras: GMLeagueExtras, controlledTeamId: string | null) => {
     if (!saveId) return;
     if (timer) clearTimeout(timer);
+    revision += 1;
     pending = () => updateSave(saveId, league, extras, controlledTeamId);
     timer = setTimeout(run, delayMs);
   };
+  schedule.isDirty = () => savedRevision < revision;
   schedule.flush = () => {
     if (timer) clearTimeout(timer);
     return run();
