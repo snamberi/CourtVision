@@ -1,3 +1,4 @@
+import { audioCue } from './audio/gameAudio';
 import { PagePins } from './components/qol/PagePins';
 import { finishDevelopment } from './simulation/developmentCheckpoint';
 import { noteCurryHigh } from './profile/curryAchievement';
@@ -370,6 +371,7 @@ function App() {
   // Where toasts are filed in the league's Inbox (refreshed every render; see inbox.ts).
   const inboxCtx = useRef<{ saveId: string | null; season?: string; date?: string; inLeague: boolean }>({ saveId: null, inLeague: false });
   const pushToast = useCallback((message: string, tone: 'info' | 'success' | 'error' = 'info') => {
+    if (tone !== 'info') audioCue(tone === 'success' ? 'reward' : 'error');
     const id = Date.now() + Math.random();
     // Each toast times itself out (see ToastStack) based on its length; one already on screen isn't stacked again.
     setToasts((t) => (t.some((x) => x.message === message) ? t : [...t, { id, message, tone }]));

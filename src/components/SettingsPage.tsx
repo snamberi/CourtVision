@@ -1,3 +1,4 @@
+import { AudioSettings } from '../audio/AudioSettings';
 import { Diagnostics } from './qol/Diagnostics';
 import { Glossary } from './qol/Glossary';
 import { EventCalendar } from './qol/EventCalendar';
@@ -100,6 +101,7 @@ export function SettingsPage({ onExit, backup, recovery }: { onExit: () => void;
     <details><summary>Search the game glossary</summary><Glossary /></details>
     <Diagnostics />
     <div className="setting-cards">
+      <SettingCard icon="star" title="Music & sound" blurb="Tune your courtside soundtrack, clicks and announcer."><AudioSettings /></SettingCard>
       <SettingCard icon="star" title="Look" blurb="The colours, fonts and menu art of the whole game. Pick from every look.">
         <span className="settings-theme"><ThemeChip /></span>
       </SettingCard>

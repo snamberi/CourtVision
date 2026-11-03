@@ -1,3 +1,4 @@
+import { startGameAudio } from './audio/gameAudio'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { applyMenuStyle } from './lib/menuStyle'
@@ -39,6 +40,7 @@ import { applyTheme, readTheme } from './theme/themes'
 import { startAccounts } from './cloud/account'
 import { startSync } from './cloud/sync'
 
+startGameAudio()
 applyPerformanceMode()
 applyAccessibility()
 applyTheme(readTheme() ?? 'original')
