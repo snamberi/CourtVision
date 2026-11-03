@@ -38,7 +38,7 @@ it('collapses quick jumps after selecting a section and tracks opened details', 
   fireEvent.click(toggle); expect(toggle.getAttribute('aria-expanded')).toBe('true');
   fireEvent.click(screen.getByRole('button', {name:'Shop'}));
   expect(toggle.getAttribute('aria-expanded')).toBe('false');
-  view.container.querySelector('details')!.open = true;
+  view.container.querySelector<HTMLDetailsElement>('main > details')!.open = true;
   await waitFor(() => expect(screen.getByRole('button', { name: 'Hidden glossary' })).toBeTruthy());
 });
 it('pinning and unpinning keeps the existing custom app order intact', () => {

@@ -1,3 +1,4 @@
+import { finishDevelopment } from './developmentCheckpoint';
 import { withSeasonPreview } from './seasonPreview';
 import { assignHoldouts } from './holdouts';
 import { applyHistoricalRosters } from '../history/realRollover';
@@ -429,6 +430,7 @@ function seasonFromDraft(
 
   // 6. Preseason -> open the fresh regular-season schedule.
   currentLeague = finalizeNewSeasonSchedule({ ...currentLeague, seasonPhase: 'regular_season' });
+  currentExtras = { ...currentExtras, freeAgents: currentExtras.freeAgents.map(finishDevelopment) };
   const prepared = manageCoachRosters(currentLeague, currentExtras);
   currentLeague = withSeasonPreview(assignHoldouts(prepared.league, prepared.extras, seed + 41_000));
   currentExtras = prepared.extras;

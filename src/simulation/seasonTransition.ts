@@ -1,3 +1,4 @@
+import { deferDevelopment, finishDevelopment } from './developmentCheckpoint';
 import { gLeagueGrowth } from './twoWay';
 import { withRingNight } from './ringNight';
 import { seasonEraSettings } from './eraRules';
@@ -108,7 +109,7 @@ export function rollFreeAgentsForward(league: League, freeAgents: PlayerSeason[]
     const realStep = followsRealDevelopment(fa, league) ? applyRealDevelopment(fa, newSeason) : null;
     let developed = realStep ?? developOffseasonPlayer(fa, rng, league.rulesSettings, 0.9, 'balanced', league.settings.sandboxMode ? 200 : 100, gameMinutes(league.settings.era));
     if (!realStep && followsRealDevelopment(fa, league)) developed = markRealFallback(developed, newSeason);
-    const next: PlayerSeason = { ...developed, season: newSeason, seasonStats: undefined, seasonMilestones: undefined, playoffStats: undefined, seasonStints: undefined,
+    const next: PlayerSeason = { ...deferDevelopment(fa, developed), season: newSeason, seasonStats: undefined, seasonMilestones: undefined, playoffStats: undefined, seasonStints: undefined,
       careerHistory: archived ? [...(fa.careerHistory ?? []), archived] : fa.careerHistory };
     const overall = calculateOverall(next);
     // A real player who really played this season stays in the league while his real career continues, whatever the
@@ -294,7 +295,7 @@ export function beginNewSeasonRoster(
       }
       const aged = recordOffseasonDevelopment(season, developed, team, league.calendarDate ?? previousSeason, followsRealDevelopment(season, league) ? realDevelopmentNote(developed, !!realStep) : season.lockRatings ? 'Ratings locked (Edit Player).' : undefined);
       const withHistory: PlayerSeason = {
-        ...aged,
+        ...deferDevelopment(season, aged),
         season: newSeason,
         seasonStats: undefined,
         seasonMilestones: undefined,
@@ -510,6 +511,7 @@ export function finalizeNewSeasonSchedule(input: League): League {
     ?? (league.teams[0] ? totalGamesForTeam(league, league.teams[0].teamId) || 82 : 82);
   const schedule = withRingNight(generateSeasonSchedule(league.teams.map((t) => t.teamId), gamesPerTeam), league.franchiseHistory);
   const teams = league.teams.map((t) => {
+    t = { ...t, seasons: t.seasons.map(finishDevelopment) };
     const before = t.offseasonStartRosterIds;
     if (!before) return t;
     const chemistry = driftChemistryForRosterContinuity(t.chemistry, before, t.seasons.map((s) => s.playerId));
@@ -534,7 +536,7 @@ export function advanceToNextSeason(league: League, extras: GMLeagueExtras, seed
   const finalizedLeague = finalizeNewSeasonSchedule(rosterResult.league);
   return {
     league: finalizedLeague,
-    extras: { ...rosterResult.extras, draftDayOpen: false, freeAgencyOpen: true },
+    extras: { ...rosterResult.extras, freeAgents: rosterResult.extras.freeAgents.map(finishDevelopment), draftDayOpen: false, freeAgencyOpen: true },
     summary: rosterResult.summary,
   };
 }

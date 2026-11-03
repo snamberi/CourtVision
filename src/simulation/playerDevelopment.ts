@@ -160,7 +160,7 @@ function trainDay(team:LeagueTeam,league:League,date:string,gameToday:boolean):L
  const session=practiceForDate(team,date,gameToday,league.seasonPhase==='playoffs');
  const settings={...DEFAULT_COACHING_SETTINGS,...league.coachingSettings};
  const seasons=team.seasons.map(original=>{
-  const p={...original,attributes:copyAttributes(original.attributes)},tr=cloneTrainingLight(original,team);p.training=tr;
+  const p={...original,positions:original.deferredPositions??original.positions,attributes:copyAttributes(original.deferredTraining??original.attributes)},tr=cloneTrainingLight(original,team);p.training=tr;
   if(tr.teamId!==team.teamId){for(const key of Object.keys(tr.familiarity))tr.familiarity[key]*=.7;tr.teamId=team.teamId;tr.plan.mentorId=undefined;tr.plan.coachId=undefined;tr.roleFamiliarity*=.75;}
   if(tr.plan.mentorId&&!team.seasons.some(s=>s.playerId===tr.plan.mentorId))tr.plan.mentorId=undefined;
   if(tr.plan.coachId&&!staffMembers(team).some(s=>s.coach.coachId===tr.plan.coachId))tr.plan.coachId=undefined;
@@ -194,7 +194,7 @@ function trainDay(team:LeagueTeam,league:League,date:string,gameToday:boolean):L
    }
   }
   advanceProject(p,tr,team,quality,date,injured,ratingsLocked);
-  return p;
+  return {...p,deferredTraining:p.attributes,deferredPositions:p.positions,positions:original.positions,attributes:original.attributes};
  });
  control.practiceDays++;control.lastPracticeDate=date;control.practiceLog=[...(control.practiceLog??[]),{date,...session}].slice(-28);
  const reportKind=control.practiceDays%28===0?'monthly':control.practiceDays%7===0?'weekly':null;

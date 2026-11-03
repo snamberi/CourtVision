@@ -1,3 +1,4 @@
+import { PagePins } from './qol/PagePins';
 import { useEffect, useId, useRef, useState } from 'react';
 import './releaseLayout.css';
 
@@ -24,7 +25,7 @@ export function PageJumps() {
     return () => { observer.disconnect(); page.classList.remove('release-page'); };
   }, [prefix]);
   return <nav className={`page-jumps ${expanded ? 'is-open' : ''}`} ref={host} aria-label="Jump to a section" hidden={headings.length < 2}>
-    <button className="page-jumps-toggle" aria-expanded={expanded} aria-controls={`${prefix}-links`} onClick={() => setExpanded(v => !v)}>Quick jumps {expanded ? '−' : '+'}</button><div className="page-jumps-links" id={`${prefix}-links`}><b>Quick jumps</b>{headings.map(h => <button key={h.id} onClick={() => { h.el.tabIndex = -1; h.el.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }); h.el.focus({ preventScroll: true }); setExpanded(false); }}>{h.label}</button>)}
+    <button className="page-jumps-toggle" aria-expanded={expanded} aria-controls={`${prefix}-links`} onClick={() => setExpanded(v => !v)}>Quick jumps {expanded ? '−' : '+'}</button><div className="page-jumps-links" id={`${prefix}-links`}><b>Quick jumps</b><PagePins />{headings.map(h => <button key={h.id} onClick={() => { h.el.tabIndex = -1; h.el.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }); h.el.focus({ preventScroll: true }); setExpanded(false); }}>{h.label}</button>)}
     <button onClick={() => host.current?.parentElement?.scrollIntoView({ behavior: 'auto' })}>Back to top ↑</button></div>
   </nav>;
 }

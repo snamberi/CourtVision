@@ -5,7 +5,7 @@ import { loadRecords } from '../hunt/storage';
 import { loadPerfectRecords, categoryTitles, categoryTeamTitles, categoryBrutal, categoryPerfect } from '../perfect/storage';
 import { loadRebuildRecords } from '../simulation/rebuildChallenge';
 import { loadWeeklyRecords } from '../retention/weekly';
-import { careerCache } from './profile';
+import { careerCache, totalXp, xpParts } from './profile';
 import { readFeats, type Feats } from './feats';
 import { loadRelics, setComplete, RELICS, RELIC_SETS, SECRET_RELICS } from '../relics/relics';
 import { SECRET_COSMETIC_KEYS } from '../relics/secretCosmetics';
@@ -25,6 +25,7 @@ export const MODE_LABELS: Record<Mode, string> = {
 };
 
 export interface ModeStats {
+  xp: number; curryHigh: number;
   retired: number; hallOfFame: number; firstBallot: number; top10: number; mvpCareers: number; mostTitles: number; mostPoints: number;
   huntWins: number; huntLegendWins: number; dailyPlayed: number; dailyWins: number; album: number;
   rebuildStars: number; rebuildTitles: number; rebuildYearOne: number; rebuildThreeStars: number;
@@ -73,6 +74,8 @@ export const RELEASE_ACHIEVEMENTS: ModeAchievement[] = ([
 ] satisfies [keyof ModeStats, Mode, string, number[]][]).flatMap(([key,mode,name,goals]) => goals.map((goal,i) => ({ id: `u50-${key}-${goal}`, mode, name: `${name} ${['I','II','III','IV','V'][i]}`, description: `Reach ${goal} ${key.replace(/([A-Z])/g,' $1').toLowerCase()}.`, icon: 'champion' as const, progress: (s: ModeStats) => at(s[key], goal) })));
 
 export const MODE_ACHIEVEMENTS: ModeAchievement[] = [
+  { id:'over-9000', mode:'social', name:'ITS OVER 9000!!!', description:'Reach 9,000 XP.', icon:'mvp', progress:s=>at(s.xp,9000) },
+  { id:'curry-77', mode:'social', name:'77 for the Chef', description:'Stephen Curry scores at least 77 points in a non-Sandbox game in your league.', icon:'mvp', progress:s=>at(s.curryHigh,77) },
   ...RELEASE_ACHIEVEMENTS,
   { id: 'career-retire', mode: 'career', name: 'Hang Them Up', description: 'Retire a created player.', icon: 'teammate', progress: s => at(s.retired, 1) },
   { id: 'career-hof', mode: 'career', name: 'Enshrined', description: 'Put a created player in the Hall of Fame.', icon: 'eoy', progress: s => at(s.hallOfFame, 1) },
@@ -175,6 +178,7 @@ export function modeStats(read: Read = localRead, extra: Feats = {}): ModeStats 
   const relics = loadRelics(read);
   const has = (id: string) => (relics.owned[id] ?? 0) > 0;
   return {
+    xp: totalXp(xpParts(read)), curryHigh: Math.max(feats.curryHigh ?? 0, extra.curryHigh ?? 0),
     retired: c.retired, hallOfFame: c.hallOfFame, firstBallot: c.firstBallot ?? 0, top10: c.top10 ?? 0, mvpCareers: c.mvpCareers ?? 0, mostTitles: c.mostTitles ?? 0, mostPoints: c.mostPoints ?? 0,
     huntWins: hunt.wins, huntLegendWins: feats.huntLegendWins ?? 0, dailyPlayed: daily.length, dailyWins: daily.filter(d => d.won).length,
     album: json<string[]>(read, 'cv-hunt-album', []).length,

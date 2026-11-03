@@ -146,7 +146,7 @@ export function FreeAgentTable({ title, players, team, contracts, capSettings, c
               <Fragment key={r.season.playerId}>
                 <tr>
                   <td className="col-name" onClick={() => onSelectPlayer(r.season.playerId)} style={{ cursor: 'pointer' }}>
-                    <PlayerNameTag playerId={r.season.playerId} teamId={r.season.teamId} jerseyNumber={r.season.jerseyNumber} size={24} />
+                    <PlayerNameTag season={r.season} playerId={r.season.playerId} teamId={r.season.teamId} jerseyNumber={r.season.jerseyNumber} size={24} />
                   </td>
                   <td>{primaryPosition(r.season)}</td>
                   <td>{r.season.age}</td>

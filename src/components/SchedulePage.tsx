@@ -126,7 +126,7 @@ export function SchedulePage({ league, controlledTeamId, onViewGame }: Props) {
         return <article key={g.id} className={`sched-matchup${g.played ? ' played' : ''}`}>
           {side(g.awayTeamId, r?.awayScore, homeWon === false)}
           {side(g.homeTeamId, r?.homeScore, homeWon === true)}
-          <footer>{g.cupGroupId && <span className="cup-tag">CUP</span>}{g.ringNight && <span className="cup-tag">RING NIGHT</span>}{g.played ? <button className="link-button" onClick={() => onViewGame(g.id)}>Box score</button> : <span className="hint-text">Upcoming</span>}</footer>
+          <footer>{league.scoringShowcases?.games.includes(g.id) && <span className="cup-tag">RIVALRY SCORING SHOWCASE</span>}{g.cupGroupId && <span className="cup-tag">CUP</span>}{g.ringNight && <span className="cup-tag">RING NIGHT</span>}{g.played ? <button className="link-button" onClick={() => onViewGame(g.id)}>Box score</button> : <span className="hint-text">Upcoming</span>}</footer>
         </article>;
       })}</div>
     </>}

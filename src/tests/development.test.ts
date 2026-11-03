@@ -48,12 +48,12 @@ describe('developOffseasonPlayer - chance and minutes based growth', () => {
     expect(growthAmounts.size).toBeGreaterThan(1);
   });
 
-  it('growth is never negative for a player below peak age (a "quiet" season still holds steady or improves slightly)', () => {
+  it('an underused young player can lose rhythm, but annual movement stays within ten points', () => {
     for (let seed = 0; seed < 20; seed++) {
       const season = youngProspect(500);
       const before = calculateOverall(season);
       const after = developOffseasonPlayer(season, new RNG(seed));
-      expect(calculateOverall(after)).toBeGreaterThanOrEqual(before - 0.01);
+      expect(Math.abs(calculateOverall(after) - before)).toBeLessThanOrEqual(10);
     }
   });
 });

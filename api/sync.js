@@ -269,6 +269,13 @@ function loadHoliday(read = localRead) {
 		if (!x || typeof x !== "object") return empty$3();
 		return {
 			v: 1,
+			playClocks: Object.fromEntries(Object.entries(x.playClocks ?? {}).filter(([, c]) => c && [
+				c.elapsed,
+				c.tenWeight,
+				c.hourWeight,
+				c.fraction
+			].every((n) => Number.isFinite(n) && n >= 0))),
+			bonusHalves: nums(x.bonusHalves),
 			earned: nums(x.earned),
 			spent: nums(x.spent),
 			counted: Array.isArray(x.counted) ? x.counted.filter((k) => typeof k === "string").slice(-500) : []
@@ -280,8 +287,12 @@ function loadHoliday(read = localRead) {
 /** Two copies (this device and the cloud): the most earned and the most spent per event, and every game counted. */
 function mergeHoliday(a, b) {
 	const max = (x, y) => Object.fromEntries([.../* @__PURE__ */ new Set([...Object.keys(x), ...Object.keys(y)])].map((k) => [k, Math.max(x[k] ?? 0, y[k] ?? 0)]));
+	const playClocks = { ...a.playClocks };
+	for (const [key, clock] of Object.entries(b.playClocks ?? {})) if (clock.elapsed > (playClocks[key]?.elapsed ?? -1)) playClocks[key] = clock;
 	return {
 		v: 1,
+		playClocks,
+		bonusHalves: max(a.bonusHalves ?? {}, b.bonusHalves ?? {}),
 		earned: max(a.earned, b.earned),
 		spent: max(a.spent, b.spent),
 		counted: [.../* @__PURE__ */ new Set([...b.counted, ...a.counted])].slice(-500)
@@ -10125,6 +10136,22 @@ const TIER_NAMES = [
 const tierLabel = (n) => `Best so far: ${TIER_NAMES[n]}`;
 const at = (n, goal) => [Math.min(n, goal), goal];
 const MODE_ACHIEVEMENTS = [
+	{
+		id: "over-9000",
+		mode: "social",
+		name: "ITS OVER 9000!!!",
+		description: "Reach 9,000 XP.",
+		icon: "mvp",
+		progress: (s) => at(s.xp, 9e3)
+	},
+	{
+		id: "curry-77",
+		mode: "social",
+		name: "77 for the Chef",
+		description: "Stephen Curry scores at least 77 points in a non-Sandbox game in your league.",
+		icon: "mvp",
+		progress: (s) => at(s.curryHigh, 77)
+	},
 	...[
 		[
 			"retired",
@@ -10922,6 +10949,8 @@ function modeStats(read = localRead, extra = {}) {
 	const relics = loadRelics(read);
 	const has = (id) => (relics.owned[id] ?? 0) > 0;
 	return {
+		xp: totalXp(xpParts(read)),
+		curryHigh: Math.max(feats.curryHigh ?? 0, extra.curryHigh ?? 0),
 		retired: c.retired,
 		hallOfFame: c.hallOfFame,
 		firstBallot: c.firstBallot ?? 0,

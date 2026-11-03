@@ -153,6 +153,7 @@ export function applyProgress(league: League, extras: GMLeagueExtras, meta: Care
   const overall = calculateOverall(p);
   const prime = primeOverall(meta.prime, meta.readiness, meta.identity.pos);
   p = { ...p, development: { ...p.development, potential: p.age < 27 ? Math.max(overall, prime) : overall } };
+  p = { ...p, pendingSeasonAttributes: p.attributes, attributes: found.player.attributes };
   return replacePlayer(league, extras, p);
 }
 

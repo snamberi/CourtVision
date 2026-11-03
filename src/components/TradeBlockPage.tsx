@@ -1,3 +1,4 @@
+import { PlayerStatSummary } from './qol/PlayerStatSummary';
 import { relicRunOpts } from '../relics/apply';
 import { TeamLink } from './TeamLink';
 import type { League } from '../simulation/league';
@@ -76,7 +77,7 @@ export function TradeBlockPage({ league, extras, controlledTeamId, onChange, onS
           const get = [...playerLine(o.proposal.teamBId, o.proposal.playersFromB), ...pickLine(o.proposal.picksFromB)];
           return <li key={`${o.proposal.teamBId}-${i}`}>
             <span className="seek-offer-team"><TeamLink name={them?.name ?? o.proposal.teamBId} /></span>
-            <span className="seek-offer-get">You get: <b>{get.join(', ')}</b></span>
+            <span className="seek-offer-get">You get: <b>{get.join(', ')}</b>{them?.seasons.filter(p => o.proposal.playersFromB.includes(p.playerId)).map(p => <PlayerStatSummary key={p.playerId} player={p} />)}</span>
             {showValues && <small>Value to you {Math.round(o.yourValue)}</small>}
             <button className="primary" onClick={() => accept(o)}>Accept</button>
           </li>;
@@ -89,7 +90,7 @@ export function TradeBlockPage({ league, extras, controlledTeamId, onChange, onS
           <tbody>
             {blockedPlayers.map(({ season, team }) => (
               <tr key={season.playerId}>
-                <td onClick={() => onSelectPlayer(season.playerId)} style={{ cursor: 'pointer' }}><PlayerNameTag playerId={season.playerId} teamId={season.teamId} jerseyNumber={season.jerseyNumber} size={22} /></td>
+                <td onClick={() => onSelectPlayer(season.playerId)} style={{ cursor: 'pointer' }}><PlayerNameTag season={season} playerId={season.playerId} teamId={season.teamId} jerseyNumber={season.jerseyNumber} size={22} /></td>
                 <td><TeamLink name={team.name} /></td>
                 {showValues && <td>{computeTradeValue(season).toFixed(0)}</td>}
                 <td>
@@ -131,7 +132,7 @@ export function TradeBlockPage({ league, extras, controlledTeamId, onChange, onS
         <div key={t.teamId} className="badge-grid">
           {t.seasons.filter((s) => !extras.tradeBlock.includes(s.playerId)).map((s) => (
             <button key={s.playerId} className="fa-card" onClick={() => onChange(league, toggleTradeBlock(extras, s.playerId))}>
-              Add <PlayerNameTag playerId={s.playerId} teamId={s.teamId} jerseyNumber={s.jerseyNumber} size={20} />
+              Add <PlayerNameTag season={s} playerId={s.playerId} teamId={s.teamId} jerseyNumber={s.jerseyNumber} size={20} />
             </button>
           ))}
         </div>

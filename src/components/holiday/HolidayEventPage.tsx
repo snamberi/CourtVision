@@ -1,10 +1,12 @@
+import { HolidayArt } from './HolidayArt';
+export { HolidayArt } from './HolidayArt';
 import { EventCalendar } from '../qol/EventCalendar';
 import { useEffect, useState } from 'react';
 import { PixelIcon } from '../PixelIcon';
 import { UserAvatar, useAvatar } from '../UserAvatar';
 import { FramedAvatar } from '../AvatarFrame';
 import { ProfileIcon } from '../ProfileIcon';
-import { activeHoliday, activeHolidays, HOLIDAYS, type HolidayId, daysLeft, eventCoins, loadHoliday, HOLIDAY_EVENT, FINISH_COINS, WIN_COINS, type HolidayRun } from '../../retention/holiday';
+import { activeHoliday, activeHolidays, HOLIDAYS, daysLeft, eventCoins, loadHoliday, HOLIDAY_EVENT, FINISH_COINS, WIN_COINS, type HolidayRun } from '../../retention/holiday';
 import { piecesFor, type EventPiece } from '../../retention/holidayShop';
 import { buyEventPiece, buyEventKey } from '../../retention/holidayBuy';
 import { loadRelics, saveRelics, spinEventRelic, eventKeysLeft, SECRET_BY_ID, RELIC_BY_ID, RELICS_EVENT } from '../../relics/relics';
@@ -15,16 +17,6 @@ import '../hunt/hunt.css';
 
 const varsOf = (run: HolidayRun): CSSProperties => ({ '--hol-bg': run.holiday.colors.bg, '--hol-panel': run.holiday.colors.panel, '--hol-accent': run.holiday.colors.accent, '--hol-text': run.holiday.colors.text, '--hol-glow': run.holiday.colors.glow } as CSSProperties);
 
-/** The event's own art: a pixel pumpkin or snowman, drawn in SVG rects. */
-export function HolidayArt({ id, size = 64 }: { id: HolidayId; size?: number }) {
-  if (id !== 'halloween' && id !== 'christmas') return <span style={{ fontSize: size * .7 }} aria-hidden="true">{({ newyear: '🎆', valentine: '❤️', allstar: '🏀', easter: '🐣', playoffs: '🏆', summer: '☀️', anniversary: '🎂' })[id]}</span>;
-  const px: [number, number, number, number, string][] = id === 'halloween'
-    ? [[3, 4, 10, 9, '#ff7a1a'], [2, 6, 1, 5, '#ff7a1a'], [13, 6, 1, 5, '#ff7a1a'], [6, 4, 1, 9, '#d9580b'], [9, 4, 1, 9, '#d9580b'], [7, 1, 2, 3, '#3f7a24'],
-      [4, 7, 2, 2, '#ffd166'], [10, 7, 2, 2, '#ffd166'], [5, 10, 6, 1, '#ffd166'], [4, 9, 1, 1, '#ffd166'], [11, 9, 1, 1, '#ffd166']]
-    : [[5, 1, 6, 1, '#e8323c'], [6, 0, 4, 1, '#e8323c'], [5, 2, 6, 4, '#f4fbff'], [3, 7, 10, 7, '#f4fbff'], [6, 3, 1, 1, '#0b1018'], [9, 3, 1, 1, '#0b1018'],
-      [7, 4, 2, 1, '#ff7a1a'], [4, 6, 8, 1, '#e8323c'], [10, 6, 2, 3, '#1f8a3a'], [7, 9, 1, 1, '#0b1018'], [7, 11, 1, 1, '#0b1018'], [1, 8, 2, 1, '#8a5a2b'], [13, 8, 2, 1, '#8a5a2b']];
-  return <svg width={size} height={size} viewBox="0 0 16 15" shapeRendering="crispEdges" aria-hidden="true">{px.map(([x, y, w, h, c], i) => <rect key={i} x={x} y={y} width={w} height={h} fill={c} />)}</svg>;
-}
 
 function Preview({ piece }: { piece: EventPiece }) {
   const { look, team } = useAvatar();
@@ -53,7 +45,7 @@ export function HolidayEventPage({ onExit, onCloset }: { onExit: () => void; onC
     return () => { window.removeEventListener(HOLIDAY_EVENT, sync); window.removeEventListener(RELICS_EVENT, sync); };
   }, [run]);
   if (!run) return <div className="hunt"><header className="hunt-top"><button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button><div className="hunt-title"><h1>No event right now</h1></div></header>
-    <p className="hint-text">Holiday events show up here while they're on. Keep an eye on the main menu.</p></div>;
+    <p className="hint-text">Holiday events show up here while they're on. Keep an eye on the main menu.</p><EventCalendar /></div>;
   const h = run.holiday, pieces = piecesFor(h.id), left = daysLeft(run);
   const buy = (p: EventPiece, el: HTMLElement) => {
     const r = buyEventPiece(p.key);
@@ -62,6 +54,7 @@ export function HolidayEventPage({ onExit, onCloset }: { onExit: () => void; onC
     setCoins(eventCoins(loadHoliday(), run.key)); setOwned(loadRelics().cosmetics ?? []);
   };
   return <div className="hunt holiday" style={varsOf(run)}>
+    <p className="hint-text">Active play: +1 event currency every 10 minutes and +20 each hour (26 per hour total). Franchise, Your Career and Story earn 50% more (39 per full hour). Focused visible play only; partial bonuses carry forward.</p>
     <details><summary>Event calendar</summary><EventCalendar /></details>
     <header className="hunt-top">
       <button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button>

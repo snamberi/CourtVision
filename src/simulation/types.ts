@@ -285,6 +285,11 @@ export interface PlayerSeason {
   overall: OverallRatings;
   ballHandlerPriority: number; // 0-100, engine uses this to pick who has the ball
   source: 'historical' | 'generated' | 'user'; // data provenance, never fabricate as official
+  developmentReason?: string;
+  pendingSeasonAttributes?: Attributes;
+  deferredTraining?: Attributes;
+  deferredPositions?: PositionSuitability;
+  developmentAppliedSeason?: string;
   previousOverall?: number; // set by developOffseasonPlayer to show improvement/decline deltas (headline Overall)
   previousFullOverall?: number; // same idea, but for the full-attribute composite used by league analytics
   rotationRole?: 'starter' | 'bench'; // manual rotation override; when unset, the top 5 by minutes.target are treated as starters

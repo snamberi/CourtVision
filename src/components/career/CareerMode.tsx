@@ -1,3 +1,4 @@
+import { CareerDetailedStats } from '../qol/CareerDetailedStats';
 import { ResultCount, ResultCrest } from '../presentation/ResultPresentation';
 import { ModeBackdrop } from '../presentation/ModeScene';
 import { noteHolidayFinish } from '../../retention/holiday';
@@ -375,7 +376,7 @@ function StatLine({ s }: { s: SeasonStatTotals }) {
 function YearsTable({ years }: { years: CareerYear[] }) {
   if (!years.length) return null;
   const tot = years.reduce((t, y) => ({ g: t.g + y.stats.gamesPlayed, pts: t.pts + y.stats.points, reb: t.reb + y.stats.oreb + y.stats.dreb, ast: t.ast + y.stats.ast, stl: t.stl + y.stats.stl, blk: t.blk + y.stats.blk }), { g: 0, pts: 0, reb: 0, ast: 0, stl: 0, blk: 0 });
-  return <div className="feature-table-scroll"><table className="db-table cv-years">
+  return <><CareerDetailedStats years={years} /><div className="feature-table-scroll"><table className="db-table cv-years">
     <thead><tr><th className="col-name">Season</th><th>Age</th><th className="col-name">Team</th><th>OVR</th><th>GP</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>FG%</th><th>3P%</th><th className="col-name">Team result</th><th className="col-name">Awards</th></tr></thead>
     <tbody>{years.map(y => { const s = y.stats, g = s.gamesPlayed; return <tr key={y.season}>
       <td className="col-name">{fy(y.season)}</td><td>{y.age}</td><td className="col-name">{y.teamName}</td><td>{y.overall}</td><td>{g}</td>
@@ -384,7 +385,7 @@ function YearsTable({ years }: { years: CareerYear[] }) {
       <td className="col-name cv-award-cell">{y.awards.map(a => a.label).join(' · ')}</td>
     </tr>; })}
       <tr className="cv-total"><td className="col-name">Career</td><td /><td className="col-name">{plural(years.length, 'season')}</td><td /><td>{tot.g}</td><td>{per(tot.pts, tot.g)}</td><td>{per(tot.reb, tot.g)}</td><td>{per(tot.ast, tot.g)}</td><td>{per(tot.stl, tot.g)}</td><td>{per(tot.blk, tot.g)}</td><td /><td /><td className="col-name">{tot.pts.toLocaleString()} pts · {tot.reb.toLocaleString()} reb · {tot.ast.toLocaleString()} ast</td><td /></tr>
-    </tbody></table></div>;
+    </tbody></table></div></>;
 }
 
 function Ratings({ meta }: { meta: CareerMeta }) {

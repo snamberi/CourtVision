@@ -1,3 +1,4 @@
+import type { EventClock } from './eventPlaytime';
 import { localRead, type Read } from '../lib/kv';
 
 /** Annual UTC event windows. Overlapping events each award their own currency.
@@ -58,7 +59,7 @@ export function eventPieceHidden(key: string | null | undefined, owned: readonly
 
 /* ---- Event coins ---- */
 
-export interface HolidayState { v: 1; earned: Record<string, number>; spent: Record<string, number>; counted: string[] }
+export interface HolidayState { v: 1; playClocks?: Record<string, EventClock>; bonusHalves?: Record<string, number>; earned: Record<string, number>; spent: Record<string, number>; counted: string[] }
 export const HOLIDAY_KEY = 'cv-holiday';
 export const HOLIDAY_EVENT = 'cv-holiday-changed';
 const empty = (): HolidayState => ({ v: 1, earned: {}, spent: {}, counted: [] });
@@ -67,7 +68,8 @@ export function loadHoliday(read: Read = localRead): HolidayState {
   try {
     const x = JSON.parse(read(HOLIDAY_KEY) ?? 'null') as Partial<HolidayState> | null;
     if (!x || typeof x !== 'object') return empty();
-    return { v: 1, earned: nums(x.earned), spent: nums(x.spent), counted: Array.isArray(x.counted) ? x.counted.filter(k => typeof k === 'string').slice(-500) : [] };
+    const playClocks = Object.fromEntries(Object.entries(x.playClocks ?? {}).filter(([, c]) => c && [c.elapsed,c.tenWeight,c.hourWeight,c.fraction].every(n => Number.isFinite(n) && n >= 0)));
+    return { v: 1, playClocks, bonusHalves: nums(x.bonusHalves), earned: nums(x.earned), spent: nums(x.spent), counted: Array.isArray(x.counted) ? x.counted.filter(k => typeof k === 'string').slice(-500) : [] };
   } catch { return empty(); }
 }
 export function saveHoliday(s: HolidayState): void {
@@ -90,19 +92,21 @@ export const eventCoins = (s: HolidayState, runKey: string) => annualEventBalanc
 export const FINISH_COINS = 1, WIN_COINS = 2;
 
 /** A finished game during an event: 1 coin, or 2 for a win (each game once, by `id` when it has one). Pure. */
-export function earnFinish(s: HolidayState, won: boolean, id: string | undefined, now = new Date()): HolidayState {
+export function earnFinish(s: HolidayState, won: boolean, id: string | undefined, now = new Date(), boosted = false): HolidayState {
   let next = s;
   for (const run of activeHolidays(now)) {
     const tag = id ? `${run.key}:${id}` : null;
     if (tag && next.counted.includes(tag)) continue;
-    const add = won ? WIN_COINS : FINISH_COINS;
-    next = { ...next, earned: { ...next.earned, [run.key]: (next.earned[run.key] ?? 0) + add }, counted: tag ? [...next.counted, tag].slice(-500) : next.counted };
+    const base = won ? WIN_COINS : FINISH_COINS;
+    const halves = (next.bonusHalves?.[run.key] ?? 0) + (boosted ? base : 0);
+    const add = base + Math.floor(halves / 2);
+    next = { ...next, bonusHalves: { ...next.bonusHalves, [run.key]: halves % 2 }, earned: { ...next.earned, [run.key]: (next.earned[run.key] ?? 0) + add }, counted: tag ? [...next.counted, tag].slice(-500) : next.counted };
   }
   return next;
 }
 /** Saves the coins for a finished game. Returns the coins paid (0 with no event on, or a game already counted). */
-export function noteHolidayFinish(won: boolean, id?: string, now = new Date()): number {
-  const before = loadHoliday(), after = earnFinish(before, won, id, now);
+export function noteHolidayFinish(won: boolean, id?: string, now = new Date(), boosted = false): number {
+  const before = loadHoliday(), after = earnFinish(before, won, id, now, boosted);
   if (after === before) return 0;
   saveHoliday(after);
   return activeHolidays(now).reduce((n, { key }) => n + (after.earned[key] ?? 0) - (before.earned[key] ?? 0), 0);
@@ -117,5 +121,7 @@ export function spendEventCoins(s: HolidayState, price: number, now = new Date()
 /** Two copies (this device and the cloud): the most earned and the most spent per event, and every game counted. */
 export function mergeHoliday(a: HolidayState, b: HolidayState): HolidayState {
   const max = (x: Record<string, number>, y: Record<string, number>) => Object.fromEntries([...new Set([...Object.keys(x), ...Object.keys(y)])].map(k => [k, Math.max(x[k] ?? 0, y[k] ?? 0)]));
-  return { v: 1, earned: max(a.earned, b.earned), spent: max(a.spent, b.spent), counted: [...new Set([...b.counted, ...a.counted])].slice(-500) };
+  const playClocks = { ...a.playClocks };
+  for (const [key, clock] of Object.entries(b.playClocks ?? {})) if (clock.elapsed > (playClocks[key]?.elapsed ?? -1)) playClocks[key] = clock;
+  return { v: 1, playClocks, bonusHalves: max(a.bonusHalves ?? {}, b.bonusHalves ?? {}), earned: max(a.earned, b.earned), spent: max(a.spent, b.spent), counted: [...new Set([...b.counted, ...a.counted])].slice(-500) };
 }

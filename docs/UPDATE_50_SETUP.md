@@ -52,3 +52,7 @@ The draft now includes main's Google OAuth callback fix from PR #49 as well as P
 Validation: 85 targeted tests across 10 files passed; production build passed; lint retained 58 existing warnings with no errors. Added checks cover safe delayed purchases, account-switch cancellation and sync timestamps, loadout ownership/slot limits, calendar year rollover, sanitized diagnostics, phone pin order, section navigation and failed-save retries. Browser visual checks for this continuation remain outstanding because Chromium downloads failed. The Windows archive is regenerated during the deployment build rather than committed in this source change.
 
 PR #47 remains draft and unmerged. This change does not activate push, rewarded ads or a production deployment, and does not apply SQL. The activation requirements above still apply.
+
+## Gameplay continuation
+
+See `UPDATE_50_GAMEPLAY.md` for the timed event rewards, decorated phone entry, achievements, preseason development checkpoint, rivalry scoring showcases, player details, page pins and Career performance changes. This remains part of the held draft. No new SQL is needed for this batch.

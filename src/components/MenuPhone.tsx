@@ -1,3 +1,5 @@
+import { PagePins } from './qol/PagePins';
+import { PhoneEvent } from './qol/PhoneEvent';
 import { SaveStatus } from './qol/SaveStatus';
 import { NotificationApp } from './cloud/NotificationCentre';
 import { CourtChat } from './CourtChat';
@@ -172,6 +174,7 @@ export function MenuPhone({ onClans, onFriendList, onCloset, onBoards, onFriends
 
   const appKey = (t: EventTarget | null) => (t as HTMLElement | null)?.closest?.('[data-app]')?.getAttribute('data-app') ?? null;
   return <aside className={`menu-phone phone-skin-${skin} ${editing ? 'editing' : ''}`} aria-label="Your phone">
+    <PhoneEvent /><PagePins canPin={false} />
     <SaveStatus compact />
     <div className="menu-phone-body">
       {chatOpen && <CourtChat onClose={() => setChatOpen(false)} />}
