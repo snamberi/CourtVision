@@ -3,10 +3,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { transform, cssFiles, readCss } from '../../scripts/theme-palette.mjs';
 import { PALETTE } from '../theme/palette.gen';
-import { THEMES, THEME_BY_ID, themeLevel, themeTrophies, themeOpen, visibleThemes, mapColor, parseHex, analyse, family, themeCss, applyTheme, readTheme, setTheme, THEME_KEY, type ThemeId } from '../theme/themes';
+import { THEMES, THEME_BY_ID, themeLevel, themeTrophies, themeOpen, visibleThemes, mapColor, parseHex, analyse, family, themeCss, applyTheme, readTheme, setTheme, THEME_KEY, setLookMode, readLookMode, type ThemeId } from '../theme/themes';
 import { ThemeWelcome, ThemeSection, ThemePicker, needsThemeChoice } from '../components/ThemePicker';
 import { LEVEL_ROAD, ROAD_LOOK_NAMES } from '../profile/cosmetics';
-import { THEME_SKINS } from '../theme/skins';
+import { THEME_SKINS, skinForMode } from '../theme/skins';
 import { unlocksBetween } from '../profile/profile';
 
 /** WCAG contrast ratio of two opaque hex colours. */
@@ -153,5 +153,31 @@ describe('picking a look', () => {
     act(() => setTheme('original'));
     expect(document.documentElement.dataset.cvTheme).toBeUndefined();
     expect(document.getElementById('cv-theme')).toBeNull();
+  });
+});
+
+
+describe('light and dark variants', () => {
+  afterEach(() => { cleanup(); localStorage.clear(); applyTheme('original'); });
+  it('all 54 palettes keep text, muted text and actions readable', () => {
+    for (const t of THEMES) for (const mode of ['light','dark'] as const) {
+      const s = skinForMode(t.id, mode);
+      for (const [a,b] of [[s.text,s.panel],[s.muted,s.panel],[s.text,s.raised],[s.onAccent,s.accent]]) expect(contrast(a,b), `${t.id} ${mode}: ${a} / ${b}`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+  it('brightness persists across looks and remaps the original light palette', () => {
+    setLookMode('light'); setTheme('terminal');
+    expect(readLookMode()).toBe('light');
+    expect(document.documentElement.dataset.cvMode).toBe('light');
+    setTheme('original');
+    expect(document.getElementById('cv-theme')?.textContent).toContain('--c-bg-13213a:');
+    setLookMode('dark'); expect(document.getElementById('cv-theme')).toBeNull();
+  });
+  it('picker switches brightness without unlocking or changing the chosen look', () => {
+    render(<ThemeSection />);
+    fireEvent.click(screen.getByRole('button', { name:/^Light$/ }));
+    expect(screen.getByRole('button', { name:/^Light$/ }).getAttribute('aria-pressed')).toBe('true');
+    expect(readTheme()).toBeNull();
+    expect(screen.getByRole('radio', { name:/Hardwood/ })).toHaveProperty('disabled', true);
   });
 });

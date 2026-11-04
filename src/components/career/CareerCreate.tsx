@@ -57,12 +57,14 @@ function Landed({ h, s, wheel, index, onTake, onBoost }: { h: NbaHistory; s: Whe
   const cats = wheelCategories(h, wheel);
   const elite = eliteRanks(h).get(id);
   const used = s.takenFrom.includes(index);
+  const rolledRarity = careerRarity(h, c.id);
   const star = c.rarity === 'legendary';
   const boost = wheel.boost;
   const raised = (cat: CategoryId) => !!boost && Object.keys(cats[cat]).some(k => boost.raised.includes(k));
   const canBoost = !used && !boost && mustTake(s) && boostLeft(s) > 0;
   return <div style={playerFinish(c.team)} className={`cv-landed player-finish rarity-${careerRarity(h, c.id)} ${used ? 'used' : ''}`}>
-    <RevealSparks key={id} rarity={c.rarity} active={!used} />
+    {rolledRarity === 'mythic' && <span className="cv-mythic-label">MYTHIC · ELITE ROLL</span>}
+    <RevealSparks key={id} rarity={rolledRarity} active={!used} />
     {star && !used && <div className="cv-star-burst" aria-hidden="true">STAR!</div>}
     <div className="cv-landed-head"><PlayerAvatar playerId={c.name} primaryColor={teamColors(c.team).primary} secondaryColor={teamColors(c.team).secondary} size={56} pose={star ? 'raise' : 'stand'} />
       <div><small>{careerRarity(h, c.id).toUpperCase()} · {c.pos}{star ? ` · +${STAR_BONUS} TO EVERY SKILL` : ''}</small><strong>{c.name}{boost && <span className="cv-boost-badge">{boost.mode === 'prime' ? 'PRIME' : 'SURGE'}</span>}</strong><span>{seasonLabel(c.end)} {c.teamName} · {c.ovr} OVR</span></div></div>

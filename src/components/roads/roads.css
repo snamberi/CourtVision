@@ -111,4 +111,4 @@
 .sp-banner.season-frozen small { color: var(--c-fg-bfe6ff, #bfe6ff); }
 
 
-.road-tier{display:grid;gap:8px;padding:16px;margin:16px 0;background:#13273c;border:1px solid #466078}.road-tier strong{color:#ffb25f;font-size:22px}.road-tier progress{width:100%;accent-color:#ffb25f}.road-tier ol{display:flex;gap:8px;padding:0;list-style:none;flex-wrap:wrap}.road-tier li{padding:7px;border:1px solid #466078;color:#8ca0b3}.road-tier .unlocked{color:#e7eff9}.road-tier [aria-current=step]{border-color:#ffb25f;background:#654529}
+.road-tier{display:grid;gap:8px;padding:16px;margin:16px 0;background:var(--c-bg-13273c, #13273c);border:1px solid var(--c-border-466078, #466078)}.road-tier strong{color:var(--c-fg-ffb25f, #ffb25f);font-size:22px}.road-tier progress{width:100%;accent-color:var(--c-fg-ffb25f, #ffb25f)}.road-tier ol{display:flex;gap:8px;padding:0;list-style:none;flex-wrap:wrap}.road-tier li{padding:7px;border:1px solid var(--c-border-466078, #466078);color:var(--c-fg-8ca0b3, #8ca0b3)}.road-tier .unlocked{color:var(--c-fg-e7eff9, #e7eff9)}.road-tier [aria-current=step]{border-color:var(--c-border-ffb25f, #ffb25f);background:var(--c-bg-654529, #654529)}

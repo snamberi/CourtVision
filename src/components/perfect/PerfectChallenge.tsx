@@ -198,6 +198,8 @@ function Hub({ h, records, onStart, onWhatIf, onBattle }: { h: NbaHistory; recor
   return <section className="p820-hub">
     <div className="p820-hero"><span className="p820-goal">82-0</span><span className="p820-goal-plus">+ 16-0</span>
       <p>Build a ten-man team from all of NBA history, play a full 82-game season against real teams from every era, then four playoff rounds. Bosses on the schedule: {BOSS_TEAMS.map(b => b.tag).join(', ')}.</p></div>
+    <section className="p820-quickstart"><span className="pixel-eyebrow">FIRST RUN? START HERE</span><h2>Build a team. Chase a perfect season.</h2><ol><li>Roll your roster.</li><li>Play the regular season.</li><li>Win four playoff rounds.</li></ol><p>Rookie difficulty, visible ratings and no pick timer. You can explore other drafts when you’re ready.</p><button className="primary" onClick={() => onStart('quick', Math.floor(Math.random() * 1_000_000_000), undefined, { level: 'rookie', view: { numbers: true, colors: true }, catOpts: { tips: true, clock: false, mixed: false } })}>Start my first run</button></section>
+    <details className="p820-setup-details"><summary>Customize difficulty & draft rules</summary>
     <div className="p820-options">
       <div><h3 className="hunt-subhead">Difficulty</h3><LevelPicker value={prefs.level} onChange={level => set({ level })} blurbs={LEVEL_BLURB} /></div>
       <div><h3 className="hunt-subhead">Challenge yourself</h3><ViewToggles value={prefs.view} onChange={view => set({ view })} note={`Ratings shown: scores ×0.9. Colours hidden: scores ×1.1. This run: score ×${mult}. The Daily always uses the standard view.`} /></div>
@@ -208,6 +210,8 @@ function Hub({ h, records, onStart, onWhatIf, onBattle }: { h: NbaHistory; recor
       <label><input type="checkbox" checked={!!catOpts.clock} onChange={e => setCatOpts({ ...catOpts, clock: e.target.checked })} /> <b>Shot clock</b> <small>{SHOT_CLOCK} seconds a pick, or a random player · score ×{OPTION_MULTIPLIER.clock}</small></label>
       <label><input type="checkbox" checked={!!catOpts.mixed} onChange={e => setCatOpts({ ...catOpts, mixed: e.target.checked })} /> <b>Mixed rolls</b> <small>half the rolls are two categories at once ("Lakers × 90s players") · score ×{OPTION_MULTIPLIER.mixed}</small></label>
     </div>
+    </details>
+    <details className="p820-setup-details"><summary>All game modes · daily, weekly & custom drafts</summary>
     <div className="p820-modes">
       <button className="p820-mode p820-weekly" onClick={() => onStart('category', weekSeed(week), undefined, { weekly: week, catOpts })}>
         <span className="p820-new-tag">THIS WEEK</span>
@@ -239,6 +243,7 @@ function Hub({ h, records, onStart, onWhatIf, onBattle }: { h: NbaHistory; recor
     {building && <CustomBuilder h={h} onPlay={custom => onStart('category', Math.floor(Math.random() * 1_000_000_000), undefined, { ...prefs, catOpts, custom })} />}
     <WhatIfRows open={whatIf} onOpen={setWhatIf} />
     {whatIf && <WhatIfSetup key={whatIf} h={h} kind={whatIf} records={records} numbers={!!prefs.view?.numbers} onPlay={w => onWhatIf(w, prefs)} />}
+    </details>
     <div className="p820-records">
       <span><b>{records.best ? `${records.best.w}-${records.best.l}` : '—'}</b><small>Best record</small></span>
       <span><b>{records.best?.score.toLocaleString() ?? '—'}</b><small>Best score</small></span>

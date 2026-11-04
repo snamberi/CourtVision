@@ -58,3 +58,5 @@ createRoot(document.getElementById('root')!).render(
     <ThankYouPopup onProfile={() => { location.hash = '#/profile' }} />
   </StrictMode>,
 )
+
+import "./components/update50Polish.css";

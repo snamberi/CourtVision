@@ -53,3 +53,13 @@ it('pinning and unpinning keeps the existing custom app order intact', () => {
   expect(document.querySelector('.menu-phone-app')?.textContent).toContain('Settings');
   expect(localStorage.getItem('cv-phone-order')).toBeNull();
 });
+it('opens CourtChat within the phone screen and returns to apps', () => {
+  render(<MenuPhone streak={{ current: 0, best: 0 }} />);
+  const chat = screen.getByRole('button', { name: 'CourtChat', hidden: true });
+  fireEvent.click(chat);
+  const app = screen.getByRole('region', { name: 'CourtChat' });
+  expect(app.parentElement?.classList.contains('phone-app-viewport')).toBe(true);
+  expect(screen.getByRole('button', { name: 'Back to phone apps' })).toBe(document.activeElement);
+  fireEvent.click(screen.getByRole('button', { name: 'Back to phone apps' }));
+  expect(screen.queryByRole('region', { name: 'CourtChat' })).toBeNull();
+});

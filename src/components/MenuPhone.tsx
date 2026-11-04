@@ -71,6 +71,7 @@ export function MenuPhone({ onClans, onFriendList, onCloset, onBoards, onFriends
     return () => { window.removeEventListener(PROFILE_EVENT, sync); window.removeEventListener('courtvision:progress', sync); };
   }, []);
   const { level, skin } = state;
+  const chatButton = useRef<HTMLButtonElement>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [streakOpen, setStreakOpen] = useState(false);
   const days = streak.current;
@@ -130,7 +131,7 @@ export function MenuPhone({ onClans, onFriendList, onCloset, onBoards, onFriends
     onRoad && { key: 'pass', node: <button className="menu-phone-app" onClick={() => onRoad('season')} aria-label={`Season Pass${luckySpins ? `, ${luckySpins} free Lucky Spin${luckySpins === 1 ? '' : 's'}` : ''}`}><span className="app-tile pass"><PixelIcon name="calendar" size={20} />{luckySpins > 0 && <em className="app-badge">{luckySpins}</em>}</span><small>Season Pass</small></button> },
     onRoad && { key: 'levelroad', node: <button className="menu-phone-app" onClick={() => onRoad('level')} aria-label={`Level Road, level ${level}`}><span className="app-tile levelroad"><PixelIcon name="chart" size={20} /><em>{level}</em></span><small>Level Road</small></button> },
     onRoad && { key: 'trophyroad', node: <button className="menu-phone-app" onClick={() => onRoad('trophy')}><span className="app-tile trophyroad"><PixelIcon name="trophy" size={20} /></span><small>Trophy Road</small></button> },
-    { key: 'courtchat', node: <button className="menu-phone-app" onClick={() => setChatOpen(true)}><span className="app-tile friends"><PixelIcon name="team" size={20} /></span><small>CourtChat</small></button> },
+    { key: 'courtchat', node: <button ref={chatButton} className="menu-phone-app" onClick={() => { setEditing(false); setChatOpen(true); }}><span className="app-tile friends"><PixelIcon name="team" size={20} /></span><small>CourtChat</small></button> },
     { key: 'notifications', node: <NotificationApp onFriends={onFriends} onFriendList={onFriendList} /> },
     onClans && { key: 'clans', node: <button className="menu-phone-app" onClick={onClans}><span className="app-tile friends"><PixelIcon name="team" size={20} /></span><small>Clans</small></button> },
   ] as (App | false | undefined)[]).filter((x): x is App => !!x);
@@ -166,7 +167,7 @@ export function MenuPhone({ onClans, onFriendList, onCloset, onBoards, onFriends
   useEffect(() => { const el = pager.current; if (el) el.scrollLeft = initialPage.current * el.clientWidth; }, []);
   useEffect(() => { write('cv-phone-page', String(page)); }, [page]);
   const drag = useRef<{ x: number; moved: boolean } | null>(null);
-  const goTo = (i: number) => { const el = pager.current; if (!el) return; const n = Math.max(0, Math.min(pages.length - 1, i)); el.scrollTo({ left: n * el.clientWidth, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); setPage(n); };
+  const goTo = (i: number) => { const el = pager.current; if (!el) return; const n = Math.max(0, Math.min(pages.length - 1, i)); el.scrollTo({ left: n * el.clientWidth, behavior: (matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.classList.contains('reduce-motion')) ? 'auto' : 'smooth' }); setPage(n); };
   const onScroll = () => { const el = pager.current; if (el && el.clientWidth) setPage(Math.round(el.scrollLeft / el.clientWidth)); window.clearTimeout(hold.current); };
   // The first time: a small nudge so you know there's another page.
   const [hint] = useState(() => !read(HINT_KEY));
@@ -177,9 +178,12 @@ export function MenuPhone({ onClans, onFriendList, onCloset, onBoards, onFriends
     <PhoneEvent /><PagePins canPin={false} />
     <SaveStatus compact />
     <div className="menu-phone-body">
-      {chatOpen && <CourtChat onClose={() => setChatOpen(false)} />}
+
       {skin !== 'classic' && <span className="phone-case-detail" aria-hidden="true" />}
       <div className="menu-phone-status" aria-hidden="true"><span>{time}</span><i className="menu-phone-notch" /><span className="menu-phone-icons"><i className="sig" /><i className="bat" /></span></div>
+      <div className="phone-app-viewport">
+      {chatOpen && <CourtChat onClose={() => { setChatOpen(false); requestAnimationFrame(() => chatButton.current?.focus()); }} />}
+      <div inert={chatOpen} aria-hidden={chatOpen || undefined} style={chatOpen ? { visibility: 'hidden' } : undefined}>
       <div className={`menu-phone-pages ${hint && pages.length > 1 ? 'hint' : ''}`} ref={pager} onScroll={onScroll} role="group" aria-roledescription="carousel" aria-label="Apps"
         onPointerDown={e => {
           held.current = false;
@@ -217,6 +221,7 @@ export function MenuPhone({ onClans, onFriendList, onCloset, onBoards, onFriends
       {editing && <div><small>Pin up to four apps first. Unpinning restores their original positions.</small><div className="phone-pin-picker">{keys.map(k => <button key={k} disabled={!pins.includes(k) && pins.length >= 4} aria-pressed={pins.includes(k)} onClick={() => togglePin(k)}>{pins.includes(k) ? 'Unpin' : 'Pin'} {pinLabels[k] ?? (k[0].toUpperCase() + k.slice(1))}</button>)}</div></div>}
       {editing ? <div className="menu-phone-edit"><small>{picked ? 'Now tap where it goes' : 'Drag an app onto another, or tap two to swap'}</small><button type="button" onClick={() => { setEditing(false); setPicked(null); }}>Done</button></div>
         : <button type="button" className="menu-phone-arrange link-button" onClick={() => setEditing(true)}>Rearrange</button>}
+      </div></div>
       <i className="menu-phone-home" aria-hidden="true" />
     </div>
     {streakOpen && <StreakDialog streak={streak} onClose={() => setStreakOpen(false)} onProfile={onProfile} />}

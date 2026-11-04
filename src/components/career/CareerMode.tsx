@@ -67,6 +67,9 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
   const pre = useRef<{ done: Promise<CareerWorld>; cancel: () => void; seed: number; draftYear: number | null } | null>(null);
   const [prePct, setPrePct] = useState<number | null>(null);
   const [preReady, setPreReady] = useState(false);
+  const operation = useRef(0);
+  const autopilotEnabled = useRef(false);
+  const [pace, setPace] = useState(2500);
   const cancelRef = useRef<() => void>(() => {});
   const [tradeAsked, setTradeAsked] = useState<string | null>(null);
   const [draftYear, setDraftYear] = useState<number | null>(null);
@@ -77,7 +80,7 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
     let live = true;
     import('../../history/nbaHistoryData').then(m => m.loadNbaHistory()).then(d => { if (live) setH(d); }, e => { if (live) setError(e instanceof Error ? e.message : String(e)); });
     listCareers().then(c => { noteCareers(c); if (live) setCareers(c); });
-    return () => { live = false; pre.current?.cancel(); cancelRef.current(); };
+    return () => { live = false; operation.current++; pre.current?.cancel(); cancelRef.current(); };
   }, []);
 
   const refresh = () => listCareers().then(c => { noteCareers(c); setCareers(c); });
@@ -130,6 +133,7 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
 
   const startNew = async (mode: Mode, draftYear: number | null = null, weekly: WeeklyCareer | null = null) => {
     if (!h) return;
+    autopilotEnabled.current = false;
     const warm = pre.current && !weekly && draftYear == null && pre.current.draftYear == null ? pre.current : null;
     const seed = weekly ? weekly.seed : warm ? warm.seed : newSeed();
     setWeekly(weekly?.week ?? null);
@@ -142,9 +146,11 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
   /** Name chosen: into the draft he goes. */
   const enterDraft = async (v: Extract<View, { k: 'identity' }>, c: IdentityChoice) => {
     if (!h || !pre.current) return;
+    const ticket = ++operation.current;
     setBusy({ label: 'The season before your draft is being played…', pct: prePct });
     try {
       const w = await pre.current.done;
+      if (ticket !== operation.current) return;
       const id = `career-${Date.now()}`;
       const playerId = uniqueName(w.league, w.extras, c.name);
       // Career of the Week is always Pro (everyone plays the same game).
@@ -156,34 +162,37 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
       const step = runCareerStep({ type: 'fromDraft', league: joined.league, extras: joined.extras, seed: v.seed + 7, partial: w.partial, awardSettings: DEFAULT_AWARD_SETTINGS }, () => {});
       cancelRef.current = step.cancel;
       const r = await step.done;
+      if (ticket !== operation.current) return;
       meta = { ...meta, draft: draftResult(r.league, meta, r.type === 'inSeason' ? r.draftPicks : []) };
       if (meta.draft?.pick == null) meta = { ...meta, notes: ['Undrafted: he signs wherever there is a spot.'] };
       persist(meta, { id, league: r.league, extras: r.extras, phase: 'inSeason' });
       setView({ k: 'career' });
     } catch (e) {
-      if ((e as Error).message !== 'cancelled') setError((e as Error).message);
-    } finally { setBusy(null); pre.current = null; }
+      if (ticket === operation.current && (e as Error).message !== 'cancelled') setError((e as Error).message);
+    } finally { if (ticket === operation.current) { setBusy(null); pre.current = null; } }
   };
 
   /** Plays the next season (from wherever the league stands) and lands at the next draft. */
   const playSeason = useCallback(async (a: Active) => {
     if (!h || !a.world || a.meta.status !== 'active') return;
+    const ticket = ++operation.current;
     const { meta, world } = a;
     const seed = meta.seed + (meta.years.length + 1) * 1000;
     setBusy({ label: `Playing the ${fy(world.league.season)} season…`, pct: 0 });
     try {
       const step = runCareerStep(world.phase === 'atDraft'
         ? { type: 'fromDraft', league: world.league, extras: world.extras, seed, partial: world.partial, thenToDraft: true, awardSettings: DEFAULT_AWARD_SETTINGS }
-        : { type: 'toDraft', league: world.league, extras: world.extras, seed, awardSettings: DEFAULT_AWARD_SETTINGS }, pct => setBusy(b => (b ? { ...b, pct } : b)));
+        : { type: 'toDraft', league: world.league, extras: world.extras, seed, awardSettings: DEFAULT_AWARD_SETTINGS }, pct => { if (ticket === operation.current) setBusy(b => (b ? { ...b, pct: Math.max(b.pct ?? 0, Math.min(100, pct)) } : b)); });
       cancelRef.current = step.cancel;
       const r = await step.done;
+      if (ticket !== operation.current) return;
       if (r.type !== 'atDraft') return;
       const landed = landSeason(meta, r.league, r.extras, r.partial.season);
       setTradeAsked(null);
-      persist(landed.meta, { ...world, league: landed.league, extras: landed.extras, phase: 'atDraft', partial: r.partial });
+      persist({ ...landed.meta, autopilot: autopilotEnabled.current }, { ...world, league: landed.league, extras: landed.extras, phase: 'atDraft', partial: r.partial });
     } catch (e) {
-      if ((e as Error).message !== 'cancelled') setError((e as Error).message);
-    } finally { setBusy(null); }
+      if (ticket === operation.current && (e as Error).message !== 'cancelled') setError((e as Error).message);
+    } finally { if (ticket === operation.current) setBusy(null); }
   }, [h, persist]);
 
   // Autopilot: offseason choices and the next season, until he retires.
@@ -198,20 +207,28 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
         persist(a.meta, a.world);
         playSeason(a);
       } else playSeason(active);
-    }, 600);
+    }, pace);
     return () => clearTimeout(t);
-  }, [h, active, busy, persist, playSeason]);
+  }, [h, active, busy, persist, playSeason, pace]);
 
   const open = async (m: CareerMeta) => {
     // An existing career needs the CPU for its own seasons: drop the head start.
     pre.current?.cancel(); pre.current = null;
     const world = m.status === 'active' ? await loadWorld(m.id) : null;
+    autopilotEnabled.current = false;
     setActive({ meta: { ...m, autopilot: false }, world: world ?? null });
     setView({ k: 'career' });
   };
 
+  const stopRun = () => { autopilotEnabled.current = false; operation.current++; cancelRef.current(); pre.current?.cancel(); pre.current = null; setBusy(null); setActive(a => a ? { ...a, meta: { ...a.meta, autopilot: false } } : a); };
+  const abandonRun = async () => {
+    if (!active || !window.confirm('Abandon this career? This deletes this run and its saved seasons. No retirement rewards are granted.')) return;
+    const id = active.meta.id; stopRun();
+    try { await deleteCareer(id); setActive(null); setView({ k: 'hub' }); await refresh(); }
+    catch { setError('Could not abandon this career. Your saved run is still available.'); }
+  };
   const header = <header className="hunt-top">
-    <button className="hunt-exit" onClick={() => { if (view.k === 'hub') onExit(); else { cancelRef.current(); setBusy(null); setView({ k: 'hub' }); setActive(null); } }}><PixelIcon name="exit" size={16} /> {view.k === 'hub' ? 'Main Menu' : 'Careers'}</button>
+    <button className="hunt-exit" onClick={() => { if (view.k === 'hub') onExit(); else { autopilotEnabled.current = false; operation.current++; cancelRef.current(); setBusy(null); setView({ k: 'hub' }); setActive(null); } }}><PixelIcon name="exit" size={16} /> {view.k === 'hub' ? 'Main Menu' : 'Careers'}</button>
     <div className="hunt-title"><span className="pixel-eyebrow">ONE PLAYER, ONE CAREER</span><h1>Career Mode</h1></div>
   </header>;
 
@@ -222,8 +239,9 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
     {pendingReward && <PostGameRewardPopup data={pendingReward} onClose={() => setPendingReward(null)} />}
     {header}
     <ModeBackdrop mode="career" />
-    {busy && <div className="cv-busy" role="status"><span>{busy.label}</span>{busy.pct != null && <div className="hunt-cap-bar"><i style={{ width: `${busy.pct}%` }} /></div>}
-      {active?.meta.autopilot && <button className="link-button" onClick={() => setActive(a => (a ? { ...a, meta: { ...a.meta, autopilot: false } } : a))}>Stop autopilot after this season</button>}</div>}
+    {view.k === 'career' && active?.meta.status === 'active' && <div className="cv-run-controls"><label>Autopilot reading time <select value={pace} onChange={e => setPace(Number(e.target.value))}><option value={600}>Fast · 0.6 sec</option><option value={2500}>Balanced · 2.5 sec</option><option value={6000}>Relaxed · 6 sec</option></select></label><button onClick={() => void abandonRun()}>Abandon run</button></div>}
+    {busy && <div className="cv-busy" role="status"><span>{busy.label}</span><button onClick={() => { stopRun(); if (!active) setView({ k: 'hub' }); }}>Give up simulation · keep last save</button>{busy.pct != null && <div className="hunt-cap-bar"><i style={{ width: `${busy.pct}%` }} /></div>}
+      {active?.meta.autopilot && <button className="link-button" onClick={() => { autopilotEnabled.current = false; setActive(a => (a ? { ...a, meta: { ...a.meta, autopilot: false } } : a)); }}>Stop autopilot after this season</button>}</div>}
     {view.k === 'hub' ? <Hub careers={careers} onNew={startNew} onOpen={open} onDelete={id => deleteCareer(id).then(refresh)} />
       : view.k === 'wheel' ? <WheelBuilder h={h} seed={view.seed} fav={weekly ? undefined : readFavorites().player} relics={weekly ? undefined : relicRunOpts()} onBack={() => setView({ k: 'hub' })} onDone={prime => setView({ k: 'identity', seed: view.seed, prime, mode: 'wheel' })} />
       : view.k === 'myplayer' ? <MyPlayerBuilder seed={view.seed} onBack={() => setView({ k: 'hub' })} onDone={prime => setView({ k: 'identity', seed: view.seed, prime, mode: 'myplayer' })} />
@@ -231,7 +249,7 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
       : view.k === 'identity' ? (busy ? null : <IdentityView prime={view.prime} seed={view.seed} ready={preReady} pct={prePct} sandbox={view.mode === 'sandbox'} h={h} locks={view.locks} onBack={() => setView(view.mode === 'yourplayer' ? { k: 'hub' } : { k: view.mode, seed: view.seed })} onDone={c => enterDraft(view, c)} />)
       : active ? <CareerView h={h} a={active} busy={!!busy} tradeAsked={tradeAsked}
           onPlay={() => playSeason(active)}
-          onAutopilot={on => setActive({ ...active, meta: { ...active.meta, autopilot: on } })}
+          onAutopilot={on => { autopilotEnabled.current = on; setActive({ ...active, meta: { ...active.meta, autopilot: on } }); }}
           onTraining={training => persist({ ...active.meta, training }, active.world)}
           onSign={offerIdx => { const w = active.world!; const offers = freeAgentOffers(w.league, w.extras, active.meta); const o = offers[offerIdx]; if (!o) return; const r = signOffer(w.league, w.extras, active.meta, o); persist({ ...active.meta, notes: [...active.meta.notes, r.note] }, { ...w, league: r.league, extras: r.extras }); }}
           onTrade={wish => { const w = active.world!; const r = requestTrade(w.league, w.extras, active.meta, wish); setTradeAsked(r.note); persist({ ...active.meta, notes: [...active.meta.notes, r.note] }, { ...w, league: r.league, extras: r.extras }); }}

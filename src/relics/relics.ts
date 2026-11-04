@@ -694,3 +694,17 @@ export function changeGems(s: RelicState, amount: number, id: string = crypto.ra
 function cleanAdRewards(value: unknown): number[] {
   return Array.isArray(value) ? [...new Set(value.filter((t): t is number => typeof t === 'number' && Number.isSafeInteger(t) && t > 0))].sort((a,b)=>b-a).slice(0,3) : [];
 }
+
+/** Paid ten-rolls require the displayed full cost; duplicates cannot fund a partly affordable batch. */
+export function premiumSpinMany(state: RelicState, kind: 'lucky' | 'ultra' | 'free', discount = 0, rand: () => number = Math.random): { state: RelicState; results: SpinResult[] } | null {
+  const cost = kind === 'free' ? 10 : kind === 'ultra' ? 200 : discounted(LUCKY_SPIN_PRICE, discount) * 10;
+  if ((kind === 'free' ? state.luckySpins ?? 0 : kind === 'ultra' ? state.gems ?? 0 : state.coins) < cost) return null;
+  let next = state; const results: SpinResult[] = [];
+  for (let i = 0; i < 10; i++) {
+    const out: SpinOutcome | null = kind === 'free' ? freeLuckySpin(next, rand) : kind === 'ultra' ? ultraLuckySpin(next, rand) : luckySpin(next, rand, discount);
+    if (!out) return null;
+    next = out.state; results.push(out.result);
+    if ('bonus' in out && out.bonus) results.push(out.bonus);
+  }
+  return { state: next, results };
+}

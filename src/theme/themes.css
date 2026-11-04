@@ -151,3 +151,9 @@ body { background: var(--look-page); color: var(--look-text); font-family: var(-
 :root[data-cv-theme='handheld'] :is(.mode-card:hover p, .mode-card:hover .mode-card-kicker, .sidebar-item.active, .sidebar-item:hover) { color: var(--look-text); }
 @media (prefers-reduced-motion: reduce) { :root .menu-player-scene > * { animation: none; } }
 @media print { :root :is(.app-body main, .hunt) { background-image: none; } }
+
+/* Explicit brightness takes precedence over each look's historical default. */
+:root[data-cv-mode='light'] { color-scheme: light; }
+:root[data-cv-mode='dark'] { color-scheme: dark; }
+:root[data-cv-mode='light'] .name-tag { background: #101b2b; padding: 3px 6px; border-radius: 2px; }
+:root[data-cv-mode='dark'] .name-tag { background: transparent; }
