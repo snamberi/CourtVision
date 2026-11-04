@@ -53,3 +53,16 @@ describe('court viewer controls',()=>{
   expect(screen.getByText(/no possession log/)).toBeTruthy();expect(screen.getByRole('button',{name:'View Box Score'})).toBeTruthy();
  });
 });
+
+it('starts with the whole court and switches follow mode directly from playback controls',()=>{
+ localStorage.removeItem('cv-court-camera');
+ const {container}=render(<WatchGame {...fixture()} onBoxScore={()=>{}}/>);
+ const full=container.querySelector('.watch-court')!.getAttribute('viewBox');
+ expect(screen.getByRole('button',{name:'Full court'}).getAttribute('aria-pressed')).toBe('true');
+ fireEvent.click(screen.getByRole('button',{name:'Follow ball: Off'}));
+ expect(container.querySelector('.watch-court')!.getAttribute('viewBox')).not.toBe(full);
+ expect(localStorage.getItem('cv-court-camera')).toBe('follow');
+ fireEvent.click(screen.getByRole('button',{name:'Full court'}));
+ expect(container.querySelector('.watch-court')!.getAttribute('viewBox')).toBe(full);
+ localStorage.removeItem('cv-court-camera');
+});
