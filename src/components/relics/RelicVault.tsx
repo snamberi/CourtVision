@@ -176,14 +176,17 @@ export function RelicVault({ onExit, view = 'vault', onSwitch }: { onExit: () =>
       <RewardedSpin />
       <p className="relic-help">You have <b>{state.coins.toLocaleString()} coins</b>. Earn them from finished runs, duplicates and daily rewards. Equipped relics: +{relicCoinBoost(state).toFixed(2)}% coin income. Gems: {state.gems ?? 0}.</p>
       <div className="relic-shop-grid">
-        <div className="relic-offer r-mythic"><button disabled={rolling || (state.gems ?? 0) < 200} onClick={() => spinAll('ultra')}>Spin 10 · 200 gems</button><span><b>Ultra Lucky Spin</b><small>Epic or better. 1% regular Secret chance; mission and event Secrets excluded.</small></span><button disabled={rolling || (state.gems ?? 0) < 20} onClick={() => { const out = ultraLuckySpin(loadRelics()); if (!out) return; saveRelics(out.state); setState(out.state); setBatch(null); setResult(out.result); if (!compact && isBig(out.result)) setBig(out.result); }}>20 gems</button></div>
-        <div className="relic-offer">
-          <PixelIcon name="star" size={24} /><span><b>Relic Spin</b><small>A normal spin, saved for when you want it.</small></span>
-          <button onClick={() => commit(s => buySpin(s, discount))} disabled={rolling || state.coins < spinPrice}>{spinPrice} coins{off ? ` (−${off}%)` : ''}</button>
+        <div className="relic-offer relic-spin-offer r-mythic">
+          <span><b>Ultra Lucky Spin</b><small>Epic or better. 1% regular Secret chance; mission and event Secrets excluded.</small></span>
+          <div className="relic-offer-actions"><button disabled={rolling || (state.gems ?? 0) < 20} onClick={() => { const out = ultraLuckySpin(loadRelics()); if (!out) return; saveRelics(out.state); setState(out.state); setBatch(null); setResult(out.result); if (!compact && isBig(out.result)) setBig(out.result); }}>Spin 1 · 20 gems</button><button disabled={rolling || (state.gems ?? 0) < 200} onClick={() => spinAll('ultra')}>Spin 10 · 200 gems</button></div>
         </div>
-        <div className="relic-offer r-legendary">
-          <PixelIcon name="flame" size={24} /><span><b>Lucky Spin</b><small>1.5× luck weighting, no Commons. Spins straight away.</small></span>
-          <button disabled={rolling || state.coins < luckyPrice * 10} onClick={() => spinAll('lucky')}>Lucky ×10 · {luckyPrice * 10} coins</button><button className="primary" onClick={() => spin(true)} disabled={rolling || state.coins < luckyPrice}>{luckyPrice} coins{off ? ` (−${off}%)` : ''}</button>
+        <div className="relic-offer relic-spin-offer">
+          <span><b>Relic Spin</b><small>A normal spin, saved for when you want it.</small></span>
+          <div className="relic-offer-actions"><button onClick={() => commit(s => buySpin(s, discount))} disabled={rolling || state.coins < spinPrice}>{spinPrice} coins{off ? ` (−${off}%)` : ''}</button></div>
+        </div>
+        <div className="relic-offer relic-spin-offer r-legendary">
+          <span><b>Lucky Spin</b><small>1.5× luck weighting, no Commons. Spins straight away.</small></span>
+          <div className="relic-offer-actions"><button className="primary" onClick={() => spin(true)} disabled={rolling || state.coins < luckyPrice}>Spin 1 · {luckyPrice} coins{off ? ` (−${off}%)` : ''}</button><button disabled={rolling || state.coins < luckyPrice * 10} onClick={() => spinAll('lucky')}>Spin 10 · {(luckyPrice * 10).toLocaleString()} coins</button></div>
         </div>
         {state.slotsBought < EXTRA_SLOTS && <div className="relic-offer">
           <PixelIcon name="unlock" size={24} /><span><b>Relic slot {slots + 1}</b><small>{slots + 1 === MAX_SLOTS ? 'Slot 15 doubles only the relic equipped there.' : `One more relic adds its luck. ${EXTRA_SLOTS - state.slotsBought} left to buy.`}</small></span>

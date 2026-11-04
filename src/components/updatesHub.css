@@ -22,3 +22,16 @@
   .update-card > header h2 { font-size: 16px; }
   .update-items details p { margin-left: 4px; }
 }
+
+/* Shared app surfaces; the release's original accent remains on its border and icon. */
+:root .update-card { background: linear-gradient(145deg, color-mix(in srgb, var(--upd-accent) 9%, var(--look-panel)), var(--look-panel) 65%); color: var(--look-text); border-color: var(--upd-accent); box-shadow: var(--look-shadow); border-radius: var(--look-radius); }
+:root .update-card > header { background: color-mix(in srgb, var(--upd-accent) 12%, var(--look-raised)); }
+:root .update-card :is(h2, .pixel-eyebrow) { color: var(--look-text); }
+:root .update-card .pixel-eyebrow { border-left: 3px solid var(--upd-accent); padding-left: 8px; }
+:root .update-items details p { color: var(--look-muted); background: var(--look-panel); }
+:root .update-items details p b { color: var(--look-text); }
+:root .update-items summary:hover span, :root .update-items summary:focus-visible span { color: var(--look-text); text-decoration: underline; text-decoration-color: var(--upd-accent); }
+:root .whats-new .share-box { background: var(--look-panel); color: var(--look-text); }
+:root .whats-new section { padding: 14px; border-left: 3px solid var(--upd-accent); background: color-mix(in srgb, var(--upd-accent) 7%, var(--look-panel)); }
+:root .whats-new section :is(h2,h3,b) { color: var(--look-text); }
+:root .whats-new section li { color: var(--look-muted); }
