@@ -10,7 +10,7 @@ export type CourtPose='run'|'guard'|'shoot'|'reach'|'idle'|'dribble'|'celebrate'
 export type CourtAnimKind=AnimKind;
 export type CourtGait=Gait;
 /** Presentation only: which animation a player is in and how far through it (0-1), and where he is in his run cycle. */
-export interface CourtActor extends CourtPoint { id:string; teamId:string; jump:number; stride:number; pose:CourtPose; facing:number; anim?:{kind:CourtAnimKind;t:number}; cycle?:number;
+export interface CourtActor extends CourtPoint { id:string; teamId:string; jump:number; momentum?:number; stride:number; pose:CourtPose; facing:number; anim?:{kind:CourtAnimKind;t:number}; cycle?:number;
  /** How he moves (walk, run, sprint, backpedal, defensive slide), from his speed and direction. */ gait?:CourtGait; /** Floor velocity, court px per second (presentation only). */ vx?:number; vy?:number;
  /** A defender guarding the man with the ball: low, a hand up in his face, feet shuffling. */ onBall?:boolean }
 export interface CourtCallout { text:string; x:number; y:number; t:number; tone:'make'|'defense'|'neutral' }
@@ -434,7 +434,7 @@ function baseFrame(entry:PossessionLogEntry,play:PossessionPlayback,progress:num
  if(ftActive&&p<mainShare+.1){const before=baseFrame(entry,play,mainShare-.000001,homeId,awayId,regulationPeriods,starts,previous,loose);const t=ease((p-mainShare)/.1);for(const a of actors){const old=before.players.find(v=>v.id===a.id);if(old){const point=courtLerp(old,a,t);a.x=point.x;a.y=point.y;}}}
  // Symmetric separation keeps feet apart without frame-rate-dependent integration.
  for(let k=0;k<3;k++)for(let i=0;i<actors.length;i++)for(let j=i+1;j<actors.length;j++){
-  const a=actors[i],b=actors[j],dx=b.x-a.x,dy=b.y-a.y,dist=Math.hypot(dx,dy),radius=21;
+  const a=actors[i],b=actors[j],dx=b.x-a.x,dy=b.y-a.y,dist=Math.hypot(dx,dy),radius=a.pose==='screen'||b.pose==='screen'?24:28;
   if(dist<radius){const amount=(radius-dist)*.5*ease(q/.12),nx=dist?dx/dist:1,ny=dist?dy/dist:0;a.x-=nx*amount;a.y-=ny*amount;b.x+=nx*amount;b.y+=ny*amount;}
  }
  // Two defenders don't stack on the same spot.
@@ -624,10 +624,12 @@ export function courtFrame(entry:PossessionLogEntry,progress:number,homeId:strin
  const dt=.025,seconds=replayDuration(entry)/1000;
  const earlier=baseFrame(entry,play,Math.max(0,poseProgress-dt/seconds),homeId,awayId,regulationPeriods,starts,previous,loose);
  for(const actor of frame.players){
-  if(actor.teamId===entry.offenseTeamId)continue;
   const old=earlier.players.find(p=>p.id===actor.id);
   if(!old)continue;
   const now=sampled.players.find(p=>p.id===actor.id)!;
+  const previousSpeed=Math.hypot(old.vx??0,old.vy??0);
+  actor.momentum=Math.max(-200,Math.min(200,(Math.hypot(now.vx??0,now.vy??0)-previousSpeed)/dt));
+  if(actor.teamId===entry.offenseTeamId)continue;
   actor.vx=(now.x-old.x)/dt;actor.vy=(now.y-old.y)/dt;
   const speed=Math.hypot(actor.vx,actor.vy);
   actor.gait=gaitFor(speed,actor.vx,actor.vy,actor.facing,true);

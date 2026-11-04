@@ -10,7 +10,7 @@ import { buildPlayerGrid, outlineGrid, detailedSpritePaths, playerTraits, type A
  * right hand); a player facing left gets the mirrored pose, but his face and jersey number are never mirrored.
  */
 
-type P = readonly [number, number];
+export type P = readonly [number, number];
 export interface Pose {
   /** Shift of the head and torso (a crouch is +y). */
   body: P;
@@ -44,10 +44,10 @@ const BREATH = pose({ ...STAND, body: [0, 1] });
 /** Triple threat: knees bent, the ball on the right hip. */
 const READY = pose({ body: [0, 2], lE: [11, 34], lH: [20, 36], rE: [31, 34], rH: [27, 37], ...LEGS_BENT });
 
-const RUN_A = pose({ body: [1, 0], lE: [9, 32], lH: [15, 31], rE: [32, 34], rH: [34, 39], lK: [15, 41], lF: [14, 44], rK: [26, 45], rF: [27, 49] });
-const RUN_B = pose({ body: [1, 1], lE: [8, 33], lH: [8, 37], rE: [32, 33], rH: [32, 37], lK: [14, 45], lF: [15, 49], rK: [26, 45], rF: [25, 49] });
-const RUN_C = pose({ body: [1, 0], lE: [8, 34], lH: [6, 39], rE: [31, 32], rH: [25, 31], lK: [14, 45], lF: [13, 49], rK: [25, 41], rF: [26, 44] });
-const RUN_D = pose({ ...RUN_B, body: [1, 0] });
+const RUN_A = pose({ body: [1, 0], lean: 3, lE: [12, 27], lH: [20, 24], rE: [28, 34], rH: [22, 39], lK: [12, 43], lF: [7, 49], rK: [30, 38], rF: [33, 44] });
+const RUN_B = pose({ body: [1, 2], lean: 2, lE: [10, 31], lH: [15, 32], rE: [31, 30], rH: [29, 28], lK: [18, 44], lF: [21, 49], rK: [23, 42], rF: [16, 45] });
+const RUN_C = pose({ body: [1, 0], lean: 3, lE: [10, 34], lH: [5, 38], rE: [29, 27], rH: [24, 23], lK: [22, 38], lF: [28, 44], rK: [22, 44], rF: [16, 49] });
+const RUN_D = pose({ body: [1, 2], lean: 2, lE: [11, 30], lH: [16, 28], rE: [30, 32], rH: [26, 35], lK: [16, 42], lF: [9, 45], rK: [26, 44], rF: [30, 49] });
 const RUN = [RUN_A, RUN_B, RUN_C, RUN_D];
 
 /** The dribble hand by ball height (high, mid, low) and the off arm out as a bar. */
@@ -429,12 +429,15 @@ export function smoothFrame(a: AnimInput): ReturnType<typeof pickFrame> {
   const cuts = a.anim?.kind === 'jumper' ? [0,.12,.3,.45,.58,.85,1]
     : a.anim?.kind === 'layup' ? [0,.1,.2,.3,.5,.8,1]
     : a.anim?.kind === 'dunk' ? [0,.12,.35,.55,.78,.9,1]
-    : a.anim?.kind === 'ft' ? [0,.08,.15,.22,.4,.75,1] : [0,1/6,2/6,3/6,4/6,5/6,1];
+    : a.anim?.kind === 'ft' ? [0,.08,.15,.22,.4,.75,1]
+    : !a.anim && a.moving && (a.pose === 'dribble' || (a.pose === 'run' && a.carrier)) ? [0,.25,.5,.75,1]
+    : !a.anim && a.pose === 'guard' && !a.moving && !a.onBall && a.gait !== 'slide' ? [0,.5,1]
+    : [0,1/6,2/6,3/6,4/6,5/6,1];
   // Discrete contact/turn poses should not morph through the player's torso.
   if (a.anim && ['spin','celebrate','fall','dive','charge'].includes(a.anim.kind)) return current;
   const t = a.anim ? Math.max(0, Math.min(.999999, a.anim.t)) : frac(a.cycle ?? 0);
-  const i = Math.min(5, step(t, cuts.slice(1,6)));
-  if (a.anim && i === 5) return current;
+  const i = Math.min(cuts.length-2, step(t, cuts.slice(1,-1)));
+  if (a.anim && i === cuts.length-2) return current;
   const nextT = cuts[i+1] >= 1 ? 0 : cuts[i+1] + .000001;
   const next = pickFrame(a.anim ? {...a, anim:{...a.anim,t:nextT}} : {...a,cycle:nextT});
   if (next.id === current.id) return current;
@@ -453,7 +456,7 @@ export function smoothFrame(a: AnimInput): ReturnType<typeof pickFrame> {
 export function upperHand(input: Pose, facing: number): P {
   const p = facing < 0 ? mirrorPose(input) : input;
   const h = p.lH[1] === p.rH[1] ? (facing < 0 ? p.lH : p.rH) : p.lH[1] < p.rH[1] ? p.lH : p.rH;
-  return [h[0]+p.body[0]+Math.round((p.lean ?? 0)*Math.max(0,41-h[1])/34)-20,
+  return [h[0]+p.body[0]+Math.round((p.lean ?? 0)*14/34)-20,
     h[1]+p.body[1]-50];
 }
 
@@ -478,10 +481,11 @@ function mix(a: string, b: string, t: number): string {
   return '#' + c.map(n => n.toString(16).padStart(2, '0')).join('');
 }
 
-export interface ActionLook { playerId: string; primary: string; secondary: string; jerseyNumber?: number | null; age?: number; jerseyStyle?: 'classic' | 'stripe' | 'split'; appearance?: Appearance }
+export type CourtView = 'front' | 'frontLeft' | 'frontRight' | 'left' | 'right' | 'backLeft' | 'backRight' | 'back';
+export interface ActionLook { view?: CourtView; playerId: string; primary: string; secondary: string; jerseyNumber?: number | null; age?: number; jerseyStyle?: 'classic' | 'stripe' | 'split'; appearance?: Appearance }
 
 const upperCache = new Map<string, SpriteGrid>();
-const lookKey = (l: ActionLook) => `${l.playerId}|${l.primary}|${l.secondary}|${l.jerseyNumber ?? ''}|${l.age ?? ''}|${l.jerseyStyle ?? ''}|${l.appearance ? JSON.stringify(l.appearance) : ''}`;
+const lookKey = (l: ActionLook) => `${l.view ?? 'front'}|${l.playerId}|${l.primary}|${l.secondary}|${l.jerseyNumber ?? ''}|${l.age ?? ''}|${l.jerseyStyle ?? ''}|${l.appearance ? JSON.stringify(l.appearance) : ''}`;
 /** The avatar without its arms and legs: head, face, hair, headwear, jersey and shorts. */
 function upperBody(look: ActionLook): SpriteGrid {
   const key = lookKey(look);
@@ -489,9 +493,53 @@ function upperBody(look: ActionLook): SpriteGrid {
   if (!g) {
     if (upperCache.size > 600) upperCache.clear();
     g = buildPlayerGrid({ playerId: look.playerId, primary: look.primary, secondary: look.secondary, jerseyNumber: look.jerseyNumber, age: look.age, jerseyStyle: look.jerseyStyle, appearance: look.appearance, pose: 'none', legs: false });
+    if (look.view && look.view !== 'front') g = turnUpperBody(g, look);
     upperCache.set(key, g);
   }
   return g;
+}
+
+/** Directional court-only body views preserve the avatar's hair silhouette, kit and number. */
+function turnUpperBody(front: SpriteGrid, look: ActionLook): SpriteGrid {
+  const view = look.view!, back = view.startsWith('back'), profile = view === 'left' || view === 'right';
+  const side = view.toLowerCase().endsWith('left') ? -1 : view.toLowerCase().endsWith('right') ? 1 : 0;
+  const t = playerTraits(look.playerId, look.appearance), source = front.map(row => [...row]);
+  if (back) {
+    // Cover facial features with the back of the skull, leaving the crown/headwear intact.
+    for (let y=11;y<=23;y++) for (let x=11;x<=28;x++) if(source[y][x]) {
+      const hair = t.hairStyle !== 'bald' && y < (t.hairStyle.includes('Long') ? 23 : 19);
+      source[y][x] = hair ? mix(t.hair, (x+y)%5===0?WHITE:OUTLINE, (x+y)%5===0?.12:x>24?.2:0) : mix(t.skin, OUTLINE, x>24?.22:.06);
+    }
+    // Higher rear collar and a little nameplate above the number.
+    for(let y=24;y<=29;y++)for(let x=16;x<=24;x++)source[y][x]=y===25||y===28?hex(look.secondary,WHITE):hex(look.primary,'#4a5160');
+  }
+  if(profile){
+    // Rebuild a single-eye profile inside the same hair silhouette and skin palette.
+    for(let y=12;y<=23;y++)for(let x=11;x<=28;x++){
+      if(!source[y][x])continue;
+      const backEdge=side>0?x<15:x>25;
+      source[y][x]=backEdge&&y<17&&t.hairStyle!=='bald'?mix(t.hair,OUTLINE,.1):mix(t.skin,OUTLINE,backEdge?.18:.03);
+    }
+    const eye=side>0?23:14;
+    for(let x=eye-1;x<=eye+2;x++)source[13][x]=t.hair;
+    for(let y=14;y<=16;y++)for(let x=eye;x<=eye+2;x++)source[y][x]=WHITE;
+    source[15][eye+(side>0?2:0)]=OUTLINE;source[16][eye+(side>0?2:0)]=OUTLINE;
+    const nose=side>0?27:11;source[18][nose]=mix(t.skin,WHITE,.2);source[19][nose]=mix(t.skin,OUTLINE,.2);
+    for(let x=eye;x<=eye+2;x++)source[21][x]=t.beardStyle==='none'?mix(t.skin,OUTLINE,.35):t.hair;
+    if(t.beardStyle!=='none')for(let x=eye-2;x<=eye+3;x++)source[23][x]=t.hair;
+    if(t.goggles)for(let x=eye-1;x<=eye+3;x++){source[14][x]=WHITE;source[17][x]=WHITE;}
+  }
+  const out: SpriteGrid = Array.from({length:AV_H},()=>Array(AV_W).fill(null));
+  for(let y=0;y<AV_H;y++)for(let x=0;x<AV_W;x++){
+    const color=source[y][x];if(!color)continue;
+    const head=y<24;
+    // Compress the side profile while retaining the player's beard and goggles.
+    const width=head?(profile?.78:side?.88:1):(profile?.72:side?.9:1);
+    const shifted=x;
+    const xx=Math.round(20+(shifted-20)*width+(head?side:0));
+    if(xx>=0&&xx<AV_W)out[y][xx]=color;
+  }
+  return out;
 }
 
 /** Draws one pose model filled with one player, as run-length SVG paths. `facing` -1 mirrors the pose (not the face). */
@@ -599,7 +647,7 @@ export function actionSprite(frameId: string, pose: Pose, look: ActionLook, faci
   const key = `${frameId}|${facing < 0 ? 'L' : 'R'}|${lookKey(look)}`;
   let hit = cache.get(key);
   if (!hit) {
-    if (cache.size > 4000) cache.clear();
+    if (cache.size >= 4000) cache.delete(cache.keys().next().value!);
     hit = rasterizePose(pose, look, facing);
     cache.set(key, hit);
   }
