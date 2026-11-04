@@ -1,4 +1,4 @@
-/** Code-native, 40 × 52 pixel characters with a half-pixel detail layer. No image requests or saved-data changes.
+/** Code-native characters authored on a 40 × 52 rig and rendered on an 80 × 104 pixel grid.
  * Keep the original ID hash and trait order: existing players retain their skin,
  * hair, beard and headwear choices while receiving the more detailed artwork.
  */
@@ -131,7 +131,7 @@ export interface SpritePath { fill: string; d: string }
 
 /** Rasterize the layers, then batch horizontal runs by color into a small SVG path set. */
 export function buildPlayerSprite(opts: SpriteOptions): SpritePath[] {
-  return detailedSpritePaths(outlineGrid(buildPlayerGrid(opts)));
+  return gridToPaths(outlineGrid(athleticGrid(buildPlayerGrid(opts))), .5);
 }
 
 export type SpriteGrid = (string | null)[][];
@@ -284,16 +284,14 @@ export function buildPlayerGrid({ playerId, primary, secondary, jerseyNumber, ag
   rect(29, 14, 2, 5, skinDeep);
   rect(29, 15, 1, 2, skin);
 
-  // Eyes: white sclera, dark iris, a small light catch; brows and nose give expression.
+  // Compact eyes and brows read at roster size without oversized white sclera.
   const eyeY = 14 + (t.seed % 7 === 0 ? 1 : 0);
-  const eyeH = t.eyeStyle === 'wide' ? 4 : t.eyeStyle === 'relaxed' ? 2 : 3;
-  for (const x of [13, 23]) {
-    rect(x, eyeY - 2, 4, 1, hairDark);
-    rect(x, eyeY, 4, eyeH, WHITE);
-    rect(x + 2, eyeY, 2, eyeH, t.eyeColor);
-    rect(x + 3, eyeY + 1, 1, eyeH - 1, OUTLINE);
-    rect(x + 2, eyeY, 1, 1, '#dae2dc');
-    rect(x, eyeY + eyeH, 4, 1, skinDark);
+  const eyeH = t.eyeStyle === 'wide' ? 3 : t.eyeStyle === 'relaxed' ? 1 : 2;
+  for (const x of [14, 23]) {
+    rect(x - 1, eyeY - 2, 4, 1, hairDark);
+    rect(x, eyeY, 3, eyeH, t.eyeColor);
+    rect(x + 1, eyeY, 2, eyeH, OUTLINE);
+    if (t.eyeStyle === 'wide') rect(x, eyeY, 1, 1, WHITE);
   }
   if (t.eyeStyle === 'focused') { rect(16, eyeY - 1, 2, 1, hairDark); rect(22, eyeY - 1, 2, 1, hairDark); }
   rect(18, 13, 1, 3, skinLight);
@@ -389,11 +387,11 @@ export function buildPlayerGrid({ playerId, primary, secondary, jerseyNumber, ag
       if (style.endsWith('Wide')) { h(10, top + 3, 2, 4); h(28, top + 3, 2, 4); }
       h(14, 9, crop ? 11 : 6, 2);
     }
-    // Broken highlights follow the silhouette and never draw outside it.
+    // Broad light and shadow clusters keep hair readable without scattered speckles.
     for (let y = 1; y < 18; y++) for (let x = 9; x < 32; x++) {
       if (grid[y][x] !== hair) continue;
-      if ((x * 3 + y * 7 + t.seed) % 11 < 2 && x < 27) grid[y][x] = hairLight;
-      else if (x > 25 || (x + y) % 9 === 0) grid[y][x] = hairDark;
+      if (x < 23 && grid[y - 1]?.[x] !== hair && grid[y - 1]?.[x] !== hairLight) grid[y][x] = hairLight;
+      else if (x > 25) grid[y][x] = hairDark;
     }
   }
 
@@ -446,7 +444,32 @@ export function drawHat(rect: (x: number, y: number, w: number, h: number, color
   }
 }
 
-/** A one-pixel outline follows the final silhouette, including fingers and hair. */
+/** The C proportions: smaller head, higher waist and longer legs, on the same display canvas.
+ * Outfit layers are composed first so every saved cosmetic follows the same anatomy.
+ * The authoring rig stays stable; court hands and floor anchors are handled separately. */
+export function athleticY(y: number): number {
+  if (y < 24) return .8 + y * .8;
+  if (y < 40) return y - 4;
+  if (y < 50) return 36 + (y - 40) * 1.4;
+  return y;
+}
+export function athleticGrid(grid: SpriteGrid, pad = 0): SpriteGrid {
+  const height = grid.length, width = grid[0]?.length ?? 0;
+  return Array.from({ length: height * 2 }, (_, yy) => {
+    const y = (yy + .5) / 2 - pad;
+    const sy = y < 20 ? (y - .8) / .8 : y < 36 ? y + 4 : y < 50 ? 40 + (y - 36) / 1.4 : y;
+    // Headwear, hair and face share one transform; shoulders retain their width.
+    const sx = sy < 24 ? .82 : sy < 38 ? 1 - Math.max(0, sy - 28) * .006 : 1;
+    const sourceY = Math.floor(sy + pad);
+    return Array.from({ length: width * 2 }, (_, xx) => {
+      const x = (xx + .5) / 2 - pad;
+      const sourceX = Math.floor(20 + (x - 20) / sx + pad);
+      return grid[sourceY]?.[sourceX] ?? null;
+    });
+  });
+}
+
+/** A one-cell outline follows the final silhouette (half a display pixel on character art). */
 export function outlineGrid(grid: SpriteGrid): SpriteGrid {
   const H = grid.length, W = grid[0]?.length ?? 0;
   const outlined = grid.map((row) => [...row]);

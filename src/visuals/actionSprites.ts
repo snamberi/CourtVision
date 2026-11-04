@@ -1,4 +1,4 @@
-import { buildPlayerGrid, outlineGrid, detailedSpritePaths, playerTraits, type Appearance, type SpriteGrid, type SpritePath } from './playerSprite';
+import { buildPlayerGrid, athleticGrid, athleticY, outlineGrid, gridToPaths, playerTraits, type Appearance, type SpriteGrid, type SpritePath } from './playerSprite';
 
 /*
  * Frame-by-frame court animations for the players everyone already knows: the head, face, hair, beard, headwear and
@@ -494,6 +494,7 @@ function upperBody(look: ActionLook): SpriteGrid {
     if (upperCache.size > 600) upperCache.clear();
     g = buildPlayerGrid({ playerId: look.playerId, primary: look.primary, secondary: look.secondary, jerseyNumber: look.jerseyNumber, age: look.age, jerseyStyle: look.jerseyStyle, appearance: look.appearance, pose: 'none', legs: false });
     if (look.view && look.view !== 'front') g = turnUpperBody(g, look);
+    g = athleticGrid(g);
     upperCache.set(key, g);
   }
   return g;
@@ -522,8 +523,8 @@ function turnUpperBody(front: SpriteGrid, look: ActionLook): SpriteGrid {
     }
     const eye=side>0?23:14;
     for(let x=eye-1;x<=eye+2;x++)source[13][x]=t.hair;
-    for(let y=14;y<=16;y++)for(let x=eye;x<=eye+2;x++)source[y][x]=WHITE;
-    source[15][eye+(side>0?2:0)]=OUTLINE;source[16][eye+(side>0?2:0)]=OUTLINE;
+    for(let y=14;y<=15;y++)for(let x=eye;x<=eye+1;x++)source[y][x]=t.eyeColor;
+    source[14][eye+(side>0?1:0)]=OUTLINE;source[15][eye+(side>0?1:0)]=OUTLINE;
     const nose=side>0?27:11;source[18][nose]=mix(t.skin,WHITE,.2);source[19][nose]=mix(t.skin,OUTLINE,.2);
     for(let x=eye;x<=eye+2;x++)source[21][x]=t.beardStyle==='none'?mix(t.skin,OUTLINE,.35):t.hair;
     if(t.beardStyle!=='none')for(let x=eye-2;x<=eye+3;x++)source[23][x]=t.hair;
@@ -546,18 +547,19 @@ function turnUpperBody(front: SpriteGrid, look: ActionLook): SpriteGrid {
 export function rasterizePose(input: Pose, look: ActionLook, facing = 1): SpritePath[] {
   const p = facing < 0 ? mirrorPose(input) : input;
   const t = playerTraits(look.playerId, look.appearance);
-  const grid: SpriteGrid = Array.from({ length: SPRITE_H }, () => Array(SPRITE_W).fill(null));
-  const part: number[][] = Array.from({ length: SPRITE_H }, () => Array(SPRITE_W).fill(-1));
+  const width = SPRITE_W * 2, height = SPRITE_H * 2;
+  const grid: SpriteGrid = Array.from({ length: height }, () => Array(width).fill(null));
+  const part: number[][] = Array.from({ length: height }, () => Array(width).fill(-1));
   const skinSet = new Set<string>();
   let layer = 0;
   const set = (x: number, y: number, c: string) => {
-    const gx = Math.round(x) + PAD_X, gy = Math.round(y) + PAD_TOP;
-    if (gx >= 0 && gx < SPRITE_W && gy >= 0 && gy < SPRITE_H) { grid[gy][gx] = c; part[gy][gx] = layer; }
+    const gx = Math.round(x * 2) + PAD_X * 2, gy = Math.round(y * 2) + PAD_TOP * 2;
+    if (gx >= 0 && gx < width && gy >= 0 && gy < height) { grid[gy][gx] = c; part[gy][gx] = layer; }
   };
   const seg = (a: P, b: P, w: number, c: string) => {
     const r = w / 2, dx = b[0] - a[0], dy = b[1] - a[1], len2 = dx * dx + dy * dy || 1;
-    for (let y = Math.floor(Math.min(a[1], b[1]) - r); y <= Math.ceil(Math.max(a[1], b[1]) + r); y++)
-      for (let x = Math.floor(Math.min(a[0], b[0]) - r); x <= Math.ceil(Math.max(a[0], b[0]) + r); x++) {
+    for (let y = Math.floor((Math.min(a[1], b[1]) - r) * 2) / 2; y <= Math.ceil((Math.max(a[1], b[1]) + r) * 2) / 2; y += .5)
+      for (let x = Math.floor((Math.min(a[0], b[0]) - r) * 2) / 2; x <= Math.ceil((Math.max(a[0], b[0]) + r) * 2) / 2; x += .5) {
         const u = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / len2));
         const ex = a[0] + dx * u - x, ey = a[1] + dy * u - y;
         if (ex * ex + ey * ey <= r * r) set(x, y, c);
@@ -574,69 +576,72 @@ export function rasterizePose(input: Pose, look: ActionLook, facing = 1): Sprite
   // Legs (behind the shorts): skin, sock with a trim band, high-top sneaker with a white sole, like the avatar's.
   const leg = (hip: P, knee: P, foot: P, outer: 1 | -1) => {
     const ankle: P = [foot[0], foot[1] - 3];
-    seg(hip, knee, 5, skin);
-    seg(knee, ankle, 5, skin);
+    seg(hip, knee, 4.5, skin);
+    seg(knee, ankle, 3.6, skin);
+    seg([hip[0] - 1, hip[1]], [knee[0] - 1, knee[1]], .8, skinLight);
     seg(lerp(hip, knee, .2), lerp(knee, ankle, .5), 1.4, skinDark); // shading down the leg
-    seg([ankle[0], ankle[1] - 3], ankle, 5, WHITE);
+    seg([ankle[0], ankle[1] - 3], ankle, 3.6, WHITE);
     seg([ankle[0] - 2, ankle[1] - 3], [ankle[0] + 2, ankle[1] - 3], 1, trim);
-    const fx = Math.round(foot[0]), fy = Math.round(foot[1]);
-    for (let x = -3; x <= 3; x++) for (let y = -3; y <= 0; y++) {
-      const c = y === 0 ? WHITE : y === -3 && x < 0 ? kitLight : x === outer * 2 && y === -2 ? WHITE : kit;
+    const fx = Math.round(foot[0] * 2) / 2, fy = Math.round(foot[1] * 2) / 2;
+    for (let x = -3; x <= 3; x += .5) for (let y = -3; y <= 0; y += .5) {
+      const c = y >= -.5 ? WHITE : y <= -2.5 && x < 0 ? kitLight : (x === outer * 2 && y === -2) || (Math.abs(x) < 1 && y === -2.5) ? WHITE : kit;
       set(fx + x, fy + y, c);
     }
     if (!p.air) set(fx + outer * 4, fy - 1, WHITE);
   };
   // Leaning: the upper body shears toward the lean, most at the head. Lying: it pivots flat at the waist.
   const lean = p.lean ?? 0, lie = p.lie ?? 0;
-  const shear = (y: number) => Math.round(lean * Math.max(0, 41 - y) / 34);
+  const shear = (y: number) => Math.round(lean * Math.max(0, 41 - y) / 34 * 2) / 2;
   const place = (x: number, y: number): P => lie ? [20 + bx + lie * (41 - y), 41 + by + Math.round((x - 20) * .5)] : [x + bx + shear(y), y + by];
   layer = 0;
-  leg(lie ? [20 + bx, 39 + by] : [15 + bx, 41 + by], p.lK, p.lF, -1);
-  leg(lie ? [20 + bx, 43 + by] : [25 + bx, 41 + by], p.rK, p.rF, 1);
+  leg(lie ? [20 + bx, 39 + by] : [15 + bx, athleticY(41) + by], [p.lK[0], p.lK[1] - (lie ? 0 : 1.5)], p.lF, -1);
+  leg(lie ? [20 + bx, 43 + by] : [25 + bx, athleticY(41) + by], [p.rK[0], p.rK[1] - (lie ? 0 : 1.5)], p.rF, 1);
 
   // Head and torso straight from the avatar, shifted with the body.
   layer = 1;
   const up = upperBody(look);
-  for (let y = 0; y < AV_H; y++) for (let x = 0; x < AV_W; x++) {
+  for (let y = 0; y < up.length; y++) for (let x = 0; x < up[0].length; x++) {
     const c = up[y][x];
     if (!c) continue;
-    const [px, py] = place(x, y);
+    const [px, py] = place(x / 2, y / 2);
     set(px, py, c);
   }
 
   // Arms: upper arm, forearm and hand in the avatar's style, a wristband when the avatar has one.
-  const arm = (shoulder: P, e: P, h: P, band: boolean) => {
+  const arm = (shoulder: P, e: P, h: P, band: boolean, sleeve = false) => {
     // The shoulder rides the lean (or the lying torso); elbows and hands lean with it.
-    const sh = lie ? place(shoulder[0] - bx, shoulder[1] - by) : [shoulder[0] + shear(27), shoulder[1]] as P;
-    const lift = lie ? 0 : shear(27);
+    const sh = lie ? place(shoulder[0] - bx, shoulder[1] - by) : [shoulder[0] + Math.round(lean * 14 / 34), shoulder[1]] as P;
+    const lift = lie ? 0 : Math.round(lean * 14 / 34);
     // Lying poses give their elbows and hands on the floor grid, like the knees and feet.
     const E: P = lie ? e : [e[0] + bx + lift, e[1] + by], H: P = lie ? h : [h[0] + bx + lift, h[1] + by];
-    seg(sh, E, 4.4, skin);
-    seg(E, H, 4, skin);
-    seg(sh, lerp(sh, E, .7), 1.2, skinLight);
+    seg(sh, E, 3.8, sleeve ? WHITE : skin);
+    seg(E, H, 3.2, sleeve ? WHITE : skin);
+    seg([sh[0] - .5, sh[1]], lerp(sh, E, .7), .8, sleeve ? '#c9ccd1' : skinLight);
+    seg([E[0] + 1, E[1]], [H[0] + 1, H[1] - .5], .6, sleeve ? '#c9ccd1' : skinDark);
     if (band) { const b = lerp(E, H, .5); seg(b, b, 3.6, trim); }
-    seg(H, H, 4.6, skin);
-    set(H[0] - 1, H[1] - 1, skinLight);
+    seg(H, H, 3.6, skin);
+    seg([H[0] - .5, H[1] - 1], [H[0] + .5, H[1] - 1], .5, skinLight);
+    set(H[0] + 1, H[1] + .5, skinDark);
   };
   // The arm crossing in front of the body is drawn last.
   const leftFront = p.lH[0] > 20 && p.rH[0] >= 20;
-  const left = () => { layer = leftFront ? 3 : 2; arm([11 + bx, 27 + by], p.lE, p.lH, t.seed % 3 === 0); };
-  const right = () => { layer = leftFront ? 2 : 3; arm([29 + bx, 27 + by], p.rE, p.rH, t.seed % 4 < 2); };
+  const left = () => { layer = leftFront ? 3 : 2; arm([11 + bx, athleticY(27) + by], p.lE, p.lH, t.seed % 3 === 0, t.sleeve); };
+  const right = () => { layer = leftFront ? 2 : 3; arm([29 + bx, athleticY(27) + by], p.rE, p.rH, t.seed % 4 < 2); };
   if (leftFront) { right(); left(); } else { left(); right(); }
 
   // Inner outlines where a limb in front meets skin behind it (an arm across the face, over the other arm).
   const out = grid.map(row => [...row]);
-  for (let y = 0; y < SPRITE_H; y++) for (let x = 0; x < SPRITE_W; x++) {
+  for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
     const c = grid[y][x];
     if (!c || !skinSet.has(c)) continue;
     for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
       const xx = x + dx, yy = y + dy;
-      if (xx < 0 || xx >= SPRITE_W || yy < 0 || yy >= SPRITE_H) continue;
+      if (xx < 0 || xx >= width || yy < 0 || yy >= height) continue;
       const n = grid[yy][xx];
       if (n && part[yy][xx] > part[y][x] && part[yy][xx] >= 2 && skinSet.has(n)) { out[y][x] = mix(c, OUTLINE, .75); break; }
     }
   }
-  return detailedSpritePaths(outlineGrid(out));
+  return gridToPaths(outlineGrid(out), .5);
 }
 
 // ---------------------------------------------------------------- cache

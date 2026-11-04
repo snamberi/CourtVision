@@ -1,5 +1,5 @@
 import type { CourtActor, CourtBall, CourtPoint } from '../simulation/courtMotion';
-import { hashPlayerId } from './playerSprite';
+import { hashPlayerId, athleticY } from './playerSprite';
 import { likenessKey } from './likeness';
 import { smoothFrame, mirrorPose, upperHand, type CourtView, type P, type Pose } from './actionSprites';
 
@@ -21,9 +21,9 @@ export function reachBall(input:Pose,target:P,facing:number,twoHands=false):Pose
   if(p.lie)return input;
   const shear=Math.round((p.lean??0)*14/34);
   const local:P=[Math.round(target[0]-p.body[0]-shear+20),Math.round(target[1]-p.body[1]+50)];
-  const nearest=Math.hypot(local[0]-11,local[1]-27)<Math.hypot(local[0]-29,local[1]-27)?'l':'r';
+  const nearest=Math.hypot(local[0]-11,local[1]-athleticY(27))<Math.hypot(local[0]-29,local[1]-athleticY(27))?'l':'r';
   for(const side of twoHands?['l','r'] as const:[nearest] as const){
-    const shoulder:P=[side==='l'?11:29,27],dx=local[0]-shoulder[0],dy=local[1]-shoulder[1],distance=Math.hypot(dx,dy);
+    const shoulder:P=[side==='l'?11:29,athleticY(27)],dx=local[0]-shoulder[0],dy=local[1]-shoulder[1],distance=Math.hypot(dx,dy);
     if(distance>27)continue; // Never stretch an arm to a ball that's already been released.
     const d=clamp(distance,4,23),nx=dx/(distance||1),ny=dy/(distance||1);
     const h:P=[Math.round(shoulder[0]+nx*d),Math.round(shoulder[1]+ny*d)];

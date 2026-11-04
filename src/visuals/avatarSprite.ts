@@ -1,11 +1,12 @@
-import { buildPlayerGrid, outlineGrid, detailedSpritePaths, gridToPaths, drawHat, mix, HAIR_STYLES, BEARD_STYLES, HAT_STYLES, type SpriteGrid, type SpritePath, type HairStyle, type BeardStyle, type HatStyle } from './playerSprite';
+import { buildPlayerGrid, athleticGrid, outlineGrid, gridToPaths, drawHat, mix, HAIR_STYLES, BEARD_STYLES, HAT_STYLES, type SpriteGrid, type SpritePath, type HairStyle, type BeardStyle, type HatStyle } from './playerSprite';
 import { teamColors } from '../simulation/teamColors';
 import { SKINS, HAIR_COLORS, SHOES, RAINBOW, outfitDef, colorHex, type AvatarLook, type Outfit } from '../profile/avatar';
 
 /*
  * Draws the profile character (src/profile/avatar.ts) on the same 40 × 52 pixel body as every player, then dresses it:
  * outfit, shoes, new hair and beards, headwear, eyewear, neck and back pieces, and an aura around the outline. The
- * finished grid has a 3-pixel margin for the aura (46 × 58).
+ * finished art uses the same athletic proportions and half-pixel grid as every player,
+ * including the 3-display-pixel margin for the aura (92 × 116 cells).
  */
 
 export const AVATAR_PAD = 3;
@@ -542,7 +543,7 @@ const AURA_COLORS: Record<string, string[]> = {
   haunted: ['#7a3fc0', '#8bdc3f', '#2a1a40', '#ff7a1a'],
   snowfall: ['#ffffff', '#dff4ff', '#e8323c', '#3fbf5f', '#ffd166'],
 };
-function auraCells(grid: SpriteGrid, kind: string): SpriteGrid {
+function auraCells(grid: SpriteGrid, kind: string, density = 1): SpriteGrid {
   const H = grid.length, W = grid[0].length;
   const out: SpriteGrid = grid.map(row => row.map(() => null));
   const colors = AURA_COLORS[kind];
@@ -550,7 +551,7 @@ function auraCells(grid: SpriteGrid, kind: string): SpriteGrid {
   const noise = (x: number, y: number) => ((x * 73856093) ^ (y * 19349663)) >>> 0;
   /** Body within `side` pixels across and `below` pixels under (or `above` over) this cell. */
   const near = (x: number, y: number, side: number, above: number, below: number) => {
-    for (let dy = -above; dy <= below; dy++) for (let dx = -side; dx <= side; dx++) {
+    for (let dy = -above * density; dy <= below * density; dy++) for (let dx = -side * density; dx <= side * density; dx++) {
       const xx = x + dx, yy = y + dy;
       if (xx >= 0 && xx < W && yy >= 0 && yy < H && grid[yy][xx]) return true;
     }
@@ -688,12 +689,12 @@ export function buildAvatarGrid({ look, team }: AvatarOptions): { grid: SpriteGr
     const gy = y - AVATAR_PAD, gx = x - AVATAR_PAD;
     return gy >= 0 && gy < grid.length && gx >= 0 && gx < grid[0].length ? grid[gy][gx] : null;
   }));
-  const outlined = outlineGrid(padded);
-  return { grid: outlined, aura: auraCells(outlined, look.aura) };
+  const outlined = outlineGrid(athleticGrid(padded, AVATAR_PAD));
+  return { grid: outlined, aura: auraCells(outlined, look.aura, 2) };
 }
 export function buildAvatarSprite(opts: AvatarOptions): AvatarSprite {
   const { grid, aura } = buildAvatarGrid(opts);
-  return { paths: detailedSpritePaths(grid), aura: gridToPaths(aura), auraKind: opts.look.aura };
+  return { paths: gridToPaths(grid, .5), aura: gridToPaths(aura, .5), auraKind: opts.look.aura };
 }
 
 // ---------------------------------------------------------------- coaches and referees
@@ -732,12 +733,12 @@ export function buildFigureGrid({ id, skin, hair, hairStyle = 'short', beard = '
     else if (pose === 'up') { armUp(9); armUp(28); }
     else { armDown(9); armUp(28); }
   }
-  return outlineGrid(grid);
+  return outlineGrid(athleticGrid(grid));
 }
 const figureCache = new Map<string, SpritePath[]>();
 export function buildFigureSprite(opts: FigureOptions): SpritePath[] {
   const key = JSON.stringify(opts);
   let hit = figureCache.get(key);
-  if (!hit) { if (figureCache.size > 300) figureCache.clear(); hit = detailedSpritePaths(buildFigureGrid(opts)); figureCache.set(key, hit); }
+  if (!hit) { if (figureCache.size > 300) figureCache.clear(); hit = gridToPaths(buildFigureGrid(opts), .5); figureCache.set(key, hit); }
   return hit;
 }

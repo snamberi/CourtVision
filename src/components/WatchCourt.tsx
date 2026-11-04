@@ -143,7 +143,7 @@ function Bench({x,y,players,kit,count=9,teamId,reaction=0}:{x:number;y:number;pl
   const sprite=p&&active?actionSprite(f.id,f.pose,{playerId:p.playerId,primary:kit.primary,secondary:kit.secondary,jerseyNumber:p.jerseyNumber,age:p.age,jerseyStyle:kit.jerseyStyle,appearance:p.appearance}):null;
   return <g key={i} transform={`translate(${x+i*28},${y})`}>
    <rect x="0" y="6" width="22" height="18" fill="#1d2a3c" stroke="#0a111c" shapeRendering="crispEdges"/><rect x="2" y="0" width="18" height="10" fill="#2c3e55" shapeRendering="crispEdges"/>
-   {p&&<><g className={active?'bench-rest bench-rest-hidden':'bench-rest'} transform="translate(-2,-14)"><PlayerAvatar playerId={p.playerId} teamId={teamId} size={26} jerseyNumber={p.jerseyNumber} age={p.age} primaryColor={kit.primary} secondaryColor={kit.secondary} jerseyStyle={kit.jerseyStyle}/></g>
+   {p&&<><g className={active?'bench-rest bench-rest-hidden':'bench-rest'} transform="translate(-2,-14)"><PlayerAvatar playerId={p.playerId} teamId={teamId} size={26} jerseyNumber={p.jerseyNumber} age={p.age} primaryColor={kit.primary} secondaryColor={kit.secondary} jerseyStyle={kit.jerseyStyle} appearance={p.appearance}/></g>
    {sprite&&<g className="bench-reaction" transform={`translate(11,${22-Math.sin(t*Math.PI)*5}) scale(.62) translate(${-ORIGIN_X},${-ORIGIN_Y})`} shapeRendering="crispEdges">{sprite.map((path,j)=><path key={j} d={path.d} fill={path.fill}/>)}</g>}</>}
   </g>;})}</g>;
 }

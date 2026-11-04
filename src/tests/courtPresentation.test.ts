@@ -1,6 +1,7 @@
 import {describe,it,expect} from 'vitest';
 import {courtView,presentAthlete,reachBall,labelOffsets,ballHeight} from '../visuals/courtPresentation';
 import {ANIMATIONS,actionSprite,mirrorPose,type CourtView} from '../visuals/actionSprites';
+import {athleticY} from '../visuals/playerSprite';
 import type {CourtActor} from '../simulation/courtMotion';
 const actor:CourtActor={id:'Stephen Curry',teamId:'GSW',x:500,y:310,jump:0,stride:1,pose:'run',facing:1,vx:100,vy:0,cycle:.3,gait:'run'};
 const hoop={x:900,y:310},ball={x:512,y:307,z:23,spin:0};
@@ -33,7 +34,7 @@ describe('court presentation',()=>{
    const p=facing<0?mirrorPose(result):result;
    const hand=facing<0?p.lH:p.rH,elbow=facing<0?p.lE:p.rE,shoulder=facing<0?11:29;
    expect(Math.hypot(hand[0]-elbow[0],hand[1]-elbow[1])).toBeLessThan(14);
-   expect(Math.hypot(elbow[0]-shoulder,elbow[1]-27)).toBeLessThan(14);
+   expect(Math.hypot(elbow[0]-shoulder,elbow[1]-athleticY(27))).toBeLessThan(14);
   }
   expect(reachBall(input,[300,-200],1)).toEqual(input);
  });
