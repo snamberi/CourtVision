@@ -648,6 +648,7 @@ The biggest recent additions to Court Vision, newest first.
 
 - **Update 50 preview:** these notes describe the Update 50 branch. The release is still being playtested and will keep growing as new changes are added.
 - **Relics and luck:** ten new Mythic relics, new Secret relics, rarer Mythic drops, revised luck bonuses, rarity-based coin bonuses and two Mythic upgrade levels. Ultra Cheat now grants a 130-rated ability.
+- **Shop and player animation:** a dedicated Gems balance appears in the shop. Mythic player reveals add expanding halos and a finishing gleam, respecting reduced motion. Court players retain their pixel-art display with interpolated poses sampled at 16 frames per playback second, quicker jumps, smoother landings and hand-aligned dunks.
 - **Premium spins:** Lucky Spins and Ultra Lucky Spins can be opened ten at a time. Ten free Lucky Spins can also be used together. Batch prices are checked before rolling; each roll keeps its normal odds, pity and duplicate rewards.
 - **Career player rolls:** Legendary and Mythic Career players have stronger signature skills. Lucky Career rolls show only those two rarities, with a 70% Legendary and 30% Mythic split. Mythic reveals have a clear label, magenta colors and special particles.
 - **Events and the phone:** a decorated event shortcut sits above the phone apps. Earn +1 event currency per ten minutes of focused play and +20 per hour, with a 50% bonus in Franchise, Your Career and Story. Fractional bonuses carry forward.

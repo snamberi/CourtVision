@@ -124,6 +124,7 @@ export function RelicVault({ onExit, view = 'vault', onSwitch }: { onExit: () =>
       <div><span>Relic Spins</span><b>{state.spins}</b>{(state.luckySpins ?? 0) >= 10 && <button disabled={rolling} onClick={() => spinAll('free')}>Use 10 free Lucky Spins</button>}
         {(state.luckySpins ?? 0) > 0 && <small>+{state.luckySpins} free Lucky Spin{state.luckySpins === 1 ? '' : 's'}</small>}</div>
       <div><span>Luck</span><b>{fmtLuck(luck)}</b><small>{state.equipped.length}/{slots} slots{weekly ? ` · ${fmtLuck(weekly)} relic of the week` : ''}{power > 1 ? ' · relics at 2× power' : ''}</small></div>
+      <div><span>Gems</span><b>{(state.gems ?? 0).toLocaleString()}</b><small>For Ultra Lucky Spins</small></div>
       <div><span>Coins</span><b>{state.coins.toLocaleString()}</b><small>+{DAILY_COINS} every day you visit</small></div>
       <div><span>Collection</span><b>{prog.owned}/{prog.total}</b><small>{prog.secrets}/{SECRET_RELICS.length} secrets</small></div>
     </section>

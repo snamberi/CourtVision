@@ -60,3 +60,26 @@ describe('court animations', () => {
     expect(rasterizePose(ANIMATIONS.sprint[0], look)).not.toEqual(rasterizePose(ANIMATIONS.run[0], look));
   });
 });
+
+describe('interpolated player poses', () => {
+  it('adds reusable intermediate limb positions without changing player identity', async () => {
+    const { smoothFrame } = await import('../visuals/actionSprites');
+    const a = smoothFrame({...base,cycle:.08});
+    expect(a.id).toContain('_');
+    expect(a.pose).not.toEqual(pickFrame({...base,cycle:.08}).pose);
+    expect(actionSprite(a.id,a.pose,look)).toBe(actionSprite(a.id,a.pose,look));
+    for(const frames of Object.keys(ANIMATIONS)) {
+      for(const t of [0,.15,.45,.7,1]) {
+        const frame=smoothFrame({...base,anim:{kind:frames as 'jumper',t}});
+        expect(frame.pose.body.every(Number.isFinite)).toBe(true);
+      }
+    }
+  });
+  it('mirrors the contact hand for dunks at either basket', async () => {
+    const { upperHand } = await import('../visuals/actionSprites');
+    const pose=ANIMATIONS.dunk[3];
+    const right=upperHand(pose,1),left=upperHand(pose,-1);
+    expect(left[0]).toBe(-right[0]);
+    expect(left[1]).toBe(right[1]);
+  });
+});

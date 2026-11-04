@@ -4,7 +4,7 @@ import type { PlayerSeason } from '../simulation/types';
 import type { CourtActor, CourtBall, CourtFrame, CourtPoint, CourtShot } from '../simulation/courtMotion';
 import { resolveTeamIdentity, type TeamIdentity } from '../simulation/teamIdentity';
 import { useTeamIdentity } from '../visuals/TeamIdentityContext';
-import { actionSprite, pickFrame, handReach, headTop, ORIGIN_X, ORIGIN_Y } from '../visuals/actionSprites';
+import { actionSprite, pickFrame, smoothFrame, upperHand, headTop, ORIGIN_X, ORIGIN_Y } from '../visuals/actionSprites';
 import { PlayerAvatar } from './PlayerAvatar';
 import { PixelBall } from './PixelIcon';
 import { CrestArt } from './TeamCrest';
@@ -272,17 +272,20 @@ const lastName=(id:string)=>{const parts=id.split(/[\s-]+/);return (parts[parts.
 function Athlete({actor,player,identity,ring,hot,carrier,labels,above,ballZ,hoopX}:{actor:CourtActor;player?:PlayerSeason;identity:TeamIdentity;ring:string;hot:boolean;carrier:boolean;labels:boolean;above:boolean;ballZ:number;hoopX:number}){
  const scale=1.18*Math.max(.9,Math.min(1.1,(player?.attributes.physical.heightInches??79)/79));
  const moving=actor.stride!==0&&actor.pose!=='guard';
- const {id:frameId,pose,flip}=useMemo(()=>pickFrame({pose:actor.pose,anim:actor.anim,cycle:actor.cycle,carrier,moving,ballZ,gait:actor.gait,onBall:actor.onBall}),[actor.pose,actor.anim,actor.cycle,carrier,moving,ballZ,actor.gait,actor.onBall]);
+ const {id:frameId,pose,flip}=useMemo(()=>smoothFrame({pose:actor.pose,anim:actor.anim,cycle:actor.cycle,carrier,moving,ballZ,gait:actor.gait,onBall:actor.onBall}),[actor.pose,actor.anim,actor.cycle,carrier,moving,ballZ,actor.gait,actor.onBall]);
  // The spin move turns him round for two frames.
  const facing=(actor.facing<0?-1:1)*(flip?-1:1);
  const paths=actionSprite(frameId,pose,{playerId:actor.id,primary:identity.primary,secondary:identity.secondary,jerseyNumber:player?.jerseyNumber,age:player?.age,jerseyStyle:identity.jerseyStyle,appearance:player?.appearance},facing);
- // On the dunk the body is drawn so the hands meet the rim, whatever the jump.
- const handTop=handReach(pose)*scale;
- const slam=(actor.anim?.kind==='dunk'&&(frameId==='K2'||frameId==='K3'))||(actor.anim?.kind==='alleyOop'&&(frameId==='AO3'||frameId==='AO4'));
- const lift=slam?Math.min(actor.jump,Math.max(0,RIM_HEIGHT-handTop+4)):actor.jump;
+ // Ease the actual upper hand onto the rim, with the shadow kept at floor level.
+ const t=actor.anim?.t??0;
+ const slam=actor.anim?.kind==='dunk'||actor.anim?.kind==='alleyOop';
+ const ease=(v:number)=>{const n=Math.max(0,Math.min(1,v));return n*n*(3-2*n);};
+ const contact=slam?ease((t-.35)/.16)*(1-ease((t-.68)/.18)):0;
+ const hand=upperHand(pose,facing);
+ const toRim=(hoopX-actor.x-hand[0]*scale)*contact;
+ const targetLift=actor.y-310+RIM_HEIGHT+hand[1]*scale;
+ const lift=actor.jump+(Math.max(0,targetLift)-actor.jump)*contact;
  const top=-headTop(pose)*scale-lift;
- // On the slam and the hang the dunker (shadow and all) is drawn within reach of the rim.
- const gap=hoopX-actor.x,toRim=slam&&Math.abs(gap)>12?Math.sign(gap)*(Math.abs(gap)-12):0;
  return <g className="court-player" data-player-id={actor.id} data-pose={actor.pose} data-frame={frameId} transform={`translate(${(actor.x+toRim).toFixed(2)},${actor.y.toFixed(2)})`}>
   <ellipse rx={15-lift*.06} ry="5" fill="#2f231c" opacity={.3-lift*.004}/>
   <ellipse rx="14" ry="4.5" fill="none" stroke={ring} strokeWidth="2" opacity=".75"/>

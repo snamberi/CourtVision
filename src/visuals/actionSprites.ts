@@ -423,6 +423,40 @@ export function pickFrame(a: AnimInput): { id: string; pose: Pose; flip?: boolea
   }
 }
 
+/** In-between limb poses retain the original keyframes and pixel rasterizer. */
+export function smoothFrame(a: AnimInput): ReturnType<typeof pickFrame> {
+  const current = pickFrame(a);
+  const cuts = a.anim?.kind === 'jumper' ? [0,.12,.3,.45,.58,.85,1]
+    : a.anim?.kind === 'layup' ? [0,.1,.2,.3,.5,.8,1]
+    : a.anim?.kind === 'dunk' ? [0,.12,.35,.55,.78,.9,1]
+    : a.anim?.kind === 'ft' ? [0,.08,.15,.22,.4,.75,1] : [0,1/6,2/6,3/6,4/6,5/6,1];
+  // Discrete contact/turn poses should not morph through the player's torso.
+  if (a.anim && ['spin','celebrate','fall','dive','charge'].includes(a.anim.kind)) return current;
+  const t = a.anim ? Math.max(0, Math.min(.999999, a.anim.t)) : frac(a.cycle ?? 0);
+  const i = Math.min(5, step(t, cuts.slice(1,6)));
+  if (a.anim && i === 5) return current;
+  const nextT = cuts[i+1] >= 1 ? 0 : cuts[i+1] + .000001;
+  const next = pickFrame(a.anim ? {...a, anim:{...a.anim,t:nextT}} : {...a,cycle:nextT});
+  if (next.id === current.id) return current;
+  // Eight reusable in-betweens per keyframe keep the sprite cache bounded.
+  const blend = Math.floor((t-cuts[i])/(cuts[i+1]-cuts[i])*8)/8;
+  const pose = {...current.pose};
+  for (const key of ['body','lE','lH','rE','rH','lK','lF','rK','rF'] as const) {
+    pose[key] = [current.pose[key][0]*(1-blend)+next.pose[key][0]*blend,
+      current.pose[key][1]*(1-blend)+next.pose[key][1]*blend];
+  }
+  pose.lean = (current.pose.lean ?? 0)*(1-blend)+(next.pose.lean ?? 0)*blend;
+  return {...current,id:`${current.id}_${next.id}_${blend*8}`,pose};
+}
+
+/** Position of the upper hand relative to the sprite's foot anchor. */
+export function upperHand(input: Pose, facing: number): P {
+  const p = facing < 0 ? mirrorPose(input) : input;
+  const h = p.lH[1] === p.rH[1] ? (facing < 0 ? p.lH : p.rH) : p.lH[1] < p.rH[1] ? p.lH : p.rH;
+  return [h[0]+p.body[0]+Math.round((p.lean ?? 0)*Math.max(0,41-h[1])/34)-20,
+    h[1]+p.body[1]-50];
+}
+
 /** The pose for a player facing left: arms and legs mirrored and swapped (the head and jersey are drawn unmirrored). */
 export function mirrorPose(p: Pose): Pose {
   const m = (v: P): P => [AV_W - v[0], v[1]];

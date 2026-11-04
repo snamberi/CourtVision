@@ -292,9 +292,11 @@ function baseFrame(entry:PossessionLogEntry,play:PossessionPlayback,progress:num
   if(turnover&&q>.8)loc=courtLerp(loc,mirror({x:600-i*28,y:180+i*62}),ease(window01(q,.8,1)));
   const screens=(set==='roll'?id===shooter:id===screener&&set!=='iso'&&set!=='handoff'&&set!=='transition'&&set!=='post'&&set!=='backdoor');
   if(screens&&q>=.37&&q<(set==='pindown'?.47:.42)&&!ftActive)pose='screen';
-  const jumping=isShooter&&!ftActive&&!turnover&&q>.51&&q<(dunk?.84:.78);
-  let jump=jumping?Math.sin(window01(q,.51,dunk?.84:.78)*Math.PI)*(dunk?30:three?15:13):0;
-  if(dunk&&isShooter&&q>=.68&&q<.84&&!ftActive)jump=Math.max(jump,26); // hang on the rim
+  const jumpStart=dunk?.60:.52, jumpEnd=dunk?.83:.69;
+  const jumping=isShooter&&!ftActive&&!turnover&&q>jumpStart&&q<jumpEnd;
+  let jump=jumping?Math.sin(window01(q,jumpStart,jumpEnd)*Math.PI)*(dunk?30:three?15:13):0;
+  // A short rim hang eases into the landing instead of dropping 26 pixels at once.
+  if(dunk&&jumping&&q>=.68)jump=26*(1-ease(window01(q,.76,jumpEnd)));
   if(jumping)pose='shoot';
   if(isShooter&&!ftActive&&play.shotMade&&q>.84){pose='celebrate';jump=Math.abs(Math.sin(window01(q,.84,1)*Math.PI*2))*7;}
   if(ftActive)pose='idle';
@@ -556,6 +558,11 @@ export function courtFrame(entry:PossessionLogEntry,progress:number,homeId:strin
  // A dead ball (nobody holding it when the last possession ended) is picked up where it lies.
  const loose=prior&&!prior.carrier?{x:prior.ball.x,y:prior.ball.y}:undefined;
  const frame=baseFrame(entry,play,progress,homeId,awayId,regulationPeriods,starts,previous,loose);
+ // Sample sprite poses at 16 frames per playback second; floor movement and ball stay smooth.
+ const poseProgress=Math.floor(Math.max(0,progress)*replayDuration(entry)/1000*16)/16*1000/replayDuration(entry);
+ const sampled=baseFrame(entry,play,poseProgress,homeId,awayId,regulationPeriods,starts,previous,loose);
+ for(const actor of frame.players){const pose=sampled.players.find(p=>p.id===actor.id);if(pose){actor.anim=pose.anim;actor.cycle=pose.cycle;actor.pose=pose.pose;}}
+
  // Legs have momentum: each player is the average of where the choreography put him over the last third of a
  // second, so a changed target turns into a run rather than a snap. The window closes at both ends of the
  // possession so one possession still hands over exactly where the next begins.

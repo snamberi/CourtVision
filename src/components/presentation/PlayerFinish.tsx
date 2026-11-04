@@ -16,5 +16,5 @@ export function RevealSparks({ rarity, active = true }: { rarity: Rarity | 'myth
     }, 100);
     return () => window.clearTimeout(timer);
   }, [rarity, active]);
-  return <span ref={anchor} className="reveal-sparks" aria-hidden="true" />;
+  return <span ref={anchor} className={`reveal-sparks ${rarity === 'mythic' && active ? 'mythic-reveal' : ''}`} aria-hidden="true">{rarity === 'mythic' && active && <><i /><i /><i /></>}</span>;
 }
