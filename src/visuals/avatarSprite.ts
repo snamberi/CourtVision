@@ -1,12 +1,11 @@
-import { buildPlayerGrid, playerTraits, athleticGrid, outlineGrid, gridToPaths, drawHat, mix, HAIR_STYLES, BEARD_STYLES, HAT_STYLES, type SpriteGrid, type SpritePath, type HairStyle, type BeardStyle, type HatStyle } from './playerSprite';
+import { buildPlayerGrid, outlineGrid, detailedSpritePaths, gridToPaths, drawHat, mix, HAIR_STYLES, BEARD_STYLES, HAT_STYLES, type SpriteGrid, type SpritePath, type HairStyle, type BeardStyle, type HatStyle } from './playerSprite';
 import { teamColors } from '../simulation/teamColors';
 import { SKINS, HAIR_COLORS, SHOES, RAINBOW, outfitDef, colorHex, type AvatarLook, type Outfit } from '../profile/avatar';
 
 /*
  * Draws the profile character (src/profile/avatar.ts) on the same 40 × 52 pixel body as every player, then dresses it:
  * outfit, shoes, new hair and beards, headwear, eyewear, neck and back pieces, and an aura around the outline. The
- * finished art uses the same athletic proportions and half-pixel grid as every player,
- * including the 3-display-pixel margin for the aura (92 × 116 cells).
+ * finished grid has a 3-pixel margin for the aura (46 × 58).
  */
 
 export const AVATAR_PAD = 3;
@@ -43,10 +42,7 @@ function torso(r: Rect, s: Shade) {
   r(14, 27, 2, 10, s.l); r(25, 26, 3, 12, s.d);
   r(16, 27, 8, 1, s.d);
 }
-function longSleeves(r: Rect, s: Shade) {
-  r(9,26,4,7,s.c);r(8,32,4,5,s.c);r(9,26,2,5,s.l);r(8,32,1,4,s.l);r(8,36,4,1,s.d);
-  r(27,26,4,7,s.d);r(28,32,4,5,s.c);r(28,32,1,4,s.l);r(28,36,4,1,s.d);
-}
+function longSleeves(r: Rect, s: Shade) { r(9, 26, 4, 6, s.c); r(7, 29, 4, 3, s.c); r(9, 26, 2, 3, s.l); r(27, 26, 4, 6, s.d); r(29, 29, 4, 3, s.c); r(7, 31, 3, 1, s.d); r(30, 31, 3, 1, s.d); }
 function shortSleeves(r: Rect, s: Shade) { r(9, 26, 4, 3, s.c); r(9, 26, 2, 2, s.l); r(27, 26, 4, 3, s.d); }
 function pants(r: Rect, s: Shade) {
   r(12, 38, 16, 3, s.c); r(12, 41, 6, 5, s.c); r(22, 41, 6, 5, s.c);
@@ -97,7 +93,7 @@ function drawOutfit(r: Rect, o: Outfit, team: { primary: string; secondary: stri
       r(20, 27, 1, 11, main.d); return;
     case 'santa':
       torso(r, main); longSleeves(r, main); pants(r, main);
-      r(19, 27, 2, 11, trim.c); r(12, 36, 16, 2, trim.c); r(12, 34, 16, 2, black.c); r(19, 34, 2, 2, gold); r(8, 36, 4, 1, trim.c); r(28, 36, 4, 1, trim.c); return;
+      r(19, 27, 2, 11, trim.c); r(12, 36, 16, 2, trim.c); r(12, 34, 16, 2, black.c); r(19, 34, 2, 2, gold); r(7, 31, 3, 1, trim.c); r(30, 31, 3, 1, trim.c); return;
     case 'astronaut':
       torso(r, main); longSleeves(r, main); pants(r, main);
       r(16, 29, 8, 5, trim.c); r(17, 30, 2, 1, '#e85d5d'); r(20, 30, 2, 1, '#6fdc93'); r(17, 32, 5, 1, '#4da3ff'); r(12, 38, 16, 1, trim.d); r(12, 43, 6, 1, trim.c); r(22, 43, 6, 1, trim.c); return;
@@ -111,13 +107,13 @@ function drawOutfit(r: Rect, o: Outfit, team: { primary: string; secondary: stri
       r(12, 27, 16, 9, '#f4f6fa'); r(12, 27, 2, 9, '#ffffff'); r(25, 27, 3, 9, '#c9d1dc'); r(14, 31, 12, 1, '#c9d1dc');
       r(10, 24, 5, 4, '#e8b84a'); r(25, 24, 5, 4, '#c9971f'); r(14, 25, 3, 2, '#e8b84a'); r(23, 25, 3, 2, '#c9971f');
       r(12, 36, 7, 4, '#e8b84a'); r(21, 36, 7, 4, '#c9971f'); r(18, 36, 4, 2, '#1f3a8a');
-      r(8, 37, 4, 4, '#f4f6fa'); r(10, 39, 2, 2, '#e3e7ee'); r(28, 37, 4, 4, '#f4f6fa'); r(30, 39, 2, 2, '#e3e7ee'); return;
+      r(4, 31, 5, 4, '#f4f6fa'); r(3, 33, 3, 3, '#e3e7ee'); r(31, 32, 5, 4, '#f4f6fa'); r(34, 35, 2, 2, '#e3e7ee'); return;
     // ------------------------------------------------ anime and TV-inspired, part two
     case 'trainer':
       // A blue vest over a black tee, green gloves and jeans.
       torso(r, black); shortSleeves(r, black); pants(r, shade('#2f4f8f'));
       r(12, 25, 4, 13, main.c); r(24, 25, 4, 13, main.d); r(12, 25, 2, 13, main.l); r(14, 30, 2, 1, WHITE); r(24, 30, 2, 1, WHITE);
-      r(8, 35, 4, 3, '#3fae5f'); r(28, 35, 4, 3, '#2f8a4a'); return;
+      r(7, 30, 4, 3, '#3fae5f'); r(29, 30, 4, 3, '#2f8a4a'); return;
     case 'arcade80s':
       torso(r, main); shortSleeves(r, main); pants(r, shade('#3b5b8f'));
       r(16, 25, 8, 1, trim.c); r(9, 28, 4, 1, trim.c); r(27, 28, 4, 1, trim.c);
@@ -128,7 +124,7 @@ function drawOutfit(r: Rect, o: Outfit, team: { primary: string; secondary: stri
       r(21, 28, 6, 4, WHITE); for (const x of [22, 24, 26]) r(x, 29, 1, 2, OUTLINE); r(12, 41, 1, 5, trim.c); r(27, 41, 1, 5, trim.c); return;
     case 'guard':
       torso(r, main); longSleeves(r, main); pants(r, main);
-      r(20, 25, 1, 11, main.d); r(12, 36, 16, 2, trim.c); r(19, 36, 2, 2, '#8a93a3'); r(8, 35, 4, 3, trim.c); r(28, 35, 4, 3, trim.c);
+      r(20, 25, 1, 11, main.d); r(12, 36, 16, 2, trim.c); r(19, 36, 2, 2, '#8a93a3'); r(7, 30, 4, 3, trim.c); r(29, 30, 4, 3, trim.c);
       r(12, 43, 6, 3, trim.c); r(22, 43, 6, 3, trim.c); r(15, 27, 1, 2, main.l); return;
     case 'demonHunter':
       torso(r, main); longSleeves(r, main); pants(r, main);
@@ -139,17 +135,17 @@ function drawOutfit(r: Rect, o: Outfit, team: { primary: string; secondary: stri
       r(12, 31, 3, 7, trim.c); r(25, 31, 3, 7, trim.c); r(9, 29, 4, 3, trim.c); r(27, 29, 4, 3, trim.c);
       for (let x = 13; x < 28; x += 3) r(x, 26, 1, 5, main.d);
       for (let y = 27; y < 31; y += 2) r(12, y, 16, 1, main.d);
-      r(19, 29, 2, 4, OUTLINE); r(17, 30, 6, 1, OUTLINE); r(17, 32, 6, 1, OUTLINE); r(8, 35, 4, 2, main.c); r(28, 35, 4, 2, main.c);
+      r(19, 29, 2, 4, OUTLINE); r(17, 30, 6, 1, OUTLINE); r(17, 32, 6, 1, OUTLINE); r(7, 30, 3, 2, main.c); r(30, 30, 3, 2, main.c);
       r(12, 43, 6, 3, main.c); r(22, 43, 6, 3, main.c); return;
     }
     case 'soulReaper':
       torso(r, main); longSleeves(r, main); coatSkirt(r, main, main.d); r(12, 41, 6, 5, main.c); r(22, 41, 6, 5, main.c);
       r(18, 27, 4, 3, WHITE); for (let i = 0; i < 5; i++) { r(16 + i, 27 + i, 1, 1, WHITE); r(23 - i, 27 + i, 1, 1, WHITE); }
-      r(12, 35, 16, 2, trim.c); r(12, 36, 16, 1, '#c9d1dc'); r(8, 36, 4, 1, main.l); r(28, 36, 4, 1, main.l); return;
+      r(12, 35, 16, 2, trim.c); r(12, 36, 16, 1, '#c9d1dc'); r(7, 31, 3, 1, main.l); r(30, 31, 3, 1, main.l); return;
     case 'capedHero':
       torso(r, main); longSleeves(r, main); pants(r, main);
       r(20, 27, 1, 9, main.d); r(12, 36, 16, 2, black.c); r(19, 36, 2, 2, '#ffd166');
-      r(8, 35, 4, 3, trim.c); r(28, 35, 4, 3, trim.c); r(12, 42, 6, 4, trim.c); r(22, 42, 6, 4, trim.c); r(12, 42, 6, 1, trim.l); r(22, 42, 6, 1, trim.l); return;
+      r(7, 30, 4, 3, trim.c); r(29, 30, 4, 3, trim.c); r(12, 42, 6, 4, trim.c); r(22, 42, 6, 4, trim.c); r(12, 42, 6, 1, trim.l); r(22, 42, 6, 1, trim.l); return;
     case 'sorcerer':
       torso(r, main); longSleeves(r, main); pants(r, main);
       r(14, 23, 12, 4, main.d); r(15, 23, 10, 1, main.l); r(19, 25, 2, 2, trim.c); r(19, 25, 1, 1, trim.l);
@@ -157,10 +153,10 @@ function drawOutfit(r: Rect, o: Outfit, team: { primary: string; secondary: stri
     case 'airNomad':
       torso(r, main); longSleeves(r, main); pants(r, trim);
       for (let i = 0; i < 13; i++) r(11 + i, 25 + i, 3, 1, trim.c);
-      r(11, 24, 6, 2, trim.c); r(12, 36, 16, 1, trim.d); r(8, 36, 4, 1, main.l); r(28, 36, 4, 1, main.l); return;
+      r(11, 24, 6, 2, trim.c); r(12, 36, 16, 1, trim.d); r(7, 31, 3, 1, main.l); r(30, 31, 3, 1, main.l); return;
     case 'gi':
       torso(r, main); shortSleeves(r, main); pants(r, main);
-      r(17, 27, 6, 4, trim.c); r(18, 27, 4, 2, skin.c); r(12, 35, 16, 2, trim.c); r(8, 36, 4, 2, trim.c); r(30, 32, 3, 2, trim.c);
+      r(17, 27, 6, 4, trim.c); r(18, 27, 4, 2, skin.c); r(12, 35, 16, 2, trim.c); r(7, 31, 3, 2, trim.c); r(30, 32, 3, 2, trim.c);
       r(22, 29, 3, 3, WHITE); r(23, 30, 1, 1, OUTLINE); return;
     case 'ninja':
       torso(r, main); longSleeves(r, main); pants(r, main);
@@ -182,7 +178,7 @@ function drawOutfit(r: Rect, o: Outfit, team: { primary: string; secondary: stri
       r(16, 25, 8, 2, main.d); for (const y of [29, 32, 35]) r(20, y, 1, 1, trim.c); r(12, 38, 16, 1, trim.d); return;
     case 'hero':
       torso(r, main); longSleeves(r, main); pants(r, main);
-      r(18, 29, 5, 4, gold); r(19, 30, 3, 2, trim.c); r(12, 37, 16, 2, trim.c); r(19, 37, 2, 2, gold); r(8, 35, 4, 2, trim.c); r(28, 35, 4, 2, trim.c); return;
+      r(18, 29, 5, 4, gold); r(19, 30, 3, 2, trim.c); r(12, 37, 16, 2, trim.c); r(19, 37, 2, 2, gold); r(7, 30, 3, 2, trim.c); r(30, 30, 3, 2, trim.c); return;
     case 'plugsuit':
       torso(r, main); longSleeves(r, main); pants(r, main);
       r(11, 25, 18, 2, trim.c); r(12, 31, 16, 1, trim.c); r(19, 27, 2, 4, trim.l); r(12, 42, 6, 1, trim.c); r(22, 42, 6, 1, trim.c); r(9, 29, 4, 1, trim.c); r(27, 29, 4, 1, trim.c); return;
@@ -205,7 +201,7 @@ function drawOutfit(r: Rect, o: Outfit, team: { primary: string; secondary: stri
       torso(r, shade('#1f2f55')); longSleeves(r, main); pants(r, shade('#1f2f55'));
       r(12, 25, 5, 13, main.c); r(23, 25, 5, 13, main.c); r(11, 38, 7, 7, main.c); r(22, 38, 7, 7, main.c);
       for (let x = 11; x < 29; x++) { if (x >= 18 && x < 22) continue; const h = 1 + ((x * 7) % 3); r(x, 45 - h, 1, h, x % 2 ? trim.c : '#ff9d3d'); }
-      r(8, 35, 4, 2, trim.c); r(28, 35, 4, 2, trim.c); return;
+      r(7, 30, 3, 2, trim.c); r(30, 30, 3, 2, trim.c); return;
     case 'sovereign':
       // A sapphire robe in gold: gold pauldrons and collar, a gold sash and belt, a blue jewel, gold-trimmed hems.
       torso(r, main); longSleeves(r, main); pants(r, main); coatSkirt(r, main, main.d);
@@ -213,11 +209,11 @@ function drawOutfit(r: Rect, o: Outfit, team: { primary: string; secondary: stri
       r(15, 24, 10, 2, trim.c); r(16, 25, 8, 1, trim.d);
       for (let i = 0; i < 11; i++) r(14 + i, 27 + i, 2, 1, trim.c);
       r(11, 37, 18, 2, trim.c); r(11, 38, 18, 1, trim.d); r(19, 36, 3, 3, '#6fd3ff'); r(19, 36, 1, 1, '#9fe7ff');
-      r(11, 44, 18, 1, trim.c); r(8, 36, 4, 1, trim.c); r(28, 36, 4, 1, trim.c); r(18, 39, 4, 6, '#0e1a5a'); return;
+      r(11, 44, 18, 1, trim.c); r(7, 31, 3, 1, trim.c); r(30, 31, 3, 1, trim.c); r(18, 39, 4, 6, '#0e1a5a'); return;
     case 'royal':
       torso(r, main); longSleeves(r, main); pants(r, main); coatSkirt(r, main, main.d);
       r(11, 24, 18, 3, WHITE); for (const x of [13, 17, 22, 26]) r(x, 25, 1, 1, OUTLINE);
-      r(19, 27, 2, 18, trim.c); r(11, 44, 18, 1, trim.c); r(8, 36, 4, 1, WHITE); r(28, 36, 4, 1, WHITE); return;
+      r(19, 27, 2, 18, trim.c); r(11, 44, 18, 1, trim.c); r(7, 31, 3, 1, WHITE); r(30, 31, 3, 1, WHITE); return;
     case 'wizard':
       torso(r, main); longSleeves(r, main); coatSkirt(r, main, main.d); r(12, 41, 6, 5, main.c); r(22, 41, 6, 5, main.c);
       for (const [x, y] of [[13, 28], [24, 30], [16, 34], [22, 40], [13, 42], [26, 36], [9, 28], [30, 29]] as const) r(x, y, 1, 1, gold);
@@ -546,7 +542,7 @@ const AURA_COLORS: Record<string, string[]> = {
   haunted: ['#7a3fc0', '#8bdc3f', '#2a1a40', '#ff7a1a'],
   snowfall: ['#ffffff', '#dff4ff', '#e8323c', '#3fbf5f', '#ffd166'],
 };
-function auraCells(grid: SpriteGrid, kind: string, density = 1): SpriteGrid {
+function auraCells(grid: SpriteGrid, kind: string): SpriteGrid {
   const H = grid.length, W = grid[0].length;
   const out: SpriteGrid = grid.map(row => row.map(() => null));
   const colors = AURA_COLORS[kind];
@@ -554,7 +550,7 @@ function auraCells(grid: SpriteGrid, kind: string, density = 1): SpriteGrid {
   const noise = (x: number, y: number) => ((x * 73856093) ^ (y * 19349663)) >>> 0;
   /** Body within `side` pixels across and `below` pixels under (or `above` over) this cell. */
   const near = (x: number, y: number, side: number, above: number, below: number) => {
-    for (let dy = -above * density; dy <= below * density; dy++) for (let dx = -side * density; dx <= side * density; dx++) {
+    for (let dy = -above; dy <= below; dy++) for (let dx = -side; dx <= side; dx++) {
       const xx = x + dx, yy = y + dy;
       if (xx >= 0 && xx < W && yy >= 0 && yy < H && grid[yy][xx]) return true;
     }
@@ -659,7 +655,7 @@ export function buildAvatarGrid({ look, team }: AvatarOptions): { grid: SpriteGr
   const r: Rect = (x, y, w, h, c) => {
     for (let yy = Math.max(0, y); yy < Math.min(grid.length, y + h); yy++) for (let xx = Math.max(0, x); xx < Math.min(grid[0].length, x + w); xx++) grid[yy][xx] = c;
   };
-  const skin = shade(skinBase), hair: Shade = { c: hairBase, l: mix(hairBase, '#a87448', 0.3), d: mix(hairBase, OUTLINE, 0.4) };
+  const skin = shade(skinBase), hair: Shade = { c: hairBase, l: mix(hairBase, '#a8a0b4', 0.3), d: mix(hairBase, OUTLINE, 0.4) };
 
   drawOutfit(r, o, kit, skin);
   drawShoes(r, look.shoes, o, skin);
@@ -678,7 +674,7 @@ export function buildAvatarGrid({ look, team }: AvatarOptions): { grid: SpriteGr
     const skinAt: Recolor = (x, y) => patternAt(skinHex, x, y, '#4a5478'), hairAt: Recolor = (x, y) => patternAt(hairHex, x, y, G_DARK);
     const add = (key: string, at: Recolor, toward: string, amt: number) => shades.set(mix(key, toward, amt), (x, y) => mix(at(x, y), toward, amt));
     if (patterned(skinHex)) { shades.set(SKIN_KEY, skinAt); add(SKIN_KEY, skinAt, '#ffe9cb', 0.25); add(SKIN_KEY, skinAt, '#542c30', 0.35); add(SKIN_KEY, skinAt, '#351c29', 0.55); add(SKIN_KEY, skinAt, WHITE, 0.25); add(SKIN_KEY, skinAt, OUTLINE, 0.4); }
-    if (patterned(hairHex)) { shades.set(HAIR_KEY, hairAt); add(HAIR_KEY, hairAt, '#a87448', 0.3); add(HAIR_KEY, hairAt, OUTLINE, 0.4); }
+    if (patterned(hairHex)) { shades.set(HAIR_KEY, hairAt); add(HAIR_KEY, hairAt, '#a8a0b4', 0.3); add(HAIR_KEY, hairAt, OUTLINE, 0.4); }
     // Stubble blends skin and hair.
     shades.set(mix(skinBase, hairBase, 0.5), (x, y) => mix(patterned(skinHex) ? skinAt(x, y) : skinBase, patterned(hairHex) ? hairAt(x, y) : hairBase, 0.5));
     for (let y = 0; y < grid.length; y++) for (let x = 0; x < grid[0].length; x++) {
@@ -692,12 +688,12 @@ export function buildAvatarGrid({ look, team }: AvatarOptions): { grid: SpriteGr
     const gy = y - AVATAR_PAD, gx = x - AVATAR_PAD;
     return gy >= 0 && gy < grid.length && gx >= 0 && gx < grid[0].length ? grid[gy][gx] : null;
   }));
-  const outlined = outlineGrid(athleticGrid(padded, AVATAR_PAD, {traits:playerTraits(BODY_ID,{skinHex:patterned(skinHex)?patternAt(skinHex,20,14,'#4a5478'):skinBase,hairHex:patterned(hairHex)?patternAt(hairHex,20,8,G_DARK):hairBase}),eyes:look.eyes==='none' && !['pumpkin','spaceHelmet'].includes(look.hat)}));
-  return { grid: outlined, aura: auraCells(outlined, look.aura, 2) };
+  const outlined = outlineGrid(padded);
+  return { grid: outlined, aura: auraCells(outlined, look.aura) };
 }
 export function buildAvatarSprite(opts: AvatarOptions): AvatarSprite {
   const { grid, aura } = buildAvatarGrid(opts);
-  return { paths: gridToPaths(grid, .5), aura: gridToPaths(aura, .5), auraKind: opts.look.aura };
+  return { paths: detailedSpritePaths(grid), aura: gridToPaths(aura), auraKind: opts.look.aura };
 }
 
 // ---------------------------------------------------------------- coaches and referees
@@ -724,7 +720,7 @@ export function buildFigureGrid({ id, skin, hair, hairStyle = 'short', beard = '
   if (glasses) drawEyes(r, 'glasses');
   if (pose !== 'down') {
     // Clear the hanging arms, then pose new ones in the outfit's sleeve colour.
-    for (let y = 25; y < 42; y++) for (let x = 0; x < 40; x++) if (x < 12 || x > 27) grid[y][x] = null;
+    for (let y = 25; y < 38; y++) for (let x = 0; x < 40; x++) if (x < 12 || x > 27) grid[y][x] = null;
     const sleeve = kind === 'referee' || kind === 'tee' || kind === 'hawaiian' ? skinShade : shade(main);
     const cuff = kind === 'referee' ? '#f4f6fa' : sleeve.c;
     const armDown = (x: number) => { r(x, 25, 3, 9, sleeve.c); r(x, 25, 3, 3, cuff); r(x, 34, 3, 3, skin); };
@@ -736,12 +732,12 @@ export function buildFigureGrid({ id, skin, hair, hairStyle = 'short', beard = '
     else if (pose === 'up') { armUp(9); armUp(28); }
     else { armDown(9); armUp(28); }
   }
-  return outlineGrid(athleticGrid(grid,0,{traits:playerTraits(id,{skinHex:skin,hairHex:hair,hairStyle,beardStyle:beard}),eyes:!glasses}));
+  return outlineGrid(grid);
 }
 const figureCache = new Map<string, SpritePath[]>();
 export function buildFigureSprite(opts: FigureOptions): SpritePath[] {
   const key = JSON.stringify(opts);
   let hit = figureCache.get(key);
-  if (!hit) { if (figureCache.size > 300) figureCache.clear(); hit = gridToPaths(buildFigureGrid(opts), .5); figureCache.set(key, hit); }
+  if (!hit) { if (figureCache.size > 300) figureCache.clear(); hit = detailedSpritePaths(buildFigureGrid(opts)); figureCache.set(key, hit); }
   return hit;
 }

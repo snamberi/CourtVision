@@ -1,7 +1,6 @@
 import {describe,it,expect} from 'vitest';
 import {courtView,presentAthlete,reachBall,labelOffsets,ballHeight} from '../visuals/courtPresentation';
 import {ANIMATIONS,actionSprite,mirrorPose,type CourtView} from '../visuals/actionSprites';
-import {athleticY} from '../visuals/playerSprite';
 import type {CourtActor} from '../simulation/courtMotion';
 const actor:CourtActor={id:'Stephen Curry',teamId:'GSW',x:500,y:310,jump:0,stride:1,pose:'run',facing:1,vx:100,vy:0,cycle:.3,gait:'run'};
 const hoop={x:900,y:310},ball={x:512,y:307,z:23,spin:0};
@@ -17,25 +16,24 @@ describe('court presentation',()=>{
   }
   expect(sprites.size).toBe(8);
  });
- it('keeps grounded contacts and authored flight frames without tilting for acceleration',()=>{
+ it('keeps a foot planted during grounded running and bends on braking',()=>{
   for(let i=0;i<32;i++){
    const frame=presentAthlete({...actor,cycle:i/32},ball,hoop,false);
-   if(!frame.pose.air)expect(Math.max(frame.pose.lF[1],frame.pose.rF[1])).toBe(49);
-   else expect(Math.max(frame.pose.lF[1],frame.pose.rF[1])).toBeLessThan(49);
+   expect(Math.max(frame.pose.lF[1],frame.pose.rF[1])).toBe(49);
   }
   const brake=presentAthlete({...actor,momentum:-200},ball,hoop,false);
   const accelerate=presentAthlete({...actor,momentum:200},ball,hoop,false);
-  expect(brake.pose).toEqual(accelerate.pose);
-  expect(brake.pose.lean??0).toBe(0);
+  expect(brake.pose.body[1]).toBeGreaterThan(accelerate.pose.body[1]);
+  expect(brake.pose.lean).toBeLessThan(accelerate.pose.lean!);
  });
  it('reaches a nearby ball with bounded arms on either side and never reaches a released ball',()=>{
   const input=ANIMATIONS.catch[2];
   for(const facing of [-1,1]){
    const result=reachBall(input,[18*facing,-24],facing);
    const p=facing<0?mirrorPose(result):result;
-   const hand=facing<0?p.lH:p.rH,elbow=facing<0?p.lE:p.rE,shoulder=facing<0?12:28;
+   const hand=facing<0?p.lH:p.rH,elbow=facing<0?p.lE:p.rE,shoulder=facing<0?11:29;
    expect(Math.hypot(hand[0]-elbow[0],hand[1]-elbow[1])).toBeLessThan(14);
-   expect(Math.hypot(elbow[0]-shoulder,elbow[1]-athleticY(27))).toBeLessThan(14);
+   expect(Math.hypot(elbow[0]-shoulder,elbow[1]-27)).toBeLessThan(14);
   }
   expect(reachBall(input,[300,-200],1)).toEqual(input);
  });

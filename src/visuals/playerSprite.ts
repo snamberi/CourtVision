@@ -1,4 +1,4 @@
-/** Code-native characters authored on a 40 × 52 rig and rendered on an 80 × 104 pixel grid.
+/** Code-native, 40 × 52 pixel characters with a half-pixel detail layer. No image requests or saved-data changes.
  * Keep the original ID hash and trait order: existing players retain their skin,
  * hair, beard and headwear choices while receiving the more detailed artwork.
  */
@@ -131,7 +131,7 @@ export interface SpritePath { fill: string; d: string }
 
 /** Rasterize the layers, then batch horizontal runs by color into a small SVG path set. */
 export function buildPlayerSprite(opts: SpriteOptions): SpritePath[] {
-  return gridToPaths(outlineGrid(athleticGrid(buildPlayerGrid(opts), 0, { traits: playerTraits(opts.playerId, opts.appearance) })), .5);
+  return detailedSpritePaths(outlineGrid(buildPlayerGrid(opts)));
 }
 
 export type SpriteGrid = (string | null)[][];
@@ -148,11 +148,11 @@ export function buildPlayerGrid({ playerId, primary, secondary, jerseyNumber, ag
   const skinDark = mix(skin, '#542c30', 0.35);
   const skinDeep = mix(skin, '#351c29', 0.55);
   const hair = t.hair;
-  const hairLight = mix(hair, '#a87448', 0.3);
+  const hairLight = mix(hair, '#a8a0b4', 0.3);
   const hairDark = mix(hair, OUTLINE, 0.4);
   const kit = hexColor(primary, '#4a5160');
   const trim = hexColor(secondary, '#c9ccd1');
-  const kitLight = mix(kit, WHITE, 0.16);
+  const kitLight = mix(kit, WHITE, 0.23);
   const kitDark = mix(kit, OUTLINE, 0.45);
   const trimLight = mix(trim, WHITE, 0.4);
   const trimDark = mix(trim, OUTLINE, 0.3);
@@ -162,9 +162,9 @@ export function buildPlayerGrid({ playerId, primary, secondary, jerseyNumber, ag
   for (const x of [12, 23]) {
     rect(x, 39, 5, 8, skin);
     rect(x + 3, 40, 2, 5, skinDark);
-    rect(x, 45, 5, 2, WHITE);
-    rect(x, 45, 5, 1, trim);
-    rect(x + 3, 45, 2, 2, '#abb5c6');
+    rect(x, 43, 5, 4, WHITE);
+    rect(x, 43, 5, 1, trim);
+    rect(x + 3, 44, 2, 3, '#abb5c6');
     rect(x - 1, 47, 7, 3, OUTLINE);
     rect(x - 1, 46, 7, 3, kit);
     rect(x - 1, 46, 3, 2, kitLight);
@@ -191,21 +191,31 @@ export function buildPlayerGrid({ playerId, primary, secondary, jerseyNumber, ag
       rect(x, 15, 4, 2, trim);
     }
   } else if (pose !== 'none') {
-    // Relaxed athletic stance: deltoid, bicep, forearm and a small closed hand.
-    // These coordinates are also used by the user-avatar clothing layers.
-    for (const [x, direction] of [[9, -1], [27, 1]] as const) {
-      rect(x, 26, 4, 7, skin);
-      rect(x + direction, 32, 4, 6, skin);
-      rect(x + direction, 37, 4, 4, skin);
-      rect(x, 26, 3, 2, skinLight);
-      rect(x, 28, 2, 3, skinLight);
-      rect(x + 3, 29, 1, 4, skinDark);
-      rect(x + direction + 3, 34, 1, 6, skinDark);
-      rect(x + direction, 38, 2, 1, skinLight);
-      rect(x + direction + 1, 40, 2, 1, skinDeep);
-    }
-    if (t.seed % 3 === 0) { rect(8, 35, 4, 2, trim); rect(8, 35, 2, 1, trimLight); }
-    if (t.seed % 4 < 2) { rect(28, 35, 4, 2, trim); rect(28, 35, 2, 1, trimLight); }
+  rect(9, 26, 4, 7, skin);
+  rect(7, 29, 4, 5, skin);
+  rect(4, 31, 5, 4, skin);
+  rect(3, 33, 3, 3, skinDark);
+  rect(9, 26, 3, 2, skinLight);
+  rect(5, 31, 4, 1, skinLight);
+  rect(7, 34, 2, 1, skinDeep);
+  rect(27, 26, 4, 7, skinDark);
+  rect(29, 29, 4, 5, skin);
+  rect(31, 32, 5, 4, skin);
+  rect(34, 35, 2, 2, skinDark);
+  rect(32, 32, 3, 1, skinLight);
+  rect(27, 27, 2, 4, skin);
+  if (t.seed % 3 === 0) {
+    rect(9, 28, 3, 5, kitDark);
+    rect(9, 28, 2, 4, kitLight);
+    rect(8, 31, 3, 2, trim);
+  } else {
+    rect(7, 31, 3, 2, trim);
+    rect(7, 31, 2, 1, trimLight);
+  }
+  if (t.seed % 4 < 2) {
+    rect(30, 32, 3, 2, trim);
+    rect(30, 32, 3, 1, trimLight);
+  }
   }
 
   // Uniform: armholes, side panels, neckline, chest fold, waistband and shorts.
@@ -254,7 +264,7 @@ export function buildPlayerGrid({ playerId, primary, secondary, jerseyNumber, ag
     const start = number.length === 1 ? 18 : 16;
     for (let i = 0; i < number.length; i++) {
       DIGITS[number[i]].forEach((row, y) => [...row].forEach((bit, x) => {
-        if (bit === '1') rect(start + i * 4 + x, 31 + y, 1, 1, trim);
+        if (bit === '1') rect(start + i * 4 + x, 31 + y, 1, 1, WHITE);
       }));
     }
   }
@@ -274,14 +284,16 @@ export function buildPlayerGrid({ playerId, primary, secondary, jerseyNumber, ag
   rect(29, 14, 2, 5, skinDeep);
   rect(29, 15, 1, 2, skin);
 
-  // Compact eyes and brows read at roster size without oversized white sclera.
+  // Eyes: white sclera, dark iris, a small light catch; brows and nose give expression.
   const eyeY = 14 + (t.seed % 7 === 0 ? 1 : 0);
-  const eyeH = t.eyeStyle === 'wide' ? 3 : t.eyeStyle === 'relaxed' ? 1 : 2;
-  for (const x of [14, 23]) {
-    rect(x - 1, eyeY - 2, 4, 1, hairDark);
-    rect(x, eyeY, 3, eyeH, t.eyeColor);
-    rect(x + 1, eyeY, 2, eyeH, OUTLINE);
-    if (t.eyeStyle === 'wide') rect(x, eyeY, 1, 1, WHITE);
+  const eyeH = t.eyeStyle === 'wide' ? 4 : t.eyeStyle === 'relaxed' ? 2 : 3;
+  for (const x of [13, 23]) {
+    rect(x, eyeY - 2, 4, 1, hairDark);
+    rect(x, eyeY, 4, eyeH, WHITE);
+    rect(x + 2, eyeY, 2, eyeH, t.eyeColor);
+    rect(x + 3, eyeY + 1, 1, eyeH - 1, OUTLINE);
+    rect(x + 2, eyeY, 1, 1, '#dae2dc');
+    rect(x, eyeY + eyeH, 4, 1, skinDark);
   }
   if (t.eyeStyle === 'focused') { rect(16, eyeY - 1, 2, 1, hairDark); rect(22, eyeY - 1, 2, 1, hairDark); }
   rect(18, 13, 1, 3, skinLight);
@@ -376,13 +388,12 @@ export function buildPlayerGrid({ playerId, primary, secondary, jerseyNumber, ag
       h(11, 10, 2, medium ? 5 : 2); h(27, 10, 2, medium ? 4 : 2);
       if (style.endsWith('Wide')) { h(10, top + 3, 2, 4); h(28, top + 3, 2, 4); }
       h(14, 9, crop ? 11 : 6, 2);
-      if(style==='short'||style==='shortWide'){h(14,5,3,2);h(19,4,3,3);h(24,5,2,2);}
     }
-    // Broad light and shadow clusters keep hair readable without scattered speckles.
+    // Broken highlights follow the silhouette and never draw outside it.
     for (let y = 1; y < 18; y++) for (let x = 9; x < 32; x++) {
       if (grid[y][x] !== hair) continue;
-      if (x < 23 && grid[y - 1]?.[x] !== hair && grid[y - 1]?.[x] !== hairLight) grid[y][x] = hairLight;
-      else if (x > 25) grid[y][x] = hairDark;
+      if ((x * 3 + y * 7 + t.seed) % 11 < 2 && x < 27) grid[y][x] = hairLight;
+      else if (x > 25 || (x + y) % 9 === 0) grid[y][x] = hairDark;
     }
   }
 
@@ -396,8 +407,8 @@ export function buildPlayerGrid({ playerId, primary, secondary, jerseyNumber, ag
   }
   // A shooting sleeve from the shoulder to the wrist on the left arm (standing pose).
   if (t.sleeve && pose !== 'raise' && pose !== 'none') {
-    rect(9, 26, 4, 7, WHITE); rect(8, 32, 4, 5, WHITE);
-    rect(9, 26, 1, 7, '#c9ccd1'); rect(8, 32, 1, 5, '#c9ccd1');
+    rect(9, 26, 4, 7, WHITE); rect(7, 29, 4, 5, WHITE); rect(4, 31, 5, 3, WHITE);
+    rect(9, 26, 1, 7, '#c9ccd1'); rect(7, 33, 4, 1, '#c9ccd1');
   }
 
   if (age != null && age >= 36) {
@@ -435,100 +446,7 @@ export function drawHat(rect: (x: number, y: number, w: number, h: number, color
   }
 }
 
-/** Design 6, Mini Athlete: a compact head, shaped torso and readable lower legs.
- * All cosmetics are composed on the stable authoring rig before this mapping. */
-export function athleticY(y: number): number {
-  if (y < 24) return .85 + y * .72;
-  if (y < 40) return 18.13 + (y - 24) * .866875;
-  if (y < 43) return 32 + (y - 40) * 5 / 3;
-  if (y < 46) return 37 + (y - 43) * 3;
-  if (y < 50) return y;
-  return y;
-}
-export interface FaceDetail { traits: Traits; eyes?: boolean; view?: string }
-export function athleticGrid(grid: SpriteGrid, pad = 0, face?: FaceDetail): SpriteGrid {
-  const height = grid.length, width = grid[0]?.length ?? 0;
-  const fine: SpriteGrid = Array.from({ length: height * 2 }, (_, yy) => {
-    const y = (yy + .5) / 2 - pad;
-    const sy = y < 18.13 ? (y - .85) / .72 : y < 32 ? 24 + (y - 18.13) / .866875 : y < 37 ? 40 + (y - 32) * 3 / 5 : y < 46 ? 43 + (y - 37) / 3 : y;
-    const sx = sy < 24 ? .78 : sy < 38 ? 1 - Math.max(0, sy - 28) * .012 : sy < 43 ? .96 : 1;
-    const sourceY = Math.floor(sy + pad);
-    return Array.from({ length: width * 2 }, (_, xx) => {
-      const x = (xx + .5) / 2 - pad;
-      const sourceX = Math.floor(20 + (x - 20) / sx + pad);
-      return grid[sourceY]?.[sourceX] ?? null;
-    });
-  });
-  // One fine-pixel bevel on broad material clusters, never noise or a blur filter.
-  const top = new Map<string, string>();
-  const counts = new Map<string,number>();
-  for(const row of fine)for(const c of row)if(c)counts.set(c,(counts.get(c)??0)+1);
-  for (let y=1;y<fine.length-1;y++) for(let x=1;x<fine[0].length-1;x++) {
-    const c=fine[y][x];
-    if(!c || (counts.get(c)??0)<70 || c===OUTLINE || fine[y+1][x]!==c || fine[y][x+1]!==c || fine[y-1][x]===c)continue;
-    if(!top.has(c))top.set(c,mix(c,WHITE,.12));
-    fine[y][x]=top.get(c)!;
-  }
-  if(face) { detailAnatomy(fine,pad,face.traits); detailFace(fine, pad, face); }
-  return fine;
-}
-
-/** Fine-grid muscle shapes replace rectangular exposed legs and upper arms.
- * Only bare skin is touched: trousers, long sleeves, gloves and fantasy outfits
- * retain their own pixels and their silhouette. */
-function detailAnatomy(grid:SpriteGrid,pad:number,t:Traits){
-  const light=mix(t.skin,'#ffe9cb',.25),dark=mix(t.skin,'#542c30',.35),deep=mix(t.skin,'#351c29',.55);
-  const skin=new Set([t.skin,light,dark,deep,...[t.skin,light,dark,deep].map(c=>mix(c,WHITE,.12))]);
-  for(let yy=0;yy<grid.length;yy++)for(let xx=0;xx<grid[0].length;xx++){
-    const c=grid[yy][xx];if(!c||!skin.has(c))continue;
-    const x=xx/2-pad,y=yy/2-pad;
-    if(y>=37&&y<46&&(x>=11&&x<=18||x>=22&&x<=29)){
-      const left=x<20,center=(left?14.5:25.5)+(y>40?(left?-.5:.25):0);
-      const radius=y<39?2.5:y<41?2:y<43?1.75:1.35;
-      if(Math.abs(x-center)>radius){grid[yy][xx]=null;continue;}
-      grid[yy][xx]=x<center-.7?light:x>center+.6?dark:t.skin;
-      if(y>=39.5&&y<=40)grid[yy][xx]=x<center+.5?light:t.skin;
-    }
-    if(y>=20&&y<31&&(x>=7&&x<13||x>27&&x<=33)){
-      const left=x<20,center=left?10.5:29;
-      const radius=y<21?1.4:y<24?2.1:y<26?1.7:1.5;
-      if(Math.abs(x-center)>radius){grid[yy][xx]=null;continue;}
-      grid[yy][xx]=x<center-.5?light:x>center+.8?dark:t.skin;
-    }
-  }
-}
-
-/** Eyes are drawn at the final pixel resolution, not scaled-up dots. Accessories stay on top. */
-function detailFace(grid: SpriteGrid, pad: number, {traits:t,eyes=true,view='front'}:FaceDetail) {
-  if(view.startsWith('back') || !eyes || t.goggles)return;
-  const profile=view==='left'||view==='right',side=view.toLowerCase().endsWith('left')?-1:view.toLowerCase().endsWith('right')?1:0;
-  const width=profile?.78:side?.88:1;
-  const xAt=(x:number)=>Math.round((20+((20+(x-20)*width+side)-20)*.78+pad)*2);
-  const yAt=(y:number)=>Math.round((athleticY(y)+pad)*2);
-  const r=(x:number,y:number,w:number,h:number,c:string)=>{
-    for(let yy=y;yy<y+h;yy++)for(let xx=x;xx<x+w;xx++)if(grid[yy]?.[xx])grid[yy][xx]=c;
-  };
-  const skin=t.skin, light=mix(skin,'#ffe9cb',.25),shadow=mix(skin,'#542c30',.35),ink=mix(t.hair,OUTLINE,.4);
-  const eyeY=yAt(14), eyeH=t.eyeStyle==='wide'?5:t.eyeStyle==='relaxed'?3:4;
-  // Restore the old dot-eye area before placing the stepped eyelid, sclera and iris.
-  for(const rawX of profile?[side>0?23:14]:[14,23]) {
-    const x=xAt(rawX)-1,w=profile?5:6;
-    r(x-1,eyeY-4,w+2,eyeH+5,skin);
-    r(x,eyeY-4,w-1,1,ink);r(x+1,eyeY-5,w-3,1,ink);
-    r(x,eyeY-1,w-1,1,ink);r(x-1,eyeY,1,eyeH-1,shadow);
-    r(x,eyeY,w,eyeH,WHITE);
-    r(x+w-1,eyeY,1,1,skin);r(x,eyeY+eyeH-1,1,1,skin);
-    const iris=x+(side<0?1:2);
-    r(iris,eyeY,3,eyeH,t.eyeColor);r(iris+1,eyeY,2,eyeH-1,OUTLINE);
-    r(iris,eyeY,1,1,WHITE);r(x+1,eyeY+eyeH,Math.max(1,w-3),1,shadow);
-    if(t.eyeStyle==='focused')r(x+(rawX<20?w-3:0),eyeY-2,3,1,ink);
-  }
-  // Small bridge and tip; the mouth remains expressive and the beard is retained.
-  const nx=xAt(profile?(side>0?27:11):20),ny=yAt(18);
-  r(nx,ny-3,1,3,light);r(nx+1,ny,2,1,shadow);r(nx,ny-1,2,1,light);
-}
-
-/** A one-cell outline follows the final silhouette (half a display pixel on character art). */
+/** A one-pixel outline follows the final silhouette, including fingers and hair. */
 export function outlineGrid(grid: SpriteGrid): SpriteGrid {
   const H = grid.length, W = grid[0]?.length ?? 0;
   const outlined = grid.map((row) => [...row]);

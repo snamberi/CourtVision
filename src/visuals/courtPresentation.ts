@@ -1,5 +1,5 @@
 import type { CourtActor, CourtBall, CourtPoint } from '../simulation/courtMotion';
-import { hashPlayerId, athleticY } from './playerSprite';
+import { hashPlayerId } from './playerSprite';
 import { likenessKey } from './likeness';
 import { smoothFrame, mirrorPose, upperHand, type CourtView, type P, type Pose } from './actionSprites';
 
@@ -16,16 +16,14 @@ export function courtView(dx:number,dy:number):CourtView {
 }
 
 /** Bounded two-bone reach, in the same pixel coordinate system as the rasterizer. */
-export function reachBall(input:Pose,target:P,facing:number,twoHands=false,view:CourtView='front'):Pose {
+export function reachBall(input:Pose,target:P,facing:number,twoHands=false):Pose {
   const p=facing<0?mirrorPose(input):{...input};
   if(p.lie)return input;
   const shear=Math.round((p.lean??0)*14/34);
   const local:P=[Math.round(target[0]-p.body[0]-shear+20),Math.round(target[1]-p.body[1]+50)];
-  const profile=view==='left'||view==='right',diagonal=view.includes('Left')||view.includes('Right');
-  const span=p.travel?8*(profile?.28:diagonal?.65:1):profile?6:8;
-  const nearest=Math.hypot(local[0]-(20-span),local[1]-athleticY(27))<Math.hypot(local[0]-(20+span),local[1]-athleticY(27))?'l':'r';
+  const nearest=Math.hypot(local[0]-11,local[1]-27)<Math.hypot(local[0]-29,local[1]-27)?'l':'r';
   for(const side of twoHands?['l','r'] as const:[nearest] as const){
-    const shoulder:P=[20+(side==='l'?-span:span),athleticY(27)],dx=local[0]-shoulder[0],dy=local[1]-shoulder[1],distance=Math.hypot(dx,dy);
+    const shoulder:P=[side==='l'?11:29,27],dx=local[0]-shoulder[0],dy=local[1]-shoulder[1],distance=Math.hypot(dx,dy);
     if(distance>27)continue; // Never stretch an arm to a ball that's already been released.
     const d=clamp(distance,4,23),nx=dx/(distance||1),ny=dy/(distance||1);
     const h:P=[Math.round(shoulder[0]+nx*d),Math.round(shoulder[1]+ny*d)];
@@ -50,9 +48,25 @@ export function presentAthlete(actor:CourtActor,ball:CourtBall,hoop:CourtPoint,c
     pose.rH=[pose.rH[0]+(style-1)*2,pose.rH[1]+high];
     pose.rE=[pose.rE[0],pose.rE[1]+Math.round(high/2)];
   }
-  // A gait's torso and legs belong to its authored drawing. Braking changes floor
-  // velocity, never shears the head or collapses the knees into a generic crouch.
-  if(carrier&&!actor.anim&&!moving&&style===0)pose={...pose,body:[pose.body[0],pose.body[1]+.5]};
+  if(carrier&&!actor.anim){
+    // A low protective dribble, an upright rhythm, or a forward attacking stance.
+    if(style===0)pose={...pose,body:[pose.body[0],pose.body[1]+1],lE:[7,30],lH:[3,31]};
+    if(style===2)pose={...pose,lean:(pose.lean??0)+1,lE:[8,29],lH:[6,26]};
+  }
+  if(!actor.anim&&moving){
+    const drive=Math.round(clamp((actor.momentum??0)/100,-2,2));
+    pose.lean=(pose.lean??0)+drive;
+    // Knees absorb braking while at least one shoe stays on the floor.
+    if(drive<0)pose.body=[pose.body[0],pose.body[1]+1];
+  }
+  if(moving&&!actor.anim&&Math.abs(actor.vy??0)>Math.abs(actor.vx??0)*.65){
+    const narrow=Math.abs(actor.vy??0)>Math.abs(actor.vx??0)*1.6?.55:.8;
+    for(const point of ['lK','lF','rK','rF'] as const)pose[point]=[Math.round(20+(pose[point][0]-20)*narrow),pose[point][1]];
+  }
+  if(moving&&!pose.air&&!actor.anim){
+    const plant=49-Math.max(pose.lF[1],pose.rF[1]);
+    pose.lF=[pose.lF[0],pose.lF[1]+plant];pose.rF=[pose.rF[0],pose.rF[1]+plant];
+  }
   if(actor.anim?.kind==='celebrate'){
     if(style===1)pose={...pose,lE:[10,30],lH:[18,29]}; // fist to chest
     if(style===2)pose={...pose,rE:[33,20],rH:[37,8]}; // point to the crowd
@@ -66,14 +80,16 @@ export function presentAthlete(actor:CourtActor,ball:CourtBall,hoop:CourtPoint,c
   const targetLift=actor.y-hoop.y+RIM_HEIGHT+hand[1]*scale;
   const lift=actor.jump+(clamp(targetLift,0,42)-actor.jump)*reach;
   const target:P=[(ball.x-actor.x-offsetX)/scale,(ball.y-ballHeight(ball.z)-actor.y+lift)/scale];
+  if(actor.anim&&['jumper','layup','dunk','floater','alleyOop','fadeaway','stepback','land'].includes(actor.anim.kind)&&t>.82&&lift<5){
+    pose={...pose,air:false,body:[pose.body[0],Math.max(3,pose.body[1])],lK:[pose.lK[0]-1,46],rK:[pose.rK[0]+1,46],lF:[pose.lF[0],49],rF:[pose.rF[0],49]};
+  }
+  const touching=carrier||(actor.anim&&['catch','rebound','chestPass','bouncePass','overheadPass','dunk','alleyOop','jumper','layup','floater','stepback','fadeaway','ft'].includes(actor.anim.kind));
+  if(touching&&ball.z>11&&Math.abs(ball.y-actor.y)<45){
+    pose=reachBall(pose,target,facing,actor.anim?.kind==='catch'||actor.anim?.kind==='rebound');
+  }
   // Running watches the route; defenders, receivers and shooters look at the play.
   const running=moving&&!actor.anim&&actor.gait!=='slide'&&actor.gait!=='backpedal';
   const view=running?courtView(actor.vx??facing*30,actor.vy??0):courtView(ball.x-actor.x,ball.y-actor.y);
-  const kind=actor.anim?.kind;
-  const gathering=kind&&(['catch','rebound'].includes(kind)||(['jumper','stepback','fadeaway','ft'].includes(kind)&&t<.45)||(['layup','floater'].includes(kind)&&t<.35)||(['dunk','alleyOop'].includes(kind)&&t<.65)||(['chestPass','bouncePass','overheadPass'].includes(kind)&&t<.4));
-  if((carrier||gathering)&&ball.z>11&&Math.abs(ball.y-actor.y)<45){
-    pose=reachBall(pose,target,facing,kind==='catch'||kind==='rebound',view);
-  }
   const poseKey=[pose.body,pose.lE,pose.lH,pose.rE,pose.rH,pose.lK,pose.lF,pose.rK,pose.rF].flat().map(n=>Math.round(n*2)/2).join(',');
   return {pose,view,facing,scale,lift,offsetX,contact:reach,frameId:`${f.id}:${pose.lean??0}:${poseKey}`,speed};
 }
