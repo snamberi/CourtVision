@@ -1,3 +1,4 @@
+import { noteActivityScore } from '../profile/activityScore';
 import { loadRelics, saveRelics, grantReward, grantLuckySpins, earn, INCOME_RATE, type SecretId } from './relics';
 import { noteSeason, markSeasonPaid, SEASON_REWARDS, type SeasonCosmetic } from '../retention/season';
 import { isEvent } from '../retention/weeklyEvent';
@@ -49,6 +50,7 @@ export function rewardRun(key: string, n: number, opts: { secret?: SecretId; why
   const after = grantReward(before, key, { spins, coins, secret: opts.secret, why: opts.why });
   if (after === before) return 0;
   saveRelics(after);
+  noteActivityScore(key, now);
   return after.spins - before.spins;
 }
 

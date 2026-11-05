@@ -5,9 +5,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { PrototypeCard } from '../locker/PrototypeCard';
 import { LuckChip } from '../relics/RelicReward';
 import type { NbaHistory } from '../../history/nbaHistoryData';
-import { cardPool, seasonLabel, RARITY_LABEL } from '../../hunt/cards';
+import { cardPool, seasonLabel } from '../../hunt/cards';
 import { CATEGORIES, categoryLabel, categoryScore, feetInches, type CategoryId, type CategoryValues } from '../../career/categories';
-import { eliteRanks, newWheel, spin, respin, move, take, landed, neighbour, wheelCategories, primeBoost, mustTake, canSpin, isComplete, openWheels, luckyLeft, boostLeft, ultraCheat, ultraOptions, REEL_LENGTH, STAR_BONUS, ELITE_MAX, PRIME_BOOST_POINTS, ULTRA_COST, ULTRA_RATING, ULTRA_CARD, type WheelState, type Wheel, type WheelRelics } from '../../career/wheel';
+import { careerRarity, eliteRanks, rerollLowest, newWheel, spin, respin, move, take, landed, neighbour, wheelCategories, primeBoost, mustTake, canSpin, isComplete, openWheels, luckyLeft, boostLeft, ultraCheat, ultraOptions, REEL_LENGTH, STAR_BONUS, ELITE_MAX, PRIME_BOOST_POINTS, ULTRA_COST, ULTRA_RATING, ULTRA_CARD, type WheelState, type Wheel, type WheelRelics } from '../../career/wheel';
 import {
   READINESS, NORMAL_READINESS, sandboxBuild, setSandbox, primeFromSandbox, categoryPaths, SANDBOX_MIN, SANDBOX_MAX, SANDBOX_HEIGHT, SANDBOX_WEIGHT, type SandboxBuild,
   suggestPosition, primeOverall, projectedPrime, buildPlayer, startProgress, primeFromBuild, capFor, buildSpent, rollPotential, RATING_CATEGORIES, BUILD_MIN, START_AGE, POTENTIAL_REROLLS,
@@ -40,9 +40,9 @@ function Reel({ h, wheel, onSettled }: { h: NbaHistory; wheel: Wheel; onSettled:
   const hit = pool.byId.get(landed(wheel))!;
   useEffect(() => { if (reducedMotion()) onSettled(); }, [onSettled]);
   return <div className={`cv-reel ${wheel.lucky ? 'lucky' : ''}`} aria-label="The wheel">
-    <div className={`cv-reel-marker rarity-${hit.rarity}`} aria-hidden="true" />
+    <div className={`cv-reel-marker rarity-${careerRarity(h, hit.id)}`} aria-hidden="true" />
     <div className="cv-reel-strip" onAnimationEnd={e => { if (e.animationName === 'cv-spin') onSettled(); }} style={{ transform: `translateX(${-(target * SLICE + SLICE / 2)}px)`, ['--from' as string]: `${-(START * SLICE + SLICE / 2)}px` }}>
-      {strip.map((id, i) => { const c = pool.byId.get(id)!; return <div key={i} className={`cv-slice rarity-${c.rarity} ${i === target ? 'on' : ''}`}>
+      {strip.map((id, i) => { const c = pool.byId.get(id)!; return <div key={i} className={`cv-slice rarity-${careerRarity(h, c.id)} ${i === target ? 'on' : ''}`}>
         <PlayerAvatar playerId={c.name} mode="portrait" size={30} primaryColor={teamColors(c.team).primary} secondaryColor={teamColors(c.team).secondary} />
         <span><b>{c.name}</b><small>'{String(c.end).slice(2)} · {c.ovr}</small></span>
       </div>; })}
@@ -57,15 +57,17 @@ function Landed({ h, s, wheel, index, onTake, onBoost }: { h: NbaHistory; s: Whe
   const cats = wheelCategories(h, wheel);
   const elite = eliteRanks(h).get(id);
   const used = s.takenFrom.includes(index);
+  const rolledRarity = careerRarity(h, c.id);
   const star = c.rarity === 'legendary';
   const boost = wheel.boost;
   const raised = (cat: CategoryId) => !!boost && Object.keys(cats[cat]).some(k => boost.raised.includes(k));
   const canBoost = !used && !boost && mustTake(s) && boostLeft(s) > 0;
-  return <div style={playerFinish(c.team)} className={`cv-landed player-finish rarity-${c.rarity} ${used ? 'used' : ''}`}>
-    <RevealSparks key={id} rarity={c.rarity} active={!used} />
+  return <div style={playerFinish(c.team)} className={`cv-landed player-finish rarity-${careerRarity(h, c.id)} ${used ? 'used' : ''}`}>
+    {rolledRarity === 'mythic' && <span className="cv-mythic-label">MYTHIC · ELITE ROLL</span>}
+    <RevealSparks key={id} rarity={rolledRarity} active={!used} />
     {star && !used && <div className="cv-star-burst" aria-hidden="true">STAR!</div>}
     <div className="cv-landed-head"><PlayerAvatar playerId={c.name} primaryColor={teamColors(c.team).primary} secondaryColor={teamColors(c.team).secondary} size={56} pose={star ? 'raise' : 'stand'} />
-      <div><small>{RARITY_LABEL[c.rarity].toUpperCase()} · {c.pos}{star ? ` · +${STAR_BONUS} TO EVERY SKILL` : ''}</small><strong>{c.name}{boost && <span className="cv-boost-badge">{boost.mode === 'prime' ? 'PRIME' : 'SURGE'}</span>}</strong><span>{seasonLabel(c.end)} {c.teamName} · {c.ovr} OVR</span></div></div>
+      <div><small>{careerRarity(h, c.id).toUpperCase()} · {c.pos}{star ? ` · +${STAR_BONUS} TO EVERY SKILL` : ''}</small><strong>{c.name}{boost && <span className="cv-boost-badge">{boost.mode === 'prime' ? 'PRIME' : 'SURGE'}</span>}</strong><span>{seasonLabel(c.end)} {c.teamName} · {c.ovr} OVR</span></div></div>
     {boost
       ? <p className="hint-text">{boost.mode === 'prime' ? `Prime Boost: +${PRIME_BOOST_POINTS} on ${boost.raised.length} ratings.` : `Already at his peak: ${boost.raised.length} skills up 10-20%.`} Height never changes; nothing passes {ELITE_MAX}.</p>
       : !used && <button className="cv-boost-btn" disabled={!canBoost} onClick={onBoost}
@@ -108,7 +110,7 @@ function WheelBoard({ h, s, settled, onTake }: { h: NbaHistory; s: WheelState; s
     <BodyBoard heightIn={heightIn} name="" cells={cells} onSelect={offered ? onTake : undefined} label="Your player's build from the wheel" /></div>;
 }
 
-/** Ultra Cheat (a secret relic): two Lucky Spins for one category of your choice, every rating in it at 125. */
+/** Ultra Cheat (a secret relic): two Lucky Spins for one category of your choice, every rating in it at 130. */
 function UltraCheat({ s, onUse }: { s: WheelState; onUse: (cat: CategoryId) => void }) {
   const open = ultraOptions(s);
   const [cat, setCat] = useState<CategoryId | ''>('');
@@ -146,7 +148,7 @@ export function WheelBuilder({ h, seed, fav, relics, onDone, onBack }: { h: NbaH
       <button disabled={busy || !mustTake(s) || !single || !s.moves.right || !!w0?.boost} onClick={() => setS(move(s, 'right'))} title={w0 && !busy ? `Move to ${pool.byId.get(neighbour(w0, 'right'))?.name}` : ''}>Move right →</button>
     </div>
     <details className="cv-howto"><summary>How the wheel works</summary>
-      <p className="hint-text">Every player in NBA history is on the wheel once, at his best season; the odds lean a little toward good players (Star about 7%, Great about 18%), and among Stars the all-time greats come up most. Take one category from the player it stops on: you get his exact ratings as your player's prime, +{STAR_BONUS} on every skill from a Star. The best ever at a skill go past 99, up to {ELITE_MAX}. Two Lucky Spins (each one always lands on a Star or a Great), Move Left and Move Right once each, two respins, one triple spin (take one category from each of the three), and one free Prime Boost: +{PRIME_BOOST_POINTS} to every rating of the player you landed on (never his height, never past {ELITE_MAX}).</p></details>
+      <p className="hint-text">Every player in NBA history is on the wheel once, at his best season; the odds lean a little toward good players (Star about 7%, Great about 18%), and among Stars the all-time greats come up most. Take one category from the player it stops on: you get his exact ratings as your player's prime, +{STAR_BONUS} on every skill from a Star. The best ever at a skill go past 99, up to {ELITE_MAX}. Two Lucky Spins (70% Legendary and 30% Mythic; every visible slice belongs to one of those tiers), Move Left and Move Right once each, two respins, one triple spin (take one category from each of the three), and one free Prime Boost: +{PRIME_BOOST_POINTS} to every rating of the player you landed on (never his height, never past {ELITE_MAX}).</p></details>
     {s.ultra && !done && <UltraCheat s={s} onUse={cat => setS(ultraCheat(s, cat))} />}
     {s.current?.[0]?.lucky && <p className="cv-lucky-note">LUCKY SPIN · a Star or a Great, guaranteed</p>}
     {s.current ? <div className="cv-wheels">{s.current.map((w, i) => <Reel key={`${s.spinCount}-${i}`} h={h} wheel={w} onSettled={() => settle(s.spinCount)} />)}</div>
@@ -159,6 +161,7 @@ export function WheelBuilder({ h, seed, fav, relics, onDone, onBack }: { h: NbaH
       </div>}
       <WheelBoard h={h} s={s} settled={settled} onTake={cat => setS(take(h, s, 0, cat))} />
     </div>
+    {done && s.cursedDice && <button onClick={() => setS(rerollLowest(h, s))}>Cursed Dice: reroll lowest skill category (free · once)</button>}
     {done && <button className="primary hunt-play" onClick={() => onDone(Object.fromEntries(CATEGORIES.map(c => [c.id, s.picks[c.id]!.values])) as Prime)}>Next: name your player</button>}
     <button className="link-button" onClick={onBack}>Back</button>
   </section>;

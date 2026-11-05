@@ -1,3 +1,4 @@
+import { handlePush, dispatchPush, pushEnv } from '../server/push';
 import { handleSync } from '../server/sync';
 import { handlePvp } from '../server/pvp';
 import { handleBilling, billingEnv } from '../server/billing';
@@ -14,10 +15,12 @@ import { BUILD_ENV, BUILD_INFO } from './buildEnv.generated';
 interface Env { ASSETS: { fetch(request: Request): Promise<Response> }; [name: string]: unknown }
 
 export default {
+  async scheduled(_event: unknown, env: Env) { const vars = { ...BUILD_ENV, ...Object.fromEntries(Object.entries(env).filter((e): e is [string,string] => typeof e[1] === 'string')) }; await dispatchPush(supaEnv(vars), pushEnv(vars)); },
   async fetch(request: Request, env: Env): Promise<Response> {
     const { pathname } = new URL(request.url);
     const vars = { ...BUILD_ENV, ...Object.fromEntries(Object.entries(env).filter((e): e is [string, string] => typeof e[1] === 'string' && e[1].trim() !== '')) };
     const method = request.method;
+    if (pathname === '/api/push') return handlePush(request, supaEnv(vars), pushEnv(vars));
     if (pathname === '/api/sync' && (method === 'POST' || method === 'DELETE')) return handleSync(request, supaEnv(vars));
     if (pathname === '/api/pvp' && method === 'POST') return handlePvp(request, supaEnv(vars));
     if (pathname === '/api/billing' && method === 'POST') return handleBilling(request, supaEnv(vars), billingEnv(vars));

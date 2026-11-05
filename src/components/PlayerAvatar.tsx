@@ -1,3 +1,5 @@
+import type { PlayerSeason } from '../simulation/types';
+import { PlayerStatSummary } from './qol/PlayerStatSummary';
 import { useTeamIdentity, usePlayerLook } from '../visuals/TeamIdentityContext';
 import type { Appearance } from '../visuals/playerSprite';
 import { memo, useMemo } from 'react';
@@ -64,6 +66,7 @@ export const PlayerAvatar = memo(function PlayerAvatar({
 });
 
 interface PlayerNameTagProps {
+  season?: PlayerSeason;
   playerId: string;
   teamId?: string | null;
   jerseyNumber?: number | null;
@@ -75,11 +78,11 @@ interface PlayerNameTagProps {
 }
 
 /** The common "small portrait avatar + name" pairing used in list rows throughout the app — tables, checkboxes, compare cards, wherever a player's name shows up. Deliberately omits heightInches-based scaling by default (a fixed-size icon reads better in a dense table row) unless explicitly passed. */
-export function PlayerNameTag({ playerId, teamId, jerseyNumber, heightInches, name, size = 26, className }: PlayerNameTagProps) {
+export function PlayerNameTag({ season, playerId, teamId, jerseyNumber, heightInches, name, size = 26, className }: PlayerNameTagProps) {
   return (
     <span className={className ? `player-name-with-avatar ${className}` : 'player-name-with-avatar'}>
       <PlayerAvatar playerId={playerId} teamId={teamId} jerseyNumber={jerseyNumber} heightInches={heightInches} mode="portrait" size={size} />
-      <span>{name ?? playerId}</span>
+      <span>{name ?? playerId}{season && <PlayerStatSummary player={season} />}</span>
     </span>
   );
 }

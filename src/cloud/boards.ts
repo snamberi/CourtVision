@@ -11,6 +11,7 @@ export interface BoardResult { rows: BoardRow[]; total: number; you: { rank: num
 
 export type BoardSpec =
   | { kind: 'gms' }
+  | { kind: 'trophies' | 'hunt' | 'perfect' }
   | { kind: 'players'; week?: string | null }
   | { kind: 'weekly'; board: 'rebuild' | 'career' | 'hunt' | 'perfect' | 'category' | 'guess' | 'hilo' | 'bracket'; week: string }
   | { kind: 'daily'; day: string }
@@ -30,6 +31,9 @@ const playDetail = (s: { playSeconds?: number; playTop?: string } | null) => {
 
 function query(spec: BoardSpec): Q {
   switch (spec.kind) {
+    case 'trophies': return { view: 'lb_progress', score: 'trophies', filters: [], detail: r => `${r.trophies} trophies · LV ${r.level}` };
+    case 'hunt': return { view: 'lb_progress', score: 'hunt_wins', filters: [], detail: r => `${plural(r.hunt_wins, 'hunt')} won` };
+    case 'perfect': return { view: 'lb_progress', score: 'perfect_titles', filters: [], detail: r => `${plural(r.perfect_titles, 'title')} · ${r.perfect98} perfect 98-0 runs` };
     case 'gms': return { view: 'lb_gms', score: 'xp', filters: [], detail: r => `LV ${r.level} · ${(r.stats as { summary?: string })?.summary ?? ''}` };
     case 'players': return { view: 'lb_players', score: 'legacy', filters: spec.week ? [['weekly', spec.week]] : [],
       detail: r => `${r.name} · ${plural(r.seasons, 'season')} · ${r.ppg}/${r.rpg}/${r.apg} · ${plural(r.titles, 'title')} · ${plural(r.mvps, 'MVP')}${r.hall_of_fame !== 'no' ? ' · HOF' : ''}` };
@@ -43,7 +47,7 @@ function query(spec: BoardSpec): Q {
     case 'friends': return { view: 'lb_gms', score: 'xp', filters: [], detail: r => `LV ${r.level} · ${(r.stats as { summary?: string })?.summary ?? ''}` };
   }
 }
-const idColumn = (view: string) => (view === 'lb_users' || view === 'lb_gms' ? 'id' : 'user_id');
+const idColumn = (view: string) => (view === 'lb_users' || view === 'lb_gms' || view === 'lb_progress' ? 'id' : 'user_id');
 
 export async function loadBoard(spec: BoardSpec, limit = 100): Promise<BoardResult> {
   const client = await supa();
@@ -57,7 +61,7 @@ export async function loadBoard(spec: BoardSpec, limit = 100): Promise<BoardResu
     const { data: f } = await client.from('follows').select('target_id').eq('user_id', me);
     sel = sel.in('id', [me, ...((f ?? []) as { target_id: string }[]).map(x => x.target_id)]);
   }
-  const { data, count, error } = await sel.order(q.score, { ascending: false }).limit(limit);
+  const { data, count, error } = await sel.order(q.score, { ascending: false }).order(idCol, { ascending: true }).limit(limit);
   if (error) throw new Error(error.message);
   const rows = ((data ?? []) as Record<string, unknown>[]).map((r, i) => ({
     rank: i + 1, userId: String(r[idCol]), username: String(r.username ?? ''), title: r.title as string | undefined, icon: r.icon as string | undefined, color: r.color as string | undefined, avatar: r.avatar as string | undefined, score: Number(r[q.score]), detail: q.detail(r), you: r[idCol] === me, extra: r,
@@ -74,7 +78,7 @@ export async function loadBoard(spec: BoardSpec, limit = 100): Promise<BoardResu
       if (score != null) {
         let above = client.from(q.view).select('*', { count: 'exact', head: true });
         for (const [col, v] of q.filters) above = above.eq(col, v);
-        const { count: c } = await above.gt(q.score, score);
+        const { count: c } = await above.or(`${q.score}.gt.${score},and(${q.score}.eq.${score},${idCol}.lt.${me})`);
         you = { rank: (c ?? 0) + 1, score };
       }
     }
@@ -151,6 +155,7 @@ export async function friendActivity(limit = 20): Promise<ActivityItem[]> {
     client.from('lb_weekly').select('*').in('user_id', ids).order('updated_at', { ascending: false }).limit(limit),
     client.from('lb_daily').select('*').in('user_id', ids).order('day', { ascending: false }).limit(limit),
   ]);
+  if (weekly.error || daily.error) throw new Error('Could not load friend activity.');
   const items: ActivityItem[] = [];
   for (const r of (weekly.data ?? []) as Record<string, unknown>[]) items.push({ at: String(r.updated_at ?? ''), username: String(r.username ?? ''), icon: r.icon as string | undefined, color: r.color as string | undefined,
     text: `scored ${Number(r.score).toLocaleString()} on ${BOARD_NAME[String(r.board)] ?? String(r.board)}${r.detail ? ` (${String(r.detail).slice(0, 60)})` : ''}` });

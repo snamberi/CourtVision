@@ -1,3 +1,8 @@
+import { applyDeliveries, cleanDeliveries, type Delivery } from './deliveries';
+import { annualEventBalance } from '../retention/holiday';
+import { GEM_COSMETICS } from './gemShop';
+import { RELEASE_SECRETS, type ReleaseSecretId } from './releaseSecrets';
+import { activeRun, type HolidayId } from '../retention/holiday';
 import { localRead, type Read } from '../lib/kv';
 import { SECRET_COSMETIC_CHANCE, SECRET_COSMETIC_KEYS } from './secretCosmetics';
 import { isEvent } from '../retention/weeklyEvent';
@@ -22,14 +27,15 @@ import { isEvent } from '../retention/weeklyEvent';
 export type RelicRarity = 'common' | 'rare' | 'epic' | 'legendary' | 'mythic';
 export const RARITY_ORDER: RelicRarity[] = ['common', 'rare', 'epic', 'legendary', 'mythic'];
 export const RELIC_RARITY: Record<RelicRarity, { name: string; odds: number; luck: number; coins: number }> = {
-  common: { name: 'Common', odds: 0.5487, luck: 1, coins: 43 },
+  common: { name: 'Common', odds: 0.5497, luck: 1, coins: 43 },
   rare: { name: 'Rare', odds: 0.28, luck: 2, coins: 85 },
   epic: { name: 'Epic', odds: 0.1243, luck: 3, coins: 213 },
   legendary: { name: 'Legendary', odds: 0.045, luck: 4, coins: 510 },
-  mythic: { name: 'Mythic', odds: 0.002, luck: 5, coins: 2550 },
+  mythic: { name: 'Mythic', odds: 0.001, luck: 6.25, coins: 2550 },
 };
 /** Every relic's luck is scaled by this (a 20% nerf on the table above, stacking relics included). */
-export const RELIC_LUCK_SCALE = 0.8;
+export const RELIC_LUCK_SCALE = 0.68;
+export const MYTHIC_LUCK_SCALE = 0.8;
 /** Coins earned from runs, duplicates and the daily visit are this share of what they were (pets can cut prices). */
 export const INCOME_RATE = 0.85;
 
@@ -100,6 +106,16 @@ export const RELICS: Relic[] = [
   { id: 'lastWhiteboard', name: 'Last-Shot Whiteboard', rarity: 'legendary', blurb: 'The X\'s and O\'s of a miracle.', icon: 'chart' },
   { id: 'hofJacket', name: 'Hall of Fame Jacket', rarity: 'legendary', blurb: 'Orange, and earned.', icon: 'jersey', stack: true },
   // Mythics
+  { id: 'dynastyLedger', name: 'Dynasty Ledger', rarity: 'mythic', blurb: 'A keepsake from basketball’s greatest nights.', icon: 'crown' },
+  { id: 'immortalJersey', name: 'Immortal Jersey', rarity: 'mythic', blurb: 'A keepsake from basketball’s greatest nights.', icon: 'crown' },
+  { id: 'celestialCourt', name: 'Celestial Court', rarity: 'mythic', blurb: 'A keepsake from basketball’s greatest nights.', icon: 'crown' },
+  { id: 'foundersRing', name: 'Founder’s Ring', rarity: 'mythic', blurb: 'A keepsake from basketball’s greatest nights.', icon: 'crown' },
+  { id: 'eternalScoreboard', name: 'Eternal Scoreboard', rarity: 'mythic', blurb: 'A keepsake from basketball’s greatest nights.', icon: 'crown' },
+  { id: 'platinumWhistle', name: 'Platinum Whistle', rarity: 'mythic', blurb: 'A keepsake from basketball’s greatest nights.', icon: 'crown' },
+  { id: 'championsCompass', name: 'Champion’s Compass', rarity: 'mythic', blurb: 'A keepsake from basketball’s greatest nights.', icon: 'crown' },
+  { id: 'legacyCrown', name: 'Legacy Crown', rarity: 'mythic', blurb: 'A keepsake from basketball’s greatest nights.', icon: 'crown' },
+  { id: 'infinitePlaybook', name: 'Infinite Playbook', rarity: 'mythic', blurb: 'A keepsake from basketball’s greatest nights.', icon: 'crown' },
+  { id: 'auroraBall', name: 'Aurora Ball', rarity: 'mythic', blurb: 'A keepsake from basketball’s greatest nights.', icon: 'crown' },
   { id: 'goldenNet', name: 'The Golden Net', rarity: 'mythic', blurb: 'Every shot through it went in.', icon: 'court' },
   { id: 'firstJumpBall', name: 'The First Jump Ball', rarity: 'mythic', blurb: 'Tossed up before there was a league.', icon: 'up' },
   { id: 'gavel', name: 'The Commissioner\'s Gavel', rarity: 'mythic', blurb: 'It decides everything.', icon: 'settings' },
@@ -108,9 +124,10 @@ export const RELIC_BY_ID = new Map(RELICS.map(r => [r.id, r]));
 
 /** Secret relics: each one is a permanent ability. */
 export type SecretId = 'eternalSpin' | 'secondWind' | 'goldenTouch' | 'ironWill' | 'extraPick' | 'clutchGene' | 'ownersFavorite' | 'lastLook'
-  | 'luckyCharm' | 'sixthSense' | 'filmRoom' | 'phoneTree' | 'ultraCheat';
-export interface SecretRelic { id: SecretId; name: string; mode: string; ability: string; /** Shown while it's still hidden. */ hint: string; /** A feat that uncovers it (besides luck). */ feat?: string; /** Only its feat uncovers it (never a spin). */ earnedOnly?: true }
+  | 'luckyCharm' | 'sixthSense' | 'filmRoom' | 'phoneTree' | 'ultraCheat' | ReleaseSecretId;
+export interface SecretRelic { event?: HolidayId; id: SecretId; name: string; mode: string; ability: string; /** Shown while it's still hidden. */ hint: string; /** A feat that uncovers it (besides luck). */ feat?: string; /** Only its feat uncovers it (never a spin). */ earnedOnly?: true }
 export const SECRET_RELICS: SecretRelic[] = [
+  ...RELEASE_SECRETS,
   { id: 'eternalSpin', name: 'The Eternal Spin', mode: 'Career Mode', ability: 'Always +1 respin on the Career wheel.', hint: 'Voted in on the first ballot, the wheel turns once more.', feat: 'Retire a first-ballot Hall of Famer in Career Mode.' },
   { id: 'secondWind', name: 'Second Wind', mode: 'League Hunt', ability: 'Start every hunt with one extra life.', hint: 'Survive the hardest road and you breathe twice.', feat: 'Win a League Hunt on Legend.' },
   { id: 'goldenTouch', name: 'Golden Touch', mode: 'League Hunt', ability: 'Start every hunt with 30 extra coins.', hint: 'Only luck finds the hand that turns leather to gold.' },
@@ -123,7 +140,7 @@ export const SECRET_RELICS: SecretRelic[] = [
   { id: 'sixthSense', name: 'Sixth Sense', mode: 'Categorize', ability: 'One extra mistake on Endless boards.', hint: 'See every group without a single wrong guess.', feat: 'Solve a Categorize board with no mistakes.' },
   { id: 'filmRoom', name: 'The Film Room', mode: 'Guess the Team', ability: 'One extra guess on every team.', hint: 'Ten teams in a row and the tapes start talking.', feat: 'Name 10 teams in a row in Guess the Team.' },
   { id: 'phoneTree', name: 'The Phone Tree', mode: 'Franchise', ability: 'Seek trade brings in 4 more offers.', hint: 'Luck alone gets every GM to pick up.' },
-  { id: 'ultraCheat', name: 'Ultra Cheat', mode: 'Career Mode', ability: 'Spend 2 Lucky Spins on the Career wheel for one category of your choice rated 125.', hint: 'Own every relic in the vault and the last door opens.', feat: 'Own every relic in the vault.', earnedOnly: true },
+  { id: 'ultraCheat', name: 'Ultra Cheat', mode: 'Career Mode', ability: 'Spend 2 Lucky Spins on the Career wheel for one category of your choice rated 130.', hint: 'Own every relic in the vault and the last door opens.', feat: 'Own every relic in the vault.', earnedOnly: true },
 ];
 /** Every relic in the vault owned (the key to Ultra Cheat). */
 export const ownsEveryRelic = (s: Pick<RelicState, 'owned'>) => RELICS.every(r => (s.owned[r.id] ?? 0) > 0);
@@ -135,7 +152,15 @@ export const SECRET_CHANCE = 0.0007;
 
 export interface SpinResult { kind: 'relic' | 'secret'; id: string; rarity: RelicRarity | 'secret'; duplicate: boolean; coins: number; /** A stacking relic: copies now held (capped at STACK_MAX). */ stack?: number; /** From a Lucky Spin. */ lucky?: boolean; /** A secret cosmetic this spin also dropped (secretCosmetics.ts). */ cosmetic?: string }
 export interface RelicState {
+  deliveries?: Record<string, Delivery>;
   v: 1;
+  gems?: number;
+  adRewards?: number[];
+  gemLedger?: Record<string, number>;
+  mastery?: string[];
+  chestDay?: string;
+  eventKeys?: Record<string, number>;
+  eventKeysUsed?: Record<string, number>;
   spins: number;
   coins: number;
   /** Relic id -> how many times you've landed it. */
@@ -186,13 +211,15 @@ export const RELICS_EVENT = 'cv-relics-changed';
 export const RELICS_FOCUS_KEY = 'cv-relics-focus';
 /** The day the vault (and its daily shop) was last opened: the phone's Shop dot. */
 export const SHOP_SEEN_KEY = 'cv-shop-seen';
+const keyCounter = (n: unknown): number => typeof n === 'number' && Number.isSafeInteger(n) && n >= 0 ? n : 0;
+const keyCounters = (v: unknown): Record<string, number> => Object.fromEntries(Object.entries(v && typeof v === 'object' && !Array.isArray(v) ? v : {}).map(([k, n]) => [k, keyCounter(n)]));
 const empty = (): RelicState => ({ v: 1, spins: 0, coins: 0, owned: {}, secrets: [], granted: [], history: [], upgraded: [], equipped: [], slotsBought: 0, pity: { epic: 0, legendary: 0, mythic: 0, lucky: 0 }, opens: 0, ledger: [], rewards: [] });
 
 export function loadRelics(read: Read = localRead): RelicState {
   try {
     const r = JSON.parse(read(RELICS_KEY) ?? 'null') as RelicState | null;
     if (r && r.v === 1) {
-      const base: RelicState = { ...empty(), ...r, owned: r.owned ?? {}, secrets: (r.secrets ?? []).filter(s => SECRET_BY_ID.has(s)), granted: r.granted ?? [], history: r.history ?? [],
+      const base: RelicState = { ...empty(), ...r, deliveries: cleanDeliveries(r.deliveries), adRewards: cleanAdRewards(r.adRewards), gems: gemBalance(r), gemLedger: gemEntries(r), mastery: Array.isArray(r.mastery) ? r.mastery.filter(id => RELIC_BY_ID.get(id)?.rarity === 'mythic') : [], eventKeys: keyCounters(r.eventKeys), eventKeysUsed: keyCounters(r.eventKeysUsed), owned: r.owned ?? {}, secrets: (r.secrets ?? []).filter(s => SECRET_BY_ID.has(s)), granted: r.granted ?? [], history: r.history ?? [],
         upgraded: (r.upgraded ?? []).filter(id => RELIC_BY_ID.has(id)), pity: { ...empty().pity, ...r.pity }, ledger: r.ledger ?? [], rewards: r.rewards ?? [], slotsBought: Math.max(0, Math.min(EXTRA_SLOTS, r.slotsBought ?? 0)), opens: r.opens ?? 0, equipped: [], fused: Object.fromEntries(Object.entries(r.fused ?? {}).filter(([id, n]) => RELIC_BY_ID.has(id) && Number.isInteger(n) && n > 0)), luckySpins: Math.max(0, Math.floor(Number(r.luckySpins) || 0)) };
       // Saves from before slots: the best relics you own go in.
       return withEarnedSecrets({ ...base, equipped: Array.isArray(r.equipped) ? r.equipped.filter(id => (base.owned[id] ?? 0) > 0 && RELIC_BY_ID.has(id)).slice(0, slotCount(base)) : autoEquip(base) });
@@ -206,26 +233,29 @@ export function saveRelics(s: RelicState): void {
 }
 
 /** Luck from one relic: its rarity's luck (+50% upgraded), or a little a copy for a stacking relic; `power` is 2 with the 15th slot. */
-export function relicLuck(relic: Relic, count: number, upgraded = false, power = 1): number {
+export function relicLuck(relic: Relic, count: number, upgraded: boolean | number = false, power = 1): number {
   if (count <= 0) return 0;
-  const raw = relic.stack ? Math.min(count, STACK_MAX) * STACK_LUCK : RELIC_RARITY[relic.rarity].luck * (upgraded ? 1.5 : 1);
-  return Math.round(raw * RELIC_LUCK_SCALE * power * 100) / 100;
+  const raw = relic.stack ? Math.min(count, STACK_MAX) * STACK_LUCK : RELIC_RARITY[relic.rarity].luck * (1 + Math.min(2, Number(upgraded)) * 0.5);
+  return Math.round(raw * (relic.rarity === 'mythic' ? MYTHIC_LUCK_SCALE : RELIC_LUCK_SCALE) * power * 100) / 100;
 }
 /* ---- Slots: only the relics in your slots add luck. Ten to start, five more to buy. ---- */
 
 export const BASE_SLOTS = 10;
 export const EXTRA_SLOTS = 5;
-/** Prices of the 11th to 15th slots. The 15th is the big one: it doubles every relic's power. */
+/** Prices of the 11th to 15th slots. The 15th is the big one: it doubles only the relic in slot 15. */
 export const SLOT_PRICES = [1000, 2000, 3500, 5000, 2_500_000];
 export const MAX_SLOTS = BASE_SLOTS + EXTRA_SLOTS;
 export const slotCount = (s: Pick<RelicState, 'slotsBought'>) => BASE_SLOTS + Math.max(0, Math.min(EXTRA_SLOTS, s.slotsBought ?? 0));
-/** 2 once the 15th slot is bought: every relic gives twice the luck. */
-export const relicPower = (s: { slotsBought?: number }) => (slotCount({ slotsBought: s.slotsBought ?? 0 }) >= MAX_SLOTS ? 2 : 1);
-type LuckView = Pick<RelicState, 'owned'> & { upgraded?: string[]; equipped?: string[]; slotsBought?: number };
-const luckOf = (s: LuckView, id: string) => { const r = RELIC_BY_ID.get(id); return r ? relicLuck(r, s.owned[id] ?? 0, (s.upgraded ?? []).includes(id), relicPower(s)) : 0; };
+/** 2 once the 15th slot is bought: only the relic equipped in slot 15 gives twice the luck. */
+export const relicPower = (s: { slotsBought?: number; equipped?: string[] }, id?: string) => (id && slotCount({ slotsBought: s.slotsBought ?? 0 }) >= MAX_SLOTS && s.equipped?.[14] === id ? 2 : 1);
+type LuckView = Pick<RelicState, 'owned'> & { upgraded?: string[]; mastery?: string[]; equipped?: string[]; slotsBought?: number };
+const luckOf = (s: LuckView, id: string) => { const r = RELIC_BY_ID.get(id); return r ? relicLuck(r, s.owned[id] ?? 0, upgradeLevel(s, id), relicPower(s, id)) : 0; };
 /** The best relics you own, as many as fit. */
 export function autoEquip(s: LuckView): string[] {
-  return Object.keys(s.owned).filter(id => (s.owned[id] ?? 0) > 0 && RELIC_BY_ID.has(id)).sort((a, b) => luckOf(s, b) - luckOf(s, a)).slice(0, slotCount({ slotsBought: s.slotsBought ?? 0 }));
+  const base = { ...s, equipped: [] };
+  const ids = Object.keys(s.owned).filter(id => (s.owned[id] ?? 0) > 0 && RELIC_BY_ID.has(id)).sort((a, b) => luckOf(base, b) - luckOf(base, a)).slice(0, slotCount({ slotsBought: s.slotsBought ?? 0 }));
+  if (ids.length === MAX_SLOTS) [ids[0], ids[14]] = [ids[14], ids[0]];
+  return ids;
 }
 export function buySlot(state: RelicState): RelicState | null {
   if (state.slotsBought >= EXTRA_SLOTS) return null;
@@ -263,7 +293,7 @@ export const setBonus = (s: Pick<RelicState, 'owned'>) => RELIC_SETS.reduce((n, 
 export function luckPercent(s: LuckView): number {
   const active = s.equipped ?? autoEquip(s);
   const total = active.reduce((n, id) => n + luckOf(s, id), 0) + setBonus(s);
-  return Math.round(total * 10) / 10;
+  return Math.round(total * 100) / 100;
 }
 /** Can another copy of this relic still add luck? */
 export const canGain = (s: Pick<RelicState, 'owned'>, r: Relic) => (s.owned[r.id] ?? 0) < (r.stack ? STACK_MAX : 1);
@@ -280,14 +310,15 @@ export function relicOfWeek(now = new Date()): Relic {
 /** The extra luck this week's relic gives you (0 unless it's in a slot). */
 export function weeklyLuck(s: LuckView, now = new Date()): number {
   const r = relicOfWeek(now), active = s.equipped ?? autoEquip(s);
-  return active.includes(r.id) ? Math.round(luckOf(s, r.id) * WEEKLY_BOOST * 10) / 10 : 0;
+  return active.includes(r.id) ? Math.round(luckOf(s, r.id) * WEEKLY_BOOST * 100) / 100 : 0;
 }
 /** All your luck: the relics, sets and this week's relic (no cap). */
-export const totalLuck = (s: LuckView, now = new Date()) => Math.round((luckPercent(s) + weeklyLuck(s, now)) * 10) / 10;
+export const totalLuck = (s: LuckView, now = new Date()) => Math.round((luckPercent(s) + weeklyLuck(s, now)) * 100) / 100;
 
 /* ---- Fusing: five spare copies of one rarity make a relic of the next rarity up. ---- */
 
 export const FUSE_COST = 5;
+export const fuseCost = (rarity: RelicRarity) => rarity === 'legendary' ? 25 : FUSE_COST;
 /** Spare copies (beyond the first) of the non-stacking relics of a rarity that haven't been fused yet. */
 export function spareCopies(s: Pick<RelicState, 'owned' | 'fused'>, rarity: RelicRarity): number {
   return RELICS.filter(r => r.rarity === rarity && !r.stack).reduce((n, r) => n + Math.max(0, (s.owned[r.id] ?? 0) - 1 - (s.fused?.[r.id] ?? 0)), 0);
@@ -295,10 +326,10 @@ export function spareCopies(s: Pick<RelicState, 'owned' | 'fused'>, rarity: Reli
 /** Fuses five spare copies of a rarity into a relic one rarity higher (one you don't have yet, when there is one). */
 export function fuseDuplicates(state: RelicState, rarity: RelicRarity, rand: () => number = Math.random): { state: RelicState; result: SpinResult } | null {
   const up = RARITY_ORDER[RARITY_ORDER.indexOf(rarity) + 1];
-  if (!up || spareCopies(state, rarity) < FUSE_COST) return null;
+  if (!up || spareCopies(state, rarity) < fuseCost(rarity)) return null;
   // Use up spares from the relics with the most copies first.
   const fused = { ...(state.fused ?? {}) };
-  let left = FUSE_COST;
+  let left = fuseCost(rarity);
   for (const r of RELICS.filter(x => x.rarity === rarity && !x.stack).sort((a, b) => (state.owned[b.id] ?? 0) - (state.owned[a.id] ?? 0))) {
     const spare = Math.max(0, (state.owned[r.id] ?? 0) - 1 - (fused[r.id] ?? 0)), take = Math.min(spare, left);
     if (take > 0) { fused[r.id] = (fused[r.id] ?? 0) + take; left -= take; }
@@ -346,7 +377,7 @@ export const rewardOf = (s: RelicState, key: string) => s.rewards.find(r => r.ke
 
 /** A Lucky Spin's odds: no Commons, and Epic, Legendary and Mythic twice as likely (then scaled to 100%). */
 export const LUCKY_ODDS: Record<RelicRarity, number> = (() => {
-  const raw = { common: 0, rare: RELIC_RARITY.rare.odds, epic: RELIC_RARITY.epic.odds * 2, legendary: RELIC_RARITY.legendary.odds * 2, mythic: RELIC_RARITY.mythic.odds * 2 };
+  const raw = { common: 0, rare: RELIC_RARITY.rare.odds, epic: RELIC_RARITY.epic.odds * 1.5, legendary: RELIC_RARITY.legendary.odds * 1.5, mythic: RELIC_RARITY.mythic.odds * 1.5 };
   const sum = Object.values(raw).reduce((a, b) => a + b, 0);
   return Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, v / sum])) as Record<RelicRarity, number>;
 })();
@@ -361,7 +392,20 @@ export function rarityFor(roll: number, lucky = false): RelicRarity {
 /* ---- Coins ---- */
 
 const LEDGER_MAX = 40;
-export const earn = (s: RelicState, amount: number, why: string): RelicState => (amount <= 0 ? s : { ...s, coins: s.coins + amount, ledger: [...s.ledger, { at: Date.now(), amount, why }].slice(-LEDGER_MAX) });
+/** Equipped relics add coin income once each, independent of spare-copy count. */
+export function relicCoinBoost(s: RelicState): number {
+  return [...new Set(s.equipped)].reduce((sum, id) => {
+    const r = RELIC_BY_ID.get(id);
+    if (!r || !(s.owned[id] > 0)) return sum;
+    const base = r.rarity === 'mythic' ? 6.25 : RARITY_ORDER.indexOf(r.rarity) + 1;
+    return sum + base * (1 + upgradeLevel(s, id) * 0.5) * relicPower(s, id);
+  }, 0);
+}
+export const earn = (s: RelicState, amount: number, why: string): RelicState => {
+  if (!Number.isFinite(amount) || amount <= 0) return s;
+  const paid = Math.round(amount * (1 + relicCoinBoost(s) / 100));
+  return { ...s, coins: s.coins + paid, ledger: [...s.ledger, { at: Date.now(), amount: paid, why }].slice(-LEDGER_MAX) };
+};
 const spend = (s: RelicState, amount: number, why: string): RelicState => ({ ...s, coins: s.coins - amount, ledger: [...s.ledger, { at: Date.now(), amount: -amount, why }].slice(-LEDGER_MAX) });
 export const DAILY_COINS = Math.round(25 * INCOME_RATE);
 /** The daily coins, once a day. */
@@ -373,7 +417,7 @@ export function collectDailyCoins(state: RelicState, day = new Date().toISOStrin
 /* ---- Pity: unlucky streaks end. ---- */
 
 /** A spin that hasn't landed this rarity (or better) in this many spins lands it. */
-export const PITY: { epic: number; legendary: number; mythic: number } = { epic: 10, legendary: 50, mythic: 200 };
+export const PITY: { epic: number; legendary: number; mythic: number } = { epic: 10, legendary: 50, mythic: 500 };
 /** Every this-many-th Lucky Spin lands Legendary or better. */
 export const LUCKY_PITY = 10;
 /** The one-time hidden guarantee: the 50th spin you ever open uncovers a secret relic. Not shown anywhere. */
@@ -409,18 +453,18 @@ export function spinRelic(state: RelicState, rand: () => number = Math.random, n
   return openSpin({ ...state, spins: state.spins - 1 }, rand, false, now);
 }
 
-function roll(state: RelicState, rand: () => number, lucky: boolean): { state: RelicState; result: SpinResult } {
-  const lockedSecrets = SECRET_RELICS.filter(r => !r.earnedOnly && !state.secrets.includes(r.id));
+function roll(state: RelicState, rand: () => number, lucky: boolean, event?: HolidayId, ultra = false): { state: RelicState; result: SpinResult } {
+  const lockedSecrets = SECRET_RELICS.filter(r => !r.earnedOnly && (event ? r.event === event : !r.event) && !state.secrets.includes(r.id));
   const opens = state.opens + 1;
   const secretPity = !state.secretPityDone && opens >= SECRET_PITY_AT && lockedSecrets.length > 0;
   let result: SpinResult;
   let next: RelicState = { ...state, opens, ...(secretPity ? { secretPityDone: true } : {}) };
-  if (lockedSecrets.length && (secretPity || rand() < SECRET_CHANCE * (lucky ? 2 : 1))) {
+  if (lockedSecrets.length && (secretPity || rand() < (ultra ? 0.01 : SECRET_CHANCE * (event ? 2 : lucky ? 1.5 : 1)))) {
     const sec = lockedSecrets[Math.floor(rand() * lockedSecrets.length)] ?? lockedSecrets[0];
     result = { kind: 'secret', id: sec.id, rarity: 'secret', duplicate: false, coins: 0 };
     next = { ...next, secrets: [...next.secrets, sec.id], pity: nextPity(next.pity, null, lucky) };
   } else {
-    const rarity = withPity(state, rarityFor(rand(), lucky), lucky);
+    const rarity = withPity(state, (ultra ? ultraRarity(rand()) : rarityFor(event ? rand() / 2 : rand(), lucky)), lucky);
     const pool = RELICS.filter(r => r.rarity === rarity);
     const relic = pool[Math.floor(rand() * pool.length)] ?? pool[0];
     const duplicate = !canGain(state, relic);
@@ -432,7 +476,7 @@ function roll(state: RelicState, rand: () => number, lucky: boolean): { state: R
   if (lucky) result = { ...result, lucky: true };
   // Any spin can also drop a secret cosmetic (a separate draw, after the relic).
   const lockedLooks = SECRET_COSMETIC_KEYS.filter(k => !(next.cosmetics ?? []).includes(k));
-  if (lockedLooks.length && rand() < SECRET_COSMETIC_CHANCE * (lucky ? 2 : 1) * (isEvent('secretWeek') ? 3 : 1)) {
+  if (lockedLooks.length && rand() < SECRET_COSMETIC_CHANCE * (event || lucky ? 2 : 1) * (isEvent('secretWeek') ? 3 : 1)) {
     const key = lockedLooks[Math.floor(rand() * lockedLooks.length)] ?? lockedLooks[0];
     result = { ...result, cosmetic: key };
     next = { ...next, cosmetics: [...(next.cosmetics ?? []), key] };
@@ -451,7 +495,7 @@ export function spinMany(state: RelicState, n: number, rand: () => number = Math
 /* ---- The shop: coins buy spins, Lucky Spins, the daily relics and upgrades. ---- */
 
 export const SPIN_PRICE = 200;
-export const LUCKY_SPIN_PRICE = 500;
+export const LUCKY_SPIN_PRICE = 1000;
 /** Daily-shop prices, Common first and rising with rarity. */
 export const RELIC_PRICE: Record<RelicRarity, number> = { common: 750, rare: 1500, epic: 3000, legendary: 6000, mythic: 12000 };
 /** Upgrading a relic that doesn't stack: +50% of its luck. */
@@ -540,13 +584,16 @@ export const toggleWish = (state: RelicState, key: string): RelicState =>
 /** Starred cosmetics on offer today that you don't own yet. */
 export const wishedToday = (state: RelicState): string[] => (state.cosmeticShop?.offers ?? []).filter(k => (state.wishlist ?? []).includes(k) && !(state.cosmetics ?? []).includes(k));
 
-export const canUpgrade = (state: RelicState, relic: Relic) => !relic.stack && (state.owned[relic.id] ?? 0) > 0 && !state.upgraded.includes(relic.id);
+export const upgradeLevel = (s: { upgraded?: string[]; mastery?: string[] }, id: string) => s.mastery?.includes(id) ? 2 : s.upgraded?.includes(id) ? 1 : 0;
+export const upgradeCost = (s: RelicState, r: Relic, discount = 0) => upgradeLevel(s, r.id) === 1 && r.rarity === 'mythic' ? { coins: 100_000, gems: 50 } : { coins: discounted(UPGRADE_PRICE[r.rarity], discount), gems: 0 };
+export const canUpgrade = (state: RelicState, relic: Relic) => !relic.stack && (state.owned[relic.id] ?? 0) > 0 && upgradeLevel(state, relic.id) < (relic.rarity === 'mythic' ? 2 : 1);
 /** Upgrades a relic you own that doesn't stack: +50% luck. */
 export function upgradeRelic(state: RelicState, id: string, discount = 0): RelicState | null {
   const relic = RELIC_BY_ID.get(id);
-  const price = relic ? discounted(UPGRADE_PRICE[relic.rarity], discount) : 0;
-  if (!relic || !canUpgrade(state, relic) || state.coins < price) return null;
-  return { ...spend(state, price, `Upgrade ${relic.name}`), upgraded: [...state.upgraded, id] };
+  if (!relic || !canUpgrade(state, relic)) return null;
+  const cost = upgradeCost(state, relic, discount);
+  if (state.coins < cost.coins || (state.gems ?? 0) < cost.gems) return null;
+  return { ...changeGems(spend(state, cost.coins, `Upgrade ${relic.name}`), -cost.gems), upgraded: [...new Set([...state.upgraded, id])], mastery: upgradeLevel(state, id) === 1 ? [...new Set([...(state.mastery ?? []), id])] : state.mastery };
 }
 /** Spends coins on something outside the vault (a pet's second ability). Null when there aren't enough. */
 export function spendCoins(state: RelicState, price: number, why: string): RelicState | null {
@@ -560,13 +607,18 @@ export function spendCoins(state: RelicState, price: number, why: string): Relic
  */
 const mergeMax = (a: Record<string, number> = {}, b: Record<string, number> = {}) => { const out = { ...b }; for (const [k, v] of Object.entries(a)) out[k] = Math.max(v, out[k] ?? 0); return out; };
 export function mergeRelics(a: RelicState, b: RelicState): RelicState {
+  // Bring both snapshots up to the same receipt set before choosing balances/merging inventory.
+  // Otherwise a stale snapshot with more unrelated activity could silently erase a collected gift.
+  const deliveries = Object.values({ ...cleanDeliveries(b.deliveries), ...cleanDeliveries(a.deliveries) });
+  a = applyDeliveries(a, deliveries); b = applyDeliveries(b, deliveries);
   const progress = (s: RelicState) => s.opens * 4 + s.granted.length * 2 + s.ledger.length;
   const [base, other] = progress(b) > progress(a) ? [b, a] : [a, b];
   const owned: Record<string, number> = { ...other.owned };
   for (const [id, n] of Object.entries(base.owned)) owned[id] = Math.max(n, owned[id] ?? 0);
   const uniq = <T,>(xs: T[]) => [...new Set(xs)];
-  const merged: RelicState = { ...base, owned, secrets: uniq([...base.secrets, ...other.secrets]), granted: uniq([...base.granted, ...other.granted]).slice(-2000),
-    upgraded: uniq([...base.upgraded, ...other.upgraded]), fused: mergeMax(base.fused, other.fused), cosmetics: uniq([...(base.cosmetics ?? []), ...(other.cosmetics ?? [])]), wishlist: uniq([...(base.wishlist ?? []), ...(other.wishlist ?? [])]), opens: Math.max(a.opens, b.opens), secretPityDone: !!(a.secretPityDone || b.secretPityDone), achSeeded: !!(a.achSeeded || b.achSeeded) };
+  const gemLedger = { ...gemEntries(other), ...gemEntries(base) };
+  const merged: RelicState = { ...base, adRewards: cleanAdRewards([...cleanAdRewards(a.adRewards), ...cleanAdRewards(b.adRewards)]), gemLedger, gems: gemBalance({ gemLedger }), chestDay: [a.chestDay ?? '', b.chestDay ?? ''].sort().at(-1), owned, eventKeys: mergeMax(a.eventKeys, b.eventKeys), eventKeysUsed: mergeMax(a.eventKeysUsed, b.eventKeysUsed), secrets: uniq([...base.secrets, ...other.secrets]), granted: uniq([...base.granted, ...other.granted]).slice(-2000),
+    mastery: uniq([...(base.mastery ?? []), ...(other.mastery ?? [])]), upgraded: uniq([...base.upgraded, ...other.upgraded]), fused: mergeMax(base.fused, other.fused), cosmetics: uniq([...(base.cosmetics ?? []), ...(other.cosmetics ?? [])]), wishlist: uniq([...(base.wishlist ?? []), ...(other.wishlist ?? [])]), opens: Math.max(a.opens, b.opens), secretPityDone: !!(a.secretPityDone || b.secretPityDone), achSeeded: !!(a.achSeeded || b.achSeeded) };
   return { ...merged, equipped: merged.equipped.filter(id => (owned[id] ?? 0) > 0).slice(0, slotCount(merged)) };
 }
 
@@ -577,3 +629,82 @@ export function collectionProgress(s: RelicState): { owned: number; total: numbe
 
 /** Good-outcome weight multiplier for spins (1 = no luck): the better rarities get this much more weight. */
 export const luckMultiplier = (luck: number | undefined) => 1 + Math.max(0, luck ?? 0);
+
+/** Event keys never spend regular spins. Only the matching active event can unlock its secrets. */
+export function spinEventRelic(state: RelicState, event: HolidayId, now = new Date(), rand = Math.random): SpinOutcome | null {
+  const run = activeRun(event, now);
+  if (!run || eventKeysLeft(state, run.key) < 1) return null;
+  return roll({ ...state, eventKeysUsed: { ...state.eventKeysUsed, [run.key]: (state.eventKeysUsed?.[run.key] ?? 0) + 1 } }, rand, false, event);
+}
+export function moveToPowerSlot(state: RelicState, id: string): RelicState {
+  if (slotCount(state) !== MAX_SLOTS || state.equipped.length !== MAX_SLOTS || !state.equipped.includes(id)) return state;
+  const equipped = [...state.equipped]; const at = equipped.indexOf(id);
+  [equipped[at], equipped[14]] = [equipped[14], equipped[at]];
+  return { ...state, equipped };
+}
+
+export const eventKeysLeft = (s: RelicState, key: string) => annualEventBalance(s.eventKeys ?? {}, s.eventKeysUsed ?? {}, key);
+
+export const ULTRA_SPIN_PRICE = 20;
+function ultraRarity(roll: number): RelicRarity {
+  const total = RELIC_RARITY.epic.odds + RELIC_RARITY.legendary.odds + RELIC_RARITY.mythic.odds;
+  return roll < RELIC_RARITY.mythic.odds / total ? 'mythic' : roll < (RELIC_RARITY.mythic.odds + RELIC_RARITY.legendary.odds) / total ? 'legendary' : 'epic';
+}
+export function ultraLuckySpin(s: RelicState, rand: () => number = Math.random): { state: RelicState; result: SpinResult } | null {
+  if ((s.gems ?? 0) < ULTRA_SPIN_PRICE) return null;
+  return roll(changeGems(s, -ULTRA_SPIN_PRICE), rand, false, undefined, true);
+}
+/** One manually opened chest per UTC day; permanent streak milestones remain earned. */
+export function claimDailyChest(s: RelicState, now = new Date(), rand: () => number = Math.random): { state: RelicState; gems: number; results: SpinResult[] } | null {
+  const day = now.toISOString().slice(0, 10);
+  if (s.chestDay && s.chestDay >= day) return null;
+  const gems = 12 + Math.floor(rand() * 19), count = 2 + Math.floor(rand() * 4);
+  let state = earn({ ...changeGems(s, gems, `chest:${day}`), chestDay: day, spins: s.spins + 2 }, 200, 'Daily chest');
+  const results: SpinResult[] = [];
+  for (let i = 0; i < count; i++) {
+    // Chest contents are relics; secret drops belong to spins and mission rewards.
+    const rarity = rarityFor(rand()), pool = RELICS.filter(r => r.rarity === rarity);
+    const relic = pool[Math.floor(rand() * pool.length)];
+    const duplicate = !canGain(state, relic), coins = duplicate ? RELIC_RARITY[rarity].coins : 0;
+    state = fillSlot({ ...earn(state, coins, `Duplicate ${relic.name}`), owned: { ...state.owned, [relic.id]: (state.owned[relic.id] ?? 0) + 1 } }, relic.id);
+    results.push({ kind: 'relic', id: relic.id, rarity, duplicate, coins });
+  }
+  return { state: withEarnedSecrets(state), gems, results };
+}
+
+export function buyGemCosmetic(state: RelicState, key: string): RelicState | null {
+  const item = GEM_COSMETICS.find(c => c.key === key);
+  if (!item || (state.cosmetics ?? []).includes(key) || (state.gems ?? 0) < item.price) return null;
+  return { ...changeGems(state, -item.price), cosmetics: [...(state.cosmetics ?? []), key] };
+}
+
+/** Immutable gem transactions prevent an older save from restoring spent gems. */
+function gemEntries(s: Pick<RelicState,'gems'|'gemLedger'>): Record<string,number> {
+  if (!s.gemLedger) return s.gems ? { legacy: keyCounter(s.gems) } : {};
+  return Object.fromEntries(Object.entries(s.gemLedger).filter(([key,v]) => key.length <= 100 && Number.isSafeInteger(v) && Math.abs(v) <= 1000000));
+}
+export function gemBalance(s: Pick<RelicState,'gems'|'gemLedger'>): number { return Math.max(0,Object.values(gemEntries(s)).reduce((n,v)=>n+v,0)); }
+export function changeGems(s: RelicState, amount: number, id: string = crypto.randomUUID()): RelicState {
+  if (!Number.isSafeInteger(amount) || !amount || Math.abs(amount)>1000000) return s;
+  const ledger=gemEntries(s); if (id in ledger || gemBalance(s)+amount<0) return s;
+  ledger[id]=amount; return {...s,gemLedger:ledger,gems:gemBalance({gemLedger:ledger})};
+}
+
+/** Keep malformed cloud/local records from breaking the rewarded-ad controls. */
+function cleanAdRewards(value: unknown): number[] {
+  return Array.isArray(value) ? [...new Set(value.filter((t): t is number => typeof t === 'number' && Number.isSafeInteger(t) && t > 0))].sort((a,b)=>b-a).slice(0,3) : [];
+}
+
+/** Paid ten-rolls require the displayed full cost; duplicates cannot fund a partly affordable batch. */
+export function premiumSpinMany(state: RelicState, kind: 'lucky' | 'ultra' | 'free', discount = 0, rand: () => number = Math.random): { state: RelicState; results: SpinResult[] } | null {
+  const cost = kind === 'free' ? 10 : kind === 'ultra' ? 200 : discounted(LUCKY_SPIN_PRICE, discount) * 10;
+  if ((kind === 'free' ? state.luckySpins ?? 0 : kind === 'ultra' ? state.gems ?? 0 : state.coins) < cost) return null;
+  let next = state; const results: SpinResult[] = [];
+  for (let i = 0; i < 10; i++) {
+    const out: SpinOutcome | null = kind === 'free' ? freeLuckySpin(next, rand) : kind === 'ultra' ? ultraLuckySpin(next, rand) : luckySpin(next, rand, discount);
+    if (!out) return null;
+    next = out.state; results.push(out.result);
+    if ('bonus' in out && out.bonus) results.push(out.bonus);
+  }
+  return { state: next, results };
+}

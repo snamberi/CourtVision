@@ -1,3 +1,4 @@
+import { BestComparison } from '../qol/BestComparison';
 import { ResultCount, ResultCrest, MvpSpotlight } from '../presentation/ResultPresentation';
 import { LineupBoard } from '../presentation/LineupBoard';
 import { noteHolidayFinish } from '../../retention/holiday';
@@ -12,7 +13,7 @@ import { COACH_STYLE, coachRarity } from '../../hunt/coaches';
 import { eraOf } from '../../hunt/eras';
 import {
   makeTrade, tradePending, tradeFits, TRADE_UP,
-  newPerfectRun, weeklyRule, ERA_RULES, type EraRule, pickPlayer, quickSpinCard, reelFiller, rerollTeam, rerollEra, applyPrime, rerollSpin, luckySpin, spinsLeft, luckyLeft, rollRerollsLeft, lineupOf, swapLineup, setLineup, ROTATION_MINUTES, pickCoach, playNext, rollPool, franchiseName, franchiseAbbr, franchiseIndex, eraShort, ROLL_ERAS, eraById, teamBonds,
+  newPerfectRun, weeklyRule, ERA_RULES, type EraRule, pickPlayer, quickSpinCard, reelFiller, rerollTeam, rerollEra, applyPrime, rerollSpin, luckySpin, spinsLeft, luckyLeft, rollRerollsLeft, lineupOf, swapLineup, setLineup, ROTATION_MINUTES, rerollCoach, pickCoach, playNext, rollPool, franchiseName, franchiseAbbr, franchiseIndex, eraShort, ROLL_ERAS, eraById, teamBonds,
   perfectRating, teamRating, summary, starCount, starCapReached, MAX_STARS, coachMatchup, coachMatchupText, streakPressure, STREAK_STEP, STREAK_MAX, OPP_EDGE, verdict, BOSS_TEAMS, QUICK_SLOTS, QUICK_SLOT_LABEL, SQUAD, SEASON_GAMES, ROUND_NAMES, WINS_NEEDED, SCORE, COACH_BY_ID,
   newWhatIfRun, isFreeMode, type WhatIf, type WhatIfKind,
   isCategoryMode, categoryPool, rerollCategory, categoryMultiplier, picksFromCategory, STARTERS, optionMultiplier, OPTION_MULTIPLIER, SHOT_CLOCK, autoPick, categoryLocked, bestFive, type CategoryOptions,
@@ -197,6 +198,8 @@ function Hub({ h, records, onStart, onWhatIf, onBattle }: { h: NbaHistory; recor
   return <section className="p820-hub">
     <div className="p820-hero"><span className="p820-goal">82-0</span><span className="p820-goal-plus">+ 16-0</span>
       <p>Build a ten-man team from all of NBA history, play a full 82-game season against real teams from every era, then four playoff rounds. Bosses on the schedule: {BOSS_TEAMS.map(b => b.tag).join(', ')}.</p></div>
+    <section className="p820-quickstart"><span className="pixel-eyebrow">FIRST RUN? START HERE</span><h2>Build a team. Chase a perfect season.</h2><ol><li>Roll your roster.</li><li>Play the regular season.</li><li>Win four playoff rounds.</li></ol><p>Rookie difficulty, visible ratings and no pick timer. You can explore other drafts when you’re ready.</p><button className="primary" onClick={() => onStart('quick', Math.floor(Math.random() * 1_000_000_000), undefined, { level: 'rookie', view: { numbers: true, colors: true }, catOpts: { tips: true, clock: false, mixed: false } })}>Start my first run</button></section>
+    <details className="p820-setup-details"><summary>Customize difficulty & draft rules</summary>
     <div className="p820-options">
       <div><h3 className="hunt-subhead">Difficulty</h3><LevelPicker value={prefs.level} onChange={level => set({ level })} blurbs={LEVEL_BLURB} /></div>
       <div><h3 className="hunt-subhead">Challenge yourself</h3><ViewToggles value={prefs.view} onChange={view => set({ view })} note={`Ratings shown: scores ×0.9. Colours hidden: scores ×1.1. This run: score ×${mult}. The Daily always uses the standard view.`} /></div>
@@ -207,6 +210,8 @@ function Hub({ h, records, onStart, onWhatIf, onBattle }: { h: NbaHistory; recor
       <label><input type="checkbox" checked={!!catOpts.clock} onChange={e => setCatOpts({ ...catOpts, clock: e.target.checked })} /> <b>Shot clock</b> <small>{SHOT_CLOCK} seconds a pick, or a random player · score ×{OPTION_MULTIPLIER.clock}</small></label>
       <label><input type="checkbox" checked={!!catOpts.mixed} onChange={e => setCatOpts({ ...catOpts, mixed: e.target.checked })} /> <b>Mixed rolls</b> <small>half the rolls are two categories at once ("Lakers × 90s players") · score ×{OPTION_MULTIPLIER.mixed}</small></label>
     </div>
+    </details>
+    <details className="p820-setup-details"><summary>All game modes · daily, weekly & custom drafts</summary>
     <div className="p820-modes">
       <button className="p820-mode p820-weekly" onClick={() => onStart('category', weekSeed(week), undefined, { weekly: week, catOpts })}>
         <span className="p820-new-tag">THIS WEEK</span>
@@ -238,6 +243,7 @@ function Hub({ h, records, onStart, onWhatIf, onBattle }: { h: NbaHistory; recor
     {building && <CustomBuilder h={h} onPlay={custom => onStart('category', Math.floor(Math.random() * 1_000_000_000), undefined, { ...prefs, catOpts, custom })} />}
     <WhatIfRows open={whatIf} onOpen={setWhatIf} />
     {whatIf && <WhatIfSetup key={whatIf} h={h} kind={whatIf} records={records} numbers={!!prefs.view?.numbers} onPlay={w => onWhatIf(w, prefs)} />}
+    </details>
     <div className="p820-records">
       <span><b>{records.best ? `${records.best.w}-${records.best.l}` : '—'}</b><small>Best record</small></span>
       <span><b>{records.best?.score.toLocaleString() ?? '—'}</b><small>Best score</small></span>
@@ -661,6 +667,7 @@ function CoachPick({ h, run, setRun }: { h: NbaHistory; run: PerfectRun; setRun:
   return <section className="p820-draft">
     <div className="p820-stage">
       <span className="pixel-eyebrow">LAST SPIN</span><h2>{run.mode === 'quick' ? 'Spin your coach' : 'Pick your coach'}</h2>
+      {shown && (run.coachRerolls ?? 0) > 0 && <button onClick={() => setRun(rerollCoach(h, run))}>Free coach reroll ({run.coachRerolls})</button>}
       {!shown ? <button className="primary p820-big" onClick={() => setShown(true)}>SPIN THE COACH</button>
         : <div className="p820-coaches">{offer.map(x => <button key={x.id} className={`p820-coach rarity-${coachRarity(x)}`} onClick={() => setRun(pickCoach(h, run, x.id))}>
           <b>{x.name}</b><span className="p820-ovr-mini" title={ratingsShown(run) ? 'Coach bonus' : 'Coach rating hidden until the season is over'}>{ratingsShown(run) ? `${x.bonus >= 0 ? '+' : ''}${x.bonus}` : HIDDEN}</span><small>{COACH_STYLE[x.style]}</small><small className="p820-coach-eras">{coachMatchupText(x.style)}</small><i>{x.blurb}</i><em>{run.mode === 'quick' ? 'Start the season' : 'Choose'}</em></button>)}</div>}
@@ -840,6 +847,7 @@ function Finished({ h, run, records, onAgain }: { h: NbaHistory; run: PerfectRun
       {s.multiplier !== 1 && <tr><td>{isCategoryMode(run.mode) ? 'Total multiplier' : 'Challenge'} ({LEVEL_NAME[run.level ?? 'pro']}{run.view?.numbers ? ', ratings shown' : ''}{run.view && !run.view.colors ? ', colours hidden' : ''})</td><td>×{s.multiplier}</td></tr>}
       <tr className="total"><td>Score</td><td><ResultCount value={s.score} /></td></tr>
     </tbody></table>
+    <BestComparison current={s.score} best={records.best?.score} />
     <p className="hint-text">Best ever: {records.best ? `${records.best.w}-${records.best.l}, ${records.best.score.toLocaleString()} points` : '—'} · {records.titles} title{records.titles === 1 ? '' : 's'} · {records.perfectSeasons} perfect season{records.perfectSeasons === 1 ? '' : 's'}{run.daily ? ' · Daily 82-0: your best try today counts on the weekly board.' : ''}</p>
     <SquadPanel h={h} run={run} />
     <RunStatsTable lines={run.lines} title="Regular season stats" />

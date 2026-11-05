@@ -1,7 +1,8 @@
+import { nativeLookMode, type LookMode } from '../theme/skins';
 import { useEffect, useRef, useState } from 'react';
 import './themePicker.css';
 import { Modal } from './Modal';
-import { THEME_BY_ID, THEME_EVENT, readTheme, setTheme, applyTheme, themeLevel, themeTrophies, themeOpen, visibleThemes, type ThemeId, type ThemeSpec } from '../theme/themes';
+import { THEME_BY_ID, THEME_EVENT, readLookMode, setLookMode, readTheme, setTheme, applyTheme, themeLevel, themeTrophies, themeOpen, visibleThemes, type ThemeId, type ThemeSpec } from '../theme/themes';
 import { totalTrophies } from '../profile/trophyRoad';
 import { levelFor, totalXp, PROFILE_EVENT } from '../profile/profile';
 
@@ -29,8 +30,8 @@ function useLevel(): number {
 }
 
 /** A small Court Vision screen drawn in a theme's own colours and fonts, so every card previews its look. */
-function Preview({ t }: { t: ThemeSpec }) {
-  return <span className="theme-preview" data-theme-preview={t.id} aria-hidden="true">
+function Preview({ t, mode }: { t: ThemeSpec; mode: LookMode }) {
+  return <span className="theme-preview" data-theme-preview={t.id} data-preview-mode={mode} aria-hidden="true">
     <span className="tp-top"><i />COURT VISION<span>01</span></span>
     <span className="tp-scene" />
     <span className="tp-stats"><span className="tp-row"><b>S. Curry</b><em>96</em></span>
@@ -41,19 +42,21 @@ function Preview({ t }: { t: ThemeSpec }) {
 
 /** The looks as radio cards. Picking one applies it to the whole app straight away; road looks open with the level. */
 export function ThemePicker({ value, onPick, level, trophies = totalTrophies(), themes = visibleThemes() }: { value: ThemeId; onPick: (id: ThemeId) => void; level: number; trophies?: number; themes?: ThemeSpec[] }) {
+  const [mode, updateMode] = useState(readLookMode);
+  useEffect(() => { const sync = () => updateMode(readLookMode()); window.addEventListener(THEME_EVENT, sync); window.addEventListener('storage', sync); return () => { window.removeEventListener(THEME_EVENT, sync); window.removeEventListener('storage', sync); }; }, []);
   // The previews use each theme's fonts; load them (small, bundled) so the cards look right.
   useEffect(() => { for (const t of themes) void t.loadFonts?.().catch(() => null); }, [themes]);
-  return <div className="theme-picker" role="radiogroup" aria-label="App look">
+  return <><div className="hunt-pills" role="group" aria-label="Appearance brightness">{(['light', 'dark'] as const).map(m => <button key={m} type="button" aria-pressed={(mode ?? nativeLookMode(value)) === m} className={`hunt-pill ${(mode ?? nativeLookMode(value)) === m ? 'on' : ''}`} onClick={() => { updateMode(m); setLookMode(m); }}>{m === 'light' ? 'Light' : 'Dark'}</button>)}</div><div className="theme-picker" role="radiogroup" aria-label="App look">
     {themes.map(t => {
       const need = themeLevel(t.id), cups = themeTrophies(t.id), locked = !themeOpen(t.id, level, trophies), on = value === t.id;
       return <button key={t.id} type="button" role="radio" aria-checked={on} disabled={locked} title={t.blurb}
         className={`theme-card ${on ? 'selected' : ''} ${locked ? 'locked' : ''}`} onClick={() => onPick(t.id)}>
-        <span className={`theme-preview-wrap ${on || locked ? 'tagged' : ''}`}><Preview t={t} />{on ? <i className="theme-tag on">In use</i> : locked ? <i className="theme-tag">{t.season ? `SEASON TIER ${t.season.tier}` : cups ? `${cups / 1000}K TROPHIES` : `LV ${need}`}</i> : null}</span>
+        <span className={`theme-preview-wrap ${on || locked ? 'tagged' : ''}`}><Preview t={t} mode={mode ?? nativeLookMode(t.id)} />{on ? <i className="theme-tag on">In use</i> : locked ? <i className="theme-tag">{t.season ? `SEASON TIER ${t.season.tier}` : cups ? `${cups / 1000}K TROPHIES` : `LV ${need}`}</i> : null}</span>
         <span className="theme-card-head"><b>{t.name}</b></span>
         <span className="theme-card-blurb">{t.blurb}</span>
       </button>;
     })}
-  </div>;
+  </div></>;
 }
 
 /** The profile's "App look" section: every look, the road ones locked until their level. */

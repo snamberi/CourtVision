@@ -69,7 +69,7 @@ export function StoryMode({ onExit }: { onExit: () => void }) {
       rewardRun(storyRewardKey(s), storySpins(e.tier), { secret: storySecret(e.tier), why: 'Story Mode' });
       const score = s.nba ? Math.round(nbaCareerLine(s.nba).legacy * 10) : Math.round(overall(s) * 10 + s.games.filter(g => g.won).length * 50);
       noteWeekRun('story', { score, line: e.title }, `story-${s.seed}${s.nba ? '-nba' : ''}`);
-      noteHolidayFinish(true, `story-${s.seed}`);
+      noteHolidayFinish(true, `story-${s.seed}`, new Date(), true);
       trackOnce(`story-${s.seed}${s.nba ? '-nba' : ''}`, 'mode_finish', { mode: 'story', ending: e.tier, nba: !!s.nba });
       setPendingReward({ rewardKey: storyRewardKey(s), xpBefore, mode: 'Story Mode', result: 'done' });
     }

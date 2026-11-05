@@ -59,14 +59,11 @@ describe('friend gifts', () => {
     expect((await handleSocial(req({ action: 'send', to: ME }), env, now, db.f)).status).toBe(400);
     expect(db.gifts).toHaveLength(0);
   });
-  it('a gift is collected once', async () => {
+  it('blocks the old lossy claim route without marking gifts claimed', async () => {
     const db = fakeDb([]);
     db.gifts.push({ id: 'a', sender: friend(1), recipient: ME, day: '2026-10-12', coins: 150, lucky: 1, claimed: false, created_at: now.toISOString() });
-    db.gifts.push({ id: 'b', sender: friend(2), recipient: ME, day: '2026-10-12', coins: 150, lucky: 1, claimed: false, created_at: now.toISOString() });
-    const first = await (await handleSocial(req({ action: 'claim' }), env, now, db.f)).json();
-    expect(first).toMatchObject({ coins: 300, lucky: 2 });
-    const again = await (await handleSocial(req({ action: 'claim' }), env, now, db.f)).json();
-    expect(again).toMatchObject({ coins: 0, lucky: 0 });
+    expect((await handleSocial(req({ action: 'claim' }), env, now, db.f)).status).toBe(409);
+    expect(db.gifts[0].claimed).toBe(false);
   });
   it('says so when the tables are not set up yet', async () => {
     const f = (async (url: string) => new URL(url).pathname === '/auth/v1/user' ? new Response(JSON.stringify({ id: ME })) : new Response('PGRST205 Could not find the table', { status: 404 })) as typeof fetch;

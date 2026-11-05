@@ -101,6 +101,8 @@ export function computeTradeValue(season: PlayerSeason): number {
 }
 
 export interface GMLeagueExtras {
+  relicRetries?: Record<string, boolean>;
+  relicTradeRefresh?: Record<string, boolean>;
   contracts: Record<PlayerId, Contract>;
   freeAgents: PlayerSeason[];
   capSettings: SalaryCapSettings;
@@ -819,6 +821,7 @@ export function draftProspect(
       draftRound: round,
       draftPick: pickNumber + 1,
       draftTeamId: teamId,
+      draftedByUser: league.frontOffice?.teamId === teamId,
     },
     'drafted',
     `Drafted by ${teamName} — Round ${round}, Pick ${pickNumber + 1} (${formatSeasonYear(league.season)})`,

@@ -2446,6 +2446,344 @@ const ERAS = [
 		blurb: "Everyone shoots. Fast, spaced and relentless."
 	}
 ];
+new Map([
+	{
+		id: "halloween",
+		name: "Spooky Season",
+		coin: "Candy",
+		coins: "Candy",
+		month: 9,
+		day: 1,
+		endMonth: 10,
+		endDay: 1,
+		keyName: "Haunted Key",
+		blurb: "Pumpkins on the hardwood and ghosts in the rafters. Play anything to collect Candy, then spend it in the Spooky Shop.",
+		colors: {
+			bg: "#140a1f",
+			panel: "#24123a",
+			accent: "#ff7a1a",
+			text: "#fbeee0",
+			glow: "#8bdc3f"
+		}
+	},
+	{
+		id: "christmas",
+		name: "Winter Wonderland",
+		coin: "Snowflake",
+		coins: "Snowflakes",
+		month: 11,
+		day: 1,
+		endMonth: 12,
+		endDay: 1,
+		keyName: "Frost Key",
+		blurb: "Snow on the court and lights on the rim. Play anything to collect Snowflakes, then spend them in the Holiday Shop.",
+		colors: {
+			bg: "#071a14",
+			panel: "#0f2e24",
+			accent: "#e8323c",
+			text: "#f4fbff",
+			glow: "#9fd8ff"
+		}
+	},
+	{
+		id: "newyear",
+		name: "New Year",
+		coin: "Spark",
+		coins: "Sparks",
+		month: 11,
+		day: 26,
+		endMonth: 12,
+		endDay: 8,
+		keyName: "Midnight Key",
+		blurb: "Fireworks and a fresh start.",
+		colors: {
+			bg: "#0b1018",
+			panel: "#182437",
+			accent: "#ffd166",
+			text: "#f4f0e6",
+			glow: "#ffd166"
+		}
+	},
+	{
+		id: "valentine",
+		name: "Valentine’s",
+		coin: "Heart",
+		coins: "Hearts",
+		month: 1,
+		day: 1,
+		endMonth: 2,
+		endDay: 1,
+		keyName: "Heart Key",
+		blurb: "Celebrate your teammates.",
+		colors: {
+			bg: "#0b1018",
+			panel: "#182437",
+			accent: "#ff77aa",
+			text: "#f4f0e6",
+			glow: "#ff77aa"
+		}
+	},
+	{
+		id: "allstar",
+		name: "All-Star Weekend",
+		coin: "Star",
+		coins: "Stars",
+		month: 1,
+		day: 14,
+		endMonth: 1,
+		endDay: 22,
+		keyName: "All-Star Key",
+		blurb: "An exhibition of basketball greatness.",
+		colors: {
+			bg: "#0b1018",
+			panel: "#182437",
+			accent: "#b48aff",
+			text: "#f4f0e6",
+			glow: "#b48aff"
+		}
+	},
+	{
+		id: "easter",
+		name: "Easter",
+		coin: "Egg",
+		coins: "Eggs",
+		month: 2,
+		day: 1,
+		endMonth: 4,
+		endDay: 1,
+		keyName: "Egg Key",
+		blurb: "Collect spring treasures on the court.",
+		colors: {
+			bg: "#0b1018",
+			panel: "#182437",
+			accent: "#b7ef83",
+			text: "#f4f0e6",
+			glow: "#b7ef83"
+		}
+	},
+	{
+		id: "playoffs",
+		name: "Playoff Fever",
+		coin: "Banner",
+		coins: "Banners",
+		month: 3,
+		day: 1,
+		endMonth: 6,
+		endDay: 1,
+		keyName: "Finals Key",
+		blurb: "Every win brings you closer to the rafters.",
+		colors: {
+			bg: "#0b1018",
+			panel: "#182437",
+			accent: "#ffd166",
+			text: "#f4f0e6",
+			glow: "#ffd166"
+		}
+	},
+	{
+		id: "summer",
+		name: "Summer Heat",
+		coin: "Sun Token",
+		coins: "Sun Tokens",
+		month: 5,
+		day: 1,
+		endMonth: 8,
+		endDay: 1,
+		keyName: "Sun Key",
+		blurb: "Summer courts and bright rewards.",
+		colors: {
+			bg: "#0b1018",
+			panel: "#182437",
+			accent: "#ffb85c",
+			text: "#f4f0e6",
+			glow: "#ffb85c"
+		}
+	},
+	{
+		id: "anniversary",
+		name: "CourtVision Anniversary",
+		coin: "Founder Token",
+		coins: "Founder Tokens",
+		month: 8,
+		day: 27,
+		endMonth: 9,
+		endDay: 1,
+		keyName: "Founder Key",
+		blurb: "Celebrate CourtVision every September 27.",
+		colors: {
+			bg: "#0b1018",
+			panel: "#182437",
+			accent: "#b9a0ff",
+			text: "#f4f0e6",
+			glow: "#b9a0ff"
+		}
+	}
+].map((h) => [h.id, h]));
+//#endregion
+//#region src/relics/releaseSecrets.ts
+const RELEASE_SECRETS = [
+	{
+		id: "overtimeToken",
+		name: "Overtime Token",
+		mode: "Career Mode",
+		ability: "Start each personal Career wheel with one extra respin.",
+		hint: "A rare regular Secret spin drop."
+	},
+	{
+		id: "scoutsLens",
+		name: "Scout’s Lens",
+		mode: "Franchise",
+		ability: "One extra prospect workout per draft.",
+		hint: "A rare regular Secret spin drop."
+	},
+	{
+		id: "draftWhisperer",
+		name: "The Draft Whisperer",
+		mode: "Franchise",
+		ability: "+1 detailed prospect scouting report per draft.",
+		hint: "Draft three future Hall of Famers with one franchise.",
+		feat: "Draft 3 players who later enter the Hall of Fame with the same franchise.",
+		earnedOnly: true
+	},
+	{
+		id: "loyaltyPays",
+		name: "Loyalty Pays",
+		mode: "Franchise",
+		ability: "+1 contract negotiation retry per offseason.",
+		hint: "Bring five titles home to the same franchise.",
+		feat: "Win 5 titles with the same franchise.",
+		earnedOnly: true
+	},
+	{
+		id: "rebuilder",
+		name: "The Rebuilder",
+		mode: "Franchise",
+		ability: "+1 trade proposal refresh per season.",
+		hint: "Turn a 20-win season into a championship.",
+		feat: "Take a franchise from 20 or fewer wins to a later championship.",
+		earnedOnly: true
+	},
+	{
+		id: "forbiddenPlaybook",
+		name: "Forbidden Playbook",
+		mode: "League Hunt",
+		ability: "Reroll one offered player free, once per run.",
+		event: "halloween",
+		hint: "Found only in Halloween spins."
+	},
+	{
+		id: "trickOrTreat",
+		name: "Trick or Treat",
+		mode: "82-0 Challenge",
+		ability: "One extra coach-only reroll per run.",
+		event: "halloween",
+		hint: "Found only in Halloween spins."
+	},
+	{
+		id: "secondLife",
+		name: "Second Life",
+		mode: "Survival",
+		ability: "Survive one loss per run and return with one Shield.",
+		event: "halloween",
+		hint: "Found only in Halloween spins."
+	},
+	{
+		id: "cursedDice",
+		name: "Cursed Dice",
+		mode: "Career Mode",
+		ability: "Reroll your lowest completed starting category free once.",
+		event: "halloween",
+		hint: "Found only in Halloween spins."
+	},
+	{
+		id: "winterScout",
+		name: "Winter Scout",
+		mode: "Franchise",
+		ability: "One extra prospect workout per draft.",
+		event: "christmas",
+		hint: "Found only in Christmas spins."
+	},
+	{
+		id: "snowGlobe",
+		name: "Snow Globe",
+		mode: "Story Mode",
+		ability: "Begin with +3 grit.",
+		event: "christmas",
+		hint: "Found only in Christmas spins."
+	},
+	{
+		id: "stockingStuffer",
+		name: "Stocking Stuffer",
+		mode: "League Hunt",
+		ability: "Start with 20 extra run coins.",
+		event: "christmas",
+		hint: "Found only in Christmas spins."
+	},
+	{
+		id: "winterGuard",
+		name: "Winter Guard",
+		mode: "Survival",
+		ability: "Start with one extra Shield.",
+		event: "christmas",
+		hint: "Found only in Christmas spins."
+	},
+	{
+		id: "midnightReset",
+		name: "Midnight Reset",
+		mode: "Career Mode",
+		ability: "Start with one extra wheel respin.",
+		event: "newyear",
+		hint: "Found only in New Year spins."
+	},
+	{
+		id: "heartOfTeam",
+		name: "Heart of the Team",
+		mode: "Story Mode",
+		ability: "Begin with +2 grit.",
+		event: "valentine",
+		hint: "Found only in Valentine spins."
+	},
+	{
+		id: "allStarClipboard",
+		name: "All-Star Clipboard",
+		mode: "82-0 Challenge",
+		ability: "One extra coach-only reroll per run.",
+		event: "allstar",
+		hint: "Found only in All-Star spins."
+	},
+	{
+		id: "goldenEgg",
+		name: "Golden Egg",
+		mode: "League Hunt",
+		ability: "Start with 15 extra run coins.",
+		event: "easter",
+		hint: "Found only in Easter spins."
+	},
+	{
+		id: "playoffArmor",
+		name: "Playoff Armor",
+		mode: "Survival",
+		ability: "Start with one extra Shield.",
+		event: "playoffs",
+		hint: "Found only in Playoff Fever spins."
+	},
+	{
+		id: "summerFilm",
+		name: "Summer Film",
+		mode: "Franchise",
+		ability: "One extra prospect workout per draft.",
+		event: "summer",
+		hint: "Found only in Summer Heat spins."
+	},
+	{
+		id: "foundersWhistle",
+		name: "Founder’s Whistle",
+		mode: "Career Mode",
+		ability: "Start with one extra wheel respin.",
+		event: "anniversary",
+		hint: "Found only in Anniversary spins, September 27–30."
+	}
+];
 //#endregion
 //#region src/retention/weeklyEvent.ts
 const WEEKLY_EVENTS = [
@@ -2488,7 +2826,7 @@ const FIRST_FIVE = WEEKLY_EVENTS.slice(0, 5);
 const RELIC_RARITY = {
 	common: {
 		name: "Common",
-		odds: .5487,
+		odds: .5497,
 		luck: 1,
 		coins: 43
 	},
@@ -2512,8 +2850,8 @@ const RELIC_RARITY = {
 	},
 	mythic: {
 		name: "Mythic",
-		odds: .002,
-		luck: 5,
+		odds: .001,
+		luck: 6.25,
 		coins: 2550
 	}
 };
@@ -2921,6 +3259,76 @@ new Map([
 		stack: true
 	},
 	{
+		id: "dynastyLedger",
+		name: "Dynasty Ledger",
+		rarity: "mythic",
+		blurb: "A keepsake from basketball’s greatest nights.",
+		icon: "crown"
+	},
+	{
+		id: "immortalJersey",
+		name: "Immortal Jersey",
+		rarity: "mythic",
+		blurb: "A keepsake from basketball’s greatest nights.",
+		icon: "crown"
+	},
+	{
+		id: "celestialCourt",
+		name: "Celestial Court",
+		rarity: "mythic",
+		blurb: "A keepsake from basketball’s greatest nights.",
+		icon: "crown"
+	},
+	{
+		id: "foundersRing",
+		name: "Founder’s Ring",
+		rarity: "mythic",
+		blurb: "A keepsake from basketball’s greatest nights.",
+		icon: "crown"
+	},
+	{
+		id: "eternalScoreboard",
+		name: "Eternal Scoreboard",
+		rarity: "mythic",
+		blurb: "A keepsake from basketball’s greatest nights.",
+		icon: "crown"
+	},
+	{
+		id: "platinumWhistle",
+		name: "Platinum Whistle",
+		rarity: "mythic",
+		blurb: "A keepsake from basketball’s greatest nights.",
+		icon: "crown"
+	},
+	{
+		id: "championsCompass",
+		name: "Champion’s Compass",
+		rarity: "mythic",
+		blurb: "A keepsake from basketball’s greatest nights.",
+		icon: "crown"
+	},
+	{
+		id: "legacyCrown",
+		name: "Legacy Crown",
+		rarity: "mythic",
+		blurb: "A keepsake from basketball’s greatest nights.",
+		icon: "crown"
+	},
+	{
+		id: "infinitePlaybook",
+		name: "Infinite Playbook",
+		rarity: "mythic",
+		blurb: "A keepsake from basketball’s greatest nights.",
+		icon: "crown"
+	},
+	{
+		id: "auroraBall",
+		name: "Aurora Ball",
+		rarity: "mythic",
+		blurb: "A keepsake from basketball’s greatest nights.",
+		icon: "crown"
+	},
+	{
 		id: "goldenNet",
 		name: "The Golden Net",
 		rarity: "mythic",
@@ -2942,7 +3350,8 @@ new Map([
 		icon: "settings"
 	}
 ].map((r) => [r.id, r]));
-new Map([
+const SECRET_RELICS = [
+	...RELEASE_SECRETS,
 	{
 		id: "eternalSpin",
 		name: "The Eternal Spin",
@@ -3038,19 +3447,20 @@ new Map([
 		id: "ultraCheat",
 		name: "Ultra Cheat",
 		mode: "Career Mode",
-		ability: "Spend 2 Lucky Spins on the Career wheel for one category of your choice rated 125.",
+		ability: "Spend 2 Lucky Spins on the Career wheel for one category of your choice rated 130.",
 		hint: "Own every relic in the vault and the last door opens.",
 		feat: "Own every relic in the vault.",
 		earnedOnly: true
 	}
-].map((r) => [r.id, r]));
+];
+new Map(SECRET_RELICS.map((r) => [r.id, r]));
 (() => {
 	const raw = {
 		common: 0,
 		rare: RELIC_RARITY.rare.odds,
-		epic: RELIC_RARITY.epic.odds * 2,
-		legendary: RELIC_RARITY.legendary.odds * 2,
-		mythic: RELIC_RARITY.mythic.odds * 2
+		epic: RELIC_RARITY.epic.odds * 1.5,
+		legendary: RELIC_RARITY.legendary.odds * 1.5,
+		mythic: RELIC_RARITY.mythic.odds * 1.5
 	};
 	const sum = Object.values(raw).reduce((a, b) => a + b, 0);
 	return Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, v / sum]));

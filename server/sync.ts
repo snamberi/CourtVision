@@ -1,3 +1,4 @@
+import { addServerDeliveries } from './deliveries';
 import { derive, sanitizeBlob, publicAvatar } from './derive';
 import { mergeStorage, mergeCareers } from '../src/cloud/merge';
 import { computeHonors, pvpHonor } from './honors';
@@ -63,6 +64,7 @@ export async function handleSync(req: Request, env: SupaEnv | null, now = new Da
     if (stored && now.getTime() - Date.parse(stored.updated_at) < MIN_GAP_MS) return json({ error: 'Syncing too often.', retry: true }, 429);
     const prev = stored ? sanitizeBlob(stored.data) : null;
     if (prev) blob = { ...blob, storage: mergeStorage(blob.storage, prev.storage), careers: mergeCareers(careerRows(blob.careers), careerRows(prev.careers)) };
+    blob = { ...blob, storage: await addServerDeliveries(blob.storage, id, env, f) };
     const size = JSON.stringify(blob).length;
     if (size > MAX_RAW_BYTES) return tooLarge(size);
     const d = derive(blob, now);
@@ -101,7 +103,7 @@ export async function handleSync(req: Request, env: SupaEnv | null, now = new Da
     const settled = await Promise.allSettled(writes.map(([, w]) => w));
     const skipped = writes.map(([name], i) => (settled[i].status === 'rejected' ? name : null)).filter((n): n is string => !!n);
     if (skipped.length) console.error('sync: skipped', skipped.join(', '), settled.filter(r => r.status === 'rejected').map(r => String((r as PromiseRejectedResult).reason)).join(' | '));
-    return json({ ok: true, level: d.profile.level, xp: d.profile.xp, honors, avatar, owner, ...(skipped.length ? { skipped } : {}) });
+    return json({ ok: true, vault: blob.storage['cv-relics'], level: d.profile.level, xp: d.profile.xp, honors, avatar, owner, ...(skipped.length ? { skipped } : {}) });
   } catch (e) {
     console.error('sync: failed', e instanceof Error ? e.message : String(e));
     return json({ error: 'Cloud sync is having trouble. Your progress is safe on this device; it will sync later.' }, 502);

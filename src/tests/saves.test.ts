@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // vitest's node environment has no localStorage; saves.ts already degrades gracefully without it,
 // but to actually exercise the "last active save" bookkeeping we provide a minimal in-memory shim.
@@ -15,7 +15,7 @@ if (typeof globalThis.localStorage === 'undefined') {
 }
 
 import {
-  createSave, updateSave, deleteSave, renameSave, getSave, listSaves,
+  createDebouncedSave, createSave, updateSave, deleteSave, renameSave, getSave, listSaves,
   getLastActiveSaveId, savesDb,
 } from '../storage/saves';
 import { buildDemoTeam } from '../simulation/presets/samplePlayers';
@@ -100,5 +100,38 @@ describe('multi-slot saves', () => {
     expect(snap!.controlledTeamId).toBe('B');
     expect(snap!.league.teams.length).toBe(2);
     expect(snap!.league.teams[0].seasons.length).toBe(league.teams[0].seasons.length);
+  });
+});
+
+
+describe('pending simulation decisions', () => {
+  it('stays dirty until the newest queued snapshot finishes and persists that snapshot', async () => {
+    const { league, extras } = fixture();
+    const id = await createSave('Pending', league, extras, 'A');
+    const save = createDebouncedSave(60_000);
+    save(id, { ...league, season: '2027-28' }, extras, 'A');
+    const first = save.flush();
+    save(id, { ...league, season: '2028-29' }, extras, 'A');
+    expect(save.isDirty()).toBe(true);
+    await first;
+    expect(save.isDirty()).toBe(true);
+    await save.flush();
+    expect(save.isDirty()).toBe(false);
+    expect((await getSave(id))?.league.season).toBe('2028-29');
+  });
+  it('retains failed decisions for a later flush', async () => {
+    const { league, extras } = fixture();
+    const id = await createSave('Retry', league, extras, null);
+    const save = createDebouncedSave(60_000);
+    const update = vi.spyOn(savesDb.saves, 'update').mockRejectedValueOnce(new Error('Storage full'));
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      save(id, { ...league, season: '2031-32' }, extras, null);
+      await save.flush();
+      expect(save.isDirty()).toBe(true);
+      await save.flush();
+      expect(save.isDirty()).toBe(false);
+      expect((await getSave(id))?.league.season).toBe('2031-32');
+    } finally { update.mockRestore(); warn.mockRestore(); }
   });
 });

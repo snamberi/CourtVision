@@ -1,3 +1,4 @@
+import { ownsReleaseSecret as hasSecret } from '../relics/releaseOwned';
 import type { League } from './league';
 import type { Contract, GMLeagueExtras } from './gm';
 import type { PlayerSeason } from './types';
@@ -195,4 +196,15 @@ export function negotiationStories(league: League, extras: GMLeagueExtras): { id
       headline: `${n.playerId} and ${name(n.teamId)} reach a deal after ${n.rounds} rounds of talks.`, detail: `$${(n.deal.annualSalary / 1e6).toFixed(1)}M a year for ${n.deal.yearsRemaining} year${n.deal.yearsRemaining === 1 ? '' : 's'}${n.deal.playerOption ? ', player option' : ''}.` });
   }
   return out;
+}
+
+export function retryNegotiation(league: League, extras: GMLeagueExtras, player: PlayerSeason, teamId: string): GMLeagueExtras | null {
+  const season = league.season ?? '';
+  const previous = currentNegotiation(league, extras, player.playerId, teamId);
+  if (!extras.freeAgencyOpen || league.frontOffice?.teamId !== teamId || !hasSecret('loyaltyPays') || extras.relicRetries?.[season] || previous?.status !== 'walked') return null;
+  const negotiations = { ...extras.negotiations };
+  delete negotiations[negotiationKey(player.playerId, teamId)];
+  const next = { ...extras, negotiations, relicRetries: { ...extras.relicRetries, [season]: true } };
+  const reopened = openNegotiation(league, next, player, teamId);
+  return reopened ? storeNegotiation(next, reopened) : null;
 }

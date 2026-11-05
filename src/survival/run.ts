@@ -49,6 +49,7 @@ export interface SurvivalRun {
   roster: string[];
   franchise: string | null;
   shields: number;
+  secondLife?: boolean;
   games: SurvivalGame[];
   /** Opponents already faced (never twice). */
   faced: string[];
@@ -89,10 +90,10 @@ export function dealLegends(h: NbaHistory, seed: number, luck = 0): string[] {
   return out.sort((a, b) => b.ovr - a.ovr).map(c => c.id);
 }
 
-export function newSurvivalRun(h: NbaHistory, seed: number, level: SurvivalLevel = 'pro', daily?: string, relics?: { luck?: number; ironWill?: boolean; pet?: string | null }): SurvivalRun {
+export function newSurvivalRun(h: NbaHistory, seed: number, level: SurvivalLevel = 'pro', daily?: string, relics?: { secrets?: readonly string[]; luck?: number; ironWill?: boolean; pet?: string | null }): SurvivalRun {
   // The Daily Survival is the same for everyone: no relics there.
   const r = daily ? undefined : relics;
-  return { v: 1, seed, level, ...(daily ? { daily } : {}), ...(r?.luck ? { luck: r.luck } : {}), dealt: dealLegends(h, seed, r?.luck ?? 0), roster: [], franchise: null, shields: 1 + (r?.ironWill ? 1 : 0) + (r?.pet === 'dog' ? 1 : 0), games: [], faced: [], next: null, stage: 'draft' };
+  return { v: 1, seed, level, ...(daily ? { daily } : {}), ...(r?.luck ? { luck: r.luck } : {}), dealt: dealLegends(h, seed, r?.luck ?? 0), roster: [], franchise: null, secondLife: r?.secrets?.includes('secondLife'), shields: 1 + ['winterGuard', 'playoffArmor'].filter(id => r?.secrets?.includes(id)).length + (r?.ironWill ? 1 : 0) + (r?.pet === 'dog' ? 1 : 0), games: [], faced: [], next: null, stage: 'draft' };
 }
 
 /** Keep ten of the fourteen. */
@@ -170,8 +171,9 @@ export function playRound(h: NbaHistory, run: SurvivalRun): SurvivalRun {
   const won = ours > theirsPts;
   const game: SurvivalGame = { round, oppId: opp.id, oppName: teamLabel(opp), boss: isBossRound(round), us: ours, them: theirsPts, won, top: top.pts >= 0 ? `${top.name} ${top.pts}` : '' };
   const next: SurvivalRun = { ...run, games: [...run.games, game], faced: [...run.faced, opp.id] };
+  if (!won && run.secondLife && !run.daily) return openRound(h, { ...next, secondLife: false, shields: 1, claim: undefined });
   if (!won) return { ...next, stage: 'over', next: null };
-  const shields = game.boss ? Math.min(MAX_SHIELDS, run.shields + 1) : run.shields;
+  const shields = game.boss ? Math.max(run.shields, Math.min(MAX_SHIELDS, run.shields + 1)) : run.shields;
   const cash = (run.cash ?? 0) + (game.boss ? WIN_CASH * 2 : WIN_CASH);
   return { ...next, shields, cash, stage: 'claim', claim: { cardId: claimTarget(h, next), offer: signOffer(h, next, opp) } };
 }

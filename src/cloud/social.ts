@@ -3,12 +3,11 @@
  * for the friend, ten friends a day. Collected gifts go straight into the Relic Vault.
  */
 import { accessToken, getAccount, supa } from './account';
-import { earn, grantLuckySpins, loadRelics, saveRelics } from '../relics/relics';
-import { isEvent } from '../retention/weeklyEvent';
+import { claimRewardRpc } from './deliveries';
 import { noteFeat } from '../profile/feats';
 
 export interface Friend { userId: string; username: string; level: number; icon?: string; color?: string; title?: string; avatar?: string; lastSeen?: string }
-export interface WaitingGift { id: string; from: string; coins: number; lucky: number; at: string }
+export interface WaitingGift { message?: string; spins?: number; gems?: number; items?: string[]; cosmetics?: string[]; id: string; from: string; coins: number; lucky: number; at: string }
 export interface GiftStatus { day: string; sentTo: string[]; left: number; perDay: number; waiting: WaitingGift[] }
 
 async function call<T>(body: Record<string, unknown>): Promise<T> {
@@ -42,15 +41,12 @@ export async function sendGift(to: string): Promise<{ ok: true; left: number }> 
 }
 
 /** Collects every waiting gift into the Relic Vault. Returns what came in. */
-export async function claimGifts(): Promise<{ coins: number; lucky: number; from: string[] }> {
-  const got = await call<{ coins: number; lucky: number; from: string[] }>({ action: 'claim' });
-  // Gift Week: collected gifts pay double coins.
-  if (isEvent('giftWeek')) got.coins *= 2;
-  if (got.coins || got.lucky) {
-    noteFeat('giftsCollected', got.from.length || 1);
-    const who = got.from.length === 1 ? got.from[0] : `${got.from.length} friends`;
-    saveRelics(grantLuckySpins(earn(loadRelics(), got.coins, `Gift from ${who}`), got.lucky));
-  }
+export async function claimGifts(): Promise<{ coins: number; lucky: number; from: string[]; spins?: number; gems?: number; items?: string[]; cosmetics?: string[] }> {
+  const rewards = await claimRewardRpc('claim_gifts_v2');
+  const got = { coins: rewards.reduce((n, r) => n + r.coins, 0), lucky: rewards.reduce((n, r) => n + r.lucky, 0),
+    spins: rewards.reduce((n, r) => n + r.spins, 0), gems: rewards.reduce((n, r) => n + r.gems, 0),
+    items: rewards.flatMap(r => r.items), cosmetics: rewards.flatMap(r => r.cosmetics), from: rewards.map(r => r.label) };
+  if (rewards.length) noteFeat('giftsCollected', rewards.length);
   return got;
 }
 
@@ -60,3 +56,5 @@ export function noteProfileView(target: string): void {
   void call({ action: 'view', target }).catch(() => {});
 }
 export const loadVisitors = () => call<{ today: number; week: number }>({ action: 'visitors' });
+
+export const sendOwnerGift = (gift: { to: string; message: string; coins: number; spins: number; lucky: number; gems: number; items: string[]; cosmetics: string[] }) => call<{ ok: true }>({ action: 'owner-send', ...gift });

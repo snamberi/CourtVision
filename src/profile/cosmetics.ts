@@ -1,3 +1,5 @@
+import { GEM_COSMETICS } from '../relics/gemShop';
+import { RELEASE_TITLES, releaseTitleProgress } from './releaseTitles';
 import { localRead, type Read } from '../lib/kv';
 import { readPlayTime } from '../retention/playTime';
 import { hasOwnerAccess, OWNER_TITLE, SOVEREIGN_TITLE } from './ownerAccess';
@@ -233,6 +235,15 @@ export type ColorId = string;
 const color = (id: string, name: string, css: string, rule: Rule = byRoad('color', id)) => ({ id, name, css, rule, how: levelHow(rule) });
 const animated = (id: string, name: string, css: string, anim: ColorAnim) => { const rule = byTrophies('color', id); return { id, name, css, anim, rule, how: trophyHow(rule) }; };
 export const NAME_COLORS: (Cosmetic & { css: string; anim?: ColorAnim })[] = [
+  ...GEM_COSMETICS.map(c => ({ id: c.id, name: c.name, css: c.css, how: `Buy for ${c.price} gems in the Relic Shop.`, rule: { shop: c.key } })),
+  color('event-newyear', 'Firework Gold', '#ffd166', { shop: 'evt-newyear-color' }),
+  color('event-valentine', 'Heart Pink', '#ff77aa', { shop: 'evt-valentine-color' }),
+  color('event-allstar', 'All-Star Violet', '#b48aff', { shop: 'evt-allstar-color' }),
+  color('event-easter', 'Spring Mint', '#b7ef83', { shop: 'evt-easter-color' }),
+  color('event-playoffs', 'Finals Gold', '#e8bc44', { shop: 'evt-playoffs-color' }),
+  color('event-summer', 'Sunset Orange', '#ffb85c', { shop: 'evt-summer-color' }),
+  color('event-anniversary', 'Founder Lilac', '#b9a0ff', { shop: 'evt-anniversary-color' }),
+
   color('cream', 'Cream', '#f4f0e6', { level: 1 }),
   color('orange', 'Court orange', '#ff9d3d'), color('red', 'Red', '#ff6b6b'), color('sky', 'Sky', '#6db8ff'), color('pink', 'Pink', '#ff8fc8'),
   color('mint', 'Mint', '#6fdc93'), color('teal', 'Teal', '#4fd6d6'), color('lime', 'Lime', '#b8e05a'), color('violet', 'Violet', '#c79bff'),
@@ -301,6 +312,11 @@ export const SUPPORTER_TITLE = 'Supporter';
 
 /** Leaderboard honors the server can grant (see server/honors.ts). `first` is any #1. */
 export const HONORS: { id: string; title: string; how: string; first?: boolean }[] = [
+  { id: 'gm-2', title: 'Silver Strategist', how: '#2 on the GM leaderboard (at least 10 GMs)' },
+  { id: 'gm-3', title: 'Bronze Mastermind', how: '#3 on the GM leaderboard (at least 10 GMs)' },
+  { id: 'trophy-1', title: 'Trophy Sovereign', how: '#1 on the trophy leaderboard (at least 10 GMs)', first: true },
+  { id: 'trophy-2', title: 'Silver Trophy Keeper', how: '#2 on the trophy leaderboard (at least 10 GMs)' },
+  { id: 'trophy-3', title: 'Bronze Trophy Keeper', how: '#3 on the trophy leaderboard (at least 10 GMs)' },
   { id: 'gm-1', title: '#1 GM', how: '#1 on the GM leaderboard', first: true },
   { id: 'gm-10', title: 'Top 10 GM', how: 'Top 10 on the GM leaderboard' },
   { id: 'gm-100', title: 'Top 100 GM', how: 'Top 100 on the GM leaderboard' },
@@ -390,11 +406,19 @@ export function isOpen(rule: Rule, c: UnlockContext): boolean {
 
 /** Titles bought in a holiday event shop (retention/holidayShop.ts). */
 export const EVENT_TITLES: { title: string; key: string; how: string }[] = [
+  { title: 'Midnight Maestro', key: 'evt-newyear-title', how: 'Available in the matching annual event shop' },
+  { title: 'Heart of the Court', key: 'evt-valentine-title', how: 'Available in the matching annual event shop' },
+  { title: 'Starlight Captain', key: 'evt-allstar-title', how: 'Available in the matching annual event shop' },
+  { title: 'Golden Egg Hunter', key: 'evt-easter-title', how: 'Available in the matching annual event shop' },
+  { title: 'Banner Chaser', key: 'evt-playoffs-title', how: 'Available in the matching annual event shop' },
+  { title: 'Sunset Baller', key: 'evt-summer-title', how: 'Available in the matching annual event shop' },
+  { title: 'September Original', key: 'evt-anniversary-title', how: 'Available in the matching annual event shop' },
   { title: 'Pumpkin King', key: 'evt-halloween-title', how: 'Spooky Season event shop' },
   { title: 'Holiday Hooper', key: 'evt-christmas-title', how: 'Winter Wonderland event shop' },
 ];
 /** Titles from the leaderboards, the modes and the Supporter pass that are open. */
 export const earnedExtraTitles = (c: UnlockContext): string[] => [
+  ...RELEASE_TITLES.filter(t => releaseTitleProgress(c, t) >= 1).map(t => t.title),
   ...EVENT_TITLES.filter(t => (c.shop ?? []).includes(t.key)).map(t => t.title),
   ...HONORS.filter(h => c.honors.includes(h.id)).map(h => h.title),
   ...MODE_TITLES.filter(t => c.modes.includes(t.mode)).map(t => t.title),

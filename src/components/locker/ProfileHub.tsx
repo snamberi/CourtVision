@@ -1,3 +1,4 @@
+import { PageJumps } from '../PageJumps';
 import { useEffect, useState } from 'react';
 import { listCareers } from '../../career/storage';
 import { careerShelf, careerResume, isSandboxCareer, type CareerMeta } from '../../career/career';
@@ -78,6 +79,7 @@ export function ProfileHub({ onExit, onCloset, initialTab = 'profile' }: { onExi
       <div className="hunt-title"><span className="pixel-eyebrow">YOUR CARD, ACHIEVEMENTS AND TROPHIES</span><h1>Player Profile</h1></div>
       {onCloset && <button className="relic-switch" onClick={onCloset}><PixelIcon name="star" size={16} /> Closet</button>}
     </header>
+    <PageJumps />
     <div className="profile-tabs code-mode-actions" role="tablist" aria-label="Profile sections">{TABS.map(t => <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>{t.label}</button>)}</div>
 
     {tab === 'profile' && <ProfilePanel onCloset={onCloset} extras={<><div className="profile-extras"><LegacyPanel legacy={legacy} compact /><FavoritesPanel /></div><TrophyCase /><RelicShelf /></>} />}

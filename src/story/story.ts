@@ -340,10 +340,10 @@ export const TRAINABLE: CategoryId[] = ['finishing', 'midRange', 'threePoint', '
 
 // ---------------------------------------------------------------- flow
 
-export function newStory(seed: number, name: string, style: StoryStyle, hometown: string, relics?: { clutchGene?: boolean; pet?: string | null }): StoryState {
+export function newStory(seed: number, name: string, style: StoryStyle, hometown: string, relics?: { secrets?: readonly string[]; clutchGene?: boolean; pet?: string | null }): StoryState {
   const clean = name.trim().replace(/\s+/g, ' ').slice(0, 24) || 'Jaylen Carter';
   // The Clutch Gene (a secret relic): two grit before the first page.
-  return { v: 2, seed, name: clean, style, hometown, hero: createHero(seed, clean, style), hype: 0, grit: (relics?.clutchGene ? 2 : 0) + (relics?.pet === 'turtle' ? 2 : 0), bonds: { dre: 1, ray: 0, ice: 0, maya: 2 }, flags: [], beat: SCRIPT[0].id, games: [], points: 0, done: false };
+  return { v: 2, seed, name: clean, style, hometown, hero: createHero(seed, clean, style), hype: 0, grit: (relics?.secrets?.includes('snowGlobe') ? 3 : 0) + (relics?.secrets?.includes('heartOfTeam') ? 2 : 0) + (relics?.clutchGene ? 2 : 0) + (relics?.pet === 'turtle' ? 2 : 0), bonds: { dre: 1, ray: 0, ice: 0, maya: 2 }, flags: [], beat: SCRIPT[0].id, games: [], points: 0, done: false };
 }
 
 const NBA_BEAT = SCRIPT.find(b => b.kind === 'nba')!;

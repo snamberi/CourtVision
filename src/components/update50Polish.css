@@ -1,0 +1,83 @@
+.phone-app-viewport { position: relative; min-width: 0; overflow: hidden; border-radius: 7px; }
+.phone-app-viewport > .courtchat { inset: 0; padding: 8px; border: 0; background: var(--look-panel); color: var(--look-text); gap: 5px; overflow: hidden; }
+.courtchat header { flex-shrink: 0; gap: 4px; }
+.courtchat header button { padding: 5px; font-size: 11px; }
+.phone-app-viewport .courtchat-messages { min-height: 0; overscroll-behavior: contain; scrollbar-width: thin; }
+.phone-app-viewport .courtchat form { display: grid; grid-template-columns: 1fr auto; gap: 4px; flex-shrink: 0; }
+.phone-app-viewport .courtchat label { grid-column: 1 / -1; font-size: 10px; }
+.phone-app-viewport .courtchat textarea { min-height: 38px; height: 38px; resize: none; font-size: 12px; }
+.phone-app-viewport .courtchat p { margin: 4px 0; }
+.phone-app-viewport .courtchat > small:last-child { font-size: 9px; }
+.menu-phone-pages { scroll-behavior: smooth; scroll-padding: 0; }
+.menu-phone-apps { scroll-snap-stop: always; }
+.menu-phone-dots button { transition: background-color 160ms, transform 160ms; }
+.menu-phone-dots button.on { transform: scale(1.15); }
+.page-pin-menu { padding: 8px; border: 1px solid var(--look-line); border-radius: 8px; background: var(--look-panel); color: var(--look-text); }
+.page-pin-menu summary { cursor: pointer; font: 600 12px/1.4 var(--look-body); padding: 4px; }
+.page-pin-menu ul { display: grid; gap: 6px; padding: 0; margin: 8px 0; list-style: none; }
+.page-pin-menu li { display: flex; min-width: 0; align-items: center; gap: 4px; border: 1px solid var(--look-line); border-radius: 5px; background: var(--look-raised); }
+.page-pin-menu li a { flex: 1; padding: 8px; min-width: 0; overflow-wrap: anywhere; color: var(--look-text); text-decoration: none; font: 12px/1.4 var(--look-body); }
+.page-pin-menu li:hover { border-color: var(--look-accent); }
+.page-pin-menu li button { padding: 6px 9px; border: 0; background: transparent; }
+.cv-site-footer { display: grid; grid-template-columns: minmax(160px,1fr) minmax(0,2fr); text-align: left; gap: 24px; padding: 28px; border-top: 1px solid var(--look-line); background: var(--look-panel); border-radius: 12px; margin-top: 32px; }
+.cv-site-footer strong { font: 700 24px var(--look-body); color: var(--look-text); }
+.cv-site-footer p { color: var(--look-muted); margin: 8px 0; }
+.cv-site-footer nav { line-height: 2.5; align-self: center; }
+.cv-site-footer .studio-mark { grid-column: 1 / -1; border-top: 1px solid var(--look-line); padding-top: 12px; }
+.settings-groups { display: grid; gap: 16px; }
+.settings-groups > details, .p820-setup-details { border: 1px solid var(--look-line); border-radius: 10px; background: var(--look-panel); padding: 16px; }
+.settings-groups > details > summary, .p820-setup-details > summary { cursor: pointer; font: 600 18px/1.5 var(--look-body); color: var(--look-text); }
+.settings-groups .setting-cards { padding-top: 18px; gap: 18px; }
+.settings-groups .setting-card { min-width: 0; }
+.p820-quickstart { padding: clamp(18px,4vw,32px); border: 2px solid var(--look-accent); border-radius: 12px; background: var(--look-panel); display: grid; gap: 12px; }
+.p820-quickstart ol { display: flex; flex-wrap: wrap; gap: 12px 32px; padding-left: 24px; }
+.p820-quickstart p { color: var(--look-muted); max-width: 65ch; }
+.p820-setup-details { margin-top: 16px; }
+.cv-run-controls { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 14px; border: 1px solid var(--look-line); background: var(--look-panel); }
+.cv-run-controls label { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.cv-page { display: grid; gap: 20px; }
+.cv-busy { padding: 18px; gap: 12px; }
+.cv-busy .hunt-cap-bar i { transition: width 250ms linear; }
+.cv-landed.rarity-mythic, .cv-slice.rarity-mythic { background: linear-gradient(135deg, var(--c-bg-251044, #251044), var(--c-bg-4c1457, #4c1457)); color: var(--c-fg-fff0fb, #fff0fb); border: 2px solid var(--c-border-ff64d8, #ff64d8); box-shadow: inset 0 0 18px var(--c-shadow-c72bec45, #c72bec45), 0 0 12px var(--c-shadow-d648cf55, #d648cf55); }
+.cv-reel-marker.rarity-mythic { background: var(--c-bg-ff64d8, #ff64d8); box-shadow: 0 0 14px var(--c-shadow-ff64d8, #ff64d8); }
+.cv-mythic-label { display: block; padding: 7px 10px; background: var(--c-bg-ff64d8, #ff64d8); color: var(--c-fg-250c30, #250c30); font: 800 12px/1.4 var(--look-body); letter-spacing: .12em; }
+.cv-landed.rarity-mythic .cv-landed-head :is(small,strong,span) { color: var(--c-fg-fff0fb, #fff0fb); }
+.cv-landed.rarity-mythic { animation: mythic-arrive 650ms ease-out; }
+@keyframes mythic-arrive { from { transform: translateY(8px) scale(.97); opacity: .4; } to { transform: none; opacity: 1; } }
+/* Decorative stripes belong to the frame, not across player portraits. */
+.player-finish .cv-card-art::before { background: none; border: 0; }
+@media(max-width:600px) { .cv-site-footer { grid-template-columns: 1fr; gap: 14px; padding: 20px; } .cv-run-controls > * { width: 100%; } }
+@media(prefers-reduced-motion:reduce) { .menu-phone-pages { scroll-behavior: auto; } .cv-landed.rarity-mythic { animation: none; } .cv-busy .hunt-cap-bar i, .menu-phone-dots button { transition: none; } }
+:root.reduce-motion .cv-landed.rarity-mythic, :root.lite .cv-landed.rarity-mythic { animation: none; }
+:root.reduce-motion .menu-phone-pages { scroll-behavior: auto; }
+
+/* Full-width copy above purchase actions: never squeeze words between two prices. */
+:root .relic-shop-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); align-items: stretch; }
+:root .relic-spin-offer { display: flex; flex-direction: column; align-items: stretch; padding: 16px; gap: 14px; min-width: 0; }
+:root .relic-spin-offer > span { flex: 1 1 auto; min-width: 0; width: 100%; overflow-wrap: normal; word-break: normal; }
+:root .relic-spin-offer b { font-size: 16px; line-height: 1.4; }
+:root .relic-spin-offer small { line-height: 1.6; }
+.relic-offer-actions { display: grid; gap: 8px; min-width: 0; }
+:root .relic-offer-actions button { width: 100%; min-width: 0; white-space: normal; padding: 10px; overflow-wrap: normal; }
+/* Grid items must shrink to the viewport; only the tables scroll horizontally. */
+:root .cv, :root .cv-page, :root .cv-builder { min-width: 0; box-sizing: border-box; }
+:root .cv-page { grid-template-columns: minmax(0, 1fr); }
+:root .cv-page > * { min-width: 0; max-width: 100%; box-sizing: border-box; }
+:root .cv-page :is(.table-wrap, .table-scroll, .cv-years-wrap, .feature-table-scroll) { min-width: 0; max-width: 100%; overflow-x: auto; }
+:root .cv-page .hunt-over-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 125px), 1fr)); gap: 12px; width: 100%; }
+:root .cv-page :is(.hunt-over-banner, .cv-jersey) h2 { overflow-wrap: anywhere; }
+:root .cv-page .cv-top { width: 100%; }
+:root .cv-page .cv-top li { grid-template-columns: 3.4em minmax(0, 1fr) 4em; }
+:root .cv-page .cv-top b { overflow-wrap: anywhere; }
+:root .play-menu-presets button { overflow-wrap: normal; word-break: normal; font-size: clamp(12px, 2vw, 17px); line-height: 1.3; }
+
+/* A finite Mythic reveal: expanding halos and a diagonal gleam, never a looping flash. */
+.cv-landed.rarity-mythic { position: relative; isolation: isolate; animation-duration: 950ms; }
+.mythic-reveal { position: absolute; inset: 0; overflow: hidden; pointer-events: none; border-radius: inherit; }
+.mythic-reveal i { position: absolute; inset: 12%; border: 2px solid currentColor; border-radius: 50%; opacity: 0; animation: mythic-halo 1100ms ease-out both; }
+.mythic-reveal i:nth-child(2) { animation-delay: 180ms; }
+.mythic-reveal i:nth-child(3) { inset: -60%; border: 0; border-radius: 0; background: linear-gradient(110deg, transparent 43%, currentColor 50%, transparent 57%); animation: mythic-gleam 1000ms 180ms ease-out both; }
+@keyframes mythic-halo { from { transform: scale(.3); opacity: .65; } to { transform: scale(1.8); opacity: 0; } }
+@keyframes mythic-gleam { from { transform: translateX(-70%); opacity: 0; } 30% { opacity: .25; } to { transform: translateX(70%); opacity: 0; } }
+@media(prefers-reduced-motion:reduce) { .mythic-reveal i { animation: none; } }
+:root.reduce-motion .mythic-reveal i, :root.lite .mythic-reveal i, .no-rarity .mythic-reveal { display: none; }

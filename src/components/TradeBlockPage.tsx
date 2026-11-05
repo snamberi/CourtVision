@@ -1,3 +1,4 @@
+import { PlayerStatSummary } from './qol/PlayerStatSummary';
 import { relicRunOpts } from '../relics/apply';
 import { TeamLink } from './TeamLink';
 import type { League } from '../simulation/league';
@@ -35,10 +36,15 @@ export function TradeBlockPage({ league, extras, controlledTeamId, onChange, onS
   const myBlock = myTeam ? myTeam.seasons.filter(s => extras.tradeBlock.includes(s.playerId)).length + tradeableFuturePicks(extras, myTeam.teamId).filter(p => picksOnBlock.includes(p.id)).length : 0;
   const [offers, setOffers] = useState<SoughtOffer[] | null>(null);
   const [note, setNote] = useState<string | null>(null);
-  const seek = () => {
+  const seek = (refresh = false) => {
     if (!myTeam) return;
+    const season = league.season ?? '';
+    if (refresh) {
+      if (!relicRunOpts().secrets.includes('rebuilder') || extras.relicTradeRefresh?.[season] || deadlinePassed) return;
+      onChange(league, { ...extras, relicTradeRefresh: { ...extras.relicTradeRefresh, [season]: true } });
+    }
     // The Phone Tree (a secret relic): four more teams pick up.
-    const found = seekTradeOffers(league, extras, myTeam.teamId, relicRunOpts().phoneTree ? 16 : 12);
+    const found = seekTradeOffers(league, extras, myTeam.teamId, relicRunOpts().phoneTree ? 16 : 12, refresh || !!extras.relicTradeRefresh?.[league.season ?? '']);
     setOffers(found);
     setNote(found.length ? null : 'No team can make a fair offer for this package right now. Try a different mix of players or picks.');
   };
@@ -61,8 +67,9 @@ export function TradeBlockPage({ league, extras, controlledTeamId, onChange, onS
       {myTeam && <section className="seek-trade" aria-label="Seek trade offers">
         <div className="seek-trade-head">
           <div><b>Seek trade</b><small>Put everything you want to move on the block, then every team answers at once with offers you can accept on the spot.</small></div>
-          <button className="primary" disabled={!myBlock || deadlinePassed} onClick={seek}>Seek trade{myBlock ? ` (${myBlock} on the block)` : ''}</button>
+          <button className="primary" disabled={!myBlock || deadlinePassed} onClick={() => seek()}>Seek trade{myBlock ? ` (${myBlock} on the block)` : ''}</button>
         </div>
+        {offers && relicRunOpts().secrets.includes('rebuilder') && <button disabled={deadlinePassed || !!extras.relicTradeRefresh?.[league.season ?? '']} onClick={() => seek(true)}>The Rebuilder · refresh proposals (once per season)</button>}
         {!myBlock && <p className="hint-text">Add your players or picks to the block below first.</p>}
         {note && <p className="hint-text" role="status">{note}</p>}
         {offers && offers.length > 0 && <ol className="seek-trade-offers">{offers.map((o, i) => {
@@ -70,7 +77,7 @@ export function TradeBlockPage({ league, extras, controlledTeamId, onChange, onS
           const get = [...playerLine(o.proposal.teamBId, o.proposal.playersFromB), ...pickLine(o.proposal.picksFromB)];
           return <li key={`${o.proposal.teamBId}-${i}`}>
             <span className="seek-offer-team"><TeamLink name={them?.name ?? o.proposal.teamBId} /></span>
-            <span className="seek-offer-get">You get: <b>{get.join(', ')}</b></span>
+            <span className="seek-offer-get">You get: <b>{get.join(', ')}</b>{them?.seasons.filter(p => o.proposal.playersFromB.includes(p.playerId)).map(p => <PlayerStatSummary key={p.playerId} player={p} />)}</span>
             {showValues && <small>Value to you {Math.round(o.yourValue)}</small>}
             <button className="primary" onClick={() => accept(o)}>Accept</button>
           </li>;
@@ -83,7 +90,7 @@ export function TradeBlockPage({ league, extras, controlledTeamId, onChange, onS
           <tbody>
             {blockedPlayers.map(({ season, team }) => (
               <tr key={season.playerId}>
-                <td onClick={() => onSelectPlayer(season.playerId)} style={{ cursor: 'pointer' }}><PlayerNameTag playerId={season.playerId} teamId={season.teamId} jerseyNumber={season.jerseyNumber} size={22} /></td>
+                <td onClick={() => onSelectPlayer(season.playerId)} style={{ cursor: 'pointer' }}><PlayerNameTag season={season} playerId={season.playerId} teamId={season.teamId} jerseyNumber={season.jerseyNumber} size={22} /></td>
                 <td><TeamLink name={team.name} /></td>
                 {showValues && <td>{computeTradeValue(season).toFixed(0)}</td>}
                 <td>
@@ -125,7 +132,7 @@ export function TradeBlockPage({ league, extras, controlledTeamId, onChange, onS
         <div key={t.teamId} className="badge-grid">
           {t.seasons.filter((s) => !extras.tradeBlock.includes(s.playerId)).map((s) => (
             <button key={s.playerId} className="fa-card" onClick={() => onChange(league, toggleTradeBlock(extras, s.playerId))}>
-              Add <PlayerNameTag playerId={s.playerId} teamId={s.teamId} jerseyNumber={s.jerseyNumber} size={20} />
+              Add <PlayerNameTag season={s} playerId={s.playerId} teamId={s.teamId} jerseyNumber={s.jerseyNumber} size={20} />
             </button>
           ))}
         </div>

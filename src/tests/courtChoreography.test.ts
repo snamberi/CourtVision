@@ -47,7 +47,7 @@ describe('court choreography', () => {
       const fs = frames(i, 240), seconds = replayDuration(log[i]) / 1000 / 240;
       for (let k = 1; k < fs.length; k++) for (const p of fs[k].players) {
         const before = fs[k - 1].players.find(x => x.id === p.id)!;
-        expect(Math.hypot(p.x - before.x, p.y - before.y) / seconds).toBeLessThan(620);
+        expect(Math.hypot(p.x - before.x, p.y - before.y) / seconds, `play ${i} frame ${k} player ${p.id} ${fs[k].phase}`).toBeLessThan(620);
       }
     }
   });
@@ -85,4 +85,16 @@ describe('court choreography', () => {
     }
     expect(checked).toBeGreaterThan(0);
   });
+});
+
+it('keeps the ball continuous at authored pass, shot and free-throw handoffs',()=>{
+ for(let i=1;i<15;i++){
+  const cuts=courtFrame(log[i],.5,'H','A',4,log[i-1]).ballCuts??[];
+  for(const cut of new Set(cuts)){
+   if(cut<=0||cut>=1)continue;
+   const a=courtFrame(log[i],cut-1e-6,'H','A',4,log[i-1]).ball;
+   const b=courtFrame(log[i],cut+1e-6,'H','A',4,log[i-1]).ball;
+   expect(Math.hypot(a.x-b.x,a.y-b.y,a.z-b.z),`play ${i} at ${cut}`).toBeLessThan(2);
+  }
+ }
 });

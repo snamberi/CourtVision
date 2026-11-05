@@ -4,7 +4,8 @@ import type { PlayerSeason } from '../simulation/types';
 import type { CourtActor, CourtBall, CourtFrame, CourtPoint, CourtShot } from '../simulation/courtMotion';
 import { resolveTeamIdentity, type TeamIdentity } from '../simulation/teamIdentity';
 import { useTeamIdentity } from '../visuals/TeamIdentityContext';
-import { actionSprite, pickFrame, handReach, headTop, ORIGIN_X, ORIGIN_Y } from '../visuals/actionSprites';
+import { actionSprite, pickFrame, headTop, ORIGIN_X, ORIGIN_Y } from '../visuals/actionSprites';
+import { presentAthlete, labelOffsets, RIM_HEIGHT, ballHeight } from '../visuals/courtPresentation';
 import { PlayerAvatar } from './PlayerAvatar';
 import { PixelBall } from './PixelIcon';
 import { CrestArt } from './TeamCrest';
@@ -138,11 +139,11 @@ function Mascot({level,identity,hype}:{level:number;identity:TeamIdentity;hype:n
 function Bench({x,y,players,kit,count=9,teamId,reaction=0}:{x:number;y:number;players:PlayerSeason[];kit:TeamIdentity;count?:number;teamId:string;reaction?:number}){
  return <g data-testid={`bench-${teamId}`} data-reacting={reaction>0?'true':'false'}>{Array.from({length:count},(_,i)=>{const p=players[i],t=Math.max(0,Math.min(1,reaction-i*.025));
   const active=t>0&&t<.98;
-  const f=pickFrame({pose:'idle',anim:active?{kind:i%3?'clap':'celebrate',t}:undefined,carrier:false,moving:false,ballZ:0});
-  const sprite=p&&active?actionSprite(f.id,f.pose,{playerId:p.playerId,primary:kit.primary,secondary:kit.secondary,jerseyNumber:p.jerseyNumber,age:p.age,jerseyStyle:kit.jerseyStyle}):null;
+  const f=pickFrame({pose:'idle',anim:active?{kind:i%4===0?'celebrate':i%4===1?'nightNight':'clap',t}:undefined,carrier:false,moving:false,ballZ:0});
+  const sprite=p&&active?actionSprite(f.id,f.pose,{playerId:p.playerId,primary:kit.primary,secondary:kit.secondary,jerseyNumber:p.jerseyNumber,age:p.age,jerseyStyle:kit.jerseyStyle,appearance:p.appearance}):null;
   return <g key={i} transform={`translate(${x+i*28},${y})`}>
    <rect x="0" y="6" width="22" height="18" fill="#1d2a3c" stroke="#0a111c" shapeRendering="crispEdges"/><rect x="2" y="0" width="18" height="10" fill="#2c3e55" shapeRendering="crispEdges"/>
-   {p&&<><g className={active?'bench-rest bench-rest-hidden':'bench-rest'} transform="translate(-2,-14)"><PlayerAvatar playerId={p.playerId} teamId={teamId} size={26} jerseyNumber={p.jerseyNumber} age={p.age} primaryColor={kit.primary} secondaryColor={kit.secondary} jerseyStyle={kit.jerseyStyle}/></g>
+   {p&&<><g className={active?'bench-rest bench-rest-hidden':'bench-rest'} transform="translate(-2,-14)"><PlayerAvatar playerId={p.playerId} teamId={teamId} size={26} jerseyNumber={p.jerseyNumber} age={p.age} primaryColor={kit.primary} secondaryColor={kit.secondary} jerseyStyle={kit.jerseyStyle} appearance={p.appearance}/></g>
    {sprite&&<g className="bench-reaction" transform={`translate(11,${22-Math.sin(t*Math.PI)*5}) scale(.62) translate(${-ORIGIN_X},${-ORIGIN_Y})`} shapeRendering="crispEdges">{sprite.map((path,j)=><path key={j} d={path.d} fill={path.fill}/>)}</g>}</>}
   </g>;})}</g>;
 }
@@ -175,8 +176,8 @@ const Arena=memo(function Arena({home,identity,awayKit,id,hype,fill=1,loud=0,mas
   <defs>
    <FloorPatterns id={id}/>
    <pattern id={`${id}-grain`} width="144" height="40" patternUnits="userSpaceOnUse" shapeRendering="crispEdges">
-    <path d="M6 3H29M38 8H62M81 2H102M112 13H139M9 22H37M44 31H67M78 27H119M126 36H142M13 37H31M62 18H84" stroke="#6f4527" strokeWidth=".5" strokeOpacity=".22"/>
-    <path d="M7 4H24M40 9H66M81 3H107M9 23H42M78 28H112M64 19H87" stroke="#fff0ca" strokeWidth=".5" strokeOpacity=".3"/>
+    <path d="M6 3H29M38 8H62M81 2H102M112 13H139M9 22H37M44 31H67M78 27H119M126 36H142M13 37H31M62 18H84" stroke="#6f4527" strokeWidth=".5" strokeOpacity=".1"/>
+    <path d="M7 4H24M40 9H66M81 3H107M9 23H42M78 28H112M64 19H87" stroke="#fff0ca" strokeWidth=".5" strokeOpacity=".12"/>
     <path d="M17 8H24V9H17ZM96 33H100V34H96Z" fill="#764c2c" opacity=".12"/>
    </pattern>
    <radialGradient id={`${id}-sheen`} cx="50%" cy="40%" r="65%"><stop offset="0" stopColor="#fff6dc" stopOpacity=".16"/><stop offset=".6" stopColor="#fff6dc" stopOpacity="0"/><stop offset="1" stopColor="#1a0f05" stopOpacity=".22"/></radialGradient>
@@ -185,8 +186,8 @@ const Arena=memo(function Arena({home,identity,awayKit,id,hype,fill=1,loud=0,mas
   {/* The whole building in the home team's colour, darker toward the stands. */}
   <rect x={SCENE.x} y="0" width={SCENE.w} height="600" fill={`url(#${id}-apron)`}/>
   <rect x={SCENE.x} y="0" width={SCENE.w} height="600" fill="#000" opacity=".12"/>
-  <SideStand x0={SCENE.x+2} dir={1} primary={identity.primary} secondary={identity.secondary} hype={hype} fill={fill} loud={loud}/>
-  <SideStand x0={SCENE.x+SCENE.w-2} dir={-1} primary={identity.primary} secondary={identity.secondary} hype={hype} fill={fill}/>
+  <g opacity=".82"><SideStand x0={SCENE.x+2} dir={1} primary={identity.primary} secondary={identity.secondary} hype={hype} fill={fill} loud={loud}/>
+  <SideStand x0={SCENE.x+SCENE.w-2} dir={-1} primary={identity.primary} secondary={identity.secondary} hype={hype} fill={fill}/></g>
   {/* An owner's luxury suites: lit skybox windows along the top of the building (more with each level). */}
   {building&&building.suites>0&&<g data-testid="arena-suites" shapeRendering="crispEdges">{Array.from({length:building.suites*9},(_,i)=>{const n=building.suites*9,x=60+(i+.5)*(880/n)-7;return <rect key={i} x={x} y="1" width="14" height="5" fill={i%4?'#ffd166':'#fff3c4'} stroke="#0b1018" strokeWidth=".8"/>;})}</g>}
   {/* Top sideline: the visitors' bench, the table officials' chairs and the community board. */}
@@ -205,6 +206,9 @@ const Arena=memo(function Arena({home,identity,awayKit,id,hype,fill=1,loud=0,mas
   <rect x="58" y="81" width="884" height="458" fill="#0b1018"/>
   <rect x="62" y="85" width="876" height="450" fill={`url(#${id}-${style})`}/>
   {['planks','parquet','blonde','midnight','cherry','herringbone','ebony','gold'].includes(style)&&<rect x="62" y="85" width="876" height="450" fill={`url(#${id}-grain)`} pointerEvents="none"/>}
+  {['planks','parquet'].includes(style)&&<g pointerEvents="none" opacity=".06">
+   {Array.from({length:15},(_,i)=><rect key={i} x="62" y={85+i*30} width="876" height="15" fill={i%3?'#fff0ca':'#6f4527'}/>)}
+  </g>}
   <path d={`M62 ${LANE.top}H${62+LANE.depth}V${LANE.bottom}H62ZM938 ${LANE.top}H${938-LANE.depth}V${LANE.bottom}H938Z`} fill={paint}/>
   {[62+LANE.depth,938-LANE.depth].map((x,i)=><path key={i} d={`M${x} ${310-FT_R}A${FT_R} ${FT_R} 0 0 ${i?0:1} ${x} ${310+FT_R}Z`} fill={identity.secondary} opacity=".85"/>)}
   <circle cx="500" cy="310" r="56" fill={identity.secondary} opacity=".35"/>
@@ -215,7 +219,7 @@ const Arena=memo(function Arena({home,identity,awayKit,id,hype,fill=1,loud=0,mas
   {/* Fine paint scuffs and reflected light bars keep the floor tactile at close camera zoom. */}
   <g opacity=".08" fill="#fff3df" pointerEvents="none" shapeRendering="crispEdges"><path d="M145 147H325V149H145ZM675 147H855V149H675ZM145 466H325V468H145ZM675 466H855V468H675Z"/><path d="M176 292H187V294H176ZM813 323H824V325H813ZM228 350H242V351H228ZM758 268H772V269H758"/></g>
   {/* Reflections of the arena lights on the varnish. */}
-  {[[240,190],[760,190],[240,430],[760,430],[500,310]].map(([x,y],i)=><ellipse key={i} cx={x} cy={y} rx={i===4?120:80} ry={i===4?46:30} fill="#fffbe8" opacity={i===4?.06:.08} pointerEvents="none"/>)}
+  {[[240,190],[760,190],[240,430],[760,430],[500,310]].map(([x,y],i)=><ellipse key={i} cx={x} cy={y} rx={i===4?120:80} ry={i===4?46:30} fill="#fffbe8" opacity={i===4?.025:.04} pointerEvents="none"/>)}
   <rect x="62" y="85" width="876" height="450" fill={`url(#${id}-sheen)`} pointerEvents="none"/>
   {/* Bottom sideline: the scorer's table between the home bench and the media row. */}
   <g shapeRendering="crispEdges">
@@ -228,17 +232,13 @@ const Arena=memo(function Arena({home,identity,awayKit,id,hype,fill=1,loud=0,mas
 function Photographers({flash}:{flash:number}){
  return <g shapeRendering="crispEdges">{[[40,150],[40,470],[960,150],[960,470]].map(([x,y],i)=><g key={i} transform={`translate(${x},${y})`}>
   <rect x="-6" y="0" width="12" height="11" fill="#1b2533"/><rect x="-4" y="-8" width="8" height="8" fill={CROWD_SKIN[i%CROWD_SKIN.length]}/><rect x={i<2?4:-12} y="-2" width="8" height="6" fill="#0a0f18"/>
-  {flash>0&&(i+Math.round(flash*3))%2===0&&<circle cx={i<2?12:-12} cy="1" r={6+flash*6} fill="#fffbe8" opacity={.75*flash}/>}
+  {flash>0&&(i+Math.round(flash*3))%2===0&&<circle className="court-play-effects" cx={i<2?12:-12} cy="1" r={6+flash*6} fill="#fffbe8" opacity={.75*flash}/>}
  </g>)}</g>;
 }
-/** Display height of the ball: game heights (0-34 at the rim) stretched above the waist, so the rim sits over the
- * players' heads and shots arc. Low heights (dribbles, passes, the ball in hand) stay as they are. */
-const RIM_HEIGHT=70;
-const ballHeight=(z:number)=>z<=28?z:z<=34?28+(z-28)*7:z<=42?RIM_HEIGHT+(z-34)*4:RIM_HEIGHT+32+(z-42)*1.5;
 /** The basket from the side, like the players: padded stanchion base in the home colour behind the baseline, steel
  * post and arm, the glass seen edge-on, an orange rim and a pixel net that swishes on a make. */
 function Hoop({x,net,rim,pad}:{x:number;net:number;rim:number;pad:string}){
- const left=x<500,shake=rim*Math.sin(rim*20)*2,drop=net*6,sway=net*2.5,R=-RIM_HEIGHT;
+ const left=x<500,shake=rim*Math.sin(rim*20)*2,drop=net*8,sway=net*3,R=-RIM_HEIGHT;
  const padLight=shade(pad,.25),padDark=shade(pad,-.35);
  const strands=[-9,-5,0,5,9];
  return <g transform={`translate(${x},310) scale(${left?1:-1},1)`} shapeRendering="crispEdges">
@@ -269,36 +269,37 @@ function Hoop({x,net,rim,pad}:{x:number;net:number;rim:number;pad:string}){
  </g>;
 }
 const lastName=(id:string)=>{const parts=id.split(/[\s-]+/);return (parts[parts.length-1]||id).toUpperCase().slice(0,10);};
-function Athlete({actor,player,identity,ring,hot,carrier,labels,above,ballZ,hoopX}:{actor:CourtActor;player?:PlayerSeason;identity:TeamIdentity;ring:string;hot:boolean;carrier:boolean;labels:boolean;above:boolean;ballZ:number;hoopX:number}){
- const scale=1.18*Math.max(.9,Math.min(1.1,(player?.attributes.physical.heightInches??79)/79));
- const moving=actor.stride!==0&&actor.pose!=='guard';
- const {id:frameId,pose,flip}=useMemo(()=>pickFrame({pose:actor.pose,anim:actor.anim,cycle:actor.cycle,carrier,moving,ballZ,gait:actor.gait,onBall:actor.onBall}),[actor.pose,actor.anim,actor.cycle,carrier,moving,ballZ,actor.gait,actor.onBall]);
- // The spin move turns him round for two frames.
- const facing=(actor.facing<0?-1:1)*(flip?-1:1);
- const paths=actionSprite(frameId,pose,{playerId:actor.id,primary:identity.primary,secondary:identity.secondary,jerseyNumber:player?.jerseyNumber,age:player?.age,jerseyStyle:identity.jerseyStyle,appearance:player?.appearance},facing);
- // On the dunk the body is drawn so the hands meet the rim, whatever the jump.
- const handTop=handReach(pose)*scale;
- const slam=(actor.anim?.kind==='dunk'&&(frameId==='K2'||frameId==='K3'))||(actor.anim?.kind==='alleyOop'&&(frameId==='AO3'||frameId==='AO4'));
- const lift=slam?Math.min(actor.jump,Math.max(0,RIM_HEIGHT-handTop+4)):actor.jump;
+function Athlete({actor,player,identity,hot,visual}:{actor:CourtActor;player?:PlayerSeason;identity:TeamIdentity;hot:boolean;visual:ReturnType<typeof presentAthlete>}){
+ const {pose,frameId,facing,view,scale,lift,offsetX}=visual;
+ const paths=actionSprite(frameId,pose,{playerId:actor.id,primary:identity.primary,secondary:identity.secondary,jerseyNumber:player?.jerseyNumber,age:player?.age,jerseyStyle:identity.jerseyStyle,appearance:player?.appearance,view},facing);
  const top=-headTop(pose)*scale-lift;
- // On the slam and the hang the dunker (shadow and all) is drawn within reach of the rim.
- const gap=hoopX-actor.x,toRim=slam&&Math.abs(gap)>12?Math.sign(gap)*(Math.abs(gap)-12):0;
- return <g className="court-player" data-player-id={actor.id} data-pose={actor.pose} data-frame={frameId} transform={`translate(${(actor.x+toRim).toFixed(2)},${actor.y.toFixed(2)})`}>
-  <ellipse rx={15-lift*.06} ry="5" fill="#2f231c" opacity={.3-lift*.004}/>
-  <ellipse rx="14" ry="4.5" fill="none" stroke={ring} strokeWidth="2" opacity=".75"/>
-  {carrier&&<ellipse rx="19" ry="7" fill="none" stroke="#fff3a5" strokeWidth="2" opacity=".9"/>}
-  <g transform={`translate(0,${(-lift).toFixed(2)}) scale(${scale.toFixed(3)}) translate(${-ORIGIN_X},${-ORIGIN_Y})`} shapeRendering="crispEdges">
+ return <g className="court-player" data-player-id={actor.id} data-pose={actor.pose} data-view={view} data-frame={frameId} transform={`translate(${actor.x.toFixed(2)},${actor.y.toFixed(2)})`}>
+  <g transform={`translate(${offsetX.toFixed(2)},${(-lift).toFixed(2)}) scale(${scale.toFixed(3)}) translate(${-ORIGIN_X},${-ORIGIN_Y})`} shapeRendering="crispEdges">
    {paths.map(({fill,d})=><path key={fill} fill={fill} d={d}/>)}
   </g>
   {hot&&<g transform={`translate(-7,${(top-12).toFixed(1)})`} shapeRendering="crispEdges"><path d="M4 0h2v2h2v2h2v4h2v4h-2v2H2v-2H0V8h2V4h2z" fill="#f47b20"/><path d="M5 5h2v2h2v4H3V7h2z" fill="#ffd166"/></g>}
-  {labels&&<g transform="translate(0,19)" opacity={above?.8:1}>
-   <text textAnchor="middle" fill="#fff7e4" stroke="#152031" strokeWidth="3" paintOrder="stroke" fontFamily="monospace" fontSize="9.5" fontWeight="bold">{player?.jerseyNumber!=null?`${player.jerseyNumber} `:''}{lastName(actor.id)}</text>
-  </g>}
+ </g>;
+}
+function GroundPlayer({actor,visual,ring,carrier}:{actor:CourtActor;visual:ReturnType<typeof presentAthlete>;ring:string;carrier:boolean}){
+ const {lift,pose,scale}=visual;
+ return <g data-testid="player-ground" transform={`translate(${actor.x.toFixed(2)},${actor.y.toFixed(2)})`} pointerEvents="none">
+  <ellipse rx={Math.max(8,16-lift*.1)} ry={Math.max(2.8,5-lift*.035)} fill="#2f231c" opacity={Math.max(.12,.28-lift*.003)}/>
+  {lift<3&&!pose.air&&[pose.lF,pose.rF].map((foot,i)=>foot[1]>=48&&<ellipse key={i} cx={(foot[0]-20)*scale*(visual.facing<0?-1:1)} cy="-1" rx="4.5" ry="1.7" fill="#1a120c" opacity=".35"/>)}
+  <ellipse rx="14" ry="4.5" fill="none" stroke={ring} strokeWidth="1.4" opacity=".55"/>
+  {(actor.pose==='screen'||actor.anim?.kind==='screen')&&<path d="M-19 3V8H19V3" fill="none" stroke={ring} strokeWidth="2" opacity=".7"/>}
+  {carrier&&<><ellipse rx="19" ry="6.5" fill="none" stroke="#0b1018" strokeWidth="3.5"/><ellipse rx="19" ry="6.5" fill="none" stroke="#fff3a5" strokeWidth="1.8"/></>}
+ </g>;
+}
+function PlayerLabel({actor,player,offset,carrier}:{actor:CourtActor;player?:PlayerSeason;offset:number;carrier:boolean}){
+ const text=`${player?.jerseyNumber!=null?`${player.jerseyNumber} `:''}${lastName(actor.id)}`,w=Math.max(32,text.length*5.6+12);
+ return <g className="court-player-label" transform={`translate(${Math.max(70+w/2,Math.min(930-w/2,actor.x)).toFixed(1)},${(actor.y+offset).toFixed(1)})`} pointerEvents="none">
+  <rect x={-w/2} y="-9" width={w} height="13" rx="2" fill="#0b1018" opacity={carrier?.95:.78}/>
+  <text textAnchor="middle" fill={carrier?'#fff3a5':'#fff7e4'} fontFamily="monospace" fontSize="9" fontWeight="bold">{text}</text>
  </g>;
 }
 function Ball({ball}:{ball:CourtBall}){
- const size=1+Math.min(.45,ball.z*.006);
- return <g data-testid="court-ball" data-height={ball.z.toFixed(2)} transform={`translate(${ball.x.toFixed(2)},${(ball.y-ballHeight(ball.z)).toFixed(2)}) scale(${size.toFixed(3)})`}>
+ const size=1+Math.min(.3,ball.z*.004),squash=ball.z<4?1+(4-ball.z)*.025:1;
+ return <g data-testid="court-ball" data-height={ball.z.toFixed(2)} transform={`translate(${ball.x.toFixed(2)},${(ball.y-ballHeight(ball.z)).toFixed(2)}) scale(${(size*squash).toFixed(3)},${(size/squash).toFixed(3)})`}>
   <g transform={`rotate(${ball.spin.toFixed(1)}) translate(-7,-7)`}><PixelBall size={14}/></g>
  </g>;
 }
@@ -309,12 +310,12 @@ function ShotChart({shots,home,homeColor,awayColor}:{shots:CourtShot[];home:stri
 }
 function Burst({x,y,t,color}:{x:number;y:number;t:number;color:string}){
  if(t<=0||t>=1)return null;
- const r=10+t*34,o=1-t;
- return <g transform={`translate(${x},${y-RIM_HEIGHT})`} opacity={o} shapeRendering="crispEdges">{Array.from({length:10},(_,i)=>{const a=i/10*Math.PI*2;return <rect key={i} x={Math.cos(a)*r-2} y={Math.sin(a)*r*.7-2} width="4" height="4" fill={i%2?color:'#fff3c4'}/>;})}</g>;
+ const r=8+t*20,o=(1-t)*.65;
+ return <g transform={`translate(${x},${y-RIM_HEIGHT})`} opacity={o} shapeRendering="crispEdges">{Array.from({length:6},(_,i)=>{const a=i/6*Math.PI*2;return <rect key={i} x={Math.cos(a)*r-2} y={Math.sin(a)*r*.7-2} width="4" height="4" fill={i%2?color:'#fff3c4'}/>;})}</g>;
 }
-function Callout({text,x,y,t,tone,size=17}:{text:string;x:number;y:number;t:number;tone:'make'|'defense'|'neutral';size?:number}){
+function Callout({text,x,y,t,tone,size=13}:{text:string;x:number;y:number;t:number;tone:'make'|'defense'|'neutral';size?:number}){
  if(t<=0||t>=1)return null;
- const pop=t<.15?.6+t/.15*.5:1.1-Math.min(.1,(t-.15)*.3),rise=t*18,fade=t>.75?1-(t-.75)/.25:1;
+ const pop=t<.15?.6+t/.15*.5:1.1-Math.min(.1,(t-.15)*.3),rise=t*10,fade=t>.6?1-(t-.6)/.4:1;
  const fill=tone==='make'?'#ffd166':tone==='defense'?'#7cc4ff':'#f4f0e6';
  const cx=Math.max(70,Math.min(930,x));
  return <g className="court-callout" transform={`translate(${cx},${y-rise}) scale(${pop.toFixed(3)})`} opacity={fade}>
@@ -397,7 +398,14 @@ export function WatchCourt({frame,home,away,rosters,hotId,labels=true,trail=fals
  const coachPose=(isHome:boolean):CoachPose=>{const teamId=isHome?home.teamId:away.teamId,c=frame.callout;
   if(c&&c.t>0&&c.t<1&&(c.tone==='make'||c.tone==='defense')){const ours=c.tone==='make'?frame.offenseTeamId===teamId:frame.offenseTeamId!==teamId;return ours?'up':'cross';}
   return frame.offenseTeamId===teamId?(Math.floor(frame.ball.x/120)%2?'point':'down'):'cross';};
- const athlete=(a:CourtActor)=>{const homeSide=a.teamId===home.teamId;return <Athlete key={a.id} ballZ={ball.z} hoopX={frame.hoop.x} actor={a} player={rosters.find(p=>p.playerId===a.id)} identity={homeSide?hi:awayKit} ring={homeSide?hi.primary:ai.primary} hot={a.id===hotId} carrier={a.id===frame.carrier} labels={labels&&(a.teamId===frame.offenseTeamId||!frame.offenseTeamId||a.id===frame.carrier)} above={a.teamId!==frame.offenseTeamId&&!!frame.offenseTeamId}/>;};
+ const rosterById=new Map(rosters.map(p=>[p.playerId,p]));
+ const visuals=new Map(players.map(a=>[a.id,presentAthlete(a,ball,frame.hoop,a.id===frame.carrier,rosterById.get(a.id)?.attributes.physical.heightInches)]));
+ const visibleLabels=players.filter(a=>labels&&(a.teamId===frame.offenseTeamId||!frame.offenseTeamId||a.id===frame.carrier));
+ const nameOffsets=labelOffsets(visibleLabels,frame.carrier);
+ const athlete=(a:CourtActor)=><Athlete key={a.id} actor={a} player={rosterById.get(a.id)} identity={a.teamId===home.teamId?hi:awayKit} hot={a.id===hotId} visual={visuals.get(a.id)!}/>;
+ const depthLayers=[...players.map(a=>({key:a.id,y:a.y,node:athlete(a)})),
+  ...[100,900].map(x=>({key:`hoop-${x}`,y:310,node:<Hoop x={x} pad={hi.primary} net={frame.hoop.x===x?frame.net:0} rim={frame.hoop.x===x?frame.rim??0:0}/>})),
+  {key:'ball',y:(players.find(a=>a.id===frame.carrier)?.y??ball.y)+.1,node:<Ball ball={ball}/>}].sort((a,b)=>a.y-b.y);
  const followView=useFollowCamera(frame,camera==='follow');
  return <div className="watch-arena"><svg className="watch-court" viewBox={followView??cameraBox(frame,camera)} role="img" aria-label={`${home.name} home court. ${frame.phase}.`}>
   <Arena home={home} identity={hi} awayKit={awayKit} id={id} hype={hype} fill={rivalry?1:crowdFill} loud={lv.crowd} mascot={lv.mascot} rivalry={rivalry} building={building}/>
@@ -414,20 +422,21 @@ export function WatchCourt({frame,home,away,rosters,hotId,labels=true,trail=fals
   <g data-testid="coach-away" transform="translate(92,62)"><CoachFigure look={coaches?.away??coachLook(`${away.teamId}-coach`)} primary={ai.primary} secondary={ai.secondary} pose={coachPose(false)}/></g>
   <g data-testid="coach-home" transform="translate(356,562)"><CoachFigure look={coaches?.home??coachLook(`${home.teamId}-coach`)} primary={hi.primary} secondary={hi.secondary} pose={coachPose(true)}/></g>
   {shots.length>0&&<ShotChart shots={shots} home={home.teamId} homeColor={hi.primary} awayColor={ai.primary==='#f2e8d2'?'#94a0b2':ai.primary}/>}
-  {trail&&ghosts.map((g,i)=><ellipse key={i} cx={g.x} cy={g.y-ballHeight(g.z)} rx={5-i*.8} ry={5-i*.8} fill="#ffcf8a" opacity={.4-i*.08}/>)}
+  {trail&&ghosts.slice(0,3).map((g,i)=><ellipse className="court-play-effects" key={i} cx={g.x} cy={g.y-ballHeight(g.z)} rx={5-i*.8} ry={5-i*.8} fill="#ffcf8a" opacity={.4-i*.08}/>)}
   <ellipse cx={ball.x} cy={ball.y} rx={Math.max(3,7-ball.z*.025)} ry="2.5" fill="#3e2919" opacity={Math.max(.08,.3-ball.z*.002)}/>
-  {players.filter(a=>a.y<310).map(athlete)}
-  <Hoop x={100} pad={hi.primary} net={frame.hoop.x===100?frame.net:0} rim={frame.hoop.x===100?frame.rim??0:0}/><Hoop x={900} pad={hi.primary} net={frame.hoop.x===900?frame.net:0} rim={frame.hoop.x===900?frame.rim??0:0}/>
-  {players.filter(a=>a.y>=310).map(athlete)}
+  {ball.z<5&&<ellipse className="court-play-effects" cx={ball.x} cy={ball.y+1} rx={8+(5-ball.z)*1.4} ry="3" fill="none" stroke="#fff0c2" strokeWidth="1.2" opacity={(5-ball.z)*.09}/>}
+  {players.map(a=><GroundPlayer key={a.id} actor={a} visual={visuals.get(a.id)!} ring={a.teamId===home.teamId?hi.primary:ai.primary} carrier={a.id===frame.carrier}/>)}
+  {depthLayers.map(layer=><g key={layer.key} data-depth-layer={layer.key}>{layer.node}</g>)}
+  {visibleLabels.map(a=><PlayerLabel key={a.id} actor={a} player={rosterById.get(a.id)} offset={nameOffsets.get(a.id)??19} carrier={a.id===frame.carrier}/>)}
   <g className="court-play-effects" pointerEvents="none" aria-hidden="true" shapeRendering="crispEdges">
-   {!trail&&frame.flightTrail?.map((g,i)=><rect key={i} x={g.x-3+i*.5} y={g.y-ballHeight(g.z)-3+i*.5} width={6-i} height={6-i} fill={i?'#ffcf8a':'#fff0c2'} opacity={.48-i*.12}/>)}
+   {trail&&frame.flightTrail?.slice(0,3).map((g,i)=><rect key={i} x={g.x-3+i*.5} y={g.y-ballHeight(g.z)-3+i*.5} width={6-i} height={6-i} fill={i?'#ffcf8a':'#fff0c2'} opacity={.48-i*.12}/>)}
    {frame.impact&&frame.callout&&<Burst x={frame.impact.x} y={frame.impact.y-ballHeight(frame.impact.z)+RIM_HEIGHT} t={Math.min(1,frame.callout.t*3)} color="#7cc4ff"/>}
    {frame.celebration==='nightNight'&&frame.callout&&<Callout text="NIGHT NIGHT" x={frame.players.find(a=>a.anim?.kind==='nightNight')?.x??500} y={(frame.players.find(a=>a.anim?.kind==='nightNight')?.y??310)-78} t={Math.min(.95,frame.callout.t)} tone="make" size={10}/>}
   </g>
-  <Ball ball={ball}/>
-  {frame.callout?.tone==='make'&&<Burst x={frame.hoop.x} y={frame.hoop.y} t={frame.callout.t} color={frame.offenseTeamId===home.teamId?hi.primary:ai.primary}/>}
+  <g className="court-play-effects" pointerEvents="none">{frame.callout?.tone==='make'&&<Burst x={frame.hoop.x} y={frame.hoop.y} t={frame.callout.t} color={frame.offenseTeamId===home.teamId?hi.primary:ai.primary}/>}
   {frame.callout&&<Callout {...frame.callout}/>}
   {duoCall&&frame.callout&&<Callout text={`DUO: ${lastName(duoCall.passer)} > ${lastName(duoCall.shooter)}`} x={frame.callout.x} y={frame.callout.y+26} t={frame.callout.t} tone="defense" size={11}/>}
+  </g>
 </svg>
   <svg className="watch-bug" viewBox="0 600 1000 50" aria-hidden="true">{bug?<ScoreBug bug={bug} home={home} away={away} hi={hi} ai={ai} frame={frame}/>:<g fill="#d5e1eb" fontFamily="monospace" fontSize="11"><rect x="0" y="600" width="1000" height="50" fill="#0d1726"/><text x="45" y="631">{frame.attackRight?'ATTACK →':'← ATTACK'}</text><text x="955" y="631" textAnchor="end">{frame.phase.toUpperCase()}</text></g>}</svg>
   <div className="watch-arena-caption"><span>{home.name} arena</span>{crew&&<span className="watch-crew" title={crew.map(r=>`${r.role}: ${r.name} #${r.number}`).join(' · ')}>Officials: {crew.map(r=>`${r.name.split(' ').slice(-1)[0]} #${r.number}`).join(', ')}</span>}<span>{frame.phase}</span></div></div>;

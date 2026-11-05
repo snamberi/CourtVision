@@ -1,3 +1,5 @@
+import { UndoPurchase } from '../qol/UndoPurchase';
+import { useAccount } from '../../cloud/account';
 import { useState } from 'react';
 import { buyCosmetic, toggleWish, type RelicState } from '../../relics/relics';
 import { SHOP_COSMETICS, SHOP_COSMETIC_BY_KEY, type ShopCosmetic } from '../../relics/shopCosmetics';
@@ -9,6 +11,7 @@ const RARITY_NAME = { rare: 'Rare', epic: 'Epic', legendary: 'Legendary' } as co
 
 /** Today's three shop cosmetics (only sold here, and priced high), and how many of the 30 you own. */
 export function ShopCosmetics({ state, commit, busy }: { state: RelicState; commit: (fn: (s: RelicState) => RelicState | null) => void; busy: boolean }) {
+  const account = useAccount();
   const [worn, setWorn] = useState<string | null>(null);
   const owned = state.cosmetics ?? [];
   const offers = (state.cosmeticShop?.offers ?? []).map(k => SHOP_COSMETIC_BY_KEY.get(k)).filter((c): c is ShopCosmetic => !!c);
@@ -21,7 +24,7 @@ export function ShopCosmetics({ state, commit, busy }: { state: RelicState; comm
         <span><b>{c.name}{(state.wishlist ?? []).includes(c.key) && !mine ? ' ★' : ''}</b><small>{RARITY_NAME[c.rarity]} · {c.label}{(state.wishlist ?? []).includes(c.key) && !mine ? ' · on your wish list!' : ''}</small></span>
         {mine
           ? <button onClick={() => { wear(c); setWorn(c.key); }} disabled={worn === c.key}>{worn === c.key ? 'Wearing it' : 'Equip'}</button>
-          : <button className={c.rarity === 'legendary' ? 'primary' : ''} onClick={() => commit(s => buyCosmetic(s, c.key, c.price, c.name))} disabled={busy || state.coins < c.price}>{c.price.toLocaleString()} coins</button>}
+          : <UndoPurchase accountId={account.userId} purchase={() => commit(s => buyCosmetic(s, c.key, c.price, c.name))} disabled={busy || state.coins < c.price}>{c.price.toLocaleString()} coins</UndoPurchase>}
       </div>;
     })}{!offers.length && <p className="relic-help">You own every shop cosmetic. Nothing left to sell you.</p>}</div>
     <details className="shop-wishlist">

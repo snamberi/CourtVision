@@ -1,6 +1,7 @@
 // Renders src/content/sitePages.json into plain, crawlable HTML pages in public/ (About, How to Play, the guides, FAQ,
 // Changelog): readable without JavaScript, for players, search engines and ad reviewers. Edit the JSON, not the pages.
 //   npm run generate:pages
+import { UPDATE_50 } from '../src/content/update50.ts';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -76,6 +77,8 @@ const STYLE = `
   @media (max-width: 560px) { h1 { font-size: 1.7rem; } body { font-size: 16px; } }`;
 
 const pages = content.pages;
+const changelog = pages.find(p => p.path === 'changelog.html');
+if (changelog) changelog.sections.unshift({ h2: 'Update 50 · Preview', blocks: [{ type: 'ul', items: UPDATE_50.items }] });
 const guides = pages.filter((p) => p.path.startsWith('guides/'));
 const top = pages.filter((p) => !p.path.startsWith('guides/'));
 

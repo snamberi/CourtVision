@@ -1,3 +1,4 @@
+import { readActivityScore, activityScore } from './activityScore';
 import { readPickemWins, PICKEM_XP } from './pickem';
 import { readDailyDraftWith, dailyDraftXp } from '../arcade/dailyDraft';
 import { seasonTier, seasonRule, seasonHow } from '../retention/season';
@@ -91,6 +92,7 @@ export function xpParts(read: Read = localRead): XpPart[] {
   const pickem = readPickemWins(read).length;
   const drafts = Object.values(readDailyDraftWith(read));
   return [
+    { id: 'activity', label: 'Active competition', xp: activityScore(readActivityScore(read)), detail: '20 Court Score per completed run, up to five per UTC day; earned since Update 50' },
     { id: 'gm', label: 'GM leagues', xp: gm.seasons * XP.gmSeason + gm.wins * XP.gmWin + gm.titles * XP.gmTitle + gm.achievements * XP.achievement, detail: `${gm.seasons} season${gm.seasons === 1 ? '' : 's'} · ${gm.wins} wins · ${gm.titles} title${gm.titles === 1 ? '' : 's'} · ${gm.achievements} achievement${gm.achievements === 1 ? '' : 's'}` },
     { id: 'career', label: 'Career Mode', xp: c.retired * XP.careerRetired + c.legacy + c.hallOfFame * XP.careerHof, detail: `${c.retired} retired · ${c.hallOfFame} Hall of Famer${c.hallOfFame === 1 ? '' : 's'} · Legacy ${c.legacy} in all` },
     { id: 'hunt', label: 'League Hunt', xp: hunt.runs * XP.huntRun + hunt.wins * XP.huntWin + daily * XP.huntDaily, detail: `${hunt.runs} run${hunt.runs === 1 ? '' : 's'} · ${hunt.wins} won · ${daily} Daily Legend${daily === 1 ? '' : 's'}` },

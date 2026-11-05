@@ -11,6 +11,9 @@ describe('Ninefold profile card', () => {
   it('summarises Court Vision progress without inventing values', () => {
     const s = buildSummary(profile(), 42, new Date('2026-10-25T00:00:00Z'));
     expect(s).toMatchObject({ v: 1, level: 11, xp: 5200, title: 'Scout', scoutRank: 'Scout', hours: 16.4, achievements: 42 });
+    expect(Array.isArray(s.cosmetics.titles)).toBe(true);
+    expect(s.cosmetics.titles.slice(0, 3)).toContain('Scout');
+    expect(s.cosmetics.titleCount).toBe(s.cosmetics.titles.length);
     expect(s.placements).toEqual([{ board: 'Top 10 GM', rank: 10, season: null }, { board: 'Weekly Champion', rank: 1, season: null }]);
     expect(buildSummary(profile({ stats: {} }), 0).hours).toBeNull();
     expect(roadRank(3)).toBeNull();

@@ -1,3 +1,5 @@
+import { RoadTier } from './RoadTier';
+import { PageJumps } from '../PageJumps';
 import { useEffect, useRef, useState } from 'react';
 import { totalXp, PROFILE_EVENT } from '../../profile/profile';
 import { SEASON_REWARDS, SEASON_TIERS, SEASON_COSMETIC_EVERY, STREAK_BONUS_MAX, daysLeft, daysUntil, nextSeason, noteSeason, streakBonus, type Season, type SeasonCosmetic } from '../../retention/season';
@@ -62,6 +64,9 @@ export function SeasonPassPage({ onExit, onRelics }: { onExit: () => void; onRel
       <div className="hunt-title"><span className="pixel-eyebrow">FREE FOR EVERYONE · EVERY MODE COUNTS</span><h1>Season Pass</h1></div>
       {onRelics && <button className="relic-switch" onClick={onRelics}><PixelIcon name="flame" size={16} /> Relic Vault{free ? ` · ${free} free Lucky Spin${free === 1 ? '' : 's'}` : ''}</button>}
     </header>
+    <PageJumps />
+    <section className="qol-panel"><h2>Next three tier rewards</h2>{tier >= SEASON_TIERS ? <p>All tiers completed.</p> : <ol className="qol-next-rewards">{Array.from({length: Math.min(3, SEASON_TIERS - tier)}, (_, i) => tier + i + 1).map(next => <li key={next}><b>Tier {next}</b><p>1 Lucky Spin{rewards.find(r => r.tier === next) ? ` + ${rewards.find(r => r.tier === next)!.name}` : ''}</p></li>)}</ol>}</section>
+    <RoadTier completed={tier} total={SEASON_TIERS} />
 
     {upcoming && <div className="sp-season-tabs" role="tablist" aria-label="Seasons">
       <button role="tab" aria-selected={!preview} className={!preview ? 'active' : ''} onClick={() => setPreview(false)}>Season {p.season.number}: {p.season.name}</button>
@@ -92,6 +97,7 @@ export function SeasonPassPage({ onExit, onRelics }: { onExit: () => void; onRel
       }} />
     </div>}
 
+    <nav className="road-jumps" aria-label="Season road navigation"><button onClick={() => scroller.current?.scrollTo({ left: 0 })}>Start</button><button onClick={() => scroller.current?.scrollTo({ left: Math.max(0, (tier - 1) * COL - 150) })}>My tier</button><label>Jump to tier <select value="" onChange={e => scroller.current?.scrollTo({ left: (Number(e.target.value) - 1) * COL })}><option value="" disabled>Choose tier</option>{Array.from({ length: SEASON_TIERS }, (_, i) => <option key={i} value={i + 1}>{i + 1}</option>)}</select></label></nav>
     <div className="sp-road" ref={scroller} role="region" aria-label="Season Pass tiers" tabIndex={0}>
       <div className="sp-inner" style={{ width: SEASON_TIERS * COL, ['--sp-col' as string]: `${COL}px` }}>
         <ol className="sp-top">{blocks.map(b => {
