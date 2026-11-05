@@ -25,16 +25,16 @@ outfitKinds.forEach((kind,i) => {
 });
 const views: CourtView[] = ['front','frontRight','right','backRight','back','backLeft','left','frontLeft'];
 views.forEach((view,i) => {
-  const p = actionSprite(`review-${i}`,ANIMATIONS.run[i%6],{playerId:'Stephen Curry',primary:'#1d428a',secondary:'#ffc72c',jerseyNumber:30,view});
+  const p = actionSprite(`review-${i}`,ANIMATIONS.run[i*2],{playerId:'Stephen Curry',primary:'#1d428a',secondary:'#ffc72c',jerseyNumber:30,view});
   cells.push(`<g transform="translate(${5+i*125},540) scale(1.8)" shape-rendering="crispEdges">${paths(p)}</g>${label(60+i*125,690,view)}`);
 });
 (['jumper','dunk','slide','layup','celebrate','dive'] as const).forEach((kind,i) => {
   const frames=ANIMATIONS[kind];
-  const p=actionSprite(`review-action-${kind}`,frames[2],{playerId:i%2?'Allen Iverson':'Kevin Durant',primary:'#792b38',secondary:'#ffc72c',jerseyNumber:i%2?3:35,view:'frontRight'});
+  const p=actionSprite(`review-action-${kind}`,frames[8],{playerId:i%2?'Allen Iverson':'Kevin Durant',primary:'#792b38',secondary:'#ffc72c',jerseyNumber:i%2?3:35,view:'frontRight'});
   cells.push(`<g transform="translate(${25+i*160},735) scale(2)" shape-rendering="crispEdges">${paths(p)}</g>${label(85+i*160,900,kind)}`);
 });
 ['down','point','up'].forEach((pose,i)=>{
   const p=buildFigureSprite({id:'review-coach',skin:'#c68a5a',hair:'#2b1a10',kind:'suit',main:'#29436d',trim:'#e5e9ef',pose:pose as 'down'|'point'|'up'});
   cells.push(`<g transform="translate(${115+i*300},960) scale(2)" shape-rendering="crispEdges">${paths(p)}</g>${label(155+i*300,1080,`Coach · ${pose}`)}`);
 });
-writeFileSync(process.argv[2]??'/tmp/characters.svg',`<svg xmlns="http://www.w3.org/2000/svg" width="1020" height="1100" viewBox="0 0 1020 1100"><rect width="1020" height="1100" fill="#151c29"/>${label(510,25,'Actual renderer · athletic proportions + soft shading')}${label(510,315,'Custom characters · saved cosmetic layers')}${label(510,530,'Court directions')}${label(510,725,'Court actions')}${label(510,945,'Sideline figures')}${cells.join('')}</svg>`);
+writeFileSync(process.argv[2]??'/tmp/characters.svg',`<svg xmlns="http://www.w3.org/2000/svg" width="1020" height="1100" viewBox="0 0 1020 1100"><rect width="1020" height="1100" fill="#151c29"/>${label(510,25,'Design 6 · actual shared character renderer')}${label(510,315,'Custom characters · saved cosmetic layers')}${label(510,530,'Court directions')}${label(510,725,'Court actions')}${label(510,945,'Sideline figures')}${cells.join('')}</svg>`);
