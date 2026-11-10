@@ -418,6 +418,7 @@ export const EVENT_TITLES: { title: string; key: string; how: string }[] = [
 ];
 /** Titles from the leaderboards, the modes and the Supporter pass that are open. */
 export const earnedExtraTitles = (c: UnlockContext): string[] => [
+  ...(c.shop ?? []).filter(k => k.startsWith('mastery-title:')).map(k => k.slice('mastery-title:'.length)),
   ...RELEASE_TITLES.filter(t => releaseTitleProgress(c, t) >= 1).map(t => t.title),
   ...EVENT_TITLES.filter(t => (c.shop ?? []).includes(t.key)).map(t => t.title),
   ...HONORS.filter(h => c.honors.includes(h.id)).map(h => h.title),

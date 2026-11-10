@@ -9,6 +9,11 @@ export interface TeamIdentity {
   courtPaint: string;
   courtApron: string;
   logo: typeof LOGO_STYLES[number];
+  arenaName?: string;
+  baselineText?: string;
+  centerMark?: 'crest' | 'initials' | 'none';
+  bannerPlacement?: 'left' | 'right' | 'hidden';
+  championshipYears?: string[];
   jerseyStyle: 'classic' | 'stripe' | 'split';
 }
 const validColor = (value: unknown, fallback: string) => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value) ? value : fallback;
@@ -22,6 +27,11 @@ export function resolveTeamIdentity(team: Pick<LeagueTeam, 'teamId' | 'name' | '
     primary: validColor(identity?.primary, colors.primary), secondary: validColor(identity?.secondary, colors.secondary),
     courtPaint: validColor(identity?.courtPaint, colors.primary), courtApron: validColor(identity?.courtApron, colors.secondary),
     logo: LOGO_STYLES.includes(identity?.logo as typeof LOGO_STYLES[number]) ? identity!.logo : colors.logo,
+    arenaName: typeof identity?.arenaName === 'string' ? identity.arenaName.slice(0, 60) : '',
+    baselineText: typeof identity?.baselineText === 'string' ? identity.baselineText.slice(0, 30) : '',
+    centerMark: identity?.centerMark === 'none' || identity?.centerMark === 'initials' ? identity.centerMark : 'crest',
+    bannerPlacement: identity?.bannerPlacement === 'right' || identity?.bannerPlacement === 'hidden' ? identity.bannerPlacement : 'left',
+    championshipYears: identity?.championshipYears,
     jerseyStyle: identity?.jerseyStyle === 'stripe' || identity?.jerseyStyle === 'split' ? identity.jerseyStyle : 'classic',
   };
 }

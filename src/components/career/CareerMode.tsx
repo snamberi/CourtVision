@@ -1,3 +1,4 @@
+import { branchCareer50 } from '../../career/storage';
 import { CareerDetailedStats } from '../qol/CareerDetailedStats';
 import { ResultCount, ResultCrest } from '../presentation/ResultPresentation';
 import { ModeBackdrop } from '../presentation/ModeScene';
@@ -242,6 +243,8 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
     {view.k === 'career' && active?.meta.status === 'active' && <div className="cv-run-controls"><label>Autopilot reading time <select value={pace} onChange={e => setPace(Number(e.target.value))}><option value={600}>Fast · 0.6 sec</option><option value={2500}>Balanced · 2.5 sec</option><option value={6000}>Relaxed · 6 sec</option></select></label><button onClick={() => void abandonRun()}>Abandon run</button></div>}
     {busy && <div className="cv-busy" role="status"><span>{busy.label}</span><button onClick={() => { stopRun(); if (!active) setView({ k: 'hub' }); }}>Give up simulation · keep last save</button>{busy.pct != null && <div className="hunt-cap-bar"><i style={{ width: `${busy.pct}%` }} /></div>}
       {active?.meta.autopilot && <button className="link-button" onClick={() => { autopilotEnabled.current = false; setActive(a => (a ? { ...a, meta: { ...a.meta, autopilot: false } } : a)); }}>Stop autopilot after this season</button>}</div>}
+    {active?.meta.whatIf50 && <p className="hint-text">WHAT-IF · {active.meta.whatIf50.label} · Separate Sandbox career</p>}
+    {view.k === 'career' && active?.world && active.meta.status === 'active' && !busy && <button onClick={async () => { try { setBusy({ label: 'Creating what-if career', pct: null }); autopilotEnabled.current = false; const branch = await branchCareer50(active.meta, active.world!, `After ${active.meta.years.length} seasons`); setActive(branch); autopilotEnabled.current = false; await refresh(); } catch (e) { setError(e instanceof Error ? e.message : String(e)); } finally { setBusy(null); } }}>Create what-if career · opens a separate Sandbox timeline</button>}
     {view.k === 'hub' ? <Hub careers={careers} onNew={startNew} onOpen={open} onDelete={id => deleteCareer(id).then(refresh)} />
       : view.k === 'wheel' ? <WheelBuilder h={h} seed={view.seed} fav={weekly ? undefined : readFavorites().player} relics={weekly ? undefined : relicRunOpts()} onBack={() => setView({ k: 'hub' })} onDone={prime => setView({ k: 'identity', seed: view.seed, prime, mode: 'wheel' })} />
       : view.k === 'myplayer' ? <MyPlayerBuilder seed={view.seed} onBack={() => setView({ k: 'hub' })} onDone={prime => setView({ k: 'identity', seed: view.seed, prime, mode: 'myplayer' })} />

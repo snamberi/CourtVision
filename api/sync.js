@@ -74,6 +74,57 @@ const json$3 = (body, status = 200) => new Response(JSON.stringify(body), {
 });
 const bearer = (req) => req.headers.get("authorization")?.match(/^Bearer\s+(.+)$/i)?.[1] ?? null;
 //#endregion
+//#region src/relics/mastery50.ts
+const masteryNeed50 = (rarity) => ({
+	common: 3,
+	rare: 4,
+	epic: 5,
+	legendary: 6,
+	mythic: 8
+})[rarity];
+const masteryTitle50 = (name) => `${name} Master`;
+function mastered50(s, relic) {
+	const p = s.feats50?.[relic.id];
+	return !!p && (p.runs?.length ?? 0) >= masteryNeed50(relic.rarity) && new Set(p.runs.map((k) => k.split(":")[0])).size >= 2 && p.rareDraws >= 1;
+}
+/** Runs are keyed by the actual reward receipt; merging or replaying a receipt cannot add progress twice. */
+function noteRelicFeat50(s, relics, equipped, event) {
+	const feats50 = { ...s.feats50 }, cosmetics = new Set(s.cosmetics ?? []);
+	for (const id of equipped) {
+		const r = relics.find((r) => r.id === id);
+		if (!r || !s.owned[id]) continue;
+		const old = feats50[id] ?? {
+			runs: [],
+			rareDraws: 0
+		};
+		const runs = [.../* @__PURE__ */ new Set([...old.runs, ..."run" in event && event.run ? [event.run] : []])];
+		const perMode = /* @__PURE__ */ new Map();
+		feats50[id] = {
+			runs: runs.filter((k) => {
+				const mode = k.split(":")[0], n = perMode.get(mode) ?? 0;
+				perMode.set(mode, n + 1);
+				return n < 8;
+			}),
+			rareDraws: Math.min(1, old.rareDraws + Number("rareDraw" in event))
+		};
+		if (mastered50({
+			...s,
+			feats50
+		}, r)) cosmetics.add(`mastery-title:${masteryTitle50(r.name)}`);
+	}
+	return {
+		...s,
+		feats50,
+		cosmetics: [...cosmetics]
+	};
+}
+function mergeFeats50(a, b) {
+	return Object.fromEntries([.../* @__PURE__ */ new Set([...Object.keys(a ?? {}), ...Object.keys(b ?? {})])].map((id) => [id, {
+		runs: [.../* @__PURE__ */ new Set([...a?.[id]?.runs ?? [], ...b?.[id]?.runs ?? []])],
+		rareDraws: Math.max(a?.[id]?.rareDraws ?? 0, b?.[id]?.rareDraws ?? 0)
+	}]));
+}
+//#endregion
 //#region src/lib/kv.ts
 const localRead = (key) => {
 	try {
@@ -1405,6 +1456,7 @@ function mergeRelics(a, b) {
 		eventKeysUsed: mergeMax(a.eventKeysUsed, b.eventKeysUsed),
 		secrets: uniq([...base.secrets, ...other.secrets]),
 		granted: uniq([...base.granted, ...other.granted]).slice(-2e3),
+		feats50: mergeFeats50(a.feats50, b.feats50),
 		mastery: uniq([...base.mastery ?? [], ...other.mastery ?? []]),
 		upgraded: uniq([...base.upgraded, ...other.upgraded]),
 		fused: mergeMax(base.fused, other.fused),
@@ -1415,7 +1467,7 @@ function mergeRelics(a, b) {
 		achSeeded: !!(a.achSeeded || b.achSeeded)
 	};
 	return {
-		...merged,
+		...noteRelicFeat50(merged, RELICS, Object.keys(merged.feats50 ?? {}), { run: "" }),
 		equipped: merged.equipped.filter((id) => (owned[id] ?? 0) > 0).slice(0, slotCount(merged))
 	};
 }
@@ -2256,6 +2308,27 @@ function emptySeasonStatTotals() {
 	};
 }
 Object.keys(emptySeasonStatTotals());
+//#endregion
+//#region src/simulation/awards.ts
+const DEFAULT_MVP_WEIGHTS = {
+	ppg: 1,
+	apg: 1.5,
+	rpg: 1.2,
+	spg: 1.5,
+	bpg: 1.5,
+	tov: -.5,
+	teamWinPct: 10,
+	efficiency: 0,
+	winShares: 1.2
+};
+const DEFAULT_DPOY_WEIGHTS = {
+	spg: 3,
+	bpg: 3,
+	rpg: .3,
+	defensiveIQ: .1,
+	defensiveWinShares: 1.8
+};
+({ ...DEFAULT_MVP_WEIGHTS }), { ...DEFAULT_DPOY_WEIGHTS };
 //#endregion
 //#region src/history/jerseyNumbers.ts
 const TABLE$1 = {
@@ -4337,27 +4410,6 @@ function computeRuleMods(rules) {
 	};
 }
 computeRuleMods(void 0);
-//#endregion
-//#region src/simulation/awards.ts
-const DEFAULT_MVP_WEIGHTS = {
-	ppg: 1,
-	apg: 1.5,
-	rpg: 1.2,
-	spg: 1.5,
-	bpg: 1.5,
-	tov: -.5,
-	teamWinPct: 10,
-	efficiency: 0,
-	winShares: 1.2
-};
-const DEFAULT_DPOY_WEIGHTS = {
-	spg: 3,
-	bpg: 3,
-	rpg: .3,
-	defensiveIQ: .1,
-	defensiveWinShares: 1.8
-};
-({ ...DEFAULT_MVP_WEIGHTS }), { ...DEFAULT_DPOY_WEIGHTS };
 const ACHIEVEMENT_BY_ID = new Map([
 	{
 		id: "first_season",
@@ -9536,6 +9588,7 @@ const EVENT_TITLES = [
 ];
 /** Titles from the leaderboards, the modes and the Supporter pass that are open. */
 const earnedExtraTitles = (c) => [
+	...(c.shop ?? []).filter((k) => k.startsWith("mastery-title:")).map((k) => k.slice(14)),
 	...RELEASE_TITLES.filter((t) => releaseTitleProgress(c, t) >= 1).map((t) => t.title),
 	...EVENT_TITLES.filter((t) => (c.shop ?? []).includes(t.key)).map((t) => t.title),
 	...HONORS.filter((h) => c.honors.includes(h.id)).map((h) => h.title),

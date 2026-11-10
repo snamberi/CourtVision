@@ -2633,6 +2633,27 @@ function emptySeasonStatTotals() {
 }
 Object.keys(emptySeasonStatTotals());
 //#endregion
+//#region src/simulation/awards.ts
+const DEFAULT_MVP_WEIGHTS = {
+	ppg: 1,
+	apg: 1.5,
+	rpg: 1.2,
+	spg: 1.5,
+	bpg: 1.5,
+	tov: -.5,
+	teamWinPct: 10,
+	efficiency: 0,
+	winShares: 1.2
+};
+const DEFAULT_DPOY_WEIGHTS = {
+	spg: 3,
+	bpg: 3,
+	rpg: .3,
+	defensiveIQ: .1,
+	defensiveWinShares: 1.8
+};
+({ ...DEFAULT_MVP_WEIGHTS }), { ...DEFAULT_DPOY_WEIGHTS };
+//#endregion
 //#region src/history/jerseyNumbers.ts
 const TABLE$1 = {
 	jordami01: "23,CHI@1995-1995=45",
@@ -4712,27 +4733,6 @@ function computeRuleMods(rules) {
 	};
 }
 computeRuleMods(void 0);
-//#endregion
-//#region src/simulation/awards.ts
-const DEFAULT_MVP_WEIGHTS = {
-	ppg: 1,
-	apg: 1.5,
-	rpg: 1.2,
-	spg: 1.5,
-	bpg: 1.5,
-	tov: -.5,
-	teamWinPct: 10,
-	efficiency: 0,
-	winShares: 1.2
-};
-const DEFAULT_DPOY_WEIGHTS = {
-	spg: 3,
-	bpg: 3,
-	rpg: .3,
-	defensiveIQ: .1,
-	defensiveWinShares: 1.8
-};
-({ ...DEFAULT_MVP_WEIGHTS }), { ...DEFAULT_DPOY_WEIGHTS };
 new Map([
 	{
 		id: "first_season",

@@ -1,3 +1,4 @@
+import { recordTargets50 } from './replayStories50';
 import { planExplosions, explosionRoster } from './rivalryExplosion';
 import { isHoldingOut } from './holdouts';
 import { prepareCoachingForGame, finishCoachingGame, type GameEvidence } from './playerDevelopment';
@@ -203,6 +204,10 @@ export interface ScheduledGame {
 export type SeasonPhase = 'regular_season' | 'all_star' | 'playoffs' | 'awards_recap' | 'draft' | 'resign_waive' | 'free_agency' | 'preseason';
 
 export interface League {
+  stories50?: import('./leagueStories50').Stories50;
+  promises50?: import('./leagueStories50').Promise50[];
+  /** Sandbox award definitions, embedded artwork and explicit season winner overrides. */
+  awardStudio?: import('./awardStudio').AwardStudioState;
   /** The World Games every four summers: past results, the on/off switch, and the country you coach (see worldGames/league.ts). */
   worldGames?: import('../worldGames/league').LeagueWorldGames;
   /** The Owner's Box: you own a team and an AI GM runs it (see ownerBox.ts). */
@@ -713,6 +718,7 @@ function prepareGame(league: League, idx: number, seedBase: number, injuries: Re
   homeAvailable = explosionRoster(homeAvailable, explosion, home.scoringOptions?.[1]);
   awayAvailable = explosionRoster(awayAvailable, explosion, away.scoringOptions?.[1]);
   const input: PreparedGame['input'] = {
+    recordTargets50: recordTargets50(league, [home.teamId, away.teamId]),
     home: { teamId: home.teamId, seasons: homeAvailable, coach: home.coach, chemistry: home.chemistry, coachIdentity: gameStaffCoach(home), rotationOrder: home.rotationOrder, scoringOptions: home.scoringOptions, ...gameBoost(league, home, homeAvailable.map(s => s.playerId), true, g.id) },
     away: { teamId: away.teamId, seasons: awayAvailable, coach: away.coach, chemistry: away.chemistry, coachIdentity: gameStaffCoach(away), rotationOrder: away.rotationOrder, scoringOptions: away.scoringOptions, ...gameBoost(league, away, awayAvailable.map(s => s.playerId), false, g.id) },
     settings: { ...league.settings, seed: seedBase + idx },

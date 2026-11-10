@@ -1,13 +1,13 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
-import type { LeagueTeam } from '../simulation/league';
+import type { FranchiseHistoryRecord, LeagueTeam } from '../simulation/league';
 import type { PlayerSeason } from '../simulation/types';
 import { resolveTeamIdentity, type TeamIdentity } from '../simulation/teamIdentity';
 import type { Appearance } from './playerSprite';
 const Context = createContext<Record<string, TeamIdentity>>({});
 /** Looks chosen in Edit Player, by player id, so every avatar and court sprite of that player shows it. */
 const Looks = createContext<Record<string, Appearance>>({});
-export function TeamIdentityProvider({ teams, freeAgents = [], children }: { teams: LeagueTeam[]; freeAgents?: PlayerSeason[]; children: ReactNode }) {
-  const value = useMemo(() => Object.fromEntries(teams.map(t => [t.teamId, resolveTeamIdentity(t)])), [teams]);
+export function TeamIdentityProvider({ teams, freeAgents = [], history = [], currentChampion, season, children }: { history?: FranchiseHistoryRecord[]; currentChampion?: string | null; season?: string; teams: LeagueTeam[]; freeAgents?: PlayerSeason[]; children: ReactNode }) {
+  const value = useMemo(() => Object.fromEntries(teams.map(t => [t.teamId, { ...resolveTeamIdentity(t), championshipYears: [...new Set([...history.filter(h => h.championTeamId === t.teamId).map(h => h.season), ...(currentChampion === t.teamId && season ? [season] : [])])] }])), [teams, history, currentChampion, season]);
   const looks = useMemo(() => {
     const out: Record<string, Appearance> = {};
     for (const p of [...teams.flatMap(t => t.seasons), ...freeAgents]) if (p.appearance) out[p.playerId] = p.appearance;

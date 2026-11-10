@@ -1,3 +1,5 @@
+import { turningPoints50 } from '../simulation/replayStories50';
+import './leagueStories50.css';
 import type { Occasion } from '../simulation/bigGames';
 import { OccasionBanner } from './OccasionBanner';
 import { PixelIcon } from './PixelIcon';
@@ -234,6 +236,8 @@ export function GameBoxScorePage({
   const game = useMemo(() => withGameLog(storedGame), [storedGame]);
   const [showPbp, setShowPbp] = useState(false);
   const [watching, setWatching] = useState(initialWatch);
+  const [turnStart, setTurnStart] = useState<number | undefined>();
+  const turns = useMemo(() => turningPoints50(game), [game]);
   const q = useMemo(() => quarterScores(game), [game]);
   const pm = useMemo(() => plusMinusByPlayer(game), [game]);
   const homeSummary = teamShootingSummary(game.homeBox);
@@ -242,11 +246,12 @@ export function GameBoxScorePage({
   const awayLeaders = teamLeaders(game.awayBox);
   const homeWon = game.homeScore > game.awayScore;
 
-  if (watching) return <WatchGame key={`${game.homeTeamId}-${game.awayTeamId}-${game.seed}`} game={game} home={home} away={away} homeRoster={homeRoster} awayRoster={awayRoster} onBoxScore={() => setWatching(false)} startAt={watchStart} coaching={coaching} rivalry={rivalry} occasion={occasion} crowdFill={crowdFill} court={court} autoReel={autoReel} />;
+  if (watching) return <WatchGame key={`${game.homeTeamId}-${game.awayTeamId}-${game.seed}`} game={game} home={home} away={away} homeRoster={homeRoster} awayRoster={awayRoster} onBoxScore={() => setWatching(false)} startAt={turnStart ?? watchStart} coaching={coaching} rivalry={rivalry} occasion={occasion} crowdFill={crowdFill} court={court} autoReel={autoReel} />;
   return (
     <div className="game-box-score">
       {occasion && <OccasionBanner occasion={occasion} />}
       <div className="gbs-watch-action"><button className="primary" onClick={() => setWatching(true)} disabled={!game.possessionLog.length}><PixelIcon name="play" /> Watch Game</button><span className="hint-text">Replay the action on the pixel court.</span></div>
+      {!!turns.length && <section><h3>Turning points</h3><div className="turning50">{turns.map(t => <button key={t.start} onClick={() => { setTurnStart(t.start); setWatching(true); }}><b>{t.teamId === home.teamId ? home.name : away.name}: {t.points}–{t.opponent} stretch</b><small>Q{t.quarter} · {Math.floor(t.clock / 60)}:{String(t.clock % 60).padStart(2, '0')} · {t.turnovers} opponent turnovers · {t.secondChances} second chances</small><small>Opening lineup: {t.lineup.join(', ')}</small><small>Watch this stretch →</small></button>)}</div></section>}
       <div className="gbs-scoreboard">
         <div className={`gbs-team ${homeWon ? 'winner' : ''}`}>
           <TeamBadge teamId={home.teamId} name={home.name} />

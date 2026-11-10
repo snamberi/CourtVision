@@ -169,8 +169,8 @@ function DiscordBoard({x,y}:{x:number;y:number}){
 }
 /** The floor patterns, `${id}-${floor}` (also the floor previews in the Profile). */
 const Arena=memo(function Arena({home,identity,awayKit,id,hype,fill=1,loud=0,mascot=0,rivalry=false,building}:{home:Team;identity:TeamIdentity;awayKit:TeamIdentity;id:string;hype:number;fill?:number;loud?:number;mascot?:number;rivalry?:boolean;building?:{name:string;suites:number}}){
- const tableText=building?building.name.toUpperCase().replace(/[^A-Z0-9 ]/g,'').slice(0,22):identity.abbreviation+' COURT VISION';
- const apron=shade(identity.primary,-.18),apronDark=shade(identity.primary,-.45),paint=identity.courtPaint,picked=equippedFloor(),style=picked==='team'?floorStyle(home.teamId):picked;
+ const tableText=identity.arenaName?identity.arenaName.toUpperCase().replace(/[^A-Z0-9 ]/g,'').slice(0,22):building?building.name.toUpperCase().replace(/[^A-Z0-9 ]/g,'').slice(0,22):identity.abbreviation+' COURT VISION';
+ const apron=shade(identity.courtApron,-.18),apronDark=shade(identity.courtApron,-.45),paint=identity.courtPaint,picked=equippedFloor(),style=picked==='team'?floorStyle(home.teamId):picked;
  const cream='#f6ecd2';
  return <>
   <defs>
@@ -194,8 +194,8 @@ const Arena=memo(function Arena({home,identity,awayKit,id,hype,fill=1,loud=0,mas
   <rect x="100" y="8" width="332" height="44" fill={apronDark} opacity=".55"/>
   <DiscordBoard x={624} y={12}/>
   {/* Baseline aprons carry the name, top to bottom, like a painted end line. */}
-  <BaselineName text={home.name} x={11} side={1} fill={cream}/>
-  <BaselineName text={home.name} x={989} side={-1} fill={cream}/>
+  <BaselineName text={identity.baselineText || home.name} x={11} side={1} fill={cream}/>
+  <BaselineName text={identity.baselineText || home.name} x={989} side={-1} fill={cream}/>
   {/* Floor */}
   {/* Out-of-bounds border in the home colours around the wood, with a thin trim line. */}
   <rect x="40" y="66" width="920" height="488" fill="#0b1018"/>
@@ -215,7 +215,8 @@ const Arena=memo(function Arena({home,identity,awayKit,id,hype,fill=1,loud=0,mas
   <CourtLines/>
   {/* The team name painted along both sidelines, between the arcs. */}
   {[[300,106],[700,106],[300,522],[700,522]].map(([x,y],i)=>{const t=rivalry&&i<2?(i?'WEEK':'RIVALRY'):splitTeamName(home.name).nickname.toUpperCase()||identity.abbreviation,w=pixelTextWidth(t),px=Math.max(2,Math.min(3,150/w));return <g key={i} transform={`translate(${(x-w*px/2).toFixed(1)},${(y-3.5*px).toFixed(1)})`} opacity=".5" shapeRendering="crispEdges"><path d={pixelTextPath(t,px)} fill={identity.primary}/></g>;})}
-  <g data-testid="home-court-logo" transform="translate(405,215) scale(.95)" opacity=".96"><CrestArt team={home} identity={identity}/></g>
+  {identity.centerMark !== 'none' && (identity.centerMark === 'initials' ? <text data-testid="home-court-logo" x="500" y="325" textAnchor="middle" fontSize="45" fontWeight="900" fill={identity.primary}>{identity.abbreviation}</text> : <g data-testid="home-court-logo" transform="translate(405,215) scale(.95)" opacity=".96"><CrestArt team={home} identity={identity}/></g>)}
+  {identity.bannerPlacement !== 'hidden' && <g data-testid="championship-rafters">{(identity.championshipYears ?? []).slice(-8).map((year,i) => <g key={year} transform={`translate(${(identity.bannerPlacement === 'right' ? 640 : 70)+i*38},14)`}><path d="M0 0H32V29L16 35L0 29Z" fill={identity.secondary} stroke={identity.primary}/><text x="16" y="12" textAnchor="middle" fontSize="5" fill={identity.primary}>CHAMPION</text><text x="16" y="24" textAnchor="middle" fontSize="9" fontWeight="bold" fill={identity.primary}>{year.slice(0,4)}</text></g>)}</g>}
   {/* Fine paint scuffs and reflected light bars keep the floor tactile at close camera zoom. */}
   <g opacity=".08" fill="#fff3df" pointerEvents="none" shapeRendering="crispEdges"><path d="M145 147H325V149H145ZM675 147H855V149H675ZM145 466H325V468H145ZM675 466H855V468H675Z"/><path d="M176 292H187V294H176ZM813 323H824V325H813ZM228 350H242V351H228ZM758 268H772V269H758"/></g>
   {/* Reflections of the arena lights on the varnish. */}

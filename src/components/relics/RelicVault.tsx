@@ -1,3 +1,5 @@
+import { RelicMastery50 } from './RelicMastery50';
+import { mastered50 } from '../../relics/mastery50';
 import { UndoPurchase } from '../qol/UndoPurchase';
 import { useAccount } from '../../cloud/account';
 import { RelicLoadouts } from '../qol/RelicLoadouts';
@@ -208,6 +210,7 @@ export function RelicVault({ onExit, view = 'vault', onSwitch }: { onExit: () =>
     </section>}
 
     {!shop && <>
+    <RelicMastery50 state={state} />
     <RelicLoadouts state={state} commit={commit} />
     <section className="relic-section" aria-labelledby="relic-slots">
       <h2 id="relic-slots">Your slots <small className="relic-count">{state.equipped.length}/{slots}</small></h2>
@@ -304,7 +307,7 @@ function SpinReel() {
 function RelicCard({ relic: x, state, discount, onUpgrade, onToggle }: { relic: Relic; state: RelicState; discount: number; onUpgrade: () => void; onToggle: () => void }) {
   const n = state.owned[x.id] ?? 0, up = upgradeLevel(state, x.id), cost = upgradeCost(state, x, discount), on = state.equipped.includes(x.id), power = relicPower(state, x.id);
   const full = !on && state.equipped.length >= slotCount(state);
-  return <div className={`relic-card r-${x.rarity} ${n ? '' : 'missing'} ${up ? 'upgraded' : ''} ${on ? 'equipped' : ''}`}>
+  return <div className={`relic-card r-${x.rarity} ${n ? '' : 'missing'} ${up ? 'upgraded' : ''} ${on ? 'equipped' : ''} ${mastered50(state,x) ? 'feat-mastered50' : ''}`}>
     <RelicArt id={x.id} locked={!n} />
     <span><b>{n ? x.name : '???'}{up && <em> ★</em>}</b><small>{n ? x.blurb : x.stack ? 'A stacking relic. Not found yet.' : 'Not found yet.'}</small>
       {n > 0 && <em>{x.stack ? `${Math.min(n, STACK_MAX)}/${STACK_MAX} stacked · ${fmtLuck(relicLuck(x, n, false, power))} luck` : `${fmtLuck(relicLuck(x, n, up, power))} luck${up ? ' (upgraded)' : ''}${n > 1 ? ` · found ×${n}` : ''}`}</em>}

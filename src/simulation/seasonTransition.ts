@@ -1,3 +1,6 @@
+import { generateNewsFeed } from './news';
+import { archiveDuos50 } from './leagueStories50';
+import { syncAwardRecord } from './awardStudio';
 import { deferDevelopment, finishDevelopment } from './developmentCheckpoint';
 import { gLeagueGrowth } from './twoWay';
 import { withRingNight } from './ringNight';
@@ -23,7 +26,6 @@ import { initializeCoaching, teachingQuality, advanceStaffSeason } from './staff
 import { recordOffseasonDevelopment, offseasonTrainingCamp } from './playerDevelopment';
 import { applySummerCamp, reportRow, type CampReportRow } from './summerCamp';
 import { calculateOverall as staffOverall } from './engine/overall';
-import { generateNewsFeed } from './news';
 import { coachPerformanceModifiers } from './coaching';
 import { expenseEffects } from './league';
 import type { CareerSeasonRecord, PlayerSeason, SeasonStatTotals, SeasonStint } from './types';
@@ -233,6 +235,7 @@ export function beginNewSeasonRoster(
   const previousSeason = league.season ?? league.teams[0]?.seasons[0]?.season ?? '2025';
   const newSeason = nextSeasonLabel(previousSeason);
   const seasonAwards = computeSeasonAwards(league, awardOptions);
+  const archivedStories = archiveDuos50(league);
   // Advanced stats need this season's team context, which is gone once the schedule rolls over — archive them now.
   const seasonContext = regularSeasonContext(league);
   const { combined: seasonAdvanced, stints: seasonStintSplits } = seasonAdvancedWithStints(league, seasonContext, extras.freeAgents);
@@ -397,10 +400,16 @@ export function beginNewSeasonRoster(
   const draftYear = parseInt(newSeason.slice(0, 4), 10);
   const standingsDraftOrder = buildTwoRoundDraftOrder(league, Math.floor(rng.next() * 1_000_000), draftYear);
   const { order: draftOrder, protectionsTriggered } = resolveTradedPicksIntoOrder(standingsDraftOrder, draftYear, extras.futurePicks ?? []);
+  archivedStories.pickRollovers = [...(archivedStories.pickRollovers ?? []), ...protectionsTriggered.flatMap(trigger => {
+    const pick=extras.futurePicks?.find(p=>p.year===draftYear && p.round===trigger.round && p.originalTeamId===trigger.originalTeamId);
+    if (!pick) return [];
+    const next=extras.futurePicks?.find(p=>p.year===draftYear+1 && p.round===trigger.round && p.originalTeamId===trigger.originalTeamId && p.currentOwnerTeamId===trigger.originalTeamId);
+    return [{ from:pick.id, to:next?.id, owner:pick.currentOwnerTeamId, note:next?`Protection triggered; obligation rolls to ${draftYear+1}.`:'Protection triggered; the obligation expired.' }];
+  })];
   const lottery = lotteryResult(league, standingsDraftOrder.slice(0, teams.length), newSeason, draftYear);
   const futurePicks = rollFutureDraftPicksForward(rollOverProtectedPicks(extras.futurePicks ?? [], draftYear, protectionsTriggered), teams.map((t) => t.teamId), draftYear, FUTURE_PICK_WINDOW_YEARS);
 
-  const historyRecord: FranchiseHistoryRecord = {
+  const historyRecord: FranchiseHistoryRecord = syncAwardRecord({
     season: previousSeason,
     championTeamId: championship?.teamId ?? null,
     championTeamName: championship?.teamName ?? null,
@@ -418,11 +427,12 @@ export function beginNewSeasonRoster(
     teamSeasons,
     ...(league.cup?.season === previousSeason ? { cup: cupArchive(league.cup) } : {}),
     ...(league.playoffBracket ? { bracket: compactBracket(league.playoffBracket), seeds: conferenceSeeds(league) } : {}),
-  };
+  }, seasonAwards);
 
   const legendLeague = retireLegendJerseys({ ...league, teams, franchiseHistory: [...(league.franchiseHistory ?? []), historyRecord] }, newlyRetired, userTeamId, previousSeason).league;
   const nextLeague: League = {
     ...league,
+    stories50: archivedStories,
     teams: legendLeague.teams.map(rollBusinessSeason), // one payment made on every arena upgrade
     season: newSeason,
     seasonPhase: 'draft',
@@ -445,6 +455,7 @@ export function beginNewSeasonRoster(
     draftClass,
     draftWorkouts: keepWorkouts ? extras.draftWorkouts ?? {} : {},
     draftOrder,
+    draftAssetIds: Object.fromEntries(standingsDraftOrder.map((originalTeam, slot) => [slot, `${draftYear}-R${slot < teams.length ? 1 : 2}-${originalTeam}`])),
     futurePicks,
     draftDayOpen: true,
     freeAgencyOpen: false,

@@ -1,3 +1,4 @@
+import { mergeFeats50, noteRelicFeat50, type RelicFeat50 } from './mastery50';
 import { applyDeliveries, cleanDeliveries, type Delivery } from './deliveries';
 import { annualEventBalance } from '../retention/holiday';
 import { GEM_COSMETICS } from './gemShop';
@@ -158,6 +159,7 @@ export interface RelicState {
   adRewards?: number[];
   gemLedger?: Record<string, number>;
   mastery?: string[];
+  feats50?: Record<string, RelicFeat50>;
   chestDay?: string;
   eventKeys?: Record<string, number>;
   eventKeysUsed?: Record<string, number>;
@@ -342,6 +344,7 @@ export function fuseDuplicates(state: RelicState, rarity: RelicRarity, rand: () 
   const duplicate = !canGain(state, relic), coins = duplicate ? RELIC_RARITY[up].coins : 0, count = (state.owned[relic.id] ?? 0) + 1;
   const result: SpinResult = { kind: 'relic', id: relic.id, rarity: up, duplicate, coins, ...(relic.stack ? { stack: Math.min(count, STACK_MAX) } : {}) };
   let next = fillSlot({ ...earn(state, coins, `Duplicate ${relic.name}`), owned: { ...state.owned, [relic.id]: count }, fused }, relic.id);
+  if (['epic','legendary','mythic','secret'].includes(result.rarity)) next = noteRelicFeat50(next, RELICS, state.equipped, { rareDraw: true });
   next = withEarnedSecrets({ ...next, history: [...next.history, { ...result, at: Date.now() }].slice(-50) });
   return { state: next, result };
 }
@@ -481,6 +484,7 @@ function roll(state: RelicState, rand: () => number, lucky: boolean, event?: Hol
     result = { ...result, cosmetic: key };
     next = { ...next, cosmetics: [...(next.cosmetics ?? []), key] };
   }
+  if (['epic','legendary','mythic','secret'].includes(result.rarity)) next = noteRelicFeat50(next, RELICS, state.equipped, { rareDraw: true });
   next = withEarnedSecrets({ ...next, history: [...next.history, { ...result, at: Date.now() }].slice(-50) });
   return { state: next, result };
 }
@@ -618,8 +622,9 @@ export function mergeRelics(a: RelicState, b: RelicState): RelicState {
   const uniq = <T,>(xs: T[]) => [...new Set(xs)];
   const gemLedger = { ...gemEntries(other), ...gemEntries(base) };
   const merged: RelicState = { ...base, adRewards: cleanAdRewards([...cleanAdRewards(a.adRewards), ...cleanAdRewards(b.adRewards)]), gemLedger, gems: gemBalance({ gemLedger }), chestDay: [a.chestDay ?? '', b.chestDay ?? ''].sort().at(-1), owned, eventKeys: mergeMax(a.eventKeys, b.eventKeys), eventKeysUsed: mergeMax(a.eventKeysUsed, b.eventKeysUsed), secrets: uniq([...base.secrets, ...other.secrets]), granted: uniq([...base.granted, ...other.granted]).slice(-2000),
+    feats50: mergeFeats50(a.feats50, b.feats50),
     mastery: uniq([...(base.mastery ?? []), ...(other.mastery ?? [])]), upgraded: uniq([...base.upgraded, ...other.upgraded]), fused: mergeMax(base.fused, other.fused), cosmetics: uniq([...(base.cosmetics ?? []), ...(other.cosmetics ?? [])]), wishlist: uniq([...(base.wishlist ?? []), ...(other.wishlist ?? [])]), opens: Math.max(a.opens, b.opens), secretPityDone: !!(a.secretPityDone || b.secretPityDone), achSeeded: !!(a.achSeeded || b.achSeeded) };
-  return { ...merged, equipped: merged.equipped.filter(id => (owned[id] ?? 0) > 0).slice(0, slotCount(merged)) };
+  return { ...noteRelicFeat50(merged, RELICS, Object.keys(merged.feats50 ?? {}), { run: '' }), equipped: merged.equipped.filter(id => (owned[id] ?? 0) > 0).slice(0, slotCount(merged)) };
 }
 
 /** How much of the collection you hold. */

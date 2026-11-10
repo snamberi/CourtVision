@@ -1,3 +1,4 @@
+import { LeagueAwardProvider } from './components/AwardStudio';
 import { audioCue } from './audio/gameAudio';
 import { PagePins } from './components/qol/PagePins';
 import { finishDevelopment } from './simulation/developmentCheckpoint';
@@ -1823,7 +1824,7 @@ function App() {
   }
 
   return (
-    <TeamLinksProvider teams={league.teams} saveId={activeSaveId}><TeamIdentityProvider teams={league.teams} freeAgents={extras.freeAgents}><div className="app-shell">
+    <LeagueAwardProvider league={league}><TeamLinksProvider teams={league.teams} saveId={activeSaveId}><TeamIdentityProvider teams={league.teams} freeAgents={extras.freeAgents} history={league.franchiseHistory} currentChampion={league.playoffBracket?.championTeamId} season={league.season}><div className="app-shell">
       <DownloadButton />
       {screen === 'app' && !handsOff && !injuryLater && injuryDecisions > 0 && <InjuryDecisionDialog league={league} teamId={controlledTeamId}
         onChoose={(id, t) => { setLeague(l => chooseTreatment(l, id, t)); pushToast(`Treatment set for ${id}.`, 'success'); }} onLater={() => setInjuryLater(true)} />}
@@ -2226,7 +2227,7 @@ function App() {
         )}
 
         {tab === 'history' && (
-          <FranchiseHistoryPage league={league} onSelectPlayer={selectPlayer} />
+          <FranchiseHistoryPage league={league} extras={extras} controlledTeamId={controlledTeamId} onChange={setLeague} onSelectPlayer={selectPlayer} />
         )}
         {tab === 'teamHistory' && <TeamHistoryPage key={viewedTeamId || controlledTeamId || 'team'} league={league} extras={extras} initialTeamId={viewedTeamId || controlledTeamId} onSelectPlayer={selectPlayer} onOpenArchive={league.historical ? () => setTab('nbaArchive') : undefined} />}
         {tab === 'records' && <RecordsPage league={league} extras={extras} onSelectPlayer={selectPlayer} />}
@@ -2532,7 +2533,7 @@ function App() {
       </main>
       <ConsentBanner />
       </div>
-    </div></TeamIdentityProvider></TeamLinksProvider>
+    </div></TeamIdentityProvider></TeamLinksProvider></LeagueAwardProvider>
   );
 }
 

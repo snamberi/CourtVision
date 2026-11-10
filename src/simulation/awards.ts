@@ -1,4 +1,5 @@
 import { isRookieEligible } from './rookieEligibility';
+import { awardDefinition, rankAward, applyAwardStudio } from './awardStudio';
 import type { League, LeagueTeam } from './league';
 import type { PlayoffSeries } from './playoffs';
 import type { PlayerSeason } from './types';
@@ -140,6 +141,7 @@ export interface SeasonAwardsOptions {
 export type VotedAwardKey = 'mvp' | 'dpoy' | 'roy' | 'mip' | 'smoy' | 'cpoy' | 'coy' | 'eoy' | 'allNBA' | 'allDefense' | 'allRookie';
 
 export interface SeasonAwards {
+  custom?: Record<string, import('./awardStudio').StudioWinner[]>;
   mvp: AwardWinner | null;
   dpoy: AwardWinner | null;
   roy: AwardWinner | null;
@@ -341,7 +343,10 @@ function racePools(ctx: AwardContext): Record<RaceKey, Scored[]> {
 export function awardRaceStandings(league: League, opts: SeasonAwardsOptions = {}): Record<RaceKey, AwardWinner[]> {
   const pools = racePools(awardContext(league, opts));
   const out = {} as Record<RaceKey, AwardWinner[]>;
-  for (const k of Object.keys(pools) as RaceKey[]) out[k] = pools[k].slice(0, 10).map((x) => toWinner(x.c, x.s));
+  for (const k of Object.keys(pools) as RaceKey[]) {
+    const d = awardDefinition(league, k), edited = league.awardStudio?.history[league.season ?? '']?.[k];
+    out[k] = edited ?? (!d.enabled || d.method === 'manual' ? [] : d.method === 'formula' ? rankAward(league,d).slice(0,10) : pools[k].slice(0,10).map(x=>toWinner(x.c,x.s)));
+  }
   return out;
 }
 
@@ -603,7 +608,7 @@ export function computeSeasonAwards(league: League, opts: SeasonAwardsOptions = 
     rookieDefender: titled('rookieDefender', rank(ctx.rookies, ctx.dpoyScore)),
   };
 
-  return {
+  return applyAwardStudio(league, {
     mvp: mvp.winner, dpoy: dpoy.winner, roy: roy.winner, mip: mip.winner, smoy: smoy.winner, coy, eoy,
     allNBA, allDefense, allRookie, allStars,
     cpoy: cpoy.winner,
@@ -627,7 +632,7 @@ export function computeSeasonAwards(league: League, opts: SeasonAwardsOptions = 
     ...(Object.keys(coWinners).length ? { coWinners } : {}),
     votes,
     ...(honors.length ? { honors } : {}),
-  };
+  });
 }
 
 function potmFromHonors(months: PeriodHonor[], byId: Map<string, Candidate>): AwardWinner[] {
@@ -665,6 +670,15 @@ export function computeFinalsMVP(finalsSeries: PlayoffSeries | undefined, league
 /** Finals MVP with his series averages, for the ceremony card. */
 export function finalsMVPLine(finalsSeries: PlayoffSeries | undefined, league: League): { winner: AwardWinner; games: number; ppg: number; rpg: number; apg: number } | null {
   if (!finalsSeries || !finalsSeries.winnerTeamId || finalsSeries.games.length === 0) return null;
+  const custom = league.awardStudio?.history[league.season ?? '']?.fmvp;
+  const definition = awardDefinition(league, 'fmvp');
+  if (custom !== undefined || !definition.enabled || definition.method !== 'default') {
+    const winner = custom?.[0] ?? (custom === undefined && definition.enabled && definition.method === 'formula' ? rankAward(league, definition)[0] : undefined);
+    if (!winner) return null;
+    const lines = finalsSeries.games.flatMap(g => [g.homeBox, g.awayBox].flatMap(b => Object.values(b.players))).filter(p => p.playerId === winner.playerId && p.minutes > 0);
+    const gp = lines.length || 1;
+    return { winner, games: lines.length, ppg: round1(lines.reduce((n,p)=>n+p.points,0)/gp), rpg: round1(lines.reduce((n,p)=>n+p.oreb+p.dreb,0)/gp), apg: round1(lines.reduce((n,p)=>n+p.ast,0)/gp) };
+  }
   const winnerTeamId = finalsSeries.winnerTeamId;
   const winnerTeam = league.teams.find((t) => t.teamId === winnerTeamId);
   if (!winnerTeam) return null;

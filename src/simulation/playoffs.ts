@@ -1,3 +1,4 @@
+import { recordTargets50 } from './replayStories50';
 import { prepareCoachingForGame, finishCoachingGame } from './playerDevelopment';
 import { gameStaffCoach } from './staffManagement';
 import { recordCoachResult, driftRelationships } from './coaching';
@@ -179,6 +180,7 @@ function playPostseasonGame(league: League, teamAId: string, teamBId: string, te
   const seasonsB = availableB.length >= 5 ? availableB : teamB.seasons;
   const side = (t: typeof teamA, seasons: typeof seasonsA, home: boolean) => ({ teamId: t.teamId, seasons, coach: t.coach, chemistry: t.chemistry, coachIdentity: gameStaffCoach(t), rotationOrder: t.rotationOrder, scoringOptions: t.scoringOptions, ...gameBoost(league, t, seasons.map(s => s.playerId), home) });
   const result = simulateGame({
+    recordTargets50: recordTargets50(league, [teamA.teamId, teamB.teamId], true),
     home: teamAHosts ? side(teamA, seasonsA, true) : side(teamB, seasonsB, true),
     away: teamAHosts ? side(teamB, seasonsB, false) : side(teamA, seasonsA, false),
     settings: { ...league.settings, seed },

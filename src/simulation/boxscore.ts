@@ -110,6 +110,10 @@ export interface TopPlay {
 }
 
 export interface GameResult {
+  recordTargets50?: import('./replayStories50').RecordTarget50[];
+  endingFatigue50?: Record<string, number>;
+  shotClockSeconds?: number;
+  targetScore?: number;
   regulationPeriods?: number; // preserve the rules used by this game for replay
 
   homeTeamId: string;

@@ -29,7 +29,7 @@ export const isSandboxCareer = (m: { mode?: string }) => m.mode === 'sandbox';
 export const isYourPlayerCareer = (m: { mode?: string }) => m.mode === 'yourplayer';
 /** Careers that never go on a leaderboard. */
 export const isUnrankedCareer = (m: { mode?: string }) => isSandboxCareer(m) || isYourPlayerCareer(m);
-export interface CareerAward { key: TrophyKey; label: string }
+export interface CareerAward { key: string; label: string }
 export interface CareerYear {
   season: string; age: number; teamId: string | null; teamName: string; overall: number;
   stats: SeasonStatTotals; playoffs?: SeasonStatTotals;
@@ -39,6 +39,7 @@ export interface CareerYear {
   highs?: SeasonMilestones;
 }
 export interface CareerMeta {
+  whatIf50?: { parentId: string; label: string; season: string };
   version: 1; id: string; createdAt: number; updatedAt: number; seed: number;
   mode: CareerMode; identity: Identity; prime: Prime; readiness: Readiness; progress: Progress;
   playerId: string; startSeason: string;
@@ -165,7 +166,7 @@ export function defaultTraining(prime: Prime, progress: Progress): CategoryId[] 
 
 // ---------------------------------------------------------------- a season's record
 
-const AWARD_KEYS = new Set<TrophyKey>(['champion', 'fmvp', 'mvp', 'dpoy', 'roy', 'mip', 'smoy', 'allLeague1', 'allLeague2', 'allLeague3', 'allDefense1', 'allDefense2', 'allRookie1', 'allRookie2', 'allStar', 'allStarMvp', 'scoringChamp', 'reboundingChamp', 'assistsChamp', 'stealsChamp', 'blocksChamp']);
+const AWARD_KEYS = new Set<string>(['champion', 'fmvp', 'mvp', 'dpoy', 'roy', 'mip', 'smoy', 'allLeague1', 'allLeague2', 'allLeague3', 'allDefense1', 'allDefense2', 'allRookie1', 'allRookie2', 'allStar', 'allStarMvp', 'scoringChamp', 'reboundingChamp', 'assistsChamp', 'stealsChamp', 'blocksChamp']);
 
 /** His line for the season that just ended (the league has rolled over into the next one). */
 export function seasonRecord(league: League, extras: GMLeagueExtras, meta: Pick<CareerMeta, 'playerId'> & { training?: CategoryId[] }, season: string): CareerYear | null {
@@ -175,7 +176,7 @@ export function seasonRecord(league: League, extras: GMLeagueExtras, meta: Pick<
   const hist = league.franchiseHistory?.findLast(r => r.season === season);
   const teamId = rec.teamId;
   const ts = hist?.teamSeasons?.find(t => t.teamId === teamId);
-  const awards = getPlayerAwardsHistory(league, meta.playerId).filter(a => a.season === season && AWARD_KEYS.has(a.key)).map(a => ({ key: a.key, label: a.label }));
+  const awards = getPlayerAwardsHistory(league, meta.playerId).filter(a => a.season === season && (AWARD_KEYS.has(a.key) || league.awardStudio?.definitions.some(d => d.id === a.key))).map(a => ({ key: a.key, label: a.label }));
   return {
     season, age: rec.age, teamId, teamName: teamId ? league.teams.find(t => t.teamId === teamId)?.name ?? teamId : 'Free agent', overall: rec.overall,
     stats: rec.stats, ...(rec.playoffStats?.gamesPlayed ? { playoffs: rec.playoffStats } : {}), ...(rec.milestones ? { highs: rec.milestones } : {}),
@@ -303,7 +304,7 @@ const TOTAL_MARKS: [keyof Pick<SeasonStatTotals, 'points' | 'ast' | 'gamesPlayed
 export function careerMoments(meta: Pick<CareerMeta, 'years' | 'bigMoments'>): Moment[] {
   const out: Moment[] = [];
   let bestPts = 0, triples = 0;
-  const counts = new Map<TrophyKey, number>();
+  const counts = new Map<string, number>();
   const tot = { points: 0, reb: 0, ast: 0, gamesPlayed: 0 };
   for (const y of meta.years) {
     const add = (text: string, big = false) => out.push({ season: y.season, age: y.age, text, big });
@@ -318,7 +319,7 @@ export function careerMoments(meta: Pick<CareerMeta, 'years' | 'bigMoments'>): M
       triples += hi.tripleDoubles;
     }
     for (const a of y.awards) {
-      const m = AWARD_MOMENT[a.key];
+      const m = AWARD_MOMENT[a.key as TrophyKey];
       if (!m) continue;
       const n = (counts.get(a.key) ?? 0) + 1;
       counts.set(a.key, n);
@@ -388,4 +389,4 @@ export function autopilotOffseason(meta: CareerMeta, league: League, extras: GML
 }
 
 /** Every trophy of one career, for the pixel trophy shelf. */
-export const careerShelf = (m: CareerMeta): { key: TrophyKey; season: string; who: string }[] => m.years.flatMap(y => y.awards.map(a => ({ key: a.key, season: y.season, who: m.playerId })));
+export const careerShelf = (m: CareerMeta): { key: string; season: string; who: string }[] => m.years.flatMap(y => y.awards.map(a => ({ key: a.key, season: y.season, who: m.playerId })));

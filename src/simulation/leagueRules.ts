@@ -1,4 +1,5 @@
 export interface LeagueRulesSettings {
+  targetScore50?: number;
   /** League office votes (see ownerBox.ts): the deepest threes count four; the play-in can be scrapped. */
   fourPointLine?: boolean;
   playInEnabled?: boolean;

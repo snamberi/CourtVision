@@ -1,3 +1,4 @@
+import { recordTrade50, recordDraft50 } from './leagueStories50';
 import { enforceSticky, stickyTradeProblems, isStuck } from './sticky';
 import { lotteryFirstRound } from './draftLottery';
 import { rememberRivalTrade } from './gmRivals';
@@ -101,6 +102,7 @@ export function computeTradeValue(season: PlayerSeason): number {
 }
 
 export interface GMLeagueExtras {
+  draftAssetIds?: Record<number, string>;
   relicRetries?: Record<string, boolean>;
   relicTradeRefresh?: Record<string, boolean>;
   contracts: Record<PlayerId, Contract>;
@@ -480,7 +482,7 @@ export function executeTrade(league: League, extras: GMLeagueExtras, proposal: T
     draftOrder: extras.draftDayOpen ? draftOrder : extras.draftOrder,
     tradeBlock: extras.tradeBlock.filter(id => !movedPlayers.has(id)),
   });
-  return { league: received && traded ? rememberRivalTrade(settled.league, proposal, received, traded) : settled.league, extras: settled.extras };
+  return { league: recordTrade50(league, received && traded ? rememberRivalTrade(settled.league, proposal, received, traded) : settled.league, extras, proposal), extras: settled.extras };
 }
 
 // ---- Free agency ----
@@ -841,7 +843,7 @@ export function draftProspect(
   const draftPicksMade = [...(extras.draftPicksMade ?? []), { pickNumber: extras.draftPickIndex, teamId, playerId: draftedId, boardRank, reaction: pickReaction(boardRank, pickNumber % Math.max(1, teamCount) + (round - 1) * teamCount, bestRemaining) }];
   const draftBoard = extras.draftBoard ?? (pickNumber === 0 ? consensusBoard(extras.draftClass) : undefined);
 
-  const result = { league: { ...league, teams }, extras: { ...extras, draftOrder: order, draftClass, contracts, draftPickIndex: pickNumber + 1, draftPicksMade, ...(draftBoard ? { draftBoard } : {}) } };
+  const result = { league: recordDraft50(league, { ...league, teams }, extras, prospect, draftedId, teamId, pickNumber), extras: { ...extras, draftOrder: order, draftClass, contracts, draftPickIndex: pickNumber + 1, draftPicksMade, ...(draftBoard ? { draftBoard } : {}) } };
   return result.extras.draftPickIndex >= order.length || draftClass.length === 0 ? finalizeDraftDay(result.league, result.extras) : result;
 }
 

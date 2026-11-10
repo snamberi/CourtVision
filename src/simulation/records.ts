@@ -109,6 +109,8 @@ export function recordGame(book: RecordBook | undefined, result: GameResult, ctx
         if (v == null || v <= 0) continue;
         put(`p:${scope}:${cat.id}`, { value: Math.round(v * 1000) / 1000, playerId: line.playerId, teamId, opponentId: oppId, season: ctx.season, date: ctx.date,
           detail: `${line.points} PTS · ${line.oreb + line.dreb} REB · ${line.ast} AST · ${result.homeTeamId === teamId ? result.homeScore : result.awayScore}–${result.homeTeamId === teamId ? result.awayScore : result.homeScore} ${won ? 'W' : 'L'}` });
+        put(`franchise:${teamId}:${scope}:${cat.id}`, { value: Math.round(v * 1000) / 1000, playerId: line.playerId, teamId, opponentId: oppId, season: ctx.season, date: ctx.date,
+          detail: `${line.points} PTS · ${line.oreb + line.dreb} REB · ${line.ast} AST · ${result.homeTeamId === teamId ? result.homeScore : result.awayScore}–${result.homeTeamId === teamId ? result.awayScore : result.homeScore} ${won ? 'W' : 'L'}` });
       }
     }
   }

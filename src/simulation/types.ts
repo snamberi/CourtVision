@@ -271,6 +271,8 @@ export interface OverallRatings {
 
 // ---- Player-season record ----
 export interface PlayerSeason {
+  promiseTrust50?: number;
+  promiseTeam50?: string;
   training?: import('./coachingModel').PlayerTraining;
   playerId: PlayerId;
   season: string; // e.g. "2015-16"

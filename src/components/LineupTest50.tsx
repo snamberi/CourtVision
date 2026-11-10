@@ -1,0 +1,21 @@
+import { useEffect, useRef, useState } from 'react';
+import type { League, LeagueTeam } from '../simulation/league';
+import { initialRotation50, validateRotation50, type Rotation50, type LineupTestResult50 } from '../simulation/lineupTest50';
+function RotationEditor50({ name, team, value, onChange }: { name: string; team: LeagueTeam; value: Rotation50; onChange: (r: Rotation50) => void }) {
+  return <fieldset><legend>{name}</legend>{value.starters.map((id, i) => <label key={i}>Starter {i + 1} <select aria-label={`${name} starter ${i + 1}`} value={id} onChange={e => onChange({ ...value, starters: value.starters.map((x, j) => j === i ? e.target.value : x) })}>{team.seasons.map(p => <option key={p.playerId}>{p.playerId}</option>)}</select></label>)}<details><summary>Rotation minutes</summary>{team.seasons.map(p => <label key={p.playerId}>{p.playerId}<input aria-label={`${name} ${p.playerId} minutes`} type="number" min={0} max={60} value={value.minutes[p.playerId] ?? p.minutes.target} onChange={e => onChange({ ...value, minutes: { ...value.minutes, [p.playerId]: Number(e.target.value) } })} /></label>)}</details></fieldset>;
+}
+export function LineupTest50({ league, teamId }: { league: League; teamId: string }) {
+  const team = league.teams.find(t => t.teamId === teamId);
+  const [a, setA] = useState<Rotation50>(() => team ? initialRotation50(team) : { starters: [], minutes: {} }), [b, setB] = useState(a);
+  const [opponent, setOpponent] = useState(league.teams.find(t => t.teamId !== teamId)?.teamId ?? ''), [games, setGames] = useState(10);
+  const [progress, setProgress] = useState<number | null>(null), [error, setError] = useState(''), [result, setResult] = useState<{ a: LineupTestResult50; b: LineupTestResult50 } | null>(null);
+  const worker = useRef<Worker | null>(null);
+  useEffect(() => () => worker.current?.terminate(), []);
+  if (!team) return null;
+  const run = () => { try { validateRotation50(team, a); validateRotation50(team, b); setError(''); setResult(null); setProgress(0); worker.current?.terminate(); const w = new Worker(new URL('../workers/lineupTestWorker50.ts', import.meta.url), { type: 'module' }); worker.current = w;
+    w.onmessage = e => { if (e.data.type === 'progress') setProgress(e.data.progress); else { setProgress(null); w.terminate(); if (e.data.type === 'done') setResult(e.data); else setError(e.data.error); } };
+    w.onerror = e => { setError(e.message); setProgress(null); w.terminate(); };
+    w.postMessage({ league, teamId, opponentId: opponent, a, b, games, seed: 50050 });
+  } catch (e) { setProgress(null); setError(e instanceof Error ? e.message : String(e)); } };
+  return <details className="stories50"><summary>Test two rotations against the same opponent</summary><p>Both rotations play the same seeds with alternating home court. Results are separate exhibitions; league records, injuries and rewards are unchanged.</p><div className="story50-columns"><RotationEditor50 name="Rotation A" team={team} value={a} onChange={setA} /><RotationEditor50 name="Rotation B" team={team} value={b} onChange={setB} /></div><div className="studio-toolbar"><label>Opponent <select value={opponent} onChange={e => setOpponent(e.target.value)}>{league.teams.filter(t => t.teamId !== teamId).map(t => <option key={t.teamId} value={t.teamId}>{t.name}</option>)}</select></label><label>Games per rotation <select value={games} onChange={e => setGames(Number(e.target.value))}>{[4, 10, 20, 30].map(n => <option key={n}>{n}</option>)}</select></label><button disabled={progress !== null || !opponent} onClick={run}>Run comparison</button>{progress !== null && <><span role="status">{progress}%</span><button onClick={() => { worker.current?.terminate(); setProgress(null); }}>Cancel</button></>}</div>{error && <p role="alert">{error}</p>}{result && <table className="db-table"><thead><tr><th>Measure</th><th>Rotation A</th><th>Rotation B</th></tr></thead><tbody>{([['wins', 'Wins'], ['points', 'Points / game'], ['allowed', 'Allowed / game'], ['rebounds', 'Rebounds / game'], ['turnovers', 'Turnovers / game'], ['shotQuality', 'Expected make probability (%)'], ['endingFatigue', 'Ending fatigue (%)']] as const).map(([k, label]) => <tr key={k}><td>{label}</td><td>{result.a[k].toFixed(1)}</td><td>{result.b[k].toFixed(1)}</td></tr>)}</tbody></table>}</details>;
+}

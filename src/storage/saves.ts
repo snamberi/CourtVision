@@ -356,3 +356,10 @@ export async function recoverRestorePoint(saveId: string, pointId: string): Prom
   const { league, extras, controlledTeamId } = await loadRestorePoint(point);
   return createSave(`${original.name} — recovered`, league, extras, controlledTeamId ?? null);
 }
+
+export async function branchLeague50(name: string, league: League, extras: GMLeagueExtras, controlledTeamId: string | null): Promise<string> {
+  const copy = structuredClone({ league, extras });
+  copy.league = { ...copy.league, online: undefined, settings: { ...copy.league.settings, sandboxMode: true },
+    ...(copy.league.frontOffice ? { frontOffice: { ...copy.league.frontOffice, sandboxUsed: true } } : {}) };
+  return createSave(`What-if: ${name.trim() || 'Alternate timeline'}`, copy.league, copy.extras, controlledTeamId);
+}
