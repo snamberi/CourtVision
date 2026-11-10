@@ -4,7 +4,7 @@ import type { PlayerSeason } from '../simulation/types';
 import type { CourtActor, CourtBall, CourtFrame, CourtPoint, CourtShot } from '../simulation/courtMotion';
 import { resolveTeamIdentity, type TeamIdentity } from '../simulation/teamIdentity';
 import { useTeamIdentity } from '../visuals/TeamIdentityContext';
-import { actionSprite, pickFrame, headTop, ORIGIN_X, ORIGIN_Y } from '../visuals/actionSprites';
+import { actionSprite, pickFrame, headTop, rigPoint, ORIGIN_X, ORIGIN_Y } from '../visuals/actionSprites';
 import { presentAthlete, labelOffsets, RIM_HEIGHT, ballHeight } from '../visuals/courtPresentation';
 import { PlayerAvatar } from './PlayerAvatar';
 import { PixelBall } from './PixelIcon';
@@ -285,7 +285,7 @@ function GroundPlayer({actor,visual,ring,carrier}:{actor:CourtActor;visual:Retur
  const {lift,pose,scale}=visual;
  return <g data-testid="player-ground" transform={`translate(${actor.x.toFixed(2)},${actor.y.toFixed(2)})`} pointerEvents="none">
   <ellipse rx={Math.max(8,16-lift*.1)} ry={Math.max(2.8,5-lift*.035)} fill="#2f231c" opacity={Math.max(.12,.28-lift*.003)}/>
-  {lift<3&&!pose.air&&[pose.lF,pose.rF].map((foot,i)=>foot[1]>=48&&<ellipse key={i} cx={(foot[0]-20)*scale*(visual.facing<0?-1:1)} cy="-1" rx="4.5" ry="1.7" fill="#1a120c" opacity=".35"/>)}
+  {lift<3&&!pose.air&&[pose.lF,pose.rF].map((foot,i)=>foot[1]>=48&&<ellipse key={i} cx={(rigPoint(foot)[0]-22)*scale*(visual.facing<0?-1:1)} cy="-1" rx="4.5" ry="1.7" fill="#1a120c" opacity=".35"/>)}
   <ellipse rx="14" ry="4.5" fill="none" stroke={ring} strokeWidth="1.4" opacity=".55"/>
   {(actor.pose==='screen'||actor.anim?.kind==='screen')&&<path d="M-19 3V8H19V3" fill="none" stroke={ring} strokeWidth="2" opacity=".7"/>}
   {carrier&&<><ellipse rx="19" ry="6.5" fill="none" stroke="#0b1018" strokeWidth="3.5"/><ellipse rx="19" ry="6.5" fill="none" stroke="#fff3a5" strokeWidth="1.8"/></>}

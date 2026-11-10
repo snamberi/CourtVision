@@ -49,7 +49,7 @@ export const PlayerAvatar = memo(function PlayerAvatar({
     [playerId, primary, secondary, jerseyNumber, age, style, pose, stableLook]);
   const scale = heightInches && Number.isFinite(heightInches) ? Math.max(0.86, Math.min(1.16, heightInches / 79)) : 1;
   const width = Math.round(size * scale);
-  const height = Math.round(width * (mode === 'portrait' ? 30 / 24 : SPRITE_HEIGHT / SPRITE_WIDTH));
+  const height = Math.round(width * (mode === 'portrait' ? 1 : SPRITE_HEIGHT / SPRITE_WIDTH));
 
   return (
     <svg
@@ -59,7 +59,7 @@ export const PlayerAvatar = memo(function PlayerAvatar({
       shapeRendering="crispEdges" role="img" aria-label={title ?? `${playerId} avatar`}
     >
       {title && <title>{title}</title>}
-      {mode === 'full' && <path d="M10 49h21v1h3v1H7v-1h3z" fill="#070d1a" opacity=".45" />}
+      {mode === 'full' && <path d="M14 42h16v1h3v1H11v-1h3z" fill="#070d1a" opacity=".45" />}
       {paths.map(({ fill, d }) => <path key={fill} fill={fill} d={d} />)}
     </svg>
   );

@@ -1,19 +1,32 @@
-import { buildPlayerGrid, outlineGrid, detailedSpritePaths, gridToPaths, drawHat, mix, HAIR_STYLES, BEARD_STYLES, HAT_STYLES, type SpriteGrid, type SpritePath, type HairStyle, type BeardStyle, type HatStyle } from './playerSprite';
+import { buildLegacyPlayerGrid as buildPlayerGrid, buildPlayerGrid as nativePlayerGrid, outlineGrid, detailedSpritePaths, gridToPaths, drawHat, mix, HAIR_STYLES, BEARD_STYLES, HAT_STYLES, type SpriteGrid, type SpritePath, type HairStyle, type BeardStyle, type HatStyle } from './playerSprite';
 import { teamColors } from '../simulation/teamColors';
 import { SKINS, HAIR_COLORS, SHOES, RAINBOW, outfitDef, colorHex, type AvatarLook, type Outfit } from '../profile/avatar';
 
 /*
- * Draws the profile character (src/profile/avatar.ts) on the same 40 × 52 pixel body as every player, then dresses it:
+ * Draws the profile character (src/profile/avatar.ts) on the legacy cosmetic masks, composed onto the native 44 × 44 player body:
  * outfit, shoes, new hair and beards, headwear, eyewear, neck and back pieces, and an aura around the outline. The
- * finished grid has a 3-pixel margin for the aura (46 × 58).
+ * finished grid has a 3-pixel margin for the aura (50 × 50).
  */
 
 export const AVATAR_PAD = 3;
-export const AVATAR_W = 40 + AVATAR_PAD * 2;
-export const AVATAR_H = 52 + AVATAR_PAD * 2;
+export const AVATAR_W = 44 + AVATAR_PAD * 2;
+export const AVATAR_H = 44 + AVATAR_PAD * 2;
 /** The head and shoulders, in the padded grid. */
-export const AVATAR_PORTRAIT_VIEWBOX = `${8 + AVATAR_PAD - 2} ${AVATAR_PAD - 2} 28 32`;
+export const AVATAR_PORTRAIT_VIEWBOX = `${8 + AVATAR_PAD} ${AVATAR_PAD} 28 28`;
 /** A fixed body seed: steady eyes, a smile, no earring. */
+/** Preserve every legacy cosmetic mask while placing it on the new body. The
+ * head uses the new face beneath accessory pixels; coordinates are nearest-cell,
+ * so no blended or fractional pixels are ever created. */
+function dressNative(native: SpriteGrid, legacy: SpriteGrid, base: SpriteGrid, fullBody: boolean): SpriteGrid {
+  return native.map((row,y)=>row.map((c,x)=>{
+    const head=y<24;
+    const sx=Math.round(20+(x-22)/(head?1.22:.78));
+    const sy=Math.round(head?y:24+(y-24)/.68);
+    if(sx<0||sx>=40||sy<0||sy>=52)return c;
+    const clothed=legacy[sy]?.[sx]??null,old=base[sy]?.[sx]??null;
+    return (!head&&fullBody)||clothed!==old ? clothed : c;
+  }));
+}
 const BODY_ID = 'cv-you-4';
 const OUTLINE = '#080d19';
 const WHITE = '#fff3df';
@@ -652,6 +665,9 @@ export function buildAvatarGrid({ look, team }: AvatarOptions): { grid: SpriteGr
     playerId: BODY_ID, primary: kitMain, secondary: kitTrim, jerseyNumber: kit.number, jerseyStyle: o.style,
     appearance: { skinHex: skinBase, hairHex: hairBase, hairStyle: (classicHair ? look.hair : 'bald') as HairStyle, beardStyle: (classicBeard ? look.beard : 'none') as BeardStyle, hatStyle: 'none' },
   });
+  const undressed=grid.map(row=>row.slice());
+  const native=nativePlayerGrid({ playerId:BODY_ID, primary:kitMain, secondary:kitTrim, jerseyNumber:kit.number, jerseyStyle:o.style,
+    appearance:{skinHex:skinBase,hairHex:hairBase,hairStyle:(classicHair?look.hair:'bald') as HairStyle,beardStyle:(classicBeard?look.beard:'none') as BeardStyle,hatStyle:'none'} });
   const r: Rect = (x, y, w, h, c) => {
     for (let yy = Math.max(0, y); yy < Math.min(grid.length, y + h); yy++) for (let xx = Math.max(0, x); xx < Math.min(grid[0].length, x + w); xx++) grid[yy][xx] = c;
   };
@@ -666,6 +682,7 @@ export function buildAvatarGrid({ look, team }: AvatarOptions): { grid: SpriteGr
   drawEyes(r, look.eyes);
   drawNeck(r, look.neck);
   drawBack(grid, look.neck);
+  grid.splice(0,grid.length,...dressNative(native,grid,undressed,o.kind!=='jersey'));
 
   // Rainbow and glitch skin and hair: every shade of the stand-in colour takes the pattern at that spot, keeping its shading.
   if (patterned(skinHex) || patterned(hairHex)) {
@@ -674,7 +691,7 @@ export function buildAvatarGrid({ look, team }: AvatarOptions): { grid: SpriteGr
     const skinAt: Recolor = (x, y) => patternAt(skinHex, x, y, '#4a5478'), hairAt: Recolor = (x, y) => patternAt(hairHex, x, y, G_DARK);
     const add = (key: string, at: Recolor, toward: string, amt: number) => shades.set(mix(key, toward, amt), (x, y) => mix(at(x, y), toward, amt));
     if (patterned(skinHex)) { shades.set(SKIN_KEY, skinAt); add(SKIN_KEY, skinAt, '#ffe9cb', 0.25); add(SKIN_KEY, skinAt, '#542c30', 0.35); add(SKIN_KEY, skinAt, '#351c29', 0.55); add(SKIN_KEY, skinAt, WHITE, 0.25); add(SKIN_KEY, skinAt, OUTLINE, 0.4); }
-    if (patterned(hairHex)) { shades.set(HAIR_KEY, hairAt); add(HAIR_KEY, hairAt, '#a8a0b4', 0.3); add(HAIR_KEY, hairAt, OUTLINE, 0.4); }
+    if (patterned(hairHex)) { shades.set(HAIR_KEY, hairAt); add(HAIR_KEY, hairAt, '#a8a0b4', 0.3); add(HAIR_KEY, hairAt, OUTLINE, 0.4); add(HAIR_KEY, hairAt, '#15121e', 0.4); }
     // Stubble blends skin and hair.
     shades.set(mix(skinBase, hairBase, 0.5), (x, y) => mix(patterned(skinHex) ? skinAt(x, y) : skinBase, patterned(hairHex) ? hairAt(x, y) : hairBase, 0.5));
     for (let y = 0; y < grid.length; y++) for (let x = 0; x < grid[0].length; x++) {
