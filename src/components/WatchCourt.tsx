@@ -5,6 +5,7 @@ import type { CourtActor, CourtBall, CourtFrame, CourtPoint, CourtShot } from '.
 import { resolveTeamIdentity, type TeamIdentity } from '../simulation/teamIdentity';
 import { useTeamIdentity } from '../visuals/TeamIdentityContext';
 import { actionSprite, pickFrame, headTop, rigPoint, ORIGIN_X, ORIGIN_Y } from '../visuals/actionSprites';
+import { PLAYER_CENTER_X } from '../visuals/pixelPlayer64';
 import { presentAthlete, labelOffsets, RIM_HEIGHT, ballHeight } from '../visuals/courtPresentation';
 import { PlayerAvatar } from './PlayerAvatar';
 import { PixelBall } from './PixelIcon';
@@ -144,7 +145,7 @@ function Bench({x,y,players,kit,count=9,teamId,reaction=0}:{x:number;y:number;pl
   return <g key={i} transform={`translate(${x+i*28},${y})`}>
    <rect x="0" y="6" width="22" height="18" fill="#1d2a3c" stroke="#0a111c" shapeRendering="crispEdges"/><rect x="2" y="0" width="18" height="10" fill="#2c3e55" shapeRendering="crispEdges"/>
    {p&&<><g className={active?'bench-rest bench-rest-hidden':'bench-rest'} transform="translate(-2,-14)"><PlayerAvatar playerId={p.playerId} teamId={teamId} size={26} jerseyNumber={p.jerseyNumber} age={p.age} primaryColor={kit.primary} secondaryColor={kit.secondary} jerseyStyle={kit.jerseyStyle} appearance={p.appearance}/></g>
-   {sprite&&<g className="bench-reaction" transform={`translate(11,${22-Math.sin(t*Math.PI)*5}) scale(.62) translate(${-ORIGIN_X},${-ORIGIN_Y})`} shapeRendering="crispEdges">{sprite.map((path,j)=><path key={j} d={path.d} fill={path.fill}/>)}</g>}</>}
+   {sprite&&<g className="bench-reaction" transform={`translate(11,${22-Math.sin(t*Math.PI)*5}) scale(.43) translate(${-ORIGIN_X},${-ORIGIN_Y})`} shapeRendering="crispEdges">{sprite.map((path,j)=><path key={j} d={path.d} fill={path.fill}/>)}</g>}</>}
   </g>;})}</g>;
 }
 /** A referee in stripes who trails the play along the sideline. */
@@ -285,7 +286,7 @@ function GroundPlayer({actor,visual,ring,carrier}:{actor:CourtActor;visual:Retur
  const {lift,pose,scale}=visual;
  return <g data-testid="player-ground" transform={`translate(${actor.x.toFixed(2)},${actor.y.toFixed(2)})`} pointerEvents="none">
   <ellipse rx={Math.max(8,16-lift*.1)} ry={Math.max(2.8,5-lift*.035)} fill="#2f231c" opacity={Math.max(.12,.28-lift*.003)}/>
-  {lift<3&&!pose.air&&[pose.lF,pose.rF].map((foot,i)=>foot[1]>=48&&<ellipse key={i} cx={(rigPoint(foot)[0]-22)*scale*(visual.facing<0?-1:1)} cy="-1" rx="4.5" ry="1.7" fill="#1a120c" opacity=".35"/>)}
+  {lift<3&&!pose.air&&[pose.lF,pose.rF].map((foot,i)=>foot[1]>=48&&<ellipse key={i} cx={(rigPoint(foot)[0]-PLAYER_CENTER_X)*scale*(visual.facing<0?-1:1)} cy="-1" rx="4.5" ry="1.7" fill="#1a120c" opacity=".35"/>)}
   <ellipse rx="14" ry="4.5" fill="none" stroke={ring} strokeWidth="1.4" opacity=".55"/>
   {(actor.pose==='screen'||actor.anim?.kind==='screen')&&<path d="M-19 3V8H19V3" fill="none" stroke={ring} strokeWidth="2" opacity=".7"/>}
   {carrier&&<><ellipse rx="19" ry="6.5" fill="none" stroke="#0b1018" strokeWidth="3.5"/><ellipse rx="19" ry="6.5" fill="none" stroke="#fff3a5" strokeWidth="1.8"/></>}

@@ -1,7 +1,8 @@
 import type { CourtActor, CourtBall, CourtPoint } from '../simulation/courtMotion';
 import { hashPlayerId } from './playerSprite';
 import { likenessKey } from './likeness';
-import { smoothFrame, mirrorPose, upperHand, unprojectRigPoint, type CourtView, type P, type Pose } from './actionSprites';
+import { smoothFrame, mirrorPose, upperHand, unprojectRigPoint, rigOffset, type CourtView, type P, type Pose } from './actionSprites';
+import { PLAYER_CENTER_X, PLAYER_FEET_Y } from './pixelPlayer64';
 
 const clamp = (v:number,lo=0,hi=1)=>Math.max(lo,Math.min(hi,v));
 const ease = (v:number)=>{const t=clamp(v);return t*t*(3-2*t);};
@@ -19,7 +20,8 @@ export function courtView(dx:number,dy:number):CourtView {
 export function reachBall(input:Pose,target:P,facing:number,twoHands=false):Pose {
   const p=facing<0?mirrorPose(input):{...input};
   if(p.lie)return input;
-  const local=unprojectRigPoint([target[0]-Math.round(p.body[0]*.78)-Math.round((p.lean??0)*.5)+22,target[1]-Math.round(p.body[1]*.68)+42]);
+  const offset=rigOffset(p);
+  const local=unprojectRigPoint([target[0]-offset[0]+PLAYER_CENTER_X,target[1]-offset[1]+PLAYER_FEET_Y]);
   const nearest=Math.hypot(local[0]-11,local[1]-27)<Math.hypot(local[0]-29,local[1]-27)?'l':'r';
   for(const side of twoHands?['l','r'] as const:[nearest] as const){
     const shoulder:P=[side==='l'?11:29,27],dx=local[0]-shoulder[0],dy=local[1]-shoulder[1],distance=Math.hypot(dx,dy);
@@ -35,7 +37,7 @@ export function reachBall(input:Pose,target:P,facing:number,twoHands=false):Pose
 
 /** A render pose has no effect on saved games, stats or simulation RNG. */
 export function presentAthlete(actor:CourtActor,ball:CourtBall,hoop:CourtPoint,carrier:boolean,height=79){
-  const scale=1.4*clamp(height/79,.9,1.1),speed=Math.hypot(actor.vx??0,actor.vy??0);
+  const scale=.96*clamp(height/79,.9,1.1),speed=Math.hypot(actor.vx??0,actor.vy??0);
   const moving=speed>14||actor.stride!==0;
   const f=smoothFrame({pose:actor.pose,anim:actor.anim,cycle:actor.cycle,carrier,moving,ballZ:ball.z,gait:actor.gait,onBall:actor.onBall});
   let pose:Pose={...f.pose};

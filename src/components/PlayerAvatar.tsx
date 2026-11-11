@@ -59,7 +59,7 @@ export const PlayerAvatar = memo(function PlayerAvatar({
       shapeRendering="crispEdges" role="img" aria-label={title ?? `${playerId} avatar`}
     >
       {title && <title>{title}</title>}
-      {mode === 'full' && <path d="M14 42h16v1h3v1H11v-1h3z" fill="#070d1a" opacity=".45" />}
+      {mode === 'full' && <path d="M21 61h22v1h5v1H16v-1h5z" fill="#070d1a" opacity=".45" />}
       {paths.map(({ fill, d }) => <path key={fill} fill={fill} d={d} />)}
     </svg>
   );

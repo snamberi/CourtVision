@@ -1,4 +1,5 @@
 import { buildPlayerGrid, outlineGrid, gridToPaths, playerTraits, type Appearance, type SpriteGrid, type SpritePath } from './playerSprite';
+import { PLAYER_PIXELS, PLAYER_CENTER_X, PLAYER_FEET_Y, PLAYER_NECK_Y, RIG_X_SCALE, RIG_Y_SCALE, RIG_HEAD_SCALE, RIG_LEAN_SCALE } from './pixelPlayer64';
 
 /*
  * Frame-by-frame court animations for the players everyone already knows: the head, face, hair, beard, headwear and
@@ -6,7 +7,7 @@ import { buildPlayerGrid, outlineGrid, gridToPaths, playerTraits, type Appearanc
  * model that places his arms and legs, drawn in the same pixel style. Run cycles, dribbles, jump shots, layups,
  * dunks, passes, defence, rebounds, screens and celebrations are all separate models.
  *
- * Pose coordinates use the legacy 40 × 52 choreography rig; the rasterizer projects them onto native 44px art. Poses face right (the ball side is the
+ * Pose coordinates use the legacy 40 × 52 choreography rig; the rasterizer projects them onto native 64px art. Poses face right (the ball side is the
  * right hand); a player facing left gets the mirrored pose, but his face and jersey number are never mirrored.
  */
 
@@ -23,10 +24,10 @@ export interface Pose {
   lie?: 1 | -1;
 }
 
-const PAD_X = 10, PAD_TOP = 18, AV_W = 44, AV_H = 44;
-export const SPRITE_W = AV_W + PAD_X * 2, SPRITE_H = AV_H + PAD_TOP + 2;
+const PAD_X = 16, PAD_TOP = 20, AV_W = PLAYER_PIXELS, AV_H = PLAYER_PIXELS;
+export const SPRITE_W = AV_W + PAD_X * 2, SPRITE_H = AV_H + PAD_TOP + 12;
 /** The point on the floor under the player, in sprite pixels. */
-export const ORIGIN_X = 22 + PAD_X, ORIGIN_Y = 42 + PAD_TOP;
+export const ORIGIN_X = PLAYER_CENTER_X + PAD_X, ORIGIN_Y = PLAYER_FEET_Y + PAD_TOP;
 const FOOT = 49;
 
 const pose = (p: Pose): Pose => p;
@@ -360,7 +361,7 @@ export type AnimationName = keyof typeof ANIMATIONS;
 /** How far above the feet the highest hand reaches, in avatar pixels (for meeting the rim on a dunk). */
 export const handReach = (p: Pose) => FOOT - Math.min(p.lH[1], p.rH[1]) - p.body[1];
 /** How far above the feet the top of the head is, in avatar pixels. */
-export const headTop = (p: Pose) => 42 - 1 - Math.round(p.body[1] * .68);
+export const headTop = (p: Pose) => PLAYER_FEET_Y - 2 - Math.round(p.body[1] * RIG_Y_SCALE);
 
 // ---------------------------------------------------------------- choosing a frame
 
@@ -445,14 +446,14 @@ export function smoothFrame(a: AnimInput): ReturnType<typeof pickFrame> {
 /** Position of the upper hand relative to the sprite's foot anchor. */
 /** Old choreography uses a 40×52 rig. Project joints to the new pixel-art grid,
  * keeping the existing replay paths and simulation entirely independent of artwork. */
-export const rigPoint = (p: P): P => [Math.round(22+(p[0]-20)*.78), Math.round(p[1]<=24?p[1]:24+(p[1]-24)*.68)];
-export const unprojectRigPoint = (p: P): P => [20+(p[0]-22)/.78,p[1]<=24?p[1]:24+(p[1]-24)/.68];
+export const rigPoint = (p: P): P => [Math.round(PLAYER_CENTER_X+(p[0]-20)*RIG_X_SCALE), Math.round(p[1]<=24?p[1]*RIG_HEAD_SCALE:PLAYER_NECK_Y+(p[1]-24)*RIG_Y_SCALE)];
+export const unprojectRigPoint = (p: P): P => [20+(p[0]-PLAYER_CENTER_X)/RIG_X_SCALE,p[1]<=PLAYER_NECK_Y?p[1]/RIG_HEAD_SCALE:24+(p[1]-PLAYER_NECK_Y)/RIG_Y_SCALE];
+export const rigOffset = (p: Pose): P => [Math.round(p.body[0]*RIG_X_SCALE)+Math.round((p.lean??0)*RIG_LEAN_SCALE),Math.round(p.body[1]*RIG_Y_SCALE)];
 export function upperHand(input: Pose, facing: number): P {
   const p = facing < 0 ? mirrorPose(input) : input;
   const h = p.lH[1] === p.rH[1] ? (facing < 0 ? p.lH : p.rH) : p.lH[1] < p.rH[1] ? p.lH : p.rH;
-  const point=rigPoint(h);
-  return [point[0]+Math.round(p.body[0]*.78)+Math.round((p.lean??0)*.5)-22,
-    point[1]+Math.round(p.body[1]*.68)-42];
+  const point=rigPoint(h),offset=rigOffset(p);
+  return [point[0]+offset[0]-PLAYER_CENTER_X,point[1]+offset[1]-PLAYER_FEET_Y];
 }
 
 /** The pose for a player facing left: arms and legs mirrored and swapped (the head and jersey are drawn unmirrored). */
@@ -507,28 +508,32 @@ export function rasterizePoseGrid(input: Pose, look: ActionLook, facing = 1): Sp
   };
   const skin=t.skin,light=mix(skin,'#ffe9cb',.25),dark=mix(skin,'#542c30',.35);
   const kit=hex(look.primary,'#1d428a'),trim=hex(look.secondary,'#ffc72c'),kitLight=mix(kit,WHITE,.2);
-  const bx=Math.round(p.body[0]*.78),by=Math.round(p.body[1]*.68),lean=Math.round((p.lean??0)*.5);
+  const bx=Math.round(p.body[0]*RIG_X_SCALE),by=Math.round(p.body[1]*RIG_Y_SCALE),lean=Math.round((p.lean??0)*RIG_LEAN_SCALE);
   const joint=(v:P):P=>{const q=rigPoint(v);return[q[0]+bx+lean,q[1]+by];};
-  const place=(x:number,y:number):P=>p.lie?[22+bx+p.lie*(35-y),35+by+Math.round((x-22)*.5)]:[x+bx+lean,y+by];
+  const place=(x:number,y:number):P=>p.lie?[PLAYER_CENTER_X+bx+p.lie*(51-y),51+by+Math.round((x-PLAYER_CENTER_X)*.5)]:[x+bx+lean,y+by];
   const leg=(hip:P,k:P,f:P)=>{
-    const knee=rigPoint(k),foot=rigPoint(f),ankle:P=[foot[0],foot[1]-2];
-    line(hip,knee,4,skin);line(knee,ankle,4,skin);line([knee[0]+1,knee[1]],[ankle[0]+1,ankle[1]],1,dark);
-    rect(ankle[0]-2,ankle[1]-1,4,3,WHITE);rect(ankle[0]-2,ankle[1]-1,4,1,trim);
-    rect(foot[0]-3,foot[1]-1,6,2,kit);rect(foot[0]-2,foot[1]-2,4,2,kitLight);
-    rect(foot[0]-3,foot[1]+1,7,1,WHITE);rect(foot[0]-1,foot[1]-2,2,1,WHITE);rect(foot[0]+2,foot[1],1,1,trim);
+    const knee=rigPoint(k),foot=rigPoint(f),ankle:P=[foot[0],foot[1]-3];
+    line(hip,knee,6,skin);line(knee,ankle,6,skin);line([knee[0]+2,knee[1]],[ankle[0]+2,ankle[1]],1,dark);
+    line([hip[0]-2,hip[1]],[knee[0]-2,knee[1]],1,light);
+    rect(ankle[0]-3,ankle[1]-1,6,4,WHITE);rect(ankle[0]-3,ankle[1]-1,6,1,trim);
+    rect(ankle[0]-1,ankle[1],1,2,'#d6d3d1');rect(ankle[0]+1,ankle[1],1,2,'#d6d3d1');
+    rect(foot[0]-4,foot[1]-1,9,2,kit);rect(foot[0]-3,foot[1]-2,6,2,kitLight);
+    rect(foot[0]-4,foot[1]+1,10,1,WHITE);rect(foot[0]-2,foot[1]-2,3,1,WHITE);
+    rect(foot[0]-1,foot[1]-1,3,1,WHITE);rect(foot[0]+4,foot[1],1,1,trim);
   };
-  leg(place(18,35),p.lK,p.lF);leg(place(26,35),p.rK,p.rF);
+  leg(place(26,51),p.lK,p.lF);leg(place(38,51),p.rK,p.rF);
   const arm=(shoulder:P,e:P,h:P,sleeve:boolean,band:boolean)=>{
     const sh=place(...shoulder),el=p.lie?rigPoint(e):joint(e),hand=p.lie?rigPoint(h):joint(h);
     const a=sleeve?WHITE:skin,shade=sleeve?'#b9bdc9':dark;
-    line(sh,el,3,a);line(el,hand,3,a);line([sh[0]-1,sh[1]],[el[0]-1,el[1]],1,sleeve?'#dedee8':light);
-    if(band)rect(hand[0]-1,hand[1]-2,3,1,trim);
-    rect(hand[0]-1,hand[1]-1,3,3,skin);rect(hand[0]-1,hand[1]-1,2,1,light);set(hand[0]+1,hand[1]+1,shade);
+    line(sh,el,5,a);line(el,hand,5,a);line([sh[0]-2,sh[1]],[el[0]-2,el[1]],1,sleeve?'#dedee8':light);
+    if(band)rect(hand[0]-2,hand[1]-3,5,2,trim);
+    rect(hand[0]-2,hand[1]-2,5,5,skin);rect(hand[0]-2,hand[1]-2,3,1,light);
+    rect(hand[0]+2,hand[1],1,3,shade);set(hand[0]-1,hand[1]+2,dark);
   };
   // Far arm behind the body in profile, then the head/jersey, then the near arm.
   const leftNear=look.view?.toLowerCase().endsWith('left')??false;
-  const left=()=>arm([15,26],p.lE,p.lH,t.sleeve,t.seed%3===0);
-  const right=()=>arm([29,26],p.rE,p.rH,false,t.seed%4<2);
+  const left=()=>arm([22,38],p.lE,p.lH,t.sleeve,t.seed%3===0);
+  const right=()=>arm([42,38],p.rE,p.rH,false,t.seed%4<2);
   const sideView=look.view==='left'||look.view==='right'||look.view?.startsWith('back');
   if(sideView)(leftNear?right:left)();
   const up=upperBody(look);

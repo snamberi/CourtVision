@@ -1,27 +1,28 @@
 import { buildLegacyPlayerGrid as buildPlayerGrid, buildPlayerGrid as nativePlayerGrid, outlineGrid, detailedSpritePaths, gridToPaths, drawHat, mix, HAIR_STYLES, BEARD_STYLES, HAT_STYLES, type SpriteGrid, type SpritePath, type HairStyle, type BeardStyle, type HatStyle } from './playerSprite';
 import { teamColors } from '../simulation/teamColors';
+import { PLAYER_PIXELS, PLAYER_CENTER_X, PLAYER_NECK_Y, RIG_X_SCALE, RIG_Y_SCALE, RIG_HEAD_SCALE } from './pixelPlayer64';
 import { SKINS, HAIR_COLORS, SHOES, RAINBOW, outfitDef, colorHex, type AvatarLook, type Outfit } from '../profile/avatar';
 
 /*
- * Draws the profile character (src/profile/avatar.ts) on the legacy cosmetic masks, composed onto the native 44 × 44 player body:
+ * Draws the profile character (src/profile/avatar.ts) on the legacy cosmetic masks, composed onto the native 64 × 64 player body:
  * outfit, shoes, new hair and beards, headwear, eyewear, neck and back pieces, and an aura around the outline. The
- * finished grid has a 3-pixel margin for the aura (50 × 50).
+ * finished grid has a 3-pixel margin for the aura (70 × 70).
  */
 
 export const AVATAR_PAD = 3;
-export const AVATAR_W = 44 + AVATAR_PAD * 2;
-export const AVATAR_H = 44 + AVATAR_PAD * 2;
+export const AVATAR_W = PLAYER_PIXELS + AVATAR_PAD * 2;
+export const AVATAR_H = PLAYER_PIXELS + AVATAR_PAD * 2;
 /** The head and shoulders, in the padded grid. */
-export const AVATAR_PORTRAIT_VIEWBOX = `${8 + AVATAR_PAD} ${AVATAR_PAD} 28 28`;
+export const AVATAR_PORTRAIT_VIEWBOX = `${12 + AVATAR_PAD} ${AVATAR_PAD} 40 40`;
 /** A fixed body seed: steady eyes, a smile, no earring. */
 /** Preserve every legacy cosmetic mask while placing it on the new body. The
  * head uses the new face beneath accessory pixels; coordinates are nearest-cell,
  * so no blended or fractional pixels are ever created. */
 function dressNative(native: SpriteGrid, legacy: SpriteGrid, base: SpriteGrid, fullBody: boolean): SpriteGrid {
   return native.map((row,y)=>row.map((c,x)=>{
-    const head=y<24;
-    const sx=Math.round(20+(x-22)/(head?1.22:.78));
-    const sy=Math.round(head?y:24+(y-24)/.68);
+    const head=y<PLAYER_NECK_Y;
+    const sx=Math.round(20+(x-PLAYER_CENTER_X)/(head?1.77:RIG_X_SCALE));
+    const sy=Math.round(head?y/RIG_HEAD_SCALE:24+(y-PLAYER_NECK_Y)/RIG_Y_SCALE);
     if(sx<0||sx>=40||sy<0||sy>=52)return c;
     const clothed=legacy[sy]?.[sx]??null,old=base[sy]?.[sx]??null;
     return (!head&&fullBody)||clothed!==old ? clothed : c;

@@ -1,6 +1,7 @@
 import {describe,it,expect} from 'vitest';
 import {courtView,presentAthlete,reachBall,labelOffsets,ballHeight} from '../visuals/courtPresentation';
-import {ANIMATIONS,actionSprite,mirrorPose,type CourtView} from '../visuals/actionSprites';
+import {ANIMATIONS,actionSprite,mirrorPose,rasterizePoseGrid,ORIGIN_X,ORIGIN_Y,type CourtView} from '../visuals/actionSprites';
+import {playerTraits} from '../visuals/playerSprite';
 import type {CourtActor} from '../simulation/courtMotion';
 const actor:CourtActor={id:'Stephen Curry',teamId:'GSW',x:500,y:310,jump:0,stride:1,pose:'run',facing:1,vx:100,vy:0,cycle:.3,gait:'run'};
 const hoop={x:900,y:310},ball={x:512,y:307,z:23,spin:0};
@@ -42,6 +43,21 @@ describe('court presentation',()=>{
   const near=presentAthlete(a,ball,hoop,false),far=presentAthlete({...a,x:500},ball,hoop,false);
   expect(near.contact).toBeGreaterThan(.9);expect(Math.abs(near.offsetX)).toBeLessThanOrEqual(35);
   expect(far.offsetX).toBe(0);expect(JSON.stringify(a)).toBe(before);
+ });
+ it('keeps the rendered 64px hand at the carried ball at either end of the court',()=>{
+  for(const facing of [-1,1]){
+   const a={...actor,pose:'dribble' as const,stride:0,vx:0,facing};
+   const b={x:a.x+12*facing,y:a.y-3,z:23,spin:0};
+   const visual=presentAthlete(a,b,hoop,true);
+   const grid=rasterizePoseGrid(visual.pose,{playerId:a.id,primary:'#1d428a',secondary:'#ffc72c',view:visual.view},visual.facing);
+   const x=Math.round(ORIGIN_X+(b.x-a.x-visual.offsetX)/visual.scale);
+   const y=Math.round(ORIGIN_Y+(b.y-ballHeight(b.z)-a.y+visual.lift)/visual.scale);
+   const near=grid.slice(y-2,y+3).flatMap(row=>row.slice(x-2,x+3));
+   expect(near).toContain(playerTraits(a.id).skin);
+   // The higher source resolution retains the prior on-court footprint.
+   expect(64*visual.scale).toBeGreaterThan(58);
+   expect(64*visual.scale).toBeLessThan(65);
+  }
  });
  it('keeps the projection continuous and label lanes separate',()=>{
   for(const z of [28,34])expect(Math.abs(ballHeight(z-.00001)-ballHeight(z+.00001))).toBeLessThan(.001);

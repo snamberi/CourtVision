@@ -12,7 +12,7 @@ describe('pixel player identity and rendering', () => {
     expect(buildPlayerSprite(player).every(path => !/\d+\.\d/.test(path.d))).toBe(true);
   });
 
-  it('draws every saved hair, beard and headwear option into a native 44px bitmap', () => {
+  it('draws every saved hair, beard and headwear option into a native 64px bitmap', () => {
     const looks = [
       ...HAIR_STYLES.map(hairStyle => ({ hairStyle })),
       ...BEARD_STYLES.map(beardStyle => ({ beardStyle })),
@@ -20,10 +20,10 @@ describe('pixel player identity and rendering', () => {
     ];
     for (const appearance of looks) {
       const grid = buildPlayerGrid({ ...player, appearance });
-      expect(grid).toHaveLength(44);
-      expect(grid.every(row => row.length === 44)).toBe(true);
+      expect(grid).toHaveLength(64);
+      expect(grid.every(row => row.length === 64)).toBe(true);
       expect(grid.flat().every(c => c === null || /^#[\da-f]{6}$/i.test(c))).toBe(true);
-      expect(grid.flat().filter(Boolean).length).toBeGreaterThan(400);
+      expect(grid.flat().filter(Boolean).length).toBeGreaterThan(800);
     }
   });
 
@@ -60,8 +60,8 @@ describe('pixel player identity and rendering', () => {
     const props = { playerId: 'Damon Cross', teamId: 'test', jerseyNumber: 30 };
     const full = renderToStaticMarkup(<PlayerAvatar {...props} mode="full" size={160} />);
     const portrait = renderToStaticMarkup(<PlayerAvatar {...props} mode="portrait" size={24} />);
-    expect(full).toContain('viewBox="0 0 44 44"');
-    expect(portrait).toContain('viewBox="8 0 28 28"');
+    expect(full).toContain('viewBox="0 0 64 64"');
+    expect(portrait).toContain('viewBox="12 0 40 40"');
     expect(full).toContain('Damon Cross avatar');
     expect((full.match(/<path/g) ?? []).length).toBeLessThan(50);
     const artPaths = portrait.match(/<path[^>]*>/g)!;

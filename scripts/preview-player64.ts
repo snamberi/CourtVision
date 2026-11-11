@@ -1,7 +1,7 @@
 /** Exports the actual integer color grids, for the companion PNG/GIF renderer.
- * npx rolldown scripts/preview-player44.ts --platform node --file /tmp/player44.mjs
- * node /tmp/player44.mjs /tmp/player44.json
- * python3 scripts/preview-player44.py /tmp/player44.json docs/previews
+ * npx rolldown scripts/preview-player64.ts --platform node --file /tmp/player64.mjs
+ * node /tmp/player64.mjs /tmp/player64.json
+ * python3 scripts/preview-player64.py /tmp/player64.json docs/previews
  */
 import { writeFileSync } from 'node:fs';
 import { buildPlayerGrid, outlineGrid } from '../src/visuals/playerSprite';
@@ -18,7 +18,7 @@ const animations=Array.from({length:8},(_,i)=>{
   shoot:rasterizePoseGrid(ANIMATIONS.jumper[Math.min(5,Math.floor(i*6/8))],look(0)),dunk:rasterizePoseGrid(ANIMATIONS.dunk[Math.min(5,Math.floor(i*6/8))],{...look(1),view:'frontRight'}),
   defense:rasterizePoseGrid(ANIMATIONS.slide[Math.min(5,Math.floor(i*6/8))],look(2))};
 });
-writeFileSync(process.argv[2]??'/tmp/player44.json',JSON.stringify({
+writeFileSync(process.argv[2]??'/tmp/player64.json',JSON.stringify({
  players:ids.map((name,i)=>({name,grid:outlineGrid(buildPlayerGrid(look(i)))})),
  views:views.map(view=>({name:view,grid:rasterizePoseGrid(POSES.STAND,{...look(0),view})})),animations,
  cosmetics:['jersey','hoodie','royal','wizard','santa','sovereign'].map(kind=>({name:kind,grid:buildAvatarGrid({look:{...DEFAULT_AVATAR,outfit:OUTFITS.find(o=>o.kind===kind)!.id}}).grid})),

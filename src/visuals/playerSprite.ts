@@ -1,13 +1,13 @@
-/** Code-native, 44 × 44 pixel characters on one integer pixel grid. No image requests or saved-data changes.
+/** Code-native, 64 × 64 pixel characters on one integer pixel grid. No image requests or saved-data changes.
  * Keep the original ID hash and trait order: existing players retain their skin,
  * hair, beard and headwear choices while receiving the more detailed artwork.
  */
 import { likenessOf } from './likeness';
-import { buildPixelPlayer44, type PlayerView } from './pixelPlayer44';
+import { buildPixelPlayer64, PLAYER_PIXELS, type PlayerView } from './pixelPlayer64';
 
-export const SPRITE_WIDTH = 44;
-export const SPRITE_HEIGHT = 44;
-export const PORTRAIT_VIEWBOX = '8 0 28 28';
+export const SPRITE_WIDTH = PLAYER_PIXELS;
+export const SPRITE_HEIGHT = PLAYER_PIXELS;
+export const PORTRAIT_VIEWBOX = '12 0 40 40';
 
 export const HAIR_STYLES = [
   'bald', 'lowFade', 'buzzCut', 'short', 'shortWide', 'crop', 'cropWide',
@@ -136,7 +136,7 @@ export function buildPlayerSprite(opts: SpriteOptions): SpritePath[] {
   return detailedSpritePaths(outlineGrid(buildPlayerGrid(opts)));
 }
 
-export function buildPlayerGrid(opts: SpriteOptions): SpriteGrid { return buildPixelPlayer44(opts); }
+export function buildPlayerGrid(opts: SpriteOptions): SpriteGrid { return buildPixelPlayer64(opts); }
 
 export type SpriteGrid = (string | null)[][];
 /** The avatar as a colour grid (no outline yet): the court animations reuse its head, face, hair and jersey. */

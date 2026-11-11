@@ -32,11 +32,14 @@ describe('court animations', () => {
     // A raised hand clears the enlarged head instead of ending inside the hair.
     expect(top(rasterizePose(POSES.REACH, look))).toBeLessThanOrEqual(top(sprite) - 3);
     expect(actionSprite('S', POSES.STAND, look)).toBe(actionSprite('S', POSES.STAND, look)); // cached
-    // Inspect the actual 3×5 numeral cells, not just the presence of a trim color.
+    // Inspect the actual 5×7 numeral cells, not just the presence of a trim color.
     const digits = (facing: number) => rasterizePoseGrid(POSES.STAND, look, facing)
-      .slice(46, 51).map(row => row.slice(28, 35).map(c => c === look.secondary ? 1 : 0));
+      .slice(61, 68).map(row => row.slice(42, 53).map(c => c === look.secondary ? 1 : 0));
     expect(digits(-1)).toEqual(digits(1));
-    expect(digits(1)).toEqual([[1,1,1,0,1,1,1],[0,0,1,0,0,0,1],[1,1,1,0,1,1,1],[1,0,0,0,0,0,1],[1,1,1,0,1,1,1]]);
+    expect(digits(1)).toEqual([
+      '01110011110','11011000011','00011000011','00110001110',
+      '01100000011','11000000011','11111011110',
+    ].map(row => [...row].map(Number)));
   });
   it('draws every action as whole pixel cells, from idle to celebrate', () => {
     expect(Object.keys(ANIMATIONS).length).toBeGreaterThanOrEqual(35);
@@ -48,6 +51,14 @@ describe('court animations', () => {
         expect(paths.map(p => p.fill)).toContain('#1d428a');
         expect(paths.every(p => !/[.CQAL]/.test(p.d)), name).toBe(true);
         expect(paths.every(p => /^#[\da-f]{6}$/i.test(p.fill)), name).toBe(true);
+        // Padded native frames must contain the full silhouette, including falls
+        // and raised hands; no outline may be cut by the frame's edge.
+        for(const facing of [-1,1]){
+          const grid=rasterizePoseGrid(f,look,facing);
+          expect(grid).toHaveLength(96);
+          expect(grid.every(row=>row.length===96),name).toBe(true);
+          expect([...grid[0],...grid[95],...grid.flatMap(row=>[row[0],row[95]])].every(c=>c===null),name).toBe(true);
+        }
       }
     }
   });
