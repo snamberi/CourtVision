@@ -1,5 +1,11 @@
 import { FloorPatterns } from './FloorPatterns';
 import { memo, useId, useMemo, useRef } from 'react';
+import { chibiSprite, chibiHeadTop, CHIBI_ORIGIN_X, CHIBI_ORIGIN_Y, type CourtView as ChibiView } from '../visuals/chibiSprite';
+import type { CourtView } from '../visuals/actionSprites';
+/** Player art on the court: the Update 50 64 px rig (default) or the 44 px v2 chibi characters. */
+export type CourtSprites='native'|'v2';
+/** The rig's eight directions drawn with the four v2 views (left and right become a facing). */
+const chibiView=(v:CourtView,facing:number):[ChibiView,number]=>v==='right'?['side',1]:v==='left'?['side',-1]:v==='frontRight'?['angled',1]:v==='frontLeft'?['angled',-1]:v==='front'?['front',facing]:['back',v==='backLeft'?-1:v==='backRight'?1:facing];
 import type { PlayerSeason } from '../simulation/types';
 import type { CourtActor, CourtBall, CourtFrame, CourtPoint, CourtShot } from '../simulation/courtMotion';
 import { resolveTeamIdentity, type TeamIdentity } from '../simulation/teamIdentity';
@@ -271,12 +277,17 @@ function Hoop({x,net,rim,pad}:{x:number;net:number;rim:number;pad:string}){
  </g>;
 }
 const lastName=(id:string)=>{const parts=id.split(/[\s-]+/);return (parts[parts.length-1]||id).toUpperCase().slice(0,10);};
-function Athlete({actor,player,identity,hot,visual}:{actor:CourtActor;player?:PlayerSeason;identity:TeamIdentity;hot:boolean;visual:ReturnType<typeof presentAthlete>}){
- const {pose,frameId,facing,view,scale,lift,offsetX}=visual;
- const paths=actionSprite(frameId,pose,{playerId:actor.id,primary:identity.primary,secondary:identity.secondary,jerseyNumber:player?.jerseyNumber,age:player?.age,jerseyStyle:identity.jerseyStyle,appearance:player?.appearance,view},facing);
- const top=-headTop(pose)*scale-lift;
- return <g className="court-player" data-player-id={actor.id} data-pose={actor.pose} data-view={view} data-frame={frameId} transform={`translate(${actor.x.toFixed(2)},${actor.y.toFixed(2)})`}>
-  <g transform={`translate(${offsetX.toFixed(2)},${(-lift).toFixed(2)}) scale(${scale.toFixed(3)}) translate(${-ORIGIN_X},${-ORIGIN_Y})`} shapeRendering="crispEdges">
+function Athlete({actor,player,identity,hot,visual,sprites='native'}:{actor:CourtActor;player?:PlayerSeason;identity:TeamIdentity;hot:boolean;visual:ReturnType<typeof presentAthlete>;sprites?:CourtSprites}){
+ const {pose,frameId,facing,view,lift,offsetX}=visual;
+ const v2=sprites==='v2';
+ const look={playerId:actor.id,primary:identity.primary,secondary:identity.secondary,jerseyNumber:player?.jerseyNumber,age:player?.age,jerseyStyle:identity.jerseyStyle,appearance:player?.appearance};
+ const [cv,cf]=chibiView(view,facing);
+ // The 44 px v2 characters are drawn larger to stand as tall as the 64 px rig.
+ const scale=v2?visual.scale*1.38:visual.scale;
+ const paths=v2?chibiSprite(frameId,pose,look,cv,cf):actionSprite(frameId,pose,{...look,view},facing);
+ const top=-(v2?chibiHeadTop(pose):headTop(pose))*scale-lift;
+ return <g className="court-player" data-player-id={actor.id} data-pose={actor.pose} data-view={view} data-sprites={sprites} data-frame={frameId} transform={`translate(${actor.x.toFixed(2)},${actor.y.toFixed(2)})`}>
+  <g transform={`translate(${offsetX.toFixed(2)},${(-lift).toFixed(2)}) scale(${scale.toFixed(3)}) translate(${-(v2?CHIBI_ORIGIN_X:ORIGIN_X)},${-(v2?CHIBI_ORIGIN_Y:ORIGIN_Y)})`} shapeRendering="crispEdges">
    {paths.map(({fill,d})=><path key={fill} fill={fill} d={d}/>)}
   </g>
   {hot&&<g transform={`translate(-7,${(top-12).toFixed(1)})`} shapeRendering="crispEdges"><path d="M4 0h2v2h2v2h2v4h2v4h-2v2H2v-2H0V8h2V4h2z" fill="#f47b20"/><path d="M5 5h2v2h2v4H3V7h2z" fill="#ffd166"/></g>}
@@ -371,7 +382,7 @@ function useFollowCamera(frame:CourtFrame,on:boolean):string|null{
  // eslint-disable-next-line react-hooks/refs
  return followBox(cur.current,FOLLOW_W);
 }
-export function WatchCourt({frame,home,away,rosters,hotId,labels=true,trail=false,camera='full',ghosts=[],shots=[],bug,crowdFill=1,arena,building,rivalry=false,duos,coaches,refs,crew}:{building?:{name:string;suites:number};frame:CourtFrame;home:Team;away:Team;rosters:PlayerSeason[];hotId?:string;labels?:boolean;trail?:boolean;camera?:CourtCamera;ghosts?:CourtBall[];shots?:CourtShot[];bug?:CourtBug;crowdFill?:number;
+export function WatchCourt({frame,home,away,rosters,hotId,sprites='native',labels=true,trail=false,camera='full',ghosts=[],shots=[],bug,crowdFill=1,arena,building,rivalry=false,duos,coaches,refs,crew}:{sprites?:CourtSprites;building?:{name:string;suites:number};frame:CourtFrame;home:Team;away:Team;rosters:PlayerSeason[];hotId?:string;labels?:boolean;trail?:boolean;camera?:CourtCamera;ghosts?:CourtBall[];shots?:CourtShot[];bug?:CourtBug;crowdFill?:number;
  /** The home arena's upgrade levels (business.ts), drawn on the court. */
  arena?:Partial<Record<'scoreboard'|'lights'|'crowd'|'mascot',number>>;
  /** Rivalry Week game: striped border, painted floor and a crowd on its feet. */
@@ -404,7 +415,7 @@ export function WatchCourt({frame,home,away,rosters,hotId,labels=true,trail=fals
  const visuals=new Map(players.map(a=>[a.id,presentAthlete(a,ball,frame.hoop,a.id===frame.carrier,rosterById.get(a.id)?.attributes.physical.heightInches)]));
  const visibleLabels=players.filter(a=>labels&&(a.teamId===frame.offenseTeamId||!frame.offenseTeamId||a.id===frame.carrier));
  const nameOffsets=labelOffsets(visibleLabels,frame.carrier);
- const athlete=(a:CourtActor)=><Athlete key={a.id} actor={a} player={rosterById.get(a.id)} identity={a.teamId===home.teamId?hi:awayKit} hot={a.id===hotId} visual={visuals.get(a.id)!}/>;
+ const athlete=(a:CourtActor)=><Athlete key={a.id} actor={a} player={rosterById.get(a.id)} identity={a.teamId===home.teamId?hi:awayKit} hot={a.id===hotId} visual={visuals.get(a.id)!} sprites={sprites}/>;
  const depthLayers=[...players.map(a=>({key:a.id,y:a.y,node:athlete(a)})),
   ...[100,900].map(x=>({key:`hoop-${x}`,y:310,node:<Hoop x={x} pad={hi.primary} net={frame.hoop.x===x?frame.net:0} rim={frame.hoop.x===x?frame.rim??0:0}/>})),
   {key:'ball',y:(players.find(a=>a.id===frame.carrier)?.y??ball.y)+.1,node:<Ball ball={ball}/>}].sort((a,b)=>a.y-b.y);
