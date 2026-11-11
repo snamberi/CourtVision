@@ -1,10 +1,13 @@
 import { FloorPatterns } from './FloorPatterns';
 import { memo, useId, useMemo, useRef } from 'react';
+/** Player art on the court: the v2 44 px characters (four directions) or the classic 40 × 52 sprites. */
+export type CourtSprites='v2'|'classic';
 import type { PlayerSeason } from '../simulation/types';
 import type { CourtActor, CourtBall, CourtFrame, CourtPoint, CourtShot } from '../simulation/courtMotion';
 import { resolveTeamIdentity, type TeamIdentity } from '../simulation/teamIdentity';
 import { useTeamIdentity } from '../visuals/TeamIdentityContext';
 import { actionSprite, pickFrame, handReach, headTop, ORIGIN_X, ORIGIN_Y } from '../visuals/actionSprites';
+import { chibiSprite, chibiHandReach, chibiHeadTop, courtView, CHIBI_ORIGIN_X, CHIBI_ORIGIN_Y, type CourtView } from '../visuals/chibiSprite';
 import { PlayerAvatar } from './PlayerAvatar';
 import { PixelBall } from './PixelIcon';
 import { CrestArt } from './TeamCrest';
@@ -269,25 +272,32 @@ function Hoop({x,net,rim,pad}:{x:number;net:number;rim:number;pad:string}){
  </g>;
 }
 const lastName=(id:string)=>{const parts=id.split(/[\s-]+/);return (parts[parts.length-1]||id).toUpperCase().slice(0,10);};
-function Athlete({actor,player,identity,ring,hot,carrier,labels,above,ballZ,hoopX}:{actor:CourtActor;player?:PlayerSeason;identity:TeamIdentity;ring:string;hot:boolean;carrier:boolean;labels:boolean;above:boolean;ballZ:number;hoopX:number}){
- const scale=1.18*Math.max(.9,Math.min(1.1,(player?.attributes.physical.heightInches??79)/79));
+function Athlete({actor,player,identity,ring,hot,carrier,labels,above,ballZ,hoopX,sprites='v2'}:{actor:CourtActor;player?:PlayerSeason;identity:TeamIdentity;ring:string;hot:boolean;carrier:boolean;labels:boolean;above:boolean;ballZ:number;hoopX:number;sprites?:CourtSprites}){
+ const v2=sprites==='v2';
+ // The v2 characters are 44 px tall against the classic 52, so they are drawn a little larger to stand as tall.
+ const scale=(v2?1.3:1.18)*Math.max(.9,Math.min(1.1,(player?.attributes.physical.heightInches??79)/79));
  const moving=actor.stride!==0&&actor.pose!=='guard';
  const {id:frameId,pose,flip}=useMemo(()=>pickFrame({pose:actor.pose,anim:actor.anim,cycle:actor.cycle,carrier,moving,ballZ,gait:actor.gait,onBall:actor.onBall}),[actor.pose,actor.anim,actor.cycle,carrier,moving,ballZ,actor.gait,actor.onBall]);
  // The spin move turns him round for two frames.
  const facing=(actor.facing<0?-1:1)*(flip?-1:1);
- const paths=actionSprite(frameId,pose,{playerId:actor.id,primary:identity.primary,secondary:identity.secondary,jerseyNumber:player?.jerseyNumber,age:player?.age,jerseyStyle:identity.jerseyStyle,appearance:player?.appearance},facing);
+ // v2: front when running down the screen, back running up, profile along the court, angled on a diagonal or standing.
+ const lastView=useRef<CourtView|undefined>(undefined);
+ const view=v2?courtView({vx:actor.vx,vy:actor.vy,pose:actor.pose,anim:actor.anim},lastView.current):'side';
+ lastView.current=view;
+ const look={playerId:actor.id,primary:identity.primary,secondary:identity.secondary,jerseyNumber:player?.jerseyNumber,age:player?.age,jerseyStyle:identity.jerseyStyle,appearance:player?.appearance};
+ const paths=v2?chibiSprite(frameId,pose,look,view,facing):actionSprite(frameId,pose,look,facing);
  // On the dunk the body is drawn so the hands meet the rim, whatever the jump.
- const handTop=handReach(pose)*scale;
+ const handTop=(v2?chibiHandReach(pose,view):handReach(pose))*scale;
  const slam=(actor.anim?.kind==='dunk'&&(frameId==='K2'||frameId==='K3'))||(actor.anim?.kind==='alleyOop'&&(frameId==='AO3'||frameId==='AO4'));
  const lift=slam?Math.min(actor.jump,Math.max(0,RIM_HEIGHT-handTop+4)):actor.jump;
- const top=-headTop(pose)*scale-lift;
+ const top=-(v2?chibiHeadTop(pose):headTop(pose))*scale-lift;
  // On the slam and the hang the dunker (shadow and all) is drawn within reach of the rim.
  const gap=hoopX-actor.x,toRim=slam&&Math.abs(gap)>12?Math.sign(gap)*(Math.abs(gap)-12):0;
- return <g className="court-player" data-player-id={actor.id} data-pose={actor.pose} data-frame={frameId} transform={`translate(${(actor.x+toRim).toFixed(2)},${actor.y.toFixed(2)})`}>
+ return <g className="court-player" data-player-id={actor.id} data-pose={actor.pose} data-frame={frameId} data-view={v2?view:undefined} transform={`translate(${(actor.x+toRim).toFixed(2)},${actor.y.toFixed(2)})`}>
   <ellipse rx={15-lift*.06} ry="5" fill="#2f231c" opacity={.3-lift*.004}/>
   <ellipse rx="14" ry="4.5" fill="none" stroke={ring} strokeWidth="2" opacity=".75"/>
   {carrier&&<ellipse rx="19" ry="7" fill="none" stroke="#fff3a5" strokeWidth="2" opacity=".9"/>}
-  <g transform={`translate(0,${(-lift).toFixed(2)}) scale(${scale.toFixed(3)}) translate(${-ORIGIN_X},${-ORIGIN_Y})`} shapeRendering="crispEdges">
+  <g transform={`translate(0,${(-lift).toFixed(2)}) scale(${scale.toFixed(3)}) translate(${-(v2?CHIBI_ORIGIN_X:ORIGIN_X)},${-(v2?CHIBI_ORIGIN_Y:ORIGIN_Y)})`} shapeRendering="crispEdges">
    {paths.map(({fill,d})=><path key={fill} fill={fill} d={d}/>)}
   </g>
   {hot&&<g transform={`translate(-7,${(top-12).toFixed(1)})`} shapeRendering="crispEdges"><path d="M4 0h2v2h2v2h2v4h2v4h-2v2H2v-2H0V8h2V4h2z" fill="#f47b20"/><path d="M5 5h2v2h2v4H3V7h2z" fill="#ffd166"/></g>}
@@ -368,7 +378,7 @@ function useFollowCamera(frame:CourtFrame,on:boolean):string|null{
  // eslint-disable-next-line react-hooks/refs
  return followBox(cur.current,FOLLOW_W);
 }
-export function WatchCourt({frame,home,away,rosters,hotId,labels=true,trail=false,camera='full',ghosts=[],shots=[],bug,crowdFill=1,arena,building,rivalry=false,duos,coaches,refs,crew}:{building?:{name:string;suites:number};frame:CourtFrame;home:Team;away:Team;rosters:PlayerSeason[];hotId?:string;labels?:boolean;trail?:boolean;camera?:CourtCamera;ghosts?:CourtBall[];shots?:CourtShot[];bug?:CourtBug;crowdFill?:number;
+export function WatchCourt({frame,home,away,rosters,hotId,sprites='v2',labels=true,trail=false,camera='full',ghosts=[],shots=[],bug,crowdFill=1,arena,building,rivalry=false,duos,coaches,refs,crew}:{building?:{name:string;suites:number};sprites?:CourtSprites;frame:CourtFrame;home:Team;away:Team;rosters:PlayerSeason[];hotId?:string;labels?:boolean;trail?:boolean;camera?:CourtCamera;ghosts?:CourtBall[];shots?:CourtShot[];bug?:CourtBug;crowdFill?:number;
  /** The home arena's upgrade levels (business.ts), drawn on the court. */
  arena?:Partial<Record<'scoreboard'|'lights'|'crowd'|'mascot',number>>;
  /** Rivalry Week game: striped border, painted floor and a crowd on its feet. */
@@ -397,7 +407,7 @@ export function WatchCourt({frame,home,away,rosters,hotId,labels=true,trail=fals
  const coachPose=(isHome:boolean):CoachPose=>{const teamId=isHome?home.teamId:away.teamId,c=frame.callout;
   if(c&&c.t>0&&c.t<1&&(c.tone==='make'||c.tone==='defense')){const ours=c.tone==='make'?frame.offenseTeamId===teamId:frame.offenseTeamId!==teamId;return ours?'up':'cross';}
   return frame.offenseTeamId===teamId?(Math.floor(frame.ball.x/120)%2?'point':'down'):'cross';};
- const athlete=(a:CourtActor)=>{const homeSide=a.teamId===home.teamId;return <Athlete key={a.id} ballZ={ball.z} hoopX={frame.hoop.x} actor={a} player={rosters.find(p=>p.playerId===a.id)} identity={homeSide?hi:awayKit} ring={homeSide?hi.primary:ai.primary} hot={a.id===hotId} carrier={a.id===frame.carrier} labels={labels&&(a.teamId===frame.offenseTeamId||!frame.offenseTeamId||a.id===frame.carrier)} above={a.teamId!==frame.offenseTeamId&&!!frame.offenseTeamId}/>;};
+ const athlete=(a:CourtActor)=>{const homeSide=a.teamId===home.teamId;return <Athlete key={a.id} ballZ={ball.z} hoopX={frame.hoop.x} actor={a} player={rosters.find(p=>p.playerId===a.id)} identity={homeSide?hi:awayKit} ring={homeSide?hi.primary:ai.primary} hot={a.id===hotId} carrier={a.id===frame.carrier} labels={labels&&(a.teamId===frame.offenseTeamId||!frame.offenseTeamId||a.id===frame.carrier)} above={a.teamId!==frame.offenseTeamId&&!!frame.offenseTeamId} sprites={sprites}/>;};
  const followView=useFollowCamera(frame,camera==='follow');
  return <div className="watch-arena"><svg className="watch-court" viewBox={followView??cameraBox(frame,camera)} role="img" aria-label={`${home.name} home court. ${frame.phase}.`}>
   <Arena home={home} identity={hi} awayKit={awayKit} id={id} hype={hype} fill={rivalry?1:crowdFill} loud={lv.crowd} mascot={lv.mascot} rivalry={rivalry} building={building}/>
