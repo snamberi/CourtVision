@@ -520,6 +520,82 @@
           ]
         },
         {
+          "h2": "The draft pool",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "Every player in the history data appears once, at his best season: the season with his highest rating, or on a tie his most productive one. The pool is ranked by draft value. That is the best-season rating plus a bonus for a place in the all-time Top 100 (from +1 for number 100 to +3.5 for number 1), with a small discount for seasons before 1965."
+            },
+            {
+              "type": "p",
+              "text": "The bonus exists because many legends share the top rating, since each rating is measured against its own season. It is what makes Michael Jordan and LeBron James go before a 1950s scoring leader with the same number."
+            }
+          ]
+        },
+        {
+          "h2": "Snake order",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "The order reverses every round, so the team that picks 30th in round one picks first in round two. Picking late in round one means two picks close together at the turn, a good moment to take a pair of players who fit together."
+            }
+          ]
+        },
+        {
+          "h2": "How the AI GMs draft",
+          "blocks": [
+            {
+              "type": "ul",
+              "items": [
+                "Each AI GM takes the best player left, adjusted for need. A roster aims for 4 to 6 guards, 4 to 6 forwards and 2 to 4 centers.",
+                "Below the minimum at a position, a player there gets a small boost. When the picks left are only just enough to fill the holes, the boost becomes large and the GM fills the hole now.",
+                "At the maximum at a position, players there are strongly marked down. You will rarely see an AI team take a seventh guard.",
+                "Every GM also has a little taste of his own, so two teams with the same needs do not always take the same player."
+              ]
+            },
+            {
+              "type": "table",
+              "columns": [
+                "Difficulty",
+                "How the AI GMs draft"
+              ],
+              "rows": [
+                [
+                  "Rookie",
+                  "Loosely, with more reaches"
+                ],
+                [
+                  "Pro",
+                  "Mostly by the board"
+                ],
+                [
+                  "Legend",
+                  "They barely miss"
+                ]
+              ]
+            },
+            {
+              "type": "p",
+              "text": "Your own auto-pick always uses the standard logic, whatever the difficulty."
+            }
+          ]
+        },
+        {
+          "h2": "The league after the draft",
+          "blocks": [
+            {
+              "type": "ul",
+              "items": [
+                "The drafted rosters move into a full league with the base league's 30 franchises: their names, schedule, coaches and finances.",
+                "Contracts are scaled so every payroll sits around the salary cap, so nobody starts with an impossible cap sheet.",
+                "The next 60 best players who were not drafted become free agents.",
+                "The league plays under one era's rules, from the 1960s with no three-point line and a fast pace to today's three-heavy game. Pick the era before you draft: a dominant center is worth more without a three-point line.",
+                "There is no imported history in this league. From the opening tip, players age and develop through Court Vision's own systems, for one season or as long as you want."
+              ]
+            }
+          ]
+        },
+        {
           "h2": "After the draft",
           "blocks": [
             {
@@ -767,6 +843,68 @@
             {
               "type": "p",
               "text": "With Real Player Development on, real players follow their real careers: a rookie Jordan becomes the Jordan of 1991 on schedule, and players decline and retire when they really did. Players you create, draft from generated classes or import grow through Court Vision's own development. Turn it off to let every career go its own way."
+            }
+          ]
+        },
+        {
+          "h2": "How ratings move over a career",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "A single season's rating can swing a lot. A star whose team adds another star, or a player who misses half a season, can drop 10 points or more on production alone. In Franchise leagues, where a player lives through many seasons, Court Vision smooths each career: every season is blended with the seasons either side, and a rating can move at most 6 points from one season to the next. A gap year, injury or comeback is not limited this way. Good players also get a small boost, up to +4 at the very top."
+            },
+            {
+              "type": "p",
+              "text": "Single-season modes such as League Hunt and Career Mode cards keep the unsmoothed rating, because a card is one season."
+            }
+          ]
+        },
+        {
+          "h2": "Real Player Development in detail",
+          "blocks": [
+            {
+              "type": "ul",
+              "items": [
+                "It is on by default in historical leagues. At each season rollover, a real player's Overall moves to his reference rating for that real season.",
+                "If he missed a real season (injury, or retiring and coming back), the gap is filled in a straight line between the seasons either side, and his profile labels it Interpolated.",
+                "Before his first real season or after his last, there is nothing to follow. Court Vision's own aging, decline and retirement take over, and his profile says so. Nothing is extrapolated.",
+                "Training, coaching, facilities and minutes still matter: they drive workload, recovery, morale and familiarity with systems and roles. They cannot permanently change a real player's base ratings while he follows his trajectory."
+              ]
+            },
+            {
+              "type": "p",
+              "text": "Players created, drafted from generated classes or imported grow through Court Vision's normal development. See [Coaching and player development](guides/coaching-and-development.html)."
+            }
+          ]
+        },
+        {
+          "h2": "Drafts, debuts and the end of the data",
+          "blocks": [
+            {
+              "type": "ul",
+              "items": [
+                "Each offseason, the real draft class for that year arrives as prospects with the usual scouting uncertainty.",
+                "Players drafted earlier who debuted later (for example after playing overseas) join the team holding their rights in the season they really debuted.",
+                "When your league runs past the last season in the data, draft classes become generated, fictional players, and the game tells you so."
+              ]
+            }
+          ]
+        },
+        {
+          "h2": "Real vs Yours",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "For every season your league has played that the data also covers, Real vs Yours compares the real champion, MVP and number 1 pick with your league's. The drift score is the share that came out differently: how far your timeline has moved from real history."
+            }
+          ]
+        },
+        {
+          "h2": "Time Machine",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "Time Machine is a Franchise challenge that takes any real team-season, such as the 1996 Bulls, the 2016 Warriors or the 1967 76ers, and drops it into any other season. The travelling team plays with its real players exactly as they were that year. The rest of the league is real history from the season you land in. Your players become their own people in the new timeline, so \"Michael Jordan '96\" can meet the 1990 Michael Jordan, and they age and develop from there."
             }
           ]
         },
@@ -2308,6 +2446,7 @@
                 "[Badges explained](guides/badges-explained.html): what each of the 27 normal badges adds, how players earn them, and the Sandbox-only experimental badges.",
                 "New mode guides for [Survival](guides/survival.html), [Your Career](guides/your-career.html) and [Story Mode](guides/story-mode.html).",
                 "[Coaching and player development](guides/coaching-and-development.html): staff, systems, rotations, practice, mentors and morale.",
+                "Expanded guides: the [All-Time Draft](guides/all-time-draft.html) guide now explains the draft pool, snake order, how AI GMs draft by need and difficulty, and the league after the draft. [Real NBA history](guides/real-nba-history.html) now covers rating smoothing, Real Player Development, real draft classes and debuts, Real vs Yours and Time Machine.",
                 "The main menu now has a Learn Court Vision section that links every guide.",
                 "The privacy policy now covers Online Leagues and social features such as clubs, gifts and profile visits, and fixes its descriptions of accounts, purchases and ad consent."
               ]

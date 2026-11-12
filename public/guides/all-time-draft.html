@@ -73,12 +73,40 @@
 <main id="main-content">
 <h1>All-Time Draft guide</h1>
 <p class="lead">The All-Time Draft puts every player in NBA history into one draft pool, each at his best season. Thirty teams take turns for thirteen rounds; you draft against AI GMs, then play a full season with the whole GM game.</p>
-<nav class="toc" aria-label="On this page"><strong>On this page</strong><ol><li><a href="#how-the-draft-works">How the draft works</a></li><li><a href="#after-the-draft">After the draft</a></li><li><a href="#all-time-draft-of-the-week">All-Time Draft of the Week</a></li><li><a href="#tips">Tips</a></li></ol></nav>
+<nav class="toc" aria-label="On this page"><strong>On this page</strong><ol><li><a href="#how-the-draft-works">How the draft works</a></li><li><a href="#the-draft-pool">The draft pool</a></li><li><a href="#snake-order">Snake order</a></li><li><a href="#how-the-ai-gms-draft">How the AI GMs draft</a></li><li><a href="#the-league-after-the-draft">The league after the draft</a></li><li><a href="#after-the-draft">After the draft</a></li><li><a href="#all-time-draft-of-the-week">All-Time Draft of the Week</a></li><li><a href="#tips">Tips</a></li></ol></nav>
 <h2 id="how-the-draft-works">How the draft works</h2>
 <ul>
   <li>Thirty teams, thirteen rounds: a full roster for everyone.</li>
   <li>Every player in history is in the pool at his best season, so the first picks are the greatest players ever.</li>
   <li>AI GMs draft for need: a team with three guards goes looking for a big man. A draft board shows every pick, the clock, and the steals and reaches.</li>
+</ul>
+<h2 id="the-draft-pool">The draft pool</h2>
+<p>Every player in the history data appears once, at his best season: the season with his highest rating, or on a tie his most productive one. The pool is ranked by draft value. That is the best-season rating plus a bonus for a place in the all-time Top 100 (from +1 for number 100 to +3.5 for number 1), with a small discount for seasons before 1965.</p>
+<p>The bonus exists because many legends share the top rating, since each rating is measured against its own season. It is what makes Michael Jordan and LeBron James go before a 1950s scoring leader with the same number.</p>
+<h2 id="snake-order">Snake order</h2>
+<p>The order reverses every round, so the team that picks 30th in round one picks first in round two. Picking late in round one means two picks close together at the turn, a good moment to take a pair of players who fit together.</p>
+<h2 id="how-the-ai-gms-draft">How the AI GMs draft</h2>
+<ul>
+  <li>Each AI GM takes the best player left, adjusted for need. A roster aims for 4 to 6 guards, 4 to 6 forwards and 2 to 4 centers.</li>
+  <li>Below the minimum at a position, a player there gets a small boost. When the picks left are only just enough to fill the holes, the boost becomes large and the GM fills the hole now.</li>
+  <li>At the maximum at a position, players there are strongly marked down. You will rarely see an AI team take a seventh guard.</li>
+  <li>Every GM also has a little taste of his own, so two teams with the same needs do not always take the same player.</li>
+</ul>
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">Difficulty</th><th scope="col">How the AI GMs draft</th></tr></thead>
+<tbody>
+<tr><td>Rookie</td><td>Loosely, with more reaches</td></tr>
+<tr><td>Pro</td><td>Mostly by the board</td></tr>
+<tr><td>Legend</td><td>They barely miss</td></tr>
+</tbody></table></div>
+<p>Your own auto-pick always uses the standard logic, whatever the difficulty.</p>
+<h2 id="the-league-after-the-draft">The league after the draft</h2>
+<ul>
+  <li>The drafted rosters move into a full league with the base league's 30 franchises: their names, schedule, coaches and finances.</li>
+  <li>Contracts are scaled so every payroll sits around the salary cap, so nobody starts with an impossible cap sheet.</li>
+  <li>The next 60 best players who were not drafted become free agents.</li>
+  <li>The league plays under one era's rules, from the 1960s with no three-point line and a fast pace to today's three-heavy game. Pick the era before you draft: a dominant center is worth more without a three-point line.</li>
+  <li>There is no imported history in this league. From the opening tip, players age and develop through Court Vision's own systems, for one season or as long as you want.</li>
 </ul>
 <h2 id="after-the-draft">After the draft</h2>
 <p>Your drafted team plays a full season in the GM game, under the rules of the era you choose: trades, rotations, coaching, the playoffs. Titles count toward your GM legacy and achievements.</p>
