@@ -32,6 +32,12 @@
 - [Rebuild Challenge](https://courtvisiongame.com/guides/rebuild-challenge.html): How the Rebuild Challenge works in Court Vision: take over a real NBA team at its lowest point and win a championship before the clock runs out.
 - [Real NBA history](https://courtvisiongame.com/guides/real-nba-history.html): How Court Vision's Real League works: real rosters from any season since 1946-47, real careers, real draft classes, ratings computed from statistics, and Real Player Development.
 - [Ratings explained](https://courtvisiongame.com/guides/ratings-explained.html): How Court Vision rates players and teams: player Overall, the 0-100 team rating matched to real win totals, ratings past 99, the Legacy Score and the all-time Top 100.
+- [How the simulation works](https://courtvisiongame.com/guides/how-the-simulation-works.html): Inside Court Vision's game engine: every game is played possession by possession, and the box score is counted from what happened. Ball handlers, 14 shot types, contests, turnovers, rebounds, fatigue and badges explained.
+- [Badges explained](https://courtvisiongame.com/guides/badges-explained.html): Every Court Vision badge and what it does to a player's ratings: shooting, ball handling, defense, finishing, passing and rebounding badges, how players earn them, and the Sandbox-only experimental badges.
+- [Survival](https://courtvisiongame.com/guides/survival.html): How Survival works in Court Vision: draft ten of fourteen all-time greats, tag a Franchise Player, then beat real NBA teams one game at a time while every win costs you a player. Levels, bosses, Shields, emergency signings and scoring.
+- [Your Career](https://courtvisiongame.com/guides/your-career.html): How Your Career works in Court Vision: build a player at 13, choose a high school, college, pro academy or Europe, declare for the draft, sign contracts and chase awards. Positions, ratings, growth by age and Legacy explained.
+- [Story Mode](https://courtvisiongame.com/guides/story-mode.html): How Story Mode works in Court Vision: five chapters from a city park to draft night, then fifteen NBA seasons. Four playing styles, real games on the court, and choices about friends, family and rivals that change your ending.
+- [Coaching & development](https://courtvisiongame.com/guides/coaching-and-development.html): How coaching and player development work in Court Vision franchise leagues: hiring staff, offensive systems and defensive schemes, rotation styles, practice calendars, development plans, mentors, badges and morale.
 
 ## About and help
 

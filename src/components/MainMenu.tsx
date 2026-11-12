@@ -21,11 +21,12 @@ import { weeklyEvent } from '../retention/weeklyEvent';
 // Loaded only when a tier unlocks something (it pulls in every cosmetic preview).
 const SeasonTierUp = lazy(() => import('./roads/SeasonTierUp').then(m => ({ default: m.SeasonTierUp })));
 import './relics/relics.css';
+import { MenuLearn } from './MenuLearn';
+import './menuLearn.css';
 import type { TradeDifficulty } from '../simulation/gm';
 import type { SaveSummary } from '../storage/saves';
 import { formatSeasonYear } from '../simulation/calendar';
 import { MODE_SHORT, modeRecords } from '../menu/modePresentation';
-import { AdBanner } from './AdBanner';
 import { weeklyRebuild, weeklyCareer, loadWeeklyRecords, weeklyStreak, weekEndsAt } from '../retention/weekly';
 import { WhatsNew } from './WhatsNew';
 import { ThemeWelcome, needsThemeChoice } from './ThemePicker';
@@ -278,7 +279,7 @@ export function MainMenu({ onStart, saves, onOpenContinue, busy = null, onLocker
 
       <ThisWeek onCommunity={onCommunity} busy={busy} onFeatured={() => { setSelectedMode(cardOf(featured)); document.querySelector('.mode-grid')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }} onRebuild={() => onStart('rebuild', 'normal', '', '', undefined, 'weekly')} onCareer={() => onStart('career', 'normal', '', '')} onHunt={() => onStart('legends', 'normal', '', '')} />
 
-      <AdBanner slot="menu" />
+      {!IS_DESKTOP_BUILD && <MenuLearn />}
       <footer className="legal-footer">{!IS_DESKTOP_BUILD && <><a href="/how-to-play.html">How to Play</a> · <a href="/guides/">Guides</a> · <a href="/faq.html">FAQ</a> · <a href="/about.html">About</a> · <a href="/contact.html">Contact</a> · <a href="/changelog.html">What's new</a> · </>}<PrivacyLink /> · <CookieSettingsLink /> · <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer">Discord</a>{onSettings && <> · <button className="link-button" onClick={onSettings}>Settings</button></>}<span className="studio-mark">A NinefoldVision™ game</span></footer>
       <LevelUpNote onProfile={onProfile ?? onLocker} />
       <StreakNote visit={visit} onProfile={onProfile ?? onLocker} />

@@ -1,6 +1,6 @@
 {
   "site": "Court Vision",
-  "updated": "2026-10-31",
+  "updated": "2026-11-12",
   "pages": [
     {
       "path": "about.html",
@@ -928,6 +928,839 @@
       ]
     },
     {
+      "path": "guides/how-the-simulation-works.html",
+      "nav": "How the simulation works",
+      "title": "How Court Vision simulates basketball: possessions, shots, turnovers and rebounds",
+      "description": "Inside Court Vision's game engine: every game is played possession by possession, and the box score is counted from what happened. Ball handlers, 14 shot types, contests, turnovers, rebounds, fatigue and badges explained.",
+      "h1": "How the simulation works",
+      "lead": "Court Vision never invents a box score. Every game is played one possession at a time: someone gets the ball, makes a decision, and the play ends with a shot, a turnover or a foul. Points, rebounds and assists are counted from those events, so a player's statistics come from how he plays, not the other way round.",
+      "sections": [
+        {
+          "h2": "One possession, step by step",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "Each trip down the floor runs through the same chain of decisions. Changing a player's ratings, tendencies or minutes changes what happens at each step, and the statistics follow."
+            },
+            {
+              "type": "ol",
+              "items": [
+                "**Who has the ball.** The engine picks a ball handler from the five players on the floor, weighted by each player's ball-handler priority. The weighting is steep rather than linear, so a true go-to star gets a much bigger share of touches than a role player, as usage concentrates on top options in real basketball. Priority is a setting you can edit, not something fixed by position.",
+                "**What he tries.** The possession becomes an action: an isolation, a pick-and-roll, a post-up, a drive, a catch-and-shoot look or a transition chance. Passing tendencies decide whether the ball moves; about a third of assisted shots come from a swing pass by someone other than the original ball handler.",
+                "**Does he keep the ball?** Before any shot, the engine checks for a turnover (see below).",
+                "**The shot.** If there is a shot, the engine chooses one of 14 shot types from the shooter's tendencies, rolls how well it is contested, and resolves the make or miss.",
+                "**Blocks, fouls and free throws.** A shot can be blocked, can draw a foul, or can be an and-one. Free throws are shot one at a time with the shooter's own free-throw ability.",
+                "**The rebound.** A miss goes to a rebounder chosen from all ten players.",
+                "**Fatigue.** Everyone on the floor gets a little more tired, and players on the bench recover."
+              ]
+            }
+          ]
+        },
+        {
+          "h2": "Fourteen shot types",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "A jump shot from the corner and a dunk are different skills, and Court Vision rates them separately. Each shot type reads the matching rating, so a great corner shooter is not automatically a great pull-up shooter."
+            },
+            {
+              "type": "table",
+              "columns": [
+                "Group",
+                "Shot types"
+              ],
+              "rows": [
+                [
+                  "At the rim",
+                  "Rim, close, layup, dunk"
+                ],
+                [
+                  "Mid-range",
+                  "Mid-range, long mid-range, fadeaway, post shot, hook"
+                ],
+                [
+                  "Three-pointers",
+                  "Corner three, above-the-break three, pull-up three, catch-and-shoot three, step-back"
+                ]
+              ]
+            },
+            {
+              "type": "p",
+              "text": "Which type a player takes comes from his shot tendencies. You can edit them, or set a target number of three-point attempts, and the engine respects that instead of overriding it."
+            }
+          ]
+        },
+        {
+          "h2": "Contests: open, light, contested, heavy",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "Every shot gets one of four contest levels. The defender's contest and closeout ratings push the roll toward tighter coverage. In the baseline tuning, roughly a quarter of shots are open."
+            },
+            {
+              "type": "p",
+              "text": "The make chance depends on the shooter's ability for that shot type, the contest, his fatigue, and whether it is clutch time or the playoffs. Season shooting percentages are never used as an input: they are a result."
+            },
+            {
+              "type": "p",
+              "text": "Fouls follow the contest too. A heavily contested shot draws a foul about three and a half times as often as an open one, and shots at the rim draw fouls far more often than threes. A disciplined defender fouls less."
+            }
+          ]
+        },
+        {
+          "h2": "Turnovers are opportunities, not a position tax",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "A turnover is checked on each chance to lose the ball, using the ball handler's handle, ball security and decision making against the defender's perimeter defense and steal ratings, plus pressure from double teams and fatigue."
+            },
+            {
+              "type": "p",
+              "text": "Because the model works per opportunity, an elite point guard turns the ball over less per touch than an average player. A point guard is not penalised just for having the ball more."
+            },
+            {
+              "type": "p",
+              "text": "The engine tracks 13 kinds of turnover, including bad passes, steals in the passing lane, on-ball strips, charges, travels, double-team turnovers, shot-clock violations and illegal screens."
+            }
+          ]
+        },
+        {
+          "h2": "Rebounds, blocks and height",
+          "blocks": [
+            {
+              "type": "ul",
+              "items": [
+                "Rebounds compare offensive rebounding for the shooting team with defensive rebounding for the defense. Defenders get a positioning edge, tuned so the league-wide offensive rebound rate lands near the NBA's roughly 25%.",
+                "Blocks use the defender's block and rim-protection ratings. Height past seven feet adds a little extra reach.",
+                "Height matters, but it can never carry a player: it contributes at most about two points of Overall rating."
+              ]
+            }
+          ]
+        },
+        {
+          "h2": "Fatigue, minutes and injuries",
+          "blocks": [
+            {
+              "type": "ul",
+              "items": [
+                "Fatigue builds every possession a player is on the floor, faster on hard possessions. Stamina and durability slow it down and speed up recovery on the bench. A tired player's ratings are multiplied down, so a gassed star really does shoot worse.",
+                "Each player's minutes can be left to the AI, given a target, set exactly, or planned by hand. The substitution planner works toward those totals over the game.",
+                "Injuries are rolled per possession but kept rare, tuned so a full 82-game season gives each team a plausible handful, not one every game. Some quick modes, such as Survival, play with injuries off."
+              ]
+            }
+          ]
+        },
+        {
+          "h2": "Badges and ratings above 99",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "Badges change ratings or switch on special rules, and the engine reads them all the same way, without a special case for each badge. See the [badges guide](guides/badges-explained.html) for the full list."
+            },
+            {
+              "type": "p",
+              "text": "Some modes let ratings go past 99. On the court, every point above 99 counts half, so a 120 shooter is the best ever but not automatic."
+            }
+          ]
+        },
+        {
+          "h2": "Same seed, same game",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "Every game is driven by a seeded random number generator. The same seed and the same rosters and settings replay the same game, possession for possession. This is how the shared daily and weekly challenges give everyone the same games, and how a saved game can be replayed on the court exactly as it happened."
+            }
+          ]
+        },
+        {
+          "h2": "Make it your own",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "League settings expose many of these dials: shooting variance, turnover and foul frequency, era rules such as the three-point line, injuries and more. Sandbox mode unlocks experimental badges and editing for testing ideas. New to the game? Start with [How to Play](how-to-play.html)."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "guides/badges-explained.html",
+      "nav": "Badges explained",
+      "title": "Court Vision badges: all 27 normal badges and 17 experimental badges explained",
+      "description": "Every Court Vision badge and what it does to a player's ratings: shooting, ball handling, defense, finishing, passing and rebounding badges, how players earn them, and the Sandbox-only experimental badges.",
+      "h1": "Badges explained",
+      "lead": "Badges are small, specific boosts on top of a player's ratings. A Deep Range shooter really gets more out of his above-the-break threes; a Lockdown defender really contests harder. Court Vision has 27 normal badges that players can earn and 17 experimental badges for the Sandbox.",
+      "sections": [
+        {
+          "h2": "How badges work",
+          "blocks": [
+            {
+              "type": "ul",
+              "items": [
+                "A normal badge adds points to particular ratings. The bonus applies on top of the player's base ratings when he plays; his base ratings are never changed, so taking a badge away restores him exactly.",
+                "Badges do not stack: each one counts once.",
+                "The engine reads every badge the same way, so a badge does exactly what its description says and nothing hidden."
+              ]
+            }
+          ]
+        },
+        {
+          "h2": "Shooting badges",
+          "blocks": [
+            {
+              "type": "table",
+              "columns": [
+                "Badge",
+                "Effect"
+              ],
+              "rows": [
+                [
+                  "Deep Range",
+                  "+6 three-point, +5 above-the-break threes"
+                ],
+                [
+                  "Deadeye",
+                  "+7 shot IQ, +3 offensive consistency"
+                ],
+                [
+                  "Quick Release",
+                  "+5 catch-and-shoot, +5 offensive IQ"
+                ],
+                [
+                  "Catch & Shoot",
+                  "+8 catch-and-shoot, +4 corner threes"
+                ],
+                [
+                  "Difficult Shots",
+                  "+6 mid-range, +5 post fade, +3 shot IQ"
+                ],
+                [
+                  "Pull-Up Specialist",
+                  "+8 pull-up threes, +4 long mid-range"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "h2": "Ball-handling badges",
+          "blocks": [
+            {
+              "type": "table",
+              "columns": [
+                "Badge",
+                "Effect"
+              ],
+              "rows": [
+                [
+                  "Handles",
+                  "+7 ball handling, +3 speed with the ball"
+                ],
+                [
+                  "Unpluckable",
+                  "+8 ball security"
+                ],
+                [
+                  "Tight Handle",
+                  "+4 ball handling, +5 decision making"
+                ],
+                [
+                  "Speed Booster",
+                  "+7 speed with the ball, +3 acceleration"
+                ]
+              ]
+            },
+            {
+              "type": "p",
+              "text": "These matter more than they look. Turnovers are checked on each chance to lose the ball, so better handling and security cut a guard's turnovers directly. See [How the simulation works](guides/how-the-simulation-works.html)."
+            }
+          ]
+        },
+        {
+          "h2": "Defense badges",
+          "blocks": [
+            {
+              "type": "table",
+              "columns": [
+                "Badge",
+                "Effect"
+              ],
+              "rows": [
+                [
+                  "Rim Protector",
+                  "+6 rim protection, +5 block"
+                ],
+                [
+                  "Lockdown",
+                  "+7 perimeter defense, +4 contest"
+                ],
+                [
+                  "Interceptor",
+                  "+7 passing-lane steal, +4 steal IQ"
+                ],
+                [
+                  "Pick Pocket",
+                  "+7 on-ball steal, +4 steal"
+                ],
+                [
+                  "Chase Down",
+                  "+6 block timing, +3 speed, +3 vertical"
+                ],
+                [
+                  "Glass Cleaner",
+                  "+7 defensive rebounding, +5 offensive rebounding"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "h2": "Finishing and passing badges",
+          "blocks": [
+            {
+              "type": "table",
+              "columns": [
+                "Badge",
+                "Effect"
+              ],
+              "rows": [
+                [
+                  "Contact Finisher",
+                  "+6 finishing, +4 strength"
+                ],
+                [
+                  "Acrobat",
+                  "+7 driving layup, +4 touch"
+                ],
+                [
+                  "Posterizer",
+                  "+7 driving dunk, +4 vertical"
+                ],
+                [
+                  "Dimer",
+                  "+6 passing IQ, +4 passing"
+                ],
+                [
+                  "Needle Threader",
+                  "+7 passing accuracy, +3 passing"
+                ],
+                [
+                  "Bail Out",
+                  "+6 decision making, +4 passing accuracy"
+                ]
+              ]
+            },
+            {
+              "type": "p",
+              "text": "Five more round out the list: Post Craft, Corner Specialist, Iron Man, Switchable and Floor General. Each player's profile shows exactly what his badges add."
+            }
+          ]
+        },
+        {
+          "h2": "Earning badges",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "In a league with player development turned on, a player earns a normal badge by having enough of the underlying ability, backing it up with sustained, efficient play in real games, and practising the right skill. Progress moves through broad stages and can slip back if he stops producing. A player cannot be given a badge just for playing a lot of minutes."
+            },
+            {
+              "type": "p",
+              "text": "For more on practice plans and coaches, read [Coaching and player development](guides/coaching-and-development.html)."
+            }
+          ]
+        },
+        {
+          "h2": "Experimental badges (Sandbox only)",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "Experimental badges break the rules on purpose, for testing and for fun. They are only available in Sandbox mode, along with manual badge editing, so they never sneak into a normal league."
+            },
+            {
+              "type": "ul",
+              "items": [
+                "**Perfect Shooter**, **Perfect Blocker** and **Perfect Steal**: eligible attempts always succeed.",
+                "**Never Turnover**: the player cannot lose the ball.",
+                "**Infinite Stamina**: fatigue never builds.",
+                "**Unlimited Range**: distance stops hurting his shot.",
+                "Also: God Speed, Clutch God, Playoff God, No Injury, No Foul, Automatic Assist, Rebound God, Gravity, Unblockable Shot, Unstealable Ball and Infinite Vertical."
+              ]
+            },
+            {
+              "type": "p",
+              "text": "Try one on a single player and watch a few games: it is a fast way to see how much one skill moves a team's results."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "guides/survival.html",
+      "nav": "Survival",
+      "title": "Survival guide: Last Team Standing, Franchise Players, Shields and claims",
+      "description": "How Survival works in Court Vision: draft ten of fourteen all-time greats, tag a Franchise Player, then beat real NBA teams one game at a time while every win costs you a player. Levels, bosses, Shields, emergency signings and scoring.",
+      "h1": "Survival guide",
+      "lead": "Survival: Last Team Standing starts you with a stacked team of all-time greats. You play real teams from NBA history one game at a time, each under its own era's rules. Every win has a price: the team you beat claims one of your players. One loss and the run is over.",
+      "sections": [
+        {
+          "h2": "Build the team",
+          "blocks": [
+            {
+              "type": "ol",
+              "items": [
+                "You are dealt 14 great players from all of history, one season each: five guards, five forwards and four centers. At least one legendary season comes at each position; the rest are epic.",
+                "Keep ten of them. That is your whole roster.",
+                "Name a **Franchise Player**. He can never be claimed, whatever happens."
+              ]
+            }
+          ]
+        },
+        {
+          "h2": "Each round",
+          "blocks": [
+            {
+              "type": "ul",
+              "items": [
+                "You see the next opponent and its rating before tip-off. Opponents are real historical teams, and you never face the same team twice in a run.",
+                "The game is played under the opponent's era rules, with its era's coaching style.",
+                "Lose and the run ends. Win and the beaten team claims one of your players (never the Franchise Player). Then you sign one of three of their players to refill your roster.",
+                "Every fifth round is a **boss** game against a champion team."
+              ]
+            }
+          ]
+        },
+        {
+          "h2": "Shields",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "You start with one Shield, and each boss win adds another, up to three. When a team claims a player you want to keep, spend a Shield: the claim is blocked and they take someone else instead. You can only shield once a round."
+            }
+          ]
+        },
+        {
+          "h2": "Cash and emergency signings",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "Each win pays 25 cash, and a boss win pays 50. Before a round you can spend 60 on one emergency signing from three free agents, players a little below your team's average who are not already on your roster. It fills an empty spot or replaces your lowest-rated player, never the Franchise Player. One emergency signing per round."
+            }
+          ]
+        },
+        {
+          "h2": "Three levels",
+          "blocks": [
+            {
+              "type": "table",
+              "columns": [
+                "Level",
+                "Opponents",
+                "Who they claim",
+                "Score multiplier"
+              ],
+              "rows": [
+                [
+                  "Rookie",
+                  "Softer",
+                  "One of your top four, not always the best",
+                  "0.75x"
+                ],
+                [
+                  "Pro",
+                  "Standard climb",
+                  "One of your two best",
+                  "1x"
+                ],
+                [
+                  "Legend",
+                  "Tougher from the start",
+                  "Always your best",
+                  "1.5x"
+                ]
+              ]
+            },
+            {
+              "type": "p",
+              "text": "On every level the opposition gets steadily stronger: each round adds a little to every opposing player, so late rounds stay dangerous."
+            }
+          ]
+        },
+        {
+          "h2": "Scoring",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "Your score is 100 points per win, 150 more for each boss beaten, and 2 points per point of winning margin (up to 25 a game), all multiplied by the level. Your run is shared as a strip of squares, a crown for each boss."
+            },
+            {
+              "type": "p",
+              "text": "The **Daily Survival** deals the same legends, opponents and games to everyone for the same choices, so you can compare runs with friends. Relics do not apply in the Daily."
+            }
+          ]
+        },
+        {
+          "h2": "Strategy",
+          "blocks": [
+            {
+              "type": "ul",
+              "items": [
+                "Pick a Franchise Player you can build around for many rounds, usually the best two-way star rather than the highest Overall.",
+                "Depth wins long runs: your team rating counts your best eight, starters most. A tenth man rarely matters; a sixth man often does.",
+                "Save Shields for your second-best player, since the best one is often the Franchise Player and already safe.",
+                "When you sign from a beaten team, refill the position you just lost.",
+                "Learn how team ratings are built in [Ratings explained](guides/ratings-explained.html)."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "guides/your-career.html",
+      "nav": "Your Career",
+      "title": "Your Career guide: from age 13 to the NBA, contracts, awards and Legacy",
+      "description": "How Your Career works in Court Vision: build a player at 13, choose a high school, college, pro academy or Europe, declare for the draft, sign contracts and chase awards. Positions, ratings, growth by age and Legacy explained.",
+      "h1": "Your Career guide",
+      "lead": "Your Career follows one player from a youth club at 13 to his last game. You build him, then every season brings choices: which school, stay or transfer, when to declare for the draft, which contract, how to train. The seasons in between play themselves.",
+      "sections": [
+        {
+          "h2": "Create your player",
+          "blocks": [
+            {
+              "type": "ul",
+              "items": [
+                "Choose a name, number, country, position and height. Each position has its own height range and weighs ratings differently in your Overall: point guards lean on vision and handles, centers on physical play and defense.",
+                "Pick a background. **City courts** start with more reputation and handles; a **small town** player starts unknown with more room to grow; a **hoops family** brings good habits and a famous name to live up to.",
+                "Answer eight playing-style questions, from how you like to score to what your summer workouts look like. Each answer moves your starting ratings, and leaning hard one way costs you a little elsewhere.",
+                "Your five ratings are shooting, dribbling, vision, defense and physical. Your strongest two give you an archetype, such as Floor General, Slasher or Rim Protector."
+              ]
+            }
+          ]
+        },
+        {
+          "h2": "The road to the pros",
+          "blocks": [
+            {
+              "type": "table",
+              "columns": [
+                "Level",
+                "Ages",
+                "Games a season"
+              ],
+              "rows": [
+                [
+                  "Youth club",
+                  "13-14",
+                  "30"
+                ],
+                [
+                  "High school",
+                  "14-17",
+                  "28"
+                ],
+                [
+                  "College or pro academy",
+                  "18+",
+                  "34 (college), 36 (academy)"
+                ],
+                [
+                  "Europe",
+                  "18+",
+                  "34"
+                ],
+                [
+                  "G League",
+                  "Pro",
+                  "48"
+                ],
+                [
+                  "NBA",
+                  "Pro",
+                  "82"
+                ]
+              ]
+            },
+            {
+              "type": "p",
+              "text": "Each level is tougher than the last, so a player who dominated in high school can find college much harder. After high school, recruiting offers decide where you go next."
+            }
+          ]
+        },
+        {
+          "h2": "Declaring for the draft",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "At the end of each college year you can declare, come back for another year, enter the transfer portal, or test the waters and keep your eligibility. Scouts give a projection from Top 3 pick down to likely undrafted. It depends mostly on your Overall, then your reputation and your age, because teams pay for upside. After four college years, or out of an academy, you must go pro."
+            }
+          ]
+        },
+        {
+          "h2": "Contracts and free agency",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "When a contract runs out, the phone rings. NBA players can re-sign with a loyalty bonus. Other offers come in three kinds: a **contender** with title odds but maybe a bench role, a rebuilding team offering **max money** on a shorter deal, or a team that wants you to be **the guy**. From age 33 you can also retire."
+            }
+          ]
+        },
+        {
+          "h2": "Growth and aging",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "Young players improve fastest: about three and a half points a season in the early teens, slowing through the early twenties, and nearly flat by 28. From 30, ratings start to fall, faster every year. Each season you choose a training focus, and between seasons story events ask you to decide what to do when things go right or wrong."
+            },
+            {
+              "type": "p",
+              "text": "Your career ends when you retire, at 41 at the latest, or earlier if your Overall falls too low after 35."
+            }
+          ]
+        },
+        {
+          "h2": "Awards and Legacy",
+          "blocks": [
+            {
+              "type": "ul",
+              "items": [
+                "Every level has its own trophies: youth national titles, State champion and All-State, college honors, and in the NBA Rookie of the Year, All-Star, All-NBA, MVP, Defensive Player of the Year, Sixth Man of the Year, championships and Finals MVP.",
+                "Your **Legacy** score counts NBA seasons only: how far your Overall rose above 70, your scoring, and your trophies, with an MVP worth the most.",
+                "A Legacy of 160 or more puts you in the Hall of Fame."
+              ]
+            }
+          ]
+        },
+        {
+          "h2": "Tips",
+          "blocks": [
+            {
+              "type": "ul",
+              "items": [
+                "Pick a position that fits your height range: a 6-foot center is a long road.",
+                "Staying in college another year can raise your draft stock, but the projection rewards youth, so do not wait too long.",
+                "For an all-time career in the classic GM game, try [Career Mode](guides/career-mode.html) instead."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "guides/story-mode.html",
+      "nav": "Story Mode",
+      "title": "Story Mode guide: Street to the League, chapters, choices and endings",
+      "description": "How Story Mode works in Court Vision: five chapters from a city park to draft night, then fifteen NBA seasons. Four playing styles, real games on the court, and choices about friends, family and rivals that change your ending.",
+      "h1": "Story Mode guide",
+      "lead": "Story Mode: Street to the League follows one player from a park in his hometown to the NBA. Scenes ask you to choose who you trust, how you train and what you say. Key games are played by the main game engine with you on the floor, and how you play changes the story.",
+      "sections": [
+        {
+          "h2": "Choose your style",
+          "blocks": [
+            {
+              "type": "table",
+              "columns": [
+                "Style",
+                "Position",
+                "Plays like"
+              ],
+              "rows": [
+                [
+                  "Bucket getter",
+                  "Shooting guard",
+                  "Three levels, no conscience: born to score"
+                ],
+                [
+                  "Floor general",
+                  "Point guard",
+                  "Sees the play before it happens"
+                ],
+                [
+                  "Two-way wing",
+                  "Small forward",
+                  "Locks up their best, knocks down the open three"
+                ],
+                [
+                  "Paint beast",
+                  "Center",
+                  "Rebounds, blocks, dunks"
+                ]
+              ]
+            },
+            {
+              "type": "p",
+              "text": "You also pick a hometown, from Baltimore to Oakland, Chicago's South Side to New Orleans."
+            }
+          ]
+        },
+        {
+          "h2": "The five chapters",
+          "blocks": [
+            {
+              "type": "ol",
+              "items": [
+                "**The Blacktop** (age 16): summer at Carver Park, and a run against the city's top sophomore.",
+                "**Varsity** (17): tryouts, the season opener, a rivalry game, and a shot at the state title.",
+                "**The Circuit** (18): AAU summer, a showcase in Las Vegas, recruiting rankings, and people who want something from you.",
+                "**The Choice** (19): where you play next.",
+                "**Draft Night** (20): the moment everything has been building to."
+              ]
+            },
+            {
+              "type": "p",
+              "text": "After the draft, the story continues for fifteen seasons in the real NBA."
+            }
+          ]
+        },
+        {
+          "h2": "The people on the road",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "Four people walk the road with you: your best friend Dre, Coach Ray from the rec center, your little sister Maya, and your rival Marcus \"Ice\" Vance. Choices build or strain each relationship. On one Friday night you can go to a party with Dre (more hype, a closer friendship), work out with Coach Ray (better playmaking and more grit, but Dre feels left out), stay in and watch film, or take Maya to the movies as you promised."
+            }
+          ]
+        },
+        {
+          "h2": "Games and training",
+          "blocks": [
+            {
+              "type": "ul",
+              "items": [
+                "Key games are real simulations with you on the floor. A win or a loss changes the next scene, your hype and your options.",
+                "Training sessions give you points to spend on your skills before the next stretch of games.",
+                "Your choices and results raise or lower your hype and grit, which shape what comes next."
+              ]
+            }
+          ]
+        },
+        {
+          "h2": "Endings",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "The ending depends on your career, your hype, your grit and the people you kept close. Everything is seeded, so the same choices tell the same story. Make different ones to see where else the road goes."
+            }
+          ]
+        },
+        {
+          "h2": "Related modes",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "Want more control over a whole career? [Your Career](guides/your-career.html) starts at 13 with more choices about schools and contracts, and [Career Mode](guides/career-mode.html) builds a player for the full GM game."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "guides/coaching-and-development.html",
+      "nav": "Coaching & development",
+      "title": "Coaching and player development guide: staff, systems, rotations and practice",
+      "description": "How coaching and player development work in Court Vision franchise leagues: hiring staff, offensive systems and defensive schemes, rotation styles, practice calendars, development plans, mentors, badges and morale.",
+      "h1": "Coaching and player development",
+      "lead": "In a franchise league you run the coaching staff as well as the roster. Coaches, systems, rotations and practice all feed the possession engine and how players grow, rather than adding a flat bonus to a rating.",
+      "sections": [
+        {
+          "h2": "Your staff",
+          "blocks": [
+            {
+              "type": "ul",
+              "items": [
+                "Five jobs: head coach, offensive assistant, defensive assistant, development coach and athletic trainer.",
+                "Each coach has ten separate coaching ratings, specialties, preferences, a personality and a career record.",
+                "Hire through the **Staff Market**. Candidates weigh salary, contract length, role, how good your team is, your facilities and fit, and interviews explain what they care about.",
+                "Firing a coach pays out his contract and brings a short adjustment period. Assistants can be promoted, and successful development coaches may leave to become head coaches."
+              ]
+            }
+          ]
+        },
+        {
+          "h2": "Systems and schemes",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "Pick one of six offensive systems and one of five defensive schemes. Each fits some rosters better than others, and players get more familiar with it over time. The trade-offs are basketball ones: motion offense creates more assisted shots, isolation concentrates usage, drop coverage gives up perimeter looks, and pressure defense has its weaknesses."
+            }
+          ]
+        },
+        {
+          "h2": "Rotations",
+          "blocks": [
+            {
+              "type": "p",
+              "text": "Choose a rotation style (fixed, performance, development, matchup or playoff), then set preferred starters and closing, small-ball and defensive groups, plus a backup ball handler. You can still lock exact or manual minutes for any player, and the engine will respect them. See [How the simulation works](guides/how-the-simulation-works.html) for how minutes and fatigue interact."
+            }
+          ]
+        },
+        {
+          "h2": "Practice and development plans",
+          "blocks": [
+            {
+              "type": "ul",
+              "items": [
+                "A seven-day practice calendar covers skills, offense, defense, conditioning, film and recovery. Auto Practice plans around the schedule, fatigue and the playoffs. Injured players train on restrictions.",
+                "Each player can get a primary and secondary focus, an intensity, a target role, an assigned coach and a veteran mentor.",
+                "Growth is skill by skill and never certain. It depends on age, work ethic, teaching, how high a rating already is, health, playing time and your league's development settings. Piling on minutes is not the best way to develop a young player, and potential is not a guarantee.",
+                "Long-term projects track progress and stalls over months. Cancel one and the gains he already made stay."
+              ]
+            }
+          ]
+        },
+        {
+          "h2": "Mentors, morale and badges",
+          "blocks": [
+            {
+              "type": "ul",
+              "items": [
+                "A mentor must be at least 27 and four years older than his mentee, and can take two mentees at most. Mentoring supports the right training and relationships; it does not copy ratings or badges.",
+                "Role conversations affect trust and morale, and can come with a ten-game promise about minutes. Break the promise and there are consequences; repeating the conversation does not farm morale.",
+                "Players earn normal badges through ability, efficient play and practice. See [Badges explained](guides/badges-explained.html)."
+              ]
+            }
+          ]
+        },
+        {
+          "h2": "How much control you want",
+          "blocks": [
+            {
+              "type": "table",
+              "columns": [
+                "Setting",
+                "Staff",
+                "Plans",
+                "Practice"
+              ],
+              "rows": [
+                [
+                  "Simple",
+                  "Automatic",
+                  "Automatic",
+                  "Automatic"
+                ],
+                [
+                  "Standard",
+                  "Manual",
+                  "Manual",
+                  "Automatic"
+                ],
+                [
+                  "Deep",
+                  "Manual",
+                  "Manual",
+                  "Manual"
+                ]
+              ]
+            },
+            {
+              "type": "p",
+              "text": "AI teams use the same systems: they hire, train, mentor and change rotations, protect older players from heavy minutes, and can replace an underperforming coach when a better one is affordable. New to franchise play? Start with [How to Play](how-to-play.html)."
+            }
+          ]
+        }
+      ]
+    },
+    {
       "path": "faq.html",
       "nav": "FAQ",
       "title": "CourtVision FAQ: game modes, saves, accounts and troubleshooting",
@@ -1465,6 +2298,22 @@
       "h1": "Changelog",
       "lead": "The biggest recent additions to Court Vision, newest first.",
       "sections": [
+        {
+          "h2": "November 2026: six new guides",
+          "blocks": [
+            {
+              "type": "ul",
+              "items": [
+                "[How the simulation works](guides/how-the-simulation-works.html): how a possession is played step by step, from choosing the ball handler to shots, contests, turnovers, rebounds and fatigue.",
+                "[Badges explained](guides/badges-explained.html): what each of the 27 normal badges adds, how players earn them, and the Sandbox-only experimental badges.",
+                "New mode guides for [Survival](guides/survival.html), [Your Career](guides/your-career.html) and [Story Mode](guides/story-mode.html).",
+                "[Coaching and player development](guides/coaching-and-development.html): staff, systems, rotations, practice, mentors and morale.",
+                "The main menu now has a Learn Court Vision section that links every guide.",
+                "The privacy policy now covers Online Leagues and social features such as clubs, gifts and profile visits, and fixes its descriptions of accounts, purchases and ad consent."
+              ]
+            }
+          ]
+        },
         {
           "h2": "October 2026: the 82-0 Challenge",
           "blocks": [

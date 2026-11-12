@@ -59,6 +59,8 @@ const siteMaps = (): Plugin => ({
     const updated = (JSON.parse(readFileSync(new URL('./src/content/sitePages.json', import.meta.url), 'utf8')) as { updated: string }).updated;
     const pages: [string, number][] = [['', 1], ['guides/', 0.8], ['guides/82-0-challenge.html', 0.8], ['guides/league-hunt.html', 0.8], ['guides/career-mode.html', 0.8],
       ['guides/all-time-draft.html', 0.7], ['guides/rebuild-challenge.html', 0.7], ['guides/real-nba-history.html', 0.7], ['guides/ratings-explained.html', 0.6],
+      ['guides/how-the-simulation-works.html', 0.7], ['guides/badges-explained.html', 0.6], ['guides/survival.html', 0.7], ['guides/your-career.html', 0.7],
+      ['guides/story-mode.html', 0.7], ['guides/coaching-and-development.html', 0.6],
       ['how-to-play.html', 0.8], ['faq.html', 0.8], ['about.html', 0.6], ['changelog.html', 0.5], ['privacy.html', 0.3], ['contact.html', 0.5]];
     // Search engines and AI assistants (ChatGPT, Claude, Perplexity, Gemini...) may read every page; the API is not for crawling.
     const aiBots = ['GPTBot', 'OAI-SearchBot', 'ChatGPT-User', 'ClaudeBot', 'Claude-User', 'Claude-SearchBot', 'PerplexityBot', 'Perplexity-User', 'Google-Extended', 'Applebot-Extended', 'Bingbot', 'DuckAssistBot', 'meta-externalagent'];

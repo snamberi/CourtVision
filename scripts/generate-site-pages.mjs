@@ -173,10 +173,25 @@ ${categories.map(cat => `<section class="faq-category" aria-labelledby="topic-${
   written.push(page.path);
 }
 // The guides index.
-const index = { path: 'guides/index.html', title: 'Court Vision guides: every game mode explained', description: 'Guides to every Court Vision game mode: Career Mode, League Hunt, Rebuild Challenge, real NBA history, and how ratings work.' };
+const index = { path: 'guides/index.html', title: 'Court Vision guides: every game mode explained', description: 'Guides to every Court Vision game mode, from the 82-0 Challenge and League Hunt to Survival, Story Mode and Your Career, plus how the simulation engine, ratings, badges and player development work.' };
 const indexBody = `<h1>Guides</h1>\n<p class="lead">Everything you need to know about each way to play Court Vision.</p>\n<ul class="guides">${[...guides, top.find((p) => p.path === 'how-to-play.html')].map((g) => `<li><a href="../${g.path}">${esc(g.nav)}</a><br><span>${esc(g.description)}</span></li>`).join('')}</ul>`;
 writeFileSync(join(root, 'public', index.path), layout(index, '../', indexBody));
 written.push(index.path);
+
+// 404.html: served with a real 404 status for unknown paths (wrangler.jsonc not_found_handling "404-page"), so a
+// mistyped or old URL is not indexed as a copy of the game page. Absolute links: it can be served at any depth.
+const notFound = { path: '404.html', title: 'Page not found | Court Vision', description: 'This page does not exist. Play Court Vision or browse the guides.' };
+const notFoundBody = `<h1>Page not found</h1>\n<p class="lead">There is no page at this address. It may have moved, or the link may be mistyped.</p>\n<ul class="guides"><li><a href="/">Play Court Vision</a><br><span>The free basketball GM and simulation game, in your browser.</span></li><li><a href="/guides/">Guides</a><br><span>Every game mode explained.</span></li><li><a href="/how-to-play.html">How to Play</a><br><span>Your first season, step by step.</span></li><li><a href="/faq.html">FAQ</a><br><span>Saves, accounts, ads and troubleshooting.</span></li></ul>`;
+writeFileSync(join(root, 'public', notFound.path), layout(notFound, '/', notFoundBody)
+  .replace(/<meta name="robots"[^>]*>/, '<meta name="robots" content="noindex, follow">')
+  .replace(/<link rel="canonical"[^>]*>\n/, '')
+  .replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>\n/, ''));
+written.push(notFound.path);
+
+// A small index of the guides for the game's main menu (src/components/MenuLearn.tsx), so the home screen links to
+// them with real descriptions without bundling every page's text.
+writeFileSync(join(root, 'src', 'content', 'guideIndex.json'), JSON.stringify([top.find((p) => p.path === 'how-to-play.html'), ...guides]
+  .map((g) => ({ path: g.path, nav: g.nav, description: g.description })), null, 2) + '\n');
 
 // llms.txt (https://llmstxt.org): a plain summary for AI assistants and answer engines (ChatGPT, Claude, Perplexity),
 // and llms-full.txt with every page's text, so they can describe the game accurately and link to the right page.

@@ -171,6 +171,7 @@ import { Sidebar } from './components/Sidebar';
 import { PhoneTabs } from './components/PhoneTabs';
 import { TeamLogo } from './components/TeamLogo';
 import { AdBanner } from './components/AdBanner';
+import { adsAllowedOnTab } from './ads/adPolicy';
 import { DownloadButton } from './components/DownloadButton';
 import { SETTINGS_PRESETS, type PresetName } from './simulation/settingsPresets';
 import { downloadUniverse, readUniverseFromFile } from './storage/universeIO';
@@ -1956,7 +1957,7 @@ function App() {
           courtChatNew={courtChatNew}
         />
         <main tabIndex={0} aria-label="Game content">
-        <AdBanner slot="top" refreshKey={tab} />
+        {adsAllowedOnTab(tab) && <AdBanner slot="top" refreshKey={tab} />}
         <Suspense fallback={<p className="empty-state page-loading" role="status">Loading…</p>}>
         {coachLocked && <CoachOnlyNotice onOpenSettings={() => { setLeagueSettingsSub('rules'); setTab('leagueSettings'); }} />}
         {tab === 'teamProfile' && <TeamProfilePage league={league} extras={extras} teamId={viewedTeamId} onSelectPlayer={selectPlayer} />}
@@ -2500,7 +2501,7 @@ function App() {
 
         {tab === 'hallOfFame' && <HallOfFamePage league={league} onSelectPlayer={selectPlayer} />}
 
-        <AdBanner slot="inline" refreshKey={tab} />
+        {adsAllowedOnTab(tab) && <AdBanner slot="inline" refreshKey={tab} />}
         <footer className="legal-footer"><PrivacyLink /> · <CookieSettingsLink /><span className="studio-mark">A NinefoldVision™ game</span></footer>
         </Suspense>
       </main>

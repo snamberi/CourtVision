@@ -19,3 +19,17 @@ export function advertisingPermitted(
   if (cfg.googleCmp) return !consent.gpc;
   return consent.advertisingAllowed;
 }
+
+/**
+ * In-game screens that may carry an ad. AdSense allows ads only next to substantial publisher content, and not on
+ * screens used for navigation, alerts, settings or actions where a misplaced tap is likely. So: read-only pages full
+ * of stats, reports and history, never the main menu, editors, settings, loading states, trades, the draft, free
+ * agency or simulation controls.
+ */
+export const AD_CONTENT_TABS: ReadonlySet<string> = new Set([
+  'dashboard', 'standings', 'schedule', 'playoffs', 'boxscore', 'powerRankings', 'transactions', 'news',
+  'playerStats', 'teamStats', 'teamProfile', 'roster', 'history', 'teamHistory', 'records', 'almanac', 'nbaArchive',
+  'hallOfFame', 'awards', 'legends', 'yearInReview', 'seasonPreview', 'dynastyRankings', 'historyBook', 'timeline',
+  'storylines', 'press', 'analytics', 'injuries', 'database', 'compare',
+]);
+export const adsAllowedOnTab = (tab: string): boolean => AD_CONTENT_TABS.has(tab);
