@@ -37,7 +37,11 @@ export interface AccountState {
 
 let state: AccountState = { status: cloudEnabled ? 'idle' : 'off', userId: null, email: null, provider: null, profile: null, sync: { state: 'idle', at: null, message: null } };
 const listeners = new Set<() => void>();
-export function setAccount(patch: Partial<AccountState>) { state = { ...state, ...patch }; listeners.forEach(l => l()); }
+export function setAccount(patch: Partial<AccountState>) {
+  const changedOwner = patch.userId !== undefined && patch.userId !== state.userId;
+  state = { ...state, ...patch, ...(changedOwner ? { sync: { state: 'idle' as const, at: null, message: null } } : {}) };
+  listeners.forEach(l => l());
+}
 export const getAccount = () => state;
 export const useAccount = () => useSyncExternalStore(cb => { listeners.add(cb); return () => listeners.delete(cb); }, getAccount, getAccount);
 
@@ -59,6 +63,7 @@ export function supa(): Promise<SupabaseClient> {
 async function applySession(client: SupabaseClient, s: Session | null) {
   const before = session?.user.id;
   session = s;
+  void import('./push').then(m => m.clearForeignPush(s?.user.id ?? null)).catch(() => {});
   // Passes belong to the account: signed out, this browser forgets them (they come back on sign-in).
   if (!s) { setAccount({ status: 'signedOut', userId: null, email: null, provider: null, profile: null }); if (before) { writeEntitlements(null); noteOwnerAccess(false); } return; }
   setAccount({ status: 'signedIn', userId: s.user.id, email: s.user.email ?? null, provider: (s.user.app_metadata?.provider as string | undefined) ?? null });

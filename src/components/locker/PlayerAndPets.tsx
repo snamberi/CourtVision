@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { PixelIcon } from '../PixelIcon';
 import { MyFramedAvatar } from '../AvatarFrame';
 import { totalXp, levelFor } from '../../profile/profile';
-import { feetInches } from '../../career/categories';
+import { ratingsBaller } from '../../arcade/street';
+import { CATEGORIES, feetInches } from '../../career/categories';
 import {
   MY_SKILLS, BASE_RATING, BASE_HEIGHT, MAX_RATING, MAX_HEIGHT, ELITE_FROM, ELITE_SLOTS, INCH_COST, POINTS_PER_STEP, LEVELS_PER_STEP, skillStepCost, inchStepCost,
   loadMyRatings, saveMyRatings, stepSkill, stepHeight, raiseBlock, heightBlock, pointsLeft, pointsEarned, eliteCount, myOverall, baseRatings, MY_RATINGS_EVENT, type MySkill,
@@ -22,6 +23,7 @@ export function MyRatingsPanel() {
   useEffect(() => { const sync = () => setR(loadMyRatings(level)); window.addEventListener(MY_RATINGS_EVENT, sync); return () => window.removeEventListener(MY_RATINGS_EVENT, sync); }, [level]);
   const commit = (next: typeof r) => { if (next !== r) { setR(next); saveMyRatings(next); } };
   const left = pointsLeft(r, level), elite = eliteCount(r);
+  const game = ratingsBaller(r, '__preview__', 'Your player');
   const nextAt = (Math.floor(level / LEVELS_PER_STEP) + 1) * LEVELS_PER_STEP;
   return <section className="locker-bay my-ratings">
     <div className="my-ratings-head">
@@ -53,6 +55,9 @@ export function MyRatingsPanel() {
       })}
     </ul>
     <button onClick={() => commit(baseRatings())} disabled={left === pointsEarned(level)}><PixelIcon name="shuffle" size={14} /> Reset and get every point back</button>
+    <h2>On-court attributes</h2><p className="hint-text">These are the actual derived ratings used by your player in Street and 1v1. Athleticism and IQ lift shooting and defense; Body also contributes to inside scoring and rebounding.</p>
+    <div className="attribute-groups">{([['Scoring', [['Inside scoring', game.inside], ['Mid-range', game.mid], ['Three-point', game.three]]], ['Control & defense', [['Ball handling', game.handle], ['Perimeter defense', game.perD], ['Interior defense', game.intD], ['Rebounding', game.reb]]]] as [string, [string, number][]][]).map(([name, rows]) => <section className="attribute-group" key={name}><h3>{name}</h3><dl>{rows.map(([label, value]) => <div key={label} style={{ display: 'contents' }}><dt>{label}<meter min={0} max={150} value={value} aria-label={label} /></dt><dd>{value.toFixed(1)}</dd></div>)}</dl></section>)}</div>
+    <details><summary>What each skill category covers</summary><div className="attribute-groups">{CATEGORIES.filter(c => c.id !== 'size').map(c => <section className="attribute-group" key={c.id}><h3>{c.name}</h3><p>{c.blurb}</p><p className="hint-text">{c.fields.map(([, field]) => field.replace(/([A-Z])/g, ' $1')).join(' · ')}</p></section>)}</div></details>
     <PrototypeCard shape={r} />
   </section>;
 }

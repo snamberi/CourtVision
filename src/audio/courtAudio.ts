@@ -1,3 +1,4 @@
+import { announce } from './gameAudio';
 /**
  * Courtside sound, synthesized with Web Audio (no audio files to download).
  * Created lazily after a user gesture, so nothing plays or allocates until sound is switched on.
@@ -70,7 +71,7 @@ export class CourtAudio {
     o.connect(f).connect(g).connect(this.master!); o.start(now); o.stop(now + .11);
   }
   /** A buzzer-beater or a game-winner: the horn, then the whole building. */
-  eruption() { this.buzzer(); this.burst(.85, 900, 'bandpass', 2.6, .5, true); this.burst(.35, 2400, 'bandpass', 1.8, .8, true); }
+  eruption() { announce("What a finish! The arena is on its feet!"); this.buzzer(); this.burst(.85, 900, 'bandpass', 2.6, .5, true); this.burst(.35, 2400, 'bandpass', 1.8, .8, true); }
   rim() {
     const ctx = this.ctx; if (!this.enabled || !ctx) return;
     const now = ctx.currentTime;
@@ -99,6 +100,7 @@ export class CourtAudio {
   }
   /** A dunk: the rim rattles, a low thud through the floor, and the building gets loud. */
   dunk(loud: boolean) {
+    if (this.enabled && loud) announce("Throws it down!");
     const ctx = this.ctx; if (!this.enabled || !ctx) return;
     const now = ctx.currentTime, o = ctx.createOscillator(), g = ctx.createGain();
     o.type = 'sine'; o.frequency.setValueAtTime(90, now); o.frequency.exponentialRampToValueAtTime(38, now + .28);
@@ -108,7 +110,7 @@ export class CourtAudio {
     this.burst(loud ? .7 : .25, 850, 'bandpass', loud ? 2.2 : 1.1, .5, true);
   }
   /** A made three: a quick rising crowd pop. */
-  pop(loud: boolean) { this.burst(loud ? .42 : .14, 1100, 'bandpass', loud ? 1.2 : .7, .7, true); }
+  pop(loud: boolean) { if (this.enabled && loud) announce("From downtown! Three points!"); this.burst(loud ? .42 : .14, 1100, 'bandpass', loud ? 1.2 : .7, .7, true); }
   /** Home crowd reaction. `loud` for a home basket or stop, soft murmur for the visitors. */
   cheer(loud: boolean) { this.burst(loud ? .5 : .14, loud ? 900 : 600, 'bandpass', loud ? 1.6 : .9, .6, true); }
 

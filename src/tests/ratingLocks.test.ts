@@ -1,3 +1,4 @@
+import { finishDevelopment } from '../simulation/developmentCheckpoint';
 import { describe, expect, it } from 'vitest';
 import { RNG } from '../simulation/engine/rng';
 import { generatePlayer, generateFullLeague } from '../simulation/leagueGenerator';
@@ -63,7 +64,9 @@ describe('Locked ratings', () => {
     league = { ...league, teams: league.teams.map(t => (t.teamId === 'GSW' ? { ...t, seasons: locked } : t)) };
     league = prepareCoachingForGame(league, ['GSW'], '2016-10-20');
     league = prepareCoachingForGame(league, ['GSW'], '2017-01-20');
-    const after = league.teams.find(t => t.teamId === 'GSW')!.seasons;
+    const queued = league.teams.find(t => t.teamId === 'GSW')!.seasons;
+    expect(queued.every(p => JSON.stringify(p.attributes) === JSON.stringify(locked.find(x => x.playerId === p.playerId)!.attributes))).toBe(true);
+    const after = queued.map(finishDevelopment);
     for (const p of after) {
       const before = locked.find(x => x.playerId === p.playerId)!;
       for (const path of p.lockedRatings!) expect(ratingAt(p, path)).toBe(ratingAt(before, path));
@@ -89,12 +92,14 @@ describe('Locked ratings', () => {
     const grown = applyProgress(onTeam, extras, atPrime);
     const p = findPlayer(grown.league, grown.extras, 'Locked Rook')!.player;
     expect(p.attributes.offense.corner3).toBe(40);
-    expect(p.attributes.offense.threePoint).toBe(90);
+    expect(p.attributes.offense.threePoint).toBe(rookie.attributes.offense.threePoint);
+    expect(p.pendingSeasonAttributes?.offense.threePoint).toBe(90);
+    expect(finishDevelopment(p).attributes.offense.corner3).toBe(40);
     // As a rookie (and in decline) a locked rating still holds; without the lock it follows his progress.
     for (const progress of [0, -0.5]) {
       const at = { ...meta, progress: Object.fromEntries(CATEGORIES.map(c => [c.id, progress])) as typeof meta.progress };
       expect(findPlayer(applyProgress(onTeam, extras, at).league, extras, 'Locked Rook')!.player.attributes.offense.corner3).toBe(40);
-      expect(findPlayer(applyProgress(onTeam, extras, { ...at, locks: undefined }).league, extras, 'Locked Rook')!.player.attributes.offense.corner3).toBeLessThan(40);
+      expect(findPlayer(applyProgress(onTeam, extras, { ...at, locks: undefined }).league, extras, 'Locked Rook')!.player.pendingSeasonAttributes!.offense.corner3).toBeLessThan(40);
     }
   });
 });

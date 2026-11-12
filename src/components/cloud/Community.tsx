@@ -1,3 +1,5 @@
+import { SCENARIOS } from '../../simulation/rebuildScenarios';
+import { PageJumps } from '../PageJumps';
 import { hasOwnerAccess } from '../../profile/ownerAccess';
 import { useEffect, useState } from 'react';
 import { cloudEnabled, useAccount, signOut, deleteAccount, updateProfile } from '../../cloud/account';
@@ -6,7 +8,7 @@ import { loadProfile, setFollow, report, achievementRarity, type BoardSpec } fro
 import { currentSeason, seasonLabel, tierFor, TIERS } from '../../cloud/ranked';
 import { weekKey } from '../../retention/week';
 import { weeklyRebuild, weeklyCareer } from '../../retention/weekly';
-import { SCENARIOS } from '../../simulation/rebuildScenarios';
+import { LeaderHistory } from './LeaderHistory';
 import { ACHIEVEMENT_BY_ID } from '../../simulation/frontOffice';
 import { TITLES, levelFor, totalXp, rankTitles, equip, equipped } from '../../profile/profile';
 import { usernameProblem } from '../../lib/names';
@@ -37,10 +39,10 @@ import { AREA_LABEL, formatPlayTime, readPlayTime, topArea, type PlayArea } from
 import { FeaturedTrophy, PlayTimeBar, ProfileBanner, RecentActivity, type Featured } from './ProfileExtras';
 
 type Tab = 'boards' | 'ranked' | 'pvp' | 'friends' | 'me';
-type BoardId = 'gms' | 'playtime' | 'players' | 'whunt' | 'w820' | 'wcat' | 'wrebuild' | 'wcareer' | 'wguess' | 'whilo' | 'wbracket' | 'daily' | 'rebuild' | 'friends';
+type BoardId = 'gms' | 'playtime' | 'players' | 'whunt' | 'w820' | 'wcat' | 'wrebuild' | 'wcareer' | 'wguess' | 'whilo' | 'wbracket' | 'daily' | 'trophies' | 'hunt' | 'perfect' | 'friends';
 const BOARDS: { id: BoardId; label: string; icon: string; group: 'All time' | 'This week' | 'Today' }[] = [
   { id: 'gms', label: 'GMs', icon: 'trophy', group: 'All time' }, { id: 'playtime', label: 'Time played', icon: 'hourglass', group: 'All time' }, { id: 'players', label: 'Created players', icon: 'jersey', group: 'All time' },
-  { id: 'rebuild', label: 'Rebuild records', icon: 'chart', group: 'All time' }, { id: 'friends', label: 'Friends', icon: 'team', group: 'All time' },
+  { id: 'trophies', label: 'Trophies', icon: 'trophy', group: 'All time' }, { id: 'hunt', label: 'League Hunt', icon: 'crown', group: 'All time' }, { id: 'perfect', label: '82-0', icon: 'star', group: 'All time' }, { id: 'friends', label: 'Friends', icon: 'team', group: 'All time' },
   { id: 'whunt', label: 'Weekly Hunt', icon: 'crown', group: 'This week' }, { id: 'w820', label: 'Daily 82-0', icon: 'star', group: 'This week' },
   { id: 'wrebuild', label: 'Rebuild of the Week', icon: 'shuffle', group: 'This week' }, { id: 'wcareer', label: 'Career of the Week', icon: 'up', group: 'This week' },
   { id: 'wguess', label: 'Guess the Player', icon: 'search', group: 'This week' }, { id: 'whilo', label: 'Higher or Lower', icon: 'down', group: 'This week' },
@@ -61,6 +63,7 @@ export function Community({ onExit, user, onUser, initialTab = 'boards' }: { onE
       <button className="hunt-exit" onClick={user ? () => onUser(null) : onExit}><PixelIcon name="exit" size={16} /> {user ? 'Back' : 'Main Menu'}</button>
       <div className="hunt-title"><span className="pixel-eyebrow">PLAY AGAINST EVERYONE</span><h1>{user ? `@${user}` : 'Community'}</h1></div>
     </header>
+    <PageJumps />
     {!cloudEnabled ? <><p className="empty-state">Accounts and online leaderboards are not switched on for this site yet.</p></>
       : user ? <ProfileView username={user} onUser={onUser} />
         : <>
@@ -88,12 +91,14 @@ function Boards({ onUser }: { onUser: (u: string) => void }) {
   const [lastWeek, setLastWeek] = useState(false);
   const [weeklyPlayers, setWeeklyPlayers] = useState(false);
   const [yesterday, setYesterday] = useState(false);
-  const [scenario, setScenario] = useState(SCENARIOS[0].id);
   const [weeks] = useState(() => ({ now: weekKey(), last: weekKey(new Date(Date.now() - 7 * 86_400_000)) }));
   const week = lastWeek ? weeks.last : weeks.now;
   let spec: BoardSpec, label: string, blurb: string;
   switch (board) {
-    case 'gms': spec = { kind: 'gms' }; label = 'XP'; blurb = 'Every GM by profile XP: seasons, titles, careers, hunts, rebuilds, weekly challenges and daily goals, in every mode.'; break;
+    case 'trophies': spec = { kind: 'trophies' }; label = 'Trophies'; blurb = 'Total Trophy Road trophies from synced progress. Top-three finishes earn permanent titles.'; break;
+    case 'hunt': spec = { kind: 'hunt' }; label = 'Hunts won'; blurb = 'Completed League Hunt victories across your synced runs.'; break;
+    case 'perfect': spec = { kind: 'perfect' }; label = 'Titles'; blurb = '82-0 Challenge championships across your synced runs; perfect 98-0 finishes are shown alongside.'; break;
+    case 'gms': spec = { kind: 'gms' }; label = 'Court Score'; blurb = 'Every GM by Court Score: seasons, titles, careers, hunts, rebuilds, weekly challenges and daily goals, in every mode.'; break;
     case 'playtime': spec = { kind: 'playtime' }; label = 'Hours'; blurb = 'Every GM by time played: hours in the game with the tab open, on every device you sync.'; break;
     case 'players': spec = { kind: 'players', week: weeklyPlayers ? weeks.now : null }; label = 'Legacy'; blurb = weeklyPlayers ? `Career of the Week (${weeklyCareer().draftYear ?? 2026} draft): the best careers this week.` : 'The greatest created players from every GM, by Legacy Score (the same scale as the all-time Top 100).'; break;
     case 'whunt': spec = { kind: 'weekly', board: 'hunt', week }; label = 'Score'; blurb = 'The same hunt for everyone this week, as many tries as you like: your best counts. The top 10% when the week ends win the Weekly Hunter title and aura.'; break;
@@ -105,8 +110,7 @@ function Boards({ onUser }: { onUser: (u: string) => void }) {
     case 'wcat': spec = { kind: 'weekly', board: 'category', week }; label = 'Score'; blurb = 'The same starting category for everyone this week (Category Roll). Your best try counts.'; break;
     case 'wbracket': spec = { kind: 'weekly', board: 'bracket', week }; label = 'Points'; blurb = 'The same sixteen all-time teams for everyone this week. 10, 20, 40 and 80 points a right pick by round; 320 is perfect.'; break;
     case 'daily': spec = { kind: 'daily', day: yesterday ? day(1) : day(0) }; label = 'Score'; blurb = 'Everyone plays the same hunt each day. Winning it beats everything; then how far you got.'; break;
-    case 'rebuild': spec = { kind: 'rebuild', scenario }; label = 'Best'; blurb = 'Best score ever in each Rebuild scenario.'; break;
-    case 'friends': spec = { kind: 'friends' }; label = 'XP'; blurb = 'You and the GMs you follow.'; break;
+    case 'friends': spec = { kind: 'friends' }; label = 'Court Score'; blurb = 'You and the GMs you follow.'; break;
   }
   const current = BOARDS.find(b => b.id === board)!;
   return <section className="locker-bay boards-layout">
@@ -120,9 +124,9 @@ function Boards({ onUser }: { onUser: (u: string) => void }) {
       {(board === 'wrebuild' || board === 'wcareer' || board === 'whunt' || board === 'w820' || board === 'wcat' || board === 'wguess' || board === 'whilo' || board === 'wbracket') && <button aria-pressed={lastWeek} onClick={() => setLastWeek(v => !v)}>{lastWeek ? `Last week (${weeks.last})` : `This week (${weeks.now})`}</button>}
       {board === 'players' && <button aria-pressed={weeklyPlayers} onClick={() => setWeeklyPlayers(v => !v)}>{weeklyPlayers ? 'This week' : 'All time'}</button>}
       {board === 'daily' && <button aria-pressed={yesterday} onClick={() => setYesterday(v => !v)}>{yesterday ? 'Yesterday' : 'Today'}</button>}
-      {board === 'rebuild' && <select className="year-input" value={scenario} onChange={e => setScenario(e.target.value)} aria-label="Scenario">{SCENARIOS.map(s => <option key={s.id} value={s.id}>{s.title} ({s.team} {s.startYear})</option>)}</select>}
     </div></header>
     <p className="board-blurb">{blurb}</p>
+    {current.group === 'All time' && board !== 'friends' && !(board === 'players' && weeklyPlayers) && <LeaderHistory key={board} board={board} onUser={onUser} />}
     <BoardTable spec={spec} scoreLabel={label} onUser={onUser} empty={board === 'friends' ? 'Follow GMs from their profile or the Friends tab to fill this board.' : 'No one on this board yet. Be the first.'} />
     </div>
   </section>;
@@ -165,7 +169,7 @@ function Friends({ onUser }: { onUser: (u: string) => void }) {
   return <><FindGm onUser={onUser} /><section className="locker-bay">
     <h2><PixelIcon name="team" size={18} /> Friends</h2>
     <h3 className="hunt-subhead">You and the GMs you follow</h3>
-    {acct.status === 'signedIn' ? <BoardTable spec={{ kind: 'friends' }} scoreLabel="XP" onUser={onUser} empty="Follow GMs from their profile to see them here." /> : <p className="hint-text">Sign in to follow GMs.</p>}
+    {acct.status === 'signedIn' ? <BoardTable spec={{ kind: 'friends' }} scoreLabel="Court Score" onUser={onUser} empty="Follow GMs from their profile to see them here." /> : <p className="hint-text">Sign in to follow GMs.</p>}
     <p className="hint-text">Challenge a friend: every league shows a league code on its dashboard. Send it; when you both finish the first season, the result shows on the code's board, side by side.</p>
   </section></>;
 }
@@ -189,7 +193,7 @@ function Me({ onUser }: { onUser: (u: string) => void }) {
   };
   return <section className="locker-bay">
     <h2><PixelIcon name="star" size={18} /> @{p?.username}</h2>
-    <p className="hint-text">Signed in{acct.email ? ` as ${acct.email}` : ''}{acct.provider ? ` with ${acct.provider[0].toUpperCase()}${acct.provider.slice(1)}` : ''}. Level {p?.level ?? 1} · {(p?.xp ?? 0).toLocaleString()} XP online.</p>
+    <p className="hint-text">Signed in{acct.email ? ` as ${acct.email}` : ''}{acct.provider ? ` with ${acct.provider[0].toUpperCase()}${acct.provider.slice(1)}` : ''}. Level {p?.level ?? 1} · {(p?.xp ?? 0).toLocaleString()} Court Score online.</p>
     <div className="contest-actions">
       {p?.username && <button className="primary" onClick={() => onUser(p.username!)}>Your public profile</button>}
       {p?.username && <button onClick={() => void navigator.clipboard?.writeText(`${location.origin}/#/u/${p.username}`).then(() => setMsg({ text: 'Profile link copied.', ok: true }))}>Copy profile link</button>}
@@ -260,6 +264,12 @@ function ProfileView({ username, onUser }: { username: string; onUser: (u: strin
         {isMe && visitors && <p className="last-seen"><i aria-hidden="true" /> {visitors.today} visitor{visitors.today === 1 ? '' : 's'} today · {visitors.week} this week</p>}
         {(() => { const seen = isMe ? 'Online now' : lastSeenLabel(s.lastSeen); return seen && <p className={`last-seen ${seen === 'Online now' ? 'online' : ''}`}><i aria-hidden="true" /> {seen === 'Online now' ? 'Online now' : `Last seen ${seen}`}</p>; })()}
         <ul className="showcase-list">
+          {typeof s.favoriteTeam === 'string' && s.favoriteTeam && <li><small>FAVOURITE TEAM</small><b>{s.favoriteTeam}</b></li>}
+          {typeof s.favoritePlayer === 'string' && s.favoritePlayer && <li><small>FAVOURITE PLAYER</small><b>{s.favoritePlayer}</b></li>}
+          <li><small>TROPHIES</small><b>{Number(s.trophies ?? 0).toLocaleString()}</b></li>
+          <li><small>82-0 CHAMPIONSHIPS</small><b>{Number(s.perfectTitles ?? 0).toLocaleString()}</b></li>
+          <li><small>PERFECT 98-0 RUNS</small><b>{Number(s.perfect98 ?? 0).toLocaleString()}</b></li>
+          <li><small>FRANCHISE TITLES</small><b>{Number(s.titles ?? 0).toLocaleString()}</b></li>
           <li><small>BEST LEAGUE HUNT</small><b>{Number(s.huntWins ?? 0) > 0 ? `Won ${Number(s.huntWins)} hunt${Number(s.huntWins) === 1 ? '' : 's'}` : huntBest > 0 ? `Reached series ${huntBest + 1}` : '—'}</b></li>
           <li><small>RANKED THIS MONTH</small><b style={{ color: season.color }}>{season.name}</b></li>
           <li><small>HUNT PVP</small><b>{d.pvp ? `${d.pvp.rating} (${d.pvp.wins}-${d.pvp.losses})` : '—'}</b></li>
@@ -278,7 +288,7 @@ function ProfileView({ username, onUser }: { username: string; onUser: (u: strin
       <div className="profile-head">
         <ProfileIcon id={d.profile.icon} size={56} title={`${d.profile.username}'s icon`} />
         <div className="profile-level"><small>LEVEL</small><b>{d.profile.level}</b></div>
-        <div className="profile-progress"><strong><NameTag name={`@${d.profile.username}`} icon={null} color={d.profile.color} title={d.profile.title} /></strong>{honorTitles(s).length > 0 && <span className="profile-honors">{honorTitles(s).map(t => <em key={t}>{t}</em>)}</span>}<small>{d.profile.xp.toLocaleString()} XP · {followerCount} follower{followerCount === 1 ? '' : 's'} · ranked {season.name} this month</small></div>
+        <div className="profile-progress"><strong><NameTag name={`@${d.profile.username}`} icon={null} color={d.profile.color} title={d.profile.title} /></strong>{honorTitles(s).length > 0 && <span className="profile-honors">{honorTitles(s).map(t => <em key={t}>{t}</em>)}</span>}<small>{d.profile.xp.toLocaleString()} Court Score · {followerCount} follower{followerCount === 1 ? '' : 's'} · ranked {season.name} this month</small></div>
       </div>
       <div className="hunt-over-stats locker-totals">
         <div><small>GM TITLES</small><b>{Number(s.titles ?? 0)}</b></div><div><small>SEASONS</small><b>{Number(s.seasons ?? 0)}</b></div><div><small>HALL OF FAMERS</small><b>{Number(s.hallOfFame ?? 0)}</b></div>

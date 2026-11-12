@@ -1,3 +1,5 @@
+import { RulesLab50 } from './RulesLab50';
+import { AwardStudio } from './AwardStudio';
 import { PixelIcon } from './PixelIcon';
 import type { League } from '../simulation/league';
 import type { GMLeagueExtras } from '../simulation/gm';
@@ -11,6 +13,8 @@ export function SandboxPage({ enabled, onToggle, league, extras, onChange, onToa
     <p>Turning Sandbox off locks these tools again. It does not undo edits, trades or signings made while it was on.</p>
     <p className="hint-text">This setting is saved separately for each league. Auto Play, player profiles, read-only team profiles and save backups remain available when Sandbox is off.</p>
     {enabled && league && extras && onChange && <>
+      <RulesLab50 league={league} onChange={l => onChange(l, extras)} />
+      <AwardStudio league={league} extras={extras} onChange={l => onChange(l, extras)} />
       <ImportHistoryPanel league={league} extras={extras} onChange={onChange} onToast={onToast} />
       <StickyPanel league={league} extras={extras} onChange={onChange} onToast={onToast} />
     </>}

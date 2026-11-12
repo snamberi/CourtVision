@@ -271,6 +271,8 @@ export interface OverallRatings {
 
 // ---- Player-season record ----
 export interface PlayerSeason {
+  promiseTrust50?: number;
+  promiseTeam50?: string;
   training?: import('./coachingModel').PlayerTraining;
   playerId: PlayerId;
   season: string; // e.g. "2015-16"
@@ -285,6 +287,11 @@ export interface PlayerSeason {
   overall: OverallRatings;
   ballHandlerPriority: number; // 0-100, engine uses this to pick who has the ball
   source: 'historical' | 'generated' | 'user'; // data provenance, never fabricate as official
+  developmentReason?: string;
+  pendingSeasonAttributes?: Attributes;
+  deferredTraining?: Attributes;
+  deferredPositions?: PositionSuitability;
+  developmentAppliedSeason?: string;
   previousOverall?: number; // set by developOffseasonPlayer to show improvement/decline deltas (headline Overall)
   previousFullOverall?: number; // same idea, but for the full-attribute composite used by league analytics
   rotationRole?: 'starter' | 'bench'; // manual rotation override; when unset, the top 5 by minutes.target are treated as starters
@@ -341,6 +348,7 @@ export interface PlayerSeason {
   draftYear?: string | null; // the season string the player was drafted in, e.g. "2024-25"; null/undefined for undrafted
   draftRound?: number | null; // 1 or 2; null for undrafted
   draftPick?: number | null; // overall pick number (1-indexed); null for undrafted
+  draftedByUser?: boolean;
   draftTeamId?: string | null; // team that originally drafted them, kept even after trades
 
   /** Append-only career event log — contract signings, trades, waives, injuries — never cleared on season rollover. */

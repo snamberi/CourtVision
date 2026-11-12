@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { pickFrame, rasterizePose, actionSprite, POSES, ANIMATIONS } from '../visuals/actionSprites';
+import { pickFrame, smoothFrame, rasterizePose, rasterizePoseGrid, actionSprite, POSES, ANIMATIONS } from '../visuals/actionSprites';
 
 const look = { playerId: 'Test Player', primary: '#1d428a', secondary: '#f58426', jerseyNumber: 23 };
 const base = { pose: 'run', carrier: false, moving: true, ballZ: 20 };
@@ -11,9 +11,10 @@ describe('court animations', () => {
     expect(new Set(ids('layup')).size).toBeGreaterThanOrEqual(4);
     expect(ids('dunk').at(-1)).toBe('K5');
   });
-  it('runs a four-frame cycle, dribbles with the hand at the ball, and guards in a shuffle', () => {
-    const run = [0, .25, .5, .75].map(c => pickFrame({ ...base, cycle: c }).id);
-    expect(new Set(run).size).toBe(4);
+  it('runs an eight-pose cycle, dribbles with the hand at the ball, and guards in a shuffle', () => {
+    const run = Array.from({length:8}, (_,i) => pickFrame({ ...base, cycle: i/8 }));
+    expect(new Set(run.map(f => JSON.stringify(rasterizePoseGrid(f.pose, look)))).size).toBe(8);
+    expect(run.every(f => Math.max(f.pose.lF[1], f.pose.rF[1]) === 49)).toBe(true);
     expect(pickFrame({ ...base, carrier: true, ballZ: 25, cycle: 0 }).id).toBe('RD00');
     expect(pickFrame({ ...base, carrier: true, ballZ: 5, cycle: 0 }).id).toBe('RD20');
     expect(pickFrame({ ...base, pose: 'dribble', moving: false, ballZ: 15 }).id).toBe('D1');
@@ -28,17 +29,37 @@ describe('court animations', () => {
     expect(fills).toContain('#1d428a');
     expect(fills).toContain('#080d19');
     const top = (paths: ReturnType<typeof rasterizePose>) => Math.min(...paths.flatMap(p => [...p.d.matchAll(/M\d+ (\d+)/g)].map(m => +m[1])));
-    expect(top(rasterizePose(POSES.REACH, look))).toBeLessThanOrEqual(top(sprite) - 5);
+    // A raised hand clears the enlarged head instead of ending inside the hair.
+    expect(top(rasterizePose(POSES.REACH, look))).toBeLessThanOrEqual(top(sprite) - 3);
     expect(actionSprite('S', POSES.STAND, look)).toBe(actionSprite('S', POSES.STAND, look)); // cached
-    // Facing left mirrors the arms and legs, not the face or the jersey number (the white digit pixels stay put).
-    const digits = (paths: ReturnType<typeof rasterizePose>) => paths.find(p => p.fill === '#fff3df')?.d.match(/M(1[5-9]|2[0-5]) 3[1-5]h/g)?.length ?? 0;
-    expect(digits(rasterizePose(POSES.DRIBBLE[0], look, -1))).toBe(digits(rasterizePose(POSES.DRIBBLE[0], look, 1)));
+    // Inspect the actual 5×7 numeral cells, not just the presence of a trim color.
+    const digits = (facing: number) => rasterizePoseGrid(POSES.STAND, look, facing)
+      .slice(61, 68).map(row => row.slice(42, 53).map(c => c === look.secondary ? 1 : 0));
+    expect(digits(-1)).toEqual(digits(1));
+    expect(digits(1)).toEqual([
+      '01110011110','11011000011','00011000011','00110001110',
+      '01100000011','11000000011','11111011110',
+    ].map(row => [...row].map(Number)));
   });
-  it('has the whole animation sheet: six drawable frames for every action, from idle to celebrate', () => {
+  it('draws every action as whole pixel cells, from idle to celebrate', () => {
     expect(Object.keys(ANIMATIONS).length).toBeGreaterThanOrEqual(35);
     for (const [name, frames] of Object.entries(ANIMATIONS)) {
-      expect(frames, name).toHaveLength(6);
-      for (const f of frames) { const paths = rasterizePose(f, look); expect(paths.length, name).toBeGreaterThan(3); expect(paths.map(p => p.fill)).toContain('#1d428a'); }
+      expect(frames.length, name).toBeGreaterThanOrEqual(6);
+      for (const f of frames) {
+        const paths = rasterizePose(f, look);
+        expect(paths.length, name).toBeGreaterThan(3);
+        expect(paths.map(p => p.fill)).toContain('#1d428a');
+        expect(paths.every(p => !/[.CQAL]/.test(p.d)), name).toBe(true);
+        expect(paths.every(p => /^#[\da-f]{6}$/i.test(p.fill)), name).toBe(true);
+        // Padded native frames must contain the full silhouette, including falls
+        // and raised hands; no outline may be cut by the frame's edge.
+        for(const facing of [-1,1]){
+          const grid=rasterizePoseGrid(f,look,facing);
+          expect(grid).toHaveLength(96);
+          expect(grid.every(row=>row.length===96),name).toBe(true);
+          expect([...grid[0],...grid[95],...grid.flatMap(row=>[row[0],row[95]])].every(c=>c===null),name).toBe(true);
+        }
+      }
     }
   });
   it('picks gaits, dribble moves and the new actions by kind and progress', () => {
@@ -58,5 +79,29 @@ describe('court animations', () => {
     expect(tall(rasterizePose(ANIMATIONS.dive[2], look))).toBeLessThan(tall(rasterizePose(POSES.STAND, look)) * .6);
     expect(tall(rasterizePose(ANIMATIONS.charge[3], look, -1))).toBeLessThan(tall(rasterizePose(POSES.STAND, look)) * .6);
     expect(rasterizePose(ANIMATIONS.sprint[0], look)).not.toEqual(rasterizePose(ANIMATIONS.run[0], look));
+  });
+});
+
+describe('discrete player poses', () => {
+  it('holds each authored pose until the next frame without tweening the body', () => {
+    const a = smoothFrame({...base,cycle:.08});
+    expect(a).toEqual(pickFrame({...base,cycle:.08}));
+    expect(a.pose).toBe(smoothFrame({...base,cycle:.12}).pose);
+    expect(a.pose).not.toEqual(smoothFrame({...base,cycle:.13}).pose);
+    expect(actionSprite(a.id,a.pose,look)).toBe(actionSprite(a.id,a.pose,look));
+    for(const frames of Object.keys(ANIMATIONS)) {
+      for(const t of [0,.15,.45,.7,1]) {
+        const frame=smoothFrame({...base,anim:{kind:frames as 'jumper',t}});
+        const {body,lE,lH,rE,rH,lK,lF,rK,rF}=frame.pose;
+        expect([body,lE,lH,rE,rH,lK,lF,rK,rF].flat().every(Number.isInteger)).toBe(true);
+      }
+    }
+  });
+  it('mirrors the contact hand for dunks at either basket', async () => {
+    const { upperHand } = await import('../visuals/actionSprites');
+    const pose=ANIMATIONS.dunk[3];
+    const right=upperHand(pose,1),left=upperHand(pose,-1);
+    expect(left[0]).toBe(-right[0]);
+    expect(left[1]).toBe(right[1]);
   });
 });

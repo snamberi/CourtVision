@@ -1,3 +1,5 @@
+import { RELIC_BY_ID } from '../src/relics/relics';
+import { SHOP_COSMETIC_BY_KEY, SECRET_COSMETIC_BY_KEY } from '../src/relics/shopCosmetics';
 import { getUser, rest, json, bearer, type SupaEnv, type Fetch } from './supabase';
 
 /*
@@ -18,7 +20,7 @@ const dayOf = (d: Date) => d.toISOString().slice(0, 10);
 /** A missing table (the migration not run yet) reads as "not set up" instead of a crash. */
 const notSetUp = (e: unknown) => /PGRST205|42P01|relation .* does not exist|Could not find the table/i.test(String(e instanceof Error ? e.message : e));
 
-interface GiftRow { id: string; sender: string; recipient: string; day: string; coins: number; lucky: number; claimed: boolean; created_at: string }
+interface GiftRow { message?: string; spins?: number; gems?: number; items?: string[]; cosmetics?: string[]; id: string; sender: string; recipient: string; day: string; coins: number; lucky: number; claimed: boolean; created_at: string }
 
 export async function handleSocial(req: Request, env: SupaEnv | null, now = new Date(), f: Fetch = fetch): Promise<Response> {
   if (!env) return json({ error: 'Accounts are not set up on this site yet.' }, 503);
@@ -26,18 +28,33 @@ export async function handleSocial(req: Request, env: SupaEnv | null, now = new 
   const token = bearer(req);
   const user = token ? await getUser(env, token, f).catch(() => null) : null;
   if (!user) return json({ error: 'Please sign in again.' }, 401);
-  let body: { action?: string; to?: string; target?: string };
+  let body: { action?: string; to?: string; target?: string; message?: unknown; coins?: unknown; lucky?: unknown; spins?: unknown; gems?: unknown; items?: unknown; cosmetics?: unknown };
   try { body = JSON.parse(await req.text()); } catch { return json({ error: 'Bad request.' }, 400); }
   const me = user.id, day = dayOf(now);
   try {
     if (body.action === 'gifts') {
       const [sent, waiting] = await Promise.all([
         rest(env, 'GET', `gifts?sender=eq.${me}&day=eq.${day}&select=recipient`, undefined, undefined, f) as Promise<{ recipient: string }[]>,
-        rest(env, 'GET', `gifts?recipient=eq.${me}&claimed=eq.false&select=id,sender,coins,lucky,created_at&order=created_at.desc&limit=50`, undefined, undefined, f) as Promise<GiftRow[]>,
+        rest(env, 'GET', `gifts?recipient=eq.${me}&claimed=eq.false&select=id,sender,coins,lucky,created_at,message,spins,gems,items,cosmetics&order=created_at.desc&limit=50`, undefined, undefined, f) as Promise<GiftRow[]>,
       ]);
       const names = await usernames(env, waiting.map(g => g.sender), f);
       return json({ day, sentTo: sent.map(s => s.recipient), left: Math.max(0, GIFTS_PER_DAY - sent.length), perDay: GIFTS_PER_DAY,
-        waiting: waiting.map(g => ({ id: g.id, from: names.get(g.sender) ?? 'A friend', coins: g.coins, lucky: g.lucky, at: g.created_at })) });
+        waiting: waiting.map(g => ({ id: g.id, from: names.get(g.sender) ?? 'A friend', coins: g.coins, lucky: g.lucky, message: g.message, spins: g.spins, gems: g.gems, items: g.items, cosmetics: g.cosmetics, at: g.created_at })) });
+    }
+    if (body.action === 'owner-send') {
+      const profiles = await rest(env, 'GET', `profiles?id=eq.${me}&select=role,banned`, undefined, undefined, f) as { role: string; banned: boolean }[];
+      if (profiles[0]?.role !== 'owner' || profiles[0]?.banned) return json({ error: 'Only the game owner can send custom gifts.' }, 403);
+      const to = String(body.to ?? '');
+      if (!UUID.test(to) || to === me) return json({ error: 'Choose another account.' }, 400);
+      const number = (v: unknown, max: number) => v === undefined ? 0 : typeof v === 'number' && Number.isSafeInteger(v) && v >= 0 && v <= max ? v : null;
+      const coins = number(body.coins, 10_000_000), spins = number(body.spins, 10_000), lucky = number(body.lucky, 10_000), gems = number(body.gems, 100_000);
+      const list = (v: unknown) => v === undefined ? [] : Array.isArray(v) && v.length <= 20 && v.every(x => typeof x === 'string') ? [...new Set(v)] as string[] : null;
+      const items = list(body.items), cosmetics = list(body.cosmetics), message = typeof body.message === 'string' ? body.message.trim() : '';
+      if ([coins, spins, lucky, gems].includes(null) || !items || !cosmetics || message.length > 300 || items.some(id => !RELIC_BY_ID.has(id)) || cosmetics.some(id => !SHOP_COSMETIC_BY_KEY.has(id) && !SECRET_COSMETIC_BY_KEY.has(id))) return json({ error: 'Invalid gift amount or collectible.' }, 400);
+      if (!coins && !spins && !lucky && !gems && !items.length && !cosmetics.length) return json({ error: 'Add a reward to the gift.' }, 400);
+      try { await rest(env, 'POST', 'gifts', [{ sender: me, recipient: to, day, coins, spins, lucky, gems, items, cosmetics, message, created_at: now.toISOString() }], 'return=minimal', f); }
+      catch (e) { if (/23505|duplicate/i.test(String(e))) return json({ error: 'A gift was already sent to this account today.' }, 409); throw e; }
+      return json({ ok: true });
     }
     if (body.action === 'send') {
       const to = String(body.to ?? '');
@@ -55,12 +72,7 @@ export async function handleSocial(req: Request, env: SupaEnv | null, now = new 
       }
       return json({ ok: true, left: GIFTS_PER_DAY - sent.length - 1 });
     }
-    if (body.action === 'claim') {
-      // Flip claimed first and pay only the rows this call flipped: two devices claiming at once can't both get them.
-      const rows = await rest(env, 'PATCH', `gifts?recipient=eq.${me}&claimed=eq.false`, { claimed: true }, 'return=representation', f) as GiftRow[];
-      const names = await usernames(env, rows.map(g => g.sender), f);
-      return json({ coins: rows.reduce((n, g) => n + g.coins, 0), lucky: rows.reduce((n, g) => n + g.lucky, 0), from: [...new Set(rows.map(g => names.get(g.sender) ?? 'A friend'))] });
-    }
+    if (body.action === 'claim') return json({ error: 'Refresh CourtVision to collect gifts with recoverable receipts.' }, 409);
     if (body.action === 'view') {
       const target = String(body.target ?? '');
       if (!UUID.test(target) || target === me) return json({ ok: true });

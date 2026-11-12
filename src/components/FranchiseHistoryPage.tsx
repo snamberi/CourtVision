@@ -1,20 +1,24 @@
+import { LeagueStories50 } from './LeagueStories50';
+import type { GMLeagueExtras } from '../simulation/gm';
 import { TeamLink } from './TeamLink';
 import type { League } from '../simulation/league';
 import { formatSeasonYear } from '../simulation/calendar';
 import { GmCareerTable } from './FrontOfficePanels';
 
 interface Props {
+  extras?: GMLeagueExtras; controlledTeamId?: string | null; onChange?: (l: League) => void;
   league: League;
   onSelectPlayer: (playerId: string) => void;
 }
 
-export function FranchiseHistoryPage({ league, onSelectPlayer }: Props) {
+export function FranchiseHistoryPage({ league, extras, controlledTeamId, onChange, onSelectPlayer }: Props) {
   const history = [...(league.franchiseHistory ?? [])].reverse();
   const gm = league.frontOffice?.reviews.length ? league.frontOffice.reviews : null;
 
   return (
     <div className="franchise-history-page">
       <h2>Franchise History</h2>
+      {extras && onChange && <LeagueStories50 league={league} extras={extras} controlledTeamId={controlledTeamId ?? null} onChange={onChange} onSelectPlayer={onSelectPlayer} />}
       <p className="hint-text">One entry is archived every time you advance past a season's playoffs into the draft.</p>
       {history.length === 0 ? (
         <p className="empty-state">No completed seasons yet — play through your first playoffs to start the record book.</p>

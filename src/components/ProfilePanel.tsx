@@ -1,3 +1,4 @@
+import { RELEASE_TITLES, releaseTitleProgress } from '../profile/releaseTitles';
 import { syncNow } from '../cloud/sync';
 import { readPublicProfile, setPublicProfile, bioProblem, BIO_MAX, PUBLIC_PROFILE_EVENT } from '../profile/publicProfile';
 import { REAL_FRANCHISES } from '../profile/favorites';
@@ -84,6 +85,7 @@ const listed = <T extends { rule: object }>(list: T[], c: UnlockContext) => list
 function titleGroups(c: UnlockContext) {
   const ranked = rankTitles();
   return [
+    { label: 'Court milestones', items: RELEASE_TITLES.map(t => ({ title: t.title, open: releaseTitleProgress(c, t) >= 1, how: `${t.need} ${t.kind === 'streak' ? 'consecutive days' : t.kind === 'missions' ? 'weekly missions' : t.kind === 'level' ? 'profile level' : 'trophies'}`, progress: releaseTitleProgress(c, t) })) },
     { label: 'Levels', items: TITLES.map(t => ({ title: t.name, open: t.level <= c.level, how: `Level ${t.level}`, progress: c.level / t.level })) },
     { label: 'Ranked', items: ['Gold GM', 'Platinum GM', 'Diamond GM', 'Legend GM'].map((t, i) => ({ title: t, open: ranked.includes(t), how: `Reach ${['Gold', 'Platinum', 'Diamond', 'Legend'][i]} in a ranked season` })) },
     { label: 'Leaderboards', items: HONORS.map(h => ({ title: h.title, open: c.honors.includes(h.id), how: h.how })) },

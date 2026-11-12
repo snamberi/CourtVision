@@ -5,3 +5,42 @@
 }
 :root.lite .court-play-effects, :root.lite .bench-reaction { display: none; }
 :root.lite .bench-rest-hidden { display: inline; }
+
+/* The picture leads; compact controls and score use the selected app look. */
+.watch-game .watch-heading { gap: 8px; margin-bottom: 10px; }
+.watch-game .watch-heading h2 { margin: 3px 0 0; font-size: 25px; }
+.watch-game .watch-scoreboard { border: 1px solid var(--look-line); background: var(--look-panel); padding: 10px 16px; grid-template-columns: 1fr minmax(110px,.6fr) 1fr; }
+.watch-game .watch-scoreboard strong { font: 700 18px/1.2 var(--look-body); }
+.watch-game .watch-scoreboard b { font: 800 32px/1 var(--look-body); font-variant-numeric: tabular-nums; color: var(--look-text); }
+.watch-game .watch-scoreboard small { font: 10px/1.4 var(--look-body); color: var(--look-muted); }
+.watch-game .watch-clock strong { font-size: 16px; font-variant-numeric: tabular-nums; }
+.watch-game .watch-stage .watch-bug { display: none; } /* exported clips retain their embedded score strip */
+.watch-game .watch-arena { border-color: var(--look-line); }
+.watch-game .watch-arena-caption { padding: 7px 12px; font: 11px/1.4 var(--look-body); background: var(--look-panel); color: var(--look-muted); flex-wrap: wrap; }
+.watch-game .watch-transport { border: 1px solid var(--look-line); border-top: 0; background: var(--look-panel); padding: 8px 12px; }
+.watch-game .watch-transport .watch-controls { margin: 0; padding: 3px 0; gap: 7px; border: 0; background: transparent; }
+.watch-game .watch-transport button { min-height: 36px; padding: 7px 12px; font: 600 13px/1.25 var(--look-body); }
+.watch-game .watch-transport button[aria-pressed=true] { border-color: var(--look-accent); box-shadow: inset 0 -2px var(--look-accent); }
+.watch-game .watch-transport .watch-secondary-controls { border-top: 1px solid var(--look-line); margin-top: 6px; padding-top: 8px; }
+.watch-game .watch-secondary-controls button { min-height: 30px; padding: 5px 9px; font-size: 11px; color: var(--look-muted); }
+.watch-game .watch-transport label { font: 12px var(--look-body); color: var(--look-muted); }
+.watch-game .watch-transport select { min-width: 62px; padding: 5px; font: 13px var(--look-body); }
+.watch-game .watch-options { margin: 10px 0; border-color: var(--look-line); }
+.watch-game .watch-options summary { font: 600 12px var(--look-body); }
+.watch-game .watch-call { padding: 10px 14px; min-height: 0; }
+@media(max-width:600px) {
+  .watch-game .watch-scoreboard { padding: 8px; grid-template-columns: 1fr 85px 1fr; }
+  .watch-game .watch-scoreboard strong { font-size: 14px; }
+  .watch-game .watch-scoreboard b { font-size: 25px; }
+  .watch-game .watch-transport { padding: 7px; }
+  .watch-game .watch-transport button { flex: 1 1 auto; min-height: 40px; }
+  .watch-game .watch-secondary-controls button { flex: 1 1 28%; min-height: 36px; }
+  .watch-game .watch-crew { display: none; }
+}
+:root.reduce-motion .court-play-effects, :root.reduce-motion .bench-reaction { display: none; }
+:root.reduce-motion .bench-rest-hidden { display: inline; }
+.watch-game .watch-shot-clock { display: inline-flex; align-items: center; gap: 5px; padding: 3px 7px; border: 1px solid var(--look-line); background: var(--look-raised); color: var(--look-accent); font: 800 17px/1 var(--look-body); font-variant-numeric: tabular-nums; }
+.watch-game .watch-shot-clock small { font-size: 8px; }
+.watch-game .watch-shot-clock.urgent { color: var(--c-fg-e85d5d, #e85d5d); border-color: currentColor; }
+.watch-game .watch-scoreboard > div { min-width: 0; }
+.watch-game .watch-scoreboard strong { overflow-wrap: anywhere; }

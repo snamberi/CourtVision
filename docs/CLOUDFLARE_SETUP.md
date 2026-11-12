@@ -31,9 +31,7 @@ All three versions of the API run the same handlers in `server/`. Also shared:
 
 ### A1. Connect the repository
 
-The pull request with this code must be merged into `main` first, because Cloudflare builds from `main`. To try it
-before merging, set the production branch to `claude/ads-awards-nav-discord-style-634av5` in A1 and switch it back to
-`main` after the merge.
+Keep the production branch on `main`. To playtest Update 50 before merging, use the branch preview steps below.
 
 1. [dash.cloudflare.com](https://dash.cloudflare.com) → **Workers & Pages** → the **courtvision** Worker.
 2. **Settings → Builds → Connect** → GitHub → pick **snamberi/CourtVision**. Cloudflare asks to install its GitHub app:
@@ -170,3 +168,16 @@ What was checked:
 - `/api/billing` (signed webhook recorded, forged one rejected).
 
 The first real deployment happens from your Cloudflare account.
+
+## Playtest Update 50 without changing the live game
+
+1. Cloudflare → Workers & Pages → courtvision → Settings → Builds → Branch control.
+2. Keep **Production branch** as `main`; enable **Preview Builds**.
+3. Keep build command `npm run build`, production deploy command `npx wrangler deploy`, and preview command `npx wrangler preview`. The repository already contains the required `previews` block.
+4. If an older Worker shows **Set up Worker Previews**, review its preview variables, secrets and bindings before selecting **Switch to Worker Previews**. Cloudflare says that migration is one-way. New Previews do not automatically use production settings.
+5. Configure the build variables from A2 and the runtime API settings from A3 for the preview. Use test backend credentials for isolated testing; pointing at the same backend means the preview can affect real account data.
+6. A new push to `release/update-50` triggers a preview build once enabled. Open its URL from the successful build/Preview entry or the GitHub PR comment. Confirm the branch and commit are the ones you want to test. Do not promote it to production or change the production branch.
+
+Official instructions: https://developers.cloudflare.com/workers/ci-cd/builds/build-branches/ and https://developers.cloudflare.com/workers/previews/get-started/ .
+
+Sound playtest: Settings → Music & sound → enable audio. Test both beats, all three volume sliders, clicks, success/error notifications, and watched-game dunk/three-point/clutch voices (also turn on that game's arena sound). Switch tabs and confirm background music and voices stop. Device voices vary and may not be available in every browser.

@@ -64,3 +64,11 @@ describe('court motion',()=>{
  });
 
 });
+
+it('holds sprite poses for one sixteenth of a playback second while positions advance',()=>{
+ const duration=replayDuration(entry)/1000;
+ const a=courtFrame(entry,(8+.1)/16/duration,'H','A');
+ const b=courtFrame(entry,(8+.9)/16/duration,'H','A');
+ expect(a.players.map(p=>[p.pose,p.anim,p.cycle])).toEqual(b.players.map(p=>[p.pose,p.anim,p.cycle]));
+ expect(a.players.map(p=>[p.x,p.y])).not.toEqual(b.players.map(p=>[p.x,p.y]));
+});

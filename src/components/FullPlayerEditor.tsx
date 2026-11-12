@@ -1,3 +1,4 @@
+import { HistoricalRatingsPreset } from './HistoricalRatingsPreset';
 import { PixelIcon } from './PixelIcon';
 import { plural } from '../lib/humanize';
 import { TeamLink } from './TeamLink';
@@ -98,6 +99,7 @@ export function FullPlayerEditor({ season, onChange, sandboxMode, league, extras
   return (
     <div className="editor-panel full-editor">
       <h3>{season.playerId} — Player Editor</h3>
+      {sandboxMode && <HistoricalRatingsPreset player={season} onChange={onChange} />}
 
       <div className="player-editor-stats-panel">
         <div className="player-editor-stats-header">

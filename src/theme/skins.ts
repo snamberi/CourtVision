@@ -47,3 +47,30 @@ export const THEME_SKINS: Record<ThemeId, ThemeSkin> = {
 export function themeScene(id: ThemeId): string {
   return new URL(`../assets/looks/scenes/${id}.svg`, import.meta.url).href;
 }
+
+export type LookMode = 'light' | 'dark';
+const LIGHT_LOOKS = new Set<ThemeId>(['cartridge', 'frontoffice', 'hardwood', 'handheld', 'comicpop', 'hallowed']);
+export const nativeLookMode = (id: ThemeId): LookMode => LIGHT_LOOKS.has(id) ? 'light' : 'dark';
+function blend(a: string, b: string, weight: number): string {
+  const rgb = (s: string) => [1, 3, 5].map(i => parseInt(s.slice(i, i + 2), 16));
+  return '#' + rgb(a).map((v, i) => Math.round(v * (1 - weight) + rgb(b)[i] * weight).toString(16).padStart(2, '0')).join('');
+}
+/** Alternate materials retain the look's pigment, typography, geometry and action family. */
+export function skinForMode(id: ThemeId, mode: LookMode): ThemeSkin {
+  const s = THEME_SKINS[id];
+  if (mode === nativeLookMode(id)) return s;
+  if (mode === 'light') return { ...s,
+    page: blend(s.secondary, '#ffffff', .85), panel: blend(s.secondary, '#ffffff', .97), raised: blend(s.secondary, '#ffffff', .9),
+    text: blend(s.page, '#000000', .3), muted: blend(s.secondary, '#000000', .65),
+    line: blend(s.secondary, '#ffffff', .45), edge: blend(s.secondary, '#000000', .45),
+    accent: blend(s.accent, '#000000', .53), onAccent: '#ffffff', secondary: blend(s.secondary, '#000000', .53),
+    shadow: `0 3px 0 ${blend(s.secondary, '#ffffff', .55)}`,
+  };
+  return { ...s,
+    page: blend(s.text, '#000000', .65), panel: blend(s.text, '#000000', .4), raised: blend(s.text, '#000000', .15),
+    text: blend(s.panel, '#ffffff', .65), muted: blend(s.panel, '#ffffff', .25),
+    line: blend(s.edge, '#ffffff', .2), edge: blend(s.edge, '#ffffff', .45),
+    accent: blend(s.accent, '#ffffff', .65), onAccent: '#101010', secondary: blend(s.secondary, '#ffffff', .65),
+    shadow: `3px 4px 0 ${blend(s.text, '#000000', .8)}`,
+  };
+}

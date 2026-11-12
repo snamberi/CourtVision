@@ -1,3 +1,4 @@
+import { recentPlayerStats } from '../simulation/playerLabels';
 import { TeamText } from './TeamLink';
 import type { PlayerSeason } from '../simulation/types';
 import { computeTradeValue } from '../simulation/gm';
@@ -33,10 +34,10 @@ export function TradePlayerCompareTable({ title, players, showValues = false }: 
           <thead><tr><th>Player</th><th>Pos</th><th>Age</th><th>OVR</th><th>POT</th><th>PPG</th><th>RPG</th><th>APG</th>{showValues && <th>Value</th>}</tr></thead>
           <tbody>
             {players.map((s) => {
-              const avg = perGameAverages(s.seasonStats);
+              const avg = perGameAverages(recentPlayerStats(s)?.stats);
               return (
                 <tr key={s.playerId}>
-                  <td><PlayerNameTag playerId={s.playerId} teamId={s.teamId} jerseyNumber={s.jerseyNumber} /></td>
+                  <td><PlayerNameTag season={s} playerId={s.playerId} teamId={s.teamId} jerseyNumber={s.jerseyNumber} /></td>
                   <td>{primaryPosition(s)}</td>
                   <td>{s.age}</td>
                   <td>{calculateOverall(s)}</td>

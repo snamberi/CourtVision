@@ -179,7 +179,7 @@ export function TradePage({ league, extras, controlledTeamId, onChange, onToast,
       {[...team.seasons].sort((a, b) => calculateOverall(b) - calculateOverall(a)).map((s) => (
         <label key={s.playerId} className={`trade-roster-row ${selected.includes(s.playerId) ? 'on' : ''}`}>
           <input type="checkbox" checked={selected.includes(s.playerId)} onChange={() => toggle(selected, setSelected, s.playerId)} />
-          <PlayerNameTag playerId={s.playerId} teamId={s.teamId} jerseyNumber={s.jerseyNumber} size={22} />
+          <PlayerNameTag season={s} playerId={s.playerId} teamId={s.teamId} jerseyNumber={s.jerseyNumber} size={22} />
           <span className="trade-roster-pos">{primaryPosition(s)}</span>
           <b className="trade-roster-ovr">{calculateOverall(s)}</b>
           <span className="trade-roster-money">{shortMoney(extras.contracts[s.playerId]?.annualSalary ?? 0)}</span>

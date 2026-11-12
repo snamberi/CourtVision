@@ -1,3 +1,4 @@
+import { awardDefinition } from './awardStudio';
 import { isUnanimous } from './almanac';
 import type { TrophyKey } from './trophies';
 import type { League, RetiredPlayerRecord, FranchiseHistoryRecord } from './league';
@@ -107,7 +108,7 @@ export interface PlayerAwardEntry {
   season: string;
   label: string; // e.g. "MVP", "All-NBA 1st Team", "NBA Champion", "Finals MVP"
   /** Which trophy it is (drives the pixel art and Hall of Fame weight). */
-  key: TrophyKey;
+  key: string;
   /** Won with every first-place vote: the label reads "Unanimous MVP". */
   unanimous?: boolean;
 }
@@ -119,7 +120,7 @@ export interface PlayerAwardEntry {
  * they were computed in.
  */
 export function getPlayerAwardsHistory(league: League, playerId: string, knownSeason?: PlayerSeason): PlayerAwardEntry[] {
-  const entries: PlayerAwardEntry[] = [];
+  let entries: PlayerAwardEntry[] = [];
   const add = (season: string, label: string, key: TrophyKey) => entries.push({ season, label, key });
   for (const record of recordsMentioning(league.franchiseHistory, playerId)) {
     const { season } = record;
@@ -162,8 +163,8 @@ export function getPlayerAwardsHistory(league: League, playerId: string, knownSe
   // franchise record's champion - not the team's CURRENT roster, which would be wrong for anyone
   // since traded/waived/re-signed elsewhere.
   const playerSeason = knownSeason ?? league.teams.flatMap((t) => t.seasons).find((s) => s.playerId === playerId) ?? league.retiredPlayers?.find(p => p.playerId === playerId)?.finalSeasonData;
+  const affiliations = new Map<string, string>();
   if (playerSeason) {
-    const affiliations = new Map<string, string>(); // season -> teamId
     affiliations.set(playerSeason.season, playerSeason.teamId ?? '');
     for (const h of playerSeason.careerHistory ?? []) affiliations.set(h.season, h.teamId ?? '');
     for (const record of league.franchiseHistory ?? []) {
@@ -173,7 +174,29 @@ export function getPlayerAwardsHistory(league: League, playerId: string, knownSe
     }
   }
 
-  return entries;
+  // Team title edits also update the players who represented each chosen winner that year.
+  for (const record of league.franchiseHistory ?? []) for (const id of ['champion', 'cup'] as const) {
+    const winners = record.fullAwards?.custom?.[id];
+    if (!winners || awardDefinition(league, id).kind !== 'team') continue;
+    entries = entries.filter(e => e.season !== record.season || e.key !== id);
+    const won = winners.some(w => {
+      const roster = record.teamSeasons?.find(t => t.teamId === w.teamId)?.roster;
+      return roster ? roster.some(p => p.playerId === playerId) : !!w.teamId && affiliations.get(record.season) === w.teamId;
+    });
+    if (won) add(record.season, awardDefinition(league, id).name, id);
+  }
+
+  // Explicit Sandbox results are authoritative, including multiple winners and empty results.
+  for (const record of recordsMentioning(league.franchiseHistory, playerId)) for (const [id, winners] of Object.entries(record.fullAwards?.custom ?? {})) {
+    const d = awardDefinition(league, id);
+    if (d.kind !== 'player') continue;
+    entries = entries.filter(e => e.season !== record.season || e.key !== id);
+    for (const w of winners) if (w.playerId === playerId) entries.push({ season: record.season, key: id, label: `${d.name}${w.period ? ` (${w.period})` : ''}` });
+  }
+  return entries.map(e => {
+    const d = league.awardStudio?.definitions.find(d => d.id === e.key);
+    return d ? { ...e, label: `${e.unanimous ? 'Unanimous ' : ''}${d.name}${['pom','pow'].includes(e.key) && e.label.includes('(') ? ' ' + e.label.slice(e.label.indexOf('(')) : ''}` } : e;
+  });
 }
 
 /**
@@ -225,11 +248,11 @@ export function getPlayerAwardRaceHistory(league: League, playerId: string): Pla
   return out;
 }
 
-export interface TeamTrophyEntry { key: TrophyKey; season: string; who?: string }
+export interface TeamTrophyEntry { key: string; season: string; who?: string }
 
 /** A franchise's trophy case: its titles, its coach's and front office's awards, and what its players won in its uniform. */
 export function teamTrophyEntries(league: League, teamId: string): TeamTrophyEntry[] {
-  const out: TeamTrophyEntry[] = [];
+  let out: TeamTrophyEntry[] = [];
   for (const r of league.franchiseHistory ?? []) {
     if (r.championTeamId === teamId) out.push({ key: 'champion', season: r.season });
     if (r.championTeamId === teamId && r.fmvpPlayerId) out.push({ key: 'fmvp', season: r.season, who: r.fmvpPlayerId });
@@ -243,6 +266,11 @@ export function teamTrophyEntries(league: League, teamId: string): TeamTrophyEnt
     a.allNBA.forEach((team, i) => { if (i < 3) for (const w of team) if (w.teamId === teamId) out.push({ key: (['allLeague1', 'allLeague2', 'allLeague3'] as const)[i], season: r.season, who: w.playerId }); });
     a.allDefense.forEach((team, i) => { if (i < 2) for (const w of team) if (w.teamId === teamId) out.push({ key: i === 0 ? 'allDefense1' : 'allDefense2', season: r.season, who: w.playerId }); });
     for (const w of a.allStars) if (w.teamId === teamId) out.push({ key: 'allStar', season: r.season, who: w.playerId });
+    // Edited results replace the original case, including cleared awards and joint team winners.
+    for (const [id, winners] of Object.entries(a.custom ?? {})) {
+      out = out.filter(entry => entry.season !== r.season || entry.key !== id);
+      for (const w of winners) if (w.teamId === teamId) out.push({ key: id, season: r.season, who: w.coachName || (w.playerId === teamId ? undefined : w.playerId) });
+    }
   }
   return out;
 }

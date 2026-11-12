@@ -195,8 +195,8 @@
 .menu-phone-pages { display: flex; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; touch-action: pan-x pan-y; cursor: grab; }
 .menu-phone-pages::-webkit-scrollbar { display: none; }
 .menu-phone-apps { flex: 0 0 100%; box-sizing: border-box; scroll-snap-align: start; display: grid; grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(3, auto); align-content: start; gap: 10px 6px; padding: 4px 0; }
-.menu-phone-dots { display: flex; justify-content: center; gap: 6px; }
-.menu-phone-dots button { width: 7px; height: 7px; min-height: 0; padding: 0; border-radius: 50%; border: 0; box-shadow: none; background-color: var(--phone-muted, var(--look-muted)); opacity: .45; cursor: pointer; }
+.menu-phone-dots { display: flex; justify-content: center; gap: 4px; }
+.menu-phone-dots button { width: 32px; height: 36px; min-height: 36px; font-size: 12px; color: var(--look-text); padding: 0; border-radius: 50%; border: 0; box-shadow: none; background-color: var(--phone-muted, var(--look-muted)); opacity: .45; cursor: pointer; }
 .menu-phone-dots button.on { opacity: 1; background-color: var(--look-accent); }
 .menu-phone-dots button:focus-visible { outline: 2px solid var(--look-accent); outline-offset: 2px; }
 .app-tile.relics { color: var(--c-fg-ffd166, #ffd166); }

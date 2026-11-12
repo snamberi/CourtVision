@@ -1,9 +1,18 @@
+import { RelicMastery50 } from './RelicMastery50';
+import { mastered50 } from '../../relics/mastery50';
+import { UndoPurchase } from '../qol/UndoPurchase';
+import { useAccount } from '../../cloud/account';
+import { RelicLoadouts } from '../qol/RelicLoadouts';
+import { LOADOUT_MODES } from '../../qol/relicLoadouts';
+import { RewardedSpin } from './RewardedSpin';
+import { GEM_COSMETICS } from '../../relics/gemShop';
+import { PageJumps } from '../PageJumps';
 import { useEffect, useRef, useState } from 'react';
 import {
-  loadRelics, saveRelics, spinRelic, spinMany, luckySpin, freeLuckySpin, fuseDuplicates, spareCopies, relicOfWeek, weeklyLuck, totalLuck, FUSE_COST, WEEKLY_BOOST, buySpin, buyRelic, buySlot, upgradeRelic, equipRelic, unequipRelic, refreshShop, canUpgrade,
+  premiumSpinMany, loadRelics, saveRelics, upgradeLevel, upgradeCost, buyGemCosmetic, relicCoinBoost, ultraLuckySpin, fuseCost, spinRelic, spinMany, luckySpin, freeLuckySpin, fuseDuplicates, spareCopies, relicOfWeek, weeklyLuck, totalLuck, FUSE_COST, WEEKLY_BOOST, buySpin, buyRelic, buySlot, upgradeRelic, equipRelic, unequipRelic, refreshShop, canUpgrade,
   canGain, relicLuck, collectionProgress, collectDailyCoins, slotCount, setComplete, setBonus, RELICS, RELIC_BY_ID, RELIC_RARITY,
   RARITY_ORDER, RELIC_SETS, LUCKY_ODDS, SECRET_RELICS, SECRET_BY_ID, SECRET_CHANCE, PITY, LUCKY_PITY, BASE_SLOTS, EXTRA_SLOTS, SLOT_PRICES,
-  DAILY_COINS, RELICS_EVENT, RELICS_FOCUS_KEY, SHOP_SEEN_KEY, SPIN_PRICE, LUCKY_SPIN_PRICE, RELIC_PRICE, UPGRADE_PRICE, STACK_MAX, STACK_LUCK, RELIC_LUCK_SCALE, MAX_SLOTS, relicPower, discounted,
+  DAILY_COINS, RELICS_EVENT, RELICS_FOCUS_KEY, SHOP_SEEN_KEY, SPIN_PRICE, LUCKY_SPIN_PRICE, RELIC_PRICE, STACK_MAX, STACK_LUCK, RELIC_LUCK_SCALE, MAX_SLOTS, moveToPowerSlot, relicPower, discounted,
   type RelicState, type SpinResult, type Relic, refreshCosmeticShop } from '../../relics/relics';
 import { claimAchievementSpins, runCoins } from '../../relics/rewards';
 import { PixelIcon } from '../PixelIcon';
@@ -27,7 +36,7 @@ const isBig = (r: SpinResult) => r.kind === 'secret' || r.rarity === 'legendary'
 const nameOf = (r: SpinResult) => (r.kind === 'secret' ? SECRET_BY_ID.get(r.id as never)?.name : RELIC_BY_ID.get(r.id)?.name) ?? r.id;
 const rarityName = (r: SpinResult) => (r.kind === 'secret' ? 'Secret' : RELIC_RARITY[r.rarity as keyof typeof RELIC_RARITY].name);
 /** A rarity's luck as the vault pays it now (the 20% nerf, and twice as much with the 15th slot). */
-const shownLuck = (luck: number, power = 1) => +(luck * RELIC_LUCK_SCALE * power).toFixed(2);
+const shownLuck = (luck: number, power = 1) => +(luck * (luck === RELIC_RARITY.mythic.luck ? 0.8 : RELIC_LUCK_SCALE) * power).toFixed(2);
 
 /**
  * The Relic Vault (spend Relic Spins and free Lucky Spins, your slots, sets and collection) and, as its own page, the
@@ -35,6 +44,11 @@ const shownLuck = (luck: number, power = 1) => +(luck * RELIC_LUCK_SCALE * power
  */
 export function RelicVault({ onExit, view = 'vault', onSwitch }: { onExit: () => void; view?: 'vault' | 'shop'; onSwitch?: () => void }) {
   const shop = view === 'shop';
+  const account = useAccount();
+  const [query, setQuery] = useState('');
+  const [modeFilter, setModeFilter] = useState('General');
+  const [compact, setCompact] = useState(() => { try { return localStorage.getItem('cv-compact-inventory') === '1'; } catch { return false; } });
+  const matches = (text: string, mode?: string) => text.toLowerCase().includes(query.trim().toLowerCase()) && (modeFilter === 'General' || !mode || mode.toLowerCase().includes(modeFilter.toLowerCase()));
   // Today's shop is rolled, and the daily coins paid, on the first visit of the day.
   const [state, setState] = useState<RelicState>(() => { const s = loadRelics(), r = refreshCosmeticShop(collectDailyCoins(refreshShop(s)), SHOP_COSMETIC_WEIGHTS); if (r !== s) saveRelics(r); return r; });
   const [result, setResult] = useState<SpinResult | null>(null);
@@ -72,43 +86,47 @@ export function RelicVault({ onExit, view = 'vault', onSwitch }: { onExit: () =>
       setState(out.state); setRolling(false);
       if (out.bonus) setBatch(all); else setResult(out.result);
       const best = [...all].sort((a, b) => rank(b) - rank(a))[0];
-      if (isBig(best)) setBig(best);
+      if (!compact && isBig(best)) setBig(best);
       const look = all.find(r => r.cosmetic)?.cosmetic;
       if (look) setSecretLook(look);
-    }, reduceMotion() ? 0 : 900);
+    }, (compact || reduceMotion()) ? 0 : 900);
   };
   /** Opens up to ten spins at once. */
-  const spinAll = () => {
+  const spinAll = (kind?: 'lucky' | 'ultra' | 'free') => {
     if (rolling) return;
-    const out = spinMany(loadRelics(), 10);
-    if (!out.results.length) return;
+    const out = kind ? premiumSpinMany(loadRelics(), kind, discount) : spinMany(loadRelics(), 10);
+    if (!out?.results.length) return;
     saveRelics(out.state);
     setResult(null); setBatch(null);
     setRolling(true);
     timer.current = window.setTimeout(() => {
       setState(out.state); setBatch(out.results); setRolling(false);
       const best = [...out.results].sort((a, b) => rank(b) - rank(a))[0];
-      if (best && isBig(best)) setBig(best);
+      if (!compact && best && isBig(best)) setBig(best);
       const look = out.results.find(r => r.cosmetic)?.cosmetic;
       if (look) setSecretLook(look);
-    }, reduceMotion() ? 0 : 1100);
+    }, (compact || reduceMotion()) ? 0 : 1100);
   };
 
   const luck = totalLuck(state), weekly = weeklyLuck(state), star = relicOfWeek(), prog = collectionProgress(state), slots = slotCount(state), power = relicPower(state);
   const spinPrice = discounted(SPIN_PRICE, discount), luckyPrice = discounted(LUCKY_SPIN_PRICE, discount), off = Math.round(discount * 100);
   const toEpic = PITY.epic - state.pity.epic, toLegendary = PITY.legendary - state.pity.legendary, toMythic = PITY.mythic - state.pity.mythic;
   const toLucky = LUCKY_PITY - (state.pity.lucky % LUCKY_PITY);
-  return <div className="hunt relic-vault">
+  return <div className={`hunt relic-vault ${compact ? 'compact-inventory' : ''}`}>
     <header className="hunt-top">
       <button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button>
       <div className="hunt-title"><span className="pixel-eyebrow">{shop ? 'SPEND YOUR COINS · NEW RELICS EVERY DAY' : 'YOUR COLLECTION · EVERY MODE'}</span><h1>{shop ? 'Relic Shop' : 'Relic Vault'}</h1></div>
       {onSwitch && <button className="relic-switch" onClick={onSwitch}><PixelIcon name={shop ? 'crown' : 'star'} size={16} /> {shop ? 'Relic Vault' : 'Shop'}</button>}
     </header>
+    <PageJumps />
+    <label><input type="checkbox" checked={compact} onChange={e => {setCompact(e.target.checked); try {localStorage.setItem('cv-compact-inventory', e.target.checked ? '1' : '0');} catch { /* session only */ }}} /> Compact inventory · no reveal animations</label>
 
     <SmallRoom kind={shop ? 'shop' : 'archive'} title={shop ? 'The collector’s counter' : 'Your collection, on display'} detail={shop ? 'Browse today’s relics, find your next cosmetic and build your collection.' : 'Inspect your relics and choose what to equip for your next run.'} />
     <section className="relic-stats" aria-label="Your relics">
-      <div><span>Relic Spins</span><b>{state.spins}</b>{(state.luckySpins ?? 0) > 0 && <small>+{state.luckySpins} free Lucky Spin{state.luckySpins === 1 ? '' : 's'}</small>}</div>
+      <div><span>Relic Spins</span><b>{state.spins}</b>{(state.luckySpins ?? 0) >= 10 && <button disabled={rolling} onClick={() => spinAll('free')}>Use 10 free Lucky Spins</button>}
+        {(state.luckySpins ?? 0) > 0 && <small>+{state.luckySpins} free Lucky Spin{state.luckySpins === 1 ? '' : 's'}</small>}</div>
       <div><span>Luck</span><b>{fmtLuck(luck)}</b><small>{state.equipped.length}/{slots} slots{weekly ? ` · ${fmtLuck(weekly)} relic of the week` : ''}{power > 1 ? ' · relics at 2× power' : ''}</small></div>
+      <div><span>Gems</span><b>{(state.gems ?? 0).toLocaleString()}</b><small>For Ultra Lucky Spins</small></div>
       <div><span>Coins</span><b>{state.coins.toLocaleString()}</b><small>+{DAILY_COINS} every day you visit</small></div>
       <div><span>Collection</span><b>{prog.owned}/{prog.total}</b><small>{prog.secrets}/{SECRET_RELICS.length} secrets</small></div>
     </section>
@@ -126,7 +144,7 @@ export function RelicVault({ onExit, view = 'vault', onSwitch }: { onExit: () =>
         <button className="primary relic-spin" onClick={() => spin()} disabled={rolling || state.spins <= 0}>
           <PixelIcon name="star" size={16} /> {state.spins > 0 ? `Spin (${state.spins} left)` : 'No spins left'}
         </button>
-        {!shop && state.spins > 1 && <button onClick={spinAll} disabled={rolling}>Spin {Math.min(10, state.spins)} at once</button>}
+        {!shop && state.spins > 1 && <button onClick={() => spinAll()} disabled={rolling}>Spin {Math.min(10, state.spins)} at once</button>}
         {(state.luckySpins ?? 0) > 0 && <button className="relic-free-lucky" onClick={() => spin('free')} disabled={rolling}><PixelIcon name="flame" size={16} /> Free Lucky Spin ({state.luckySpins})</button>}
       </div>
       <p className="relic-pity" aria-label="Guarantees">Guaranteed: <b>Epic</b> within {toEpic} spin{toEpic === 1 ? '' : 's'} · <b>Legendary</b> within {toLegendary} · <b>Mythic</b> within {toMythic} · Lucky Spins: <b>Legendary</b> within {toLucky}</p></>}
@@ -146,30 +164,35 @@ export function RelicVault({ onExit, view = 'vault', onSwitch }: { onExit: () =>
 
     {!shop && <section className="relic-section" aria-labelledby="relic-fuse">
       <h2 id="relic-fuse">Fuse duplicates</h2>
-      <p className="relic-help">Every copy after your first is a spare. Fuse {FUSE_COST} spares of one rarity into a relic one rarity higher (a new one while there are any left). Stacking relics can't be fused.</p>
+      <p className="relic-help">Every copy after your first is a spare. Fuse {FUSE_COST} spares of one rarity into a relic one rarity higher (a new one while there are any left). Legendary → Mythic costs 25 spares. Stacking relics can't be fused.</p>
       <div className="relic-shop-grid">{RARITY_ORDER.slice(0, -1).map((r, i) => {
         const have = spareCopies(state, r), up = RARITY_ORDER[i + 1];
         return <div key={r} className={`relic-offer r-${up}`}>
-          <PixelIcon name="shuffle" size={24} /><span><b>{RELIC_RARITY[r].name} → {RELIC_RARITY[up].name}</b><small>{have} spare{have === 1 ? '' : 's'} · needs {FUSE_COST}</small></span>
-          <button onClick={() => { const out = fuseDuplicates(loadRelics(), r); if (!out) return; saveRelics(out.state); setState(out.state); setBatch(null); setResult(out.result); if (isBig(out.result)) setBig(out.result); }} disabled={rolling || have < FUSE_COST}>Fuse</button>
+          <PixelIcon name="shuffle" size={24} /><span><b>{RELIC_RARITY[r].name} → {RELIC_RARITY[up].name}</b><small>{have} spare{have === 1 ? '' : 's'} · needs {fuseCost(r)}</small></span>
+          <button onClick={() => { const out = fuseDuplicates(loadRelics(), r); if (!out) return; saveRelics(out.state); setState(out.state); setBatch(null); setResult(out.result); if (!compact && isBig(out.result)) setBig(out.result); }} disabled={rolling || have < fuseCost(r)}>Fuse</button>
         </div>;
       })}</div>
     </section>}
 
     {shop && <section className="relic-section" aria-labelledby="relic-shop">
       <h2 id="relic-shop">Shop</h2>
-      <p className="relic-help">You have <b>{state.coins.toLocaleString()} coins</b>. Earn them from every finished run, duplicates and a daily visit.</p>
+      <RewardedSpin />
+      <p className="relic-help">You have <b>{state.coins.toLocaleString()} coins</b>. Earn them from finished runs, duplicates and daily rewards. Equipped relics: +{relicCoinBoost(state).toFixed(2)}% coin income. Gems: {state.gems ?? 0}.</p>
       <div className="relic-shop-grid">
-        <div className="relic-offer">
-          <PixelIcon name="star" size={24} /><span><b>Relic Spin</b><small>A normal spin, saved for when you want it.</small></span>
-          <button onClick={() => commit(s => buySpin(s, discount))} disabled={rolling || state.coins < spinPrice}>{spinPrice} coins{off ? ` (−${off}%)` : ''}</button>
+        <div className="relic-offer relic-spin-offer r-mythic">
+          <span><b>Ultra Lucky Spin</b><small>Epic or better. 1% regular Secret chance; mission and event Secrets excluded.</small></span>
+          <div className="relic-offer-actions"><button disabled={rolling || (state.gems ?? 0) < 20} onClick={() => { const out = ultraLuckySpin(loadRelics()); if (!out) return; saveRelics(out.state); setState(out.state); setBatch(null); setResult(out.result); if (!compact && isBig(out.result)) setBig(out.result); }}>Spin 1 · 20 gems</button><button disabled={rolling || (state.gems ?? 0) < 200} onClick={() => spinAll('ultra')}>Spin 10 · 200 gems</button></div>
         </div>
-        <div className="relic-offer r-legendary">
-          <PixelIcon name="flame" size={24} /><span><b>Lucky Spin</b><small>2× luck, no Commons. Spins straight away.</small></span>
-          <button className="primary" onClick={() => spin(true)} disabled={rolling || state.coins < luckyPrice}>{luckyPrice} coins{off ? ` (−${off}%)` : ''}</button>
+        <div className="relic-offer relic-spin-offer">
+          <span><b>Relic Spin</b><small>A normal spin, saved for when you want it.</small></span>
+          <div className="relic-offer-actions"><button onClick={() => commit(s => buySpin(s, discount))} disabled={rolling || state.coins < spinPrice}>{spinPrice} coins{off ? ` (−${off}%)` : ''}</button></div>
+        </div>
+        <div className="relic-offer relic-spin-offer r-legendary">
+          <span><b>Lucky Spin</b><small>1.5× luck weighting, no Commons. Spins straight away.</small></span>
+          <div className="relic-offer-actions"><button className="primary" onClick={() => spin(true)} disabled={rolling || state.coins < luckyPrice}>Spin 1 · {luckyPrice} coins{off ? ` (−${off}%)` : ''}</button><button disabled={rolling || state.coins < luckyPrice * 10} onClick={() => spinAll('lucky')}>Spin 10 · {(luckyPrice * 10).toLocaleString()} coins</button></div>
         </div>
         {state.slotsBought < EXTRA_SLOTS && <div className="relic-offer">
-          <PixelIcon name="unlock" size={24} /><span><b>Relic slot {slots + 1}</b><small>{slots + 1 === MAX_SLOTS ? 'The last slot: every relic gets 2× power.' : `One more relic adds its luck. ${EXTRA_SLOTS - state.slotsBought} left to buy.`}</small></span>
+          <PixelIcon name="unlock" size={24} /><span><b>Relic slot {slots + 1}</b><small>{slots + 1 === MAX_SLOTS ? 'Slot 15 doubles only the relic equipped there.' : `One more relic adds its luck. ${EXTRA_SLOTS - state.slotsBought} left to buy.`}</small></span>
           <button onClick={() => commit(buySlot)} disabled={rolling || state.coins < SLOT_PRICES[state.slotsBought]}>{SLOT_PRICES[state.slotsBought].toLocaleString()} coins</button>
         </div>}
       </div>
@@ -182,20 +205,24 @@ export function RelicVault({ onExit, view = 'vault', onSwitch }: { onExit: () =>
           <button onClick={() => commit(s => buyRelic(s, id))} disabled={rolling || sold || full || state.coins < price}>{sold ? 'Bought' : full ? 'Owned' : `${price.toLocaleString()} coins`}</button>
         </div>;
       })}{!state.shop?.offers.length && <p className="relic-help">Nothing left to sell you today. Impressive.</p>}</div>
+      <h3>Gem cosmetics</h3><div className="relic-shop-grid">{GEM_COSMETICS.map(c => <div key={c.key} className="relic-offer"><span><b>{c.name}</b><small>Name colour</small></span><UndoPurchase accountId={account.userId} disabled={rolling || (state.cosmetics ?? []).includes(c.key) || (state.gems ?? 0) < c.price} purchase={() => commit(s => buyGemCosmetic(s,c.key))}>{(state.cosmetics ?? []).includes(c.key) ? 'Owned' : `${c.price} gems`}</UndoPurchase></div>)}</div>
       <ShopCosmetics state={state} commit={commit} busy={rolling} />
     </section>}
 
     {!shop && <>
+    <RelicMastery50 state={state} />
+    <RelicLoadouts state={state} commit={commit} />
     <section className="relic-section" aria-labelledby="relic-slots">
       <h2 id="relic-slots">Your slots <small className="relic-count">{state.equipped.length}/{slots}</small></h2>
-      <p className="relic-help">Only relics in your slots add luck. New relics go into a free slot by themselves; swap them in the collection below. {BASE_SLOTS} slots to start, {EXTRA_SLOTS} more in the shop. The {MAX_SLOTS}th slot doubles every relic's power.</p>
+      <p className="relic-help">Only relics in your slots add luck. New relics go into a free slot by themselves; swap them in the collection below. {BASE_SLOTS} slots to start, {EXTRA_SLOTS} more in the shop. Slot {MAX_SLOTS} doubles only the relic equipped there.</p>
+      {state.equipped.length === MAX_SLOTS && <label>Double-power slot <select value={state.equipped[14]} onChange={e => commit(s => moveToPowerSlot(s, e.target.value))}>{state.equipped.map(id => <option key={id} value={id}>{RELIC_BY_ID.get(id)?.name}</option>)}</select></label>}
       <div className="relic-slots">
         {Array.from({ length: BASE_SLOTS + EXTRA_SLOTS }, (_, i) => {
           const id = state.equipped[i], r = id ? RELIC_BY_ID.get(id) : undefined;
           if (i >= slots) return <div key={i} className="relic-socket locked" title={`Buy in the shop: ${SLOT_PRICES[i - BASE_SLOTS].toLocaleString()} coins`}><PixelIcon name="lock" size={16} /><small>{SLOT_PRICES[i - BASE_SLOTS].toLocaleString()}</small></div>;
           if (!r) return <div key={i} className="relic-socket empty"><small>Empty</small></div>;
-          return <button key={id} className={`relic-socket r-${r.rarity}`} onClick={() => commit(st => unequipRelic(st, id))} title={`${r.name}: ${fmtLuck(relicLuck(r, state.owned[id] ?? 0, state.upgraded.includes(id), power))} luck. Click to take it out.`} aria-label={`${r.name}, in a slot. Take it out`}>
-            <RelicArt id={r.id} size={48} /><small>{fmtLuck(relicLuck(r, state.owned[id] ?? 0, state.upgraded.includes(id), power))}</small>
+          return <button key={id} className={`relic-socket r-${r.rarity}`} onClick={() => commit(st => unequipRelic(st, id))} title={`${r.name}: ${fmtLuck(relicLuck(r, state.owned[id] ?? 0, upgradeLevel(state, id), relicPower(state, id)))} luck. Click to take it out.`} aria-label={`${r.name}, in a slot. Take it out`}>
+            <RelicArt id={r.id} size={48} /><small>{fmtLuck(relicLuck(r, state.owned[id] ?? 0, upgradeLevel(state, id), relicPower(state, id)))}</small>
           </button>;
         })}
       </div>
@@ -217,20 +244,25 @@ export function RelicVault({ onExit, view = 'vault', onSwitch }: { onExit: () =>
 
     <section className="relic-section">
       <h2>Relics</h2>
+      <label>Search relic names and effects <input type="search" value={query} onChange={e => setQuery(e.target.value)} /></label>
+      <label>Eligible mode <select value={modeFilter} onChange={e => setModeFilter(e.target.value)}>{LOADOUT_MODES.map(m => <option key={m}>{m}</option>)}</select></label>
+      <p>Ordinary relics add global luck and coin bonuses; mode filters also narrow the Secret abilities below. Shared-seed runs ignore personal luck.</p>
       <p className="relic-help">Each relic in a slot adds its luck once; a duplicate pays coins instead. <b>Stacking</b> relics add +{shownLuck(STACK_LUCK, power)}% a copy, up to {STACK_MAX} copies. <b>Upgrade</b> any other relic with coins for +50% luck{off ? ` (${off}% off with your pet)` : ''}. Luck makes the best results of a spin likelier in League Hunt, the 82-0 Challenge, the Career wheel and the Survival deal, with no cap. Dailies, Weeklies and duels ignore luck, so boards stay fair.</p>
-      {RARITY_ORDER.map(r => <div key={r} className="relic-tier">
+      {!RELICS.some(x => matches(`${x.name} ${x.blurb} ${x.rarity} luck coin`)) && <p>No ordinary relics match your search.</p>}
+      {RARITY_ORDER.filter(r => RELICS.some(x => x.rarity === r && matches(`${x.name} ${x.blurb} ${x.rarity} luck coin`))).map(r => <div key={r} className="relic-tier">
         <h3 className={`r-${r}`}>{RELIC_RARITY[r].name} <small>{pct(RELIC_RARITY[r].odds)} · +{shownLuck(RELIC_RARITY[r].luck, power)}% luck · duplicate {RELIC_RARITY[r].coins} coins</small></h3>
-        <div className="relic-grid">{RELICS.filter(x => x.rarity === r).map(x => <RelicCard key={x.id} relic={x} state={state} discount={discount} onUpgrade={() => commit(s => upgradeRelic(s, x.id, discount))}
+        <div className="relic-grid">{RELICS.filter(x => x.rarity === r && matches(`${x.name} ${x.blurb} ${x.rarity} luck coin`)).map(x => <RelicCard key={x.id} relic={x} state={state} discount={discount} onUpgrade={() => commit(s => upgradeRelic(s, x.id, discount))}
           onToggle={() => commit(s => (s.equipped.includes(x.id) ? unequipRelic(s, x.id) : equipRelic(s, x.id)))} />)}</div>
       </div>)}
     </section>
 
     <section className="relic-section">
       <h2>Secret relics</h2>
-      <p className="relic-help">All {SECRET_RELICS.length} secret relics, each a permanent ability (no slot needed). Any spin has a {pct(SECRET_CHANCE)} chance to uncover one you don't have, some answer to a feat, and Ultra Cheat opens only when you own every relic in the vault.</p>
-      <div className="relic-grid">{SECRET_RELICS.map(s => {
+      <p className="relic-help">All {SECRET_RELICS.length} secret relics, each a permanent ability (no slot needed). Normal spins have a {pct(SECRET_CHANCE)} chance at a regular Secret. Event Secrets require their matching event spin; mission Secrets require their listed feat, and Ultra Cheat opens only when you own every relic in the vault.</p>
+      {!SECRET_RELICS.some(s => matches(`${s.name} ${s.ability} ${s.mode}`, s.mode)) && <p>No Secret relics match these filters.</p>}
+      <div className="relic-grid">{SECRET_RELICS.filter(s => matches(`${s.name} ${s.ability} ${s.mode}`, s.mode)).map(s => {
         const got = state.secrets.includes(s.id);
-        const how = s.earnedOnly ? s.feat : s.feat ? `${s.feat} Or any spin, by luck.` : 'Any spin, by luck alone.';
+        const how = s.event ? s.hint : s.earnedOnly ? s.feat : s.feat ? `${s.feat} Or any spin, by luck.` : 'Any spin, by luck alone.';
         return <div key={s.id} className={`relic-card r-secret ${got ? '' : 'missing'}`}>
           <RelicArt id={got ? s.id : undefined} locked={!got} />
           <span><b>{s.name}{got ? '' : ' · locked'}</b><small>{s.mode}: {s.ability}</small>{!got && <small className="relic-secret-how">How to find it: {how}</small>}</span>
@@ -273,14 +305,14 @@ function SpinReel() {
 }
 
 function RelicCard({ relic: x, state, discount, onUpgrade, onToggle }: { relic: Relic; state: RelicState; discount: number; onUpgrade: () => void; onToggle: () => void }) {
-  const n = state.owned[x.id] ?? 0, up = state.upgraded.includes(x.id), cost = discounted(UPGRADE_PRICE[x.rarity], discount), on = state.equipped.includes(x.id), power = relicPower(state);
+  const n = state.owned[x.id] ?? 0, up = upgradeLevel(state, x.id), cost = upgradeCost(state, x, discount), on = state.equipped.includes(x.id), power = relicPower(state, x.id);
   const full = !on && state.equipped.length >= slotCount(state);
-  return <div className={`relic-card r-${x.rarity} ${n ? '' : 'missing'} ${up ? 'upgraded' : ''} ${on ? 'equipped' : ''}`}>
+  return <div className={`relic-card r-${x.rarity} ${n ? '' : 'missing'} ${up ? 'upgraded' : ''} ${on ? 'equipped' : ''} ${mastered50(state,x) ? 'feat-mastered50' : ''}`}>
     <RelicArt id={x.id} locked={!n} />
     <span><b>{n ? x.name : '???'}{up && <em> ★</em>}</b><small>{n ? x.blurb : x.stack ? 'A stacking relic. Not found yet.' : 'Not found yet.'}</small>
       {n > 0 && <em>{x.stack ? `${Math.min(n, STACK_MAX)}/${STACK_MAX} stacked · ${fmtLuck(relicLuck(x, n, false, power))} luck` : `${fmtLuck(relicLuck(x, n, up, power))} luck${up ? ' (upgraded)' : ''}${n > 1 ? ` · found ×${n}` : ''}`}</em>}
       {n > 0 && <button className="link-button relic-upgrade" onClick={onToggle} disabled={full} title={full ? 'Your slots are full: take a relic out first' : undefined}>{on ? 'In a slot · take out' : full ? 'Slots full' : 'Put in a slot'}</button>}
-      {canUpgrade(state, x) && <button className="link-button relic-upgrade" onClick={onUpgrade} disabled={state.coins < cost}>Upgrade to {fmtLuck(relicLuck(x, 1, true, power))}: {cost.toLocaleString()} coins</button>}
+      {canUpgrade(state, x) && <button className="link-button relic-upgrade" onClick={onUpgrade} disabled={state.coins < cost.coins || (state.gems ?? 0) < cost.gems}>Upgrade to {fmtLuck(relicLuck(x, 1, up + 1, power))}: {cost.coins.toLocaleString()} coins{cost.gems ? ` + ${cost.gems} gems` : ''}</button>}
     </span>
   </div>;
 }

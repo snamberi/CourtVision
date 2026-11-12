@@ -1,3 +1,4 @@
+import { useGoatCounter } from './GoatCounter';
 import { useEffect, useState } from 'react';
 import { Analytics } from '@vercel/analytics/react';
 import { IS_DESKTOP_BUILD } from '../appMode';
@@ -48,6 +49,7 @@ export function WebAnalytics() {
     };
   }, []);
   useUmami(path);
+  useGoatCounter(path);
   // Vercel Web Analytics exists only on Vercel (its script is served by Vercel itself). Elsewhere, such as Cloudflare
   // Pages, the host's own analytics are switched on in its dashboard instead.
   if (IS_DESKTOP_BUILD || import.meta.env.VITE_HOST_PLATFORM !== 'vercel') return null;

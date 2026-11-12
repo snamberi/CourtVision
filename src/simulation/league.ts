@@ -1,3 +1,5 @@
+import { recordTargets50 } from './replayStories50';
+import { planExplosions, explosionRoster } from './rivalryExplosion';
 import { isHoldingOut } from './holdouts';
 import { prepareCoachingForGame, finishCoachingGame, type GameEvidence } from './playerDevelopment';
 import { advanceCup } from './cup';
@@ -202,6 +204,10 @@ export interface ScheduledGame {
 export type SeasonPhase = 'regular_season' | 'all_star' | 'playoffs' | 'awards_recap' | 'draft' | 'resign_waive' | 'free_agency' | 'preseason';
 
 export interface League {
+  stories50?: import('./leagueStories50').Stories50;
+  promises50?: import('./leagueStories50').Promise50[];
+  /** Sandbox award definitions, embedded artwork and explicit season winner overrides. */
+  awardStudio?: import('./awardStudio').AwardStudioState;
   /** The World Games every four summers: past results, the on/off switch, and the country you coach (see worldGames/league.ts). */
   worldGames?: import('../worldGames/league').LeagueWorldGames;
   /** The Owner's Box: you own a team and an AI GM runs it (see ownerBox.ts). */
@@ -233,6 +239,7 @@ export interface League {
   newsArchive?: import('./news').NewsItem[];
   /** CourtChat: what you posted as the GM (the players' posts are derived from the league; see social/courtChat.ts). */
   courtChat?: import('../social/gmPosts').CourtChatState;
+  scoringShowcases?: { season?: string; games: string[] };
   rivalries?: Record<string, import('./rivalry').RivalryRecord>;
   /** Present when this league was started from real NBA history (see history/historicalLeague.ts). */
   /** Set on leagues made by the All-Time Draft. */
@@ -688,6 +695,7 @@ export function gameBoost(league: League, team: LeagueTeam, dressedIds: string[]
 
 /** Practice up to game day, then pick who is available (`injuries` decides who is out). */
 function prepareGame(league: League, idx: number, seedBase: number, injuries: Record<string, InjuryRecord>, liveCoaching?: LiveCoachingCommand[]): { league: League; prepared: PreparedGame } {
+  league = planExplosions(league);
   const scheduled = league.schedule[idx];
   const trainingDate = addDays(league.calendarDate ?? seasonStartDate(league.season), Math.max(0, scheduled.round - (league.calendarRound ?? -1)) * DAYS_PER_ROUND);
   league = prepareCoachingForGame(league, [scheduled.homeTeamId, scheduled.awayTeamId], trainingDate);
@@ -706,7 +714,11 @@ function prepareGame(league: League, idx: number, seedBase: number, injuries: Re
   homeAvailable = ensureMinimumAvailable(home.seasons, homeAvailable, injuries);
   awayAvailable = ensureMinimumAvailable(away.seasons, awayAvailable, injuries);
 
+  const explosion = league.scoringShowcases?.games.includes(g.id) ?? false;
+  homeAvailable = explosionRoster(homeAvailable, explosion, home.scoringOptions?.[1]);
+  awayAvailable = explosionRoster(awayAvailable, explosion, away.scoringOptions?.[1]);
   const input: PreparedGame['input'] = {
+    recordTargets50: recordTargets50(league, [home.teamId, away.teamId]),
     home: { teamId: home.teamId, seasons: homeAvailable, coach: home.coach, chemistry: home.chemistry, coachIdentity: gameStaffCoach(home), rotationOrder: home.rotationOrder, scoringOptions: home.scoringOptions, ...gameBoost(league, home, homeAvailable.map(s => s.playerId), true, g.id) },
     away: { teamId: away.teamId, seasons: awayAvailable, coach: away.coach, chemistry: away.chemistry, coachIdentity: gameStaffCoach(away), rotationOrder: away.rotationOrder, scoringOptions: away.scoringOptions, ...gameBoost(league, away, awayAvailable.map(s => s.playerId), false, g.id) },
     settings: { ...league.settings, seed: seedBase + idx },

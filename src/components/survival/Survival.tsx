@@ -1,3 +1,4 @@
+import { BestComparison } from '../qol/BestComparison';
 import { LineupBoard } from '../presentation/LineupBoard';
 import { ResultCount, ResultCrest, MvpSpotlight } from '../presentation/ResultPresentation';
 import { noteHolidayFinish } from '../../retention/holiday';
@@ -261,6 +262,7 @@ function Over({ h, run, records, onNew, onExit }: { h: NbaHistory; run: Survival
   const franchise = run.franchise ? pool.byId.get(run.franchise) : undefined;
   return <section className={`hunt-stage hunt-over ${w >= 10 ? 'won' : 'lost'}`}>
     <div className="hunt-over-banner result-hero">
+      <BestComparison current={score} best={best?.score} />
       <ResultCrest celebrateWin={w >= 10} label="COURT VISION · SURVIVAL" />
       <span className="pixel-eyebrow">RUN OVER · {SURVIVAL_LEVELS[run.level].name.toUpperCase()}{run.daily ? ` · DAILY ${run.daily}` : ''}</span>
       <h2>You lasted {w} round{w === 1 ? '' : 's'}</h2>

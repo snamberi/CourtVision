@@ -1,11 +1,11 @@
 {
   "title": "Privacy Policy",
   "product": "CourtVision",
-  "lastUpdated": "October 25, 2026",
+  "lastUpdated": "November 1, 2026",
   "contactEmail": "",
   "intro": [
     "This Privacy Policy explains what information CourtVision (\"CourtVision\", \"we\", \"us\", \"our\") handles when you use the CourtVision basketball simulator, both the web version and the downloadable Windows edition. We wrote it to be read, so it is plain and specific about what the app actually does.",
-    "**The short version:** Playing needs no account, and your GM leagues stay in your own browser. If you choose to create an optional account (web version only), we store your GM name, the sign-in details your provider gives us, and your game progress so it follows you across devices and appears on public leaderboards. The web version uses its host’s cookie-free web analytics (Cloudflare or Vercel) and Umami Cloud for aggregate traffic statistics and Google AdSense for advertising when allowed. The offline Windows edition loads none of these services."
+    "**The short version:** Playing needs no account, and your GM leagues stay in your own browser. If you choose to create an optional account (web version only), we store your GM name, the sign-in details your provider gives us, and your game progress so it follows you across devices and appears on public leaderboards. The web version uses its host’s cookie-free web analytics (Cloudflare or Vercel) Umami Cloud and GoatCounter for aggregate traffic statistics and Google AdSense for advertising when allowed. The offline Windows edition loads none of these services."
   ],
   "sections": [
     {
@@ -52,7 +52,7 @@
           "items": [
             "your name, postal address or phone number, and any password (sign-in uses Discord or Google, so we never see or store a password);",
             "payment information (CourtVision is free and has no purchases);",
-            "your GM leagues, rosters, trades, notes and custom players; active Career worlds stay on your device unless you explicitly save them to your account;",
+            "your local GM leagues, rosters, trades, notes and custom players, except for explicitly shared online leagues or a complete Career world you choose to save to cloud;",
             "your precise location, contacts, photos, microphone, or camera data;",
             "government identifiers, health information, or other sensitive personal information."
           ]
@@ -268,7 +268,7 @@
         },
         {
           "type": "p",
-          "text": "**Accounts, cloud progress and leaderboards (web version only, optional).** If you create an account, sign-in is handled by Supabase Auth using Discord or Google. We receive and store your email address, the provider you used and its account identifier, and the GM name you choose. While you are signed in, your game progress is synced to our database hosted by Supabase: your GM Profile level and cosmetics, achievements, League Hunt, Rebuild and weekly results, daily goals, retired Career Mode players, league-code results and your League Hunt PvP squad and matches. GM leagues are not uploaded. Active Career worlds can be uploaded manually in Settings and are private to your account. You can load them on another device or delete the cloud copy while keeping your local save. Your GM name, title, level, public statistics, retired created players, leaderboard results, PvP rating and the GMs you follow are shown publicly on leaderboards and your profile page. Reports you file about a name are seen only by us. Your data is kept while your account exists. You can delete your account at any time in Community → Your account; this permanently deletes your account, profile, cloud progress and every leaderboard entry (progress stored on your device is not affected). See [Supabase's privacy policy](https://supabase.com/privacy)."
+          "text": "**Accounts, cloud progress and leaderboards (web version only, optional).** If you create an account, sign-in is handled by Supabase Auth using Discord or Google. We receive and store your email address, the provider you used and its account identifier, and the GM name you choose. While you are signed in, your game progress is synced to our database hosted by Supabase: your GM Profile level and cosmetics, achievements, League Hunt, Rebuild and weekly results, daily goals, retired Career Mode players, league-code results and your League Hunt PvP squad and matches. Local GM leagues are not uploaded by account sync. If you choose Save to cloud in Settings, the complete active Career world and player metadata are stored privately in your Supabase account; you can load or delete individual cloud copies there. Your GM name, title, level, public statistics, retired created players, leaderboard results, PvP rating and the GMs you follow are shown publicly on leaderboards and your profile page. Reports you file about a name are seen only by us. Your data is kept while your account exists. You can delete your account at any time in Community → Your account; this permanently deletes your account, profile, cloud progress and every leaderboard entry (progress stored on your device is not affected). See [Supabase's privacy policy](https://supabase.com/privacy). Optional push notifications store your browser push endpoint in Supabase to deliver generic gift and friend-activity alerts through your browser provider. Enable or disable them in Notifications. Signing out unsubscribes that browser. Delivery jobs are retained for up to seven days. Durable reward receipts keep gift and clan claims recoverable and are deleted with your account."
         },
         {
           "type": "p",
@@ -280,7 +280,15 @@
         },
         {
           "type": "p",
+          "text": "**GoatCounter (web version only).** We also count page views with GoatCounter at ninefoldvision.goatcounter.com. Our integration sends sanitized page categories and the fixed title CourtVision, with no referrer, save IDs, player names or query strings. It does not load in the Windows edition or when Do Not Track or Global Privacy Control is enabled. GoatCounter processes browser, operating system, language, screen width and approximate location information for traffic statistics. It does not store analytics cookies in your browser. See [GoatCounter’s privacy information](https://www.goatcounter.com/help/privacy) for its handling of request data."
+        },
+        {
+          "type": "p",
           "text": "When you download the Windows package, the same kind of technical data is processed for that download. After you extract and run it, the Windows edition runs a small local web server on your computer at an address such as http://localhost:47820. That server only serves the game's own files to your own browser on the same machine and does not send your data anywhere."
+        },
+        {
+          "type": "p",
+          "text": "**CourtChat, gifts and profile favourites.** When enabled, CourtChat stores your account identifier, message text and posting time in Supabase and shows your GM name and messages to signed-in players. The chat shows the latest 50 messages from the past seven days. Older messages are removed when another message is sent; this is not a scheduled deletion guarantee. Opening chat updates a presence timestamp used to count recent chat visitors. Gift records include sender, recipient, reward contents, any custom message and claim status. Favourite teams and players selected for your profile are visible publicly. Relics, gems and reward history are part of synced account progress. Avoid sharing private information in chat or gift messages."
         }
       ]
     },
@@ -310,7 +318,7 @@
       "blocks": [
         {
           "type": "p",
-          "text": "We do not receive or share your saved leagues. Our hosting provider (Cloudflare, or Vercel while the site is served there) and Umami process web traffic data as described in Section 7. Information handled in connection with ads is processed by Google and its partners, and by our hosting provider, as described above. These companies operate globally, so information such as your IP address may be processed in countries other than your own, including the United States. Where required, Google and other providers rely on recognized transfer safeguards such as standard contractual clauses. We may also disclose information if required to by law, but as explained above we hold very little that could be disclosed."
+          "text": "We do not receive or share your saved leagues. Our hosting provider (Cloudflare, or Vercel while the site is served there) Umami and GoatCounter process web traffic data as described in Section 7. Information handled in connection with ads is processed by Google and its partners, and by our hosting provider, as described above. These companies operate globally, so information such as your IP address may be processed in countries other than your own, including the United States. Where required, Google and other providers rely on recognized transfer safeguards such as standard contractual clauses. We may also disclose information if required to by law, but as explained above we hold very little that could be disclosed."
         }
       ]
     },
@@ -356,7 +364,7 @@
       "blocks": [
         {
           "type": "p",
-          "text": "We do not store your leagues on our servers. Aggregate web analytics are processed by our host (Cloudflare or Vercel) and Umami under their service terms; none of them uses cookies for it, and Vercel's visitor session identifiers expire after 24 hours. Data stored in your browser stays there until you delete it. The web version is served over an encrypted (HTTPS) connection where the host provides one. No method of storage or transmission is perfectly secure; because your saves are stored on your device, their safety also depends on the security of your device and browser (for example, other people who use the same browser profile on a shared computer could open your saved leagues). Use the export feature to keep backups."
+          "text": "We do not store your leagues on our servers. Aggregate web analytics are processed by our host (Cloudflare or Vercel) Umami and GoatCounter under their service terms; none of them uses cookies for it, and Vercel's visitor session identifiers expire after 24 hours. Data stored in your browser stays there until you delete it. The web version is served over an encrypted (HTTPS) connection where the host provides one. No method of storage or transmission is perfectly secure; because your saves are stored on your device, their safety also depends on the security of your device and browser (for example, other people who use the same browser profile on a shared computer could open your saved leagues). Use the export feature to keep backups."
         }
       ]
     },

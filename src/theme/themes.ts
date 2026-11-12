@@ -1,3 +1,4 @@
+import { skinForMode, nativeLookMode, type LookMode } from './skins';
 import { hasOwnerAccess } from '../profile/ownerAccess';
 import { PALETTE } from './palette.gen';
 import { roadLevel } from '../profile/cosmetics';
@@ -429,35 +430,54 @@ export function readTheme(): ThemeId | null {
   try { const v = localStorage.getItem(THEME_KEY); return isTheme(v) ? v : null; } catch { return null; }
 }
 
-const cssCache = new Map<ThemeId, string>();
+export const LOOK_MODE_KEY = 'cv-look-mode';
+export function readLookMode(): LookMode | null {
+  try { const v = localStorage.getItem(LOOK_MODE_KEY); return v === 'light' || v === 'dark' ? v : null; } catch { return null; }
+}
+export function setLookMode(mode: LookMode): void {
+  try { localStorage.setItem(LOOK_MODE_KEY, mode); } catch { /* apply for this visit */ }
+  applyTheme((document.documentElement.dataset.cvTheme as ThemeId) || 'original', mode);
+  window.dispatchEvent(new Event(THEME_EVENT));
+}
+const cssCache = new Map<string, string>();
 /** The variables a theme sets: every palette colour, and its fonts. */
-export function themeCss(id: ThemeId): string {
-  const hit = cssCache.get(id);
+export function themeCss(id: ThemeId, mode?: LookMode | null): string {
+  const key = id + (mode ?? '');
+  const hit = cssCache.get(key);
   if (hit != null) return hit;
-  const t = THEME_BY_ID.get(id)!;
+  let t = THEME_BY_ID.get(id)!;
+  if (mode && mode !== nativeLookMode(id)) {
+    const p = skinForMode(id, mode);
+    t = { ...t, light: mode === 'light', shadow: p.page,
+      ramps: mode === 'light' ? lightRamps({ floor:p.page,panel:p.panel,panel2:p.raised,panel3:p.raised,mid:p.line,text:p.text,dim:p.muted,line:p.line,lineMid:p.edge,lineStrong:p.edge }) : darkRamps({ floor:p.page,panel:p.panel,panel2:p.raised,panel3:p.raised,raised:p.raised,line:p.line,lineMid:p.edge,lineStrong:p.edge,dim:p.muted,text:p.text,bright:p.text,ink:p.onAccent }),
+      accent: { red:mode==='light'?'#ae2727':'#ff8b85', orange:p.accent,gold:mode==='light'?'#806000':'#f6ce7a',green:mode==='light'?'#176b3c':'#90e2ad',blue:mode==='light'?'#245b9a':'#9fcfff',purple:mode==='light'?'#713d9c':'#d4b4ff' }, accentText:undefined, accentAny:undefined };
+  }
   const vars = PALETTE.map(k => { const i = k.indexOf('-'); return `--c-${k}:${mapColor(t, k.slice(0, i) as Role, k.slice(i + 1))};`; });
   const fonts = Object.entries(t.fonts ?? {}).map(([k, v]) => `--ff-${k}:${v};`);
-  const css = id === 'original' ? '' : `:root[data-cv-theme="${id}"]{${vars.join('')}${fonts.join('')}}`;
-  cssCache.set(id, css);
+  const selector = id === 'original' ? ':root:not([data-cv-theme])' : `:root[data-cv-theme="${id}"]`;
+  const css = id === 'original' && (!mode || mode === 'dark') ? '' : `${selector}{${vars.join('')}${fonts.join('')}}`;
+  cssCache.set(key, css);
   return css;
 }
 
-export function applyTheme(id: ThemeId): void {
+export function applyTheme(id: ThemeId, mode = readLookMode()): void {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
   const found = THEME_BY_ID.get(id) ?? THEMES[0];
   // A Game Owner look on someone else's device falls back to the original.
   const t = found.staff && !hasOwnerAccess() ? THEMES[0] : found;
   let style = document.getElementById('cv-theme') as HTMLStyleElement | null;
-  if (t.id === 'original') { root.removeAttribute('data-cv-theme'); style?.remove(); }
+  if (t.id === 'original' && (!mode || mode === 'dark')) { root.removeAttribute('data-cv-theme'); style?.remove(); }
   else {
     if (!style) { style = document.createElement('style'); style.id = 'cv-theme'; document.head.appendChild(style); }
-    style.textContent = themeCss(t.id);
-    root.dataset.cvTheme = t.id;
+    style.textContent = themeCss(t.id, mode);
+    if (t.id === 'original') root.removeAttribute('data-cv-theme'); else root.dataset.cvTheme = t.id;
     void t.loadFonts?.().catch(() => { /* fonts are a nicety; the fallback stack still renders */ });
   }
+  if (mode) root.dataset.cvMode = mode; else delete root.dataset.cvMode;
+  root.style.colorScheme = mode ?? nativeLookMode(t.id);
   // The browser's own chrome (address bar on phones) follows the floor colour.
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', t.id === 'original' ? '#0b1018' : t.preview.bg);
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', skinForMode(t.id, mode ?? nativeLookMode(t.id)).page);
 }
 
 export function setTheme(id: ThemeId): void {

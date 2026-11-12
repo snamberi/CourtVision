@@ -1,3 +1,9 @@
+import { LeagueAwardProvider } from './components/AwardStudio';
+import { audioCue } from './audio/gameAudio';
+import { PagePins } from './components/qol/PagePins';
+import { finishDevelopment } from './simulation/developmentCheckpoint';
+import { noteCurryHigh } from './profile/curryAchievement';
+import { useEventPlaytime } from './retention/useEventPlaytime';
 import { PickemCard } from './components/PickemCard';
 import { COACH_ONLY_HIDDEN } from './simulation/coachOnly';
 import { CoachOnlyCard, CoachOnlyNotice } from './components/CoachOnlyCard';
@@ -366,6 +372,7 @@ function App() {
   // Where toasts are filed in the league's Inbox (refreshed every render; see inbox.ts).
   const inboxCtx = useRef<{ saveId: string | null; season?: string; date?: string; inLeague: boolean }>({ saveId: null, inLeague: false });
   const pushToast = useCallback((message: string, tone: 'info' | 'success' | 'error' = 'info') => {
+    if (tone !== 'info') audioCue(tone === 'success' ? 'reward' : 'error');
     const id = Date.now() + Math.random();
     // Each toast times itself out (see ToastStack) based on its length; one already on screen isn't stacked again.
     setToasts((t) => (t.some((x) => x.message === message) ? t : [...t, { id, message, tone }]));
@@ -421,12 +428,19 @@ function App() {
   const [worldGamesRun, setWorldGamesRun] = useState<{ games: GamesId; country: string } | null>(null);
   const [boxscoreSource, setBoxscoreSource] = useState<'league' | 'exhibition'>('league');
 
+  useEventPlaytime(['app','yourCareer','story','career','hunt','perfect','survival','arcade','draft','worldGamesMode'].includes(screen), ['app','yourCareer','story'].includes(screen));
+  useEffect(() => { if (screen === 'app') noteCurryHigh(league); }, [league, screen]);
+
   const currentRoute = screen === 'support' ? '#/support' : screen === 'continue' ? '#/continue' : screen === 'menu' ? '#/menu' : screen === 'chooseTeam' ? '#/choose-team' : screen === 'hunt' ? '#/hunt' : screen === 'perfect' ? '#/82-0' : screen === 'survival' ? '#/survival' : screen === 'story' ? '#/story' : screen === 'yourCareer' ? '#/your-career' : screen === 'relics' ? '#/relics' : screen === 'shop' ? '#/shop' : screen === 'levelRoad' ? '#/level-road' : screen === 'trophyRoad' ? '#/trophy-road' : screen === 'seasonPass' ? '#/season-pass' : screen === 'career' ? '#/career' : screen === 'locker' ? '#/locker' : screen === 'profile' ? '#/profile' : screen === 'settings' ? '#/settings' : screen === 'create' ? '#/new-league' : screen === 'worldGamesMode' ? '#/world-games' : screen === 'friends' ? '#/friends' : screen === 'friendList' ? '#/friend-list' : screen === 'closet' ? '#/closet' : screen === 'holiday' ? '#/event' : screen === 'updates' ? '#/updates' : screen === 'clubs' ? '#/clubs' : screen === 'online' ? '#/online' : screen === 'draft' ? '#/draft' : screen === 'arcade' ? ARCADE_HASH[arcadeTab] : screen === 'community' ? (communityUser ? `#/u/${encodeURIComponent(communityUser)}` : '#/community')
     : activeSaveId ? routeHash({ saveId: activeSaveId, tab, player: selectedPlayerId,
       team: viewedTeamId, game: viewedGameId ?? undefined, source: boxscoreSource, sub: leagueSettingsSub }) : null;
   const { restoring, showPrivacy, closePrivacy } = useGameHistory(currentRoute, async (hash, isCurrent) => {
     await debouncedSave.flush();
     if (!isCurrent()) return;
+    if (debouncedSave.isDirty()) {
+      pushToast('Your latest decisions could not be saved. Stay here and retry saving before leaving.', 'error');
+      return;
+    }
     const route = parseRoute(hash);
     if (!route) {
       // A duel link: remember the run to start, then open its mode.
@@ -478,9 +492,17 @@ function App() {
   useEffect(() => {
     const flush = () => debouncedSave.flush();
     const onVisibility = () => { if (document.visibilityState === 'hidden') flush(); };
+    const beforeUnload = (event: BeforeUnloadEvent) => {
+      if (!debouncedSave.isDirty()) return;
+      event.preventDefault();
+      event.returnValue = '';
+      void flush();
+    };
+    window.addEventListener('beforeunload', beforeUnload);
     window.addEventListener('pagehide', flush);
     document.addEventListener('visibilitychange', onVisibility);
     return () => {
+      window.removeEventListener('beforeunload', beforeUnload);
       window.removeEventListener('pagehide', flush);
       document.removeEventListener('visibilitychange', onVisibility);
     };
@@ -715,7 +737,10 @@ function App() {
   const returnToMenu = async () => {
     jobs.resetAll();
     await debouncedSave.flush();
-    if (activeSaveId) await updateSave(activeSaveId, league, extras, controlledTeamId);
+    if (debouncedSave.isDirty()) { pushToast('Your latest decisions could not be saved. Retry saving before leaving.', 'error'); return; }
+    try {
+      if (activeSaveId) await updateSave(activeSaveId, league, extras, controlledTeamId);
+    } catch { pushToast('Your latest decisions could not be saved. Retry saving before leaving.', 'error'); return; }
     setScreen('menu');
     refreshSaves();
   };
@@ -1276,7 +1301,9 @@ function App() {
 
   const startRegularSeason = () => {
     setPlayoffBracket(null);
-    const ready = manageCoachRosters(finalizeNewSeasonSchedule(league), extras, [aiUserTeam(league, controlledTeamId)]);
+    const developedExtras = { ...extras, freeAgents: extras.freeAgents.map(finishDevelopment) };
+    setExtras(developedExtras);
+    const ready = manageCoachRosters(finalizeNewSeasonSchedule(league), developedExtras, [aiUserTeam(league, controlledTeamId)]);
     setLeague(withSeasonPreview(assignHoldouts(ready.league, ready.extras, seed + Number(ready.league.season ?? 0))));
     setExtras(ensureUpcomingDraftClass(ready.league, ready.extras));
     setTab('standings');
@@ -1329,7 +1356,7 @@ function App() {
       recordRebuild(p, activeSaveId);
       noteWeekRun('rebuild', { score: p.score, line: `${p.scenario.title}, ${'★'.repeat(p.stars)}${'☆'.repeat(3 - p.stars)}` }, `rebuild-${activeSaveId}`);
       if (p.config.weekly && p.official) recordWeekly('rebuild', p.config.weekly.week, { best: p.score, stars: p.stars, label: p.scenario.title, results: p.results.map(r => ({ wins: r.wins, losses: r.losses, finish: r.finish })) });
-      noteHolidayFinish(p.status === 'won', `rebuild-${activeSaveId}`);
+      noteHolidayFinish(p.status === 'won', `rebuild-${activeSaveId}`, new Date(), true);
       trackOnce(`rebuild-${activeSaveId}`, 'mode_finish', { mode: 'rebuild', result: p.status, stars: p.stars, weekly: !!p.config.weekly });
     }
   }, [screen, activeSaveId, challengeDone]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1797,13 +1824,13 @@ function App() {
   }
 
   return (
-    <TeamLinksProvider teams={league.teams} saveId={activeSaveId}><TeamIdentityProvider teams={league.teams} freeAgents={extras.freeAgents}><div className="app-shell">
+    <LeagueAwardProvider league={league}><TeamLinksProvider teams={league.teams} saveId={activeSaveId}><TeamIdentityProvider teams={league.teams} freeAgents={extras.freeAgents} history={league.franchiseHistory} currentChampion={league.playoffBracket?.championTeamId} season={league.season}><div className="app-shell">
       <DownloadButton />
       {screen === 'app' && !handsOff && !injuryLater && injuryDecisions > 0 && <InjuryDecisionDialog league={league} teamId={controlledTeamId}
         onChoose={(id, t) => { setLeague(l => chooseTreatment(l, id, t)); pushToast(`Treatment set for ${id}.`, 'success'); }} onLater={() => setInjuryLater(true)} />}
       {overlay === 'jump' && <QuickJump items={jumpItems} onPick={jumpTo} onClose={() => setOverlay(null)} />}
       {overlay === 'keys' && <ShortcutHelp onClose={() => setOverlay(null)} />}
-      <header className="topbar">
+      <header className="topbar"><PagePins name={tab} />
         <button className="sidebar-toggle" onClick={() => setSidebarCollapsed((v) => !v)} aria-label="Toggle navigation" aria-expanded={!sidebarCollapsed} aria-controls="game-navigation" title="Toggle navigation">
           <PixelIcon name="menu" />
         </button>
@@ -2200,7 +2227,7 @@ function App() {
         )}
 
         {tab === 'history' && (
-          <FranchiseHistoryPage league={league} onSelectPlayer={selectPlayer} />
+          <FranchiseHistoryPage league={league} extras={extras} controlledTeamId={controlledTeamId} onChange={setLeague} onSelectPlayer={selectPlayer} />
         )}
         {tab === 'teamHistory' && <TeamHistoryPage key={viewedTeamId || controlledTeamId || 'team'} league={league} extras={extras} initialTeamId={viewedTeamId || controlledTeamId} onSelectPlayer={selectPlayer} onOpenArchive={league.historical ? () => setTab('nbaArchive') : undefined} />}
         {tab === 'records' && <RecordsPage league={league} extras={extras} onSelectPlayer={selectPlayer} />}
@@ -2506,7 +2533,7 @@ function App() {
       </main>
       <ConsentBanner />
       </div>
-    </div></TeamIdentityProvider></TeamLinksProvider>
+    </div></TeamIdentityProvider></TeamLinksProvider></LeagueAwardProvider>
   );
 }
 

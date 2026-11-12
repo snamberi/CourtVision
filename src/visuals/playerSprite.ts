@@ -1,12 +1,13 @@
-/** Code-native, 40 × 52 pixel characters with a half-pixel detail layer. No image requests or saved-data changes.
+/** Code-native, 64 × 64 pixel characters on one integer pixel grid. No image requests or saved-data changes.
  * Keep the original ID hash and trait order: existing players retain their skin,
  * hair, beard and headwear choices while receiving the more detailed artwork.
  */
 import { likenessOf } from './likeness';
+import { buildPixelPlayer64, PLAYER_PIXELS, type PlayerView } from './pixelPlayer64';
 
-export const SPRITE_WIDTH = 40;
-export const SPRITE_HEIGHT = 52;
-export const PORTRAIT_VIEWBOX = '8 1 24 30';
+export const SPRITE_WIDTH = PLAYER_PIXELS;
+export const SPRITE_HEIGHT = PLAYER_PIXELS;
+export const PORTRAIT_VIEWBOX = '12 0 40 40';
 
 export const HAIR_STYLES = [
   'bald', 'lowFade', 'buzzCut', 'short', 'shortWide', 'crop', 'cropWide',
@@ -115,6 +116,7 @@ export function mix(a: string, b: string, amount: number): string {
 }
 
 export interface SpriteOptions {
+  view?: PlayerView;
   playerId: string;
   jerseyStyle?: 'classic' | 'stripe' | 'split';
   primary: string;
@@ -134,14 +136,16 @@ export function buildPlayerSprite(opts: SpriteOptions): SpritePath[] {
   return detailedSpritePaths(outlineGrid(buildPlayerGrid(opts)));
 }
 
+export function buildPlayerGrid(opts: SpriteOptions): SpriteGrid { return buildPixelPlayer64(opts); }
+
 export type SpriteGrid = (string | null)[][];
 /** The avatar as a colour grid (no outline yet): the court animations reuse its head, face, hair and jersey. */
-export function buildPlayerGrid({ playerId, primary, secondary, jerseyNumber, age, jerseyStyle, pose, legs = true, appearance }: SpriteOptions): SpriteGrid {
+export function buildLegacyPlayerGrid({ playerId, primary, secondary, jerseyNumber, age, jerseyStyle, pose, legs = true, appearance }: SpriteOptions): SpriteGrid {
   const t = playerTraits(playerId, appearance);
-  const grid: (string | null)[][] = Array.from({ length: SPRITE_HEIGHT }, () => Array(SPRITE_WIDTH).fill(null));
+  const grid: (string | null)[][] = Array.from({ length: 52 }, () => Array(40).fill(null));
   const rect = (x: number, y: number, w: number, h: number, color: string) => {
-    for (let yy = Math.max(0, y); yy < Math.min(SPRITE_HEIGHT, y + h); yy++)
-      for (let xx = Math.max(0, x); xx < Math.min(SPRITE_WIDTH, x + w); xx++) grid[yy][xx] = color;
+    for (let yy = Math.max(0, y); yy < Math.min(52, y + h); yy++)
+      for (let xx = Math.max(0, x); xx < Math.min(40, x + w); xx++) grid[yy][xx] = color;
   };
   const skin = t.skin;
   const skinLight = mix(skin, '#ffe9cb', 0.25);
@@ -219,6 +223,7 @@ export function buildPlayerGrid({ playerId, primary, secondary, jerseyNumber, ag
   }
 
   // Uniform: armholes, side panels, neckline, chest fold, waistband and shorts.
+  rect(11, 26, 18, 11, kit);
   rect(12, 25, 16, 14, kit);
   rect(12, 26, 2, 12, trimDark);
   rect(14, 27, 2, 10, kitLight);
@@ -245,7 +250,8 @@ export function buildPlayerGrid({ playerId, primary, secondary, jerseyNumber, ag
   rect(12, 40, 2, 2, trimDark);
   rect(26, 40, 2, 2, trimDark);
   // Sewn panels, shoulder piping, a small chest patch and fabric folds.
-  rect(13, 28, 1, 9, trimLight);
+  rect(12, 28, 1, 9, trimLight);
+  rect(27, 28, 1, 9, trimLight);
   rect(24, 34, 1, 3, kitLight);
   rect(22, 36, 3, 1, kitDark);
   rect(15, 36, 3, 1, kitDark);
@@ -276,6 +282,7 @@ export function buildPlayerGrid({ playerId, primary, secondary, jerseyNumber, ag
   rect(15, 22, 10, 2, skinDark);
   rect(11, 10, 2, 10, skinLight);
   rect(13, 9, 11, 2, skinLight);
+  rect(12, 12, 2, 5, skinLight);
   rect(26, 11, 3, 9, skinDark);
   rect(25, 20, 3, 2, skinDark);
   rect(14, 21, 4, 1, skinLight);
@@ -289,6 +296,7 @@ export function buildPlayerGrid({ playerId, primary, secondary, jerseyNumber, ag
   const eyeH = t.eyeStyle === 'wide' ? 4 : t.eyeStyle === 'relaxed' ? 2 : 3;
   for (const x of [13, 23]) {
     rect(x, eyeY - 2, 4, 1, hairDark);
+    rect(x + (x === 13 ? 1 : 0), eyeY - 1, 3, 1, hairDark);
     rect(x, eyeY, 4, eyeH, WHITE);
     rect(x + 2, eyeY, 2, eyeH, t.eyeColor);
     rect(x + 3, eyeY + 1, 1, eyeH - 1, OUTLINE);
@@ -477,26 +485,7 @@ export function gridToPaths(outlined: SpriteGrid, pixel = 1): SpritePath[] {
   return [...paths].map(([fill, runs]) => ({ fill, d: runs.join('') }));
 }
 
-/** Half-pixel material edges add definition at portrait size without changing the
- * logical grid, silhouette, animation anchors, or saved appearance. No blur/noise.
- * One extra shade per colour keeps SVGs batched and the palette deliberately small. */
+/** Keep every detail on the same logical pixel grid as the silhouette. */
 export function detailedSpritePaths(grid: SpriteGrid): SpritePath[] {
-  const H = grid.length, W = grid[0]?.length ?? 0;
-  const detail: SpriteGrid = Array.from({ length: H * 2 }, () => Array(W * 2).fill(null));
-  const shades = new Map<string, string>();
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-    const c = grid[y][x];
-    if (!c) continue;
-    for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++) detail[y * 2 + dy][x * 2 + dx] = c;
-    // Leave ink, eyes and isolated single-pixel embroidery crisp.
-    if (c === OUTLINE || !/^#[\da-f]{6}$/i.test(c)) continue;
-    const sameRight = grid[y][x + 1] === c, sameBelow = grid[y + 1]?.[x] === c;
-    if (grid[y - 1]?.[x] !== c && sameRight && sameBelow) {
-      let light = shades.get(c);
-      if (!light) { light = mix(c, WHITE, .18); shades.set(c, light); }
-      detail[y * 2][x * 2] = light;
-      detail[y * 2][x * 2 + 1] = light;
-    }
-  }
-  return gridToPaths(detail, .5);
+  return gridToPaths(grid);
 }

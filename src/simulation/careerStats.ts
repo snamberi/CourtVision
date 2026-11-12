@@ -1,3 +1,4 @@
+import { settlePromises50 } from './leagueStories50';
 import { seasonStintsFor } from './stints';
 import type { PlayerSeason, SeasonStatTotals, SeasonMilestones, CareerSeasonRecord, MissingStat } from './types';
 import { emptySeasonStatTotals, emptySeasonMilestones } from './types';
@@ -77,7 +78,7 @@ export function applyGameResultToLeague(league: League, result: GameResult, opts
     if (!box) return t;
     return { ...t, seasons: t.seasons.map((s) => playoffs ? applyToPlayoffs(s, box.players[s.playerId]) : applyToSeason(s, box.players[s.playerId], feats)) };
   });
-  return { ...league, teams, recordBook };
+  return settlePromises50({ ...league, teams, recordBook }, result);
 }
 function applyToPlayoffs(season: PlayerSeason, line: PlayerStatLine | undefined): PlayerSeason {
   if (!line) return season;
