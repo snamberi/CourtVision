@@ -35,3 +35,25 @@ describe('AdSense placement and site quality', () => {
     expect(page).toContain('href="/guides/"');
   });
 });
+
+import privacy from '../legal/privacyPolicy.json';
+import termsPage from '../../public/terms.html?raw';
+import faqPage from '../../public/faq.html?raw';
+import contactPage from '../../public/contact.html?raw';
+
+describe('terms, age and contact', () => {
+  it('publishes Terms of Use, links it and lists it in the sitemap', () => {
+    expect(termsPage).toContain('<h1>Terms of Use</h1>');
+    expect(termsPage).toContain('13 or older');
+    expect(viteConfig).toContain("'terms.html'");
+    expect(faqPage).toContain('terms.html');
+    expect(menuSource).toContain('href="/terms.html"');
+  });
+  it('gives a support email and sets accounts at 13 and up, with no Support Shop left in the policy', () => {
+    expect(privacy.contactEmail).toBe('papashvilisaba4@gmail.com');
+    expect(contactPage).toContain('mailto:papashvilisaba4@gmail.com');
+    const text = JSON.stringify(privacy);
+    expect(text).toMatch(/13 or older to create an account/);
+    expect(text).not.toMatch(/Paddle|Support Shop|No-Ads|Supporter Pass/);
+  });
+});

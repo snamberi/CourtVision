@@ -16,7 +16,7 @@ and also works.
 | Piece | Vercel | Cloudflare Worker | Cloudflare Pages |
 |---|---|---|---|
 | Config | none | `wrangler.jsonc` (name `courtvision`) | dashboard settings |
-| `/api/sync`, `/api/pvp`, `/api/billing` | `api/*.js` | `worker/index.ts` | `functions/api/*.ts` |
+| `/api/sync`, `/api/pvp`, `/api/social` | `api/*.js` | `worker/index.ts` | `functions/api/*.ts` |
 | Game files | `dist` | `dist` (static assets) | `dist` |
 
 All three versions of the API run the same handlers in `server/`. Also shared:
@@ -102,10 +102,6 @@ currently used on Vercel, remove it from the Vercel project afterwards. Update `
   site. Discord and Google need no change.
 - **Google AdSense → Sites:** add the new domain. `ads.txt` is served at `/ads.txt` already.
 - **Google Search Console** (optional): add the new address and submit `/sitemap.xml`.
-- **Paddle** (later, when payments are on): notification destination URL → `https://<new address>/api/billing`, and
-  add the `PADDLE_*` values from `BILLING_SETUP.md`:
-  - the webhook secret, API key and product IDs under A3;
-  - the `VITE_PADDLE_*` client token and price IDs under A2.
 
 ### A7. Analytics
 
@@ -166,7 +162,6 @@ What was checked:
 - cache headers and the fallback for unknown paths;
 - `ads.txt`;
 - `/api/sync` (signed out: 401; signed in: synced);
-- `/api/pvp`;
-- `/api/billing` (signed webhook recorded, forged one rejected).
+- `/api/pvp`.
 
 The first real deployment happens from your Cloudflare account.

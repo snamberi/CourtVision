@@ -838,7 +838,7 @@ CourtVision is a basketball management and simulation game by NineFoldVision. Yo
 
 ## Is Court Vision free?
 
-Yes. You can play the browser game for free. The web version includes advertising support and an optional Support Shop with passes and supporter bundles; buying something is not required to start playing. Ad availability depends on your settings, connection and whether an ad is served.
+Yes. Court Vision is free to play, with no purchases. The web version is supported by advertising. Ad availability depends on your settings, connection and whether an ad is served, and the offline Windows edition shows no ads.
 
 ## How do I start playing?
 
@@ -848,7 +848,7 @@ For your first franchise, pick a team, inspect its roster, set a rotation and si
 
 ## Do I need an account?
 
-No account is required for local single-player play. An optional account enables cloud progress and online features such as posting results and maintaining a public profile. Those features require an internet connection and an available account service; they are not the same as local saves.
+No account is required for local single-player play. An optional account enables cloud progress and online features: leaderboards, a public profile, PvP, clubs and clans, friend gifts and Online Leagues. You must be 13 or older to create an account. Online features require an internet connection and an available account service; they are not the same as local saves.
 
 ## Can I play on my phone?
 
@@ -1002,7 +1002,7 @@ Signing in, cloud sync, online boards and other server-backed features need a co
 
 ## I found a bug or have an idea
 
-Use the [Contact and support page](https://courtvisiongame.com/contact.html) to reach the existing Discord community. Include your mode, browser, device, what you expected, what happened and the steps that trigger it. A screenshot of an error can help.
+Use the [Contact and support page](https://courtvisiongame.com/contact.html): post in the Discord community or email [papashvilisaba4@gmail.com](mailto:papashvilisaba4@gmail.com). Include your mode, browser, device, what you expected, what happened and the steps that trigger it. A screenshot of an error can help.
 
 Do not post passwords, sign-in links or account tokens. Backup files contain your game data; share one only when needed for diagnosis and after checking what it includes. For recovery steps, see the crash and saving answers above.
 
@@ -1012,11 +1012,15 @@ The web game supports optional Google or Discord sign-in through Supabase Auth. 
 
 Choose your GM name and check the account’s sync status when moving between devices. On a shared computer, take care which account is signed in: switching accounts can replace the local set of synced profile progress with the other account’s progress.
 
+## Is there an age requirement?
+
+Anyone can play locally without an account. To create an account you must be 13 or older, and you confirm this before signing in. Accounts unlock public features such as GM names, profiles, leaderboards, clubs and clans. See the [Terms of Use](https://courtvisiongame.com/terms.html) and the [Privacy Policy](https://courtvisiongame.com/privacy.html).
+
 ## What information is stored with my account?
 
 The account system uses an account identifier, email and provider details, a GM profile, and supported game progress. Public profiles and boards display information such as your GM name, level, statistics and submitted results. Retired created players can also be public.
 
-Local league saves are separate from cloud profile progress. Optional online features and purchases can process additional records. Read the [Privacy Policy](https://courtvisiongame.com/privacy.html) for the current disclosures, and avoid putting private information in your public GM name.
+Local league saves are separate from cloud profile progress. Optional online features such as Online Leagues, clubs, clans and friend gifts store additional records. Read the [Privacy Policy](https://courtvisiongame.com/privacy.html) for the current disclosures, and avoid putting private information in your public GM name.
 
 If you deliberately create or join an Online League, its shared league state is uploaded to Supabase storage so other members can play it. That is separate from ordinary single-player franchise saves. Your Career also includes account-synced player progress; this differs from an in-progress Career Mode world.
 
@@ -1024,7 +1028,7 @@ If you deliberately create or join an Online League, its shared league state is 
 
 The account screen in Community includes account deletion. It calls the server to delete the account; wait for confirmation rather than assuming a failed request worked. Local progress is separate and is not erased just by deleting the account.
 
-If you have a recurring Support Shop pass, cancel the subscription first: deleting a game account is not the same as cancelling billing. For a privacy request or a deletion problem, use [Contact and support](https://courtvisiongame.com/contact.html).
+For a privacy request or a deletion problem, email [papashvilisaba4@gmail.com](mailto:papashvilisaba4@gmail.com). See [Contact and support](https://courtvisiongame.com/contact.html).
 
 ## How are cookies and browser storage used?
 
@@ -1034,7 +1038,7 @@ Open **Cookie Settings** in the game to revisit the configured advertising conse
 
 ## Does CourtVision display advertisements?
 
-The web version is configured for Google AdSense banner placements. Whether an ad appears depends on consent handling, ad availability, connection, blockers and any active ad-free entitlement. Advertising does not need to load for local gameplay to work. The offline Windows build excludes network ads.
+The web version is configured for Google AdSense banner placements. Whether an ad appears depends on consent handling, ad availability, connection and blockers. Advertising does not need to load for local gameplay to work. The offline Windows build excludes network ads.
 
 Google’s regional consent message is managed through the site’s advertising configuration. Read the [Privacy Policy](https://courtvisiongame.com/privacy.html) and use the game’s Cookie Settings for your available choices.
 
@@ -1067,6 +1071,8 @@ The biggest recent additions to Court Vision, newest first.
 - Expanded guides: the [All-Time Draft](https://courtvisiongame.com/guides/all-time-draft.html) guide now explains the draft pool, snake order, how AI GMs draft by need and difficulty, and the league after the draft. [Real NBA history](https://courtvisiongame.com/guides/real-nba-history.html) now covers rating smoothing, Real Player Development, real draft classes and debuts, Real vs Yours and Time Machine.
 - The main menu now has a Learn Court Vision section that links every guide.
 - The privacy policy now covers Online Leagues and social features such as clubs, gifts and profile visits, and fixes its descriptions of accounts, purchases and ad consent.
+- The Support Shop has been removed: Court Vision is completely free, with no purchases.
+- New [Terms of Use](https://courtvisiongame.com/terms.html). Accounts are for ages 13 and up, confirmed before signing in, and support is now available by email on the [Contact](https://courtvisiongame.com/contact.html) page.
 
 ## October 2026: the 82-0 Challenge
 
@@ -1136,7 +1142,7 @@ The biggest recent additions to Court Vision, newest first.
 
 URL: https://courtvisiongame.com/contact.html
 
-CourtVision is developed by NineFoldVision. The existing [Discord community](https://discord.gg/5uGK5HDS8e) is the published way to reach the developer, report problems and discuss the game. Discord is an external service and requires its own account to participate.
+CourtVision is developed by NineFoldVision. Email [papashvilisaba4@gmail.com](mailto:papashvilisaba4@gmail.com) for support, privacy requests and anything you would rather not post publicly. The [Discord community](https://discord.gg/5uGK5HDS8e) is the place to report problems in the open and discuss the game; Discord is an external service and requires its own account.
 
 ## Report a bug
 
@@ -1150,12 +1156,95 @@ Describe the mode and action that failed, the result you expected and what actua
 
 Do not clear browser data when investigating a missing save. First check the same browser and profile, then look for save recovery points or a downloaded backup. The [FAQ](https://courtvisiongame.com/faq.html) explains the difference between local saves and cloud progress.
 
-Account deletion is available from the account screen in Community. If it fails, report the error without sharing authentication details. Cancel any recurring Support Shop subscription before deleting the account.
+Account deletion is available from the account screen in Community. If it fails, report the error without sharing authentication details.
 
 ## Privacy requests
 
-Read the [Privacy Policy](https://courtvisiongame.com/privacy.html) for the data disclosures and controls. If you need help reaching the developer about a privacy request, use the Discord community to ask for an appropriate private contact route; do not post personal information in public channels. No response-time guarantee is made.
+Read the [Privacy Policy](https://courtvisiongame.com/privacy.html) for the data disclosures and controls. Email privacy requests, such as access to or deletion of your account data, to [papashvilisaba4@gmail.com](mailto:papashvilisaba4@gmail.com). Include your GM name, but never a password or sign-in link. Do not post personal information in public Discord channels.
 
 ## Ideas and gameplay questions
 
 For a gameplay question, begin with the [FAQ](https://courtvisiongame.com/faq.html), [beginner guide](https://courtvisiongame.com/how-to-play.html) or [mode guides](https://courtvisiongame.com/guides/). When suggesting a change, explain the situation it would improve and which mode it affects. Keeping reports specific helps a solo developer reproduce and prioritize them.
+
+---
+
+# Terms of Use
+
+URL: https://courtvisiongame.com/terms.html
+
+Last updated November 12, 2026. These terms apply when you play Court Vision, the free basketball management and simulation game by NineFoldVision, on courtvisiongame.com, as an installed app, or as the offline Windows edition. By playing you agree to them. If you do not agree, please do not use the game.
+
+## 1. Who can play
+
+- Anyone can play Court Vision without an account.
+- You must be **13 or older** to create an account. Where local law sets a higher age for agreeing to online services (up to 16 in some EU countries), you must meet that age or have a parent's or guardian's permission.
+- If you use the game on behalf of someone else, such as a school or club, you confirm that you are allowed to accept these terms for them.
+
+## 2. The game is free
+
+Court Vision is free to play and has no purchases. The web version shows advertising to help pay for it; the offline Windows edition does not. Advertising is described in the [Privacy Policy](https://courtvisiongame.com/privacy.html).
+
+In-game items such as coins, Lucky Spins, relics, cosmetics, levels, trophies and rewards have no real-world money value. They cannot be bought, sold, traded for money or transferred outside the game. Their rules and amounts may change as the game is updated.
+
+## 3. Accounts
+
+- Accounts are optional and use sign-in with Discord or Google. Keep that sign-in secure: anything done while you are signed in is treated as done by you.
+- One person per account. Do not share an account, or sign in to someone else's.
+- You can delete your account at any time from Community → Your account. What deletion removes is explained in the [Privacy Policy](https://courtvisiongame.com/privacy.html).
+- We may suspend or remove an account that breaks these terms, for example one with an offensive name or faked leaderboard results.
+
+## 4. GM names, clubs and other things you create
+
+Some things you create are shown to other players: your GM name and profile, club and clan names, tags, mottos and descriptions, and the teams and trades in an Online League you share with friends. You keep ownership of what you create. You allow us to store and display it in the game for as long as it is part of the game.
+
+Names and text you create must not:
+
+- be hateful, harassing, sexually explicit, violent or threatening;
+- impersonate another person, another player or Court Vision staff;
+- include personal information, such as a real full name, address, phone number or email address;
+- advertise, link to other services, or break the law or anyone else's rights.
+
+Players can report names. We may rename or remove anything that breaks these rules, without notice.
+
+## 5. Fair play
+
+Single-player leagues are yours to play however you like, including Sandbox mode, editing players and experimental badges.
+
+Leaderboards, ranked seasons, PvP, clubs, clans, weekly and daily challenges, and Online Leagues are shared with other players. In those, do not:
+
+- submit results you did not earn by playing, or change game data, requests or saves to fake results;
+- use bots, scripts or automation to play, farm rewards or send requests to the game's servers;
+- exploit a bug to gain an advantage instead of reporting it;
+- try to get into other players' accounts or data, or disrupt the game's servers or other players' games.
+
+We may remove results, rewards or leaderboard entries that break these rules, and suspend accounts that keep doing so.
+
+## 6. Basketball data and ownership
+
+Court Vision is an independent fan project. It is **not** affiliated with or endorsed by the NBA, its teams or its players. Real names and historical statistics are used to describe real basketball history; statistics come from Basketball-Reference.com, and every rating in the game is Court Vision's own estimate. Team crests and artwork are drawn for the game and are not official logos.
+
+The game's code, artwork, text, sounds and design belong to NineFoldVision. You may share screenshots, clips and share cards of your games. Do not copy, resell or republish the game or its artwork as your own.
+
+## 7. Saves and availability
+
+- Leagues and most progress are saved in your browser on your own device. Clearing your browser's site data deletes them. Use **Backup everything** regularly to keep a copy.
+- Online features need an internet connection and the game's servers. They may sometimes be unavailable, and they may change or end.
+- The game is updated often. Features, modes, balance and rules can change, and a change can affect existing saves or progress.
+
+## 8. No warranty and limits of liability
+
+Court Vision is provided free and "as is". As far as the law allows, we make no promise that it will always be available, error-free or suitable for a particular purpose, or that saves or progress will never be lost.
+
+As far as the law allows, NineFoldVision is not liable for indirect or consequential losses, or for lost data, saves or in-game items, arising from your use of the game. Nothing in these terms limits any rights you have under the consumer protection laws where you live that cannot be limited by agreement.
+
+## 9. Links and advertising
+
+The game links to other services, such as Discord, and shows ads served by Google. Those services and advertisers are run by others under their own terms and privacy policies. We are not responsible for their content.
+
+## 10. Changes to these terms
+
+We may update these terms as the game changes. When we do, we change the date at the top of this page; if a change is significant, we will say so on the site or in the game. Continuing to play after an update means you accept the new terms.
+
+## 11. Contact
+
+Questions about these terms, a report about a name or a player, or a request about your account: email [papashvilisaba4@gmail.com](mailto:papashvilisaba4@gmail.com), or see [Contact and support](https://courtvisiongame.com/contact.html).

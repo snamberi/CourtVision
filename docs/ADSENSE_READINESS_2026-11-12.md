@@ -35,10 +35,11 @@ These steps happen in Google's and Cloudflare's dashboards, so they cannot be do
    - Submit the sitemap.
    - Run URL Inspection on the home page and two new guides. Check that Googlebot is not blocked, since Cloudflare-managed robots rules were noted in the last audit.
 5. **Wait for indexing:** wait until the new guides are indexed, which is often one to two weeks, then click **Request review** in AdSense. Requesting review straight after deploying tends to reuse the old crawl.
-6. **Still open from the earlier audit:**
-   - Terms of Use. This needs your decisions on governing law, purchases and refunds.
-   - A private support email in the privacy policy (`contactEmail` is empty).
-   - Your decision on the age statement now that accounts and social features exist.
+6. **Earlier audit items, now done:**
+   - [Terms of Use](../public/terms.html) published and linked from every footer and the sign-in dialog.
+   - Support email `papashvilisaba4@gmail.com` in the privacy policy and on the Contact page.
+   - Accounts are 13+. The age is confirmed with a checkbox before sign-in, and the policy (section 11), FAQ and Terms say so.
+7. **Support Shop removed.** The passes, bundles, Paddle checkout, the `/api/billing` webhook and the purchase-only cosmetics are gone. To delete the old `entitlements` table, run `supabase/migrations/2026-11-12-remove-support-shop.sql` once in the Supabase SQL editor. Download any order records you need from Paddle first. Also remove the Paddle notification destination and the `PADDLE_*` variables from Cloudflare.
 
 ## Verification
 

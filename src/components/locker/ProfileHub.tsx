@@ -22,18 +22,14 @@ import { modeStats, MODE_ACHIEVEMENTS, isEarned } from '../../profile/modeAchiev
 import { FEATS_EVENT } from '../../profile/feats';
 import { DAILY_EVENT } from '../../profile/dailyGoals';
 import { ModeAchievements } from './ModeAchievements';
-import { PassesPanel } from './PassesPanel';
-import { passesOnSale } from '../../billing/billing';
 import '../hunt/hunt.css';
 import '../career/career.css';
 import './locker.css';
 
-export type ProfileTab = 'profile' | 'trophies' | 'achievements' | 'passes';
-const TABS: { id: ProfileTab; label: string }[] = ([
+export type ProfileTab = 'profile' | 'trophies' | 'achievements';
+const TABS: { id: ProfileTab; label: string }[] = [
   { id: 'profile', label: 'Profile' }, { id: 'achievements', label: 'Achievements' }, { id: 'trophies', label: 'Trophy room' },
-  { id: 'passes', label: 'Passes' },
-// The Passes tab appears only once checkout links are configured (docs/BILLING_SETUP.md).
-] satisfies { id: ProfileTab; label: string }[]).filter(t => t.id !== 'passes' || passesOnSale());
+];
 
 /**
  * Your player profile: your card and cosmetics, the level road, and everything you have won in this browser (what the
@@ -81,7 +77,6 @@ export function ProfileHub({ onExit, onCloset, initialTab = 'profile' }: { onExi
     <div className="profile-tabs code-mode-actions" role="tablist" aria-label="Profile sections">{TABS.map(t => <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>{t.label}</button>)}</div>
 
     {tab === 'profile' && <ProfilePanel onCloset={onCloset} extras={<><div className="profile-extras"><LegacyPanel legacy={legacy} compact /><FavoritesPanel /></div><TrophyCase /><RelicShelf /></>} />}
-    {tab === 'passes' && <PassesPanel />}
     {tab === 'achievements' && <ModeAchievements stats={modes} rarity={rarity} />}
 
     {tab === 'trophies' && <>

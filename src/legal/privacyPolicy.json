@@ -2,7 +2,7 @@
   "title": "Privacy Policy",
   "product": "CourtVision",
   "lastUpdated": "November 12, 2026",
-  "contactEmail": "",
+  "contactEmail": "papashvilisaba4@gmail.com",
   "intro": [
     "This Privacy Policy explains what information CourtVision (\"CourtVision\", \"we\", \"us\", \"our\") handles when you use the CourtVision basketball simulator, both the web version and the downloadable Windows edition. We wrote it to be read, so it is plain and specific about what the app actually does.",
     "**The short version:** Playing needs no account, and your GM leagues stay in your own browser unless you choose to play an Online League with friends. If you choose to create an optional account (web version only), we store your GM name, the sign-in details your provider gives us, your game progress so it follows you across devices and appears on public leaderboards, and the data of any social features you use (Section 7). The web version uses its host’s cookie-free web analytics (Cloudflare or Vercel) and Umami Cloud for aggregate traffic statistics and Google AdSense for advertising when allowed. The offline Windows edition loads none of these services."
@@ -18,9 +18,9 @@
             "**No account needed to play.** Playing never requires your name, email address, phone number or password. An account is optional (web version only) and is described in Section 7.",
             "**Your leagues stay on your device.** Saved leagues, rosters, settings and history are stored in your browser (IndexedDB and localStorage) and are not uploaded to us. The exceptions are ones you choose: an Online League you create or join with friends, and an active Career world you save to your account (Section 7).",
             "**Web traffic statistics.** The web version uses our host's web analytics (Cloudflare Web Analytics, or Vercel Web Analytics while the site is served by Vercel) and Umami Cloud, none of which sets analytics cookies. We send page categories such as Coaching or Dashboard, and to Umami a few anonymous gameplay events (for example that a game mode was started or finished), not league contents, save identifiers, player names, or game identifiers. See Section 7.",
-            "**The web version shows ads** (none with a No-Ads or Supporter Pass). Ads are served by Google AdSense, which may use cookies and similar technologies. See Section 5.",
+            "**The web version shows ads.** Ads are served by Google AdSense, which may use cookies and similar technologies. See Section 5.",
             "**The Windows edition makes no network requests of its own.** It runs from a local server on your own computer, shows no Google ads, and keeps everything on your machine.",
-            "**Not for children under 13.** See Section 11."
+            "**Accounts are for ages 13 and up.** You can play without an account at any age. See Section 11."
           ]
         }
       ]
@@ -51,7 +51,7 @@
           "type": "ul",
           "items": [
             "your name, postal address or phone number, and any password (sign-in uses Discord or Google, so we never see or store a password);",
-            "payment information (CourtVision is free to play; optional Support Shop purchases are processed by Paddle, which collects payment details itself, see Section 7);",
+            "payment information (CourtVision is free and has no purchases);",
             "your GM leagues, rosters, trades, notes and custom players, except an Online League you choose to share with friends; active Career worlds stay on your device unless you explicitly save them to your account;",
             "your precise location, contacts, photos, microphone, or camera data;",
             "government identifiers, health information, or other sensitive personal information."
@@ -272,10 +272,6 @@
         },
         {
           "type": "p",
-          "text": "**Support Shop (web version only, optional).** The passes (the monthly No-Ads Pass and Supporter Pass) and the one-time supporter bundles are sold by our reseller [Paddle](https://www.paddle.com/), which acts as the merchant of record: it collects your payment details, billing address and email, handles tax, receipts, subscriptions and refunds, and processes them under [its own privacy policy](https://www.paddle.com/legal/privacy). We never see your card details. Only when you open a checkout does the game load Paddle's checkout from Paddle's servers; it passes your account identifier so that Paddle can tell us which account bought the pass; we then store only what the account owns (which bundles, and the date each monthly pass is paid until), Paddle's order, subscription and customer numbers, and the link to manage your subscription. A copy of what you own is kept in your browser's local storage so ads stay off offline. Passes are removed when you delete your account; deleting the account does not cancel a monthly pass, so cancel it first in the Support Shop. When you cancel from the game, we ask Paddle to cancel that subscription for you."
-        },
-        {
-          "type": "p",
           "text": "**Umami Cloud analytics (web version only).** We also use Umami, a cookie-free analytics service, to count page views. It receives sanitized page categories (for example /game/standings), plus the referrer, browser, operating system, device type, screen size, language and approximate location (country, region and city) derived from your IP address. Umami does not use cookies or store your IP address; it counts visitors with a salted hash that rotates periodically. Our integration turns off automatic tracking and strips save IDs, player or game details, query strings and fragments from every page view. We also send a small set of anonymous gameplay events so we know which parts of the game are played: which mode was started or finished and its broad outcome (for example \"career, retired, Hall of Fame\" or \"League Hunt, lost at series 6\"), share-card and backup use, and app installs. Events carry only fixed labels and whole numbers, never names you typed, league contents, save or player identifiers, or free text. No events are sent when your browser sends a Do Not Track or Global Privacy Control signal. See [Umami's privacy information](https://umami.is/privacy). It is not loaded in the Windows edition."
         },
         {
@@ -346,7 +342,7 @@
       "blocks": [
         {
           "type": "p",
-          "text": "CourtVision is intended for a general audience and is not directed to children under 13 (or under 16 where local law sets that age). We do not knowingly collect personal information from children, and the game does not ask for any. Parents and guardians who believe a child has provided personal information to us can contact us and we will act on it. Parents can also use their browser's or device's parental controls, and the ad opt-outs in Section 5, to limit advertising on the web version."
+          "text": "CourtVision is intended for a general audience. You can play without an account at any age, and playing locally does not ask for personal information. You must be 13 or older to create an account, because accounts involve an email address from your sign-in provider and public features such as GM names, profiles, leaderboards, clubs and clans; the game asks you to confirm your age before signing in. Where local law sets a higher age for consent to online services (up to 16 in some EU countries), you need to meet that age or have a parent's or guardian's permission. We do not knowingly keep accounts of children under 13. If you believe a child under 13 has created an account, email us at the address in Section 14 and we will delete it. Parents can also use their browser's or device's parental controls, and the ad choices in Section 5, to limit advertising on the web version."
         }
       ]
     },

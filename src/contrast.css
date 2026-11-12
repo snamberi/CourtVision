@@ -355,6 +355,8 @@ html.lite *, html.lite *::before, html.lite *::after { backdrop-filter: none !im
 .cloud-modal .share-box { width: min(460px, 100%); text-align: left; }
 .cloud-modal h2 { margin: 6px 0 6px; }
 .signin-options { display: grid; gap: 8px; margin: 14px 0; }
+.signin-age { display: flex; gap: 8px; align-items: flex-start; margin: 12px 0 0; font-size: 14px; line-height: 1.45; cursor: pointer; }
+.signin-age input { margin-top: 3px; flex: none; width: 18px; height: 18px; }
 .signin-options button { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 10px 14px; font-weight: 600; }
 .signin-discord { background: var(--c-bg-5865f2, #5865f2) !important; border-color: var(--c-border-3c45a5, #3c45a5) !important; color: var(--c-fg-ffffff, #fff) !important; }
 .signin-google { background: var(--c-bg-ffffff, #fff) !important; border-color: var(--c-border-c9ced6, #c9ced6) !important; color: var(--c-fg-1f1f1f, #1f1f1f) !important; }

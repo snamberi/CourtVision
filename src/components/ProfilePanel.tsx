@@ -12,7 +12,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { xpParts, totalXp, levelFor, equipped, equip, rankTitles, localName, setLocalName, unlockOpen, unlockHow, listedFor, FRAMES, FLOORS, PHONES, TITLES, PROFILE_EVENT, type Unlock } from '../profile/profile';
 import { OWNER_TITLE, SOVEREIGN_TITLE } from '../profile/ownerAccess';
 import { FOUNDING_TITLE } from '../profile/founding';
-import { ALBUM_TITLES, EVENT_TITLES, ICONS, NAME_COLORS, HONORS, MODE_TITLES, SUPPORTER_TITLE, PRODUCT_TITLES, unlockContext, isOpen, earnedExtraTitles, type UnlockContext } from '../profile/cosmetics';
+import { ALBUM_TITLES, EVENT_TITLES, ICONS, NAME_COLORS, HONORS, MODE_TITLES, unlockContext, isOpen, earnedExtraTitles, type UnlockContext } from '../profile/cosmetics';
 import { DAILY_EVENT } from '../profile/dailyGoals';
 import { LEGACY_EVENT } from '../storage/gmLegacy';
 import { PixelIcon } from './PixelIcon';
@@ -24,8 +24,6 @@ import { STREAK_REWARDS } from '../retention/streak';
 import { PASS_REWARDS } from '../retention/pass';
 import { MISSION_TITLES } from '../retention/missions';
 import { useAccount } from '../cloud/account';
-import { passesOnSale, onSale } from '../billing/billing';
-import { productById, type ProductId } from '../billing/products';
 import { ThemeSection } from './ThemePicker';
 import { PetSprite } from './locker/PetSprite';
 import './locker/playerPets.css';
@@ -75,10 +73,7 @@ function PickCount({ n, of }: { n: number; of: number }) {
 }
 const pickerId = (label: string) => `pick-${label.toLowerCase().replace(/[^a-z]+/g, '-').replace(/-+$/, '')}`;
 
-/** Supporter and Support Shop cosmetics are listed only while they're on sale (or already owned). */
-const showSupporter = (c: UnlockContext) => c.supporter || passesOnSale();
-const showProduct = (rule: object, c: UnlockContext) => !('product' in rule) || (c.products ?? []).includes((rule as { product: ProductId }).product) || onSale((rule as { product: ProductId }).product);
-const listed = <T extends { rule: object }>(list: T[], c: UnlockContext) => list.filter(x => (!('supporter' in x.rule) || showSupporter(c)) && showProduct(x.rule, c) && (!('staff' in x.rule) || !!c.staff) && !eventPieceHidden('shop' in x.rule ? (x.rule as { shop: string }).shop : null, c.shop ?? []));
+const listed = <T extends { rule: object }>(list: T[], c: UnlockContext) => list.filter(x => (!('staff' in x.rule) || !!c.staff) && !eventPieceHidden('shop' in x.rule ? (x.rule as { shop: string }).shop : null, c.shop ?? []));
 
 /** Every title and where it comes from: levels, ranked seasons, leaderboards and the modes. */
 function titleGroups(c: UnlockContext) {
@@ -88,8 +83,6 @@ function titleGroups(c: UnlockContext) {
     { label: 'Ranked', items: ['Gold GM', 'Platinum GM', 'Diamond GM', 'Legend GM'].map((t, i) => ({ title: t, open: ranked.includes(t), how: `Reach ${['Gold', 'Platinum', 'Diamond', 'Legend'][i]} in a ranked season` })) },
     { label: 'Leaderboards', items: HONORS.map(h => ({ title: h.title, open: c.honors.includes(h.id), how: h.how })) },
     { label: 'Achievements', items: MODE_TITLES.map(m => ({ title: m.title, open: c.modes.includes(m.mode), how: m.how })) },
-    { label: 'Supporter', items: [{ title: SUPPORTER_TITLE, open: c.supporter, how: 'Supporter pass' },
-      ...PRODUCT_TITLES.filter(t => (c.products ?? []).includes(t.product) || onSale(t.product)).map(t => ({ title: t.title, open: (c.products ?? []).includes(t.product), how: `${productById(t.product)?.name ?? 'Support Shop'} (Support Shop)` }))] },
     { label: 'Trophy Road', items: TROPHY_TITLES.map(t => ({ title: t.id, open: c.trophies >= t.trophies, how: `${t.trophies.toLocaleString()} trophies`, progress: c.trophies / t.trophies })) },
     { label: 'Daily streak', items: STREAK_REWARDS.filter(r => r.title).map(r => ({ title: r.title!, open: (c.streak ?? 0) >= r.days, how: `Visit ${r.days} days in a row`, progress: (c.streak ?? 0) / r.days })) },
     { label: 'Season Pass', items: [
@@ -101,11 +94,11 @@ function titleGroups(c: UnlockContext) {
     { label: 'Account', items: [{ title: FOUNDING_TITLE, open: !!c.account, how: 'Create a free account' }] },
     { label: 'Events', items: EVENT_TITLES.filter(t => !eventPieceHidden(t.key, c.shop ?? [])).map(t => ({ title: t.title, open: (c.shop ?? []).includes(t.key), how: t.how })) },
     ...(c.staff ? [{ label: 'Owner', items: [{ title: OWNER_TITLE, open: true, how: 'The game owner' }, { title: SOVEREIGN_TITLE, open: true, how: 'The game owner' }] }] : []),
-  ].filter(g => (g.label !== 'Supporter' || showSupporter(c)) && g.items.length > 0) as TitleGroup[];
+  ].filter(g => g.items.length > 0) as TitleGroup[];
 }
 interface TitleGroup { label: string; items: { title: string; open: boolean; how: string; progress?: number }[] }
 const GROUP_ICON: Record<string, string> = {
-  Levels: 'up', Ranked: 'crown', Leaderboards: 'chart', Achievements: 'check', Supporter: 'heart', 'Trophy Road': 'trophy',
+  Levels: 'up', Ranked: 'crown', Leaderboards: 'chart', Achievements: 'check', 'Trophy Road': 'trophy',
   'Daily streak': 'flame', 'Season Pass': 'calendar', Missions: 'check', 'Card album': 'list', Account: 'team', Owner: 'crown', Events: 'star',
 };
 

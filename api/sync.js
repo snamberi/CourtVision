@@ -6967,103 +6967,6 @@ function shopOwned(read = localRead) {
 	}
 }
 //#endregion
-//#region src/billing/products.ts
-const PRODUCTS = [
-	{
-		id: "supporter",
-		name: "Supporter Pass",
-		price: "$4.99",
-		billing: "monthly",
-		accent: "#ff5fa2",
-		title: "Supporter",
-		tagline: "Keep the courts lit every month.",
-		perks: [
-			"No ads while it is active",
-			"Gold ball, blackout sneaker, gold jersey and heart icons",
-			"Aurora and Supporter pink name colours",
-			"The Supporter title"
-		]
-	},
-	{
-		id: "noAds",
-		name: "No-Ads Pass",
-		price: "$3.99",
-		billing: "monthly",
-		accent: "#6fd3ff",
-		title: "Ad-Free Baller",
-		tagline: "A clean court, no banners.",
-		perks: [
-			"No ad banners anywhere while it is active",
-			"On every device you sign in on",
-			"Clean Court icon and Clear Sky name colour",
-			"The Ad-Free Baller title"
-		]
-	},
-	{
-		id: "bundleSupporter",
-		name: "Supporter Bundle",
-		price: "$0.99",
-		billing: "once",
-		accent: "#ff9a5c",
-		title: "Backer",
-		tagline: "A small thank-you that goes a long way.",
-		perks: [
-			"Thank-You Heart icon (it bounces)",
-			"Warm Thanks name colour",
-			"The Backer title",
-			"Yours for good"
-		]
-	},
-	{
-		id: "bundleVisionary",
-		name: "Visionary Supporter Bundle",
-		price: "$2.99",
-		billing: "once",
-		accent: "#b983ff",
-		title: "Visionary",
-		tagline: "For the ones who saw it coming.",
-		perks: [
-			"Vision Eye icon (it twinkles)",
-			"Visionary name colour, a flowing violet",
-			"The Visionary title",
-			"Yours for good"
-		]
-	},
-	{
-		id: "bundleFounder",
-		name: "Eternal Founder Bundle",
-		price: "$9.99",
-		billing: "once",
-		accent: "#ffd166",
-		title: "Eternal Founder",
-		tagline: "Your name in gold, from the early days.",
-		perks: [
-			"Eternal Phoenix icon, burning gold",
-			"Eternal Gold name colour, a shimmering foil",
-			"The Eternal Founder title",
-			"Yours for good"
-		]
-	},
-	{
-		id: "bundleCustom",
-		name: "Custom Support Bundle",
-		price: "$0.99+",
-		billing: "once",
-		accent: "#55c878",
-		title: "Patron",
-		flexible: true,
-		tagline: "Pick your own amount. Every bit helps.",
-		perks: [
-			"Gift Box icon (it shines)",
-			"Kindness name colour",
-			"The Patron title",
-			"Yours for good, whatever you give"
-		]
-	}
-];
-const productById = (id) => PRODUCTS.find((p) => p.id === id);
-const BUNDLE_IDS = PRODUCTS.filter((p) => p.billing === "once").map((p) => p.id);
-//#endregion
 //#region src/profile/cosmetics.ts
 /** Complete team sets and legendary cards in the album (read straight from storage; see cards/cards.ts). */
 function albumCounts(read) {
@@ -7787,16 +7690,6 @@ const jersey = (id, name, main, dark, trim = "#f4f0e6") => icon(id, name, "jerse
 	J: dark,
 	w: trim
 });
-/** Where a Support Shop cosmetic comes from. */
-function productHow(id) {
-	const p = productById(id);
-	return p ? `${p.name} (Support Shop)` : "Support Shop";
-}
-/** The titles from the Support Shop (the Supporter Pass's own "Supporter" title is SUPPORTER_TITLE). */
-const PRODUCT_TITLES = PRODUCTS.filter((p) => p.id !== "supporter").map((p) => ({
-	title: p.title,
-	product: p.id
-}));
 [
 	icon("ball", "Basketball", "ball", void 0, { level: 1 }),
 	icon("hoop", "Hoop", "hoop", void 0, { level: 1 }),
@@ -7899,22 +7792,6 @@ const PRODUCT_TITLES = PRODUCTS.filter((p) => p.id !== "supporter").map((p) => (
 	{ ...icon("diamond", "Diamond", "diamond", void 0, { rank: 4 }) },
 	{ ...icon("ghost", "Ghost", "ghost", void 0, { mode: "pvp-1200" }) },
 	{ ...icon("medal", "Medal", "medal", void 0, { anyHonor: true }) },
-	{ ...icon("ball-gold", "Gold ball", "ball", {
-		o: "#ffd166",
-		O: "#c9971f"
-	}, { supporter: true }) },
-	{ ...icon("sneaker-black", "Blackout sneaker", "sneaker", {
-		w: "#2a3546",
-		o: "#ff9d3d",
-		O: "#f4f0e6"
-	}, { supporter: true }) },
-	{ ...jersey("jersey-gold", "Gold jersey", "#ffd166", "#c9971f", "#0b1018") },
-	{ ...icon("heart", "Heart", "heart", void 0, { supporter: true }) },
-	productHow("noAds"),
-	productHow("bundleSupporter"),
-	productHow("bundleVisionary"),
-	productHow("bundleFounder"),
-	productHow("bundleCustom"),
 	...[
 		[
 			"fireball",
@@ -8203,13 +8080,6 @@ const animated = (id, name, css, anim) => {
 	color("infinity", "Infinity", "linear-gradient(90deg, #ff4d4d, #ffd166, #6fdc93, #6db8ff, #b983ff, #ff6fd8, #ff4d4d)"),
 	{ ...color("ember", "Ember", "#ff6b3d", { rank: 5 }) },
 	{ ...color("prism", "Prism", "linear-gradient(90deg, #ff9d3d, #ffd166, #6fdc93, #6db8ff, #c79bff)", { honor: "first" }) },
-	{ ...color("aurora", "Aurora", "linear-gradient(90deg, #6fdc93, #4fd6d6, #b8a8ff, #ff8fc8)", { supporter: true }) },
-	{ ...color("supporter", "Supporter pink", "#ff5fa2", { supporter: true }) },
-	productHow("noAds"),
-	productHow("bundleSupporter"),
-	productHow("bundleVisionary"),
-	productHow("bundleFounder"),
-	productHow("bundleCustom"),
 	animated("emberflow", "Ember flow", "linear-gradient(90deg, #ff4d2e, #ff9d3d, #ffd166, #ff9d3d, #ff4d2e)", "flow"),
 	animated("neonwave", "Neon wave", "linear-gradient(90deg, #ff4dd2, #6fd3ff, #7dff9b, #6fd3ff, #ff4dd2)", "flow"),
 	animated("lava", "Lava", "linear-gradient(90deg, #7a1200, #ff3d1f, #ffb347, #ff3d1f, #7a1200)", "pulse"),
@@ -8282,7 +8152,6 @@ const animated = (id, name, css, anim) => {
 ];
 /** Titles on the level road, in order (Rookie GM is everyone's first). */
 const ROAD_TITLES = ["Rookie GM", ...LEVEL_ROAD.filter(([, k]) => k === "title").map(([, , id]) => id)];
-const SUPPORTER_TITLE = "Supporter";
 /** Leaderboard honors the server can grant (see server/honors.ts). `first` is any #1. */
 const HONORS = [
 	{
@@ -8424,8 +8293,6 @@ const MODE_TITLES = [
 	}
 ];
 const HONORS_KEY = "cv-board-honors";
-/** Passes bought (written from the account by src/billing/billing.ts). */
-const ENTITLEMENTS_KEY = "cv-entitlements";
 const json$2 = (read, key, fallback) => {
 	try {
 		return JSON.parse(read(key) ?? "null") ?? fallback;
@@ -8435,23 +8302,6 @@ const json$2 = (read, key, fallback) => {
 };
 /** Leaderboard honors kept in this browser (granted by the server at sync). */
 const readHonors = (read = localRead) => json$2(read, HONORS_KEY, []).filter((h) => HONORS.some((x) => x.id === h));
-const liveUntil = (until) => !!until && Date.parse(until) > Date.now();
-/** Whether this browser's account has an active pass (`noAds`, `supporter`). */
-function hasEntitlement(kind, read = localRead) {
-	const e = json$2(read, ENTITLEMENTS_KEY, {});
-	const supporter = !!e.supporter && (!e.supporterUntil || liveUntil(e.supporterUntil));
-	const noAds = !!e.noAds && !e.noAdsUntil || liveUntil(e.noAdsUntil);
-	return kind === "noAds" ? noAds || supporter : supporter;
-}
-/** Every Support Shop product this browser's account has right now. */
-function ownedProducts(read = localRead) {
-	const e = json$2(read, ENTITLEMENTS_KEY, {});
-	return [
-		...hasEntitlement("supporter", read) ? ["supporter"] : [],
-		...liveUntil(e.noAdsUntil) ? ["noAds"] : [],
-		...BUNDLE_IDS.filter((id) => (e.bundles ?? []).includes(id))
-	];
-}
 /** What unlocks read: the level is passed in; the rest comes from this browser. */
 function unlockContext(level, read = localRead) {
 	if (hasOwnerAccess(read)) return {
@@ -8459,7 +8309,6 @@ function unlockContext(level, read = localRead) {
 		rank: TIERS$1.length - 1,
 		honors: HONORS.map((h) => h.id),
 		modes: MODE_TITLES.map((t) => t.mode),
-		supporter: true,
 		trophies: 1e9,
 		album: {
 			sets: 1e6,
@@ -8472,7 +8321,6 @@ function unlockContext(level, read = localRead) {
 		staff: true,
 		account: true,
 		hours: 1e6,
-		products: PRODUCTS.map((p) => p.id),
 		seasons: Object.fromEntries(SEASONS.map((s) => [s.id, 1e6]))
 	};
 	return {
@@ -8481,7 +8329,6 @@ function unlockContext(level, read = localRead) {
 		rank: TIERS$1.indexOf(read("cv-ranked-best") ?? ""),
 		honors: readHonors(read),
 		modes: json$2(read, "cv-mode-ach-seen", []),
-		supporter: hasEntitlement("supporter", read),
 		trophies: totalTrophies(read),
 		album: albumCounts(read),
 		owner: ownerBest(read),
@@ -8490,8 +8337,7 @@ function unlockContext(level, read = localRead) {
 		missions: missionsClaimed(readMissions(read)),
 		account: hasFoundingAccount(read),
 		shop: shopOwned(read),
-		hours: readPlayTime(read).total / 3600,
-		products: ownedProducts(read)
+		hours: readPlayTime(read).total / 3600
 	};
 }
 /** Titles bought in a holiday event shop (retention/holidayShop.ts). */
@@ -8504,13 +8350,11 @@ const EVENT_TITLES = [{
 	key: "evt-christmas-title",
 	how: "Winter Wonderland event shop"
 }];
-/** Titles from the leaderboards, the modes and the Supporter pass that are open. */
+/** Titles from the leaderboards and the modes that are open. */
 const earnedExtraTitles = (c) => [
 	...EVENT_TITLES.filter((t) => (c.shop ?? []).includes(t.key)).map((t) => t.title),
 	...HONORS.filter((h) => c.honors.includes(h.id)).map((h) => h.title),
 	...MODE_TITLES.filter((t) => c.modes.includes(t.mode)).map((t) => t.title),
-	...c.supporter ? [SUPPORTER_TITLE] : [],
-	...PRODUCT_TITLES.filter((t) => (c.products ?? []).includes(t.product)).map((t) => t.title),
 	...TROPHY_TITLES.filter((t) => c.trophies >= t.trophies).map((t) => t.id),
 	...ALBUM_TITLES.filter((t) => ((t.kind === "sets" ? c.album?.sets : c.album?.legendary) ?? 0) >= t.n).map((t) => t.title),
 	...OWNER_TITLES.filter((t) => (c.owner ?? 0) >= t.legacy).map((t) => t.title),

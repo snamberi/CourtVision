@@ -7,9 +7,15 @@ import { track } from '../../analytics/track';
 
 /* Sign-in and first-time username dialogs, mounted once at the root so any screen can ask for them. */
 
+/** Accounts are for ages 13 and up (Terms of Use, Privacy Policy section 11): the box is ticked once per browser. */
+export const AGE_OK_KEY = 'cv-age-13-ok';
+const readAgeOk = () => { try { return localStorage.getItem(AGE_OK_KEY) === '1'; } catch { return false; } };
+const writeAgeOk = (ok: boolean) => { try { if (ok) localStorage.setItem(AGE_OK_KEY, '1'); else localStorage.removeItem(AGE_OK_KEY); } catch { /* storage blocked: the box still works this time */ } };
+
 function SignInDialog() {
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [ageOk, setAgeOk] = useState(readAgeOk);
   const lastError = useAuthError();
   const inApp = inAppBrowser();
   // Coming back with the browser's Back button (or a cancelled sign-in) restores this page as it was: free the buttons.
@@ -20,6 +26,7 @@ function SignInDialog() {
     return () => { window.removeEventListener('pageshow', reset); window.clearTimeout(t); };
   }, [busy]);
   const go = async (p: Provider) => {
+    if (!ageOk) return;
     setBusy(p); setMsg(null);
     track('account', { action: 'sign_in', method: p });
     try { await signInWith(p); } catch (e) { setMsg(explainAuthError(e instanceof Error ? e.message : String(e))); setBusy(null); }
@@ -30,9 +37,10 @@ function SignInDialog() {
     <h2>Sign in</h2>
     <p className="hint-text">Keep your level, trophies, records and retired careers on every device, and get on the online leaderboards. Free, and optional: the game works the same without it.</p>
     {inApp && <p className="backup-msg err" role="alert">You're inside another app's browser, where Google sign-in is blocked. Open courtvisiongame.com in Chrome, Safari or Edge to sign in with Google (Discord works here).</p>}
+    <label className="signin-age"><input type="checkbox" checked={ageOk} onChange={e => { setAgeOk(e.target.checked); writeAgeOk(e.target.checked); }} /> I am 13 or older, and I agree to the <a href="/terms.html" target="_blank" rel="noopener">Terms of Use</a> and <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.</label>
     <div className="signin-options">
-      <button className="signin-discord" disabled={!!busy} onClick={() => void go('discord')}><DiscordMark /> {busy === 'discord' ? 'Opening Discord…' : 'Continue with Discord'}</button>
-      <button className="signin-google" disabled={!!busy} onClick={() => void go('google')}><GoogleMark /> {busy === 'google' ? 'Opening Google…' : 'Continue with Google'}</button>
+      <button className="signin-discord" disabled={!!busy || !ageOk} onClick={() => void go('discord')}><DiscordMark /> {busy === 'discord' ? 'Opening Discord…' : 'Continue with Discord'}</button>
+      <button className="signin-google" disabled={!!busy || !ageOk} onClick={() => void go('google')}><GoogleMark /> {busy === 'google' ? 'Opening Google…' : 'Continue with Google'}</button>
     </div>
     {problem && <p className="backup-msg err" role="alert">{problem}</p>}
     <p className="hint-text signin-fine">No password to remember. Finish signing in in the same tab you started it. Your GM leagues stay on this device (they are too big to sync); use Backup everything to move them. See the <a href="/privacy.html">Privacy Policy</a>.</p>

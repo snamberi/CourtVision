@@ -16,6 +16,7 @@ function inline(text, prefix) {
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_, label, url) => /^https?:/.test(url)
       ? `<a href="${url}" target="_blank" rel="noopener noreferrer">${label}</a>`
+      : /^mailto:/.test(url) ? `<a href="${url}">${label}</a>`
       : `<a href="${prefix}${url}">${label}</a>`);
 }
 
@@ -142,7 +143,7 @@ ${body}
 <div class="cta"><strong>Ready to play?</strong> Court Vision is free and runs in your browser. <a href="${prefix || './'}">Start a league</a>, or join the <a href="https://discord.gg/5uGK5HDS8e" target="_blank" rel="noopener noreferrer">Discord</a>.</div>
 </main>
 <footer class="site"><div class="in">
-<p><a href="${prefix}about.html">About</a> · <a href="${prefix}how-to-play.html">How to Play</a> · <a href="${prefix}guides/">Guides</a> · <a href="${prefix}faq.html">FAQ</a> · <a href="${prefix}changelog.html">Changelog</a> · <a href="${prefix}privacy.html">Privacy Policy</a> · <a href="${prefix}contact.html">Contact</a></p>
+<p><a href="${prefix}about.html">About</a> · <a href="${prefix}how-to-play.html">How to Play</a> · <a href="${prefix}guides/">Guides</a> · <a href="${prefix}faq.html">FAQ</a> · <a href="${prefix}changelog.html">Changelog</a> · <a href="${prefix}privacy.html">Privacy Policy</a> · <a href="${prefix}terms.html">Terms of Use</a> · <a href="${prefix}contact.html">Contact</a></p>
 <p>NBA history data: <a href="https://www.basketball-reference.com/" target="_blank" rel="noopener noreferrer">Basketball-Reference.com</a> via <a href="https://github.com/sumitrodatta/bball-reference-datasets" target="_blank" rel="noopener noreferrer">bball-reference-datasets</a> and <a href="https://www.nba.com/news/history-all-time-awards" target="_blank" rel="noopener noreferrer">NBA.com</a>. Court Vision is an independent fan project, not affiliated with or endorsed by the NBA, its teams or players. Last updated ${esc(content.updated)}.</p>
 <p class="studio">Court Vision is a NinefoldVision™ game. © ${esc(content.updated).slice(0, 4)} NinefoldVision™.</p>
 </div></footer>
@@ -195,7 +196,7 @@ writeFileSync(join(root, 'src', 'content', 'guideIndex.json'), JSON.stringify([t
 
 // llms.txt (https://llmstxt.org): a plain summary for AI assistants and answer engines (ChatGPT, Claude, Perplexity),
 // and llms-full.txt with every page's text, so they can describe the game accurately and link to the right page.
-const md = (s) => s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_, label, url) => `[${label}](${/^https?:/.test(url) ? url : `${SITE}/${url}`})`);
+const md = (s) => s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_, label, url) => `[${label}](${/^(https?|mailto):/.test(url) ? url : `${SITE}/${url}`})`);
 const pageLine = (pg) => `- [${pg.nav}](${abs(pg.path)}): ${pg.description}`;
 const llms = `# Court Vision
 

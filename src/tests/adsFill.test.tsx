@@ -21,16 +21,9 @@ describe('ads only appear once Google actually sends one', () => {
   });
   afterEach(() => { cleanup(); unloadAdsense(); delete window.adsbygoogle; vi.restoreAllMocks(); vi.useRealTimers(); });
 
-  it('a No-Ads or active Supporter pass shows no banner and loads no ad script; a lapsed Supporter pass does', async () => {
+  it('a leftover pass record from the removed Support Shop no longer turns ads off', async () => {
     act(() => saveConsent(true));
-    for (const e of [{ noAds: true }, { supporter: true, supporterUntil: new Date(Date.now() + 86_400_000).toISOString() }]) {
-      localStorage.setItem('cv-entitlements', JSON.stringify(e));
-      render(<AdBanner slot="top" refreshKey="dashboard" />);
-      expect(banner()).toBeNull();
-      expect(document.querySelector(`script[src^="${ADSENSE_SRC}"]`)).toBeNull();
-      cleanup();
-    }
-    localStorage.setItem('cv-entitlements', JSON.stringify({ supporter: true, supporterUntil: new Date(Date.now() - 1000).toISOString() }));
+    localStorage.setItem('cv-entitlements', JSON.stringify({ noAds: true }));
     render(<AdBanner slot="top" refreshKey="dashboard" />);
     expect(document.querySelector(`script[src^="${ADSENSE_SRC}"]`)).not.toBeNull();
   });

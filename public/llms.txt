@@ -45,7 +45,8 @@
 - [How to Play](https://courtvisiongame.com/how-to-play.html): Start your first Court Vision league: choosing a team, setting a rotation, the season calendar, trades, the draft, free agency and the offseason.
 - [FAQ](https://courtvisiongame.com/faq.html): Learn how to play CourtVision, choose between seven basketball simulation modes, understand ratings and relics, back up saves, and manage accounts and privacy.
 - [Changelog](https://courtvisiongame.com/changelog.html): What's new in Court Vision: the 82-0 Challenge, Mode of the Week, Career Mode big moments, the All-Time Draft, League Hunt and more.
-- [Contact](https://courtvisiongame.com/contact.html): Get CourtVision support through the NineFoldVision Discord community. Learn what to include in a bug report and how to find save recovery and account deletion controls.
+- [Contact](https://courtvisiongame.com/contact.html): Contact CourtVision support by email or through the NineFoldVision Discord community. Learn what to include in a bug report and how to find save recovery and account deletion controls.
+- [Terms](https://courtvisiongame.com/terms.html): The terms for playing Court Vision: who can create an account (13 and older), fair play on leaderboards, GM names and clubs, in-game items, advertising, and how the free game is provided.
 
 ## Full text
 

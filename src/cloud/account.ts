@@ -7,7 +7,6 @@ import { noteHonors } from '../profile/cosmetics';
 import { noteOwnerAccess } from '../profile/ownerAccess';
 import { TIERS } from './ranked';
 import { IS_DESKTOP_BUILD } from '../appMode';
-import { loadEntitlements, writeEntitlements } from '../billing/billing';
 
 /*
  * Accounts (web only): sign in with Discord or Google through Supabase Auth. Signing in is optional;
@@ -60,7 +59,7 @@ async function applySession(client: SupabaseClient, s: Session | null) {
   const before = session?.user.id;
   session = s;
   // Passes belong to the account: signed out, this browser forgets them (they come back on sign-in).
-  if (!s) { setAccount({ status: 'signedOut', userId: null, email: null, provider: null, profile: null }); if (before) { writeEntitlements(null); noteOwnerAccess(false); } return; }
+  if (!s) { setAccount({ status: 'signedOut', userId: null, email: null, provider: null, profile: null }); if (before) noteOwnerAccess(false); return; }
   setAccount({ status: 'signedIn', userId: s.user.id, email: s.user.email ?? null, provider: (s.user.app_metadata?.provider as string | undefined) ?? null });
   noteFoundingAccount();
   if (before !== s.user.id || !state.profile) await refreshProfile(client);
@@ -87,7 +86,6 @@ export async function refreshProfile(client?: SupabaseClient): Promise<CloudProf
     noteFeat('rankedTier', TIERS.findIndex(t => t.id === best), 'max');
   }
   setAccount({ profile });
-  await loadEntitlements(c, session.user.id).catch(() => null);
   return profile;
 }
 
