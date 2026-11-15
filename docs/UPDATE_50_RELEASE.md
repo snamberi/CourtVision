@@ -1,6 +1,6 @@
 # Update 50 — release branch review
 
-Branch: `release/update-50`. Keep this release in draft. Do not merge or deploy until Snamberi explicitly approves.
+Branch: `release/update-50`. Snamberi explicitly authorized merging this release on November 15, 2026. See `UPDATE_50_SETUP.md` for the latest merge validation; earlier draft notes below are historical.
 
 ## Implemented
 

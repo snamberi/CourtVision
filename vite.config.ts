@@ -1,5 +1,4 @@
 import { execSync } from 'node:child_process'
-import { PADDLE_CATALOG } from './server/paddleCatalog.ts'
 import react from '@vitejs/plugin-react'
 import { readFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
@@ -59,7 +58,9 @@ const siteMaps = (): Plugin => ({
     const updated = (JSON.parse(readFileSync(new URL('./src/content/sitePages.json', import.meta.url), 'utf8')) as { updated: string }).updated;
     const pages: [string, number][] = [['', 1], ['guides/', 0.8], ['guides/82-0-challenge.html', 0.8], ['guides/league-hunt.html', 0.8], ['guides/career-mode.html', 0.8],
       ['guides/all-time-draft.html', 0.7], ['guides/rebuild-challenge.html', 0.7], ['guides/real-nba-history.html', 0.7], ['guides/ratings-explained.html', 0.6],
-      ['how-to-play.html', 0.8], ['faq.html', 0.8], ['about.html', 0.6], ['changelog.html', 0.5], ['privacy.html', 0.3], ['contact.html', 0.5]];
+      ['guides/how-the-simulation-works.html', 0.7], ['guides/badges-explained.html', 0.6], ['guides/survival.html', 0.7], ['guides/your-career.html', 0.7],
+      ['guides/story-mode.html', 0.7], ['guides/coaching-and-development.html', 0.6],
+      ['how-to-play.html', 0.8], ['faq.html', 0.8], ['about.html', 0.6], ['changelog.html', 0.5], ['privacy.html', 0.3], ['terms.html', 0.3], ['contact.html', 0.5]];
     // Search engines and AI assistants (ChatGPT, Claude, Perplexity, Gemini...) may read every page; the API is not for crawling.
     const aiBots = ['GPTBot', 'OAI-SearchBot', 'ChatGPT-User', 'ClaudeBot', 'Claude-User', 'Claude-SearchBot', 'PerplexityBot', 'Perplexity-User', 'Google-Extended', 'Applebot-Extended', 'Bingbot', 'DuckAssistBot', 'meta-externalagent'];
     const robots = ['User-agent: *', 'Allow: /', 'Disallow: /api/', '', ...aiBots.flatMap(b => [`User-agent: ${b}`, 'Allow: /', 'Disallow: /api/', '']), `Sitemap: ${site}/sitemap.xml`, ''].join('\n');
@@ -107,15 +108,6 @@ export default defineConfig(({ mode }) => ({
     // Accounts: the Supabase address and public key (safe to ship; row level security guards the data).
     'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || ''),
     'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || ''),
-    // The Support Shop: Paddle's client-side token and price ids (public; see docs/BILLING_SETUP.md). Empty hides the buy buttons.
-    'import.meta.env.VITE_PADDLE_CLIENT_TOKEN': JSON.stringify(process.env.VITE_PADDLE_CLIENT_TOKEN || process.env.PADDLE_CLIENT_TOKEN || PADDLE_CATALOG.clientToken),
-    'import.meta.env.VITE_PADDLE_ENV': JSON.stringify(process.env.VITE_PADDLE_ENV || process.env.PADDLE_ENV || ''),
-    'import.meta.env.VITE_PADDLE_PRICE_SUPPORTER': JSON.stringify(process.env.VITE_PADDLE_PRICE_SUPPORTER || process.env.PADDLE_PRICE_SUPPORTER || PADDLE_CATALOG.prices.supporter),
-    'import.meta.env.VITE_PADDLE_PRICE_NO_ADS': JSON.stringify(process.env.VITE_PADDLE_PRICE_NO_ADS || process.env.PADDLE_PRICE_NO_ADS || PADDLE_CATALOG.prices.noAds),
-    'import.meta.env.VITE_PADDLE_PRICE_BUNDLE_SUPPORTER': JSON.stringify(process.env.VITE_PADDLE_PRICE_BUNDLE_SUPPORTER || process.env.PADDLE_PRICE_BUNDLE_SUPPORTER || PADDLE_CATALOG.prices.bundleSupporter),
-    'import.meta.env.VITE_PADDLE_PRICE_BUNDLE_VISIONARY': JSON.stringify(process.env.VITE_PADDLE_PRICE_BUNDLE_VISIONARY || process.env.PADDLE_PRICE_BUNDLE_VISIONARY || PADDLE_CATALOG.prices.bundleVisionary),
-    'import.meta.env.VITE_PADDLE_PRICE_BUNDLE_FOUNDER': JSON.stringify(process.env.VITE_PADDLE_PRICE_BUNDLE_FOUNDER || process.env.PADDLE_PRICE_BUNDLE_FOUNDER || PADDLE_CATALOG.prices.bundleFounder),
-    'import.meta.env.VITE_PADDLE_PRICE_BUNDLE_CUSTOM': JSON.stringify(process.env.VITE_PADDLE_PRICE_BUNDLE_CUSTOM || process.env.PADDLE_PRICE_BUNDLE_CUSTOM || PADDLE_CATALOG.prices.bundleCustom),
   },
   plugins: mode === 'desktop' ? [react(), stripAdsense()] : [react(), siteMaps(), serviceWorker(), buildStampPlugin(), versionFile()],
   // `--mode desktop` is the offline Windows package: relative asset paths, its own output folder.

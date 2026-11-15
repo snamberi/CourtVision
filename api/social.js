@@ -6186,103 +6186,6 @@ const MISSION_POOL = [
 ];
 new Map(MISSION_POOL.map((m) => [m.id, m]));
 //#endregion
-//#region src/billing/products.ts
-const PRODUCTS = [
-	{
-		id: "supporter",
-		name: "Supporter Pass",
-		price: "$4.99",
-		billing: "monthly",
-		accent: "#ff5fa2",
-		title: "Supporter",
-		tagline: "Keep the courts lit every month.",
-		perks: [
-			"No ads while it is active",
-			"Gold ball, blackout sneaker, gold jersey and heart icons",
-			"Aurora and Supporter pink name colours",
-			"The Supporter title"
-		]
-	},
-	{
-		id: "noAds",
-		name: "No-Ads Pass",
-		price: "$3.99",
-		billing: "monthly",
-		accent: "#6fd3ff",
-		title: "Ad-Free Baller",
-		tagline: "A clean court, no banners.",
-		perks: [
-			"No ad banners anywhere while it is active",
-			"On every device you sign in on",
-			"Clean Court icon and Clear Sky name colour",
-			"The Ad-Free Baller title"
-		]
-	},
-	{
-		id: "bundleSupporter",
-		name: "Supporter Bundle",
-		price: "$0.99",
-		billing: "once",
-		accent: "#ff9a5c",
-		title: "Backer",
-		tagline: "A small thank-you that goes a long way.",
-		perks: [
-			"Thank-You Heart icon (it bounces)",
-			"Warm Thanks name colour",
-			"The Backer title",
-			"Yours for good"
-		]
-	},
-	{
-		id: "bundleVisionary",
-		name: "Visionary Supporter Bundle",
-		price: "$2.99",
-		billing: "once",
-		accent: "#b983ff",
-		title: "Visionary",
-		tagline: "For the ones who saw it coming.",
-		perks: [
-			"Vision Eye icon (it twinkles)",
-			"Visionary name colour, a flowing violet",
-			"The Visionary title",
-			"Yours for good"
-		]
-	},
-	{
-		id: "bundleFounder",
-		name: "Eternal Founder Bundle",
-		price: "$9.99",
-		billing: "once",
-		accent: "#ffd166",
-		title: "Eternal Founder",
-		tagline: "Your name in gold, from the early days.",
-		perks: [
-			"Eternal Phoenix icon, burning gold",
-			"Eternal Gold name colour, a shimmering foil",
-			"The Eternal Founder title",
-			"Yours for good"
-		]
-	},
-	{
-		id: "bundleCustom",
-		name: "Custom Support Bundle",
-		price: "$0.99+",
-		billing: "once",
-		accent: "#55c878",
-		title: "Patron",
-		flexible: true,
-		tagline: "Pick your own amount. Every bit helps.",
-		perks: [
-			"Gift Box icon (it shines)",
-			"Kindness name colour",
-			"The Patron title",
-			"Yours for good, whatever you give"
-		]
-	}
-];
-const productById = (id) => PRODUCTS.find((p) => p.id === id);
-PRODUCTS.filter((p) => p.billing === "once").map((p) => p.id);
-//#endregion
 //#region src/profile/cosmetics.ts
 const byTrophies = (kind, id) => ({ trophies: trophyNeed(kind, id) ?? 5e3 });
 /** Owner's Box rewards, by your best owner legacy anywhere (see ownerBox.ts). */
@@ -6980,15 +6883,6 @@ const jersey = (id, name, main, dark, trim = "#f4f0e6") => icon(id, name, "jerse
 	J: dark,
 	w: trim
 });
-/** Where a Support Shop cosmetic comes from. */
-function productHow(id) {
-	const p = productById(id);
-	return p ? `${p.name} (Support Shop)` : "Support Shop";
-}
-PRODUCTS.filter((p) => p.id !== "supporter").map((p) => ({
-	title: p.title,
-	product: p.id
-}));
 const ICONS = [
 	icon("ball", "Basketball", "ball", void 0, { level: 1 }),
 	icon("hoop", "Hoop", "hoop", void 0, { level: 1 }),
@@ -7099,83 +6993,6 @@ const ICONS = [
 	{
 		...icon("medal", "Medal", "medal", void 0, { anyHonor: true }),
 		how: "Place on a leaderboard (see titles)"
-	},
-	{
-		...icon("ball-gold", "Gold ball", "ball", {
-			o: "#ffd166",
-			O: "#c9971f"
-		}, { supporter: true }),
-		how: "Supporter pass"
-	},
-	{
-		...icon("sneaker-black", "Blackout sneaker", "sneaker", {
-			w: "#2a3546",
-			o: "#ff9d3d",
-			O: "#f4f0e6"
-		}, { supporter: true }),
-		how: "Supporter pass"
-	},
-	{
-		...jersey("jersey-gold", "Gold jersey", "#ffd166", "#c9971f", "#0b1018"),
-		rule: { supporter: true },
-		how: "Supporter pass"
-	},
-	{
-		...icon("heart", "Heart", "heart", void 0, { supporter: true }),
-		how: "Supporter pass"
-	},
-	{
-		id: "pass-clean",
-		name: "Clean Court",
-		base: "hoop",
-		recolor: {
-			o: "#6fd3ff",
-			w: "#e8fbff"
-		},
-		anim: "glow",
-		rule: { product: "noAds" },
-		how: productHow("noAds")
-	},
-	{
-		id: "bundle-heart",
-		name: "Thank-You Heart",
-		base: "heart",
-		recolor: {
-			r: "#ff8a5c",
-			w: "#ffe0b3"
-		},
-		anim: "bob",
-		rule: { product: "bundleSupporter" },
-		how: productHow("bundleSupporter")
-	},
-	{
-		id: "bundle-eye",
-		name: "Vision Eye",
-		base: "eye",
-		anim: "twinkle",
-		rule: { product: "bundleVisionary" },
-		how: productHow("bundleVisionary")
-	},
-	{
-		id: "bundle-phoenix",
-		name: "Eternal Phoenix",
-		base: "phoenix",
-		recolor: {
-			r: "#ffd166",
-			o: "#fff1b8"
-		},
-		anim: "flicker",
-		fx: "gold",
-		rule: { product: "bundleFounder" },
-		how: productHow("bundleFounder")
-	},
-	{
-		id: "bundle-gift",
-		name: "Gift Box",
-		base: "gift",
-		anim: "shine",
-		rule: { product: "bundleCustom" },
-		how: productHow("bundleCustom")
 	},
 	...[
 		[
@@ -7612,54 +7429,6 @@ const NAME_COLORS = [
 	{
 		...color("prism", "Prism", "linear-gradient(90deg, #ff9d3d, #ffd166, #6fdc93, #6db8ff, #c79bff)", { honor: "first" }),
 		how: "Finish #1 on a leaderboard"
-	},
-	{
-		...color("aurora", "Aurora", "linear-gradient(90deg, #6fdc93, #4fd6d6, #b8a8ff, #ff8fc8)", { supporter: true }),
-		how: "Supporter pass"
-	},
-	{
-		...color("supporter", "Supporter pink", "#ff5fa2", { supporter: true }),
-		how: "Supporter pass"
-	},
-	{
-		id: "pass-clear",
-		name: "Clear Sky",
-		css: "linear-gradient(90deg, #6fd3ff, #e8fbff, #6fd3ff)",
-		anim: "shimmer",
-		rule: { product: "noAds" },
-		how: productHow("noAds")
-	},
-	{
-		id: "bundle-warm",
-		name: "Warm Thanks",
-		css: "linear-gradient(90deg, #ff8a5c, #ffd1a6, #ff8a5c)",
-		anim: "pulse",
-		rule: { product: "bundleSupporter" },
-		how: productHow("bundleSupporter")
-	},
-	{
-		id: "bundle-visionary",
-		name: "Visionary",
-		css: "linear-gradient(90deg, #7e4fc9, #b983ff, #6fd3ff, #b983ff, #7e4fc9)",
-		anim: "flow",
-		rule: { product: "bundleVisionary" },
-		how: productHow("bundleVisionary")
-	},
-	{
-		id: "bundle-eternal",
-		name: "Eternal Gold",
-		css: "linear-gradient(90deg, #c9971f, #ffd166, #fff6d6, #ffd166, #c9971f)",
-		anim: "shimmer",
-		rule: { product: "bundleFounder" },
-		how: productHow("bundleFounder")
-	},
-	{
-		id: "bundle-kind",
-		name: "Kindness",
-		css: "linear-gradient(90deg, #55c878, #a8f0c0, #ff8fc8, #a8f0c0, #55c878)",
-		anim: "flow",
-		rule: { product: "bundleCustom" },
-		how: productHow("bundleCustom")
 	},
 	animated("emberflow", "Ember flow", "linear-gradient(90deg, #ff4d2e, #ff9d3d, #ffd166, #ff9d3d, #ff4d2e)", "flow"),
 	animated("neonwave", "Neon wave", "linear-gradient(90deg, #ff4dd2, #6fd3ff, #7dff9b, #6fd3ff, #ff4dd2)", "flow"),

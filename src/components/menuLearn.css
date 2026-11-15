@@ -1,0 +1,12 @@
+/* "Learn Court Vision" on the main menu (MenuLearn.tsx): readable text in the menu's panel style. */
+.menu-learn { margin: 28px auto 8px; max-width: 980px; padding: 18px 20px; background: var(--panel, var(--c-bg-111e30, #111e30)); border: 2px solid var(--line, var(--c-border-2c405a, #2c405a)); box-shadow: var(--shadow, 4px 4px 0 var(--c-shadow-050a12, #050a12)); color: var(--text, var(--c-fg-e7edf4, #e7edf4)); text-align: left; }
+.menu-learn h2 { margin: 0 0 10px; font: 12px/1.6 var(--font-pixel, monospace); letter-spacing: .04em; color: var(--amber, var(--c-fg-ff9c45, #ff9c45)); }
+.menu-learn p { margin: 0 0 10px; font: 15px/1.6 var(--font-data, monospace); }
+.menu-learn ul { list-style: none; margin: 12px 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.menu-learn li { padding: 10px 12px; border: 1px solid var(--line, var(--c-border-2c405a, #2c405a)); background: var(--bg, var(--c-bg-0b1220, #0b1220)); }
+.menu-learn li a { display: inline-block; margin-bottom: 4px; font: 600 15px/1.3 var(--font-data, monospace); color: var(--amber, var(--c-fg-ff9c45, #ff9c45)); }
+.menu-learn li span { display: block; font: 13px/1.5 var(--font-data, monospace); color: var(--text-dim, var(--c-fg-9eafc3, #9eafc3)); }
+.menu-learn a:focus-visible { outline: 2px solid var(--court, var(--c-border-f8efd9, #f8efd9)); outline-offset: 2px; }
+.menu-learn-more { margin: 0; }
+.menu-learn-more a { color: var(--blue, var(--c-fg-82b9ef, #82b9ef)); }
+@media (max-width: 520px) { .menu-learn { margin: 20px 0 8px; padding: 14px; } .menu-learn ul { grid-template-columns: 1fr; } }

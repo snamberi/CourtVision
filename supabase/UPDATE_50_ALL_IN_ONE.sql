@@ -192,29 +192,6 @@ create table if not exists public.pvp_matches (
 );
 create index if not exists pvp_matches_challenger on public.pvp_matches (challenger, created_at desc);
 
--- Support Shop purchases through Paddle (written only by /api/billing with the service key; see docs/BILLING_SETUP.md).
-create table if not exists public.entitlements (
-  user_id uuid primary key references auth.users on delete cascade,
-  no_ads boolean not null default false,
-  no_ads_order text,
-  supporter_until timestamptz,
-  supporter_status text,
-  subscription_id text,
-  subscription_updated_at timestamptz,
-  portal_url text,
-  customer_id text,
-  updated_at timestamptz not null default now()
-);
--- The Support Shop: the monthly No-Ads Pass and the one-time bundles (docs/BILLING_SETUP.md).
-alter table public.entitlements add column if not exists no_ads_until timestamptz;
-alter table public.entitlements add column if not exists no_ads_status text;
-alter table public.entitlements add column if not exists no_ads_subscription_id text;
-alter table public.entitlements add column if not exists no_ads_updated_at timestamptz;
-alter table public.entitlements add column if not exists no_ads_portal_url text;
-alter table public.entitlements add column if not exists bundles text[] not null default '{}';
--- Which bundle each Paddle order bought (txn id → bundle), so a refund takes back the right one.
-alter table public.entitlements add column if not exists bundle_orders jsonb not null default '{}';
-
 -- ---------------------------------------------------------------- views for the boards
 
 
@@ -254,7 +231,6 @@ alter table public.follows enable row level security;
 alter table public.reports enable row level security;
 alter table public.hunt_ghosts enable row level security;
 alter table public.pvp_matches enable row level security;
-alter table public.entitlements enable row level security;
 
 do $$
 declare t text;
@@ -275,10 +251,6 @@ create policy "own profile" on public.profiles for update using (auth.uid() = id
 revoke update on public.profiles from anon, authenticated;
 grant update (username, title, frame, icon, color, updated_at) on public.profiles to authenticated;
 
--- Passes: you may read your own row; nobody writes it but the billing webhook (service key).
-drop policy if exists "own entitlements" on public.entitlements;
-create policy "own entitlements" on public.entitlements for select using (auth.uid() = user_id);
-revoke insert, update, delete on public.entitlements from anon, authenticated;
 
 drop policy if exists "follow" on public.follows;
 create policy "follow" on public.follows for insert with check (auth.uid() = user_id);
@@ -898,6 +870,9 @@ create or replace view public.lb_club_members with (security_invoker = on) as
 
 
 
+-- The Support Shop was removed on 2026-11-12: drop its table if an older schema created it.
+drop table if exists public.entitlements;
+
 grant select on public.lb_users, public.lb_players, public.lb_weekly, public.lb_daily, public.lb_rebuild, public.lb_codes, public.lb_ranked, public.lb_pvp, public.achievement_rarity to anon, authenticated;
 grant select on public.lb_clubs, public.lb_club_weekly, public.lb_club_members to anon, authenticated;
 grant select on public.lb_clubs, public.lb_club_weekly to anon, authenticated;
@@ -1003,20 +978,6 @@ create policy activity_delete on public.activity for delete to authenticated usi
 grant select on public.game_summaries, public.game_trophies, public.trophy_showcase, public.activity to anon, authenticated;
 grant insert, update, delete on public.game_saves, public.game_summaries, public.game_trophies, public.trophy_showcase, public.activity to authenticated;
 grant select on public.game_saves to authenticated;
-
-
--- 2026-10-25-support-shop.sql
--- The Support Shop: the monthly No-Ads Pass and the one-time bundles (Supporter, Visionary, Eternal Founder, Custom).
--- Run this once in the Supabase SQL editor (or re-run supabase/schema.sql). Until it runs, the game reads the old
--- columns and only the Supporter Pass and a lifetime No-Ads Pass are recorded.
-alter table public.entitlements add column if not exists no_ads_until timestamptz;
-alter table public.entitlements add column if not exists no_ads_status text;
-alter table public.entitlements add column if not exists no_ads_subscription_id text;
-alter table public.entitlements add column if not exists no_ads_updated_at timestamptz;
-alter table public.entitlements add column if not exists no_ads_portal_url text;
-alter table public.entitlements add column if not exists bundles text[] not null default '{}';
--- Which bundle each Paddle order bought (txn id → bundle), so a refund takes back the right one.
-alter table public.entitlements add column if not exists bundle_orders jsonb not null default '{}';
 
 
 -- 2026-10-31-release-progress.sql
@@ -1314,6 +1275,13 @@ create or replace function public.finish_push_job(p_id uuid,p_lease uuid,p_retry
 $$;
 revoke all on function public.register_push_subscription(uuid,text),public.lease_push_jobs(),public.finish_push_job(uuid,uuid,boolean),public.enqueue_gift_push(),public.enqueue_activity_push() from public,anon,authenticated;
 grant execute on function public.register_push_subscription(uuid,text),public.lease_push_jobs(),public.finish_push_job(uuid,uuid,boolean) to service_role;
+
+
+-- 2026-11-12-remove-support-shop.sql
+-- The Support Shop (Paddle passes and bundles) was removed from Court Vision on 2026-11-12.
+-- Run this once in the Supabase SQL editor to delete its table. It held which accounts had bought a pass or bundle.
+-- Paddle, as merchant of record, keeps its own order records; download anything you need from Paddle first.
+drop table if exists public.entitlements;
 
 -- Match the API's existing 6 MB unpacked progress limit.
 alter table public.progress drop constraint if exists progress_size_check;

@@ -22,5 +22,8 @@ try{
  await db.exec(sql);console.log('Rerun PASS');
  await scenarios(db);
  await db.exec(sql);console.log('Rerun with existing users/rewards/saves PASS');
+ const removed=await db.query("select to_regclass('public.entitlements') as table_name");
+ if(removed.rows[0].table_name!==null)throw new Error('Update 50 restored the removed Support Shop table');
+ console.log('Support Shop removal preserved PASS');
  await db.close();
 }catch(e){console.error(e.message, e.detail||'', e.hint||'');if(e.query&&e.position)console.error(e.query.slice(Math.max(0,Number(e.position)-200),Number(e.position)+200));process.exitCode=1;}

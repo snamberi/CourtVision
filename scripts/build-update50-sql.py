@@ -20,7 +20,8 @@ def repeatable(sql):
  sql=re.sub(r'create policy (\w+) on (public\.\w+)',lambda m:f'drop policy if exists {m[1]} on {m[2]};\n{m[0]}',sql,flags=re.I)
  return sql
 parts=[('-- Complete core schema (final view definitions only)',base)]
-for name in ['2026-10-25-ninefold-accounts.sql','2026-10-25-support-shop.sql','2026-10-31-release-progress.sql','2026-11-01-courtchat.sql','2026-11-01-custom-gifts.sql','2026-11-02-deliveries.sql','2026-11-02-career-cloud.sql','2026-11-02-push.sql']:
+# The current schema removes Support Shop entitlements; skip its obsolete ALTER migration.
+for name in ['2026-10-25-ninefold-accounts.sql','2026-10-31-release-progress.sql','2026-11-01-courtchat.sql','2026-11-01-custom-gifts.sql','2026-11-02-deliveries.sql','2026-11-02-career-cloud.sql','2026-11-02-push.sql','2026-11-12-remove-support-shop.sql']:
  parts.append((f'-- {name}',repeatable((root/'supabase/migrations'/name).read_text())))
 text='''-- CourtVision Update 50 — ONE complete Supabase SQL script
 -- Supabase -> SQL Editor -> New query -> paste ALL of this file -> Run.
