@@ -60,7 +60,9 @@ export function BoardTable({ spec, scoreLabel, onUser, empty = 'No one on this b
   const rest = d.rows.filter(r => !podium.includes(r));
   const mine = d.rows.find(r => r.you);
   const you = d.you ?? (mine ? { rank: mine.rank, score: mine.score } : null);
+  const nextRank = you ? d.rows.find(r => r.rank === you.rank - 1) : null;
   return <>
+    <details className="qol-panel"><summary>Leaderboard rules and next rank</summary><p>Sign in and sync eligible results to appear. Each board uses its selected mode and period. Daily and weekly shared-seed challenges ignore personal relic bonuses. Sandbox results do not count toward official GM progress.</p><p>Higher {scoreLabel} ranks first. Equal scores are ordered by the stable record identifier, not who refreshed first.</p>{you?.rank === 1 ? <p>You are at the top.</p> : nextRank && you ? <p>Rank #{nextRank.rank}: {nextRank.score.toLocaleString()} {scoreLabel}. You are {Math.max(0, nextRank.score - you.score).toLocaleString()} behind that score; exceed it to pass regardless of the tie order.</p> : <p>Your next rank is outside the loaded results, or you do not have an eligible result yet.</p>}</details>
     {podium.length > 0 && <ol className="wb-podium" aria-label="Top three">{[podium[1], podium[0], podium[2]].map(r => r && <li key={r.userId} className={`wb-step p${r.rank} ${r.you ? 'wb-you' : ''}`}>
       {look(r) && <span className="wb-character"><CodeAvatar code={look(r)} full size={r.rank === 1 ? 70 : 56} title={`${r.username}'s character`} /></span>}
       <span className="wb-who">{name(r)}{r.you ? <small> (you)</small> : null}</span>

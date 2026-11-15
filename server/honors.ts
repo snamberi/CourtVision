@@ -19,10 +19,15 @@ export async function computeHonors(env: SupaEnv, userId: string, d: Derived, no
   // The GM board, by XP.
   const gms = await count(env, `lb_gms?select=id`, f);
   if (gms >= MIN_FIELD.gm) {
-    const rank = (await count(env, `lb_gms?select=id&xp=gt.${d.profile.xp}&id=neq.${userId}`, f)) + 1;
-    if (rank === 1) honors.add('gm-1');
+    const rank = (await count(env, `lb_gms?select=id&or=(xp.gt.${d.profile.xp},and(xp.eq.${d.profile.xp},id.lt.${userId}))&id=neq.${userId}`, f)) + 1;
+    if (rank <= 3) honors.add(`gm-${rank}`);
     if (rank <= 10) honors.add('gm-10');
     if (rank <= 100) honors.add('gm-100');
+  }
+  const trophies = Number(d.profile.stats.trophies ?? 0);
+  if (Number.isFinite(trophies) && trophies > 0 && gms >= MIN_FIELD.gm) {
+    const rank = (await count(env, `lb_progress?select=id&or=(trophies.gt.${trophies},and(trophies.eq.${trophies},id.lt.${userId}))&id=neq.${userId}`, f)) + 1;
+    if (rank <= 3) honors.add(`trophy-${rank}`);
   }
   // Weekly boards and Daily Legends that are over: #1 of a real field.
   const today = now.toISOString().slice(0, 10), thisWeek = weekKey(now);

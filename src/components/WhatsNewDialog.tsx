@@ -1,3 +1,6 @@
+import { themeOf } from '../content/updates';
+import type { CSSProperties } from 'react';
+import './updatesHub.css';
 import { useEffect, useRef, useState } from 'react';
 import { unseenReleases, markReleasesSeen, RELEASES } from '../content/whatsNew';
 import { IS_DESKTOP_BUILD } from '../appMode';
@@ -25,7 +28,7 @@ export function WhatsNewDialog({ force = false, onClose }: { /** Opened on purpo
   return <div className="share-modal whats-new" role="dialog" aria-modal="true" aria-labelledby="whats-new-title" onClick={e => { if (!(e.target as HTMLElement).closest('a')) close(); }}>
     <div className="share-box">
       <span className="pixel-eyebrow">WHAT'S NEW</span>
-      {releases.slice(0, 2).map((r, i) => <section key={r.id}>
+      {releases.slice(0, 2).map((r, i) => <section key={r.id} style={{ '--upd-accent': themeOf(r).accent } as CSSProperties}>
         {i === 0 ? <h2 id="whats-new-title">{r.title}</h2> : <h3>{r.title}</h3>}
         <ul>{r.items.map(t => <li key={t}>{rich(t)}</li>)}</ul>
       </section>)}

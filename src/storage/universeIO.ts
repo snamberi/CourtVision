@@ -1,3 +1,4 @@
+import { parseAwardPack } from '../simulation/awardStudio';
 import { compactLeagueLogs } from '../simulation/logPacking';
 import type { League } from '../simulation/league';
 import type { GMLeagueExtras } from '../simulation/gm';
@@ -52,6 +53,11 @@ export function parseUniverseFile(text: string): UniverseSnapshot {
   if (data.schemaVersion !== SCHEMA_VERSION) {
     // Placeholder for future migrations — schema is versioned from day one per spec section 60.
     console.warn(`Universe was exported with schema v${data.schemaVersion}, current is v${SCHEMA_VERSION}. Loading as-is.`);
+  }
+  if (data.league.awardStudio) {
+    const studio = data.league.awardStudio;
+    studio.definitions = parseAwardPack(JSON.stringify({ format: 'courtvision-awards', version: 1, definitions: studio.definitions })).definitions;
+    if (!studio.history || typeof studio.history !== 'object' || Array.isArray(studio.history)) studio.history = {};
   }
   reviveUnavailableNumbers(data as UniverseSnapshot);
   return data as UniverseSnapshot;

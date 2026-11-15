@@ -3,11 +3,11 @@ import { FloorInlay } from './FloorInlay';
 /** Every court floor's SVG pattern (ids `${id}-<floor>`): the live game court and the profile previews share them. */
 export function FloorPatterns({id}:{id:string}){
  return <>
-   <pattern id={`${id}-planks`} width="120" height="10" patternUnits="userSpaceOnUse" shapeRendering="crispEdges">
+   <pattern id={`${id}-planks`} width="120" height="10" patternTransform="scale(1 1.6)" patternUnits="userSpaceOnUse" shapeRendering="crispEdges">
     <rect width="120" height="10" fill="#e3b479"/><rect y="5" width="120" height="5" fill="#dcab6e"/>
-    <path d="M0 0H120M0 5H120" stroke="#a8743f" strokeOpacity=".55"/><path d="M34 0V5M92 0V5M8 5V10M66 5V10" stroke="#a8743f" strokeOpacity=".45"/>
+    <path d="M0 0H120M0 5H120" stroke="#a8743f" strokeOpacity=".3"/><path d="M34 0V5M92 0V5M8 5V10M66 5V10" stroke="#a8743f" strokeOpacity=".25"/>
     <path d="M44 2H80M12 7H40M76 7H100" stroke="#f2cd96" strokeOpacity=".35"/>
-   <FloorInlay material="planks" /></pattern>
+   <g opacity=".5"><FloorInlay material="planks" /></g></pattern>
    <pattern id={`${id}-parquet`} width="48" height="48" patternUnits="userSpaceOnUse" shapeRendering="crispEdges">
     <rect width="48" height="48" fill="#b7784a"/>
     {[0,1].map(r=>[0,1].map(c=>{const vertical=(r+c)%2===0,ox=c*24,oy=r*24;return <g key={`${r}${c}`}>{[0,1,2].map(k=>vertical

@@ -1,3 +1,5 @@
+import { loadRelics, saveRelics, grantReward } from '../relics/relics';
+import { franchiseSecrets } from '../relics/franchiseSecrets';
 import type { League } from '../simulation/league';
 import { isOfficialLeague, ACHIEVEMENT_BY_ID } from '../simulation/frontOffice';
 import { noteActivity } from '../retention/activity';
@@ -68,6 +70,13 @@ export function recordLeagueLegacy(saveId: string, name: string, league: League)
   const strip = (l: GmLegacy) => JSON.stringify({ a: Object.fromEntries(Object.entries(l.achievements).map(([k, v]) => [k, v.saveIds])), l: Object.fromEntries(Object.entries(l.leagues).map(([k, v]) => [k, { ...v, updatedAt: 0 }])) });
   if (strip(before) !== strip(after)) write(after);
   noteLegacyActivity(before, after, saveId, league);
+  const secrets = franchiseSecrets(league);
+  if (secrets.length) {
+    const before = loadRelics();
+    let next = before;
+    for (const secret of secrets) if (!next.secrets.includes(secret)) next = grantReward(next, `franchise-${saveId}-${secret}`, { spins: 0, coins: 0, secret, why: 'Franchise mission' });
+    if (next !== before) saveRelics(next);
+  }
 }
 
 /** A new GM title or achievement goes on your profile's recent activity. */

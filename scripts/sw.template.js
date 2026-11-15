@@ -71,3 +71,21 @@ self.addEventListener('fetch', event => {
     return fresh;
   }));
 });
+
+/* No cache interception: this worker only handles explicitly enabled notifications. */
+self.addEventListener('push', event => {
+ event.waitUntil(self.registration.showNotification('CourtVision', {
+  body: 'New gifts or friend activity are waiting. Open CourtVision to check.',
+  icon: '/favicon.png', badge: '/favicon.png', tag: 'courtvision-activity',
+  data: { url: '/#/friends' }
+ }));
+});
+self.addEventListener('notificationclick', event => {
+ event.notification.close();
+ event.waitUntil((async () => {
+  const url = new URL('/#/friends',self.location.origin).href;
+  const clients = await self.clients.matchAll({type:'window',includeUncontrolled:true});
+  const existing = clients.find(client => new URL(client.url).origin === self.location.origin);
+  if(existing){await existing.navigate(url);await existing.focus();}else await self.clients.openWindow(url);
+ })());
+});

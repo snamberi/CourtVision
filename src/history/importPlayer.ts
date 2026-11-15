@@ -68,3 +68,14 @@ export function importHistoricalPlayer(h: NbaHistory, realId: string, end: numbe
   const contracts = { ...extras.contracts, [playerId]: { playerId, teamId: team.teamId, annualSalary: computeAskingSalary(calculateOverall(player), extras.capSettings), yearsRemaining: 2, playerOption: false, teamOption: false } };
   return { league: { ...league, teams: league.teams.map(t => t.teamId === team.teamId ? { ...t, seasons: [...t.seasons, player] } : t) }, extras: { ...extras, contracts }, playerId };
 }
+
+/** Apply a recorded season's ratings without replacing identity, contract, stats or current age. */
+export function historicalRatingPreset(h: NbaHistory, realId: string, end: number, current: PlayerSeason): PlayerSeason {
+  const hp = h.byId.get(realId);
+  if (!hp || !importableSeasons(h, hp).some(s => s.end === end)) throw new Error('Choose a recorded season for this player.');
+  const seed = { ...seedFor(h, hp, end, [end - 1, end, end - 2]), frames: [] };
+  const donor = buildRealPlayer(seed, current.season, current.teamId, current.age, seed.rating.ovr, NBA_HISTORY_DATASET);
+  return { ...current, attributes: { ...donor.attributes, physical: { ...donor.attributes.physical,
+    heightInches: current.attributes.physical.heightInches, wingspanInches: current.attributes.physical.wingspanInches,
+    standingReachInches: current.attributes.physical.standingReachInches, weightLbs: current.attributes.physical.weightLbs } } };
+}

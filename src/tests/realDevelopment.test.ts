@@ -1,3 +1,4 @@
+import { finishDevelopment } from '../simulation/developmentCheckpoint';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { loadHistoryForTests } from './helpers/nbaHistoryFixture';
 import type { NbaHistory } from '../history/nbaHistoryData';
@@ -39,7 +40,8 @@ describe('Real Player Development', () => {
         expect(after.every(p => (p.training?.practiceDays ?? 0) > 0)).toBe(true);
         expect(after.some(p => Object.keys(p.training?.familiarity ?? {}).length > 0)).toBe(true);
       } else {
-        expect(unchanged).toBeLessThan(after.length);
+        expect(unchanged).toBe(after.length);
+        expect(after.map(finishDevelopment).filter(p => before.get(p.playerId) === attrs(p)).length).toBeLessThan(after.length);
       }
     }
   }, 120_000);
@@ -51,7 +53,9 @@ describe('Real Player Development', () => {
     const target = realTargetFor(curry.real, 2017)!;
     expect(target.kind).toBe('reference');
     const next = beginNewSeasonRoster(league, extras, 99);
-    const c2 = byName(next.league, next.extras, 'Stephen Curry');
+    const pending = byName(next.league, next.extras, 'Stephen Curry');
+    expect(pending.attributes).toEqual(curry.attributes);
+    const c2 = finishDevelopment(pending);
     expect(c2.age).toBe(curry.age + 1);
     expect(Math.abs(calculateOverall(c2) - target.ovr)).toBeLessThanOrEqual(1);
     expect(c2.real!.appliedSeason).toBe('2017');
@@ -71,14 +75,16 @@ describe('Real Player Development', () => {
     const { league, extras } = build(false);
     const curry = byName(league, extras, 'Stephen Curry');
     const next = beginNewSeasonRoster(league, extras, 99);
-    const c2 = byName(next.league, next.extras, 'Stephen Curry');
+    const pending = byName(next.league, next.extras, 'Stephen Curry');
+    expect(pending.attributes).toEqual(curry.attributes);
+    const c2 = finishDevelopment(pending);
     expect(c2.age).toBe(curry.age + 1);
     expect(c2.real!.appliedSeason).toBe('2016'); // the reference was not applied
     // Switch on mid-save: nothing is reset now; the profile explains when it resumes.
     const onLeague = { ...next.league, historical: { ...next.league.historical!, realDevelopment: true } };
     expect(realDevelopmentStatus(c2, onLeague)).toMatch(/resumes at the next season rollover/);
     const third = beginNewSeasonRoster({ ...onLeague, season: '2017' }, next.extras, 7);
-    const c3 = byName(third.league, third.extras, 'Stephen Curry');
+    const c3 = finishDevelopment(byName(third.league, third.extras, 'Stephen Curry'));
     expect(c3.real!.appliedSeason).toBe('2018');
     expect(Math.abs(calculateOverall(c3) - realTargetFor(c3.real, 2018)!.ovr)).toBeLessThanOrEqual(1);
   }, 120_000);

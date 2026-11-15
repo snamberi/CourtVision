@@ -1,3 +1,5 @@
+import { LineupTest50 } from './LineupTest50';
+import './leagueStories50.css';
 import { useMemo, useState } from 'react';
 import type { League } from '../simulation/league';
 import { teamLineups, bestFive, shotChart, zonePct, ZONES, type ShotChart, type ShotZone } from '../simulation/lineupLab';
@@ -52,6 +54,7 @@ export function LineupLabPage({ league, controlledTeamId, onSelectPlayer }: { le
         <select value={teamId} onChange={e => { setTeamId(e.target.value); setPlayerId(''); }}>{league.teams.map(t => <option key={t.teamId} value={t.teamId}>{t.name}</option>)}</select>
         <label>Min. possessions <select value={minPoss} onChange={e => setMinPoss(Number(e.target.value))}>{[10, 20, 40, 80, 150].map(n => <option key={n} value={n}>{n}</option>)}</select></label>
       </div>
+      <LineupTest50 key={teamId} league={league} teamId={teamId} />
       {rows.length === 0 ? <p className="empty-state">No games played yet this season.</p> : <>
         {best && <div className="rvy-score"><div><b>Best five: {fmt(best.net)} per 100</b><span>{names(best.players)}</span>
           <small>{best.possessions} possessions together · {best.offRtg.toFixed(1)} offense, {best.defRtg.toFixed(1)} defense</small></div></div>}

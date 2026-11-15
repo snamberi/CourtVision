@@ -23,7 +23,7 @@ export const UserAvatar = memo(function UserAvatar({ look, team = null, size = 9
   const key = JSON.stringify({ look, team });
   const sprite = useMemo(() => buildAvatarSprite(JSON.parse(key) as { look: AvatarLook; team: Props['team'] }), [key]);
   const portrait = mode === 'portrait';
-  const height = Math.round(size * (portrait ? 32 / 28 : AVATAR_H / AVATAR_W));
+  const height = Math.round(size * (portrait ? 1 : AVATAR_H / AVATAR_W));
   return <svg className={`user-avatar user-avatar--${mode}${className ? ` ${className}` : ''}`} width={size} height={height}
     viewBox={portrait ? AVATAR_PORTRAIT_VIEWBOX : `0 0 ${AVATAR_W} ${AVATAR_H}`} shapeRendering="crispEdges" role="img" aria-label={title}>
     {sprite.aura.length > 0 && <g className={`avatar-aura aura-${sprite.auraKind}${animate ? ' animated' : ''}`}>{sprite.aura.map(p => <path key={p.fill} fill={p.fill} d={p.d} />)}</g>}

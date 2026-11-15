@@ -1,3 +1,4 @@
+import { RoadTier } from './RoadTier';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { PixelIcon } from '../PixelIcon';
 import { roadPosition, ROAD_COL } from '../../profile/roadMath';
@@ -24,7 +25,8 @@ export function BrawlRoad({ stops, value, marker, label, icon = 'trophy' }: { st
     const el = scroller.current;
     if (el) el.scrollLeft = Math.max(0, pos - el.clientWidth / 2);
   }, [pos]);
-  return <div className="brawl-road" ref={scroller} role="region" aria-label={label} tabIndex={0}>
+  const jump = (left: number) => scroller.current?.scrollTo({ left: Math.max(0, left), behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  return <><section aria-label="Next three progression rewards"><h2>Next rewards</h2><ol className="qol-next-rewards">{stops.filter(s => s.at > value).slice(0,3).map(s => <li key={s.at}><b>{s.tick}</b><div>{s.rewards}</div><small>{Math.ceil(s.at - value).toLocaleString()} to go</small></li>)}</ol>{next < 0 && <p>All rewards on this road unlocked.</p>}</section><RoadTier completed={reached} total={stops.length} /><nav className="road-jumps" aria-label={`${label} navigation`}><button onClick={() => jump(0)}>Start</button><button onClick={() => jump(pos - (scroller.current?.clientWidth ?? 0) / 2)}>My progress</button><button disabled={next < 0} onClick={() => jump(next * W)}>Next reward</button><label>Jump to <select defaultValue="" onChange={e => jump(Number(e.target.value) * W)}><option value="" disabled>Choose milestone</option>{stops.map((s, i) => <option key={s.at} value={i}>{s.tick}</option>)}</select></label></nav><div className="brawl-road" ref={scroller} role="region" aria-label={label} tabIndex={0}>
     <div className="brawl-inner" style={{ width: stops.length * W, ['--road-col' as string]: `${W}px` }}>
       <ol className="brawl-cards">{stops.map((s, i) => {
         const got = i <= latest, state = i === latest ? 'latest' : i === next ? 'next' : got ? 'got' : 'ahead';
@@ -46,5 +48,5 @@ export function BrawlRoad({ stops, value, marker, label, icon = 'trophy' }: { st
         <b className="brawl-value" style={{ left: mark }}>{marker}</b>
       </div>
     </div>
-  </div>;
+  </div></>;
 }

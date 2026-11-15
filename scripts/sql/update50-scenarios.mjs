@@ -1,0 +1,36 @@
+export async function scenarios(db){
+ const a='11111111-1111-4111-8111-111111111111',b='22222222-2222-4222-8222-222222222222',c='33333333-3333-4333-8333-333333333333';
+ const assert=(ok,msg)=>{if(!ok)throw new Error(msg);};
+ const query=async(s,p=[])=> (await db.query(s,p)).rows;
+ const login=async(id)=>{await db.exec(`reset role;select set_config('request.jwt.claim.sub','${id}',false);set role authenticated;`);};
+ const denied=async(task,pattern)=>{try{await task();throw new Error('Expected rejection');}catch(e){assert(pattern.test(e.message),e.message);}};
+ await db.exec(`insert into auth.users(id) values('${a}'),('${b}'),('${c}');update profiles set username=case id when '${a}' then 'Alpha' when '${b}' then 'Beta' else 'Gamma' end,xp=100000;insert into gifts(sender,recipient,day,coins,spins,lucky,gems,items,message) values('${b}','${a}',current_date,150,2,1,10,'["ring"]','Test gift');`);
+ await login(a);
+ const gifts=await query('select * from claim_gifts_v2()');assert(gifts.length===1&&gifts[0].spins===2,'gift grant');
+ assert((await query('select * from claim_gifts_v2()'))[0].id===gifts[0].id,'gift retry changed receipt');
+ await denied(()=>query("insert into reward_receipts(id,user_id,label) values('fake',$1,'fake')",[a]),/permission denied/);
+ await login(b);assert((await query('select * from reward_receipts')).length===0,'reward RLS leak');assert((await query('select * from claim_gifts_v2()')).length===0,'foreign gift claim');
+ await login(a);
+ const meta={id:'career1',status:'active',identity:{name:'Test Player'},cloudOwner:b},world={id:'career1',phase:'inSeason',league:{test:1},extras:{}};
+ const save=async(rev)=>query('select save_career_snapshot($1,$2,$3,$4) as revision',['career1',rev,meta,world]);
+ assert((await save(0))[0].revision===1,'career first revision');
+ await denied(()=>save(0),/CAREER_CONFLICT/);
+ assert((await save(1))[0].revision===2,'career second revision');
+ assert((await query('select meta from career_snapshots'))[0].meta.cloudOwner===a,'spoofed career owner');
+ await login(b);assert((await query('select * from career_snapshots')).length===0,'career RLS leak');
+ await denied(()=>query("select register_push_subscription($1,'https://fcm.googleapis.com/x')",[b]),/permission denied/);
+ await db.exec('reset role;');
+ await query('insert into clubs(id,name,tag,owner) values($1,$2,$3,$4)',[c,'Test Clan','TEST',a]);
+ await query("insert into club_members(user_id,club_id,joined_at) values($1,$2,now()-interval '30 days'),($3,$2,now()-interval '30 days')",[a,c,b]);
+ const week=(await query(`select to_char(date_trunc('week',now() at time zone 'UTC')-interval '7 days','IYYY-"W"IW') as week`))[0].week;
+ await query("insert into weekly_scores(board,week,user_id,score) values('hunt',$1,$2,100),('hunt',$1,$3,50)",[week,a,b]);
+ await login(a);const clan=await query('select * from claim_clan_rewards()');assert(clan.some(r=>r.id.startsWith('clanweek:')&&r.coins===3000),'weekly clan reward missing');assert(clan.some(r=>r.id.startsWith('clanpass:')),'pass reward missing');assert((await query('select * from claim_clan_rewards()')).length===clan.length,'clan paid twice');
+ await login(b);const bclan=await query('select * from claim_clan_rewards()');assert(bclan.every(r=>r.id.includes(b)),'foreign clan reward');
+ await db.exec(`reset role;set role service_role;`);
+ await query('select register_push_subscription($1,$2)',[a,'https://fcm.googleapis.com/test-endpoint']);
+ await db.exec('reset role;');await query("insert into gifts(sender,recipient,day) values($1,$2,current_date+1)",[b,a]);
+ await db.exec('set role service_role;');const jobs=await query('select * from lease_push_jobs()');assert(jobs.length===1,'push not queued');assert((await query('select * from lease_push_jobs()')).length===0,'job leased twice');
+ await query('select finish_push_job($1,$2,false)',[jobs[0].id,jobs[0].lease]);assert((await query('select * from lease_push_jobs()')).length===0,'completed job retried');
+ await db.exec('reset role;');
+ console.log('Gift retry/RLS, clan deduplication, Career CAS/RLS, push authorization/leases PASS');
+}

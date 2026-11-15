@@ -46,7 +46,7 @@ export function developOffseasonPlayer(season: PlayerSeason, rng: RNG = new RNG(
 function developSummer(season: PlayerSeason, rng: RNG, rules: LeagueRulesSettings | undefined, facilityMultiplier: number, focus: CoachTendencies['trainingFocus'], ratingCap: number, gameMinutes: number): PlayerSeason {
   const beforeOverall = calculateOverall(season);
   const beforeFullOverall = calculateFullAttributeOverall(season);
-  const next: PlayerSeason = JSON.parse(JSON.stringify(season));
+  const next: PlayerSeason = { ...season, attributes: { physical: { ...season.attributes.physical }, offense: { ...season.attributes.offense }, defense: { ...season.attributes.defense }, mental: { ...season.attributes.mental } }, development: { ...season.development } };
   next.age = season.age + 1;
   // Locked ratings (Edit Player): a year older, not a point different.
   if (season.lockRatings) return { ...next, previousOverall: beforeOverall, previousFullOverall: beforeFullOverall };
@@ -201,6 +201,27 @@ function developSummer(season: PlayerSeason, rng: RNG, rules: LeagueRulesSetting
     if (gapNow > 0.5) growOverall(gapNow * (missedShare > 0.3 ? injuryGrowthPenalty : 1));
   }
   if (phase === 'growth' || phase === 'prime') capToPotential(season, next, next.development.potential);
+  // Default annual movement clusters near three points, with rare 8–10 point seasons.
+  // Keep coaching/age/injury-driven attribute shape, then normalize the headline change.
+  const rollAnnual = rng.next();
+  const magnitude = rollAnnual < .25 ? 1 : rollAnnual < .50 ? 2 : rollAnnual < .70 ? 3 : rollAnnual < .82 ? 4 : rollAnnual < .90 ? 5 : rollAnnual < .94 ? 6 : rollAnnual < .96 ? 7 : rollAnnual < .98 ? 8 : rollAnnual < .99 ? 9 : 10;
+  const underused = (gamesPlayedForMinutes >= 20 && mpg < 10) || (minutesPlayedRaw === 0 && next.age >= 22);
+  const surprise = rng.next();
+  const breakout = next.age <= 27 && underused && season.development.workEthic >= 60 && surprise < .03;
+  const rust = underused && !breakout && surprise < .15;
+  let sign = phase === 'growth' ? 1 : phase === 'decline' ? -1 : Math.sign(calculateOverallExact(next) - calculateOverallExact(season));
+  if (rust) sign = -1;
+  if (breakout) { sign = 1; next.development.potential = Math.max(next.development.potential, Math.min(95, beforeOverall + 15)); }
+  const speed = sign > 0 ? speedMult : declineSpeedMult;
+  let target = sign * Math.min(10, Math.max(1, Math.round((breakout ? 8 + Math.floor(rng.next() * 3) : rust ? 5 : magnitude) * (sign > 0 ? Math.min(1.15, Math.max(.8, minutesFactor)) * Math.max(.75, Math.min(1.2, workEthic)) : 1) * speed)));
+  if (speed === 0) target = 0;
+  if (target > 0) target = Math.min(target, Math.max(0, next.development.potential - calculateOverallExact(season)));
+  for (let correction = 0; correction < 3; correction++) {
+    const difference = target - (calculateOverallExact(next) - calculateOverallExact(season));
+    if (Math.abs(difference) < .15) break;
+    growOverall(difference);
+  }
+  next.developmentReason = breakout ? 'Late breakout: a bench player earned a higher ceiling through work ethic.' : rust ? 'Lost rhythm: limited playing time contributed to a five-point decline.' : target > 0 ? 'Annual development and training.' : target < 0 ? 'Annual aging and development.' : 'Maintained current level.';
   const synced = syncPotential(next, rules);
   synced.previousOverall = beforeOverall;
   synced.previousFullOverall = beforeFullOverall;

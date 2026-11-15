@@ -4,6 +4,7 @@ import type { PlayerSeason } from '../simulation/types';
 import { formatSeasonYear } from '../simulation/calendar';
 import { ratingSourceLabel, ratingSourceTag } from '../history/datasetInfo';
 import { realDevelopmentStatus, seasonText } from '../history/realDevelopment';
+import { awardIdFromLabel } from '../simulation/awardStudio';
 
 /** Provenance of a real player's rating and attributes, plus his Real Player Development status. */
 export function RealPlayerFacts({ player, league }: { player: PlayerSeason; league?: League }) {
@@ -35,11 +36,12 @@ export function RealPlayerFacts({ player, league }: { player: PlayerSeason; leag
 }
 
 /** Awards split by origin: real NBA honours from before the league's start, and awards won in this simulation. */
-export function AwardsByOrigin({ player, league, awardsHistory }: { player: PlayerSeason; league?: League; awardsHistory: { season: string; label: string }[] }) {
+export function AwardsByOrigin({ player, league, awardsHistory }: { player: PlayerSeason; league?: League; awardsHistory: { season: string; label: string; key?: string }[] }) {
   const start = league?.historical?.startYear;
   const imported = useMemo(() => new Set((league?.franchiseHistory ?? []).filter(rec => rec.imported).map(rec => rec.season)), [league?.franchiseHistory]);
-  const real = group((player.historicalAwards ?? []).map(a => ({ season: a.season, label: a.label, detail: a.detail })));
-  const simulated = group(awardsHistory.filter(a => !imported.has(a.season)));
+  const edited = (season: string, id?: string) => !!id && Object.hasOwn(league?.awardStudio?.history[season] ?? {}, id);
+  const real = group((player.historicalAwards ?? []).filter(a => !edited(a.season, awardIdFromLabel(a.label))).map(a => ({ season: a.season, label: league?.awardStudio?.definitions.find(d => d.id === awardIdFromLabel(a.label))?.name ?? a.label, detail: a.detail })));
+  const simulated = group(awardsHistory.filter(a => !imported.has(a.season) || edited(a.season, a.key)));
   return (
     <div className="awards-by-origin">
       <h5>Real NBA{start != null ? ` · before ${seasonText(start)}` : ''} <span className="origin-tag real">Imported</span></h5>
@@ -48,7 +50,7 @@ export function AwardsByOrigin({ player, league, awardsHistory }: { player: Play
           {real.map(g => <span key={g.label} className="badge-chip" tabIndex={0} title={g.items.map(i => `${formatSeasonYear(i.season)}${i.detail ? ` (${i.detail})` : ''}`).join(', ')}>{g.label}{g.items.length > 1 ? ` ×${g.items.length}` : ''}</span>)}
         </div>
       ) : <p className="hint-text">No real NBA honours before this league's start.</p>}
-      <h5>In this league <span className="origin-tag sim">Simulated</span></h5>
+      <h5>In this league <span className="origin-tag sim">League history</span></h5>
       {simulated.length ? (
         <div className="badge-grid">
           {simulated.map(g => <span key={g.label} className="badge-chip" tabIndex={0} title={g.items.map(i => formatSeasonYear(i.season)).join(', ')}>{g.label}{g.items.length > 1 ? ` ×${g.items.length}` : ''}</span>)}

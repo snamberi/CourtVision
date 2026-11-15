@@ -1,3 +1,4 @@
+import './leagueStories50.css';
 import { formatSeasonYear } from '../simulation/calendar';
 import { TeamLink, TeamText } from './TeamLink';
 import { TeamLogo } from './TeamLogo';
@@ -16,6 +17,7 @@ interface Props {
 const ALL_CATEGORIES: NewsCategory[] = ['Highlights', 'Awards', 'Draft', 'League', 'Injuries', 'Player Feats', 'Playoffs', 'Transactions', 'Teams', 'Rivalries', 'Records'];
 
 export function NewsFeedPage({ league, extras, onSelectPlayer, onGame, onPlayoffs, onWatchHighlight }: Props) {
+  const [paper, setPaper] = useState(true);
   const [teamFilter, setTeamFilter] = useState('all');
   const [seasonFilter, setSeasonFilter] = useState('all');
   const [active, setActive] = useState<Set<NewsCategory>>(new Set(ALL_CATEGORIES));
@@ -32,7 +34,7 @@ export function NewsFeedPage({ league, extras, onSelectPlayer, onGame, onPlayoff
 
   return (
     <div className="news-feed-page">
-      <span className="pixel-eyebrow">THE LEAGUE WIRE</span><h4>News Feed</h4>
+      <span className="pixel-eyebrow">THE LEAGUE WIRE</span><h4>{paper ? 'The CourtVision Times' : 'News Feed'}</h4><button onClick={() => setPaper(!paper)}>{paper ? 'Switch to news feed' : 'Read newspaper'}</button>
       <p className="hint-text">Game nights, emerging stars, familiar faces. Every headline comes from your league’s results and history.</p>
       <div className="news-selectors"><label>Team<select value={teamFilter} onChange={e => setTeamFilter(e.target.value)}><option value="all">All teams</option>{league.teams.map(t => <option key={t.teamId} value={t.teamId}>{t.name}</option>)}</select></label>
       <label>Season<select value={seasonFilter} onChange={e => setSeasonFilter(e.target.value)}><option value="all">All seasons</option>{[...new Set(items.map(i => i.season).filter(Boolean))].map(s => <option key={s} value={s}>{formatSeasonYear(s)}</option>)}</select></label></div>
@@ -54,7 +56,7 @@ export function NewsFeedPage({ league, extras, onSelectPlayer, onGame, onPlayoff
       {filtered.length === 0 ? (
         <p className="empty-state">Nothing to show — try enabling more categories, or check back after simulating some games.</p>
       ) : (
-        <div className="news-feed-grid">
+        <div className={paper ? 'newspaper50' : 'news-feed-grid'}>{paper && <header className="paper-masthead50"><b>The CourtVision Times</b><span>{seasonFilter === 'all' ? 'League archive' : formatSeasonYear(seasonFilter)} · {league.calendarDate ?? league.season} · {teamFilter === 'all' ? 'All franchises' : league.teams.find(t => t.teamId === teamFilter)?.name}</span></header>}
           {filtered.map((item) => (
             <div key={item.id} className="news-card">
               <div className="news-card-header">

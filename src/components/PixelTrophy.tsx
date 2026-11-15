@@ -1,3 +1,4 @@
+import { useAwardDefinition } from './AwardStudio';
 import { memo } from 'react';
 import { TROPHIES, type TrophyKey } from '../simulation/trophies';
 import { trophyRects } from '../visuals/trophyArt';
@@ -16,14 +17,16 @@ function trophyPaths(award: TrophyKey) {
 
 /** Every award's original pixel trophy. `dim` draws an unearned silhouette. */
 export const PixelTrophy = memo(function PixelTrophy({ award, size = 32, title, dim, className }: {
-  award: TrophyKey; size?: number; title?: string; dim?: boolean; className?: string;
+  award: string; size?: number; title?: string; dim?: boolean; className?: string;
 }) {
-  const label = title ?? TROPHIES[award].label;
+  const definition = useAwardDefinition(award);
+  const label = title ?? definition.name;
+  if (definition.image) return <img className={`pixel-trophy ${className ?? ''}`} src={definition.image} alt={label} title={label} width={size} height={Math.round(size * 1.25)} style={{ objectFit: 'contain', opacity: dim ? .25 : 1 }} />;
   return (
     <svg className={`pixel-trophy${dim ? ' pixel-trophy--dim' : ''}${className ? ` ${className}` : ''}`} width={size} height={Math.round(size * 1.25)}
       viewBox="0 0 16 20" shapeRendering="crispEdges" role="img" aria-label={label}>
       <title>{label}</title>
-      {trophyPaths(award).map(p => <path key={p.fill} d={p.d} fill={p.fill} />)}
+      {trophyPaths((Object.hasOwn(TROPHIES,award) ? award : 'mvp') as TrophyKey).map(p => <path key={p.fill} d={p.d} fill={Object.hasOwn(TROPHIES,award) ? p.fill : definition.color} />)}
     </svg>
   );
 });

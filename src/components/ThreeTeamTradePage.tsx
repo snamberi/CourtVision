@@ -1,3 +1,4 @@
+import { PlayerNameTag } from './PlayerAvatar';
 import { useState } from 'react';
 import type { League } from '../simulation/league';
 import type { GMLeagueExtras } from '../simulation/gm';
@@ -57,7 +58,7 @@ export function ThreeTeamTradePage({ league, extras, controlledTeamId, onChange 
       <header><TeamLogo team={team} size={28} />
         {pickTeam ? <select value={teamId} onChange={e => { pickTeam(e.target.value); reset(); }}>{others.map(t => <option key={t.teamId} value={t.teamId}>{t.name}</option>)}</select> : <b>{team.name}</b>}</header>
       {side && <p className={`three-team-verdict ${side.ok || teamId === controlledTeamId ? 'ok' : 'no'}`}>Gives {side.give.toFixed(0)} · gets {side.receive.toFixed(0)}{teamId === controlledTeamId ? '' : side.ok ? ' · on board' : ' · wants more'}</p>}
-      <ul>{[...team.seasons].sort((x, y) => calculateOverall(y) - calculateOverall(x)).map(p => <li key={p.playerId}><span>{p.playerId} <small>{calculateOverall(p)} OVR</small></span>{select('player', p.playerId)}</li>)}
+      <ul>{[...team.seasons].sort((x, y) => calculateOverall(y) - calculateOverall(x)).map(p => <li key={p.playerId}><span><PlayerNameTag season={p} playerId={p.playerId} teamId={p.teamId} /> <small>{calculateOverall(p)} OVR</small></span>{select('player', p.playerId)}</li>)}
         {tradeableFuturePicks(extras, teamId).map(pk => <li key={pk.id}><span>{pk.year} R{pk.round} pick{pk.originalTeamId !== teamId ? <small> via {name(pk.originalTeamId)}</small> : null}</span>{select('pick', pk.id)}</li>)}</ul>
     </section>;
   };

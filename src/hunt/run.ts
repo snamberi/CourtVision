@@ -90,6 +90,7 @@ export interface HuntRun {
   guarantees: { star: number; great: number };
   lives: number;
   coins: number;
+  forbiddenPlaybook?: boolean;
   items: ItemId[];
   boosts: BoostId[];
   boostOffer?: BoostId[];
@@ -189,7 +190,7 @@ export const opponentRating = (h: NbaHistory, run: HuntRun, s: HuntSeries) => ro
 
 // ---------------------------------------------------------------- a new run
 
-export interface NewRunOptions { /** Relic luck (0-0.3), secret relics and your pet (the Cat's extra life, the Goldfish's coins); ignored by the Daily and the Weekly Hunt. */ luck?: number; secondWind?: boolean; goldenTouch?: boolean; pet?: string | null; deck?: DeckId; difficulty?: Difficulty; daily?: string; weekly?: string; /** Your favourite player (Profile); ignored in the Daily Legend. */ fav?: string; /** Ratings / rarity colours on the spins (the Daily and the Weekly Hunt always use the standard view). */ view?: RunView }
+export interface NewRunOptions { secrets?: readonly string[]; /** Relic luck (0-0.3), secret relics and your pet (the Cat's extra life, the Goldfish's coins); ignored by the Daily and the Weekly Hunt. */ luck?: number; secondWind?: boolean; goldenTouch?: boolean; pet?: string | null; deck?: DeckId; difficulty?: Difficulty; daily?: string; weekly?: string; /** Your favourite player (Profile); ignored in the Daily Legend. */ fav?: string; /** Ratings / rarity colours on the spins (the Daily and the Weekly Hunt always use the standard view). */ view?: RunView }
 
 function pickTeam(h: NbaHistory, teams: HuntTeam[], era: HuntEra, target: number, rng: RNG, used: Set<string>): HuntTeam {
   const free = teams.filter(t => !used.has(t.id));
@@ -229,7 +230,8 @@ export function newRun(h: NbaHistory, seed: number, opts: NewRunOptions = {}): H
   }
   series.push({ teamId: bossTeam.id, eraId: eraOf(bossTeam.end).id, kind: 'boss', buffs: buffPool(3), lift: 0 });
   let run: HuntRun = { version: 3, seed, stage: 'draft', squad: SLOTS.map(() => ''), spin: 0, offer: [], reels: null, guarantees: { star: 0, great: 1 },
-    lives: diff.lives + (shared ? 0 : (opts.secondWind ? 1 : 0) + (opts.pet === 'cat' ? 1 : 0)), coins: START_COINS + diff.coinShift + deck.coins + (shared ? 0 : (opts.goldenTouch ? 30 : 0) + (opts.pet === 'goldfish' ? 25 : 0)), ...(!shared && opts.luck ? { luck: opts.luck } : {}), items: [...deck.items], boosts: [], growth: { star: 0, sixth: 0, chemistry: 0, coach: 0 }, training: {},
+    forbiddenPlaybook: !shared && opts.secrets?.includes('forbiddenPlaybook'),
+    lives: diff.lives + (shared ? 0 : (opts.secondWind ? 1 : 0) + (opts.pet === 'cat' ? 1 : 0)), coins: START_COINS + diff.coinShift + deck.coins + (shared ? 0 : (opts.goldenTouch ? 30 : 0) + (opts.secrets?.includes('stockingStuffer') ? 20 : 0) + (opts.secrets?.includes('goldenEgg') ? 15 : 0) + (opts.pet === 'goldfish' ? 25 : 0)), ...(!shared && opts.luck ? { luck: opts.luck } : {}), items: [...deck.items], boosts: [], growth: { star: 0, sixth: 0, chemistry: 0, coach: 0 }, training: {},
     series, seriesIndex: 0, attempts: 0, results: [], deck: deck.id, difficulty: diff.id, ...(opts.daily ? { daily: opts.daily } : opts.weekly ? { weekly: opts.weekly } : opts.fav ? { fav: opts.fav } : {}),
     ...(!opts.daily && !opts.weekly && opts.view && (opts.view.numbers !== STANDARD_VIEW.numbers || opts.view.colors !== STANDARD_VIEW.colors) ? { view: opts.view } : {}) };
   // Lift every team that falls short of its series' rating (buffs count, so the lift is what is left).
@@ -720,3 +722,11 @@ export function leaveShop(run: HuntRun): HuntRun {
 export const slotName = (slot: number) => (slot === 5 ? 'sixth man' : SLOTS[slot]);
 
 export type { ChemistryBond };
+
+export function rerollOfferedPlayer(h: NbaHistory, run: HuntRun, slot: SpinKind, cat: CategoryInfo | null = null): HuntRun {
+  if (!run.forbiddenPlaybook || run.daily || run.weekly || slot === 'COACH' || run.stage !== 'draft' || !run.reels?.[slot] || !openSpins(run).includes(slot)) return run;
+  const redrawn = stopReels(h, { ...run, seed: run.seed + 104729, reels: null }, cat);
+  const replacement = redrawn.reels?.[slot];
+  if (!replacement) return run;
+  return { ...run, forbiddenPlaybook: false, reels: { ...run.reels, [slot]: replacement }, luckyReels: run.luckyReels?.filter(k => k !== slot) };
+}

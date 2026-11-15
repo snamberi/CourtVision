@@ -44,3 +44,23 @@ describe('GM legacy across leagues', () => {
     expect(mergeLeague(empty(), 'a', 'A', l).leagues.a).toBeUndefined();
   });
 });
+
+// Release missions must stay within the same official franchise.
+import { franchiseSecrets } from '../relics/franchiseSecrets';
+describe('franchise Secret missions', () => {
+  const { league } = generateFullLeague(81, 6, 8, 4, '2026');
+  const base = ensureFrontOffice(league, league.teams[0].teamId);
+  const withReviews = (reviews: OwnerReview[]) => ({ ...base, frontOffice: { ...base.frontOffice!, reviews } });
+  it('awards five championships with one team, not five across different teams', () => {
+    const rows = Array.from({ length: 5 }, (_, i) => review(String(2026 + i), 60, 'Champion'));
+    expect(franchiseSecrets(withReviews(rows))).toContain('loyaltyPays');
+    expect(franchiseSecrets(withReviews(rows.map((r, i) => ({ ...r, teamId: String(i) }))))).not.toContain('loyaltyPays');
+    expect(franchiseSecrets(markSandboxUse({ ...withReviews(rows), settings: { ...base.settings, sandboxMode: true } }))).toEqual([]);
+  });
+  it('requires a championship after the low-win season with that same team', () => {
+    const rows = [review('2026', 20, 'Missed Playoffs'), review('2028', 55, 'Champion')];
+    expect(franchiseSecrets(withReviews(rows))).toContain('rebuilder');
+    expect(franchiseSecrets(withReviews([{ ...rows[0], wins: 21 }, rows[1]]))).not.toContain('rebuilder');
+    expect(franchiseSecrets(withReviews([rows[0], { ...rows[1], teamId: 'other' }]))).not.toContain('rebuilder');
+  });
+});

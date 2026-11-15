@@ -1,4 +1,6 @@
-import { loadRelics, saveRelics, grantReward, grantLuckySpins, earn, INCOME_RATE, type SecretId } from './relics';
+import { noteRelicFeat50 } from './mastery50';
+import { noteActivityScore } from '../profile/activityScore';
+import { RELICS, loadRelics, saveRelics, grantReward, grantLuckySpins, earn, INCOME_RATE, type SecretId } from './relics';
 import { noteSeason, markSeasonPaid, SEASON_REWARDS, type SeasonCosmetic } from '../retention/season';
 import { isEvent } from '../retention/weeklyEvent';
 import { activePet } from '../profile/pets';
@@ -46,9 +48,11 @@ export function rewardRun(key: string, n: number, opts: { secret?: SecretId; why
   // The Dragon (a pet) hoards: +50% coins.
   const dragon = activePet(levelFor(totalXp()).level) === 'dragon' ? 1.5 : 1;
   const spins = n + (n > 0 && isEvent('spinStorm', now) ? 1 : 0), coins = Math.round(runCoins(n) * (isEvent('coinRush', now) ? 2 : 1) * dragon);
-  const after = grantReward(before, key, { spins, coins, secret: opts.secret, why: opts.why });
+  let after = grantReward(before, key, { spins, coins, secret: opts.secret, why: opts.why });
   if (after === before) return 0;
+  if (n > 0) after = noteRelicFeat50(after, RELICS, before.equipped, { run: key });
   saveRelics(after);
+  noteActivityScore(key, now);
   return after.spins - before.spins;
 }
 

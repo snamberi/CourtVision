@@ -12,14 +12,14 @@ const seq = (...xs: number[]) => { let i = 0; return () => xs[i++ % xs.length]; 
 const DOUBLE_WEEK = new Date('2026-10-21T12:00:00Z'), PLAIN_WEEK = new Date('2026-10-28T12:00:00Z');
 
 describe('relic economy', () => {
-  it('relics give 20% less luck, with no cap on the total', () => {
+  it('non-Mythic relics receive an additional 15% luck reduction, with no cap on the total', () => {
     const ring = RELIC_BY_ID.get('ring')!;
-    expect(relicLuck(ring, 1)).toBeCloseTo(RELIC_RARITY[ring.rarity].luck * 0.8, 5);
+    expect(relicLuck(ring, 1)).toBeCloseTo(RELIC_RARITY[ring.rarity].luck * 0.68, 5);
     const all = Object.fromEntries(RELICS.map(r => [r.id, 1]));
     expect(totalLuck({ owned: all, slotsBought: 5 })).toBeGreaterThan(50);
   });
 
-  it('the 15th slot costs 2.5 million and doubles every relic', () => {
+  it('the 15th slot costs 2.5 million and does not double relics in other slots', () => {
     expect(SLOT_PRICES[4]).toBe(2_500_000);
     let s = base({ coins: 10_000_000, owned: { ring: 1 }, equipped: ['ring'] });
     const before = luckPercent(s);
@@ -29,8 +29,8 @@ describe('relic economy', () => {
     const coins = s.coins;
     s = buySlot(s)!;
     expect(coins - s.coins).toBe(2_500_000);
-    expect(relicPower(s)).toBe(2);
-    expect(luckPercent(s)).toBeCloseTo(before * 2, 5);
+    expect(relicPower(s, 'ring')).toBe(1);
+    expect(luckPercent(s)).toBeCloseTo(before, 5);
   });
 
   it('pays 15% fewer coins', () => {

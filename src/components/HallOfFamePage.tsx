@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import type { League } from '../simulation/league';
 import { computeHallOfFame, HOF_THRESHOLD } from '../simulation/hallOfFame';
 import { hallOfFameClasses, hallOfFamers, INDUCTION_SHARE } from '../simulation/hofVoting';
+import { almostLegends } from '../simulation/almostLegends';
 import '../improvements.css';
 
 interface Props {
@@ -11,13 +12,14 @@ interface Props {
   onSelectPlayer: (playerId: string) => void;
 }
 
-type View = 'inducted' | 'ballots' | 'near';
+type View = 'inducted' | 'ballots' | 'near' | 'almost';
 const pct = (n: number) => `${(n * 100).toFixed(1)}%`;
 const ordinal = (n: number) => (n === 1 ? 'first' : n === 2 ? 'second' : n === 3 ? 'third' : `${n}th`);
 
 export function HallOfFamePage({ league, onSelectPlayer }: Props) {
   const [view, setView] = useState<View>('inducted');
   const cases = useMemo(() => computeHallOfFame(league), [league]);
+  const almost = useMemo(() => almostLegends(league, cases), [league, cases]);
   const classes = useMemo(() => hallOfFameClasses(league, cases), [league, cases]);
   const members = useMemo(() => hallOfFamers(league, cases, classes), [league, cases, classes]);
   const voteOf = useMemo(() => new Map(classes.flatMap(c => c.inducted.map(i => [i.playerId, { ...i, season: c.season }] as const))), [classes]);
@@ -47,10 +49,19 @@ export function HallOfFamePage({ league, onSelectPlayer }: Props) {
       <div className="stats-view-toggle">
         <button className={view === 'inducted' ? 'active' : ''} onClick={() => setView('inducted')}>Inducted ({inducted.length})</button>
         <button className={view === 'ballots' ? 'active' : ''} onClick={() => setView('ballots')}>Ballots ({classes.length})</button>
+        <button className={view === 'almost' ? 'active' : ''} onClick={() => setView('almost')}>Almost Legends ({almost.length})</button>
         <button className={view === 'near' ? 'active' : ''} onClick={() => setView('near')}>Not inducted ({nearMisses.length})</button>
       </div>
 
-      {view === 'ballots' ? (
+      {view === 'almost' ? <section>
+        <p className="hint-text">Retired players with a Hall-caliber career and no recorded league championship. Older or imported saves may have incomplete title and roster records. Playoff runs show teams they appeared for during the season, not confirmed playoff appearances.</p>
+        {!almost.length ? <p className="empty-state">No qualifying careers are recorded yet.</p> : <div className="hof-grid">{almost.map(({ career, runs }) => <article className="hof-card" key={career.playerId}>
+          <div className="hof-card-header"><button className="link-button hof-name" onClick={() => onSelectPlayer(career.playerId)}>{career.playerId}</button><span className="hof-score">{career.score}</span></div>
+          <p className="hint-text">Retired {formatSeasonYear(career.finalSeason)} · No recorded championship</p>
+          <ul className="hof-resume">{career.resume.map((line, i) => <li key={i}>{line}</li>)}</ul>
+          <h5>Closest recorded runs</h5>{runs.length ? <ul>{runs.slice(0, 5).map((run, i) => <li key={`${run.season}:${run.teamName}:${i}`}>{formatSeasonYear(run.season)} · {run.teamName} · {run.finish}{run.opponent ? ` · lost to ${run.opponent}${run.result ? ` ${run.result}` : ''}` : ''}</li>)}</ul> : <p className="hint-text">No team playoff runs are available in the archived roster data.</p>}
+        </article>)}</div>}
+      </section> : view === 'ballots' ? (
         classes.length === 0 ? <p className="empty-state">The first vote comes after the first completed season.</p> : (
           <div className="hof-ballots">{[...classes].reverse().map(c => (
             <div key={c.season} className="hof-ballot">

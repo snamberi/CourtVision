@@ -2,7 +2,7 @@ import type { League, RetiredPlayerRecord } from './league';
 import type { PlayerSeason } from './types';
 import { careerSummary } from './careerStats';
 import { getPlayerAwardsHistory } from './leagueAnalytics';
-import { TROPHIES, TROPHY_ORDER, type TrophyKey } from './trophies';
+import { awardDefinition } from './awardStudio';
 
 export interface HallOfFameCase {
   playerId: string;
@@ -47,11 +47,11 @@ export function buildHallOfFameCase(
   // Imported early-era seasons may not have recorded rebounds or assists (NaN): they add nothing rather than breaking the score.
   const f = (v: number) => (Number.isFinite(v) ? v : 0);
   const rateScore = f(pg.ppg) * 1.6 + f(pg.rpg) * 0.9 + f(pg.apg) * 1.1;
-  const awardScore = Math.round(awards.reduce((n, a) => n + TROPHIES[a.key].prestige, 0));
-  const counts = new Map<TrophyKey, number>();
+  const awardScore = Math.round(awards.reduce((n, a) => n + awardDefinition(league, a.key).prestige, 0));
+  const counts = new Map<string, number>();
   for (const a of awards) counts.set(a.key, (counts.get(a.key) ?? 0) + 1);
-  const headline = TROPHY_ORDER.filter(k => counts.has(k) && TROPHIES[k].prestige >= 2).slice(0, 5)
-    .map(k => `${counts.get(k)! > 1 ? `${counts.get(k)}× ` : ''}${TROPHIES[k].short}`);
+  const headline = [...counts.keys()].sort((a,b) => awardDefinition(league,b).prestige - awardDefinition(league,a).prestige).filter(k => awardDefinition(league,k).prestige >= 2).slice(0, 5)
+    .map(k => `${counts.get(k)! > 1 ? `${counts.get(k)}× ` : ''}${awardDefinition(league,k).short}`);
   const awardCount = awards.filter(a => a.key !== 'pow').length;
   const longevityScore = summary.seasonsPlayed * 1.5;
   // World Games medals: gold 4, silver 2.5, bronze 1.5.

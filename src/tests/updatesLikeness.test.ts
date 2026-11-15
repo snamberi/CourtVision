@@ -36,3 +36,14 @@ describe('the Updates hub', () => {
     expect(searchUpdates('zzzz-nothing')).toEqual([]);
   });
 });
+
+describe('living Update 50 notes', () => {
+  it('keeps one entry numbered 50 and preserves older release numbers', () => {
+    expect(updateNumber(RELEASES[0])).toBe(50);
+    expect(RELEASES[0].title).toContain('Update 50');
+    expect(updateNumber(RELEASES[1])).toBe(49);
+    expect(RELEASES.filter(r => r.title.startsWith('Update 50:'))).toHaveLength(1);
+    expect(RELEASES[0].id > RELEASES[1].id).toBe(true);
+    expect(RELEASES[0].items.join(' ')).toContain('Layout fixes');
+  });
+});

@@ -1,3 +1,4 @@
+import { cleanActivityScore, mergeActivityScore } from '../profile/activityScore';
 import { readRecordBook, mergeRecordBook } from '../retention/recordBook';
 import { readArcade, mergeArcade } from '../arcade/storage';
 import { mergeHoliday, loadHoliday } from '../retention/holiday';
@@ -32,7 +33,7 @@ export const SYNC_KEYS = [
   'cv-weekly-records', 'cv-daily-history', 'cv-profile-equip', 'cv-code-results', 'cv-feats',
   'cv-legend-records', 'cv-card-album', 'cv-card-sets', 'cv-avatar', 'cv-streak', 'cv-pass',
   'cv-perfect-records', 'cv-bonus-xp', 'cv-record-book', 'cv-play-time', 'cv-activity', 'cv-profile-public', 'cv-arcade', 'cv-missions', 'cv-quests', 'cv-trophy-case',
-  'cv-relics', 'cv-daily-challenge',
+  'cv-relics', 'cv-daily-challenge', 'cv-activity-score',
   // More records the achievements read, and the rest of your look (theme, menu style, favourites, phone layout, saved
   // characters, profile name, your player's ratings and your pets).
   'cv-survival-records', 'cv-story-endings', 'cv-owner-records', 'cv-battle-records', 'cv-decade-best', 'cv-street-best', 'cv-ranked-best', 'cv-founding',
@@ -140,6 +141,7 @@ function mergeOwners(a: Obj[], b: Obj[]): Obj[] {
 
 /** Merges one stored value. `local` wins ties for per-device choices (the frame and floor you just equipped). */
 export function mergeValue(key: SyncKey, local: string | null | undefined, cloud: string | null | undefined): string | null {
+  if (key === 'cv-activity-score') return JSON.stringify(mergeActivityScore(cleanActivityScore(parse(local, {})), cleanActivityScore(parse(cloud, {}))));
   if (local == null || local === '') return cloud ?? null;
   if (cloud == null || cloud === '') return local;
   switch (key) {

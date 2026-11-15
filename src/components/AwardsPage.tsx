@@ -1,3 +1,4 @@
+import { AwardName, CustomAwardBoard } from './AwardStudio';
 import { TeamLink } from './TeamLink';
 import { useState, useMemo, type ReactNode } from 'react';
 import type { League } from '../simulation/league';
@@ -9,7 +10,7 @@ import { formatSeasonYear } from '../simulation/calendar';
 import { simulateAllStarGame, type AllStarGameResult } from '../simulation/allStarGame';
 import { perGameAverages } from '../simulation/careerStats';
 import { formatDisplayDate } from '../simulation/calendar';
-import { TROPHIES, type TrophyKey } from '../simulation/trophies';
+import { type TrophyKey } from '../simulation/trophies';
 import type { AwardSettings } from './LeagueSettingsPage';
 import { PlayerNameTag } from './PlayerAvatar';
 import { PixelTrophy } from './PixelTrophy';
@@ -31,7 +32,7 @@ function WinnerCard({ trophy, winner, note, onSelectPlayer, co, unanimous }: { t
     <div className={`award-card award-card--trophy${winner ? '' : ' award-card--empty'}${unanimous ? ' award-card--unanimous' : ''}`}>
       <PixelTrophy award={trophy} size={34} dim={!winner} />
       <div>
-        <h4>{TROPHIES[trophy].label}{unanimous && <UnanimousTag compact />}</h4>
+        <h4><AwardName id={trophy} />{unanimous && <UnanimousTag compact />}</h4>
         {winner ? <>
           <p className="award-winner" onClick={() => onSelectPlayer(winner.playerId)}><PlayerNameTag playerId={winner.playerId} teamId={winner.teamId} size={26} /></p>
           {co?.map(c => <p key={c.playerId} className="award-winner award-co" onClick={() => onSelectPlayer(c.playerId)}>and <PlayerNameTag playerId={c.playerId} teamId={c.teamId} size={20} /></p>)}
@@ -47,7 +48,7 @@ function TeamWinnerCard({ trophy, winner, who, unanimous }: { trophy: TrophyKey;
     <div className={`award-card award-card--trophy${winner ? '' : ' award-card--empty'}${unanimous ? ' award-card--unanimous' : ''}`}>
       <PixelTrophy award={trophy} size={34} dim={!winner} />
       <div>
-        <h4>{TROPHIES[trophy].label}{unanimous && <UnanimousTag compact />}</h4>
+        <h4><AwardName id={trophy} />{unanimous && <UnanimousTag compact />}</h4>
         {winner ? <>
           <p className="award-winner">{who}</p>
           <p className="hint-text"><TeamLink teamId={winner.teamId} name={winner.teamName} />{winner.detail ? ` · ${winner.detail.wins}–${winner.detail.losses}` : ''}{winner.voteShare != null ? ` · ${(winner.voteShare * 100).toFixed(0)}% share` : ''}</p>
@@ -63,7 +64,7 @@ function TeamSelectionBlock({ title, teams, trophies, onSelectPlayer }: { title:
       <h4>{title}</h4>
       {teams.map((team, i) => (
         <div key={i} className="award-team-row">
-          <span className="award-team-label"><PixelTrophy award={trophies[i] ?? trophies.at(-1)!} size={18} />{i === 0 ? '1st Team' : i === 1 ? '2nd Team' : '3rd Team'}</span>
+          <span className="award-team-label"><PixelTrophy award={trophies[i] ?? trophies.at(-1)!} size={18} /><AwardName id={trophies[i] ?? trophies.at(-1)!} /></span>
           {team.length === 0 ? <span className="hint-text"> (none yet)</span> : team.map((w) => (
             <span key={w.playerId} className="award-team-player" onClick={() => onSelectPlayer(w.playerId)}>
               {w.position && <span className="pos-chip">{w.position}</span>}<PlayerNameTag playerId={w.playerId} teamId={w.teamId} size={22} />
@@ -125,7 +126,7 @@ export function AwardsPage({ league, onSelectPlayer, awardSettings, finalsBracke
 
   let finals: PlayoffSeries | undefined;
   if (finalsBracket) finals = finalsBracket.rounds[finalsBracket.rounds.length - 1]?.[0];
-  const fmvp = finals ? finalsMVPLine(finals, league) : null;
+  const fmvp = !archived && finals ? finalsMVPLine(finals, league) : null;
   const archivedFmvp = archived?.fmvpPlayerId ?? null;
   const fmvpInfo = useMemo(() => fmvp ? { playerId: fmvp.winner.playerId, teamId: fmvp.winner.teamId, teamName: fmvp.winner.teamName,
     line: `Finals: ${stat1(fmvp.ppg)} points, ${stat1(fmvp.rpg)} rebounds and ${stat1(fmvp.apg)} assists a game over ${fmvp.games} games` }
@@ -134,7 +135,7 @@ export function AwardsPage({ league, onSelectPlayer, awardSettings, finalsBracke
 
   const recap = !!archived || league.seasonPhase === 'awards_recap' || !!finalsBracket?.championTeamId;
   const seasonOver = league.schedule.length > 0 && league.schedule.every(g => g.played);
-  const honors = raceState?.honors ?? archived?.fullAwards?.honors ?? [];
+  const honors = awards.honors ?? raceState?.honors ?? archived?.fullAwards?.honors ?? [];
   const weeks = honors.filter(h => h.kind === 'week');
   const latestWeek = weeks.filter(h => h.label === weeks.at(-1)?.label);
   const months = honors.filter(h => h.kind === 'month');
@@ -148,6 +149,7 @@ export function AwardsPage({ league, onSelectPlayer, awardSettings, finalsBracke
 
   return (
     <div className="awards-page">
+      <CustomAwardBoard league={league} season={awardsSeason} onSelectPlayer={onSelectPlayer} />
       {awards?.mvp && <div className={`awards-night-cta${recap ? ' awards-night-cta-live' : ''}`}>
         <PixelTrophy award="mvp" size={40} />
         <div><span className="pixel-eyebrow">{archived ? `${formatSeasonYear(awardsSeason)} AWARDS` : recap ? 'THE SEASON IS OVER' : 'AWARDS NIGHT'}</span>
@@ -161,15 +163,15 @@ export function AwardsPage({ league, onSelectPlayer, awardSettings, finalsBracke
         A 100-member media panel votes on the major awards; the formulas behind the scores are in League Settings.
       </p>}
 
-      {finalsBracket?.championTeamId && (
+      {finalsBracket?.championTeamId && !awards.custom?.champion && (
         <div className="award-card champion-card">
           <PixelTrophy award="champion" size={48} />
           <div>
-            <h4>Champion</h4>
+            <h4><AwardName id="champion" /></h4>
             <p className="award-winner"><TeamLink name={league.teams.find((t) => t.teamId === finalsBracket.championTeamId)?.name} /></p>
             {fmvp && (
               <p className="hint-text">
-                <PixelTrophy award="fmvp" size={14} /> Finals MVP: <span className="award-winner-inline" onClick={() => onSelectPlayer(fmvp.winner.playerId)}><PlayerNameTag playerId={fmvp.winner.playerId} teamId={fmvp.winner.teamId} size={22} /></span>
+                <PixelTrophy award="fmvp" size={14} /> <AwardName id="fmvp" />: <span className="award-winner-inline" onClick={() => onSelectPlayer(fmvp.winner.playerId)}><PlayerNameTag playerId={fmvp.winner.playerId} teamId={fmvp.winner.teamId} size={22} /></span>
                 {' '}· {stat1(fmvp.ppg)} PTS · {stat1(fmvp.rpg)} REB · {stat1(fmvp.apg)} AST
               </p>
             )}
@@ -239,7 +241,7 @@ export function AwardsPage({ league, onSelectPlayer, awardSettings, finalsBracke
           <TeamSelectionBlock title="All-Rookie Teams" teams={awards.allRookie} trophies={['allRookie1', 'allRookie2']} onSelectPlayer={onSelectPlayer} />
 
           <div className="award-team-block">
-            <h4>All-Stars{confs ? ' by conference' : ''}</h4>
+            <h4><AwardName id="allStar" />{confs ? ' by conference' : ''}</h4>
             {(confs ? (['east', 'west'] as const) : [null]).map(conf => { const pool = awards.allStars.filter(w => !conf || w.conference === conf); return <div key={conf ?? 'all'}>
               {conf && <h5 className="all-star-conference-title">{conf === 'east' ? 'East' : 'West'}</h5>}
               {([true, false] as const).map(starter => { const list = pool.filter(w => isStarter(w) === starter); return list.length ? <div key={String(starter)} className="award-team-row">

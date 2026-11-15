@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest';
-import { activeHoliday, holidayRun, eventPieceHidden, earnFinish, eventCoins, spendEventCoins, mergeHoliday, loadHoliday, noteHolidayFinish, HOLIDAY_KEY, type HolidayState } from '../retention/holiday';
+import { activeHoliday, activeHolidays, holidayRun, eventPieceHidden, earnFinish, eventCoins, spendEventCoins, mergeHoliday, loadHoliday, noteHolidayFinish, HOLIDAY_KEY, type HolidayState } from '../retention/holiday';
 import { EVENT_PIECES, piecesFor } from '../retention/holidayShop';
 import { buyEventPiece } from '../retention/holidayBuy';
 import { loadRelics, RELICS_KEY } from '../relics/relics';
@@ -9,20 +9,23 @@ import { themeOpen, visibleThemes } from '../theme/themes';
 import { mergeValue, SYNC_KEYS } from '../cloud/merge';
 
 const empty = (): HolidayState => ({ v: 1, earned: {}, spent: {}, counted: [] });
-const HALLOWEEN = new Date('2026-11-02T12:00:00Z'), CHRISTMAS_JAN = new Date('2027-01-03T12:00:00Z'), OFF = new Date('2026-10-20T12:00:00Z');
+const HALLOWEEN = new Date('2026-10-12T12:00:00Z'), CHRISTMAS_JAN = new Date('2026-12-30T12:00:00Z'), OFF = new Date('2026-11-20T12:00:00Z');
 
 describe('holiday events', () => {
   beforeEach(() => localStorage.clear());
 
-  it('run two weeks from 31 October and 25 December, and are hidden before', () => {
-    expect(activeHoliday(new Date('2026-10-30T23:59:00Z'))).toBeNull();
-    expect(activeHoliday(new Date('2026-10-31T00:00:00Z'))?.key).toBe('halloween-2026');
-    expect(activeHoliday(new Date('2026-11-13T23:59:00Z'))?.key).toBe('halloween-2026');
-    expect(activeHoliday(new Date('2026-11-14T00:00:00Z'))).toBeNull();
-    expect(activeHoliday(new Date('2026-12-25T08:00:00Z'))?.key).toBe('christmas-2026');
-    expect(activeHoliday(CHRISTMAS_JAN)?.key).toBe('christmas-2026');
+  it('uses annual UTC windows and supports overlapping events', () => {
+    expect(activeHoliday(new Date('2026-09-26T23:59:59Z'))).toBeNull();
+    expect(activeHoliday(new Date('2026-09-27T00:00:00Z'))?.key).toBe('anniversary-2026');
+    expect(activeHoliday(new Date('2026-10-01T00:00:00Z'))?.key).toBe('halloween-2026');
+    expect(activeHoliday(new Date('2026-11-01T00:00:00Z'))).toBeNull();
+    expect(activeHolidays(CHRISTMAS_JAN).map(r => r.key)).toEqual(['christmas-2026', 'newyear-2026']);
+    expect(activeHoliday(new Date('2027-01-03T00:00:00Z'))?.key).toBe('newyear-2026');
     expect(activeHoliday(new Date('2027-01-08T00:00:00Z'))).toBeNull();
-    expect(holidayRun('halloween', 2027).start.toISOString()).toBe('2027-10-31T00:00:00.000Z');
+    expect(holidayRun('halloween', 2027).start.toISOString()).toBe('2027-10-01T00:00:00.000Z');
+    const both = earnFinish(empty(), true, 'overlap', CHRISTMAS_JAN);
+    expect(eventCoins(both, 'christmas-2026')).toBe(2);
+    expect(eventCoins(both, 'newyear-2026')).toBe(2);
   });
 
   it('keeps event pieces out of the pickers unless the event is on or you own one', () => {
@@ -89,5 +92,19 @@ describe('holiday events', () => {
     expect(m.spent).toEqual({ 'halloween-2026': 4 });
     expect(m.counted.sort()).toEqual(['halloween-2026:a', 'halloween-2026:b']);
     expect(mergeHoliday(a as HolidayState, a as HolidayState).earned).toEqual(a.earned);
+  });
+});
+
+describe('annual event carryover', () => {
+  it('spends older currency without copying it or mixing other events/future years', () => {
+    const s: HolidayState = { v: 1, earned: { 'halloween-2026': 30, 'christmas-2026': 99, 'halloween-2028': 100 }, spent: { 'halloween-2026': 10 }, counted: [] };
+    const next = spendEventCoins(s, 15, new Date('2027-10-02T12:00:00Z'), 'halloween')!;
+    expect(next.earned).toEqual(s.earned);
+    expect(next.spent['halloween-2027']).toBe(15);
+    expect(eventCoins(next, 'halloween-2027')).toBe(5);
+    expect(eventCoins(next, 'christmas-2027')).toBe(99);
+    expect(eventCoins(mergeHoliday(s, next), 'halloween-2027')).toBe(5);
+    expect(spendEventCoins(next, 6, new Date('2027-10-02T12:00:00Z'), 'halloween')).toBeNull();
+    expect(spendEventCoins(next, 1, OFF, 'halloween')).toBeNull();
   });
 });

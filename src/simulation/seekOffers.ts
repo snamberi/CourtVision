@@ -30,7 +30,7 @@ function combos(assets: Asset[], maxPlayers = 3): Asset[][] {
   return out;
 }
 
-export function seekTradeOffers(league: League, extras: GMLeagueExtras, userTeamId: string, wanted = 12): SoughtOffer[] {
+export function seekTradeOffers(league: League, extras: GMLeagueExtras, userTeamId: string, wanted = 12, refresh = false): SoughtOffer[] {
   const me = league.teams.find(t => t.teamId === userTeamId);
   if (!me) return [];
   const year = parseInt((league.season ?? '2026').slice(0, 4), 10);
@@ -73,7 +73,7 @@ export function seekTradeOffers(league: League, extras: GMLeagueExtras, userTeam
       valid.push({ proposal, yourValue: c.youGet, theirValue: c.theyGive });
       if (valid.length >= 4) break;
     }
-    perTeam.push(valid);
+    perTeam.push(refresh && valid.length > 1 ? [...valid.slice(1), valid[0]] : valid);
   }
   // Every team's best package first, then second choices, until there are enough offers.
   const offers: SoughtOffer[] = [];

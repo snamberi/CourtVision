@@ -58,13 +58,14 @@ export interface WheelState {
   favLanded?: boolean;
   /** Relic luck (relics.ts): Stars and Greats come up that much more often on ordinary spins. */
   relicLuck?: number;
-  /** Ultra Cheat (a secret relic): Lucky Spins can be traded for a category rated 125. */
+  /** Ultra Cheat (a secret relic): Lucky Spins can be traded for a category rated 130. */
   ultra?: boolean;
+  cursedDice?: boolean;
 }
 
-export interface WheelRelics { luck?: number; eternalSpin?: boolean; luckyCharm?: boolean; ultraCheat?: boolean; /** Your pet: the Fox adds a respin. */ pet?: string | null }
+export interface WheelRelics { secrets?: readonly string[]; luck?: number; eternalSpin?: boolean; luckyCharm?: boolean; ultraCheat?: boolean; /** Your pet: the Fox adds a respin. */ pet?: string | null }
 export const newWheel = (seed: number, fav?: string, relics?: WheelRelics): WheelState => ({ seed, spinCount: 0, current: null, takenFrom: [], picks: {}, moves: { left: true, right: true },
-  respins: RESPINS + (relics?.eternalSpin ? 1 : 0) + (relics?.pet === 'fox' ? 1 : 0), triple: true, lucky: LUCKY_SPINS + (relics?.luckyCharm ? 1 : 0), ...(fav ? { fav } : {}),
+  cursedDice: relics?.secrets?.includes('cursedDice'), respins: RESPINS + ['midnightReset', 'foundersWhistle', 'overtimeToken'].filter(id => relics?.secrets?.includes(id)).length + (relics?.eternalSpin ? 1 : 0) + (relics?.pet === 'fox' ? 1 : 0), triple: true, lucky: LUCKY_SPINS + (relics?.luckyCharm ? 1 : 0), ...(fav ? { fav } : {}),
   ...(relics?.luck ? { relicLuck: Math.round(relics.luck * 100) / 100 } : {}), ...(relics?.ultraCheat ? { ultra: true } : {}) });
 export const luckyLeft = (s: WheelState) => s.lucky ?? LUCKY_SPINS;
 export const boostLeft = (s: WheelState) => s.boost ?? PRIME_BOOSTS;
@@ -192,13 +193,29 @@ function starFloorCategory(h: NbaHistory, cardId: string): CategoryId | null {
 }
 
 /** A category as it would be taken: his ratings, raised when he is one of the best ever at it (or it is a Star's best). */
-export function takenValues(h: NbaHistory, cardId: string, cat: CategoryId): CategoryValues {
+function originalTakenValues(h: NbaHistory, cardId: string, cat: CategoryId): CategoryValues {
   let base = categoryValues(donor(h, cardId), cat);
   // A Star's ratings come in a little higher.
   if (cardPool(h).byId.get(cardId)?.rarity === 'legendary') base = Object.fromEntries(Object.entries(base).map(([k, v]) => [k, MEASURE.has(k) ? v : Math.min(ELITE_MAX, v + STAR_BONUS)]));
   const rank = eliteRanks(h).get(cardId)?.[cat];
   const target = Math.max(rank ? eliteTarget(rank) : 0, starFloorCategory(h, cardId) === cat ? STAR_FLOOR : 0);
   return target ? raiseTo(base, target) : base;
+}
+/** Career-only tiers; other modes retain their original card rarities. */
+export function careerRarity(h: NbaHistory, id: string): HuntCard['rarity'] | 'mythic' {
+  const card = cardPool(h).byId.get(id)!;
+  if (card.rarity === 'legendary') return 'mythic';
+  const ranks = Object.values(eliteRanks(h).get(id) ?? {}) as number[];
+  return ranks.some(rank => eliteTarget(rank) >= 100 || (card.rarity === 'epic' && rank <= GREAT_FLOOR_RANK)) ? 'legendary' : card.rarity;
+}
+const mythicBest = new WeakMap<NbaHistory, Map<string, CategoryId>>();
+export function takenValues(h: NbaHistory, id: string, cat: CategoryId): CategoryValues {
+  const values = originalTakenValues(h, id, cat);
+  if (careerRarity(h, id) !== 'mythic') return values;
+  let cache = mythicBest.get(h); if (!cache) { cache = new Map(); mythicBest.set(h, cache); }
+  let best = cache.get(id);
+  if (!best) { best = [...RATED].sort((a,b) => categoryScore(originalTakenValues(h,id,b)) - categoryScore(originalTakenValues(h,id,a)))[0]; cache.set(id,best); }
+  return best === cat ? raiseTo(values, 110) : values;
 }
 const MEASURE = new Set(['physical.heightInches', 'physical.wingspanInches', 'physical.standingReachInches', 'physical.weightLbs']);
 
@@ -249,14 +266,18 @@ function pickCard(h: NbaHistory, rng: RNG, luck = 1): HuntCard {
 }
 
 /** Stars and Greats only, by their wheel weight (a lucky spin's landing). */
-const elitePools = new WeakMap<NbaHistory, { list: HuntCard[]; cum: number[] }>();
+const elitePools = new WeakMap<NbaHistory, { legendary: HuntCard[]; mythic: HuntCard[] }>();
 function pickElite(h: NbaHistory, rng: RNG): HuntCard {
-  let e = elitePools.get(h);
-  if (!e) { const list = wheelPool(h).filter(c => c.rarity === 'legendary' || c.rarity === 'epic'); let t = 0; e = { list, cum: list.map(c => (t += sliceWeight(h, c, LUCK))) }; elitePools.set(h, e); }
-  const x = rng.next() * e.cum[e.cum.length - 1];
-  let lo = 0, hi = e.cum.length - 1;
-  while (lo < hi) { const mid = (lo + hi) >> 1; if (e.cum[mid] > x) hi = mid; else lo = mid + 1; }
-  return e.list[lo];
+  let pools = elitePools.get(h);
+  if (!pools) {
+    pools = { legendary: [], mythic: [] };
+    for (const c of wheelPool(h)) { const r = careerRarity(h, c.id); if (r === 'mythic' || r === 'legendary') pools[r].push(c); }
+    elitePools.set(h, pools);
+  }
+  const target = rng.next() < 0.3 ? pools.mythic : pools.legendary;
+  const list = target.length ? target : [...pools.mythic, ...pools.legendary];
+  if (!list.length) throw new Error('Career Lucky Spin requires Legendary or Mythic players.');
+  return list[rng.nextInt(list.length)];
 }
 
 /** Your favourite player's slice on the wheel (his best season), by player id or name. */
@@ -275,12 +296,10 @@ function makeWheels(h: NbaHistory, s: WheelState, count: number, lucky = false):
   const rng = new RNG(s.seed * 7919 + s.spinCount * 104_729 + 17);
   const luck = lucky ? LUCK : luckMultiplier(s.relicLuck);
   return Array.from({ length: count }, () => {
-    const reel = Array.from({ length: REEL_LENGTH }, () => pickCard(h, rng, luck).id), stop = rng.nextInt(REEL_LENGTH);
-    // A lucky spin always lands on a Star or a Great.
-    if (lucky) { const rarity = cardPool(h).byId.get(reel[stop])?.rarity; if (rarity !== 'legendary' && rarity !== 'epic') reel[stop] = pickElite(h, rng).id; }
+    const reel = Array.from({ length: REEL_LENGTH }, () => (lucky ? pickElite(h, rng) : pickCard(h, rng, luck)).id), stop = rng.nextInt(REEL_LENGTH);
     // Your favourite player: landing on his rarity, a FAV_BOOST chance it is him (until he has come up once).
     const fav = s.fav && !s.favLanded ? favCard(h, s.fav) : undefined;
-    if (fav && cardPool(h).byId.get(reel[stop])?.rarity === fav.rarity && !reel.includes(fav.id) && rng.next() < FAV_BOOST) reel[stop] = fav.id;
+    if (fav && careerRarity(h, reel[stop]) === careerRarity(h, fav.id) && !reel.includes(fav.id) && rng.next() < FAV_BOOST) reel[stop] = fav.id;
     return { reel, stop, ...(lucky ? { lucky: true } : {}) };
   });
 }
@@ -354,7 +373,7 @@ export function primeBoost(h: NbaHistory, s: WheelState, wheel: number): WheelSt
 // ---------------------------------------------------------------- Ultra Cheat
 
 /** Ultra Cheat: this many Lucky Spins buy one category of your choice, every rating in it at ULTRA_RATING. */
-export const ULTRA_COST = 2, ULTRA_RATING = 125;
+export const ULTRA_COST = 2, ULTRA_RATING = 130;
 /** The "player" an Ultra Cheat pick came from (there isn't one). */
 export const ULTRA_CARD = 'ultra-cheat';
 /** Weight given to an Ultra Cheat Body (weight is a measurement, not a rating). */
@@ -362,7 +381,7 @@ const ULTRA_WEIGHT = 225;
 /** Categories Ultra Cheat can fill right now: any open one but height (a measurement), between spins. */
 export const ultraOptions = (s: WheelState): CategoryId[] =>
   s.ultra && luckyLeft(s) >= ULTRA_COST && !mustTake(s) && !complete(s) ? CATEGORIES.filter(c => c.id !== 'size' && !s.picks[c.id]).map(c => c.id) : [];
-/** Spends ULTRA_COST Lucky Spins: every rating of `cat` becomes 125 (past the usual 120 cap). */
+/** Spends ULTRA_COST Lucky Spins: every rating of `cat` becomes 130 (past the usual 120 cap). */
 export function ultraCheat(s: WheelState, cat: CategoryId): WheelState {
   if (!ultraOptions(s).includes(cat)) return s;
   const values: CategoryValues = {};
@@ -379,3 +398,15 @@ export const wheelCategories = (h: NbaHistory, w: Wheel) => {
 
 /** Wheels that can still be taken from in the current spin. */
 export const openWheels = (s: WheelState) => (s.current ?? []).map((_, i) => i).filter(i => !s.takenFrom.includes(i));
+
+/** Cursed Dice is an optional one-shot replacement after the starting build is complete. */
+export function rerollLowest(h: NbaHistory, s: WheelState): WheelState {
+  if (!s.cursedDice || !isComplete(s)) return s;
+  const cat = CATEGORIES.map(c => c.id).filter(id => id !== 'size').sort((a, b) => categoryScore(s.picks[a]!.values) - categoryScore(s.picks[b]!.values))[0];
+  const pool = wheelPool(h).filter(c => c.id !== s.picks[cat]!.cardId);
+  if (!pool.length) return s;
+  const rng = new RNG(s.seed * 89 + 731);
+  const cardId = pool[rng.nextInt(pool.length)].id;
+  const values = wheelCategories(h, { reel: [cardId], stop: 0 })[cat];
+  return { ...s, cursedDice: false, picks: { ...s.picks, [cat]: { cardId, values } } };
+}

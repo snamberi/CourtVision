@@ -1,3 +1,7 @@
+import { generateNewsFeed } from './news';
+import { archiveDuos50 } from './leagueStories50';
+import { syncAwardRecord } from './awardStudio';
+import { deferDevelopment, finishDevelopment } from './developmentCheckpoint';
 import { gLeagueGrowth } from './twoWay';
 import { withRingNight } from './ringNight';
 import { seasonEraSettings } from './eraRules';
@@ -22,7 +26,6 @@ import { initializeCoaching, teachingQuality, advanceStaffSeason } from './staff
 import { recordOffseasonDevelopment, offseasonTrainingCamp } from './playerDevelopment';
 import { applySummerCamp, reportRow, type CampReportRow } from './summerCamp';
 import { calculateOverall as staffOverall } from './engine/overall';
-import { generateNewsFeed } from './news';
 import { coachPerformanceModifiers } from './coaching';
 import { expenseEffects } from './league';
 import type { CareerSeasonRecord, PlayerSeason, SeasonStatTotals, SeasonStint } from './types';
@@ -108,7 +111,7 @@ export function rollFreeAgentsForward(league: League, freeAgents: PlayerSeason[]
     const realStep = followsRealDevelopment(fa, league) ? applyRealDevelopment(fa, newSeason) : null;
     let developed = realStep ?? developOffseasonPlayer(fa, rng, league.rulesSettings, 0.9, 'balanced', league.settings.sandboxMode ? 200 : 100, gameMinutes(league.settings.era));
     if (!realStep && followsRealDevelopment(fa, league)) developed = markRealFallback(developed, newSeason);
-    const next: PlayerSeason = { ...developed, season: newSeason, seasonStats: undefined, seasonMilestones: undefined, playoffStats: undefined, seasonStints: undefined,
+    const next: PlayerSeason = { ...deferDevelopment(fa, developed), season: newSeason, seasonStats: undefined, seasonMilestones: undefined, playoffStats: undefined, seasonStints: undefined,
       careerHistory: archived ? [...(fa.careerHistory ?? []), archived] : fa.careerHistory };
     const overall = calculateOverall(next);
     // A real player who really played this season stays in the league while his real career continues, whatever the
@@ -232,6 +235,7 @@ export function beginNewSeasonRoster(
   const previousSeason = league.season ?? league.teams[0]?.seasons[0]?.season ?? '2025';
   const newSeason = nextSeasonLabel(previousSeason);
   const seasonAwards = computeSeasonAwards(league, awardOptions);
+  const archivedStories = archiveDuos50(league);
   // Advanced stats need this season's team context, which is gone once the schedule rolls over — archive them now.
   const seasonContext = regularSeasonContext(league);
   const { combined: seasonAdvanced, stints: seasonStintSplits } = seasonAdvancedWithStints(league, seasonContext, extras.freeAgents);
@@ -294,7 +298,7 @@ export function beginNewSeasonRoster(
       }
       const aged = recordOffseasonDevelopment(season, developed, team, league.calendarDate ?? previousSeason, followsRealDevelopment(season, league) ? realDevelopmentNote(developed, !!realStep) : season.lockRatings ? 'Ratings locked (Edit Player).' : undefined);
       const withHistory: PlayerSeason = {
-        ...aged,
+        ...deferDevelopment(season, aged),
         season: newSeason,
         seasonStats: undefined,
         seasonMilestones: undefined,
@@ -396,10 +400,16 @@ export function beginNewSeasonRoster(
   const draftYear = parseInt(newSeason.slice(0, 4), 10);
   const standingsDraftOrder = buildTwoRoundDraftOrder(league, Math.floor(rng.next() * 1_000_000), draftYear);
   const { order: draftOrder, protectionsTriggered } = resolveTradedPicksIntoOrder(standingsDraftOrder, draftYear, extras.futurePicks ?? []);
+  archivedStories.pickRollovers = [...(archivedStories.pickRollovers ?? []), ...protectionsTriggered.flatMap(trigger => {
+    const pick=extras.futurePicks?.find(p=>p.year===draftYear && p.round===trigger.round && p.originalTeamId===trigger.originalTeamId);
+    if (!pick) return [];
+    const next=extras.futurePicks?.find(p=>p.year===draftYear+1 && p.round===trigger.round && p.originalTeamId===trigger.originalTeamId && p.currentOwnerTeamId===trigger.originalTeamId);
+    return [{ from:pick.id, to:next?.id, owner:pick.currentOwnerTeamId, note:next?`Protection triggered; obligation rolls to ${draftYear+1}.`:'Protection triggered; the obligation expired.' }];
+  })];
   const lottery = lotteryResult(league, standingsDraftOrder.slice(0, teams.length), newSeason, draftYear);
   const futurePicks = rollFutureDraftPicksForward(rollOverProtectedPicks(extras.futurePicks ?? [], draftYear, protectionsTriggered), teams.map((t) => t.teamId), draftYear, FUTURE_PICK_WINDOW_YEARS);
 
-  const historyRecord: FranchiseHistoryRecord = {
+  const historyRecord: FranchiseHistoryRecord = syncAwardRecord({
     season: previousSeason,
     championTeamId: championship?.teamId ?? null,
     championTeamName: championship?.teamName ?? null,
@@ -417,11 +427,12 @@ export function beginNewSeasonRoster(
     teamSeasons,
     ...(league.cup?.season === previousSeason ? { cup: cupArchive(league.cup) } : {}),
     ...(league.playoffBracket ? { bracket: compactBracket(league.playoffBracket), seeds: conferenceSeeds(league) } : {}),
-  };
+  }, seasonAwards);
 
   const legendLeague = retireLegendJerseys({ ...league, teams, franchiseHistory: [...(league.franchiseHistory ?? []), historyRecord] }, newlyRetired, userTeamId, previousSeason).league;
   const nextLeague: League = {
     ...league,
+    stories50: archivedStories,
     teams: legendLeague.teams.map(rollBusinessSeason), // one payment made on every arena upgrade
     season: newSeason,
     seasonPhase: 'draft',
@@ -444,6 +455,7 @@ export function beginNewSeasonRoster(
     draftClass,
     draftWorkouts: keepWorkouts ? extras.draftWorkouts ?? {} : {},
     draftOrder,
+    draftAssetIds: Object.fromEntries(standingsDraftOrder.map((originalTeam, slot) => [slot, `${draftYear}-R${slot < teams.length ? 1 : 2}-${originalTeam}`])),
     futurePicks,
     draftDayOpen: true,
     freeAgencyOpen: false,
@@ -510,6 +522,7 @@ export function finalizeNewSeasonSchedule(input: League): League {
     ?? (league.teams[0] ? totalGamesForTeam(league, league.teams[0].teamId) || 82 : 82);
   const schedule = withRingNight(generateSeasonSchedule(league.teams.map((t) => t.teamId), gamesPerTeam), league.franchiseHistory);
   const teams = league.teams.map((t) => {
+    t = { ...t, seasons: t.seasons.map(finishDevelopment) };
     const before = t.offseasonStartRosterIds;
     if (!before) return t;
     const chemistry = driftChemistryForRosterContinuity(t.chemistry, before, t.seasons.map((s) => s.playerId));
@@ -534,7 +547,7 @@ export function advanceToNextSeason(league: League, extras: GMLeagueExtras, seed
   const finalizedLeague = finalizeNewSeasonSchedule(rosterResult.league);
   return {
     league: finalizedLeague,
-    extras: { ...rosterResult.extras, draftDayOpen: false, freeAgencyOpen: true },
+    extras: { ...rosterResult.extras, freeAgents: rosterResult.extras.freeAgents.map(finishDevelopment), draftDayOpen: false, freeAgencyOpen: true },
     summary: rosterResult.summary,
   };
 }

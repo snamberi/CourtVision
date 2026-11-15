@@ -36,6 +36,7 @@ export interface TeamInput {
 }
 
 export interface SimulateGameOptions {
+  recordTargets50?: import('../replayStories50').RecordTarget50[];
   moraleImpact?: number;
   home: TeamInput;
   away: TeamInput;
@@ -233,8 +234,9 @@ export function simulateGame(opts: SimulateGameOptions): GameResult {
   };
 
   let elapsed = 0;
+  const targetScore50 = Number.isFinite(opts.rules?.targetScore50) && opts.rules!.targetScore50! > 0 ? Math.max(10, Math.min(500, Math.round(opts.rules!.targetScore50!))) : undefined;
   // Overtime uses the same clock and substitution system; the safety cap handles degenerate sandbox rosters.
-  for (let q = 0; q < numQuarters || (homeBox.points === awayBox.points && q < numQuarters + 6); q++) {
+  periods50: for (let q = 0; q < numQuarters || (targetScore50 ? Math.max(homeBox.points, awayBox.points) < targetScore50 && q < numQuarters + 48 : homeBox.points === awayBox.points && q < numQuarters + 6); q++) {
     const periodMinutes = q < numQuarters ? qLen : Math.max(1, settings.era.overtimeLengthMinutes);
     const periodSeconds = Math.round(periodMinutes * 60);
     const possessionsThisQuarter = possessionsPerQuarter(periodMinutes, settings.pacePreset, paceModifier, ruleMods.paceMultiplier * (settings.eraPace ?? 1));
@@ -296,6 +298,7 @@ export function simulateGame(opts: SimulateGameOptions): GameResult {
       const durationScale = secondChance ? 0.18 + rotationRng.next() * 0.3 : (0.55 + rotationRng.next() * 0.9) * paceFactor;
       const secondsPerPossession = Math.max(1, Math.min(clock,
         Math.round(averageDuration * durationScale),
+        settings.era.shotClockSeconds > 0 ? Math.min(settings.era.shotClockSeconds, secondChance ? 14 : Infinity) : Infinity,
         homeRotation.limitDuration(hOnCourtIds, q, qLen * 60), awayRotation.limitDuration(aOnCourtIds, q, qLen * 60)));
       homeRotation.credit(hOnCourtIds, secondsPerPossession);
       awayRotation.credit(aOnCourtIds, secondsPerPossession);
@@ -413,6 +416,7 @@ export function simulateGame(opts: SimulateGameOptions): GameResult {
       clock -= secondsPerPossession;
       elapsed += secondsPerPossession;
       poss++;
+      if (targetScore50 && Math.max(homeBox.points, awayBox.points) >= targetScore50) break periods50;
       // Offensive rebound: same team goes again. Anything else hands the ball over.
       const keptBall = result.result === 'MISS' && result.debug.offensiveRebound === true;
       secondChance = keptBall;
@@ -420,11 +424,16 @@ export function simulateGame(opts: SimulateGameOptions): GameResult {
     }
   }
 
+  if (targetScore50 && Math.max(homeBox.points, awayBox.points) < targetScore50) throw new Error('Target score was not reached. Increase player shooting ratings or lower the target.');
   for (const [id, seconds] of Object.entries(homeRotation.seconds)) homeBox.players[id].minutes = seconds / 60;
   for (const [id, seconds] of Object.entries(awayRotation.seconds)) awayBox.players[id].minutes = seconds / 60;
 
   const result: GameResult = {
     regulationPeriods: numQuarters,
+    ...(targetScore50 ? { targetScore: targetScore50 } : {}),
+    shotClockSeconds: settings.era.shotClockSeconds,
+    ...(opts.recordTargets50 ? { recordTargets50: opts.recordTargets50 } : {}),
+    endingFatigue50: Object.fromEntries(Object.entries(fatigue).map(([id, f]) => [id, f.level])),
     homeTeamId: home.teamId,
     awayTeamId: away.teamId,
     homeScore: homeBox.points,

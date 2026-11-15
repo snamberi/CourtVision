@@ -116,6 +116,7 @@ export function playerMorale(p: PlayerSeason, team: LeagueTeam, league: League, 
     const ratio = (contract.annualSalary - asking) / Math.max(1, asking);
     add(ratio < 0 ? 'Feels underpaid' : 'Well paid', clamp(ratio * 15 * (0.4 + per.greed / 100), -10, 5));
   }
+  if (p.promiseTeam50 === team.teamId && p.promiseTrust50) add(p.promiseTrust50 > 0 ? 'Front office keeps its promises' : 'Front office broke its promises', p.promiseTrust50 * 5);
   const trust = p.training?.morale?.trust;
   if (trust != null) add(trust >= 50 ? 'Trusts the coach' : "Doesn't trust the coach", (trust - 50) * 0.25);
   add('Facilities', expenseEffects(team.expenseLevels).moodBonus * 1.5);
@@ -201,6 +202,7 @@ export function moraleContractAdjustment(p: PlayerSeason, teamId: string, isPrio
   const per = personalityOf(p), m = p.morale, notes: string[] = [];
   let premium = (per.greed - 50) / 500;
   if (per.greed >= 80) notes.push('mercenary');
+  if (isPriorTeam && p.promiseTeam50 === teamId && p.promiseTrust50) { premium -= p.promiseTrust50 * .04; notes.push(p.promiseTrust50 > 0 ? 'front office kept its promises' : 'front office broke its promises'); }
   if (isPriorTeam && m) {
     if (m.tradeRequest || m.score < REQUEST_BELOW) return { premium, refuses: `${p.playerId} won't re-sign. He wants out after an unhappy season.`, notes };
     if (m.score < 50) { premium += 0.2; notes.push('unhappy season'); }

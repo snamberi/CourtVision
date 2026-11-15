@@ -21,6 +21,8 @@ describe('your character', () => {
       for (const i of c.items) {
         const look: AvatarLook = { ...DEFAULT_AVATAR, [c.id]: i.id };
         const { grid } = buildAvatarGrid({ look });
+        expect(grid).toHaveLength(70); // 64 native pixels + the 3px aura margin
+        expect(grid.every(row=>row.length===70)).toBe(true);
         const colours = new Set(grid.flat().filter(Boolean));
         expect([...colours].some(x => /fe01fe|01fefe/i.test(x!)), `${c.id}:${i.id}`).toBe(false);
       }

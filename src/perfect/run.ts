@@ -109,6 +109,8 @@ export interface PerfectRun {
   prime?: boolean;
   /** Coach choices (Franchise Spin offers three; Quick Spin spins one). */
   coachOffer?: string[];
+  coachRerolls?: number;
+  coachSalt?: number;
   /** Player totals: the regular season, the playoffs and the Finals (for the Finals MVP). Older runs start counting late. */
   lines?: Record<string, RunLine>;
   playoffLines?: Record<string, RunLine>;
@@ -278,13 +280,13 @@ function rollFor(h: NbaHistory, run: PerfectRun, keep?: { franchise?: string; er
 
 // ---------------------------------------------------------------- starting and drafting
 
-export function newPerfectRun(h: NbaHistory, mode: PerfectMode, seed: number, daily?: string, opts: { level?: Level; view?: RunView; catOpts?: CategoryOptions; weekly?: string; custom?: string; rule?: EraRule; /** Relic luck, The Extra Pick (relics.ts) and your pet (the Hamster's reroll); ignored by the Daily and the Weekly. */ luck?: number; extraPick?: boolean; pet?: string | null } = {}): PerfectRun {
+export function newPerfectRun(h: NbaHistory, mode: PerfectMode, seed: number, daily?: string, opts: { secrets?: readonly string[]; level?: Level; view?: RunView; catOpts?: CategoryOptions; weekly?: string; custom?: string; rule?: EraRule; /** Relic luck, The Extra Pick (relics.ts) and your pet (the Hamster's reroll); ignored by the Daily and the Weekly. */ luck?: number; extraPick?: boolean; pet?: string | null } = {}): PerfectRun {
   // The Daily is the standard game for everyone.
   const level = daily ? 'pro' : opts.level ?? 'pro', view = daily ? STANDARD_VIEW : opts.view ?? STANDARD_VIEW;
   const shared = !!daily || !!opts.weekly;
   const extra = shared ? 0 : (opts.extraPick ? 1 : 0) + (opts.pet === 'hamster' ? 1 : 0);
   const rerolls = mode === 'quick' ? { team: 0, era: 0, prime: 0, spin: SPIN_REROLLS + extra, lucky: LUCKY_SPINS } : { team: 0, era: 0, prime: mode === 'franchise' ? 1 : 0, roll: SPIN_REROLLS + extra, lucky: LUCKY_SPINS };
-  const run: PerfectRun = { v: 1, mode, seed, daily, stage: 'draft', squad: [], rolls: 0, rerolls, schedule: [], bosses: [], games: [], playoffs: [], ...(!shared && opts.luck ? { luck: opts.luck } : {}),
+  const run: PerfectRun = { v: 1, mode, seed, daily, coachRerolls: shared ? 0 : ['trickOrTreat', 'allStarClipboard'].filter(id => opts.secrets?.includes(id)).length, stage: 'draft', squad: [], rolls: 0, rerolls, schedule: [], bosses: [], games: [], playoffs: [], ...(!shared && opts.luck ? { luck: opts.luck } : {}),
     ...(level !== 'pro' ? { level } : {}), ...(view.numbers !== STANDARD_VIEW.numbers || view.colors !== STANDARD_VIEW.colors ? { view } : {}) };
   if (isCategoryMode(mode)) {
     const catOpts = opts.catOpts && Object.values(opts.catOpts).some(Boolean) ? opts.catOpts : undefined;
@@ -482,7 +484,7 @@ export function whatIfSquad(h: NbaHistory, w: WhatIf): string[] | null {
 const WHAT_IF_MODE: Record<WhatIfKind, PerfectMode> = { prime: 'whatif', travel: 'whatif', legends: 'whatif', rookies: 'whatif', star: 'whatif', create: 'fun', super: 'fun', chaos: 'fun' };
 
 /** Starts a What If or Fun run: the squad is set, so it goes straight to the coach pick. */
-export function newWhatIfRun(h: NbaHistory, seed: number, choice: WhatIf, opts: { level?: Level; view?: RunView } = {}): PerfectRun | null {
+export function newWhatIfRun(h: NbaHistory, seed: number, choice: WhatIf, opts: { secrets?: readonly string[]; level?: Level; view?: RunView } = {}): PerfectRun | null {
   const w: WhatIf = choice.kind === 'chaos' ? { kind: 'chaos', ...chaosPick(h, seed) } : choice;
   const squad = whatIfSquad(h, w);
   if (!squad) return null;
@@ -493,7 +495,7 @@ export function newWhatIfRun(h: NbaHistory, seed: number, choice: WhatIf, opts: 
   return { ...run, coachOffer: coachOffer(run, h) };
 }
 /** All in Their Prime (kept for its tests and callers). */
-export const newPrimeRun = (h: NbaHistory, seed: number, teamId: string, opts: { level?: Level; view?: RunView } = {}) => {
+export const newPrimeRun = (h: NbaHistory, seed: number, teamId: string, opts: { secrets?: readonly string[]; level?: Level; view?: RunView } = {}) => {
   const t = teamById(h)(teamId);
   return t ? newWhatIfRun(h, seed, { kind: 'prime', team: teamId, year: t.end }, opts) : null;
 };
@@ -536,7 +538,7 @@ export function reelFiller(h: NbaHistory, n: number, salt: number): HuntCard[] {
 
 const coachWeights: Record<Rarity, number> = { common: 30, rare: 40, epic: 20, legendary: 10 };
 function coachOffer(run: PerfectRun, h: NbaHistory): string[] {
-  const rng = rngFor(run, 777);
+  const rng = rngFor(run, 777 + (run.coachSalt ?? 0) * 7919);
   const pickOne = (from: HuntCoach[]) => {
     const total = from.reduce((n, x) => n + coachWeights[coachRarity(x)], 0);
     let r = rng.next() * total;
@@ -996,3 +998,9 @@ export function verdict(s: PerfectSummary): string {
 
 export const ROUND_NAMES = ['First round', 'Second round', 'Conference finals', 'Finals'];
 export { COACH_BY_ID, eraOf };
+
+export function rerollCoach(h: NbaHistory, run: PerfectRun): PerfectRun {
+  if (run.stage !== 'coach' || run.daily || run.weekly || !(run.coachRerolls! > 0)) return run;
+  const next = { ...run, coachRerolls: run.coachRerolls! - 1, coachSalt: (run.coachSalt ?? 0) + 1 };
+  return { ...next, coachOffer: coachOffer(next, h) };
+}

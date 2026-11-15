@@ -21,7 +21,7 @@ export interface CourtSummary {
   scoutRank: string | null;
   hours: number | null;
   placements: { board: string; rank: number; season: string | null }[];
-  cosmetics: { frame: string | null; icon: string | null; color: string | null; titles: number };
+  cosmetics: { frame: string | null; icon: string | null; color: string | null; titles: string[]; titleCount: number };
   achievements: number;
   updatedAt: string;
 }
@@ -39,6 +39,7 @@ export function buildSummary(p: CloudProfile, achievements: number, now = new Da
   const stats = p.stats ?? {};
   const secs = typeof stats.playSeconds === 'number' ? stats.playSeconds : null;
   const honors = honorsOf(stats);
+  const titles = [...new Set([p.title, ...LEVEL_ROAD.filter(([lv, kind]) => kind === 'title' && lv <= p.level).map(([, , name]) => name), ...honors.map(id => HONORS.find(h => h.id === id)!.title)].filter(Boolean))];
   return {
     v: 1,
     level: p.level,
@@ -47,7 +48,7 @@ export function buildSummary(p: CloudProfile, achievements: number, now = new Da
     scoutRank: roadRank(p.level),
     hours: secs == null ? null : Math.round((secs / SECONDS_PER_HOUR) * HOURS_PRECISION) / HOURS_PRECISION,
     placements: honors.map(id => ({ board: HONORS.find(h => h.id === id)!.title, rank: Number(id.split('-').pop()) || 1, season: null })),
-    cosmetics: { frame: p.frame ?? null, icon: p.icon ?? null, color: p.color ?? null, titles: LEVEL_ROAD.filter(([lv, kind]) => kind === 'title' && lv <= p.level).length + 1 + honors.length },
+    cosmetics: { frame: p.frame ?? null, icon: p.icon ?? null, color: p.color ?? null, titles, titleCount: titles.length },
     achievements,
     updatedAt: now.toISOString(),
   };

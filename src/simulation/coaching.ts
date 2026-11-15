@@ -34,6 +34,8 @@ export const COACH_TRAIT_LABELS: Record<CoachTraitKey, string> = {
 /** A team's actual head coach — a named person with traits, a contract, a career record, and real
  * relationships with the players on the roster. */
 export interface CoachIdentity {
+  formerPlayerId?: string;
+  playingStyle?: Partial<CoachTendencies>;
   profile?: import('./coachingModel').StaffProfile;
   coachId: string; // also the display name, same convention as player identity
   age: number;

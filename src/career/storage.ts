@@ -67,3 +67,17 @@ export async function readCareerSnapshot(id: string): Promise<{ meta: CareerMeta
 export async function tagCareerOwner(id: string, userId: string): Promise<void> {
   await db.metas.update(id, { cloudOwner: userId });
 }
+
+/** A separate, permanently unranked what-if career. Original save and reward identity stay intact. */
+export async function branchCareer50(meta: CareerMeta, world: CareerWorld, label: string): Promise<{ meta: CareerMeta; world: CareerWorld }> {
+  if (meta.status !== 'active') throw new Error('Only an active career with its world can be branched.');
+  const id = `whatif_${crypto.randomUUID()}`, now = Date.now();
+  const copy = structuredClone({ meta, world });
+  copy.meta = { ...copy.meta, id, mode: 'sandbox', weekly: undefined, cloudOwner: undefined, createdAt: now, updatedAt: now, autopilot: false,
+    whatIf50: { parentId: meta.id, label: label.trim().slice(0, 80) || 'Alternate timeline', season: world.league.season ?? '' }, notes: [...meta.notes, `What-if: ${label.trim() || 'Alternate timeline'}. Unranked Sandbox career.`] };
+  copy.world = { ...copy.world, id, league: { ...copy.world.league, online: undefined, settings: { ...copy.world.league.settings, sandboxMode: true },
+    ...(copy.world.league.frontOffice ? { frontOffice: { ...copy.world.league.frontOffice, sandboxUsed: true } } : {}) } };
+  await db.transaction('rw', db.metas, db.worlds, async () => { await db.metas.put(copy.meta); await db.worlds.put(copy.world); });
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(CAREER_SAVED_EVENT, { detail: id }));
+  return copy;
+}

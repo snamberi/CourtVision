@@ -13,7 +13,7 @@ import type { FreeAgentVerdict } from '../simulation/freeAgentDecision';
 import type { League } from '../simulation/league';
 import type { GMLeagueExtras } from '../simulation/gm';
 import { NegotiationPanel } from './NegotiationPanel';
-import { openNegotiation } from '../simulation/agents';
+import { openNegotiation, retryNegotiation } from '../simulation/agents';
 import { stat1 } from './statFormat';
 import { supermaxSalary } from '../simulation/maxContracts';
 
@@ -146,7 +146,7 @@ export function FreeAgentTable({ title, players, team, contracts, capSettings, c
               <Fragment key={r.season.playerId}>
                 <tr>
                   <td className="col-name" onClick={() => onSelectPlayer(r.season.playerId)} style={{ cursor: 'pointer' }}>
-                    <PlayerNameTag playerId={r.season.playerId} teamId={r.season.teamId} jerseyNumber={r.season.jerseyNumber} size={24} />
+                    <PlayerNameTag season={r.season} playerId={r.season.playerId} teamId={r.season.teamId} jerseyNumber={r.season.jerseyNumber} size={24} />
                   </td>
                   <td>{primaryPosition(r.season)}</td>
                   <td>{r.season.age}</td>
@@ -161,6 +161,7 @@ export function FreeAgentTable({ title, players, team, contracts, capSettings, c
                   <td title={r.ask ? `${r.ask.years} years${r.ask.playerOption ? ', player option' : ''}` : undefined}>{fmtMoney(r.asking)}{r.ask && <small className="fa-ask-years"> · {r.ask.years}y{r.ask.playerOption ? ' PO' : ''}</small>}</td>
                   <td>{Math.max(0, r.season.age - 19)}</td>
                   <td className="fa-actions">
+                    {talks && r.verdict?.refuses && retryNegotiation(talks.league, talks.extras, r.season, talks.teamId) && <button disabled={!canSign} onClick={() => { const next = retryNegotiation(talks.league, talks.extras, r.season, talks.teamId); if (next) { talks.onUpdate(next); setNegotiatingId(r.season.playerId); } }}>Loyalty Pays · retry</button>}
                     <button disabled={!canSign || !!r.verdict?.refuses} title={r.verdict?.refuses ? r.verdict.reason : undefined} onClick={() => startNegotiation(r.season.playerId, r.asking)}>Negotiate</button>
                     <button
                       className="primary"

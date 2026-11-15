@@ -1,4 +1,10 @@
+import { AudioSettings } from '../audio/AudioSettings';
+import { Diagnostics } from './qol/Diagnostics';
+import { Glossary } from './qol/Glossary';
+import { EventCalendar } from './qol/EventCalendar';
+import { SaveStatus } from './qol/SaveStatus';
 import { CareerCloud } from './cloud/CareerCloud';
+import { PageJumps } from './PageJumps';
 import { useState, type ReactNode } from 'react';
 import { SmallRoom } from './presentation/SmallRoom';
 import { ModeIcon } from './ModeIcon';
@@ -89,25 +95,32 @@ export function SettingsPage({ onExit, backup, recovery }: { onExit: () => void;
       <button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button>
       <div className="hunt-title"><span className="pixel-eyebrow">LOOK, MENU STYLE, DIFFICULTY, BACKUPS, GRAPHICS, ACCESSIBILITY, PRIVACY</span><h1>Settings</h1></div>
     </header>
+    <PageJumps /><SaveStatus />
     <SmallRoom kind="settings" title="Make the game yours." detail="Set your look, tune the graphics and keep your leagues backed up." />
-    <div className="setting-cards">
+    <div className="settings-groups"><details open><summary>Appearance & sound</summary><div className="setting-cards">
+      <SettingCard icon="star" title="Music & sound" blurb="Tune your courtside soundtrack, clicks and announcer."><AudioSettings /></SettingCard>
       <SettingCard icon="star" title="Look" blurb="The colours, fonts and menu art of the whole game. Pick from every look.">
         <span className="settings-theme"><ThemeChip /></span>
       </SettingCard>
       <SettingCard icon="home" title="Menu style" blurb="How the menus, the phone bar and the mode cards look. Gold Arcade unlocks after 24 hours of play.">
         <MenuStylePicker />
       </SettingCard>
+      </div></details><details><summary>Gameplay & accessibility</summary><div className="setting-cards">
       <SettingCard icon="shield" title="Default difficulty" blurb="What every mode starts on: League Hunt, 82-0, Survival, the All-Time Draft and Career. You can still change it in each mode.">
         <DefaultDifficulty />
       </SettingCard>
-      <SettingCard icon="check" title="Backup everything">{backup}</SettingCard>
-      <SettingCard icon="chart" title="League recovery">{recovery}</SettingCard>
       <SettingCard icon="star" title="Graphics" blurb="Lite mode stops looping animations and blur, and uses fewer simulation workers. Auto turns it on for low-memory devices.">
         <PerformanceToggle />
       </SettingCard>
       <SettingCard icon="search" title="Accessibility" blurb="Bigger text for the whole game, and rarity colours that stay easy to tell apart with colour blindness. Press ? in a league for keyboard shortcuts.">
         <AccessibilityToggles />
       </SettingCard>
+      </div></details><details><summary>Saves & recovery</summary><div className="setting-cards">      <SettingCard icon="check" title="Backup everything">{backup}</SettingCard>
+      <SettingCard icon="chart" title="League recovery">{recovery}</SettingCard>
+<CareerCloud /></div></details><details><summary>App, privacy & support</summary>    <details><summary>Event calendar</summary><EventCalendar /></details>
+    <details><summary>Search the game glossary</summary><Glossary /></details>
+    <Diagnostics />
+<div className="setting-cards">
       <SettingCard icon="play" title="Install the app" blurb="Court Vision as a real app on your PC or phone: its own icon and window, offline too, same saves.">
         <p className="settings-install"><InstallAppButton /></p>
         <p className="hint-text settings-install-note">You're playing the installed app.</p>
@@ -117,9 +130,9 @@ export function SettingsPage({ onExit, backup, recovery }: { onExit: () => void;
         {import.meta.env.VITE_BUILD_STAMP && <p className="hint-text settings-build">Version {import.meta.env.VITE_BUILD_STAMP}</p>}
       </SettingCard>
       {!IS_DESKTOP_BUILD && <SettingCard icon="settings" title="Advanced" blurb="Checks the online services (accounts and leaderboards).">
-        <CareerCloud />
+
         <details className="settings-advanced"><summary>Online status</summary><OnlineStatus /></details>
       </SettingCard>}
-    </div>
+    </div></details></div>
   </div>;
 }

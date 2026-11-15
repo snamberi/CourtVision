@@ -13,7 +13,7 @@ export function enrichCoach(coach:CoachIdentity,role:StaffRole,teamId?:string):C
   const attributes=Object.fromEntries(COACH_ATTRIBUTES.map(k=>[k,clamp(30+rng.nextInt(61))])) as StaffProfile['attributes'];
   Object.assign(attributes,{offensiveStrategy:coach.traits.offense,defensiveStrategy:coach.traits.defense,rotationManagement:coach.traits.rotationMgmt,playerDevelopment:coach.traits.development,communication:coach.traits.motivation,discipline:coach.traits.discipline});
   return {...coach,profile:{attributes,specialties:[SPECIALTIES[rng.nextInt(SPECIALTIES.length)]],preferredRole:role,
-    offense:['balanced','motion','pace-space','post','pick-roll','isolation'][rng.nextInt(6)],defense:['man','switch','zone','pressure','drop'][rng.nextInt(5)],
+    offense:coach.playingStyle ? ((coach.playingStyle.threePointFrequency ?? 0) >= 65 ? 'pace-space' : (coach.playingStyle.postFrequency ?? 0) >= 55 ? 'post' : 'motion') : ['balanced','motion','pace-space','post','pick-roll','isolation'][rng.nextInt(6)],defense:['man','switch','zone','pressure','drop'][rng.nextInt(5)],
     personality:(['patient','demanding','collaborative'] as const)[rng.nextInt(3)],leadership:(['teacher','tactician','motivator'] as const)[rng.nextInt(3)],
     priority:(['salary','contender','facilities','authority'] as const)[rng.nextInt(4)],experience:0,playoffWins:0,playoffLosses:0,coyAwards:0,
     history:teamId?[{teamId,role,from:coach.hiredSeason}]:[],staffRelationships:{},developmentHistory:[]}};

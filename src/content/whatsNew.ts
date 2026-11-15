@@ -3,12 +3,14 @@
  * Add new entries at the top; the id must sort after the previous one (a date works), and copy it to
  * LATEST_RELEASE in ./whatsNewLatest.ts.
  */
+import { UPDATE_50 } from './update50';
 import { WHATS_NEW_KEY as KEY } from './whatsNewLatest';
 
 /** `theme` picks the release's look in the Updates hub (src/content/updates.ts); without it the title decides. */
 export interface Release { id: string; title: string; items: string[]; theme?: string }
 
 export const RELEASES: Release[] = [
+  UPDATE_50,
   {
     id: '2027-06-30',
     title: '25 upgrades: real history, deeper franchises, new ways to play',

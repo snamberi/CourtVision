@@ -8,6 +8,7 @@ import type { AwardBallotKey, AwardWinner, SeasonAwards, StatSnapshot, TeamAward
 import { voteRows, type VoteRow } from '../simulation/almanac';
 import { UnanimousTag } from './UnanimousTag';
 import { formatSeasonYear } from '../simulation/calendar';
+import { awardDefinition } from '../simulation/awardStudio';
 import { TROPHIES, type TrophyKey } from '../simulation/trophies';
 import { PlayerAvatar, PlayerNameTag } from './PlayerAvatar';
 import { PixelTrophy } from './PixelTrophy';
@@ -20,9 +21,9 @@ import { TeamLogo } from './TeamLogo';
 interface Nominee { id: string; teamId: string | null; teamName: string }
 type Step =
   | { kind: 'intro' }
-  | { kind: 'award'; id: string; trophy: TrophyKey; label: string; team: boolean; voteKey?: VotedAwardKey | AwardBallotKey;
+  | { kind: 'award'; id: string; trophy: string; label: string; team: boolean; voteKey?: VotedAwardKey | AwardBallotKey;
       winners: Nominee[]; nominees: Nominee[]; coach?: string | null; blurb?: string }
-  | { kind: 'medals'; id: string; label: string; items: { trophy: TrophyKey; label: string; winner: AwardWinner; value?: string }[] }
+  | { kind: 'medals'; id: string; label: string; items: { trophy: string; label: string; winner: AwardWinner; value?: string }[] }
   | { kind: 'teams'; id: string; label: string; trophies: TrophyKey[]; teams: AwardWinner[][]; voteKey: VotedAwardKey }
   | { kind: 'outro' };
 
@@ -43,7 +44,7 @@ function playerSeasonLine(league: League, extras: GMLeagueExtras | undefined, pl
 
 function nomineeFromWinner(w: AwardWinner): Nominee { return { id: w.playerId, teamId: w.teamId, teamName: w.teamName }; }
 
-function buildSteps(awards: SeasonAwards, fmvp: AwardsNightProps['fmvp']): Step[] {
+function buildSteps(awards: SeasonAwards, fmvp: AwardsNightProps['fmvp'], league: League): Step[] {
   const out: Step[] = [{ kind: 'intro' }];
   const rowsOf = (key: AwardBallotKey) => awards.ballots?.[key] ?? [];
   const player = (key: AwardBallotKey & VotedAwardKey, trophy: TrophyKey) => {
@@ -83,8 +84,13 @@ function buildSteps(awards: SeasonAwards, fmvp: AwardsNightProps['fmvp']): Step[
   if (fmvp) out.push({ kind: 'award', id: 'fmvp', trophy: 'fmvp', label: 'Finals MVP', team: false, winners: [{ id: fmvp.playerId, teamId: fmvp.teamId, teamName: fmvp.teamName }],
     nominees: [{ id: fmvp.playerId, teamId: fmvp.teamId, teamName: fmvp.teamName }], blurb: fmvp.line });
   player('mvp', 'mvp');
+  const shown = new Set(out.flatMap(s => s.kind === 'award' ? [s.trophy] : s.kind === 'medals' ? s.items.map(i => i.trophy) : s.kind === 'teams' ? s.trophies : []));
+  for (const [id, winners] of Object.entries(awards.custom ?? {})) if (!shown.has(id) && winners.length) {
+    const d = awardDefinition(league, id);
+    out.push({ kind: 'award', id, trophy: id, label: d.name, team: d.kind === 'team', winners: winners.map(nomineeFromWinner), nominees: winners.slice(0,3).map(nomineeFromWinner), blurb: d.description });
+  }
   out.push({ kind: 'outro' });
-  return out;
+  return out.map(s => s.kind === 'award' ? { ...s, label: awardDefinition(league, s.trophy).name } : s.kind === 'medals' ? { ...s, items: s.items.map(i => ({ ...i, label: awardDefinition(league, i.trophy).name })) } : s);
 }
 
 export interface AwardsNightProps {
@@ -95,7 +101,7 @@ export interface AwardsNightProps {
 }
 
 export function AwardsNight({ league, extras, awards, season, fmvp, onSelectPlayer, onClose }: AwardsNightProps) {
-  const steps = useMemo(() => buildSteps(awards, fmvp), [awards, fmvp]);
+  const steps = useMemo(() => buildSteps(awards, fmvp, league), [awards, fmvp, league]);
   const [index, setIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [auto, setAuto] = useState(false);
@@ -232,7 +238,7 @@ export function AwardsNight({ league, extras, awards, season, fmvp, onSelectPlay
       <div className="an-beams" aria-hidden="true"><i /><i /></div>
       <h2>Class of {formatSeasonYear(season)}</h2>
       <div className="an-class">{shelf.map(s => <button key={s.id} className="an-class-item" onClick={() => !s.team && onSelectPlayer(s.winners[0].id)}>
-        <PixelTrophy award={s.trophy} size={40} /><small>{TROPHIES[s.trophy].short}</small><b>{s.team ? (s.coach ?? s.winners[0].teamName) : s.winners.map(w => w.id).join(' & ')}</b></button>)}</div>
+        <PixelTrophy award={s.trophy} size={40} /><small>{awardDefinition(league, s.trophy).short}</small><b>{s.team ? (s.coach ?? s.winners[0].teamName) : s.winners.map(w => w.id).join(' & ')}</b></button>)}</div>
       <p className="hint-text">Every result is saved in the League Almanac with full vote tallies, and each winner's trophy is on his player page.</p>
       <button className="primary" onClick={onClose}>Close</button>
     </div>;

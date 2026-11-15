@@ -1,3 +1,5 @@
+import type { PlayerSeason } from '../simulation/types';
+import { PlayerStatSummary } from './qol/PlayerStatSummary';
 import { useTeamIdentity, usePlayerLook } from '../visuals/TeamIdentityContext';
 import type { Appearance } from '../visuals/playerSprite';
 import { memo, useMemo } from 'react';
@@ -47,7 +49,7 @@ export const PlayerAvatar = memo(function PlayerAvatar({
     [playerId, primary, secondary, jerseyNumber, age, style, pose, stableLook]);
   const scale = heightInches && Number.isFinite(heightInches) ? Math.max(0.86, Math.min(1.16, heightInches / 79)) : 1;
   const width = Math.round(size * scale);
-  const height = Math.round(width * (mode === 'portrait' ? 30 / 24 : SPRITE_HEIGHT / SPRITE_WIDTH));
+  const height = Math.round(width * (mode === 'portrait' ? 1 : SPRITE_HEIGHT / SPRITE_WIDTH));
 
   return (
     <svg
@@ -57,13 +59,14 @@ export const PlayerAvatar = memo(function PlayerAvatar({
       shapeRendering="crispEdges" role="img" aria-label={title ?? `${playerId} avatar`}
     >
       {title && <title>{title}</title>}
-      {mode === 'full' && <path d="M10 49h21v1h3v1H7v-1h3z" fill="#070d1a" opacity=".45" />}
+      {mode === 'full' && <path d="M21 61h22v1h5v1H16v-1h5z" fill="#070d1a" opacity=".45" />}
       {paths.map(({ fill, d }) => <path key={fill} fill={fill} d={d} />)}
     </svg>
   );
 });
 
 interface PlayerNameTagProps {
+  season?: PlayerSeason;
   playerId: string;
   teamId?: string | null;
   jerseyNumber?: number | null;
@@ -75,11 +78,11 @@ interface PlayerNameTagProps {
 }
 
 /** The common "small portrait avatar + name" pairing used in list rows throughout the app — tables, checkboxes, compare cards, wherever a player's name shows up. Deliberately omits heightInches-based scaling by default (a fixed-size icon reads better in a dense table row) unless explicitly passed. */
-export function PlayerNameTag({ playerId, teamId, jerseyNumber, heightInches, name, size = 26, className }: PlayerNameTagProps) {
+export function PlayerNameTag({ season, playerId, teamId, jerseyNumber, heightInches, name, size = 26, className }: PlayerNameTagProps) {
   return (
     <span className={className ? `player-name-with-avatar ${className}` : 'player-name-with-avatar'}>
       <PlayerAvatar playerId={playerId} teamId={teamId} jerseyNumber={jerseyNumber} heightInches={heightInches} mode="portrait" size={size} />
-      <span>{name ?? playerId}</span>
+      <span>{name ?? playerId}{season && <PlayerStatSummary player={season} />}</span>
     </span>
   );
 }

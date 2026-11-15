@@ -1,0 +1,9 @@
+import { useState } from 'react';
+import { emptySeasonStatTotals, type SeasonStatTotals } from '../../simulation/types';
+export function CareerDetailedStats({years}:{years:{season:string;stats:SeasonStatTotals}[]}) {
+ const [view,setView]=useState<'totals'|'advanced'>('totals');
+ const total=years.reduce((sum,y)=>{for(const k of Object.keys(sum) as (keyof SeasonStatTotals)[])sum[k]+=y.stats[k]??0;return sum;},emptySeasonStatTotals());
+ const rows=[...years,{season:'Career total',stats:total}];
+ const rate=(a:number,b:number,scale=1)=>b>0?(a/b*scale).toFixed(1):'—';
+ return <section><h3>Full career statistics</h3><div className="stats-view-toggle"><button aria-pressed={view==='totals'} onClick={()=>setView('totals')}>Totals</button><button aria-pressed={view==='advanced'} onClick={()=>setView('advanced')}>Advanced</button></div><div className="feature-table-scroll"><table className="db-table"><thead><tr><th>Season</th>{(view==='totals'?['GP','MIN','PTS','OREB','DREB','REB','AST','STL','BLK','TOV','PF','FGM/FGA','3PM/3PA','FTM/FTA','Clutch PTS']:['TS%','eFG%','3P attempt rate','FT rate','AST/TO','PTS/36','REB/36','AST/36','STL/36','BLK/36','TOV/36']).map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>{rows.map(({season,stats:s})=><tr key={season}><td>{season}</td>{(view==='totals'?[s.gamesPlayed,Math.round(s.minutes),s.points,s.oreb,s.dreb,s.oreb+s.dreb,s.ast,s.stl,s.blk,s.tov,s.pf,`${s.fgm}/${s.fga}`,`${s.tpm}/${s.tpa}`,`${s.ftm}/${s.fta}`,s.clutchPoints]:[rate(s.points,2*(s.fga+.44*s.fta),100),rate(s.fgm+.5*s.tpm,s.fga,100),rate(s.tpa,s.fga,100),rate(s.fta,s.fga,100),rate(s.ast,s.tov),...[s.points,s.oreb+s.dreb,s.ast,s.stl,s.blk,s.tov].map(n=>rate(n,s.minutes,36))]).map((v,i)=><td key={i}>{v}</td>)}</tr>)}</tbody></table></div><p className="hint-text">Regular-season statistics. Career rates use summed totals; TS uses the standard 0.44 free-throw estimate. A dash means the denominator is zero.</p></section>;
+}

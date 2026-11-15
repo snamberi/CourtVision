@@ -22,26 +22,26 @@ const base = (over: Partial<RelicState> = {}): RelicState => {
 const seq = (...xs: number[]) => { let i = 0; return () => xs[i++ % xs.length]; };
 
 describe('relics', () => {
-  it('odds add up to 1, mythic is 0.2% (secrets rarer, 0.07%) and luck runs 1-5%', () => {
+  it('odds add up to 1, mythic is 0.1% (secrets rarer, 0.07%) and luck runs 1-5%', () => {
     const total = RARITY_ORDER.reduce((n, r) => n + RELIC_RARITY[r].odds, 0);
     expect(total).toBeCloseTo(1, 9);
-    expect(RELIC_RARITY.mythic.odds).toBe(0.002);
+    expect(RELIC_RARITY.mythic.odds).toBe(0.001);
     expect(SECRET_CHANCE).toBe(0.0007);
     expect(SECRET_CHANCE).toBeLessThan(RELIC_RARITY.mythic.odds);
-    expect(RARITY_ORDER.map(r => RELIC_RARITY[r].luck)).toEqual([1, 2, 3, 4, 5]);
+    expect(RARITY_ORDER.map(r => RELIC_RARITY[r].luck)).toEqual([1, 2, 3, 4, 6.25]);
     for (const r of RARITY_ORDER) expect(RELICS.some(x => x.rarity === r)).toBe(true);
-    expect(SECRET_RELICS).toHaveLength(13);
-    expect(SECRET_RELICS.filter(r => r.earnedOnly).map(r => r.id)).toEqual(['ultraCheat']);
+    expect(SECRET_RELICS).toHaveLength(33);
+    expect(SECRET_RELICS.filter(r => r.earnedOnly).map(r => r.id)).toEqual(['draftWhisperer', 'loyaltyPays', 'rebuilder', 'ultraCheat']);
   });
 
   it('maps rolls to rarities, rarest first', () => {
     expect(rarityFor(0)).toBe('mythic');
-    expect(rarityFor(0.0019)).toBe('mythic');
+    expect(rarityFor(0.0009)).toBe('mythic');
     expect(rarityFor(0.0021)).toBe('legendary');
     expect(rarityFor(0.999)).toBe('common');
     let mythic = 0;
     for (let i = 0; i < 100_000; i++) if (rarityFor(i / 100_000) === 'mythic') mythic++;
-    expect(mythic).toBe(200);
+    expect(mythic).toBe(100);
   });
 
   it('a spin costs a spin; a duplicate pays coins by rarity', () => {
@@ -52,7 +52,7 @@ describe('relics', () => {
     expect(first.state.spins).toBe(1);
     const again = spinRelic(first.state, seq(0.5, 0.01, 0))!;
     expect(again.result).toMatchObject({ duplicate: true, coins: RELIC_RARITY.legendary.coins });
-    expect(again.state.coins).toBe(RELIC_RARITY.legendary.coins);
+    expect(again.state.coins).toBe(Math.round(RELIC_RARITY.legendary.coins * 1.04));
     expect(again.state.owned[first.result.id]).toBe(2);
   });
 
@@ -72,8 +72,9 @@ describe('relics', () => {
   });
 
   it('a tiny chance uncovers a secret you lack, never one you have', () => {
-    const got = spinRelic(base({ spins: 1, secrets: SECRET_RELICS.slice(1).map(s => s.id) }), seq(SECRET_CHANCE / 2, 0.9))!;
-    expect(got.result).toMatchObject({ kind: 'secret', id: SECRET_RELICS[0].id });
+    const target = SECRET_RELICS.find(r => !r.earnedOnly && !r.event)!;
+    const got = spinRelic(base({ spins: 1, secrets: SECRET_RELICS.filter(r => r.id !== target.id).map(s => s.id) }), seq(SECRET_CHANCE / 2, 0.9))!;
+    expect(got.result).toMatchObject({ kind: 'secret', id: target.id });
     // All found: the secret roll is skipped.
     const all = spinRelic(base({ spins: 1, secrets: SECRET_RELICS.map(s => s.id) }), seq(0, 0.5, 0))!;
     expect(all.result.kind).toBe('relic');
@@ -87,7 +88,7 @@ describe('relics', () => {
   });
 
   it('counts each relic once, 20% below the table, with no cap', () => {
-    expect(luckPercent({ owned: { ring: 5, netScrap: 1 } })).toBe(4);
+    expect(luckPercent({ owned: { ring: 5, netScrap: 1 } })).toBe(3.4);
     // Everything owned: the ten best relics in the ten slots, plus every set bonus. Nothing caps it.
     const all = Object.fromEntries(RELICS.map(r => [r.id, 1]));
     const best = RELICS.map(r => relicLuck(r, 1)).sort((a, b) => b - a).slice(0, 10).reduce((a, b) => a + b, 0);
@@ -99,7 +100,7 @@ describe('relics', () => {
   it('reads the run options from storage, and survives junk', () => {
     const store = { 'cv-relics': JSON.stringify(base({ owned: { firstBall: 1 }, secrets: ['eternalSpin', 'bogus' as never] })) } as Record<string, string>;
     const o = relicRunOpts(k => store[k] ?? null);
-    expect(o.luck).toBeCloseTo(0.04);
+    expect(o.luck).toBeCloseTo(0.05);
     expect(o.eternalSpin).toBe(true);
     expect(o.secondWind).toBe(false);
     expect(loadRelics(() => '{not json').spins).toBe(0);
@@ -117,8 +118,8 @@ describe('relics', () => {
 });
 
 describe('relic shop, stacks and upgrades', () => {
-  it('has 59 relics with unique ids, some stacking', () => {
-    expect(RELICS).toHaveLength(59);
+  it('has 69 relics with unique ids, some stacking', () => {
+    expect(RELICS).toHaveLength(69);
     expect(new Set(RELICS.map(r => r.id)).size).toBe(RELICS.length);
     expect(RELICS.filter(r => r.stack).length).toBe(10);
   });
@@ -133,19 +134,19 @@ describe('relic shop, stacks and upgrades', () => {
       const out = spinRelic(s, seq(0.5, 0.9, pick))!;
       expect(out.result).toMatchObject({ id: 'luckyPenny', duplicate: false, stack: i, coins: 0 });
       s = out.state;
-      expect(luckPercent(s)).toBeCloseTo(i * 0.8, 5);
+      expect(luckPercent(s)).toBeCloseTo(i * 0.68, 5);
     }
     const extra = spinRelic(s, seq(0.5, 0.9, pick))!;
     expect(extra.result).toMatchObject({ duplicate: true, coins: RELIC_RARITY.common.coins });
-    expect(luckPercent(extra.state)).toBeCloseTo(STACK_MAX * 0.8, 5);
+    expect(luckPercent(extra.state)).toBeCloseTo(STACK_MAX * 0.68, 5);
   });
 
   it('upgrades add 50% luck to relics that do not stack, once', () => {
     const s = base({ coins: 10_000, owned: { whistle: 1, luckyPenny: 2 } });
-    expect(luckPercent(s)).toBeCloseTo(3.2, 5);
+    expect(luckPercent(s)).toBeCloseTo(2.72, 5);
     const up = upgradeRelic(s, 'whistle')!;
     expect(up.coins).toBe(10_000 - UPGRADE_PRICE.rare);
-    expect(luckPercent(up)).toBeCloseTo(4, 5);
+    expect(luckPercent(up)).toBeCloseTo(3.4, 5);
     expect(upgradeRelic(up, 'whistle')).toBeNull();
     expect(upgradeRelic(s, 'luckyPenny')).toBeNull();
     expect(upgradeRelic(s, 'ring')).toBeNull();
@@ -162,10 +163,10 @@ describe('relic shop, stacks and upgrades', () => {
     expect(lucky.result.lucky).toBe(true);
   });
 
-  it('Lucky Spins never land a Common and double the top odds', () => {
+  it('Lucky Spins never land a Common and weight the top rarities by 1.5', () => {
     expect(LUCKY_ODDS.common).toBe(0);
     expect(Object.values(LUCKY_ODDS).reduce((a, b) => a + b, 0)).toBeCloseTo(1, 9);
-    expect(LUCKY_ODDS.mythic / LUCKY_ODDS.rare).toBeCloseTo((RELIC_RARITY.mythic.odds * 2) / RELIC_RARITY.rare.odds);
+    expect(LUCKY_ODDS.mythic / LUCKY_ODDS.rare).toBeCloseTo((RELIC_RARITY.mythic.odds * 1.5) / RELIC_RARITY.rare.odds);
     for (let i = 0; i < 1000; i++) expect(rarityFor(i / 1000, true)).not.toBe('common');
   });
 
@@ -196,7 +197,7 @@ describe('relic shop, stacks and upgrades', () => {
     const s = loadRelics(() => JSON.stringify(old));
     expect(s.upgraded).toEqual([]);
     expect(s.shop).toBeUndefined();
-    expect(luckPercent(s)).toBeCloseTo(3.2, 5);
+    expect(luckPercent(s)).toBeCloseTo(2.72, 5);
   });
 });
 
@@ -205,7 +206,7 @@ describe('slots, pity, sets and coins', () => {
   const bad = () => seq(0.5, 0.999, 0);
 
   it('epic, legendary and mythic pity end unlucky streaks', () => {
-    let s = base({ spins: 400, secretPityDone: true });
+    let s = base({ spins: 600, secretPityDone: true });
     const got: string[] = [];
     for (let i = 0; i < PITY.mythic; i++) { const o = spinRelic(s, bad())!; s = o.state; got.push(o.result.rarity); }
     expect(got[PITY.epic - 1]).toBe('epic');

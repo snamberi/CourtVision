@@ -75,3 +75,77 @@ describe('relic sync and rewards', () => {
     expect(runCoins(2)).toBeGreaterThan(runCoins(1));
   });
 });
+
+import { huntTeams } from '../hunt/teams';
+import { rerollCoach } from '../perfect/run';
+import { newRun, stopReels, rerollOfferedPlayer } from '../hunt/run';
+import { newWheel, rerollLowest, wheelPool, wheelCategories, isComplete } from '../career/wheel';
+import { CATEGORIES, categoryScore } from '../career/categories';
+
+describe('release event relic gameplay', () => {
+  it('offers a one-use Hunt reroll and excludes personal bonuses from shared runs', async () => {
+    const h = await loadHistoryForTests();
+    const opts = { secrets: ['forbiddenPlaybook', 'stockingStuffer', 'goldenEgg'] };
+    const plain = newRun(h, 42), special = newRun(h, 42, opts);
+    expect(special.coins).toBe(plain.coins + 35);
+    const stopped = stopReels(h, special);
+    const slot = Object.keys(stopped.reels!).find(k => k !== 'COACH') as 'PG';
+    const changed = rerollOfferedPlayer(h, stopped, slot);
+    expect(changed.forbiddenPlaybook).toBe(false);
+    expect(changed.spin).toBe(stopped.spin);
+    expect(changed.reels?.COACH).toBe(stopped.reels?.COACH);
+    expect(changed.squad).toEqual(stopped.squad);
+    expect(rerollOfferedPlayer(h, changed, slot)).toBe(changed);
+    const daily = newRun(h, 42, { ...opts, daily: '2026-10-15' });
+    expect(daily.forbiddenPlaybook).toBe(false);
+    expect(daily.coins).toBe(newRun(h, 42, { daily: '2026-10-15' }).coins);
+  });
+  it('coach rerolls never consume regular rerolls or affect shared-seed runs', async () => {
+    const h = await loadHistoryForTests();
+    const opts = { secrets: ['trickOrTreat', 'allStarClipboard'] };
+    let run = newPerfectRun(h, 'quick', 17, undefined, opts);
+    expect(run.coachRerolls).toBe(2);
+    expect(rerollCoach(h, run)).toBe(run);
+    for (let i = 0; i < 10; i++) run = pickPlayer(h, run);
+    const rerolled = rerollCoach(h, run);
+    expect(rerolled.coachRerolls).toBe(1);
+    expect(rerolled.rerolls).toEqual(run.rerolls);
+    expect(newPerfectRun(h, 'quick', 17, '2026-10-15', opts).coachRerolls).toBe(0);
+    expect(newPerfectRun(h, 'category', 17, undefined, { ...opts, weekly: '2026-W42' }).coachRerolls).toBe(0);
+  });
+  it('Cursed Dice replaces only the lowest completed category and cannot be reused', async () => {
+    const h = await loadHistoryForTests();
+    const cardId = wheelPool(h)[0].id, cats = wheelCategories(h, { reel: [cardId], stop: 0 });
+    const s = { ...newWheel(17, undefined, { secrets: ['cursedDice'] }), picks: Object.fromEntries(CATEGORIES.map(c => [c.id, { cardId, values: cats[c.id] }])) };
+    expect(isComplete(s)).toBe(true);
+    const low = CATEGORIES.filter(c => c.id !== 'size').sort((a, b) => categoryScore(cats[a.id]) - categoryScore(cats[b.id]))[0].id;
+    const rerolled = rerollLowest(h, s);
+    expect(rerolled.cursedDice).toBe(false);
+    expect(rerolled.picks[low]?.cardId).not.toBe(cardId);
+    for (const c of CATEGORIES.filter(c => c.id !== low)) expect(rerolled.picks[c.id]).toBe(s.picks[c.id]);
+    expect(rerollLowest(h, rerolled)).toBe(rerolled);
+  });
+  it('Second Life preserves the loss and rescues exactly one elimination', async () => {
+    const h = await loadHistoryForTests();
+    let found = false;
+    for (let seed = 1; seed < 30 && !found; seed++) {
+      let run = newSurvivalRun(h, seed, 'legend', undefined, { secrets: ['secondLife'] });
+      run = tagFranchise(h, keepTen(run, run.dealt.slice(0, 10)), run.dealt[0]);
+      const weak = cardPool(h).byRarity.common.slice(0, 10).map(c => c.id);
+      const strongest = [...huntTeams(h)].sort((a, b) => b.strength - a.strength)[0];
+      run = { ...run, roster: weak, franchise: weak[0], next: strongest.id };
+      const played = playRound(h, run);
+      if (played.games.at(-1)?.won) continue;
+      found = true;
+      expect(played.secondLife).toBe(false);
+      expect(played.shields).toBe(1);
+      expect(played.stage).toBe('pregame');
+      expect(played.games.at(-1)?.won).toBe(false);
+      expect(playRound(h, { ...run, secondLife: false }).stage).toBe('over');
+    }
+    expect(found).toBe(true);
+    const daily = newSurvivalRun(h, 1, 'pro', '2026-10-15', { secrets: ['secondLife', 'winterGuard', 'playoffArmor'] });
+    expect(daily.secondLife).toBeUndefined();
+    expect(daily.shields).toBe(1);
+  });
+});

@@ -1,3 +1,4 @@
+import { awardDefinition, awardLeagueForGames50, rankAward } from './awardStudio';
 import type { League } from './league';
 import { addDays, daysBetween, DAYS_PER_ROUND } from './calendar';
 import { awardOptions, awardRaceStandings, type RaceKey } from './awards';
@@ -49,6 +50,21 @@ const r1 = (v: number) => Math.round(v * 10) / 10;
 
 /** Best performer over a range of game days, per conference: production per game, availability and winning. */
 export function periodHonors(league: League, kind: PeriodHonor['kind'], label: string, start: string, end: string, fromRound: number, toRound: number): PeriodHonor[] {
+  const definition = awardDefinition(league, kind === 'month' ? 'pom' : 'pow');
+  if (!definition.enabled || definition.method === 'manual') return [];
+  if (definition.method === 'formula') {
+    const games = league.schedule.filter(g => g.played && g.result && g.round >= fromRound && g.round <= toRound).map(g => g.result!);
+    const window = awardLeagueForGames50(league, games);
+    const conferences: ('east' | 'west' | null)[] = league.teams.every(t => t.conferenceId) ? ['east','west'] : [null];
+    return conferences.flatMap(conference => {
+      const pool = { ...window, teams: window.teams.filter(t => !conference || t.conferenceId === conference) };
+      return rankAward(pool, { ...definition, scope: 'season' }).slice(0,definition.winners).map(w => {
+        const p = pool.teams.flatMap(t=>t.seasons).find(p=>p.playerId===w.playerId), st=p?.seasonStats, gp=st?.gamesPlayed ?? 0;
+        const won=games.filter(g => (g.homeTeamId===w.teamId && g.homeScore>g.awayScore) || (g.awayTeamId===w.teamId && g.awayScore>g.homeScore)).length;
+        return { kind,label,start,end,round:toRound,conference,playerId:w.playerId,teamId:w.teamId ?? '',teamName:w.teamName,gp,w:won,l:Math.max(0,gp-won),pts:gp?(st?.points??0)/gp:0,reb:gp?((st?.oreb??0)+(st?.dreb??0))/gp:0,ast:gp?(st?.ast??0)/gp:0,stl:gp?(st?.stl??0)/gp:0,blk:gp?(st?.blk??0)/gp:0,score:w.score };
+      });
+    });
+  }
   const teamById = new Map(league.teams.map((t) => [t.teamId, t]));
   const conferences = league.teams.length > 0 && league.teams.every((t) => t.conferenceId);
   const teamGames = new Map<string, { gp: number; w: number }>();

@@ -5,7 +5,7 @@ import { loadRecords } from '../hunt/storage';
 import { loadPerfectRecords, categoryTitles, categoryTeamTitles, categoryBrutal, categoryPerfect } from '../perfect/storage';
 import { loadRebuildRecords } from '../simulation/rebuildChallenge';
 import { loadWeeklyRecords } from '../retention/weekly';
-import { careerCache } from './profile';
+import { careerCache, totalXp, xpParts } from './profile';
 import { readFeats, type Feats } from './feats';
 import { loadRelics, setComplete, RELICS, RELIC_SETS, SECRET_RELICS } from '../relics/relics';
 import { SECRET_COSMETIC_KEYS } from '../relics/secretCosmetics';
@@ -25,6 +25,7 @@ export const MODE_LABELS: Record<Mode, string> = {
 };
 
 export interface ModeStats {
+  xp: number; curryHigh: number;
   retired: number; hallOfFame: number; firstBallot: number; top10: number; mvpCareers: number; mostTitles: number; mostPoints: number;
   huntWins: number; huntLegendWins: number; dailyPlayed: number; dailyWins: number; album: number;
   rebuildStars: number; rebuildTitles: number; rebuildYearOne: number; rebuildThreeStars: number;
@@ -48,7 +49,34 @@ const TIER_NAMES = ['Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Legend']
 const tierLabel = (n: number) => `Best so far: ${TIER_NAMES[n]}`;
 const at = (n: number, goal: number): [number, number] => [Math.min(n, goal), goal];
 
+/** Update 50: five meaningful milestones across twenty recorded accomplishments. */
+export const RELEASE_ACHIEVEMENTS: ModeAchievement[] = ([
+  ['retired','career','Career archivist',[5,10,25,50,100]],
+  ['hallOfFame','career','Hall curator',[3,5,10,25,50]],
+  ['firstBallot','career','First-ballot club',[3,5,10,20,40]],
+  ['top10','career','All-time contender',[3,5,10,20,30]],
+  ['mvpCareers','career','MVP factory',[3,5,10,20,40]],
+  ['huntWins','hunt','Hunt veteran',[10,25,50,100,200]],
+  ['huntLegendWins','hunt','Legend hunter',[3,5,10,25,50]],
+  ['dailyWins','hunt','Daily champion',[5,10,25,50,100]],
+  ['album','hunt','Album curator',[50,100,200,400,800]],
+  ['rebuildTitles','rebuild','Rescue specialist',[3,5,8,12,16]],
+  ['drafts','draft','Draft veteran',[10,25,50,100,200]],
+  ['pvpWins','pvp','Rival conqueror',[10,25,50,100,200]],
+  ['weeks','weekly','Weekly regular',[4,8,16,32,52]],
+  ['perfectDays','daily','Daily perfection',[5,10,25,50,100]],
+  ['p82Titles','perfect','Championship architect',[5,10,25,50,100]],
+  ['p82Perfect98','perfect','Unbeaten dynasty',[2,3,5,10,20]],
+  ['storyFinished','story','Story collector',[3,5,10,20,50]],
+  ['survivalBosses','survival','Boss specialist',[5,10,25,50,100]],
+  ['giftsSent','social','Generous GM',[10,25,50,100,250]],
+  ['showdownWins','social','Clan champion',[3,5,10,25,50]],
+] satisfies [keyof ModeStats, Mode, string, number[]][]).flatMap(([key,mode,name,goals]) => goals.map((goal,i) => ({ id: `u50-${key}-${goal}`, mode, name: `${name} ${['I','II','III','IV','V'][i]}`, description: `Reach ${goal} ${key.replace(/([A-Z])/g,' $1').toLowerCase()}.`, icon: 'champion' as const, progress: (s: ModeStats) => at(s[key], goal) })));
+
 export const MODE_ACHIEVEMENTS: ModeAchievement[] = [
+  { id:'over-9000', mode:'social', name:'ITS OVER 9000!!!', description:'Reach 9,000 XP.', icon:'mvp', progress:s=>at(s.xp,9000) },
+  { id:'curry-77', mode:'social', name:'77 for the Chef', description:'Stephen Curry scores at least 77 points in a non-Sandbox game in your league.', icon:'mvp', progress:s=>at(s.curryHigh,77) },
+  ...RELEASE_ACHIEVEMENTS,
   { id: 'career-retire', mode: 'career', name: 'Hang Them Up', description: 'Retire a created player.', icon: 'teammate', progress: s => at(s.retired, 1) },
   { id: 'career-hof', mode: 'career', name: 'Enshrined', description: 'Put a created player in the Hall of Fame.', icon: 'eoy', progress: s => at(s.hallOfFame, 1) },
   { id: 'career-first-ballot', mode: 'career', name: 'First Ballot', description: 'A first-ballot Hall of Famer (Legacy 90+).', icon: 'eoy', progress: s => at(s.firstBallot, 1) },
@@ -150,6 +178,7 @@ export function modeStats(read: Read = localRead, extra: Feats = {}): ModeStats 
   const relics = loadRelics(read);
   const has = (id: string) => (relics.owned[id] ?? 0) > 0;
   return {
+    xp: totalXp(xpParts(read)), curryHigh: Math.max(feats.curryHigh ?? 0, extra.curryHigh ?? 0),
     retired: c.retired, hallOfFame: c.hallOfFame, firstBallot: c.firstBallot ?? 0, top10: c.top10 ?? 0, mvpCareers: c.mvpCareers ?? 0, mostTitles: c.mostTitles ?? 0, mostPoints: c.mostPoints ?? 0,
     huntWins: hunt.wins, huntLegendWins: feats.huntLegendWins ?? 0, dailyPlayed: daily.length, dailyWins: daily.filter(d => d.won).length,
     album: json<string[]>(read, 'cv-hunt-album', []).length,

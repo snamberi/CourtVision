@@ -1,4 +1,5 @@
-import { buildPlayerGrid, outlineGrid, detailedSpritePaths, playerTraits, type Appearance, type SpriteGrid, type SpritePath } from './playerSprite';
+import { buildPlayerGrid, outlineGrid, gridToPaths, playerTraits, type Appearance, type SpriteGrid, type SpritePath } from './playerSprite';
+import { PLAYER_PIXELS, PLAYER_CENTER_X, PLAYER_FEET_Y, PLAYER_NECK_Y, RIG_X_SCALE, RIG_Y_SCALE, RIG_HEAD_SCALE, RIG_LEAN_SCALE } from './pixelPlayer64';
 
 /*
  * Frame-by-frame court animations for the players everyone already knows: the head, face, hair, beard, headwear and
@@ -6,11 +7,11 @@ import { buildPlayerGrid, outlineGrid, detailedSpritePaths, playerTraits, type A
  * model that places his arms and legs, drawn in the same pixel style. Run cycles, dribbles, jump shots, layups,
  * dunks, passes, defence, rebounds, screens and celebrations are all separate models.
  *
- * Coordinates are avatar pixels (the 40 × 52 avatar grid, feet on row 49). Poses face right (the ball side is the
+ * Pose coordinates use the legacy 40 × 52 choreography rig; the rasterizer projects them onto native 64px art. Poses face right (the ball side is the
  * right hand); a player facing left gets the mirrored pose, but his face and jersey number are never mirrored.
  */
 
-type P = readonly [number, number];
+export type P = readonly [number, number];
 export interface Pose {
   /** Shift of the head and torso (a crouch is +y). */
   body: P;
@@ -23,10 +24,10 @@ export interface Pose {
   lie?: 1 | -1;
 }
 
-const PAD_X = 10, PAD_TOP = 18, AV_W = 40, AV_H = 52;
-export const SPRITE_W = AV_W + PAD_X * 2, SPRITE_H = AV_H + PAD_TOP + 2;
+const PAD_X = 16, PAD_TOP = 20, AV_W = PLAYER_PIXELS, AV_H = PLAYER_PIXELS;
+export const SPRITE_W = AV_W + PAD_X * 2, SPRITE_H = AV_H + PAD_TOP + 12;
 /** The point on the floor under the player, in sprite pixels. */
-export const ORIGIN_X = 20 + PAD_X, ORIGIN_Y = 50 + PAD_TOP;
+export const ORIGIN_X = PLAYER_CENTER_X + PAD_X, ORIGIN_Y = PLAYER_FEET_Y + PAD_TOP;
 const FOOT = 49;
 
 const pose = (p: Pose): Pose => p;
@@ -44,10 +45,10 @@ const BREATH = pose({ ...STAND, body: [0, 1] });
 /** Triple threat: knees bent, the ball on the right hip. */
 const READY = pose({ body: [0, 2], lE: [11, 34], lH: [20, 36], rE: [31, 34], rH: [27, 37], ...LEGS_BENT });
 
-const RUN_A = pose({ body: [1, 0], lE: [9, 32], lH: [15, 31], rE: [32, 34], rH: [34, 39], lK: [15, 41], lF: [14, 44], rK: [26, 45], rF: [27, 49] });
-const RUN_B = pose({ body: [1, 1], lE: [8, 33], lH: [8, 37], rE: [32, 33], rH: [32, 37], lK: [14, 45], lF: [15, 49], rK: [26, 45], rF: [25, 49] });
-const RUN_C = pose({ body: [1, 0], lE: [8, 34], lH: [6, 39], rE: [31, 32], rH: [25, 31], lK: [14, 45], lF: [13, 49], rK: [25, 41], rF: [26, 44] });
-const RUN_D = pose({ ...RUN_B, body: [1, 0] });
+const RUN_A = pose({ body: [1, 0], lean: 3, lE: [12, 27], lH: [20, 24], rE: [28, 34], rH: [22, 39], lK: [12, 43], lF: [7, 49], rK: [30, 38], rF: [33, 44] });
+const RUN_B = pose({ body: [1, 2], lean: 2, lE: [10, 31], lH: [15, 32], rE: [31, 30], rH: [29, 28], lK: [18, 44], lF: [21, 49], rK: [23, 42], rF: [16, 45] });
+const RUN_C = pose({ body: [1, 0], lean: 3, lE: [10, 34], lH: [5, 38], rE: [29, 27], rH: [24, 23], lK: [22, 38], lF: [28, 44], rK: [22, 44], rF: [16, 49] });
+const RUN_D = pose({ body: [1, 2], lean: 2, lE: [11, 30], lH: [16, 28], rE: [30, 32], rH: [26, 35], lK: [16, 42], lF: [9, 45], rK: [26, 44], rF: [30, 49] });
 const RUN = [RUN_A, RUN_B, RUN_C, RUN_D];
 
 /** The dribble hand by ball height (high, mid, low) and the off arm out as a bar. */
@@ -98,7 +99,7 @@ const CELEBRATE = [
   pose({ ...STAND, body: [0, -1], lE: [6, 15], lH: [5, 4], rE: [34, 15], rH: [35, 4] }),
 ];
 
-// ---------------------------------------------------------------- the full animation set (six frames each)
+// ---------------------------------------------------------------- the animation set (eight run poses, six for other actions)
 
 /** A pose between two others (points, body and lean blend; the second's flags take over halfway). */
 function blend(a: Pose, b: Pose, u: number): Pose {
@@ -129,7 +130,18 @@ const WALK6 = loop([
   pose({ body: [0, 1], lE: [8, 32], lH: [7, 37], rE: [32, 32], rH: [33, 37], lK: [15, 44], lF: [15, 49], rK: [25, 44], rF: [25, 49] }),
   pose({ body: [0, 0], lE: [8, 32], lH: [5, 37], rE: [32, 32], rH: [35, 36], lK: [14, 44], lF: [12, 49], rK: [26, 44], rF: [28, 49] }),
 ]);
-const RUN6 = loop([RUN_A, RUN_B, RUN_C, RUN_D]);
+// Eight explicitly posed contact / compression / passing / lift frames.
+// The torso translates rigidly by 0–2 pixels; it is never sheared through a run.
+const RUN8: Pose[] = [
+  {body:[0,0],lean:1,lE:[12,27],lH:[17,25],rE:[31,33],rH:[29,38],lK:[13,44],lF:[8,49],rK:[27,39],rF:[31,43]},
+  {body:[0,2],lean:1,lE:[11,29],lH:[16,28],rE:[31,32],rH:[30,36],lK:[14,45],lF:[12,49],rK:[25,41],rF:[29,44]},
+  {body:[0,1],lean:1,lE:[10,31],lH:[13,33],rE:[31,30],rH:[29,31],lK:[17,44],lF:[18,49],rK:[23,41],rF:[21,44]},
+  {body:[0,0],lean:1,lE:[10,33],lH:[9,37],rE:[30,28],rH:[26,25],lK:[20,42],lF:[23,49],rK:[21,41],rF:[15,46]},
+  {body:[0,0],lean:1,lE:[9,33],lH:[11,38],rE:[28,27],rH:[23,25],lK:[13,39],lF:[9,43],rK:[27,44],rF:[32,49]},
+  {body:[0,2],lean:1,lE:[9,32],lH:[10,36],rE:[29,29],rH:[24,28],lK:[15,41],lF:[11,44],rK:[26,45],rF:[28,49]},
+  {body:[0,1],lean:1,lE:[9,30],lH:[11,31],rE:[30,31],rH:[27,33],lK:[17,41],lF:[19,44],rK:[23,44],rF:[22,49]},
+  {body:[0,0],lean:1,lE:[10,28],lH:[14,25],rE:[30,33],rH:[31,37],lK:[19,41],lF:[25,46],rK:[20,42],rF:[17,49]},
+];
 const SPRINT6 = loop([
   pose({ body: [2, 1], lean: 6, lE: [10, 30], lH: [18, 27], rE: [30, 35], rH: [27, 41], lK: [18, 40], lF: [17, 44], rK: [25, 45], rF: [21, 49] }),
   pose({ body: [2, 2], lean: 6, lE: [9, 33], lH: [10, 38], rE: [31, 32], rH: [33, 36], lK: [15, 45], lF: [12, 49], rK: [27, 44], rF: [29, 47] }),
@@ -338,7 +350,7 @@ const CLAP6 = loop([
 export const POSES = { STAND, BREATH, READY, RUN, DRIBBLE, RUN_DRIBBLE, JUMPER, LAYUP, DUNK, PASS, GUARD, REACH, REBOUND, SCREEN, CELEBRATE } as const;
 /** The full animation sheet: six frames per action (the court and the animation sheet test read these). */
 export const ANIMATIONS = {
-  idle: IDLE6, walk: WALK6, run: RUN6, sprint: SPRINT6, backpedal: BACKPEDAL6, slide: SLIDE6, dribble: DRIBBLE6,
+  idle: IDLE6, walk: WALK6, run: RUN8, sprint: SPRINT6, backpedal: BACKPEDAL6, slide: SLIDE6, dribble: DRIBBLE6,
   crossover: CROSSOVER6, behindBack: BEHIND6, spin: SPIN6, jab: JAB6, pumpFake: PUMP6, jumper: JUMPER6, stepback: STEPBACK6,
   fadeaway: FADE6, ft: FT6, layup: LAYUP6, floater: FLOATER6, dunk: DUNK6, alleyOop: OOP6, chestPass: CHEST6, bouncePass: BOUNCE6,
   overheadPass: OVERHEAD6, catch: CATCH6, rebound: REBOUND6, block: BLOCK6, contest: CONTEST6, steal: STEAL6, boxOut: BOXOUT6,
@@ -349,7 +361,7 @@ export type AnimationName = keyof typeof ANIMATIONS;
 /** How far above the feet the highest hand reaches, in avatar pixels (for meeting the rim on a dunk). */
 export const handReach = (p: Pose) => FOOT - Math.min(p.lH[1], p.rH[1]) - p.body[1];
 /** How far above the feet the top of the head is, in avatar pixels. */
-export const headTop = (p: Pose) => FOOT - 2 - p.body[1];
+export const headTop = (p: Pose) => PLAYER_FEET_Y - 2 - Math.round(p.body[1] * RIG_Y_SCALE);
 
 // ---------------------------------------------------------------- choosing a frame
 
@@ -377,11 +389,13 @@ const CODE: Record<AnimationName, string> = {
   screen: 'SC', dive: 'DV', charge: 'CH', fall: 'FG', land: 'LD', celebrate: 'CE', nightNight: 'NN', clap: 'CL',
 };
 const frameOf = (name: AnimationName, i: number) => ({ id: `${CODE[name]}${i}`, pose: ANIMATIONS[name][i] });
+const gaitFrame = (name: AnimationName, cycle: number) => frameOf(name, Math.floor(frac(cycle) * ANIMATIONS[name].length));
 
 /** The pose model and a stable id for this moment of this player's action (`flip` turns him the other way: the spin). */
 export function pickFrame(a: AnimInput): { id: string; pose: Pose; flip?: boolean } {
   const level = a.ballZ > 20 ? 0 : a.ballZ > 11 ? 1 : 2;
-  const runAt = Math.floor(frac(a.cycle ?? 0) * RUN.length) % RUN.length;
+  const runAt = Math.floor(frac(a.cycle ?? 0) * RUN8.length);
+  const runDribble = () => ({id:`RD${level}${runAt}`,pose:{...RUN8[runAt],lE:[8,31] as P,lH:[5,33] as P,rE:DRIBBLE_HAND[level][0],rH:DRIBBLE_HAND[level][1]}});
   const cyc6 = Math.floor(frac(a.cycle ?? 0) * 6) % 6;
   if (a.anim) {
     const t = a.anim.t;
@@ -410,11 +424,11 @@ export function pickFrame(a: AnimInput): { id: string; pose: Pose; flip?: boolea
       if (a.moving || a.gait === 'slide' || a.onBall) return frameOf('slide', cyc6);
       const i = Math.floor(frac(a.cycle ?? 0) * 2) % 2; return { id: `G${i}`, pose: GUARD[i] };
     }
-    case 'dribble': return a.moving ? { id: `RD${level}${runAt}`, pose: RUN_DRIBBLE[level][runAt] } : { id: `D${level}`, pose: DRIBBLE[level] };
+    case 'dribble': return a.moving ? runDribble() : { id: `D${level}`, pose: DRIBBLE[level] };
     case 'run': {
-      if (a.carrier) return { id: `RD${level}${runAt}`, pose: RUN_DRIBBLE[level][runAt] };
+      if (a.carrier) return runDribble();
       const g = a.gait ?? 'run';
-      return frameOf(g === 'walk' ? 'walk' : g === 'sprint' ? 'sprint' : g === 'backpedal' ? 'backpedal' : g === 'slide' ? 'slide' : 'run', cyc6);
+      return gaitFrame(g, a.cycle ?? 0);
     }
     default: {
       if (a.carrier) return { id: 'RDY', pose: READY };
@@ -423,16 +437,34 @@ export function pickFrame(a: AnimInput): { id: string; pose: Pose; flip?: boolea
   }
 }
 
+/** Kept as a compatibility export. Display uses a discrete frame, never a
+ * tweened pose. courtFrame samples the action clock at 16 Hz. */
+export function smoothFrame(a: AnimInput): ReturnType<typeof pickFrame> {
+  return pickFrame(a);
+}
+
+/** Position of the upper hand relative to the sprite's foot anchor. */
+/** Old choreography uses a 40×52 rig. Project joints to the new pixel-art grid,
+ * keeping the existing replay paths and simulation entirely independent of artwork. */
+export const rigPoint = (p: P): P => [Math.round(PLAYER_CENTER_X+(p[0]-20)*RIG_X_SCALE), Math.round(p[1]<=24?p[1]*RIG_HEAD_SCALE:PLAYER_NECK_Y+(p[1]-24)*RIG_Y_SCALE)];
+export const unprojectRigPoint = (p: P): P => [20+(p[0]-PLAYER_CENTER_X)/RIG_X_SCALE,p[1]<=PLAYER_NECK_Y?p[1]/RIG_HEAD_SCALE:24+(p[1]-PLAYER_NECK_Y)/RIG_Y_SCALE];
+export const rigOffset = (p: Pose): P => [Math.round(p.body[0]*RIG_X_SCALE)+Math.round((p.lean??0)*RIG_LEAN_SCALE),Math.round(p.body[1]*RIG_Y_SCALE)];
+export function upperHand(input: Pose, facing: number): P {
+  const p = facing < 0 ? mirrorPose(input) : input;
+  const h = p.lH[1] === p.rH[1] ? (facing < 0 ? p.lH : p.rH) : p.lH[1] < p.rH[1] ? p.lH : p.rH;
+  const point=rigPoint(h),offset=rigOffset(p);
+  return [point[0]+offset[0]-PLAYER_CENTER_X,point[1]+offset[1]-PLAYER_FEET_Y];
+}
+
 /** The pose for a player facing left: arms and legs mirrored and swapped (the head and jersey are drawn unmirrored). */
 export function mirrorPose(p: Pose): Pose {
-  const m = (v: P): P => [AV_W - v[0], v[1]];
+  const m = (v: P): P => [40 - v[0], v[1]];
   return { body: [-p.body[0], p.body[1]], lE: m(p.rE), lH: m(p.rH), rE: m(p.lE), rH: m(p.lH), lK: m(p.rK), lF: m(p.rF), rK: m(p.lK), rF: m(p.lF), air: p.air,
     ...(p.lean ? { lean: -p.lean } : {}), ...(p.lie ? { lie: (-p.lie) as 1 | -1 } : {}) };
 }
 
 // ---------------------------------------------------------------- the rasterizer
 
-const OUTLINE = '#080d19';
 const WHITE = '#fff3df';
 function hex(value: string, fallback: string): string {
   if (/^#[\da-f]{6}$/i.test(value)) return value;
@@ -444,117 +476,70 @@ function mix(a: string, b: string, t: number): string {
   return '#' + c.map(n => n.toString(16).padStart(2, '0')).join('');
 }
 
-export interface ActionLook { playerId: string; primary: string; secondary: string; jerseyNumber?: number | null; age?: number; jerseyStyle?: 'classic' | 'stripe' | 'split'; appearance?: Appearance }
+export type CourtView = 'front' | 'frontLeft' | 'frontRight' | 'left' | 'right' | 'backLeft' | 'backRight' | 'back';
+export interface ActionLook { view?: CourtView; playerId: string; primary: string; secondary: string; jerseyNumber?: number | null; age?: number; jerseyStyle?: 'classic' | 'stripe' | 'split'; appearance?: Appearance }
 
 const upperCache = new Map<string, SpriteGrid>();
-const lookKey = (l: ActionLook) => `${l.playerId}|${l.primary}|${l.secondary}|${l.jerseyNumber ?? ''}|${l.age ?? ''}|${l.jerseyStyle ?? ''}|${l.appearance ? JSON.stringify(l.appearance) : ''}`;
-/** The avatar without its arms and legs: head, face, hair, headwear, jersey and shorts. */
+const lookKey = (l: ActionLook) => `${l.view ?? 'front'}|${l.playerId}|${l.primary}|${l.secondary}|${l.jerseyNumber ?? ''}|${l.age ?? ''}|${l.jerseyStyle ?? ''}|${l.appearance ? JSON.stringify(l.appearance) : ''}`;
 function upperBody(look: ActionLook): SpriteGrid {
-  const key = lookKey(look);
-  let g = upperCache.get(key);
-  if (!g) {
-    if (upperCache.size > 600) upperCache.clear();
-    g = buildPlayerGrid({ playerId: look.playerId, primary: look.primary, secondary: look.secondary, jerseyNumber: look.jerseyNumber, age: look.age, jerseyStyle: look.jerseyStyle, appearance: look.appearance, pose: 'none', legs: false });
-    upperCache.set(key, g);
+  const key=lookKey(look);let grid=upperCache.get(key);
+  if(!grid){
+    if(upperCache.size>600)upperCache.clear();
+    grid=buildPlayerGrid({...look,pose:'none',legs:false});upperCache.set(key,grid);
   }
-  return g;
+  return grid;
 }
 
-/** Draws one pose model filled with one player, as run-length SVG paths. `facing` -1 mirrors the pose (not the face). */
+/** Every frame is rasterized once to integer cells. A rigid head/torso keeps the
+ * character's silhouette intact; only arms and legs change between drawn poses. */
 export function rasterizePose(input: Pose, look: ActionLook, facing = 1): SpritePath[] {
-  const p = facing < 0 ? mirrorPose(input) : input;
-  const t = playerTraits(look.playerId, look.appearance);
-  const grid: SpriteGrid = Array.from({ length: SPRITE_H }, () => Array(SPRITE_W).fill(null));
-  const part: number[][] = Array.from({ length: SPRITE_H }, () => Array(SPRITE_W).fill(-1));
-  const skinSet = new Set<string>();
-  let layer = 0;
-  const set = (x: number, y: number, c: string) => {
-    const gx = Math.round(x) + PAD_X, gy = Math.round(y) + PAD_TOP;
-    if (gx >= 0 && gx < SPRITE_W && gy >= 0 && gy < SPRITE_H) { grid[gy][gx] = c; part[gy][gx] = layer; }
+  return gridToPaths(rasterizePoseGrid(input,look,facing));
+}
+export function rasterizePoseGrid(input: Pose, look: ActionLook, facing = 1): SpriteGrid {
+  const p=facing<0?mirrorPose(input):input,t=playerTraits(look.playerId,look.appearance);
+  const grid:SpriteGrid=Array.from({length:SPRITE_H},()=>Array(SPRITE_W).fill(null));
+  const set=(x:number,y:number,c:string)=>{const xx=Math.round(x)+PAD_X,yy=Math.round(y)+PAD_TOP;if(xx>=0&&xx<SPRITE_W&&yy>=0&&yy<SPRITE_H)grid[yy][xx]=c;};
+  const rect=(x:number,y:number,w:number,h:number,c:string)=>{for(let yy=0;yy<h;yy++)for(let xx=0;xx<w;xx++)set(x+xx,y+yy,c);};
+  // Integer Bresenham strokes: small square brushes, deliberately stepped edges.
+  const line=(a:P,b:P,w:number,c:string)=>{
+    let x=Math.round(a[0]),y=Math.round(a[1]);const xx=Math.round(b[0]),yy=Math.round(b[1]);
+    const dx=Math.abs(xx-x),dy=-Math.abs(yy-y),sx=x<xx?1:-1,sy=y<yy?1:-1;let error=dx+dy;
+    for(;;){rect(x-Math.floor(w/2),y-Math.floor(w/2),w,w,c);if(x===xx&&y===yy)break;const e=2*error;if(e>=dy){error+=dy;x+=sx;}if(e<=dx){error+=dx;y+=sy;}}
   };
-  const seg = (a: P, b: P, w: number, c: string) => {
-    const r = w / 2, dx = b[0] - a[0], dy = b[1] - a[1], len2 = dx * dx + dy * dy || 1;
-    for (let y = Math.floor(Math.min(a[1], b[1]) - r); y <= Math.ceil(Math.max(a[1], b[1]) + r); y++)
-      for (let x = Math.floor(Math.min(a[0], b[0]) - r); x <= Math.ceil(Math.max(a[0], b[0]) + r); x++) {
-        const u = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / len2));
-        const ex = a[0] + dx * u - x, ey = a[1] + dy * u - y;
-        if (ex * ex + ey * ey <= r * r) set(x, y, c);
-      }
+  const skin=t.skin,light=mix(skin,'#ffe9cb',.25),dark=mix(skin,'#542c30',.35);
+  const kit=hex(look.primary,'#1d428a'),trim=hex(look.secondary,'#ffc72c'),kitLight=mix(kit,WHITE,.2);
+  const bx=Math.round(p.body[0]*RIG_X_SCALE),by=Math.round(p.body[1]*RIG_Y_SCALE),lean=Math.round((p.lean??0)*RIG_LEAN_SCALE);
+  const joint=(v:P):P=>{const q=rigPoint(v);return[q[0]+bx+lean,q[1]+by];};
+  const place=(x:number,y:number):P=>p.lie?[PLAYER_CENTER_X+bx+p.lie*(51-y),51+by+Math.round((x-PLAYER_CENTER_X)*.5)]:[x+bx+lean,y+by];
+  const leg=(hip:P,k:P,f:P)=>{
+    const knee=rigPoint(k),foot=rigPoint(f),ankle:P=[foot[0],foot[1]-3];
+    line(hip,knee,6,skin);line(knee,ankle,6,skin);line([knee[0]+2,knee[1]],[ankle[0]+2,ankle[1]],1,dark);
+    line([hip[0]-2,hip[1]],[knee[0]-2,knee[1]],1,light);
+    rect(ankle[0]-3,ankle[1]-1,6,4,WHITE);rect(ankle[0]-3,ankle[1]-1,6,1,trim);
+    rect(ankle[0]-1,ankle[1],1,2,'#d6d3d1');rect(ankle[0]+1,ankle[1],1,2,'#d6d3d1');
+    rect(foot[0]-4,foot[1]-1,9,2,kit);rect(foot[0]-3,foot[1]-2,6,2,kitLight);
+    rect(foot[0]-4,foot[1]+1,10,1,WHITE);rect(foot[0]-2,foot[1]-2,3,1,WHITE);
+    rect(foot[0]-1,foot[1]-1,3,1,WHITE);rect(foot[0]+4,foot[1],1,1,trim);
   };
-  const lerp = (a: P, b: P, u: number): P => [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u];
-
-  // The avatar's own colours and shading.
-  const skin = t.skin, skinLight = mix(skin, '#ffe9cb', .25), skinDark = mix(skin, '#542c30', .35);
-  const kit = hex(look.primary, '#4a5160'), trim = hex(look.secondary, '#c9ccd1'), kitLight = mix(kit, WHITE, .23);
-  for (const c of [skin, skinLight, skinDark]) skinSet.add(c);
-  const [bx, by] = p.body;
-
-  // Legs (behind the shorts): skin, sock with a trim band, high-top sneaker with a white sole, like the avatar's.
-  const leg = (hip: P, knee: P, foot: P, outer: 1 | -1) => {
-    const ankle: P = [foot[0], foot[1] - 3];
-    seg(hip, knee, 5, skin);
-    seg(knee, ankle, 5, skin);
-    seg(lerp(hip, knee, .2), lerp(knee, ankle, .5), 1.4, skinDark); // shading down the leg
-    seg([ankle[0], ankle[1] - 3], ankle, 5, WHITE);
-    seg([ankle[0] - 2, ankle[1] - 3], [ankle[0] + 2, ankle[1] - 3], 1, trim);
-    const fx = Math.round(foot[0]), fy = Math.round(foot[1]);
-    for (let x = -3; x <= 3; x++) for (let y = -3; y <= 0; y++) {
-      const c = y === 0 ? WHITE : y === -3 && x < 0 ? kitLight : x === outer * 2 && y === -2 ? WHITE : kit;
-      set(fx + x, fy + y, c);
-    }
-    if (!p.air) set(fx + outer * 4, fy - 1, WHITE);
+  leg(place(26,51),p.lK,p.lF);leg(place(38,51),p.rK,p.rF);
+  const arm=(shoulder:P,e:P,h:P,sleeve:boolean,band:boolean)=>{
+    const sh=place(...shoulder),el=p.lie?rigPoint(e):joint(e),hand=p.lie?rigPoint(h):joint(h);
+    const a=sleeve?WHITE:skin,shade=sleeve?'#b9bdc9':dark;
+    line(sh,el,5,a);line(el,hand,5,a);line([sh[0]-2,sh[1]],[el[0]-2,el[1]],1,sleeve?'#dedee8':light);
+    if(band)rect(hand[0]-2,hand[1]-3,5,2,trim);
+    rect(hand[0]-2,hand[1]-2,5,5,skin);rect(hand[0]-2,hand[1]-2,3,1,light);
+    rect(hand[0]+2,hand[1],1,3,shade);set(hand[0]-1,hand[1]+2,dark);
   };
-  // Leaning: the upper body shears toward the lean, most at the head. Lying: it pivots flat at the waist.
-  const lean = p.lean ?? 0, lie = p.lie ?? 0;
-  const shear = (y: number) => Math.round(lean * Math.max(0, 41 - y) / 34);
-  const place = (x: number, y: number): P => lie ? [20 + bx + lie * (41 - y), 41 + by + Math.round((x - 20) * .5)] : [x + bx + shear(y), y + by];
-  layer = 0;
-  leg(lie ? [20 + bx, 39 + by] : [15 + bx, 41 + by], p.lK, p.lF, -1);
-  leg(lie ? [20 + bx, 43 + by] : [25 + bx, 41 + by], p.rK, p.rF, 1);
-
-  // Head and torso straight from the avatar, shifted with the body.
-  layer = 1;
-  const up = upperBody(look);
-  for (let y = 0; y < AV_H; y++) for (let x = 0; x < AV_W; x++) {
-    const c = up[y][x];
-    if (!c) continue;
-    const [px, py] = place(x, y);
-    set(px, py, c);
-  }
-
-  // Arms: upper arm, forearm and hand in the avatar's style, a wristband when the avatar has one.
-  const arm = (shoulder: P, e: P, h: P, band: boolean) => {
-    // The shoulder rides the lean (or the lying torso); elbows and hands lean with it.
-    const sh = lie ? place(shoulder[0] - bx, shoulder[1] - by) : [shoulder[0] + shear(27), shoulder[1]] as P;
-    const lift = lie ? 0 : shear(27);
-    // Lying poses give their elbows and hands on the floor grid, like the knees and feet.
-    const E: P = lie ? e : [e[0] + bx + lift, e[1] + by], H: P = lie ? h : [h[0] + bx + lift, h[1] + by];
-    seg(sh, E, 4.4, skin);
-    seg(E, H, 4, skin);
-    seg(sh, lerp(sh, E, .7), 1.2, skinLight);
-    if (band) { const b = lerp(E, H, .5); seg(b, b, 3.6, trim); }
-    seg(H, H, 4.6, skin);
-    set(H[0] - 1, H[1] - 1, skinLight);
-  };
-  // The arm crossing in front of the body is drawn last.
-  const leftFront = p.lH[0] > 20 && p.rH[0] >= 20;
-  const left = () => { layer = leftFront ? 3 : 2; arm([11 + bx, 27 + by], p.lE, p.lH, t.seed % 3 === 0); };
-  const right = () => { layer = leftFront ? 2 : 3; arm([29 + bx, 27 + by], p.rE, p.rH, t.seed % 4 < 2); };
-  if (leftFront) { right(); left(); } else { left(); right(); }
-
-  // Inner outlines where a limb in front meets skin behind it (an arm across the face, over the other arm).
-  const out = grid.map(row => [...row]);
-  for (let y = 0; y < SPRITE_H; y++) for (let x = 0; x < SPRITE_W; x++) {
-    const c = grid[y][x];
-    if (!c || !skinSet.has(c)) continue;
-    for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
-      const xx = x + dx, yy = y + dy;
-      if (xx < 0 || xx >= SPRITE_W || yy < 0 || yy >= SPRITE_H) continue;
-      const n = grid[yy][xx];
-      if (n && part[yy][xx] > part[y][x] && part[yy][xx] >= 2 && skinSet.has(n)) { out[y][x] = mix(c, OUTLINE, .75); break; }
-    }
-  }
-  return detailedSpritePaths(outlineGrid(out));
+  // Far arm behind the body in profile, then the head/jersey, then the near arm.
+  const leftNear=look.view?.toLowerCase().endsWith('left')??false;
+  const left=()=>arm([22,38],p.lE,p.lH,t.sleeve,t.seed%3===0);
+  const right=()=>arm([42,38],p.rE,p.rH,false,t.seed%4<2);
+  const sideView=look.view==='left'||look.view==='right'||look.view?.startsWith('back');
+  if(sideView)(leftNear?right:left)();
+  const up=upperBody(look);
+  for(let y=0;y<AV_H;y++)for(let x=0;x<AV_W;x++){const c=up[y][x];if(c){const q=place(x,y);set(q[0],q[1],c);}}
+  if(sideView)(leftNear?left:right)();else if(p.lH[0]>20&&p.rH[0]>=20){right();left();}else{left();right();}
+  return outlineGrid(grid);
 }
 
 // ---------------------------------------------------------------- cache
@@ -565,7 +550,7 @@ export function actionSprite(frameId: string, pose: Pose, look: ActionLook, faci
   const key = `${frameId}|${facing < 0 ? 'L' : 'R'}|${lookKey(look)}`;
   let hit = cache.get(key);
   if (!hit) {
-    if (cache.size > 4000) cache.clear();
+    if (cache.size >= 4000) cache.delete(cache.keys().next().value!);
     hit = rasterizePose(pose, look, facing);
     cache.set(key, hit);
   }

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { League } from '../simulation/league';
 import type { Contract, GMLeagueExtras } from '../simulation/gm';
 import type { PlayerSeason } from '../simulation/types';
-import { AGENTS, STYLE_BLURB, makeOffer, openNegotiation, storeNegotiation, walkAway, currentNegotiation } from '../simulation/agents';
+import { retryNegotiation, AGENTS, STYLE_BLURB, makeOffer, openNegotiation, storeNegotiation, walkAway, currentNegotiation } from '../simulation/agents';
 import { signingDecision } from '../simulation/freeAgentDecision';
 import { personalityOf } from '../simulation/personality';
 import { maxFor } from '../simulation/maxContracts';
@@ -89,6 +89,6 @@ export function NegotiationPanel({ league, extras, player, teamId, onUpdate, onA
         <button className="link-button" onClick={onClose}>Close</button>
       </div>
       <p className="hint-text">{STYLE_BLURB[agent.style]} Years away from what he wants and leaving out an option he asked for both lower the value of your offer. Lowball offers cost extra patience.</p>
-    </div> : <div className="negotiation-actions"><button onClick={onClose}>Close</button></div>}
+    </div> : <div className="negotiation-actions">{retryNegotiation(league, extras, player, teamId) && <button onClick={() => { const next = retryNegotiation(league, extras, player, teamId); if (next) onUpdate(next); }}>Loyalty Pays · retry talks (once this offseason)</button>}<button onClick={onClose}>Close</button></div>}
   </div>;
 }

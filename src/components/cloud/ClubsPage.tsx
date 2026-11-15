@@ -1,3 +1,5 @@
+import { ClanRewards } from './ClanRewards';
+import { PageJumps } from '../PageJumps';
 import { useCallback, useEffect, useState } from 'react';
 import { cloudEnabled, useAccount } from '../../cloud/account';
 import { openSignIn } from '../../cloud/signIn';
@@ -47,10 +49,12 @@ export function ClubsPage({ onExit, onUser }: { onExit: () => void; onUser: (use
     return () => { live = false; };
   }, [signedIn, tick]);
   return <div className="hunt locker clubs-page">
+    <ol className="clans-steps"><li><b>1 · Join your crew</b><p>Join an open clan, accept an invitation, or create your own.</p></li><li><b>2 · Play weekly modes</b><p>Your weekly leaderboard results contribute to your clan’s points.</p></li><li><b>3 · Climb together</b><p>Compare clan standings and take part in a weekly clash.</p></li></ol>
     <header className="hunt-top">
       <button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button>
       <div className="hunt-title"><span className="pixel-eyebrow">PLAY TOGETHER</span><h1>Clans</h1></div>
     </header>
+    <PageJumps />
     {!cloudEnabled ? <p className="empty-state">Accounts and clans are not switched on for this site yet.</p> : <div className="clubs-grid">
       {error && <p className="empty-state" role="alert">{error}</p>}
       {joinCode && <JoinLink code={joinCode} inClan={!!club} onDone={() => { setJoinCode(null); refresh(); }} />}
@@ -59,6 +63,7 @@ export function ClubsPage({ onExit, onUser }: { onExit: () => void; onUser: (use
         <p>A clan is up to {CLUB_MAX} GMs with a name, a tag and a flag you design yourself. Every weekly board you play adds clan points, your clan's flag shows on your profile, and clan leaders can challenge another clan to a one-week clash.</p>
         <button className="primary" onClick={openSignIn}>Sign in</button>
       </section>}
+      {signedIn && <ClanRewards />}
       {signedIn && club && <MyClub club={club} onUser={onUser} onChange={refresh} />}
       {signedIn && club === null && !error && <MyInvites onJoined={refresh} />}
       {signedIn && club === null && !error && <ClanForm onDone={refresh} />}
