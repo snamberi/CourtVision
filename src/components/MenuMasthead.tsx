@@ -1,27 +1,40 @@
-import logoIcon from '../assets/brand/logo-icon.png';
-import { PixelIcon } from './PixelIcon';
+import { useAccount } from '../cloud/account';
+import { localName, levelFor } from '../profile/profile';
+import { gemBalance, type RelicState } from '../relics/relics';
 import { AccountButton } from './cloud/AccountButton';
-import { DiscordLink } from './DiscordLink';
-import { useInstallState, startInstall, downloadsWindows } from '../pwa/pwa';
+import { NotificationApp } from './cloud/NotificationCentre';
+import { MyAvatar } from './UserAvatar';
+import { PixelIcon } from './PixelIcon';
+import { menuArt } from '../menu/art';
 
 interface Props {
-  onProfile?: () => void;
-  onCommunity?: () => void;
-  onSettings?: () => void;
+  xp: number;
+  wallet: RelicState;
+  onProfile: () => void;
+  onBoards: () => void;
+  onShop: () => void;
+  onPhone: () => void;
+  onFriends: () => void;
+  onFriendList: () => void;
 }
 
-/** The menu header: the brand, then Sign in (gone once you are signed in), Install app (gone once installed), a Settings gear and Discord. Leaderboards,
- *  friends, your profile and streak live on the menu phone (MenuPhone); the look is changed in Settings. */
-export function MenuMasthead({ onProfile, onCommunity, onSettings }: Props) {
-  const install = useInstallState();
-  return <header className="menu-masthead">
-    <span className="mh-brand"><img src={logoIcon} alt="" /><span className="mh-word">COURT VISION<small>BASKETBALL MANAGEMENT</small></span><i className="mh-led" aria-hidden="true" /></span>
-    <span className="menu-edition">THE PIXEL COURT</span>
-    <div className="mh-actions mh-simple" role="group" aria-label="Account">
-      {onCommunity && <AccountButton onCommunity={onCommunity} onProfile={onProfile} boards={false} signedInChip={false} />}
-      {install !== 'installed' && <button type="button" className="account-chip menu-install-app" onClick={() => void startInstall('menu')} title="Install Court Vision as an app on this PC or phone"><PixelIcon name="down" size={16} /><span>{downloadsWindows(install) ? 'Download' : 'Install app'}</span></button>}
-      {onSettings && <button type="button" className="account-chip menu-settings" onClick={onSettings} aria-label="Settings" title="Settings: look, backups, graphics, install, privacy"><PixelIcon name="gear" size={18} /></button>}
-      <DiscordLink className="menu-discord" />
+export function MenuMasthead({ xp, wallet, onProfile, onBoards, onShop, onPhone, onFriends, onFriendList }: Props) {
+  const account = useAccount();
+  const level = levelFor(xp);
+  const name = account.profile?.username || localName();
+  return <header className="arena-header">
+    <a className="arena-brand" href="#/menu" aria-label="CourtVision home"><img src={menuArt('hoop')} alt="" /><span>CourtVision</span></a>
+    <div className="arena-header-tools">
+      <button type="button" className="arena-account" onClick={onProfile} aria-label={`Profile for ${name}, level ${level.level}`} title={`${xp.toLocaleString()} XP`}>
+        <span className="arena-portrait"><MyAvatar mode="portrait" size={34} animate={false} title="" /></span>
+        <span className="arena-player"><b>{name}</b><small>Lv. {level.level} <progress aria-label="Level progress" max={level.need || 1} value={level.need ? level.into : 1} /></small></span>
+      </button>
+      <div className="arena-wallet">{([['coin', 'coins', wallet.coins], ['gem', 'gems', gemBalance(wallet)]] as const).map(([art, label, value]) =>
+        <button key={art} type="button" onClick={onShop} aria-label={`${value.toLocaleString()} ${label}, open shop`}>
+          <img src={menuArt(art)} alt="" /><b>{value.toLocaleString()}</b></button>)}</div>
+      <AccountButton onCommunity={onBoards} onProfile={onProfile} boards={false} signedInChip={false} />
+      <span className="arena-header-icons"><NotificationApp onFriends={onFriends} onFriendList={onFriendList} />
+        <button className="arena-phone-button" aria-label="Open menu phone" title="Menu phone" onClick={onPhone}><PixelIcon name="phone" size={21} /></button></span>
     </div>
   </header>;
 }

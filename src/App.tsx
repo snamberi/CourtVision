@@ -98,6 +98,7 @@ import { loadGoogleConsentTool } from './ads/adsense';
 import { IS_DESKTOP_BUILD } from './appMode';
 import { MenuBottomBar, type BarTab } from './components/MenuBottomBar';
 import type { ModeEntry } from './menu/modeCatalog';
+import { menuHash, menuSectionOf, type MenuSection } from './menu/sections';
 import { MainMenu, type GameMode, type RealLeagueOptions } from './components/MainMenu';
 const SettingsPage = lazy(() => import('./components/SettingsPage').then(m => ({ default: m.SettingsPage })));
 import { ChooseTeamScreen } from './components/ChooseTeamScreen';
@@ -332,6 +333,7 @@ const debouncedSave = createDebouncedSave();
 
 function App() {
   const [screen, setScreen] = useState<Screen>('menu');
+  const [menuSection, setMenuSection] = useState<MenuSection>('play');
   // The profile tab the menu phone asked for (Achievements, Season Pass); Profile opens on its first tab.
   const [profileTab, setProfileTab] = useState<'profile' | 'achievements'>('profile');
   const [saveSummaries, setSaveSummaries] = useState<SaveSummary[]>([]);
@@ -430,7 +432,7 @@ function App() {
   useEventPlaytime(['app','yourCareer','story','career','hunt','perfect','survival','arcade','draft','worldGamesMode'].includes(screen), ['app','yourCareer','story'].includes(screen));
   useEffect(() => { if (screen === 'app') noteCurryHigh(league); }, [league, screen]);
 
-  const currentRoute = screen === 'continue' ? '#/continue' : screen === 'menu' ? '#/menu' : screen === 'chooseTeam' ? '#/choose-team' : screen === 'hunt' ? '#/hunt' : screen === 'perfect' ? '#/82-0' : screen === 'survival' ? '#/survival' : screen === 'story' ? '#/story' : screen === 'yourCareer' ? '#/your-career' : screen === 'relics' ? '#/relics' : screen === 'shop' ? '#/shop' : screen === 'levelRoad' ? '#/level-road' : screen === 'trophyRoad' ? '#/trophy-road' : screen === 'seasonPass' ? '#/season-pass' : screen === 'career' ? '#/career' : screen === 'locker' ? '#/locker' : screen === 'profile' ? '#/profile' : screen === 'settings' ? '#/settings' : screen === 'create' ? '#/new-league' : screen === 'worldGamesMode' ? '#/world-games' : screen === 'friends' ? '#/friends' : screen === 'friendList' ? '#/friend-list' : screen === 'closet' ? '#/closet' : screen === 'holiday' ? '#/event' : screen === 'updates' ? '#/updates' : screen === 'clubs' ? '#/clubs' : screen === 'online' ? '#/online' : screen === 'draft' ? '#/draft' : screen === 'arcade' ? ARCADE_HASH[arcadeTab] : screen === 'community' ? (communityUser ? `#/u/${encodeURIComponent(communityUser)}` : '#/community')
+  const currentRoute = screen === 'continue' ? '#/continue' : screen === 'menu' ? menuHash(menuSection) : screen === 'chooseTeam' ? '#/choose-team' : screen === 'hunt' ? '#/hunt' : screen === 'perfect' ? '#/82-0' : screen === 'survival' ? '#/survival' : screen === 'story' ? '#/story' : screen === 'yourCareer' ? '#/your-career' : screen === 'relics' ? '#/relics' : screen === 'shop' ? '#/shop' : screen === 'levelRoad' ? '#/level-road' : screen === 'trophyRoad' ? '#/trophy-road' : screen === 'seasonPass' ? '#/season-pass' : screen === 'career' ? '#/career' : screen === 'locker' ? '#/locker' : screen === 'profile' ? '#/profile' : screen === 'settings' ? '#/settings' : screen === 'create' ? '#/new-league' : screen === 'worldGamesMode' ? '#/world-games' : screen === 'friends' ? '#/friends' : screen === 'friendList' ? '#/friend-list' : screen === 'closet' ? '#/closet' : screen === 'holiday' ? '#/event' : screen === 'updates' ? '#/updates' : screen === 'clubs' ? '#/clubs' : screen === 'online' ? '#/online' : screen === 'draft' ? '#/draft' : screen === 'arcade' ? ARCADE_HASH[arcadeTab] : screen === 'community' ? (communityUser ? `#/u/${encodeURIComponent(communityUser)}` : '#/community')
     : activeSaveId ? routeHash({ saveId: activeSaveId, tab, player: selectedPlayerId,
       team: viewedTeamId, game: viewedGameId ?? undefined, source: boxscoreSource, sub: leagueSettingsSub }) : null;
   const { restoring, showPrivacy, closePrivacy } = useGameHistory(currentRoute, async (hash, isCurrent) => {
@@ -452,6 +454,7 @@ function App() {
       if (hash === '#/clans') { location.replace('#/clubs'); return; }
       const profileMatch = hash.match(/^#\/u\/(.+)$/);
       setCommunityUser(profileMatch ? decodeURIComponent(profileMatch[1]) : null);
+      if (hash.startsWith('#/menu')) setMenuSection(menuSectionOf(hash) ?? 'play');
       const arcade = arcadeTabOf(hash);
       if (arcade) setArcadeTab(arcade);
       setScreen(arcade ? 'arcade' : hash === '#/choose-team' && pendingLeague ? 'chooseTeam' : hash === '#/hunt' ? 'hunt' : hash === '#/82-0' ? 'perfect' : hash === '#/survival' ? 'survival' : hash === '#/story' ? 'story' : hash === '#/your-career' ? 'yourCareer' : hash === '#/relics' ? 'relics' : hash === '#/shop' ? 'shop' : hash === '#/level-road' ? 'levelRoad' : hash === '#/trophy-road' ? 'trophyRoad' : hash === '#/season-pass' ? 'seasonPass' : hash === '#/career' ? 'career' : hash === '#/locker' ? 'locker' : hash === '#/profile' ? 'profile' : hash === '#/settings' ? 'settings' : hash === '#/continue' ? 'continue' : hash === '#/new-league' ? 'create' : hash === '#/world-games' && worldGamesRun ? 'worldGamesMode' : hash === '#/friends' ? 'friends' : hash === '#/friend-list' ? 'friendList' : hash === '#/closet' ? 'closet' : hash === '#/event' ? 'holiday' : hash === '#/updates' ? 'updates' : hash === '#/clubs' ? 'clubs' : hash === '#/online' ? 'online' : hash === '#/community' || profileMatch ? 'community' : hash === '#/draft' ? 'draft' : 'menu');
@@ -1771,8 +1774,8 @@ function App() {
     return (
       <>
         <ToastStack toasts={toasts} onDismiss={dismissToast} />
-        {menuBar}
         <MainMenu
+          section={menuSection} onSection={setMenuSection}
           onStart={startGameMode}
           onLocker={() => setScreen('locker')}
           onRelics={() => setScreen('relics')}
@@ -1789,8 +1792,6 @@ function App() {
           saves={saveSummaries}
           onOpenContinue={() => setScreen('continue')}
           onSettings={() => setScreen('settings')}
-          onArcade={t => { setArcadeTab(t); setScreen('arcade'); }}
-          onCreate={c => { setCreateChallenge(c ?? 'free'); setScreen('create'); }}
           onOpenMode={openMode}
         />
 

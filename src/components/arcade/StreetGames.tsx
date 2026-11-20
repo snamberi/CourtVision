@@ -1,3 +1,4 @@
+import { readLegendsRun, writeLegendsRun, readStreetBest, writeStreetBest, readTour, writeTour, type LegendsRun, type TourRun } from '../../arcade/streetRecords';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { NbaHistory } from '../../history/nbaHistoryData';
 import { legendsField, opponentFor, playRound, simulateBracket, tournamentWeek, ROUND_NAMES, playStreet, myBaller, type Baller, type StreetGame } from '../../arcade/street';
@@ -20,11 +21,6 @@ import { aiTeams, canAfford, roundDay, roundsOpen, runTournament, teamCost, tour
  * Two street games on real history: the Legends Tournament (pick one of the 64 greatest, win six 1v1 games to 11)
  * and 3v3 Street (you and two legends against crews that get tougher, first to 21).
  */
-
-const LEGENDS_KEY = 'cv-legends-1v1';
-interface LegendsRun { week: string; legend: string; round: number; alive: boolean; results: { opp: string; score: [number, number]; won: boolean }[] }
-const readRun = (week: string): LegendsRun | null => { try { const r = JSON.parse(localStorage.getItem(LEGENDS_KEY) ?? 'null') as LegendsRun | null; return r && r.week === week ? r : null; } catch { return null; } };
-const writeRun = (r: LegendsRun) => { try { localStorage.setItem(LEGENDS_KEY, JSON.stringify(r)); } catch { /* storage blocked */ } };
 
 /** Plays a game's possessions out over a couple of seconds, then shows the final. */
 export function LiveScore({ game, left, right, onDone }: { game: StreetGame; left: React.ReactNode; right: React.ReactNode; onDone?: () => void }) {
@@ -61,13 +57,13 @@ export function LegendsGame({ h }: { h: NbaHistory }) {
   const week = tournamentWeek();
   const field = useMemo(() => legendsField(h), [h]);
   const champ = useMemo(() => simulateBracket(field, week).champion, [field, week]);
-  const [run, setRun] = useState<LegendsRun | null>(() => readRun(week));
+  const [run, setRun] = useState<LegendsRun | null>(() => readLegendsRun(week));
   const [q, setQ] = useState('');
   const [game, setGame] = useState<{ g: StreetGame; opp: Baller } | null>(null);
   const [revealed, setRevealed] = useState(false);
   const mine = run ? field.find(p => p.id === run.legend) ?? null : null;
   const days = Math.max(1, Math.ceil((weekEndsAt() - Date.now()) / 86_400_000));
-  const pick = (b: Baller) => { const r = { week, legend: b.id, round: 0, alive: true, results: [] }; writeRun(r); setRun(r); };
+  const pick = (b: Baller) => { const r = { week, legend: b.id, round: 0, alive: true, results: [] }; writeLegendsRun(r); setRun(r); };
   const play = () => {
     if (!run || !mine || !run.alive || run.round >= ROUND_NAMES.length) return;
     const opp = opponentFor(field, week, mine, run.round);
@@ -76,7 +72,7 @@ export function LegendsGame({ h }: { h: NbaHistory }) {
     setGame({ g, opp }); setRevealed(false);
     const won = g.winner === 0;
     const next: LegendsRun = { ...run, round: run.round + (won ? 1 : 0), alive: won, results: [...run.results, { opp: opp.name, score: g.score, won }] };
-    writeRun(next); setRun(next);
+    writeLegendsRun(next); setRun(next);
     if (won && next.round >= ROUND_NAMES.length) window.setTimeout(() => celebrate(), 2600);
     if (!won || next.round >= ROUND_NAMES.length) noteHolidayFinish(won, `legends-${week}`);
     if (!won || next.round >= ROUND_NAMES.length) noteWeekRun('bracket', { score: next.round * 10, line: `${mine.name}: ${next.round >= ROUND_NAMES.length ? 'Legends champion' : `out in the ${ROUND_NAMES[run.round]}`}` }, `legends-${week}`);
@@ -102,9 +98,6 @@ export function LegendsGame({ h }: { h: NbaHistory }) {
 
 // ---------------------------------------------------------------- 3v3 Street
 
-const STREET_KEY = 'cv-street-best';
-const readBest = () => { try { return Number(localStorage.getItem(STREET_KEY) ?? 0) || 0; } catch { return 0; } };
-
 /** You, as a street baller: the ratings you build in the Closet (Ratings tab), points earned by your level. */
 const me = myBaller;
 
@@ -117,13 +110,13 @@ export function StreetGame({ h }: { h: NbaHistory }) {
   const [game, setGame] = useState<{ g: StreetGame; crew: Baller[] } | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [lost, setLost] = useState(false);
-  const [best, setBest] = useState(readBest);
+  const [best, setBest] = useState(readStreetBest);
   const crewFor = (n: number) => { const rng = new RNG(seed + 31 * n); const pool = field.slice(Math.max(0, 48 - n * 10), 64 - n * 8 > 8 ? 64 - n * 8 : 12); return [...pool].sort(() => rng.next() - 0.5).slice(0, 3); };
   const play = () => {
     const crew = crewFor(streak);
     const g = playStreet([me(), ...team], crew, 21, seed ^ (streak + 1) * 7919);
     setGame({ g, crew }); setRevealed(false);
-    if (g.winner === 0) { const s = streak + 1; setStreak(s); if (s > best) { setBest(s); try { localStorage.setItem(STREET_KEY, String(s)); } catch { /* storage blocked */ } } }
+    if (g.winner === 0) { const s = streak + 1; setStreak(s); if (s > best) { setBest(s); writeStreetBest(s); } }
     else { setLost(true); noteHolidayFinish(streak >= 3); noteWeekRun('hilo', { score: streak, line: `3v3 Street: ${streak} win${streak === 1 ? '' : 's'} in a row` }); }
   };
   const restart = () => { setSeed(Math.floor(Math.random() * 1e9)); setTeam([]); setStreak(0); setGame(null); setLost(false); };
@@ -144,11 +137,6 @@ export function StreetGame({ h }: { h: NbaHistory }) {
 }
 
 // ---------------------------------------------------------------- GM Tournament (16 GMs, one week)
-
-const TOUR_KEY = 'cv-gm-tour';
-interface TourRun { week: string; picks: string[]; revealed: number }
-const readTour = (week: string): TourRun | null => { try { const r = JSON.parse(localStorage.getItem(TOUR_KEY) ?? 'null') as TourRun | null; return r && r.week === week ? r : null; } catch { return null; } };
-const writeTour = (r: TourRun) => { try { localStorage.setItem(TOUR_KEY, JSON.stringify(r)); } catch { /* storage blocked */ } };
 
 export function GmTournament({ h }: { h: NbaHistory }) {
   const week = tournamentWeek();

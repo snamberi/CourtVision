@@ -3,6 +3,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { MenuMasthead } from '../components/MenuMasthead';
 import { MenuPhone } from '../components/MenuPhone';
+import { levelFor } from '../profile/profile';
+import { loadRelics } from '../relics/relics';
 
 // Keep account/network state out of these tests.
 vi.mock('../components/cloud/AccountButton', () => ({ AccountButton: ({ onProfile, boards, signedInChip }: { onProfile?: () => void; boards?: boolean; signedInChip?: boolean }) => <>{boards !== false && <button>Leaderboards</button>}<button onClick={onProfile} data-chip={String(signedInChip)}>Sign in</button></> }));
@@ -10,23 +12,21 @@ vi.mock('../components/UserAvatar', () => ({ MyAvatar: () => <i /> }));
 afterEach(cleanup);
 
 describe('menu header', () => {
-  it('holds only sign in, Install app, Settings and Discord (no Support Shop)', () => {
-    const settings = vi.fn();
-    render(<MenuMasthead onSettings={settings} onCommunity={() => {}} onProfile={() => {}} />);
-    const header = screen.getByRole('banner');
-    const labels = [...header.querySelectorAll('button, a')].map(e => e.getAttribute('aria-label') ?? e.textContent?.trim());
-    expect(labels).toHaveLength(4);
-    expect(labels).not.toContain('Support');
-    expect(labels).toContain('Sign in');
-    expect(labels).toContain('Install app');
-    expect(labels).toContain('Settings');
-    expect(labels.some(l => /discord/i.test(l ?? ''))).toBe(true);
-    expect(screen.queryByText('Leaderboards')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
-    expect(settings).toHaveBeenCalledOnce();
-    // Settings is just the gear; once signed in, the @name button stays off the header (the phone has the profile).
-    expect(screen.getByRole('button', { name: 'Settings' }).textContent).toBe('');
-    expect(screen.getByText('Sign in').getAttribute('data-chip')).toBe('false');
+  it('shows the current profile and wallet and opens the corresponding destinations', () => {
+    const profile = vi.fn(), shop = vi.fn(), phone = vi.fn();
+    const wallet = { ...loadRelics(), coins: 142, gems: 19, gemLedger: { earned: 19 } };
+    render(<MenuMasthead xp={720} wallet={wallet} onShop={shop} onPhone={phone} onBoards={() => {}}
+      onFriends={() => {}} onFriendList={() => {}} onProfile={profile} />);
+    expect(screen.getByRole('link', { name: 'CourtVision home' }).getAttribute('href')).toBe('#/menu');
+    fireEvent.click(screen.getByRole('button', { name: new RegExp('Profile for .+, level ' + levelFor(720).level) }));
+    fireEvent.click(screen.getByRole('button', { name: '142 coins, open shop' }));
+    fireEvent.click(screen.getByRole('button', { name: '19 gems, open shop' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open menu phone' }));
+    expect(profile).toHaveBeenCalledOnce();
+    expect(shop).toHaveBeenCalledTimes(2);
+    expect(phone).toHaveBeenCalledOnce();
+    expect(screen.getByRole('button', { name: 'Notifications' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Sign in' }).getAttribute('data-chip')).toBe('false');
   });
 });
 
