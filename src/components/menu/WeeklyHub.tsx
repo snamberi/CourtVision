@@ -14,7 +14,7 @@ import { WeeklyBoardDialog } from '../WeeklyBoard';
 import { WeeklyRecap } from '../WeeklyRecap';
 import { CodeAvatar } from '../AvatarFrame';
 import { PixelIcon } from '../PixelIcon';
-import { menuArt } from '../../menu/art';
+import { courtPlate, type MenuDesign } from '../../menu/design';
 
 function WeeklyLeaders({ week, onBoards }: { week: string; onBoards: () => void }) {
   const { userId, status } = useAccount();
@@ -42,8 +42,8 @@ function WeeklyLeaders({ week, onBoards }: { week: string; onBoards: () => void 
   </>;
 }
 
-export function WeeklyHub({ onOpen, onRebuild, onRewards, onBoards, busy, xp }: {
-  onOpen: (e: ModeEntry) => void; onRebuild: () => void; onRewards: () => void; onBoards: () => void; busy: string | null; xp: number;
+export function WeeklyHub({ design = 'fieldhouse', onOpen, onRebuild, onRewards, onBoards, busy, xp }: {
+  design?: MenuDesign; onOpen: (e: ModeEntry) => void; onRebuild: () => void; onRewards: () => void; onBoards: () => void; busy: string | null; xp: number;
 }) {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 30_000); return () => clearInterval(t); }, []);
@@ -68,7 +68,7 @@ export function WeeklyHub({ onOpen, onRebuild, onRewards, onBoards, busy, xp }: 
   return <>
     <div className="arena-heading"><h1>Weekly hub</h1><div className="arena-clock"><PixelIcon name="clock" /><span>Week {Number(week.split('W')[1])}<small>{Math.floor(left / 1440)}d {Math.floor(left / 60) % 24}h {left % 60}m left</small></span></div></div>
     <div className="arena-week-grid">
-      <article className="arena-panel arena-feature"><img src={menuArt('weekly')} alt="" /><div>
+      <article className="arena-panel arena-feature"><img src={courtPlate(design, feature)} alt="" /><div>
         <span className="arena-kicker">Mode of the week</span><h2>{FEATURED_NAME[feature]}</h2>
         <p>Earn double XP on finished runs this week.</p>
         <button className="arena-gold" disabled={!!busy} onClick={() => launch(feature)}>Play featured »</button>
@@ -76,7 +76,7 @@ export function WeeklyHub({ onOpen, onRebuild, onRewards, onBoards, busy, xp }: 
       <article className="arena-panel arena-challenges"><h2><PixelIcon name="calendar" />This week’s challenges</h2>
         {challenges.map(c => <button key={c.title} disabled={!!busy} onClick={c.go}><PixelIcon name={c.icon} /><span><b>{c.title}</b><small>{c.detail}</small></span><em>{c.status}</em></button>)}
       </article>
-      <article className="arena-panel arena-rewards"><h2>Weekly rewards</h2><img src={menuArt('chest')} alt="" />
+      <article className="arena-panel arena-rewards"><h2>Weekly rewards</h2><PixelIcon name="gift" size={48} />
         <p>Season Pass · Tier {pass.tier} / {SEASON_TIERS}</p><button className="arena-gold" onClick={onRewards}>View rewards »</button></article>
       <WeeklyLeaders week={week} onBoards={onBoards} />
       <article className="arena-panel arena-progress"><h2><PixelIcon name="chart" />Your progress</h2><div>

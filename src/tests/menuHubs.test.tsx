@@ -6,6 +6,7 @@ import { PlayHub } from '../components/menu/PlayHub';
 import { OthersHub } from '../components/menu/OthersHub';
 import { menuHash, menuSectionOf, MENU_SECTIONS } from '../menu/sections';
 import { modesIn } from '../menu/modeCatalog';
+import { MENU_DESIGNS, readMenuDesign, saveMenuDesign } from '../menu/design';
 import { loadRelics } from '../relics/relics';
 import { parseRoute } from '../navigation/routes';
 import { WeeklyHub } from '../components/menu/WeeklyHub';
@@ -18,6 +19,25 @@ vi.mock('../cloud/boards', async (original) => ({ ...await original<typeof impor
 afterEach(() => { cleanup(); localStorage.clear(); });
 
 describe('arena menu', () => {
+  it('falls back to Fieldhouse for old or invalid preferences and remembers a valid choice', () => {
+    localStorage.setItem('cv-menu-design', 'retired');
+    expect(readMenuDesign()).toBe('fieldhouse');
+    saveMenuDesign('pocket');
+    expect(readMenuDesign()).toBe('pocket');
+  });
+
+  it.each(MENU_DESIGNS)('keeps the selected mode when pointing at another row in $name', ({ id }) => {
+    const open = vi.fn();
+    render(<PlayHub design={id} onOpen={open} onContinue={vi.fn()} saves={[]} busy={null} />);
+    const hunt = screen.getByRole('button', { name: 'League Hunt' });
+    fireEvent.mouseEnter(hunt);
+    expect(screen.getByRole('button', { name: 'Play Franchise' })).toBeTruthy();
+    fireEvent.click(hunt);
+    fireEvent.mouseLeave(hunt);
+    fireEvent.click(screen.getByRole('button', { name: 'Play League Hunt' }));
+    expect(open.mock.lastCall?.[0].id).toBe('legends');
+  });
+
   it('round-trips each hub through its own hash', () => {
     for (const section of MENU_SECTIONS) expect(menuSectionOf(menuHash(section.id))).toBe(section.id);
     expect(menuSectionOf('#/menu/unknown')).toBeUndefined();

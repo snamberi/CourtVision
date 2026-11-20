@@ -3,6 +3,7 @@ import { IS_DESKTOP_BUILD } from '../appMode';
 import { useAccount } from '../cloud/account';
 import { CookieSettingsLink, ConsentBanner } from '../consent/ConsentBanner';
 import { burst } from '../fx/effects';
+import { MENU_DESIGNS, readMenuDesign, saveMenuDesign } from '../menu/design';
 import { MENU_SECTIONS, type MenuSection } from '../menu/sections';
 import { modeById, type ModeEntry } from '../menu/modeCatalog';
 import { totalXp, levelFor, takeLevelUp, unlocksBetween, PROFILE_EVENT } from '../profile/profile';
@@ -32,7 +33,9 @@ import { PlayHub } from './menu/PlayHub';
 import { MinigamesHub } from './menu/MinigamesHub';
 import { WeeklyHub } from './menu/WeeklyHub';
 import { OthersHub } from './menu/OthersHub';
-import '@fontsource/bungee/latin-400.css';
+import '@fontsource/anton/latin-400.css';
+import '@fontsource/silkscreen/latin-400.css';
+import '@fontsource/vt323/latin-400.css';
 import '@fontsource/barlow-semi-condensed/latin-600.css';
 import './menuLearn.css';
 import './relics/relics.css';
@@ -66,6 +69,7 @@ interface Props {
 }
 
 export function MainMenu({ section, onSection, onStart, saves, onOpenContinue, busy, onLocker, onCode, onCommunity, onProfile, onFriends, onFriendList, onCloset, onSettings, onRelics, onShop, onRoad, onProfileTab, onOpenMode }: Props) {
+  const [design, setDesign] = useState(readMenuDesign);
   const [pickLook, setPickLook] = useState(needsThemeChoice);
   const [visit] = useState<Visit>(() => ({ v: noteVisit(), p: notePass(totalXp()) }));
   const [seasonPay, setSeasonPay] = useState(() => {
@@ -100,7 +104,7 @@ export function MainMenu({ section, onSection, onStart, saves, onOpenContinue, b
   const achievements = () => onProfileTab('achievements');
   const openPhone = () => setPhone(true);
   const openMode = (entry: ModeEntry) => { if (!busy) onOpenMode(entry); };
-  return <div className="cv-arena">
+  return <div className="cv-arena" data-menu-design={design}>
     <MenuMasthead xp={xp} wallet={wallet} onProfile={onProfile} onBoards={boards} onShop={onShop} onPhone={openPhone} onFriendList={onFriendList} onFriends={onFriends} />
     {IS_DESKTOP_BUILD && <UpdateBanner />}
     <SaveSafetyNudge /><RivalAlerts />
@@ -109,6 +113,9 @@ export function MainMenu({ section, onSection, onStart, saves, onOpenContinue, b
         <nav className="arena-nav" aria-label="Main menu">{MENU_SECTIONS.map(item =>
           <button key={item.id} className={item.id === section ? 'is-current' : undefined} aria-current={item.id === section ? 'page' : undefined}
             type="button" onClick={() => onSection(item.id)}><span><PixelIcon name={item.icon} size={22} />{item.title}</span></button>)}</nav>
+        <div className="arena-design-strip"><div role="group" aria-label="Menu design"><span>Menu design</span>
+          {MENU_DESIGNS.map(d => <button key={d.id} type="button" aria-pressed={design === d.id}
+            onClick={() => { setDesign(d.id); saveMenuDesign(d.id); }}>{d.name}</button>)}</div></div>
         <div className="arena-shortcuts" aria-label="Shortcuts">{[
           { name: 'Leaderboards', icon: 'podium', go: boards },
           { name: 'Friends', icon: 'team', go: onFriendList },
@@ -116,9 +123,9 @@ export function MainMenu({ section, onSection, onStart, saves, onOpenContinue, b
         ].map(link => <button key={link.name} aria-label={link.name} title={link.name} onClick={link.go}><PixelIcon name={link.icon} size={22} /></button>)}</div>
       </aside>
       <main className={`arena-content arena-view-${section}`}>
-        {section === 'play' && <PlayHub onOpen={openMode} onContinue={onOpenContinue} saves={saves} busy={busy} />}
-        {section === 'minigames' && <MinigamesHub onOpen={openMode} />}
-        {section === 'weekly' && <WeeklyHub onOpen={openMode} onRebuild={() => onStart('rebuild', 'normal', '', '', undefined, 'weekly')}
+        {section === 'play' && <PlayHub design={design} onOpen={openMode} onContinue={onOpenContinue} saves={saves} busy={busy} />}
+        {section === 'minigames' && <MinigamesHub design={design} onOpen={openMode} />}
+        {section === 'weekly' && <WeeklyHub design={design} onOpen={openMode} onRebuild={() => onStart('rebuild', 'normal', '', '', undefined, 'weekly')}
           onRewards={() => onRoad('season')} onBoards={boards} busy={busy} xp={xp} />}
         {section === 'others' && <><OthersHub saves={saves} wallet={wallet} onOpen={openMode} onProfile={onProfile} onBoards={boards} onRelics={onRelics}
           onCloset={onCloset} onLocker={onLocker} onFriendList={onFriendList} onRoad={onRoad} onAchievements={achievements} onSettings={onSettings} onPhone={openPhone} />

@@ -8,7 +8,6 @@ import { startInstall, downloadsWindows, useInstallState } from '../../pwa/pwa';
 import { collectionProgress, type RelicState } from '../../relics/relics';
 import { Modal } from '../Modal';
 import { PixelIcon } from '../PixelIcon';
-import { menuArt } from '../../menu/art';
 
 interface Props {
   saves: SaveSummary[];
@@ -30,14 +29,14 @@ export function OthersHub({ saves, wallet, onOpen, onProfile, onBoards, onRelics
   const [panel, setPanel] = useState<'Almanac' | 'Rewards' | 'Collection' | 'Credits' | null>(null);
   const install = useInstallState(), collection = collectionProgress(wallet);
   const tiles = [
-    { title: 'Profile', art: 'profile', text: 'Your GM, stats and progress.', go: onProfile },
-    { title: 'Leaderboards', art: 'podium', text: 'Global and mode-specific rankings.', go: onBoards },
-    { title: 'Almanac', art: 'almanac', text: 'Seasons, awards and league history.', go: () => setPanel('Almanac') },
-    { title: 'Rewards', art: 'gifts', text: 'Chests, spins and gifts.', go: () => setPanel('Rewards') },
-    { title: 'Settings', art: 'settings', text: 'Display, audio and account options.', go: onSettings },
-    { title: 'Collection', art: 'collection', text: `${collection.owned} / ${collection.total} relics collected.`, go: () => setPanel('Collection') },
-    { title: 'Achievements', art: 'achievements', text: 'Track goals and unlock rewards.', go: onAchievements },
-    { title: 'Credits', art: 'credits', text: 'About CourtVision and its creator.', go: () => setPanel('Credits') },
+    { title: 'Profile', icon: 'user', text: 'Your GM, stats and progress.', go: onProfile },
+    { title: 'Leaderboards', icon: 'podium', text: 'Global and mode-specific rankings.', go: onBoards },
+    { title: 'Almanac', icon: 'book', text: 'Seasons, awards and league history.', go: () => setPanel('Almanac') },
+    { title: 'Rewards', icon: 'gift', text: 'Chests, spins and gifts.', go: () => setPanel('Rewards') },
+    { title: 'Settings', icon: 'gear', text: 'Display, audio and account options.', go: onSettings },
+    { title: 'Collection', icon: 'cards', text: `${collection.owned} / ${collection.total} relics collected.`, go: () => setPanel('Collection') },
+    { title: 'Achievements', icon: 'medal', text: 'Track goals and unlock rewards.', go: onAchievements },
+    { title: 'Credits', icon: 'star', text: 'About CourtVision and its creator.', go: () => setPanel('Credits') },
   ];
   const destinations = panel === 'Rewards' ? [
     { title: 'Relic Vault', detail: `${wallet.spins} relic spins available`, go: onRelics },
@@ -51,9 +50,9 @@ export function OthersHub({ saves, wallet, onOpen, onProfile, onBoards, onRelics
     { title: 'Trophy room', detail: 'Your GM trophies and records', go: onLocker },
   ];
   return <>
-    <div className="arena-heading"><h1>Others hub</h1><p>Your account, collection and community</p></div>
+    <div className="arena-heading"><h1>Others hub</h1></div>
     <div className="arena-utility-grid">{tiles.map(tile => <button className="arena-utility" key={tile.title} onClick={tile.go}>
-      <img src={menuArt(tile.art)} alt="" /><span><strong>{tile.title}</strong><small>{tile.text}</small></span><b aria-hidden="true">»</b>
+      <PixelIcon name={tile.icon} size={36} /><span><strong>{tile.title}</strong><small>{tile.text}</small></span><b aria-hidden="true">»</b>
     </button>)}</div>
     <div className="arena-community"><h2>Play with others</h2><div>{modesIn('compete').filter(e => e.action.kind === 'screen' && e.id !== 'ranked').map(e =>
       <button key={e.id} onClick={() => onOpen(e)}><PixelIcon name={e.icon} size={17} />{e.title}</button>)}</div></div>
