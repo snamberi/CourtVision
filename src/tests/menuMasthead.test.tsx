@@ -5,6 +5,8 @@ import { MenuMasthead } from '../components/MenuMasthead';
 import { MenuPhone } from '../components/MenuPhone';
 import { levelFor } from '../profile/profile';
 import { loadRelics } from '../relics/relics';
+import { menuArt } from '../menu/art';
+import { MENU_DESIGNS } from '../menu/design';
 
 // Keep account/network state out of these tests.
 vi.mock('../components/cloud/AccountButton', () => ({ AccountButton: ({ onProfile, boards, signedInChip }: { onProfile?: () => void; boards?: boolean; signedInChip?: boolean }) => <>{boards !== false && <button>Leaderboards</button>}<button onClick={onProfile} data-chip={String(signedInChip)}>Sign in</button></> }));
@@ -12,6 +14,23 @@ vi.mock('../components/UserAvatar', () => ({ MyAvatar: () => <i /> }));
 afterEach(cleanup);
 
 describe('menu header', () => {
+  it('uses the selected artwork for the hoop, coin and gem', () => {
+    const go = vi.fn();
+    const props = { xp: 0, wallet: loadRelics(), onShop: go, onPhone: go, onBoards: go, onProfile: go, onFriends: go, onFriendList: go };
+    const { container, rerender } = render(<MenuMasthead {...props} />);
+    const sources = new Set<string>();
+    for (const { id } of MENU_DESIGNS) {
+      rerender(<MenuMasthead {...props} design={id} />);
+      const images = Array.from(container.querySelectorAll('.arena-brand img, .arena-wallet img'), image => image.getAttribute('src') ?? '');
+      expect(images).toEqual(['hoop', 'coin', 'gem'].map(name => menuArt(name, id)));
+      for (const src of images) {
+        expect(src).toBeTruthy();
+        sources.add(src);
+      }
+    }
+    expect(sources.size).toBe(9);
+  });
+
   it('shows the current profile and wallet and opens the corresponding destinations', () => {
     const profile = vi.fn(), shop = vi.fn(), phone = vi.fn();
     const wallet = { ...loadRelics(), coins: 142, gems: 19, gemLedger: { earned: 19 } };

@@ -109,7 +109,7 @@ export function MainMenu({ section, onSection, onStart, saves, onOpenContinue, b
         onClick={() => { setDesign(d.id); saveMenuDesign(d.id); }}>{d.name}</button>)}
     </div>}
     <div className="cv-arena" data-menu-design={design}>
-    <MenuMasthead xp={xp} wallet={wallet} onProfile={onProfile} onBoards={boards} onShop={onShop} onPhone={openPhone} onFriendList={onFriendList} onFriends={onFriends} />
+    <MenuMasthead design={design} xp={xp} wallet={wallet} onProfile={onProfile} onBoards={boards} onShop={onShop} onPhone={openPhone} onFriendList={onFriendList} onFriends={onFriends} />
     {IS_DESKTOP_BUILD && <UpdateBanner />}
     <SaveSafetyNudge /><RivalAlerts />
     <div className="arena-layout">
@@ -118,9 +118,9 @@ export function MainMenu({ section, onSection, onStart, saves, onOpenContinue, b
           <button key={item.id} className={item.id === section ? 'is-current' : undefined} aria-current={item.id === section ? 'page' : undefined}
             type="button" onClick={() => onSection(item.id)}><span><PixelIcon name={item.icon} size={22} />{item.title}</span></button>)}</nav>
         <div className="arena-shortcuts" aria-label="Shortcuts">{[
-          { name: 'Leaderboards', icon: 'podium', go: boards },
-          { name: 'Friends', icon: 'team', go: onFriendList },
-          { name: 'Settings', icon: 'gear', go: onSettings },
+          { name: 'Leaderboards', icon: 'menuPodium', go: boards },
+          { name: 'Friends', icon: 'menuFriends', go: onFriendList },
+          { name: 'Settings', icon: 'menuSetup', go: onSettings },
         ].map(link => <button key={link.name} aria-label={link.name} title={link.name} onClick={link.go}><PixelIcon name={link.icon} size={22} /></button>)}</div>
       </aside>
       <main className={`arena-content arena-view-${section}`}>

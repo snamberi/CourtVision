@@ -6,8 +6,10 @@ import { NotificationApp } from './cloud/NotificationCentre';
 import { MyAvatar } from './UserAvatar';
 import { PixelIcon } from './PixelIcon';
 import { menuArt } from '../menu/art';
+import type { MenuDesign } from '../menu/design';
 
 interface Props {
+  design?: MenuDesign;
   xp: number;
   wallet: RelicState;
   onProfile: () => void;
@@ -18,12 +20,12 @@ interface Props {
   onFriendList: () => void;
 }
 
-export function MenuMasthead({ xp, wallet, onProfile, onBoards, onShop, onPhone, onFriends, onFriendList }: Props) {
+export function MenuMasthead({ design, xp, wallet, onProfile, onBoards, onShop, onPhone, onFriends, onFriendList }: Props) {
   const account = useAccount();
   const level = levelFor(xp);
   const name = account.profile?.username || localName();
   return <header className="arena-header">
-    <a className="arena-brand" href="#/menu" aria-label="CourtVision home"><img src={menuArt('hoop')} alt="" /><span>CourtVision</span></a>
+    <a className="arena-brand" href="#/menu" aria-label="CourtVision home"><img src={menuArt('hoop', design)} alt="" /><span>CourtVision</span></a>
     <div className="arena-header-tools">
       <button type="button" className="arena-account" onClick={onProfile} aria-label={`Profile for ${name}, level ${level.level}`} title={`${xp.toLocaleString()} XP`}>
         <span className="arena-portrait"><MyAvatar mode="portrait" size={34} animate={false} title="" /></span>
@@ -31,10 +33,10 @@ export function MenuMasthead({ xp, wallet, onProfile, onBoards, onShop, onPhone,
       </button>
       <div className="arena-wallet">{([['coin', 'coins', wallet.coins], ['gem', 'gems', gemBalance(wallet)]] as const).map(([art, label, value]) =>
         <button key={art} type="button" onClick={onShop} aria-label={`${value.toLocaleString()} ${label}, open shop`}>
-          <img src={menuArt(art)} alt="" /><b>{value.toLocaleString()}</b></button>)}</div>
+          <img src={menuArt(art, design)} alt="" /><b>{value.toLocaleString()}</b></button>)}</div>
       <AccountButton onCommunity={onBoards} onProfile={onProfile} boards={false} signedInChip={false} />
       <span className="arena-header-icons"><NotificationApp onFriends={onFriends} onFriendList={onFriendList} />
-        <button className="arena-phone-button" aria-label="Open menu phone" title="Menu phone" onClick={onPhone}><PixelIcon name="phone" size={21} /></button></span>
+        <button className="arena-phone-button" aria-label="Open menu phone" title="Menu phone" onClick={onPhone}><PixelIcon name="menuPhone" size={21} /></button></span>
     </div>
   </header>;
 }
