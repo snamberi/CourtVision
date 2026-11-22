@@ -1,8 +1,3 @@
-import fieldhouse from '../assets/menu/courts/fieldhouse.png';
-import blacktop from '../assets/menu/courts/blacktop.png';
-import pocket from '../assets/menu/courts/pocket.png';
-import backCut from '../assets/menu/courts/pocket-cut.png';
-
 export const MENU_DESIGNS = [
   { id: 'fieldhouse', name: 'Fieldhouse' },
   { id: 'blacktop', name: 'Blacktop' },
@@ -12,7 +7,13 @@ export type MenuDesign = typeof MENU_DESIGNS[number]['id'];
 const preference = 'cv-menu-design';
 const isDesign = (value: unknown): value is MenuDesign => MENU_DESIGNS.some(d => d.id === value);
 
+export function isMenuArtPreview(): boolean {
+  return new URLSearchParams(location.search).has('menuArt') || document.documentElement.hasAttribute('data-menu-art-preview');
+}
+
 export function readMenuDesign(): MenuDesign {
+  const requested = new URLSearchParams(location.search).get('menuArt');
+  if (isDesign(requested)) return requested;
   try {
     const saved = localStorage.getItem(preference);
     if (isDesign(saved)) return saved;
@@ -22,9 +23,9 @@ export function readMenuDesign(): MenuDesign {
 
 export function saveMenuDesign(design: MenuDesign) {
   try { localStorage.setItem(preference, design); } catch { /* Use the selection for this visit. */ }
-}
-
-export function courtPlate(design: MenuDesign, mode: string) {
-  if (design === 'pocket') return ['career', 'story', 'yourCareer', 'street', 'oneOnOne'].includes(mode) ? backCut : pocket;
-  return design === 'blacktop' ? blacktop : fieldhouse;
+  const url = new URL(location.href);
+  if (url.searchParams.has('menuArt') && url.protocol !== 'file:') {
+    url.searchParams.set('menuArt', design);
+    history.replaceState(history.state, '', url);
+  }
 }

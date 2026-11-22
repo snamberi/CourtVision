@@ -1,3 +1,4 @@
+import { menuArt } from '../../menu/art';
 import type { MenuDesign } from '../../menu/design';
 import { useEffect, useState } from 'react';
 import { modesIn, type ArcadeTabId, type ModeEntry } from '../../menu/modeCatalog';
@@ -6,7 +7,8 @@ import { ARCADE_EVENT, endlessOf, guessStreak, gridStreak, isGuessDone, readArca
 import { readDailyDraft } from '../../arcade/dailyDraft';
 import { loadOne } from '../../arcade/oneOnOne';
 import { weekKey } from '../../retention/week';
-import { ModePicker } from './ModePicker';
+import { PixelIcon } from '../PixelIcon';
+import { LaunchBar, PosterDeck } from './PosterDeck';
 
 const groups = {
   'Arcade': ['legends', 'street', 'oneOnOne'],
@@ -53,12 +55,18 @@ export function MinigamesHub({ design = 'fieldhouse', onOpen }: { design?: MenuD
   const visible = games.filter(e => inFilter(e, filter));
   const selected = visible.find(e => e.id === id) ?? visible[0];
   return <div className="arena-minis">
-    <div className="arena-heading"><h1>Minigames</h1></div>
+    <div className="arena-heading"><h1>Minigames <i aria-hidden="true">»</i></h1><p>Quick games on and off the court</p></div>
     <div className="arena-filters" role="group" aria-label="Filter minigames">{filters.map(f =>
       <button type="button" key={f} aria-pressed={filter === f} onClick={() => setFilter(f)}>
         {f} <span>({games.filter(e => inFilter(e, f)).length})</span>
       </button>)}</div>
-    <ModePicker design={design} label="Game list" entries={visible} selected={selected} onSelect={e => setId(e.id)}
-      onPlay={() => onOpen(selected)} record={e => stats[e.action.tab]} />
+    <PosterDeck label="Minigames" entries={visible} selected={selected} onSelect={e => setId(e.id)} art={e => menuArt(`mini-${e.id}`, design)}>
+      {e => {
+        if (e.action.kind !== 'arcade') return null;
+        const [label, value] = stats[e.action.tab];
+        return <span className="arena-game-stat"><small><PixelIcon name={e.icon} size={14} />{label}</small><b>{value}</b></span>;
+      }}
+    </PosterDeck>
+    <LaunchBar entry={selected} onPlay={() => onOpen(selected)} />
   </div>;
 }

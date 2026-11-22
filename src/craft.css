@@ -115,10 +115,10 @@
 :root .lineup-reserve em { font-size: 11.5px; font-style: normal; }
 :root .qs-label { font: 500 12px/1.2 var(--font-display); letter-spacing: .08em; }
 
-/* Every button lifts a pixel on hover and presses into its shadow: the same physical feel everywhere. */
+/* Arena controls keep their own shapes and use color for pointer feedback. */
 :root button { transition: transform var(--dur-1) var(--ease-out), box-shadow var(--dur-1) var(--ease-out), background-color var(--dur-1), border-color var(--dur-1), color var(--dur-1); }
-:root button:not(:disabled):not(.sidebar-item):not(.link-button):hover { transform: translate(-1px, -1px); }
-:root button:not(:disabled):not(.sidebar-item):not(.link-button):active { transform: translate(2px, 2px); box-shadow: none; transition-duration: 40ms; }
+:root button:not(:disabled):not(.sidebar-item):not(.link-button):where(:not(.cv-arena *, .cv-art-preview *)):hover { transform: translate(-1px, -1px); }
+:root button:not(:disabled):not(.sidebar-item):not(.link-button):where(:not(.cv-arena *, .cv-art-preview *)):active { transform: translate(2px, 2px); box-shadow: none; transition-duration: 40ms; }
 :root button.primary:not(:disabled):hover { box-shadow: 4px 4px 0 var(--c-shadow-050a12, #050a12); }
 
 /* Links in tables and feeds: a quiet underline that wakes up on hover, instead of a wall of underlines. */

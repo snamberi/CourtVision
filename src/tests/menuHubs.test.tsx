@@ -26,7 +26,7 @@ describe('arena menu', () => {
     expect(readMenuDesign()).toBe('pocket');
   });
 
-  it.each(MENU_DESIGNS)('keeps the selected mode when pointing at another row in $name', ({ id }) => {
+  it.each(MENU_DESIGNS)('keeps the selected mode when pointing at another poster in $name', ({ id }) => {
     const open = vi.fn();
     render(<PlayHub design={id} onOpen={open} onContinue={vi.fn()} saves={[]} busy={null} />);
     const hunt = screen.getByRole('button', { name: 'League Hunt' });
@@ -36,6 +36,23 @@ describe('arena menu', () => {
     fireEvent.mouseLeave(hunt);
     fireEvent.click(screen.getByRole('button', { name: 'Play League Hunt' }));
     expect(open.mock.lastCall?.[0].id).toBe('legends');
+  });
+
+  it('changes the poster artwork in place while keeping the highlighted mode', () => {
+    const props = { onOpen: vi.fn(), onContinue: vi.fn(), saves: [], busy: null };
+    const { rerender } = render(<PlayHub {...props} />);
+    const hunt = screen.getByRole('button', { name: 'League Hunt' });
+    fireEvent.click(hunt);
+    const sources = new Set<string>();
+    for (const { id } of MENU_DESIGNS) {
+      rerender(<PlayHub {...props} design={id} />);
+      const poster = screen.getByRole('button', { name: 'League Hunt', pressed: true });
+      expect(poster).toBe(hunt);
+      const src = poster.querySelector('img')?.getAttribute('src');
+      expect(src).toBeTruthy();
+      sources.add(src!);
+    }
+    expect(sources.size).toBe(MENU_DESIGNS.length);
   });
 
   it('round-trips each hub through its own hash', () => {
