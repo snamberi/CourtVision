@@ -28,3 +28,20 @@
  .office-page .office-heading .dashboard-heading-actions {margin-left:0}
  .office-page .team-pick-list select {max-width:100%}
 }
+
+:root .main-menu.team-entry {
+  width:100%; max-width:1240px; box-sizing:border-box; padding:clamp(16px,3vw,42px);
+  display:grid; align-content:start; align-items:stretch; gap:clamp(20px,3vw,36px);
+}
+.team-entry .office-heading {width:100%;box-sizing:border-box;flex-direction:row;align-items:center;padding:clamp(16px,2.5vw,32px)}
+:root .team-entry .mode-grid {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(16px,2vw,28px);align-items:stretch;margin:0}
+:root .team-entry button.mode-card {height:100%;min-height:0;box-sizing:border-box;padding:clamp(18px,2.3vw,30px);gap:14px}
+:root .team-entry .mode-card h3 {margin:0;font:700 clamp(22px,2.2vw,32px)/1.14 'Barlow Semi Condensed',sans-serif}
+:root .team-entry .mode-card p {margin:0;line-height:1.55}
+.team-entry .team-pick-list {box-sizing:border-box;width:100%;padding:clamp(16px,2.5vw,32px)}
+@media(max-width:860px){
+ :root .team-entry .mode-grid {grid-template-columns:minmax(0,1fr)!important}
+ :root .team-entry button.mode-card {display:grid;grid-template-columns:48px minmax(0,1fr);column-gap:18px;row-gap:6px;align-content:center}
+ .team-entry .mode-card .office-art {grid-row:span 2;align-self:center}
+ .team-entry .mode-card p {grid-column:2}
+}

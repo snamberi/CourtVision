@@ -1,3 +1,4 @@
+import { RosterHeading } from './RosterHeading';
 import { plural } from '../lib/humanize';
 import { TeamLink } from './TeamLink';
 import { useMemo, useState } from 'react';
@@ -67,16 +68,17 @@ export function PlayerDatabase({ teams, onSelect, selectedPlayerId }: Props) {
 
   return (
     <div className="player-database">
+      <RosterHeading title="Player database" art="collection" />
       <div className="db-controls">
         <input
-          className="db-search" type="text" placeholder="Search players…"
+          aria-label="Search players" className="db-search" type="text" placeholder="Search players…"
           value={query} onChange={(e) => { setQuery(e.target.value); resetPage(); }}
         />
-        <select value={teamFilter} onChange={(e) => { setTeamFilter(e.target.value); resetPage(); }}>
+        <select aria-label="Filter by team" value={teamFilter} onChange={(e) => { setTeamFilter(e.target.value); resetPage(); }}>
           <option value="ALL">All Teams</option>
           {teams.map((t) => <option key={t.teamId} value={t.teamId}>{t.name}</option>)}
         </select>
-        <select value={sortKey} onChange={(e) => { setSortKey(e.target.value as SortKey); resetPage(); }}>
+        <select aria-label="Sort players" value={sortKey} onChange={(e) => { setSortKey(e.target.value as SortKey); resetPage(); }}>
           <option value="name">Sort: Name</option>
           <option value="team">Sort: Team</option>
           <option value="threePoint">Sort: 3PT</option>

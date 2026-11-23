@@ -1,0 +1,28 @@
+.app-body main.roster-workspace {min-width:0;padding:clamp(14px,2.2vw,36px);box-sizing:border-box}
+.roster-workspace .roster-heading,.roster-workspace .draft-night-header,.roster-workspace .scouting-head {
+ display:flex;align-items:center;flex-wrap:wrap;gap:16px;margin:0 0 18px;padding:16px 20px;border:1px solid var(--look-line);border-left:4px solid var(--look-accent);background:var(--look-panel);
+}
+.roster-workspace .office-art {width:44px;height:48px;object-fit:contain;image-rendering:pixelated;flex:none}
+.roster-workspace .roster-heading h2 {margin:0;color:var(--look-accent);font:400 clamp(23px,3vw,39px)/1.12 Bungee,sans-serif}
+.roster-workspace :is(.roster-controls,.db-controls,.fa-controls,.development-controls,.code-mode-actions,.trade-counter-actions) {
+ display:flex;flex-wrap:wrap;align-items:center;gap:12px 16px;margin-block:14px 20px;
+}
+.roster-workspace :is(.trade-columns,.three-team-grid,.coaching-systems,.draft-columns) {gap:clamp(16px,2vw,28px)}
+.roster-workspace .trade-columns>div,.roster-workspace .three-team-col,.roster-workspace .scouting-report {min-width:0;padding:18px;border:1px solid var(--look-line);background:var(--look-panel)}
+.roster-workspace .package-label {margin:0 0 14px;color:var(--look-muted);font:700 14px 'Barlow Semi Condensed',sans-serif;text-transform:uppercase;letter-spacing:.06em}
+.roster-workspace .roster-team-summary {display:flex;flex-wrap:wrap;gap:12px 22px;padding:16px;margin-block:16px;background:var(--look-panel)}
+.roster-workspace :is(.stat-table-scroll,.finances-table-wrap,.feature-table-scroll,.db-table-scroll){max-width:100%;overflow-x:auto}
+.roster-workspace .db-table :is(td,th){padding-block:9px;font-variant-numeric:tabular-nums}
+.roster-workspace .db-table tbody tr:nth-child(even){background-color:var(--look-raised)}
+.roster-workspace :is(.player-profile,.draft-view,.development-center,.coaching-page,.extensions-page,.watch-list-page)>section {margin-block:20px}
+@media(max-width:900px){
+ .roster-workspace :is(.trade-columns,.three-team-grid,.coaching-systems,.draft-columns){grid-template-columns:minmax(0,1fr)}
+}
+@media(max-width:620px){
+ .app-body main.roster-workspace{padding-inline:12px}
+ .roster-workspace .roster-heading{gap:10px;padding:12px}
+ .roster-workspace :is(.db-controls,.fa-controls,.roster-controls) select{max-width:100%}
+}
+.roster-workspace :is(.roster-page,.player-database){width:100%;max-width:none}
+.roster-workspace :is(.roster-heading,.draft-night-header,.scouting-head){justify-content:flex-start}
+.roster-workspace .scouting-head> :last-child:not(:nth-child(2)){margin-inline-start:auto}

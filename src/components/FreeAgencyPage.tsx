@@ -1,3 +1,4 @@
+import { RosterHeading } from './RosterHeading';
 import { signingDecision, signFreeAgentChecked, strengthRanking } from '../simulation/freeAgentDecision';
 import { TeamLink, TeamText } from './TeamLink';
 import { useMemo, useState } from 'react';
@@ -75,6 +76,7 @@ export function FreeAgencyPage({ league, extras, controlledTeamId, onChange, onS
   };
   return (
     <div>
+      <RosterHeading title="Free agency" art="yourCareer" />
       {!extras.freeAgencyOpen && <p className="calendar-banner">Free agency isn't open right now.</p>}
       {inSeasonFlowWindow && (
         <p className="calendar-banner">

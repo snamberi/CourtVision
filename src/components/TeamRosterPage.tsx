@@ -1,3 +1,4 @@
+import { RosterHeading } from './RosterHeading';
 import { LockerRoomPanel, MoraleCell } from './MoralePanels';
 import { FranchiseLineup } from './presentation/LineupBoard';
 import { plural } from '../lib/humanize';
@@ -76,8 +77,9 @@ export function TeamRosterPage({
 
   return (
     <div className="roster-page">
+      <RosterHeading title="Team roster" art="career" />
       <div className="roster-controls">
-        <select value={teamId} onChange={(e) => setTeamId(e.target.value)}>
+        <select aria-label="Roster team" value={teamId} onChange={(e) => setTeamId(e.target.value)}>
           {teams.map((t) => <option key={t.teamId} value={t.teamId}>{t.name}</option>)}
         </select>
         {onRunDevelopmentPass && <button onClick={onRunDevelopmentPass} title="Ages every player in the league by one season">

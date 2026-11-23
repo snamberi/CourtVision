@@ -1,3 +1,4 @@
+import { OfficeArt } from './OfficeDisplay';
 import { LineupTest50 } from './LineupTest50';
 import './leagueStories50.css';
 import { useMemo, useState } from 'react';
@@ -49,9 +50,9 @@ export function LineupLabPage({ league, controlledTeamId, onSelectPlayer }: { le
   const names = (ids: string[]) => ids.map((id, i) => <span key={id}>{i ? ', ' : ''}<button className="link-button" onClick={() => onSelectPlayer(id)}>{id}</button></span>);
   return (
     <div className="lineup-lab">
-      <div className="season-feature-header"><div><span className="pixel-eyebrow">THIS SEASON</span><h2>Lineup Lab</h2></div></div>
+      <div className="season-feature-header roster-heading"><OfficeArt name="franchise" /><div><span className="pixel-eyebrow">THIS SEASON</span><h2>Lineup Lab</h2></div></div>
       <div className="fa-controls">
-        <select value={teamId} onChange={e => { setTeamId(e.target.value); setPlayerId(''); }}>{league.teams.map(t => <option key={t.teamId} value={t.teamId}>{t.name}</option>)}</select>
+        <select aria-label="Lineup team" value={teamId} onChange={e => { setTeamId(e.target.value); setPlayerId(''); }}>{league.teams.map(t => <option key={t.teamId} value={t.teamId}>{t.name}</option>)}</select>
         <label>Min. possessions <select value={minPoss} onChange={e => setMinPoss(Number(e.target.value))}>{[10, 20, 40, 80, 150].map(n => <option key={n} value={n}>{n}</option>)}</select></label>
       </div>
       <LineupTest50 key={teamId} league={league} teamId={teamId} />

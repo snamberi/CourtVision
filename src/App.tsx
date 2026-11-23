@@ -1,3 +1,4 @@
+import './components/rosterWorkspace.css';
 import { LeagueAwardProvider } from './components/AwardStudio';
 import { audioCue } from './audio/gameAudio';
 import { PagePins } from './components/qol/PagePins';
@@ -325,6 +326,7 @@ function buildInitialExtras(league: League): GMLeagueExtras {
   };
 }
 
+const rosterTabs = new Set(['roster', 'yourTeam', 'database', 'editor', 'playerDevelopment', 'compare', 'lineupLab', 'development', 'coaching', 'watchList', 'medical', 'injuries', 'draft', 'trade', 'tradeOffers', 'tradeBlock', 'threeTeam', 'deadline', 'freeAgency', 'extensions', 'resignWaive', 'summerCamp', 'summerLeague']);
 type Screen = 'continue' | 'menu' | 'chooseTeam' | 'app' | 'hunt' | 'perfect' | 'survival' | 'story' | 'relics' | 'shop' | 'levelRoad' | 'trophyRoad' | 'seasonPass' | 'career' | 'locker' | 'profile' | 'community' | 'draft' | 'settings' | 'arcade' | 'create' | 'worldGamesMode' | 'friends' | 'clubs' | 'online' | 'friendList' | 'closet' | 'holiday' | 'updates' | 'yourCareer';
 const ARCADE_HASH: Record<ArcadeTab, string> = { grid: '#/grid', guess: '#/guess', categorize: '#/categorize', guessTeam: '#/guess-the-team', hilo: '#/higher-lower', bracket: '#/bracket', quiz: '#/quiz', legends: '#/legends', street: '#/street', oneOnOne: '#/1v1', tour: '#/tournament', dailyDraft: '#/daily-draft' };
 const arcadeTabOf = (hash: string) => (Object.entries(ARCADE_HASH).find(([, h]) => h === hash)?.[0] as ArcadeTab | undefined);
@@ -1979,7 +1981,7 @@ function App() {
           hiddenTabs={league.settings.coachOnly ? COACH_ONLY_HIDDEN : undefined}
           courtChatNew={courtChatNew}
         />
-        <main tabIndex={0} aria-label="Game content">
+        <main className={rosterTabs.has(tab) ? 'roster-workspace' : undefined} tabIndex={0} aria-label="Game content">
         {adsAllowedOnTab(tab) && <AdBanner slot="top" refreshKey={tab} />}
         <Suspense fallback={<p className="empty-state page-loading" role="status">Loading…</p>}>
         {coachLocked && <CoachOnlyNotice onOpenSettings={() => { setLeagueSettingsSub('rules'); setTab('leagueSettings'); }} />}

@@ -30,11 +30,11 @@ export function ChooseTeamScreen({ league, extras, onConfirm }: Props) {
     .sort((a, b) => calculateOverall(b) - calculateOverall(a)).slice(0, 5);
 
   return (
-    <div className="main-menu office-page">
+    <div className="main-menu office-page team-entry">
       <header className="office-heading"><OfficeArt name="franchise" /><div><span className="pixel-eyebrow">{league.teams.length} franchises</span><h1 className="menu-title">CHOOSE YOUR TEAM</h1></div></header>
-      <p className="menu-subtitle">Pick a team to run, or create a brand-new expansion team via an expansion draft.</p>
 
-      <div className="mode-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
+
+      <div className="mode-grid">
         <button className={`mode-card ${mode === 'pick' ? 'selected' : ''}`} aria-pressed={mode === 'pick'} onClick={() => setMode('pick')}>
           <OfficeArt name="career" /><h3>Pick an Existing Team</h3>
           <p>Take over one of the league's {league.teams.length} teams as-is{league.historical ? ', with its real roster' : ''}.</p>

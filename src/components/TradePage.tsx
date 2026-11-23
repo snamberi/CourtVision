@@ -1,3 +1,4 @@
+import { RosterHeading } from './RosterHeading';
 import { TeamLink, TeamText } from './TeamLink';
 import { shortMoney } from '../lib/humanize';
 import { useState } from 'react';
@@ -191,12 +192,14 @@ export function TradePage({ league, extras, controlledTeamId, onChange, onToast,
 
   return (
     <div className="trade-view">
+      <RosterHeading title="Trade builder" art="franchise" />
       <label className="trade-value-toggle"><input type="checkbox" checked={showValues} onChange={e => onChange(league, { ...extras, tradeSettings: { ...extras.tradeSettings, showValues: e.target.checked } })} /> Show trade values across the league</label>
       {deadlinePassed && <p className="calendar-banner">Trade deadline has passed for this season - trades are locked.</p>}
       {!canManageA && <p className="calendar-banner">You can only build trades starting from your own team.</p>}
       <div className="trade-columns" data-tour="trade">
         <div>
-          {sandboxMode ? <select value={teamAId} onChange={(e) => { setTeamAId(e.target.value); setFromA([]); setPicksFromA([]); }}>
+          <h4 className="package-label">First team sends</h4>
+          {sandboxMode ? <select aria-label="First team" value={teamAId} onChange={(e) => { setTeamAId(e.target.value); setFromA([]); setPicksFromA([]); }}>
             {league.teams.map((t) => <option key={t.teamId} value={t.teamId}>{t.name}</option>)}
           </select> : <h3><TeamLink name={teamA.name} /></h3>}
           {renderRoster(teamA, fromA, setFromA)}
@@ -204,7 +207,8 @@ export function TradePage({ league, extras, controlledTeamId, onChange, onToast,
           {renderPickList(teamAPicks, picksFromA, setPicksFromA)}
         </div>
         <div>
-          <select value={teamBId} onChange={(e) => { setTeamBId(e.target.value); setFromB([]); setPicksFromB([]); }}>
+          <h4 className="package-label">Trade partner sends</h4>
+          <select aria-label="Trade partner" value={teamBId} onChange={(e) => { setTeamBId(e.target.value); setFromB([]); setPicksFromB([]); }}>
             {league.teams.map((t) => <option key={t.teamId} value={t.teamId}>{t.name}</option>)}
           </select>
           {renderRoster(teamB, fromB, setFromB)}

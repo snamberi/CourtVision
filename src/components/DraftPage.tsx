@@ -1,3 +1,4 @@
+import { OfficeArt } from './OfficeDisplay';
 import { PixelIcon } from './PixelIcon';
 import { plural } from '../lib/humanize';
 import { TeamLink, TeamText } from './TeamLink';
@@ -122,7 +123,7 @@ export function DraftPage({ league, extras, controlledTeamId, onChange, onSelect
     onDone={() => { setLotterySeen(true); onChange(league, { ...extras, lottery: { ...extras.lottery!, revealed: true } }); }} /></div>;
 
   return <div className="draft-view">
-    <div className="draft-night-header" data-tour="draft"><div><span className="eyebrow">DRAFT NIGHT</span><h3>Build the next era</h3><p className="hint-text">2 rounds · {n} picks per round · {Math.min(extras.draftPickIndex, order.length)} / {order.length} selected</p></div>
+    <div className="draft-night-header" data-tour="draft"><OfficeArt name="mini-dailyDraft" /><div><span className="eyebrow">DRAFT NIGHT</span><h3>Build the next era</h3><p className="hint-text">2 rounds · {n} picks per round · {Math.min(extras.draftPickIndex, order.length)} / {order.length} selected</p></div>
       <div className="code-mode-actions">
         {extras.draftDayOpen && <><button onClick={() => { const r = draftOnePick(league, extras); onChange(r.league, r.extras); setMessage(r.pick ? `${r.pick.teamName} selected ${r.pick.playerId}.` : 'Draft complete.'); }}>Sim One Pick</button>
           {controlledTeamId && <button onClick={() => { const r = autoDraftAIPicksUntilUserTurn(league, extras, controlledTeamId); onChange(r.league, r.extras); setMessage(`${plural(r.picks.length, 'pick')} simulated.`); }}>To Your Next Pick</button>}

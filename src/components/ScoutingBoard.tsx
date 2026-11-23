@@ -1,3 +1,4 @@
+import { OfficeArt } from './OfficeDisplay';
 import { Fragment, useMemo, useState } from 'react';
 import type { League } from '../simulation/league';
 import type { DraftProspect, GMLeagueExtras } from '../simulation/gm';
@@ -60,7 +61,7 @@ export function ScoutingBoard({ league, extras, controlledTeamId, myTurn, onDraf
   const combineRows = [...board].sort((a, b) => (a.combine[sort.key] - b.combine[sort.key]) * sort.dir);
 
   return <section className="scouting-board" aria-label="Scouting board">
-    <header className="scouting-head">
+    <header className="scouting-head"><OfficeArt name="mini-guess" />
       <div><span className="section-label">SCOUTING DEPARTMENT</span><h4>Big board · {extras.draftClass.length} prospects</h4></div>
       <div className="scouting-meters">
         <span title="Set in Finances → expense levels">Budget <b>{Math.round(level)}</b></span>
