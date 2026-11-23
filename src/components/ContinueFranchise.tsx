@@ -2,8 +2,9 @@ import { useState } from 'react';
 import type { SaveSummary } from '../storage/saves';
 import { formatSeasonYear } from '../simulation/calendar';
 import { PixelIcon } from './PixelIcon';
-import { ModeBackdrop } from './presentation/ModeScene';
-import { SmallRoom } from './presentation/SmallRoom';
+import { menuArt } from '../menu/art';
+import { readMenuDesign } from '../menu/design';
+import './franchiseDesk.css';
 
 interface Props {
   saves: SaveSummary[];
@@ -37,10 +38,9 @@ export function ContinueFranchise({ saves, onContinue, onDeleteSave, onRenameSav
   // Deletes one at a time so a failure part-way still leaves the rest of the shelf intact.
   const deleteMany = (ids: string[]) => act('bulk', async () => { for (const id of ids) await onDeleteSave(id); stopSelecting(); });
   const bulkIds = bulk === 'all' ? saves.map(s => s.id) : [...picked];
-  return <main className="continue-franchise create-page mode-environment" data-environment="franchise">
-    <header className="create-top"><button className="hunt-exit" onClick={onBack}><PixelIcon name="exit" size={16} /> Main Menu</button><div><span className="pixel-eyebrow">FRANCHISE · CONTINUE</span><h1>Your Leagues</h1></div><button onClick={onCreate}>New franchise</button></header>
-    <ModeBackdrop mode="franchise" />
-    <div className="continue-heading"><div><h2>Pick up your dynasty.</h2><p>{saves.length ? `${saves.length} saved league${saves.length === 1 ? '' : 's'} · most recently played first` : 'Your next great franchise starts here.'}</p></div>
+  return <main className="continue-franchise create-page franchise-desk" data-environment="franchise">
+    <header className="create-top"><button className="hunt-exit" onClick={onBack}><PixelIcon name="exit" size={16} /> Main Menu</button><div><span className="pixel-eyebrow">FRANCHISE · CONTINUE</span><h1>Your Leagues</h1></div><button onClick={onCreate}>New franchise</button><img className="desk-header-art" src={menuArt('almanac', readMenuDesign())} alt="" /></header>
+    <div className="continue-heading"><div><h2>Save archive</h2><p>{saves.length ? `${saves.length} saved league${saves.length === 1 ? '' : 's'} · most recently played first` : '0 saved leagues'}</p></div>
       {saves.length > 0 && <label className="continue-search">Find a league<input type="search" value={search} onChange={e => setSearch(e.target.value)} placeholder="League or team name" /></label>}</div>
     {saves.length > 1 && <div className="continue-bulk" role="toolbar" aria-label="Manage several leagues">
       {selecting ? <>
@@ -57,7 +57,7 @@ export function ContinueFranchise({ saves, onContinue, onDeleteSave, onRenameSav
       <button disabled={!!pending} onClick={() => setBulk(null)}>Cancel</button>
     </div>}
     {error && <p role="alert" className="backup-msg err">{error}</p>}
-    {saves.length === 0 ? <section className="continue-empty"><SmallRoom kind="archive" title="An empty shelf. An open future." detail="Your saved franchises will live here, ready for their next season." /><h2>No saved leagues yet</h2><p>Create your first franchise, then come back here to continue it.</p><button className="primary" onClick={onCreate}>Play · new franchise</button></section>
+    {saves.length === 0 ? <section className="continue-empty"><img className="desk-archive-art" src={menuArt('collection', readMenuDesign())} alt="" /><h2>No saved leagues yet</h2><p>Create your first franchise, then come back here to continue it.</p><button className="primary" onClick={onCreate}>Play · new franchise</button></section>
       : <section className="continue-saves" aria-label="Saved leagues">
         {visible.map(s => <article key={s.id} className={`continue-save ${picked.has(s.id) ? 'is-picked' : ''}`}>
           {selecting ? <label className="continue-pick"><input type="checkbox" checked={picked.has(s.id)} onChange={() => toggle(s.id)} aria-label={`Select ${s.name}`} /></label>

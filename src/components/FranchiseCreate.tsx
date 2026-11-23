@@ -1,4 +1,6 @@
-import { ModeBackdrop } from './presentation/ModeScene';
+import { menuArt } from '../menu/art';
+import { readMenuDesign } from '../menu/design';
+import './franchiseDesk.css';
 import { ModeIcon } from './ModeIcon';
 import { lazy, Suspense, useState } from 'react';
 import type { TimeMachinePick } from './TimeMachinePicker';
@@ -41,6 +43,7 @@ const DIFFICULTIES: { id: TradeDifficulty; label: string; blurb: string }[] = [
   { id: 'normal', label: 'Normal', blurb: 'Trades need roughly matched value.' },
   { id: 'hard', label: 'Hard', blurb: 'Tightly matched value; young high-potential players cost a premium.' },
 ];
+const challengeArt: Record<Challenge, string> = { free: 'franchise', decade: 'perfect', dynasty: 'legends', rebuild: 'yourCareer', draft: 'mini-dailyDraft', timeMachine: 'almanac', worldgames: 'achievements' };
 const CHALLENGES: { id: Challenge; icon: string; title: string; blurb: string; time: string }[] = [
   { id: 'free', icon: 'team', title: 'Franchise', blurb: 'Run a team for as many seasons as you like: trades, drafts, free agency, owners and your own history.', time: 'Unlimited' },
   { id: 'decade', icon: 'calendar', title: '10-Season Dynasty', blurb: 'Ten seasons on the clock. Every win and every playoff round scores; titles score the most. Three stars for a true dynasty.', time: '1-3 hours' },
@@ -102,18 +105,19 @@ export function FranchiseCreate({ onBack, onStart, busy = null, initial = 'free'
   const sc = SCENARIOS.find(s => s.id === scenario)!;
   const startLabel = busy ?? (challenge === 'rebuild' ? `Start: ${sc.title}` : challenge === 'draft' ? 'Go to the draft room' : challenge === 'worldgames' ? `Coach ${wgCountry}` : challenge === 'timeMachine' ? (tm ? `Travel to ${seasonName(tm.year)}` : 'Loading NBA history…') : historical ? (moment ? `Take over: ${momentById(moment)?.title}` : `Start the ${seasonName(Number(historyYear))} NBA`) : source === 'random' ? 'Create the random league' : source === 'world' ? `Start the ${WORLD_LEAGUES[worldId].short}` : 'Create the league');
 
-  return <div className="create-page mode-environment" data-environment="franchise">
+  const design = readMenuDesign();
+  return <div className="create-page franchise-desk" data-environment="franchise">
     <header className="create-top">
       <button className="hunt-exit" onClick={onBack}><PixelIcon name="exit" size={16} /> Main Menu</button>
       <div><span className="pixel-eyebrow">GM MODE</span><h1>New franchise</h1></div>
+      <img className="desk-header-art" alt="" src={menuArt('franchise', design)} />
     </header>
-    <ModeBackdrop mode="franchise" />
 
     <section className="create-step" aria-labelledby="create-step-game">
       <h2 id="create-step-game"><span className="create-num">1</span> Choose your game</h2>
       <div className="create-choices create-choices-6" role="radiogroup" aria-label="Game">
         {CHALLENGES.map(c => <button key={c.id} role="radio" aria-checked={challenge === c.id} className={`create-choice ${challenge === c.id ? 'selected' : ''}`} onClick={() => setChallenge(c.id)}>
-          <span className="create-choice-head"><ModeIcon mode={c.id === 'free' ? 'franchise' : c.id} size={52} /><b>{c.title}</b><small><PixelIcon name="clock" size={11} /> {c.time}</small></span>
+          <span className="create-choice-head"><img alt="" className="desk-mode-art" src={menuArt(challengeArt[c.id], design)} /><b>{c.title}</b><small><PixelIcon name="clock" size={11} /> {c.time}</small></span>
           <span className="create-choice-blurb">{c.blurb}</span>
           {c.id === 'dynasty' ? <span className="create-tag hot">New</span> : c.id !== 'free' && <span className="create-tag">Challenge</span>}
         </button>)}

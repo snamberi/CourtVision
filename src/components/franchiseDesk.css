@@ -1,0 +1,44 @@
+/* Franchise entry shares the palette of the active CourtVision skin. */
+.create-page.franchise-desk {
+  max-width: 1160px;
+  gap: 20px;
+  --desk-edge: var(--look-line, #35394c);
+  --desk-gold: var(--look-accent, #ffc32b);
+}
+.franchise-desk .create-top {
+  position: relative; isolation: isolate; overflow: hidden; padding: 20px 115px 22px 24px;
+  align-items: flex-start; flex-direction: column; gap: 12px;
+  background: var(--look-panel); border: 1px solid var(--desk-edge); border-left: 6px solid var(--desk-gold);
+}
+.franchise-desk .create-top h1 {
+  font: 400 clamp(30px,5vw,62px)/1.04 Bungee,sans-serif; text-transform: uppercase; letter-spacing: -.045em;
+  color: var(--desk-gold);
+}
+.franchise-desk .desk-header-art { position:absolute;right:0;bottom:0;height:100%;width:25%;object-fit:contain;background:var(--look-raised);image-rendering:pixelated;z-index:-1; }
+.franchise-desk .create-step, .franchise-desk .continue-save, .franchise-desk .continue-empty {
+  background: var(--look-panel); border:1px solid var(--desk-edge); border-top:3px solid var(--desk-edge); border-radius:0; box-shadow:none;
+}
+.franchise-desk .create-step h2, .franchise-desk .continue-heading h2, .franchise-desk .continue-empty h2 {
+  font:400 clamp(19px,2.5vw,30px)/1.2 Bungee,sans-serif; letter-spacing:-.025em;
+}
+.franchise-desk .create-num { border-radius:0; font:700 16px monospace; }
+.franchise-desk .create-choice { border-radius:0; box-shadow:none; }
+.franchise-desk .create-choice.selected { box-shadow:inset 4px 0 var(--desk-gold); }
+.franchise-desk .create-choice:hover:not(:disabled) { transform:none; }
+.franchise-desk .desk-mode-art { width:48px;height:52px;object-fit:contain;image-rendering:pixelated;grid-row:span 2; }
+.franchise-desk .create-choices-6 .create-choice-head { display:grid;grid-template-columns:48px minmax(0,1fr);gap:2px 12px;align-items:center; }
+.franchise-desk .create-choice-head b { font:700 20px/1.1 'Barlow Semi Condensed',sans-serif; }
+.franchise-desk .create-choices-6 .create-tag { display:none; }
+.franchise-desk .create-go { border-radius:0; border-width:2px; }
+.franchise-desk .desk-archive-art { width:80px;height:80px;image-rendering:pixelated; }
+.franchise-desk .continue-empty { padding:32px;text-align:center; }
+.franchise-desk .continue-save { border-left:4px solid var(--desk-edge); }
+.franchise-desk .continue-save:first-child,.franchise-desk .continue-save.is-picked { border-left-color:var(--desk-gold); }
+.franchise-desk .create-settings-modal .share-box { border-radius:0;border:2px solid var(--desk-gold);background:var(--look-panel); }
+.franchise-desk .create-settings-modal h2 { font:400 26px/1.15 Bungee,sans-serif; }
+.franchise-desk .create-setting { border-radius:0;border-left:3px solid var(--desk-edge);padding-left:12px; }
+@media(max-width:560px){
+  .create-page.franchise-desk { padding-inline:10px; }
+  .franchise-desk .create-top { padding:16px 24% 16px 14px; }
+  .franchise-desk .create-step { padding:12px; }
+}
