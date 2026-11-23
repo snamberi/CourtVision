@@ -1,3 +1,5 @@
+import { OfficeArt } from '../OfficeDisplay';
+import '../extrasRooms.css';
 import { HolidayArt } from './HolidayArt';
 export { HolidayArt } from './HolidayArt';
 import { EventCalendar } from '../qol/EventCalendar';
@@ -44,7 +46,7 @@ export function HolidayEventPage({ onExit, onCloset }: { onExit: () => void; onC
     window.addEventListener(HOLIDAY_EVENT, sync); window.addEventListener(RELICS_EVENT, sync);
     return () => { window.removeEventListener(HOLIDAY_EVENT, sync); window.removeEventListener(RELICS_EVENT, sync); };
   }, [run]);
-  if (!run) return <div className="hunt"><header className="hunt-top"><button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button><div className="hunt-title"><h1>No event right now</h1></div></header>
+  if (!run) return <div className="hunt extras-room"><header className="hunt-top"><button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button><OfficeArt name="weekly" /><div className="hunt-title"><h1>No event right now</h1></div></header>
     <p className="hint-text">Holiday events show up here while they're on. Keep an eye on the main menu.</p><EventCalendar /></div>;
   const h = run.holiday, pieces = piecesFor(h.id), left = daysLeft(run);
   const buy = (p: EventPiece, el: HTMLElement) => {
@@ -53,12 +55,12 @@ export function HolidayEventPage({ onExit, onCloset }: { onExit: () => void; onC
     else setNote(r === 'coins' ? `Not enough ${h.coins} yet.` : r === 'owned' ? 'You already have it.' : 'The event is over.');
     setCoins(eventCoins(loadHoliday(), run.key)); setOwned(loadRelics().cosmetics ?? []);
   };
-  return <div className="hunt holiday" style={varsOf(run)}>
+  return <div className="hunt extras-room holiday" style={varsOf(run)}>
     <p className="hint-text">Active play: +1 event currency every 10 minutes and +20 each hour (26 per hour total). Franchise, Your Career and Story earn 50% more (39 per full hour). Focused visible play only; partial bonuses carry forward.</p>
     <details><summary>Event calendar</summary><EventCalendar /></details>
     <header className="hunt-top">
       <button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button>
-      <div className="hunt-title"><span className="pixel-eyebrow">HOLIDAY EVENT · {left} DAY{left === 1 ? '' : 'S'} LEFT</span><h1>{h.name}</h1></div>
+      <OfficeArt name="weekly" /><div className="hunt-title"><span className="pixel-eyebrow">HOLIDAY EVENT · {left} DAY{left === 1 ? '' : 'S'} LEFT</span><h1>{h.name}</h1></div>
       <button className="relic-switch" onClick={onCloset}><PixelIcon name="team" size={16} /> Closet</button>
     </header>
     <nav aria-label="Active events" className="holiday-event-tabs">{activeHolidays().map(r => <button key={r.key} aria-pressed={r.key === run.key} onClick={() => { setRun(r); setNote(null); }}>{r.holiday.name}</button>)}</nav>

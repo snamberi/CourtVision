@@ -1,3 +1,5 @@
+import { OfficeArt } from '../OfficeDisplay';
+import '../extrasRooms.css';
 import { useEffect, useState } from 'react';
 import { cloudEnabled, useAccount } from '../../cloud/account';
 import { openSignIn } from '../../cloud/signIn';
@@ -30,10 +32,10 @@ export function OnlineLeaguesPage({ onExit, onOpen }: { onExit: () => void; onOp
     setBusy(`Loading ${l.name}…`);
     try { await onOpen(l); } catch (e) { setError((e as Error).message); setBusy(null); }
   };
-  return <div className="hunt locker online-page">
+  return <div className="hunt extras-room locker online-page">
     <header className="hunt-top">
       <button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button>
-      <div className="hunt-title"><span className="pixel-eyebrow">GM MODE · WITH FRIENDS</span><h1>Online Leagues</h1></div>
+      <OfficeArt name="franchise" /><div className="hunt-title"><span className="pixel-eyebrow">GM MODE · WITH FRIENDS</span><h1>Online Leagues</h1></div>
     </header>
     {!cloudEnabled ? <p className="empty-state">Accounts and online leagues are not switched on for this site yet.</p> : !signedIn ? <section className="locker-bay">
       <h2><PixelIcon name="team" size={18} /> Run a league with your friends</h2>

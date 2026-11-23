@@ -1,3 +1,5 @@
+import { OfficeArt } from './OfficeDisplay';
+import './extrasRooms.css';
 import { AudioSettings } from '../audio/AudioSettings';
 import { Diagnostics } from './qol/Diagnostics';
 import { Glossary } from './qol/Glossary';
@@ -90,10 +92,10 @@ function SettingCard({ icon, title, blurb, wide, children }: { icon: string; tit
  * install, privacy, and, tucked away at the bottom, the site owner's online status check.
  */
 export function SettingsPage({ onExit, backup, recovery }: { onExit: () => void; backup: ReactNode; recovery: ReactNode }) {
-  return <div className="hunt locker settings-page settings-menu">
+  return <div className="hunt extras-room locker settings-page settings-menu">
     <header className="hunt-top">
       <button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button>
-      <div className="hunt-title"><span className="pixel-eyebrow">LOOK, MENU STYLE, DIFFICULTY, BACKUPS, GRAPHICS, ACCESSIBILITY, PRIVACY</span><h1>Settings</h1></div>
+      <OfficeArt name="settings" /><div className="hunt-title"><span className="pixel-eyebrow">LOOK, MENU STYLE, DIFFICULTY, BACKUPS, GRAPHICS, ACCESSIBILITY, PRIVACY</span><h1>Settings</h1></div>
     </header>
     <PageJumps /><SaveStatus />
     <SmallRoom kind="settings" title="Make the game yours." detail="Set your look, tune the graphics and keep your leagues backed up." />

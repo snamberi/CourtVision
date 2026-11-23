@@ -1,3 +1,4 @@
+import { OfficeArt } from './OfficeDisplay';
 import { useMemo } from 'react';
 import type { League } from '../simulation/league';
 import { historyBook } from '../simulation/dynasty';
@@ -12,7 +13,7 @@ export function HistoryBookPage({ league, onSelectPlayer }: { league: League; on
   return <article className="history-book">
     <header className="history-book-head">
       <span className="pixel-eyebrow"><PixelIcon name="list" size={12} /> {d ? `DYNASTY SINCE ${formatSeasonYear(d.startSeason)}` : 'THE LEAGUE STORY'}</span>
-      <h2>History Book</h2>
+      <div className="archive-title"><OfficeArt name="almanac" /><h2>History Book</h2></div>
       <p className="hint-text">Every decade gets a chapter: champions, dynasties, MVPs, the best team, moves and new owners, and the sons of former players who came into the league. It writes itself as you play.</p>
     </header>
     {!chapters.length && <p className="empty-state">The first chapter is written when your first season ends.</p>}

@@ -209,7 +209,10 @@ describe('82-0 Challenge records and rewards', () => {
     expect(avatarFrameOpen(undefeated, ctx(['perfect-82']))).toBe(true);
     expect(avatarFrameOpen(gold, ctx(['perfect-82']))).toBe(false);
     expect(avatarFrameOpen(gold, ctx(['perfect-98']))).toBe(true);
-    expect(MODE_ACHIEVEMENTS.filter(a => a.mode === 'perfect').map(a => a.id)).toEqual(['perfect-60', 'perfect-title', 'perfect-74', 'perfect-82', 'cat-5', 'cat-25', 'cat-teams', 'cat-brutal', 'cat-82', 'cat-82x5', 'perfect-98']);
+    expect(MODE_ACHIEVEMENTS.filter(a => a.mode === 'perfect').map(a => a.id)).toEqual([
+      ...[5, 10, 25, 50, 100].map(n => `u50-p82Titles-${n}`),
+      ...[2, 3, 5, 10, 20].map(n => `u50-p82Perfect98-${n}`),
+      'perfect-60', 'perfect-title', 'perfect-74', 'perfect-82', 'cat-5', 'cat-25', 'cat-teams', 'cat-brutal', 'cat-82', 'cat-82x5', 'perfect-98']);
   });
 });
 

@@ -1,0 +1,33 @@
+:root .extras-room {width:100%;max-width:1260px;min-width:0;box-sizing:border-box;margin-inline:auto;padding:clamp(14px,2.5vw,36px)}
+:root .extras-room .hunt-top {display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:16px;margin-bottom:22px;padding:16px 20px;border:1px solid var(--look-line);border-left:5px solid var(--look-accent);background:var(--look-panel);border-radius:0}
+.extras-room .hunt-top>.office-art {width:52px;height:56px;object-fit:contain;image-rendering:pixelated}
+:root .extras-room .hunt-title {flex:1 1 180px;min-width:0;text-align:left}
+:root .extras-room .hunt-title h1 {margin:4px 0;font:400 clamp(25px,3.2vw,46px)/1.06 Bungee,sans-serif;color:var(--look-accent);letter-spacing:-.035em}
+.extras-room .arcade-workbench {display:grid;grid-template-columns:minmax(180px,224px) minmax(0,1fr);align-items:start;gap:clamp(16px,2.3vw,32px)}
+:root .extras-room .arcade-tabs {display:grid;grid-template-columns:minmax(0,1fr);gap:4px;padding:8px;margin:0;background:var(--look-panel);border:1px solid var(--look-line)}
+:root .extras-room .arcade-tabs button {display:flex;align-items:center;justify-content:flex-start;text-align:left;gap:12px;padding:7px 10px;min-width:0;border-radius:0}
+.extras-room .arcade-tabs .office-art {width:28px;height:28px;image-rendering:pixelated}
+.extras-room .arcade-tabs button[aria-selected=true] {box-shadow:inset 3px 0 var(--look-accent)}
+.extras-room .arcade-game-content {min-width:0;border-top:3px solid var(--look-accent);background:var(--look-panel);padding:clamp(14px,2vw,26px)}
+.extras-room .arcade-picker {display:none}
+:root .extras-room :is(.locker-bay,.relic-offer,.board-head){border-radius:0;border:1px solid var(--look-line);background:var(--look-panel);padding:clamp(14px,1.8vw,24px)}
+.extras-room :is(.profile-tabs,.community-tabs,.arcade-switch,.contest-actions){flex-wrap:wrap;gap:8px}
+.extras-room :is(.locker-bay,.arcade-stats,.settings-section){margin-block:16px}
+.extras-room :is(.stats-view-toggle,.arcade-quiz-options,.holiday-grid){gap:10px}
+.app-body main.extras-workspace {min-width:0;padding:clamp(14px,2.2vw,34px)}
+.extras-workspace :is(.history-chapter,.dashboard-panel,.editor-panel,.settings-section,.almanac-page>section),.menu-learn {border-left:3px solid var(--look-line);padding:clamp(12px,1.8vw,24px);margin-block:16px}
+.extras-workspace :is(.feature-table-scroll,.stat-table-scroll,.finances-table-wrap){overflow-x:auto;max-width:100%}
+.extras-workspace .db-table :is(th,td){padding-block:8px;font-variant-numeric:tabular-nums}
+.weekly-board .share-box,.arena-dialog .share-box {box-sizing:border-box;max-width:calc(100vw - 24px);padding:clamp(14px,2vw,26px)}
+@media(max-width:820px){
+ .extras-room .arcade-workbench {grid-template-columns:minmax(0,1fr)}
+ :root .extras-room .arcade-tabs {display:none}
+ .extras-room .arcade-picker {display:flex;align-items:center;gap:12px;color:var(--look-text);font-weight:700}
+ .extras-room .arcade-picker select {flex:1;min-width:0;min-height:42px}
+ .extras-room .hunt-top>.office-art {width:34px;height:38px}
+ :root .extras-room .hunt-top {gap:10px;padding:12px}
+}
+.archive-title {display:flex;align-items:center;gap:16px;margin:0 0 16px;padding-block:10px;border-bottom:2px solid var(--look-line)}
+.archive-title :is(h2,h3){margin:0;font:400 clamp(20px,2.3vw,32px)/1.16 Bungee,sans-serif;color:var(--look-accent)}
+.archive-title .office-art,.almanac-head>.office-art{width:38px;height:42px;object-fit:contain;image-rendering:pixelated}
+.extras-workspace .almanac-head {display:flex;align-items:center;flex-wrap:wrap;gap:14px}

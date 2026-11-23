@@ -1,3 +1,5 @@
+import { OfficeArt } from '../OfficeDisplay';
+import '../extrasRooms.css';
 import { RelicMastery50 } from './RelicMastery50';
 import { mastered50 } from '../../relics/mastery50';
 import { UndoPurchase } from '../qol/UndoPurchase';
@@ -112,10 +114,10 @@ export function RelicVault({ onExit, view = 'vault', onSwitch }: { onExit: () =>
   const spinPrice = discounted(SPIN_PRICE, discount), luckyPrice = discounted(LUCKY_SPIN_PRICE, discount), off = Math.round(discount * 100);
   const toEpic = PITY.epic - state.pity.epic, toLegendary = PITY.legendary - state.pity.legendary, toMythic = PITY.mythic - state.pity.mythic;
   const toLucky = LUCKY_PITY - (state.pity.lucky % LUCKY_PITY);
-  return <div className={`hunt relic-vault ${compact ? 'compact-inventory' : ''}`}>
+  return <div className={`hunt extras-room relic-vault ${compact ? 'compact-inventory' : ''}`}>
     <header className="hunt-top">
       <button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button>
-      <div className="hunt-title"><span className="pixel-eyebrow">{shop ? 'SPEND YOUR COINS · NEW RELICS EVERY DAY' : 'YOUR COLLECTION · EVERY MODE'}</span><h1>{shop ? 'Relic Shop' : 'Relic Vault'}</h1></div>
+      <OfficeArt name={shop ? 'coin' : 'chest'} /><div className="hunt-title"><span className="pixel-eyebrow">{shop ? 'SPEND YOUR COINS · NEW RELICS EVERY DAY' : 'YOUR COLLECTION · EVERY MODE'}</span><h1>{shop ? 'Relic Shop' : 'Relic Vault'}</h1></div>
       {onSwitch && <button className="relic-switch" onClick={onSwitch}><PixelIcon name={shop ? 'crown' : 'star'} size={16} /> {shop ? 'Relic Vault' : 'Shop'}</button>}
     </header>
     <PageJumps />

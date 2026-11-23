@@ -1,3 +1,5 @@
+import { OfficeArt } from '../OfficeDisplay';
+import '../extrasRooms.css';
 import { PageJumps } from '../PageJumps';
 import { useEffect, useState, type ReactNode } from 'react';
 import { LEVEL_ROAD } from '../../profile/cosmetics';
@@ -28,10 +30,10 @@ function useProgressTick() {
 export function RoadPage({ road, onExit, onSwitch }: { road: 'level' | 'trophy'; onExit: () => void; onSwitch?: () => void }) {
   useProgressTick();
   const level = road === 'level';
-  return <div className="hunt road-page">
+  return <div className="hunt extras-room road-page">
     <header className="hunt-top">
       <button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button>
-      <div className="hunt-title"><span className="pixel-eyebrow">{level ? 'COURT SCORE FROM EVERY MODE' : 'WIN TO CLIMB'}</span><h1>{level ? 'Level Road' : 'Trophy Road'}</h1></div>
+      <OfficeArt name={level ? 'profile' : 'podium'} /><div className="hunt-title"><span className="pixel-eyebrow">{level ? 'COURT SCORE FROM EVERY MODE' : 'WIN TO CLIMB'}</span><h1>{level ? 'Level Road' : 'Trophy Road'}</h1></div>
       {onSwitch && <button className="relic-switch" onClick={onSwitch}><PixelIcon name={level ? 'trophy' : 'chart'} size={16} /> {level ? 'Trophy Road' : 'Level Road'}</button>}
     </header>
     <PageJumps />

@@ -1,3 +1,5 @@
+import { OfficeArt } from '../OfficeDisplay';
+import '../extrasRooms.css';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ordinal } from '../../lib/humanize';
 import { noteHolidayFinish } from '../../retention/holiday';
@@ -38,10 +40,10 @@ export function WorldGamesMode({ games, country, onExit, onNew }: { games: Games
     track('mode_finish', { mode: 'worldgames', games: String(games), country, place: place + 1, score });
   }, [games, country]);
 
-  return <div className="hunt locker wg-mode">
+  return <div className="hunt extras-room locker wg-mode">
     <header className="hunt-top">
       <button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button>
-      <div className="hunt-title"><span className="pixel-eyebrow">WORLD GAMES · {label.toUpperCase()}</span><h1><CountryName country={country} /></h1></div>
+      <OfficeArt name="achievements" /><div className="hunt-title"><span className="pixel-eyebrow">WORLD GAMES · {label.toUpperCase()}</span><h1><CountryName country={country} /></h1></div>
     </header>
     {error ? <p className="empty-state">Could not load the NBA history data: {error}</p>
       : !h ? <p className="empty-state">Loading every national team…</p>

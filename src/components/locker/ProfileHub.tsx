@@ -1,3 +1,5 @@
+import { OfficeArt } from '../OfficeDisplay';
+import '../extrasRooms.css';
 import { PageJumps } from '../PageJumps';
 import { useEffect, useState } from 'react';
 import { listCareers } from '../../career/storage';
@@ -69,10 +71,10 @@ export function ProfileHub({ onExit, onCloset, initialTab = 'profile' }: { onExi
   const modeEarned = MODE_ACHIEVEMENTS.filter(a => isEarned(a, modes)).length;
   const trophies = shelf.length + hunt.wins + gm.titles + earned.length + rebuildTitles;
 
-  return <div className="hunt locker">
+  return <div className="hunt extras-room locker">
     <header className="hunt-top">
       <button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button>
-      <div className="hunt-title"><span className="pixel-eyebrow">YOUR CARD, ACHIEVEMENTS AND TROPHIES</span><h1>Player Profile</h1></div>
+      <OfficeArt name="profile" /><div className="hunt-title"><span className="pixel-eyebrow">YOUR CARD, ACHIEVEMENTS AND TROPHIES</span><h1>Player Profile</h1></div>
       {onCloset && <button className="relic-switch" onClick={onCloset}><PixelIcon name="star" size={16} /> Closet</button>}
     </header>
     <PageJumps />

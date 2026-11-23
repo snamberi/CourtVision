@@ -1,3 +1,5 @@
+import { OfficeArt } from '../OfficeDisplay';
+import '../extrasRooms.css';
 import { SCENARIOS } from '../../simulation/rebuildScenarios';
 import { PageJumps } from '../PageJumps';
 import { hasOwnerAccess } from '../../profile/ownerAccess';
@@ -58,10 +60,10 @@ export function Community({ onExit, user, onUser, initialTab = 'boards' }: { onE
   const acct = useAccount();
   const [tab, setTab] = useState<Tab>(initialTab);
   const tabs: [Tab, string][] = [['boards', 'Leaderboards'], ['ranked', 'Ranked'], ['pvp', 'Hunt PvP'], ['friends', 'Friends'], ['me', acct.status === 'signedIn' ? 'Your account' : 'Sign in']];
-  return <div className="hunt locker community">
+  return <div className="hunt extras-room locker community">
     <header className="hunt-top">
       <button className="hunt-exit" onClick={user ? () => onUser(null) : onExit}><PixelIcon name="exit" size={16} /> {user ? 'Back' : 'Main Menu'}</button>
-      <div className="hunt-title"><span className="pixel-eyebrow">PLAY AGAINST EVERYONE</span><h1>{user ? `@${user}` : 'Community'}</h1></div>
+      <OfficeArt name="podium" /><div className="hunt-title"><span className="pixel-eyebrow">PLAY AGAINST EVERYONE</span><h1>{user ? `@${user}` : 'Community'}</h1></div>
     </header>
     <PageJumps />
     {!cloudEnabled ? <><p className="empty-state">Accounts and online leaderboards are not switched on for this site yet.</p></>

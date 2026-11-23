@@ -1,3 +1,5 @@
+import { OfficeArt } from '../OfficeDisplay';
+import '../extrasRooms.css';
 import { OwnerGift } from './OwnerGift';
 import { PageJumps } from '../PageJumps';
 import { useEffect, useState } from 'react';
@@ -62,10 +64,10 @@ function FriendListContent({ onExit, onUser, onFind, acct }: FriendListProps & {
   const [activityFilter, setActivityFilter] = useState('all');
   const visible = friends?.filter(f => f.username.toLowerCase().includes(filter.toLowerCase()) && (activityFilter === 'all' || (activityFilter === 'online' && lastSeenLabel(f.lastSeen) === 'Online now') || (activityFilter === 'recent' && !!f.lastSeen && now - new Date(f.lastSeen).getTime() < 7 * 86400000) || (activityFilter === 'gifts' && !!gifts?.waiting.some(g => g.from.toLowerCase() === f.username.toLowerCase()))));
   const waiting = gifts?.waiting ?? [];
-  return <div className="hunt locker friend-list-page">
+  return <div className="hunt extras-room locker friend-list-page">
     <header className="hunt-top">
       <button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button>
-      <div className="hunt-title"><span className="pixel-eyebrow">YOUR FRIENDS · FREE DAILY GIFTS</span><h1>Friend list</h1></div>
+      <OfficeArt name="gifts" /><div className="hunt-title"><span className="pixel-eyebrow">YOUR FRIENDS · FREE DAILY GIFTS</span><h1>Friend list</h1></div>
       {onFind && <button className="relic-switch" onClick={onFind}><PixelIcon name="search" size={16} /> Find GMs</button>}
     </header>
     <PageJumps />

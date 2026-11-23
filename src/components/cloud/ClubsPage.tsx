@@ -1,3 +1,5 @@
+import { OfficeArt } from '../OfficeDisplay';
+import '../extrasRooms.css';
 import { ClanRewards } from './ClanRewards';
 import { PageJumps } from '../PageJumps';
 import { useCallback, useEffect, useState } from 'react';
@@ -48,11 +50,11 @@ export function ClubsPage({ onExit, onUser }: { onExit: () => void; onUser: (use
     myClub().then(c => { if (live) { setClub(c); setError(null); } }, (e: Error) => { if (live) { setClub(null); setError(e.message); } });
     return () => { live = false; };
   }, [signedIn, tick]);
-  return <div className="hunt locker clubs-page">
+  return <div className="hunt extras-room locker clubs-page">
     <ol className="clans-steps"><li><b>1 · Join your crew</b><p>Join an open clan, accept an invitation, or create your own.</p></li><li><b>2 · Play weekly modes</b><p>Your weekly leaderboard results contribute to your clan’s points.</p></li><li><b>3 · Climb together</b><p>Compare clan standings and take part in a weekly clash.</p></li></ol>
     <header className="hunt-top">
       <button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button>
-      <div className="hunt-title"><span className="pixel-eyebrow">PLAY TOGETHER</span><h1>Clans</h1></div>
+      <OfficeArt name="mini-guessTeam" /><div className="hunt-title"><span className="pixel-eyebrow">PLAY TOGETHER</span><h1>Clans</h1></div>
     </header>
     <PageJumps />
     {!cloudEnabled ? <p className="empty-state">Accounts and clans are not switched on for this site yet.</p> : <div className="clubs-grid">

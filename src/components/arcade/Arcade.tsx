@@ -1,3 +1,5 @@
+import { OfficeArt } from '../OfficeDisplay';
+import '../extrasRooms.css';
 import { ModeIcon } from '../ModeIcon';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { noteHolidayFinish } from '../../retention/holiday';
@@ -62,17 +64,20 @@ export function Arcade({ tab, onTab, onExit }: { tab: ArcadeTab; onTab: (t: Arca
     import('../../history/nbaHistoryData').then(m => m.loadNbaHistory()).then(d => { if (live) setH(d); }, e => { if (live) setError(e instanceof Error ? e.message : String(e)); });
     return () => { live = false; };
   }, []);
-  return <div className="hunt locker arcade">
+  return <div className="hunt extras-room locker arcade">
     <header className="hunt-top">
       <button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button>
-      <div className="hunt-title"><span className="pixel-eyebrow">QUICK GAMES · REAL NBA HISTORY</span><h1>{TABS.find(t => t.id === tab)!.label}</h1></div>
+      <OfficeArt name={`mini-${tab === 'legends' ? 'legendsT' : tab}`} /><div className="hunt-title"><span className="pixel-eyebrow">QUICK GAMES · REAL NBA HISTORY</span><h1>{TABS.find(t => t.id === tab)!.label}</h1></div>
     </header>
+    <div className="arcade-workbench">
+    <label className="arcade-picker">Game<select value={tab} onChange={e => onTab(e.target.value as ArcadeTab)}>{TABS.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}</select></label>
     <nav className="arcade-tabs" role="tablist" aria-label="Quick games">
-      {TABS.map(t => <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'selected' : ''} onClick={() => onTab(t.id)}><ModeIcon mode={t.id === 'legends' ? 'legendsT' : t.id === 'dailyDraft' ? 'draft' : t.id} size={28} /> {t.label}</button>)}
+      {TABS.map(t => <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'selected' : ''} onClick={() => onTab(t.id)}><OfficeArt name={`mini-${t.id === 'legends' ? 'legendsT' : t.id}`} /> {t.label}</button>)}
     </nav>
-    {error ? <p className="empty-state">Could not load the NBA history data: {error}</p>
+    <div className="arcade-game-content">{error ? <p className="empty-state">Could not load the NBA history data: {error}</p>
       : !h ? <p className="empty-state">Loading 80 years of basketball…</p>
-      : tab === 'grid' ? <GridGame h={h} /> : tab === 'dailyDraft' ? <DailyDraftGame h={h} /> : tab === 'guess' ? <GuessGame h={h} onNext={() => onTab('hilo')} /> : tab === 'categorize' ? <CategorizeGame h={h} /> : tab === 'guessTeam' ? <GuessTeamGame h={h} /> : tab === 'hilo' ? <HiloGame h={h} /> : tab === 'quiz' ? <QuizGame h={h} /> : tab === 'legends' ? <LegendsGame h={h} /> : tab === 'street' ? <StreetGame h={h} /> : tab === 'oneOnOne' ? <OneOnOne h={h} /> : tab === 'tour' ? <GmTournament h={h} /> : <BracketGame h={h} />}
+      : tab === 'grid' ? <GridGame h={h} /> : tab === 'dailyDraft' ? <DailyDraftGame h={h} /> : tab === 'guess' ? <GuessGame h={h} onNext={() => onTab('hilo')} /> : tab === 'categorize' ? <CategorizeGame h={h} /> : tab === 'guessTeam' ? <GuessTeamGame h={h} /> : tab === 'hilo' ? <HiloGame h={h} /> : tab === 'quiz' ? <QuizGame h={h} /> : tab === 'legends' ? <LegendsGame h={h} /> : tab === 'street' ? <StreetGame h={h} /> : tab === 'oneOnOne' ? <OneOnOne h={h} /> : tab === 'tour' ? <GmTournament h={h} /> : <BracketGame h={h} />}</div>
+    </div>
   </div>;
 }
 

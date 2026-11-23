@@ -1,3 +1,5 @@
+import { OfficeArt } from '../OfficeDisplay';
+import '../extrasRooms.css';
 import { RoadTier } from './RoadTier';
 import { PageJumps } from '../PageJumps';
 import { useEffect, useRef, useState } from 'react';
@@ -58,10 +60,10 @@ export function SeasonPassPage({ onExit, onRelics }: { onExit: () => void; onRel
   const bestName = best ? RELIC_BY_ID.get(best.id)?.name : undefined;
   const got = rewards.filter(r => r.tier <= p.tier).length;
 
-  return <div className="hunt road-page season-page">
+  return <div className="hunt extras-room road-page season-page">
     <header className="hunt-top">
       <button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button>
-      <div className="hunt-title"><span className="pixel-eyebrow">FREE FOR EVERYONE · EVERY MODE COUNTS</span><h1>Season Pass</h1></div>
+      <OfficeArt name="weekly" /><div className="hunt-title"><span className="pixel-eyebrow">FREE FOR EVERYONE · EVERY MODE COUNTS</span><h1>Season Pass</h1></div>
       {onRelics && <button className="relic-switch" onClick={onRelics}><PixelIcon name="flame" size={16} /> Relic Vault{free ? ` · ${free} free Lucky Spin${free === 1 ? '' : 's'}` : ''}</button>}
     </header>
     <PageJumps />

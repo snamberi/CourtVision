@@ -1,3 +1,4 @@
+import { OfficeArt } from './OfficeDisplay';
 import { useMemo, useState } from 'react';
 import { CupSeasonLine } from './CupPage';
 import { GmSeasonLine } from './FrontOfficePanels';
@@ -38,7 +39,7 @@ export function AlmanacPage({ league, extras, awardSettings, onSelectPlayer }: {
   const archived = !!entry?.standings.some(r => r.finish);
   const imported = !!entry && !!league.franchiseHistory?.find(r => r.season === entry.season)?.imported;
 
-  if (!seasons.length || !entry) return <div className="almanac-page"><span className="pixel-eyebrow">LEAGUE ALMANAC</span><h2>Almanac</h2><p className="empty-state">Play some games and each season gets its own almanac page.</p></div>;
+  if (!seasons.length || !entry) return <div className="almanac-page"><span className="pixel-eyebrow">LEAGUE ALMANAC</span><div className="archive-title"><OfficeArt name="almanac" /><h2>Almanac</h2></div><p className="empty-state">Play some games and each season gets its own almanac page.</p></div>;
   const champ = team(entry.championTeamId);
   const record = league.franchiseHistory?.find(r => r.season === entry.season);
   // The live Finals (this season) have series stats; archived seasons keep the Finals MVP's name.
@@ -54,7 +55,7 @@ export function AlmanacPage({ league, extras, awardSettings, onSelectPlayer }: {
     : [{ label: 'League', rows: entry.standings }];
 
   return <div className="almanac-page">
-    <div className="almanac-head">
+    <div className="almanac-head"><OfficeArt name="almanac" />
       <div><span className="pixel-eyebrow">LEAGUE ALMANAC{imported && <span className="origin-tag real">Real NBA · imported</span>}</span><h2>{formatSeasonYear(entry.season)} Season{entry.inProgress && <small className="hint-text"> · in progress</small>}</h2></div>
       <label className="almanac-season-select">Season <select value={active ?? ''} onChange={e => { setSeason(e.target.value); setSelected(null); }}>
         {seasons.map(s => <option key={s} value={s}>{formatSeasonYear(s)}</option>)}</select></label>

@@ -1,3 +1,5 @@
+import { OfficeArt } from './OfficeDisplay';
+import './extrasRooms.css';
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { RELEASES, markReleasesSeen } from '../content/whatsNew';
 import { themeOf, itemsOf, updateNumber, searchUpdates } from '../content/updates';
@@ -17,10 +19,10 @@ export function UpdatesHub({ onExit }: { onExit: () => void }) {
   const list = useMemo(() => searchUpdates(q), [q]);
   // Opening the hub counts as reading the latest update (the phone app's dot goes away).
   useEffect(() => { markReleasesSeen(); }, []);
-  return <div className="hunt updates-hub">
+  return <div className="hunt extras-room updates-hub">
     <header className="hunt-top">
       <button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button>
-      <div className="hunt-title"><span className="pixel-eyebrow">{RELEASES.length} UPDATES SO FAR</span><h1>Updates</h1></div>
+      <OfficeArt name="credits" /><div className="hunt-title"><span className="pixel-eyebrow">{RELEASES.length} UPDATES SO FAR</span><h1>Updates</h1></div>
     </header>
     <div className="updates-search">
       <label htmlFor="updates-q" className="sr-only">Search the updates</label>

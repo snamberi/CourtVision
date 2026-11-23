@@ -1,3 +1,5 @@
+import { OfficeArt } from '../OfficeDisplay';
+import '../extrasRooms.css';
 import { challengePrefs, saveChallengePrefs, type Level } from '../../retention/challenge';
 import { LevelPicker } from '../ChallengeOptions';
 import type { TradeDifficulty } from '../../simulation/gm';
@@ -90,12 +92,12 @@ export function AllTimeDraft({ onExit, onStart }: { onExit: () => void; onStart:
 
   const header = <header className="hunt-top">
     <button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button>
-    <div className="hunt-title"><span className="pixel-eyebrow">06 / DRAFT</span><h1>All-Time Draft</h1></div>
+    <OfficeArt name="mini-dailyDraft" /><div className="hunt-title"><span className="pixel-eyebrow">06 / DRAFT</span><h1>All-Time Draft</h1></div>
   </header>;
-  if (error) return <div className="hunt draft">{header}<p className="empty-state">{error}</p></div>;
-  if (!h || !base || busy) return <div className="hunt draft">{header}<p className="hint-text" role="status">{busy}</p></div>;
-  if (!state) return <div className="hunt draft">{header}<Setup h={h} teams={base.league.teams.map(t => ({ id: t.teamId, name: t.name })).sort((a, b) => a.name.localeCompare(b.name))} saved={saved} onResume={s => { setState(s); }} onStart={begin} /></div>;
-  return <div className="hunt draft">{header}{isDone(state) ? <Results h={h} s={state} onStart={() => void finish()} onRedo={() => { saveDraft(null); setState(null); }} /> : <Board h={h} s={state} onPick={pick} onAutoRest={autoRest} />}</div>;
+  if (error) return <div className="hunt extras-room draft">{header}<p className="empty-state">{error}</p></div>;
+  if (!h || !base || busy) return <div className="hunt extras-room draft">{header}<p className="hint-text" role="status">{busy}</p></div>;
+  if (!state) return <div className="hunt extras-room draft">{header}<Setup h={h} teams={base.league.teams.map(t => ({ id: t.teamId, name: t.name })).sort((a, b) => a.name.localeCompare(b.name))} saved={saved} onResume={s => { setState(s); }} onStart={begin} /></div>;
+  return <div className="hunt extras-room draft">{header}{isDone(state) ? <Results h={h} s={state} onStart={() => void finish()} onRedo={() => { saveDraft(null); setState(null); }} /> : <Board h={h} s={state} onPick={pick} onAutoRest={autoRest} />}</div>;
 }
 
 // ---------------------------------------------------------------- setup

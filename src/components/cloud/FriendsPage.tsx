@@ -1,3 +1,5 @@
+import { OfficeArt } from '../OfficeDisplay';
+import '../extrasRooms.css';
 import { PageJumps } from '../PageJumps';
 import { useEffect, useState } from 'react';
 import { cloudEnabled, useAccount } from '../../cloud/account';
@@ -21,10 +23,10 @@ type Hit = { id: string; username: string; title: string; level: number; icon?: 
 export function FriendsPage({ onExit, onUser, onCommunity, onClubs, onOnline }: { onExit: () => void; onUser: (username: string) => void; onCommunity: () => void; onClubs?: () => void; onOnline?: () => void }) {
   const acct = useAccount();
   const signedIn = acct.status === 'signedIn';
-  return <div className="hunt locker friends-page">
+  return <div className="hunt extras-room locker friends-page">
     <header className="hunt-top">
       <button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button>
-      <div className="hunt-title"><span className="pixel-eyebrow">YOUR CREW</span><h1>Friends</h1></div>
+      <OfficeArt name="mini-oneOnOne" /><div className="hunt-title"><span className="pixel-eyebrow">YOUR CREW</span><h1>Friends</h1></div>
     </header>
     <PageJumps />
     {!cloudEnabled ? <p className="empty-state">Accounts and friends are not switched on for this site yet.</p> : <div className="friends-grid">

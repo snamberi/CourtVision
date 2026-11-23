@@ -1,3 +1,4 @@
+import { OfficeArt } from './OfficeDisplay';
 import { HistoricalRatingsPreset } from './HistoricalRatingsPreset';
 import { PixelIcon } from './PixelIcon';
 import { plural } from '../lib/humanize';
@@ -98,7 +99,7 @@ export function FullPlayerEditor({ season, onChange, sandboxMode, league, extras
 
   return (
     <div className="editor-panel full-editor">
-      <h3>{season.playerId} — Player Editor</h3>
+      <header className="archive-title"><OfficeArt name="settings" /><h3>{season.playerId} — Player Editor</h3></header>
       {sandboxMode && <HistoricalRatingsPreset player={season} onChange={onChange} />}
 
       <div className="player-editor-stats-panel">
