@@ -1,3 +1,4 @@
+import { OfficeArt } from './OfficeDisplay';
 import { useEffect, useState } from 'react';
 import type { League } from '../simulation/league';
 import { teamGamesPlayed } from '../simulation/league';
@@ -36,20 +37,20 @@ export function InboxPage({ league, extras, saveId, teamId, onNavigate, onSelect
   const shown = [...messages].reverse().filter(m => filter === 'all' || m.tone === filter);
 
   return (
-    <div className="inbox-page">
-      <div className="season-feature-header"><div><span className="pixel-eyebrow">{formatSeasonYear(league.season).toUpperCase()}</span><h2>Inbox</h2></div></div>
+    <div className="inbox-page office-page">
+      <div className="season-feature-header office-heading"><OfficeArt name="gifts" /><div><span className="pixel-eyebrow">{formatSeasonYear(league.season).toUpperCase()}</span><h2>Inbox</h2></div></div>
       <section className="reset-preview" aria-label="Needs your attention">
-        <h4>Needs you</h4>
+        <h4>Needs your attention <b className="office-count">{needs.length}</b></h4>
         {needs.length ? <ul>{needs.map((n, i) => <li key={i}>{n.tab ? <button className="link-button" onClick={() => onNavigate(n.tab!)}>{n.text}</button>
           : n.player ? <button className="link-button" onClick={() => onSelectPlayer(n.player!)}>{n.text}</button> : n.text}</li>)}</ul>
           : <p className="hint-text">Nothing waiting on you. Nice.</p>}
       </section>
       <div className="fa-controls">
-        <div className="stats-view-toggle">{(['all', 'success', 'info', 'error'] as const).map(f => <button key={f} className={filter === f ? 'active' : ''} onClick={() => setFilter(f)}>
+        <div className="stats-view-toggle">{(['all', 'success', 'info', 'error'] as const).map(f => <button key={f} aria-pressed={filter === f} className={filter === f ? 'active' : ''} onClick={() => setFilter(f)}>
           {f === 'all' ? 'All' : f === 'success' ? 'Good news' : f === 'info' ? 'Updates' : 'Problems'}</button>)}</div>
         {messages.length > 0 && <button onClick={() => { clearInbox(saveId); setMessages([]); }}>Clear inbox</button>}
       </div>
-      {shown.length === 0 ? <p className="empty-state">No messages yet. Everything the game tells you while you play this league lands here.</p> : (
+      {shown.length === 0 ? <p className="empty-state">{messages.length ? 'No messages in this category.' : 'No messages yet. League updates will appear here.'}</p> : (
         <ul className="inbox-list">{shown.map(m => <li key={m.id} className={`inbox-msg ${m.tone} ${m.read ? '' : 'unread'}`}>
           <span className="inbox-when">{m.date ?? new Date(m.at).toLocaleDateString()}{m.season ? ` · ${formatSeasonYear(m.season)}` : ''}</span>
           <span>{m.text}</span>

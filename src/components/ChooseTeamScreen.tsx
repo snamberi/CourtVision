@@ -1,3 +1,4 @@
+import { OfficeArt } from './OfficeDisplay';
 import { lazy, Suspense, useState } from 'react';
 import type { League } from '../simulation/league';
 import type { GMLeagueExtras } from '../simulation/gm';
@@ -29,28 +30,28 @@ export function ChooseTeamScreen({ league, extras, onConfirm }: Props) {
     .sort((a, b) => calculateOverall(b) - calculateOverall(a)).slice(0, 5);
 
   return (
-    <div className="main-menu">
-      <h1 className="menu-title">CHOOSE YOUR TEAM</h1>
+    <div className="main-menu office-page">
+      <header className="office-heading"><OfficeArt name="franchise" /><div><span className="pixel-eyebrow">{league.teams.length} franchises</span><h1 className="menu-title">CHOOSE YOUR TEAM</h1></div></header>
       <p className="menu-subtitle">Pick a team to run, or create a brand-new expansion team via an expansion draft.</p>
 
       <div className="mode-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
-        <button className={`mode-card ${mode === 'pick' ? 'selected' : ''}`} onClick={() => setMode('pick')}>
-          <h3>Pick an Existing Team</h3>
+        <button className={`mode-card ${mode === 'pick' ? 'selected' : ''}`} aria-pressed={mode === 'pick'} onClick={() => setMode('pick')}>
+          <OfficeArt name="career" /><h3>Pick an Existing Team</h3>
           <p>Take over one of the league's {league.teams.length} teams as-is{league.historical ? ', with its real roster' : ''}.</p>
         </button>
-        <button className={`mode-card ${mode === 'create' ? 'selected' : ''}`} onClick={() => setMode('create')}>
-          <h3>Create Your Own Team</h3>
+        <button className={`mode-card ${mode === 'create' ? 'selected' : ''}`} aria-pressed={mode === 'create'} onClick={() => setMode('create')}>
+          <OfficeArt name="mini-dailyDraft" /><h3>Create Your Own Team</h3>
           <p>A real expansion draft: every team files a protection list, then you pick your roster from the exposed players.</p>
         </button>
-        <button className={`mode-card ${mode === 'own' ? 'selected' : ''}`} onClick={() => setMode('own')}>
-          <h3>Own a Team</h3>
+        <button className={`mode-card ${mode === 'own' ? 'selected' : ''}`} aria-pressed={mode === 'own'} onClick={() => setMode('own')}>
+          <OfficeArt name="legends" /><h3>Own a Team</h3>
           <p>The Owner's Box: hire a GM to run it, set the goal and the budget, build the arena, vote on the rules.</p>
         </button>
       </div>
 
       {(mode === 'pick' || mode === 'own') && (
         <div className="team-pick-list">
-          <select className="year-input" value={pickedTeamId} onChange={(e) => setPickedTeamId(e.target.value)}>
+          <select aria-label="Team to manage" className="year-input" value={pickedTeamId} onChange={(e) => setPickedTeamId(e.target.value)}>
             {league.teams.map((t) => (
               <option key={t.teamId} value={t.teamId}>{t.name} (avg OVR {avgOverall(t.teamId)})</option>
             ))}

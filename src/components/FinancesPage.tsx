@@ -1,3 +1,4 @@
+import { OfficeArt, OfficeFigures } from './OfficeDisplay';
 import { TeamLink } from './TeamLink';
 import { useState } from 'react';
 import type { League } from '../simulation/league';
@@ -23,7 +24,12 @@ export function FinancesPage({ league, extras, controlledTeamId, onChange, sandb
   const [selectedTeamId, setSelectedTeamId] = useState(league.teams[0]?.teamId ?? '');
   const myTeam = league.teams.find(t => t.teamId === (sandboxMode ? selectedTeamId : controlledTeamId));
   return (
-    <div className="league-finances-page">
+    <div className="league-finances-page office-page">
+      <header className="office-heading"><OfficeArt name="coin" /><div><span className="pixel-eyebrow">{myTeam?.name ?? league.season}</span><h2>Finances</h2></div></header>
+      {myTeam && <OfficeFigures items={[
+        ['Player payroll', teamPayroll(extras.contracts, myTeam)],
+        ['Cap space', capSpaceRemaining(extras.contracts, myTeam, extras.capSettings)],
+      ]} />}
       {sandboxMode && <label>Manage finances for<select value={selectedTeamId} onChange={e => setSelectedTeamId(e.target.value)}>{league.teams.map(t => <option key={t.teamId} value={t.teamId}>{t.name}</option>)}</select></label>}
       {myTeam && <BusinessPanel key={myTeam.teamId} league={league} team={myTeam} onChange={team => onChange({ ...league, teams: league.teams.map(t => t.teamId === team.teamId ? team : t) }, extras)} />}
       {myTeam && (

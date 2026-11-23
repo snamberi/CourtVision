@@ -1,3 +1,4 @@
+import { OfficeArt } from './OfficeDisplay';
 import { formatSeasonYear } from '../simulation/calendar';
 import { ordinal } from '../lib/humanize';
 import type { ReactNode } from 'react';
@@ -102,8 +103,8 @@ export function DashboardPage({ league, extras, controlledTeamId, seasonPhase, o
 
   const identity = useTeamIdentity(team?.teamId);
   return (
-    <div className="dashboard-page">
-      <div className="dashboard-heading">
+    <div className="dashboard-page office-page">
+      <div className="dashboard-heading office-heading"><OfficeArt name="franchise" />
         <div><span className="pixel-eyebrow">{formatSeasonYear(league.season)} / {PHASE_LABEL[seasonPhase]}</span><h1>Franchise HQ</h1></div>
         <div className="dashboard-heading-actions">{headerExtra}<button onClick={() => onGoTo('roster')}><PixelIcon name="team" size={16} /> Manage roster</button></div>
       </div>
