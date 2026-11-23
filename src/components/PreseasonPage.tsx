@@ -1,3 +1,4 @@
+import { SeasonHeading } from './SeasonHeading';
 import { TeamText } from './TeamLink';
 import type { League } from '../simulation/league';
 import { computeTeamOverallAverage } from '../simulation/teamStatus';
@@ -17,7 +18,7 @@ export function PreseasonPage({ league, controlledTeamId, onStartSeason }: Props
   return (
     <div className="settings-page">
       <section>
-        <h4>Preseason — {formatSeasonYear(league.season)}</h4>
+        <SeasonHeading title={`Preseason · ${formatSeasonYear(league.season)}`} art="franchise" />
         <p className="hint-text">
           Free agency has closed. Rosters are set for the new season{team && <TeamText text={` — here's where ${team.name} stands`} />}.
         </p>

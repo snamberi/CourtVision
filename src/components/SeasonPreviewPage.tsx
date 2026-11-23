@@ -1,3 +1,4 @@
+import { SeasonHeading } from './SeasonHeading';
 import { useEffect, useMemo, useState } from 'react';
 import type { League } from '../simulation/league';
 import { buildSeasonPreview, gradePreview, withSeasonPreview } from '../simulation/seasonPreview';
@@ -17,7 +18,7 @@ export function SeasonPreviewPage({ league, onChange, onSelectPlayer }: { league
   const teamName = (id: string) => league.teams.find(t => t.teamId === id)?.name ?? id;
   return (
     <div className="season-preview">
-      <div className="season-feature-header"><div><span className="pixel-eyebrow">LEAGUE OFFICE PREDICTIONS</span><h2>Season Preview</h2></div></div>
+      <div className="season-feature-header"><div><span className="pixel-eyebrow">LEAGUE OFFICE PREDICTIONS</span><SeasonHeading title="Season preview" art="weekly" /></div></div>
       {seasons.length > 1 && <div className="fa-controls"><select value={season} onChange={e => setSeason(e.target.value)}>
         {seasons.map(s => <option key={s} value={s}>{formatSeasonYear(s)}</option>)}</select></div>}
       {!preview || !card ? <p className="empty-state">Predictions are made before the first game of a season. The next preview comes when the next season starts.</p> : <>

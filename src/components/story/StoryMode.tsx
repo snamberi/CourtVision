@@ -1,3 +1,5 @@
+import { OfficeArt } from '../OfficeDisplay';
+import '../modeRooms.css';
 import { ModeIcon } from '../ModeIcon';
 import { useEffect, useRef, useState } from 'react';
 import { noteHolidayFinish } from '../../retention/holiday';
@@ -151,10 +153,10 @@ export function StoryMode({ onExit }: { onExit: () => void }) {
     : inLeague ? 'THE NBA' : `ACT ${chapterOf(story)?.act ?? 1} OF ${ACTS} · ${(chapterOf(story)?.title ?? '').toUpperCase()}`;
   const header = <header className="hunt-top">
     <button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button>
-    <div className="hunt-title"><span className="pixel-eyebrow">{eyebrow}</span><h1>Story Mode</h1></div>
+    <OfficeArt name="story" /><div className="hunt-title"><span className="pixel-eyebrow">{eyebrow}</span><h1>Story Mode</h1></div>
     {story && !story.done && <button className="hunt-exit" onClick={() => { if (window.confirm('Start over? This story and its league will be lost.')) startOver(); }}>Start over</button>}
   </header>;
-  return <div className="hunt story">
+  return <div className="hunt mode-suite story">
     {pendingReward && <PostGameRewardPopup data={pendingReward} onClose={() => setPendingReward(null)} />}
     {header}
     {!story ? <Create endings={endings} onStart={(name, style, town) => { track('mode_start', { mode: 'story', style }); void dropStoryWorlds(); setStory(newStory(newSeed(), name, style, town, relicRunOpts())); }} />

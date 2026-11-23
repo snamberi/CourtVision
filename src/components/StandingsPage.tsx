@@ -1,3 +1,4 @@
+import { SeasonHeading } from './SeasonHeading';
 import { TeamLink } from './TeamLink';
 import { TeamLogo } from './TeamLogo';
 import { useState } from 'react';
@@ -43,7 +44,7 @@ export function StandingsPage({ league }: Props) {
   return (
     <div className="league-page">
       <div className="stats-section-header">
-        <h4>Standings</h4>
+        <SeasonHeading title="Standings" art="podium" />
         {conferenceStructured && (
           <div className="stats-view-toggle">
             <button className={view === 'conference' ? 'active' : ''} onClick={() => setView('conference')}>Conference</button>

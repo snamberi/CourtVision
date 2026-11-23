@@ -1,3 +1,4 @@
+import { SeasonHeading } from './SeasonHeading';
 import { PixelIcon } from './PixelIcon';
 import { TeamLink } from './TeamLink';
 import { useMemo, useState } from 'react';
@@ -67,7 +68,7 @@ export function AllStarWeekendPage({ league, awardSettings, seed, onSelectPlayer
     onBoxScore={() => setLive(null)} occasion={null} /></div>;
   return (
     <div className="all-star-weekend-page">
-      <div className="season-feature-header"><div><span className="pixel-eyebrow">THE LEAGUE'S BIGGEST STAGE</span><h2>All-Star Central</h2><p>{league.season} · {record.completed ? 'Weekend complete' : locked ? 'Rosters announced' : atBreak ? 'Voting closed · announce the teams' : 'Voting open'}</p></div><span className="feature-badge"><PixelIcon name="star" /> ALL STAR</span></div>
+      <div className="season-feature-header"><div><span className="pixel-eyebrow">THE LEAGUE'S BIGGEST STAGE</span><SeasonHeading title="All-Star Central" art="achievements" /><p>{league.season} · {record.completed ? 'Weekend complete' : locked ? 'Rosters announced' : atBreak ? 'Voting closed · announce the teams' : 'Voting open'}</p></div><span className="feature-badge"><PixelIcon name="star" /> ALL STAR</span></div>
       {disabled && <p className="feature-notice">All-Star Weekend is disabled in League Rules. Existing results are kept.</p>}
       <div className="feature-stat-grid">
         <div><small>FAN / PLAYER / COACH</small><strong>{percentages.join(' / ')}%</strong></div>

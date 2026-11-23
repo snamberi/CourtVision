@@ -1,3 +1,5 @@
+import { OfficeArt } from '../OfficeDisplay';
+import '../modeRooms.css';
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import {
   ATTRS, ATTR_LABEL, BACKGROUNDS, LEVEL_LABEL, NATIONS, POSITIONS, QUESTIONS, START_AGE, START_YEAR,
@@ -52,10 +54,10 @@ function Radar({ ratings, size = 150 }: { ratings: Ratings; size?: number }) {
 export function YourCareer({ onExit }: { onExit: () => void }) {
   const [state, setState] = useState<YcState | null>(loadCareer);
   useEffect(() => { saveCareer(state); }, [state]);
-  return <div className="yc">
+  return <div className="yc mode-suite">
     <div className="yc-bar">
       <button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button>
-      <span className="yc-bar-title"><PixelIcon name="jersey" size={18} /> YOUR CAREER</span>
+      <OfficeArt name="yourCareer" /><h1 className="yc-bar-title">Your Career</h1>
       {state && !state.done && <span className="yc-bar-season">{seasonLabel(START_YEAR + state.age - START_AGE)}</span>}
     </div>
     {state ? <Board s={state} onChange={setState} onNew={() => setState(null)} /> : <Create onStart={setState} />}

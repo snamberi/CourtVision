@@ -1,3 +1,4 @@
+import { SeasonHeading } from './SeasonHeading';
 import { rivalryBadge } from '../simulation/rivalry';
 import { TeamLink } from './TeamLink';
 import { GameBoxScorePage } from './GameBoxScorePage';
@@ -129,6 +130,7 @@ export function PlayoffsPage({ league, onChange, bracket, onBracketChange, onCel
   if (watched) return <div className="playoffs-page"><button onClick={() => setWatched(null)}>Back to Playoffs</button><GameBoxScorePage key={`${watched.homeTeamId}-${watched.awayTeamId}-${watched.seed}`} initialWatch game={watched} occasion={bracket ? playoffOccasion(bracket, watched, teamName) : null} home={{teamId:watched.homeTeamId,name:teamName(watched.homeTeamId)}} away={{teamId:watched.awayTeamId,name:teamName(watched.awayTeamId)}} homeRoster={league.teams.find(t=>t.teamId===watched.homeTeamId)?.seasons} awayRoster={league.teams.find(t=>t.teamId===watched.awayTeamId)?.seasons} rivalry={rivalryBadge(league,watched.homeTeamId,watched.awayTeamId)}/></div>;
   return (
     <div className="playoffs-page">
+      <SeasonHeading title="Playoffs" art="legends" />
       {mySeries && <section className={`my-series${mySeries.winnerTeamId && mySeries.winnerTeamId !== controlledTeamId ? ' out' : ''}`} aria-label="Your series">
         <span className="pixel-eyebrow">YOUR SERIES · {roundName(bracket!, mySeries.round).toUpperCase()}</span>
         <div className="my-series-score">

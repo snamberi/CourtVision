@@ -1,3 +1,5 @@
+import { OfficeArt } from '../OfficeDisplay';
+import '../modeRooms.css';
 import { BestComparison } from '../qol/BestComparison';
 import { prefersReducedMotion } from '../../lib/accessibility';
 import { ResultCount, ResultCrest, MvpSpotlight } from '../presentation/ResultPresentation';
@@ -7,7 +9,6 @@ import { BossIntro } from './BossIntro';
 import { teamColors } from '../../simulation/teamColors';
 import { playerFinish, matchesRunName } from '../presentation/cardFinish';
 import { RevealSparks } from '../presentation/PlayerFinish';
-import { ModeBackdrop } from '../presentation/ModeScene';
 import { plural } from '../../lib/humanize';
 import { useEffect, useState, type ReactNode, useRef } from 'react';
 import { readFavorites } from '../../profile/favorites';
@@ -119,19 +120,18 @@ export function LeagueHunt({ onExit }: { onExit: () => void }) {
   }, [h]); // eslint-disable-line react-hooks/exhaustive-deps
   const header = <header className="hunt-top">
     <button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button>
-    <div className="hunt-title"><span className="pixel-eyebrow">A RUN THROUGH BASKETBALL HISTORY</span><h1>League Hunt</h1></div>
+    <OfficeArt name="legends" /><div className="hunt-title"><span className="pixel-eyebrow">A RUN THROUGH BASKETBALL HISTORY</span><h1>League Hunt</h1></div>
     {shown && shown.stage !== 'won' && shown.stage !== 'lost' && shown.stage !== 'draft' && <div className="hunt-purse"><span className="hunt-coins" title="Coins">{shown.coins} coins</span>
       {shown.items.map(i => <span key={i} className="hunt-item-chip" title={ITEMS[i].blurb}>{ITEMS[i].name}</span>)}</div>}
     {shown && shown.stage !== 'won' && shown.stage !== 'lost' && <div className="hunt-lives" aria-label={`${shown.lives} lives left`}>{Array.from({ length: maxLives(shown) }, (_, i) => <span key={i} className={i < shown.lives ? 'on' : ''}><PixelIcon name="heart" size={18} /></span>)}</div>}
   </header>;
 
-  if (error) return <div className="hunt">{header}<p className="empty-state">Could not load the NBA history data: {error}</p></div>;
-  if (!h) return <div className="hunt">{header}<p className="empty-state">Loading 80 years of basketball…</p></div>;
+  if (error) return <div className="hunt mode-suite">{header}<p className="empty-state">Could not load the NBA history data: {error}</p></div>;
+  if (!h) return <div className="hunt mode-suite">{header}<p className="empty-state">Loading 80 years of basketball…</p></div>;
 
-  return <div data-environment="legends" className={`hunt mode-environment ${play ? `era-${play.play.era.id}` : ''} ${run?.view?.colors === false && run.stage !== 'won' && run.stage !== 'lost' ? 'no-rarity' : ''}`}>
+  return <div data-environment="legends" className={`hunt mode-suite mode-environment ${play ? `era-${play.play.era.id}` : ''} ${run?.view?.colors === false && run.stage !== 'won' && run.stage !== 'lost' ? 'no-rarity' : ''}`}>
     {pendingReward && <PostGameRewardPopup data={pendingReward} onClose={() => setPendingReward(null)} />}
     {header}
-    <ModeBackdrop mode="legends" />
     {run && run.stage !== 'won' && run.stage !== 'lost' && <DuelBanner duel={run.duel} />}
     {!run ? <HuntHub h={h} records={records} onStart={(seed, opts) => { setPlay(null); setRun(newRun(h, seed, { ...opts, ...relicRunOpts(), fav: readFavorites().player })); }} />
       : play ? <SeriesView h={h} run={run} play={play.play} series={play.series} index={play.index} onReveal={() => setPlay(p => (p && !p.revealed ? { ...p, revealed: true } : p))} onContinue={() => setPlay(null)} />

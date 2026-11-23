@@ -1,7 +1,8 @@
+import { OfficeArt } from '../OfficeDisplay';
+import '../modeRooms.css';
 import { branchCareer50 } from '../../career/storage';
 import { CareerDetailedStats } from '../qol/CareerDetailedStats';
 import { ResultCount, ResultCrest } from '../presentation/ResultPresentation';
-import { ModeBackdrop } from '../presentation/ModeScene';
 import { noteHolidayFinish } from '../../retention/holiday';
 import { ModeIcon } from '../ModeIcon';
 import type { BigMoment } from '../../career/bigMoments';
@@ -230,16 +231,15 @@ export function CareerMode({ onExit }: { onExit: () => void }) {
   };
   const header = <header className="hunt-top">
     <button className="hunt-exit" onClick={() => { if (view.k === 'hub') onExit(); else { autopilotEnabled.current = false; operation.current++; cancelRef.current(); setBusy(null); setView({ k: 'hub' }); setActive(null); } }}><PixelIcon name="exit" size={16} /> {view.k === 'hub' ? 'Main Menu' : 'Careers'}</button>
-    <div className="hunt-title"><span className="pixel-eyebrow">ONE PLAYER, ONE CAREER</span><h1>Career Mode</h1></div>
+    <OfficeArt name="career" /><div className="hunt-title"><span className="pixel-eyebrow">ONE PLAYER, ONE CAREER</span><h1>Career Mode</h1></div>
   </header>;
 
-  if (error) return <div className="hunt">{header}<p className="empty-state">Something went wrong: {error}</p><button onClick={() => { setError(null); setView({ k: 'hub' }); }}>Back</button></div>;
-  if (!h) return <div className="hunt">{header}<p className="empty-state">Loading 80 years of basketball…</p></div>;
+  if (error) return <div className="hunt mode-suite">{header}<p className="empty-state">Something went wrong: {error}</p><button onClick={() => { setError(null); setView({ k: 'hub' }); }}>Back</button></div>;
+  if (!h) return <div className="hunt mode-suite">{header}<p className="empty-state">Loading 80 years of basketball…</p></div>;
 
-  return <div className="hunt cv mode-environment" data-environment="career">
+  return <div className="hunt mode-suite cv mode-environment" data-environment="career">
     {pendingReward && <PostGameRewardPopup data={pendingReward} onClose={() => setPendingReward(null)} />}
     {header}
-    <ModeBackdrop mode="career" />
     {view.k === 'career' && active?.meta.status === 'active' && <div className="cv-run-controls"><label>Autopilot reading time <select value={pace} onChange={e => setPace(Number(e.target.value))}><option value={600}>Fast · 0.6 sec</option><option value={2500}>Balanced · 2.5 sec</option><option value={6000}>Relaxed · 6 sec</option></select></label><button onClick={() => void abandonRun()}>Abandon run</button></div>}
     {busy && <div className="cv-busy" role="status"><span>{busy.label}</span><button onClick={() => { stopRun(); if (!active) setView({ k: 'hub' }); }}>Give up simulation · keep last save</button>{busy.pct != null && <div className="hunt-cap-bar"><i style={{ width: `${busy.pct}%` }} /></div>}
       {active?.meta.autopilot && <button className="link-button" onClick={() => { autopilotEnabled.current = false; setActive(a => (a ? { ...a, meta: { ...a.meta, autopilot: false } } : a)); }}>Stop autopilot after this season</button>}</div>}

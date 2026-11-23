@@ -1,3 +1,5 @@
+import { OfficeArt } from '../OfficeDisplay';
+import '../modeRooms.css';
 import { BestComparison } from '../qol/BestComparison';
 import { LineupBoard } from '../presentation/LineupBoard';
 import { ResultCount, ResultCrest, MvpSpotlight } from '../presentation/ResultPresentation';
@@ -5,7 +7,6 @@ import { noteHolidayFinish } from '../../retention/holiday';
 import { teamColors } from '../../simulation/teamColors';
 import { playerFinish } from '../presentation/cardFinish';
 import { RevealSparks } from '../presentation/PlayerFinish';
-import { ModeBackdrop } from '../presentation/ModeScene';
 import { ModeIcon } from '../ModeIcon';
 import { useEffect, useRef, useState } from 'react';
 import type { NbaHistory } from '../../history/nbaHistoryData';
@@ -73,15 +74,14 @@ export function Survival({ onExit }: { onExit: () => void }) {
 
   const header = <header className="hunt-top">
     <button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button>
-    <div className="hunt-title"><span className="pixel-eyebrow">{run && run.stage !== 'over' ? `ROUND ${roundNo(run)} · ${SURVIVAL_LEVELS[run.level].name.toUpperCase()}${run.daily ? ' · DAILY' : ''}` : 'LAST TEAM STANDING'}</span><h1>Survival</h1></div>
+    <OfficeArt name="survival" /><div className="hunt-title"><span className="pixel-eyebrow">{run && run.stage !== 'over' ? `ROUND ${roundNo(run)} · ${SURVIVAL_LEVELS[run.level].name.toUpperCase()}${run.daily ? ' · DAILY' : ''}` : 'LAST TEAM STANDING'}</span><h1>Survival</h1></div>
     {run && run.stage !== 'over' && <button className="hunt-exit" onClick={() => { if (window.confirm('Give up this run? It will not count.')) setRun(null); }}>Give up</button>}
   </header>;
-  if (error) return <div className="hunt surv">{header}<p className="empty-state">Could not load the NBA history data: {error}</p></div>;
-  if (!h) return <div className="hunt surv">{header}<p className="empty-state">Loading 80 years of basketball…</p></div>;
-  return <div className="hunt surv mode-environment" data-environment="survival">
+  if (error) return <div className="hunt mode-suite surv">{header}<p className="empty-state">Could not load the NBA history data: {error}</p></div>;
+  if (!h) return <div className="hunt mode-suite surv">{header}<p className="empty-state">Loading 80 years of basketball…</p></div>;
+  return <div className="hunt mode-suite surv mode-environment" data-environment="survival">
     {pendingReward && <PostGameRewardPopup data={pendingReward} onClose={() => setPendingReward(null)} />}
     {header}
-    <ModeBackdrop mode="survival" />
     {!run ? <Hub records={records} onStart={start} />
       : run.stage === 'draft' ? <DraftView h={h} run={run} onKeep={ids => setRun(keepTen(run, ids))} />
       : run.stage === 'tag' ? <TagView h={h} run={run} onTag={id => setRun(tagFranchise(h, run, id))} />

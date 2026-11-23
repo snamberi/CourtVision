@@ -1,3 +1,4 @@
+import { SeasonHeading } from './SeasonHeading';
 import { TeamLink } from './TeamLink';
 import { useMemo, useState } from 'react';
 import type { League } from '../simulation/league';
@@ -14,7 +15,7 @@ export function PowerRankingsPage({ league }: Props) {
 
   return (
     <div className="power-rankings-page">
-      <h4>Power Rankings</h4>
+      <SeasonHeading title="Power rankings" art="podium" />
       <p className="hint-text">
         Team rating is based only on the ratings of players on each team. Rating ranks show where each team
         stands (1 = best in the league) in each category, averaged across the roster.

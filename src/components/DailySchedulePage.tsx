@@ -1,3 +1,4 @@
+import { SeasonHeading } from './SeasonHeading';
 import { PixelIcon } from './PixelIcon';
 import { TeamLink } from './TeamLink';
 import { useMemo, useState } from 'react';
@@ -43,7 +44,7 @@ export function DailySchedulePage({ league, onChange }: Props) {
   return (
     <div className="daily-schedule-page">
       <div className="daily-schedule-header">
-        <h4>Daily Schedule — Round {round + 1}</h4>
+        <SeasonHeading title={`Daily schedule · Round ${round + 1}`} art="weekly" />
         <div className="daily-schedule-nav">
           <button aria-label="Previous day" disabled={roundIndex <= 0} onClick={() => setRound(rounds[roundIndex - 1])}><span className="pixel-chevron previous"><PixelIcon name="play" size={16} /></span></button>
           <button aria-label="Next day" disabled={roundIndex >= rounds.length - 1} onClick={() => setRound(rounds[roundIndex + 1])}><PixelIcon name="play" size={16} /></button>

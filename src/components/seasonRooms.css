@@ -1,0 +1,17 @@
+.season-heading {display:flex;align-items:center;gap:16px;min-width:0;padding:16px 20px;border-left:4px solid var(--look-accent);background:var(--look-panel)}
+.season-heading h2 {font:400 clamp(21px,2.5vw,38px)/1.12 Bungee,sans-serif;letter-spacing:-.035em;color:var(--look-accent);margin:0}
+.season-heading .office-art {width:38px;height:42px;object-fit:contain;image-rendering:pixelated}
+.app-body main:has(.season-heading,.watch-game,.season-preview-page,.game-box-score) {padding:clamp(12px,2vw,32px);min-width:0}
+.app-body main :is(.sched-head,.daily-schedule-header):has(.season-heading){display:flex;align-items:center;flex-wrap:wrap;gap:14px 22px;margin-bottom:22px}
+.app-body main :is(.schedule-page,.league-page,.awards-page,.playoffs-page):has(.season-heading){max-width:none}
+.app-body main .season-heading~section,.app-body main .season-heading+.award-team-block {margin-top:20px}
+.app-body main :is(.sched-summary,.my-series,.award-team-block,.watch-transport){padding:clamp(12px,1.5vw,22px);border:1px solid var(--look-line);border-radius:0;background:var(--look-panel)}
+.app-body main :is(.sched-tabs,.daily-schedule-nav,.watch-controls){display:flex;flex-wrap:wrap;gap:8px}
+.app-body main .watch-game .watch-scoreboard {font-variant-numeric:tabular-nums;gap:clamp(6px,1.4vw,22px)}
+.app-body main :is(.standings-table,.daily-schedule-page .db-table) :is(td,th){padding-block:9px;font-variant-numeric:tabular-nums}
+.app-body main .bracket-tree{max-width:100%;overflow-x:auto}
+@media(max-width:720px){.season-heading{padding:10px 14px;gap:10px}.sched-head>.season-heading,.daily-schedule-header>.season-heading{flex-basis:100%}}
+.watch-game .watch-live-header{padding:clamp(10px,1.4vw,20px);border-block:2px solid var(--look-line)}
+.watch-game .watch-scoreboard>div>b{font-variant-numeric:tabular-nums;font-size:clamp(24px,4vw,54px);line-height:1.05}
+.watch-game .watch-options summary{min-height:40px;align-content:center}
+.app-body main :is(.cup-groups,.all-star-roster,.bracket-column-series){gap:clamp(10px,1.2vw,18px)}

@@ -1,3 +1,4 @@
+import './seasonRooms.css';
 import { liveRecordChases50 } from '../simulation/replayStories50';
 import { OccasionBanner } from './OccasionBanner';
 import { HalftimeSpeech } from './HalftimeSpeech';

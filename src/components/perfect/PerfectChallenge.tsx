@@ -1,3 +1,5 @@
+import { OfficeArt } from '../OfficeDisplay';
+import '../modeRooms.css';
 import { BestComparison } from '../qol/BestComparison';
 import { ResultCount, ResultCrest, MvpSpotlight } from '../presentation/ResultPresentation';
 import { LineupBoard } from '../presentation/LineupBoard';
@@ -145,13 +147,13 @@ export function PerfectChallenge({ onExit }: { onExit: () => void }) {
 
   const header = <header className="hunt-top">
     <button className="hunt-exit" onClick={onExit}><PixelIcon name="exit" size={16} /> Main Menu</button>
-    <div className="hunt-title"><span className="pixel-eyebrow">{run ? (run.from === 'hunt' ? 'HUNT SQUAD · BONUS RUN' : `${MODE_INFO[run.mode].name.toUpperCase()}${run.daily ? ' · DAILY' : ''}`) : 'BUILD A TEAM · PLAY ALL 82'}</span><h1>82-0 Challenge</h1></div>
+    <OfficeArt name="perfect" /><div className="hunt-title"><span className="pixel-eyebrow">{run ? (run.from === 'hunt' ? 'HUNT SQUAD · BONUS RUN' : `${MODE_INFO[run.mode].name.toUpperCase()}${run.daily ? ' · DAILY' : ''}`) : 'BUILD A TEAM · PLAY ALL 82'}</span><h1>82-0 Challenge</h1></div>
     {run && run.stage !== 'done' && <button className="hunt-exit" onClick={() => { if (window.confirm('Give up this run? It will not count.')) setRun(null); }}>Give up</button>}
   </header>;
-  if (error) return <div className="hunt p820">{header}<p className="empty-state">Could not load the NBA history data: {error}</p></div>;
-  if (!h) return <div className="hunt p820">{header}<p className="empty-state">Loading 80 years of basketball…</p></div>;
+  if (error) return <div className="hunt mode-suite p820">{header}<p className="empty-state">Could not load the NBA history data: {error}</p></div>;
+  if (!h) return <div className="hunt mode-suite p820">{header}<p className="empty-state">Loading 80 years of basketball…</p></div>;
   // Category Draft shows no rarity colours until the run is over (you pick on the name alone).
-  return <div className={`hunt p820 ${run && run.stage !== 'done' && ((run.view && !run.view.colors) || isCategoryMode(run.mode)) ? 'no-rarity' : ''}`}>
+  return <div className={`hunt mode-suite p820 ${run && run.stage !== 'done' && ((run.view && !run.view.colors) || isCategoryMode(run.mode)) ? 'no-rarity' : ''}`}>
     {pendingReward && <PostGameRewardPopup data={pendingReward} onClose={() => setPendingReward(null)} />}
     {header}
     {run && run.stage !== 'done' && <DuelBanner duel={run.duel} />}

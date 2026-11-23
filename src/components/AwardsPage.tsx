@@ -1,3 +1,4 @@
+import { SeasonHeading } from './SeasonHeading';
 import { AwardName, CustomAwardBoard } from './AwardStudio';
 import { TeamLink } from './TeamLink';
 import { useState, useMemo, type ReactNode } from 'react';
@@ -149,6 +150,7 @@ export function AwardsPage({ league, onSelectPlayer, awardSettings, finalsBracke
 
   return (
     <div className="awards-page">
+      <SeasonHeading title="Season awards" art="achievements" />
       <CustomAwardBoard league={league} season={awardsSeason} onSelectPlayer={onSelectPlayer} />
       {awards?.mvp && <div className={`awards-night-cta${recap ? ' awards-night-cta-live' : ''}`}>
         <PixelTrophy award="mvp" size={40} />

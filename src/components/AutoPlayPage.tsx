@@ -1,3 +1,4 @@
+import { SeasonHeading } from './SeasonHeading';
 import { TeamLink } from './TeamLink';
 import { useState } from 'react';
 import type { League } from '../simulation/league';
@@ -40,7 +41,7 @@ export function AutoPlayPage({
 
   return (
     <section>
-      <h4>Auto Play Multiple Seasons</h4>
+      <SeasonHeading title="Simulate seasons" art="perfect" />
       <p className="hint-text">
         Plays through full seasons one at a time — regular season, All-Star Weekend, playoffs, draft, and free
         agency — auto-drafting and auto-signing/waiving for your team along the way, exactly like the AI does for

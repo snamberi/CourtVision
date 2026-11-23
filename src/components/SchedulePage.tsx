@@ -1,3 +1,4 @@
+import { SeasonHeading } from './SeasonHeading';
 import { useMemo, useState } from 'react';
 import { TeamLink } from './TeamLink';
 import { TeamLogo } from './TeamLogo';
@@ -45,7 +46,7 @@ export function SchedulePage({ league, controlledTeamId, onViewGame }: Props) {
   const record = (id: string) => { const r = standings.get(id); return r ? `${r.wins}-${r.losses}` : '0-0'; };
   const byId = useMemo(() => new Map(league.teams.map(t => [t.teamId, t])), [league.teams]);
 
-  if (league.schedule.length === 0) return <div className="league-page"><h4>Schedule</h4><p className="empty-state">No schedule generated yet.</p></div>;
+  if (league.schedule.length === 0) return <div className="league-page"><SeasonHeading title="Schedule" art="weekly" /><p className="empty-state">No schedule generated yet.</p></div>;
 
   const games = teamGames(league, teamId);
   const done = games.filter(g => g.outcome);
@@ -60,7 +61,7 @@ export function SchedulePage({ league, controlledTeamId, onViewGame }: Props) {
 
   return <div className="league-page schedule-page">
     <header className="sched-head">
-      <h4>Schedule</h4>
+      <SeasonHeading title="Schedule" art="weekly" />
       <div className="sched-tabs" role="tablist">
         <button role="tab" aria-selected={view === 'team'} className={view === 'team' ? 'active' : ''} onClick={() => setView('team')}>Team calendar</button>
         <button role="tab" aria-selected={view === 'league'} className={view === 'league' ? 'active' : ''} onClick={() => setView('league')}>League by day</button>
